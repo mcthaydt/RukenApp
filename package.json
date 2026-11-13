@@ -1,5 +1,6 @@
 {
   "name": "ruken",
+  "license": "FSL-1.1-ALv2",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -47,6 +48,7 @@
     "@prisma/client": "7.10.0",
     "better-auth": "1.7.7",
     "nodemailer": "10.0.13",
-    "pg": "8.23.1"
+    "pg": "8.23.1",
+    "stripe": "22.6.2"
   }
 }
