@@ -862,7 +862,7 @@ A `<button>` (or `a.button`) with no other class is the screen's main action: pa
 
 **Calls in the look** (the Owner can overrule). Each is where design 5.8 is silent or cannot be met as written.
 
-- **Pip is `#c43b26`, not the design's `#c63c26`. Asked of the Owner through the coordinator on 2026-11-13; not answered when this was written.** Paper on `#c63c26` measures 4.48:1, under the 4.5:1 a button's label needs; `#c43b26` measures 4.57:1 and is what the old repository shipped for the same reason (`OLD/packages/ui/src/theme.css`). The value is written once in `look.css` and once in `tests/lib/look.test.ts`; nothing else names it.
+- Pip is `#c43b26`, as design 5.8 now has it (the coordinator's Call, 2026-11-13, written into the design's table). The design sheet's `#c63c26` measures 4.48:1 with paper text, under the 4.5:1 a button's label needs; `#c43b26` measures 4.57:1 and is what the old repository shipped for the same reason (`OLD/packages/ui/src/theme.css`). The value is written once in `look.css` and once in `tests/lib/look.test.ts`; nothing else names it.
 - The main button on a paper card is ink with a paper label (15.1:1), as the old `Button` had it. 5.8 names only the button on felt.
 - A field has a 1px `ink-soft` edge (7.2:1 on paper) and 14px corners, as the old `TextField` had. 5.8 allows an edge on real form fields and gives no corner for them.
 - A refusal is ink at weight 600 in an element with `role="alert"`. 5.8 has no colour for an error, and pip is not one.
@@ -946,7 +946,7 @@ A `<button>` (or `a.button`) with no other class is the screen's main action: pa
 }
 ```
 
-    Each group gets a comment that says what it is for, in the design's words (the "Used for" column of 5.8's table). The comment beside `--pip` says why it is not the design sheet's `#c63c26`, with the two measured ratios.
+    Each group gets a comment that says what it is for, in the design's words (the "Used for" column of 5.8's table). The comment beside `--pip` says why it is one step darker than the design sheet's `#c63c26`, with the two measured ratios.
   - `static/fonts/sources.json`: one entry per file in the folder, keyed by the file's name: `{ "package", "version", "tarball", "integrity", "path", "bytes", "sha256" }`. It is the record of where each file came from and what it is. Formatted by Prettier.
 
 **Where the files come from.** Two npm tarballs, read on 2026-11-13. The files are copied out of them; neither package is added to `package.json`. (The google/fonts repository holds these families as `.ttf` only, and making `.woff2` from them needs a tool this repository does not have.)
