@@ -1,8 +1,22 @@
-// STUB (red push)
 import type Stripe from "stripe";
-import type { PremiumCheckoutInput, PremiumPrices } from "./checkout.ts";
+import {
+  closeCheckoutSession,
+  createBillingCustomer,
+  ensurePremiumPrices,
+  startPremiumCheckoutSession,
+  type PremiumCheckoutInput,
+  type PremiumPrices,
+} from "./checkout.ts";
 import type { CheckoutStarted } from "./stripe-client.ts";
-import type { PaidPremiumInvoice, PremiumSubscription } from "./subscription.ts";
+import {
+  cancelSubscriptionNow,
+  createPortalLink,
+  readPaidPremiumInvoice,
+  readSubscription,
+  voidPayableInvoices,
+  type PaidPremiumInvoice,
+  type PremiumSubscription,
+} from "./subscription.ts";
 
 /**
  * Everything the membership service asks of Stripe, as one port. The service takes this interface
@@ -24,5 +38,24 @@ export interface PremiumStripe {
 
 /** The port on a real Stripe client. */
 export function bindPremiumStripe(stripe: Stripe): PremiumStripe {
-  throw new Error(`not built yet ${typeof stripe}`);
+  // The prices never change while a process runs, so they are looked up once. A failed lookup is
+  // forgotten, so the next request tries again rather than failing until a restart.
+  let prices: Promise<PremiumPrices> | undefined;
+  return {
+    prices() {
+      prices ??= ensurePremiumPrices(stripe).catch((error: unknown) => {
+        prices = undefined;
+        throw error;
+      });
+      return prices;
+    },
+    createCustomer: (input) => createBillingCustomer(stripe, input),
+    startCheckout: (input) => startPremiumCheckoutSession(stripe, input),
+    closeCheckout: (sessionId) => closeCheckoutSession(stripe, sessionId),
+    subscription: (subscriptionId) => readSubscription(stripe, subscriptionId),
+    cancelNow: (subscriptionId) => cancelSubscriptionNow(stripe, subscriptionId),
+    voidPayableInvoices: (subscriptionId) => voidPayableInvoices(stripe, subscriptionId),
+    portalLink: (customerId, returnUrl) => createPortalLink(stripe, customerId, returnUrl),
+    paidInvoice: (invoiceId) => readPaidPremiumInvoice(stripe, invoiceId),
+  };
 }
