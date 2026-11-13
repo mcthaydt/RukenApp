@@ -45,7 +45,7 @@ Plan: `docs/superpowers/plans/2026-11-13-slice-1-accounts-membership.md`. It end
 Stages:
 
 - [x] Plan written, and updated to the design as revised on 2026-11-13 (on `plan/slice-1-accounts`, pull request #10; not done until merged and green).
-- [ ] Plan audit: written, with the plan fixed (`docs/superpowers/audits/2026-11-13-slice-1-plan-audit.md`: 4 blocks execution, 19 should fix, 15 notes; all fixed in the plan but 6 notes that stay, each with its reason). On a branch (`audit/slice-1-plan`); not done until merged and green. No test ran in the audit session; the audit is a reading of the files.
+- [ ] Plan audit: written, with the plan fixed (`docs/superpowers/audits/2026-11-13-slice-1-plan-audit.md`: 4 blocks execution, 19 should fix, 16 notes; all fixed in the plan but 6 notes that stay, each with its reason). On a branch (`audit/slice-1-plan`); not done until merged and green. No test ran in the audit session; the audit is a reading of the files.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.

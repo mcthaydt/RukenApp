@@ -16,7 +16,7 @@ Every finding is fixed in the plan in the same commit as this audit, unless its 
 |---|---|---|---|
 | Blocks execution | 4 | 4 | 0 |
 | Should fix | 19 | 19 | 0 |
-| Note | 15 | 9 | 6 |
+| Note | 16 | 10 | 6 |
 
 ## Checked and found right
 
@@ -106,6 +106,8 @@ Netlify builds a deploy preview for every pull request of a linked repository by
 **N6.** Task 22 said to read the Stripe SDK's options "the way `OLD/packages/billing/src/stripe.test.ts` does"; that file has no such case. *Fixed:* says the case is new and where to look.
 
 **N7.** Task 21's `grep … | head` for the append-only trigger finds five files. *Fixed:* the file and lines (`reject_append_only_change()`, m1_hosting lines 587 to 602).
+
+**N16.** While this audit ran, `main` gained the rule that pull requests merge themselves (`.github/workflows/auto-merge.yml`, CLAUDE.md "Sessions"): open as a draft, mark ready when done. The plan still said to open a plain pull request and that the merge session merges. *Fixed:* "How a task runs" says draft, when to mark ready, and never while red.
 
 **N8.** The file map lacked `src/lib/long-date.ts`, the root layout, `/healthz` and the new error page. *Fixed.*
 

@@ -37,9 +37,9 @@ Each task is two pushes, so each red-then-green round is short.
 2. **Green.** Replace the stubs with the code. Push. Read CI: every job passes.
 3. Tick the task in `docs/superpowers/progress.md`, with the two CI run numbers, in the green commit or the next one. Send the coordinator the one line CLAUDE.md asks for.
 
-CI runs on pull requests. So the first push of a branch is followed at once by opening its pull request (title: the branch's name in words). If GitHub refuses, stop and report.
+CI runs on pull requests. So the first push of a branch is followed at once by opening its pull request **as a draft** (title: the branch's name in words). If GitHub refuses, stop and report.
 
-A red commit is never merged: the merge session merges a branch only when its last commit is green.
+A red commit is never merged. Pull requests merge themselves (CLAUDE.md, Owner 2026-11-13): when a branch's last task is green and no more pushes are coming, mark its pull request ready for review; `.github/workflows/auto-merge.yml` turns on auto-merge, and GitHub merges once `verify` and `browser` pass on a branch up to date with `main`. Where a step says "the branch merges" or "ready to merge", that is this. Never mark a pull request ready while its last commit is red.
 
 **Carrying a file** means: copy it from `OLD/` to the new path; rewrite its imports to the new paths; remove what the task lists under "Trim"; remove old-plan references from comments; change nothing else. Its tests are carried the same way, keeping only the cases for what is kept. A carried test file named `*.pg.test.ts` needs Postgres; replace the old `startTestDatabase`/Testcontainers set-up with `startTestDatabase()` from `tests/support/database.ts` (Task 1).
 
