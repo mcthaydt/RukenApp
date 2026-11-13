@@ -69,8 +69,8 @@ Read on 2026-11-13. Where a page or a package and this plan disagree when execut
 ## The Owner's decisions, the open questions, and the Calls in this plan
 
 - **Owner, 2026-11-13** (design 5.2, 5.4, 6, 8, as approved and revised): games are plain web games with no SDK; a game's files load only with a play pass; play time is measured by Ruken's page; FloorFifty is free on launch day for everyone with no account; free play, staff play and a maker's own play never count for pay; the cap is 180 minutes per member, per game, per America/Chicago day; clips are upright and wide, video, 30 MB each; Ruken pulls a game's files through a Ruken GitHub App that the Owner creates.
+- **Owner, 2026-11-13** (relayed by the coordinator), where games live: a separate domain used only for games, each game on its own name under it (`g-<id>.<games domain>`), clips at `media.<games domain>`. A game can then never touch Ruken's cookies, and games cannot read each other's saves. Which domain is not settled (the old plan's may already be owned); it is written `GAMES-DOMAIN` below and never in the repository, and buying one, if needed, is the Owner's first step of G3.
 - **Asked of the Owner through the coordinator, not yet answered** (the plan is written for the recommended answer; its pull request stays a draft until these are in):
-  - **Q1. Where games live.** A (recommended, planned for): a second domain used only for games, each game on its own name under it (`g-<id>.<games domain>`), clips at `media.<games domain>`. A game can then never touch Ruken's cookies, and games cannot read each other's saves. B: names under the site's own domain; same code, weaker (a game on a sister name can plant cookies for the whole domain). C: Cloudflare's free `workers.dev` address; every game shares one address, and Tasks 13, 14 and 24 would change.
   - **Q2. The staff door.** Before slice 4 brings the submit form and the admin portal, nothing can put a game on the site. A (recommended, planned for): three job addresses behind `JOBS_SECRET` (Task 15), called by the Owner with one-line commands, removed by slice 4. B: no door; slice 2 is proven only in CI with a tiny test game, and FloorFifty first meets the real gate, R2 and GitHub App in slice 4, days before launch. C: a script on the Owner's computer that writes to Neon and R2 directly, which needs both sets of credentials on that computer.
 - **Calls** (the Owner can overrule):
   - **The pass.** `v1.<payload>.<mac>`: the payload is `{ g: <the game's public id>, p: <the pull's id>, exp: <seconds> }` as JSON in base64url; the mac is HMAC-SHA256 over `"ruken-play-pass-v1:" + payload` with `PLAY_PASS_SECRET`. It sits in the address as the first folder: `https://g-<id>.<games domain>/<pass>/index.html`. So every file the game asks for by a relative address carries it, with no cookie (browsers block cookies in a frame from another site) and nothing for the game to do. It holds nothing about the person.
@@ -122,9 +122,9 @@ The execution session reports to the coordinator and asks for each of these with
 4. `Start-Process "https://github.com/apps/APP-NAME-IN-THE-ADDRESS-BAR/installations/new"` (a website: choose the account that owns FloorFifty, "Only select repositories", FloorFifty, Install.)
 5. Keep the `.pem` file somewhere safe or delete it; it is a key. Say "done".
 
-**G3, asked for when branch D starts; needed for G4. It follows the Owner's answer to Q1.**
+**G3, asked for when branch D starts; needed for G4.**
 
-1. A website, because no command can buy a domain or change its DNS: the games domain is on this Cloudflare account and says "Active" (if it is not there, "Onboard a domain" and follow it). Then that domain → DNS → Records → Add record: Type `AAAA`, Name `*`, IPv6 address `100::`, Proxy status "Proxied".
+1. A website, because no command can buy a domain or change its DNS. If no games domain is owned yet, buy one (Cloudflare: Domain Registration → Register Domains; or any registrar). It must be on this Cloudflare account and say "Active" (if it is not listed, "Onboard a domain" and follow it). Everything after this step is a command. Then that domain → DNS → Records → Add record: Type `AAAA`, Name `*`, IPv6 address `100::`, Proxy status "Proxied".
 2. `git switch main; git pull; pnpm install; pnpm exec wrangler deploy --config cloudflare/games/wrangler.jsonc --route "*.GAMES-DOMAIN/*"` (from `main` as it is now, so what goes out is what was merged: makes the gate Worker, `ruken-games`, if the site's own deploy has not already, and gives it every name under the games domain).
 3. `$b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); $s = [BitConverter]::ToString($b) -replace '-',''; $s | pnpm exec wrangler secret put PLAY_PASS_SECRET; $s | pnpm exec wrangler secret put PLAY_PASS_SECRET --config cloudflare/games/wrangler.jsonc` (one new random secret, given to both Workers; it is never shown).
 4. `"https://SITE" | pnpm exec wrangler secret put SITE_ORIGIN --config cloudflare/games/wrangler.jsonc`
@@ -717,7 +717,7 @@ Branch D is ready to merge.
 
 # Branch E: `slice-2/door`
 
-Owner question Q2. If the Owner chooses B or C, this branch is not built as written: stop and ask the coordinator for the revised plan.
+Owner question Q2, not yet answered. If the Owner chooses B or C, this branch is not built as written: stop and ask the coordinator for the revised plan.
 
 ### Task 15: The staff door, and a stand-in GitHub
 

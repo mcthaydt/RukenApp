@@ -11,7 +11,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
 | 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan's revision is merged (#15) with the Owner's yes to its package list, and its plan audit with fixes (#19). Owner, 2026-11-13: the Card Table look on Ruken's own screens (design 5.8, #20); the plan has a branch for it, L `slice-1/look` (tasks 35 to 37), after branch D and before E0: merged (#22); its plan audit is on a branch (`audit/slice-1-look`), not done until merged and green. Execution: branch A (tasks 1 to 4) merged (#13); branch B (tasks 5 to 8) merged (#14); branch C (tasks 9 to 11) merged (#18). Branch D (screens, tasks 12 to 15) done on #21, not yet merged. L (the look) follows D, then E0 (Cloudflare) | 40% |
-| 2 | Games and play | plan written, on a branch (`plan/slice-2`, a draft pull request); not done until merged and green. It waits for the FloorFifty findings and two Owner answers. Nothing is built | 0% |
+| 2 | Games and play | plan written, on a branch (`plan/slice-2`, a draft pull request); not done until merged and green. It waits for the FloorFifty findings and one Owner answer (the staff door). Nothing is built | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
 | 5 | Money (after launch, before 10 December) | not started | 0% |
@@ -137,7 +137,7 @@ Stages:
 Waiting, before the plan's pull request is marked ready:
 
 - [ ] The FloorFifty findings (a separate research session): does it run as a plain web game without the old SDK; its branch and folder; its measured size, file count and largest file, which set the three size limits (the plan's open items O1 to O4).
-- [ ] Owner, Q1: where games live. Recommended and planned for: a second domain used only for games, each game on its own name under it.
+- [x] Owner, 2026-11-13, where games live: a separate domain used only for games, each game on its own name under it. Which domain is not settled; buying one, if needed, is the Owner's first step of G3.
 - [ ] Owner, Q2: how a game gets on the real site before slice 4. Recommended and planned for: a small staff door behind `JOBS_SECRET`, removed by slice 4.
 
 Branches and tasks:
