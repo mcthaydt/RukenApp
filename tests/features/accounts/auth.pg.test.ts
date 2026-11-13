@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isRedirect } from "@sveltejs/kit";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   createAuth,
@@ -7,6 +8,7 @@ import {
   type Auth,
 } from "../../../src/features/accounts/auth.ts";
 import { cookiePolicy } from "../../../src/features/accounts/cookies.ts";
+import { signInWithPassword, type FormEvent } from "../../../src/features/accounts/forms.ts";
 import {
   SIGN_IN_FAILURE_LIMIT,
   SIGN_IN_PAUSE_MS,
@@ -255,6 +257,49 @@ describe("session cookie on https", () => {
       .filter((line) => line.startsWith("__Host-rk_session="));
     expect(sessionLines).toHaveLength(1);
     expect(sessionLines[0]).toMatch(sessionLine);
+  });
+
+  it("keeps Secure and HttpOnly when the sign-in form copies the cookie onto the page", async () => {
+    const email = nextEmail();
+    await post("/sign-up/email", { email, password: "correct horse", name: "Player" });
+    const set = vi.fn();
+    const event = {
+      request: new Request(`${HTTPS_ORIGIN}/sign-in`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ email, password: "correct horse", next: "/" }),
+      }),
+      getClientAddress: () => nextIp(),
+      cookies: {
+        set,
+        // Enough of SvelteKit's Set-Cookie parsing for this line: the name, value, path and flags. cspell:ignore httponly samesite
+        parse: (line: string) => {
+          const [pair = "", ...attributes] = line.split(";").map((part) => part.trim());
+          const [name = "", value = ""] = pair.split("=");
+          const lower = attributes.map((attribute) => attribute.toLowerCase());
+          return {
+            name,
+            value,
+            path: attributes.find((attribute) => attribute.toLowerCase().startsWith("path="))?.split("=")[1],
+            ...(lower.includes("secure") ? { secure: true } : {}),
+            ...(lower.includes("httponly") ? { httpOnly: true } : {}),
+            ...(lower.includes("samesite=lax") ? { sameSite: "lax" } : {}),
+          };
+        },
+      },
+    } as unknown as FormEvent;
+
+    await expect(
+      signInWithPassword(event, {
+        handler: theHttpsAuth().handler,
+        baseURL: HTTPS_ORIGIN,
+        cookies: httpsCookies,
+      }),
+    ).rejects.toSatisfy(isRedirect);
+
+    const sessionSet = set.mock.calls.find(([name]) => name === "__Host-rk_session");
+    expect(sessionSet?.[2]).toMatchObject({ path: "/", secure: true, httpOnly: true, sameSite: "lax" });
+    expect(sessionSet?.[2]).not.toHaveProperty("domain");
   });
 });
 
