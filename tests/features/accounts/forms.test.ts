@@ -13,6 +13,7 @@ import {
   type FormEvent,
   type SignUpDeps,
 } from "../../../src/features/accounts/forms.ts";
+import { SIGN_IN_PAUSED_MESSAGE } from "../../../src/features/accounts/sign-in-pause-plugin.ts";
 import { TestClock } from "../../support/test-clock.ts";
 
 const ORIGIN = "http://localhost:5173";
@@ -193,7 +194,9 @@ describe("signInWithPassword", () => {
       status: 429,
       data: { email: "nobody@example.test", error: FORM_MESSAGES.signInPaused },
     });
-    expect(FORM_MESSAGES.signInPaused).toMatch(/Reset your password/);
+    // One message, said once: the form shows the same words better-auth answered with.
+    expect(FORM_MESSAGES.signInPaused).toBe(SIGN_IN_PAUSED_MESSAGE);
+    expect(FORM_MESSAGES.signInPaused).toMatch(/reset your password/);
     expect(FORM_MESSAGES.signInPaused).not.toMatch(/sign-in link/);
     expect(FORM_MESSAGES.signInPaused).not.toMatch(/account/i);
   });

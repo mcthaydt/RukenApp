@@ -5,7 +5,7 @@ import { ageCheck, type BirthDate } from "./age.ts";
 import { CLIENT_IP_HEADER } from "./auth.ts";
 import { copyAuthCookies, type CookiePolicy } from "./cookies.ts";
 import type { AuthHandler } from "./forward.ts";
-import { SIGN_IN_PAUSED } from "./sign-in-pause-plugin.ts";
+import { SIGN_IN_PAUSED, SIGN_IN_PAUSED_MESSAGE } from "./sign-in-pause-plugin.ts";
 
 // The sign-in, sign-up and sign-out pages post ordinary HTML forms to SvelteKit actions, which call
 // these. Each one asks better-auth by building a request to its handler on the server:
@@ -18,8 +18,9 @@ import { SIGN_IN_PAUSED } from "./sign-in-pause-plugin.ts";
 export const FORM_MESSAGES = {
   wrongPassword: "That email and password don't match. Try again, or reset your password.",
   rateLimited: "Too many tries. Wait a few minutes, then try again.",
-  signInPaused:
-    "Password sign-in is paused for that email after too many tries. Reset your password, or try again in an hour.",
+  // The words better-auth answers with while the pause lasts, so a person sees the same thing on the
+  // form and anywhere else the answer is shown.
+  signInPaused: SIGN_IN_PAUSED_MESSAGE,
   failed: "Something went wrong on our side. Try again in a moment.",
   emailMissing: "Enter your email address.",
   passwordLength: "Use a password of 10 to 128 characters.",

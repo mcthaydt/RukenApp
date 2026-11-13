@@ -7,7 +7,9 @@ export default defineConfig({
   forbidOnly: true,
   retries: 0,
   reporter: [["list"], ["html", { open: "never" }]],
-  use: { baseURL: "http://localhost:4173", trace: "off" },
+  // A missing page or field fails in 5 seconds, not after the whole 30-second test timeout, so a
+  // journey that cannot find its form says so quickly.
+  use: { baseURL: "http://localhost:4173", trace: "off", actionTimeout: 5_000 },
   webServer: {
     // The app now reads a database, so the migrations run before the build, as they do on Netlify.
     command: "pnpm exec prisma migrate deploy && pnpm build && pnpm preview --port 4173 --strictPort",
