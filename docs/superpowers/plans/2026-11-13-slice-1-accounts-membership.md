@@ -6,7 +6,7 @@
 
 **Architecture:** One SvelteKit app. Two features, `accounts` (sign-in, sessions, staff roles, delete my account) and `membership` (checkout, Stripe webhooks, "is this person a member"), hold server code only; the screens are thin routes in `src/routes/` that call a feature's entry file. Sign-in, sessions and the Stripe code are copied file by file from RukenAppFailed and trimmed; the database is Postgres 16 through Prisma.
 
-**Tech Stack:** Node 24.22.1, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Prisma 7.10.0, Postgres 16, better-auth 1.7.7, Stripe 22.6.2, nodemailer 10.0.13, Vitest 5.0.3, Playwright 1.63.0. Netlify, Neon.
+**Tech Stack:** Node 24.22.1, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Prisma 7.10.0, Postgres 16, better-auth 1.7.7, Stripe 22.6.2, Vitest 5.0.3, Playwright 1.63.0. Cloudflare Workers (`@sveltejs/adapter-cloudflare` 8.0.2, Wrangler 4.156.0) with Hyperdrive in front of Neon; mail through Resend's HTTP API. (Owner, 2026-11-13: Cloudflare instead of Netlify; see "Cloudflare instead of Netlify", below.)
 
 **Spec:** `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md` (sections 5.2, 5.5 "Authority", 5.6, 6 "What players buy" and "Bringing a member", 7.1 to 7.4, 8, 9), as revised by the Owner on 2026-11-13. Read it with `CLAUDE.md` and `AGENTS.md`.
 
@@ -17,10 +17,11 @@
 - No session runs tests, lint or typecheck itself. Push, then read the result of CI on the pull request (CLAUDE.md, Owner 2026-11-13).
 - Every task is test-first, and the failing test is seen failing in CI on the branch before the code that passes it is pushed ("How a task runs", below).
 - Dependencies are added only at the old repository's pinned versions, and only these: `prisma` 7.10.0, `@prisma/client` 7.10.0, `@prisma/adapter-pg` 7.10.0, `pg` 8.23.1, `@types/pg` 8.23.1, `better-auth` 1.7.7, `stripe` 22.6.2, `nodemailer` 10.0.13, `@types/nodemailer` 8.0.2, `@js-temporal/polyfill` 0.5.1 (the carried clock, `TestClock` and the age check are written in Temporal; Node 24 has no Temporal of its own). Anything else needs the Owner's words: stop and report.
+  - Owner, 2026-11-13: Cloudflare instead of Netlify. That adds `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0 and removes `@sveltejs/adapter-netlify`, `nodemailer` and `@types/nodemailer`, once the Owner has approved that list ("Cloudflare instead of Netlify", below). Until Task 32 removes them, `nodemailer` and `@types/nodemailer` stay as Task 4 added them.
   - The two security pins the old repository kept for Prisma 7.10's command-line tool are carried into `pnpm-workspace.yaml` as `overrides` with their comment: `"@prisma/config>deepmerge-ts": 8.0.2` and `"prisma>mysql2": 3.24.5`. They pin what Prisma already pulls in; they add no package.
   - Not added though the old repository had them: zod (settings are read by a small function), cuid2 (ids made in code use `randomUUID()` from `node:crypto`; Prisma's own `@default(cuid(2))` needs no package), Testcontainers (CI's Postgres is a service container), pg-boss, Testing Library and jsdom (screens are checked in Playwright this slice).
-- `.github/workflows/ci.yml` changes in exactly one commit of this slice (Task 1). Its message quotes the Owner (the text is in Task 1).
-- This repository is public. No secret, real address, customer data, old plan or old history goes in. Every credential is typed by the Owner into Netlify's settings. Test values in the repository are plainly fake (`sk_test_fake`, `whsec_test_fake`).
+- `.github/workflows/ci.yml` changes in exactly one commit of this slice (Task 1). Its message quotes the Owner (the text is in Task 1). Moving to Cloudflare changes nothing in it.
+- This repository is public. No secret, real address, customer data, old plan or old history goes in. Every credential is typed by the Owner into Cloudflare's settings (the Worker's secrets and its build variables). Test values in the repository are plainly fake (`sk_test_fake`, `whsec_test_fake`).
 - Money is whole cents as `bigint`. Nobody types a fact: every amount, tax, fee and date about a payment is read from Stripe.
 - Time comes from an injected `Clock`. Feature code never calls `Date.now()` or `new Date()` with no argument.
 - Features hold server code only this slice, and import only features below them: `accounts` imports no feature; `membership` may import `accounts`. Shared helpers with no feature logic go in `src/lib/`; a rule or key that belongs to one feature (like the checkout-start limit) lives in that feature, not in `src/lib/`. Tests live only in `tests/`, mirroring `src/`. Routes and `src/hooks.server.ts` reach a feature only through its entry file (the layer test checks every file under `src/`), so everything a route or the hook uses is re-exported there.
@@ -28,6 +29,69 @@
 - The price is $9.99 a month or $99 a year, tax added by Stripe (`PREMIUM_PRICES_CENTS = { monthly: 999n, annual: 9900n }`). No trials (`PREMIUM_TRIAL_DAYS = 0`), no day or week passes, no buying single games.
 - Which maker brought a member is a fact from the link they arrived through. No screen, form or query parameter lets a person say it.
 - Every screen and message passes the drunk grandma test. The words in this plan are the words to ship; a change to them is a deviation to report.
+
+## Cloudflare instead of Netlify
+
+Owner, 2026-11-13: "Thoughts on switching to Cloudflare and Cloudflare Pages instead of Netlify, that's what we're going with for the AutomataFramework", then "Cloudflare now" when told the cost. Neon stays for Postgres. This section is the revision. Tasks 1 to 15 were written for Netlify and some are already built; they are not rewritten. Branch E0 (Tasks 32 to 34) changes what they built, and the table below says which.
+
+### Packages
+
+The one list. Nothing on it is installed or removed until the Owner approves it through the coordinator.
+
+| | Package | Version | Note |
+|---|---|---|---|
+| Added (dev) | `@sveltejs/adapter-cloudflare` | 8.0.2 | published 2026-10-29, fifteen days before this plan; the line that supports SvelteKit 3 (`@sveltejs/kit ^3.0.0-next.0`) |
+| Added (dev) | `wrangler` | 4.156.0 | published 2026-10-29; Cloudflare's own build and deploy tool, which the adapter requires (`wrangler ^4.118.0`). CI's journeys run the built site in it |
+| Removed | `@sveltejs/adapter-netlify` | 7.0.1 | |
+| Removed | `nodemailer` | 10.0.13 | Workers cannot open an SMTP connection the way nodemailer does; mail goes over `fetch` |
+| Removed | `@types/nodemailer` | 8.0.2 | |
+
+Not added: `@neondatabase/serverless` and `@prisma/adapter-neon` (Hyperdrive needs neither; `pg` 8.23.1 and `@prisma/adapter-pg` 7.10.0 stay), a mail SDK (one `fetch`), `@cloudflare/workers-types` by name (the adapter brings it), any cron or Stripe helper. `stripe` 22.6.2, `better-auth` 1.7.7, Prisma 7.10.0 and `@js-temporal/polyfill` 0.5.1 stay as pinned.
+
+### What was chosen, and the evidence
+
+Read on 2026-11-13. Where a page and this plan disagree when execution reads it, stop and report.
+
+1. **Workers with static assets, not Pages.** SvelteKit's adapter page lists one adapter for both and gives the Workers configuration first (`main`, `assets.binding`, `assets.directory` in a Wrangler file); Cloudflare's own SvelteKit guide deploys to Workers. Workers also have what this slice needs and Pages lacks: Cron Triggers on the same Worker, and Workers Builds with a deploy command that runs only for the production branch. (https://svelte.dev/docs/kit/adapter-cloudflare, https://developers.cloudflare.com/workers/framework-guides/web-apps/sveltekit/)
+2. **The runtime is `nodejs_compat`.** With it, and a compatibility date on or after 2025-04-01, `process.env` holds the Worker's variables and secrets, so `requireEnv` keeps working; `node:crypto` (`randomUUID`, `createHmac`, `timingSafeEqual`, `scrypt`) and `node:async_hooks` are there; the Temporal polyfill is plain JavaScript. (https://developers.cloudflare.com/workers/runtime-apis/nodejs/process/)
+   - **Adapter 8 gives a request no `platform`.** Its Worker calls SvelteKit with `getClientAddress` only (read in the package's `files/worker.js`); `env` and `waitUntil` are imported from `cloudflare:workers`. So `src/lib/server/background.ts`, which reads `event.platform.context.waitUntil`, changes (Task 33).
+   - **One database client per request.** "Workers do not allow a socket opened during one request to be reused by another, so do not share a module-level client across requests", and a client need not be closed: "Workers-to-Hyperdrive connections are automatically cleaned up when the request or invocation ends". So the process-wide `prisma()` changes (Task 34). (https://developers.cloudflare.com/hyperdrive/concepts/connection-lifecycle/)
+   - **Prisma's client is generated for the runtime it runs in.** Prisma 7's Workers guide sets `runtime = "cloudflare"` (or `workerd`) on the generator; the Node build of the client compiles its WebAssembly from bytes at run time, which Workers refuse. The tests still run in Node. So the schema gets two generators: one for the app, one for the tests (Task 34). (https://www.prisma.io/docs/guides/v7/deployment/cloudflare-workers)
+   - **better-auth** hashes passwords with scrypt through `@better-auth/utils/password`, which uses `node:crypto` where there is one. A password check is tens of milliseconds of CPU; Workers Free allows 10 ms a request, Workers Paid 30 seconds. **Workers Paid ($5 a month) is required.** (https://developers.cloudflare.com/workers/platform/limits/)
+   - **Stripe** 22.6.2 ships a Workers build (its `workerd` export) and has `Stripe.createFetchHttpClient()`, `Stripe.createSubtleCryptoProvider()` and `webhooks.constructEventAsync`. The plan asks for them by name, so nothing depends on which build the bundler picks (Tasks 22, 25).
+3. **The database: Hyperdrive in front of Neon.** No new package (the Neon driver would add two and could not talk to CI's plain Postgres), one new Cloudflare setting, included in Workers Paid. Its query cache is **turned off**: a cached "is this session valid" or "is this person a member" would be wrong for up to a minute. Migrations run in Workers Builds' **deploy command**, which runs only for the production branch; preview builds are switched off as well. No CI step, no migration by hand. (https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/postgres-database-providers/neon/, https://developers.cloudflare.com/workers/ci-cd/builds/configuration/, https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/)
+4. **Mail: Resend's HTTP API, called with `fetch`.** Cloudflare's own Email Sending is marked Beta on its pages today ("new accounts start with a conservative daily quota"), so it is not used for launch. The mailer stays one file behind the `Mailer` interface, so changing service later is one file. (https://developers.cloudflare.com/email-service/, https://resend.com/docs/api-reference/emails/send-email)
+5. **The daily job: a Cron Trigger on the same Worker.** The adapter builds only a `fetch` handler ("`adapter-cloudflare` does not export a `scheduled()` handler"). So a ten-line file wraps the built site, adds `scheduled`, and is what gets deployed; the job still only knocks on the site's own job address. (https://developers.cloudflare.com/workers/static-assets/migration-guides/vercel-to-workers/sveltekit/, https://developers.cloudflare.com/workers/configuration/cron-triggers/)
+6. **Settings are the Worker's secrets**, typed by the Owner in the dashboard, every one with type "Secret": a deploy wipes plain-text variables set in the dashboard and keeps secrets. A missing one stops the first request that needs it with `Missing setting <NAME>. Add it as a secret on the Worker in Cloudflare.` (https://developers.cloudflare.com/workers/configuration/secrets/)
+7. **A pull request cannot reach the real database.** Preview builds are off; the migrations are in the deploy command, which previews never run; and with Cloudflare's current previews, "Previews do not use production settings". `workers_dev` and `preview_urls` are false, so the site has one address.
+
+### What this changes in tasks already built
+
+| Built in | What | Changed by |
+|---|---|---|
+| Task 1 | `src/lib/server/db.ts`: `prisma()` was one client per process, from `DATABASE_URL` | Task 34: one client per request, from Hyperdrive |
+| Task 1 | `prisma/schema/base.prisma`: one generator | Task 34: two generators |
+| Task 1 | `tests/support/database.ts`: the client came from `createPrismaClient` | Task 34: the Node-generated client |
+| Task 1 | `playwright.config.ts`: the journeys ran in `vite preview` | Task 34: the journeys run in `wrangler dev`, the Workers runtime |
+| Task 3 | `src/lib/server/env.ts`: the message says "Netlify's environment settings" | Task 32 |
+| Task 3 | `src/lib/server/background.ts`: `keepBackgroundWorkAlive` and `event.platform.context.waitUntil` | Task 33 |
+| Task 4 | `src/lib/server/mail.ts`: `createSmtpMailer`, `smtpTransport`, nodemailer | Task 32: `createResendMailer` |
+| Task 11 | `src/features/accounts/services.ts` reads `SMTP_URL`; `src/hooks.server.ts` starts with `keepBackgroundWorkAlive` | Tasks 32, 33, 34 |
+| Tasks 11 to 15 | `playwright.config.ts` passes `SMTP_URL: "test:"` | Task 32 |
+
+`Mailer`, `MailMessage`, `mailFailureCode`, `RunInBackground`, `runAfterAnswer`, `createPrismaClient`, `poolMaxFromEnv` and the name `prisma()` keep their signatures, so no feature file changes.
+
+### CI
+
+`.github/workflows/ci.yml` does not change. The `browser` job already has Postgres and runs `pnpm test:browser`; what that command starts is set in `playwright.config.ts`. No secret is used: `wrangler dev` runs the Worker on the runner and needs no Cloudflare account.
+
+### Checked by CI, not by reading
+
+Three things could not be settled from documentation. Task 34's green push settles them; each has a stop rule there.
+
+- Whether Vite's build passes Prisma's `.wasm?module` import through to Wrangler untouched.
+- Whether `event.getClientAddress()` answers under `wrangler dev` (it reads `cf-connecting-ip`).
+- Whether pnpm, which runs no install scripts unless listed, installs Wrangler's runtime (`workerd`) whole.
 
 ## How a task runs
 
@@ -45,7 +109,7 @@ A red commit is never merged. Pull requests merge themselves (CLAUDE.md, Owner 2
 
 ## Branches
 
-Eight branches, in this order. Each starts from `main` only after the one before it is merged and green, and each is small enough to review in one sitting.
+Nine branches, in this order. Each starts from `main` only after the one before it is merged and green, and each is small enough to review in one sitting.
 
 `main` is protected (Owner, 2026-11-13): it changes only by pull request, `verify` and `browser` must pass on a branch that is up to date with `main`, merges are merge commits, and a merged branch is deleted automatically. Nothing is pushed straight to `main`. Before the last push of a branch, merge `main` into it if `main` has moved (a pushed branch is never rebased: no force-push). The `postgres` job arrives in Task 1; ask the coordinator to have it required too once branch A is merged.
 
@@ -55,6 +119,7 @@ Eight branches, in this order. Each starts from `main` only after the one before
 | B | `slice-1/sign-in-rules` | 5 to 8 | the sign-in guards, limits, age check, cookies and mails, each tested alone |
 | C | `slice-1/sign-in` | 9 to 11 | better-auth configured, the request hook, the form actions |
 | D | `slice-1/account-screens` | 12 to 15 | sign up, sign in, reset and /me, in a real browser |
+| E0 | `slice-1/cloudflare` | 32 to 34 | what A to D built runs on Cloudflare Workers: mail over HTTP, one database client per request, the journeys in the Workers runtime |
 | E | `slice-1/deploy` | 16 | the site on its real address; a person signs up there |
 | F | `slice-1/delete-account` | 17 to 20 | delete my account: the 14-day wait, undone by signing in, finished by a daily job |
 | G | `slice-1/membership` | 21 to 26 | the membership tables and the Stripe code, tested without a browser |
@@ -64,19 +129,26 @@ Eight branches, in this order. Each starts from `main` only after the one before
 
 The execution session reports to the coordinator and asks for each of these with the exact steps below. It does not work around a missing credential. A stop holds only the check that needs it: the next branch starts as soon as the branch before it is merged and green (a stop's own step is done when the Owner says "done"). The one hard wait is S2: branch H is not merged until S2 is done, because once it is on `main` the real site's `/me` and `/join` need the Stripe settings.
 
-**S1, asked for at Task 16 step 3. The Owner, in each service's own settings, never in the repository:**
+**S1, in two parts, asked for at Task 16 step 3. The Owner, in each service's own pages, never in the repository.** It needs Cloudflare's Workers Paid plan, $5 a month.
 
-1. Neon: make a project with Postgres 16, in AWS US East (Ohio), the region Netlify runs its functions in by default. From its "Connect" panel copy two addresses: the pooled one (its host has `-pooler` in it) and the direct one (no `-pooler`).
-2. Netlify: "Add new site" → "Import an existing project" → GitHub → `mcthaydt/RukenApp`, branch `main`. Leave the build command and folder empty: `netlify.toml` sets them.
-3. Netlify, Site configuration → Build & deploy → Continuous deployment: set **Deploy Previews to "Don't deploy pull requests"** and **Branch deploys to "Deploy only the production branch"**. Netlify's build runs the migrations against the one real database, so a pull request's preview would change the real database before that pull request is merged.
-4. The site's address: in Netlify, Domain management → add the address and make it the primary domain (Netlify then sends the other spelling, with or without `www`, to it); point the address's DNS at Netlify as Netlify shows; wait for the https certificate.
-5. A mail service that offers SMTP: verify the address's domain with it (the SPF and DKIM records it gives, in the address's DNS), so the mails do not land in spam. Note its SMTP address as one line, `smtps://<user>:<password>@<host>:465`.
-6. Netlify, Site configuration → Environment variables, each with scope "All scopes" (the build runs the migrations and the daily job reads its secret, so builds and functions both need them):
-   - `DATABASE_URL`: Neon's pooled address. `DIRECT_DATABASE_URL`: Neon's direct address.
+Part one, the database:
+
+1. Cloudflare: Workers & Pages → Plans → choose **Workers Paid**. The site's domain must be one of this Cloudflare account's domains: if it is not listed under "Domains" on the account's home page, add it there ("Onboard a domain"), change the nameservers at the registrar as Cloudflare shows, and wait until it says "Active".
+2. Neon: make a project with Postgres 16, in AWS US East (Ohio). In its "Connect" panel switch **Connection pooling off** and copy the address (its host has no `-pooler` in it). This one address is used twice below.
+3. Cloudflare: Storage & Databases → Hyperdrive → Create configuration. Name `ruken-db`; paste the address from step 2; **turn Caching off** (a remembered answer to "is this person signed in" or "is this person a member" would be wrong for up to a minute). Create. Copy the configuration's ID (32 letters and digits).
+4. Say to the coordinator: "Hyperdrive id: <the ID>". It is the name of a setting in your account, not a password, and it goes into `wrangler.jsonc`. Wait for the coordinator's "the id is in main".
+
+Part two, the site:
+
+5. Resend (resend.com): make an account. Domains → Add domain → the site's domain. Resend shows DNS records (a DKIM record, and an SPF and an MX record on `send`); add each in Cloudflare under the domain's DNS → Records, exactly as shown, with the proxy switched off ("DNS only"). Back in Resend press Verify and wait for "Verified". Then API Keys → Create API key, permission "Sending access", limited to that domain. Copy the key (`re_…`).
+6. Cloudflare: Workers & Pages → Create → "Start with Hello World" → name it exactly `ruken` → Deploy. This is an empty Worker, made first so its settings exist before the real site is deployed onto it.
+7. That Worker → Settings → Variables and Secrets → Add. Give every one the **type "Secret"**, also the ones that are not secret: a deploy wipes "Text" variables typed here and keeps Secrets.
    - `BETTER_AUTH_SECRET`: a long random value (a password manager's generator, 40 characters or more). `JOBS_SECRET`: a second, different one (the daily job shows it to the site, Task 20).
-   - `BETTER_AUTH_URL`: the primary address with `https://` and no trailing slash.
-   - `SMTP_URL`: the line from step 5. `MAIL_FROM`: `Ruken <hello@your-domain>`, on the verified domain.
-7. Netlify, Deploys → "Trigger deploy". Say "done" to the coordinator.
+   - `BETTER_AUTH_URL`: the site's address with `https://` and no trailing slash.
+   - `RESEND_API_KEY`: the key from step 5. `MAIL_FROM`: `Ruken <hello@your-domain>`, on the verified domain.
+8. That Worker → Settings → Domains & Routes → Add → Custom Domain → the site's address. Cloudflare makes the DNS record and the https certificate itself. For the other spelling (with or without `www`): the domain → Rules → Redirect Rules → the "Redirect from WWW to root" template (or its opposite), so both spellings end at the one address.
+9. That Worker → Settings → Build → Connect → GitHub → `mcthaydt/RukenApp`, branch `main`. Build command: `pnpm build`. Deploy command: `pnpm run deploy`. Root directory: empty. Under Branch control, **leave "Enable preview builds" unticked**: nothing is built from a pull request. Under "Build variables and secrets" add `DIRECT_DATABASE_URL` with the address from step 2, as a secret. Only the deploy command reads it, to run the migrations, and the deploy command runs only for `main`.
+10. Say "done" to the coordinator, and tell the coordinator the site's address (it is not written in the repository). The first real deploy starts with the next merge to `main`, which the execution session makes.
 
 **S2, asked for when branch G starts (Task 21), needed before branch H merges. The Owner, in Stripe test mode:**
 
@@ -84,7 +156,7 @@ The execution session reports to the coordinator and asks for each of these with
 2. Settings → Billing → Customer portal: turn on "Cancel subscriptions", "at the end of the billing period"; leave "Update payment methods" on; turn off "Switch plans". Save, and activate the test-mode portal.
 3. Developers → Webhooks → Add endpoint: `https://<site>/webhooks/stripe`, with the API version the execution session gives (the version the `stripe` package pins, read from `node_modules/stripe`; the handlers read event fields in that version's shape), for the events listed in Task 25. Copy its signing secret.
 4. Developers → API keys: copy the test secret key (`sk_test_…`).
-5. Netlify environment variables, scope "All scopes": `STRIPE_SECRET_KEY` (step 4), `STRIPE_WEBHOOK_SECRET` (step 3), `STRIPE_LIVE` = `false`. Trigger a deploy. Say "done".
+5. Cloudflare: the `ruken` Worker → Settings → Variables and Secrets → Add, each with the type "Secret": `STRIPE_SECRET_KEY` (step 4), `STRIPE_WEBHOOK_SECRET` (step 3), `STRIPE_LIVE` = `false`. Press Deploy when the page offers it. Say "done".
 
 **S3, at Task 31 step 3, when the Owner decides the site may take real money:** the same five steps in Stripe **live mode**, with the live key (`sk_live_…`) and `STRIPE_LIVE` = `true`; the site refuses to start if the key's mode and `STRIPE_LIVE` disagree (Task 26). Real terms and privacy text first. Paying once with a real card and cancelling is the Owner's own check (design 8).
 
@@ -94,8 +166,8 @@ The membership product and its two prices are not typed into Stripe by anyone: t
 
 - **Owner, 2026-11-13** (answers relayed by the coordinator):
   1. Age: sign-up asks a date of birth. Under 13 is refused; only the 18th birthday is stored (Tasks 7, 11, 13).
-  2. Delete my account: the old 14-day wait. Signing in during the 14 days undoes it, and a scheduled job on Netlify removes the data afterwards. It is its own small branch (F, Tasks 17 to 20), using Netlify's own scheduled functions. If that turns out to need a dependency or tool the old repository did not pin, stop and ask.
-  3. Deploy: the Owner links the Netlify site to the repository, and Netlify builds and publishes `main` after each merge, running the migrations in its build. No CI workflow change for deploying (Task 16).
+  2. Delete my account: the old 14-day wait. Signing in during the 14 days undoes it, and a scheduled job on Netlify removes the data afterwards. It is its own small branch (F, Tasks 17 to 20). Owner, 2026-11-13, Cloudflare instead of Netlify: the job is a Cron Trigger on the site's own Worker (Task 20).
+  3. Deploy: the Owner links the Netlify site to the repository, and Netlify builds and publishes `main` after each merge, running the migrations in its build. No CI workflow change for deploying (Task 16). Owner, 2026-11-13, Cloudflare instead of Netlify: the same, with Cloudflare's Workers Builds in Netlify's place; the migrations run in its deploy command.
   4. `main` is protected, as described under "Branches".
   5. The Calls below were put to the Owner and not overruled. They stay Calls.
 - **Owner, 2026-11-13, the design revised** (sections 5.2, 6 and 8):
@@ -133,15 +205,17 @@ prisma/schema/base.prisma                generator and datasource
 prisma/schema/accounts.prisma            accounts' tables
 prisma/schema/membership.prisma          membership's tables            (branch G)
 prisma/migrations/                       SQL, made by `prisma migrate diff`, never by hand except CHECKs
-netlify.toml                             build command, Node version, the daily job's schedule (branches E, F)
-netlify/functions/purge-accounts.mjs     the daily job: it only calls the site's own job address (branch F)
+wrangler.jsonc                           the Worker: its name, the built files, Hyperdrive, the daily job's schedule (branches E0, F)
+cloudflare/worker.js                     what Cloudflare runs: the built site plus the daily job, which only calls the site's own job address (branch F)
 .env.example                             every setting's name, with fake values
 src/lib/clock.ts                         Clock, systemClock, CALENDAR_ZONE, chicagoDayOf
 src/lib/long-date.ts                     longDay, longDate: a Chicago day in words   (branch F)
 src/lib/safe-next.ts                     safeNextPath
-src/lib/server/db.ts                     the Prisma client
+src/lib/server/db.ts                     the Prisma client, one per request (branch E0)
+src/lib/server/platform.ts               what the host gives: the database's address, waitUntil (branch E0)
+src/lib/server/cloudflare.ts             Cloudflare's platform; the only file that imports cloudflare:workers (branch E0)
 src/lib/server/env.ts                    requireEnv, optionalEnv
-src/lib/server/mail.ts                   Mailer, the SMTP mailer, mailFailureCode
+src/lib/server/mail.ts                   Mailer, the Resend mailer (branch E0), mailFailureCode
 src/lib/server/rate-limit.ts             RateLimiter on the RateLimit table
 src/lib/server/background.ts             work that runs after the answer
 src/hooks.server.ts                      the request hook
@@ -185,7 +259,7 @@ src/features/membership/                 (branch G)
 src/routes/
   +error.svelte                          every failure's page, with a way back
   +layout.server.ts  +layout.svelte      the welcome-back line   (branch F)
-  healthz/+server.ts                     (branch E)
+  healthz/+server.ts                     (branch E0)
   api/auth/[...path]/+server.ts
   sign-up/  sign-in/  sign-out/  forgot-password/  reset-password/
   me/
@@ -193,6 +267,7 @@ src/routes/
   join/  join/done/                      (branch H)
   webhooks/stripe/+server.ts             (branch H)
 tests/support/database.ts                a fresh migrated database per test file
+tests/wrangler.test.ts                   wrangler.jsonc, the deploy script and the journeys' command, read as text (branch E0)
 tests/support/test-clock.ts              a clock tests can set
 tests/support/capture-mailer.ts          a Mailer that keeps what it was given
 tests/support/fake-premium-stripe.ts     a PremiumStripe that remembers state (branch G)
@@ -217,12 +292,16 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 8. Anyone on the internet calls the daily job's address without the secret: 404, and nothing is removed (Task 20).
 9. An arrival cookie that was changed by hand, names an account that does not exist, or is missing: the person still pays and becomes a member, and no maker is recorded (Task 23, Task 26).
 10. A person arrives through one maker's link, starts paying, comes back, arrives through another maker's link and pays: the second maker is recorded, once (Task 26).
+11. Two people use the site at the same moment: each request has its own database client, never one another request opened (Task 34).
+12. A pull request with a migration in it: nothing it does reaches the real database; only a merge to `main` runs migrations (Task 16).
 
 ---
 
 # Branch A: `slice-1/database`
 
 ### Task 1: Prisma, the accounts tables, and Postgres in CI
+
+Built for Netlify. Task 34 changes `db.ts`, `base.prisma`, `tests/support/database.ts` and the journeys' command.
 
 **Files:**
 - Modify: `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.github/workflows/ci.yml`, `vite.config.ts`, `playwright.config.ts`, `.gitignore`, `.prettierignore`, `eslint.config.js`
@@ -323,6 +402,8 @@ Adds Prisma 7.10.0 and pg 8.23.1 at the old repository's pins, and the first fai
 
 ### Task 3: safeNextPath, settings, and work after the answer
 
+Built for Netlify. Task 32 changes `requireEnv`'s message; Task 33 changes `background.ts`.
+
 **Files:**
 - Create: `src/lib/safe-next.ts`, `src/lib/server/env.ts`, `src/lib/server/background.ts`
 - Test: `tests/lib/safe-next.test.ts`, `tests/lib/server/env.test.ts`, `tests/lib/server/background.test.ts`
@@ -351,6 +432,8 @@ it("optionalEnv answers undefined for unset or empty", () => {
 - [ ] **Step 3 (green):** the code. Push. Expected: all jobs pass.
 
 ### Task 4: The rate limiter and the mailer
+
+Built with nodemailer. Task 32 replaces the SMTP mailer with `createResendMailer`.
 
 **Files:**
 - Create: `src/lib/server/rate-limit.ts`, `src/lib/server/mail.ts`, `tests/support/capture-mailer.ts`
@@ -494,6 +577,8 @@ it.each(["pending_deletion", "deleted"])("treats a session whose account is %s a
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 
 ### Task 11: The form actions and the services
+
+If this task is built before branch E0, it is built as written here; Task 32 then swaps `SMTP_URL` for `RESEND_API_KEY`, and Tasks 33 and 34 change `src/hooks.server.ts`.
 
 **Files:**
 - Create: `src/features/accounts/forward.ts`, `src/features/accounts/forms.ts`, `src/features/accounts/pages.ts`, `src/features/accounts/services.ts`, `src/features/accounts/accounts.ts`
@@ -719,43 +804,212 @@ Branch D is ready to merge.
 
 ---
 
+# Branch E0: `slice-1/cloudflare`
+
+Owner, 2026-11-13: Cloudflare instead of Netlify. This branch moves what branches A to D built onto Cloudflare Workers, before anything is deployed. It starts only when the Owner has approved the package list ("Cloudflare instead of Netlify", above).
+
+### Task 32: Mail over HTTP, and settings that say Cloudflare
+
+Changes Task 3 (`env.ts`), Task 4 (`mail.ts`) and Task 11 (`services.ts`).
+
+**Files:**
+- Modify: `src/lib/server/mail.ts`, `src/lib/server/env.ts`, `src/features/accounts/services.ts`, `package.json`, `pnpm-lock.yaml`, `playwright.config.ts`, `.env.example`
+- Test: `tests/lib/server/mail.test.ts`, `tests/lib/server/env.test.ts`, `tests/features/accounts/services.test.ts`
+
+**Interfaces:**
+- Produces:
+  - `createResendMailer(options: { apiKey: string; from: string; allowlist: string | undefined; fetch?: typeof fetch }): Mailer`. `send` POSTs to `https://api.resend.com/emails` with the headers `Authorization: Bearer <apiKey>` and `Content-Type: application/json` and the body `{ from, to: [message.to], subject, text }`. A 2xx answer resolves `true`. Any other answer throws `MailError` with `code: "RESEND"`, `responseCode: <status>` and the message `Resend answered <status>`; the answer's body is never read into the error, because it can name the address. The allowlist works as before: an address not on it resolves `false` and nothing is fetched. `fetch` defaults to the global one.
+  - `class MailError extends Error { code: string; responseCode: number }`.
+  - Unchanged: `MailMessage`, `Mailer`, `mailFailureCode` (it already reads `code` and `responseCode`, so a failure logs as `RESEND 422`).
+  - Removed: `createSmtpMailer`, `SmtpMailerOptions`, `smtpTransport`, and the packages `nodemailer` and `@types/nodemailer`.
+  - `requireEnv` throws `Missing setting ${name}. Add it as a secret on the Worker in Cloudflare.`
+  - `createAuthServices` reads `RESEND_API_KEY` where it read `SMTP_URL`, and builds the mailer with `createResendMailer`.
+  - `.env.example`: its first lines say the real values are typed into the Worker's secrets in Cloudflare; `SMTP_URL` goes and `RESEND_API_KEY=re_test_fake` comes.
+  - `playwright.config.ts`: `SMTP_URL` goes; `RESEND_API_KEY: "re_test_fake"` and `MAIL_ALLOWLIST: "nobody@ruken.test"` come. No journey uses that address, so the journeys send nothing and no stand-in mail server is needed. A comment says so.
+
+- [ ] **Step 1 (red):** rewrite `mail.test.ts` (the `mailFailureCode` cases stay), stub `createResendMailer` and `MailError`. Leave nodemailer installed in this commit.
+
+```ts
+const message = { to: "a@b.test", subject: "Hello", text: "Hi." };
+const answer = (status: number) => vi.fn<typeof fetch>(() => Promise.resolve(new Response("{}", { status })));
+
+it("posts the message to Resend with the key", async () => {
+  const fetch = answer(200);
+  const sent = await createResendMailer({ apiKey: "re_test_fake", from: "Ruken <hello@ruken.test>", allowlist: undefined, fetch }).send(message);
+  expect(sent).toBe(true);
+  const [url, init] = fetch.mock.calls[0]!;
+  expect(url).toBe("https://api.resend.com/emails");
+  expect(init?.method).toBe("POST");
+  expect(new Headers(init?.headers).get("authorization")).toBe("Bearer re_test_fake");
+  expect(JSON.parse(String(init?.body))).toEqual({ from: "Ruken <hello@ruken.test>", to: ["a@b.test"], subject: "Hello", text: "Hi." });
+});
+it("sends nothing to an address that is not on the allowlist", async () => {
+  const fetch = answer(200);
+  expect(await createResendMailer({ apiKey: "k", from: "f", allowlist: "nobody@ruken.test", fetch }).send(message)).toBe(false);
+  expect(fetch).not.toHaveBeenCalled();
+});
+it("fails with a code and no address when Resend refuses", async () => {
+  const fetch = vi.fn<typeof fetch>(() => Promise.resolve(new Response('{"message":"a@b.test is not allowed"}', { status: 422 })));
+  const failure = await createResendMailer({ apiKey: "k", from: "f", allowlist: undefined, fetch }).send(message).catch((error: unknown) => error);
+  expect(failure).toBeInstanceOf(MailError);
+  expect(mailFailureCode(failure)).toBe("RESEND 422");
+  expect(String((failure as Error).message)).not.toContain("a@b.test");
+});
+```
+
+  `env.test.ts`: the expected message becomes `Missing setting RESEND_API_KEY. Add it as a secret on the Worker in Cloudflare.` `services.test.ts`: building the services with `RESEND_API_KEY` unset throws "Missing setting RESEND_API_KEY"; its fake settings swap `SMTP_URL` for `RESEND_API_KEY`. Push. Expected: `verify` fails in the three files ("not built yet" in `mail.test.ts`, the old message in `env.test.ts`, "Missing setting SMTP_URL" in `services.test.ts`).
+- [ ] **Step 2 (green):** the code; remove `nodemailer` and `@types/nodemailer`; `playwright.config.ts` and `.env.example`. Push. Expected: all pass.
+
+### Task 33: The platform, and work after the answer
+
+Changes Task 3 (`background.ts`) and Task 11 (`hooks.server.ts`).
+
+**Files:**
+- Create: `src/lib/server/platform.ts`
+- Modify: `src/lib/server/background.ts`, `src/hooks.server.ts`
+- Test: `tests/lib/server/platform.test.ts`, `tests/lib/server/background.test.ts`
+
+**Interfaces:**
+- Produces:
+  - In `platform.ts`: `interface Platform { databaseUrl(): string; waitUntil(work: Promise<unknown>): void }`, `setPlatform(platform: Platform): void`, `platform(): Platform` (throws `No platform is set. src/hooks.server.ts sets it.` before `setPlatform`). These are the two things the host gives that code cannot get anywhere else. The file imports nothing from Cloudflare, so every test can set its own.
+  - `runAfterAnswer: RunInBackground` becomes `(task) => platform().waitUntil(task())`. `RunInBackground` is unchanged. Removed: `keepBackgroundWorkAlive`, the `AsyncLocalStorage` and `waitUntilOf`; Cloudflare's `waitUntil` already belongs to the request that is running, so nothing has to carry it.
+  - `src/hooks.server.ts`: a first line `setPlatform({ databaseUrl: () => requireEnv("DATABASE_URL"), waitUntil: () => {} })`, and `handle = createHandle(() => authServices().handleDeps)` without `sequence`. Until Task 34 the site still runs in Node, where started work runs to its end by itself.
+
+- [ ] **Step 1 (red):** `platform.test.ts`: `platform()` throws the message above before anything is set; after `setPlatform(p)` it answers `p`. Rewrite `background.test.ts`:
+
+```ts
+it("hands the started work to the platform, so the host waits for it", async () => {
+  const waitUntil = vi.fn<(work: Promise<unknown>) => void>();
+  setPlatform({ databaseUrl: () => "", waitUntil });
+  let finished = false;
+  runAfterAnswer(async () => { await Promise.resolve(); finished = true; });
+  expect(waitUntil).toHaveBeenCalledTimes(1);
+  await waitUntil.mock.calls[0]?.[0];
+  expect(finished).toBe(true);
+});
+```
+
+  Stub `setPlatform` and `platform`. Push. Expected: `verify` fails in both files: "not built yet" in `platform.test.ts`, and in `background.test.ts` the same from `setPlatform`.
+- [ ] **Step 2 (green):** the code. Push. Expected: all pass.
+
+### Task 34: The site runs on Workers
+
+Changes Task 1 (`db.ts`, `base.prisma`, `tests/support/database.ts`, `playwright.config.ts`) and Task 11 (`hooks.server.ts`). `GET /healthz` moves here from Task 16, because it is the first proof that the built Worker reaches a database.
+
+**Files:**
+- Create: `wrangler.jsonc`, `src/lib/server/cloudflare.ts`, `src/routes/healthz/+server.ts`
+- Modify: `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `playwright.config.ts`, `prisma/schema/base.prisma`, `src/lib/server/db.ts`, `src/hooks.server.ts`, `tests/support/database.ts`, `.gitignore`, `.prettierignore`, `eslint.config.js`, `.env.example`
+- Test: `tests/wrangler.test.ts`, `tests/lib/server/db.test.ts`, `tests/browser/healthz.test.ts`
+
+**Interfaces:**
+- Consumes: `Platform`, `setPlatform`, `platform` (Task 33).
+- Produces:
+  - `wrangler.jsonc`, whole. Comments sit on lines of their own, so the test can drop them and parse the rest.
+
+```jsonc
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // The Worker's name. The Owner's empty Worker has the same name (S1), so the first deploy lands on it.
+  "name": "ruken",
+  // Written by `pnpm build` (SvelteKit's Cloudflare adapter).
+  "main": ".svelte-kit/cloudflare/_worker.js",
+  "compatibility_date": "2026-10-01",
+  // Node's crypto, async_hooks and process.env, which sign-in and Prisma's driver need.
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "binding": "ASSETS", "directory": ".svelte-kit/cloudflare" },
+  // One address only: the custom domain the Owner adds in the dashboard. No workers.dev address, no preview addresses.
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  // Cloudflare's connection pool in front of Neon. The id names a setting in the Owner's account; it is not a
+  // credential. Until S1 gives the real one this is thirty-two zeros, which only `wrangler dev` accepts.
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }]
+}
+```
+
+  - `src/lib/server/cloudflare.ts`: `export const cloudflarePlatform: Platform = { databaseUrl: () => env.HYPERDRIVE.connectionString, waitUntil }`, with `env` and `waitUntil` imported from `cloudflare:workers`. It is the only file that imports `cloudflare:workers`. Only `src/hooks.server.ts` imports it, and no test imports either, so no test needs Cloudflare.
+  - `src/hooks.server.ts`: `setPlatform(cloudflarePlatform)`; `handle = sequence(databasePerRequest(), createHandle(() => authServices().handleDeps))`.
+  - `src/lib/server/db.ts`. `createPrismaClient` and `poolMaxFromEnv` stay. New and changed:
+    - `databasePerRequest(open?: () => PrismaClient): Handle` runs the request inside an `AsyncLocalStorage` scope that holds at most one client. `open` defaults to `() => createPrismaClient(platform().databaseUrl(), { poolMax: poolMaxFromEnv(process.env, 3) })`. Nothing is opened until the request first uses the database, and nothing is closed: Cloudflare closes a request's connections when the request ends.
+    - `prisma(): PrismaClient` answers one process-wide stand-in. Reading a property of it reads that property of the current request's client, opening the client on the first read; a function is returned bound to the real client. Outside a request it throws `The database is only reachable inside a request.` The services built once per process (`authServices()`, later `membershipServices()`) keep holding `prisma()` and so always reach the request they are serving.
+    - The comment says why: Workers do not let one request use a connection another request opened.
+  - `prisma/schema/base.prisma`: two generators, each with a comment. `client`: `provider = "prisma-client"`, `output = "../../src/lib/server/generated/prisma"`, `runtime = "workerd"` (the app). `nodeClient`: `provider = "prisma-client"`, `output = "../../tests/support/generated/prisma"`, `runtime = "nodejs"` (the tests, which run in Node on GitHub's runners). The second folder is ignored by git, Prettier and ESLint like the first.
+  - `tests/support/database.ts`: `startTestDatabase()` builds its client from `tests/support/generated/prisma` with `PrismaPg`, and returns it typed as the app's `PrismaClient` through one cast with a comment (the two generated clients have the same shape and differ only in how they load WebAssembly). No other test file changes.
+  - `package.json`: `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0 in, `@sveltejs/adapter-netlify` out. `"generate": "svelte-kit sync && prisma generate && wrangler types"` (`wrangler types` writes `worker-configuration.d.ts`, which types `cloudflare:workers`; it is ignored by git, Prettier and ESLint, as are `.wrangler/` and `.dev.vars*`).
+  - `vite.config.ts`: `sveltekit({ adapter: cloudflareAdapter() })`, and the comment about Netlify goes.
+  - `playwright.config.ts`: `webServer.command` becomes `pnpm exec prisma migrate deploy && pnpm build && pnpm exec wrangler dev --port 4173`; `webServer.env` gains `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: process.env.TEST_DATABASE_URL ?? ""` and `CLOUDFLARE_INCLUDE_PROCESS_ENV: "true"` (so `wrangler dev` gives the Worker the settings Playwright passes; there is no `.dev.vars` file), and loses `DATABASE_URL` (the migration step still gets `DIRECT_DATABASE_URL`). The journeys now run in the runtime the real site runs in.
+  - `GET /healthz` answers 200 `ok` after one `SELECT 1` through `prisma()`, and 503 `database` when that fails.
+
+- [ ] **Step 1 (red):** the three tests, the stub for `databasePerRequest`, and nothing else: no package changes yet.
+
+```ts
+// tests/lib/server/db.test.ts
+const fakeClient = (name: string) => ({ name, whoAmI() { return this.name; } }) as unknown as PrismaClient;
+const request = (work: () => unknown, open: () => PrismaClient) =>
+  databasePerRequest(open)({ event: {} as RequestEvent, resolve: async () => { await work(); return new Response("ok"); } });
+const nameOf = () => (prisma() as unknown as { whoAmI(): string }).whoAmI();
+
+it("opens nothing for a request that never uses the database", async () => {
+  const open = vi.fn(() => fakeClient("a"));
+  await request(() => undefined, open);
+  expect(open).not.toHaveBeenCalled();
+});
+it("gives one request one client, however often it asks", async () => {
+  const open = vi.fn(() => fakeClient("a"));
+  await request(() => { nameOf(); nameOf(); }, open);
+  expect(open).toHaveBeenCalledTimes(1);
+});
+it("gives two requests at the same moment a client each", async () => {      // Review Focus 11
+  const seen: string[] = [];
+  const later = async (name: string) => { await new Promise((done) => setTimeout(done, 0)); seen.push(nameOf() + " for " + name); };
+  await Promise.all([request(() => later("a"), () => fakeClient("a")), request(() => later("b"), () => fakeClient("b"))]);
+  expect(seen.sort()).toEqual(["a for a", "b for b"]);
+});
+it("calls a method on the real client, not on the stand-in", async () => {
+  await request(() => { expect(nameOf()).toBe("a"); }, () => fakeClient("a"));
+});
+it("refuses the database outside a request", () => {
+  expect(() => nameOf()).toThrow("The database is only reachable inside a request.");
+});
+```
+
+  `tests/wrangler.test.ts` (a unit test that reads files as text; `wrangler.jsonc` is parsed after dropping the lines that start with `//`): `main` is `.svelte-kit/cloudflare/_worker.js`; `assets` is `{ binding: "ASSETS", directory: ".svelte-kit/cloudflare" }`; `compatibility_flags` contains `nodejs_compat`; `hyperdrive[0].binding` is `HYPERDRIVE`; `workers_dev` and `preview_urls` are `false`; there is no `vars`, `route` or `routes` key; the file's text contains none of `postgres://`, `postgresql://`, `sk_live`, `sk_test`, `whsec_` and nothing matching `/\bre_[A-Za-z0-9]{8,}/`; `playwright.config.ts` contains `wrangler dev`; `package.json` names neither `@sveltejs/adapter-netlify` nor `nodemailer`. `healthz.test.ts`: `GET /healthz` answers 200 with the text `ok`. Push. Expected: `verify` fails in `db.test.ts` ("not built yet") and `wrangler.test.ts` (no such file); `browser` fails in `healthz.test.ts` (404).
+- [ ] **Step 2 (green):** everything under "Produces". Running `prisma generate`, `wrangler types` and `pnpm install` is not running a test. Push. Expected: all three jobs pass, and every journey from branches A to D passes unchanged in `wrangler dev`.
+- [ ] **Step 3: if green does not come.** These are the three things reading could not settle. Each gets one fix; after that, stop and report with the job's log (CLAUDE.md, Pace: no fourth attempt).
+  - The build or `wrangler dev` cannot load Prisma's `.wasm?module` import: read Prisma's Workers guide (linked above) for what it says about Vite, and report what the log says and what the guide offers. Do not change Prisma's version or add a plugin without the Owner's words.
+  - `event.getClientAddress()` throws or answers nothing under `wrangler dev`: report it; do not invent an address.
+  - `wrangler` says its runtime is missing: add `workerd` to `onlyBuiltDependencies` in `pnpm-workspace.yaml`, with a comment, and report it as a deviation.
+
+Branch E0 is ready to merge.
+
+---
+
 # Branch E: `slice-1/deploy`
 
 ### Task 16: The site on its real address
 
-Owner, 2026-11-13: the Owner links the Netlify site to the repository; Netlify builds and publishes `main` after each merge and runs the migrations in its build.
+Owner, 2026-11-13: Cloudflare instead of Netlify. The Owner connects the Worker to the repository; Workers Builds builds `main` after each merge, runs the migrations in its deploy command, and deploys. (The same shape as the Owner's earlier decision for Netlify; no CI workflow change for deploying.)
 
 **Files:**
-- Create: `netlify.toml`, `src/routes/healthz/+server.ts`
-- Modify: `.env.example`, `docs/superpowers/progress.md`
-- Test: `tests/browser/healthz.test.ts`, `tests/netlify.test.ts`
+- Modify: `package.json`, `wrangler.jsonc` (step 4), `docs/superpowers/progress.md`
+- Test: `tests/wrangler.test.ts` (add cases)
 
 **Interfaces:**
-- Produces: `GET /healthz` answers 200 `ok` after one `SELECT 1` through `prisma()`, and 503 `database` when that fails. It tells a person, after a deploy, that the site reaches its database.
-- `netlify.toml`:
+- Produces:
+  - `package.json`: `"deploy": "prisma migrate deploy && wrangler deploy"`. The migrations run first, so the code never meets an older database. They are in the deploy command and not in `build`, because Workers Builds runs the deploy command only for the production branch; a preview build, if anyone ever switched previews on, runs `build` and never this.
 
-```toml
-# Netlify builds and publishes main after each merge. Every credential is one of the site's environment
-# variables in Netlify, never this file. The migrations run first, so the code never meets an older database.
-[build]
-  command = "pnpm exec prisma migrate deploy && pnpm build"
-  publish = "build"
-
-[build.environment]
-  NODE_VERSION = "24.22.1"
-```
-
-- [ ] **Step 1 (red):** `healthz.test.ts`: `GET /healthz` answers 200 with the text `ok`. `tests/netlify.test.ts` (a unit test that reads the file as text): the build command contains `prisma migrate deploy` before `pnpm build`, `NODE_VERSION` equals the contents of `.nvmrc`, and the file contains none of `postgres://`, `postgresql://`, `sk_`, `whsec_`, `smtp://`, `smtps://`. Push. Expected: `browser` fails in `healthz.test.ts` (404); `verify` fails in `netlify.test.ts` (no such file).
-- [ ] **Step 2 (green):** the route and the file. Check the publish folder against what `@sveltejs/adapter-netlify` 7.0.1 writes with this project's `vite.config.ts` (read the adapter's README in `node_modules`); if it is not `build`, use what the adapter says and report the deviation. Push. Expected: all pass. The branch merges.
-- [ ] **Step 3: STOP S1.** Send the coordinator the S1 steps ("Where execution stops", above) word for word, for the Owner. Branch F starts meanwhile; steps 4 and 5 wait for the Owner's "done".
-- [ ] **Step 4: after the Owner's "done".** Ask the coordinator for the site's address (it is not written in the repository). Fetch `<site>/healthz` and expect `ok`. A person (the Owner, or the coordinator with the Owner) signs up on the real site, gets the confirmation mail, follows its link, signs out and signs in. Record in progress.md what was checked, by whom and when; do not record the address or any email address.
-- [ ] **Step 5:** if `/healthz` or the sign-up fails, report what the page and Netlify's deploy log say. Do not start a fourth fix (CLAUDE.md, Pace).
+- [ ] **Step 1 (red):** add to `tests/wrangler.test.ts`: `package.json`'s `deploy` script contains `prisma migrate deploy` before `wrangler deploy`; its `build` script does not contain `migrate`. Push. Expected: `verify` fails in `wrangler.test.ts` on the first new case (there is no `deploy` script).
+- [ ] **Step 2 (green):** the script. Push. Expected: all pass. The branch merges. Nothing is deployed yet: the Worker is not connected.
+- [ ] **Step 3: STOP S1.** Send the coordinator the S1 steps ("Where execution stops", above) word for word, for the Owner. Branch F starts meanwhile.
+- [ ] **Step 4: the Hyperdrive id.** When the coordinator relays "Hyperdrive id: …", put it in `wrangler.jsonc` in place of the zeros, on a branch of its own (`slice-1/hyperdrive-id`), with one test case added first: the id matches `/^[0-9a-f]{32}$/` and is not all zeros (red on the zeros, green on the real id). When it is merged, tell the coordinator "the id is in main".
+- [ ] **Step 5: after the Owner's "done".** Merge a tracker tick to `main` (this step's own line in progress.md), which starts the first deploy. Ask the coordinator to have the Owner read the result under the Worker's Deployments: a build that fails, or a deploy command that cannot see `DIRECT_DATABASE_URL`, is reported with its log line, not worked around. Then fetch `<site>/healthz` and expect `ok`. A person (the Owner, or the coordinator with the Owner) signs up on the real site, gets the confirmation mail, follows its link, signs out and signs in. After one more merge to `main`, fetch `/healthz` again: the custom domain must still answer after a second deploy. Record in progress.md what was checked, by whom and when; do not record the address or any email address.
+- [ ] **Step 6:** if `/healthz` or the sign-up fails, report what the page, the build log and the Worker's log (Observability) say. Do not start a fourth fix (CLAUDE.md, Pace).
 
 ---
 
 # Branch F: `slice-1/delete-account`
 
-Owner, 2026-11-13: "Delete my account" is the old 14-day wait. Signing in during the 14 days undoes it, and a scheduled job on Netlify removes the data afterwards.
+Owner, 2026-11-13: "Delete my account" is the old 14-day wait. Signing in during the 14 days undoes it, and a scheduled job removes the data afterwards. Owner, 2026-11-13, Cloudflare instead of Netlify: the job is a Cron Trigger.
 
 ### Task 17: Asking to be deleted, and undoing it
 
@@ -857,23 +1111,41 @@ test("Keep my account goes back and deletes nothing", async ({ page }) => { /* l
 ### Task 20: The daily job that finishes it
 
 **Files:**
-- Modify: `src/features/accounts/deletion.ts`, `src/features/accounts/accounts.ts`, `netlify.toml`, `playwright.config.ts`, `.env.example`
-- Create: `src/routes/jobs/purge-accounts/+server.ts`, `netlify/functions/purge-accounts.mjs`
-- Test: `tests/features/accounts/purge.pg.test.ts`, `tests/browser/purge-job.test.ts`, `tests/netlify.test.ts` (add cases)
+- Modify: `src/features/accounts/deletion.ts`, `src/features/accounts/accounts.ts`, `wrangler.jsonc`, `package.json`, `playwright.config.ts`, `.env.example`
+- Create: `src/routes/jobs/purge-accounts/+server.ts`, `cloudflare/worker.js`
+- Test: `tests/features/accounts/purge.pg.test.ts`, `tests/browser/purge-job.test.ts`, `tests/wrangler.test.ts` (add cases)
 
 **Interfaces:**
 - Produces:
   - `purgeDueAccounts(deps: { prisma: PrismaClient; clock: Clock }): Promise<number>`: for every open `DeletionRequest` whose `purgeAfter` has passed, in one transaction per account: delete the person's `Session`, `Account` and `Verification` rows (`Verification` where `identifier` or `value` is the email, as the old purge did, or `value` is the user's id, which is what a password-reset row holds); set the `User` row to `status: "deleted"`, `email: "deleted-<id>@deleted.invalid"`, `name: "Deleted"`, `emailVerified: false`, `image: null`, `adultOn: null`; set the request's `purgedAt`. It answers how many accounts it finished. The `User` row itself stays, so payment rows that point at it stay true. This is new and small; `OLD/packages/core/src/account/purge.ts` removed data from some thirty tables this app does not have, and is not carried. Each later slice that adds a person's data adds its own removal here, with a test.
   - `POST /jobs/purge-accounts`: answers 404 unless the request has `Authorization: Bearer <JOBS_SECRET>` (compared with `timingSafeEqual` from `node:crypto`); with it, runs `purgeDueAccounts` and answers 200 `{ "purged": <count> }`. 404, not 401, so the address looks like any address the site does not have.
-  - `netlify/functions/purge-accounts.mjs`: a Netlify scheduled function with no imports. It POSTs to `${process.env.URL}/jobs/purge-accounts` with the secret from `process.env.JOBS_SECRET` and throws when the answer is not 200, so a failed run shows as failed in Netlify. It holds no logic, because Netlify bundles this folder on its own and cannot see the app's code. `netlify.toml` gains:
+  - `cloudflare/worker.js`: the file Cloudflare runs. The adapter builds the site's `fetch` and has no daily job, so this file wraps the built site and adds one. It holds no logic: once a day it knocks on the site's own job address, inside the same Worker, and throws when the answer is not 200, so a failed run shows as failed in Cloudflare.
 
-```toml
-# Once a day. The function only knocks on the site's own job address; the work is in the app.
-[functions."purge-accounts"]
-  schedule = "@daily"
+```js
+import site from "../.svelte-kit/cloudflare/_worker.js";
+
+export default {
+  fetch: site.fetch,
+  async scheduled(_controller, env, ctx) {
+    const request = new Request(new URL("/jobs/purge-accounts", env.BETTER_AUTH_URL), {
+      method: "POST",
+      headers: { authorization: `Bearer ${env.JOBS_SECRET}` },
+    });
+    const response = await site.fetch(request, env, ctx);
+    if (response.status !== 200) throw new Error(`purge-accounts answered ${response.status}`);
+  },
+};
 ```
 
-  Before writing it, read Netlify's current page on scheduled functions and check three things: the schedule may be set in `netlify.toml` this way, `URL` is given to functions, and a function with no imports needs no package. If any needs a package or tool, stop and report (Owner: no dependency the old repository did not pin).
+  - `wrangler.jsonc` gains, with a comment ("Once a day, at 09:17 UTC, early morning in Chicago. The handler is in cloudflare/worker.js."):
+
+```jsonc
+  "triggers": { "crons": ["17 9 * * *"] }
+```
+
+  - `main` in `wrangler.jsonc` stays the adapter's file, because the adapter writes its output to whatever `main` names. The wrapper is given on the command line instead: `package.json`'s `deploy` becomes `prisma migrate deploy && wrangler deploy cloudflare/worker.js`, and `playwright.config.ts`'s command ends `pnpm exec wrangler dev cloudflare/worker.js --port 4173 --test-scheduled`. A comment in `wrangler.jsonc` beside `main` says so.
+
+  Before writing it, read Cloudflare's Cron Triggers page ("Test Cron Triggers locally") and `pnpm exec wrangler deploy --help`, and check three things: a Worker file may be given to `wrangler deploy` and `wrangler dev` as an argument, `--test-scheduled` is the flag, and the local address that runs the handler is `/cdn-cgi/local/scheduled`. If Wrangler will not take the wrapper this way, stop and report; the other way Cloudflare describes is a second small Worker with its own Cron Trigger, which is a new thing to deploy and needs the Owner's words.
 
 - [ ] **Step 1 (red):** `purge.pg.test.ts`:
 
@@ -893,9 +1165,9 @@ it("skips a request that signing in cancelled", async () => { /* restoreOnSignIn
 it("lets the same address sign up again afterwards", async () => { /* a new User with the old email can be made */ });
 ```
 
-  `purge-job.test.ts` (Review Focus 8): `POST /jobs/purge-accounts` with no header answers 404; with a wrong secret 404; with `Bearer test-only-jobs-secret` 200 and a body with a number `purged`; `GET` answers 405 or 404. `playwright.config.ts` passes `JOBS_SECRET: "test-only-jobs-secret"`. `tests/netlify.test.ts`: the file names the `purge-accounts` schedule, `netlify/functions/purge-accounts.mjs` exists, contains no `import`, and contains the text `process.env.JOBS_SECRET` and no literal secret. Stub. Push. Expected: `postgres` fails in `purge.pg.test.ts` ("not built yet"); `browser` fails in `purge-job.test.ts` (the secret request gets 404); `verify` fails in `netlify.test.ts`.
+  `purge-job.test.ts` (Review Focus 8): `POST /jobs/purge-accounts` with no header answers 404; with a wrong secret 404; with `Bearer test-only-jobs-secret` 200 and a body with a number `purged`; `GET` answers 405 or 404. And the daily job's own wiring, in the Workers runtime: `GET /cdn-cgi/local/scheduled` answers 200 (the handler ran, knocked with the secret and got 200). `playwright.config.ts` passes `JOBS_SECRET: "test-only-jobs-secret"`. `tests/wrangler.test.ts`: `triggers.crons` is `["17 9 * * *"]`; `cloudflare/worker.js` exists, contains `env.JOBS_SECRET` and no literal secret; the `deploy` script and the journeys' command both name `cloudflare/worker.js`. Stub. Push. Expected: `postgres` fails in `purge.pg.test.ts` ("not built yet"); `browser` fails in `purge-job.test.ts` (the secret request gets 404, and the scheduled address does not answer 200); `verify` fails in `wrangler.test.ts`.
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass. The branch merges.
-- [ ] **Step 3: on the real site, once S1 is done.** `JOBS_SECRET` was set at S1. After Netlify's next deploy, ask the coordinator to have the Owner (or whoever has the Netlify account) confirm that the function is listed as scheduled and that its first run shows 200 in Netlify's function log. Record in progress.md what was seen, by whom and when. If the function is not listed, report what Netlify shows; do not start a fourth fix.
+- [ ] **Step 3: on the real site, once S1 is done.** `JOBS_SECRET` was set at S1. After the next deploy, ask the coordinator to have the Owner (or whoever has the Cloudflare account) confirm two things on the `ruken` Worker: Settings → Trigger Events lists the schedule `17 9 * * *`, and after 09:17 UTC the next day the trigger's past events show a run that succeeded. Record in progress.md what was seen, by whom and when. If the schedule is not listed or the run failed, report what Cloudflare shows; do not start a fourth fix.
 
 ---
 
@@ -957,11 +1229,11 @@ it("keeps one membership start per checkout", async () => { /* a second c1 rejec
 **Interfaces:**
 - Produces:
   - `PREMIUM_PRICES_CENTS`, `PREMIUM_TRIAL_DAYS` from `OLD/packages/billing/src/plans.ts` with `plans.test.ts`. Changed: the prices are `{ monthly: 999n, annual: 9900n }` (the old file says `799n` and `7900n`); the carried tests' expected amounts change with them.
-  - `createStripe(options: { secretKey: string; apiBase?: string }): Stripe` and `checkoutExpiry(nowMs): number`, `interface CheckoutStarted { id; url }` from `OLD/packages/billing/src/stripe.ts`. `apiBase` (for example `http://127.0.0.1:12111`) replaces `mockPort`: it points the SDK at CI's stand-in. Trim: store prices, one-time checkout, tips, `readCardFee`, the tax code for tips.
+  - `createStripe(options: { secretKey: string; apiBase?: string }): Stripe` and `checkoutExpiry(nowMs): number`, `interface CheckoutStarted { id; url }` from `OLD/packages/billing/src/stripe.ts`. `apiBase` (for example `http://127.0.0.1:12111`) replaces `mockPort`: it points the SDK at CI's stand-in. Changed for Cloudflare (Owner, 2026-11-13): the options gain `fetch?: typeof fetch`, and the client is built with `httpClient: Stripe.createFetchHttpClient(options.fetch)`, so every call to Stripe goes through `fetch`, which is what Workers have, whichever build of the SDK the bundler picks. Trim: store prices, one-time checkout, tips, `readCardFee`, the tax code for tips.
   - From `OLD/packages/billing/src/premium.ts` with `premium.test.ts`, whole: `PREMIUM_PRODUCT_ID`, `PREMIUM_TAX_CODE`, `PREMIUM_LOOKUP_KEYS`, `interface PremiumPrices`, `ensurePremiumPrices(stripe)`, `isMissing(error)`, `createBillingCustomer(stripe, input)`, `premiumCheckoutExpiry(nowMs)`, `interface PremiumCheckoutInput`, `startPremiumCheckoutSession(stripe, input)`, `closeCheckoutSession(stripe, sessionId)`. Three changes, all because the price changed. The carried code refuses to charge when it finds a price under its lookup key at a different amount ("a changed price needs a new lookup key"), and a Stripe account that ran the old code already holds the old prices. So: `PREMIUM_LOOKUP_KEYS` is `{ monthly: "ruken_membership_monthly", annual: "ruken_membership_annual" }`; `PREMIUM_PRODUCT_ID` is `"ruken_membership"`; and a product made by the code is named "Ruken membership". The check itself (`isTheRulesPrice`) is kept whole. Add to `checkout.test.ts`: prices are looked up under the two new keys and made at 999 and 9900 cents; a price found under a new key at 799 cents throws.
 - Not carried: `premium.stack.test.ts` and stripe-mock.
 
-- [ ] **Step 1 (red):** carried tests and stubs; `stripe-client.test.ts` asserts a client built with `apiBase: "http://127.0.0.1:12111"` sends to that host and port over http (read the options the SDK keeps; its type definitions in `node_modules/stripe` show how. The old `stripe.test.ts` has no such case, so this one is new). Push. Expected: `verify` fails in the three files with "not built yet" (`plans.test.ts` fails on the missing values).
+- [ ] **Step 1 (red):** carried tests and stubs; `stripe-client.test.ts` asserts a client built with `apiBase: "http://127.0.0.1:12111"` and a `fetch` made in the test sends through that `fetch`, to that host and port, over http: after `await stripe.customers.create({ email: "a@b.test" })` (the fake `fetch` answers `{ "id": "cus_1", "object": "customer" }`), the fake was called once with a URL starting `http://127.0.0.1:12111/v1/customers`. The old `stripe.test.ts` has no such case, so this one is new. Push. Expected: `verify` fails in the three files with "not built yet" (`plans.test.ts` fails on the missing values).
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 
 ### Task 23: The membership rules and the arrival cookie (pure)
@@ -1027,13 +1299,41 @@ it("ignores a sealed value of the wrong shape", () => {
 
 **Interfaces:**
 - Produces:
-  - `WEBHOOK_TOLERANCE_SECONDS = 300`, `verifyStripeWebhook(delivery: { payload; signature; secret; nowMs }): Stripe.Event` from `OLD/packages/billing/src/webhook.ts` with `webhook.test.ts`, whole.
+  - `WEBHOOK_TOLERANCE_SECONDS = 300`, `verifyStripeWebhook(delivery: { payload; signature; secret; nowMs }): Promise<Stripe.Event>` from `OLD/packages/billing/src/webhook.ts` with `webhook.test.ts`. Changed for Cloudflare (Owner, 2026-11-13): it is async. It checks the signature with `Stripe.webhooks.constructEventAsync(payload, signature, secret, WEBHOOK_TOLERANCE_SECONDS, Stripe.createSubtleCryptoProvider(), <the delivery's time>)`, which uses Web Crypto, the one HMAC Workers offer without waiting. The last argument is the injected clock's time; read `Webhooks.d.ts` in `node_modules/stripe` for its unit before passing `nowMs`. The old synchronous check (`constructEvent`, or the file's own `node:crypto` HMAC) is not carried. Every carried case keeps its meaning and gains an `await`; a refusal is a rejected promise.
   - `storeStripeDelivery(db, event, receivedAtMs): Promise<string>`, `processStripeDelivery(deps: { db; clock; live: boolean; handle(event): Promise<void> }, inboxId): Promise<"processed" | "already_processed" | "livemode_mismatch">` from `OLD/packages/core/src/billing/webhook-inbox.ts` with the matching cases of `webhook-inbox.pg.test.ts`. Trim: the job name and retry policy, `retryStaleStripeDeliveries` and its constants.
   - `interface StripeEvent`, `interface MembershipEventHandlers { completeCheckout(input: { stripeCheckoutSessionId; subscriptionId; atMs }): Promise<unknown>; expireCheckout(stripeCheckoutSessionId: string): Promise<unknown>; syncSubscription(subscriptionId, observedAtMs): Promise<SyncOutcome>; recordInvoicePaid(invoiceId): Promise<InvoicePaidOutcome>; report(problem: Error): void }`, `handleStripeEvent(handlers, event): Promise<void>` from `OLD/packages/core/src/billing/stripe-events.ts` with the matching cases of `stripe-events.test.ts`.
 - The events acted on (also the list the Owner gives Stripe at S2): `checkout.session.completed`, `checkout.session.expired`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`. Also asked of Stripe and only kept, for slice 5: `charge.dispute.created`, `charge.dispute.closed`, `charge.refunded`. Any other type is kept and does nothing.
 - `handleStripeEvent` calls `report` for the outcomes a person must see, with these messages: `second_subscription` → "A member has two subscriptions running. Cancel one in Stripe."; `paid_after_end` → "An invoice was paid after its subscription ended. Refund it in Stripe.". The old store, tip, Connect and dispute branches are not carried.
 
-- [ ] **Step 1 (red):** carried tests and stubs. Add to `events.test.ts`: a `charge.dispute.created` event calls no handler and does not throw. Add to `inbox.pg.test.ts`, for Review Focus 1: storing the same event twice leaves one row and answers the same id; processing it twice calls `handle` once. Push. Expected: `verify` fails in `webhook.test.ts` and `events.test.ts`, `postgres` in `inbox.pg.test.ts`, with "not built yet".
+- [ ] **Step 1 (red):** carried tests and stubs. Add to `webhook.test.ts`, written before the code:
+
+```ts
+const payload = JSON.stringify({ id: "evt_1", object: "event", type: "invoice.paid" });
+const signed = (secret: string, atSeconds: number) =>
+  Stripe.webhooks.generateTestHeaderStringAsync({ payload, secret, timestamp: atSeconds });
+
+it("answers a promise of the event for a good signature", async () => {
+  const result = verifyStripeWebhook({ payload, signature: await signed("whsec_test_fake", 1_800_000_000), secret: "whsec_test_fake", nowMs: 1_800_000_000_000 });
+  expect(result).toBeInstanceOf(Promise);
+  await expect(result).resolves.toMatchObject({ id: "evt_1", type: "invoice.paid" });
+});
+it("rejects a signature made with another secret", async () => {
+  await expect(verifyStripeWebhook({ payload, signature: await signed("whsec_wrong", 1_800_000_000), secret: "whsec_test_fake", nowMs: 1_800_000_000_000 })).rejects.toThrow();
+});
+it("rejects a body changed after signing", async () => {
+  await expect(verifyStripeWebhook({ payload: payload + " ", signature: await signed("whsec_test_fake", 1_800_000_000), secret: "whsec_test_fake", nowMs: 1_800_000_000_000 })).rejects.toThrow();
+});
+it("rejects a delivery older than five minutes by the injected clock", async () => {
+  await expect(verifyStripeWebhook({ payload, signature: await signed("whsec_test_fake", 1_800_000_000), secret: "whsec_test_fake", nowMs: 1_800_000_301_000 })).rejects.toThrow();
+});
+it("never uses the synchronous check, which Workers cannot run", async () => {
+  const sync = vi.spyOn(Stripe.webhooks, "constructEvent");
+  await verifyStripeWebhook({ payload, signature: await signed("whsec_test_fake", 1_800_000_000), secret: "whsec_test_fake", nowMs: 1_800_000_000_000 });
+  expect(sync).not.toHaveBeenCalled();
+});
+```
+
+  Add to `events.test.ts`: a `charge.dispute.created` event calls no handler and does not throw. Add to `inbox.pg.test.ts`, for Review Focus 1: storing the same event twice leaves one row and answers the same id; processing it twice calls `handle` once. Push. Expected: `verify` fails in `webhook.test.ts` and `events.test.ts`, `postgres` in `inbox.pg.test.ts`, with "not built yet".
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 
 ### Task 26: The membership service
@@ -1059,7 +1359,7 @@ it("ignores a sealed value of the wrong shape", () => {
     - the other webhook handlers: `expireCheckout(stripeCheckoutSessionId)`, carried from the old store service (`OLD/packages/core/src/store/service.ts` line 269: an open intent becomes `expired`), since Premium was the old store's neighbour there; `syncSubscription`; and `recordInvoicePaid(invoiceId): Promise<InvoicePaidOutcome>` (`recorded | duplicate | not_premium | not_this_stack | paid_after_end`), as carried, with no receipt and in the carried order: read the invoice; `not_this_stack` for an unknown member; sync; `duplicate` when a `MembershipPayment` row for the invoice already exists (checked before the next step, as the old ledger check was, so a repeat is never reported as paid after the end); `paid_after_end`; then `recordPayment`.
     - Slice 1 only records who brought a member. Nothing reads `MembershipStart` yet but tests; slice 5 does.
   - `class MembershipError` with `code: "INVALID_REQUEST" | "NOT_FOUND" | "ALREADY_MEMBER" | "RATE_LIMITED"` (the carried `PremiumServiceError`, renamed).
-  - `membershipServices(): { service; arrival; verify(payload: string, signature: string): StripeEvent; receive(event: StripeEvent): Promise<void> }` in `services.ts`, built once from `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE` (`"true"` or `"false"`; anything else throws), optional `STRIPE_API_BASE`, and `BETTER_AUTH_URL` as the site origin. `receive` is `storeStripeDelivery` then `processStripeDelivery` with `handleStripeEvent`; `report` writes one line with `console.error` and no personal detail. `STRIPE_API_BASE` together with `STRIPE_LIVE=true` throws at start, so a live site can never be pointed at a stand-in (the carried rule from `OLD/packages/core/src/billing/env.ts`). Also carried from there, `stripeKeyMode` and `stripeModeProblem` without the `RUKEN_ENV` branches: the key's prefix (`sk_live_`, `rk_live_`, `sk_test_`, `rk_test_`) must agree with `STRIPE_LIVE`, and a key with neither prefix is refused, or it throws at start. Without it, a live key left with `STRIPE_LIVE=false` would mark every real payment's events "livemode_mismatch" while Stripe was told they were delivered. CI's `sk_test_fake` is a test key and passes.
+  - `membershipServices(): { service; arrival; verify(payload: string, signature: string): Promise<StripeEvent>; receive(event: StripeEvent): Promise<void> }` (`verify` is async, as `verifyStripeWebhook` is on Cloudflare) in `services.ts`, built once from `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE` (`"true"` or `"false"`; anything else throws), optional `STRIPE_API_BASE`, and `BETTER_AUTH_URL` as the site origin. `receive` is `storeStripeDelivery` then `processStripeDelivery` with `handleStripeEvent`; `report` writes one line with `console.error` and no personal detail. `STRIPE_API_BASE` together with `STRIPE_LIVE=true` throws at start, so a live site can never be pointed at a stand-in (the carried rule from `OLD/packages/core/src/billing/env.ts`). Also carried from there, `stripeKeyMode` and `stripeModeProblem` without the `RUKEN_ENV` branches: the key's prefix (`sk_live_`, `rk_live_`, `sk_test_`, `rk_test_`) must agree with `STRIPE_LIVE`, and a key with neither prefix is refused, or it throws at start. Without it, a live key left with `STRIPE_LIVE=false` would mark every real payment's events "livemode_mismatch" while Stripe was told they were delivered. CI's `sk_test_fake` is a test key and passes.
   - `arrival` is `{ remember(cookies: Cookies, link: { makerUserId: string; path: string }): void; read(cookies: Cookies): Arrival | null }` (`Cookies` is SvelteKit's). `remember` seals the link with the clock's time and sets `rk_arrival` with `path: "/"`, `httpOnly`, `sameSite: "lax"`, `secure` from the cookie policy and `maxAge: ARRIVAL_MAX_AGE_SECONDS`. `read` is `openArrival` on that cookie. Both use `BETTER_AUTH_SECRET`; no new setting. `remember` is what slice 2's `/g/<game>` and slice 3's `/<handle>` call when a visitor lands on them; nothing in slice 1 calls it.
   - `membership.ts` re-exports `membershipServices`, `MembershipError`, `type MembershipView`, `type PremiumPlan`, `type Arrival`, `PREMIUM_PRICES_CENTS`, `dollars`, `longDate`.
 - Trim from the service: the launch switch, `subjectSecret` and the member key, `getPremium`'s creator numbers, cancel and resume, the card-only link, `getPremiumBilling`, the plan switch, chargebacks, the receipt.
@@ -1143,7 +1443,7 @@ it("a checkout completed twice leaves one membership start", async () => {
 - Modify: `playwright.config.ts`
 - Test: `tests/browser/join.test.ts`
 
-**The stand-in.** `fake-stripe-server.ts` is a plain `node:http` server on `127.0.0.1:12111`, started by Playwright as a second `webServer` entry (`node tests/browser/support/fake-stripe-server.ts`, ready when `GET /ready` answers 200). It exists only under `tests/`. It keeps state in memory and answers, in Stripe's JSON shapes, exactly the calls `bindPremiumStripe` makes: retrieve and create the product; list and create prices; create a customer; create, retrieve and expire a Checkout session; retrieve and cancel a subscription; list invoices; retrieve an invoice with the expansions `readPaidPremiumInvoice` asks for; create a portal session. Take each shape from the fixtures in the carried unit tests (`checkout.test.ts`, `subscription.test.ts`), so the stand-in and the unit tests agree. It also serves two pages of its own:
+**The stand-in.** `fake-stripe-server.ts` is a plain `node:http` server on `127.0.0.1:12111` (it runs in Node on the runner, beside `wrangler dev`, so `node:http` is fine there), started by Playwright as a second `webServer` entry (`node tests/browser/support/fake-stripe-server.ts`, ready when `GET /ready` answers 200). It exists only under `tests/`. It keeps state in memory and answers, in Stripe's JSON shapes, exactly the calls `bindPremiumStripe` makes: retrieve and create the product; list and create prices; create a customer; create, retrieve and expire a Checkout session; retrieve and cancel a subscription; list invoices; retrieve an invoice with the expansions `readPaidPremiumInvoice` asks for; create a portal session. Take each shape from the fixtures in the carried unit tests (`checkout.test.ts`, `subscription.test.ts`), so the stand-in and the unit tests agree. It also serves two pages of its own:
 
 - `GET /pay/<session>`: a page with one button, "Pay". Pressing it makes the subscription `active` and a paid invoice (for monthly: $9.99 plus 82 cents tax, $10.81 in all, with a 61-cent fee; made-up numbers that only the stand-in uses), POSTs `checkout.session.completed`, `customer.subscription.created` and `invoice.paid` to `http://localhost:4173/webhooks/stripe`, each signed with `whsec_test_fake` through the Stripe SDK's `webhooks.generateTestHeaderString`, waits for the three answers, then redirects to the session's `success_url`. The same page opened as `/pay/<session>?events=later` redirects first and sends the three events three seconds afterwards, as Stripe sometimes does (Task 29 uses it).
 - `GET /portal/<session>`: a page with one button, "Cancel membership". Pressing it sets the subscription to cancel at the period end, POSTs a signed `customer.subscription.updated`, waits, then redirects to the `return_url`.
@@ -1210,7 +1510,7 @@ test("next pointing off the site is ignored", async ({ page }) => { /* /join?nex
 - Test: `tests/browser/stripe-webhook.test.ts`
 
 **Interfaces:**
-- Produces: `POST /webhooks/stripe`, after `intake` in `OLD/apps/web/src/lib/server/store/handlers.ts` (old lines 95 to 125): read the raw body as text; no `Stripe-Signature` header or a failed `verify` answers 400 "Bad signature" and stores nothing; otherwise `receive(event)`; success answers 200 with no body; a failure in `receive` answers 500 "Not handled yet", so Stripe sends the event again. SvelteKit's cross-site check applies to forms, not to this JSON POST; confirm that in a comment beside the route after reading the framework's rule.
+- Produces: `POST /webhooks/stripe`, after `intake` in `OLD/apps/web/src/lib/server/store/handlers.ts` (old lines 95 to 125): read the raw body as text; no `Stripe-Signature` header or a rejected `await verify(…)` answers 400 "Bad signature" and stores nothing; otherwise `receive(event)`; success answers 200 with no body; a failure in `receive` answers 500 "Not handled yet", so Stripe sends the event again. SvelteKit's cross-site check applies to forms, not to this JSON POST; confirm that in a comment beside the route after reading the framework's rule.
 
 - [ ] **Step 1 (red):**   Review Focus 4.
 
@@ -1357,4 +1657,9 @@ No code unless a check fails. Nothing here is typed into the repository.
 - Left out on purpose and worth the Owner's eye before launch: Turnstile and the breached-password check on sign-up; a daily comparison of Stripe's paid invoices against `MembershipPayment` (the old "reconcile"); cleaning old `RateLimit`, `Verification` and `SignInGuard` rows (the old hourly sweep).
 - Also worth the Owner's eye, carried as the old code had them: sign-up says "There's already an account with that email", so the sign-up form tells a stranger whether an address has an account (sign-in and the reset do not); and the daily job removes a deleted person's details from Ruken's database only, while the Stripe customer it made (email and billing address) stays in Stripe.
 - Slice 5: `MembershipPayment.cardFeeCents` is only the card fee. Design 6 takes "every fee Stripe charges on that payment (card, Billing, Tax)" off the top; Stripe charges the Billing and Tax fees outside the payment, so slice 5's plan says where those facts are read from.
-- Netlify answers a request within its function time limit (10 seconds unless the plan raises it). A webhook or a checkout start does a few Stripe calls in the request; if Netlify's log ever shows one timing out, Stripe sends the webhook again and the person presses the button again, and nothing is recorded twice.
+- Cloudflare limits a request's CPU time (30 seconds on Workers Paid), not its waiting: time spent waiting for Stripe or the database does not count. A webhook or a checkout start does a few Stripe calls in the request; if the Worker's log ever shows one failing, Stripe sends the webhook again and the person presses the button again, and nothing is recorded twice.
+- Cloudflare, for the slices that follow:
+  - Every request has its own database client (`prisma()`), and nothing may keep one between requests. A `load` awaits its database reads; a promise handed to the page to stream would outlive the request's client.
+  - `pnpm dev` runs the app in Node, and the app's Prisma client is generated for Workers. The first slice that needs a local session to look at screens (slice 3) checks whether `pnpm dev` can read the database, and if not uses `pnpm build && wrangler dev`, or asks.
+  - Game files and clips (slice 2) get their own Worker and R2 bucket, as the design always had it; they do not share this Worker.
+  - Resend's free plan has a daily cap on mails. The Owner decides before launch whether to pay for more or move to Cloudflare's Email Sending when it leaves beta; the change is one file, `src/lib/server/mail.ts`.
