@@ -1,0 +1,33 @@
+# Turns on GitHub's auto-merge for every finished pull request, so GitHub merges it by itself once the
+# required checks (verify and browser) pass on a branch up to date with main. Sessions may not merge, and the
+# Owner should not have to merge each one by hand.
+# Owner, 2026-11-13: "bro what do we need to do to make it where I'm not constantly doing this", then
+# "Yes, add it" to this workflow. This file changes only on the Owner's words, quoted in the commit (CLAUDE.md).
+#
+# A draft is still being worked on, so it is left alone; marking it ready for review is the signal that it is
+# done. Pull requests from forks are skipped: only branches pushed to this repository merge by themselves.
+# Nothing from the pull request is checked out or run here; the job only calls the GitHub API.
+# A merge made this way does not start CI on main (GitHub does not let its own token trigger workflows), which
+# is safe because main's protection already requires both checks to pass on a branch up to date with main.
+name: Auto-merge
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: auto-merge
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Merge with a merge commit once the checks pass
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --merge "$PR_URL"

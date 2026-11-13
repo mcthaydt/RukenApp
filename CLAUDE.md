@@ -46,6 +46,7 @@ Audit all of your work for completeness, consistency, cohesion, and harmony, bot
 
 - The coordinator is one long-lived session. It holds the conversation with the owner, writes the spec, starts each stage's session when that stage comes up, tracks them in progress.md, and archives each one when its stage is done.
 - The merge session is one long-lived session started by the coordinator. It merges each finished stage branch into main by pull request once the branch's checks pass, then deletes the branch. A passing pull request is never left open.
+- Pull requests merge themselves (Owner, 2026-11-13: "Yes, add it"). A session opens its pull request as a draft and marks it ready for review only when its stage is done and no more pushes are coming; `.github/workflows/auto-merge.yml` then turns on GitHub's auto-merge, and GitHub merges with a merge commit once `verify` and `browser` pass on a branch up to date with main. A branch behind main is brought up to date by merging main into it. The merge session watches, and reports a failing check or a pull request that does not merge.
 - Stage sessions (plan, plan audit, execution, implementation audit, fixes) start as they come up, each on its own branch, and are archived when done.
 
 ## Where sessions run
