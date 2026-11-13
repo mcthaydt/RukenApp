@@ -260,13 +260,13 @@ Not carried: the SDK and protocol packages, the manifest and validation packages
 Owner, 2026-11-13: Cloudflare instead of Netlify. ("Thoughts on switching to Cloudflare and Cloudflare Pages instead of Netlify, that's what we're going with for the AutomataFramework", then "Cloudflare now" when told the cost.) This replaces the first answer, which had Netlify for the app.
 
 - **The app**: one Cloudflare Worker with static assets, built by SvelteKit's Cloudflare adapter. Cloudflare's Workers Builds builds and deploys `main` after each merge and runs the database migrations in its deploy command, which runs only for `main`; nothing is built from a pull request. Call: a Worker with static assets and not Cloudflare Pages, because the daily job (a Cron Trigger) and the build that deploys only `main` are Workers features, and SvelteKit's and Cloudflare's own guides deploy this way.
-- **Postgres**: Neon, reached through Cloudflare's Hyperdrive (its connection pool), with Hyperdrive's query cache off.
+- **Postgres**: Neon, reached through Cloudflare's Hyperdrive (its connection pool), with Hyperdrive's query cache off. Owner, 2026-11-13: the Hyperdrive configuration's id is committed in the Worker's settings file in the repository; it names a setting in the Owner's account and is not a credential.
 - **Game files and clips**: Cloudflare, a Worker and R2 storage, as first proposed.
-- **Mail**: Call: Resend's HTTP API. A Worker cannot send over SMTP. Cloudflare's own Email Sending is in beta today; moving to it later is one file.
+- **Mail**: Owner, 2026-11-13: Resend's HTTP API, called with plain `fetch` (no SDK). A Worker cannot send over SMTP. Cloudflare's own Email Sending is in beta today; moving to it later is one file.
 - **The daily job** (deleting accounts after their 14 days): a Cron Trigger on the app's Worker.
 - **Settings and secrets**: typed by the Owner into the Worker's settings in Cloudflare, never into the repository.
 
-There is no server to look after. It needs Cloudflare's Workers Paid plan. The Hetzner setup in the old repository was never provisioned and is not carried.
+There is no server to look after. It needs Cloudflare's Workers Paid plan (Owner, 2026-11-13: $5 a month is OK). Owner, 2026-11-13: the packages for this are approved exactly: add `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0; remove `@sveltejs/adapter-netlify` 7.0.1, `nodemailer` 10.0.13 and `@types/nodemailer` 8.0.2. The Hetzner setup in the old repository was never provisioned and is not carried.
 
 ### 7.4 Checks
 

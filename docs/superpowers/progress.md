@@ -10,7 +10,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | # | Slice | State | Progress |
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
-| 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan is revised for it on a branch (`plan/slice-1-cloudflare`, pull request #15), and branch E (deploy) waits for that to merge and for the Owner's yes to its package list. Before that: plan merged (pull request #10); plan audit on a branch (`audit/slice-1-plan`), with the plan's fixes; execution under way: branch A (tasks 1 to 4) is green on its pull request (#13), not yet merged | 13% |
+| 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan's revision for it is merged (pull request #15) and the Owner approved its package list; its plan audit is on a branch (`audit/slice-1-cloudflare`). Branch E0 (Cloudflare) starts after branch D. Before that: plan merged (pull request #10); plan audit merged with the plan's fixes (pull request #12); execution under way: branch A (tasks 1 to 4) merged (pull request #13); branch B on its pull request (#14) | 13% |
 | 2 | Games and play | not started | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
@@ -24,8 +24,9 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | merge (`session_01HNdX7LyTaPth3m82ZhbsXY`) | merges | — | running |
 | plan, slice 1 (`session_01HNdX7HZoCEVyiEQJdDLJrW`) | 2 Plan | `plan/slice-1-accounts` | archived |
 | plan, slice 1, updated to the revised design (`session_01HNdX7JH5Pn3ForHRsNX8Po`) | 2 Plan | `plan/slice-1-accounts` | running |
-| plan audit, slice 1 | 3 Plan audit | `audit/slice-1-plan` | running |
-| plan, slice 1, revised for Cloudflare (`session_01HNdX7LBVbQvxJYyJ29g61X`) | 2 Plan | `plan/slice-1-cloudflare` (pull request #15) | plan written; ready for review; three questions for the Owner sent to the coordinator (the mail service, the Hyperdrive id in the repository, the $5 plan) |
+| plan audit, slice 1 | 3 Plan audit | `audit/slice-1-plan` | merged to main (pull request #12) |
+| plan, slice 1, revised for Cloudflare (`session_01HNdX7LBVbQvxJYyJ29g61X`) | 2 Plan | `plan/slice-1-cloudflare` (pull request #15) | archived; merged to main (pull request #15) |
+| plan audit, slice 1, Cloudflare revision (`session_01HNdX7JhDxq8Wks8Rcajo3A`) | 3 Plan audit | `audit/slice-1-cloudflare` | running: audit written, plan fixed, on a branch |
 
 ## Slice 0: Start
 
@@ -46,13 +47,14 @@ Plan: `docs/superpowers/plans/2026-11-13-slice-1-accounts-membership.md`. It end
 Stages:
 
 - [x] Plan written, and updated to the design as revised on 2026-11-13 (on `plan/slice-1-accounts`, pull request #10; not done until merged and green).
-- [ ] Plan audit: written, with the plan fixed (`docs/superpowers/audits/2026-11-13-slice-1-plan-audit.md`: 4 blocks execution, 19 should fix, 16 notes; all fixed in the plan but 6 notes that stay, each with its reason). On a branch (`audit/slice-1-plan`); not done until merged and green. No test ran in the audit session; the audit is a reading of the files.
-- [ ] Plan revised for Cloudflare (Owner, 2026-11-13: Cloudflare instead of Netlify): written from Cloudflare's, SvelteKit's, Prisma's, Stripe's and Resend's current pages and from the packages' own files; on a branch (`plan/slice-1-cloudflare`, pull request #15), not done until merged and green. No test ran in the plan session, and none of it has run on Cloudflare yet: Task 34's first green CI run is the first proof.
+- [x] Plan audit: written, with the plan fixed (`docs/superpowers/audits/2026-11-13-slice-1-plan-audit.md`: 4 blocks execution, 19 should fix, 16 notes; all fixed in the plan but 6 notes that stay, each with its reason). Merged to main (pull request #12). No test ran in the audit session; the audit is a reading of the files.
+- [x] Plan revised for Cloudflare (Owner, 2026-11-13: Cloudflare instead of Netlify): written from Cloudflare's, SvelteKit's, Prisma's, Stripe's and Resend's current pages and from the packages' own files; merged to main (pull request #15). No test ran in the plan session, and none of it has run on Cloudflare yet: Task 34's first green CI run is the first proof.
+- [ ] Plan audit of the Cloudflare revision (`docs/superpowers/audits/2026-11-13-slice-1-cloudflare-plan-audit.md`), with the plan fixed: on a branch (`audit/slice-1-cloudflare`); not done until merged and green. No test ran in the audit session; it read the packages and built in a scratch folder outside the repository.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
 
-Resumed: the Owner's concept review is done; the plan audit is on a branch.
+Resumed: the Owner's concept review is done; the plan audit is merged.
 
 The Owner's decisions for this slice, 2026-11-13:
 
@@ -60,7 +62,10 @@ The Owner's decisions for this slice, 2026-11-13:
 - [x] Delete my account: the old 14-day wait; signing in undoes it; a scheduled job removes the data afterwards (first on Netlify; now a Cron Trigger on the Cloudflare Worker). Its own small branch.
 - [x] Deploying: the Owner links the Netlify site to the repository; Netlify builds and publishes main after each merge and runs the migrations in its build. No CI workflow change for deploying. Now Cloudflare's Workers Builds in Netlify's place, with the migrations in its deploy command; still no CI workflow change.
 - [x] Cloudflare instead of Netlify ("Thoughts on switching to Cloudflare and Cloudflare Pages instead of Netlify, that's what we're going with for the AutomataFramework", then "Cloudflare now" when told the cost). The app is a Cloudflare Worker; Neon stays, behind Hyperdrive; mail goes through Resend's HTTP API (a Call). The plan's section "Cloudflare instead of Netlify" has the choices and their sources.
-- [ ] The package list for Cloudflare, waiting for the Owner's yes through the coordinator: add `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0 (both dev); remove `@sveltejs/adapter-netlify` 7.0.1, `nodemailer` 10.0.13 and `@types/nodemailer` 8.0.2.
+- [x] The package list for Cloudflare, Owner, 2026-11-13: approved exactly: add `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0 (both dev); remove `@sveltejs/adapter-netlify` 7.0.1, `nodemailer` 10.0.13 and `@types/nodemailer` 8.0.2.
+- [x] Mail, Owner, 2026-11-13: Resend, through plain `fetch`.
+- [x] The Hyperdrive id, Owner, 2026-11-13: committed in `wrangler.jsonc`.
+- [x] Workers Paid, Owner, 2026-11-13: $5 a month is OK.
 - [x] main is protected: pull request only, `verify` and `browser` must pass on an up-to-date branch, merge commits only, merged branches deleted automatically.
 
 The Owner's revised design, 2026-11-13, as this slice takes it:
@@ -81,7 +86,7 @@ Branches and tasks. Each task is ticked with its two CI runs (the failing test, 
 | B `slice-1/sign-in-rules` | 5 the sign-in pause · 6 the pause and limits as plugins · 7 the age check · 8 cookies and the mails | not started |
 | C `slice-1/sign-in` | 9 better-auth, configured · 10 who sent this request · 11 the form actions and the services | not started |
 | D `slice-1/account-screens` | 12 /api/auth and sign-out · 13 sign up · 14 sign in, forgot, new password · 15 /me | not started |
-| E0 `slice-1/cloudflare` | 32 mail over HTTP, settings that say Cloudflare · 33 the platform, and work after the answer · 34 the site runs on Workers (one database client per request, the journeys in `wrangler dev`, `/healthz`) | not started; needs the Owner's yes to the package list |
+| E0 `slice-1/cloudflare` | 32 mail over HTTP, settings that say Cloudflare · 33 the platform, and work after the answer · 34 the site runs on Workers (one database client per request, the journeys in `wrangler dev`, `/healthz`) | not started; the package list is approved (Owner, 2026-11-13); starts after branch D |
 | E `slice-1/deploy` | 16 the site on its real address | not started; waits for branch E0 |
 | F `slice-1/delete-account` | 17 asking to be deleted, and undoing it · 18 signing in undoes it · 19 the delete screens · 20 the daily job (a Cron Trigger) | not started |
 | G `slice-1/membership` | 21 the membership tables · 22 prices and joining · 23 the membership rules and the arrival cookie · 24 reading and ending a subscription · 25 the webhook · 26 the membership service | not started |
@@ -95,7 +100,7 @@ The Owner's own tasks, and where execution stops for each:
 
 Found while planning:
 
-- Cloudflare: three things could not be settled by reading and are settled by Task 34's CI run: whether the build carries Prisma's WebAssembly into the Worker, whether the visitor's address is available under `wrangler dev`, and whether pnpm installs Wrangler's runtime whole. Each has a stop rule in the task.
+- Cloudflare: three things could not be settled by reading and are settled by Task 34's CI run: whether the build carries Prisma's WebAssembly into the Worker, whether the visitor's address is available under `wrangler dev`, and whether pnpm installs Wrangler's runtime whole. Each has a stop rule in the task. The plan audit found that Vite's build cannot carry the WebAssembly on its own; Task 34 now has a small Vite plugin that hands it to Wrangler (it worked in a scratch build, not yet in CI).
 - Cloudflare: Workers do not let one request use a database connection another opened, so `prisma()` becomes one client per request (Task 34). The journeys move from `vite preview` (Node) to `wrangler dev` (the Workers runtime), so CI tests what the real site runs.
 - Cloudflare: the SvelteKit adapter has no daily-job handler, so a ten-line file wraps the built site and adds one (Task 20).
 - Cloudflare: Resend's free plan caps mails per day; the Owner decides before launch.
