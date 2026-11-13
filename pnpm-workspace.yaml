@@ -7,3 +7,13 @@ useNodeVersion: 24.22.1
 # pnpm 10 runs no dependency install scripts unless they are listed here.
 onlyBuiltDependencies:
   - esbuild
+
+# Security pins for Prisma 7.10's command-line tool's own dependencies:
+# deepmerge-ts < 8 (GHSA-ggr8-5vv4-36mx) and mysql2 < 3.23.1
+# (GHSA-3f6p-5ww8-9rcr and a zlib inflate DoS). Ruken uses Postgres, so mysql2
+# is never loaded; deepmerge-ts runs when Prisma reads prisma.config.ts and is
+# covered by the migration tests. They pin what Prisma already pulls in and add
+# no package. Drop them once Prisma ships patched versions.
+overrides:
+  "@prisma/config>deepmerge-ts": 8.0.2
+  "prisma>mysql2": 3.24.5

@@ -7,9 +7,29 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [sveltekit({ adapter: netlifyAdapter({ edge: false }) })],
   test: {
-    // Tests live only in tests/, mirroring src/ (CLAUDE.md). Browser journeys are Playwright's, not Vitest's.
-    include: ["tests/**/*.test.ts"],
-    exclude: ["tests/browser/**"],
     environment: "node",
+    // Tests live only in tests/, mirroring src/ (CLAUDE.md). Browser journeys are Playwright's, not Vitest's.
+    // Two projects: `unit` needs nothing running; `postgres` (`*.pg.test.ts`) needs the server named by
+    // TEST_DATABASE_URL, which only CI's postgres job has.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          include: ["tests/**/*.test.ts"],
+          exclude: ["tests/browser/**", "**/*.pg.test.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "postgres",
+          include: ["tests/**/*.pg.test.ts"],
+          // Making and migrating a database takes a while on a shared runner.
+          testTimeout: 30_000,
+          hookTimeout: 120_000,
+        },
+      },
+    ],
   },
 });

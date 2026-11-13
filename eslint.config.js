@@ -11,6 +11,7 @@ export default defineConfig(
     "**/build/",
     "**/.svelte-kit/",
     "**/.netlify/",
+    "**/src/lib/server/generated/",
     "**/playwright-report/",
     "**/test-results/",
   ]),
