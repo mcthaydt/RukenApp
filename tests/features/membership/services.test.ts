@@ -96,23 +96,23 @@ describe("verify", () => {
   const payload = JSON.stringify({ id: "evt_1", object: "event", type: "invoice.paid" });
 
   it("accepts a delivery signed with the webhook secret at the clock's time", async () => {
-    const { verify } = build();
+    const services = build();
     const signature = await Stripe.webhooks.generateTestHeaderStringAsync({
       payload,
       secret: "whsec_test_fake",
       timestamp: Date.parse(NOW) / 1000,
     });
-    await expect(verify(payload, signature)).resolves.toMatchObject({ id: "evt_1" });
+    await expect(services.verify(payload, signature)).resolves.toMatchObject({ id: "evt_1" });
   });
 
   it("rejects a delivery signed with another secret", async () => {
-    const { verify } = build();
+    const services = build();
     const signature = await Stripe.webhooks.generateTestHeaderStringAsync({
       payload,
       secret: "whsec_other",
       timestamp: Date.parse(NOW) / 1000,
     });
-    await expect(verify(payload, signature)).rejects.toThrow();
+    await expect(services.verify(payload, signature)).rejects.toThrow();
   });
 });
 
