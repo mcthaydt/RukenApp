@@ -63,10 +63,11 @@ describe("migrations on a clean Postgres 16", () => {
   });
 
   it("refuse a SignInGuard row whose emailHash is not 64 lower-case hex characters", async () => {
+    // Naming the constraint matters: "the table does not exist" also throws, and must not count as a pass.
     await expect(
       database.prisma
         .$executeRaw`INSERT INTO "SignInGuard" ("emailHash", failures, "windowStartedAt", "updatedAt")
       VALUES ('nope', 1, now(), now())`,
-    ).rejects.toThrow();
+    ).rejects.toThrow(/SignInGuard_emailHash_check/);
   });
 });
