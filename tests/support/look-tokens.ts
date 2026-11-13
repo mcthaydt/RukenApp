@@ -29,7 +29,7 @@ export function token(name: string): string {
 /** A browser's way of writing a colour: `rgb("#1c3a2f")` is `"rgb(28, 58, 47)"`. */
 export function rgb(hex: string): string {
   const [red = 0, green = 0, blue = 0] = [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
-  return `rgb(${red}, ${green}, ${blue})`;
+  return `rgb(${[red, green, blue].map(String).join(", ")})`;
 }
 
 /** WCAG 2.x relative luminance of a hex colour such as `#1a2b3c`. */
