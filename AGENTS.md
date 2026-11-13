@@ -2,7 +2,7 @@
 
 Ruken is Instagram Reels meets Linktree for games. Read `CLAUDE.md` (the workflow), the design in `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md` and `docs/superpowers/progress.md` before choosing work. Anything not in section 2 of the design needs the Owner's words before it starts.
 
-This repository is public. No secret, private plan, customer data or real address goes in it. Code from the archived RukenAppFailed is copied on purpose, file by file, with its tests; never its history, plans or secrets.
+This repository is public. No secret, private plan, customer data or real address goes in it, and no strategy or research: market research, critiques, competitors, launch strategy, forecasts and the reasons behind business decisions stay out (Owner, 2026-11-13). The design here says what Ruken does, not why. Code from the archived RukenAppFailed is copied on purpose, file by file, with its tests; never its history, plans or secrets.
 
 ## Rules
 
