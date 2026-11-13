@@ -93,6 +93,8 @@ Every session reports to the coordinator with send_message, short and factual; p
 
 ## Rules
 
+Our copy and UX always pass the drunk-grandma test: a drunk grandma can understand and use what we make (Owner, 2026-11-13).
+
 No subagents unless the owner says so.
 
 Refresh a session after 90 minutes.
