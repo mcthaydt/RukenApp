@@ -8,6 +8,8 @@ The Owner's answers with the approval, 2026-11-13:
 - Money after launch (6): yes. On 30 November Ruken takes payments and records play; the pool, statements and payouts land after launch and before 10 December.
 - The first game (11): FloorFifty only, one game live on launch day.
 
+Revised on 2026-11-13 after two critiques of the concept. Section 12 records what changed and why; the sections it touches say so where they changed.
+
 Lines marked **Owner** are the Owner's words or decisions from the 2026-11-13 conversation. Lines marked **Call** are the coordinator's choices; the Owner can overrule any of them. Nothing marked Call was agreed.
 
 ## 1. Why
@@ -100,8 +102,8 @@ Owner: "Match the UI/UX of Instagram reels primarily"; TikTok only where Reels i
 - One game per screen. Swiping (or the arrow keys, or the wheel) snaps to the next.
 - An upright screen plays the game's vertical clip; a wide screen plays its horizontal clip. Both fill the screen.
 - Call: a clip starts without sound and a tap turns sound on, which then stays on. Browsers do not let a page start with sound.
-- Call: like, save, follow and share are in. Liking, saving and following ask a signed-out person to sign in, then finish what they tapped. Share uses the phone's own share sheet, or copies the link.
-- Call: "For you" shows newly accepted games first, then the rest by how much members played them in the last seven days. "Following" shows games by makers the person follows, newest first. The order is worked out by a pure function with a fixed seed, so it can be tested.
+- Call (revised 2026-11-13, section 12): share is in at launch. Like, save, follow and the "For you" and "Following" tabs are not: with a dozen games they cost work and do nothing. The sketch above shows where they go when the catalogue earns them. Share uses the phone's own share sheet, or copies the link.
+- Call (revised 2026-11-13): one feed, newly accepted games first, then the rest by how much members played them in the last seven days. The order is worked out by a pure function with a fixed seed, so it can be tested.
 - Every game has its own address (/g/&lt;game&gt;), which opens the feed at that clip. That is what Share sends.
 - Grandma: the only button with words on it is Play.
 
@@ -117,6 +119,7 @@ Owner: "paywall when they try to play."
 - Call: a game's files are reachable only through a short-lived play pass that Ruken gives a member when they press Play. Without a pass the files do not load.
 - Play time is what the pool is split by. Call: Ruken's own page measures it: time counts while the game is on screen, the tab is showing and the game has the person's attention (the frame has focus), reported every few seconds and recorded by the server's clock. The game is not asked.
 - Call: staff, and a maker on their own game, can play without paying, so a game can be checked. That play never counts for the pool.
+- Owner, 2026-11-13: FloorFifty is free to play on launch day, for everyone, with no account. Every other game stays behind the paywall. Free play never counts for the pool. A game is free only when staff mark it so in the admin portal, with a reason, recorded like any staff action.
 - Grandma: the paywall says what it costs and what happens next, in two short lines.
 
 ### 5.3 The maker's page (/&lt;handle&gt;)
@@ -197,6 +200,10 @@ Owner: "We keep the same subscription, pricing split, and admin stuff."
 - Split: half of each member's fee, after tax and Stripe's processing fee, goes to makers. Each member's half is divided among the games that member played that month, by time played. A yearly fee is spread across its twelve months. A member who played nothing in a month: the old rule applies as written in the carried code.
 - Payouts: statements are final on the 10th and paid on the 15th (the next business day if that is a weekend or holiday), with a $25 minimum; smaller balances carry forward. Makers are paid through Stripe Connect.
 - Chargebacks and refunds follow the carried rules.
+- Owner, 2026-11-13: Ruken never loses money on a member. Ruken's half of each fee is never reduced to pay makers, and Stripe's Connect fees are paid from it.
+- Call (revised 2026-11-13): sign-up records which maker's page or link a member came through, the first maker's link winning. It is a fact from the link, never typed, and it cannot be recovered later, so it is recorded from launch day. Whether a maker who brings a member gets more of that member's makers' half for a time, and how much, is decided before the first statement on 10 December. It moves money only within the makers' half (Owner, above).
+- Call (revised 2026-11-13): play time counts toward the pool up to a cap per member, per game, per day, so a game left running cannot drain the pool. The cap is set in the money plan, from the play times measured after launch.
+- Call (revised 2026-11-13): a public page shows the split with a worked example, and after each statement the pool, the number of members and what makers received in total, all read from the ledger.
 - Call: the first statement is 10 December and the first payout is 15 December, as already planned. So on 30 November Ruken must take payments and record play faithfully. The code that works out the pool, statements and payouts lands after launch and before 10 December.
 - Not carried: tips, the store, day passes, the ad pool, contributor splits.
 
@@ -268,6 +275,8 @@ Each slice is one cycle of the workflow (plan, plan audit, execution, implementa
 
 ## 8. What "launched" means on 30 November
 
+Call (revised 2026-11-13): 30 November opens the doors to makers. It is not a public launch. FloorFifty is free to play, makers can sign up and submit, and anyone can become a member. The public push waits until there are at least ten live games from at least five makers. The Owner signs up the first makers, on Discord.
+
 Each line is checked by a browser test in CI and once by a person on the real site.
 
 - The site opens straight into the feed, on a phone and on a computer, with the right clip for the screen.
@@ -279,6 +288,8 @@ Each line is checked by a browser test in CI and once by a person on the real si
 - Staff accept it, and it appears in the feed and on the maker's page. Staff can send one back and take one down.
 - A maker's page shows their games, their links and their chosen colours, at its own short address.
 - A report reaches the admin portal.
+- Anyone can play FloorFifty without an account.
+- A member's sign-up records the maker's link they came through.
 
 ## 9. The Owner's own tasks
 
@@ -307,3 +318,21 @@ These are credentials, money and approvals, which are the Owner's.
 - **The date.** Slices 1 to 4 in 17 days, each through five stage sessions, is tight. If a slice takes twice what was expected, the stop rule applies and the Owner decides what moves.
 - **Tests only in CI.** Every red-then-green round is two pushes and two waits. Plans keep tasks small so a round stays short.
 - **The colour data.** The data set is MIT-licensed, and Wada's book dates from 1933 to 1934. The status of the book's plates themselves has not been checked by a lawyer.
+
+## 12. After the critique (2026-11-13)
+
+Two critiques of the concept, one by the coordinator and one by an independent session, agreed on the fatal point: a $7.99 paywall in front of one game is neither a feed nor a subscription. The changes, each marked where it lands:
+
+- FloorFifty is free on launch day; every other game is behind the paywall (5.2, Owner).
+- 30 November opens the doors to makers; the public push waits for ten games from five makers (8).
+- Makers are how visitors arrive, so sign-up records which maker brought each member (6). Ruken's half is never cut (6, Owner).
+- Play counts up to a daily cap per member and game (6).
+- The feed launches without likes, saves, follows or tabs (5.1).
+- The split and each month's totals are public (6).
+- "A person played and chose every game here" is said on the site, in those words. It never claims a game is "AI-free".
+
+What Ruken measures from launch day, each from the system, never typed: clip views, Play taps, plays started, paywall views, payments, renewals in the second month, and members by the maker link they came through.
+
+The stop rule. Once ten games have been live for 60 days, if fewer than 1 in 200 people who start playing a game become members, the subscription is the wrong model. The fallback is paying once per game, keeping the pages, the clips and the feed. Nobody interviews makers or players (Owner, 2026-11-13); the launch is the test.
+
+Honest scale: ten makers with 5,000 followers each, 2% of followers joining, is about 1,000 members and about $3,700 a month to makers. A real, small business.
