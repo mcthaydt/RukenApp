@@ -78,8 +78,8 @@ Read on 2026-11-13. Where a page or a package and this plan disagree when execut
   - **The pass lasts 4 hours.** A game loads files as it goes (the next level, a sound), so a pass that ended after a minute would break a game in the middle. Four hours is longer than the 180 minutes a day that count for pay. A pass that leaks lets a stranger load that one game until it runs out; it cannot be renewed.
   - **Its own secret.** `PLAY_PASS_SECRET` is held by both Workers and is not `BETTER_AUTH_SECRET`, so the gate holds nothing that could forge a sign-in or an arrival.
   - **A game's addresses must be relative** (`assets/main.js`, not `/assets/main.js`), as on itch.io. The pull refuses an `index.html` that loads from the top of the site, and says how to fix it.
-  - **The frame.** `sandbox="allow-scripts allow-same-origin allow-pointer-lock"` and `allow="gamepad; fullscreen; autoplay"`, both carried from `OLD/packages/sdk-host/src/game-frame.ts`, plus `referrerpolicy="no-referrer"`. `allow-same-origin` means the game's own address, which it needs to keep its saves; popups, forms, downloads, modals and navigating Ruken's page are all left out. The gate's headers allow only Ruken's site to frame a game.
-  - **A game may talk to its own servers.** The gate sets no rule on where a game's scripts may connect (the old one took that from a manifest that no longer exists). Whether a game does something it should not is judged at acceptance (design 5.5). Worth the Owner's eye.
+  - **The frame.** `sandbox="allow-scripts allow-same-origin allow-pointer-lock"` and `allow="gamepad; fullscreen; autoplay; clipboard-write; web-share"`, plus `referrerpolicy="no-referrer"`. The sandbox and the first three permissions are carried from `OLD/packages/sdk-host/src/game-frame.ts`; the last two are what FloorFifty needs. The sandbox is safe only because every game has its own address. `allow-same-origin` means the game's own address, which it needs to keep its saves; popups, forms, downloads, modals and navigating Ruken's page are all left out. The gate's headers allow only Ruken's site to frame a game.
+  - **A game's servers.** A game's scripts may connect to the game's own files and to the servers its maker listed on the form, and nowhere else. The maker writes names, one per line ("api.example.com"), five at most; each allows https and wss to that name. The list is kept with each pull, staff see it when they review, the pass carries it (signed, so it cannot be changed), and the gate puts it in the page's `content-security-policy` as `connect-src`. Pictures, scripts and fonts from other sites are not limited in this slice. A game's server that checks where players come from must allow the game's address on Ruken, which the maker's page shows.
   - **Play time.** While a game is open, Ruken's page looks once a second: is the tab showing, is the frame on screen, does the frame have focus. Every 15 seconds it sends a beat that says one thing: "attentive the whole time since the last beat you took: yes or no". The server stamps the beat with its own clock and stores it. A beat with "yes" counts the server's time since the beat before it (or since the session started), up to 45 seconds; a beat with "no" counts nothing. So the total can never pass real time on the server's clock, one or two lost beats are forgiven, and a longer silence counts 45 seconds at most. Nothing counts until the person first taps or clicks inside the game, because the frame has no focus before that.
   - **What is stored.** One `PlaySession` row per opening of a game (the game, the pull, the person or nobody, and why they could play: `member`, `free_game`, `staff` or `own_game`), and one `PlayBeat` row per beat (the server's time, attentive or not). Rows are never changed. When more than one reason applies, the one that does not count for pay wins: own game, then staff, then a free game, then member. Slice 5 counts `member` sessions only and applies the 180-minute cap from the beats' times in America/Chicago; two tabs of one member overlap in the rows and slice 5 must not count the same minute twice.
   - **Every reload is a new session**, with its own secret for its beats. A session takes beats for 24 hours (the carried lifetime).
@@ -99,18 +99,20 @@ Read on 2026-11-13. Where a page or a package and this plan disagree when execut
   - **Game states** are the design's four plus the one before sending: `draft`, `waiting`, `live`, `sent_back`, `taken_down`. This slice moves a game through all but `taken_down`, which arrives with moderation in slice 4.
   - **A game's address** (`/g/<slug>`) is made from its name: lower case, letters and digits, other runs become one hyphen, 3 to 40 characters; a taken one gets `-2`, `-3`. Its public id, used in the games' address and in R2, is ten random characters of `a-z2-7` and never changes, so a renamed game keeps its saves.
 
-## Open items: FloorFifty
+## FloorFifty: what was found, and what is still open
 
-A separate session is checking whether FloorFifty runs as a plain web game without the old SDK (design 11). Nothing else in this plan depends on its answer. These do, and stay open until the coordinator forwards the findings:
+A separate session checked FloorFifty against this design on 2026-11-13 (relayed by the coordinator). It read the repository and measured the live staging build (1.0.0-rc.1); it did not play it (no GPU there), so races, input, sound and a phone are first checked by a person in Task 24.
 
-- **O1. The size limits.** `MAX_GAME_BYTES`, `MAX_GAME_FILES` and `MAX_FILE_BYTES` (Task 4) are set from FloorFifty's measured export: its total bytes, its number of files and its largest file. The rule for turning the measurement into limits is fixed now: each limit is the measured number times four, rounded up to a round number, and `MAX_FILE_BYTES` is never above 64 MB (a file is held in memory while it is stored, and a Worker has 128 MB). The numbers themselves are not written until they are measured.
-- **O2. Does it run without the SDK**, and if not, what changes in FloorFifty's own repository. Those changes are not part of this plan: they are an Owner item, listed under G4.
-- **O3. Which branch and folder** of `SNEKPRTY/FloorFifty` hold a ready-to-run `index.html`, whether its addresses are relative, and whether any file is kept in Git LFS (the pull refuses both an absolute address and an LFS pointer, and says so).
-- **O4. Its two clips**: an upright and a wide video, 30 MB or less each, are the Owner's to make (design 9).
-
+- **O1, closed: the size limits.** Measured: 326 files, 91,441,454 bytes in all, the largest 10,680,799 bytes (a sound file); pictures, sounds, nine scripts, fonts, one page. The limits are the measured numbers times four, rounded up: `MAX_GAME_BYTES = 400_000_000`, `MAX_GAME_FILES = 1_500`, `MAX_FILE_BYTES = 50_000_000` (Task 4).
+- **O2, closed: it runs as a plain web game, with one change in its own repository.** It waits ten seconds for the old SDK's handshake and then carries on alone; one line there removes the wait. Its saves use the browser's own storage, which the frame allows. It needs the frame to allow fullscreen (a sideways phone asks for it), copying and sharing, so the frame's `allow` gains `clipboard-write` and `web-share`.
+- **It is an online game.** It cannot reach its own menu without FloorFifty's game server, over https and wss. So a game must be able to say which servers it talks to, and the gate must let it reach those and no others: "A game's servers", under the Calls.
+- **O3, closed: no ready folder exists yet.** The repository has one branch and its built folder is not committed. All its addresses are relative, and nothing was reported in Git LFS. FloorFifty must commit a built folder (for example a branch its own build writes) before Ruken can pull it; the form's branch and folder fields then point at it.
+- **O4, open: its two clips**, an upright and a wide video, 30 MB or less each, are the Owner's to make (design 9).
+- **The Owner's items in FloorFifty's own repository and servers**, none of them part of this plan: remove the handshake wait; have its build commit a ready-to-run folder to a branch; allow the game's address on Ruken (`https://g-<public id>.GAMES-DOMAIN`, shown on the game's page in the maker's area) on its game server; and bring its production server's https back, which is down today.
+- **Worth the Owner's eye: 91 MB on every Play.** A pass is part of every file's address, so a browser cannot reuse what it downloaded under an earlier pass. FloorFifty asks for about 300 files after it loads. On a phone that is slow and costs data, against the design's "playing within a minute". The last note under "Notes for the plans that follow" has the fix and its price; it needs the Owner's yes.
 - **O5. The maker agreement's text.** A maker accepts it once, on their first submission (design 5.4). The old repository's legal pages were drafts waiting for counsel (slice 1 found the same for terms and privacy). The text is the Owner's; Task 28 cannot ship without it, and `MAKER_AGREEMENT_VERSION` is its date.
 
-Task 24 (the real site) cannot be finished until O1 to O5 are closed.
+Task 24 (the real site) cannot be finished until O4, O5 and the Owner's FloorFifty items are done.
 
 ## Where execution stops and waits for the Owner
 
@@ -255,6 +257,7 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 17. A maker types, or a callback carries, a repository or an installation that is someone else's: refused, and nothing of theirs is read (Tasks 15, 25, 27).
 18. A live game whose update is sent back: still live, on its old files (Task 26).
 19. Someone who is not staff opens the staff pages, or another maker opens a game's page in the maker's area: a missing page (Tasks 28, 30).
+20. A game whose scripts try to reach a server its maker did not list: the browser refuses, because the gate's header names only the listed ones (Tasks 4, 13).
 
 ---
 
@@ -271,8 +274,8 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 
 | Model | Columns |
 |---|---|
-| `Game` | `id` (cuid(2)), `publicId` unique, `slug` unique, `makerUserId` (a `User`, `onDelete: Restrict`), `name`, `oneLine`, `playsOn GamePlaysOn`, `state GameState` default `draft`, `stateReason?`, `freeToPlay` default false, `repoFullName`, `repoBranch?` (null: the repository's own default), `repoFolder` default `""`, `livePullId?` unique (a `GamePull`), `createdAt`, `updatedAt`; index on `makerUserId` |
-| `GamePull` | `id` (set in code), `gameId` (a `Game`), `commitSha`, `fileCount Int`, `totalBytes BigInt`, `pulledAt`, `createdAt`; index on `gameId`. No `updatedAt`: one row per pull that passed the checks, added and never changed |
+| `Game` | `id` (cuid(2)), `publicId` unique, `slug` unique, `makerUserId` (a `User`, `onDelete: Restrict`), `name`, `oneLine`, `playsOn GamePlaysOn`, `state GameState` default `draft`, `stateReason?`, `freeToPlay` default false, `repoFullName`, `repoBranch?` (null: the repository's own default), `repoFolder` default `""`, `connectHosts String[]` (the servers the game talks to), `livePullId?` unique (a `GamePull`), `createdAt`, `updatedAt`; index on `makerUserId` |
+| `GamePull` | `id` (set in code), `gameId` (a `Game`), `commitSha`, `fileCount Int`, `totalBytes BigInt`, `connectHosts String[]` (the game's list as it stood at this pull, so what staff reviewed is what runs), `pulledAt`, `createdAt`; index on `gameId`. No `updatedAt`: one row per pull that passed the checks, added and never changed |
 | `GameClip` | `id`, `gameId` (a `Game`), `shape ClipShape`, `key` unique, `contentType`, `bytes Int`, `createdAt`, `updatedAt`; unique on (`gameId`, `shape`) |
 
 Enums: `GamePlaysOn { phone_and_computer, computer_only }`, `GameState { draft, waiting, live, sent_back, taken_down }`, `ClipShape { upright, wide }`.
@@ -350,7 +353,8 @@ it.each(["LICENSE", ".htaccess", "setup.exe", "main.js.constructor"])("serves %j
 
 **Interfaces:**
 - Produces:
-  - `MAX_GAME_BYTES`, `MAX_GAME_FILES`, `MAX_FILE_BYTES`: **open item O1.** Their values are measured, not guessed. This task starts only when the coordinator has forwarded FloorFifty's numbers and this plan has been updated with the three values; if it has not, stop and report.
+  - `MAX_GAME_BYTES = 400_000_000`, `MAX_GAME_FILES = 1_500`, `MAX_FILE_BYTES = 50_000_000`: FloorFifty's measured build (91,441,454 bytes, 326 files, largest 10,680,799 bytes) times four, rounded up. A comment beside them says where the numbers came from.
+  - `connectHostsFrom(text: string): { hosts: string[] } | { problem: string }`: one name per line, blank lines dropped, lower-cased; each must be a host name with at least one dot (letters, digits, hyphens, dots; an optional `:port`), with no scheme, path or `*`; five at most; no repeats. The problem's words: "Write each server as a name like api.example.com, one per line, five at most."
   - `interface PulledFile { path: string; size: number; kind: "file" | "link" | "lfs" }` (`path` is relative to the game's folder, as the tarball wrote it; `lfs` is a file that starts with `version https://git-lfs.github.com/spec/v1`).
   - `checkGameFiles(files: readonly PulledFile[], indexHtml: string | null): { ok: true; fileCount: number; totalBytes: number } | { ok: false; problem: string }`. `indexHtml` is the text of the top `index.html`, or null when there is none. The first failing rule wins, in this order, with these words (design 5.4: "A refusal says what to fix"):
 
@@ -378,7 +382,7 @@ it("names the first address that starts at the top of the site", () => {   // Re
 });
 ```
 
-  Stubs. Push. Expected: `verify` fails in `files-check.test.ts` with "not built yet".
+  And for `connectHostsFrom`: `"API.Example.com\n\nrt.example.com:8443"` gives `["api.example.com", "rt.example.com:8443"]`; `https://api.example.com`, `api.example.com/x`, `*.example.com`, `localhost`, six names and a repeated name each give the problem's words; an empty text gives no hosts. Stubs. Push. Expected: `verify` fails in `files-check.test.ts` with "not built yet".
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 
 ### Task 5: The clip rules
@@ -534,7 +538,7 @@ it("never puts the token in an error", async () => { /* a 500 from the tarball: 
   1. Read the game's `repoFullName`, `repoBranch`, `repoFolder` and `publicId`. `commitSha = await github.commitOf(…)`.
   2. **First pass, storing nothing.** Read `github.tarball(repo, commitSha)`. GitHub puts everything under one top folder; an entry counts when its path, after that top folder, sits under `repoFolder`. Build the `PulledFile` list (a file of 200 bytes or less is read to see whether it is an LFS pointer; the top `index.html` is read, up to 2 MB, for the address check). Stop reading as soon as the count or the total passes its limit. `checkGameFiles` decides; a refusal throws `GameError("FILES_REFUSED", problem)`.
   3. **Second pass.** `pullId = randomUUID()`. Read the same commit's tarball again and `put` each file under `files/<publicId>/<pullId>/<normalizePath(path)>`.
-  4. Insert the `GamePull` row with that id, the commit, the count and the bytes, and answer it. The game's `livePullId` is not touched.
+  4. Insert the `GamePull` row with that id, the commit, the count, the bytes and the game's `connectHosts` as they are now, and answer it. The game's `livePullId` is not touched.
 - The key uses the path as `normalizePath` answers it for the percent-encoded path, so the name stored is the name the gate will look for.
 
 - [ ] **Step 1 (red):** a fake `GitHub` whose `tarball` answers `tarGz(…)` of a top folder `acme-game-0123abc/` and counts its calls:
@@ -570,10 +574,10 @@ it("a second pull gets its own folder and the first one's files stay", async () 
 
 **Interfaces:**
 - Produces, added to `createGamesService`:
-  - `createGame(input: { makerUserId: string; name: string; oneLine: string; playsOn: GamePlaysOn; repo: { fullName: string; branch: string | null; folder: string } }): Promise<{ id: string; slug: string; publicId: string }>`. `name` is 1 to 60 characters after trimming and `oneLine` 1 to 100, else `GameError("INVALID", "A game needs a name." | "A game's name can be up to 60 characters." | "A game needs one line about it." | "The one line can be up to 100 characters.")`; a name with no address (`slugOf` null), `"Pick a name with at least three letters or numbers."`; a taken slug gets `-2`, `-3`, up to `-9`, then `"That name is taken. Pick another."`. The repository name and the folder are checked as Task 8 and Task 1's CHECK do.
+  - `createGame(input: { makerUserId: string; name: string; oneLine: string; playsOn: GamePlaysOn; repo: { fullName: string; branch: string | null; folder: string }; connectHosts: string[] }): Promise<{ id: string; slug: string; publicId: string }>`. `name` is 1 to 60 characters after trimming and `oneLine` 1 to 100, else `GameError("INVALID", "A game needs a name." | "A game's name can be up to 60 characters." | "A game needs one line about it." | "The one line can be up to 100 characters.")`; a name with no address (`slugOf` null), `"Pick a name with at least three letters or numbers."`; a taken slug gets `-2`, `-3`, up to `-9`, then `"That name is taken. Pick another."`. The repository name and the folder are checked as Task 8 and Task 1's CHECK do.
   - `pullLatest(gameId): Promise<…>`: `pullGame` with the service's own deps.
   - `goLive(gameId: string, pullId: string): Promise<void>` (Task 26 replaces it with sending for review and accepting; until then it is what makes a game live in tests): the pull must be this game's and both clips must exist, else `GameError("NOT_READY", "A game needs its files, an upright clip and a wide clip before it can go live.")`; then `state: "live"`, `livePullId`, `stateReason: null`, in one update.
-  - `liveGameBySlug(slug: string): Promise<LiveGame | null>` with `interface LiveGame { id: string; publicId: string; slug: string; name: string; oneLine: string; playsOn: GamePlaysOn; freeToPlay: boolean; makerUserId: string; livePullId: string; clips: { upright: string; wide: string } }` (`clips` holds the two keys). Null unless the state is `live`.
+  - `liveGameBySlug(slug: string): Promise<LiveGame | null>` with `interface LiveGame { id: string; publicId: string; slug: string; name: string; oneLine: string; playsOn: GamePlaysOn; freeToPlay: boolean; makerUserId: string; livePullId: string; connectHosts: string[]; clips: { upright: string; wide: string } }` (`clips` holds the two keys; `connectHosts` is the live pull's list). Null unless the state is `live`.
   - `gameAddress(pattern: string, name: string): string` in `addresses.ts`: the pattern with `{name}` filled in; `checkAddressPattern(pattern)` throws unless it is one origin (no path, no trailing slash) that holds `{name}` exactly once as the whole first label, and is `https://`, or `http://` on a `localhost` name.
   - `gamesServices(): { service; address(name: string): string }` in `services.ts`, built once from `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, optional `GITHUB_API_BASE` and `GAME_ADDRESS_PATTERN`, with `prisma()`, `systemClock` and `fileStore()`. `GITHUB_API_BASE` is accepted only when it starts with `http://127.0.0.1:`; anything else throws at start, so a real site cannot be pointed at a stand-in.
   - `games.ts` re-exports `gamesServices`, `GameError`, `type LiveGame`, `type ClipShape`, `type GamePlaysOn`, `CLIP_MAX_BYTES`, `isClipKey`.
@@ -597,23 +601,23 @@ First, before any code: send the coordinator G3 word for word. Nothing in this b
 **Interfaces:**
 - Produces, with `node:crypto` only (both Workers have `nodejs_compat`), in the pattern of slice 1's `arrival.ts` and `OLD/packages/core/src/runtime/launch-token.ts`:
   - `PASS_LIFE_MS = 4 * 60 * 60 * 1000`.
-  - `interface PassClaims { game: string; pull: string; expiresAtMs: number }`.
-  - `makePass(claims: PassClaims, secret: string): string`: `v1.<payload>.<mac>`; the payload is `{ "g": game, "p": pull, "exp": <whole seconds> }` as JSON in base64url; the mac is HMAC-SHA256 over `"ruken-play-pass-v1:" + payload`, in base64url.
-  - `checkPass(value: string, secret: string, nowMs: number): PassClaims | null`: null for anything but three dot-separated parts starting `v1`, a mac that does not match (compared with `timingSafeEqual`), JSON that does not parse, a `g` that does not match `PUBLIC_ID`'s pattern (written out here, so this file imports no feature), a `p` that is not 1 to 64 characters of `[A-Za-z0-9-]`, an `exp` that is not a whole number, or a pass whose time has come (`nowMs >= exp * 1000`). It never throws. An empty secret throws at once in both functions: `The play pass secret is not set.`
+  - `interface PassClaims { game: string; pull: string; connect: string[]; expiresAtMs: number }`.
+  - `makePass(claims: PassClaims, secret: string): string`: `v1.<payload>.<mac>`; the payload is `{ "g": game, "p": pull, "c": connect, "exp": <whole seconds> }` as JSON in base64url; the mac is HMAC-SHA256 over `"ruken-play-pass-v1:" + payload`, in base64url.
+  - `checkPass(value: string, secret: string, nowMs: number): PassClaims | null`: null for anything but three dot-separated parts starting `v1`, a mac that does not match (compared with `timingSafeEqual`), JSON that does not parse, a `g` that does not match `PUBLIC_ID`'s pattern (written out here, so this file imports no feature), a `p` that is not 1 to 64 characters of `[A-Za-z0-9-]`, a `c` that is not a list of at most five strings of the shape Task 4 allows (written out here), an `exp` that is not a whole number, or a pass whose time has come (`nowMs >= exp * 1000`). It never throws. An empty secret throws at once in both functions: `The play pass secret is not set.`
 - The file imports nothing from the app, so the gate can bundle it.
 
 - [ ] **Step 1 (red):**
 
 ```ts
-const claims = { game: "aaaaaaaaaa", pull: "0b0e6c2e-3f0a-4a8e-9d0a-1c2d3e4f5a6b", expiresAtMs: 1_800_000_000_000 };
+const claims = { game: "aaaaaaaaaa", pull: "0b0e6c2e-3f0a-4a8e-9d0a-1c2d3e4f5a6b", connect: ["api.example.com"], expiresAtMs: 1_800_000_000_000 };
 it("opens what it made, until it runs out", () => {
   const pass = makePass(claims, "s");
   expect(checkPass(pass, "s", 1_799_999_999_999)).toEqual(claims);
   expect(checkPass(pass, "s", 1_800_000_000_000)).toBeNull();
 });
-it("holds nothing but a game, a pull and a time", () => {
+it("holds nothing but a game, a pull, its servers and a time", () => {
   const payload = JSON.parse(Buffer.from(makePass(claims, "s").split(".")[1] ?? "", "base64url").toString());
-  expect(Object.keys(payload).sort()).toEqual(["exp", "g", "p"]);
+  expect(Object.keys(payload).sort()).toEqual(["c", "exp", "g", "p"]);
 });
 it("is one path segment", () => { expect(makePass(claims, "s")).toMatch(/^[A-Za-z0-9_.-]+$/); });
 it("ignores a pass made with another secret", () => { expect(checkPass(makePass(claims, "other"), "s", 0)).toBeNull(); });
@@ -640,7 +644,7 @@ it("refuses to work with no secret", () => { expect(() => makePass(claims, "")).
   4. **A clip.** The path without its first slash must pass `isClipKey`'s pattern (written out in this file) or the answer is 404. Served from that key with `cache-control: public, max-age=31536000, immutable` and `cross-origin-resource-policy: cross-origin`, to anyone.
   5. **A game file.** The path is `/<pass>/<rest>`. `checkPass(pass, passSecret, nowMs)` null, or its `game` is not the host's game: **403** with the one line below, and the bucket is never asked. `/<pass>` with no slash after it: 308 to `/<pass>/`. `normalizePath(rest)` null: 400. `rest` empty: `index.html`. The key is `files/<game>/<pull>/<path>`; no such file: 404.
   6. Serving, for both: the type from `servedTypeFor` and never from the file; `etag`; `If-None-Match` answers 304; a `Range` answers 206 or 416 as the carried code does; a precompressed `.br` or `.gz` file is sent as it is under its `content-encoding` and never as a range (the carried `encodeBody: "manual"`); `HEAD` answers the headers with no body.
-- Headers on every answer: `x-content-type-options: nosniff`, `referrer-policy: no-referrer` (so a pass in an address is never sent on to a third site), `x-robots-tag: noindex`, and `content-security-policy` with `frame-ancestors <siteOrigin>` (only Ruken's site may put a game in a frame). A game file also gets `cross-origin-resource-policy: same-origin`, `cache-control: private, max-age=14400` and the carried `permissions-policy` (`gamepad=(self), fullscreen=(self), autoplay=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()`). An answer that is not a file is plain text with `content-security-policy: default-src 'none'; frame-ancestors <siteOrigin>` and `cache-control: no-store`.
+- Headers on every answer: `x-content-type-options: nosniff`, `referrer-policy: no-referrer` (so a pass in an address is never sent on to a third site), `x-robots-tag: noindex`, and `content-security-policy` with `frame-ancestors <siteOrigin>` (only Ruken's site may put a game in a frame). A game file also gets `cross-origin-resource-policy: same-origin`, `cache-control: private, max-age=14400` and the `permissions-policy` (`gamepad=(self), fullscreen=(self), autoplay=(self), clipboard-write=(self), web-share=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()`). A game file's `content-security-policy` is `frame-ancestors <siteOrigin>; connect-src 'self'` followed by `https://<name> wss://<name>` for each name in the pass's `connect`: the browser then refuses any other connection the game's scripts try. An answer that is not a file is plain text with `content-security-policy: default-src 'none'; frame-ancestors <siteOrigin>` and `cache-control: no-store`.
 - The words, shown inside the game's frame, each one line: 403, "This game's link has run out. Go back and press Play again."; 404, "Not found."; 400, "We could not read that address."
 - No answer ever has a `set-cookie` header, and the handler never reads `cookie`.
 
@@ -654,6 +658,7 @@ it("serves the game's page under a good pass", async () => {
   expect(response.status).toBe(200);
   expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
   expect(response.headers.get("content-security-policy")).toContain("frame-ancestors https://ruken.test");
+  expect(response.headers.get("permissions-policy")).toContain("web-share=(self)");
   expect(response.headers.get("referrer-policy")).toBe("no-referrer");
 });
 it("loads nothing without a pass", async () => {                        // design 8: has not paid, cannot load
@@ -662,6 +667,9 @@ it("loads nothing without a pass", async () => {                        // desig
   }
   expect(files.reads).toEqual([]);                                      // the bucket was never asked
 });
+it("lets the game reach its own files and the servers in its pass, and nothing else", async () => {       // Review Focus 20
+  expect((await get(`/${pass}/`)).headers.get("content-security-policy")).toBe("frame-ancestors https://ruken.test; connect-src 'self' https://api.example.com wss://api.example.com");
+  /* a pass with no servers: "…; connect-src 'self'" */ });
 it("refuses a pass made for another game", async () => { /* pass for bbbbbbbbbb on g-aaaaaaaaaa: 403 */ });      // Review Focus 1
 it("refuses a pass that has run out, in words a person can act on", async () => {                                // Review Focus 3
   const response = await get(`/${pass}/main.js`, { nowMs: claims.expiresAtMs });
@@ -875,12 +883,14 @@ One line      [                         ]
 Game files    [ ruken-test/tiny-game  ▾ ]   Choose other repositories on GitHub
               ▸ Change the branch or folder
 Plays on      (•) Phone and computer   ( ) Computer only
+              ▸ My game talks to a server
 
 [ Next: add your clips ]
 ```
 
 - "Connect GitHub" is a link to `/make/github`; "Choose other repositories on GitHub" a link to `/make/github?choose=1`. Connected with no repository chosen yet: "Ruken can't see any of your repositories yet." and one link, "Choose repositories on GitHub".
 - "Change the branch or folder" opens two fields: Branch ("Leave empty for your main branch.") and Folder ("Leave empty if index.html is at the top.").
+- "My game talks to a server" opens one box: "Game servers", with "One per line, like api.example.com. Leave empty if your game runs on its own." It is read by `connectHostsFrom`; its refusal shows beside it.
 - The action `create`: `createGame` (the repository must be one of `repositoriesFor(userId)`), then `pullLatest`, then redirect (303) to `/make/<slug>`. A refused name or line shows its words above the button and keeps what was typed. A refused pull is not a failed form: the game is made, and its page says what to fix.
 - `?github=failed` shows "GitHub didn't finish connecting. Try again." above "Connect GitHub".
 
@@ -937,6 +947,7 @@ Wide clip     Not added yet. A video, up to 30 MB.         [ choose a file ] [ U
 - The agreement line shows only until the maker has agreed once; "maker agreement" links to `/legal/maker-agreement`. Sending without the tick: "Tick the box to agree to the maker agreement."
 - "Send for review": `agree` (when ticked), then `sendForReview`. After it, the state line reads "Waiting for review" and one line under it: "Come back here to see when it's live." (Design 5.7's line is "We'll email you when it's live"; the mail arrives in slice 4, and a screen must not promise a mail that is not sent, so slice 4 changes the line with it.)
 - For a live game, "Pull the latest" pulls and sends the update for review in one press, and the state reads "Live. Your update is waiting for review".
+- Under the files line, one quiet line: "Your game runs at `https://g-<public id>.<games domain>`. If your game's server checks where players come from, allow this address." and, when servers are listed, "Talks to: api.example.com".
 - A live game's page has one more link under its name, "See it on Ruken", to `/g/<slug>`.
 - Someone else's game, or none: 404.
 - `/legal/maker-agreement` shows the Owner's text (open item O5). Until the text is in the repository, this task cannot ship: stop and report.
@@ -1007,7 +1018,7 @@ These rows are everything slice 5 needs for the 180-minute rule: the member (`us
   - `isPhone(userAgent: string | null): boolean`: true when it contains `Mobi` or `Android`.
   - `backFromPaywall(next: string): string`: `/g/<slug>` when `next` is exactly `/g/<slug>/play` (slug as Task 1's CHECK), otherwise `/`.
   - In `time.ts`: `BEAT_EVERY_MS = 15_000`, `BEAT_TOO_SOON_MS = 5_000`, `LONGEST_COUNTED_GAP_MS = 45_000`, `PLAY_SESSION_LIFE_MS = 24 * 60 * 60 * 1000`, and `countedMs(startedAtMs: number, beats: readonly { atMs: number; attentive: boolean }[]): number`: beats in time order; each attentive beat adds the time since the beat before it (or since the start), `LONGEST_COUNTED_GAP_MS` at most; a beat that is not attentive adds nothing; every beat becomes the "before" of the next.
-  - In `frame.ts`: `GAME_FRAME_SANDBOX = "allow-scripts allow-same-origin allow-pointer-lock"` and `GAME_FRAME_ALLOW = "gamepad; fullscreen; autoplay"`, carried from `OLD/packages/sdk-host/src/game-frame.ts` with `game-frame.test.ts`.
+  - In `frame.ts`: `GAME_FRAME_SANDBOX = "allow-scripts allow-same-origin allow-pointer-lock"` and `GAME_FRAME_ALLOW = "gamepad; fullscreen; autoplay; clipboard-write; web-share"`, from `OLD/packages/sdk-host/src/game-frame.ts` with `game-frame.test.ts`; the last two permissions are new (FloorFifty copies and shares a link).
 
 - [ ] **Step 1 (red):**
 
@@ -1060,7 +1071,7 @@ it("knows a phone by what it says it is", () => { /* a Pixel's and an iPhone's U
 **Interfaces:**
 - Consumes: `playBasis`, the time rules, `makePass`, `PASS_LIFE_MS`, `LiveGame`, `RateLimiter`.
 - Produces, from `createPlayService(deps: { db: PrismaClient; clock: Clock; rateLimiter: RateLimiter; passSecret: string; address(name: string): string })`:
-  - `startPlay(input: { game: LiveGame; viewer: { userId: string; isStaff: boolean; isMember: boolean } | null; clientAddress: string }): Promise<{ frameUrl: string; session: { id: string; token: string } } | { refused: "join" | "busy" }>`. `playBasis` null: `{ refused: "join" }` and nothing is stored. More than `PLAY_STARTS_PER_ADDRESS` (`{ limit: 30, windowSeconds: 60 }`, key `play:start:<clientAddress>`, both declared in this file): `{ refused: "busy" }`. Otherwise: a `PlaySession` row (`id` from `randomUUID()`, the basis, the game's `livePullId`, `startedAt` from the clock, `tokenHash` the SHA-256 in hex of a 32-byte random token in base64url); `frameUrl` is `` `${address("g-" + game.publicId)}/${makePass({ game: game.publicId, pull: game.livePullId, expiresAtMs: now + PASS_LIFE_MS }, passSecret)}/` ``. The token itself is answered once and never stored.
+  - `startPlay(input: { game: LiveGame; viewer: { userId: string; isStaff: boolean; isMember: boolean } | null; clientAddress: string }): Promise<{ frameUrl: string; session: { id: string; token: string } } | { refused: "join" | "busy" }>`. `playBasis` null: `{ refused: "join" }` and nothing is stored. More than `PLAY_STARTS_PER_ADDRESS` (`{ limit: 30, windowSeconds: 60 }`, key `play:start:<clientAddress>`, both declared in this file): `{ refused: "busy" }`. Otherwise: a `PlaySession` row (`id` from `randomUUID()`, the basis, the game's `livePullId`, `startedAt` from the clock, `tokenHash` the SHA-256 in hex of a 32-byte random token in base64url); `frameUrl` is `` `${address("g-" + game.publicId)}/${makePass({ game: game.publicId, pull: game.livePullId, connect: game.connectHosts, expiresAtMs: now + PASS_LIFE_MS }, passSecret)}/` ``. The token itself is answered once and never stored.
   - `recordBeat(input: { sessionId: string; token: string; attentive: boolean }): Promise<"recorded" | "too_soon" | "over" | "unknown">`. No such session, or the token's hash does not match (compared with `timingSafeEqual`): `unknown`. The clock is past `startedAt + PLAY_SESSION_LIFE_MS`: `over`. The session's latest beat (or its start) is less than `BEAT_TOO_SOON_MS` ago: `too_soon`, and nothing is stored. Otherwise one `PlayBeat` row with the clock's time. Two beats in the same instant may both be stored; `countedMs` gives the second one nothing.
   - `playSummary(gameId: string): Promise<{ sessions: number; beats: number; countedSeconds: number }>`: over every session of the game, `countedMs` summed and rounded down to seconds.
   - `playServices(): { service }` in `services.ts`, built once from `PLAY_PASS_SECRET`, with `prisma()`, `systemClock`, a `RateLimiter` and `gamesServices().address`.
@@ -1074,7 +1085,7 @@ it("gives a member a frame address under a pass for that game's live files, and 
   const url = new URL(frameUrlOf(started));
   expect(url.origin).toBe(`https://g-${game.publicId}.games.test`);
   expect(url.search).toBe(""); expect(url.hash).toBe("");
-  expect(checkPass(url.pathname.split("/")[1] ?? "", "s", clock.epochMs())).toEqual({ game: game.publicId, pull: game.livePullId, expiresAtMs: clock.epochMs() + PASS_LIFE_MS });
+  expect(checkPass(url.pathname.split("/")[1] ?? "", "s", clock.epochMs())).toEqual({ game: game.publicId, pull: game.livePullId, connect: game.connectHosts, expiresAtMs: clock.epochMs() + PASS_LIFE_MS });
   expect(await prisma.playSession.findMany()).toMatchObject([{ userId: member.userId, gameId: game.id, pullId: game.livePullId, basis: "member" }]);
 });
 it("stores nothing for someone who may not play", async () => { /* { refused: "join" }; no rows */ });
@@ -1173,6 +1184,7 @@ Oldest first; none: "Nothing is waiting." Each name links to its page.
 Tiny game
 A game for the tests.
 By maker@example.com · ruken-test/tiny-game · 3 files, 1 MB · Phone and computer
+Talks to: api.example.com          (or: Talks to no server.)
 
 [ upright clip ]   [ wide clip ]
 
@@ -1320,7 +1332,7 @@ test("a computer-only game says so on a phone, and offers its link", async ({ pa
 - `load`, in this order: `liveGameBySlug` (null: 404); a computer-only game on a phone: redirect (303) to `/g/<slug>`; `startPlay` with the caller (`isStaff` from `staffRolesOf`, `isMember` from `isMember`; signed out: `viewer: null`) and `getClientAddress()`. `{ refused: "join" }`: redirect (303) to `` `/join?next=${encodeURIComponent(`/g/${slug}/play`)}` ``. `{ refused: "busy" }`: the error page with 429 and "You've opened a lot of games just now. Try again in a minute." Otherwise it answers `{ name, slug, frameUrl, session }`.
 - The page is `<main class="stage">`: a `<div class="bar">` holding `<a class="back" href="/g/<slug>" aria-label="Back to the feed">←</a>` and `<p role="status">Tap ← to go back to the feed</p>`; then `<iframe class="frame" title="<name>" src={frameUrl} sandbox={GAME_FRAME_SANDBOX} allow={GAME_FRAME_ALLOW} referrerpolicy="no-referrer">`. The frame has no `name`, and the page sends it no message.
 - The line (design 5.7, "The first time in a game") shows for 5 seconds and is then removed from the page; it shows only the first time on a device (a `localStorage` entry, `rk_seen_back`, set when it is first shown). With no script it simply stays.
-- ← is a plain link: it works with no script, by keyboard, and whatever the game is doing.
+- ← is a plain link: it works with no script, by keyboard, and whatever the game is doing. Leaving the page removes the frame, so a game that keeps running while hidden (FloorFifty's race does) stops when the person goes back.
 - The page's title is `<name> · Ruken`. The session's token is in the page's data for its own script (Task 22) and nowhere in the frame's address.
 - `/join`: "Not now" goes to `backFromPaywall(next)`.
 
@@ -1375,7 +1387,7 @@ test("a member whose membership has ended gets the price card on reload", async 
 test("the way back is one link, and its line shows once", async ({ page, browser }) => {
   /* free game. await page.clock.install() before goto. The line "Tap ← to go back to the feed" is visible;
      page.clock.runFor(5_000) → it is gone; reload → it does not show again.
-     The link named "Back to the feed" is at least 48px by 48px and goes to /g/<slug>. */ });
+     The link named "Back to the feed" is at least 48px by 48px and goes to /g/<slug>; after pressing it the page has no iframe. */ });
 test("a phone that opens a computer-only game's play address is sent to its page", async ({ page, browser }, testInfo) => {   // Review Focus 10
   /* phone project only: /g/<slug>/play → toHaveURL(/g/<slug>) */ });
 test("nothing on the play screen is red, and nothing scrolls sideways", async ({ page, browser }) => { /* pipRed(page) is []; scrollWidth equals clientWidth */ });
@@ -1458,14 +1470,15 @@ Slice 1 proved "A member's sign-up records the maker's link they came through" w
 
 ### Task 24: FloorFifty, pulled and played on the real site
 
-No code unless a check fails. Nothing here is typed into the repository. It needs G1, G2 and G3 done, the open items O1 to O5 closed, and every branch before it on `main` and deployed.
+No code unless a check fails. Nothing here is typed into the repository. It needs G1, G2 and G3 done, O4 and O5 closed, the Owner's FloorFifty items done (a built folder on a branch, the handshake wait removed, its server up and allowing the game's address), and every branch before it on `main` and deployed.
 
 - [ ] **Step 1: the gate's route outlives a deploy.** After the first merge to `main` that follows G3, the Owner runs `(Invoke-WebRequest "https://media.GAMES-DOMAIN/__ruken/health").Content` again and expects `ok`. If it fails, the automatic deploy dropped the route the Owner added by hand. One fix, on a small branch with its test first: the deploy command reads the games domain from a build variable (`wrangler deploy --config cloudflare/games/wrangler.jsonc --route "*.$GAMES_DOMAIN/*"`), and the Owner adds `GAMES_DOMAIN` under the `ruken` Worker's build variables (a website step: Workers Builds has no command for it). Then stop and report.
 - [ ] **Step 2: G4.** Send these to the coordinator word for word, with the branch and the folder from O3 filled in. Only the first is a command; the rest is the site itself, used the way any maker and any staff member will use it.
   1. `$secret = Read-Host "JOBS_SECRET"; Invoke-RestMethod -Method Post -Uri "https://SITE/jobs/first-owner" -Headers @{ Authorization = "Bearer $secret" } -ContentType "application/json" -Body (@{ email = "THE-OWNER'S-ACCOUNT-EMAIL" } | ConvertTo-Json)` (expect `granted: True`. The secret is the one from slice 1's S1 and stays in this window only. Sign up on the site first.)
-  2. On the site, signed in as that account: `/make` → "Add a game" → "Connect GitHub" (GitHub asks which repositories Ruken may read: choose the account that owns FloorFifty, "Only select repositories", FloorFifty) → Name "Floor Fifty", its one line, the repository, the branch and folder under "Change the branch or folder" → "Next: add your clips" → upload the upright and the wide clip → tick the agreement → "Send for review".
-  3. `/admin/games` → Floor Fifty → watch both clips, play it → "Accept".
-  4. `/make/floor-fifty` → "See it on Ruken" → Play. After a minute of play as a member, `/admin/games/floor-fifty` reads "Played so far" with counted time above zero.
+  2. On the site, signed in as that account: `/make` → "Add a game" → "Connect GitHub" (GitHub asks which repositories Ruken may read: choose the account that owns FloorFifty, "Only select repositories", FloorFifty) → Name "Floor Fifty", its one line, the repository, the branch and folder under "Change the branch or folder", FloorFifty's game server's name under "My game talks to a server" → "Next: add your clips" → upload the upright and the wide clip → tick the agreement → "Send for review".
+  3. `/make/floor-fifty` shows the address the game runs at: allow it on FloorFifty's game server (the Owner's item).
+  4. `/admin/games` → Floor Fifty → watch both clips, play it → "Accept".
+  5. `/make/floor-fifty` → "See it on Ruken" → Play. After a minute of play as a member, `/admin/games/floor-fifty` reads "Played so far" with counted time above zero.
 - [ ] **Step 3: what a person checks**, the Owner or the coordinator with the Owner, on a phone and on a computer, and what is recorded in progress.md (what was checked, by whom, when; no address, no email): the file count and size on the maker's page equal O1's measurement; the game's page shows the right clip for the screen; signed out, Play shows the price card; a member (Stripe test mode, from slice 1's Task 31) lands in the game after paying and it runs; ← goes back; the counted seconds rose; the game's own address without a pass (`https://g-<public id>.GAMES-DOMAIN/index.html`, the public id read from the frame's address while playing) shows "This game's link has run out…" and no game.
 - [ ] **Step 4:** if the pull fails on the real site with Cloudflare's "exceeded resource limits", report the Worker's log line (CPU or memory) and the game's measured size. Do not raise a limit or change the pull without the coordinator's answer. If FloorFifty loads and does not run, that is O2: report what the browser's console says; the fix is in FloorFifty's repository, which is the Owner's.
 - [ ] **Step 5:** set slice 2's row in progress.md from what is true: "done" only when every branch is merged, main is green, and Step 3 passed.
@@ -1477,7 +1490,7 @@ No code unless a check fails. Nothing here is typed into the repository. It need
 - **Slice 3 (the feed).** `/g/<game>` becomes the feed opened at that clip; its `load` keeps the `arrival.remember` call. The clip addresses come from `gamesServices().address("media")`. The feed's Play goes to `/g/<game>/play`, which already decides between the game, the paywall and "needs a computer"; the feed shows "This one needs a computer" from the same `isPhone`. "Share the link" on the placeholder page is the seed of the feed's share. The feed's order needs "how much members played in the last seven days": `countedMs` over `member` sessions is the measure. `/<handle>` calls `arrival.remember` the same way.
 - **Slice 4 (submitting and the admin portal).** The submit path and the smallest Accept and Send back are already here (Owner, 2026-11-13). Slice 4 keeps: the maker's three-step onboarding (address, page, first game), with `/make/new` as its step 3; the admin portal around `/admin/games` (its other queues, admin sessions, the authenticator code, two superadmins, granting roles, with `/jobs/first-owner` replaced by the carried first-owner rule); the mails to a maker when a game is accepted, sent back or taken down, and the line "We'll email you when it's live" in place of "Come back here to see when it's live."; `taken_down` and moderation; the staff action that sets `freeToPlay` with a reason; editing a game's name, line and "Plays on" after it is made; connecting the bank; and deleting a game's old pulls from the bucket. A taken-down game stops at once for new plays (`liveGameBySlug` is null); a pass already given lasts up to four hours unless the files are deleted.
 - **Slice 5 (money).** Play that counts: sessions with basis `member` only. Time: `countedMs` over a session's beats, cut at America/Chicago midnight by each beat's `receivedAt`, at most 180 minutes per member, per game, per day. Two sessions of one member can overlap (two tabs, two devices); count each moment once. `PlaySession.pullId` says which files were played, should a dispute need it.
-- **The privacy text** (the Owner's, before live mode) should say that Ruken records when a game is open and has the person's attention, and that a game runs on another address and may talk to its maker's servers.
-- Worth the Owner's eye before launch, left out on purpose: a rule on where a game's scripts may connect; a sweep of old `PlayBeat` rows (four a minute for each person playing; nothing removes them); a limit on beats per session beyond "not sooner than five seconds"; ending a pass early when a game is taken down.
+- **The privacy text** (the Owner's, before live mode) should say that Ruken records when a game is open and has the person's attention, and that a game runs on another address and may talk to the servers its maker listed.
+- Worth the Owner's eye before launch, left out on purpose: a limit on which other sites a game may load pictures, scripts and fonts from; a sweep of old `PlayBeat` rows (four a minute for each person playing; nothing removes them); a limit on beats per session beyond "not sooner than five seconds"; ending a pass early when a game is taken down.
 - The gate has no cache in front of the bucket. If the Worker's numbers ever show it slow, Cloudflare's cache API in front of `files/` is the first thing to try; a file's address already changes with every pull.
-- A browser keeps a game's files only for the life of one pass (the address changes with each Play). If FloorFifty's size makes that slow on a phone, a pass shared by everyone for a fixed window would let the browser keep the files; that is a change to the pass, for the Owner's yes.
+- A browser keeps a game's files only for the life of one pass (the address changes with each Play), and FloorFifty is 91 MB. The fix, if the Owner wants it: one pass per game and pull for everyone for a fixed window (say a day), so the address stays the same and the browser keeps the files. Its price: a leaked address works for anyone until the window ends, not for four hours. It is a small change to `makePass`'s time and nothing else; it needs the Owner's yes.
