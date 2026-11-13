@@ -8,7 +8,7 @@
 
 **Tech Stack:** Node 24.22.1, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Prisma 7.10.0, Postgres 16, better-auth 1.7.7, Stripe 22.6.2, Vitest 5.0.3, Playwright 1.63.0. Cloudflare Workers (`@sveltejs/adapter-cloudflare` 8.0.2, Wrangler 4.156.0) with Hyperdrive in front of Neon; mail through Resend's HTTP API. (Owner, 2026-11-13: Cloudflare instead of Netlify; see "Cloudflare instead of Netlify", below.)
 
-**Spec:** `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md` (sections 5.2, 5.5 "Authority", 5.6, 6 "What players buy" and "Bringing a member", 7.1 to 7.4, 8, 9), as revised by the Owner on 2026-11-13. Read it with `CLAUDE.md` and `AGENTS.md`.
+**Spec:** `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md` (sections 5.2, 5.5 "Authority", 5.6, 5.8, 6 "What players buy" and "Bringing a member", 7.1 to 7.4, 8, 9), as revised by the Owner on 2026-11-13. Read it with `CLAUDE.md` and `AGENTS.md`.
 
 **Old repository:** `mcthaydt/RukenAppFailed` at commit `188e8a07546ba19c431468ddf2624e3cc4173d4e`, written below as `OLD/`. Attach it read-only (`add_repo`, access "read") and clone it beside this repository. Do not register it as a repository root: its CLAUDE.md and AGENTS.md are the old rules and do not apply.
 
@@ -29,6 +29,8 @@
 - The price is $9.99 a month or $99 a year, tax added by Stripe (`PREMIUM_PRICES_CENTS = { monthly: 999n, annual: 9900n }`). No trials (`PREMIUM_TRIAL_DAYS = 0`), no day or week passes, no buying single games.
 - Which maker brought a member is a fact from the link they arrived through. No screen, form or query parameter lets a person say it.
 - Every screen and message passes the drunk grandma test. The words in this plan are the words to ship; a change to them is a deviation to report.
+- Ruken's own screens wear the Card Table look (design 5.8) from one stylesheet, `src/lib/look.css`. Until branch L (`slice-1/look`) is merged, a screen's markup is plain and semantic, with no classes and no styles. From branch L on, a screen uses only the classes listed under "The look" below; no file under `src/routes/` has a `<style>` block, a `style=` attribute or a colour of its own (`tests/lib/look.test.ts` checks). The pip-red button (`class="pay"`) is used once in the whole slice: "Continue to payment" (Task 27).
+- The fonts are files, not packages: three `.woff2` files and their two licences under `static/fonts/`, copied from two npm tarballs named in Task 35. No font package is added to `package.json`, and no page asks a font service for anything.
 
 ## Cloudflare instead of Netlify
 
@@ -114,7 +116,7 @@ A red commit is never merged. Pull requests merge themselves (CLAUDE.md, Owner 2
 
 ## Branches
 
-Nine branches, in this order. Each starts from `main` only after the one before it is merged and green, and each is small enough to review in one sitting.
+Ten branches, in this order. Each starts from `main` only after the one before it is merged and green, and each is small enough to review in one sitting.
 
 `main` is protected (Owner, 2026-11-13): it changes only by pull request, `verify` and `browser` must pass on a branch that is up to date with `main`, merges are merge commits, and a merged branch is deleted automatically. Nothing is pushed straight to `main`. Before the last push of a branch, merge `main` into it if `main` has moved (a pushed branch is never rebased: no force-push). The `postgres` job arrives in Task 1; ask the coordinator to have it required too once branch A is merged.
 
@@ -124,6 +126,7 @@ Nine branches, in this order. Each starts from `main` only after the one before 
 | B | `slice-1/sign-in-rules` | 5 to 8 | the sign-in guards, limits, age check, cookies and mails, each tested alone |
 | C | `slice-1/sign-in` | 9 to 11 | better-auth configured, the request hook, the form actions |
 | D | `slice-1/account-screens` | 12 to 15 | sign up, sign in, reset and /me, in a real browser |
+| L | `slice-1/look` | 35 to 37 | the Card Table look (design 5.8) on every screen built so far, from one stylesheet, with its fonts served from the site's own address |
 | E0 | `slice-1/cloudflare` | 32 to 34 | what A to D built runs on Cloudflare Workers: mail over HTTP, one database client per request, the journeys in the Workers runtime |
 | E | `slice-1/deploy` | 16 | the site on its real address; a person signs up there |
 | F | `slice-1/delete-account` | 17 to 20 | delete my account: the 14-day wait, undone by signing in, finished by a daily job |
@@ -188,6 +191,7 @@ The membership product and its two prices are not typed into Stripe by anyone: t
   5. No bonus on yourself: a maker who arrives through their own link and pays gets no bonus on their own membership. This slice still records it as it happened; slice 5 applies the rule.
   6. `arrival.remember` stays in this slice though its first caller arrives later, so the cookie's format lives in one place (answered through the coordinator).
   7. Not in this slice, and nothing here stands in their way: FloorFifty free on launch day, free-play codes, the 180-minute cap, the split and the payout rules ("Notes for the plans that follow").
+- **Owner, 2026-11-13, the look** (design 5.8): "We can use the design present in the previous version as well", then yes to the Card Table design on Ruken's own screens. Branch L applies it; its Calls are under "The look", below.
 - **Calls** (the Owner can overrule):
   - A member who asks to delete their account has their membership ended in Stripe at once, with no refund, so they are never charged while the account waits to be deleted. Signing in again brings back the account, not the membership (Task 30).
   - Carried from the old sign-in: email and password, the confirm-your-email mail, password reset by mail, the rate limits, the one-hour pause after ten wrong passwords, the rolling 30-day session. Not carried: passkeys, sign-in by emailed link, Apple, Google, Microsoft and GitHub sign-in, Cloudflare Turnstile, the breached-password check, anonymous visitor ids, embeds, the staff command-line token, localization, telemetry and consent.
@@ -221,6 +225,8 @@ cloudflare/worker.js                     what Cloudflare runs: the built site pl
 src/lib/clock.ts                         Clock, systemClock, CALENDAR_ZONE, chicagoDayOf
 src/lib/long-date.ts                     longDay, longDate: a Chicago day in words   (branch F)
 src/lib/safe-next.ts                     safeNextPath
+src/lib/look.css                         the Card Table look: the fonts, the tokens, and every rule a screen wears (branch L)
+static/fonts/                            three .woff2 files, their two licences, and sources.json: where each came from and its checksum (branch L)
 src/lib/server/db.ts                     the Prisma client, one per request (branch E0)
 src/lib/server/platform.ts               what the host gives: the database's address, waitUntil (branch E0)
 src/lib/server/cloudflare.ts             Cloudflare's platform; the only file that imports cloudflare:workers (branch E0)
@@ -268,7 +274,8 @@ src/features/membership/                 (branch G)
   services.ts          built once from the settings
 src/routes/
   +error.svelte                          every failure's page, with a way back
-  +layout.server.ts  +layout.svelte      the welcome-back line   (branch F)
+  +layout.svelte                         loads look.css for every screen (branch L); shows the welcome-back line (branch F)
+  +layout.server.ts                      the welcome-back line   (branch F)
   healthz/+server.ts                     (branch E0)
   api/auth/[...path]/+server.ts
   sign-up/  sign-in/  sign-out/  forgot-password/  reset-password/
@@ -282,6 +289,8 @@ worker-configuration.d.ts                written by `wrangler types`; ignored by
 tests/wrangler.test.ts                   wrangler.jsonc, the deploy script and the journeys' command, read as text (branch E0)
 tests/support/test-clock.ts              a clock tests can set
 tests/support/capture-mailer.ts          a Mailer that keeps what it was given
+tests/support/look-tokens.ts             look.css read as text: a token's value, its rgb() form, a contrast ratio (branch L)
+tests/browser/support/look.ts            the list of Ruken's own screens and how to open each; what on a page is pip red (branch L)
 tests/support/fake-premium-stripe.ts     a PremiumStripe that remembers state (branch G)
 tests/browser/support/fake-stripe-server.ts   a stand-in Stripe over HTTP (branch H)
 tests/browser/support/account.ts         signUp(page) for journeys
@@ -306,6 +315,10 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 10. A person arrives through one maker's link, starts paying, comes back, arrives through another maker's link and pays: the second maker is recorded, once (Task 26).
 11. Two people use the site at the same moment: each request has its own database client, never one another request opened (Task 34).
 12. A pull request with a migration in it: nothing it does reaches the real database; only a merge to `main` runs migrations (Task 16).
+13. A browser that cannot fetch the font files (blocked, offline, a slow train): every word still shows, in the system's own font, and every button still works (Task 36).
+14. A person whose phone asks for reduced motion: nothing on any screen moves, also when a button is pressed (Task 37).
+15. A very long email address on a phone: the card wraps it and the page never scrolls sideways (Task 37).
+16. A new screen that paints a second red button, or its own colours: the pip check and the plain-screens check fail before it merges (Tasks 27 and 37).
 
 ---
 
@@ -645,6 +658,8 @@ it("refuses an under-13 date before any account is made", async () => {
 
 Every task here is a journey first. Journeys run on `phone` and `computer`. `tests/browser/support/account.ts` gives `signUp(page): Promise<{ email: string; password: string }>`, which fills the sign-up form with a fresh address (`journey+<random>@ruken.test`), the password `a long enough password` and a birth date thirty years before today, and waits for the page it lands on. A journey waits on what the page shows, never on a sleep.
 
+The markup in this branch is plain and semantic: one `<main>` per screen, one `<h1>`, a `<label>` for every field, real `<button>`s and links, a refusal in an element of its own with `role="alert"`, a note ("At least 10 characters.") in an element of its own. No classes, no `<style>` blocks, no colours: branch L puts the look on in one place.
+
 ### Task 12: `/api/auth` and sign-out
 
 **Files:**
@@ -816,9 +831,534 @@ Branch D is ready to merge.
 
 ---
 
+# Branch L: `slice-1/look`
+
+Owner, 2026-11-13: "We can use the design present in the previous version as well", then yes to the Card Table design on Ruken's own screens (design 5.8).
+
+This branch puts that look on every screen built so far: the placeholder home page, the error page, sign-up, sign-in, forgot and new password, and `/me`. It starts when branch D is merged and green; branch E0 starts after it. The delete screens, `/goodbye`, the paywall card and `/join/done` are built later (branches F and H); their tasks say which classes they use (Tasks 18, 19, 27, 29, 30).
+
+It changes no word and no behaviour. Every journey from branches A to D passes unchanged, because journeys find things by their role and their words, never by a class.
+
+Nobody has looked at it until the Owner does: CI checks values (a colour, a size, a font, a request), not taste, and there are no pixel goldens in this slice. The Owner's first look is on the real site, after Task 16 step 5. What the Owner says there is a note for a small fix branch; it does not hold branch E0.
+
+### The look: what a screen may use
+
+One stylesheet, `src/lib/look.css`, loaded once by the root layout. It styles plain elements by where they sit (on the felt, or on a paper card), plus eight classes. A screen uses these and nothing else.
+
+Elements, with no class: `body` (felt, chalk, body text), `main` (one centred column, 40rem at most, a 1rem gutter on a phone), `h1`, `p`, `a` (underlined, the colour of the text around it), `label`, `input`, `fieldset` and `legend` (no edge), `button`.
+
+| Class | Goes on | What it does |
+|---|---|---|
+| `card` | the screen's one `<main>` | the paper card: `paper` ground, `ink` text, 20px corners, no edge, no shadow. Inside it `h1` is a card title (32px) |
+| `statement` | a `<p>` | the 24px Young Serif line |
+| `note` | a `<p>` or `<small>` | 14px; `sage` on felt, `ink-soft` on a card. For notes only, never running text |
+| `row` | the element around a few short fields | puts them side by side (month, day, year) |
+| `button` | an `<a>` | a link that looks like a button. It is still a link to a journey and to a screen reader |
+| `quiet` | a `<button>` or `a.button` | no fill: it looks like a link. For a second action that must not draw the eye |
+| `pay` | one `<button>` in the whole site | the pip-red fill with a paper label: "Continue to payment" (Task 27) and nothing else |
+| `problem` | the element that holds a refusal | weight 600, so it is seen; it keeps the card's ink |
+
+A `<button>` (or `a.button`) with no other class is the screen's main action: paper with an ink label on the felt, ink with a paper label on a card.
+
+**Calls in the look** (the Owner can overrule). Each is where design 5.8 is silent or cannot be met as written.
+
+- **Pip is `#c43b26`, not the design's `#c63c26`. Asked of the Owner through the coordinator on 2026-11-13; not answered when this was written.** Paper on `#c63c26` measures 4.48:1, under the 4.5:1 a button's label needs; `#c43b26` measures 4.57:1 and is what the old repository shipped for the same reason (`OLD/packages/ui/src/theme.css`). The value is written once in `look.css` and once in `tests/lib/look.test.ts`; nothing else names it.
+- The main button on a paper card is ink with a paper label (15.1:1), as the old `Button` had it. 5.8 names only the button on felt.
+- A field has a 1px `ink-soft` edge (7.2:1 on paper) and 14px corners, as the old `TextField` had. 5.8 allows an edge on real form fields and gives no corner for them.
+- A refusal is ink at weight 600 in an element with `role="alert"`. 5.8 has no colour for an error, and pip is not one.
+- Sizes are written in `rem`, so they follow a person's own text-size setting; at the usual setting they are 5.8's pixels. The section heading is 36px below a 48rem (768px) window and 64px from there. Leading that 5.8 does not give: headings 1, card title 1.1, small 1.45, button 1.2.
+- A button's fill does not change under the pointer. 5.8 names no hover colours.
+- The fonts hold the Latin letters only (English, and the accented letters of western European names). Other scripts show in the system's font.
+- Classes, not Svelte components: features hold no components yet ("Notes for the plans that follow"), and a component would want Testing Library, which this slice leaves out.
+- `felt-deep`, `felt-raised` and `sage` are declared with the other tokens, because the palette is one table in the design. A rule is written only when a screen uses it: `felt-deep` gets its first rule in Task 18 (`panel`); `felt-raised` has none in this slice.
+
+**Grandma, on every screen.** The look adds no word and takes none away. What it must not break, and how that is checked:
+
+- One thing to do per screen: a card holds at most one filled button; every other way out is an underlined link or a `quiet` button (Task 37 counts them on every screen).
+- Red means money and nothing else: no screen but the paywall card shows pip, and there only on "Continue to payment" (Tasks 27 and 37).
+- Readable: text is 18px on a ground it contrasts with by 4.5:1 or more (Task 35 measures every pair from the tokens); only notes are 14px.
+- Easy to hit: buttons and fields are at least 48px tall.
+- Nothing sideways, nothing moving: no screen scrolls sideways on a phone, also with a very long email address; with reduced motion nothing moves (Task 37).
+- Still works when a font file does not arrive (Task 36).
+
+**Cloudflare.** The font files live in `static/fonts/`. SvelteKit copies `static/` into the build as it is, and the Cloudflare adapter writes the build's client files into `.svelte-kit/cloudflare`, the folder `wrangler.jsonc` already names as the Worker's assets (Task 34). Cloudflare answers a request for a static asset before the Worker runs, so a font costs no Worker time, no database client and no hook. Nothing in branch E0 changes: no key in `wrangler.jsonc`, no line in `tests/wrangler.test.ts`. This branch itself runs before E0, where the journeys still use `vite preview`, which serves `static/` the same way; Task 34's green push is the first proof under `wrangler dev`, and its step 2 says what to do if a font's address fails there.
+
+**Carried from the old repository** (`OLD/packages/ui/src/theme.css` and `theme.test.ts`): the pattern, not the files. The fonts are files in the repository with their licences beside them; the stylesheet names no other site; a unit test reads the stylesheet as text, pins each token and measures each text pair's contrast with WCAG's formula. Not carried: the old token names (`--color-bg` and the like, kept there for pages this app does not have), the app and public type ramps, the hover fills, the three faces 5.8 does not use, and the `.ttf` files themselves (variable fonts, 282,676 bytes for the two; the three `.woff2` files here are 76,516 bytes).
+
+### Task 35: The tokens and the fonts
+
+**Files:**
+- Create: `src/lib/look.css`, `static/fonts/young-serif-latin-400-normal.woff2`, `static/fonts/schibsted-grotesk-latin-400-normal.woff2`, `static/fonts/schibsted-grotesk-latin-600-normal.woff2`, `static/fonts/young-serif-LICENSE.txt`, `static/fonts/schibsted-grotesk-LICENSE.txt`, `static/fonts/sources.json`, `tests/support/look-tokens.ts`
+- Test: `tests/lib/look.test.ts`
+
+**Interfaces:**
+- Produces:
+  - `tests/support/look-tokens.ts`, from the helpers at the top of `OLD/packages/ui/src/theme.test.ts` (`readTokens`, `luminance`, `contrast`), in a file of their own because the journeys read the tokens too:
+    - `lookCss(): string`, the text of `src/lib/look.css`;
+    - `token(name: string): string`, the value of `--name` in the `:root` block, with comments dropped first; throws `look.css has no ${name}`, and `look.css declares ${name} twice` for a name declared twice;
+    - `rgb(hex: string): string`, a browser's way of writing a colour: `rgb("#1c3a2f")` is `"rgb(28, 58, 47)"`;
+    - `contrast(foreground: string, background: string): number`, WCAG's ratio for two hex colours.
+  - `src/lib/look.css`, in this task: an opening comment (the idea of the look in three lines, as design 5.8 has it, and that `tests/lib/look.test.ts` reads this file), three `@font-face` blocks and the `:root` block below. No comment in the file holds a web address. The rules arrive in Tasks 36 and 37.
+
+```css
+@font-face {
+  font-family: "Young Serif";
+  src: url("/fonts/young-serif-latin-400-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+/* The same again for "Schibsted Grotesk": 400 from schibsted-grotesk-latin-400-normal.woff2,
+   and 600 from schibsted-grotesk-latin-600-normal.woff2. */
+
+:root {
+  color-scheme: dark;
+
+  --felt: #1c3a2f;
+  --felt-deep: #142c23;
+  --felt-raised: #25483a;
+  --chalk: #eef2ec;
+  --sage: #a8bfb2;
+  --paper: #f1efe9;
+  --ink: #191b1a;
+  --ink-soft: #4a504c;
+  --pip: #c43b26;
+
+  --font-display: "Young Serif", Georgia, "Times New Roman", serif;
+  --font-text: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --text-section: 400 2.25rem/1 var(--font-display);
+  --text-section-wide: 400 4rem/1 var(--font-display);
+  --text-card-title: 400 2rem/1.1 var(--font-display);
+  --text-statement: 400 1.5rem/1.2 var(--font-display);
+  --text-body: 400 1.125rem/1.55 var(--font-text);
+  --text-small: 400 0.875rem/1.45 var(--font-text);
+  --text-button: 600 1.125rem/1.2 var(--font-text);
+
+  --radius-card: 20px;
+  --radius-field: 14px;
+  --radius-button: 9999px;
+  --size-target: 48px;
+  --width-read: 40rem;
+
+  --press-scale: 0.97;
+  --press-time: 160ms;
+}
+```
+
+    Each group gets a comment that says what it is for, in the design's words (the "Used for" column of 5.8's table). The comment beside `--pip` says why it is not the design sheet's `#c63c26`, with the two measured ratios.
+  - `static/fonts/sources.json`: one entry per file in the folder, keyed by the file's name: `{ "package", "version", "tarball", "integrity", "path", "bytes", "sha256" }`. It is the record of where each file came from and what it is. Formatted by Prettier.
+
+**Where the files come from.** Two npm tarballs, read on 2026-11-13. The files are copied out of them; neither package is added to `package.json`. (The google/fonts repository holds these families as `.ttf` only, and making `.woff2` from them needs a tool this repository does not have.)
+
+| Package | Version | Tarball | Integrity |
+|---|---|---|---|
+| `@fontsource/young-serif` | 5.3.0 | `https://registry.npmjs.org/@fontsource/young-serif/-/young-serif-5.3.0.tgz` | `sha512-/ay2kPm7QzGKW/9tL7UVh+B5meX3J6gh2PLnHV2ohlIbQSMRGTuyzNNVWpzsHc3P3bcpMm1IPfuO7GRtFrXWvQ==` |
+| `@fontsource/schibsted-grotesk` | 5.3.0 | `https://registry.npmjs.org/@fontsource/schibsted-grotesk/-/schibsted-grotesk-5.3.0.tgz` | `sha512-9k+Fd2eg7umKxI2JV2HtDcOkXEM0iJx0u4Iu1b+QHikVU8Sl/MtozJ/mtZfsltR6xnVGSQjpcxXQeJPW0KGpIA==` |
+
+| File in `static/fonts/` | Path in its tarball | Bytes | SHA-256 |
+|---|---|---|---|
+| `young-serif-latin-400-normal.woff2` | `package/files/young-serif-latin-400-normal.woff2` | 26,992 | `6ba68b9927ad2a640d32cbea050ffc2b5d0ae6cbaa785afe470da9d6bf0ef39f` |
+| `schibsted-grotesk-latin-400-normal.woff2` | `package/files/schibsted-grotesk-latin-400-normal.woff2` | 24,344 | `437cd97c802be9f10f60b4db8a723261e5c35dfe1529de0562981871028bd670` |
+| `schibsted-grotesk-latin-600-normal.woff2` | `package/files/schibsted-grotesk-latin-600-normal.woff2` | 25,180 | `d00ac8735bf6b96cc4cfbfb22576c4168645547a264bd22d127c46519cab3250` |
+| `young-serif-LICENSE.txt` | `package/LICENSE` (Young Serif's) | 4,396 | `ea3081eef60700a513afba76c1b7130facee06be5d221b19a20b75aa52665e06` |
+| `schibsted-grotesk-LICENSE.txt` | `package/LICENSE` (Schibsted Grotesk's) | 4,541 | `15222412a95d70042e66e79bfb3b985653e0693e4d41703bc131bee9c5aa1aa7` |
+
+These were measured in the plan session from the two tarballs. In Step 3 the execution session measures them again from its own download; the numbers in `sources.json` are the ones it measured, and they must equal this table.
+
+- [ ] **Step 1 (red): the test, the helper, and a stylesheet that holds only its opening comment.** `tests/support/look-tokens.ts` is test code and is written whole; a stylesheet has no stub, so the empty one stands in for it.
+
+```ts
+// tests/lib/look.test.ts
+import { createHash } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+
+const css = lookCss();
+const fontFile = (name: string) => readFileSync(`static/fonts/${name}`);
+
+describe("the tokens (design 5.8)", () => {
+  it.each([
+    ["--felt", "#1c3a2f"], ["--felt-deep", "#142c23"], ["--felt-raised", "#25483a"],
+    ["--chalk", "#eef2ec"], ["--sage", "#a8bfb2"],
+    ["--paper", "#f1efe9"], ["--ink", "#191b1a"], ["--ink-soft", "#4a504c"],
+    ["--pip", "#c43b26"],
+  ])("%s is %s", (name, value) => { expect(token(name)).toBe(value); });
+
+  it.each([
+    ["--text-section", "400 2.25rem/1 var(--font-display)"],        // 36px, a phone
+    ["--text-section-wide", "400 4rem/1 var(--font-display)"],      // 64px
+    ["--text-card-title", "400 2rem/1.1 var(--font-display)"],      // 32px
+    ["--text-statement", "400 1.5rem/1.2 var(--font-display)"],     // 24px
+    ["--text-body", "400 1.125rem/1.55 var(--font-text)"],          // 18px at 1.55
+    ["--text-small", "400 0.875rem/1.45 var(--font-text)"],         // 14px
+    ["--text-button", "600 1.125rem/1.2 var(--font-text)"],
+    ["--radius-card", "20px"], ["--radius-field", "14px"], ["--radius-button", "9999px"],
+    ["--size-target", "48px"], ["--width-read", "40rem"],
+    ["--press-scale", "0.97"], ["--press-time", "160ms"],
+  ])("%s is %s", (name, value) => { expect(token(name)).toBe(value); });
+
+  it("names Young Serif and Schibsted Grotesk first, each with a system font behind it", () => {
+    expect(token("--font-display")).toMatch(/^"Young Serif", .*serif$/);
+    expect(token("--font-text")).toMatch(/^"Schibsted Grotesk", .*system-ui.*sans-serif$/);
+  });
+
+  it("is one dark theme, with none of what the design rules out", () => {
+    expect(css).toMatch(/:root\s*\{[^}]*color-scheme:\s*dark;/);
+    expect(css).not.toMatch(/gradient\(|box-shadow|text-shadow|backdrop-filter|text-transform|letter-spacing/);
+  });
+});
+
+describe("contrast, measured from the tokens (WCAG AA)", () => {
+  it.each([
+    ["--chalk", "--felt"], ["--chalk", "--felt-deep"], ["--chalk", "--felt-raised"],
+    ["--sage", "--felt"], ["--sage", "--felt-deep"],
+    ["--ink", "--paper"], ["--ink-soft", "--paper"],
+    ["--paper", "--ink"],      // the main button on a card
+    ["--paper", "--pip"],      // the one paid action
+  ])("%s on %s reaches 4.5:1", (text, ground) => {
+    expect(contrast(token(text), token(ground))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ["--ink-soft", "--paper"], // a field's edge
+    ["--paper", "--felt"],     // the focus ring, the card and the main button on felt
+    ["--pip", "--paper"],      // the paid button against its card
+  ])("%s shows against %s (3:1)", (mark, ground) => {
+    expect(contrast(token(mark), token(ground))).toBeGreaterThanOrEqual(3);
+  });
+
+  it("is measured the way WCAG measures it", () => {
+    expect(contrast("#000000", "#ffffff")).toBeCloseTo(21, 5);
+    expect(rgb("#1c3a2f")).toBe("rgb(28, 58, 47)");
+  });
+});
+
+describe("the fonts", () => {
+  const WOFF2 = [
+    "young-serif-latin-400-normal.woff2",
+    "schibsted-grotesk-latin-400-normal.woff2",
+    "schibsted-grotesk-latin-600-normal.woff2",
+  ];
+  const LICENCES = ["young-serif-LICENSE.txt", "schibsted-grotesk-LICENSE.txt"];
+  const sources = () => JSON.parse(fontFile("sources.json").toString("utf8")) as Record<string, { bytes: number; sha256: string; integrity: string; tarball: string }>;
+
+  it("are three faces, each from a file on Ruken's own address", () => {
+    const urls = [...css.matchAll(/src:\s*url\("(.*?)"\)/g)].map((match) => match[1]);
+    expect(urls).toEqual(WOFF2.map((name) => `/fonts/${name}`));
+    for (const name of WOFF2) expect(fontFile(name).subarray(0, 4).toString("latin1")).toBe("wOF2");
+  });
+
+  it("have their licences beside them", () => {
+    for (const name of LICENCES) expect(fontFile(name).toString("utf8")).toContain("SIL Open Font License");
+  });
+
+  it("are the files sources.json says they are, and the folder holds nothing else", () => {
+    expect(readdirSync("static/fonts").sort()).toEqual([...WOFF2, ...LICENCES, "sources.json"].sort());
+    expect(Object.keys(sources()).sort()).toEqual([...WOFF2, ...LICENCES].sort());
+    for (const [name, source] of Object.entries(sources())) {
+      expect(fontFile(name).length).toBe(source.bytes);
+      expect(createHash("sha256").update(fontFile(name)).digest("hex")).toBe(source.sha256);
+      expect(source.integrity).toMatch(/^sha512-/);
+      expect(source.tarball).toMatch(/^https:\/\/registry\.npmjs\.org\/@fontsource\//);
+    }
+  });
+
+  it("ask nothing of another site, and add no package", () => {
+    expect(css).not.toMatch(/https?:|@import/);
+    expect(readFileSync("package.json", "utf8")).not.toContain("fontsource");
+  });
+});
+```
+
+  Commit, push.
+- [ ] **Step 2: read CI.** Expected: `verify` fails at `pnpm test`, in `tests/lib/look.test.ts` only: every token case with `look.css has no --felt` (and so on), the font cases because the stylesheet names no font and `static/fonts/` does not exist. "is measured the way WCAG measures it" passes: the helper is real. `postgres` and `browser` pass.
+- [ ] **Step 3 (green): the files and the stylesheet.** In a scratch folder outside the repository:
+
+```bash
+npm pack @fontsource/young-serif@5.3.0 @fontsource/schibsted-grotesk@5.3.0
+for tarball in fontsource-*.tgz; do echo "$tarball sha512-$(openssl dgst -sha512 -binary "$tarball" | base64 -w0)"; done
+```
+
+  Each printed value must equal its "Integrity" above. Unpack each tarball into a folder of its own, copy the five files to `static/fonts/` under the names in the table, and run `sha256sum static/fonts/*` and `wc -c static/fonts/*`. Write what was measured into `sources.json`. If an integrity value, a checksum or a size differs from this plan's tables, stop and report both values: do not use the file. Downloading and measuring a file is not running a test. Then write the stylesheet. Nothing imports it yet; Task 36 does. Commit, push. Expected: all three jobs pass.
+
+### Task 36: The felt, the type, and fonts from our own address
+
+**Files:**
+- Create: `src/routes/+layout.svelte`, `tests/browser/look.test.ts`
+- Modify: `src/lib/look.css`, `src/routes/+page.svelte`
+
+**Interfaces:**
+- Consumes: `token`, `rgb` (Task 35).
+- Produces:
+  - `src/routes/+layout.svelte`: imports `$lib/look.css` and renders the page (`{@render children()}`), nothing else. A comment says it is the one place the look is loaded. Task 18 adds the welcome-back line to it.
+  - `src/routes/+page.svelte`: the line under the heading becomes `<p class="statement">`. Its words do not change.
+  - In `look.css`, the rules for the page itself:
+
+| Selector | What it sets |
+|---|---|
+| `*, *::before, *::after` | `box-sizing: border-box` |
+| `body` | no margin; at least the window's height; `felt` ground; `chalk` text; `font: var(--text-body)` |
+| `main` | `width: min(100% - 2rem, var(--width-read))`; centred; 3rem above and below |
+| `h1` | `font: var(--text-section)`; from `min-width: 48rem`, `var(--text-section-wide)`; no margin above |
+| `p` | 1rem between a paragraph and what is above it |
+| `a` | `color: inherit`; underlined |
+| `.statement` | `font: var(--text-statement)` |
+| `:focus-visible` | a 3px `paper` outline, 3px off the element (the ring on felt; Task 37 makes it `ink` on a card) |
+
+- [ ] **Step 1 (red):** no stub: a rule that is not there is the failure.
+
+```ts
+// tests/browser/look.test.ts
+const FONT_FILES = [
+  "/fonts/schibsted-grotesk-latin-400-normal.woff2",
+  "/fonts/young-serif-latin-400-normal.woff2",
+];
+
+test("the page is felt, with chalk words in Young Serif", async ({ page, isMobile }) => {
+  await page.goto("/");
+  await expect(page.locator("body")).toHaveCSS("background-color", rgb(token("--felt")));
+  const heading = page.getByRole("heading", { name: "Ruken" });
+  await expect(heading).toHaveCSS("color", rgb(token("--chalk")));
+  await expect(heading).toHaveCSS("font-family", /^"Young Serif"/);
+  await expect(heading).toHaveCSS("font-size", isMobile ? "36px" : "64px");
+  const line = page.getByText("Games, one swipe at a time. Coming soon.");
+  await expect(line).toHaveCSS("font-family", /^"Young Serif"/);
+  await expect(line).toHaveCSS("font-size", "24px");
+  // The face is really loaded, not only named.
+  expect(await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check('400 32px "Young Serif"'); })).toBe(true);
+});
+
+test("running text is Schibsted Grotesk, 18px at 1.55", async ({ page }) => {
+  await page.goto("/sign-up");
+  const label = page.getByText("Email", { exact: true });
+  await expect(label).toHaveCSS("font-family", /^"Schibsted Grotesk"/);
+  await expect(label).toHaveCSS("font-size", "18px");
+  await expect(label).toHaveCSS("line-height", "27.9px");
+});
+
+test("the fonts come from Ruken's own address, and the page asks no other site for anything", async ({ page, baseURL }) => {
+  const asked: { url: URL; kind: string }[] = [];
+  page.on("request", (request) => asked.push({ url: new URL(request.url()), kind: request.resourceType() }));
+  await page.goto("/sign-up");
+  await page.evaluate(() => document.fonts.ready);
+  const fonts = asked.filter((request) => request.kind === "font").map((request) => request.url.pathname).sort();
+  expect(fonts).toEqual(expect.arrayContaining(FONT_FILES));
+  expect(fonts.every((path) => path.startsWith("/fonts/"))).toBe(true);
+  expect(asked.filter((request) => request.url.origin !== new URL(baseURL!).origin)).toEqual([]);
+});
+
+test("a font file and its licence are served side by side", async ({ request }) => {
+  const font = await request.get("/fonts/young-serif-latin-400-normal.woff2");
+  expect(font.status()).toBe(200);
+  expect(font.headers()["content-type"]).toContain("font/woff2");
+  for (const licence of ["/fonts/young-serif-LICENSE.txt", "/fonts/schibsted-grotesk-LICENSE.txt"]) {
+    const answer = await request.get(licence);
+    expect(answer.status()).toBe(200);
+    expect(await answer.text()).toContain("SIL Open Font License");
+  }
+});
+
+test("the page still reads and works when the fonts do not arrive", async ({ page }) => {   // Review Focus 13
+  await page.route("**/fonts/*.woff2", (route) => route.abort());
+  await page.goto("/sign-up");
+  await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create account" })).toBeEnabled();
+});
+```
+
+  Push. Expected: `browser` fails in `look.test.ts`, on `phone` and `computer`: the first test (the body has no felt ground), the second (the label is in the browser's own font) and the third (no font was asked for). The fourth and fifth pass already, because Task 35 put the files in `static/` and the page never needed a font; say so in the report line.
+- [ ] **Step 2 (green):** the layout, the rules, the home page's class. Push. Expected: all three jobs pass, and every journey from branches A to D passes unchanged.
+
+### Task 37: The card, the fields and the buttons, on every screen
+
+**Files:**
+- Create: `tests/browser/support/look.ts`
+- Modify: `src/lib/look.css`, `src/routes/+error.svelte`, `src/routes/sign-up/+page.svelte`, `src/routes/sign-in/+page.svelte`, `src/routes/forgot-password/+page.svelte`, `src/routes/reset-password/+page.svelte`, `src/routes/me/+page.svelte`
+- Test: `tests/browser/look.test.ts` (add cases), `tests/lib/look.test.ts` (add a group)
+
+**Interfaces:**
+- Consumes: `token`, `rgb` (Task 35); `signUp` (branch D).
+- Produces:
+  - `tests/browser/support/look.ts`:
+    - `CARD_SCREENS: { name: string; open(page: Page): Promise<void> }[]`, every card screen and how to reach it. In this task: "sign up" (`/sign-up`), "sign in" (`/sign-in`), "forgot password" (`/forgot-password`), "check your email" (the same page after "Send the link"), "new password" (`/reset-password?token=nope`), "a missing page" (`/no-such-page`), "your account" (`signUp(page)`, then `/me`). Each `open` ends by waiting for the screen's heading. Tasks 19, 27, 29 and 30 add their screens here.
+    - `pipRed(page: Page): Promise<string[]>`: the text of every element on the page whose computed background colour, text colour or any edge colour is `rgb(token("--pip"))`.
+    - `filledButtons(page: Page): Locator`: `page.locator(".card button:not(.quiet), .card a.button:not(.quiet)")`.
+  - In `look.css`, the rest of the rules:
+
+| Selector | What it sets |
+|---|---|
+| `.card` | `paper` ground; `ink` text; `border-radius: var(--radius-card)`; 2rem inside (1.5rem below 48rem); no border; `overflow-wrap: anywhere`, so a long address wraps |
+| `.card h1` | `font: var(--text-card-title)` |
+| `.card > * + *`, `form > * + *` | 1rem between one thing and the next |
+| `.note` | `font: var(--text-small)`; `sage`. `.card .note`: `ink-soft` |
+| `.problem` | `font-weight: 600` |
+| `fieldset` | no border, no padding, no margin |
+| `label` | `display: block` |
+| `input` (not a radio or a checkbox) | full width; `min-height: var(--size-target)`; a 1px `ink-soft` edge; `border-radius: var(--radius-field)`; no fill of its own; the card's ink; `font: inherit` |
+| `input[type="radio"]`, `input[type="checkbox"]` | `accent-color: var(--ink)` |
+| `.row` | `display: flex`; 0.75rem between the fields |
+| `button`, `.button` | `min-height: var(--size-target)`; 0.5rem by 1.5rem inside; no border; `border-radius: var(--radius-button)`; `font: var(--text-button)`; no underline; `paper` fill with an `ink` label; `transition: transform var(--press-time)` |
+| `.card button`, `.card .button` | `ink` fill with a `paper` label |
+| `.quiet` (and inside `.card`) | no fill; the colour of the text around it; underlined; `font: inherit`; 0.25rem at the sides |
+| `.card .pay` | `pip` fill with a `paper` label. A comment: used once, on "Continue to payment" |
+| `button:active`, `.button:active` | `transform: scale(var(--press-scale))` |
+| `.card :focus-visible` | the outline is `ink` |
+| `@media (prefers-reduced-motion: reduce)` | on `button` and `.button`: `transition: none`; on their `:active`: `transform: none` |
+
+**Each screen.** Classes only; no word changes.
+
+| Screen | What gets a class |
+|---|---|
+| `/` | nothing more: the home page sits on the felt, with no card (it has nothing to do yet) |
+| the error page | `<main class="card">`; "Back to Ruken" is `class="button"` |
+| `/sign-up` | `<main class="card">`; "At least 10 characters." and "We only check that you're 13 or older. We don't keep your birthday." are `note`; the element around month, day and year is `row`; the refusal is `problem`. "Create account" is the plain button. Under 13: "Back to Ruken" is `class="button"` |
+| `/sign-in` | `<main class="card">`; the refusal is `problem`. "Sign in" is the plain button; the two lines under it stay links |
+| `/forgot-password` | `<main class="card">`, also for "Check your email". "Send the link" is the plain button; "Back to sign in" stays a link |
+| `/reset-password` | `<main class="card">`; the refusal is `problem`. "Save password" is the plain button; on a dead link, "Send a new link" is `class="button"` |
+| `/me` | `<main class="card">`; "Send it again" is `class="quiet"`; "Sign out" is the plain button |
+
+  If branch D left a screen without exactly one `<main>`, or with a note or a refusal that is not an element of its own, add the element: that is in scope. Changing a word, a label, a role or anything a journey finds is not; if a class cannot be placed without that, stop and report.
+
+- [ ] **Step 1 (red):** the journeys, the group below, and `tests/browser/support/look.ts`.
+
+```ts
+// tests/browser/look.test.ts, added
+for (const screen of CARD_SCREENS) {
+  test(`${screen.name}: one paper card, one main button at most, no red, nothing sideways`, async ({ page }) => {
+    await screen.open(page);
+    const card = page.locator("main.card");
+    await expect(card).toHaveCount(1);
+    await expect(card).toHaveCSS("background-color", rgb(token("--paper")));
+    await expect(card).toHaveCSS("color", rgb(token("--ink")));
+    await expect(card).toHaveCSS("border-top-left-radius", "20px");
+    await expect(card).toHaveCSS("border-top-width", "0px");
+    await expect(card).toHaveCSS("box-shadow", "none");
+    await expect(card.getByRole("heading", { level: 1 })).toHaveCSS("font-size", "32px");
+    expect(await filledButtons(page).count()).toBeLessThanOrEqual(1);
+    expect(await pipRed(page)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
+}
+
+test("the home page sits on the felt, with no card and no red", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".card")).toHaveCount(0);
+  expect(await pipRed(page)).toEqual([]);
+});
+
+test("the main button on a card is an ink pill with a paper label in Schibsted Grotesk 600", async ({ page }) => {
+  const asked: string[] = [];
+  page.on("request", (request) => asked.push(new URL(request.url()).pathname));
+  await page.goto("/sign-up");
+  const button = page.getByRole("button", { name: "Create account" });
+  await expect(button).toHaveCSS("background-color", rgb(token("--ink")));
+  await expect(button).toHaveCSS("color", rgb(token("--paper")));
+  await expect(button).toHaveCSS("border-top-left-radius", "9999px");
+  await expect(button).toHaveCSS("border-top-width", "0px");
+  await expect(button).toHaveCSS("font-weight", "600");
+  expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+  await page.evaluate(() => document.fonts.ready);
+  expect(asked).toContain("/fonts/schibsted-grotesk-latin-600-normal.woff2");
+});
+
+test("a field has an edge and is easy to hit; a note is small and soft", async ({ page }) => {
+  await page.goto("/sign-up");
+  const email = page.getByLabel("Email");
+  await expect(email).toHaveCSS("border-top-width", "1px");
+  await expect(email).toHaveCSS("border-top-color", rgb(token("--ink-soft")));
+  await expect(email).toHaveCSS("border-top-left-radius", "14px");
+  expect((await email.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+  const note = page.getByText("At least 10 characters.");
+  await expect(note).toHaveCSS("font-size", "14px");
+  await expect(note).toHaveCSS("color", rgb(token("--ink-soft")));
+});
+
+test("a refusal is in heavier ink, not in red", async ({ page }) => {
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").fill("nobody@ruken.test");
+  await page.getByLabel("Password").fill("not the password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  const refusal = page.getByText("That email and password don't match. Try again, or reset your password.");
+  await expect(refusal).toHaveCSS("font-weight", "600");
+  await expect(refusal).toHaveCSS("color", rgb(token("--ink")));
+});
+
+test("a quiet button looks like a link", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/me");
+  const again = page.getByRole("button", { name: "Send it again" });
+  await expect(again).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(again).toHaveCSS("text-decoration-line", "underline");
+});
+
+// Holds the pointer down on the button, then lets go away from it, so the form is never sent.
+async function whilePressed(page: Page, button: Locator, check: () => Promise<void>) {
+  const box = (await button.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await check();
+  await page.mouse.move(0, 0);
+  await page.mouse.up();
+}
+
+test("pressing a button makes it give a little", async ({ page }) => {
+  await page.goto("/sign-up");
+  const button = page.getByRole("button", { name: "Create account" });
+  await whilePressed(page, button, () => expect(button).toHaveCSS("transform", "matrix(0.97, 0, 0, 0.97, 0, 0)"));
+});
+
+test("with reduced motion, nothing moves", async ({ page }) => {                    // Review Focus 14
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/sign-up");
+  const button = page.getByRole("button", { name: "Create account" });
+  await expect(button).toHaveCSS("transition-duration", "0s");
+  await whilePressed(page, button, () => expect(button).toHaveCSS("transform", "none"));
+  // And nothing on the page is animated or eased at all.
+  expect(await page.evaluate(() => [...document.querySelectorAll("*")].filter((element) => {
+    const style = getComputedStyle(element);
+    return style.animationName !== "none" || style.transitionDuration.split(", ").some((time) => time !== "0s");
+  }).length)).toBe(0);
+});
+
+test("a very long address wraps inside the card", async ({ page }) => {             // Review Focus 15
+  const long = `${"a-very-long-name-".repeat(5)}@a-long-domain-name-for-a-test.ruken.test`;
+  await page.goto("/forgot-password");
+  await page.getByLabel("Email").fill(long);
+  await page.getByRole("button", { name: "Send the link" }).click();
+  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+```
+
+```ts
+// tests/lib/look.test.ts, added. It reads every .svelte file under src/routes as text.
+describe("screens wear the look and nothing of their own", () => {
+  const CLASSES = ["card", "statement", "note", "row", "button", "quiet", "pay", "problem"];
+  // screensUsing(name): the route files, as paths from the repository's root, with a class="…" that holds `name`.
+
+  it("no screen has a style block, a style attribute or a colour", () => {
+    // per file: no "<style", no "style=", no hex colour (/(?<!&)#(?:[0-9a-f]{3}|[0-9a-f]{6})\b/i), no "rgb(" and no "hsl("
+  });
+  it("every class a screen uses is one of the look's, written out plainly", () => {
+    // per file: no "class={" and no "class:"; every name in every class="…" is in CLASSES
+  });
+  it("the pip-red button is used nowhere yet", () => {
+    // the files with a class="…" that holds "pay": []   (Task 27 makes this the paywall card, once)
+    expect(screensUsing("pay")).toEqual([]);
+  });
+});
+```
+
+  Push. Expected: `browser` fails in `look.test.ts`: every `CARD_SCREENS` case (no `main.card`), the button, field, refusal and quiet-button cases, and "pressing a button" (no transform). These pass before the code and say nothing yet, so name them in the report line: "the home page sits on the felt", "with reduced motion, nothing moves" and "a very long address wraps" (a bare page has no card, no motion and wraps by itself). `verify` passes: no screen has a style or a class of its own yet.
+- [ ] **Step 2 (green):** the rules and the classes. Push. Expected: all three jobs pass, every journey from branches A to D passes unchanged, and each of the three cases named above now passes on the styled page. If "pressing a button" fails on `phone` only, report it with the computed value; do not drop the case or the project.
+
+Branch L is ready to merge.
+
+---
+
 # Branch E0: `slice-1/cloudflare`
 
-Owner, 2026-11-13: Cloudflare instead of Netlify. This branch moves what branches A to D built onto Cloudflare Workers, before anything is deployed. The Owner approved its package list on 2026-11-13 ("Cloudflare instead of Netlify", above); it starts when branch D is merged and green.
+Owner, 2026-11-13: Cloudflare instead of Netlify. This branch moves what branches A to D built onto Cloudflare Workers, before anything is deployed. The Owner approved its package list on 2026-11-13 ("Cloudflare instead of Netlify", above); it starts when branch L (the look) is merged and green.
 
 ### Task 32: Mail over HTTP, and settings that say Cloudflare
 
@@ -1002,7 +1542,7 @@ it("refuses the database outside a request", () => {
 ```
 
   `tests/wrangler.test.ts` (a unit test that reads files as text; `wrangler.jsonc` is parsed after dropping the lines that start with `//`): `main` is `.svelte-kit/cloudflare/_worker.js`; `assets` is `{ binding: "ASSETS", directory: ".svelte-kit/cloudflare" }`; `compatibility_flags` contains `nodejs_compat`; `hyperdrive[0].binding` is `HYPERDRIVE`; `workers_dev` and `preview_urls` are `false`; there is no `vars`, `route` or `routes` key; `hyperdrive[0]` has no `remote` and no `localConnectionString` key (so the journeys can only ever use the database CI gives them); the file's text contains none of `postgres://`, `postgresql://`, `sk_live`, `sk_test`, `whsec_` and nothing matching `/\bre_[A-Za-z0-9]{8,}/`; `playwright.config.ts` contains `wrangler dev`; `package.json` names neither `@sveltejs/adapter-netlify` nor `nodemailer`; no file the site is built or tested from names Netlify (a case-insensitive search for `netlify` in `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `playwright.config.ts`, `.env.example`, `.gitignore`, `.prettierignore`, `eslint.config.js` and every file under `src/` and `tests/` except this test itself and generated folders finds nothing); `vite.config.ts` contains `process.env.VITEST` and `.wasm?module`; `tsconfig.json`'s `include` lists `worker-configuration.d.ts`. `healthz.test.ts`: `GET /healthz` answers 200 with the text `ok`. Push. Expected: `verify` fails in `db.test.ts` and `services.test.ts` ("not built yet", from the stub) and `wrangler.test.ts` (no such file); `browser` fails in `healthz.test.ts` (404).
-- [ ] **Step 2 (green):** everything under "Produces". Running `prisma generate`, `wrangler types` and `pnpm install` is not running a test. Push. Expected: all three jobs pass, and every journey from branches A to D passes unchanged in `wrangler dev`.
+- [ ] **Step 2 (green):** everything under "Produces". Running `prisma generate`, `wrangler types` and `pnpm install` is not running a test. Push. Expected: all three jobs pass, and every journey from branches A to D and L passes unchanged in `wrangler dev`. The look's journeys are the first to ask the Worker's static assets for a file by name (`/fonts/…`); the adapter copies `static/` into `.svelte-kit/cloudflare`, which `assets.directory` already names, so nothing in `wrangler.jsonc` changes for them. If `tests/browser/look.test.ts` fails here on a font's address or its `content-type`, that is not one of the three things below: stop and report with the response's status and headers.
 - [ ] **Step 3: if green does not come.** These are the three things reading could not settle. Each gets at most one fix, the one named here; after that, stop and report to the coordinator with the job's log lines (CLAUDE.md, Pace: no fourth attempt). Any other failure of the green push is not one of these: stop and report at once.
   - Prisma's WebAssembly. Signs: the build stops on `query_compiler_fast_bg.wasm?module`, or Wrangler cannot bundle it, or `/healthz` answers 503 and the Worker's log names WebAssembly or the query compiler. One fix: check that the `workers-wasm` plugin is first in `plugins` and answers `external: "absolute"`. Then stop. Do not change Prisma's version, its generator `runtime`, or add a package or a second plugin without the Owner's words; report what the log says and what Prisma's Workers guide (linked above) offers.
   - The visitor's address. Signs: a sign-in or sign-up journey fails and the log shows `getClientAddress` throwing or an empty `x-ruken-client-ip`. No fix: report it with the log line. Do not invent an address, read another header, or turn the rate limits off.
@@ -1059,9 +1599,9 @@ Owner, 2026-11-13: "Delete my account" is the old 14-day wait. Signing in during
 ### Task 18: Signing in undoes it
 
 **Files:**
-- Modify: `src/features/accounts/auth.ts`, `src/features/accounts/cookies.ts`
-- Create: `src/routes/+layout.server.ts`, `src/routes/+layout.svelte`
-- Test: `tests/features/accounts/auth.pg.test.ts` (add a group)
+- Modify: `src/features/accounts/auth.ts`, `src/features/accounts/cookies.ts`, `src/routes/+layout.svelte` (branch L made it), `src/lib/look.css`
+- Create: `src/routes/+layout.server.ts`
+- Test: `tests/features/accounts/auth.pg.test.ts` (add a group), `tests/lib/look.test.ts` (`CLASSES` gains `panel`)
 
 **Interfaces:**
 - Consumes: `restoreOnSignIn` (Task 17).
@@ -1071,6 +1611,8 @@ Owner, 2026-11-13: "Delete my account" is the old 14-day wait. Signing in during
 **The words:** "Welcome back. Your account will not be deleted."
 
 Grandma: the person did the natural thing (signed in) and is told, once, in one line, that it worked.
+
+Look (design 5.8, branch L): the line is `<p role="status" class="panel">`, above the page's card, in the same column. `look.css` gains one rule with it, the first use of `felt-deep`: `.panel` is `width: min(100% - 2rem, var(--width-read))`, centred, a `felt-deep` ground, the page's chalk text, `border-radius: var(--radius-card)`, 1rem by 1.5rem inside, no border. `CLASSES` in `tests/lib/look.test.ts` gains `"panel"` in the red push of this task (it changes nothing there until the layout uses the class). Task 19's journey checks the line's ground.
 
 - [ ] **Step 1 (red):** carry the group "signing in while a deletion waits" from `OLD/apps/web/src/lib/server/auth/auth.pg.test.ts` (old lines 320 to 360): within the 14 days sign-in restores the account and sets the cookie; after the 14 days the session resolves to an account that is not `active` and no cookie is set; an ordinary sign-in sets no cookie. Push (the hook does not exist yet, so no stub is needed). Expected: `postgres` fails in that group: the account is still `pending_deletion` after sign-in.
 - [ ] **Step 2 (green):** the hook and the layout. Push. Expected: all pass. The line itself is checked in Task 19's journey.
@@ -1109,6 +1651,8 @@ Back to Ruken
 The date is a Chicago calendar day in words: weekday, month, day. Put the small formatter in `src/lib/long-date.ts` here with a unit test, and have Task 23's `format.ts` re-export it: `longDay(day: string): string | null` writes a `YYYY-MM-DD` day (null for text that is not a real day), formatting it as that calendar day and never through an instant, so a day cannot slip to the one before; `longDate(at: Date): string` is `longDay(chicagoDayOf(at.getTime()))`, for the instants on `/me`. `/goodbye` passes `on` to `longDay` and shows the page without the date line when it answers null.
 
 Grandma: the page says what happens now and what happens later, in two lines, and how to undo it; "Keep my account" is the way back.
+
+Look (design 5.8, branch L): both screens are `<main class="card">`. On `/me/delete`, "Delete my account" is the plain button (the card's one ink button; it spends no money, so it is never `pay`), "Keep my account" stays a link, and the staff line is a plain paragraph. On `/goodbye`, "Back to Ruken" is `class="button"`. On `/me`, the new "Delete my account" link is a plain link in a `<p class="note">`. Add "delete your account" (`signUp`, then `/me/delete`) and "you're signed out" (the same, then press "Delete my account") to `CARD_SCREENS` in `tests/browser/support/look.ts`, in the red push; they fail there for want of the routes and pass with them. The second journey below also checks the welcome-back line's ground: `await expect(page.getByRole("status")).toHaveCSS("background-color", rgb(token("--felt-deep")))`.
 
 - [ ] **Step 1 (red):**
 
@@ -1503,6 +2047,8 @@ Not now
 
 Grandma: two short lines say what it costs and what happens next; one button; "Not now" is the way back; coming back from Stripe without paying lands on this same card with the plan still chosen.
 
+Look (design 5.8, branch L): the screen is `<main class="card">`. "Continue to payment" is `<button class="pay">`: **the one pip-red button in the whole site**, because it is the one press that spends money. Signed out, the same place holds a plain `<button>` reading "Continue" (ink: it leads to sign-up, not to paying); write the two as an `{#if}` with two buttons, not as one button with a computed class. The two plan choices are radio buttons with their labels, one under the other; "Not now" stays a link; "Keep playing" is `class="button"`; a refusal is `problem`. The price line is ordinary text: money lines are never a `note`. Nothing else on this card, on `/join/done` or on `/me` is `pay`: "Join Ruken", "Manage or cancel", "Manage", "Update card" and "Go to my account" lead somewhere and spend nothing.
+
 - [ ] **Step 1 (red):**
 
 ```ts
@@ -1526,7 +2072,18 @@ test("Continue to payment opens the payment page", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Pay" })).toBeVisible();   // the stand-in's page
 });
 test("next pointing off the site is ignored", async ({ page }) => { /* /join?next=//evil.example → "Not now" href is "/" */ });
+test("red is on Continue to payment and nowhere else", async ({ page }) => {          // Review Focus 16
+  await page.goto("/join");
+  expect(await pipRed(page)).toEqual([]);                                             // signed out: "Continue" is ink
+  await signUp(page); await page.goto("/join");
+  expect(await pipRed(page)).toEqual(["Continue to payment"]);
+  const pay = page.getByRole("button", { name: "Continue to payment" });
+  await expect(pay).toHaveCSS("background-color", rgb(token("--pip")));
+  await expect(pay).toHaveCSS("color", rgb(token("--paper")));
+});
 ```
+
+  In the same red push: add "the paywall card" (`/join`, signed out, where the button reads "Continue" and nothing is red) to `CARD_SCREENS`; and change `tests/lib/look.test.ts`'s last case to "the pip-red button is used once, on the paywall card": `screensUsing("pay")` is `["src/routes/join/+page.svelte"]`, and that file's text holds `class="pay"` exactly once. `verify` fails on that case until the card exists.
 
   Commit the stand-in with the tests (it is test code; it needs no stub). Push. Expected: `browser` fails in `join.test.ts`: 404 at `/join`.
 - [ ] **Step 2 (green):** `load` returns `{ next: safeNextPath(...), plan, prices, signedIn, member }` (`member` from `service.isMember` when signed in). The action `join` reads `plan` and `next`; signed out it redirects (303) to `/sign-up?next=` + the encoded card address; signed in it calls `service.startCheckout({ userId, plan, returnTo: next, arrival: arrival.read(event.cookies) })` and redirects (303) to the answer's `url`; `MembershipError` codes map to the words above (`ALREADY_MEMBER` redirects to `next`). Push. Expected: all pass.
@@ -1570,6 +2127,8 @@ test("a signed event of a kind Ruken does not act on is kept and answered 200", 
 - A ref that is not this person's, or none: redirect to `/join`. An expired checkout: redirect to `/join`.
 
 Grandma: the person does nothing here; if it stalls, the page says their money is safe and gives one place to go.
+
+Look (design 5.8, branch L): `<main class="card">`; "Go to my account" is `class="button"`. No red here: the money is already spent. Add "finishing up" (the late-news path of the third test, stopped at the heading) to `CARD_SCREENS`. The page's two-second asking is a timer, not motion: nothing on it moves, with or without reduced motion.
 
 - [ ] **Step 1 (red):**
 
@@ -1628,6 +2187,8 @@ Under each button but "Join Ruken": "Opens Stripe, where you can change your car
 
 Grandma: one line says where the person stands; one button says what they can do about it; the line under it says where the button goes.
 
+Look (design 5.8, branch L): from this task the membership action is `/me`'s one filled button: "Join Ruken" is `class="button"`, and "Manage or cancel", "Manage" and "Update card" are plain buttons. So "Sign out" becomes `class="quiet"`, to keep one main action on the card. "Opens Stripe, where you can change your card or cancel." is a `note`; the membership line itself is ordinary text. None of them is `pay`. On `/me/delete`, the member's extra line is ordinary text. Add "your account, as a member" (`payAsNewMember`, then `/me`) to `CARD_SCREENS`: one card, one filled button, no red.
+
 - [ ] **Step 1 (red):**
 
 ```ts
@@ -1679,6 +2240,9 @@ No code unless a check fails. Nothing here is typed into the repository.
 - Slices 2 and 3 call `membershipServices().arrival.remember(cookies, { makerUserId, path })` in the `load` of `/g/<game>` and `/<handle>`, with the maker's account id read from the database and `url.pathname`. Every landing replaces the cookie, so the last arrival wins. The feed at `/` is not an arrival and leaves the cookie alone. The journey for design 8 ("A member's sign-up records the maker's link they came through") is then redone from a real link.
 - Slice 5 reads `MembershipStart` for "Bringing a member": the maker, the path, the arrival's time and when paying started are all there, one row per completed checkout, and applies the Owner's rules there, by pure functions: only a person's first join counts, for 12 months, and a maker gets no bonus on their own membership.
 - The privacy text (the Owner's, before S3) should say that Ruken remembers which maker's link a visitor came through, in a cookie, to pay that maker.
+- The look (design 5.8) is one stylesheet, `src/lib/look.css`, and the classes listed under "The look" (branch L). `/make` (slice 4) and the admin portal wear it as they are built: their plans say which classes each screen uses, add their screens to `CARD_SCREENS`, and add a class to `CLASSES` only together with its rule and its first use. The feed (5.1) and a maker's page (5.3) do not wear it: slice 3's plan takes those two route folders out of the "screens wear the look and nothing of their own" check by name, in a task of its own, when it gives them their own styles. `felt-raised` (a second button on felt, a track) gets its rule with its first screen.
+- The font files are served with the host's ordinary caching, so a browser asks again whether they changed. If the Owner wants them kept for a year, that is a `_headers` file in `static/`, checked first against Cloudflare's static-assets page.
+- No pixel goldens yet. The first slice that wants one (the feed, most likely) brings `tests/golden/` and the rule that a golden moves only with the Owner seeing before and after.
 - Features hold no Svelte components yet. An entry file that mixed server code and components would pull Prisma and Stripe into the browser's bundle, and the layer test allows one entry file per feature. The first slice that needs a shared component decides how a feature exposes one, and changes `tests/architecture.test.ts` in its own task.
 - Slice 4 adds what the admin portal needs to `accounts`: admin sessions, the authenticator code, the first-owner command, suspension.
 - Slice 5 posts `MembershipPayment` rows and the kept dispute and refund events into the ledger. `LEDGER_SUBJECT_KEY` and the member key arrive then.
