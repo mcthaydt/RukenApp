@@ -13,7 +13,7 @@ import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createRateLimiter } from "../../../src/lib/server/rate-limit.ts";
 import { createUser } from "../../support/create-user.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
-import { FakePremiumStripe } from "../../support/fake-premium-stripe.ts";
+import { FakePremiumStripe, nextStripeId } from "../../support/fake-premium-stripe.ts";
 import { TestClock } from "../../support/test-clock.ts";
 
 // The membership service on Postgres: joining, the membership mirror, the webhook handlers and who
@@ -42,13 +42,6 @@ const PERIOD_END = NOW_MS + 30 * DAY;
 /** When the maker's link was last landed on, in the tests that carry an arrival. */
 const ARRIVED_AT_MS = NOW_MS - DAY;
 
-// Stripe ids are unique in the database, so ids are numbered across the whole file.
-let stripeIds = 0;
-function nextId(prefix: string): string {
-  stripeIds += 1;
-  return `${prefix}_${String(stripeIds)}`;
-}
-
 function setup() {
   const clock = new TestClock(NOW);
   const stripe = new FakePremiumStripe(() => clock.epochMs());
@@ -69,13 +62,13 @@ function stripeSubscription(
   changes: Partial<PremiumSubscription> = {},
 ): PremiumSubscription {
   const subscription: PremiumSubscription = {
-    id: nextId("sub"),
+    id: nextStripeId("sub"),
     status: "active",
     plan: "monthly",
     cancelAtPeriodEnd: false,
     cancelAtMs: null,
     currentPeriodEndMs: PERIOD_END,
-    customerId: nextId("cus"),
+    customerId: nextStripeId("cus"),
     userId,
     premium: true,
     endedAtMs: null,
@@ -92,7 +85,7 @@ function paidInvoice(input: {
   paidAtMs?: number;
 }): PaidPremiumInvoice {
   return {
-    stripeInvoiceId: nextId("in"),
+    stripeInvoiceId: nextStripeId("in"),
     subscriptionId: input.subscriptionId,
     userId: input.userId,
     plan: "monthly",

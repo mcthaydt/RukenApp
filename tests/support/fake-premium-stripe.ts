@@ -2,9 +2,11 @@ import type { PremiumCheckoutInput } from "../../src/features/membership/checkou
 import type { PremiumStripe } from "../../src/features/membership/stripe-port.ts";
 import type { PaidPremiumInvoice, PremiumSubscription } from "../../src/features/membership/subscription.ts";
 
-// Stripe ids are unique in the database, so the fake numbers them across the whole test file.
+// Stripe ids are unique in the database, so ids are numbered across the whole test file. A test that
+// makes ids of its own (a subscription, an invoice) takes them from here too, so none can repeat one
+// the fake made.
 let stripeIds = 0;
-function nextId(prefix: string): string {
+export function nextStripeId(prefix: string): string {
   stripeIds += 1;
   return `${prefix}_${String(stripeIds)}`;
 }
@@ -38,12 +40,12 @@ export class FakePremiumStripe implements PremiumStripe {
 
   createCustomer(input: { userId: string; email: string }) {
     this.customersMade.push(input);
-    return Promise.resolve(nextId("cus"));
+    return Promise.resolve(nextStripeId("cus"));
   }
 
   async startCheckout(input: PremiumCheckoutInput) {
     this.checkouts.push(input);
-    const id = nextId("cs_premium");
+    const id = nextStripeId("cs_premium");
     this.sessions.set(id, "open");
     if (this.checkoutDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, this.checkoutDelayMs));
     return { id, url: `https://checkout.stripe.com/c/pay/${id}` };
