@@ -13,7 +13,7 @@ describe("requireEnv", () => {
   });
 
   it("treats an empty value as missing", () => {
-    expect(() => requireEnv("A", { A: "" })).toThrow();
+    expect(() => requireEnv("A", { A: "" })).toThrow("Missing setting A.");
   });
 });
 
