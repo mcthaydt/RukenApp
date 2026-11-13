@@ -143,7 +143,7 @@ The execution session reports to the coordinator and asks for each of these with
 5. `"https://{name}.GAMES-DOMAIN" | pnpm exec wrangler secret put GAME_ADDRESS_PATTERN` (type `{name}` as it is: the site fills it in).
 6. `(Invoke-WebRequest "https://media.GAMES-DOMAIN/__ruken/health").Content` (expect `ok`). Say "done", and tell the coordinator the games domain.
 
-**G4, at Task 24, after O1 to O5.** One command, then the site itself (Task 24 has the steps): make the Owner's account the first staff account; submit FloorFifty on `/make` like any maker; accept it on `/admin/games`; play it. FloorFifty's own repository must first hold a folder that runs as a plain web game (O2, O3); changing that repository is the Owner's, not this plan's.
+**G4, at Task 24, after O4, O5 and the Owner's FloorFifty items.** One command, then the site itself (Task 24 has the steps): make the Owner's account the first staff account; submit FloorFifty on `/make` like any maker; accept it on `/admin/games`; play it. FloorFifty's own repository must first hold a folder that runs as a plain web game (O2, O3); changing that repository is the Owner's, not this plan's.
 
 ## How a task runs, and carrying a file
 

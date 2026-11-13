@@ -11,7 +11,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
 | 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan's revision is merged (#15) with the Owner's yes to its package list, and its plan audit with fixes (#19). Owner, 2026-11-13: the Card Table look on Ruken's own screens (design 5.8, #20); the plan has a branch for it, L `slice-1/look` (tasks 35 to 37), after branch D and before E0: merged (#22); its plan audit is on a branch (`audit/slice-1-look`), not done until merged and green. Execution: branch A (tasks 1 to 4) merged (#13); branch B (tasks 5 to 8) merged (#14); branch C (tasks 9 to 11) merged (#18). Branch D (screens, tasks 12 to 15) done on #21, not yet merged. L (the look) follows D, then E0 (Cloudflare) | 40% |
-| 2 | Games and play | plan written, on a branch (`plan/slice-2`, a draft pull request); not done until merged and green. Open for the Owner: the maker agreement's text, FloorFifty's two clips and four items in FloorFifty's own repository. Nothing is built | 0% |
+| 2 | Games and play | plan written, on its pull request (#27, marked ready); not done until merged and green. Open for the Owner: the maker agreement's text, FloorFifty's two clips and four items in FloorFifty's own repository. Nothing is built | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
 | 5 | Money (after launch, before 10 December) | not started | 0% |
@@ -32,7 +32,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | execution, slice 1, branch G (membership) (`session_01HNdX7LRjMhjdjX3L55msBT`) | 4 Execution | `slice-1/membership` | running (parallel with the second execution session; the Owner chose the parallel run, 2026-11-13) |
 | plan, slice 1, the look (`session_01HNdX7Hzv3QVMVyjewBSg1u`) | 2 Plan | `plan/slice-1-look` | archived; merged (#22) |
 | plan audit, slice 1, the look (`session_01HNdX7KyU3nkcc8rAByjXX3`) | 3 Plan audit | `audit/slice-1-look` (pull request #23) | done; merged to main (#23) |
-| plan, slice 2 (`session_01HNdX7Hp1xcTXw4d8CYVZnv`) | 2 Plan | `plan/slice-2` | running; the plan is written, its pull request is a draft |
+| plan, slice 2 (`session_01HNdX7Hp1xcTXw4d8CYVZnv`) | 2 Plan | `plan/slice-2` | the plan is written, with the Owner's two answers and the FloorFifty findings in it; pull request #27 marked ready |
 
 ## Slice 0: Start
 
@@ -129,13 +129,13 @@ Plan: `docs/superpowers/plans/2026-11-13-slice-2-games-play.md`. It ends with: a
 
 Stages:
 
-- [ ] Plan: written, on `plan/slice-2` (a draft pull request); not done until merged and green. No test ran in the plan session. Outside the repository, in a scratch folder: Cloudflare's limits, R2, routes and Workers Builds pages were read, and two local Workers (Wrangler 4.156.0) were run against one local R2 bucket (they share it when started one after the other; started together, one stops with "database is locked").
+- [ ] Plan: written, on `plan/slice-2` (pull request #27, marked ready); not done until merged and green. No test ran in the plan session. Outside the repository, in a scratch folder: Cloudflare's limits, R2, routes and Workers Builds pages were read, and two local Workers (Wrangler 4.156.0) were run against one local R2 bucket (they share it when started one after the other; started together, one stops with "database is locked").
 - [ ] Plan audit.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
 
-Waiting, before the plan's pull request is marked ready:
+What the plan waited for, and what is still the Owner's:
 
 - [x] The FloorFifty findings, 2026-11-13 (relayed by the coordinator): it runs as a plain web game once one line in its own repository drops the old SDK's ten-second wait; it is an online game and must reach its own game server, so a maker lists a game's servers and the gate lets the game reach only those; measured 326 files, 91,441,454 bytes, largest 10,680,799 bytes, so the limits are 400 MB, 1,500 files and 50 MB a file; its repository has no ready-to-run folder yet. Still the Owner's: its two clips, and four items in FloorFifty's own repository and servers (the plan lists them).
 - [ ] The maker agreement's text, the Owner's (open item O5): a maker accepts it once, on their first submission.
