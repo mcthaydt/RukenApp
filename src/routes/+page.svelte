@@ -8,5 +8,5 @@
 
 <main>
   <h1>Ruken</h1>
-  <p>Games, one swipe at a time. Coming soon.</p>
+  <p class="statement">Games, one swipe at a time. Coming soon.</p>
 </main>

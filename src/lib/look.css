@@ -76,3 +76,57 @@
   --press-scale: 0.97;
   --press-time: 160ms;
 }
+
+/* The page itself. Space comes only from the rules here: the browser's own margins on headings and
+   paragraphs are dropped. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--felt);
+  color: var(--chalk);
+  font: var(--text-body);
+}
+
+/* One centred column of reading, with a gutter on a phone. */
+main {
+  width: min(100% - 2rem, var(--width-read));
+  margin: 3rem auto;
+}
+
+h1 {
+  margin: 0;
+  font: var(--text-section);
+}
+
+@media (min-width: 48rem) {
+  h1 {
+    font: var(--text-section-wide);
+  }
+}
+
+/* One rem between a paragraph and what is above it, and none below, so a card's last line does not leave
+   a gap the card did not ask for. */
+p {
+  margin: 1rem 0 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.statement {
+  font: var(--text-statement);
+}
+
+/* The focus ring on felt. */
+:focus-visible {
+  outline: 3px solid var(--paper);
+  outline-offset: 3px;
+}
