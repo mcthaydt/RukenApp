@@ -73,7 +73,7 @@ Branches and tasks. Each task is ticked with its two CI runs (the failing test, 
 
 | Branch | Tasks | State |
 |---|---|---|
-| A `slice-1/database` | 1 Prisma, the accounts tables, Postgres in CI · 2 the clock · 3 safeNextPath, settings, work after the answer · 4 the rate limiter and the mailer | in progress (execution session). [x] Task 1 (CI runs 32 red, 33 green; the first red also showed one test passing for the wrong reason, so it was tightened and re-pushed). [x] Task 2 the clock (CI runs 35 red, 36 green; 10 tests). [x] Task 3 safeNextPath, settings, work after the answer (CI runs 38 red, 39 green; 25 tests). [ ] Task 4: red pushed, waiting for CI |
+| A `slice-1/database` | 1 Prisma, the accounts tables, Postgres in CI · 2 the clock · 3 safeNextPath, settings, work after the answer · 4 the rate limiter and the mailer | in progress (execution session). [x] Task 1 (CI runs 32 red, 33 green; the first red also showed one test passing for the wrong reason, so it was tightened and re-pushed). [x] Task 2 the clock (CI runs 35 red, 36 green; 10 tests). [x] Task 3 safeNextPath, settings, work after the answer (CI runs 38 red, 39 green; 25 tests). [ ] Task 4 (the rate limiter and the mailer): red seen in CI run 41 (5 mail tests in verify, 5 rate-limit tests in postgres, "not built yet"), green pushed, waiting for CI |
 | B `slice-1/sign-in-rules` | 5 the sign-in pause · 6 the pause and limits as plugins · 7 the age check · 8 cookies and the mails | not started |
 | C `slice-1/sign-in` | 9 better-auth, configured · 10 who sent this request · 11 the form actions and the services | not started |
 | D `slice-1/account-screens` | 12 /api/auth and sign-out · 13 sign up · 14 sign in, forgot, new password · 15 /me | not started |
