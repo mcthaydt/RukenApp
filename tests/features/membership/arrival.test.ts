@@ -23,7 +23,7 @@ describe("the arrival cookie", () => {
   });
 
   it("ignores a payload changed after sealing", () => {
-    const [, mac] = sealArrival(arrival, "s").split(".");
+    const mac = sealArrival(arrival, "s").split(".")[1] ?? "";
     const forged = Buffer.from(JSON.stringify({ ...arrival, makerUserId: "maker-2" })).toString("base64url");
     expect(openArrival(`${forged}.${mac}`, "s")).toBeNull();
   });
