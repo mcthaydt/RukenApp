@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { contrast, lookCss, rgb, token } from "../support/look-tokens.ts";
 
@@ -122,5 +123,44 @@ describe("the fonts", () => {
   it("ask nothing of another site, and add no package", () => {
     expect(css).not.toMatch(/https?:|@import/);
     expect(readFileSync("package.json", "utf8")).not.toContain("fontsource");
+  });
+});
+
+// Screens are plain elements and the look's few classes; they carry no colour, size or style of their own.
+describe("screens wear the look and nothing of their own", () => {
+  const CLASSES = ["card", "statement", "note", "row", "button", "quiet", "pay", "problem"];
+  const ROUTES = "src/routes";
+
+  /** Every .svelte file under src/routes, as a path from the repository's root. */
+  const screens = readdirSync(ROUTES, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".svelte"))
+    .map((entry) => join(entry.parentPath, entry.name));
+
+  const classNamesOf = (text: string) =>
+    [...text.matchAll(/class="([^"]*)"/g)].flatMap((match) => (match[1] ?? "").split(/\s+/).filter(Boolean));
+
+  /** The screens with a class="..." that holds `name` as a whole name ("pay", never a part of a longer word). */
+  const screensUsing = (name: string) =>
+    screens.filter((file) => classNamesOf(readFileSync(file, "utf8")).includes(name));
+
+  it("no screen has a style block, a style attribute or a colour", () => {
+    expect(screens.length).toBeGreaterThan(0);
+    for (const file of screens) {
+      const text = readFileSync(file, "utf8");
+      expect(text, file).not.toMatch(/<style|style=|rgb\(|hsl\(|(?<!&)#(?:[0-9a-f]{3}|[0-9a-f]{6})\b/i);
+    }
+  });
+
+  it("every class a screen uses is one of the look's, written out plainly", () => {
+    for (const file of screens) {
+      const text = readFileSync(file, "utf8");
+      expect(text, file).not.toMatch(/class=\{|class:/);
+      for (const name of classNamesOf(text)) expect(CLASSES, file).toContain(name);
+    }
+  });
+
+  it("the pip-red button is used nowhere yet", () => {
+    // The paywall card makes this its one use, once.
+    expect(screensUsing("pay")).toEqual([]);
   });
 });
