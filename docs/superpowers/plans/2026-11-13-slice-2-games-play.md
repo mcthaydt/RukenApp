@@ -12,7 +12,7 @@
 
 **Old repository:** `mcthaydt/RukenAppFailed` at commit `188e8a07546ba19c431468ddf2624e3cc4173d4e`, written below as `OLD/`. Attach it read-only (`add_repo`, access "read") and clone it beside this repository. Do not register it as a repository root.
 
-**Planned against:** `main` at `adc9590` (slice 1's branches A to D merged) plus what slice 1's plan says branches L, E0, E, F, G and H will produce. Execution of slice 2 starts only when slice 1 is merged and green (design 7.5). "What this plan relies on from slice 1", below, names each piece; if one is not on `main` as named when its task starts, stop and report.
+**Planned against:** `main` at `adc9590` (slice 1's branches A to D merged) plus what slice 1's plan says its later branches will produce; `main` has moved on since (it was merged into this branch at `44f841c`, with slice 1's membership branch on it), and nothing in it was re-read against this plan. Execution of slice 2 starts only when slice 1 is merged and green (design 7.5). "What this plan relies on from slice 1", below, names each piece; if one is not on `main` as named when its task starts, stop and report.
 
 ## Global Constraints
 
