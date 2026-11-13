@@ -1,9 +1,21 @@
-// STUB (red push)
 import type { Cookies } from "@sveltejs/kit";
-import type { authServices } from "../accounts/accounts.ts";
-import type { Arrival } from "./arrival.ts";
-import type { StripeEvent } from "./events.ts";
-import type { MembershipService } from "./service.ts";
+import type { Clock } from "../../lib/clock.ts";
+import { optionalEnv, requireEnv } from "../../lib/server/env.ts";
+import { createRateLimiter } from "../../lib/server/rate-limit.ts";
+import { authServices } from "../accounts/accounts.ts";
+import {
+  ARRIVAL_COOKIE,
+  ARRIVAL_MAX_AGE_SECONDS,
+  openArrival,
+  sealArrival,
+  type Arrival,
+} from "./arrival.ts";
+import { handleStripeEvent, type MembershipEventHandlers, type StripeEvent } from "./events.ts";
+import { processStripeDelivery, storeStripeDelivery } from "./inbox.ts";
+import { createMembershipService, type MembershipService } from "./service.ts";
+import { createStripe } from "./stripe-client.ts";
+import { bindPremiumStripe } from "./stripe-port.ts";
+import { verifyStripeWebhook } from "./webhook.ts";
 
 // Everything the membership needs, built once per server process from the settings. Routes call
 // membershipServices(); tests build their own with createMembershipServices.
@@ -34,18 +46,115 @@ export interface MembershipServices {
   receive(event: StripeEvent): Promise<void>;
 }
 
+/** The Stripe mode a key belongs to, from its prefix, or undefined for anything else. */
 export function stripeKeyMode(secretKey: string): "live" | "test" | undefined {
-  throw new Error(`not built yet ${typeof secretKey}`);
+  if (/^[sr]k_live_/.test(secretKey)) return "live";
+  if (/^[sr]k_test_/.test(secretKey)) return "test";
+  return undefined;
 }
 
+/**
+ * Why the Stripe key and STRIPE_LIVE cannot be used together, or undefined when they can. Without
+ * this check, a live key left with STRIPE_LIVE=false would mark every real payment's events
+ * "livemode_mismatch" and drop them, while Stripe was told they were delivered.
+ */
 export function stripeModeProblem(secretKey: string, live: boolean): string | undefined {
-  throw new Error(`not built yet ${typeof secretKey} ${typeof live}`);
+  const mode = stripeKeyMode(secretKey);
+  if (mode === undefined) {
+    return "STRIPE_SECRET_KEY is not a Stripe secret or restricted key (sk_live_, rk_live_, sk_test_, rk_test_)";
+  }
+  if ((mode === "live") === live) return undefined;
+  return live
+    ? "STRIPE_LIVE is true but STRIPE_SECRET_KEY is a test key"
+    : "STRIPE_SECRET_KEY is a live key but STRIPE_LIVE is not true, so every real payment would be dropped";
 }
 
+function readLiveSetting(source: Settings): boolean {
+  const raw = requireEnv("STRIPE_LIVE", source);
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  throw new Error(`STRIPE_LIVE must be "true" or "false", not "${raw}".`);
+}
+
+/**
+ * Reads the settings first, so a missing or wrong one stops the start with its name before
+ * anything is called. `auth` is what sign-in already built: the database client, the clock and the
+ * cookie rules.
+ */
 export function createMembershipServices(source: Settings, auth: AuthParts): MembershipServices {
-  throw new Error(`not built yet ${typeof source} ${typeof auth}`);
+  const secretKey = requireEnv("STRIPE_SECRET_KEY", source);
+  const webhookSecret = requireEnv("STRIPE_WEBHOOK_SECRET", source);
+  const live = readLiveSetting(source);
+  const apiBase = optionalEnv("STRIPE_API_BASE", source);
+  const siteOrigin = requireEnv("BETTER_AUTH_URL", source);
+  const arrivalSecret = requireEnv("BETTER_AUTH_SECRET", source);
+
+  // A live site can never be pointed at a stand-in Stripe.
+  if (apiBase !== undefined && live) {
+    throw new Error("STRIPE_API_BASE is for tests only and cannot be used with STRIPE_LIVE=true.");
+  }
+  const problem = stripeModeProblem(secretKey, live);
+  if (problem !== undefined) throw new Error(problem);
+
+  const { prisma, clock, cookies } = auth;
+  const stripe = createStripe(apiBase === undefined ? { secretKey } : { secretKey, apiBase });
+  const service = createMembershipService({
+    db: prisma,
+    clock,
+    siteOrigin,
+    stripe: bindPremiumStripe(stripe),
+    rateLimiter: createRateLimiter(prisma, clock),
+  });
+
+  const handlers: MembershipEventHandlers = {
+    completeCheckout: (input) => service.completeCheckout(input),
+    expireCheckout: (stripeCheckoutSessionId) => service.expireCheckout(stripeCheckoutSessionId),
+    syncSubscription: (subscriptionId, observedAtMs) =>
+      service.syncSubscription(subscriptionId, observedAtMs),
+    recordInvoicePaid: (invoiceId) => service.recordInvoicePaid(invoiceId),
+    // One line, with no personal detail, for a person to find in the site's logs.
+    report: (problem) => {
+      console.error(`membership: ${problem.message}`);
+    },
+  };
+
+  return {
+    service,
+    arrival: arrivalCookie(arrivalSecret, clock, cookies.secure),
+    verify: (payload, signature) =>
+      verifyStripeWebhook({ payload, signature, secret: webhookSecret, nowMs: clock.epochMs() }),
+    async receive(event) {
+      const inboxId = await storeStripeDelivery(prisma, event, clock.epochMs());
+      await processStripeDelivery(
+        { db: prisma, clock, live, handle: (stored) => handleStripeEvent(handlers, stored) },
+        inboxId,
+      );
+    },
+  };
 }
 
+function arrivalCookie(secret: string, clock: Clock, secure: boolean): ArrivalCookie {
+  return {
+    remember(cookies, link) {
+      const value = sealArrival({ ...link, atMs: clock.epochMs() }, secret);
+      // httpOnly: page scripts cannot read or write it, only the server. SameSite=Lax: it is sent
+      // when someone follows a link to Ruken, which is the whole point.
+      cookies.set(ARRIVAL_COOKIE, value, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        secure,
+        maxAge: ARRIVAL_MAX_AGE_SECONDS,
+      });
+    },
+    read: (cookies) => openArrival(cookies.get(ARRIVAL_COOKIE), secret),
+  };
+}
+
+let shared: MembershipServices | undefined;
+
+/** The process-wide membership services, created on first use. */
 export function membershipServices(): MembershipServices {
-  throw new Error("not built yet");
+  shared ??= createMembershipServices(process.env, authServices());
+  return shared;
 }
