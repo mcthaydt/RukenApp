@@ -3,6 +3,7 @@ node_modules/
 build/
 .svelte-kit/
 .netlify/
+src/lib/server/generated/
 coverage/
 playwright-report/
 test-results/

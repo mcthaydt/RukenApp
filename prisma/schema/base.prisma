@@ -1,0 +1,18 @@
+// Conventions for every table in prisma/schema/:
+// - ids are cuid2 strings made by Prisma itself (`@default(cuid(2))`), so no id package is needed;
+// - every timestamp is timestamptz; every table has createdAt, and every table whose rows change has updatedAt;
+// - soft state lives in status enums.
+//
+// Prisma cannot express CHECK constraints or partial unique indexes, so those are written by hand at the
+// end of the migration SQL and named in a comment beside each model. tests/lib/server/migrations.pg.test.ts
+// and the feature tests cover them.
+
+generator client {
+  provider = "prisma-client"
+  // Relative to this file. The folder is ignored by git, Prettier and ESLint: `pnpm generate` makes it.
+  output   = "../../src/lib/server/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

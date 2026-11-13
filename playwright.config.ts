@@ -9,10 +9,15 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never" }]],
   use: { baseURL: "http://localhost:4173", trace: "off" },
   webServer: {
-    command: "pnpm build && pnpm preview --port 4173 --strictPort",
+    // The app now reads a database, so the migrations run before the build, as they do on Netlify.
+    command: "pnpm exec prisma migrate deploy && pnpm build && pnpm preview --port 4173 --strictPort",
     url: "http://localhost:4173",
     reuseExistingServer: false,
-    timeout: 120_000,
+    timeout: 180_000,
+    env: {
+      DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
+      DIRECT_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
+    },
   },
   projects: [
     { name: "phone", use: { ...devices["Pixel 7"] } },

@@ -1,0 +1,141 @@
+// The accounts feature's tables: sign-in, sessions, staff roles and "delete my account".
+// User, Session, Account and Verification are better-auth's core tables, so their names and
+// columns follow what better-auth reads and writes.
+
+enum UserStatus {
+  active
+  /// The account asked to be deleted and can still undo it by signing in before its
+  /// DeletionRequest's purgeAfter. Every read treats it like a signed-out stranger.
+  pending_deletion
+  deleted
+}
+
+enum StaffRole {
+  owner
+  curator
+  support
+  moderator
+  /// A manager who decides on curation and review.
+  head_curator
+  /// A manager for money and billing screens.
+  finance
+}
+
+model User {
+  id            String     @id @default(cuid(2))
+  name          String
+  email         String     @unique
+  emailVerified Boolean    @default(false)
+  image         String?
+  status        UserStatus @default(active)
+  /// The date of the 18th birthday, worked out once at sign-up. The birth date itself is
+  /// never stored. Null means the age is unknown, and every under-18 default applies.
+  adultOn       DateTime?  @db.Date
+  createdAt     DateTime   @default(now()) @db.Timestamptz
+  updatedAt     DateTime   @updatedAt @db.Timestamptz
+
+  sessions         Session[]
+  accounts         Account[]
+  staffAssignments StaffAssignment[]
+  deletionRequests DeletionRequest[]
+}
+
+model Session {
+  id        String   @id @default(cuid(2))
+  token     String   @unique
+  expiresAt DateTime @db.Timestamptz
+  ipAddress String?
+  userAgent String?
+  userId    String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(cuid(2))
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz
+  refreshTokenExpiresAt DateTime? @db.Timestamptz
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz
+  updatedAt             DateTime  @updatedAt @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid(2))
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  updatedAt  DateTime @updatedAt @db.Timestamptz
+
+  @@index([identifier])
+}
+
+/// Staff roles. Rows are added and removed, never edited.
+model StaffAssignment {
+  id        String    @id @default(cuid(2))
+  userId    String
+  role      StaffRole
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, role])
+}
+
+/// Fixed-window request counters, in better-auth's `rateLimit` shape. `lastRequest` is epoch milliseconds.
+model RateLimit {
+  id          String @id @default(cuid(2))
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+}
+
+/// Failed password sign-ins per email address. Ten failures inside an hour pause password sign-in for
+/// that address for an hour. The key is the SHA-256 of the lower-cased address, not the user id: the
+/// table also holds addresses with no account, so a pause looks the same for every address and no
+/// stranger's address is stored in the clear. Rows expire by their own times (`windowStartedAt` + 1 h,
+/// `pausedUntil`), so no job is needed for the rules to be right; a row that is long expired is
+/// overwritten by the next failure and can be deleted at any time.
+/// SQL: CHECK "SignInGuard_emailHash_check" requires 64 lower-case hex characters;
+/// CHECK "SignInGuard_failures_check" requires at least 1.
+model SignInGuard {
+  emailHash       String    @id
+  failures        Int
+  windowStartedAt DateTime  @db.Timestamptz
+  pausedUntil     DateTime? @db.Timestamptz
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
+}
+
+/// A person asked to delete their account. The account waits in pending_deletion for 14 days;
+/// signing in before purgeAfter cancels it. The purge job tombstones the User and never deletes this row.
+/// SQL: CHECK "DeletionRequest_window_check" (purgeAfter > requestedAt);
+/// partial unique index "DeletionRequest_open_key" (one open request per user).
+model DeletionRequest {
+  id          String    @id @default(cuid(2))
+  userId      String
+  requestedAt DateTime  @db.Timestamptz
+  purgeAfter  DateTime  @db.Timestamptz
+  cancelledAt DateTime? @db.Timestamptz
+  purgedAt    DateTime? @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([purgeAfter])
+}
