@@ -8,7 +8,7 @@
 
 **Tech Stack:** Node 24.22.1, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Prisma 7.10.0, Postgres 16, better-auth 1.7.7, Stripe 22.6.2, nodemailer 10.0.13, Vitest 5.0.3, Playwright 1.63.0. Netlify, Neon.
 
-**Spec:** `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md` (sections 5.2, 5.5 "Authority", 5.6, 6, 7.1 to 7.4, 8, 9). Read it with `CLAUDE.md` and `AGENTS.md`.
+**Spec:** `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md` (sections 5.2, 5.5 "Authority", 5.6, 6 "What players buy" and "Bringing a member", 7.1 to 7.4, 8, 9), as revised by the Owner on 2026-11-13. Read it with `CLAUDE.md` and `AGENTS.md`.
 
 **Old repository:** `mcthaydt/RukenAppFailed` at commit `188e8a07546ba19c431468ddf2624e3cc4173d4e`, written below as `OLD/`. Attach it read-only (`add_repo`, access "read") and clone it beside this repository. Do not register it as a repository root: its CLAUDE.md and AGENTS.md are the old rules and do not apply.
 
@@ -24,7 +24,8 @@
 - Time comes from an injected `Clock`. Feature code never calls `Date.now()` or `new Date()` with no argument.
 - Features hold server code only this slice, and import only features below them: `accounts` imports no feature; `membership` may import `accounts`. Shared helpers with no feature logic go in `src/lib/`. Tests live only in `tests/`, mirroring `src/`.
 - Comments say why. When a file is copied, references to the old plans are removed from its comments (`M7.3 spec §5`, `audit U08-4`, `P3 §3.4`, `R-80`, `N7`, Figma page numbers), and the reason itself is kept.
-- The price is $7.99 a month or $79 a year, no trials, tax added by Stripe (`PREMIUM_PRICES_CENTS = { monthly: 799n, annual: 7900n }`, `PREMIUM_TRIAL_DAYS = 0`).
+- The price is $9.99 a month or $99 a year, tax added by Stripe (`PREMIUM_PRICES_CENTS = { monthly: 999n, annual: 9900n }`). No trials (`PREMIUM_TRIAL_DAYS = 0`), no day or week passes, no buying single games.
+- Which maker brought a member is a fact from the link they arrived through. No screen, form or query parameter lets a person say it.
 - Every screen and message passes the drunk grandma test. The words in this plan are the words to ship; a change to them is a deviation to report.
 
 ## How a task runs
@@ -68,7 +69,7 @@ The execution session reports to the coordinator and waits at each of these. It 
 | S2 | Task 31, step 1 | In Stripe **test mode**: switches on Stripe Tax; switches on the customer portal with "cancel subscriptions" allowed, at the end of the period; adds a webhook endpoint at `<site>/webhooks/stripe` for the events listed in Task 25. Sets in Netlify: `STRIPE_SECRET_KEY` (test), `STRIPE_WEBHOOK_SECRET` (that endpoint's), `STRIPE_LIVE=false`. |
 | S3 | Task 31, step 3 | The same in Stripe **live mode**, with live keys and `STRIPE_LIVE=true`, when the Owner decides the site may take real money. Paying once with a real card and cancelling is the Owner's own check (design 8). |
 
-The Premium product and its two prices are not typed into Stripe by anyone: the carried code finds or makes them from the constants the first time someone checks out.
+The membership product and its two prices are not typed into Stripe by anyone: the carried code finds or makes them from the constants the first time someone checks out. They are made under new names (Task 22), so a Stripe account that still holds the old product and its old prices is left alone and never charged from.
 
 ## The Owner's decisions, and the Calls in this plan
 
@@ -78,6 +79,10 @@ The Premium product and its two prices are not typed into Stripe by anyone: the 
   3. Deploy: the Owner links the Netlify site to the repository, and Netlify builds and publishes `main` after each merge, running the migrations in its build. No CI workflow change for deploying (Task 16).
   4. `main` is protected, as described under "Branches".
   5. The Calls below were put to the Owner and not overruled. They stay Calls.
+- **Owner, 2026-11-13, the design revised** (sections 5.2, 6 and 8):
+  1. The membership is $9.99 a month or $99 a year. No trials, no day or week passes, no buying single games (Task 22).
+  2. From launch day Ruken records which maker brought each member. A member is brought by a maker when their last arrival before paying was through that maker's page or one of that maker's game links. It is a fact from the link, never typed (Tasks 21, 23, 26, 27, 29; "Bringing a member", below).
+  3. Not in this slice, and nothing here stands in their way: FloorFifty free on launch day, free-play codes, the 180-minute cap, the split and the payout rules ("Notes for the plans that follow").
 - **Calls** (the Owner can overrule):
   - A member who asks to delete their account has their membership ended in Stripe at once, with no refund, so they are never charged while the account waits to be deleted. Signing in again brings back the account, not the membership (Task 30).
   - Carried from the old sign-in: email and password, the confirm-your-email mail, password reset by mail, the rate limits, the one-hour pause after ten wrong passwords, the rolling 30-day session. Not carried: passkeys, sign-in by emailed link, Apple, Google, Microsoft and GitHub sign-in, Cloudflare Turnstile, the breached-password check, anonymous visitor ids, embeds, the staff command-line token, localization, telemetry and consent.
@@ -86,6 +91,14 @@ The Premium product and its two prices are not typed into Stripe by anyone: the 
   - Slice 1 has no ledger (slice 5). Each paid invoice is one added-only `MembershipPayment` row, and every verified Stripe event is kept in `WebhookInbox`, so slice 5 can post them. Dispute and refund events are kept and not acted on yet.
   - Ruken sends no receipt and no failed-payment mail; Stripe sends receipts (design 7.1). A failed payment keeps the old rule: seven days of access from the first failure, never past the paid period.
   - Staff roles this slice are the `StaffAssignment` table and `staffRolesOf`. Nothing grants a role until slice 4 brings the portal and the two-superadmin rule.
+  - Bringing a member, the smallest thing this slice needs so the fact is not lost:
+    - **Remembered** in one cookie, `rk_arrival`, that only the server can write: the maker's account id, the path of the link and the server's time, sealed with a keyed hash so a value changed by hand is ignored. Each new arrival replaces the last one, so the cookie always holds the last arrival. It lives in the browser through sign-up, because sign-up never touches it.
+    - **Carried through Stripe** on the server, not in the browser: when the person presses "Continue to payment", the arrival is read from the cookie and written on that checkout's `CheckoutIntent` row. Nothing about it is sent to Stripe, and paying does not depend on the cookie still being there.
+    - **Stored with the membership** as one added-only `MembershipStart` row per completed checkout, written in the same step that marks the checkout completed. A member nobody brought gets a row with no maker, so that is a recorded fact too. Rows are never changed or deleted, like payment rows.
+    - The cookie lasts 400 days, the longest a browser keeps one, and the row keeps the arrival's time. So this slice sets no limit on how old an arrival may be; a later rule can set one from the stored time.
+    - This slice records and judges nothing: a maker who arrives through their own link, a member who leaves and joins again, and what any of it pays are the payout rules of slice 5, which reads these rows.
+    - The maker's page and the game links arrive in slices 2 and 3. Their routes call `arrival.remember` (Task 26); until then nothing in the app writes the cookie, and this slice's tests write it themselves. That one function is built ahead of its caller on purpose, so the format lives in one place.
+    - Someone who arrives on one device and pays on another has no arrival on the paying device, and no maker is recorded.
   - The old terms and privacy pages are not carried: in the old repository they are outlines marked "draft", waiting for counsel. Real text is the Owner's, and should exist before S3.
 
 ## File map
@@ -142,6 +155,7 @@ src/features/membership/                 (branch G)
   events.ts            which event does what
   service.ts           startCheckout, view, portal, endNow, the webhook handlers
   format.ts            a price and a date in words
+  arrival.ts           the last arrival through a maker's link: sealing and opening the cookie (pure)
   services.ts          built once from the settings
 src/routes/
   api/auth/[...path]/+server.ts
@@ -156,6 +170,7 @@ tests/support/capture-mailer.ts          a Mailer that keeps what it was given
 tests/support/fake-premium-stripe.ts     a PremiumStripe that remembers state (branch G)
 tests/browser/support/fake-stripe-server.ts   a stand-in Stripe over HTTP (branch H)
 tests/browser/support/account.ts         signUp(page) for journeys
+tests/browser/support/database.ts        the app's database, for the one journey that must read a row (branch H)
 tests/lib/…  tests/features/accounts/…  tests/features/membership/…   mirror src/
 tests/browser/*.test.ts                  the journeys
 ```
@@ -172,6 +187,8 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 6. A person with a running membership asks to delete their account: Stripe stops charging them at once, and the payment rows stay, also after the daily job has removed their details (Task 20, Task 30).
 7. The old session cookie of an account that signed out, is waiting to be deleted, or is deleted: treated as signed out at once (Task 10, Task 19).
 8. Anyone on the internet calls the daily job's address without the secret: 404, and nothing is removed (Task 20).
+9. An arrival cookie that was changed by hand, names an account that does not exist, or is missing: the person still pays and becomes a member, and no maker is recorded (Task 23, Task 26).
+10. A person arrives through one maker's link, starts paying, comes back, arrives through another maker's link and pays: the second maker is recorded, once (Task 26).
 
 ---
 
@@ -862,25 +879,33 @@ it("lets the same address sign up again afterwards", async () => { /* a new User
 |---|---|
 | `BillingCustomer` | as carried: `id`, `userId` unique, `stripeCustomerId` unique, `createdAt` |
 | `PremiumMembership` | as carried without `dunningStep`: `id`, `userId` unique, `stripeSubscriptionId` unique, `plan PremiumPlan`, `state PremiumState`, `currentPeriodEnd`, `cancelAt?`, `pastDueSince?`, `createdAt`, `updatedAt` |
-| `CheckoutIntent` | `id`, `userId`, `plan PremiumPlan`, `stripeCheckoutSessionId` unique, `returnTo`, `state CheckoutState` default `open`, `completedAt?`, `createdAt`, `updatedAt`; index on `userId` |
+| `CheckoutIntent` | `id`, `userId`, `plan PremiumPlan`, `stripeCheckoutSessionId` unique, `returnTo`, `state CheckoutState` default `open`, `completedAt?`, `createdAt`, `updatedAt`; index on `userId`. New: `broughtByUserId?`, `arrivalPath?`, `arrivedAt?`, the arrival as it stood when this checkout started |
 | `WebhookInbox` | as carried without `source` and `signatureOk` (only verified Stripe events are stored): `id`, `deliveryId` unique, `payload Json`, `receivedAt`, `processedAt?`, `error?`, `createdAt`, `updatedAt` |
 | `MembershipPayment` | new. `id`, `stripeInvoiceId` unique, `userId`, `stripeSubscriptionId`, `plan PremiumPlan`, `periodStart`, `paidAt`, `grossCents BigInt`, `taxCents BigInt`, `feeCents BigInt`, `createdAt`. No `updatedAt`: a row is added and never changed. |
+| `MembershipStart` | new. `id`, `checkoutIntentId` unique, `userId`, `stripeSubscriptionId`, `plan PremiumPlan`, `startedAt`, `broughtByUserId?` (a `User`), `arrivalPath?`, `arrivedAt?`, `createdAt`; index on `userId` and on `broughtByUserId`. No `updatedAt`: a row is added and never changed. One row per completed checkout: who started paying, when, and which maker's link they last arrived through, if any. |
 
 Enums: `PremiumPlan { monthly, annual }`, `PremiumState { active, past_due, canceling, ended }`, `CheckoutState` as carried.
 
-In the migration SQL, by hand: CHECK `MembershipPayment_amounts_check` (`"grossCents" > 0 AND "taxCents" >= 0 AND "feeCents" >= 0`), and a trigger that rejects UPDATE and DELETE on `MembershipPayment`, copied from the old append-only trigger (`grep -rl "AuditEvent" OLD/packages/db/prisma/migrations | head` finds the migration that defines it).
+In the migration SQL, by hand: CHECK `MembershipPayment_amounts_check` (`"grossCents" > 0 AND "taxCents" >= 0 AND "feeCents" >= 0`), CHECK `MembershipStart_arrival_check` (`"broughtByUserId"`, `"arrivalPath"` and `"arrivedAt"` are all null or all set), and a trigger that rejects UPDATE and DELETE on `MembershipPayment` and on `MembershipStart`, copied from the old append-only trigger (`grep -rl "AuditEvent" OLD/packages/db/prisma/migrations | head` finds the migration that defines it).
 
 - [ ] **Step 1 (red):**
 
 ```ts
-it("makes the membership tables", async () => { /* arrayContaining the five names */ });
+it("makes the membership tables", async () => { /* arrayContaining the six names */ });
 it("refuses to change or delete a payment row", async () => {
-  await insertPayment(prisma, { stripeInvoiceId: "in_1", grossCents: 799n });
+  await insertPayment(prisma, { stripeInvoiceId: "in_1", grossCents: 999n });
   await expect(prisma.$executeRaw`UPDATE "MembershipPayment" SET "grossCents" = 1`).rejects.toThrow();
   await expect(prisma.$executeRaw`DELETE FROM "MembershipPayment"`).rejects.toThrow();
 });
 it("refuses a payment of nothing", async () => { /* grossCents 0n rejects */ });
 it("keeps one row per Stripe invoice", async () => { /* a second in_1 rejects */ });
+it("refuses to change or delete a membership start", async () => {
+  await insertStart(prisma, { checkoutIntentId: "c1", broughtByUserId: maker.id, arrivalPath: "/g/a-game", arrivedAt });
+  await expect(prisma.$executeRaw`UPDATE "MembershipStart" SET "broughtByUserId" = NULL, "arrivalPath" = NULL, "arrivedAt" = NULL`).rejects.toThrow();
+  await expect(prisma.$executeRaw`DELETE FROM "MembershipStart"`).rejects.toThrow();
+});
+it("refuses half an arrival", async () => { /* broughtByUserId set, arrivalPath and arrivedAt null: rejects */ });
+it("keeps one membership start per checkout", async () => { /* a second c1 rejects */ });
 ```
 
   Push. Expected: `postgres` fails in `schema.pg.test.ts`: the tables do not exist.
@@ -894,27 +919,51 @@ it("keeps one row per Stripe invoice", async () => { /* a second in_1 rejects */
 
 **Interfaces:**
 - Produces:
-  - `PREMIUM_PRICES_CENTS`, `PREMIUM_TRIAL_DAYS` from `OLD/packages/billing/src/plans.ts` with `plans.test.ts`.
+  - `PREMIUM_PRICES_CENTS`, `PREMIUM_TRIAL_DAYS` from `OLD/packages/billing/src/plans.ts` with `plans.test.ts`. Changed: the prices are `{ monthly: 999n, annual: 9900n }` (the old file says `799n` and `7900n`); the carried tests' expected amounts change with them.
   - `createStripe(options: { secretKey: string; apiBase?: string }): Stripe` and `checkoutExpiry(nowMs): number`, `interface CheckoutStarted { id; url }` from `OLD/packages/billing/src/stripe.ts`. `apiBase` (for example `http://127.0.0.1:12111`) replaces `mockPort`: it points the SDK at CI's stand-in. Trim: store prices, one-time checkout, tips, `readCardFee`, the tax code for tips.
-  - From `OLD/packages/billing/src/premium.ts` with `premium.test.ts`, whole: `PREMIUM_PRODUCT_ID`, `PREMIUM_TAX_CODE`, `PREMIUM_LOOKUP_KEYS`, `interface PremiumPrices`, `ensurePremiumPrices(stripe)`, `isMissing(error)`, `createBillingCustomer(stripe, input)`, `premiumCheckoutExpiry(nowMs)`, `interface PremiumCheckoutInput`, `startPremiumCheckoutSession(stripe, input)`, `closeCheckoutSession(stripe, sessionId)`. One change: a product made by the code is named "Ruken membership".
+  - From `OLD/packages/billing/src/premium.ts` with `premium.test.ts`, whole: `PREMIUM_PRODUCT_ID`, `PREMIUM_TAX_CODE`, `PREMIUM_LOOKUP_KEYS`, `interface PremiumPrices`, `ensurePremiumPrices(stripe)`, `isMissing(error)`, `createBillingCustomer(stripe, input)`, `premiumCheckoutExpiry(nowMs)`, `interface PremiumCheckoutInput`, `startPremiumCheckoutSession(stripe, input)`, `closeCheckoutSession(stripe, sessionId)`. Three changes, all because the price changed. The carried code refuses to charge when it finds a price under its lookup key at a different amount ("a changed price needs a new lookup key"), and a Stripe account that ran the old code already holds the old prices. So: `PREMIUM_LOOKUP_KEYS` is `{ monthly: "ruken_membership_monthly", annual: "ruken_membership_annual" }`; `PREMIUM_PRODUCT_ID` is `"ruken_membership"`; and a product made by the code is named "Ruken membership". The check itself (`isTheRulesPrice`) is kept whole. Add to `checkout.test.ts`: prices are looked up under the two new keys and made at 999 and 9900 cents; a price found under a new key at 799 cents throws.
 - Not carried: `premium.stack.test.ts` and stripe-mock.
 
 - [ ] **Step 1 (red):** carried tests and stubs; `stripe-client.test.ts` asserts a client built with `apiBase: "http://127.0.0.1:12111"` sends to that host and port over http (read the SDK's stored options the way `OLD/packages/billing/src/stripe.test.ts` does). Push. Expected: `verify` fails in the three files with "not built yet" (`plans.test.ts` fails on the missing values).
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 
-### Task 23: The membership rules (pure)
+### Task 23: The membership rules and the arrival cookie (pure)
 
 **Files:**
-- Create: `src/features/membership/reducer.ts`, `access.ts`, `format.ts`
-- Test: `tests/features/membership/reducer.test.ts`, `access.test.ts`, `format.test.ts`
+- Create: `src/features/membership/reducer.ts`, `access.ts`, `format.ts`, `arrival.ts`
+- Test: `tests/features/membership/reducer.test.ts`, `access.test.ts`, `format.test.ts`, `arrival.test.ts`
 
 **Interfaces:**
 - Produces:
   - `type PremiumPlan`, `type MembershipState`, `interface SubscriptionSnapshot`, `interface MembershipRow` (without `dunningStep`), `reduceMembership(previous, snapshot, observedAtMs): MembershipRow | null` from `OLD/packages/billing/src/membership.ts` with `membership.test.ts`. Trim: `dunningStep` from the type, the reducer and the tests' expected rows; nothing else.
   - `PAST_DUE_GRACE_MS` (seven days), `interface AccessFields`, `pastDuePausesAt(membership): Date`, `premiumAccess(membership: AccessFields | null, nowMs: number): boolean` from `OLD/packages/core/src/premium/access.ts` with `access.test.ts`. Trim: `hasPremium`, `premiumAmong` and grants (Task 26 reads the row itself).
-  - `dollars(cents: bigint): string` (`799n` → `"$7.99"`, `7900n` → `"$79"`) and `longDate`, re-exported from `src/lib/long-date.ts` (Task 19). `dollars` is new and small; see `OLD/apps/web/src/lib/premium/format.ts` for the old shapes.
+  - `dollars(cents: bigint): string` (`999n` → `"$9.99"`, `9900n` → `"$99"`) and `longDate`, re-exported from `src/lib/long-date.ts` (Task 19). `dollars` is new and small; see `OLD/apps/web/src/lib/premium/format.ts` for the old shapes.
+  - New, in `arrival.ts`, with `node:crypto` only:
+    - `interface Arrival { makerUserId: string; path: string; atMs: number }`: the maker whose link it was, the link's path on Ruken (`/g/<game>` or `/<handle>`), and the server's time.
+    - `ARRIVAL_COOKIE = "rk_arrival"`, `ARRIVAL_MAX_AGE_SECONDS = 34_560_000` (400 days, the longest a browser keeps a cookie).
+    - `sealArrival(arrival: Arrival, secret: string): string`: `<payload>.<mac>`, where the payload is the arrival as JSON in base64url and the mac is HMAC-SHA256 over `"ruken-arrival-v1:" + payload` with the secret, in base64url. The fixed prefix keeps this use of the secret apart from every other.
+    - `openArrival(value: string | undefined, secret: string): Arrival | null`: null for no value, a value without exactly one dot, a mac that does not match (compared with `timingSafeEqual`), JSON that does not parse, a `makerUserId` that is not a string of 1 to 64 characters, a `path` that does not start with `/` or is longer than 200 characters, or an `atMs` that is not a whole number above zero. It never throws.
 
-- [ ] **Step 1 (red):** carried tests; `format.test.ts` with the two `dollars` values above, and `dollars(123456n)` → `"$1,234.56"`. Review Focus 5 is pinned by `access.test.ts`'s past-due cases: confirm the carried file has "still a member six days after the first failure", "not a member at seven days" and "never past the period end", and add any that is missing. Stubs. Push. Expected: `verify` fails in the three files with "not built yet".
+- [ ] **Step 1 (red):** carried tests; `format.test.ts` with the two `dollars` values above, and `dollars(123456n)` → `"$1,234.56"`. `arrival.test.ts`, for Review Focus 9:
+
+```ts
+const arrival = { makerUserId: "maker-1", path: "/g/a-game", atMs: 1_800_000_000_000 };
+it("opens what it sealed", () => { expect(openArrival(sealArrival(arrival, "s"), "s")).toEqual(arrival); });
+it("ignores a value sealed with another secret", () => { expect(openArrival(sealArrival(arrival, "other"), "s")).toBeNull(); });
+it("ignores a payload changed after sealing", () => {
+  const [, mac] = sealArrival(arrival, "s").split(".");
+  const forged = Buffer.from(JSON.stringify({ ...arrival, makerUserId: "maker-2" })).toString("base64url");
+  expect(openArrival(`${forged}.${mac}`, "s")).toBeNull();
+});
+it.each([undefined, "", "no-dot", "a.b.c", "!!.!!"])("ignores %j", (value) => { expect(openArrival(value, "s")).toBeNull(); });
+it("ignores a sealed value of the wrong shape", () => {
+  expect(openArrival(sealArrival({ ...arrival, path: "https://evil.example" }, "s"), "s")).toBeNull();
+  expect(openArrival(sealArrival({ ...arrival, makerUserId: "" }, "s"), "s")).toBeNull();
+  expect(openArrival(sealArrival({ ...arrival, atMs: Number.NaN }, "s"), "s")).toBeNull();
+});
+```
+
+  Review Focus 5 is pinned by `access.test.ts`'s past-due cases: confirm the carried file has "still a member six days after the first failure", "not a member at seven days" and "never past the period end", and add any that is missing. Stubs. Push. Expected: `verify` fails in the four files with "not built yet".
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 
 ### Task 24: Reading and ending a subscription
@@ -958,21 +1007,24 @@ it("keeps one row per Stripe invoice", async () => { /* a second in_1 rejects */
 - Test: `tests/features/membership/sync.pg.test.ts`, `payments.pg.test.ts`, `service.pg.test.ts`, `services.test.ts`
 
 **Interfaces:**
-- Consumes: Tasks 21 to 25; `RateLimiter`, `RATE_LIMITS.checkoutStartsPerUser`, `checkoutStartKey` (Task 4); `authServices()` for the Prisma client and the clock.
+- Consumes: Tasks 21 to 25; `RateLimiter`, `RATE_LIMITS.checkoutStartsPerUser`, `checkoutStartKey` (Task 4); `authServices()` for the Prisma client, the clock and the cookie policy.
 - Produces:
   - `type SyncOutcome`, `syncMembership(deps: { db; stripe }, subscriptionId, observedAtMs)`, `lockMembership(tx, userId)` from `OLD/packages/core/src/premium/sync.ts` with `sync.pg.test.ts`, whole but for `dunningStep`.
   - `recordPayment(db, paid: PaidPremiumInvoice): Promise<"recorded" | "duplicate">` in `payments.ts`: inserts one `MembershipPayment` row with `createMany({ skipDuplicates: true })`, and answers `"duplicate"` when the invoice was already there. It throws for `gross === 0n` with the carried message. This replaces `OLD/packages/core/src/premium/payment.ts`, whose ledger posting arrives in slice 5. `paidAfterEnd` is carried whole from `OLD/packages/core/src/premium/paid-after-end.ts` into this file.
   - `createMembershipService(deps: { db; clock; siteOrigin: string; stripe: PremiumStripe; rateLimiter: RateLimiter })` from `OLD/packages/core/src/premium/service.ts`, returning:
-    - `startCheckout(input: { userId: string; plan: PremiumPlan; returnTo: string }): Promise<{ url: string }>`. As carried (rate limit, the member's lock, closing an older open checkout, the customer, the prices), with `successUrl: ${siteOrigin}/join/done?checkout=${ref}`, `cancelUrl: ${siteOrigin}/join?plan=${plan}&next=${encodeURIComponent(returnTo)}`, and the ref from `randomUUID()`.
+    - `startCheckout(input: { userId: string; plan: PremiumPlan; returnTo: string; arrival: Arrival | null }): Promise<{ url: string }>`. New: when `arrival` names a `User` row that exists, the new `CheckoutIntent` gets `broughtByUserId`, `arrivalPath` and `arrivedAt` from it; otherwise all three stay null. Nothing about the arrival goes to Stripe. The rest as carried (rate limit, the member's lock, closing an older open checkout, the customer, the prices), with `successUrl: ${siteOrigin}/join/done?checkout=${ref}`, `cancelUrl: ${siteOrigin}/join?plan=${plan}&next=${encodeURIComponent(returnTo)}`, and the ref from `randomUUID()`.
     - `view(userId): Promise<MembershipView>` where `type MembershipView = { state: "none" | MembershipState; member: boolean; plan: PremiumPlan | null; renewsAt: Date | null; endsAt: Date | null; pausesAt: Date | null }`. `member` is `premiumAccess(row, clock.epochMs())`.
     - `isMember(userId): Promise<boolean>`.
     - `checkoutState(input: { ref: string; userId: string }): Promise<{ state: "open" | "completed" | "expired"; returnTo: string } | null>`: null for a ref that is not this person's.
     - `portalLink(userId): Promise<{ url: string }>`, returning to `${siteOrigin}/me`; `NOT_FOUND` when the person has no `BillingCustomer`.
     - `endNow(userId): Promise<"ended" | "none">`: for a row that has not ended, `stripe.cancelNow`, `stripe.voidPayableInvoices`, then `syncMembership`. Used by "Delete my account".
-    - the webhook handlers `completeCheckout`, `expireCheckout`, `syncSubscription`, `recordInvoicePaid(invoiceId): Promise<InvoicePaidOutcome>` (`recorded | duplicate | not_premium | not_this_stack | paid_after_end`), as carried, with `recordPayment` in place of the ledger and no receipt.
+    - `completeCheckout`, as carried (the old `completePremiumCheckout`: mirror the subscription first, then mark the checkout completed), with one addition: marking the intent completed and inserting its `MembershipStart` row (`checkoutIntentId`, `userId`, `stripeSubscriptionId`, `plan`, `startedAt` from the event's time, and the intent's three arrival columns) happen in one transaction, and only when the intent was not completed before. A repeat adds nothing.
+    - the other webhook handlers `expireCheckout`, `syncSubscription`, `recordInvoicePaid(invoiceId): Promise<InvoicePaidOutcome>` (`recorded | duplicate | not_premium | not_this_stack | paid_after_end`), as carried, with `recordPayment` in place of the ledger and no receipt.
+    - Slice 1 only records who brought a member. Nothing reads `MembershipStart` yet but tests; slice 5 does.
   - `class MembershipError` with `code: "INVALID_REQUEST" | "NOT_FOUND" | "ALREADY_MEMBER" | "RATE_LIMITED"` (the carried `PremiumServiceError`, renamed).
-  - `membershipServices(): { service; verify(payload: string, signature: string): StripeEvent; receive(event: StripeEvent): Promise<void> }` in `services.ts`, built once from `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE` (`"true"` or `"false"`; anything else throws), optional `STRIPE_API_BASE`, and `BETTER_AUTH_URL` as the site origin. `receive` is `storeStripeDelivery` then `processStripeDelivery` with `handleStripeEvent`; `report` writes one line with `console.error` and no personal detail. `STRIPE_API_BASE` together with `STRIPE_LIVE=true` throws at start, so a live site can never be pointed at a stand-in (the carried rule from `OLD/packages/core/src/billing/env.ts`).
-  - `membership.ts` re-exports `membershipServices`, `MembershipError`, `type MembershipView`, `type PremiumPlan`, `PREMIUM_PRICES_CENTS`, `dollars`, `longDate`.
+  - `membershipServices(): { service; arrival; verify(payload: string, signature: string): StripeEvent; receive(event: StripeEvent): Promise<void> }` in `services.ts`, built once from `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE` (`"true"` or `"false"`; anything else throws), optional `STRIPE_API_BASE`, and `BETTER_AUTH_URL` as the site origin. `receive` is `storeStripeDelivery` then `processStripeDelivery` with `handleStripeEvent`; `report` writes one line with `console.error` and no personal detail. `STRIPE_API_BASE` together with `STRIPE_LIVE=true` throws at start, so a live site can never be pointed at a stand-in (the carried rule from `OLD/packages/core/src/billing/env.ts`).
+  - `arrival` is `{ remember(cookies: Cookies, link: { makerUserId: string; path: string }): void; read(cookies: Cookies): Arrival | null }` (`Cookies` is SvelteKit's). `remember` seals the link with the clock's time and sets `rk_arrival` with `path: "/"`, `httpOnly`, `sameSite: "lax"`, `secure` from the cookie policy and `maxAge: ARRIVAL_MAX_AGE_SECONDS`. `read` is `openArrival` on that cookie. Both use `BETTER_AUTH_SECRET`; no new setting. `remember` is what slice 2's `/g/<game>` and slice 3's `/<handle>` call when a visitor lands on them; nothing in slice 1 calls it.
+  - `membership.ts` re-exports `membershipServices`, `MembershipError`, `type MembershipView`, `type PremiumPlan`, `type Arrival`, `PREMIUM_PRICES_CENTS`, `dollars`, `longDate`.
 - Trim from the service: the launch switch, `subjectSecret` and the member key, `getPremium`'s creator numbers, cancel and resume, the card-only link, `getPremiumBilling`, the plan switch, chargebacks, the receipt.
 
 - [ ] **Step 1 (red):** carry the matching cases of `service.pg.test.ts` (starting a checkout; already a member; an older open checkout closed first; the earlier one turned out paid; the rate limit; `completeCheckout`; `syncSubscription`; `recordInvoicePaid` with each outcome), driven by `FakePremiumStripe`. Add:
@@ -991,7 +1043,7 @@ it("invoice.paid arriving before the checkout completes still makes one membersh
 });
 it("stores what Stripe said was paid, in cents", async () => {
   expect(await prisma.membershipPayment.findUniqueOrThrow({ where: { stripeInvoiceId: "in_1" } }))
-    .toMatchObject({ grossCents: 865n, taxCents: 66n, feeCents: 55n, plan: "monthly" });
+    .toMatchObject({ grossCents: 1081n, taxCents: 82n, feeCents: 61n, plan: "monthly" });
 });
 it("endNow stops the subscription in Stripe and ends the membership, keeping the payments", async () => {   // Review Focus 6
   expect(await service.endNow(userId)).toBe("ended");
@@ -1002,9 +1054,40 @@ it("endNow stops the subscription in Stripe and ends the membership, keeping the
 it("a checkout ref belongs to the person who started it", async () => {
   expect(await service.checkoutState({ ref, userId: someoneElse })).toBeNull();
 });
+it("records the maker whose link the member last arrived through", async () => {
+  await service.startCheckout({ userId, plan: "monthly", returnTo: "/", arrival: { makerUserId: maker.id, path: "/g/a-game", atMs } });
+  await completeTheOpenCheckout();
+  expect(await prisma.membershipStart.findMany({ where: { userId } })).toMatchObject([
+    { broughtByUserId: maker.id, arrivalPath: "/g/a-game", arrivedAt: new Date(atMs), plan: "monthly", stripeSubscriptionId: subscriptionId },
+  ]);
+});
+it("records a member nobody brought, with no maker", async () => {
+  await service.startCheckout({ userId, plan: "annual", returnTo: "/", arrival: null });
+  await completeTheOpenCheckout();
+  expect(await prisma.membershipStart.findMany({ where: { userId } })).toMatchObject([
+    { broughtByUserId: null, arrivalPath: null, arrivedAt: null, plan: "annual" },
+  ]);
+});
+it("records no maker when the arrival names an account that does not exist", async () => {   // Review Focus 9
+  await service.startCheckout({ userId, plan: "monthly", returnTo: "/", arrival: { makerUserId: "nobody", path: "/g/a-game", atMs } });
+  await completeTheOpenCheckout();
+  expect((await prisma.membershipStart.findFirstOrThrow({ where: { userId } })).broughtByUserId).toBeNull();
+});
+it("records the last arrival when a person starts paying twice", async () => {               // Review Focus 10
+  await service.startCheckout({ userId, plan: "monthly", returnTo: "/", arrival: { makerUserId: maker.id, path: "/g/a-game", atMs } });
+  await service.startCheckout({ userId, plan: "monthly", returnTo: "/", arrival: { makerUserId: otherMaker.id, path: "/other", atMs: atMs + 1 } });
+  await completeTheOpenCheckout();
+  expect(await prisma.membershipStart.findMany({ where: { userId } })).toMatchObject([{ broughtByUserId: otherMaker.id, arrivalPath: "/other" }]);
+});
+it("a checkout completed twice leaves one membership start", async () => {
+  await completeTheOpenCheckout(); await completeTheOpenCheckout();
+  expect(await prisma.membershipStart.count({ where: { userId } })).toBe(1);
+});
 ```
 
-  `services.test.ts`: `STRIPE_LIVE=maybe` throws; `STRIPE_API_BASE` with `STRIPE_LIVE=true` throws; a missing `STRIPE_WEBHOOK_SECRET` throws "Missing setting STRIPE_WEBHOOK_SECRET". Stubs. Push. Expected: `postgres` fails in the three `.pg.test.ts` files and `verify` in `services.test.ts`, with "not built yet".
+  `completeTheOpenCheckout()` is a helper in the test file: it makes the person's open checkout paid at `FakePremiumStripe` and calls `service.completeCheckout` with that session. `maker` and `otherMaker` are two more `User` rows. Every carried `startCheckout` call gains `arrival: null`.
+
+  `services.test.ts`: `arrival.read` answers what `arrival.remember` set, with the clock's time, on a cookie jar made in the test, and the cookie is set with `httpOnly`, `sameSite: "lax"`, `path: "/"` and `maxAge: 34_560_000`; `arrival.read` answers null for a cookie typed by hand; `STRIPE_LIVE=maybe` throws; `STRIPE_API_BASE` with `STRIPE_LIVE=true` throws; a missing `STRIPE_WEBHOOK_SECRET` throws "Missing setting STRIPE_WEBHOOK_SECRET". Stubs. Push. Expected: `postgres` fails in the three `.pg.test.ts` files and `verify` in `services.test.ts`, with "not built yet".
 - [ ] **Step 2 (green):** the code and the new names in `.env.example`. Push. Expected: all pass, including the layer test (`membership` imports `accounts` only through `accounts.ts`). Branch G is ready to merge.
 
 ---
@@ -1020,7 +1103,7 @@ it("a checkout ref belongs to the person who started it", async () => {
 
 **The stand-in.** `fake-stripe-server.ts` is a plain `node:http` server on `127.0.0.1:12111`, started by Playwright as a second `webServer` entry (`node tests/browser/support/fake-stripe-server.ts`, ready when `GET /ready` answers 200). It exists only under `tests/`. It keeps state in memory and answers, in Stripe's JSON shapes, exactly the calls `bindPremiumStripe` makes: retrieve and create the product; list and create prices; create a customer; create, retrieve and expire a Checkout session; retrieve and cancel a subscription; list invoices; retrieve an invoice with the expansions `readPaidPremiumInvoice` asks for; create a portal session. Take each shape from the fixtures in the carried unit tests (`checkout.test.ts`, `subscription.test.ts`), so the stand-in and the unit tests agree. It also serves two pages of its own:
 
-- `GET /pay/<session>`: a page with one button, "Pay". Pressing it makes the subscription `active` and a paid invoice ($7.99 plus 66 cents tax, 55 cents fee for monthly), POSTs `checkout.session.completed`, `customer.subscription.created` and `invoice.paid` to `http://localhost:4173/webhooks/stripe`, each signed with `whsec_test_fake` through the Stripe SDK's `webhooks.generateTestHeaderString`, waits for the three answers, then redirects to the session's `success_url`.
+- `GET /pay/<session>`: a page with one button, "Pay". Pressing it makes the subscription `active` and a paid invoice (for monthly: $9.99 plus 82 cents tax, $10.81 in all, with a 61-cent fee; made-up numbers that only the stand-in uses), POSTs `checkout.session.completed`, `customer.subscription.created` and `invoice.paid` to `http://localhost:4173/webhooks/stripe`, each signed with `whsec_test_fake` through the Stripe SDK's `webhooks.generateTestHeaderString`, waits for the three answers, then redirects to the session's `success_url`.
 - `GET /portal/<session>`: a page with one button, "Cancel membership". Pressing it sets the subscription to cancel at the period end, POSTs a signed `customer.subscription.updated`, waits, then redirects to the `return_url`.
 
 `playwright.config.ts` passes the app `STRIPE_SECRET_KEY: "sk_test_fake"`, `STRIPE_WEBHOOK_SECRET: "whsec_test_fake"`, `STRIPE_LIVE: "false"`, `STRIPE_API_BASE: "http://127.0.0.1:12111"`.
@@ -1030,11 +1113,11 @@ it("a checkout ref belongs to the person who started it", async () => {
 ```
 Join Ruken to play
 
-$7.99 a month, or $79 a year. Tax is added where it applies.
+$9.99 a month, or $99 a year. Tax is added where it applies.
 You pay on the next page, then come straight back.
 
-(•) Monthly   $7.99 a month
-( ) Yearly    $79 a year
+(•) Monthly   $9.99 a month
+( ) Yearly    $99 a year
 
 [ Continue ]
 
@@ -1043,7 +1126,7 @@ Not now
 
 - The prices on the card come from `PREMIUM_PRICES_CENTS` through `dollars`, passed by `load`; they are not typed into the page.
 - Signed out, "Continue" goes to `/sign-up?next=` the same card with the plan kept; back on the card, the button reads "Continue to payment". That is the only point where the card asks for sign-in (design 5.2).
-- Signed in, "Continue to payment" starts the checkout and sends the browser to Stripe.
+- Signed in, "Continue to payment" starts the checkout and sends the browser to Stripe. The checkout takes the arrival from the `rk_arrival` cookie at that moment. The card shows nothing about it and has no field for it.
 - A member who opens the card sees instead: "You're already a member." and one button-styled link, "Keep playing", to `next`.
 - "Not now" goes to `next` when it is a page that needs no membership, otherwise to `/`. This slice: always `/`.
 - Refusals, above the button: rate limit, "You've started a lot of checkouts just now. Try again in a minute."; anything else, "Something went wrong on our side. Try again in a moment."
@@ -1056,7 +1139,7 @@ Grandma: two short lines say what it costs and what happens next; one button; "N
 test("the card says the price and what happens next", async ({ page }) => {
   await page.goto("/join");
   await expect(page.getByRole("heading", { name: "Join Ruken to play" })).toBeVisible();
-  await expect(page.getByText("$7.99 a month, or $79 a year. Tax is added where it applies.")).toBeVisible();
+  await expect(page.getByText("$9.99 a month, or $99 a year. Tax is added where it applies.")).toBeVisible();
   await expect(page.getByText("You pay on the next page, then come straight back.")).toBeVisible();
   await expect(page.getByRole("button")).toHaveCount(1);
 });
@@ -1076,7 +1159,7 @@ test("next pointing off the site is ignored", async ({ page }) => { /* /join?nex
 ```
 
   Commit the stand-in with the tests (it is test code; it needs no stub). Push. Expected: `browser` fails in `join.test.ts`: 404 at `/join`.
-- [ ] **Step 2 (green):** `load` returns `{ next: safeNextPath(...), plan, prices, signedIn, member }` (`member` from `service.isMember` when signed in). The action `join` reads `plan` and `next`; signed out it redirects (303) to `/sign-up?next=` + the encoded card address; signed in it calls `service.startCheckout({ userId, plan, returnTo: next })` and redirects (303) to the answer's `url`; `MembershipError` codes map to the words above (`ALREADY_MEMBER` redirects to `next`). Push. Expected: all pass.
+- [ ] **Step 2 (green):** `load` returns `{ next: safeNextPath(...), plan, prices, signedIn, member }` (`member` from `service.isMember` when signed in). The action `join` reads `plan` and `next`; signed out it redirects (303) to `/sign-up?next=` + the encoded card address; signed in it calls `service.startCheckout({ userId, plan, returnTo: next, arrival: arrival.read(event.cookies) })` and redirects (303) to the answer's `url`; `MembershipError` codes map to the words above (`ALREADY_MEMBER` redirects to `next`). Push. Expected: all pass.
 
 ### Task 28: The webhook route
 
@@ -1106,7 +1189,7 @@ test("a signed event of a kind Ruken does not act on is kept and answered 200", 
 ### Task 29: Coming back from paying
 
 **Files:**
-- Create: `src/routes/join/done/+page.server.ts`, `src/routes/join/done/+page.svelte`
+- Create: `src/routes/join/done/+page.server.ts`, `src/routes/join/done/+page.svelte`, `tests/browser/support/database.ts`
 - Test: `tests/browser/pay.test.ts`
 
 **The screen** (`/join/done?checkout=<ref>`), where Stripe sends the person after paying.
@@ -1130,9 +1213,22 @@ test("a stranger signs up, pays, and lands where they were going as a member", a
   await expect(page).toHaveURL("/me");
 });
 test("someone else's checkout ref goes back to the card", async ({ page }) => { /* /join/done?checkout=<random uuid> → toHaveURL(/\/join/) */ });
+test("a member's sign-up records the maker's link they came through", async ({ page, browser }) => {   // design 8
+  const maker = await signUpInItsOwnContext(browser);                    // a second account, standing in for a maker
+  const makerUserId = await userIdOf(maker.email);
+  await page.context().addCookies([arrivalCookie({ makerUserId, path: "/g/a-game" })]);
+  const member = await payAsNewMember(page);                             // sign up, then pay: the steps of the first test
+  expect(await membershipStartsOf(member.email)).toMatchObject([{ broughtByUserId: makerUserId, arrivalPath: "/g/a-game" }]);
+});
+test("a member who came through no maker's link has no maker recorded", async ({ page }) => {
+  const member = await payAsNewMember(page);
+  expect(await membershipStartsOf(member.email)).toMatchObject([{ broughtByUserId: null, arrivalPath: null }]);
+});
 ```
 
-  Push. Expected: `browser` fails in `pay.test.ts`: after "Pay" the browser is at `/join/done…`, a 404, not `/me`.
+  The two arrival tests pass through sign-up and the stand-in Stripe with the real cookie, and then read the row, because no screen shows who brought a member. `tests/browser/support/database.ts` gives `userIdOf(email): Promise<string>` and `membershipStartsOf(email): Promise<MembershipStart[]>`, each on one Prisma client made from `TEST_DATABASE_URL` (the database the app under test uses) and closed when the worker ends; and `arrivalCookie(link): { name; value; url }`, which seals the link with `sealArrival` from `src/features/membership/arrival.ts`, the secret `playwright.config.ts` gives the app and the time now, for `http://localhost:4173`. It is test code, the only way an arrival exists before slices 2 and 3 bring the links. `payAsNewMember(page): Promise<{ email: string; checkoutSessionId: string }>` (it reads the session id from the stand-in's `/pay/<session>` address) and `signUpInItsOwnContext(browser)` go in `tests/browser/support/account.ts`.
+
+  Push. Expected: `browser` fails in `pay.test.ts`: after "Pay" the browser is at `/join/done…`, a 404, not `/me`. The two arrival tests fail the same way, inside `payAsNewMember`; say in the report line that their own assertion is first reached in the green push.
 - [ ] **Step 2 (green):** `load` uses `signedInOnly`, then `service.checkoutState`. Push. Expected: all pass.
 
 ### Task 30: Membership on `/me`, cancelling, and deleting a member's account
@@ -1146,13 +1242,13 @@ test("someone else's checkout ref goes back to the card", async ({ page }) => { 
 | State | Line | Button |
 |---|---|---|
 | `none`, `ended` | You're not a member. | Join Ruken (link to `/join?next=/me`) |
-| `active` | You're a member. $7.99 a month. Renews on Monday, December 14. (yearly: "$79 a year") | Manage or cancel |
+| `active` | You're a member. $9.99 a month. Renews on Monday, December 14. (yearly: "$99 a year") | Manage or cancel |
 | `canceling` | Your membership ends on Monday, December 14. You can play until then. | Manage |
 | `past_due` | We couldn't charge your card. Update it by Monday, December 14 to keep playing. | Update card |
 
 Under each of the last three buttons: "Opens Stripe, where you can change your card or cancel." The three buttons post one action, `portal`, which redirects to `service.portalLink(userId)`. The dates come from `longDate` on `renewsAt`, `endsAt` and `pausesAt`; the price from `dollars`.
 
-**On `/me/delete`**, a member also sees: "Your membership ends now. There is no refund for the time left, and signing in again does not bring it back." The action calls `service.endNow(userId)` before `requestDeletion`; if `endNow` throws, nothing is deleted and the page says "Something went wrong on our side. Try again in a moment."
+**On `/me/delete`**, a member also sees: "Your membership ends now. There is no refund for the time left, and signing in again does not bring it back." The action calls `service.endNow(userId)` before `requestDeletion`; if `endNow` throws, nothing is deleted and the page says "Something went wrong on our side. Try again in a moment." `MembershipStart` rows stay, like payment rows, whether the deleted account is the member's or the maker's: they hold account ids and a link's path, and the daily job leaves them alone.
 
 Grandma: one line says where the person stands; one button says what they can do about it; the line under it says where the button goes.
 
@@ -1166,7 +1262,7 @@ test("someone who has not paid is told so and offered the card", async ({ page }
 });
 test("a member sees what they pay and when it renews", async ({ page }) => {
   await payAsNewMember(page);            // the steps of Task 29's first test
-  await expect(page.getByText(/^You're a member\. \$7\.99 a month\. Renews on \w+, \w+ \d+\.$/)).toBeVisible();
+  await expect(page.getByText(/^You're a member\. \$9\.99 a month\. Renews on \w+, \w+ \d+\.$/)).toBeVisible();
 });
 test("a member cancels on Stripe and is told when it ends", async ({ page }) => {      // design 8: "A member can cancel."
   await payAsNewMember(page);
@@ -1186,7 +1282,7 @@ test("a member who deletes their account is told the membership ends now", async
 test("a member who opens the card is told they are one", async ({ page }) => { /* "You're already a member." and link "Keep playing" */ });
 ```
 
-  `payAsNewMember(page): Promise<{ email: string; checkoutSessionId: string }>` (it reads the session id from the stand-in's `/pay/<session>` address) and `subscriptionStatusAtStandIn(member): Promise<string>` go in `tests/browser/support/account.ts`; the stand-in gains `GET /state/<checkout session id>` answering the subscription's status. Push. Expected: `browser` fails in `membership.test.ts`: no "You're not a member." on `/me`.
+  `payAsNewMember` is Task 29's. `subscriptionStatusAtStandIn(member): Promise<string>` goes in `tests/browser/support/account.ts`; the stand-in gains `GET /state/<checkout session id>` answering the subscription's status. Push. Expected: `browser` fails in `membership.test.ts`: no "You're not a member." on `/me`.
 - [ ] **Step 2 (green):** the page changes. Push. Expected: all pass. The branch merges.
 
 ### Task 31: Paying and cancelling on the real site
@@ -1194,7 +1290,7 @@ test("a member who opens the card is told they are one", async ({ page }) => { /
 No code unless a check fails. Nothing here is typed into the repository.
 
 - [ ] **Step 1: STOP S2.** Report to the coordinator that row S2's tasks are needed, with the event list from Task 25 and the setting names. Wait for the Owner's "done".
-- [ ] **Step 2: Stripe test mode, on the real site.** A person signs up, opens `/join`, pays with Stripe's test card, lands on `/me` as a member, presses "Manage or cancel", cancels in Stripe's portal, and sees "Your membership ends on …". In Stripe's dashboard the Owner confirms: the product "Ruken membership" and its two prices exist at $7.99 and $79, tax was worked out on the invoice, and the webhook deliveries answered 200. Record in progress.md what was checked, by whom and when. If a step fails, report what the page and Stripe's webhook log say; a fix is a new small branch with its own failing test first.
+- [ ] **Step 2: Stripe test mode, on the real site.** A person signs up, opens `/join`, pays with Stripe's test card, lands on `/me` as a member, presses "Manage or cancel", cancels in Stripe's portal, and sees "Your membership ends on …". In Stripe's dashboard the Owner confirms: the product "Ruken membership" and its two prices exist at $9.99 and $99, tax was worked out on the invoice, and the webhook deliveries answered 200. Record in progress.md what was checked, by whom and when. If a step fails, report what the page and Stripe's webhook log say; a fix is a new small branch with its own failing test first.
 - [ ] **Step 3: STOP S3.** Report that slice 1 is done in test mode and that live mode waits for the Owner: live keys, the live webhook endpoint, `STRIPE_LIVE=true`, real terms and privacy text, and the Owner's own payment with a real card (design 8). Live mode is not a condition for starting slice 2.
 - [ ] **Step 4:** set slice 1's row in progress.md from what is true: "done" only when every branch is merged, main is green, and Step 2 passed.
 
@@ -1202,7 +1298,11 @@ No code unless a check fails. Nothing here is typed into the repository.
 
 ## Notes for the plans that follow
 
-- Slice 2's Play button sends a non-member to `/join?next=/g/<game>`; `isMember` is `membershipServices().service.isMember(userId)`.
+- `isMember` (`membershipServices().service.isMember(userId)`) answers one question: is this person paying. It is not the rule for who may play, and nothing in slice 1 stands between a person and a game. Slice 2 writes that rule in `play`, as its own tested function that asks `isMember` among other things: a game staff marked free (FloorFifty on launch day, with no account), staff, a maker on their own game, and later a free-play code. Those are separate from a membership on purpose, because that play never counts toward pay and a member's does. Free-play codes are not a kind of `PremiumMembership`.
+- Slice 2's Play button sends a person who may not play to `/join?next=/g/<game>`. The words on the card ("Join Ruken to play") stay true when one game is free: the card is only reached from a game that is not.
+- Slices 2 and 3 call `membershipServices().arrival.remember(cookies, { makerUserId, path })` in the `load` of `/g/<game>` and `/<handle>`, with the maker's account id read from the database and `url.pathname`. Every landing replaces the cookie, so the last arrival wins. The feed at `/` is not an arrival and leaves the cookie alone. The journey for design 8 ("A member's sign-up records the maker's link they came through") is then redone from a real link.
+- Slice 5 reads `MembershipStart` for "Bringing a member": the maker, the path, the arrival's time and when paying started are all there, one row per completed checkout, so the 12 months, a member who joins twice and a maker who brings themselves are decided there, by pure functions.
+- The privacy text (the Owner's, before S3) should say that Ruken remembers which maker's link a visitor came through, in a cookie, to pay that maker.
 - Features hold no Svelte components yet. An entry file that mixed server code and components would pull Prisma and Stripe into the browser's bundle, and the layer test allows one entry file per feature. The first slice that needs a shared component decides how a feature exposes one, and changes `tests/architecture.test.ts` in its own task.
 - Slice 4 adds what the admin portal needs to `accounts`: admin sessions, the authenticator code, the first-owner command, suspension.
 - Slice 5 posts `MembershipPayment` rows and the kept dispute and refund events into the ledger. `LEDGER_SUBJECT_KEY` and the member key arrive then.
