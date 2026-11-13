@@ -1,0 +1,6 @@
+/*
+  The look of Ruken's own screens: the Card Table. A dark green felt, and one paper card on it that holds
+  the one thing to do. Type is a serif for headings and a grotesque for words. Colour is a few named
+  tokens, and nothing else is a colour.
+  tests/lib/look.test.ts reads this file as text and pins every token, so a change here fails there first.
+*/
