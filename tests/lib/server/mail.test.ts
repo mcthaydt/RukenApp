@@ -15,7 +15,7 @@ function recordingTransport(): { transport: Transporter; sent: SentMessage[] } {
   const transport = nodemailer.createTransport({ jsonTransport: true });
   const send = transport.sendMail.bind(transport);
   transport.sendMail = async (options: SendMailOptions) => {
-    const info = (await send(options)) as { message: string };
+    const info = await send(options);
     const message = JSON.parse(info.message) as {
       to: { address: string }[];
       from: { address: string; name: string };
