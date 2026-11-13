@@ -557,3 +557,622 @@ it("a second pull gets its own folder and the first one's files stay", async () 
 - [ ] **Step 2 (green):** the code, and the four new names in `.env.example` with fake values and a line each. Push. Expected: all pass, the layer test included. Branch C is ready to merge.
 
 ---
+
+# Branch D: `slice-2/gate`
+
+First, before any code: send the coordinator G3 word for word. Nothing in this branch waits for it.
+
+### Task 12: The play pass
+
+**Files:**
+- Create: `src/features/play/pass.ts`
+- Test: `tests/features/play/pass.test.ts`
+
+**Interfaces:**
+- Produces, with `node:crypto` only (both Workers have `nodejs_compat`), in the pattern of slice 1's `arrival.ts` and `OLD/packages/core/src/runtime/launch-token.ts`:
+  - `PASS_LIFE_MS = 4 * 60 * 60 * 1000`.
+  - `interface PassClaims { game: string; pull: string; expiresAtMs: number }`.
+  - `makePass(claims: PassClaims, secret: string): string`: `v1.<payload>.<mac>`; the payload is `{ "g": game, "p": pull, "exp": <whole seconds> }` as JSON in base64url; the mac is HMAC-SHA256 over `"ruken-play-pass-v1:" + payload`, in base64url.
+  - `checkPass(value: string, secret: string, nowMs: number): PassClaims | null`: null for anything but three dot-separated parts starting `v1`, a mac that does not match (compared with `timingSafeEqual`), JSON that does not parse, a `g` that does not match `PUBLIC_ID`'s pattern (written out here, so this file imports no feature), a `p` that is not 1 to 64 characters of `[A-Za-z0-9-]`, an `exp` that is not a whole number, or a pass whose time has come (`nowMs >= exp * 1000`). It never throws. An empty secret throws at once in both functions: `The play pass secret is not set.`
+- The file imports nothing from the app, so the gate can bundle it.
+
+- [ ] **Step 1 (red):**
+
+```ts
+const claims = { game: "aaaaaaaaaa", pull: "0b0e6c2e-3f0a-4a8e-9d0a-1c2d3e4f5a6b", expiresAtMs: 1_800_000_000_000 };
+it("opens what it made, until it runs out", () => {
+  const pass = makePass(claims, "s");
+  expect(checkPass(pass, "s", 1_799_999_999_999)).toEqual(claims);
+  expect(checkPass(pass, "s", 1_800_000_000_000)).toBeNull();
+});
+it("holds nothing but a game, a pull and a time", () => {
+  const payload = JSON.parse(Buffer.from(makePass(claims, "s").split(".")[1] ?? "", "base64url").toString());
+  expect(Object.keys(payload).sort()).toEqual(["exp", "g", "p"]);
+});
+it("is one path segment", () => { expect(makePass(claims, "s")).toMatch(/^[A-Za-z0-9_.-]+$/); });
+it("ignores a pass made with another secret", () => { expect(checkPass(makePass(claims, "other"), "s", 0)).toBeNull(); });
+it("ignores a payload changed after signing", () => { /* swap in another game's payload, keep the mac: null */ });
+it.each(["", "v1", "v1.a", "v2.a.b", "a.b.c.d", "v1.!!.!!"])("ignores %j", (value) => { expect(checkPass(value, "s", 0)).toBeNull(); });
+it("refuses to work with no secret", () => { expect(() => makePass(claims, "")).toThrow("The play pass secret is not set."); });
+```
+
+  Stubs. Push. Expected: `verify` fails in `pass.test.ts` with "not built yet".
+- [ ] **Step 2 (green):** the code. Push. Expected: all pass.
+
+### Task 13: The gate
+
+**Files:**
+- Create: `src/features/play/gate.ts`
+- Test: `tests/features/play/gate.test.ts`
+
+**Interfaces:**
+- Consumes: `checkPass` (Task 12), `FileStore`, `normalizePath`, `servedTypeFor`, `parseRange`, `matchesEtag` (Tasks 3, 6). It imports those files by relative path and nothing else: no entry file, no Prisma, no SvelteKit.
+- Produces: `handleGameRequest(request: Request, deps: { files: FileStore; passSecret: string; siteOrigin: string; nowMs: number }): Promise<Response>`, after `handle` and `serveFile` in `OLD/apps/game-host/src/handler.ts`, with the old environments, local names, single-game and beta settings, pointer records, channels, preload pages and embeds all trimmed. In order:
+  1. A method other than `GET` or `HEAD`: 405 with `allow: GET, HEAD`.
+  2. `/__ruken/health`: 200 `ok`, `cache-control: no-store`. `/robots.txt`: `User-agent: *\nDisallow: /\n`.
+  3. The host's first label decides. `media`: step 4. `g-<ten characters of a-z2-7>`: step 5. Anything else: 404.
+  4. **A clip.** The path without its first slash must pass `isClipKey`'s pattern (written out in this file) or the answer is 404. Served from that key with `cache-control: public, max-age=31536000, immutable` and `cross-origin-resource-policy: cross-origin`, to anyone.
+  5. **A game file.** The path is `/<pass>/<rest>`. `checkPass(pass, passSecret, nowMs)` null, or its `game` is not the host's game: **403** with the one line below, and the bucket is never asked. `/<pass>` with no slash after it: 308 to `/<pass>/`. `normalizePath(rest)` null: 400. `rest` empty: `index.html`. The key is `files/<game>/<pull>/<path>`; no such file: 404.
+  6. Serving, for both: the type from `servedTypeFor` and never from the file; `etag`; `If-None-Match` answers 304; a `Range` answers 206 or 416 as the carried code does; a precompressed `.br` or `.gz` file is sent as it is under its `content-encoding` and never as a range (the carried `encodeBody: "manual"`); `HEAD` answers the headers with no body.
+- Headers on every answer: `x-content-type-options: nosniff`, `referrer-policy: no-referrer` (so a pass in an address is never sent on to a third site), `x-robots-tag: noindex`, and `content-security-policy` with `frame-ancestors <siteOrigin>` (only Ruken's site may put a game in a frame). A game file also gets `cross-origin-resource-policy: same-origin`, `cache-control: private, max-age=14400` and the carried `permissions-policy` (`gamepad=(self), fullscreen=(self), autoplay=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()`). An answer that is not a file is plain text with `content-security-policy: default-src 'none'; frame-ancestors <siteOrigin>` and `cache-control: no-store`.
+- The words, shown inside the game's frame, each one line: 403, "This game's link has run out. Go back and press Play again."; 404, "Not found."; 400, "We could not read that address."
+- No answer ever has a `set-cookie` header, and the handler never reads `cookie`.
+
+Grandma: a person only ever sees the 403 line, inside the frame, under Ruken's bar with its ← (Task 21); it says what happened and what to do.
+
+- [ ] **Step 1 (red):** against `MemoryFileStore` holding `files/aaaaaaaaaa/p1/index.html`, `…/main.js`, `…/img/dot.png`, `…/data/level.bin`, `…/big.js.br`, and one clip; `get(url)` builds a request to `http://g-aaaaaaaaaa.games.test` and calls the handler with a pass made in the test:
+
+```ts
+it("serves the game's page under a good pass", async () => {
+  const response = await get(`/${pass}/`);
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
+  expect(response.headers.get("content-security-policy")).toContain("frame-ancestors https://ruken.test");
+  expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+});
+it("loads nothing without a pass", async () => {                        // design 8: has not paid, cannot load
+  for (const path of ["/", "/index.html", "/main.js", "/files/aaaaaaaaaa/p1/index.html", "/v1.x.y/index.html"]) {
+    expect((await get(path)).status).toBe(403);
+  }
+  expect(files.reads).toEqual([]);                                      // the bucket was never asked
+});
+it("refuses a pass made for another game", async () => { /* pass for bbbbbbbbbb on g-aaaaaaaaaa: 403 */ });      // Review Focus 1
+it("refuses a pass that has run out, in words a person can act on", async () => {                                // Review Focus 3
+  const response = await get(`/${pass}/main.js`, { nowMs: claims.expiresAtMs });
+  expect(response.status).toBe(403);
+  expect(await response.text()).toBe("This game's link has run out. Go back and press Play again.");
+});
+it.each(["../p2/index.html", "..%2fp2/index.html", "a//b", "a%5cb", "%2e%2e/%2e%2e/clips/x"])("refuses the path %j and never asks the bucket", async (rest) => {   // Review Focus 2
+  /* 400 or 404, never 200; files.reads is empty */ });
+it("serves a file it does not know as plain bytes", async () => { /* data/level.bin and a name with no dot: application/octet-stream, nosniff */ });   // Review Focus 11
+it("answers a byte range", async () => { /* Range: bytes=1-2 → 206, content-range, two bytes */ });
+it("answers 304 to a matching etag", async () => {});
+it("sends a precompressed file as it is", async () => { /* big.js.br: content-encoding br, type text/javascript, no accept-ranges */ });
+it("sends a clip to anyone, to keep for a year", async () => { /* http://media.games.test/<clip key>: 200, video/mp4, immutable, CORP cross-origin */ });
+it("serves nothing else from the media name", async () => { /* /files/aaaaaaaaaa/p1/index.html on media: 404 */ });
+it("never sets a cookie and never reads one", async () => {             // Review Focus 14
+  /* every response above has no set-cookie; a request with a cookie header gets the same answer */ });
+it("refuses a POST", async () => { /* 405, allow: GET, HEAD */ });
+it("is not found on any other name", async () => { /* http://www.games.test/: 404 */ });
+```
+
+  `MemoryFileStore` gains `reads: string[]` (every key `head` or `get` was asked for). Stub. Push. Expected: `verify` fails in `gate.test.ts` with "not built yet".
+- [ ] **Step 2 (green):** the code. Push. Expected: all pass.
+
+### Task 14: The gate as its own Worker
+
+**Files:**
+- Create: `cloudflare/games/wrangler.jsonc`, `cloudflare/games/worker.ts`, `tests/browser/support/when-up.ts`
+- Modify: `package.json` (the `deploy` script), `playwright.config.ts`, `tsconfig.json` (`include` gains `cloudflare`), `eslint.config.js` if it names folders
+- Test: `tests/cloudflare/games-worker.test.ts`, `tests/browser/game-gate.test.ts`, `tests/wrangler.test.ts` (add a case)
+
+**Interfaces:**
+- Produces:
+  - `cloudflare/games/wrangler.jsonc`, whole. Comments sit on lines of their own.
+
+```jsonc
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  // The game gate: a second Worker, so a game's files never come from Ruken's own address.
+  "name": "ruken-games",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  // Node's crypto, for checking a play pass.
+  "compatibility_flags": ["nodejs_compat"],
+  // Its address is every name under the games domain, a route the Owner adds from the command line.
+  // The domain is not written here: this repository is public.
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  // The same bucket the site writes to. The gate only reads it.
+  "r2_buckets": [{ "binding": "GAME_FILES", "bucket_name": "ruken-games" }]
+}
+```
+
+  - `cloudflare/games/worker.ts`: `export default { fetch(request, env) { return handleGameRequest(request, { files: r2FileStore(env.GAME_FILES), passSecret: env.PLAY_PASS_SECRET, siteOrigin: env.SITE_ORIGIN, nowMs: Date.now() }); } }`, with `interface Env { GAME_FILES: R2Bucket; PLAY_PASS_SECRET: string; SITE_ORIGIN: string }` declared in the file. It imports `../../src/features/play/gate.ts` and `../../src/lib/files/r2-store.ts` directly and nothing else, with a comment that says why: `play.ts`, the feature's entry, brings the database with it, and this Worker has none. `Date.now()` is allowed here and only here: this file is the edge where the real clock is read, as `systemClock` is for the app.
+  - `package.json`: `"deploy": "prisma migrate deploy && wrangler deploy && wrangler deploy --config cloudflare/games/wrangler.jsonc"`. The gate goes out after the app, with the same build's token ("Found while planning", 5).
+  - `tests/browser/support/when-up.ts`: `node tests/browser/support/when-up.ts <url>` asks the address once a second and exits 0 at the first 200, or 1 after 170 seconds.
+  - `playwright.config.ts`: one more `webServer` entry, `command: "node tests/browser/support/when-up.ts http://localhost:4173/healthz && pnpm exec wrangler dev --config cloudflare/games/wrangler.jsonc --port 8788 --persist-to .wrangler/state"`, ready when `http://localhost:8788/__ruken/health` answers 200, `timeout: 240_000`, with `env`: `PLAY_PASS_SECRET: "test-only-play-pass-secret"`, `SITE_ORIGIN: "http://localhost:4173"`, `CLOUDFLARE_INCLUDE_PROCESS_ENV: "true"`. The comment says why it waits: two local Workers that open the same storage folder at the same moment stop with "database is locked" ("Found while planning", 4). The app's `env` gains `PLAY_PASS_SECRET` (the same value) and `GAME_ADDRESS_PATTERN: "http://{name}.localhost:8788"`.
+
+- [ ] **Step 1 (red):** `games-worker.test.ts` (reads files as text; the config is parsed after dropping the `//` lines): the name is `ruken-games`; `main` is `worker.ts`; `compatibility_flags` contains `nodejs_compat`; `workers_dev` and `preview_urls` are false; `r2_buckets` is the one entry above; there is no `vars`, `route`, `routes` or `hyperdrive` key; the text holds no `https://` but the schema's own line and nothing matching `/[a-z0-9-]+\.(com|net|org|io|dev|gg|games)\b/` (no real address); `worker.ts` imports exactly the two files named above. `tests/wrangler.test.ts`: the `deploy` script contains `wrangler deploy --config cloudflare/games/wrangler.jsonc` after the app's `wrangler deploy`. `game-gate.test.ts`:
+
+```ts
+test("the gate answers on its own address", async ({ page }) => {
+  expect((await page.goto("http://media.localhost:8788/__ruken/health"))?.status()).toBe(200);
+});
+test("a game's address gives nothing without a pass", async ({ page }) => {
+  const response = await page.goto("http://g-aaaaaaaaaa.localhost:8788/index.html");
+  expect(response?.status()).toBe(403);
+  await expect(page.getByText("This game's link has run out. Go back and press Play again.")).toBeVisible();
+});
+```
+
+  Push. Expected: `verify` fails in `games-worker.test.ts` and `wrangler.test.ts` (no such file, no such script); `browser` fails in `game-gate.test.ts` (nothing listens on 8788).
+- [ ] **Step 2 (green):** the files. Push. Expected: all pass, and every earlier journey passes with the fourth server running.
+- [ ] **Step 3: if green does not come.** One thing here could not be settled by reading. Signs: the gate's `wrangler dev`, or the app's, stops with `SQLITE_BUSY` or "database is locked", or the `browser` job times out starting servers. One fix: give the gate its own folder (`--persist-to .wrangler/games-state`) and stop; the journeys of Tasks 15 to 23 need the shared bucket, so report to the coordinator with the log lines and wait. Any other failure of the green push: stop and report at once (CLAUDE.md, Pace: no fourth attempt).
+
+Branch D is ready to merge.
+
+---
+
+# Branch E: `slice-2/door`
+
+Owner question Q2. If the Owner chooses B or C, this branch is not built as written: stop and ask the coordinator for the revised plan.
+
+### Task 15: The staff door, and a stand-in GitHub
+
+**Files:**
+- Create: `src/lib/server/job-secret.ts`, `src/routes/jobs/games/+server.ts`, `src/routes/jobs/games/[game]/+server.ts`, `src/routes/jobs/games/[game]/clips/[shape]/+server.ts`, `tests/browser/support/fake-github-server.ts`, `tests/browser/support/game.ts`, `tests/fixtures/tiny-game/index.html`, `main.js`, `img/dot.png`
+- Modify: `src/routes/jobs/purge-accounts/+server.ts` (uses `hasJobSecret`), `playwright.config.ts`
+- Test: `tests/lib/server/job-secret.test.ts`, `tests/browser/door.test.ts`
+
+**The door** stands in for the submit form and the admin portal until slice 4, which removes it. Every address answers 404 without `Authorization: Bearer <JOBS_SECRET>`, like the daily job's.
+
+- `hasJobSecret(request: Request): boolean` in `src/lib/server/job-secret.ts`: the check slice 1's Task 20 wrote inside `/jobs/purge-accounts`, moved here unchanged so both use one; that route's own tests must still pass.
+- `POST /jobs/games`, JSON body `{ "makerEmail", "name", "oneLine", "playsOn": "phone_and_computer" | "computer_only", "repository": "owner/name", "branch"?: string, "folder"?: string }`. It finds the maker's account by email (none: 400 `{ "problem": "No account has that email. Sign up on the site first." }`); finds that maker's game whose slug is `slugOf(name)`, or makes it; pulls the latest; and makes it live when both clips are there. The answer is 200 with `summary(slug)` plus `"address": "/g/<slug>"` and, when it is not live yet, `"next": "Upload an upright clip and a wide clip, then call this again."` A `GameError` answers 400 `{ "problem": <its words> }`.
+- `PUT /jobs/games/<slug>/clips/<upright|wide>`, the body is the video and `content-type` its type. A `content-length` over `CLIP_MAX_BYTES`, or none, answers 413 `{ "problem": "A clip can be up to 30 MB." }` before the body is read. Then `saveClip`. 200 with `summary(slug)`.
+- `GET /jobs/games/<slug>`: 200 with `summary(slug)`; from Task 18 it also holds `"play"` (the sessions, the beats and the counted seconds), which is how a person checks on the real site that play time was recorded.
+- No address here takes an amount, a count, a size or a state: the door can only ask for a pull and hand over a clip (AGENTS.md: nobody types a fact).
+
+**The stand-in GitHub.** `fake-github-server.ts` is a plain `node:http` server on `127.0.0.1:12112`, started by Playwright (`node tests/browser/support/fake-github-server.ts`, ready when `GET /ready` answers 200). For the repository `ruken-test/tiny-game` it answers the four calls of Task 8: the installation (`{ "id": 1 }`), the token (`{ "token": "ghs_test_fake" }`), the commit (forty characters, as text) and the tarball, made at start from `tests/fixtures/tiny-game/` with `tarGz` under a top folder. Every call but `/ready` must carry an `Authorization` header or gets 401. Any other repository: 404. `POST /next-commit` gives the repository a new commit id, for a later journey.
+
+**The tiny game.** `index.html` holds `<h1>Tiny game</h1>`, `<button id="tap">Tap</button>`, an `<img src="img/dot.png">` and `<script src="main.js"></script>`; `main.js` sets `document.body.dataset.loaded = "yes"` and writes into `<pre id="seen">` the JSON of what a game can see: `{ referrer: document.referrer, search: location.search, hash: location.hash, name: window.name, cookie: document.cookie, ancestors: location.ancestorOrigins?.length ?? null }`. `dot.png` is a one-pixel PNG. All addresses are relative.
+
+`playwright.config.ts`: the third server above; the app's `env` gains `GITHUB_APP_ID: "1"`, `GITHUB_API_BASE: "http://127.0.0.1:12112"` and `GITHUB_APP_PRIVATE_KEY`, a PKCS#1 key made when the config loads with `generateKeyPairSync` (never a file).
+
+`tests/browser/support/game.ts`: `addGame(request, options?: { name?: string; playsOn?: …; free?: boolean }): Promise<{ slug: string; publicId: string; makerEmail: string; makerUserId: string }>`. It signs a maker up apart from the journey's own page (with a request context of its own posting the site's sign-up form; if that cannot be done without a page, take `browser` as a first argument, use slice 1's `signUpInItsOwnContext`, and say so in the report line), calls the door three times (add, two clips, add again) with `Bearer test-only-jobs-secret`, and, for `free`, sets `freeToPlay` on the row through `tests/browser/support/database.ts` (nothing on the site can set it until slice 4). Each call uses a fresh name, so journeys do not share a game.
+
+- [ ] **Step 1 (red):** `job-secret.test.ts`: no header, a wrong secret and `Bearer ` alone are false; the right one is true. `door.test.ts`:
+
+```ts
+test("the door is not there without the secret", async ({ request }) => {      // Review Focus 16
+  for (const call of [request.post("/jobs/games", { data: {} }), request.get("/jobs/games/x"), request.put("/jobs/games/x/clips/wide", { data: "x" })]) {
+    expect((await call).status()).toBe(404);
+  }
+});
+test("a game is added, pulled, given its clips and made live", async ({ request }) => {
+  const first = await door(request).post("/jobs/games", { data: tinyGame(maker.email) });
+  expect(await first.json()).toMatchObject({ state: "draft", pull: { fileCount: 3 }, clips: [], next: "Upload an upright clip and a wide clip, then call this again." });
+  /* PUT both clips → 200; POST again → state "live", clips ["upright", "wide"], address "/g/<slug>" */
+});
+test("a refusal says what to fix", async ({ request }) => {
+  const response = await door(request).post("/jobs/games", { data: { ...tinyGame(maker.email), repository: "ruken-test/not-installed" } });
+  expect(response.status()).toBe(400);
+  expect(await response.json()).toEqual({ problem: "Ruken can't see that repository. Install the Ruken app on it in GitHub, then try again." });
+});
+test("a clip that is too big is refused before it is read", async ({ request }) => { /* content-length 30_000_001 → 413 */ });
+test("an email with no account is refused", async ({ request }) => { /* 400, the words above */ });
+```
+
+  Commit the stand-in, the fixture and the helpers with the tests. Stub `hasJobSecret`. Push. Expected: `verify` fails in `job-secret.test.ts` ("not built yet"); `browser` fails in `door.test.ts`: the second to fifth tests get 404, not their answers. The first test passes already (the addresses are not there at all); say so in the report line.
+- [ ] **Step 2 (green):** the three routes, each a few lines over `gamesServices().service`, and `/jobs/purge-accounts` using `hasJobSecret`. Push. Expected: all pass. Branch E is ready to merge.
+
+---
+
+# Branch F: `slice-2/play`
+
+### Task 16: The play tables
+
+**Files:**
+- Create: `prisma/schema/play.prisma`, `prisma/migrations/<timestamp>_play/migration.sql`
+- Modify: `prisma/schema/accounts.prisma`, `prisma/schema/games.prisma` (relations)
+- Test: `tests/features/play/schema.pg.test.ts`
+
+| Model | Columns |
+|---|---|
+| `PlaySession` | `id` (set in code), `gameId` (a `Game`), `pullId` (a `GamePull`), `userId?` (a `User`; null: nobody was signed in), `basis PlayBasis`, `tokenHash`, `startedAt`, `createdAt`; index on (`userId`, `startedAt`) and on (`gameId`, `startedAt`) |
+| `PlayBeat` | `id` (`BigInt`, autoincrement), `sessionId` (a `PlaySession`), `receivedAt`, `attentive Boolean`; index on (`sessionId`, `receivedAt`) |
+
+Enum `PlayBasis { member, free_game, staff, own_game }`. No `updatedAt` on either: a row is added and never changed. In the SQL, by hand: CHECK `PlaySession_tokenHash_check` (64 lower-case hex characters); CHECK `PlaySession_basis_check` (`"userId" IS NOT NULL OR "basis" = 'free_game'`: only a free game is played by nobody); the add-only trigger on both tables.
+
+These rows are everything slice 5 needs for the 180-minute rule: the member (`userId`), the game, why the play was allowed, and each beat's time on the server's clock, from which the America/Chicago day is worked out.
+
+- [ ] **Step 1 (red):** the two tables exist; `UPDATE` and `DELETE` on each reject; a session with no user and basis `member` rejects, with `free_game` passes; a token hash of the wrong shape rejects. Push. Expected: `postgres` fails in `schema.pg.test.ts`: the tables do not exist.
+- [ ] **Step 2 (green):** the schema and the migration. Push. Expected: all pass.
+
+### Task 17: Who may play, and what counts
+
+**Files:**
+- Create: `src/features/play/may-play.ts`, `src/features/play/time.ts`, `src/features/play/frame.ts`
+- Test: `tests/features/play/may-play.test.ts`, `time.test.ts`, `frame.test.ts`
+
+**Interfaces:**
+- Produces, all pure:
+  - `type PlayBasis = "member" | "free_game" | "staff" | "own_game"` and `playBasis(input: { game: { freeToPlay: boolean; makerUserId: string }; viewer: { userId: string; isStaff: boolean; isMember: boolean } | null }): PlayBasis | null`. Null means the paywall. When more than one reason holds, the first of `own_game`, `staff`, `free_game`, `member` wins: design 6 says the first three never count for pay, so a member's play of a free game must not be recorded as a member's.
+  - `isPhone(userAgent: string | null): boolean`: true when it contains `Mobi` or `Android`.
+  - `backFromPaywall(next: string): string`: `/g/<slug>` when `next` is exactly `/g/<slug>/play` (slug as Task 1's CHECK), otherwise `/`.
+  - In `time.ts`: `BEAT_EVERY_MS = 15_000`, `BEAT_TOO_SOON_MS = 5_000`, `LONGEST_COUNTED_GAP_MS = 45_000`, `PLAY_SESSION_LIFE_MS = 24 * 60 * 60 * 1000`, and `countedMs(startedAtMs: number, beats: readonly { atMs: number; attentive: boolean }[]): number`: beats in time order; each attentive beat adds the time since the beat before it (or since the start), `LONGEST_COUNTED_GAP_MS` at most; a beat that is not attentive adds nothing; every beat becomes the "before" of the next.
+  - In `frame.ts`: `GAME_FRAME_SANDBOX = "allow-scripts allow-same-origin allow-pointer-lock"` and `GAME_FRAME_ALLOW = "gamepad; fullscreen; autoplay"`, carried from `OLD/packages/sdk-host/src/game-frame.ts` with `game-frame.test.ts`.
+
+- [ ] **Step 1 (red):**
+
+```ts
+const game = { freeToPlay: false, makerUserId: "maker" };
+const viewer = { userId: "u", isStaff: false, isMember: false };
+it("sends a stranger and a non-member to the paywall", () => {
+  expect(playBasis({ game, viewer: null })).toBeNull();
+  expect(playBasis({ game, viewer })).toBeNull();
+});
+it("lets a member in, as a member", () => { expect(playBasis({ game, viewer: { ...viewer, isMember: true } })).toBe("member"); });
+it("lets anyone into a free game, with no account", () => { expect(playBasis({ game: { ...game, freeToPlay: true }, viewer: null })).toBe("free_game"); });
+it("never records a member's play of a free game as a member's", () => {
+  expect(playBasis({ game: { ...game, freeToPlay: true }, viewer: { ...viewer, isMember: true } })).toBe("free_game"); });
+it("records staff as staff and a maker on their own game as that, member or not", () => {
+  expect(playBasis({ game, viewer: { ...viewer, isStaff: true, isMember: true } })).toBe("staff");
+  expect(playBasis({ game, viewer: { userId: "maker", isStaff: true, isMember: true } })).toBe("own_game");
+});
+it("a maker is a stranger on someone else's game", () => { expect(playBasis({ game, viewer: { ...viewer, userId: "other-maker" } })).toBeNull(); });
+
+it("counts the server's time between attentive beats", () => {
+  expect(countedMs(0, [{ atMs: 15_000, attentive: true }, { atMs: 30_000, attentive: true }])).toBe(30_000);
+});
+it("counts nothing for a beat that says the person looked away, and starts again after it", () => {
+  expect(countedMs(0, [{ atMs: 15_000, attentive: false }, { atMs: 30_000, attentive: true }])).toBe(15_000);
+});
+it("forgives two lost beats and no more", () => {                         // Review Focus 7
+  expect(countedMs(0, [{ atMs: 45_000, attentive: true }])).toBe(45_000);
+  expect(countedMs(0, [{ atMs: 600_000, attentive: true }])).toBe(45_000);
+});
+it("never counts more than the clock saw, however many beats arrive", () => {
+  const flood = Array.from({ length: 100 }, (_, i) => ({ atMs: 100 * (i + 1), attentive: true }));
+  expect(countedMs(0, flood)).toBe(10_000);
+});
+it("counts nothing with no beats", () => { expect(countedMs(0, [])).toBe(0); });   // Review Focus 15
+it.each([["/g/floor-fifty/play", "/g/floor-fifty"], ["/me", "/"], ["/g/x/play/beat", "/"], ["/g/UP/play", "/"]])("Not now from %j goes to %j", (next, back) => { expect(backFromPaywall(next)).toBe(back); });
+it("knows a phone by what it says it is", () => { /* a Pixel's and an iPhone's User-Agent: true; a desktop Chrome's and null: false */ });
+```
+
+  `frame.test.ts`: the two exact strings, and the sandbox holds none of `allow-top-navigation`, `allow-popups`, `allow-forms`, `allow-modals`, `allow-downloads`. Stubs. Push. Expected: `verify` fails in the three files with "not built yet".
+- [ ] **Step 2 (green):** the code. Push. Expected: all pass.
+
+### Task 18: Sessions and beats
+
+**Files:**
+- Create: `src/features/play/sessions.ts`, `src/features/play/services.ts`, `src/features/play/play.ts`
+- Modify: `src/routes/jobs/games/[game]/+server.ts` (the summary gains `play`), `.env.example`
+- Test: `tests/features/play/sessions.pg.test.ts`, `tests/features/play/services.test.ts`, `tests/browser/door.test.ts` (one case)
+
+**Interfaces:**
+- Consumes: `playBasis`, the time rules, `makePass`, `PASS_LIFE_MS`, `LiveGame`, `RateLimiter`.
+- Produces, from `createPlayService(deps: { db: PrismaClient; clock: Clock; rateLimiter: RateLimiter; passSecret: string; address(name: string): string })`:
+  - `startPlay(input: { game: LiveGame; viewer: { userId: string; isStaff: boolean; isMember: boolean } | null; clientAddress: string }): Promise<{ frameUrl: string; session: { id: string; token: string } } | { refused: "join" | "busy" }>`. `playBasis` null: `{ refused: "join" }` and nothing is stored. More than `PLAY_STARTS_PER_ADDRESS` (`{ limit: 30, windowSeconds: 60 }`, key `play:start:<clientAddress>`, both declared in this file): `{ refused: "busy" }`. Otherwise: a `PlaySession` row (`id` from `randomUUID()`, the basis, the game's `livePullId`, `startedAt` from the clock, `tokenHash` the SHA-256 in hex of a 32-byte random token in base64url); `frameUrl` is `` `${address("g-" + game.publicId)}/${makePass({ game: game.publicId, pull: game.livePullId, expiresAtMs: now + PASS_LIFE_MS }, passSecret)}/` ``. The token itself is answered once and never stored.
+  - `recordBeat(input: { sessionId: string; token: string; attentive: boolean }): Promise<"recorded" | "too_soon" | "over" | "unknown">`. No such session, or the token's hash does not match (compared with `timingSafeEqual`): `unknown`. The clock is past `startedAt + PLAY_SESSION_LIFE_MS`: `over`. The session's latest beat (or its start) is less than `BEAT_TOO_SOON_MS` ago: `too_soon`, and nothing is stored. Otherwise one `PlayBeat` row with the clock's time. Two beats in the same instant may both be stored; `countedMs` gives the second one nothing.
+  - `playSummary(gameId: string): Promise<{ sessions: number; beats: number; countedSeconds: number }>`: over every session of the game, `countedMs` summed and rounded down to seconds.
+  - `playServices(): { service }` in `services.ts`, built once from `PLAY_PASS_SECRET`, with `prisma()`, `systemClock`, a `RateLimiter` and `gamesServices().address`.
+  - `play.ts` re-exports `playServices`, `backFromPaywall`, `isPhone`, `GAME_FRAME_SANDBOX`, `GAME_FRAME_ALLOW`, `type PlayBasis`.
+
+- [ ] **Step 1 (red):** with `TestClock`:
+
+```ts
+it("gives a member a frame address under a pass for that game's live files, and records why they could play", async () => {
+  const started = await service.startPlay({ game, viewer: member, clientAddress: "203.0.113.1" });
+  const url = new URL(frameUrlOf(started));
+  expect(url.origin).toBe(`https://g-${game.publicId}.games.test`);
+  expect(url.search).toBe(""); expect(url.hash).toBe("");
+  expect(checkPass(url.pathname.split("/")[1] ?? "", "s", clock.epochMs())).toEqual({ game: game.publicId, pull: game.livePullId, expiresAtMs: clock.epochMs() + PASS_LIFE_MS });
+  expect(await prisma.playSession.findMany()).toMatchObject([{ userId: member.userId, gameId: game.id, pullId: game.livePullId, basis: "member" }]);
+});
+it("stores nothing for someone who may not play", async () => { /* { refused: "join" }; no rows */ });
+it("records a free game played by nobody", async () => { /* viewer null, freeToPlay: basis "free_game", userId null */ });
+it("never stores the token itself", async () => { /* no column of the row equals the token; tokenHash is sha256(token) */ });
+it("takes a beat from the session's own token only", async () => {            // Review Focus 7
+  expect(await service.recordBeat({ sessionId: a.id, token: b.token, attentive: true })).toBe("unknown");
+  expect(await service.recordBeat({ sessionId: "nope", token: a.token, attentive: true })).toBe("unknown");
+  expect(await prisma.playBeat.count()).toBe(0);
+});
+it("stamps a beat with the server's clock", async () => {
+  clock.advance(15_000);
+  expect(await service.recordBeat({ sessionId: a.id, token: a.token, attentive: true })).toBe("recorded");
+  expect((await prisma.playBeat.findFirstOrThrow()).receivedAt).toEqual(new Date(clock.epochMs()));
+});
+it("drops a beat that comes too soon after the last", async () => { /* advance 1 s: "too_soon", no row */ });
+it("stops taking beats a day after the session started", async () => { /* advance 24 h + 1 ms: "over" */ });
+it("adds up what counted", async () => { /* three beats 15 s apart, the second not attentive: countedSeconds 30, beats 3, sessions 1 */ });
+it("slows down an address that opens games too fast", async () => { /* the 31st start in a minute: { refused: "busy" } */ });
+```
+
+  `door.test.ts` gains: `GET /jobs/games/<slug>` holds `play: { sessions: 0, beats: 0, countedSeconds: 0 }` for a new game. `services.test.ts`: a missing `PLAY_PASS_SECRET` throws "Missing setting PLAY_PASS_SECRET". Stubs. Push. Expected: `postgres` fails in `sessions.pg.test.ts`, `verify` in `services.test.ts`, with "not built yet"; `browser` fails in the new door case (no `play` in the answer).
+- [ ] **Step 2 (green):** the code; `PLAY_PASS_SECRET` in `.env.example`. Push. Expected: all pass, the layer test included (`play` reaches `games` and `membership` only through their entry files).
+
+### Task 19: The look of a game's page and of the play screen
+
+**Files:**
+- Modify: `src/lib/look.css`, `tests/lib/look.test.ts` (`CLASSES`), `tests/browser/support/look.ts` if it lists classes
+- Test: `tests/lib/look.test.ts` (add cases)
+
+Five classes, each with its rule here and its first use in Tasks 20 and 21 (slice 1: a class arrives with its rule, its first use and its name in `CLASSES`). Design 5.8's tokens only; no new colour.
+
+| Class | Goes on | What it does |
+|---|---|---|
+| `clip` | a `<video>` in a card | a block as wide as the card, at most 60% of the window's height, 20px corners, `ink` behind it while it loads, `object-fit: cover` |
+| `stage` | the play screen's `<main>` | fills the window (`100dvh`, no gutter, no width limit), `felt-deep` ground, a column: the bar, then the frame |
+| `bar` | the strip above the game | 48px tall, `felt-deep`, chalk text at 14px, its contents in a row with a 0.5rem gap |
+| `back` | the ← link in the bar | a 48px by 48px target; the arrow is chalk on `felt-raised`, a full pill (design 5.8: `felt-raised` is for secondary buttons; this is its first rule) |
+| `frame` | the game's `<iframe>` | takes all the room left, no edge, `felt-deep` behind it while the game loads |
+
+**Calls in the look** (the Owner can overrule): the play screen has no paper card, because the thing to do there is the game itself; the bar is 48px so ← is as easy to hit as any button; the line in the bar is 14px `chalk` (`chalk` on `felt-deep` is 13.1:1), a note beside a control, not running text; nothing on either screen moves, so reduced motion changes nothing, and the line in the bar leaves without a fade.
+
+- [ ] **Step 1 (red):** `tests/lib/look.test.ts`: `CLASSES` holds the five names; `look.css` has a rule for each; the `back` rule's two colours are the tokens above and their contrast, measured from the tokens as Task 35 does, is at least 4.5:1; the `bar` and `back` rules name 3rem (48px). Push. Expected: `verify` fails in `look.test.ts`: no such rules.
+- [ ] **Step 2 (green):** the rules. Push. Expected: all pass. (The slice 1 case "every class in `CLASSES` is used by a screen", if it exists as built, fails until Task 21: if so, do Tasks 19 to 21 as one red and one green for that case and say so in the report line.)
+
+### Task 20: A game's page (`/g/<game>`)
+
+**Files:**
+- Create: `src/routes/g/[game]/+page.server.ts`, `src/routes/g/[game]/+page.svelte`
+- Test: `tests/browser/game-page.test.ts`
+
+**The screen**, a placeholder until the feed (slice 3) opens at this clip:
+
+```
+Tiny game
+A game for the tests.
+
+[ the clip, playing without sound, looping ]
+
+[ Play ]
+```
+
+On a phone, for a game marked computer only, the last line is instead:
+
+```
+This one needs a computer.
+[ Share the link ]
+```
+
+- `load`: `liveGameBySlug(params.game)`; null is a 404 (the error page's words). Then `membershipServices().arrival.remember(cookies, { makerUserId: game.makerUserId, path: url.pathname })`: this is the arrival slice 1 built ahead of its caller. It answers the name, the one line, the two clip addresses (`gamesServices().address("media") + "/" + key`) and `needsComputer` (`game.playsOn === "computer_only" && isPhone(request.headers.get("user-agent"))`).
+- The clip is one `<video class="clip" muted loop autoplay playsinline>` with two `<source>` elements: the upright clip with `media="(orientation: portrait)"`, then the wide one. No sound here: the tap for sound belongs to the feed (design 5.1, slice 3).
+- Play is `<a class="button" href="/g/<slug>/play">Play</a>`: a link, so it works with no script, and the page's one filled button.
+- "Share the link" is a `<button>`: it calls `navigator.share({ title: <name>, url: location.href })` where the browser has it; otherwise it copies the address and the line under it reads "Link copied." If neither works, the line reads "Copy the address from the bar at the top." The script is in the page; it imports nothing from a feature.
+- The page's title is `<name> · Ruken`.
+
+Grandma: the name says what this is; the clip shows it; Play is the only button. On a phone that cannot play it, one line says why and the one button does the next best thing.
+
+Look: `<main class="card">`; the name is the card's `h1`; the one line is ordinary text; the video is `clip`; "This one needs a computer." is ordinary text, not a `problem` (nothing went wrong). No red.
+
+- [ ] **Step 1 (red):**
+
+```ts
+test.beforeEach(forgetRateLimits);
+test("a game's page shows its name, its line, its clip and Play", async ({ page, request }) => {
+  const game = await addGame(request, { name: "Tiny game" });
+  await page.goto(`/g/${game.slug}`);
+  await expect(page.getByRole("heading", { name: "Tiny game" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Play" })).toHaveAttribute("href", `/g/${game.slug}/play`);
+  await expect(page.getByRole("button")).toHaveCount(0);
+  await expect(page).toHaveTitle("Tiny game · Ruken");
+  const sources = page.locator("video.clip source");
+  await expect(sources.nth(0)).toHaveAttribute("media", "(orientation: portrait)");
+  await expect(sources.nth(0)).toHaveAttribute("src", new RegExp(`^http://media\\.localhost:8788/clips/${game.publicId}/upright-[0-9a-f]{16}\\.mp4$`));
+  await expect(sources.nth(1)).toHaveAttribute("src", /\/wide-[0-9a-f]{16}\.mp4$/);
+  await expectOneCard(page); await showTheOwner(page, "a game's page");
+});
+test("the clip's address answers anyone, as video", async ({ page, request }) => { /* page.goto(the src) → 200, content-type video/mp4 */ });
+test("landing on a game's page remembers its maker's link", async ({ page, request }) => {
+  const game = await addGame(request);
+  await page.goto(`/g/${game.slug}`);
+  expect((await page.context().cookies()).find((cookie) => cookie.name === "rk_arrival")).toMatchObject({ httpOnly: true, sameSite: "Lax" });
+});
+test("a game that is not there is a missing page with a way back", async ({ page }) => { /* /g/no-such-game → 404, "Back to Ruken" */ });
+test("a computer-only game says so on a phone, and offers its link", async ({ page, request }, testInfo) => {
+  const game = await addGame(request, { playsOn: "computer_only" });
+  await page.goto(`/g/${game.slug}`);
+  if (testInfo.project.name === "phone") {
+    await expect(page.getByText("This one needs a computer.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Play" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Share the link" }).click();          // the test browser has no share sheet
+    await expect(page.getByText(/^(Link copied\.|Copy the address from the bar at the top\.)$/)).toBeVisible();
+    await showTheOwner(page, "a computer-only game on a phone");
+  } else {
+    await expect(page.getByRole("link", { name: "Play" })).toBeVisible();
+  }
+});
+```
+
+  Push. Expected: `browser` fails in `game-page.test.ts`: 404 at `/g/<slug>` (the missing-game test passes already; say so in the report line).
+- [ ] **Step 2 (green):** the route. Push. Expected: all pass.
+
+### Task 21: Playing (`/g/<game>/play`)
+
+**Files:**
+- Create: `src/routes/g/[game]/play/+page.server.ts`, `src/routes/g/[game]/play/+page.svelte`
+- Modify: `src/routes/join/+page.server.ts` ("Not now" uses `backFromPaywall`)
+- Test: `tests/browser/play.test.ts`, `tests/browser/join.test.ts` (one case)
+
+**The screen:**
+
+```
+[←]  Tap ← to go back to the feed
+┌─────────────────────────────────┐
+│                                 │
+│   the game, in its own frame    │
+│                                 │
+└─────────────────────────────────┘
+```
+
+- `load`, in this order: `liveGameBySlug` (null: 404); a computer-only game on a phone: redirect (303) to `/g/<slug>`; `startPlay` with the caller (`isStaff` from `staffRolesOf`, `isMember` from `isMember`; signed out: `viewer: null`) and `getClientAddress()`. `{ refused: "join" }`: redirect (303) to `/join?next=/g/<slug>/play`. `{ refused: "busy" }`: the error page with 429 and "You've opened a lot of games just now. Try again in a minute." Otherwise it answers `{ name, slug, frameUrl, session }`.
+- The page is `<main class="stage">`: a `<div class="bar">` holding `<a class="back" href="/g/<slug>" aria-label="Back to the feed">←</a>` and `<p role="status">Tap ← to go back to the feed</p>`; then `<iframe class="frame" title="<name>" src={frameUrl} sandbox={GAME_FRAME_SANDBOX} allow={GAME_FRAME_ALLOW} referrerpolicy="no-referrer">`. The frame has no `name`, and the page sends it no message.
+- The line (design 5.7, "The first time in a game") shows for 5 seconds and is then removed from the page; it shows only the first time on a device (a `localStorage` entry, `rk_seen_back`, set when it is first shown). With no script it simply stays.
+- ← is a plain link: it works with no script, by keyboard, and whatever the game is doing.
+- The page's title is `<name> · Ruken`. The session's token is in the page's data for its own script (Task 22) and nowhere in the frame's address.
+- `/join`: "Not now" goes to `backFromPaywall(next)`.
+
+Grandma: the game fills the screen; the one thing of Ruken's is ←, and one short line says what it does, then gets out of the way. Someone who has not paid sees the price card, not a broken game.
+
+Look: `stage`, `bar`, `back`, `frame` (Task 19). No card, no red.
+
+- [ ] **Step 1 (red):**
+
+```ts
+test("a member presses Play and the game loads, in a frame on another address", async ({ page, request }) => {
+  const game = await addGame(request);
+  await payAsNewMember(page);
+  await page.goto(`/g/${game.slug}`);
+  await page.getByRole("link", { name: "Play" }).click();
+  const frame = page.locator("iframe.frame");
+  await expect(frame).toHaveAttribute("sandbox", "allow-scripts allow-same-origin allow-pointer-lock");
+  await expect(frame).toHaveAttribute("referrerpolicy", "no-referrer");
+  await expect(frame).toHaveAttribute("src", new RegExp(`^http://g-${game.publicId}\\.localhost:8788/v1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+/$`));
+  await expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");   // main.js ran: a second file loaded under the pass
+  await showTheOwner(page, "a game being played");
+});
+test("the game sees nothing about the player", async ({ page, request }) => {
+  /* as above, then read #seen inside the frame */
+  expect(JSON.parse(seen)).toMatchObject({ referrer: "", search: "", hash: "", name: "", cookie: "" });
+  expect(await page.locator("iframe.frame").getAttribute("name")).toBeNull();
+});
+test("someone who has not paid gets the price card, and the files do not load", async ({ page, request }) => {   // design 8; Review Focus 9
+  const game = await addGame(request);
+  await page.goto(`/g/${game.slug}/play`);
+  await expect(page).toHaveURL(`/join?next=%2Fg%2F${game.slug}%2Fplay`);
+  await expect(page.getByRole("heading", { name: "Join Ruken to play" })).toBeVisible();
+  expect((await page.goto(`http://g-${game.publicId}.localhost:8788/index.html`))?.status()).toBe(403);
+});
+test("Not now on the price card goes back to the game's page", async ({ page, request }) => { /* href is /g/<slug> */ });
+test("a stranger signs up, pays, and is in the game they tapped", async ({ page, request }) => {               // design 8
+  const game = await addGame(request);
+  await page.goto(`/g/${game.slug}`);
+  await page.getByRole("link", { name: "Play" }).click();
+  /* the card → Continue → sign up → Continue to payment → Pay (the steps of slice 1's Task 29) */
+  await expect(page).toHaveURL(`/g/${game.slug}/play`);
+  await expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");
+});
+test("anyone can play a free game without an account", async ({ page, request }) => {                          // design 8
+  const game = await addGame(request, { free: true });
+  await page.goto(`/g/${game.slug}/play`);
+  await expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");
+});
+test("a member whose membership has ended gets the price card on reload", async ({ page, request }) => {       // Review Focus 8
+  /* payAsNewMember, open the game, then delete the account's membership the way slice 1's journeys end one
+     (cancel now at the stand-in and wait for /me to say "You're not a member."), reload /g/<slug>/play → /join */ });
+test("the way back is one link, and its line shows once", async ({ page, request }) => {
+  /* free game. await page.clock.install() before goto. The line "Tap ← to go back to the feed" is visible;
+     page.clock.runFor(5_000) → it is gone; reload → it does not show again.
+     The link named "Back to the feed" is at least 48px by 48px and goes to /g/<slug>. */ });
+test("a phone that opens a computer-only game's play address is sent to its page", async ({ page, request }, testInfo) => {   // Review Focus 10
+  /* phone project only: /g/<slug>/play → toHaveURL(/g/<slug>) */ });
+test("nothing on the play screen is red, and nothing scrolls sideways", async ({ page, request }) => { /* pipRed(page) is []; scrollWidth equals clientWidth */ });
+```
+
+  If slice 1's stand-in Stripe has no way to end a membership at once from a journey, the eighth test instead sets the member's `PremiumMembership` row to `ended` through `tests/browser/support/database.ts`; say which in the report line. Push. Expected: `browser` fails in `play.test.ts`: 404 at `/g/<slug>/play`; the `join.test.ts` case fails on the link's address (`/`).
+- [ ] **Step 2 (green):** the route and the one line in `/join`. Push. Expected: all pass.
+
+### Task 22: Play time
+
+**Files:**
+- Create: `src/features/play/attention.ts`, `src/features/play/play.browser.ts`, `src/routes/g/[game]/play/beat/+server.ts`
+- Modify: `src/routes/g/[game]/play/+page.svelte`, `tests/architecture.test.ts`
+- Test: `tests/features/play/attention.test.ts`, `tests/architecture.test.ts` (add cases), `tests/browser/play-time.test.ts`
+
+**A feature's browser entry.** Slice 1 left this to the first slice that needs it. A page's own script may import from a feature only through `src/features/<feature>/<feature>.browser.ts`. `tests/architecture.test.ts` gains two rules, in this task, with a comment for each: a `.svelte` file and a `+page.ts` reach a feature only through its `.browser.ts` entry (a `+page.server.ts`, a `+server.ts` and the hook keep using `<feature>.ts`); and no file reachable from a `.browser.ts` entry imports `src/lib/server/`, a `node:` module, a feature's server entry, or the generated Prisma client. So the database can never be pulled into a browser's bundle.
+
+**Interfaces:**
+- Produces:
+  - `createAttention(): { look(now: { tabShowing: boolean; frameOnScreen: boolean; frameFocused: boolean }): void; report(): boolean; taken(): void }` in `attention.ts`, pure, with no browser API in it. `look` is called once a second and whenever the tab is hidden; any look where one of the three is false marks the stretch as broken. `report()` answers whether every look since the last `taken()` was attentive, and false when there was no look at all. `taken()` starts a new stretch; it is called only when the server took the beat, so a beat that was lost is still spoken for by the next one.
+  - `play.browser.ts` re-exports `createAttention` and `BEAT_EVERY_MS`.
+  - `POST /g/<game>/play/beat`, JSON body `{ "session": string, "token": string, "attentive": boolean }`: a body of any other shape, or over 1,000 bytes, answers 400; `recordBeat`'s `recorded` answers 204, `too_soon` 429, `over` 410, `unknown` 404. It reads no cookie and needs no sign-in: the session's token is the proof, so free play by nobody is recorded too.
+  - In the page's script: one timer looks once a second (`document.visibilityState === "visible"`; the frame's box overlaps the window; `document.activeElement` is the frame and `document.hasFocus()`); `visibilitychange` looks at once; every `BEAT_EVERY_MS` it posts `report()` with `fetch(…, { keepalive: true })` and calls `taken()` on a 204; a 410 or 404 stops the timer; on `pagehide` it sends one last beat with `navigator.sendBeacon`. It never focuses the frame itself: time starts when the person first taps or clicks the game.
+
+- [ ] **Step 1 (red):**
+
+```ts
+// tests/features/play/attention.test.ts
+const yes = { tabShowing: true, frameOnScreen: true, frameFocused: true };
+it("says no before it has looked at all", () => { expect(createAttention().report()).toBe(false); });        // Review Focus 15
+it("says yes when every look was attentive", () => { const a = createAttention(); a.look(yes); a.look(yes); expect(a.report()).toBe(true); });
+it.each(["tabShowing", "frameOnScreen", "frameFocused"] as const)("one look without %s breaks the stretch", (key) => {
+  const a = createAttention(); a.look(yes); a.look({ ...yes, [key]: false }); a.look(yes); expect(a.report()).toBe(false);
+});
+it("keeps a broken stretch until the server has taken a beat", () => {
+  const a = createAttention(); a.look({ ...yes, frameFocused: false }); a.report(); a.look(yes);
+  expect(a.report()).toBe(false);          // the beat was lost: the next one still speaks for the whole stretch
+  a.taken(); a.look(yes); expect(a.report()).toBe(true);
+});
+```
+
+```ts
+// tests/browser/play-time.test.ts
+test("a member's play time is recorded against that game", async ({ page, request }) => {                     // design 8
+  const game = await addGame(request);
+  await payAsNewMember(page);
+  await page.clock.install();
+  await page.goto(`/g/${game.slug}/play`);
+  await page.frameLocator("iframe.frame").getByRole("button", { name: "Tap" }).click();     // the frame now has focus
+  await page.clock.runFor(16_000);                                                           // one beat is due
+  await expect.poll(async () => (await playOf(request, game.slug)).beats).toBe(1);
+  await expect.poll(async () => (await beatsOf(game.slug)).at(-1)?.attentive).toBe(true);
+  expect(await sessionsOf(game.slug)).toMatchObject([{ basis: "member", gameId: game.id }]);
+});
+test("no time counts while the person has not touched the game", async ({ page, request }) => {
+  /* free game; clock.install; goto; runFor(16_000); poll: one beat, attentive false; countedSeconds 0 */ });
+test("free play by nobody is recorded, as free", async ({ page, request }) => { /* sessions: [{ basis: "free_game", userId: null }] */ });
+test("a beat with a wrong token is not taken", async ({ request }) => { /* POST …/play/beat with a made-up session and token → 404 */ });
+test("a beat of the wrong shape is refused", async ({ request }) => { /* { session: 1 } → 400; a 2,000-byte body → 400 */ });
+```
+
+  `playOf(request, slug)` reads `play` from the door's `GET`; `beatsOf` and `sessionsOf` go in `tests/browser/support/database.ts`. The journeys move the page's timers with `page.clock` and wait with `expect.poll`; none sleeps. The server stamps beats with the real clock, so the journeys assert that a beat was recorded and whether it was attentive, never how many seconds counted beyond zero; the counting itself is Task 17's and Task 18's. Stubs for `createAttention`. Push. Expected: `verify` fails in `attention.test.ts` ("not built yet") and in the two new architecture cases if the page already imports wrongly (it should not: they pass, say so); `browser` fails in `play-time.test.ts`: no beat arrives (404 at the beat address).
+- [ ] **Step 2 (green):** the code. Push. Expected: all pass.
+- [ ] **Step 3: if the focus journey fails on `phone` only.** Playwright's phone project sends touch as mouse events; if a click inside the frame does not make it `document.activeElement` there, report it with what `document.activeElement` was. Do not make the page focus the frame, and do not drop the focus rule.
+
+### Task 23: Design 8's journeys, from a real link
+
+**Files:**
+- Modify: `tests/browser/pay.test.ts`
+- Test: `tests/browser/pay.test.ts`
+
+Slice 1 proved "A member's sign-up records the maker's link they came through" with a cookie the test wrote, because no link existed. Now one does.
+
+- [ ] **Step 1:** rewrite that journey: `addGame` (its maker is a real account); the visitor opens `/g/<slug>`, presses Play, signs up, pays; then `membershipStartsOf(member.email)` is `[{ broughtByUserId: game.makerUserId, arrivalPath: "/g/<slug>" }]`. Add: a visitor who lands on game A's page, then on game B's (another maker), and pays is recorded with B's maker (the last arrival wins). Remove `arrivalCookie` from `tests/browser/support/database.ts` if nothing else uses it. Both journeys pass on the first push, because Tasks 20 and 21 built what they need: this task is a test change with no red, and the report line says so. If either fails, that is a defect in Task 20's `arrival.remember` call: fix it there, test first.
+- [ ] **Step 2:** set slice 2's lines in `docs/superpowers/progress.md`: which of design 8's lines now have a journey ("A stranger signs up, pays … and is in the game they tapped", "That member's play time is recorded against that game", "Someone who has not paid cannot load a game's files", "Anyone can play [a free game] without an account", "A member's sign-up records the maker's link they came through"). Branch F is ready to merge after the Owner has seen the screenshots of its green run (the game's page, the computer-only line on a phone, the play screen) and said "fine"; send the coordinator the run's id and one line per screen, as slice 1's Task 37 step 3 does. After two rounds without "fine", stop.
+
+---
+
+# Branch G: `slice-2/real-site`
+
+### Task 24: FloorFifty, pulled and played on the real site
+
+No code unless a check fails. Nothing here is typed into the repository. It needs G1, G2 and G3 done, the open items O1 to O4 closed, and branches A to F on `main` and deployed.
+
+- [ ] **Step 1: the gate's route outlives a deploy.** After the first merge to `main` that follows G3, the Owner runs `(Invoke-WebRequest "https://media.GAMES-DOMAIN/__ruken/health").Content` again and expects `ok`. If it fails, the automatic deploy dropped the route the Owner added by hand. One fix, on a small branch with its test first: the deploy command reads the games domain from a build variable (`wrangler deploy --config cloudflare/games/wrangler.jsonc --route "*.$GAMES_DOMAIN/*"`), and the Owner adds `GAMES_DOMAIN` under the `ruken` Worker's build variables (a website step: Workers Builds has no command for it). Then stop and report.
+- [ ] **Step 2: G4, the Owner's lines.** Send them to the coordinator word for word, with the branch and the folder from O3 filled in:
+  1. `$secret = Read-Host "JOBS_SECRET" -MaskInput; $h = @{ Authorization = "Bearer $secret" }` (the secret from slice 1's S1; it stays in this window only. In Windows PowerShell 5, leave out `-MaskInput`.)
+  2. `Invoke-RestMethod -Method Post -Uri "https://SITE/jobs/games" -Headers $h -ContentType "application/json" -Body (@{ makerEmail = "THE-OWNER'S-ACCOUNT-EMAIL"; name = "Floor Fifty"; oneLine = "THE-ONE-LINE"; playsOn = "phone_and_computer"; repository = "SNEKPRTY/FloorFifty"; branch = "BRANCH"; folder = "FOLDER" } | ConvertTo-Json)` (expect `state: draft`, a `pull` with the file count, and the "next" line; a `problem` says what to fix.)
+  3. `Invoke-RestMethod -Method Put -Uri "https://SITE/jobs/games/floor-fifty/clips/upright" -Headers $h -ContentType "video/mp4" -InFile "PATH-TO-UPRIGHT.mp4"`
+  4. `Invoke-RestMethod -Method Put -Uri "https://SITE/jobs/games/floor-fifty/clips/wide" -Headers $h -ContentType "video/mp4" -InFile "PATH-TO-WIDE.mp4"`
+  5. Line 2 again (expect `state: live` and `address: /g/floor-fifty`).
+  6. `Start-Process "https://SITE/g/floor-fifty"` (the game's page: the clip plays; press Play.)
+  7. After playing for a minute as a member: `(Invoke-RestMethod -Uri "https://SITE/jobs/games/floor-fifty" -Headers $h).play` (expect `sessions` of 1 or more and `countedSeconds` above 0.)
+- [ ] **Step 3: what a person checks**, the Owner or the coordinator with the Owner, on a phone and on a computer, and what is recorded in progress.md (what was checked, by whom, when; no address, no email): the pull's file count and bytes equal O1's measurement; the game's page shows the right clip for the screen; signed out, Play shows the price card; a member (Stripe test mode, from slice 1's Task 31) lands in the game after paying and it runs; ← goes back; the counted seconds rose; the game's own address without a pass (`https://g-<public id>.GAMES-DOMAIN/index.html`, the public id from line 2's answer) shows "This game's link has run out…" and no game.
+- [ ] **Step 4:** if the pull fails on the real site with Cloudflare's "exceeded resource limits", report the Worker's log line (CPU or memory) and the game's measured size. Do not raise a limit or change the pull without the coordinator's answer. If FloorFifty loads and does not run, that is O2: report what the browser's console says; the fix is in FloorFifty's repository, which is the Owner's.
+- [ ] **Step 5:** set slice 2's row in progress.md from what is true: "done" only when every branch is merged, main is green, and Step 3 passed.
+
+---
+
+## Notes for the plans that follow
+
+- **Slice 3 (the feed).** `/g/<game>` becomes the feed opened at that clip; its `load` keeps the `arrival.remember` call. The clip addresses come from `gamesServices().address("media")`. The feed's Play goes to `/g/<game>/play`, which already decides between the game, the paywall and "needs a computer"; the feed shows "This one needs a computer" from the same `isPhone`. "Share the link" on the placeholder page is the seed of the feed's share. The feed's order needs "how much members played in the last seven days": `countedMs` over `member` sessions is the measure. `/<handle>` calls `arrival.remember` the same way.
+- **Slice 4 (submitting and the admin portal).** It removes the door (`src/routes/jobs/games/`, `hasJobSecret` stays for the daily job) and its journeys' `addGame` moves to the real form and portal. It adds: the GitHub connection on `/make` (the install link, and picking a repository), `waiting`, `sent_back` and `taken_down` with their words, acceptance setting `livePullId` ("Pull the latest" already leaves the live files alone), the staff action that sets `freeToPlay` with a reason, and deleting a game's old pulls from the bucket. A taken-down game stops at once for new plays (`liveGameBySlug` is null); a pass already given lasts up to four hours unless the files are deleted.
+- **Slice 5 (money).** Play that counts: sessions with basis `member` only. Time: `countedMs` over a session's beats, cut at America/Chicago midnight by each beat's `receivedAt`, at most 180 minutes per member, per game, per day. Two sessions of one member can overlap (two tabs, two devices); count each moment once. `PlaySession.pullId` says which files were played, should a dispute need it.
+- **The privacy text** (the Owner's, before live mode) should say that Ruken records when a game is open and has the person's attention, and that a game runs on another address and may talk to its maker's servers.
+- Worth the Owner's eye before launch, left out on purpose: a rule on where a game's scripts may connect; a sweep of old `PlayBeat` rows (four a minute for each person playing; nothing removes them); a limit on beats per session beyond "not sooner than five seconds"; ending a pass early when a game is taken down.
+- The gate has no cache in front of the bucket. If the Worker's numbers ever show it slow, Cloudflare's cache API in front of `files/` is the first thing to try; a file's address already changes with every pull.
+- A browser keeps a game's files only for the life of one pass (the address changes with each Play). If FloorFifty's size makes that slow on a phone, a pass shared by everyone for a fixed window would let the browser keep the files; that is a change to the pass, for the Owner's yes.

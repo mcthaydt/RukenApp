@@ -11,7 +11,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
 | 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan's revision is merged (#15) with the Owner's yes to its package list, and its plan audit with fixes (#19). Owner, 2026-11-13: the Card Table look on Ruken's own screens (design 5.8, #20); the plan has a branch for it, L `slice-1/look` (tasks 35 to 37), after branch D and before E0: merged (#22); its plan audit is on a branch (`audit/slice-1-look`), not done until merged and green. Execution: branch A (tasks 1 to 4) merged (#13); branch B (tasks 5 to 8) merged (#14); branch C (tasks 9 to 11) merged (#18). Branch D (screens, tasks 12 to 15) done on #21, not yet merged. L (the look) follows D, then E0 (Cloudflare) | 40% |
-| 2 | Games and play | not started | 0% |
+| 2 | Games and play | plan written, on a branch (`plan/slice-2`, a draft pull request); not done until merged and green. It waits for the FloorFifty findings and two Owner answers. Nothing is built | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
 | 5 | Money (after launch, before 10 December) | not started | 0% |
@@ -31,6 +31,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | execution, slice 1, second session (`session_01HNdX7MUtPbFudeSaJywXHC`) | 4 Execution | `slice-1/account-screens` and after | running |
 | plan, slice 1, the look (`session_01HNdX7Hzv3QVMVyjewBSg1u`) | 2 Plan | `plan/slice-1-look` | archived; merged (#22) |
 | plan audit, slice 1, the look (`session_01HNdX7KyU3nkcc8rAByjXX3`) | 3 Plan audit | `audit/slice-1-look` (pull request #23) | done; merged to main (#23) |
+| plan, slice 2 (`session_01HNdX7Hp1xcTXw4d8CYVZnv`) | 2 Plan | `plan/slice-2` | running; the plan is written, its pull request is a draft |
 
 ## Slice 0: Start
 
@@ -120,6 +121,50 @@ Found while planning:
 - The old repository's terms and privacy pages are outlines marked "draft", waiting for counsel. They are not carried in this slice.
 - The membership product and its prices are made in Stripe by the carried code, so the Owner types no price into Stripe.
 - The carried code refuses to charge when Stripe already holds a price under its lookup key at another amount. A Stripe account that ran the old code holds the old $7.99 and $79 prices, so the new prices and their product get new names (`ruken_membership_monthly`, `ruken_membership_annual`, `ruken_membership`). The old product and prices stay in that account, unused; archiving them there is the Owner's.
+
+## Slice 2: Games and play
+
+Plan: `docs/superpowers/plans/2026-11-13-slice-2-games-play.md`. It ends with: a member can play a pulled game, and the time is recorded. Planned in parallel with slice 1's execution (Owner, 2026-11-13); execution starts only when slice 1 is merged and green.
+
+Stages:
+
+- [ ] Plan: written, on `plan/slice-2` (a draft pull request); not done until merged and green. No test ran in the plan session. Outside the repository, in a scratch folder: Cloudflare's limits, R2, routes and Workers Builds pages were read, and two local Workers (Wrangler 4.156.0) were run against one local R2 bucket (they share it when started one after the other; started together, one stops with "database is locked").
+- [ ] Plan audit.
+- [ ] Execution, branch by branch (below).
+- [ ] Implementation audit.
+- [ ] Fixes.
+
+Waiting, before the plan's pull request is marked ready:
+
+- [ ] The FloorFifty findings (a separate research session): does it run as a plain web game without the old SDK; its branch and folder; its measured size, file count and largest file, which set the three size limits (the plan's open items O1 to O4).
+- [ ] Owner, Q1: where games live. Recommended and planned for: a second domain used only for games, each game on its own name under it.
+- [ ] Owner, Q2: how a game gets on the real site before slice 4. Recommended and planned for: a small staff door behind `JOBS_SECRET`, removed by slice 4.
+
+Branches and tasks:
+
+| Branch | Tasks | State |
+|---|---|---|
+| A `slice-2/game` | 1 the games tables · 2 a game's address and id · 3 safe paths, file types, byte ranges · 4 checking a game's files (needs O1) · 5 the clip rules | not started |
+| B `slice-2/storage` | 6 the bucket behind one interface · 7 saving a clip | not started; not marked ready until G1 |
+| C `slice-2/github-pull` | 8 signing in to GitHub as the app · 9 reading a tarball · 10 the pull · 11 the games service | not started |
+| D `slice-2/gate` | 12 the play pass · 13 the gate · 14 the gate as its own Worker | not started |
+| E `slice-2/door` | 15 the staff door, and a stand-in GitHub | not started; follows the Owner's answer to Q2 |
+| F `slice-2/play` | 16 the play tables · 17 who may play, and what counts · 18 sessions and beats · 19 the look of the two screens · 20 a game's page · 21 playing · 22 play time · 23 design 8's journeys from a real link | not started |
+| G `slice-2/real-site` | 24 FloorFifty pulled and played on the real site | not started; needs G1 to G4 and O1 to O4 |
+
+The Owner's own tasks, and where execution stops for each (the plan has each as one-line PowerShell commands):
+
+- [ ] G1, when branch B starts, before it is marked ready: sign in to Cloudflare from the command line and make the R2 bucket `ruken-games`.
+- [ ] G2, when branch C starts: make the Ruken GitHub App (a website step, opened filled in by one command), give its id and key to the site as secrets, and install it on FloorFifty's repository.
+- [ ] G3, when branch D starts: the games domain on Cloudflare with a wildcard DNS record (a website step), the gate Worker deployed with its route, one new pass secret on both Workers, the site's address on the gate, the games' address pattern on the site.
+- [ ] G4, at Task 24: add FloorFifty through the door, upload its two clips, make it live, play it. Changes to FloorFifty's own repository, if it needs any to run without the old SDK, are the Owner's and not part of the plan.
+
+Found while planning:
+
+- The old game host never checked a pass: it kept games apart by address only. The file serving is carried; the pass is new, in the old launch token's format.
+- No new package: the tarball reader, the GitHub App sign-in and the pass are small files of the app's own. `ci.yml` does not change.
+- The old "recent input" rule for play time cannot be kept without an SDK: Ruken's page cannot see inside a frame on another address. Time counts while the tab shows, the frame is on screen and the frame has focus (design 5.2).
+- Play lands in the game: a non-member is sent to `/join?next=/g/<game>/play` (slice 1's note said `/g/<game>`), so they are in the game after paying.
 
 Notes for later slices:
 
