@@ -29,7 +29,7 @@
 - Layers: `games` may import `accounts` and `membership`; `play` may import those and `games`; `make` and `admin` sit above both. All four are already in `FEATURE_ORDER`. Shared helpers with no feature logic go in `src/lib/`. Tests live only in `tests/`, mirroring `src/`.
 - Comments say why, never which plan asked. A carried file loses its old-plan references (`P4 §8`, `R-25`, `M2.1f` and the like) and keeps the reason.
 - Every screen and message passes the drunk grandma test. The words in this plan are the words to ship; a change to them is a deviation to report.
-- Ruken's own screens wear the Card Table look from `src/lib/look.css` and only its classes. This slice adds five classes, each with its rule, its first use and its name in `CLASSES` (Task 19). No file under `src/routes/` gets a `<style>` block, a `style=` attribute or a colour of its own. Nothing in this slice is pip red.
+- Ruken's own screens wear the Card Table look from `src/lib/look.css` and only its classes. This slice adds five classes, each with its rule and its name in `CLASSES` (Task 19) and its first use soon after. No file under `src/routes/` gets a `<style>` block, a `style=` attribute or a colour of its own. Nothing in this slice is pip red.
 - Every journey file starts with `test.beforeEach(forgetRateLimits)`, and every new screen is attached with `showTheOwner` for the Owner to see before its branch is marked ready (slice 1, Task 37).
 
 ## What this plan relies on from slice 1
@@ -160,8 +160,8 @@ Ten branches, in this order. Each starts from `main` only after the one before i
 | E | `slice-2/connect-github` | 15, 25 | a maker connects GitHub on the site; a stand-in GitHub for the journeys (waits for G2) |
 | M | `slice-2/submit` | 26 to 28 | a maker submits a game and sees it "Waiting for review" |
 | P | `slice-2/play-rules` | 16 to 18 | the play tables, who may play and what counts, sessions and beats |
-| S | `slice-2/accept` | 29, 30 | the first staff account; staff accept a game or send it back |
-| F | `slice-2/play` | 19 to 23 | the two screens, play time, design 8's journeys |
+| S | `slice-2/accept` | 19, 29, 30 | the look's five new classes; the first staff account; staff accept a game or send it back |
+| F | `slice-2/play` | 20 to 23 | the two screens, play time, design 8's journeys |
 | G | `slice-2/real-site` | 24 | FloorFifty submitted, accepted and played on the real site (waits for G3, G4 and the open items) |
 
 ## File map
@@ -181,7 +181,7 @@ src/lib/files/r2-store.ts                r2FileStore(bucket)
 src/lib/files/tar.ts                     tarEntries: the files in a .tar.gz stream
 src/lib/server/files.ts                  setFileStore, fileStore: the bucket, set once by the hook
 src/lib/server/job-secret.ts             hasJobSecret(request)                          (branch S)
-src/lib/look.css                         gains clip, stage, bar, back, frame            (branch F)
+src/lib/look.css                         gains clip, stage, bar, back, frame            (branch S)
 src/features/games/
   games.ts             entry
   ids.ts               slugOf, newPublicId, PUBLIC_ID
@@ -1107,6 +1107,27 @@ Branch P is ready to merge.
 
 Acceptance needs a person (design 5.5). This is the smallest version of it: one staff-only list and one staff-only page, behind slice 1's staff roles. Slice 4's admin portal takes both screens in as its acceptance queue and adds what is not here.
 
+### Task 19: The look of a game's page and of the play screen
+
+**Files:**
+- Modify: `src/lib/look.css`, `tests/lib/look.test.ts` (`CLASSES`), `tests/browser/support/look.ts` if it lists classes
+- Test: `tests/lib/look.test.ts` (add cases)
+
+Five classes, each with its rule here and its first use in Tasks 30, 20 and 21 (slice 1: a class arrives with its rule, its first use and its name in `CLASSES`). Design 5.8's tokens only; no new colour.
+
+| Class | Goes on | What it does |
+|---|---|---|
+| `clip` | a `<video>` in a card | a block as wide as the card, at most 60% of the window's height, 20px corners, `ink` behind it while it loads, `object-fit: cover` |
+| `stage` | the play screen's `<main>` | fills the window (`100dvh`, no gutter, no width limit), `felt-deep` ground, a column: the bar, then the frame |
+| `bar` | the strip above the game | 48px tall, `felt-deep`, chalk text at 14px, its contents in a row with a 0.5rem gap |
+| `back` | the ← link in the bar | a 48px by 48px target; the arrow is chalk on `felt-raised`, a full pill (design 5.8: `felt-raised` is for secondary buttons; this is its first rule) |
+| `frame` | the game's `<iframe>` | takes all the room left, no edge, `felt-deep` behind it while the game loads |
+
+**Calls in the look** (the Owner can overrule): the play screen has no paper card, because the thing to do there is the game itself; the bar is 48px so ← is as easy to hit as any button; the line in the bar is 14px `chalk` (`chalk` on `felt-deep` is 13.1:1), a note beside a control, not running text; nothing on either screen moves, so reduced motion changes nothing, and the line in the bar leaves without a fade.
+
+- [ ] **Step 1 (red):** `tests/lib/look.test.ts`: `CLASSES` holds the five names; `look.css` has a rule for each; the `back` rule's two colours are the tokens above and their contrast, measured from the tokens as Task 35 does, is at least 4.5:1; the `bar` and `back` rules name 3rem (48px). Push. Expected: `verify` fails in `look.test.ts`: no such rules.
+- [ ] **Step 2 (green):** the rules. Push. Expected: all pass. (The slice 1 case "every class in `CLASSES` is used by a screen", if it exists as built, fails until Task 21: if so, keep that one case red until Task 21's green push and say so in each report line; no other case may stay red.)
+
 ### Task 29: The first staff account
 
 **Files:**
@@ -1201,27 +1222,6 @@ test("the staff pages are not there for anyone else", async ({ page }) => { /* s
 ---
 
 # Branch F: `slice-2/play`
-
-### Task 19: The look of a game's page and of the play screen
-
-**Files:**
-- Modify: `src/lib/look.css`, `tests/lib/look.test.ts` (`CLASSES`), `tests/browser/support/look.ts` if it lists classes
-- Test: `tests/lib/look.test.ts` (add cases)
-
-Five classes, each with its rule here and its first use in Tasks 20 and 21 (slice 1: a class arrives with its rule, its first use and its name in `CLASSES`). Design 5.8's tokens only; no new colour.
-
-| Class | Goes on | What it does |
-|---|---|---|
-| `clip` | a `<video>` in a card | a block as wide as the card, at most 60% of the window's height, 20px corners, `ink` behind it while it loads, `object-fit: cover` |
-| `stage` | the play screen's `<main>` | fills the window (`100dvh`, no gutter, no width limit), `felt-deep` ground, a column: the bar, then the frame |
-| `bar` | the strip above the game | 48px tall, `felt-deep`, chalk text at 14px, its contents in a row with a 0.5rem gap |
-| `back` | the ← link in the bar | a 48px by 48px target; the arrow is chalk on `felt-raised`, a full pill (design 5.8: `felt-raised` is for secondary buttons; this is its first rule) |
-| `frame` | the game's `<iframe>` | takes all the room left, no edge, `felt-deep` behind it while the game loads |
-
-**Calls in the look** (the Owner can overrule): the play screen has no paper card, because the thing to do there is the game itself; the bar is 48px so ← is as easy to hit as any button; the line in the bar is 14px `chalk` (`chalk` on `felt-deep` is 13.1:1), a note beside a control, not running text; nothing on either screen moves, so reduced motion changes nothing, and the line in the bar leaves without a fade.
-
-- [ ] **Step 1 (red):** `tests/lib/look.test.ts`: `CLASSES` holds the five names; `look.css` has a rule for each; the `back` rule's two colours are the tokens above and their contrast, measured from the tokens as Task 35 does, is at least 4.5:1; the `bar` and `back` rules name 3rem (48px). Push. Expected: `verify` fails in `look.test.ts`: no such rules.
-- [ ] **Step 2 (green):** the rules. Push. Expected: all pass. (The slice 1 case "every class in `CLASSES` is used by a screen", if it exists as built, fails until Task 21: if so, do Tasks 19 to 21 as one red and one green for that case and say so in the report line.)
 
 ### Task 20: A game's page (`/g/<game>`)
 

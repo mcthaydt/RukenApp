@@ -152,8 +152,8 @@ Branches and tasks (tasks 25 to 30 were added with the Owner's answer, so their 
 | E `slice-2/connect-github` | 15 a maker's GitHub connection · 25 connecting on the site, and a stand-in GitHub | not started; not marked ready until G2 |
 | M `slice-2/submit` | 26 sending for review: the rules and the tables · 27 the maker's area and the new-game form · 28 a game's page in the maker's area (needs O5) | not started |
 | P `slice-2/play-rules` | 16 the play tables · 17 who may play, and what counts · 18 sessions and beats | not started |
-| S `slice-2/accept` | 29 the first staff account · 30 Accept and Send back | not started |
-| F `slice-2/play` | 19 the look of the two screens · 20 a game's page · 21 playing · 22 play time · 23 design 8's journeys from a real link | not started |
+| S `slice-2/accept` | 19 the look's five new classes · 29 the first staff account · 30 Accept and Send back | not started |
+| F `slice-2/play` | 20 a game's page · 21 playing · 22 play time · 23 design 8's journeys from a real link | not started |
 | G `slice-2/real-site` | 24 FloorFifty submitted, accepted and played on the real site | not started; needs G1 to G4 and O1 to O5 |
 
 The Owner's own tasks, and where execution stops for each (the plan has each as one-line PowerShell commands; a website only where no command exists):
