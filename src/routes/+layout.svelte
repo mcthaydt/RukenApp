@@ -3,7 +3,7 @@
   nothing else, so a screen is plain elements and the few classes the look names.
 -->
 <script lang="ts">
-  import "$lib/look.css";
+  import "../lib/look.css";
   import type { LayoutProps } from "./$types";
 
   let { children }: LayoutProps = $props();
