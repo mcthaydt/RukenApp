@@ -17,6 +17,11 @@ export default defineConfig({
     env: {
       DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
       DIRECT_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
+      // The hook now runs on every request, so the sign-in settings must exist. All plainly fake.
+      BETTER_AUTH_SECRET: "test-only-secret-not-used-anywhere-real",
+      BETTER_AUTH_URL: "http://localhost:4173",
+      SMTP_URL: "test:",
+      MAIL_FROM: "Ruken <hello@ruken.test>",
     },
   },
   projects: [
