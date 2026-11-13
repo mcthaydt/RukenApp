@@ -30,7 +30,8 @@ Launch: Monday 30 November 2026, 11:00 CT.
 - [x] This tracker.
 - [x] The app skeleton: one SvelteKit app at the old repository's pinned versions (Node 24.22.1, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Vite 8.3.3, TypeScript 6.0.3, Vitest 5.0.3, Playwright 1.63.0), a placeholder home page, and `tests/architecture.test.ts` for the layer rule.
 - [x] The CI workflow: `verify` (lint, typecheck, unit tests, build) and `browser` (Playwright, phone and computer), on GitHub's runners.
-- [ ] The layer test seen failing in CI for the right reason, then passing.
+- [x] The layer test seen failing in CI for the right reason (run 43484877992 on `e81db50`: "src/stray.test.ts" in src/, and "accounts may only import features below it"; lint, typecheck and the browser job passed).
+- [ ] The layer test passing in CI once the break is removed.
 - [ ] Merged to main, green there.
 
 Notes for later slices:
