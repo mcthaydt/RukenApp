@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { RequestEvent } from "@sveltejs/kit";
 import { describe, expect, it, vi } from "vitest";
 import { keepBackgroundWorkAlive, runAfterAnswer } from "../../../src/lib/server/background.ts";
@@ -61,5 +62,13 @@ describe("runAfterAnswer", () => {
     runAfterAnswer(() => Promise.resolve());
 
     expect(ran).toBe(true);
+  });
+});
+
+describe("the background work's wiring", () => {
+  it("hooks.server.ts runs keepBackgroundWorkAlive first, so every route and form is inside it", () => {
+    const hooks = readFileSync(new URL("../../../src/hooks.server.ts", import.meta.url), "utf8");
+    const sequence = /export const handle = sequence\(([\s\S]*?)\n?\);/.exec(hooks)?.[1] ?? "";
+    expect(sequence.trim().startsWith("keepBackgroundWorkAlive,")).toBe(true);
   });
 });
