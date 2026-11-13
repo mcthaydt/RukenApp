@@ -231,7 +231,7 @@ The idea: the page is quiet green felt, and what a person picks up or acts on is
   | `paper` | `#f1efe9` | cards; the primary button on felt |
   | `ink` | `#191b1a` | all text on paper (15.1:1) |
   | `ink-soft` | `#4a504c` | notes on paper (7.2:1) |
-  | `pip` | `#c63c26` | the one paid action ("Continue to payment") and small markers; paper text on it is 4.5:1; never a field |
+  | `pip` | `#c43b26` | the one paid action ("Continue to payment") and small markers; paper text on it is 4.57:1; never a field. Call, 2026-11-13: one step darker than the design sheet's `#c63c26`, which measures 4.48:1 with paper text. |
 
   Surfaces are told apart by a tone step, never by a line or a shadow.
 - **Type.** Young Serif (400) for headings and card titles; Schibsted Grotesk, 400 for text and 600 for buttons. Both are under the SIL Open Font License and are served from Ruken's own address with their licences beside them; the site makes no request to a font service. Sizes: section heading 64px (36px on a phone), card title 32px, statement 24px, body 18px at 1.55 leading, small 14px for notes only. Sentence case; left aligned.

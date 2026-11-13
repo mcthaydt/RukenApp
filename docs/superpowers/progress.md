@@ -10,7 +10,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | # | Slice | State | Progress |
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
-| 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan's revision is merged (#15) with the Owner's yes to its package list, and its plan audit with fixes (#19). Owner, 2026-11-13: the Card Table look on Ruken's own screens (design 5.8, #20); a styling branch is to be planned after branch D. Execution: branch A (tasks 1 to 4) merged (#13); branch B (tasks 5 to 8) merged (#14); branch C (tasks 9 to 11) merged (#18). Branch D (screens, tasks 12 to 15) in progress. E0 (Cloudflare) follows D | 35% |
+| 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan's revision is merged (#15) with the Owner's yes to its package list, and its plan audit with fixes (#19). Owner, 2026-11-13: the Card Table look on Ruken's own screens (design 5.8, #20); the plan has a branch for it, L `slice-1/look` (tasks 35 to 37), after branch D and before E0: on a branch (`plan/slice-1-look`), not done until merged and green. Execution: branch A (tasks 1 to 4) merged (#13); branch B (tasks 5 to 8) merged (#14); branch C (tasks 9 to 11) merged (#18). Branch D (screens, tasks 12 to 15) in progress. L (the look) follows D, then E0 (Cloudflare) | 35% |
 | 2 | Games and play | not started | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
@@ -29,6 +29,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan audit, slice 1, Cloudflare revision (`session_01HNdX7JhDxq8Wks8Rcajo3A`) | 3 Plan audit | `audit/slice-1-cloudflare` | archived; merged (#19) |
 | execution, slice 1 (`session_01HNdX7J8VTGzcZShtgMUqyv`) | 4 Execution | `slice-1/*` | archived (handed off at 90 minutes, after branch C) |
 | execution, slice 1, second session (`session_01HNdX7MUtPbFudeSaJywXHC`) | 4 Execution | `slice-1/account-screens` and after | running |
+| plan, slice 1, the look (`session_01HNdX7Hzv3QVMVyjewBSg1u`) | 2 Plan | `plan/slice-1-look` | done; merged to main (#22) |
 
 ## Slice 0: Start
 
@@ -52,6 +53,7 @@ Stages:
 - [x] Plan audit: written, with the plan fixed (`docs/superpowers/audits/2026-11-13-slice-1-plan-audit.md`: 4 blocks execution, 19 should fix, 16 notes; all fixed in the plan but 6 notes that stay, each with its reason). Merged to main (pull request #12). No test ran in the audit session; the audit is a reading of the files.
 - [x] Plan revised for Cloudflare (Owner, 2026-11-13: Cloudflare instead of Netlify): written from Cloudflare's, SvelteKit's, Prisma's, Stripe's and Resend's current pages and from the packages' own files; merged to main (pull request #15). No test ran in the plan session, and none of it has run on Cloudflare yet: Task 34's first green CI run is the first proof.
 - [ ] Plan audit of the Cloudflare revision (`docs/superpowers/audits/2026-11-13-slice-1-cloudflare-plan-audit.md`), with the plan fixed: on a branch (`audit/slice-1-cloudflare`); not done until merged and green. No test ran in the audit session; it read the packages and built in a scratch folder outside the repository.
+- [ ] Plan for the look (design 5.8): branch L `slice-1/look`, tasks 35 to 37, added to the plan after branch D; Tasks 18, 19, 27, 29 and 30 say which of the look's classes their screens use. On a branch (`plan/slice-1-look`, pull request #22); not done until merged and green. No test ran in the plan session; the two font tarballs were downloaded into a scratch folder outside the repository, and their integrity values, file sizes and SHA-256 checksums were measured there. This addition has had no plan audit.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
@@ -68,6 +70,8 @@ The Owner's decisions for this slice, 2026-11-13:
 - [x] Mail, Owner, 2026-11-13: Resend, through plain `fetch`.
 - [x] The Hyperdrive id, Owner, 2026-11-13: committed in `wrangler.jsonc`.
 - [x] Workers Paid, Owner, 2026-11-13: $5 a month is OK.
+- [x] The look, Owner, 2026-11-13: "We can use the design present in the previous version as well", then yes to the Card Table design on Ruken's own screens (design 5.8).
+- [x] The pip red, the coordinator's Call, 2026-11-13 (the Owner can overrule): `#c43b26`, paper text on it 4.57:1. The design sheet's `#c63c26` measures 4.48:1 with paper text. Design 5.8's table now says so.
 - [x] main is protected: pull request only, `verify` and `browser` must pass on an up-to-date branch, merge commits only, merged branches deleted automatically.
 
 The Owner's revised design, 2026-11-13, as this slice takes it:
@@ -88,7 +92,8 @@ Branches and tasks. Each task is ticked with its two CI runs (the failing test, 
 | B `slice-1/sign-in-rules` | 5 the sign-in pause · 6 the pause and limits as plugins · 7 the age check · 8 cookies and the mails | done on its pull request (#14), not yet merged. [x] Task 5 the sign-in pause (CI runs 44 red, 45 green; 6 + 11 tests). Order changed: Task 8 before Task 6, because the pause plugin sends the mail whose words Task 8 makes. [x] Task 8 cookies and the mails (CI runs 47 red, 48 green; 9 tests). [x] Task 6 the pause and limits as plugins (CI runs 49 red, 50 green). [x] Task 7 the age check (CI runs 51 red, 52 green; 11 tests). Branch B done, ready for review |
 | C `slice-1/sign-in` | 9 better-auth, configured · 10 who sent this request · 11 the form actions and the services | merged (#18). [x] Task 9 better-auth configured (CI runs 62 red, 63 green). [x] Task 10 who sent this request (CI runs 64 red, 65 green; 8 + 2 tests). [x] Task 11 the form actions and the services (CI runs 68 red, 71 green; 48 + 1 tests; one lint fix between). Branch C done, ready for review |
 | D `slice-1/account-screens` | 12 /api/auth and sign-out · 13 sign up · 14 sign in, forgot, new password · 15 /me | in progress (second execution session). [x] Task 12 the error page, /api/auth and sign-out (CI runs 73 red, 74 green; 1 unit + 4 browser failing for the expected reasons; the sign-in pause words are now one message) |
-| E0 `slice-1/cloudflare` | 32 mail over HTTP, settings that say Cloudflare · 33 the platform, and work after the answer · 34 the site runs on Workers (one database client per request, the journeys in `wrangler dev`, `/healthz`) | not started; the package list is approved (Owner, 2026-11-13); starts after branch D |
+| L `slice-1/look` | 35 the tokens and the fonts · 36 the felt, the type, fonts from our own address · 37 the card, the fields and the buttons on every screen | not started; starts after branch D |
+| E0 `slice-1/cloudflare` | 32 mail over HTTP, settings that say Cloudflare · 33 the platform, and work after the answer · 34 the site runs on Workers (one database client per request, the journeys in `wrangler dev`, `/healthz`) | not started; the package list is approved (Owner, 2026-11-13); starts after branch L |
 | E `slice-1/deploy` | 16 the site on its real address | not started; waits for branch E0 |
 | F `slice-1/delete-account` | 17 asking to be deleted, and undoing it · 18 signing in undoes it · 19 the delete screens · 20 the daily job (a Cron Trigger) | not started |
 | G `slice-1/membership` | 21 the membership tables · 22 prices and joining · 23 the membership rules and the arrival cookie · 24 reading and ending a subscription · 25 the webhook · 26 the membership service | not started |
@@ -106,6 +111,9 @@ Found while planning:
 - Cloudflare: Workers do not let one request use a database connection another opened, so `prisma()` becomes one client per request (Task 34). The journeys move from `vite preview` (Node) to `wrangler dev` (the Workers runtime), so CI tests what the real site runs.
 - Cloudflare: the SvelteKit adapter has no daily-job handler, so a ten-line file wraps the built site and adds one (Task 20).
 - Cloudflare: Resend's free plan caps mails per day; the Owner decides before launch.
+- The look: the fonts are three `.woff2` files copied from the `@fontsource/young-serif` 5.3.0 and `@fontsource/schibsted-grotesk` 5.3.0 npm tarballs (76,516 bytes together), with their licences and a `sources.json` of checksums beside them in `static/fonts/`. Neither package is a dependency. The old repository served variable `.ttf` files; the google/fonts repository has no `.woff2`.
+- The look: the delete screens, `/goodbye`, the paywall card and `/join/done` are built after branch L, so their own tasks carry the look's classes; branch L restyles only what branches A to D built.
+- The look is checked in CI by values (colours, sizes, fonts, requests, contrast), not by eye. The Owner's first look is on the real site after Task 16.
 - The old repository's terms and privacy pages are outlines marked "draft", waiting for counsel. They are not carried in this slice.
 - The membership product and its prices are made in Stripe by the carried code, so the Owner types no price into Stripe.
 - The carried code refuses to charge when Stripe already holds a price under its lookup key at another amount. A Stripe account that ran the old code holds the old $7.99 and $79 prices, so the new prices and their product get new names (`ruken_membership_monthly`, `ruken_membership_annual`, `ruken_membership`). The old product and prices stay in that account, unused; archiving them there is the Owner's.
