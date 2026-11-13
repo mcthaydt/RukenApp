@@ -14,6 +14,10 @@ name: Auto-merge
 on:
   pull_request:
     types: [opened, reopened, ready_for_review, synchronize]
+  # The branch clean-up below also runs every hour, because a merge made by this workflow's own token starts
+  # no further workflow runs (GitHub's rule), so nothing else would fire after the merge.
+  schedule:
+    - cron: "17 * * * *"
 
 permissions:
   contents: write
@@ -31,3 +35,29 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: gh pr merge --auto --merge "$PR_URL"
+
+  # GitHub's "delete branch after merge" setting does not act on merges made by auto-merge here, so merged
+  # branches piled up. Owner, 2026-11-13: "Yes, add it" to deleting them here.
+  # A branch is deleted only if a merged pull request came from it and the branch still points at exactly the
+  # commit that was merged: a branch that got new commits after its merge is left alone, and so is main.
+  delete-merged-branches:
+    name: delete merged branches
+    if: github.event_name == 'schedule' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Delete branches whose pull request is merged
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api "repos/$REPO/pulls?state=closed&per_page=50" \
+            --jq '.[] | select(.merged_at != null and .head.repo.full_name == env.REPO) | "\(.head.ref) \(.head.sha)"' |
+          while read -r ref sha; do
+            [ "$ref" = "main" ] && continue
+            current=$(gh api "repos/$REPO/git/ref/heads/$ref" --jq .object.sha 2>/dev/null) || continue
+            if [ "$current" = "$sha" ]; then
+              echo "Deleting $ref (merged at $sha)"
+              gh api -X DELETE "repos/$REPO/git/refs/heads/$ref"
+            fi
+          done
