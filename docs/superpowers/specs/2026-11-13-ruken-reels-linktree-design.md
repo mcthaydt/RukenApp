@@ -26,13 +26,13 @@ Two screens and a paywall.
 - **Play.** Every clip has a Play button. A member goes straight into the game. Anyone else sees the price, pays, and lands in the game they tapped.
 - **The maker's page.** Every maker has one short address, like a Linktree page: their games on Ruken, then their links to anywhere, in colours chosen from Sanzo Wada's A Dictionary of Color Combinations.
 
-Behind those: makers submit a game on one form, as simply as on itch.io, and Ruken pulls the game's files from their GitHub repository. Staff accept games and moderate in an admin portal. The subscription, the split of the money and the admin rules stay as they were.
+Behind those: makers submit a game on one form, as simply as on itch.io, and Ruken pulls the game's files from their GitHub repository. Staff accept games and moderate in an admin portal. The admin rules stay as they were; the membership and the split were revised on 2026-11-13 (section 6).
 
 ### Goals
 
 - A stranger on a phone is watching a game clip within a second of opening Ruken, and is playing within a minute of deciding to pay.
 - A maker with a working web game and a GitHub repository has it submitted in one sitting, with no tool to install and nothing to read first.
-- Makers are paid by what members actually played, by the rules already decided.
+- Makers are paid by what members actually played, and by who brought them, by the rules in section 6.
 - Launched on 30 November.
 
 ### Not in the first version
@@ -113,7 +113,7 @@ Owner: "paywall when they try to play."
 
 - Tapping Play as a member opens the game full screen, with one Ruken control: a way back to the feed.
 - Tapping Play as anyone else shows one card: the price, a monthly and a yearly choice, and one button. It asks for sign-in only at that point. After paying, the person lands in the game they tapped.
-- Owner: the subscription is unchanged: $7.99 a month or $79 a year, no trials. Stripe adds tax where it applies.
+- Owner (revised 2026-11-13): the membership is $9.99 a month or $99 a year, no trials. Stripe adds tax where it applies (6).
 - Call: a game marked "computer only" shows "This one needs a computer" on a phone instead of Play, with a button that shares its link.
 - Call: games are plain web games. There is no Ruken SDK and nothing for a game to call. Ruken shows the game in a locked-down frame served from a different address than Ruken's, and the game never receives anything about the player.
 - Call: a game's files are reachable only through a short-lived play pass that Ruken gives a member when they press Play. Without a pass the files do not load.
@@ -194,18 +194,22 @@ Small: their membership and a way to cancel it (Stripe's own portal), what they 
 
 ## 6. Money
 
-Owner: "We keep the same subscription, pricing split, and admin stuff."
+Revised 2026-11-13 with the Owner, in a session of its own, after the critique (section 12). The Owner's bound: "We're at the very start so I'm flexible to anything but losing money." Ruken never loses money on a member.
 
-- Subscription: $7.99 a month or $79 a year, no trials (5.2).
-- Split: half of each member's fee, after tax and Stripe's processing fee, goes to makers. Each member's half is divided among the games that member played that month, by time played. A yearly fee is spread across its twelve months. A member who played nothing in a month: the old rule applies as written in the carried code.
-- Payouts: statements are final on the 10th and paid on the 15th (the next business day if that is a weekend or holiday), with a $25 minimum; smaller balances carry forward. Makers are paid through Stripe Connect.
+- **What players buy** (Owner): a membership to every game, $9.99 a month or $99 a year. No trials, no day or week passes, no buying single games. Stripe adds tax where it applies.
+- **What comes off the top** (Owner): the tax, and every fee Stripe charges on that payment (card, Billing, Tax), before any split.
+- **The split** (Owner): what is left is half Ruken, half makers. A yearly fee is spread across its twelve months. Ruken's half is never reduced to pay makers.
+- **Bringing a member** (Owner): for a member's first 12 months, half of that member's makers' share goes to the maker who brought them, however the member plays. A member is brought by a maker when their last arrival before paying was through that maker's page or one of that maker's game links. It is a fact from the link, never typed, recorded from launch day. With no bringing maker, or after 12 months, there is no bonus.
+- **The rest of the makers' share** (Owner): divided among the games that member played that month, by play time, counting at most 180 minutes per member, per game, per day. Call: the day is the America/Chicago day, like every money date. A member who played nothing that month: their makers' share follows everyone else's play that month, as in the carried code.
+- **What never counts toward pay** (Owner): free play (FloorFifty on launch day, play on a free code), staff play, and a maker playing their own game. Free play is still counted in Ruken's own numbers.
+- **Payouts**: statements are final on the 10th and paid on the 15th (the next business day if that is a weekend or holiday), through Stripe Connect. The minimum is $25 (Owner); smaller balances carry forward. The cost of sending a payout (Stripe Connect's monthly fee for an active account, plus its per-payout fee) comes out of that maker's payout and is shown on their statement (Owner). Ruken pays none of it.
 - Chargebacks and refunds follow the carried rules.
-- Owner, 2026-11-13: Ruken never loses money on a member. Ruken's half of each fee is never reduced to pay makers, and Stripe's Connect fees are paid from it.
-- Call (revised 2026-11-13): sign-up records which maker's page or link a member came through, the first maker's link winning. It is a fact from the link, never typed, and it cannot be recovered later, so it is recorded from launch day. Whether a maker who brings a member gets more of that member's makers' half for a time, and how much, is decided before the first statement on 10 December. It moves money only within the makers' half (Owner, above).
-- Call (revised 2026-11-13): play time counts toward the pool up to a cap per member, per game, per day, so a game left running cannot drain the pool. The cap is set in the money plan, from the play times measured after launch.
+- **Free-play codes** (Owner): a code gives one day of every game, with no card. Each paying member gets 3 codes a month to give away, holding at most 12. Ruken also gives codes out, for example for a social follow. Call: staff make Ruken's codes in the admin portal, each with a number of uses and an end date; one code per account every 6 months; if the person later pays, the normal rules apply, the bringing bonus included. Call: codes are built after launch, since on 30 November the only game is free and a code would unlock nothing.
 - Call (revised 2026-11-13): a public page shows the split with a worked example, and after each statement the pool, the number of members and what makers received in total, all read from the ledger.
-- Call: the first statement is 10 December and the first payout is 15 December, as already planned. So on 30 November Ruken must take payments and record play faithfully. The code that works out the pool, statements and payouts lands after launch and before 10 December.
-- Not carried: tips, the store, day passes, the ad pool, contributor splits.
+- Call: the first statement is 10 December and the first payout is 15 December. On 30 November Ruken must take payments, record play and record which maker brought each member. The code that works out the pool, statements and payouts lands after launch and before 10 December.
+- Ruled out because they can lose money or were rejected: a bonus paid from Ruken's half; guaranteed minimums to makers; makers' fees as Ruken's only income. A paid page for makers was raised and left for later.
+- Not carried: tips, the store, the ad pool, contributor splits.
+- What it yields, before hosting, monthly members: 100 members, about $464 a month each to Ruken and to makers; 1,000, about $4,640 each; 5,000, about $23,200 each. Launch day earns nothing, since the only game is free. The Stripe figures behind these were read from summaries, not Stripe's own pages; they are checked on stripe.com before they go in the maker agreement.
 
 ## 7. How it is built
 
@@ -321,12 +325,13 @@ These are credentials, money and approvals, which are the Owner's.
 
 ## 12. After the critique (2026-11-13)
 
-Two critiques of the concept, one by the coordinator and one by an independent session, agreed on the fatal point: a $7.99 paywall in front of one game is neither a feed nor a subscription. The changes, each marked where it lands:
+Two critiques of the concept, one by the coordinator and one by an independent session, agreed on the fatal point: a paywall in front of one game is neither a feed nor a subscription. The changes, each marked where it lands:
 
 - FloorFifty is free on launch day; every other game is behind the paywall (5.2, Owner).
 - 30 November opens the doors to makers; the public push waits for ten games from five makers (8).
-- Makers are how visitors arrive, so sign-up records which maker brought each member (6). Ruken's half is never cut (6, Owner).
-- Play counts up to a daily cap per member and game (6).
+- Makers are how visitors arrive, so sign-up records which maker brought each member, and that maker gets half of the member's makers' share for a year (6, Owner). Ruken's half is never cut (6, Owner).
+- The price rises to $9.99 a month or $99 a year, and play counts up to 180 minutes per member, per game, per day (6, Owner).
+- Free-play codes, one day each, three a month per member (6, Owner).
 - The feed launches without likes, saves, follows or tabs (5.1).
 - The split and each month's totals are public (6).
 - "A person played and chose every game here" is said on the site, in those words. It never claims a game is "AI-free".
@@ -335,4 +340,4 @@ What Ruken measures from launch day, each from the system, never typed: clip vie
 
 The stop rule. Once ten games have been live for 60 days, if fewer than 1 in 200 people who start playing a game become members, the subscription is the wrong model. The fallback is paying once per game, keeping the pages, the clips and the feed. Nobody interviews makers or players (Owner, 2026-11-13); the launch is the test.
 
-Honest scale: ten makers with 5,000 followers each, 2% of followers joining, is about 1,000 members and about $3,700 a month to makers. A real, small business.
+Honest scale: ten makers with 5,000 followers each, 2% of followers joining, is about 1,000 members, about $4,640 a month to Ruken and the same to makers. A real, small business.
