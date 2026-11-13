@@ -64,7 +64,7 @@ Comments, day passes, tips, the store, cloud saves, a game SDK, the desktop app,
   - the copy is quiet and human, never claims a game is "AI-free", and never invents a business fact;
   - the drunk grandma test, on every screen and message;
   - do not overengineer, and write code a junior developer can follow.
-- Rules that do not carry over: contract freezes, lanes and worktrees, the master delivery plan and continuation prompt (replaced by docs/superpowers/progress.md), self-hosted and rented runners, and both Figma files as sources of truth. The look now follows Instagram Reels and Linktree.
+- Rules that do not carry over: contract freezes, lanes and worktrees, the master delivery plan and continuation prompt (replaced by docs/superpowers/progress.md), self-hosted and rented runners, and both Figma files as sources of truth. The look now follows Instagram Reels and Linktree. Ruken's own screens wear the Card Table design (5.8, Owner, 2026-11-13).
 
 ## 4. Approaches
 
@@ -210,6 +210,36 @@ Onboarding is the screens themselves doing the teaching, the way Reels does. The
 - Grandma: each hint is one short line, says what to do, and goes away by itself.
 
 Built in slice 3 (the viewer's hints, the in-game line) and slice 4 (the maker's three steps).
+
+### 5.8 The look of Ruken's own screens
+
+Owner, 2026-11-13: "We can use the design present in the previous version as well", then yes to the Card Table design on Ruken's own screens.
+
+Ruken's own screens wear the Card Table design: the paywall card, sign-up, sign-in and password reset, the person's own page (/me), deleting an account, the maker's area (/make), the admin portal, and the placeholder home page until the feed replaces it. The feed (5.1) stays full-screen clips with Reels' controls, and a maker's page (5.3) keeps the Wada colours its maker picked. The source is the Owner's "Ruken Card Table" design system (approved 2026-10-27); these are its values.
+
+The idea: the page is quiet green felt, and what a person picks up or acts on is a white paper card on it. Red appears only where a card would have a pip: the one paid action. No casino imagery, no chips, no gold.
+
+- **Colours** (one theme, dark by choice; no gradients):
+
+  | Token | Value | Used for |
+  | --- | --- | --- |
+  | `felt` | `#1c3a2f` | the page |
+  | `felt-deep` | `#142c23` | panels on the felt, the footer |
+  | `felt-raised` | `#25483a` | secondary buttons, tracks |
+  | `chalk` | `#eef2ec` | all text on felt (10.9:1 on felt) |
+  | `sage` | `#a8bfb2` | notes on felt only (6.3:1), never running text |
+  | `paper` | `#f1efe9` | cards; the primary button on felt |
+  | `ink` | `#191b1a` | all text on paper (15.1:1) |
+  | `ink-soft` | `#4a504c` | notes on paper (7.2:1) |
+  | `pip` | `#c63c26` | the one paid action ("Continue to payment") and small markers; paper text on it is 4.5:1; never a field |
+
+  Surfaces are told apart by a tone step, never by a line or a shadow.
+- **Type.** Young Serif (400) for headings and card titles; Schibsted Grotesk, 400 for text and 600 for buttons. Both are under the SIL Open Font License and are served from Ruken's own address with their licences beside them; the site makes no request to a font service. Sizes: section heading 64px (36px on a phone), card title 32px, statement 24px, body 18px at 1.55 leading, small 14px for notes only. Sentence case; left aligned.
+- **Shape.** Cards and panels 20px corners, every button a full pill. No borders or hairline rules except on real form fields; no shadow at rest.
+- **Motion.** Pressing a button scales it to 0.97; nothing else moves. With reduced motion, nothing moves at all.
+- **Never.** Eyebrow labels, tiny uppercase labels, gradients, glass, shadows at rest, emoji, icons on feature cards, index numbers.
+- **Its copy rules hold too.** Every money line carries its qualifier ("Tax is added where it applies."), labels take no full stop, sentences do, and nothing claims a fact Ruken does not have. Prices and product words come from this design, not from the old pages ($9.99 and "membership", not $7.99 and "Premium").
+- Grandma: one paper card per screen holds the one thing to do; the pip-red button appears only where money is spent.
 
 ## 6. Money
 
