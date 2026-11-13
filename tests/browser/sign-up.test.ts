@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { forgetRateLimits } from "./support/rate-limits.ts";
 import { fillBirthDate, freshEmail, JOURNEY_PASSWORD, signUp, yearsAgo } from "./support/account.ts";
+
+test.beforeEach(forgetRateLimits);
 
 // Each journey runs on a phone and on a computer, against one shared database, so every account
 // uses a fresh address.
