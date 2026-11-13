@@ -17,7 +17,7 @@
 - No session runs tests, lint or typecheck itself. Push, then read the result of CI on the pull request (CLAUDE.md, Owner 2026-11-13).
 - Every task is test-first, and the failing test is seen failing in CI on the branch before the code that passes it is pushed ("How a task runs", below).
 - Dependencies are added only at the old repository's pinned versions, and only these: `prisma` 7.10.0, `@prisma/client` 7.10.0, `@prisma/adapter-pg` 7.10.0, `pg` 8.23.1, `@types/pg` 8.23.1, `better-auth` 1.7.7, `stripe` 22.6.2, `nodemailer` 10.0.13, `@types/nodemailer` 8.0.2, `@js-temporal/polyfill` 0.5.1 (the carried clock, `TestClock` and the age check are written in Temporal; Node 24 has no Temporal of its own). Anything else needs the Owner's words: stop and report.
-  - Owner, 2026-11-13: Cloudflare instead of Netlify. That adds `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0 and removes `@sveltejs/adapter-netlify`, `nodemailer` and `@types/nodemailer`, once the Owner has approved that list ("Cloudflare instead of Netlify", below). Until Task 32 removes them, `nodemailer` and `@types/nodemailer` stay as Task 4 added them.
+  - Owner, 2026-11-13: Cloudflare instead of Netlify. That adds `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0 (both dev) and removes `@sveltejs/adapter-netlify` 7.0.1, `nodemailer` 10.0.13 and `@types/nodemailer` 8.0.2. Owner, 2026-11-13: that list is approved exactly ("Cloudflare instead of Netlify", below). Until Task 32 removes them, `nodemailer` and `@types/nodemailer` stay as Task 4 added them.
   - The two security pins the old repository kept for Prisma 7.10's command-line tool are carried into `pnpm-workspace.yaml` as `overrides` with their comment: `"@prisma/config>deepmerge-ts": 8.0.2` and `"prisma>mysql2": 3.24.5`. They pin what Prisma already pulls in; they add no package.
   - Not added though the old repository had them: zod (settings are read by a small function), cuid2 (ids made in code use `randomUUID()` from `node:crypto`; Prisma's own `@default(cuid(2))` needs no package), Testcontainers (CI's Postgres is a service container), pg-boss, Testing Library and jsdom (screens are checked in Playwright this slice).
 - `.github/workflows/ci.yml` changes in exactly one commit of this slice (Task 1). Its message quotes the Owner (the text is in Task 1). Moving to Cloudflare changes nothing in it.
@@ -36,7 +36,7 @@ Owner, 2026-11-13: "Thoughts on switching to Cloudflare and Cloudflare Pages ins
 
 ### Packages
 
-The one list. Nothing on it is installed or removed until the Owner approves it through the coordinator.
+The one list. Owner, 2026-11-13: approved exactly as below (relayed by the coordinator). Nothing else is added or removed.
 
 | | Package | Version | Note |
 |---|---|---|---|
@@ -57,13 +57,15 @@ Read on 2026-11-13. Where a page and this plan disagree when execution reads it,
    - **Adapter 8 gives a request no `platform`.** Its Worker calls SvelteKit with `getClientAddress` only (read in the package's `files/worker.js`); `env` and `waitUntil` are imported from `cloudflare:workers`. So `src/lib/server/background.ts`, which reads `event.platform.context.waitUntil`, changes (Task 33).
    - **One database client per request.** "Workers do not allow a socket opened during one request to be reused by another, so do not share a module-level client across requests", and a client need not be closed: "Workers-to-Hyperdrive connections are automatically cleaned up when the request or invocation ends". So the process-wide `prisma()` changes (Task 34). (https://developers.cloudflare.com/hyperdrive/concepts/connection-lifecycle/)
    - **Prisma's client is generated for the runtime it runs in.** Prisma 7's Workers guide sets `runtime = "cloudflare"` (or `workerd`) on the generator; the Node build of the client compiles its WebAssembly from bytes at run time, which Workers refuse. The tests still run in Node. So the schema gets two generators: one for the app, one for the tests (Task 34). (https://www.prisma.io/docs/guides/v7/deployment/cloudflare-workers)
-   - **better-auth** hashes passwords with scrypt through `@better-auth/utils/password`, which uses `node:crypto` where there is one. A password check is tens of milliseconds of CPU; Workers Free allows 10 ms a request, Workers Paid 30 seconds. **Workers Paid ($5 a month) is required.** (https://developers.cloudflare.com/workers/platform/limits/)
+   - **better-auth** hashes passwords with scrypt through `@better-auth/utils/password`, which uses `node:crypto` where there is one. A password check is tens of milliseconds of CPU; Workers Free allows 10 ms a request, Workers Paid 30 seconds. **Workers Paid ($5 a month) is required.** Owner, 2026-11-13: Workers Paid at $5 a month is OK. (https://developers.cloudflare.com/workers/platform/limits/)
+   - **Vite cannot bundle Prisma's WebAssembly import, and Wrangler can.** The `workerd` client loads its query compiler with `await import("./query_compiler_fast_bg.wasm?module")` (read in a client generated by Prisma 7.10.0, `internal/class.ts`). Vite 8.3.3's build stops on it ("No such file or directory": it reads the `?module` as part of the file name), while Wrangler's own bundler loads a `.wasm?module` import as a ready WebAssembly module. So `vite.config.ts` gets a small plugin of its own (no package) that leaves that one import untouched, with its absolute path, for Wrangler to bundle (Task 34). Measured in a scratch folder on 2026-11-13, not in this repository: with the plugin, `wrangler deploy --dry-run` 4.156.0 bundled the module (3,744.64 KiB, 1,221.07 KiB gzipped, inside Workers Paid's 10 MB).
+   - **The adapter starts a local Cloudflare stand-in inside any Vite server, Vitest's too.** Its Vite plugin calls Wrangler's `getPlatformProxy` from `configureServer` (read in the package's `index.js`), Vitest runs every plugin's `configureServer`, and `getPlatformProxy` refuses a Hyperdrive binding with no local database ("When developing locally, you should use a local Postgres connection string…", seen from Wrangler 4.156.0). So the adapter is left out when Vitest loads `vite.config.ts` (Task 34); the tests never build the site.
    - **Stripe** 22.6.2 ships a Workers build (its `workerd` export) and has `Stripe.createFetchHttpClient()`, `Stripe.createSubtleCryptoProvider()` and `webhooks.constructEventAsync`. The plan asks for them by name, so nothing depends on which build the bundler picks (Tasks 22, 25).
 3. **The database: Hyperdrive in front of Neon.** No new package (the Neon driver would add two and could not talk to CI's plain Postgres), one new Cloudflare setting, included in Workers Paid. Its query cache is **turned off**: a cached "is this session valid" or "is this person a member" would be wrong for up to a minute. Migrations run in Workers Builds' **deploy command**, which runs only for the production branch; preview builds are switched off as well. No CI step, no migration by hand. (https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/postgres-database-providers/neon/, https://developers.cloudflare.com/workers/ci-cd/builds/configuration/, https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/)
-4. **Mail: Resend's HTTP API, called with `fetch`.** Cloudflare's own Email Sending is marked Beta on its pages today ("new accounts start with a conservative daily quota"), so it is not used for launch. The mailer stays one file behind the `Mailer` interface, so changing service later is one file. (https://developers.cloudflare.com/email-service/, https://resend.com/docs/api-reference/emails/send-email)
+4. **Mail: Resend's HTTP API, called with `fetch`.** Owner, 2026-11-13: mail is Resend, through plain `fetch` (no SDK). Cloudflare's own Email Sending is marked Beta on its pages today ("new accounts start with a conservative daily quota"), so it is not used for launch. The mailer stays one file behind the `Mailer` interface, so changing service later is one file. Resend refuses a request with no `User-Agent` header (403, "error 1010"), so the mailer sends one (Task 32). (https://developers.cloudflare.com/email-service/, https://resend.com/docs/api-reference/emails/send-email, https://resend.com/docs/knowledge-base/403-error-1010)
 5. **The daily job: a Cron Trigger on the same Worker.** The adapter builds only a `fetch` handler ("`adapter-cloudflare` does not export a `scheduled()` handler"). So a ten-line file wraps the built site, adds `scheduled`, and is what gets deployed; the job still only knocks on the site's own job address. (https://developers.cloudflare.com/workers/static-assets/migration-guides/vercel-to-workers/sveltekit/, https://developers.cloudflare.com/workers/configuration/cron-triggers/)
 6. **Settings are the Worker's secrets**, typed by the Owner in the dashboard, every one with type "Secret": a deploy wipes plain-text variables set in the dashboard and keeps secrets. A missing one stops the first request that needs it with `Missing setting <NAME>. Add it as a secret on the Worker in Cloudflare.` (https://developers.cloudflare.com/workers/configuration/secrets/)
-7. **A pull request cannot reach the real database.** Preview builds are off; the migrations are in the deploy command, which previews never run; and with Cloudflare's current previews, "Previews do not use production settings". `workers_dev` and `preview_urls` are false, so the site has one address.
+7. **A pull request cannot reach the real database.** Preview builds are off; the migrations are in the deploy command, which previews never run; and with Cloudflare's current previews, "Previews do not use production settings". `workers_dev` and `preview_urls` are false, so the site has one address. CI holds no Cloudflare login, so `wrangler dev` there can only use the local database it is given; `tests/wrangler.test.ts` also refuses a `remote` or `localConnectionString` key on the Hyperdrive binding, so nobody can point the journeys at the real one by a config change. The Hyperdrive id names a setting in the Owner's account and is useless without the Owner's Cloudflare login. Owner, 2026-11-13: the Hyperdrive id is committed in `wrangler.jsonc`.
 
 ### What this changes in tasks already built
 
@@ -78,6 +80,9 @@ Read on 2026-11-13. Where a page and this plan disagree when execution reads it,
 | Task 4 | `src/lib/server/mail.ts`: `createSmtpMailer`, `smtpTransport`, nodemailer | Task 32: `createResendMailer` |
 | Task 11 | `src/features/accounts/services.ts` reads `SMTP_URL`; `src/hooks.server.ts` starts with `keepBackgroundWorkAlive` | Tasks 32, 33, 34 |
 | Tasks 11 to 15 | `playwright.config.ts` passes `SMTP_URL: "test:"` | Task 32 |
+| Task 1 | `vite.config.ts`, `tsconfig.json`, `.gitignore`, `.prettierignore`, `eslint.config.js`, `.env.example`: Netlify's adapter, `.netlify/`, `DATABASE_URL` | Task 34 (the adapter only outside Vitest, the WebAssembly plugin, `worker-configuration.d.ts` in typecheck) |
+| Task 9 | `tests/features/accounts/auth.pg.test.ts`, "mail after the answer": imports `keepBackgroundWorkAlive` and relies on the default `runAfterAnswer` | Task 33 |
+| Task 11 | `tests/features/accounts/services.test.ts` builds the services outside any request | Task 34 |
 
 `Mailer`, `MailMessage`, `mailFailureCode`, `RunInBackground`, `runAfterAnswer`, `createPrismaClient`, `poolMaxFromEnv` and the name `prisma()` keep their signatures, so no feature file changes.
 
@@ -87,11 +92,11 @@ Read on 2026-11-13. Where a page and this plan disagree when execution reads it,
 
 ### Checked by CI, not by reading
 
-Three things could not be settled from documentation. Task 34's green push settles them; each has a stop rule there.
+Three things could not be settled from documentation. Task 34's green push settles them; each has a stop rule there. The plan audit (`docs/superpowers/audits/2026-11-13-slice-1-cloudflare-plan-audit.md`) narrowed them by reading the packages and by building in a scratch folder outside this repository; no test ran.
 
-- Whether Vite's build passes Prisma's `.wasm?module` import through to Wrangler untouched.
-- Whether `event.getClientAddress()` answers under `wrangler dev` (it reads `cf-connecting-ip`).
-- Whether pnpm, which runs no install scripts unless listed, installs Wrangler's runtime (`workerd`) whole.
+- Prisma's `.wasm?module` import: Vite does **not** pass it through on its own (its build stops). Task 34's plugin hands it to Wrangler, which bundled it in the scratch build. Still open: that the whole site builds and answers a query this way.
+- `event.getClientAddress()` under `wrangler dev`: it reads `cf-connecting-ip`, and Miniflare (the local runtime Wrangler 4.156.0 brings) sets that header from the caller's address when a request lacks it (read in its `entry.worker.js`). Expected to answer; still open until a journey signs in.
+- Whether pnpm, which runs no install scripts unless listed, installs Wrangler's runtime (`workerd`) whole. `workerd` ships its binary as an optional per-platform package and also has a `postinstall`; `sharp` (Miniflare's, for image bindings this app does not use) has one too.
 
 ## How a task runs
 
@@ -129,14 +134,14 @@ Nine branches, in this order. Each starts from `main` only after the one before 
 
 The execution session reports to the coordinator and asks for each of these with the exact steps below. It does not work around a missing credential. A stop holds only the check that needs it: the next branch starts as soon as the branch before it is merged and green (a stop's own step is done when the Owner says "done"). The one hard wait is S2: branch H is not merged until S2 is done, because once it is on `main` the real site's `/me` and `/join` need the Stripe settings.
 
-**S1, in two parts, asked for at Task 16 step 3. The Owner, in each service's own pages, never in the repository.** It needs Cloudflare's Workers Paid plan, $5 a month.
+**S1, in two parts, asked for at Task 16 step 3. The Owner, in each service's own pages, never in the repository.** It needs Cloudflare's Workers Paid plan, $5 a month (Owner, 2026-11-13: OK).
 
 Part one, the database:
 
 1. Cloudflare: Workers & Pages → Plans → choose **Workers Paid**. The site's domain must be one of this Cloudflare account's domains: if it is not listed under "Domains" on the account's home page, add it there ("Onboard a domain"), change the nameservers at the registrar as Cloudflare shows, and wait until it says "Active".
 2. Neon: make a project with Postgres 16, in AWS US East (Ohio). In its "Connect" panel switch **Connection pooling off** and copy the address (its host has no `-pooler` in it). This one address is used twice below.
 3. Cloudflare: Storage & Databases → Hyperdrive → Create configuration. Name `ruken-db`; paste the address from step 2; **turn Caching off** (a remembered answer to "is this person signed in" or "is this person a member" would be wrong for up to a minute). Create. Copy the configuration's ID (32 letters and digits).
-4. Say to the coordinator: "Hyperdrive id: <the ID>". It is the name of a setting in your account, not a password, and it goes into `wrangler.jsonc`. Wait for the coordinator's "the id is in main".
+4. Say to the coordinator: "Hyperdrive id: <the ID>". It is the name of a setting in your account, not a password, and it goes into `wrangler.jsonc` (Owner, 2026-11-13: committed there). Wait for the coordinator's "the id is in main". Part two waits for it, because the first build (step 9) deploys `wrangler.jsonc` as it is on `main`.
 
 Part two, the site:
 
@@ -146,15 +151,15 @@ Part two, the site:
    - `BETTER_AUTH_SECRET`: a long random value (a password manager's generator, 40 characters or more). `JOBS_SECRET`: a second, different one (the daily job shows it to the site, Task 20).
    - `BETTER_AUTH_URL`: the site's address with `https://` and no trailing slash.
    - `RESEND_API_KEY`: the key from step 5. `MAIL_FROM`: `Ruken <hello@your-domain>`, on the verified domain.
-8. That Worker → Settings → Domains & Routes → Add → Custom Domain → the site's address. Cloudflare makes the DNS record and the https certificate itself. For the other spelling (with or without `www`): the domain → Rules → Redirect Rules → the "Redirect from WWW to root" template (or its opposite), so both spellings end at the one address.
-9. That Worker → Settings → Build → Connect → GitHub → `mcthaydt/RukenApp`, branch `main`. Build command: `pnpm build`. Deploy command: `pnpm run deploy`. Root directory: empty. Under Branch control, **leave "Enable preview builds" unticked**: nothing is built from a pull request. Under "Build variables and secrets" add `DIRECT_DATABASE_URL` with the address from step 2, as a secret. Only the deploy command reads it, to run the migrations, and the deploy command runs only for `main`.
-10. Say "done" to the coordinator, and tell the coordinator the site's address (it is not written in the repository). The first real deploy starts with the next merge to `main`, which the execution session makes.
+8. First, the domain → DNS → Records: if a record named exactly the site's address already exists (an A, AAAA or CNAME, for example one left from Netlify or the registrar's parking page), delete it; Cloudflare refuses a Custom Domain while one is there ("already has externally managed DNS records"). Leave the Resend records from step 5 alone. Then that Worker → Settings → Domains & Routes → Add → Custom Domain → the site's address. Cloudflare makes the DNS record and the https certificate itself. For the other spelling (with or without `www`): if it has no DNS record, add one as the redirect template asks (an `AAAA` record for that name with the address `100::`, proxied, the orange cloud on); then the domain → Rules → Redirect Rules → the "Redirect from WWW to root" template (or its opposite), so both spellings end at the one address.
+9. That Worker → Settings → Build → Connect → GitHub → `mcthaydt/RukenApp`, branch `main`. Build command: `pnpm build`. Deploy command: `pnpm run deploy`. Root directory: empty. Under Branch control, **leave "Builds for non-production branches" (also shown as "Enable preview builds") unticked**: nothing is built from a pull request. Under "Build variables and secrets" add `DIRECT_DATABASE_URL` with the address from step 2, as a secret. Only the deploy command reads it, to run the migrations, and the deploy command runs only for `main`. Do steps 6 to 8 before this one: if connecting starts a build at once, the Worker's secrets and address are already there.
+10. Say "done" to the coordinator, and tell the coordinator the site's address (it is not written in the repository). If a build started by itself at step 9, say whether it passed (Worker → Deployments). Otherwise the first real deploy starts with the next merge to `main`, which the execution session makes.
 
 **S2, asked for when branch G starts (Task 21), needed before branch H merges. The Owner, in Stripe test mode:**
 
 1. Settings → Tax: set the origin address, set the default tax behaviour to "exclusive", and add at least one registration (the Owner's own state is enough for testing), so a test invoice shows tax.
 2. Settings → Billing → Customer portal: turn on "Cancel subscriptions", "at the end of the billing period"; leave "Update payment methods" on; turn off "Switch plans". Save, and activate the test-mode portal.
-3. Developers → Webhooks → Add endpoint: `https://<site>/webhooks/stripe`, with the API version the execution session gives (the version the `stripe` package pins, read from `node_modules/stripe`; the handlers read event fields in that version's shape), for the events listed in Task 25. Copy its signing secret.
+3. Developers → Webhooks → Add endpoint: `https://<site>/webhooks/stripe`, with the API version the execution session gives (the version the `stripe` package pins, read from `node_modules/stripe`; the handlers read event fields in that version's shape; read from the published 22.6.2 package on 2026-11-13: `2026-08-26.dahlia`, in `esm/apiVersion.js`), for the events listed in Task 25. Copy its signing secret.
 4. Developers → API keys: copy the test secret key (`sk_test_…`).
 5. Cloudflare: the `ruken` Worker → Settings → Variables and Secrets → Add, each with the type "Secret": `STRIPE_SECRET_KEY` (step 4), `STRIPE_WEBHOOK_SECRET` (step 3), `STRIPE_LIVE` = `false`. Press Deploy when the page offers it. Say "done".
 
@@ -170,6 +175,11 @@ The membership product and its two prices are not typed into Stripe by anyone: t
   3. Deploy: the Owner links the Netlify site to the repository, and Netlify builds and publishes `main` after each merge, running the migrations in its build. No CI workflow change for deploying (Task 16). Owner, 2026-11-13, Cloudflare instead of Netlify: the same, with Cloudflare's Workers Builds in Netlify's place; the migrations run in its deploy command.
   4. `main` is protected, as described under "Branches".
   5. The Calls below were put to the Owner and not overruled. They stay Calls.
+- **Owner, 2026-11-13, Cloudflare** (answers relayed by the coordinator):
+  1. The package list is approved exactly: add `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0 (both dev); remove `@sveltejs/adapter-netlify` 7.0.1, `nodemailer` 10.0.13 and `@types/nodemailer` 8.0.2 (Tasks 32, 34).
+  2. Mail is Resend, called with plain `fetch` (Task 32).
+  3. The Hyperdrive id is committed in `wrangler.jsonc` (Task 16 step 4).
+  4. Workers Paid at $5 a month is OK (S1 step 1).
 - **Owner, 2026-11-13, the design revised** (sections 5.2, 6 and 8):
   1. The membership is $9.99 a month or $99 a year. No trials, no day or week passes, no buying single games (Task 22).
   2. From launch day Ruken records which maker brought each member. A member is brought by a maker when their last arrival before paying was through that maker's page or one of that maker's game links. It is a fact from the link, never typed (Tasks 21, 23, 26, 27, 29; "Bringing a member", below).
@@ -267,6 +277,8 @@ src/routes/
   join/  join/done/                      (branch H)
   webhooks/stripe/+server.ts             (branch H)
 tests/support/database.ts                a fresh migrated database per test file
+tests/support/generated/prisma/          the Prisma client generated for Node, for tests only; ignored by git (branch E0)
+worker-configuration.d.ts                written by `wrangler types`; ignored by git, read by typecheck (branch E0)
 tests/wrangler.test.ts                   wrangler.jsonc, the deploy script and the journeys' command, read as text (branch E0)
 tests/support/test-clock.ts              a clock tests can set
 tests/support/capture-mailer.ts          a Mailer that keeps what it was given
@@ -806,7 +818,7 @@ Branch D is ready to merge.
 
 # Branch E0: `slice-1/cloudflare`
 
-Owner, 2026-11-13: Cloudflare instead of Netlify. This branch moves what branches A to D built onto Cloudflare Workers, before anything is deployed. It starts only when the Owner has approved the package list ("Cloudflare instead of Netlify", above).
+Owner, 2026-11-13: Cloudflare instead of Netlify. This branch moves what branches A to D built onto Cloudflare Workers, before anything is deployed. The Owner approved its package list on 2026-11-13 ("Cloudflare instead of Netlify", above); it starts when branch D is merged and green.
 
 ### Task 32: Mail over HTTP, and settings that say Cloudflare
 
@@ -818,7 +830,7 @@ Changes Task 3 (`env.ts`), Task 4 (`mail.ts`) and Task 11 (`services.ts`).
 
 **Interfaces:**
 - Produces:
-  - `createResendMailer(options: { apiKey: string; from: string; allowlist: string | undefined; fetch?: typeof fetch }): Mailer`. `send` POSTs to `https://api.resend.com/emails` with the headers `Authorization: Bearer <apiKey>` and `Content-Type: application/json` and the body `{ from, to: [message.to], subject, text }`. A 2xx answer resolves `true`. Any other answer throws `MailError` with `code: "RESEND"`, `responseCode: <status>` and the message `Resend answered <status>`; the answer's body is never read into the error, because it can name the address. The allowlist works as before: an address not on it resolves `false` and nothing is fetched. `fetch` defaults to the global one.
+  - `createResendMailer(options: { apiKey: string; from: string; allowlist: string | undefined; fetch?: typeof fetch }): Mailer`. `send` POSTs to `https://api.resend.com/emails` with the headers `Authorization: Bearer <apiKey>`, `Content-Type: application/json` and `User-Agent: ruken` (Resend answers 403 to a request without one; a comment says so) and the body `{ from, to: [message.to], subject, text }`. The chosen `fetch` is kept in a local constant and called as a plain function, never as a method of the options object: Workers refuse a `fetch` called with another object as `this` ("Illegal invocation"). A 2xx answer resolves `true`. Any other answer throws `MailError` with `code: "RESEND"`, `responseCode: <status>` and the message `Resend answered <status>`; the answer's body is never read into the error, because it can name the address. The allowlist works as before: an address not on it resolves `false` and nothing is fetched. `fetch` defaults to the global one.
   - `class MailError extends Error { code: string; responseCode: number }`.
   - Unchanged: `MailMessage`, `Mailer`, `mailFailureCode` (it already reads `code` and `responseCode`, so a failure logs as `RESEND 422`).
   - Removed: `createSmtpMailer`, `SmtpMailerOptions`, `smtpTransport`, and the packages `nodemailer` and `@types/nodemailer`.
@@ -841,6 +853,7 @@ it("posts the message to Resend with the key", async () => {
   expect(url).toBe("https://api.resend.com/emails");
   expect(init?.method).toBe("POST");
   expect(new Headers(init?.headers).get("authorization")).toBe("Bearer re_test_fake");
+  expect(new Headers(init?.headers).get("user-agent")).toBe("ruken");     // Resend refuses a request without one
   expect(JSON.parse(String(init?.body))).toEqual({ from: "Ruken <hello@ruken.test>", to: ["a@b.test"], subject: "Hello", text: "Hi." });
 });
 it("sends nothing to an address that is not on the allowlist", async () => {
@@ -867,7 +880,7 @@ Changes Task 3 (`background.ts`) and Task 11 (`hooks.server.ts`).
 **Files:**
 - Create: `src/lib/server/platform.ts`
 - Modify: `src/lib/server/background.ts`, `src/hooks.server.ts`
-- Test: `tests/lib/server/platform.test.ts`, `tests/lib/server/background.test.ts`
+- Test: `tests/lib/server/platform.test.ts`, `tests/lib/server/background.test.ts`, `tests/features/accounts/auth.pg.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -889,7 +902,14 @@ it("hands the started work to the platform, so the host waits for it", async () 
 });
 ```
 
-  Stub `setPlatform` and `platform`. Push. Expected: `verify` fails in both files: "not built yet" in `platform.test.ts`, and in `background.test.ts` the same from `setPlatform`.
+  The carried "wiring" case of `background.test.ts` (it reads `src/hooks.server.ts` as text and expects `keepBackgroundWorkAlive` first) becomes: `src/hooks.server.ts` calls `setPlatform(` before it exports `handle`.
+
+  `tests/features/accounts/auth.pg.test.ts` (Task 9) also leans on the old file. Its group "mail after the answer" imports `keepBackgroundWorkAlive`, and both of its cases build better-auth without `runInBackground`, so mail goes through the default `runAfterAnswer`, which from now on asks `platform()`. Change the group, keeping what each case proves:
+  - a `beforeEach` in the group calls `setPlatform({ databaseUrl: () => "", waitUntil: () => {} })`, so the first case (a mail server that never answers) runs as before;
+  - the second case, "hands the mail to the platform's waitUntil by default", sets `setPlatform({ databaseUrl: () => "", waitUntil: (work) => kept.push(work) })`, calls `defaultAuth.handler(…)` straight (no `keepBackgroundWorkAlive`), and keeps its two assertions: `kept` has one entry, and after `await Promise.all(kept)` the mail went to the account's address. Its title drops "so Netlify does not freeze it half sent" for "so the Worker is not stopped with it half sent".
+  No other carried test builds better-auth without its own `runInBackground`; if one does, give it the same `beforeEach` and say so in the report line.
+
+  Stub `setPlatform` and `platform`. Push. Expected: `verify` fails in both files: "not built yet" in `platform.test.ts`, and in `background.test.ts` the same from `setPlatform`; `postgres` fails in `auth.pg.test.ts`'s "mail after the answer" with "not built yet".
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 
 ### Task 34: The site runs on Workers
@@ -898,8 +918,8 @@ Changes Task 1 (`db.ts`, `base.prisma`, `tests/support/database.ts`, `playwright
 
 **Files:**
 - Create: `wrangler.jsonc`, `src/lib/server/cloudflare.ts`, `src/routes/healthz/+server.ts`
-- Modify: `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `playwright.config.ts`, `prisma/schema/base.prisma`, `src/lib/server/db.ts`, `src/hooks.server.ts`, `tests/support/database.ts`, `.gitignore`, `.prettierignore`, `eslint.config.js`, `.env.example`
-- Test: `tests/wrangler.test.ts`, `tests/lib/server/db.test.ts`, `tests/browser/healthz.test.ts`
+- Modify: `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `tsconfig.json`, `playwright.config.ts`, `prisma/schema/base.prisma`, `src/lib/server/db.ts`, `src/hooks.server.ts`, `tests/support/database.ts`, `.gitignore`, `.prettierignore`, `eslint.config.js`, `.env.example`
+- Test: `tests/wrangler.test.ts`, `tests/lib/server/db.test.ts`, `tests/browser/healthz.test.ts`, `tests/features/accounts/services.test.ts`
 
 **Interfaces:**
 - Consumes: `Platform`, `setPlatform`, `platform` (Task 33).
@@ -935,12 +955,20 @@ Changes Task 1 (`db.ts`, `base.prisma`, `tests/support/database.ts`, `playwright
     - The comment says why: Workers do not let one request use a connection another request opened.
   - `prisma/schema/base.prisma`: two generators, each with a comment. `client`: `provider = "prisma-client"`, `output = "../../src/lib/server/generated/prisma"`, `runtime = "workerd"` (the app). `nodeClient`: `provider = "prisma-client"`, `output = "../../tests/support/generated/prisma"`, `runtime = "nodejs"` (the tests, which run in Node on GitHub's runners). The second folder is ignored by git, Prettier and ESLint like the first.
   - `tests/support/database.ts`: `startTestDatabase()` builds its client from `tests/support/generated/prisma` with `PrismaPg`, and returns it typed as the app's `PrismaClient` through one cast with a comment (the two generated clients have the same shape and differ only in how they load WebAssembly). No other test file changes.
-  - `package.json`: `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0 in, `@sveltejs/adapter-netlify` out. `"generate": "svelte-kit sync && prisma generate && wrangler types"` (`wrangler types` writes `worker-configuration.d.ts`, which types `cloudflare:workers`; it is ignored by git, Prettier and ESLint, as are `.wrangler/` and `.dev.vars*`).
-  - `vite.config.ts`: `sveltekit({ adapter: cloudflareAdapter() })`, and the comment about Netlify goes.
+  - `package.json`: `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0 in, `@sveltejs/adapter-netlify` out. `"generate": "svelte-kit sync && prisma generate && wrangler types"` (`wrangler types` writes `worker-configuration.d.ts`, which types `cloudflare:workers` and `env.HYPERDRIVE`; it is ignored by git, Prettier and ESLint, as are `.wrangler/` and `.dev.vars*`).
+  - `tsconfig.json`: `include` gains `"worker-configuration.d.ts"`. Without it neither svelte-check nor ESLint's typed rules can see `cloudflare:workers`. The file also declares the Workers versions of `Request`, `Response` and the like beside the browser's; they agree only because `skipLibCheck` stays `true` (with it off, TypeScript 6.0.3 reports about a hundred clashes inside the two declaration files, seen in a scratch folder). A comment beside `skipLibCheck` says so.
+  - `vite.config.ts`:
+    - `sveltekit({ adapter: process.env.VITEST === "true" ? undefined : cloudflareAdapter() })`, with a comment: the adapter's Vite plugin starts Wrangler's local stand-in in every Vite server, Vitest's included, and that stand-in refuses the Hyperdrive binding without a local database; the tests never build the site, so they do without the adapter.
+    - a plugin of its own, first in `plugins`, `{ name: "workers-wasm", enforce: "pre", resolveId(id, importer) { … } }`: for an `id` ending in `.wasm?module` with an importer, it answers `{ id: resolve(dirname(importer), id), external: "absolute" }` (`node:path`). The comment says why: Prisma's Workers client imports its WebAssembly as `.wasm?module`, which Vite cannot load and Wrangler can; this leaves the import for Wrangler, with an absolute path because the build and the deploy run in the same folder (on the runner and in Workers Builds). It touches no other import.
+    - the comment about Netlify goes.
   - `playwright.config.ts`: `webServer.command` becomes `pnpm exec prisma migrate deploy && pnpm build && pnpm exec wrangler dev --port 4173`; `webServer.env` gains `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: process.env.TEST_DATABASE_URL ?? ""` and `CLOUDFLARE_INCLUDE_PROCESS_ENV: "true"` (so `wrangler dev` gives the Worker the settings Playwright passes; there is no `.dev.vars` file), and loses `DATABASE_URL` (the migration step still gets `DIRECT_DATABASE_URL`). The journeys now run in the runtime the real site runs in.
   - `GET /healthz` answers 200 `ok` after one `SELECT 1` through `prisma()`, and 503 `database` when that fails.
+  - `.env.example`: the first lines say the Worker's settings are secrets typed into Cloudflare (Task 32). `DATABASE_URL` goes: the site reaches the database through Hyperdrive, not a setting. `DIRECT_DATABASE_URL` stays, with a comment: a build secret in Workers Builds, read only by the deploy command's migrations. `DATABASE_POOL_MAX` stays, optional.
+  - `.gitignore`, `.prettierignore`, `eslint.config.js`: `.netlify/` goes; `.wrangler/`, `.dev.vars*`, `worker-configuration.d.ts` and `tests/support/generated/` come. `playwright.config.ts`'s comment "as they do on Netlify" goes with the old command.
+  - `tests/features/accounts/services.test.ts` (Task 11): every case that builds `createAuthServices` runs inside `databasePerRequest(() => ({}) as PrismaClient)`, with a comment. better-auth reads its client once while it starts (`prismaAdapter` reads `_runtimeDataModel`, read in `@better-auth/prisma-adapter` 1.7.7), and outside a request the stand-in `prisma()` throws, which would surface as an unhandled rejection that fails the run. An empty object has no data model, so better-auth skips that check. In the site the services are first built inside a request (the hook's `getDeps`), so nothing changes there.
+  - Nothing in `src/` uses `instanceof` on a Prisma error class or imports a runtime value from the generated client other than `PrismaClient` and the enums: the tests' client comes from a second generated folder, so its classes are not the app's. The carried code already reads `error.code === "P2002"` by shape (`OLD/packages/core/src/account/deletion.ts`).
 
-- [ ] **Step 1 (red):** the three tests, the stub for `databasePerRequest`, and nothing else: no package changes yet.
+- [ ] **Step 1 (red):** the three tests, the `services.test.ts` change, the stub for `databasePerRequest`, and nothing else: no package changes yet.
 
 ```ts
 // tests/lib/server/db.test.ts
@@ -973,12 +1001,12 @@ it("refuses the database outside a request", () => {
 });
 ```
 
-  `tests/wrangler.test.ts` (a unit test that reads files as text; `wrangler.jsonc` is parsed after dropping the lines that start with `//`): `main` is `.svelte-kit/cloudflare/_worker.js`; `assets` is `{ binding: "ASSETS", directory: ".svelte-kit/cloudflare" }`; `compatibility_flags` contains `nodejs_compat`; `hyperdrive[0].binding` is `HYPERDRIVE`; `workers_dev` and `preview_urls` are `false`; there is no `vars`, `route` or `routes` key; the file's text contains none of `postgres://`, `postgresql://`, `sk_live`, `sk_test`, `whsec_` and nothing matching `/\bre_[A-Za-z0-9]{8,}/`; `playwright.config.ts` contains `wrangler dev`; `package.json` names neither `@sveltejs/adapter-netlify` nor `nodemailer`. `healthz.test.ts`: `GET /healthz` answers 200 with the text `ok`. Push. Expected: `verify` fails in `db.test.ts` ("not built yet") and `wrangler.test.ts` (no such file); `browser` fails in `healthz.test.ts` (404).
+  `tests/wrangler.test.ts` (a unit test that reads files as text; `wrangler.jsonc` is parsed after dropping the lines that start with `//`): `main` is `.svelte-kit/cloudflare/_worker.js`; `assets` is `{ binding: "ASSETS", directory: ".svelte-kit/cloudflare" }`; `compatibility_flags` contains `nodejs_compat`; `hyperdrive[0].binding` is `HYPERDRIVE`; `workers_dev` and `preview_urls` are `false`; there is no `vars`, `route` or `routes` key; `hyperdrive[0]` has no `remote` and no `localConnectionString` key (so the journeys can only ever use the database CI gives them); the file's text contains none of `postgres://`, `postgresql://`, `sk_live`, `sk_test`, `whsec_` and nothing matching `/\bre_[A-Za-z0-9]{8,}/`; `playwright.config.ts` contains `wrangler dev`; `package.json` names neither `@sveltejs/adapter-netlify` nor `nodemailer`; no file the site is built or tested from names Netlify (a case-insensitive search for `netlify` in `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `playwright.config.ts`, `.env.example`, `.gitignore`, `.prettierignore`, `eslint.config.js` and every file under `src/` and `tests/` except this test itself and generated folders finds nothing); `vite.config.ts` contains `process.env.VITEST` and `.wasm?module`; `tsconfig.json`'s `include` lists `worker-configuration.d.ts`. `healthz.test.ts`: `GET /healthz` answers 200 with the text `ok`. Push. Expected: `verify` fails in `db.test.ts` and `services.test.ts` ("not built yet", from the stub) and `wrangler.test.ts` (no such file); `browser` fails in `healthz.test.ts` (404).
 - [ ] **Step 2 (green):** everything under "Produces". Running `prisma generate`, `wrangler types` and `pnpm install` is not running a test. Push. Expected: all three jobs pass, and every journey from branches A to D passes unchanged in `wrangler dev`.
-- [ ] **Step 3: if green does not come.** These are the three things reading could not settle. Each gets one fix; after that, stop and report with the job's log (CLAUDE.md, Pace: no fourth attempt).
-  - The build or `wrangler dev` cannot load Prisma's `.wasm?module` import: read Prisma's Workers guide (linked above) for what it says about Vite, and report what the log says and what the guide offers. Do not change Prisma's version or add a plugin without the Owner's words.
-  - `event.getClientAddress()` throws or answers nothing under `wrangler dev`: report it; do not invent an address.
-  - `wrangler` says its runtime is missing: add `workerd` to `onlyBuiltDependencies` in `pnpm-workspace.yaml`, with a comment, and report it as a deviation.
+- [ ] **Step 3: if green does not come.** These are the three things reading could not settle. Each gets at most one fix, the one named here; after that, stop and report to the coordinator with the job's log lines (CLAUDE.md, Pace: no fourth attempt). Any other failure of the green push is not one of these: stop and report at once.
+  - Prisma's WebAssembly. Signs: the build stops on `query_compiler_fast_bg.wasm?module`, or Wrangler cannot bundle it, or `/healthz` answers 503 and the Worker's log names WebAssembly or the query compiler. One fix: check that the `workers-wasm` plugin is first in `plugins` and answers `external: "absolute"`. Then stop. Do not change Prisma's version, its generator `runtime`, or add a package or a second plugin without the Owner's words; report what the log says and what Prisma's Workers guide (linked above) offers.
+  - The visitor's address. Signs: a sign-in or sign-up journey fails and the log shows `getClientAddress` throwing or an empty `x-ruken-client-ip`. No fix: report it with the log line. Do not invent an address, read another header, or turn the rate limits off.
+  - Wrangler's runtime. Signs: `wrangler dev` or `wrangler types` says `workerd` (or its binary) is missing. One fix: add `workerd` to `onlyBuiltDependencies` in `pnpm-workspace.yaml`, with a comment, and report it as a deviation when it is made. A warning that pnpm ignored the build scripts of `workerd` or `sharp` is not a failure and changes nothing. If adding `workerd` does not bring green, stop.
 
 Branch E0 is ready to merge.
 
@@ -1145,7 +1173,7 @@ export default {
 
   - `main` in `wrangler.jsonc` stays the adapter's file, because the adapter writes its output to whatever `main` names. The wrapper is given on the command line instead: `package.json`'s `deploy` becomes `prisma migrate deploy && wrangler deploy cloudflare/worker.js`, and `playwright.config.ts`'s command ends `pnpm exec wrangler dev cloudflare/worker.js --port 4173 --test-scheduled`. A comment in `wrangler.jsonc` beside `main` says so.
 
-  Before writing it, read Cloudflare's Cron Triggers page ("Test Cron Triggers locally") and `pnpm exec wrangler deploy --help`, and check three things: a Worker file may be given to `wrangler deploy` and `wrangler dev` as an argument, `--test-scheduled` is the flag, and the local address that runs the handler is `/cdn-cgi/local/scheduled`. If Wrangler will not take the wrapper this way, stop and report; the other way Cloudflare describes is a second small Worker with its own Cron Trigger, which is a new thing to deploy and needs the Owner's words.
+  Before writing it, read Cloudflare's Cron Triggers page ("Test Cron Triggers locally") and `pnpm exec wrangler deploy --help`, and check three things: a Worker file may be given to `wrangler deploy` and `wrangler dev` as an argument, `--test-scheduled` is the flag, and the local address that runs the handler is `/cdn-cgi/local/scheduled`. (Read in the published packages on 2026-11-13: both commands take a `script` argument, and Miniflare answers `/cdn-cgi/local/scheduled` with 200 `ok`, or 500 when the handler throws. The help text of `--test-scheduled` still says `/__scheduled`; it is out of date.) The synthetic request the wrapper sends has no `cf-connecting-ip`, so `event.getClientAddress()` is empty for it; `/jobs/purge-accounts` must not need it. If Wrangler will not take the wrapper this way, stop and report; the other way Cloudflare describes is a second small Worker with its own Cron Trigger, which is a new thing to deploy and needs the Owner's words.
 
 - [ ] **Step 1 (red):** `purge.pg.test.ts`:
 
@@ -1299,7 +1327,7 @@ it("ignores a sealed value of the wrong shape", () => {
 
 **Interfaces:**
 - Produces:
-  - `WEBHOOK_TOLERANCE_SECONDS = 300`, `verifyStripeWebhook(delivery: { payload; signature; secret; nowMs }): Promise<Stripe.Event>` from `OLD/packages/billing/src/webhook.ts` with `webhook.test.ts`. Changed for Cloudflare (Owner, 2026-11-13): it is async. It checks the signature with `Stripe.webhooks.constructEventAsync(payload, signature, secret, WEBHOOK_TOLERANCE_SECONDS, Stripe.createSubtleCryptoProvider(), <the delivery's time>)`, which uses Web Crypto, the one HMAC Workers offer without waiting. The last argument is the injected clock's time; read `Webhooks.d.ts` in `node_modules/stripe` for its unit before passing `nowMs`. The old synchronous check (`constructEvent`, or the file's own `node:crypto` HMAC) is not carried. Every carried case keeps its meaning and gains an `await`; a refusal is a rejected promise.
+  - `WEBHOOK_TOLERANCE_SECONDS = 300`, `verifyStripeWebhook(delivery: { payload; signature; secret; nowMs }): Promise<Stripe.Event>` from `OLD/packages/billing/src/webhook.ts` with `webhook.test.ts`. Changed for Cloudflare (Owner, 2026-11-13): it is async. It checks the signature with `Stripe.webhooks.constructEventAsync(payload, signature, secret, WEBHOOK_TOLERANCE_SECONDS, Stripe.createSubtleCryptoProvider(), <the delivery's time>)`, which uses Web Crypto, the one HMAC Workers offer without waiting. The last argument is the injected clock's time in milliseconds: pass `nowMs` as it is (22.6.2 divides it by 1000 itself, read in `esm/Webhooks.js`, `validateComputedSignature`); confirm in `node_modules/stripe` once installed. The old synchronous check (`constructEvent`, or the file's own `node:crypto` HMAC) is not carried. Every carried case keeps its meaning and gains an `await`; a refusal is a rejected promise.
   - `storeStripeDelivery(db, event, receivedAtMs): Promise<string>`, `processStripeDelivery(deps: { db; clock; live: boolean; handle(event): Promise<void> }, inboxId): Promise<"processed" | "already_processed" | "livemode_mismatch">` from `OLD/packages/core/src/billing/webhook-inbox.ts` with the matching cases of `webhook-inbox.pg.test.ts`. Trim: the job name and retry policy, `retryStaleStripeDeliveries` and its constants.
   - `interface StripeEvent`, `interface MembershipEventHandlers { completeCheckout(input: { stripeCheckoutSessionId; subscriptionId; atMs }): Promise<unknown>; expireCheckout(stripeCheckoutSessionId: string): Promise<unknown>; syncSubscription(subscriptionId, observedAtMs): Promise<SyncOutcome>; recordInvoicePaid(invoiceId): Promise<InvoicePaidOutcome>; report(problem: Error): void }`, `handleStripeEvent(handlers, event): Promise<void>` from `OLD/packages/core/src/billing/stripe-events.ts` with the matching cases of `stripe-events.test.ts`.
 - The events acted on (also the list the Owner gives Stripe at S2): `checkout.session.completed`, `checkout.session.expired`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`. Also asked of Stripe and only kept, for slice 5: `charge.dispute.created`, `charge.dispute.closed`, `charge.refunded`. Any other type is kept and does nothing.
@@ -1573,7 +1601,7 @@ test("a member who came through no maker's link has no maker recorded", async ({
 });
 ```
 
-  The two arrival tests pass through sign-up and the stand-in Stripe with the real cookie, and then read the row, because no screen shows who brought a member. `tests/browser/support/database.ts` gives `userIdOf(email): Promise<string>` and `membershipStartsOf(email): Promise<MembershipStart[]>`, each on one Prisma client made from `TEST_DATABASE_URL` (the database the app under test uses) and closed when the worker ends; and `arrivalCookie(link): { name; value; url }`, which seals the link with `sealArrival` from `src/features/membership/arrival.ts`, the secret `playwright.config.ts` gives the app and the time now, for `http://localhost:4173`. It is test code, the only way an arrival exists before slices 2 and 3 bring the links. `payAsNewMember(page): Promise<{ email: string; checkoutSessionId: string }>` (it reads the session id from the stand-in's `/pay/<session>` address) and `signUpInItsOwnContext(browser)` go in `tests/browser/support/account.ts`.
+  The two arrival tests pass through sign-up and the stand-in Stripe with the real cookie, and then read the row, because no screen shows who brought a member. `tests/browser/support/database.ts` gives `userIdOf(email): Promise<string>` and `membershipStartsOf(email): Promise<MembershipStart[]>`, each on one Prisma client from the Node-generated folder `tests/support/generated/prisma` with `PrismaPg` (Playwright runs in Node, where the app's Workers client cannot load its WebAssembly), made from `TEST_DATABASE_URL` (the database the app under test uses) and closed when the worker ends; and `arrivalCookie(link): { name; value; url }`, which seals the link with `sealArrival` from `src/features/membership/arrival.ts`, the secret `playwright.config.ts` gives the app and the time now, for `http://localhost:4173`. It is test code, the only way an arrival exists before slices 2 and 3 bring the links. `payAsNewMember(page): Promise<{ email: string; checkoutSessionId: string }>` (it reads the session id from the stand-in's `/pay/<session>` address) and `signUpInItsOwnContext(browser)` go in `tests/browser/support/account.ts`.
 
   The thirty-second line is not reached by a journey (it would hold CI for thirty seconds a run); its words are checked by reading the page in review, and the report line says so. Push. Expected: `browser` fails in `pay.test.ts`: after "Pay" the browser is at `/join/done…`, a 404, not `/me`, and the late-news test finds no "Finishing up…". The two arrival tests fail the same way, inside `payAsNewMember`; say in the report line that their own assertion is first reached in the green push.
 - [ ] **Step 2 (green):** `load` uses `signedInOnly`, then `service.checkoutState`. Push. Expected: all pass.
