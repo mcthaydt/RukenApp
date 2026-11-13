@@ -29,6 +29,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan audit, slice 1, Cloudflare revision (`session_01HNdX7JhDxq8Wks8Rcajo3A`) | 3 Plan audit | `audit/slice-1-cloudflare` | archived; merged (#19) |
 | execution, slice 1 (`session_01HNdX7J8VTGzcZShtgMUqyv`) | 4 Execution | `slice-1/*` | archived (handed off at 90 minutes, after branch C) |
 | execution, slice 1, second session (`session_01HNdX7MUtPbFudeSaJywXHC`) | 4 Execution | `slice-1/account-screens` and after | running |
+| execution, slice 1, branch G (membership) (`session_01HNdX7LRjMhjdjX3L55msBT`) | 4 Execution | `slice-1/membership` | running (parallel with the second execution session; the Owner chose the parallel run, 2026-11-13) |
 | plan, slice 1, the look (`session_01HNdX7Hzv3QVMVyjewBSg1u`) | 2 Plan | `plan/slice-1-look` | archived; merged (#22) |
 | plan audit, slice 1, the look (`session_01HNdX7KyU3nkcc8rAByjXX3`) | 3 Plan audit | `audit/slice-1-look` (pull request #23) | done; merged to main (#23) |
 
@@ -99,7 +100,7 @@ Branches and tasks. Each task is ticked with its two CI runs (the failing test, 
 | E0 `slice-1/cloudflare` | 32 mail over HTTP, settings that say Cloudflare · 33 the platform, and work after the answer · 34 the site runs on Workers (one database client per request, the journeys in `wrangler dev`, `/healthz`) | not started; the package list is approved (Owner, 2026-11-13); starts after branch L |
 | E `slice-1/deploy` | 16 the site on its real address | not started; waits for branch E0 |
 | F `slice-1/delete-account` | 17 asking to be deleted, and undoing it · 18 signing in undoes it · 19 the delete screens · 20 the daily job (a Cron Trigger) | not started |
-| G `slice-1/membership` | 21 the membership tables · 22 prices and joining · 23 the membership rules and the arrival cookie · 24 reading and ending a subscription · 25 the webhook · 26 the membership service | not started |
+| G `slice-1/membership` | 21 the membership tables · 22 prices and joining · 23 the membership rules and the arrival cookie · 24 reading and ending a subscription · 25 the webhook · 26 the membership service | in progress (branch G's own session; it needs only A to D). [ ] Task 21: red pushed |
 | H `slice-1/paywall` | 27 the stand-in Stripe and the paywall card · 28 the webhook route · 29 coming back from paying · 30 membership on /me, cancelling, deleting · 31 paying and cancelling on the real site | not started |
 
 The Owner's own tasks, and where execution stops for each:
