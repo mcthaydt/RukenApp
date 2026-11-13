@@ -72,7 +72,7 @@ export function pipRed(page: Page): Promise<string[]> {
         const style = getComputedStyle(element);
         return properties.some((property) => style[property] === red);
       })
-      .map((element) => (element.textContent ?? "").trim());
+      .map((element) => element.textContent.trim());
   }, pip);
 }
 
