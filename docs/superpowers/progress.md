@@ -10,7 +10,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | # | Slice | State | Progress |
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
-| 1 | Accounts and membership | plan on a branch (`plan/slice-1-accounts`, pull request #10), updated to the design as revised on 2026-11-13; plan audit not started | 5% |
+| 1 | Accounts and membership | plan on a branch (`plan/slice-1-accounts`, pull request #10), updated to the design as revised on 2026-11-13; the plan audit is next | 5% |
 | 2 | Games and play | not started | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
@@ -49,7 +49,7 @@ Stages:
 - [ ] Implementation audit.
 - [ ] Fixes.
 
-Paused (Owner, 2026-11-13, through the coordinator): no plan audit and no execution starts until the Owner has gone over the concept itself. The Owner has since revised the design (sections 5.1, 5.2, 6 and 8), and the plan now follows it. The coordinator says when the audit starts.
+Resumed: the Owner's concept review is done; the plan audit is next.
 
 The Owner's decisions for this slice, 2026-11-13:
 
