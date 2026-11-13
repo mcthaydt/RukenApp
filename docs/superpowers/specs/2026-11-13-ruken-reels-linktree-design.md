@@ -1,6 +1,12 @@
 # Ruken, restarted: Instagram Reels meets Linktree for games
 
-Date: 2026-11-13. Status: draft for the Owner's approval. Launch: Monday 30 November 2026, 11:00 CT.
+Date: 2026-11-13. Status: approved by the Owner on 2026-11-13. Launch: Monday 30 November 2026, 11:00 CT.
+
+The Owner's answers with the approval, 2026-11-13:
+
+- Where it runs (7.3): Netlify, Neon and Cloudflare, as proposed.
+- Money after launch (6): yes. On 30 November Ruken takes payments and records play; the pool, statements and payouts land after launch and before 10 December.
+- The first game (11): FloorFifty only, one game live on launch day.
 
 Lines marked **Owner** are the Owner's words or decisions from the 2026-11-13 conversation. Lines marked **Call** are the coordinator's choices; the Owner can overrule any of them. Nothing marked Call was agreed.
 

@@ -1,0 +1,9 @@
+# One app, no workspaces. This file holds pnpm's settings only.
+
+# Every pnpm script runs on this exact Node, downloaded into pnpm's store, so CI and every machine agree.
+# Bump it with .nvmrc in the same change.
+useNodeVersion: 24.22.1
+
+# pnpm 10 runs no dependency install scripts unless they are listed here.
+onlyBuiltDependencies:
+  - esbuild
