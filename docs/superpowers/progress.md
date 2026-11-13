@@ -10,7 +10,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | # | Slice | State | Progress |
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
-| 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan is revised for it on a branch (`plan/slice-1-cloudflare`), and branch E (deploy) waits for that to merge and for the Owner's yes to its package list. Before that: plan merged (pull request #10); plan audit on a branch (`audit/slice-1-plan`), with the plan's fixes; execution under way: branch A (tasks 1 to 4) is green on its pull request (#13), not yet merged | 13% |
+| 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan is revised for it on a branch (`plan/slice-1-cloudflare`, pull request #15), and branch E (deploy) waits for that to merge and for the Owner's yes to its package list. Before that: plan merged (pull request #10); plan audit on a branch (`audit/slice-1-plan`), with the plan's fixes; execution under way: branch A (tasks 1 to 4) is green on its pull request (#13), not yet merged | 13% |
 | 2 | Games and play | not started | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
@@ -25,7 +25,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan, slice 1 (`session_01HNdX7HZoCEVyiEQJdDLJrW`) | 2 Plan | `plan/slice-1-accounts` | archived |
 | plan, slice 1, updated to the revised design (`session_01HNdX7JH5Pn3ForHRsNX8Po`) | 2 Plan | `plan/slice-1-accounts` | running |
 | plan audit, slice 1 | 3 Plan audit | `audit/slice-1-plan` | running |
-| plan, slice 1, revised for Cloudflare (`session_01HNdX7LBVbQvxJYyJ29g61X`) | 2 Plan | `plan/slice-1-cloudflare` | running |
+| plan, slice 1, revised for Cloudflare (`session_01HNdX7LBVbQvxJYyJ29g61X`) | 2 Plan | `plan/slice-1-cloudflare` (pull request #15) | plan written; ready for review; three questions for the Owner sent to the coordinator (the mail service, the Hyperdrive id in the repository, the $5 plan) |
 
 ## Slice 0: Start
 
@@ -47,7 +47,7 @@ Stages:
 
 - [x] Plan written, and updated to the design as revised on 2026-11-13 (on `plan/slice-1-accounts`, pull request #10; not done until merged and green).
 - [ ] Plan audit: written, with the plan fixed (`docs/superpowers/audits/2026-11-13-slice-1-plan-audit.md`: 4 blocks execution, 19 should fix, 16 notes; all fixed in the plan but 6 notes that stay, each with its reason). On a branch (`audit/slice-1-plan`); not done until merged and green. No test ran in the audit session; the audit is a reading of the files.
-- [ ] Plan revised for Cloudflare (Owner, 2026-11-13: Cloudflare instead of Netlify): written from Cloudflare's, SvelteKit's, Prisma's, Stripe's and Resend's current pages and from the packages' own files; on a branch (`plan/slice-1-cloudflare`), not done until merged and green. No test ran in the plan session, and none of it has run on Cloudflare yet: Task 34's first green CI run is the first proof.
+- [ ] Plan revised for Cloudflare (Owner, 2026-11-13: Cloudflare instead of Netlify): written from Cloudflare's, SvelteKit's, Prisma's, Stripe's and Resend's current pages and from the packages' own files; on a branch (`plan/slice-1-cloudflare`, pull request #15), not done until merged and green. No test ran in the plan session, and none of it has run on Cloudflare yet: Task 34's first green CI run is the first proof.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
