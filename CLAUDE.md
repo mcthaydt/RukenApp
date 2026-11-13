@@ -1,5 +1,7 @@
 This is the Owner's workflow as pasted on 2026-11-13, with the one change the Owner asked for: "Only change below is we don't run local tests, we do it all in gh cloud runners." That change touches three places, each marked "(Owner, 2026-11-13)": the last bullet of "Where sessions run", which replaces three bullets about tests on other machines and in a session's own container; the "one in CI at a time" limit under Pace, which was for the Owner's own machines and is dropped; and the first rule about failing tests, which now says where the failure is seen.
 
+Owner, 2026-11-13: "This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it."
+
 # The workflow
 
 Work runs in stages. Each stage runs in its own fresh session, on its own branch, and is handed off only through committed documents.
@@ -91,6 +93,8 @@ Every session reports to the coordinator with send_message, short and factual; p
 
 ## Rules
 
+Our copy and UX always pass the drunk-grandma test: a drunk grandma can understand and use what we make (Owner, 2026-11-13).
+
 No subagents unless the owner says so.
 
 Refresh a session after 90 minutes.
@@ -108,6 +112,8 @@ Facts come from artifacts: hashes, sizes and timings are measured, never written
 Comments say why. They do not say which plan asked for the code.
 
 Merge with a merge commit, never a squash, so ancestry shows what is in main.
+
+Commits and pull requests carry no Claude attribution: no Co-Authored-By or Claude-Session lines, and no "Generated with Claude Code" footer (Owner, 2026-11-13).
 
 Never force-push. Never loosen, skip or re-record a test to get green; a golden moves only with the owner seeing before and after.
 
