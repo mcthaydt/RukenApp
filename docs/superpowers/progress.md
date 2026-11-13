@@ -20,7 +20,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 
 | Session | Stage | Branch | State |
 |---|---|---|---|
-| coordinator | all | — | running |
+| coordinator (`session_01HNdX7KQVAfWMSYYHFoo8iZ`) | all | — | running |
 | merge (`session_01HNdX7LyTaPth3m82ZhbsXY`) | merges | — | running |
 | plan, slice 1 (`session_01HNdX7HZoCEVyiEQJdDLJrW`) | 2 Plan | `plan/slice-1-accounts` | archived |
 | plan, slice 1, updated to the revised design (`session_01HNdX7JH5Pn3ForHRsNX8Po`) | 2 Plan | `plan/slice-1-accounts` | running |
@@ -62,6 +62,10 @@ The Owner's revised design, 2026-11-13, as this slice takes it:
 
 - [x] The membership is $9.99 a month or $99 a year. No trials, no passes, no single games.
 - [x] Which maker brought each member is recorded from launch day, from the link and never typed. This slice remembers the last arrival in a cookie only the server can write, carries it through Stripe on the checkout's own row, and stores it as one added-only `MembershipStart` row per completed checkout. The links themselves arrive in slices 2 and 3.
+- [x] An arrival has no time limit; its time is still stored.
+- [x] Only the first join counts: the bonus covers a person's first 12 months on Ruken, once. Every join is still recorded as it happened; slice 5 applies the rule.
+- [x] No bonus on yourself: a maker who arrives through their own link gets none on their own membership. Recorded as it happened; slice 5 applies the rule.
+- [x] The function that remembers an arrival stays in slice 1, though the links that call it arrive in slices 2 and 3.
 - [x] Not in this slice: FloorFifty free on launch day, free-play codes, the play cap, the split and payouts. "Is this person a member" stays apart from "may this person play", so a free game fits later.
 
 Branches and tasks. Each task is ticked with its two CI runs (the failing test, then green).
