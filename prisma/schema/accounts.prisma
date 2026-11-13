@@ -38,6 +38,15 @@ model User {
   accounts         Account[]
   staffAssignments StaffAssignment[]
   deletionRequests DeletionRequest[]
+
+  // The membership feature's tables point at a person; they are declared in membership.prisma.
+  billingCustomer         BillingCustomer?
+  premiumMembership       PremiumMembership?
+  checkoutIntents         CheckoutIntent[]    @relation("CheckoutIntentPayer")
+  broughtCheckouts        CheckoutIntent[]    @relation("CheckoutIntentMaker")
+  membershipPayments      MembershipPayment[]
+  membershipStarts        MembershipStart[]   @relation("MembershipStartMember")
+  broughtMembershipStarts MembershipStart[]   @relation("MembershipStartMaker")
 }
 
 model Session {
