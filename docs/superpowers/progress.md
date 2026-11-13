@@ -10,7 +10,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | # | Slice | State | Progress |
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
-| 1 | Accounts and membership | plan merged (pull request #10); plan audit on a branch (`audit/slice-1-plan`), with the plan's fixes; execution under way: branch A (tasks 1 to 4) is green on its pull request (#13), not yet merged | 13% |
+| 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan is revised for it on a branch (`plan/slice-1-cloudflare`), and branch E (deploy) waits for that to merge and for the Owner's yes to its package list. Before that: plan merged (pull request #10); plan audit on a branch (`audit/slice-1-plan`), with the plan's fixes; execution under way: branch A (tasks 1 to 4) is green on its pull request (#13), not yet merged | 13% |
 | 2 | Games and play | not started | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
@@ -25,11 +25,12 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan, slice 1 (`session_01HNdX7HZoCEVyiEQJdDLJrW`) | 2 Plan | `plan/slice-1-accounts` | archived |
 | plan, slice 1, updated to the revised design (`session_01HNdX7JH5Pn3ForHRsNX8Po`) | 2 Plan | `plan/slice-1-accounts` | running |
 | plan audit, slice 1 | 3 Plan audit | `audit/slice-1-plan` | running |
+| plan, slice 1, revised for Cloudflare (`session_01HNdX7LBVbQvxJYyJ29g61X`) | 2 Plan | `plan/slice-1-cloudflare` | running |
 
 ## Slice 0: Start
 
 - [x] The design and the workflow committed as the first commit (`697aacb`).
-- [x] The Owner approved the design, 2026-11-13, with Netlify, Neon and Cloudflare; payouts code after launch, before 10 December; FloorFifty as the one launch game.
+- [x] The Owner approved the design, 2026-11-13, with Netlify, Neon and Cloudflare (later the same day: Cloudflare instead of Netlify, design 7.3); payouts code after launch, before 10 December; FloorFifty as the one launch game.
 - [x] AGENTS.md, from design section 3.
 - [x] This tracker.
 - [x] The app skeleton: one SvelteKit app at the old repository's pinned versions (Node 24.22.1, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Vite 8.3.3, TypeScript 6.0.3, Vitest 5.0.3, Playwright 1.63.0), a placeholder home page, and `tests/architecture.test.ts` for the layer rule.
@@ -46,6 +47,7 @@ Stages:
 
 - [x] Plan written, and updated to the design as revised on 2026-11-13 (on `plan/slice-1-accounts`, pull request #10; not done until merged and green).
 - [ ] Plan audit: written, with the plan fixed (`docs/superpowers/audits/2026-11-13-slice-1-plan-audit.md`: 4 blocks execution, 19 should fix, 16 notes; all fixed in the plan but 6 notes that stay, each with its reason). On a branch (`audit/slice-1-plan`); not done until merged and green. No test ran in the audit session; the audit is a reading of the files.
+- [ ] Plan revised for Cloudflare (Owner, 2026-11-13: Cloudflare instead of Netlify): written from Cloudflare's, SvelteKit's, Prisma's, Stripe's and Resend's current pages and from the packages' own files; on a branch (`plan/slice-1-cloudflare`), not done until merged and green. No test ran in the plan session, and none of it has run on Cloudflare yet: Task 34's first green CI run is the first proof.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
@@ -55,8 +57,10 @@ Resumed: the Owner's concept review is done; the plan audit is on a branch.
 The Owner's decisions for this slice, 2026-11-13:
 
 - [x] Age at sign-up: ask a date of birth; under 13 is refused; only the 18th birthday is stored.
-- [x] Delete my account: the old 14-day wait; signing in undoes it; a scheduled job on Netlify removes the data afterwards. Its own small branch.
-- [x] Deploying: the Owner links the Netlify site to the repository; Netlify builds and publishes main after each merge and runs the migrations in its build. No CI workflow change for deploying.
+- [x] Delete my account: the old 14-day wait; signing in undoes it; a scheduled job removes the data afterwards (first on Netlify; now a Cron Trigger on the Cloudflare Worker). Its own small branch.
+- [x] Deploying: the Owner links the Netlify site to the repository; Netlify builds and publishes main after each merge and runs the migrations in its build. No CI workflow change for deploying. Now Cloudflare's Workers Builds in Netlify's place, with the migrations in its deploy command; still no CI workflow change.
+- [x] Cloudflare instead of Netlify ("Thoughts on switching to Cloudflare and Cloudflare Pages instead of Netlify, that's what we're going with for the AutomataFramework", then "Cloudflare now" when told the cost). The app is a Cloudflare Worker; Neon stays, behind Hyperdrive; mail goes through Resend's HTTP API (a Call). The plan's section "Cloudflare instead of Netlify" has the choices and their sources.
+- [ ] The package list for Cloudflare, waiting for the Owner's yes through the coordinator: add `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0 (both dev); remove `@sveltejs/adapter-netlify` 7.0.1, `nodemailer` 10.0.13 and `@types/nodemailer` 8.0.2.
 - [x] main is protected: pull request only, `verify` and `browser` must pass on an up-to-date branch, merge commits only, merged branches deleted automatically.
 
 The Owner's revised design, 2026-11-13, as this slice takes it:
@@ -77,19 +81,24 @@ Branches and tasks. Each task is ticked with its two CI runs (the failing test, 
 | B `slice-1/sign-in-rules` | 5 the sign-in pause · 6 the pause and limits as plugins · 7 the age check · 8 cookies and the mails | not started |
 | C `slice-1/sign-in` | 9 better-auth, configured · 10 who sent this request · 11 the form actions and the services | not started |
 | D `slice-1/account-screens` | 12 /api/auth and sign-out · 13 sign up · 14 sign in, forgot, new password · 15 /me | not started |
-| E `slice-1/deploy` | 16 the site on its real address | not started |
-| F `slice-1/delete-account` | 17 asking to be deleted, and undoing it · 18 signing in undoes it · 19 the delete screens · 20 the daily job | not started |
+| E0 `slice-1/cloudflare` | 32 mail over HTTP, settings that say Cloudflare · 33 the platform, and work after the answer · 34 the site runs on Workers (one database client per request, the journeys in `wrangler dev`, `/healthz`) | not started; needs the Owner's yes to the package list |
+| E `slice-1/deploy` | 16 the site on its real address | not started; waits for branch E0 |
+| F `slice-1/delete-account` | 17 asking to be deleted, and undoing it · 18 signing in undoes it · 19 the delete screens · 20 the daily job (a Cron Trigger) | not started |
 | G `slice-1/membership` | 21 the membership tables · 22 prices and joining · 23 the membership rules and the arrival cookie · 24 reading and ending a subscription · 25 the webhook · 26 the membership service | not started |
 | H `slice-1/paywall` | 27 the stand-in Stripe and the paywall card · 28 the webhook route · 29 coming back from paying · 30 membership on /me, cancelling, deleting · 31 paying and cancelling on the real site | not started |
 
 The Owner's own tasks, and where execution stops for each:
 
-- [ ] S1, asked for at Task 16 step 3 (the plan's numbered steps): the Neon database; the Netlify site linked to this repository, with deploy previews and branch deploys off (the build runs the migrations on the real database); the site's address as the primary domain; a mail service with SMTP on a verified domain; the settings `DATABASE_URL`, `DIRECT_DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `SMTP_URL`, `MAIL_FROM`, `JOBS_SECRET` in Netlify, all scopes. Branch F goes on meanwhile.
-- [ ] S2, asked for at Task 21, needed before branch H merges: Stripe test mode: Stripe Tax on with one registration, the customer portal with cancelling at the period end, the webhook endpoint at the API version `stripe` 22.6.2 pins; `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE=false` in Netlify.
+- [ ] S1, asked for at Task 16 step 3, in two parts (the plan's numbered steps). Part one: Cloudflare's Workers Paid plan and the site's domain on that account; the Neon database; a Hyperdrive configuration in front of it with caching off; its id said to the coordinator, which goes into `wrangler.jsonc`. Part two: a Resend account with the domain verified and a sending key; an empty Worker named `ruken`; its secrets `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `JOBS_SECRET`, `MAIL_FROM`, `RESEND_API_KEY`, each of type Secret; the site's address as its custom domain; the Worker connected to this repository (build `pnpm build`, deploy `pnpm run deploy`, preview builds left off, the build secret `DIRECT_DATABASE_URL`). Branch F goes on meanwhile.
+- [ ] S2, asked for at Task 21, needed before branch H merges: Stripe test mode: Stripe Tax on with one registration, the customer portal with cancelling at the period end, the webhook endpoint at the API version `stripe` 22.6.2 pins; `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE=false` as secrets on the Worker in Cloudflare.
 - [ ] S3, after Task 31 step 2: Stripe live mode, real terms and privacy text, and the Owner's own payment with a real card. Not a condition for starting slice 2.
 
 Found while planning:
 
+- Cloudflare: three things could not be settled by reading and are settled by Task 34's CI run: whether the build carries Prisma's WebAssembly into the Worker, whether the visitor's address is available under `wrangler dev`, and whether pnpm installs Wrangler's runtime whole. Each has a stop rule in the task.
+- Cloudflare: Workers do not let one request use a database connection another opened, so `prisma()` becomes one client per request (Task 34). The journeys move from `vite preview` (Node) to `wrangler dev` (the Workers runtime), so CI tests what the real site runs.
+- Cloudflare: the SvelteKit adapter has no daily-job handler, so a ten-line file wraps the built site and adds one (Task 20).
+- Cloudflare: Resend's free plan caps mails per day; the Owner decides before launch.
 - The old repository's terms and privacy pages are outlines marked "draft", waiting for counsel. They are not carried in this slice.
 - The membership product and its prices are made in Stripe by the carried code, so the Owner types no price into Stripe.
 - The carried code refuses to charge when Stripe already holds a price under its lookup key at another amount. A Stripe account that ran the old code holds the old $7.99 and $79 prices, so the new prices and their product get new names (`ruken_membership_monthly`, `ruken_membership_annual`, `ruken_membership`). The old product and prices stay in that account, unused; archiving them there is the Owner's.
