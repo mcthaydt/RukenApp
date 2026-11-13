@@ -1,4 +1,4 @@
-import type { Handle } from "@sveltejs/kit";
+import type { Handle } from "@sveltejs/kit/hooks";
 
 /** Starts work that may finish after the answer has gone out. The task never throws. */
 export type RunInBackground = (task: () => Promise<void>) => void;
