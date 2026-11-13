@@ -10,7 +10,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | # | Slice | State | Progress |
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
-| 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan is revised for it on a branch (`plan/slice-1-cloudflare`, pull request #15), and branch E (deploy) waits for that to merge and for the Owner's yes to its package list. Before that: plan merged (pull request #10); plan audit on a branch (`audit/slice-1-plan`), with the plan's fixes; execution under way: branch A (tasks 1 to 4) is green on its pull request (#13), not yet merged | 13% |
+| 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan is revised for it on a branch (`plan/slice-1-cloudflare`, pull request #15), and branch E (deploy) waits for that to merge and for the Owner's yes to its package list. Before that: plan merged (pull request #10); plan audit on a branch (`audit/slice-1-plan`), with the plan's fixes; execution under way: branch A (tasks 1 to 4) merged (#13); branch B (tasks 5 to 8) green on #14 | 26% |
 | 2 | Games and play | not started | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
@@ -78,7 +78,7 @@ Branches and tasks. Each task is ticked with its two CI runs (the failing test, 
 | Branch | Tasks | State |
 |---|---|---|
 | A `slice-1/database` | 1 Prisma, the accounts tables, Postgres in CI · 2 the clock · 3 safeNextPath, settings, work after the answer · 4 the rate limiter and the mailer | in progress (execution session). [x] Task 1 (CI runs 32 red, 33 green; the first red also showed one test passing for the wrong reason, so it was tightened and re-pushed). [x] Task 2 the clock (CI runs 35 red, 36 green; 10 tests). [x] Task 3 safeNextPath, settings, work after the answer (CI runs 38 red, 39 green; 25 tests). [x] Task 4 the rate limiter and the mailer (CI runs 41 red, 42 green; 10 tests). Branch A done, ready for review |
-| B `slice-1/sign-in-rules` | 5 the sign-in pause · 6 the pause and limits as plugins · 7 the age check · 8 cookies and the mails | not started |
+| B `slice-1/sign-in-rules` | 5 the sign-in pause · 6 the pause and limits as plugins · 7 the age check · 8 cookies and the mails | done on its pull request (#14), not yet merged. [x] Task 5 the sign-in pause (CI runs 44 red, 45 green; 6 + 11 tests). Order changed: Task 8 before Task 6, because the pause plugin sends the mail whose words Task 8 makes. [x] Task 8 cookies and the mails (CI runs 47 red, 48 green; 9 tests). [x] Task 6 the pause and limits as plugins (CI runs 49 red, 50 green). [x] Task 7 the age check (CI runs 51 red, 52 green; 11 tests). Branch B done, ready for review |
 | C `slice-1/sign-in` | 9 better-auth, configured · 10 who sent this request · 11 the form actions and the services | not started |
 | D `slice-1/account-screens` | 12 /api/auth and sign-out · 13 sign up · 14 sign in, forgot, new password · 15 /me | not started |
 | E0 `slice-1/cloudflare` | 32 mail over HTTP, settings that say Cloudflare · 33 the platform, and work after the answer · 34 the site runs on Workers (one database client per request, the journeys in `wrangler dev`, `/healthz`) | not started; needs the Owner's yes to the package list |
