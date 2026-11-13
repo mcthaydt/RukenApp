@@ -29,7 +29,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan audit, slice 1, Cloudflare revision (`session_01HNdX7JhDxq8Wks8Rcajo3A`) | 3 Plan audit | `audit/slice-1-cloudflare` | archived; merged (#19) |
 | execution, slice 1 (`session_01HNdX7J8VTGzcZShtgMUqyv`) | 4 Execution | `slice-1/*` | running |
 | plan, slice 1, the look (`session_01HNdX7Hzv3QVMVyjewBSg1u`) | 2 Plan | `plan/slice-1-look` | archived; merged (#22) |
-| plan audit, slice 1, the look (`session_01HNdX7KyU3nkcc8rAByjXX3`) | 3 Plan audit | `audit/slice-1-look` | running; a draft pull request until the Owner answers finding 18 |
+| plan audit, slice 1, the look (`session_01HNdX7KyU3nkcc8rAByjXX3`) | 3 Plan audit | `audit/slice-1-look` (pull request #23) | done on its pull request, marked ready; not merged yet |
 
 ## Slice 0: Start
 
@@ -54,7 +54,7 @@ Stages:
 - [x] Plan revised for Cloudflare (Owner, 2026-11-13: Cloudflare instead of Netlify): written from Cloudflare's, SvelteKit's, Prisma's, Stripe's and Resend's current pages and from the packages' own files; merged to main (pull request #15). No test ran in the plan session, and none of it has run on Cloudflare yet: Task 34's first green CI run is the first proof.
 - [ ] Plan audit of the Cloudflare revision (`docs/superpowers/audits/2026-11-13-slice-1-cloudflare-plan-audit.md`), with the plan fixed: on a branch (`audit/slice-1-cloudflare`); not done until merged and green. No test ran in the audit session; it read the packages and built in a scratch folder outside the repository.
 - [x] Plan for the look (design 5.8): branch L `slice-1/look`, tasks 35 to 37, added to the plan after branch D; Tasks 18, 19, 27, 29 and 30 say which of the look's classes their screens use. Merged to main (pull request #22). No test ran in the plan session; the two font tarballs were downloaded into a scratch folder outside the repository, and their integrity values, file sizes and SHA-256 checksums were measured there.
-- [ ] Plan audit of the look (`docs/superpowers/audits/2026-11-13-slice-1-look-plan-audit.md`), with the plan fixed: 1 blocks execution, 8 should fix, 9 notes; all fixed in the plan but two notes that stay, each with its reason, and one question for the Owner (who looks at the look before branch L merges). On a branch (`audit/slice-1-look`); not done until merged and green. No test ran in the audit session; the two font tarballs were downloaded again outside the repository, and every integrity value, size and checksum equals the plan's.
+- [ ] Plan audit of the look (`docs/superpowers/audits/2026-11-13-slice-1-look-plan-audit.md`), with the plan fixed: 1 blocks execution, 8 should fix, 9 notes; all fixed in the plan but two notes that stay, each with its reason. The Owner's answer to its one question is in the plan (below). On its pull request (#23); not done until merged and green. No test ran in the audit session; the two font tarballs were downloaded again outside the repository, and every integrity value, size and checksum equals the plan's.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
@@ -72,6 +72,7 @@ The Owner's decisions for this slice, 2026-11-13:
 - [x] The Hyperdrive id, Owner, 2026-11-13: committed in `wrangler.jsonc`.
 - [x] Workers Paid, Owner, 2026-11-13: $5 a month is OK.
 - [x] The look, Owner, 2026-11-13: "We can use the design present in the previous version as well", then yes to the Card Table design on Ruken's own screens (design 5.8).
+- [x] Seeing the look before it merges, Owner, 2026-11-13: "Screenshots on the board". Branch L's journeys attach a phone and a computer screenshot of each screen; the `browser` job keeps its report on every run (one line in `ci.yml`, in a commit quoting those words); the Owner sees the screenshots from L's green run before L is marked ready, and looks again on the real site after Task 16.
 - [x] The pip red, the coordinator's Call, 2026-11-13 (the Owner can overrule): `#c43b26`, paper text on it 4.57:1. The design sheet's `#c63c26` measures 4.48:1 with paper text. Design 5.8's table now says so.
 - [x] main is protected: pull request only, `verify` and `browser` must pass on an up-to-date branch, merge commits only, merged branches deleted automatically.
 

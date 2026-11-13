@@ -20,7 +20,7 @@
   - Owner, 2026-11-13: Cloudflare instead of Netlify. That adds `@sveltejs/adapter-cloudflare` 8.0.2 and `wrangler` 4.156.0 (both dev) and removes `@sveltejs/adapter-netlify` 7.0.1, `nodemailer` 10.0.13 and `@types/nodemailer` 8.0.2. Owner, 2026-11-13: that list is approved exactly ("Cloudflare instead of Netlify", below). Until Task 32 removes them, `nodemailer` and `@types/nodemailer` stay as Task 4 added them.
   - The two security pins the old repository kept for Prisma 7.10's command-line tool are carried into `pnpm-workspace.yaml` as `overrides` with their comment: `"@prisma/config>deepmerge-ts": 8.0.2` and `"prisma>mysql2": 3.24.5`. They pin what Prisma already pulls in; they add no package.
   - Not added though the old repository had them: zod (settings are read by a small function), cuid2 (ids made in code use `randomUUID()` from `node:crypto`; Prisma's own `@default(cuid(2))` needs no package), Testcontainers (CI's Postgres is a service container), pg-boss, Testing Library and jsdom (screens are checked in Playwright this slice).
-- `.github/workflows/ci.yml` changes in exactly one commit of this slice (Task 1). Its message quotes the Owner (the text is in Task 1). Moving to Cloudflare changes nothing in it.
+- `.github/workflows/ci.yml` changes in exactly two commits of this slice: Task 1 (Postgres in CI) and Task 37 (the browser report is kept on every run, so the Owner can see the look's screenshots). Each message quotes the Owner (the texts are in those tasks). Moving to Cloudflare changes nothing in it.
 - This repository is public. No secret, real address, customer data, old plan or old history goes in. Every credential is typed by the Owner into Cloudflare's settings (the Worker's secrets and its build variables). Test values in the repository are plainly fake (`sk_test_fake`, `whsec_test_fake`).
 - Money is whole cents as `bigint`. Nobody types a fact: every amount, tax, fee and date about a payment is read from Stripe.
 - Time comes from an injected `Clock`. Feature code never calls `Date.now()` or `new Date()` with no argument.
@@ -192,6 +192,7 @@ The membership product and its two prices are not typed into Stripe by anyone: t
   6. `arrival.remember` stays in this slice though its first caller arrives later, so the cookie's format lives in one place (answered through the coordinator).
   7. Not in this slice, and nothing here stands in their way: FloorFifty free on launch day, free-play codes, the 180-minute cap, the split and the payout rules ("Notes for the plans that follow").
 - **Owner, 2026-11-13, the look** (design 5.8): "We can use the design present in the previous version as well", then yes to the Card Table design on Ruken's own screens. Branch L applies it; its Calls are under "The look", below.
+- **Owner, 2026-11-13, seeing the look before it merges**: "Screenshots on the board", on being told it needs a one-line change to CI to keep the Playwright report on every run. Branch L's journeys attach a phone and a computer screenshot of each screen; the `browser` job keeps its report on every run; the Owner sees the screenshots of L's green run, through the coordinator, before L is marked ready (Task 37). The Owner also looks at the real site after Task 16.
 - **Calls** (the Owner can overrule):
   - A member who asks to delete their account has their membership ended in Stripe at once, with no refund, so they are never charged while the account waits to be deleted. Signing in again brings back the account, not the membership (Task 30).
   - Carried from the old sign-in: email and password, the confirm-your-email mail, password reset by mail, the rate limits, the one-hour pause after ten wrong passwords, the rolling 30-day session. Not carried: passkeys, sign-in by emailed link, Apple, Google, Microsoft and GitHub sign-in, Cloudflare Turnstile, the breached-password check, anonymous visitor ids, embeds, the staff command-line token, localization, telemetry and consent.
@@ -839,7 +840,7 @@ This branch puts that look on every screen built so far: the placeholder home pa
 
 It changes no word and no behaviour. Every journey from branches A to D passes unchanged, because journeys find things by their role and their words, never by a class.
 
-Nobody has looked at it until the Owner does: CI checks values (a colour, a size, a font, a request), not taste, and there are no pixel goldens in this slice. The Owner's first look is on the real site, after Task 16 step 5. What the Owner says there is a note for a small fix branch; it does not hold branch E0.
+CI checks values (a colour, a size, a font, a request), not taste, and there are no pixel goldens in this slice: a screenshot is attached for a person to look at, never compared. Owner, 2026-11-13: "Screenshots on the board". The Owner sees a phone and a computer screenshot of every screen this branch styles, from its green CI run, before the branch is marked ready (Task 37, Step 3); what the Owner asks for is done on this branch. The Owner looks again on the real site, after Task 16 step 5; what the Owner says there is a note for a small fix branch, and does not hold branch F.
 
 ### The look: what a screen may use
 
@@ -1091,7 +1092,7 @@ for tarball in fontsource-*.tgz; do echo "$tarball sha512-$(openssl dgst -sha512
 - Modify: `src/lib/look.css`, `src/routes/+page.svelte`
 
 **Interfaces:**
-- Consumes: `token`, `rgb` (Task 35).
+- Consumes: `token`, `rgb` (Task 35); `forgetRateLimits` (branch D, `tests/browser/support/rate-limits.ts`).
 - Produces:
   - `src/routes/+layout.svelte`: imports `$lib/look.css` and renders the page (`{@render children()}`), nothing else. A comment says it is the one place the look is loaded. Task 18 adds the welcome-back line to it.
   - `src/routes/+page.svelte`: the line under the heading becomes `<p class="statement">`. Its words do not change.
@@ -1112,6 +1113,10 @@ for tarball in fontsource-*.tgz; do echo "$tarball sha512-$(openssl dgst -sha512
 
 ```ts
 // tests/browser/look.test.ts
+// Every journey starts as a new visitor (branch D's helper): the site's limits stay as they are, only the
+// counters in the journeys' own database are cleared.
+test.beforeEach(forgetRateLimits);
+
 const FONT_FILES = [
   "/fonts/schibsted-grotesk-latin-400-normal.woff2",
   "/fonts/young-serif-latin-400-normal.woff2",
@@ -1177,17 +1182,19 @@ test("the page still reads, with its button there to press, when the fonts do no
 
 **Files:**
 - Create: `tests/browser/support/look.ts`
-- Modify: `src/lib/look.css`, `src/routes/+error.svelte`, `src/routes/sign-up/+page.svelte`, `src/routes/sign-in/+page.svelte`, `src/routes/forgot-password/+page.svelte`, `src/routes/reset-password/+page.svelte`, `src/routes/me/+page.svelte`
+- Modify: `.github/workflows/ci.yml` (one line, in a commit of its own; Owner, 2026-11-13: "Screenshots on the board"), `src/lib/look.css`, `src/routes/+error.svelte`, `src/routes/sign-up/+page.svelte`, `src/routes/sign-in/+page.svelte`, `src/routes/forgot-password/+page.svelte`, `src/routes/reset-password/+page.svelte`, `src/routes/me/+page.svelte`
 - Test: `tests/browser/look.test.ts` (add cases), `tests/lib/look.test.ts` (add a group)
 
 **Interfaces:**
-- Consumes: `token`, `rgb` (Task 35); `signUp` (branch D).
+- Consumes: `token`, `rgb` (Task 35); `signUp`, `forgetRateLimits` (branch D).
 - Produces:
   - `tests/browser/support/look.ts`:
     - `CARD_SCREENS: { name: string; open(page: Page): Promise<void> }[]`, every card screen that a journey reaches without making an account, and how. In this task: "sign up" (`/sign-up`), "sign in" (`/sign-in`), "forgot password" (`/forgot-password`), "check your email" (the same page after "Send the link"), "new password" (`/reset-password?token=nope`), "a missing page" (`/no-such-page`). Each `open` ends by waiting for the screen's heading. Tasks 27 and 29 add theirs here.
-    - `expectOneCard(page: Page): Promise<void>`: the checks every card screen passes (the body of the `CARD_SCREENS` journey below), so a journey that has already made an account checks its screens with it instead of making another account per screen. Sign-ups are counted: better-auth allows five an hour from one address (`/sign-up/email` in `auth.ts`), and every journey comes from one address. "your account" (`/me`) is checked this way, in the same journey as the quiet button, so this branch makes one account per project, not two. Tasks 19 and 30 check their screens the same way, inside journeys that already make an account. Whatever branch D settles for that limit in CI (its browser job hit it on pull request #21), these journeys follow it; if a look journey is refused a sign-up, stop and report.
+    - `expectOneCard(page: Page): Promise<void>`: the checks every card screen passes (the body of the `CARD_SCREENS` journey below), so a journey that has already made an account checks its screens with it instead of making another account per screen. "your account" (`/me`) is checked this way, in the same journey as the quiet button. Tasks 19 and 30 check their screens the same way, inside journeys that already make an account: fewer accounts, and fewer slow sign-ups.
+  - Every journey file in this branch and after it starts with `test.beforeEach(forgetRateLimits)` (`tests/browser/support/rate-limits.ts`, branch D). better-auth allows five sign-ups an hour from one address, and every journey comes from the runner's one address. The helper clears the counters in the journeys' own database; no limit is loosened. If a look journey is refused a sign-up all the same, stop and report.
     - `pipRed(page: Page): Promise<string[]>`: the text of every element on the page whose computed background colour, text colour or any edge colour is `rgb(token("--pip"))`.
     - `filledButtons(page: Page): Locator`: `page.locator(".card button:not(.quiet), .card a.button:not(.quiet)")`.
+    - `showTheOwner(page: Page, testInfo: TestInfo, screen: string): Promise<void>`: waits for `document.fonts.ready`, then attaches `page.screenshot({ fullPage: true })` to the journey as `look: <screen>` (`image/png`). Playwright runs each journey on `phone` and on `computer`, so each screen gets both. It compares nothing: it is there for the Owner to look at ("Screenshots on the board", Owner, 2026-11-13). Called by the `CARD_SCREENS` journey after its checks, by "the home page sits on the felt" and by "your account", and by every later task that adds a screen to the look (Tasks 19, 27, 29, 30).
   - In `look.css`, the rest of the rules:
 
 | Selector | What it sets |
@@ -1224,14 +1231,15 @@ test("the page still reads, with its button there to press, when the fonts do no
 
   If branch D left a screen without exactly one `<main>`, or with a note or a refusal that is not an element of its own, add the element: that is in scope. Branch D's sign-up form has one such note: "At least 10 characters." is bare text after a `<br />` in the password's paragraph. It becomes `<small class="note">At least 10 characters.</small>` in place of the `<br />` and the bare words; `.note` on a `<small>` is `display: block`, so it sits on its own line under the field. Changing a word, a label, a role or anything a journey finds is not; if a class cannot be placed without that, stop and report.
 
-- [ ] **Step 1 (red):** the journeys, the group below, and `tests/browser/support/look.ts`.
+- [ ] **Step 1 (red):** first, one commit of its own that changes only `.github/workflows/ci.yml`: in the `browser` job, the step "Keep the browser report when a journey fails" becomes "Keep the browser report, with the look's screenshots", and its `if: failure()` becomes `if: always()`; the comment above it says the report also carries the screenshots the Owner looks at. Its message quotes the Owner: `Owner, 2026-11-13: "Screenshots on the board"` (on being told it needs this one-line change to CI). Nothing else in that file changes. Then the journeys, the group below, and `tests/browser/support/look.ts`.
 
 ```ts
 // tests/browser/look.test.ts, added
 for (const screen of CARD_SCREENS) {
-  test(`${screen.name}: one paper card, one main button at most, no red, nothing sideways`, async ({ page }) => {
+  test(`${screen.name}: one paper card, one main button at most, no red, nothing sideways`, async ({ page }, testInfo) => {
     await screen.open(page);
     await expectOneCard(page);
+    await showTheOwner(page, testInfo, screen.name);
   });
 }
 
@@ -1250,10 +1258,11 @@ export async function expectOneCard(page: Page): Promise<void> {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 }
 
-test("the home page sits on the felt, with no card and no red", async ({ page }) => {
+test("the home page sits on the felt, with no card and no red", async ({ page }, testInfo) => {
   await page.goto("/");
   await expect(page.locator(".card")).toHaveCount(0);
   expect(await pipRed(page)).toEqual([]);
+  await showTheOwner(page, testInfo, "home");
 });
 
 test("the main button on a card is an ink pill with a paper label in Schibsted Grotesk 600", async ({ page }) => {
@@ -1293,11 +1302,12 @@ test("a refusal is in heavier ink, not in red", async ({ page }) => {
   await expect(refusal).toHaveCSS("color", rgb(token("--ink")));
 });
 
-test("your account: one card, and a quiet button looks like a link", async ({ page }) => {
-  await signUp(page);                                          // this branch's one sign-up per project
+test("your account: one card, and a quiet button looks like a link", async ({ page }, testInfo) => {
+  await signUp(page);
   await page.goto("/me");
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
   await expectOneCard(page);
+  await showTheOwner(page, testInfo, "your account");
   const again = page.getByRole("button", { name: "Send it again" });
   await expect(again).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(again).toHaveCSS("text-decoration-line", "underline");
@@ -1374,7 +1384,9 @@ describe("screens wear the look and nothing of their own", () => {
   Push. Expected: `browser` fails in `look.test.ts`: every `CARD_SCREENS` case (no `main.card`), "your account" (no `main.card`), the button, field, refusal and link-as-button cases, and "pressing a button" (no transform). These pass before the code and say nothing yet, so name them in the report line: "the home page sits on the felt", "with reduced motion, nothing moves" and "a very long address wraps" (a bare page has no card, no motion and wraps by itself). `verify` passes: no screen has a style or a class of its own yet.
 - [ ] **Step 2 (green):** the rules and the classes. Push. Expected: all three jobs pass, every journey from branches A to D passes unchanged, and each of the three cases named above now passes on the styled page. If "pressing a button" fails on `phone` only, report it with the computed value; do not drop the case or the project.
 
-Branch L is ready to merge.
+- [ ] **Step 3: the Owner looks.** In the green run, open the `browser` job's `playwright-report` artifact and check that each screen has its two screenshots (`look: <screen>`, on `phone` and on `computer`): the home page, the seven `CARD_SCREENS` and "your account". Then send the coordinator the green run's id, one line per screen saying what the look changed on it (CLAUDE.md: explain each visual change), and stop. Do not mark the pull request ready. The coordinator shows the Owner and relays the Owner's "fine", or the changes asked for. Changes are made on this branch, in a red-then-green round when a check changes; then report the new run's id in the same way. After two rounds without the Owner's "fine", stop and tell the coordinator (CLAUDE.md, Pace).
+
+Branch L is ready to merge once the Owner has said "fine".
 
 ---
 
@@ -1674,7 +1686,7 @@ The date is a Chicago calendar day in words: weekday, month, day. Put the small 
 
 Grandma: the page says what happens now and what happens later, in two lines, and how to undo it; "Keep my account" is the way back.
 
-Look (design 5.8, branch L): both screens are `<main class="card">`. On `/me/delete`, "Delete my account" is the plain button (the card's one ink button; it spends no money, so it is never `pay`), "Keep my account" stays a link, and the staff line is a plain paragraph. On `/goodbye`, "Back to Ruken" is `class="button"`. On `/me`, the new "Delete my account" link is a plain link in a `<p class="note">`. The first journey below checks both screens with `expectOneCard(page)` (from `tests/browser/support/look.ts`): once when "Delete your account?" shows, once when "You're signed out." shows. They are not added to `CARD_SCREENS`, which holds only screens reached without making an account (one sign-up per screen would run into better-auth's five an hour from one address; Task 37). They fail in the red push for want of the routes and pass with them. The second journey below also checks the welcome-back line's ground: `await expect(page.getByRole("status")).toHaveCSS("background-color", rgb(token("--felt-deep")))`.
+Look (design 5.8, branch L): both screens are `<main class="card">`. On `/me/delete`, "Delete my account" is the plain button (the card's one ink button; it spends no money, so it is never `pay`), "Keep my account" stays a link, and the staff line is a plain paragraph. On `/goodbye`, "Back to Ruken" is `class="button"`. On `/me`, the new "Delete my account" link is a plain link in a `<p class="note">`. The first journey below checks both screens with `expectOneCard(page)` and attaches them with `showTheOwner` (both from `tests/browser/support/look.ts`): once when "Delete your account?" shows, once when "You're signed out." shows. They are not added to `CARD_SCREENS`, which holds only screens reached without making an account (one sign-up per screen would run into better-auth's five an hour from one address; Task 37). They fail in the red push for want of the routes and pass with them. The second journey below also checks the welcome-back line's ground: `await expect(page.getByRole("status")).toHaveCSS("background-color", rgb(token("--felt-deep")))`.
 
 - [ ] **Step 1 (red):**
 
@@ -2105,7 +2117,7 @@ test("red is on Continue to payment and nowhere else", async ({ page }) => {    
 });
 ```
 
-  In the same red push: add "the paywall card" (`/join`, signed out, where the button reads "Continue" and nothing is red) to `CARD_SCREENS`; and change `tests/lib/look.test.ts`'s last case to "the pip-red button is used once, on the paywall card": `screensUsing("pay")` is `["src/routes/join/+page.svelte"]`, and that file's text holds `class="pay"` exactly once. `verify` fails on that case until the card exists.
+  In the same red push: add "the paywall card" (`/join`, signed out, where the button reads "Continue" and nothing is red) to `CARD_SCREENS`, and have "red is on Continue to payment and nowhere else" attach the signed-in card with `showTheOwner` (its one red button is what the Owner most needs to see); and change `tests/lib/look.test.ts`'s last case to "the pip-red button is used once, on the paywall card": `screensUsing("pay")` is `["src/routes/join/+page.svelte"]`, and that file's text holds `class="pay"` exactly once. `verify` fails on that case until the card exists.
 
   Commit the stand-in with the tests (it is test code; it needs no stub). Push. Expected: `browser` fails in `join.test.ts`: 404 at `/join`.
 - [ ] **Step 2 (green):** `load` returns `{ next: safeNextPath(...), plan, prices, signedIn, member }` (`member` from `service.isMember` when signed in). The action `join` reads `plan` and `next`; signed out it redirects (303) to `/sign-up?next=` + the encoded card address; signed in it calls `service.startCheckout({ userId, plan, returnTo: next, arrival: arrival.read(event.cookies) })` and redirects (303) to the answer's `url`; `MembershipError` codes map to the words above (`ALREADY_MEMBER` redirects to `next`). Push. Expected: all pass.
@@ -2150,7 +2162,7 @@ test("a signed event of a kind Ruken does not act on is kept and answered 200", 
 
 Grandma: the person does nothing here; if it stalls, the page says their money is safe and gives one place to go.
 
-Look (design 5.8, branch L): `<main class="card">`; "Go to my account" is `class="button"`. No red here: the money is already spent. The third test below checks "Finishing up…" right after its heading shows, with `toHaveCSS` only: `main.card` has the `paper` ground and the heading is 32px. Not with `expectOneCard` and not in `CARD_SCREENS`: the page moves on to `/me` by itself, and a `page.evaluate` running across that move can fail with no fault in the page; the two `toHaveCSS` checks wait, and hold on `/me` too. The page's two-second asking is a timer, not motion: nothing on it moves, with or without reduced motion.
+Look (design 5.8, branch L): `<main class="card">`; "Go to my account" is `class="button"`. No red here: the money is already spent. The third test below checks "Finishing up…" right after its heading shows, with `toHaveCSS` only: `main.card` has the `paper` ground and the heading is 32px. Not with `expectOneCard` and not in `CARD_SCREENS`: the page moves on to `/me` by itself, and a `page.evaluate` running across that move can fail with no fault in the page; the two `toHaveCSS` checks wait, and hold on `/me` too. It is not attached with `showTheOwner` for the same reason; `/join/done`'s words are the Owner's to see on the real site. The page's two-second asking is a timer, not motion: nothing on it moves, with or without reduced motion.
 
 - [ ] **Step 1 (red):**
 
@@ -2209,7 +2221,7 @@ Under each button but "Join Ruken": "Opens Stripe, where you can change your car
 
 Grandma: one line says where the person stands; one button says what they can do about it; the line under it says where the button goes.
 
-Look (design 5.8, branch L): from this task the membership action is `/me`'s one filled button: "Join Ruken" is `class="button"`, and "Manage or cancel", "Manage" and "Update card" are plain buttons. So "Sign out" becomes `class="quiet"`, to keep one main action on the card. "Opens Stripe, where you can change your card or cancel." is a `note`; the membership line itself is ordinary text. None of them is `pay`. On `/me/delete`, the member's extra line is ordinary text. The second journey below ("a member sees what they pay") also calls `expectOneCard(page)` on `/me` as a member: one card, one filled button, no red. Not in `CARD_SCREENS`, for the reason in Task 37 (sign-ups are counted).
+Look (design 5.8, branch L): from this task the membership action is `/me`'s one filled button: "Join Ruken" is `class="button"`, and "Manage or cancel", "Manage" and "Update card" are plain buttons. So "Sign out" becomes `class="quiet"`, to keep one main action on the card. "Opens Stripe, where you can change your card or cancel." is a `note`; the membership line itself is ordinary text. None of them is `pay`. On `/me/delete`, the member's extra line is ordinary text. The second journey below ("a member sees what they pay") also calls `expectOneCard(page)` and `showTheOwner` on `/me` as a member: one card, one filled button, no red. Not in `CARD_SCREENS`, for the reason in Task 37 (sign-ups are counted).
 
 - [ ] **Step 1 (red):**
 
@@ -2262,7 +2274,7 @@ No code unless a check fails. Nothing here is typed into the repository.
 - Slices 2 and 3 call `membershipServices().arrival.remember(cookies, { makerUserId, path })` in the `load` of `/g/<game>` and `/<handle>`, with the maker's account id read from the database and `url.pathname`. Every landing replaces the cookie, so the last arrival wins. The feed at `/` is not an arrival and leaves the cookie alone. The journey for design 8 ("A member's sign-up records the maker's link they came through") is then redone from a real link.
 - Slice 5 reads `MembershipStart` for "Bringing a member": the maker, the path, the arrival's time and when paying started are all there, one row per completed checkout, and applies the Owner's rules there, by pure functions: only a person's first join counts, for 12 months, and a maker gets no bonus on their own membership.
 - The privacy text (the Owner's, before S3) should say that Ruken remembers which maker's link a visitor came through, in a cookie, to pay that maker.
-- The look (design 5.8) is one stylesheet, `src/lib/look.css`, and the classes listed under "The look" (branch L). `/make` (slice 4) and the admin portal wear it as they are built: their plans say which classes each screen uses, add their screens to `CARD_SCREENS` (or, for a screen that needs an account, check it with `expectOneCard` inside a journey that already has one), and add a class to `CLASSES` only together with its rule and its first use. The feed (5.1) and a maker's page (5.3) do not wear it: slice 3's plan takes those two route folders out of the "screens wear the look and nothing of their own" check by name, in a task of its own, when it gives them their own styles. `felt-raised` (a second button on felt, a track) gets its rule with its first screen.
+- The look (design 5.8) is one stylesheet, `src/lib/look.css`, and the classes listed under "The look" (branch L). `/make` (slice 4) and the admin portal wear it as they are built: their plans say which classes each screen uses, add their screens to `CARD_SCREENS` (or, for a screen that needs an account, check it with `expectOneCard` inside a journey that already has one), attach each new screen with `showTheOwner` for the Owner to see before the branch is marked ready, start each journey file with `test.beforeEach(forgetRateLimits)`, and add a class to `CLASSES` only together with its rule and its first use. The feed (5.1) and a maker's page (5.3) do not wear it: slice 3's plan takes those two route folders out of the "screens wear the look and nothing of their own" check by name, in a task of its own, when it gives them their own styles. `felt-raised` (a second button on felt, a track) gets its rule with its first screen.
 - The font files are served with the host's ordinary caching, so a browser asks again whether they changed. If the Owner wants them kept for a year, that is a `_headers` file in `static/`, checked first against Cloudflare's static-assets page.
 - No pixel goldens yet. The first slice that wants one (the feed, most likely) brings `tests/golden/` and the rule that a golden moves only with the Owner seeing before and after.
 - Features hold no Svelte components yet. An entry file that mixed server code and components would pull Prisma and Stripe into the browser's bundle, and the layer test allows one entry file per feature. The first slice that needs a shared component decides how a feature exposes one, and changes `tests/architecture.test.ts` in its own task.

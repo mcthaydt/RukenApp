@@ -14,7 +14,7 @@ Read against: `CLAUDE.md`, `AGENTS.md`, design 5.2, 5.6, 5.7 and 5.8, the two ea
 
 ## Findings
 
-Counts: 1 blocks execution, 8 should fix, 9 notes. Every finding was fixed in the plan except the notes marked "stays", each with its reason. One question went to the coordinator for the Owner (finding 18).
+Counts: 1 blocks execution, 8 should fix, 9 notes. Every finding was fixed in the plan except two notes marked "stays", each with its reason. One question went to the Owner through the coordinator (finding 18). The Owner answered it the same day, and the answer is in the plan.
 
 ### Blocks execution
 
@@ -38,7 +38,7 @@ Counts: 1 blocks execution, 8 should fix, 9 notes. Every finding was fixed in th
 **4. The look's journeys made more accounts than the sign-up limit allows.**
 - Where: Task 37's `CARD_SCREENS` ("your account") and the quiet-button journey, and the `CARD_SCREENS` additions in Tasks 19, 29 and 30.
 - What is wrong: better-auth allows five sign-ups an hour from one address (`"/sign-up/email": { window: 60 * 60, max: 5 }` in `src/features/accounts/auth.ts`), and every journey comes from one address. Branch D's browser job already hits this limit. In run 43522220221 the first four sign-ups pass and the next four fail ("next pointing off the site", "an address that already has an account"). Branch L as planned added two accounts per project, and Tasks 19 and 30 added three more per project.
-- Fixed: `CARD_SCREENS` holds only screens reached without making an account. A new helper, `expectOneCard(page)`, does the same checks inside a journey that already has an account. "your account" is checked in the same journey as the quiet button, so branch L makes one account per project. Tasks 19 and 30 check their screens inside journeys they already have. How branch D settles the limit in CI is branch D's (reported to the coordinator, not fixed here). L follows it, and stops and reports if a look journey is refused a sign-up.
+- Fixed: `CARD_SCREENS` holds only screens reached without making an account. A new helper, `expectOneCard(page)`, does the same checks inside a journey that already has an account. "your account" is checked in the same journey as the quiet button, so branch L makes one account per project. Tasks 19 and 30 check their screens inside journeys they already have. Branch D has since settled the limit in CI with `forgetRateLimits` (`tests/browser/support/rate-limits.ts`, `32672b3`). It clears the counters in the journeys' own database before each journey, and loosens no limit. Branch L's journey files start with `test.beforeEach(forgetRateLimits)`, as the coordinator asked. The notes for later plans say every later journey file does the same. L still makes one account per project, which keeps the journeys short.
 
 **5. A check of "Finishing up…" would run across the page moving on by itself.**
 - Where: Task 29, its Look line.
@@ -100,7 +100,13 @@ Counts: 1 blocks execution, 8 should fix, 9 notes. Every finding was fixed in th
   - A. As planned, with the Owner's look at Task 16 (finding 9).
   - B. The Owner looks in a local session before L merges.
   - C. Recommended: L's journeys attach a phone and a computer screenshot of each screen to the Playwright report. The browser job keeps the report on every run, a one-line `ci.yml` change that needs the Owner's words. The Owner sees the images from L's green run before L is marked ready.
-- The plan carries A until the answer, which is recorded below.
+- The Owner chose C, 2026-11-13: "Screenshots on the board", on being told it needs a one-line change to CI.
+- Fixed in the plan:
+  - Task 37 gets `showTheOwner`, which attaches a full-page screenshot of each screen, on both `phone` and `computer`, and compares nothing.
+  - One commit of its own changes the `browser` job's report upload from `if: failure()` to `if: always()`, quoting the Owner. The global constraint now counts two `ci.yml` commits in this slice.
+  - A Step 3: after the green run, the execution session sends the coordinator the run's id and one line per screen saying what changed, then stops. Branch L is marked ready only after the Owner's "fine". After two rounds without it, the session stops.
+  - Tasks 19, 27 and 30, and the notes for later plans, attach their screens the same way.
+  - The look at the real site after Task 16 stays as well, now holding nothing.
 
 ## The design
 
