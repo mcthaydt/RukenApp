@@ -122,6 +122,8 @@ CI workflow files change only on the owner's words, quoted in the commit.
 
 Credentials, money, real-device tests, release approvals and tags are the owner's.
 
+If something can be done with a command line, it is done with one (Owner, 2026-11-13: "if something can be done with cli, we do it with cli"). Steps for the owner are commands they paste, one line each for Windows PowerShell (join with `;`, no heredocs), not clicks; a step goes to a website only when no command can do it (billing, a registrar, a first sign-up), and says so.
+
 Feature folders, and tests only in tests/. Code is grouped by feature, not by kind: no top-level components/, services/ or utils/ that mix every feature's pieces. A feature owns its code and its data, and only imports from features below it. Tests never sit beside the source; tests/ mirrors src/.
 
 The desired structure:
