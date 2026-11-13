@@ -113,6 +113,8 @@ Comments say why. They do not say which plan asked for the code.
 
 Merge with a merge commit, never a squash, so ancestry shows what is in main.
 
+Commits and pull requests carry no Claude attribution: no Co-Authored-By or Claude-Session lines, and no "Generated with Claude Code" footer (Owner, 2026-11-13).
+
 Never force-push. Never loosen, skip or re-record a test to get green; a golden moves only with the owner seeing before and after.
 
 CI workflow files change only on the owner's words, quoted in the commit.
