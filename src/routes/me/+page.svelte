@@ -12,7 +12,7 @@
   <title>Your account · Ruken</title>
 </svelte:head>
 
-<main>
+<main class="card">
   <h1>Your account</h1>
   <p>{data.email}</p>
   {#if !data.emailVerified}
@@ -22,9 +22,9 @@
       <form method="POST" action="?/resend">
         <p>Confirm your email. We sent a link to {data.email}.</p>
         {#if form?.error}
-          <p role="alert">{form.error}</p>
+          <p class="problem" role="alert">{form.error}</p>
         {/if}
-        <button>Send it again</button>
+        <button class="quiet">Send it again</button>
       </form>
     {/if}
   {/if}

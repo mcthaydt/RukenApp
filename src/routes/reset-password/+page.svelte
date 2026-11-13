@@ -15,11 +15,11 @@
   <title>Choose a new password · Ruken</title>
 </svelte:head>
 
-<main>
+<main class="card">
   {#if linkInvalid}
     <h1>Choose a new password</h1>
-    <p role="alert">That link has expired or was already used.</p>
-    <p><a href="/forgot-password">Send a new link</a></p>
+    <p class="problem" role="alert">That link has expired or was already used.</p>
+    <p><a class="button" href="/forgot-password">Send a new link</a></p>
   {:else}
     <h1>Choose a new password</h1>
     <form method="POST">
@@ -37,7 +37,7 @@
         </label>
       </p>
       {#if form?.error}
-        <p role="alert">{form.error}</p>
+        <p class="problem" role="alert">{form.error}</p>
       {/if}
       <button>Save password</button>
     </form>

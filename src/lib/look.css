@@ -130,3 +130,152 @@ a {
   outline: 3px solid var(--paper);
   outline-offset: 3px;
 }
+
+/* The paper card: what a person picks up or acts on. Each screen has one, and it holds the one thing to do.
+   Its colour-scheme is light, so what the browser draws itself inside a card (a field it filled in from saved
+   details, a radio button) is dark on paper, never light. A long address wraps instead of pushing the card
+   sideways. */
+.card {
+  padding: 1.5rem;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  color: var(--ink);
+  color-scheme: light;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 48rem) {
+  .card {
+    padding: 2rem;
+  }
+}
+
+.card h1 {
+  font: var(--text-card-title);
+}
+
+/* One rem between one thing and the next. */
+.card > * + *,
+form > * + * {
+  margin-top: 1rem;
+}
+
+/* Notes only, never running text. */
+.note {
+  display: block;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
+.card .note {
+  color: var(--ink-soft);
+}
+
+/* A refusal is seen by its weight, not by a colour: red means money and nothing else. */
+.problem {
+  font-weight: 600;
+}
+
+fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+label {
+  display: block;
+}
+
+/* A field is the one place an edge is allowed. */
+input:not([type="radio"], [type="checkbox"]) {
+  width: 100%;
+  min-height: var(--size-target);
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ink-soft);
+  border-radius: var(--radius-field);
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--ink);
+}
+
+/* Month, day and year sit side by side and share a phone's width, so they never push the card sideways. */
+.row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.row > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* A button, or a link that looks like one. Flex, because an inline link ignores a height and a transform:
+   without it a link-button would be neither 48px tall nor give when pressed. The main button is paper with an
+   ink label on felt, and ink with a paper label on a card. */
+button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--size-target);
+  padding: 0.5rem 1.5rem;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--text-button);
+  text-decoration: none;
+  transition: transform var(--press-time);
+  cursor: pointer;
+}
+
+.card button,
+.card .button {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* A second action that must not draw the eye: no fill, it looks like a link. */
+.quiet,
+.card .quiet {
+  padding: 0 0.25rem;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+}
+
+/* Used once in the whole site, on "Continue to payment": the one press that spends money. */
+.card .pay {
+  background: var(--pip);
+  color: var(--paper);
+}
+
+button:active,
+.button:active {
+  transform: scale(var(--press-scale));
+}
+
+/* The focus ring on a card. */
+.card :focus-visible {
+  outline-color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .button {
+    transition: none;
+  }
+
+  button:active,
+  .button:active {
+    transform: none;
+  }
+}
