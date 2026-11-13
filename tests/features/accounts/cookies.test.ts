@@ -23,14 +23,14 @@ describe("copyAuthCookies", () => {
 
   function fakeCookies(parsed: Record<string, Parsed>) {
     const set = vi.fn<Cookies["set"]>();
-    const parse = vi.fn<Cookies["parse"]>((line) => parsed[line] ?? ({ name: "", value: "" } as Parsed));
+    const parse = vi.fn<Cookies["parse"]>((line) => parsed[line] ?? { name: "", value: "" });
     return { set, parse };
   }
 
   it("copies a cookie with the flags it was sent with", () => {
     const line = "rk_session=token; Path=/; HttpOnly; SameSite=Lax";
     const cookies = fakeCookies({
-      [line]: { name: "rk_session", value: "token", path: "/", httpOnly: true } as Parsed,
+      [line]: { name: "rk_session", value: "token", path: "/", httpOnly: true },
     });
 
     copyAuthCookies(cookies, [line]);
@@ -44,7 +44,7 @@ describe("copyAuthCookies", () => {
 
   it("does not add Secure or HttpOnly to a cookie that was sent without them", () => {
     const line = "flag=1; Path=/";
-    const cookies = fakeCookies({ [line]: { name: "flag", value: "1", path: "/" } as Parsed });
+    const cookies = fakeCookies({ [line]: { name: "flag", value: "1", path: "/" } });
 
     copyAuthCookies(cookies, [line]);
 
