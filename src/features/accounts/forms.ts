@@ -83,7 +83,7 @@ export async function signInWithPassword(
   if (response.status === 429 && (await errorCodeOf(response)) === SIGN_IN_PAUSED) {
     return fail(429, { email: form.email, error: FORM_MESSAGES.signInPaused });
   }
-  return await otherFailure(response, { email: form.email });
+  return otherFailure(response, { email: form.email });
 }
 
 /**
@@ -103,7 +103,7 @@ export async function requestPasswordReset(
     redirectTo: "/reset-password",
   });
   if (response.ok) return { sent: true, email: form.email };
-  return await otherFailure(response, { email: form.email });
+  return otherFailure(response, { email: form.email });
 }
 
 /**
@@ -128,7 +128,7 @@ export async function resetPassword(event: FormEvent, deps: FormDeps): Promise<A
   if (response.status === 400 && (await errorCodeOf(response)) === "INVALID_TOKEN") {
     return fail(400, { linkInvalid: true });
   }
-  return await otherFailure(response, kept);
+  return otherFailure(response, kept);
 }
 
 /**
@@ -142,7 +142,7 @@ export async function resendVerification(
 ): Promise<{ resent: true } | ActionFailure<AuthFormData>> {
   const response = await callAuth(event, deps, "/send-verification-email", { email, callbackURL: "/me" });
   if (response.ok) return { resent: true };
-  return await otherFailure(response, {});
+  return otherFailure(response, {});
 }
 
 /**
@@ -174,7 +174,7 @@ export async function signUpWithPassword(
     password: form.password,
   });
   if (response.status === 422) return fail(400, { ...kept, error: FORM_MESSAGES.accountExists });
-  if (!response.ok) return await otherFailure(response, kept);
+  if (!response.ok) return otherFailure(response, kept);
 
   const { user } = (await response.json()) as { user: { id: string } };
   await deps.setBirthDate(user.id, date);
@@ -267,7 +267,7 @@ async function errorCodeOf(response: Response): Promise<string | undefined> {
   }
 }
 
-async function otherFailure(response: Response, kept: AuthFormData): Promise<ActionFailure<AuthFormData>> {
+function otherFailure(response: Response, kept: AuthFormData): ActionFailure<AuthFormData> {
   if (response.status === 429) return fail(429, { ...kept, error: FORM_MESSAGES.rateLimited });
   return fail(500, { ...kept, error: FORM_MESSAGES.failed });
 }
