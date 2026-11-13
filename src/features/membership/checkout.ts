@@ -130,7 +130,7 @@ export interface PremiumCheckoutInput {
   readonly cancelUrl: string;
   /** From premiumCheckoutExpiry. */
   readonly expiresAtSec: number;
-  /** What the webhook needs to find the checkout again: the ref and the plan. */
+  /** What the webhook needs to find the checkout again: the ref, `kind: "premium"` (how it knows the checkout is ours) and the plan. */
   readonly metadata: Readonly<Record<string, string>>;
 }
 
