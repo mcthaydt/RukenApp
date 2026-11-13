@@ -8,10 +8,19 @@ export function freshEmail(): string {
   return `journey+${crypto.randomUUID().slice(0, 12)}@ruken.test`;
 }
 
-/** A birth date this many whole years before today, safely past the birthday so the age is exact. */
+/**
+ * A birth date that makes a person exactly this many years old. The birthday was two days ago, so
+ * the age is the same on the runner's clock and on the site's (Chicago), and nobody is a day short.
+ */
 export function yearsAgo(years: number): { month: string; day: string; year: string } {
-  const now = new Date();
-  return { month: "1", day: "1", year: String(now.getFullYear() - years - 1) };
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - years);
+  date.setDate(date.getDate() - 2);
+  return {
+    month: String(date.getMonth() + 1),
+    day: String(date.getDate()),
+    year: String(date.getFullYear()),
+  };
 }
 
 /** Fills the three birth-date fields on the sign-up form. */
