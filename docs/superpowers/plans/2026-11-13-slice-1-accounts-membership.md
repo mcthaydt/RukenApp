@@ -16,13 +16,14 @@
 
 - No session runs tests, lint or typecheck itself. Push, then read the result of CI on the pull request (CLAUDE.md, Owner 2026-11-13).
 - Every task is test-first, and the failing test is seen failing in CI on the branch before the code that passes it is pushed ("How a task runs", below).
-- Dependencies are added only at the old repository's pinned versions, and only these: `prisma` 7.10.0, `@prisma/client` 7.10.0, `@prisma/adapter-pg` 7.10.0, `pg` 8.23.1, `@types/pg` 8.23.1, `better-auth` 1.7.7, `stripe` 22.6.2, `nodemailer` 10.0.13, `@types/nodemailer` 8.0.2. Anything else needs the Owner's words: stop and report.
+- Dependencies are added only at the old repository's pinned versions, and only these: `prisma` 7.10.0, `@prisma/client` 7.10.0, `@prisma/adapter-pg` 7.10.0, `pg` 8.23.1, `@types/pg` 8.23.1, `better-auth` 1.7.7, `stripe` 22.6.2, `nodemailer` 10.0.13, `@types/nodemailer` 8.0.2, `@js-temporal/polyfill` 0.5.1 (the carried clock, `TestClock` and the age check are written in Temporal; Node 24 has no Temporal of its own). Anything else needs the Owner's words: stop and report.
+  - The two security pins the old repository kept for Prisma 7.10's command-line tool are carried into `pnpm-workspace.yaml` as `overrides` with their comment: `"@prisma/config>deepmerge-ts": 8.0.2` and `"prisma>mysql2": 3.24.5`. They pin what Prisma already pulls in; they add no package.
   - Not added though the old repository had them: zod (settings are read by a small function), cuid2 (ids made in code use `randomUUID()` from `node:crypto`; Prisma's own `@default(cuid(2))` needs no package), Testcontainers (CI's Postgres is a service container), pg-boss, Testing Library and jsdom (screens are checked in Playwright this slice).
 - `.github/workflows/ci.yml` changes in exactly one commit of this slice (Task 1). Its message quotes the Owner (the text is in Task 1).
 - This repository is public. No secret, real address, customer data, old plan or old history goes in. Every credential is typed by the Owner into Netlify's settings. Test values in the repository are plainly fake (`sk_test_fake`, `whsec_test_fake`).
 - Money is whole cents as `bigint`. Nobody types a fact: every amount, tax, fee and date about a payment is read from Stripe.
 - Time comes from an injected `Clock`. Feature code never calls `Date.now()` or `new Date()` with no argument.
-- Features hold server code only this slice, and import only features below them: `accounts` imports no feature; `membership` may import `accounts`. Shared helpers with no feature logic go in `src/lib/`. Tests live only in `tests/`, mirroring `src/`.
+- Features hold server code only this slice, and import only features below them: `accounts` imports no feature; `membership` may import `accounts`. Shared helpers with no feature logic go in `src/lib/`; a rule or key that belongs to one feature (like the checkout-start limit) lives in that feature, not in `src/lib/`. Tests live only in `tests/`, mirroring `src/`. Routes and `src/hooks.server.ts` reach a feature only through its entry file (the layer test checks every file under `src/`), so everything a route or the hook uses is re-exported there.
 - Comments say why. When a file is copied, references to the old plans are removed from its comments (`M7.3 spec §5`, `audit U08-4`, `P3 §3.4`, `R-80`, `N7`, Figma page numbers), and the reason itself is kept.
 - The price is $9.99 a month or $99 a year, tax added by Stripe (`PREMIUM_PRICES_CENTS = { monthly: 999n, annual: 9900n }`). No trials (`PREMIUM_TRIAL_DAYS = 0`), no day or week passes, no buying single games.
 - Which maker brought a member is a fact from the link they arrived through. No screen, form or query parameter lets a person say it.
@@ -36,9 +37,9 @@ Each task is two pushes, so each red-then-green round is short.
 2. **Green.** Replace the stubs with the code. Push. Read CI: every job passes.
 3. Tick the task in `docs/superpowers/progress.md`, with the two CI run numbers, in the green commit or the next one. Send the coordinator the one line CLAUDE.md asks for.
 
-CI runs on pull requests. So the first push of a branch is followed at once by opening its pull request (title: the branch's name in words). If GitHub refuses, stop and report.
+CI runs on pull requests. So the first push of a branch is followed at once by opening its pull request **as a draft** (title: the branch's name in words). If GitHub refuses, stop and report.
 
-A red commit is never merged: the merge session merges a branch only when its last commit is green.
+A red commit is never merged. Pull requests merge themselves (CLAUDE.md, Owner 2026-11-13): when a branch's last task is green and no more pushes are coming, mark its pull request ready for review; `.github/workflows/auto-merge.yml` turns on auto-merge, and GitHub merges once `verify` and `browser` pass on a branch up to date with `main`. Where a step says "the branch merges" or "ready to merge", that is this. Never mark a pull request ready while its last commit is red.
 
 **Carrying a file** means: copy it from `OLD/` to the new path; rewrite its imports to the new paths; remove what the task lists under "Trim"; remove old-plan references from comments; change nothing else. Its tests are carried the same way, keeping only the cases for what is kept. A carried test file named `*.pg.test.ts` needs Postgres; replace the old `startTestDatabase`/Testcontainers set-up with `startTestDatabase()` from `tests/support/database.ts` (Task 1).
 
@@ -61,13 +62,31 @@ Eight branches, in this order. Each starts from `main` only after the one before
 
 ## Where execution stops and waits for the Owner
 
-The execution session reports to the coordinator and waits at each of these. It does not work around a missing credential.
+The execution session reports to the coordinator and asks for each of these with the exact steps below. It does not work around a missing credential. A stop holds only the check that needs it: the next branch starts as soon as the branch before it is merged and green (a stop's own step is done when the Owner says "done"). The one hard wait is S2: branch H is not merged until S2 is done, because once it is on `main` the real site's `/me` and `/join` need the Stripe settings.
 
-| Stop | Before | The Owner does this, in Netlify's and the services' own settings, never in the repository |
-|---|---|---|
-| S1 | Task 16, step 3 | Makes the Neon database (Postgres 16). Makes the Netlify site and links it to `mcthaydt/RukenApp`, branch `main`. Picks a mail service that offers SMTP and a from-address. Points the site's address at Netlify. Sets in Netlify: `DATABASE_URL` (Neon's pooled address), `DIRECT_DATABASE_URL` (Neon's direct address), `BETTER_AUTH_SECRET` (a long random value the Owner makes), `BETTER_AUTH_URL` (the site's https address), `SMTP_URL`, `MAIL_FROM`, `JOBS_SECRET` (a second long random value the Owner makes; the daily job shows it to the site, Task 20). |
-| S2 | Task 31, step 1 | In Stripe **test mode**: switches on Stripe Tax; switches on the customer portal with "cancel subscriptions" allowed, at the end of the period; adds a webhook endpoint at `<site>/webhooks/stripe` for the events listed in Task 25. Sets in Netlify: `STRIPE_SECRET_KEY` (test), `STRIPE_WEBHOOK_SECRET` (that endpoint's), `STRIPE_LIVE=false`. |
-| S3 | Task 31, step 3 | The same in Stripe **live mode**, with live keys and `STRIPE_LIVE=true`, when the Owner decides the site may take real money. Paying once with a real card and cancelling is the Owner's own check (design 8). |
+**S1, asked for at Task 16 step 3. The Owner, in each service's own settings, never in the repository:**
+
+1. Neon: make a project with Postgres 16, in AWS US East (Ohio), the region Netlify runs its functions in by default. From its "Connect" panel copy two addresses: the pooled one (its host has `-pooler` in it) and the direct one (no `-pooler`).
+2. Netlify: "Add new site" → "Import an existing project" → GitHub → `mcthaydt/RukenApp`, branch `main`. Leave the build command and folder empty: `netlify.toml` sets them.
+3. Netlify, Site configuration → Build & deploy → Continuous deployment: set **Deploy Previews to "Don't deploy pull requests"** and **Branch deploys to "Deploy only the production branch"**. Netlify's build runs the migrations against the one real database, so a pull request's preview would change the real database before that pull request is merged.
+4. The site's address: in Netlify, Domain management → add the address and make it the primary domain (Netlify then sends the other spelling, with or without `www`, to it); point the address's DNS at Netlify as Netlify shows; wait for the https certificate.
+5. A mail service that offers SMTP: verify the address's domain with it (the SPF and DKIM records it gives, in the address's DNS), so the mails do not land in spam. Note its SMTP address as one line, `smtps://<user>:<password>@<host>:465`.
+6. Netlify, Site configuration → Environment variables, each with scope "All scopes" (the build runs the migrations and the daily job reads its secret, so builds and functions both need them):
+   - `DATABASE_URL`: Neon's pooled address. `DIRECT_DATABASE_URL`: Neon's direct address.
+   - `BETTER_AUTH_SECRET`: a long random value (a password manager's generator, 40 characters or more). `JOBS_SECRET`: a second, different one (the daily job shows it to the site, Task 20).
+   - `BETTER_AUTH_URL`: the primary address with `https://` and no trailing slash.
+   - `SMTP_URL`: the line from step 5. `MAIL_FROM`: `Ruken <hello@your-domain>`, on the verified domain.
+7. Netlify, Deploys → "Trigger deploy". Say "done" to the coordinator.
+
+**S2, asked for when branch G starts (Task 21), needed before branch H merges. The Owner, in Stripe test mode:**
+
+1. Settings → Tax: set the origin address, set the default tax behaviour to "exclusive", and add at least one registration (the Owner's own state is enough for testing), so a test invoice shows tax.
+2. Settings → Billing → Customer portal: turn on "Cancel subscriptions", "at the end of the billing period"; leave "Update payment methods" on; turn off "Switch plans". Save, and activate the test-mode portal.
+3. Developers → Webhooks → Add endpoint: `https://<site>/webhooks/stripe`, with the API version the execution session gives (the version the `stripe` package pins, read from `node_modules/stripe`; the handlers read event fields in that version's shape), for the events listed in Task 25. Copy its signing secret.
+4. Developers → API keys: copy the test secret key (`sk_test_…`).
+5. Netlify environment variables, scope "All scopes": `STRIPE_SECRET_KEY` (step 4), `STRIPE_WEBHOOK_SECRET` (step 3), `STRIPE_LIVE` = `false`. Trigger a deploy. Say "done".
+
+**S3, at Task 31 step 3, when the Owner decides the site may take real money:** the same five steps in Stripe **live mode**, with the live key (`sk_live_…`) and `STRIPE_LIVE` = `true`; the site refuses to start if the key's mode and `STRIPE_LIVE` disagree (Task 26). Real terms and privacy text first. Paying once with a real card and cancelling is the Owner's own check (design 8).
 
 The membership product and its two prices are not typed into Stripe by anyone: the carried code finds or makes them from the constants the first time someone checks out. They are made under new names (Task 22), so a Stripe account that still holds the old product and its old prices is left alone and never charged from.
 
@@ -103,6 +122,7 @@ The membership product and its two prices are not typed into Stripe by anyone: t
     - This slice records and judges nothing. Every join is recorded as it happened, also a maker's own and a second join; the Owner's rules for them (decisions 4 and 5) are applied by slice 5, which reads these rows.
     - The maker's page and the game links arrive in slices 2 and 3. Their routes call `arrival.remember` (Task 26); until then nothing in the app writes the cookie, and this slice's tests write it themselves. That one function is built ahead of its caller on purpose, so the format lives in one place (decision 6).
     - Someone who arrives on one device and pays on another has no arrival on the paying device, and no maker is recorded.
+    - "Before paying" is read as "when the person pressed Continue to payment". A person who opens one checkout, lands on another maker's link in a second tab, and then pays in the first tab, is recorded with the first maker. Reading the cookie later, on the way back from Stripe, would not be better: by then the person may be on another device or have no cookie.
   - The old terms and privacy pages are not carried: in the old repository they are outlines marked "draft", waiting for counsel. Real text is the Owner's, and should exist before S3.
 
 ## File map
@@ -116,7 +136,8 @@ prisma/migrations/                       SQL, made by `prisma migrate diff`, nev
 netlify.toml                             build command, Node version, the daily job's schedule (branches E, F)
 netlify/functions/purge-accounts.mjs     the daily job: it only calls the site's own job address (branch F)
 .env.example                             every setting's name, with fake values
-src/lib/clock.ts                         Clock, systemClock
+src/lib/clock.ts                         Clock, systemClock, CALENDAR_ZONE, chicagoDayOf
+src/lib/long-date.ts                     longDay, longDate: a Chicago day in words   (branch F)
 src/lib/safe-next.ts                     safeNextPath
 src/lib/server/db.ts                     the Prisma client
 src/lib/server/env.ts                    requireEnv, optionalEnv
@@ -137,7 +158,7 @@ src/features/accounts/
   mails.ts             the words of the four mails
   auth.ts              better-auth, configured
   handle.ts            who sent this request
-  staff.ts             staffRolesOf, isStaff
+  staff.ts             staffRolesOf
   forward.ts           /api/auth to better-auth
   forms.ts             the form actions
   pages.ts             signedInRedirect, signedInOnly
@@ -162,6 +183,9 @@ src/features/membership/                 (branch G)
   arrival.ts           the last arrival through a maker's link: sealing and opening the cookie (pure)
   services.ts          built once from the settings
 src/routes/
+  +error.svelte                          every failure's page, with a way back
+  +layout.server.ts  +layout.svelte      the welcome-back line   (branch F)
+  healthz/+server.ts                     (branch E)
   api/auth/[...path]/+server.ts
   sign-up/  sign-in/  sign-out/  forgot-password/  reset-password/
   me/
@@ -209,7 +233,7 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 - Produces:
   - `createPrismaClient(databaseUrl: string, options?: { poolMax?: number }): PrismaClient`, `poolMaxFromEnv(source, fallback: number): number`, and `prisma(): PrismaClient` (process-wide, made on first use from `DATABASE_URL`, pool size from `DATABASE_POOL_MAX`, fallback 3) in `src/lib/server/db.ts`. `PrismaClient` and the enums are re-exported from there. Carried from `OLD/packages/db/src/client.ts`.
   - `startTestDatabase(): Promise<{ url: string; prisma: PrismaClient; stop(): Promise<void> }>` in `tests/support/database.ts`. It reads `TEST_DATABASE_URL`, makes a database named `ruken_test_<16 random hex>`, runs `prisma migrate deploy` on it (the real CLI, through `execFileSync`, with `DATABASE_URL` and `DIRECT_DATABASE_URL` set to the new database), and `stop()` disconnects and drops it. A missing `TEST_DATABASE_URL` throws "TEST_DATABASE_URL is not set. These tests run in CI's postgres job."
-  - Scripts: `"generate": "prisma generate"`, `"test:pg": "pnpm generate && svelte-kit sync && vitest run --project postgres"`. `lint`, `typecheck`, `test` and `build` each start with `pnpm generate &&`. `test` becomes `vitest run --project unit`.
+  - Scripts: `"generate": "prisma generate"`, `"test:pg": "pnpm generate && svelte-kit sync && vitest run --project postgres"`. `lint`, `typecheck`, `test`, `build` and `test:browser` each start with `pnpm generate &&` (`test:browser` too: Playwright loads the journey files, and from Task 29 their support code imports the generated client, before its web server builds anything). `test` becomes `vitest run --project unit`.
   - Vitest projects in `vite.config.ts`: `unit` (`tests/**/*.test.ts`, excluding `tests/browser/**` and `**/*.pg.test.ts`) and `postgres` (`tests/**/*.pg.test.ts`, `testTimeout: 30_000`, `hookTimeout: 120_000`).
   - The generated client goes to `src/lib/server/generated/prisma` (`provider = "prisma-client"`), which is ignored by git, Prettier and ESLint.
 
@@ -224,13 +248,13 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 | `StaffAssignment` | as carried (lines 246 to 256) |
 | `RateLimit` | as carried (lines 282 to 287) |
 | `SignInGuard` | as carried (lines 299 to 306), with its two CHECK constraints in the migration SQL |
-| `DeletionRequest` | as carried (lines 1113 to 1123), with the partial unique index from its old migration: at most one open request (not cancelled, not purged) per user |
+| `DeletionRequest` | as carried (lines 1113 to 1123), with the two hand-written pieces from its old migration (`OLD/packages/db/prisma/migrations/20261014100000_m4_player_pages/migration.sql`, lines 104 and 106): CHECK `DeletionRequest_window_check` (`purgeAfter` after `requestedAt`) and the partial unique index `DeletionRequest_open_key` (at most one open request, not cancelled and not purged, per user) |
 
 Enums: `UserStatus { active, pending_deletion, deleted }`, `StaffRole` as carried (`owner, curator, support, moderator, head_curator, finance`).
 
 Trim: `displayName`, `handle`, `twoFactorEnabled`, `Session.audience`, `Session.stepUpAt`, `SessionAudience`, the `disabled` status, `DeveloperToken`, `Device`, and every relation to a table not listed. Slice 4 adds what the admin portal needs.
 
-- [ ] **Step 1 (red): the CI job, the tooling and the failing test.** One commit holds the dependencies, the scripts, the Vitest projects, `prisma.config.ts`, `base.prisma` with no models, `db.ts`, `tests/support/database.ts`, `.env.example`, the CI change and this test:
+- [ ] **Step 1 (red): the CI job, the tooling, the schema and the failing test.** One commit holds the dependencies, the scripts, the Vitest projects, `prisma.config.ts`, `base.prisma`, `accounts.prisma` (the tables below), `db.ts`, `tests/support/database.ts`, `.env.example`, the CI change and this test. There is no migration yet: the migration is the code that makes these tests pass. (The schema comes in this commit, not the next, because `prisma generate` makes no client from a schema with no models, and `db.ts` imports the client, so lint, typecheck and the build would fail for the wrong reason.)
 
 ```ts
 // tests/lib/server/migrations.pg.test.ts
@@ -278,8 +302,8 @@ journeys in section 8."
 Adds Prisma 7.10.0 and pg 8.23.1 at the old repository's pins, and the first failing database test.
 ```
 
-- [ ] **Step 2: push, open the pull request, read CI.** Expected: `verify` and `browser` pass. `postgres` fails in `migrations.pg.test.ts`: "make the accounts tables" (the array has none of them) and the SignInGuard test (the table does not exist). The drift test passes (an empty schema matches an empty database). If `postgres` fails before reaching the tests, that is the wrong reason: fix the set-up first.
-- [ ] **Step 3 (green): the schema and its migration.** Write `accounts.prisma`. Make the SQL without a database: `pnpm exec prisma migrate diff` from empty to `prisma/schema`, as a script, into `prisma/migrations/<UTC yyyymmddhhmmss>_accounts/migration.sql`. Append by hand the two `SignInGuard` CHECK constraints and the `DeletionRequest` partial unique index, each copied from the old migration that made it (`grep -rl SignInGuard_emailHash_check OLD/packages/db/prisma/migrations`; `grep -rl DeletionRequest OLD/packages/db/prisma/migrations`). Add `migration_lock.toml` (`provider = "postgresql"`). Running `prisma migrate diff` and `prisma generate` is not running a test, and is allowed.
+- [ ] **Step 2: push, open the pull request, read CI.** Expected: `verify` and `browser` pass. `postgres` fails all three tests in `migrations.pg.test.ts`: "make the accounts tables" (the array has none of them), the drift test (the schema has tables the empty database lacks) and the SignInGuard test (the table does not exist). If `postgres` fails before reaching the tests, that is the wrong reason: fix the set-up first.
+- [ ] **Step 3 (green): the migration.** Make the SQL without a database: `pnpm exec prisma migrate diff` from empty to `prisma/schema`, as a script, into `prisma/migrations/<UTC yyyymmddhhmmss>_accounts/migration.sql`. Append by hand the two `SignInGuard` CHECK constraints (`OLD/packages/db/prisma/migrations/20261023020500_n7_auth_hardening/migration.sql`, from line 21) and the `DeletionRequest` CHECK and partial unique index (see the table above), each copied from the old migration that made it. Add `migration_lock.toml` (`provider = "postgresql"`). Running `prisma migrate diff` and `prisma generate` is not running a test, and is allowed.
 - [ ] **Step 4: push, read CI.** Expected: all three jobs pass.
 - [ ] **Step 5: tick the task in progress.md.**
 
@@ -290,10 +314,10 @@ Adds Prisma 7.10.0 and pg 8.23.1 at the old repository's pins, and the first fai
 - Test: `tests/lib/clock.test.ts`
 
 **Interfaces:**
-- Produces: `interface Clock` and `systemClock: Clock` in `src/lib/clock.ts`, carried from `OLD/packages/core/src/clock/index.ts` and `system.ts`. `TestClock` in `tests/support/test-clock.ts`, carried from `OLD/packages/core/src/clock/testing.ts`.
-- Trim: `TimerClock`, `TimerHandle` and the timer methods, unless a carried file in a later task uses them (none in this plan does); `zone.ts` (slice 5 carries it with the money dates).
+- Produces: `interface Clock` (`now(): Temporal.Instant`, `epochMs(): number`) and `systemClock: Clock` in `src/lib/clock.ts`, carried from `OLD/packages/core/src/clock/index.ts` and `system.ts`, with `@js-temporal/polyfill`. Also there, from `OLD/packages/core/src/clock/zone.ts`: `CALENDAR_ZONE = "America/Chicago"` and `chicagoDayOf(epochMs): string` (`YYYY-MM-DD`), because the carried age check (Task 7) asks for today's Chicago day and the goodbye page (Task 19) names a Chicago day. `TestClock` in `tests/support/test-clock.ts`, carried from `OLD/packages/core/src/clock/testing.ts`: `new TestClock(start)`, `now()`, `epochMs()`, `set(at)`, `advance(by: Temporal.DurationLike | number)` (a number is milliseconds).
+- Trim: `TimerClock`, `TimerHandle` and the timer methods (and `TestClock`'s pending timers), since no carried file in this plan uses them; `chicagoDayStart` (slice 5 carries it with the money dates).
 
-- [ ] **Step 1 (red):** carry `OLD/packages/core/src/clock/system.test.ts` to `tests/lib/clock.test.ts`, keeping the cases about `epochMs()`; stub `systemClock` so every method throws "not built yet". Commit, push.
+- [ ] **Step 1 (red):** carry `OLD/packages/core/src/clock/system.test.ts` to `tests/lib/clock.test.ts`, keeping the case "epochMs agrees with now within a few milliseconds"; carry the `chicagoDayOf` cases of `OLD/packages/core/src/clock/zone.test.ts`. Stub `systemClock` and `chicagoDayOf` so each throws "not built yet". Commit, push.
 - [ ] **Step 2: read CI.** Expected: `verify` fails at `pnpm test`, in `clock.test.ts`, with "not built yet".
 - [ ] **Step 3 (green):** carry the clock. Commit, push. Expected: all jobs pass.
 
@@ -334,8 +358,8 @@ it("optionalEnv answers undefined for unset or empty", () => {
 
 **Interfaces:**
 - Produces:
-  - `interface RateLimitRule { max: number; windowMs: number }`, `type RateLimitResult`, `interface RateLimiter { hit(key, rule): Promise<RateLimitResult> }`, `createRateLimiter(prisma: PrismaClient, clock: Clock): RateLimiter`, `RATE_LIMIT_ROWS_KEPT_MS`, `checkoutStartKey(userId)`, and `RATE_LIMITS = { checkoutStartsPerUser: { max: 10, windowMs: 60_000 } }`. Carried from `OLD/packages/core/src/runtime/rate-limit.ts` with `rate-limit.pg.test.ts`. Trim: every other entry of `RATE_LIMITS`. The row id comes from `randomUUID()`.
-  - `interface MailMessage { to; subject; text }`, `interface Mailer { send(message): Promise<boolean> }`, `createSmtpMailer(options: { from: string; allowlist: string | undefined; transport: Transporter }): Mailer`, `smtpTransport(smtpUrl: string): Transporter`, `mailFailureCode(error: unknown): string`. Carried from `OLD/packages/core/src/mail/mailer.ts` and `mailFailureCode` from `OLD/apps/web/src/lib/server/auth/mailer.ts`, with `mailer.test.ts`. Trim: `headers`, Mailpit, the capture endpoint.
+  - `interface RateLimitRule { max: number; windowMs: number }`, `type RateLimitResult`, `interface RateLimiter { hit(key, rule): Promise<RateLimitResult> }`, `createRateLimiter(prisma: PrismaClient, clock: Clock): RateLimiter`, and `RATE_LIMIT_ROWS_KEPT_MS` (the limiter refuses a rule with a longer window). Carried from `OLD/packages/core/src/runtime/rate-limit.ts` with `rate-limit.pg.test.ts`, without its two `RATE_LIMITS` cases. Trim: `RATE_LIMITS` and `checkoutStartKey`: they are membership's own rule and key, carried into `src/features/membership/service.ts` in Task 26 (`CHECKOUT_STARTS_PER_USER = { max: 10, windowMs: 60_000 }`, `checkoutStartKey(userId)`). The row id comes from `randomUUID()`.
+  - `interface MailMessage { to; subject; text }`, `interface Mailer { send(message): Promise<boolean> }`, `createSmtpMailer(options: { from: string; allowlist: string | undefined; transport: Transporter }): Mailer`, `smtpTransport(smtpUrl: string): Transporter`, `mailFailureCode(error: unknown): string`. Carried from `OLD/packages/core/src/mail/mailer.ts` with its `mailer.test.ts`, and `mailFailureCode` from `OLD/apps/web/src/lib/server/auth/mailer.ts` with the two `mailFailureCode` cases of `OLD/apps/web/src/lib/server/auth/mailer.test.ts`. Trim: `headers`, Mailpit, the capture endpoint.
   - One addition: `smtpTransport("test:")` returns nodemailer's `jsonTransport`, which sends nothing. CI's browser journeys use it; the comment says so.
   - `createCaptureMailer(): Mailer & { sent: MailMessage[] }` in `tests/support/capture-mailer.ts`.
 
@@ -384,7 +408,7 @@ Owner, 2026-11-13: sign-up asks a date of birth, refuses under 13 and stores onl
 
 **Interfaces:**
 - Produces, carried from `OLD/packages/core/src/identity/age.ts` with both tests: `interface BirthDate { year; month; day }`, `type AgeCheck` (`adult | minor | under13 | invalid`), `ageCheck(date: BirthDate, clock: Clock): AgeCheck`, `setBirthDate(db, clock, input: { userId; date }): Promise<{ minor: boolean }>` (stores only the 18th birthday in `User.adultOn`), `AgeError`.
-- Trim: `isMinor`, `isMinorOn` (nothing reads them this slice).
+- Trim: `isMinor`, `isMinorOn` (nothing reads them this slice). `ageCheck` keeps its Temporal calendar maths and reads today's Chicago day through `chicagoDayOf` from `src/lib/clock.ts` (Task 2).
 
 - [ ] **Step 1 (red):** carried tests and stubs. Push. Expected: `verify` fails in `age.test.ts`, `postgres` in `age.pg.test.ts`, with "not built yet".
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
@@ -435,9 +459,11 @@ Grandma: each mail says what it is, gives the one link, says how long it lasts, 
   - `createAuth(options: AuthOptions)`, `type Auth`
   - `interface SessionInfo { sessionId: string; userId: string; userStatus: string; setCookies?: string[] }`, `sessionInfo(auth: Auth, headers: Headers): Promise<SessionInfo | null>`
 - Kept exactly as carried: `basePath: "/api/auth"`; `trustedOrigins` (our own origin only); `telemetry` off; reset tokens stored hashed; passwords 10 to 128 characters; `autoSignIn`; reset link one hour, every session revoked on reset, `onPasswordReset` lifting the pause and mailing the notice; verification mail on sign-up, one day; session 30 days, refreshed daily, no cookie cache; the `rateLimit` block; `advanced` (ids from the database, exact cookie names, client address from `CLIENT_IP_HEADER`); the `before` hook that answers `NOT_FOUND` to `/sign-up/email` arriving through the public route; `authLimitsPlugin` then `signInPausePlugin`; `mailLater`.
-- Trim: passkeys, magic link, social providers and Apple's origin, account linking, Turnstile, the breached-password plugin, `displayName` and the text filter (the `user.create.before` hook goes), `audience`, anonymous devices, and the `session.create.after` hook (Task 18 brings back its "welcome back" half, with the 14-day wait). The rate-limit rules for `/sign-in/social` and `/sign-in/magic-link` go.
+- Kept, though easy to cut by mistake: `user.additionalFields.status` (`input: false`). `sessionInfo` reads `user.status` through it, and without it every account reads as not `active`, so the hook (Task 10) would treat everyone as signed out.
+- `log` defaults to one `console.warn` line; callers pass only codes, never an address (`mailFailureCode`).
+- Trim: passkeys, magic link, social providers and Apple's origin, account linking, Turnstile, the breached-password plugin, `displayName` and the text filter (the `user.create.before` hook and the `displayName` additional field go), `audience` (the session's additional field goes), anonymous devices, the passkey cookie name, and the `session.create.after` hook (Task 18 brings back its "welcome back" half, with the 14-day wait). The rate-limit rules for `/sign-in/social` and `/sign-in/magic-link` go.
 
-- [ ] **Step 1 (red):** carry `OLD/apps/web/src/lib/server/auth/auth.pg.test.ts`, keeping these groups and dropping the rest: "sign-up with email and password" (the cases at old lines 141, 154 and 172, with `displayName` and audience assertions removed), "sign-in with email and password" (210, 216, 231, and 195 without the device assertion), "session cookie on https", "email verification", "password reset" (all but the breached-password case at 694, which keeps its short-password half), "account sign-in pause" (all; in the case at 997 keep only the reset request). Mail is a `createCaptureMailer()`. Stub `createAuth` and `sessionInfo`. Push.
+- [ ] **Step 1 (red):** carry `OLD/apps/web/src/lib/server/auth/auth.pg.test.ts`, keeping these groups and dropping the rest: "sign-up with email and password" (the cases at old lines 141, 154 and 172, with `displayName` and audience assertions removed), "sign-in with email and password" (210, 216, 231, and 195 without the device assertion), "session cookie on https", "email verification", "password reset" (all but the breached-password case at 694, which keeps its short-password half), "account sign-in pause" (all; in the case at 997 keep only the reset request), "mail after the answer" (both cases, 1123 and 1154), and "sessionInfo" (both cases, 1187 and 1191: the second is the only test of the rolling 30-day cookie). Mail is a `createCaptureMailer()`. Stub `createAuth` and `sessionInfo`. Push.
 - [ ] **Step 2: read CI.** Expected: `postgres` fails in `auth.pg.test.ts` with "not built yet"; `verify` and `browser` pass.
 - [ ] **Step 3 (green):** the code. Push. Expected: all pass.
 
@@ -450,9 +476,9 @@ Grandma: each mail says what it is, gives the one link, says how long it lasts, 
 **Interfaces:**
 - Produces:
   - `type Caller = { kind: "user"; userId: string; sessionId: string; staffRoles: StaffRole[] } | { kind: "none" }` in `caller.ts`.
-  - `isStaff(roles): boolean`, `staffRolesOf(db: PrismaClient, userId: string): Promise<StaffRole[]>` from `OLD/packages/core/src/identity/staff.ts`. Trim: `grantablePermissions`, `DeveloperPermission`.
+  - `staffRolesOf(db: PrismaClient, userId: string): Promise<StaffRole[]>` from `OLD/packages/core/src/identity/staff.ts`. Trim: `isStaff` (nothing in this slice reads it; slice 4 brings it with the portal), `grantablePermissions`, `DeveloperPermission`.
   - `interface HandleDeps { cookies: CookiePolicy; getSession(headers): Promise<SessionInfo | null>; staffRolesOf(userId): Promise<StaffRole[]> }`, `createHandle(getDeps: () => HandleDeps): Handle` from `OLD/apps/web/src/lib/server/auth/handle.ts`. It sets `event.locals.caller`.
-- Trim from `handle.ts`: the `Authorization` header and developer tokens, embeds, anonymous ids, the audience check, the automation prefix, the desktop pairing path. Kept: only an `active` user is a `user` caller; the refreshed session cookie is copied on, except on `/api/auth/` routes.
+- Trim from `handle.ts`: the `Authorization` header and developer tokens, embeds, anonymous ids, the audience check, the automation prefix, the desktop pairing path, `/readyz`. Kept: only an `active` user is a `user` caller; the refreshed session cookie is copied on, except on `/api/auth/` routes; `/healthz` skips the caller check and answers as `none` (Task 16), so it reports the database even when a sign-in setting is missing. Carry the matching `handle.test.ts` case.
 
 - [ ] **Step 1 (red):** carry the matching cases of `handle.test.ts`: a signed-in session gives a `user` caller with its staff roles; no session gives `none`; a refreshed cookie is copied; not on `/api/auth/…`. Add, for Review Focus 7:
 
@@ -479,10 +505,10 @@ it.each(["pending_deletion", "deleted"])("treats a session whose account is %s a
   - `forwardToAuth(handler, request, clientAddress): Promise<Response>` and `type AuthHandler`, from `OLD/…/auth/forward.ts`. Trim: `authRoute` and the social callback check.
   - From `OLD/…/auth/forms.ts`: `FORM_MESSAGES`, `interface FormDeps { handler: AuthHandler; baseURL: string; cookies: CookiePolicy }`, `interface SignUpDeps extends FormDeps { clock: Clock; setBirthDate(userId: string, date: BirthDate): Promise<unknown> }`, `type FormEvent`, `interface AuthFormData { email?; month?; day?; year?; tooYoung?; error?; sent?; token?; linkInvalid? }`, and the actions `signInWithPassword`, `signUpWithPassword`, `requestPasswordReset`, `resetPassword`, `resendVerification(event, deps, email)`, `signOut`, plus `readForm`, `callAuth`, `birthDateOf`.
   - `signedInRedirect(caller: Caller, url: URL): { next: string }`, `signedInOnly(caller, url): { userId: string; next: string }` from `OLD/…/auth/pages.ts`.
-  - `authServices(): { prisma; clock; cookies; mailer; auth; handleDeps; formDeps; signUpDeps }` from `OLD/…/auth/services.ts`, reading `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `SMTP_URL`, `MAIL_FROM` with `requireEnv` and `MAIL_ALLOWLIST` with `optionalEnv`.
-  - `accounts.ts` re-exports what routes and `membership` need: `authServices`, the form actions, `forwardToAuth`, `signedInRedirect`, `signedInOnly`, `staffRolesOf`, `isStaff`, `type Caller`, `FORM_MESSAGES`.
+  - `createAuthServices(source: Record<string, string | undefined>): AuthServices` and `authServices(): AuthServices` (process-wide, `createAuthServices(process.env)` on first use), where `AuthServices = { prisma; clock; cookies; mailer; auth; handleDeps; formDeps; signUpDeps }`, from `OLD/…/auth/services.ts`, reading `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `SMTP_URL`, `MAIL_FROM` with `requireEnv` and `MAIL_ALLOWLIST` with `optionalEnv`. The tests build with `createAuthServices`, as the old ones did.
+  - `accounts.ts` re-exports what routes, the hook and `membership` need: `authServices`, `createHandle`, the form actions and `readForm`, `forwardToAuth`, `signedInRedirect`, `signedInOnly`, `staffRolesOf`, `type Caller`, `FORM_MESSAGES`. Tasks 17 to 20 add theirs (`requestDeletion`, `WELCOME_BACK_COOKIE`, `purgeDueAccounts`, `DELETION_WAIT_DAYS`).
   - `src/hooks.server.ts`: `export const handle = sequence(keepBackgroundWorkAlive, createHandle(() => authServices().handleDeps))`. `App.Locals` gains `caller: Caller`. SvelteKit's own cross-site form check stays on.
-- Trim from `forms.ts`: `requestMagicLink`, Turnstile, the breached-password branches, the name, the handle and its checks, the text filter, the passkey offer, the under-18 page, the anonymous id and the consent cookie in `signOut`, `provider`. `signUpWithPassword` sends better-auth `{ name: "Player", email, password }` and, on success, calls `deps.setBirthDate(user.id, date)` then redirects to `safeNextPath(form.next)`. `resendVerification` uses `callbackURL: "/me"`.
+- Trim from `forms.ts`: `requestMagicLink`, Turnstile, the breached-password branches, the name, the handle and its checks, the text filter, the passkey offer, the under-18 page, the anonymous id and the consent cookie in `signOut`, `provider`. `signUpWithPassword` sends better-auth `{ name: "Player", email, password }` and, on success, calls `deps.setBirthDate(user.id, date)` then redirects to `safeNextPath(form.next)`. `resendVerification` uses `callbackURL: "/me"`. The sign-in and sign-up forms post `next` in a hidden field, from the page's checked `next`.
 
 **The words** (`FORM_MESSAGES`), carried and trimmed:
 
@@ -525,10 +551,14 @@ Every task here is a journey first. Journeys run on `phone` and `computer`. `tes
 ### Task 12: `/api/auth` and sign-out
 
 **Files:**
-- Create: `src/routes/api/auth/[...path]/+server.ts`, `src/routes/sign-out/+page.server.ts`, `tests/browser/support/account.ts`
-- Test: `tests/browser/auth-route.test.ts`
+- Create: `src/routes/api/auth/[...path]/+server.ts`, `src/routes/sign-out/+page.server.ts`, `src/routes/+error.svelte`, `tests/browser/support/account.ts`
+- Test: `tests/browser/auth-route.test.ts`, `tests/browser/error-page.test.ts`
 
-- [ ] **Step 1 (red):**
+**The error page** (`+error.svelte`), the first screen a person can reach this slice and the one every failure lands on. A missing page: heading "We can't find that page." Anything else: heading "Something went wrong on our side." and the line "Try again in a moment." Both end with one link, "Back to Ruken", to `/`. It never shows the error's own text.
+
+Grandma: it says in one line what happened and gives one way back.
+
+- [ ] **Step 1 (red):** `error-page.test.ts`: `/no-such-page` shows the heading "We can't find that page." and a link "Back to Ruken" to `/`. And:
 
 ```ts
 test("the sign-in service answers on our own address", async ({ request }) => {
@@ -542,8 +572,8 @@ test("an account cannot be made around the sign-up form", async ({ request }) =>
 });
 ```
 
-  Push. Expected: `browser` fails: both requests answer SvelteKit's 404 page for the first test (not 200); the second already answers 404, so it passes for the wrong reason until the route exists. That is acceptable only because the first test is the red one; say so in the report line.
-- [ ] **Step 2 (green):** `+server.ts` exports `GET` and `POST`, each `forwardToAuth(authServices().auth.handler, event.request, event.getClientAddress())`. `sign-out/+page.server.ts` has one default action, `signOut`. Push. Expected: all pass.
+  Push. Expected: `browser` fails: both requests answer SvelteKit's 404 page for the first test (not 200); the second already answers 404, so it passes for the wrong reason until the route exists. That is acceptable only because the first test is the red one; say so in the report line. `error-page.test.ts` fails: SvelteKit's own page has no such heading.
+- [ ] **Step 2 (green):** `+server.ts` exports `GET` and `POST`, each `forwardToAuth(authServices().auth.handler, event.request, event.getClientAddress())`. `sign-out/+page.server.ts` has one default action, `signOut`. `+error.svelte` reads `page.status`. Push. Expected: all pass.
 
 ### Task 13: Sign up
 
@@ -568,7 +598,7 @@ When were you born?
 Already have an account? Sign in
 ```
 
-Under 13, the form is replaced by: heading "Ruken isn't for you yet." and the line "Come back when you're 13." (carried words).
+Under 13, the form is replaced by: heading "Ruken isn't for you yet." and the line "Come back when you're 13." (carried words), then one link, "Back to Ruken", to `/`.
 
 Grandma: one button. Each field says what goes in it. A refusal sits above the button, says what to fix, and keeps what was typed (not the password). "Sign in" is the way back for someone who already has an account. The link to sign-in carries `next` along.
 
@@ -586,7 +616,7 @@ test("a stranger makes an account and lands signed in", async ({ page }) => {
 });
 test("a short password says what to fix and keeps the email", async ({ page }) => { /* "Use a password of 10 to 128 characters." */ });
 test("an address that already has an account is sent to sign in", async ({ page }) => { /* "There's already an account with that email. Sign in instead." */ });
-test("someone under 13 is told to come back", async ({ page }) => { /* heading "Ruken isn't for you yet." */ });
+test("someone under 13 is told to come back", async ({ page }) => { /* heading "Ruken isn't for you yet.", link "Back to Ruken" */ });
 test("next pointing off the site lands on the home page", async ({ page }) => { /* /sign-up?next=https://evil.example → toHaveURL("/") */ });
 ```
 
@@ -717,7 +747,7 @@ Owner, 2026-11-13: the Owner links the Netlify site to the repository; Netlify b
 
 - [ ] **Step 1 (red):** `healthz.test.ts`: `GET /healthz` answers 200 with the text `ok`. `tests/netlify.test.ts` (a unit test that reads the file as text): the build command contains `prisma migrate deploy` before `pnpm build`, `NODE_VERSION` equals the contents of `.nvmrc`, and the file contains none of `postgres://`, `postgresql://`, `sk_`, `whsec_`, `smtp://`, `smtps://`. Push. Expected: `browser` fails in `healthz.test.ts` (404); `verify` fails in `netlify.test.ts` (no such file).
 - [ ] **Step 2 (green):** the route and the file. Check the publish folder against what `@sveltejs/adapter-netlify` 7.0.1 writes with this project's `vite.config.ts` (read the adapter's README in `node_modules`); if it is not `build`, use what the adapter says and report the deviation. Push. Expected: all pass. The branch merges.
-- [ ] **Step 3: STOP S1.** Report to the coordinator that the Owner's tasks in row S1 are needed, with the exact setting names. Wait.
+- [ ] **Step 3: STOP S1.** Send the coordinator the S1 steps ("Where execution stops", above) word for word, for the Owner. Branch F starts meanwhile; steps 4 and 5 wait for the Owner's "done".
 - [ ] **Step 4: after the Owner's "done".** Ask the coordinator for the site's address (it is not written in the repository). Fetch `<site>/healthz` and expect `ok`. A person (the Owner, or the coordinator with the Owner) signs up on the real site, gets the confirmation mail, follows its link, signs out and signs in. Record in progress.md what was checked, by whom and when; do not record the address or any email address.
 - [ ] **Step 5:** if `/healthz` or the sign-up fails, report what the page and Netlify's deploy log say. Do not start a fourth fix (CLAUDE.md, Pace).
 
@@ -753,7 +783,7 @@ Owner, 2026-11-13: "Delete my account" is the old 14-day wait. Signing in during
 
 **Interfaces:**
 - Consumes: `restoreOnSignIn` (Task 17).
-- Produces: in `createAuth`, the `databaseHooks.session.create.after` hook from `OLD/apps/web/src/lib/server/auth/auth.ts` (old lines 384 to 406), without the device claim: it calls `restoreOnSignIn`, and when that answers true sets the cookie `WELCOME_BACK_COOKIE = "rk_welcome_back"` (value `"1"`, 60 seconds, `httpOnly: true`, `sameSite: "lax"`, `secure` from the cookie policy). The root layout's server `load` reads that cookie, deletes it, and returns `{ welcomeBack: boolean }`; the layout shows the line below once, in a `role="status"` paragraph above the page.
+- Produces: in `createAuth`, the `databaseHooks.session.create.after` hook from `OLD/apps/web/src/lib/server/auth/auth.ts` (old lines 384 to 406), without the device claim: it calls `restoreOnSignIn`, and when that answers true sets the cookie `WELCOME_BACK_COOKIE = "rk_welcome_back"` (in `cookies.ts`; value `"1"`, `WELCOME_BACK_MAX_AGE_SECONDS` = 5 minutes as carried from `OLD/apps/web/src/lib/account/welcome-back.ts`, long enough to survive the sign-in redirect; `httpOnly: true`, `sameSite: "lax"`, `secure` from the cookie policy). `copyAuthCookies`'s comment, which names this cookie as the one sent without HttpOnly, is corrected. The root layout's server `load` reads that cookie, deletes it, and returns `{ welcomeBack: boolean }`; the layout shows the line below once, in a `role="status"` paragraph above the page.
 - Changed from the old code: the flag is read on the server, not by a page script, so the cookie can be HttpOnly and `OLD/apps/web/src/lib/account/welcome-back.ts` is not carried.
 
 **The words:** "Welcome back. Your account will not be deleted."
@@ -766,9 +796,9 @@ Grandma: the person did the natural thing (signed in) and is told, once, in one 
 ### Task 19: The delete screens
 
 **Files:**
-- Create: `src/routes/me/delete/+page.server.ts`, `src/routes/me/delete/+page.svelte`, `src/routes/goodbye/+page.server.ts`, `src/routes/goodbye/+page.svelte`
+- Create: `src/routes/me/delete/+page.server.ts`, `src/routes/me/delete/+page.svelte`, `src/routes/goodbye/+page.server.ts`, `src/routes/goodbye/+page.svelte`, `src/lib/long-date.ts`
 - Modify: `src/routes/me/+page.svelte` (the "Delete my account" link, under "Sign out")
-- Test: `tests/browser/delete-account.test.ts`
+- Test: `tests/browser/delete-account.test.ts`, `tests/lib/long-date.test.ts`
 
 **The screens.**
 
@@ -783,7 +813,7 @@ Changed your mind? Sign in before then and nothing is deleted.
 Keep my account
 ```
 
-For staff, in place of the button: "Staff accounts are removed by another staff member." Afterwards, `/goodbye?on=<yyyy-mm-dd>`:
+For staff, in place of the button: "Staff accounts are removed by another staff member." Afterwards, `/goodbye?on=<yyyy-mm-dd>`, where the day is `chicagoDayOf(purgeAfter)`:
 
 ```
 You're signed out.
@@ -794,7 +824,7 @@ Changed your mind? Sign in before then.
 Back to Ruken
 ```
 
-The date comes from the request's `purgeAfter`, written by `longDate`'s rule (weekday, month, day, in America/Chicago; put the small formatter in `src/lib/long-date.ts` here with a unit test, and have Task 23's `format.ts` re-export it). `/goodbye` with a missing or malformed `on` shows the page without the date line.
+The date is a Chicago calendar day in words: weekday, month, day. Put the small formatter in `src/lib/long-date.ts` here with a unit test, and have Task 23's `format.ts` re-export it: `longDay(day: string): string | null` writes a `YYYY-MM-DD` day (null for text that is not a real day), formatting it as that calendar day and never through an instant, so a day cannot slip to the one before; `longDate(at: Date): string` is `longDay(chicagoDayOf(at.getTime()))`, for the instants on `/me`. `/goodbye` passes `on` to `longDay` and shows the page without the date line when it answers null.
 
 Grandma: the page says what happens now and what happens later, in two lines, and how to undo it; "Keep my account" is the way back.
 
@@ -821,8 +851,8 @@ test("signing in again within the 14 days undoes it, and says so once", async ({
 test("Keep my account goes back and deletes nothing", async ({ page }) => { /* link → /me, still signed in */ });
 ```
 
-  Plus `tests/lib/long-date.test.ts`: `longDate(new Date("2026-12-15T03:00:00Z"))` is `"Monday, December 14"`. Stub `longDate`. Push. Expected: `browser` fails in `delete-account.test.ts` (no "Delete my account" link on `/me`); `verify` fails in `long-date.test.ts` with "not built yet".
-- [ ] **Step 2 (green):** the routes. The action calls `requestDeletion`, then redirects to `/goodbye?on=` the date. Push. Expected: all pass.
+  Plus `tests/lib/long-date.test.ts`: `longDate(new Date("2026-12-15T03:00:00Z"))` is `"Monday, December 14"` (still the 14th in Chicago); `longDay("2026-11-27")` is `"Friday, November 27"` (not the 26th, whatever the server's zone); `longDay("2026-02-30")` and `longDay("soon")` are null. Stub `longDay` and `longDate`. Push. Expected: `browser` fails in `delete-account.test.ts` (no "Delete my account" link on `/me`); `verify` fails in `long-date.test.ts` with "not built yet".
+- [ ] **Step 2 (green):** the routes. The action calls `requestDeletion`, then redirects to `/goodbye?on=` + `chicagoDayOf(purgeAfter.getTime())`. Push. Expected: all pass.
 
 ### Task 20: The daily job that finishes it
 
@@ -833,7 +863,7 @@ test("Keep my account goes back and deletes nothing", async ({ page }) => { /* l
 
 **Interfaces:**
 - Produces:
-  - `purgeDueAccounts(deps: { prisma: PrismaClient; clock: Clock }): Promise<number>`: for every open `DeletionRequest` whose `purgeAfter` has passed, in one transaction per account: delete the person's `Session`, `Account` and `Verification` rows (`Verification` by `identifier` equal to the email); set the `User` row to `status: "deleted"`, `email: "deleted-<id>@deleted.invalid"`, `name: "Deleted"`, `emailVerified: false`, `image: null`, `adultOn: null`; set the request's `purgedAt`. It answers how many accounts it finished. The `User` row itself stays, so payment rows that point at it stay true. This is new and small; `OLD/packages/core/src/account/purge.ts` removed data from some thirty tables this app does not have, and is not carried. Each later slice that adds a person's data adds its own removal here, with a test.
+  - `purgeDueAccounts(deps: { prisma: PrismaClient; clock: Clock }): Promise<number>`: for every open `DeletionRequest` whose `purgeAfter` has passed, in one transaction per account: delete the person's `Session`, `Account` and `Verification` rows (`Verification` where `identifier` or `value` is the email, as the old purge did, or `value` is the user's id, which is what a password-reset row holds); set the `User` row to `status: "deleted"`, `email: "deleted-<id>@deleted.invalid"`, `name: "Deleted"`, `emailVerified: false`, `image: null`, `adultOn: null`; set the request's `purgedAt`. It answers how many accounts it finished. The `User` row itself stays, so payment rows that point at it stay true. This is new and small; `OLD/packages/core/src/account/purge.ts` removed data from some thirty tables this app does not have, and is not carried. Each later slice that adds a person's data adds its own removal here, with a test.
   - `POST /jobs/purge-accounts`: answers 404 unless the request has `Authorization: Bearer <JOBS_SECRET>` (compared with `timingSafeEqual` from `node:crypto`); with it, runs `purgeDueAccounts` and answers 200 `{ "purged": <count> }`. 404, not 401, so the address looks like any address the site does not have.
   - `netlify/functions/purge-accounts.mjs`: a Netlify scheduled function with no imports. It POSTs to `${process.env.URL}/jobs/purge-accounts` with the secret from `process.env.JOBS_SECRET` and throws when the answer is not 200, so a failed run shows as failed in Netlify. It holds no logic, because Netlify bundles this folder on its own and cannot see the app's code. `netlify.toml` gains:
 
@@ -850,11 +880,12 @@ test("Keep my account goes back and deletes nothing", async ({ page }) => { /* l
 ```ts
 it("leaves an account alone until its 14 days are over", async () => { /* clock at day 13: answers 0, the row is unchanged */ });
 it("removes the email, the password and the sessions, keeps the row, and marks the request done", async () => {
-  clock.advanceDays(15);
+  clock.advance(15 * DAY_MS);                    // TestClock.advance takes milliseconds
   expect(await purgeDueAccounts(deps)).toBe(1);
   expect(await prisma.user.findUniqueOrThrow({ where: { id } }))
     .toMatchObject({ status: "deleted", email: `deleted-${id}@deleted.invalid`, name: "Deleted", adultOn: null });
   expect(await prisma.account.count({ where: { userId: id } })).toBe(0);
+  expect(await prisma.verification.count({ where: { OR: [{ identifier: email }, { value: email }, { value: id }] } })).toBe(0);
   expect((await prisma.deletionRequest.findFirstOrThrow({ where: { userId: id } })).purgedAt).not.toBeNull();
 });
 it("does nothing the second time", async () => { /* answers 0 */ });
@@ -864,13 +895,15 @@ it("lets the same address sign up again afterwards", async () => { /* a new User
 
   `purge-job.test.ts` (Review Focus 8): `POST /jobs/purge-accounts` with no header answers 404; with a wrong secret 404; with `Bearer test-only-jobs-secret` 200 and a body with a number `purged`; `GET` answers 405 or 404. `playwright.config.ts` passes `JOBS_SECRET: "test-only-jobs-secret"`. `tests/netlify.test.ts`: the file names the `purge-accounts` schedule, `netlify/functions/purge-accounts.mjs` exists, contains no `import`, and contains the text `process.env.JOBS_SECRET` and no literal secret. Stub. Push. Expected: `postgres` fails in `purge.pg.test.ts` ("not built yet"); `browser` fails in `purge-job.test.ts` (the secret request gets 404); `verify` fails in `netlify.test.ts`.
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass. The branch merges.
-- [ ] **Step 3: on the real site.** `JOBS_SECRET` was set at S1. After Netlify's next deploy, ask the coordinator to have the Owner (or whoever has the Netlify account) confirm that the function is listed as scheduled and that its first run shows 200 in Netlify's function log. Record in progress.md what was seen, by whom and when. If the function is not listed, report what Netlify shows; do not start a fourth fix.
+- [ ] **Step 3: on the real site, once S1 is done.** `JOBS_SECRET` was set at S1. After Netlify's next deploy, ask the coordinator to have the Owner (or whoever has the Netlify account) confirm that the function is listed as scheduled and that its first run shows 200 in Netlify's function log. Record in progress.md what was seen, by whom and when. If the function is not listed, report what Netlify shows; do not start a fourth fix.
 
 ---
 
 # Branch G: `slice-1/membership`
 
 ### Task 21: The membership tables
+
+First, before any code: send the coordinator the S2 steps ("Where execution stops", above) word for word, with the API version that `stripe` 22.6.2 pins (read it from the package itself, for example its `apiVersion` file once Task 22 adds it; if that is the first moment it can be read, send S2 with Task 22's red push), for the Owner. Branch H does not merge until S2 is done.
 
 **Files:**
 - Create: `prisma/schema/membership.prisma`, `prisma/migrations/<timestamp>_membership/migration.sql`
@@ -885,12 +918,12 @@ it("lets the same address sign up again afterwards", async () => { /* a new User
 | `PremiumMembership` | as carried without `dunningStep`: `id`, `userId` unique, `stripeSubscriptionId` unique, `plan PremiumPlan`, `state PremiumState`, `currentPeriodEnd`, `cancelAt?`, `pastDueSince?`, `createdAt`, `updatedAt` |
 | `CheckoutIntent` | `id`, `userId`, `plan PremiumPlan`, `stripeCheckoutSessionId` unique, `returnTo`, `state CheckoutState` default `open`, `completedAt?`, `createdAt`, `updatedAt`; index on `userId`. New: `broughtByUserId?`, `arrivalPath?`, `arrivedAt?`, the arrival as it stood when this checkout started |
 | `WebhookInbox` | as carried without `source` and `signatureOk` (only verified Stripe events are stored): `id`, `deliveryId` unique, `payload Json`, `receivedAt`, `processedAt?`, `error?`, `createdAt`, `updatedAt` |
-| `MembershipPayment` | new. `id`, `stripeInvoiceId` unique, `userId`, `stripeSubscriptionId`, `plan PremiumPlan`, `periodStart`, `paidAt`, `grossCents BigInt`, `taxCents BigInt`, `feeCents BigInt`, `createdAt`. No `updatedAt`: a row is added and never changed. |
+| `MembershipPayment` | new. `id`, `stripeInvoiceId` unique, `userId`, `stripeSubscriptionId`, `plan PremiumPlan`, `periodStart`, `paidAt`, `grossCents BigInt`, `taxCents BigInt`, `cardFeeCents BigInt`, `createdAt`. No `updatedAt`: a row is added and never changed. `cardFeeCents` is only the card fee on the payment's own balance transaction (what the carried `readPaidPremiumInvoice` reads); Stripe's Billing and Tax fees are not on that transaction, so the name says which fee it is, and slice 5 finds the others. |
 | `MembershipStart` | new. `id`, `checkoutIntentId` unique, `userId`, `stripeSubscriptionId`, `plan PremiumPlan`, `startedAt`, `broughtByUserId?` (a `User`), `arrivalPath?`, `arrivedAt?`, `createdAt`; index on `userId` and on `broughtByUserId`. No `updatedAt`: a row is added and never changed. One row per completed checkout: who started paying, when, and which maker's link they last arrived through, if any. |
 
 Enums: `PremiumPlan { monthly, annual }`, `PremiumState { active, past_due, canceling, ended }`, `CheckoutState` as carried.
 
-In the migration SQL, by hand: CHECK `MembershipPayment_amounts_check` (`"grossCents" > 0 AND "taxCents" >= 0 AND "feeCents" >= 0`), CHECK `MembershipStart_arrival_check` (`"broughtByUserId"`, `"arrivalPath"` and `"arrivedAt"` are all null or all set), and a trigger that rejects UPDATE and DELETE on `MembershipPayment` and on `MembershipStart`, copied from the old append-only trigger (`grep -rl "AuditEvent" OLD/packages/db/prisma/migrations | head` finds the migration that defines it).
+In the migration SQL, by hand: CHECK `MembershipPayment_amounts_check` (`"grossCents" > 0 AND "taxCents" >= 0 AND "cardFeeCents" >= 0`), CHECK `MembershipStart_arrival_check` (`"broughtByUserId"`, `"arrivalPath"` and `"arrivedAt"` are all null or all set), and a trigger that rejects UPDATE and DELETE on `MembershipPayment` and on `MembershipStart`, copied from the old append-only trigger: the function `reject_append_only_change()` and its `CREATE TRIGGER … BEFORE UPDATE OR DELETE` lines, `OLD/packages/db/prisma/migrations/20261007000000_m1_hosting/migration.sql` lines 587 to 602.
 
 - [ ] **Step 1 (red):**
 
@@ -928,7 +961,7 @@ it("keeps one membership start per checkout", async () => { /* a second c1 rejec
   - From `OLD/packages/billing/src/premium.ts` with `premium.test.ts`, whole: `PREMIUM_PRODUCT_ID`, `PREMIUM_TAX_CODE`, `PREMIUM_LOOKUP_KEYS`, `interface PremiumPrices`, `ensurePremiumPrices(stripe)`, `isMissing(error)`, `createBillingCustomer(stripe, input)`, `premiumCheckoutExpiry(nowMs)`, `interface PremiumCheckoutInput`, `startPremiumCheckoutSession(stripe, input)`, `closeCheckoutSession(stripe, sessionId)`. Three changes, all because the price changed. The carried code refuses to charge when it finds a price under its lookup key at a different amount ("a changed price needs a new lookup key"), and a Stripe account that ran the old code already holds the old prices. So: `PREMIUM_LOOKUP_KEYS` is `{ monthly: "ruken_membership_monthly", annual: "ruken_membership_annual" }`; `PREMIUM_PRODUCT_ID` is `"ruken_membership"`; and a product made by the code is named "Ruken membership". The check itself (`isTheRulesPrice`) is kept whole. Add to `checkout.test.ts`: prices are looked up under the two new keys and made at 999 and 9900 cents; a price found under a new key at 799 cents throws.
 - Not carried: `premium.stack.test.ts` and stripe-mock.
 
-- [ ] **Step 1 (red):** carried tests and stubs; `stripe-client.test.ts` asserts a client built with `apiBase: "http://127.0.0.1:12111"` sends to that host and port over http (read the SDK's stored options the way `OLD/packages/billing/src/stripe.test.ts` does). Push. Expected: `verify` fails in the three files with "not built yet" (`plans.test.ts` fails on the missing values).
+- [ ] **Step 1 (red):** carried tests and stubs; `stripe-client.test.ts` asserts a client built with `apiBase: "http://127.0.0.1:12111"` sends to that host and port over http (read the options the SDK keeps; its type definitions in `node_modules/stripe` show how. The old `stripe.test.ts` has no such case, so this one is new). Push. Expected: `verify` fails in the three files with "not built yet" (`plans.test.ts` fails on the missing values).
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 
 ### Task 23: The membership rules and the arrival cookie (pure)
@@ -1011,7 +1044,7 @@ it("ignores a sealed value of the wrong shape", () => {
 - Test: `tests/features/membership/sync.pg.test.ts`, `payments.pg.test.ts`, `service.pg.test.ts`, `services.test.ts`
 
 **Interfaces:**
-- Consumes: Tasks 21 to 25; `RateLimiter`, `RATE_LIMITS.checkoutStartsPerUser`, `checkoutStartKey` (Task 4); `authServices()` for the Prisma client, the clock and the cookie policy.
+- Consumes: Tasks 21 to 25; `RateLimiter` (Task 4), with membership's own `CHECKOUT_STARTS_PER_USER` and `checkoutStartKey(userId)` (`api:checkout-start:<userId>`) declared in `service.ts`; `authServices()` for the Prisma client, the clock and the cookie policy.
 - Produces:
   - `type SyncOutcome`, `syncMembership(deps: { db; stripe }, subscriptionId, observedAtMs)`, `lockMembership(tx, userId)` from `OLD/packages/core/src/premium/sync.ts` with `sync.pg.test.ts`, whole but for `dunningStep`.
   - `recordPayment(db, paid: PaidPremiumInvoice): Promise<"recorded" | "duplicate">` in `payments.ts`: inserts one `MembershipPayment` row with `createMany({ skipDuplicates: true })`, and answers `"duplicate"` when the invoice was already there. It throws for `gross === 0n` with the carried message. This replaces `OLD/packages/core/src/premium/payment.ts`, whose ledger posting arrives in slice 5. `paidAfterEnd` is carried whole from `OLD/packages/core/src/premium/paid-after-end.ts` into this file.
@@ -1023,10 +1056,10 @@ it("ignores a sealed value of the wrong shape", () => {
     - `portalLink(userId): Promise<{ url: string }>`, returning to `${siteOrigin}/me`; `NOT_FOUND` when the person has no `BillingCustomer`.
     - `endNow(userId): Promise<"ended" | "none">`: for a row that has not ended, `stripe.cancelNow`, `stripe.voidPayableInvoices`, then `syncMembership`. Used by "Delete my account".
     - `completeCheckout`, as carried (the old `completePremiumCheckout`: mirror the subscription first, then mark the checkout completed), with one addition: marking the intent completed and inserting its `MembershipStart` row (`checkoutIntentId`, `userId`, `stripeSubscriptionId`, `plan`, `startedAt` from the event's time, and the intent's three arrival columns) happen in one transaction, and only when the intent was not completed before. A repeat adds nothing.
-    - the other webhook handlers `expireCheckout`, `syncSubscription`, `recordInvoicePaid(invoiceId): Promise<InvoicePaidOutcome>` (`recorded | duplicate | not_premium | not_this_stack | paid_after_end`), as carried, with `recordPayment` in place of the ledger and no receipt.
+    - the other webhook handlers: `expireCheckout(stripeCheckoutSessionId)`, carried from the old store service (`OLD/packages/core/src/store/service.ts` line 269: an open intent becomes `expired`), since Premium was the old store's neighbour there; `syncSubscription`; and `recordInvoicePaid(invoiceId): Promise<InvoicePaidOutcome>` (`recorded | duplicate | not_premium | not_this_stack | paid_after_end`), as carried, with no receipt and in the carried order: read the invoice; `not_this_stack` for an unknown member; sync; `duplicate` when a `MembershipPayment` row for the invoice already exists (checked before the next step, as the old ledger check was, so a repeat is never reported as paid after the end); `paid_after_end`; then `recordPayment`.
     - Slice 1 only records who brought a member. Nothing reads `MembershipStart` yet but tests; slice 5 does.
   - `class MembershipError` with `code: "INVALID_REQUEST" | "NOT_FOUND" | "ALREADY_MEMBER" | "RATE_LIMITED"` (the carried `PremiumServiceError`, renamed).
-  - `membershipServices(): { service; arrival; verify(payload: string, signature: string): StripeEvent; receive(event: StripeEvent): Promise<void> }` in `services.ts`, built once from `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE` (`"true"` or `"false"`; anything else throws), optional `STRIPE_API_BASE`, and `BETTER_AUTH_URL` as the site origin. `receive` is `storeStripeDelivery` then `processStripeDelivery` with `handleStripeEvent`; `report` writes one line with `console.error` and no personal detail. `STRIPE_API_BASE` together with `STRIPE_LIVE=true` throws at start, so a live site can never be pointed at a stand-in (the carried rule from `OLD/packages/core/src/billing/env.ts`).
+  - `membershipServices(): { service; arrival; verify(payload: string, signature: string): StripeEvent; receive(event: StripeEvent): Promise<void> }` in `services.ts`, built once from `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE` (`"true"` or `"false"`; anything else throws), optional `STRIPE_API_BASE`, and `BETTER_AUTH_URL` as the site origin. `receive` is `storeStripeDelivery` then `processStripeDelivery` with `handleStripeEvent`; `report` writes one line with `console.error` and no personal detail. `STRIPE_API_BASE` together with `STRIPE_LIVE=true` throws at start, so a live site can never be pointed at a stand-in (the carried rule from `OLD/packages/core/src/billing/env.ts`). Also carried from there, `stripeKeyMode` and `stripeModeProblem` without the `RUKEN_ENV` branches: the key's prefix (`sk_live_`, `rk_live_`, `sk_test_`, `rk_test_`) must agree with `STRIPE_LIVE`, and a key with neither prefix is refused, or it throws at start. Without it, a live key left with `STRIPE_LIVE=false` would mark every real payment's events "livemode_mismatch" while Stripe was told they were delivered. CI's `sk_test_fake` is a test key and passes.
   - `arrival` is `{ remember(cookies: Cookies, link: { makerUserId: string; path: string }): void; read(cookies: Cookies): Arrival | null }` (`Cookies` is SvelteKit's). `remember` seals the link with the clock's time and sets `rk_arrival` with `path: "/"`, `httpOnly`, `sameSite: "lax"`, `secure` from the cookie policy and `maxAge: ARRIVAL_MAX_AGE_SECONDS`. `read` is `openArrival` on that cookie. Both use `BETTER_AUTH_SECRET`; no new setting. `remember` is what slice 2's `/g/<game>` and slice 3's `/<handle>` call when a visitor lands on them; nothing in slice 1 calls it.
   - `membership.ts` re-exports `membershipServices`, `MembershipError`, `type MembershipView`, `type PremiumPlan`, `type Arrival`, `PREMIUM_PRICES_CENTS`, `dollars`, `longDate`.
 - Trim from the service: the launch switch, `subjectSecret` and the member key, `getPremium`'s creator numbers, cancel and resume, the card-only link, `getPremiumBilling`, the plan switch, chargebacks, the receipt.
@@ -1045,9 +1078,14 @@ it("invoice.paid arriving before the checkout completes still makes one membersh
   expect(await prisma.premiumMembership.count({ where: { userId } })).toBe(1);
   expect(await prisma.membershipPayment.count({ where: { stripeInvoiceId: "in_1" } })).toBe(1);
 });
+it("answers a repeat as a duplicate even after the subscription has ended", async () => {
+  await service.recordInvoicePaid("in_1");
+  await service.endNow(userId);
+  expect(await service.recordInvoicePaid("in_1")).toMatchObject({ outcome: "duplicate" });
+});
 it("stores what Stripe said was paid, in cents", async () => {
   expect(await prisma.membershipPayment.findUniqueOrThrow({ where: { stripeInvoiceId: "in_1" } }))
-    .toMatchObject({ grossCents: 1081n, taxCents: 82n, feeCents: 61n, plan: "monthly" });
+    .toMatchObject({ grossCents: 1081n, taxCents: 82n, cardFeeCents: 61n, plan: "monthly" });
 });
 it("endNow stops the subscription in Stripe and ends the membership, keeping the payments", async () => {   // Review Focus 6
   expect(await service.endNow(userId)).toBe("ended");
@@ -1091,7 +1129,7 @@ it("a checkout completed twice leaves one membership start", async () => {
 
   `completeTheOpenCheckout()` is a helper in the test file: it makes the person's open checkout paid at `FakePremiumStripe` and calls `service.completeCheckout` with that session. `maker` and `otherMaker` are two more `User` rows. Every carried `startCheckout` call gains `arrival: null`.
 
-  `services.test.ts`: `arrival.read` answers what `arrival.remember` set, with the clock's time, on a cookie jar made in the test, and the cookie is set with `httpOnly`, `sameSite: "lax"`, `path: "/"` and `maxAge: 34_560_000`; `arrival.read` answers null for a cookie typed by hand; `STRIPE_LIVE=maybe` throws; `STRIPE_API_BASE` with `STRIPE_LIVE=true` throws; a missing `STRIPE_WEBHOOK_SECRET` throws "Missing setting STRIPE_WEBHOOK_SECRET". Stubs. Push. Expected: `postgres` fails in the three `.pg.test.ts` files and `verify` in `services.test.ts`, with "not built yet".
+  `services.test.ts`: `arrival.read` answers what `arrival.remember` set, with the clock's time, on a cookie jar made in the test, and the cookie is set with `httpOnly`, `sameSite: "lax"`, `path: "/"` and `maxAge: 34_560_000`; `arrival.read` answers null for a cookie typed by hand; `STRIPE_LIVE=maybe` throws; `STRIPE_API_BASE` with `STRIPE_LIVE=true` throws; `sk_live_x` with `STRIPE_LIVE=false` throws, and so does `sk_test_x` with `STRIPE_LIVE=true` and a key with no known prefix; a missing `STRIPE_WEBHOOK_SECRET` throws "Missing setting STRIPE_WEBHOOK_SECRET". Stubs. Push. Expected: `postgres` fails in the three `.pg.test.ts` files and `verify` in `services.test.ts`, with "not built yet".
 - [ ] **Step 2 (green):** the code and the new names in `.env.example`. Push. Expected: all pass, including the layer test (`membership` imports `accounts` only through `accounts.ts`). Branch G is ready to merge.
 
 ---
@@ -1107,7 +1145,7 @@ it("a checkout completed twice leaves one membership start", async () => {
 
 **The stand-in.** `fake-stripe-server.ts` is a plain `node:http` server on `127.0.0.1:12111`, started by Playwright as a second `webServer` entry (`node tests/browser/support/fake-stripe-server.ts`, ready when `GET /ready` answers 200). It exists only under `tests/`. It keeps state in memory and answers, in Stripe's JSON shapes, exactly the calls `bindPremiumStripe` makes: retrieve and create the product; list and create prices; create a customer; create, retrieve and expire a Checkout session; retrieve and cancel a subscription; list invoices; retrieve an invoice with the expansions `readPaidPremiumInvoice` asks for; create a portal session. Take each shape from the fixtures in the carried unit tests (`checkout.test.ts`, `subscription.test.ts`), so the stand-in and the unit tests agree. It also serves two pages of its own:
 
-- `GET /pay/<session>`: a page with one button, "Pay". Pressing it makes the subscription `active` and a paid invoice (for monthly: $9.99 plus 82 cents tax, $10.81 in all, with a 61-cent fee; made-up numbers that only the stand-in uses), POSTs `checkout.session.completed`, `customer.subscription.created` and `invoice.paid` to `http://localhost:4173/webhooks/stripe`, each signed with `whsec_test_fake` through the Stripe SDK's `webhooks.generateTestHeaderString`, waits for the three answers, then redirects to the session's `success_url`.
+- `GET /pay/<session>`: a page with one button, "Pay". Pressing it makes the subscription `active` and a paid invoice (for monthly: $9.99 plus 82 cents tax, $10.81 in all, with a 61-cent fee; made-up numbers that only the stand-in uses), POSTs `checkout.session.completed`, `customer.subscription.created` and `invoice.paid` to `http://localhost:4173/webhooks/stripe`, each signed with `whsec_test_fake` through the Stripe SDK's `webhooks.generateTestHeaderString`, waits for the three answers, then redirects to the session's `success_url`. The same page opened as `/pay/<session>?events=later` redirects first and sends the three events three seconds afterwards, as Stripe sometimes does (Task 29 uses it).
 - `GET /portal/<session>`: a page with one button, "Cancel membership". Pressing it sets the subscription to cancel at the period end, POSTs a signed `customer.subscription.updated`, waits, then redirects to the `return_url`.
 
 `playwright.config.ts` passes the app `STRIPE_SECRET_KEY: "sk_test_fake"`, `STRIPE_WEBHOOK_SECRET: "whsec_test_fake"`, `STRIPE_LIVE: "false"`, `STRIPE_API_BASE: "http://127.0.0.1:12111"`.
@@ -1217,6 +1255,11 @@ test("a stranger signs up, pays, and lands where they were going as a member", a
   await expect(page).toHaveURL("/me");
 });
 test("someone else's checkout ref goes back to the card", async ({ page }) => { /* /join/done?checkout=<random uuid> → toHaveURL(/\/join/) */ });
+test("when Stripe's news is late, the page says so and goes on by itself", async ({ page }) => {
+  /* as the first test, but open the stand-in's page with ?events=later before pressing "Pay" */
+  await expect(page.getByRole("heading", { name: "Finishing up…" })).toBeVisible();
+  await expect(page).toHaveURL("/me");                                   // waits on the page, not a sleep
+});
 test("a member's sign-up records the maker's link they came through", async ({ page, browser }) => {   // design 8
   const maker = await signUpInItsOwnContext(browser);                    // a second account, standing in for a maker
   const makerUserId = await userIdOf(maker.email);
@@ -1232,14 +1275,14 @@ test("a member who came through no maker's link has no maker recorded", async ({
 
   The two arrival tests pass through sign-up and the stand-in Stripe with the real cookie, and then read the row, because no screen shows who brought a member. `tests/browser/support/database.ts` gives `userIdOf(email): Promise<string>` and `membershipStartsOf(email): Promise<MembershipStart[]>`, each on one Prisma client made from `TEST_DATABASE_URL` (the database the app under test uses) and closed when the worker ends; and `arrivalCookie(link): { name; value; url }`, which seals the link with `sealArrival` from `src/features/membership/arrival.ts`, the secret `playwright.config.ts` gives the app and the time now, for `http://localhost:4173`. It is test code, the only way an arrival exists before slices 2 and 3 bring the links. `payAsNewMember(page): Promise<{ email: string; checkoutSessionId: string }>` (it reads the session id from the stand-in's `/pay/<session>` address) and `signUpInItsOwnContext(browser)` go in `tests/browser/support/account.ts`.
 
-  Push. Expected: `browser` fails in `pay.test.ts`: after "Pay" the browser is at `/join/done…`, a 404, not `/me`. The two arrival tests fail the same way, inside `payAsNewMember`; say in the report line that their own assertion is first reached in the green push.
+  The thirty-second line is not reached by a journey (it would hold CI for thirty seconds a run); its words are checked by reading the page in review, and the report line says so. Push. Expected: `browser` fails in `pay.test.ts`: after "Pay" the browser is at `/join/done…`, a 404, not `/me`, and the late-news test finds no "Finishing up…". The two arrival tests fail the same way, inside `payAsNewMember`; say in the report line that their own assertion is first reached in the green push.
 - [ ] **Step 2 (green):** `load` uses `signedInOnly`, then `service.checkoutState`. Push. Expected: all pass.
 
 ### Task 30: Membership on `/me`, cancelling, and deleting a member's account
 
 **Files:**
-- Modify: `src/routes/me/+page.server.ts`, `src/routes/me/+page.svelte`, `src/routes/me/delete/+page.server.ts`, `src/routes/me/delete/+page.svelte`
-- Test: `tests/browser/membership.test.ts`
+- Modify: `src/routes/me/+page.server.ts`, `src/routes/me/+page.svelte`, `src/routes/me/delete/+page.server.ts`, `src/routes/me/delete/+page.svelte`, `src/features/membership/format.ts`, `src/features/membership/membership.ts`
+- Test: `tests/browser/membership.test.ts`, `tests/features/membership/format.test.ts` (add cases)
 
 **The words on `/me`**, under the email, by `MembershipView.state`:
 
@@ -1248,9 +1291,10 @@ test("a member who came through no maker's link has no maker recorded", async ({
 | `none`, `ended` | You're not a member. | Join Ruken (link to `/join?next=/me`) |
 | `active` | You're a member. $9.99 a month. Renews on Monday, December 14. (yearly: "$99 a year") | Manage or cancel |
 | `canceling` | Your membership ends on Monday, December 14. You can play until then. | Manage |
-| `past_due` | We couldn't charge your card. Update it by Monday, December 14 to keep playing. | Update card |
+| `past_due`, still a member | We couldn't charge your card. Update it by Monday, December 14 to keep playing. | Update card |
+| `past_due`, no longer a member (`member` false: the seven days are over) | We couldn't charge your card, so your membership is paused. Update your card to play again. | Update card |
 
-Under each of the last three buttons: "Opens Stripe, where you can change your card or cancel." The three buttons post one action, `portal`, which redirects to `service.portalLink(userId)`. The dates come from `longDate` on `renewsAt`, `endsAt` and `pausesAt`; the price from `dollars`.
+Under each button but "Join Ruken": "Opens Stripe, where you can change your card or cancel." Those buttons post one action, `portal`, which redirects to `service.portalLink(userId)`. The dates come from `longDate` on `renewsAt`, `endsAt` and `pausesAt`; the price from `dollars`. The table is one pure function, `membershipLine(view: MembershipView): { line: string; button: "join" | "manageOrCancel" | "manage" | "updateCard" }` in `format.ts`, re-exported by `membership.ts`, so every row is tested without a browser, including the two `past_due` rows no journey can reach (the stand-in has no failing card).
 
 **On `/me/delete`**, a member also sees: "Your membership ends now. There is no refund for the time left, and signing in again does not bring it back." The action calls `service.endNow(userId)` before `requestDeletion`; if `endNow` throws, nothing is deleted and the page says "Something went wrong on our side. Try again in a moment." `MembershipStart` rows stay, like payment rows, whether the deleted account is the member's or the maker's: they hold account ids and a link's path, and the daily job leaves them alone.
 
@@ -1286,14 +1330,14 @@ test("a member who deletes their account is told the membership ends now", async
 test("a member who opens the card is told they are one", async ({ page }) => { /* "You're already a member." and link "Keep playing" */ });
 ```
 
-  `payAsNewMember` is Task 29's. `subscriptionStatusAtStandIn(member): Promise<string>` goes in `tests/browser/support/account.ts`; the stand-in gains `GET /state/<checkout session id>` answering the subscription's status. Push. Expected: `browser` fails in `membership.test.ts`: no "You're not a member." on `/me`.
-- [ ] **Step 2 (green):** the page changes. Push. Expected: all pass. The branch merges.
+  `payAsNewMember` is Task 29's. `subscriptionStatusAtStandIn(member): Promise<string>` goes in `tests/browser/support/account.ts`; the stand-in gains `GET /state/<checkout session id>` answering the subscription's status. `format.test.ts` gains one case per row of the table above, with its exact line. Stub `membershipLine`. Push. Expected: `browser` fails in `membership.test.ts`: no "You're not a member." on `/me`; `verify` fails in `format.test.ts` with "not built yet".
+- [ ] **Step 2 (green):** the page changes. Push. Expected: all pass. The branch is marked ready to merge once S2 is done ("Where execution stops").
 
 ### Task 31: Paying and cancelling on the real site
 
 No code unless a check fails. Nothing here is typed into the repository.
 
-- [ ] **Step 1: STOP S2.** Report to the coordinator that row S2's tasks are needed, with the event list from Task 25 and the setting names. Wait for the Owner's "done".
+- [ ] **Step 1: S2 done.** S2 was asked for at Task 21 and is done before branch H merged. If it is not, this step waits for the Owner's "done".
 - [ ] **Step 2: Stripe test mode, on the real site.** A person signs up, opens `/join`, pays with Stripe's test card, lands on `/me` as a member, presses "Manage or cancel", cancels in Stripe's portal, and sees "Your membership ends on …". In Stripe's dashboard the Owner confirms: the product "Ruken membership" and its two prices exist at $9.99 and $99, tax was worked out on the invoice, and the webhook deliveries answered 200. Record in progress.md what was checked, by whom and when. If a step fails, report what the page and Stripe's webhook log say; a fix is a new small branch with its own failing test first.
 - [ ] **Step 3: STOP S3.** Report that slice 1 is done in test mode and that live mode waits for the Owner: live keys, the live webhook endpoint, `STRIPE_LIVE=true`, real terms and privacy text, and the Owner's own payment with a real card (design 8). Live mode is not a condition for starting slice 2.
 - [ ] **Step 4:** set slice 1's row in progress.md from what is true: "done" only when every branch is merged, main is green, and Step 2 passed.
@@ -1311,3 +1355,6 @@ No code unless a check fails. Nothing here is typed into the repository.
 - Slice 4 adds what the admin portal needs to `accounts`: admin sessions, the authenticator code, the first-owner command, suspension.
 - Slice 5 posts `MembershipPayment` rows and the kept dispute and refund events into the ledger. `LEDGER_SUBJECT_KEY` and the member key arrive then.
 - Left out on purpose and worth the Owner's eye before launch: Turnstile and the breached-password check on sign-up; a daily comparison of Stripe's paid invoices against `MembershipPayment` (the old "reconcile"); cleaning old `RateLimit`, `Verification` and `SignInGuard` rows (the old hourly sweep).
+- Also worth the Owner's eye, carried as the old code had them: sign-up says "There's already an account with that email", so the sign-up form tells a stranger whether an address has an account (sign-in and the reset do not); and the daily job removes a deleted person's details from Ruken's database only, while the Stripe customer it made (email and billing address) stays in Stripe.
+- Slice 5: `MembershipPayment.cardFeeCents` is only the card fee. Design 6 takes "every fee Stripe charges on that payment (card, Billing, Tax)" off the top; Stripe charges the Billing and Tax fees outside the payment, so slice 5's plan says where those facts are read from.
+- Netlify answers a request within its function time limit (10 seconds unless the plan raises it). A webhook or a checkout start does a few Stripe calls in the request; if Netlify's log ever shows one timing out, Stripe sends the webhook again and the person presses the button again, and nothing is recorded twice.

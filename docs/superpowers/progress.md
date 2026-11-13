@@ -5,12 +5,12 @@ The one record of where the work stands. Every session updates it as it works; t
 Design: `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md`, approved by the Owner on 2026-11-13.
 Launch: Monday 30 November 2026, 11:00 CT.
 
-## Overall: 5%
+## Overall: 6%
 
 | # | Slice | State | Progress |
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
-| 1 | Accounts and membership | plan on a branch (`plan/slice-1-accounts`, pull request #10), updated to the design as revised on 2026-11-13; the plan audit is next | 5% |
+| 1 | Accounts and membership | plan merged (pull request #10); plan audit on a branch (`audit/slice-1-plan`), with the plan's fixes; execution is next once it merges | 10% |
 | 2 | Games and play | not started | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
@@ -24,6 +24,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | merge (`session_01HNdX7LyTaPth3m82ZhbsXY`) | merges | — | running |
 | plan, slice 1 (`session_01HNdX7HZoCEVyiEQJdDLJrW`) | 2 Plan | `plan/slice-1-accounts` | archived |
 | plan, slice 1, updated to the revised design (`session_01HNdX7JH5Pn3ForHRsNX8Po`) | 2 Plan | `plan/slice-1-accounts` | running |
+| plan audit, slice 1 | 3 Plan audit | `audit/slice-1-plan` | running |
 
 ## Slice 0: Start
 
@@ -44,12 +45,12 @@ Plan: `docs/superpowers/plans/2026-11-13-slice-1-accounts-membership.md`. It end
 Stages:
 
 - [x] Plan written, and updated to the design as revised on 2026-11-13 (on `plan/slice-1-accounts`, pull request #10; not done until merged and green).
-- [ ] Plan audit.
+- [ ] Plan audit: written, with the plan fixed (`docs/superpowers/audits/2026-11-13-slice-1-plan-audit.md`: 4 blocks execution, 19 should fix, 16 notes; all fixed in the plan but 6 notes that stay, each with its reason). On a branch (`audit/slice-1-plan`); not done until merged and green. No test ran in the audit session; the audit is a reading of the files.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
 
-Resumed: the Owner's concept review is done; the plan audit is next.
+Resumed: the Owner's concept review is done; the plan audit is on a branch.
 
 The Owner's decisions for this slice, 2026-11-13:
 
@@ -83,8 +84,8 @@ Branches and tasks. Each task is ticked with its two CI runs (the failing test, 
 
 The Owner's own tasks, and where execution stops for each:
 
-- [ ] S1, before Task 16 step 3: the Neon database; the Netlify site linked to this repository; a mail service with SMTP and a from-address; the site's address; the settings `DATABASE_URL`, `DIRECT_DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `SMTP_URL`, `MAIL_FROM`, `JOBS_SECRET` in Netlify.
-- [ ] S2, before Task 31 step 2: Stripe test mode: Stripe Tax on, the customer portal on with cancelling allowed, the webhook endpoint; `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE=false` in Netlify.
+- [ ] S1, asked for at Task 16 step 3 (the plan's numbered steps): the Neon database; the Netlify site linked to this repository, with deploy previews and branch deploys off (the build runs the migrations on the real database); the site's address as the primary domain; a mail service with SMTP on a verified domain; the settings `DATABASE_URL`, `DIRECT_DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `SMTP_URL`, `MAIL_FROM`, `JOBS_SECRET` in Netlify, all scopes. Branch F goes on meanwhile.
+- [ ] S2, asked for at Task 21, needed before branch H merges: Stripe test mode: Stripe Tax on with one registration, the customer portal with cancelling at the period end, the webhook endpoint at the API version `stripe` 22.6.2 pins; `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_LIVE=false` in Netlify.
 - [ ] S3, after Task 31 step 2: Stripe live mode, real terms and privacy text, and the Owner's own payment with a real card. Not a condition for starting slice 2.
 
 Found while planning:
