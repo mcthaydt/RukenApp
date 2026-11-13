@@ -17,11 +17,10 @@ async function fillSignUp(
 }
 
 test("a stranger makes an account and lands signed in", async ({ page }) => {
-  await page.goto("/sign-up");
+  await page.goto("/sign-up?next=/me");
   await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
   await fillSignUp(page, { email: freshEmail(), password: JOURNEY_PASSWORD, age: 30 });
-  // Task 15 changes this to start from /sign-up?next=/me and land on /me.
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/me");
 });
 
 test("a short password says what to fix and keeps the email", async ({ page }) => {
