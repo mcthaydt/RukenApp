@@ -47,5 +47,5 @@ export interface SessionInfo {
 }
 
 export function sessionInfo(auth: Auth, headers: Headers): Promise<SessionInfo | null> {
-  throw new Error(`not built yet (${typeof auth} ${headers.size})`);
+  throw new Error(`not built yet (${typeof auth} ${typeof headers})`);
 }
