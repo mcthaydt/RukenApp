@@ -20,6 +20,6 @@ export class TestClock implements Clock {
   }
 
   advance(by: Temporal.DurationLike | number): void {
-    throw new Error(`not built yet (${String(by)})`);
+    throw new Error(`not built yet (${typeof by})`);
   }
 }
