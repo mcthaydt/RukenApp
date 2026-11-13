@@ -96,7 +96,7 @@ describe("the plugin", () => {
   it("uses the error code SIGN_IN_PAUSED, with words that point to the reset", () => {
     expect(SIGN_IN_PAUSED).toBe("SIGN_IN_PAUSED");
     expect(SIGN_IN_PAUSED_MESSAGE).toBe(
-      "Password sign-in is paused for this email for a while. Reset your password, or try again in an hour.",
+      "Too many tries. Sign-in is paused for an hour for this email. You can reset your password now.",
     );
   });
 
