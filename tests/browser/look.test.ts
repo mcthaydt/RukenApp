@@ -13,13 +13,16 @@ const FONT_FILES = [
   "/fonts/young-serif-latin-400-normal.woff2",
 ];
 
-test("the page is felt, with chalk words in Young Serif", async ({ page, isMobile }) => {
+test("the page is felt, with chalk words in Young Serif", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("body")).toHaveCSS("background-color", rgb(token("--felt")));
   const heading = page.getByRole("heading", { name: "Ruken" });
   await expect(heading).toHaveCSS("color", rgb(token("--chalk")));
   await expect(heading).toHaveCSS("font-family", /^"Young Serif"/);
-  await expect(heading).toHaveCSS("font-size", isMobile ? "36px" : "64px");
+  // The heading grows at the computer's width (design 5.8: 48rem), whatever the device: a tablet, or a phone held
+  // sideways, is as wide as a small computer and gets the computer's size.
+  const wide = (page.viewportSize()?.width ?? 0) >= 768;
+  await expect(heading).toHaveCSS("font-size", wide ? "64px" : "36px");
   const line = page.getByText("Games, one swipe at a time. Coming soon.");
   await expect(line).toHaveCSS("font-family", /^"Young Serif"/);
   await expect(line).toHaveCSS("font-size", "24px");
@@ -158,6 +161,8 @@ test("a link that looks like a button is as easy to hit, and gives when pressed"
 
 // Holds the pointer down on the button, then lets go away from it, so the form is never sent.
 async function whilePressed(page: Page, button: Locator, check: () => Promise<void>): Promise<void> {
+  // The mouse presses a spot in the window, so the button must be in it: on a phone held sideways the window is 360px tall.
+  await button.scrollIntoViewIfNeeded();
   const box = await button.boundingBox();
   if (box === null) throw new Error("the button has no box to press");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
