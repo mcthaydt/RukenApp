@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dollars } from "../../../src/features/membership/format.ts";
+import { dollars, longDate } from "../../../src/features/membership/format.ts";
 
 describe("dollars", () => {
   it("writes the two prices the way a person says them", () => {
@@ -15,5 +15,11 @@ describe("dollars", () => {
 
   it("refuses an amount below zero", () => {
     expect(() => dollars(-1n)).toThrow(RangeError);
+  });
+});
+
+describe("longDate", () => {
+  it("is the shared Chicago-day formatter, so /me and /goodbye write a date the same way", () => {
+    expect(longDate(new Date("2026-12-15T03:00:00Z"))).toBe("Monday, December 14");
   });
 });

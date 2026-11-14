@@ -5,3 +5,6 @@ export function dollars(cents: bigint): string {
   const rest = cents % 100n;
   return rest === 0n ? `$${whole}` : `$${whole}.${rest.toString().padStart(2, "0")}`;
 }
+
+/** A Chicago day in words ("Friday, November 27"); the one formatter lives in `src/lib/long-date.ts`, and `/me` reads it from here. */
+export { longDate } from "../../lib/long-date.ts";
