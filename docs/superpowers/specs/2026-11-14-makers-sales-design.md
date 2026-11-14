@@ -132,6 +132,7 @@ Owner: "1. B". It looks like the way phones already sell things inside apps.
 - It is Ruken's own paper card (design 5.8), sliding up from the bottom over the dimmed game or page. It is drawn by Ruken's page, never inside the game's frame, so the game cannot see it, press it or draw over it.
 - On the website and in the computer apps downloaded from Ruken's site, one tap pays with the card the member already pays their membership with. The amount with tax is shown before the tap (Stripe Tax works it out). Call: when that card cannot be charged without a check from the bank, or the member has no saved card, the button goes to Stripe's own payment page and comes back to where they were. No new dependency is added for this.
 - Owner, "4. A": in the iPhone and Android apps, and in any store's app that requires its own purchase, Buy opens that store's own purchase sheet instead (Apple's, Google's). The card around it is still Ruken's. The price shown is that store's price (5.5).
+- Which store handles which app (Apple for iPhone, iPad and the Mac App Store; Google Play for Android; the Microsoft Store's own purchases; Stripe everywhere else) is set by the apps' spec (`2026-11-14-apps-and-player-features-design.md`, pull request #107, "Buying in each app"). The two specs must agree.
 - Wherever it was bought, it is one purchase in Ruken's ledger, and it is owned on every device the member signs in on.
 - Owner (legal answers, 2026-11-14): EU and UK buyers see one tick box before Buy, asking for the extra now and accepting that the 14 days to change their mind end once they have it. Their law requires it. A confirming email follows.
 - Owner (legal answers, 2026-11-14): a member aged 13 to 17 ticks "My parent or guardian says yes" before Buy, as for the membership.
@@ -180,6 +181,7 @@ Owner: "They should be able to select members and decide how money in will be sp
 - Call: a person must say yes before they are in a split. They get an email with the game, their share and one button. A new or changed split starts once everyone in it has said yes; until then the old one stays. A person who says no is told to the maker, and the maker changes the list.
 - Owner, "3. A": only the game's maker changes the split. A change counts from the moment it starts, never backwards. Everyone in the old and new split gets one email saying what changed.
 - Call: at most 10 people in a split.
+- Someone a person has blocked cannot add them to a split (the apps' spec, #107, adds blocking).
 - Call: each person connects their own bank through Stripe Connect on a screen of their own, as a maker does (design 5.4). Until they do, their share waits for them.
 - Call: a person in a split who has no game of their own sees a small money page in the maker's area: what they are owed, from which games, and their statements.
 - Grandma: a list of names with a share beside each, and one line under it: "Shares must add up to 100%."
