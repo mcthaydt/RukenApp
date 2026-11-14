@@ -116,6 +116,21 @@ Recorded by the coordinator (`session_01HNdX7JopLaJTd1JphMYiu7`), each quoted as
 - FloorFifty's environments check: `production` and `staging` have no protection rules; the collaborators are `mcthaydt` and `SNEKPRTY`, both the Owner's. So any FloorFifty workflow can use the Fly token, which is accepted while only the Owner can push.
 - Boards: "keep the numbers in order please".
 
+## Makers' sales: extras and splits
+
+Design: `docs/superpowers/specs/2026-11-14-makers-sales-design.md`, approved by the Owner on 2026-11-14 ("Approved", with the apps' spec #107), on pull request #106. It is not one of the six slices, so the overall percentage above does not count it. Progress: 10% (the spec approved; nothing planned or built).
+
+The Owner's answers in the spec conversation, 2026-11-14, each quoted as given: "B, what's the best UX/UI for that?" (buy from Ruken's Extras button and when the game asks); "By the back arrow? we also need a store inside of ruken itself, like on the game page"; "2. A" (a season pass has a start and end date, sold only in its season); "3. A" (only the game's maker changes a split, from that moment on, with an email to everyone in it); "a) Yes, check it like a game, including playing to see it unlocks"; "5. A" (a game taken down refunds its extras bought in the 14 days before, from the game's earnings). From the Owner board: "2. A" (card fees off the top, then 70/30; lowest price $0.99).
+
+Stages:
+
+- [x] Spec: approved (Owner, 2026-11-14: "Approved"). No test ran; no code was written.
+- [ ] Plan.
+- [ ] Plan audit.
+- [ ] Execution.
+- [ ] Implementation audit.
+- [ ] Fixes.
+
 ## Defect: the Worker ran out of memory (2026-11-14)
 
 Fifth execution session of slice 2 (coordinator `session_01HNdX7JKYUteXqFnZHx6dez`), branch `fix/worker-memory` (pull request #68). "Received signal #6: Aborted" in the browser job, seen four times (runs 43578583711, 43579220096 twice, 43580392279), was workerd running out of memory. The cause was production code: `src/lib/server/db.ts` made a new Prisma client for every request, and each client that starts leaves memory behind in the Worker that `$disconnect()` does not give back. Cloudflare's limit is 128 MB per Worker, so the live site would have met this far sooner than a test run did.
