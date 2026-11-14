@@ -17,6 +17,6 @@
   // Once a day, at 09:17 UTC, early morning in Chicago. The handler is in cloudflare/worker.js.
   "triggers": { "crons": ["17 9 * * *"] },
   // Cloudflare's connection pool in front of Neon. The id names a setting in the Owner's account; it is not a
-  // credential. Until S1 gives the real one this is thirty-two zeros, which only `wrangler dev` accepts.
-  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }],
+  // credential and is useless without the Owner's Cloudflare login (Owner, 2026-11-13: committed here).
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "eb64483c638e4f5eab2ce9dd1b7ea081" }],
 }
