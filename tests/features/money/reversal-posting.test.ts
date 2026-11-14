@@ -200,7 +200,8 @@ describe("postChargebackOpened", () => {
                 .reduce((total, part) => total + part.amount, 0n);
               for (const amount of [gross, (gross + 1n) / 2n]) {
                 for (const disputeFee of [0n, 1500n]) {
-                  for (const feeReturned of [0n, fees]) {
+                  // Stripe never returns more of a fee than the part of the payment being undone carried.
+                  for (const feeReturned of amount === gross ? [0n, fees] : [0n]) {
                     const opened = postChargebackOpened({
                       paymentLines,
                       paymentGross: gross,
@@ -349,7 +350,7 @@ describe("postRefund", () => {
   });
 
   it("adds up to zero", () => {
-    for (const feeReturned of [0n, 30n, 61n]) {
+    for (const feeReturned of [0n, 15n, 30n]) {
       expect(
         sum(
           postRefund({
