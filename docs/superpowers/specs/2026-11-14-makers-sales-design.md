@@ -92,6 +92,7 @@ Today `/g/<game>` opens the feed at that game's clip, and a game has no page of 
 │   Floor Fifty           │
 │   Climb. Fall. Climb.   │
 │   by @snekprty          │
+│   Mostly liked (84%)    │
 │ [      ▶ Play         ] │
 │                         │
 │ Extras                  │
@@ -108,6 +109,7 @@ Today `/g/<game>` opens the feed at that game's clip, and a game has no page of 
 
 - The clip, name, one line, maker and Play, then the game's extras on sale: each with its picture, name, one line and price, or "Yours" when the person owns it. A season pass shows when its season ends.
 - A game with no extras shows no Extras heading.
+- The page also holds the game's reviews (the apps' spec, #107, "Reviews"): the summary ("Mostly liked (84% of 212)") under the game's name, and the reviews below the extras.
 - A member's Buy opens the buy card (5.2). Anyone else sees the same list, and the button reads "Join to buy", which opens the paywall card (design 5.2). After joining they come back to this page, not straight into the purchase.
 - Grandma: one blue Play at the top; each extra has one button that says what it costs.
 
@@ -154,7 +156,7 @@ The design's rule stays: a game never sees a player's sign-in, card or account. 
 - **One message.** A game asks for the buy card with one message to the page it is in, naming the extra's id. Ruken answers with messages the game can listen for: the card opened, the card closed, and the new list of what is owned. Ruken checks that the message came from the game's own frame, and ignores anything else.
 - **Protected files.** A maker may keep an extra's files in a folder named for the extra in their repository. Those files load only under a play pass whose player owns that extra; anyone else gets "not found". Files outside those folders load as today.
 - Call: buying an extra must not change the game's play address, so the browser keeps the files it already has (a game can be 90 MB, `src/features/play/pass.ts`). How the gate learns what a pass's player owns without a new address is the plan's to choose.
-- Call: the file and the message are written up on one page for makers, linked from the extra form. It is documentation, not a kit to install.
+- The message and the file are part of the Ruken hooks, the one small script a maker adds to their game for achievements, stats and analytics (the apps' spec, #107, "Ruken hooks"). A maker who would rather not add the script can use the message and the file directly; both are written up on one page for makers, linked from the extra form. The hooks' rule that a game never receives anything back about the player holds, with one exception, agreed in both specs: which of that game's own extras this player owns, and whether the buy card is open.
 - Owner's to pass along: FloorFifty needs these two small changes to sell anything. That work is in FloorFifty's own repository, on the other account.
 
 ### 5.5 Making an extra
@@ -169,6 +171,8 @@ In the maker's area, on each game. The look comes from the maker screens redesig
 - **A change** to any of it goes back to review; the accepted version stays on sale until the change is accepted. Call: one rule for every change, so nothing goes on sale unchecked.
 - **Take off sale** at once, with no staff step, as for games. Buyers keep it. Putting it back goes through review.
 - Call: at most 20 extras on sale per game.
+- An extra has no age rating of its own: it carries its game's rating (All Ages, 13+, 16+ or 18+, the apps' spec, #107). Staff check it fits that rating. Someone too young for a game never sees its extras, anywhere.
+- When an extra goes on sale, people who follow or wishlisted the game and turned on "new DLC" notifications are told once (the apps' spec, #107, "Notifications"). Nobody else is.
 - Grandma: one form, one button; each field says what goes in it; the price is a list to pick from, never a box to type in.
 
 ### 5.6 Splits
@@ -176,7 +180,7 @@ In the maker's area, on each game. The look comes from the maker screens redesig
 Owner: "They should be able to select members and decide how money in will be split"; "32. A"; "3. A".
 
 - A game's split is a list of people and their shares, in whole percents adding up to 100. A new game's split is its maker at 100%.
-- The maker adds someone by their Ruken handle or email. Call: anyone with a Ruken account, member or not.
+- The maker adds someone by their Ruken handle (every account has one, the apps' spec, #107, "Player pages"). Call: by handle only, not email, so the form never tells a maker whether an email has an account. Anyone with a Ruken account, member or not.
 - Call: only adults in the United States can be in a split, because Stripe Connect cannot pay anyone else (slice 5: "US only for now", Owner, 2026-11-14). Ruken knows each person's age from sign-up; someone under 18 cannot be added.
 - Call: a person must say yes before they are in a split. They get an email with the game, their share and one button. A new or changed split starts once everyone in it has said yes; until then the old one stays. A person who says no is told to the maker, and the maker changes the list.
 - Owner, "3. A": only the game's maker changes the split. A change counts from the moment it starts, never backwards. Everyone in the old and new split gets one email saying what changed.
