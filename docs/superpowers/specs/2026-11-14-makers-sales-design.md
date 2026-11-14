@@ -1,6 +1,6 @@
 # Makers' sales: extras and splits
 
-Date: 2026-11-14. Status: written for the Owner's approval; not approved yet. The buy card's payment (5.2) and the launch date (9) are held until the check of Apple's and Google's rules is done (section 10). Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`) and changes it only where this file says so.
+Date: 2026-11-14. Status: written for the Owner's approval; not approved yet. Revised the same day with the Owner's answers on the app stores (5.2, 5.5, 5.7, 5.8). The launch date now follows the apps' own spec (9). Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`) and changes it only where this file says so.
 
 Lines marked **Owner** are the Owner's words or decisions. Lines marked **Call** are the spec writer's choices, shown to the Owner, who can overrule any of them. Nothing marked Call was agreed unless it says so.
 
@@ -30,6 +30,14 @@ Quoted as given, 2026-11-14:
 - "3. A": only the game's maker can change its split. A change counts from that moment on, never backwards. Everyone in the split gets an email saying what changed.
 - "a) Yes, check it like a game, including playing to see it unlocks": staff check every new or changed extra before it is sold.
 - "5. A": if a maker takes a game off Ruken, everyone who bought one of its extras in the 14 days before gets their money back, paid out of the game's earnings. Older purchases stay sold.
+
+The Owner's answers on the app stores, 2026-11-14, quoted as given (the questions and the stores' rules are in the private repository):
+
+- "Ruken app is for PC, Linux, Mac, Android, and iOS; people using the browser version will be as uncommon as people using TikTok or Instagram on browser; like they do it, but they DEF. prefer to use the apps".
+- "1. A, but also upcharge on place that take a cut by 10%": a store's fee comes off the top before the 70/30, like card fees; and where a store takes a cut, the price there is 10% higher.
+- "2. Download on our site, but also Steam, Microsoft Store, Apple Store for Mac, and whatever Linux has".
+- "3. B": launch waits until the apps are ready.
+- "4. A": in the iPhone and Android apps an extra is bought through Apple's or Google's own purchase, and on the website through Ruken's; whatever was bought, wherever, is owned on every device.
 
 This reopens the design's "teams and contributor splits" (section 2, "Not in the first version"), 5.3's "No teams" and section 6's "Not carried: ... the store, ... contributor splits". Those lines are replaced by this file. "One maker is one account with one page" still holds: a split shares money, not the page or the game's settings.
 
@@ -122,7 +130,9 @@ Owner: "1. B". It looks like the way phones already sell things inside apps.
 ```
 
 - It is Ruken's own paper card (design 5.8), sliding up from the bottom over the dimmed game or page. It is drawn by Ruken's page, never inside the game's frame, so the game cannot see it, press it or draw over it.
-- One tap pays with the card the member already pays their membership with. The amount with tax is shown before the tap (Stripe Tax works it out). Call: when that card cannot be charged without a check from the bank, or the member has no saved card, the button goes to Stripe's own payment page and comes back to where they were. No new dependency is added for this.
+- On the website and in the computer apps downloaded from Ruken's site, one tap pays with the card the member already pays their membership with. The amount with tax is shown before the tap (Stripe Tax works it out). Call: when that card cannot be charged without a check from the bank, or the member has no saved card, the button goes to Stripe's own payment page and comes back to where they were. No new dependency is added for this.
+- Owner, "4. A": in the iPhone and Android apps, and in any store's app that requires its own purchase, Buy opens that store's own purchase sheet instead (Apple's, Google's). The card around it is still Ruken's. The price shown is that store's price (5.5).
+- Wherever it was bought, it is one purchase in Ruken's ledger, and it is owned on every device the member signs in on.
 - Owner (legal answers, 2026-11-14): EU and UK buyers see one tick box before Buy, asking for the extra now and accepting that the 14 days to change their mind end once they have it. Their law requires it. A confirming email follows.
 - Owner (legal answers, 2026-11-14): a member aged 13 to 17 ticks "My parent or guardian says yes" before Buy, as for the membership.
 - Call: "No refunds." is shown before paying; that is what makes it lawful in the US. Exceptions (a mistaken charge, the law, 5.8) are handled by staff.
@@ -152,6 +162,7 @@ In the maker's area, on each game. The look comes from the maker screens redesig
 
 - **Add an extra**: kind (DLC or season pass), name, one line, a picture, a price, and for a season pass its first and last day. The id the game uses is made from the name and shown to the maker to copy into their game.
 - **The price** is picked from a fixed list: $0.99, $1.99, $2.99, $3.99, $4.99, $7.99, $9.99, $14.99, $19.99, $29.99, $49.99. Call: a list, because nobody types an amount (AGENTS.md); $0.99 is the floor the Owner chose (board "2. A").
+- **Store prices.** Owner: "upcharge on place that take a cut by 10%". Where a store takes a cut (the App Store, Google Play, the Microsoft Store, Steam), the price is the nearest price that store offers at or above the website price plus 10%. Code works it out from each store's price list, so the maker picks one price and never types another. Call: for example, $0.99 on the website is $1.09 in the iPhone app.
 - **Season dates** are picked on a calendar, in America/Chicago days. A season starts no earlier than staff accepting it and lasts at least a day. Call: at most 365 days.
 - **Send for review**. Staff check it like a game (Owner, "a) Yes, check it like a game"): see the name, picture and price, and play the game to see it unlocks. States in plain words, as for games: "Waiting for review", "On sale", "Sent back: <reason>", "Season over", "Taken off sale".
 - **A change** to any of it goes back to review; the accepted version stays on sale until the change is accepted. Call: one rule for every change, so nothing goes on sale unchecked.
@@ -177,13 +188,14 @@ Owner: "They should be able to select members and decide how money in will be sp
 
 Everything in design section 6 stays. What is added:
 
-- **A sale** (Owner, board "2. A"): from the price paid, tax and every Stripe fee on that payment come off the top. Of what is left, 30% is Ruken's and 70% is the game's. Worked out in whole cents by a pure, tested function; rounding goes the same way every time, and the parts always add up to the whole.
+- **A sale** (Owner, board "2. A", and "1. A" on the stores): from the price paid, tax and every fee on that payment come off the top: Stripe's on the website, the store's on a store's purchase. The fees are read from Stripe's, Apple's and Google's own reports and notifications, never typed. Of what is left, 30% is Ruken's and 70% is the game's. Worked out in whole cents by a pure, tested function; rounding goes the same way every time, and the parts always add up to the whole.
 - **The game's part is split** by the split in force at the moment of the sale.
 - **The game's pool share** for a month (design 6) is split by the splits in force over that month, each in proportion to the game's counted play minutes while it was in force. Call: that is what "never backwards" means for the pool, which is worked out monthly. A pure, tested function.
 - Call: the bring-a-member bonus (design 6) stays with the maker who brought the member, because it is earned by that maker's page and links, not by one game.
 - **Statements** become one per person: each game's lines (pool share, sales, refunds, disputes, costs), then their total. Final on the 10th, paid on the 15th, $25 minimum, smaller balances carried, as now. Each person's own payout costs come out of their own payout (design 6).
 - Call: a dispute's fee ($15 from Stripe), and a sale's fees that Stripe keeps when a sale is refunded, come out of the game's earnings and are split like the sale. Ruken's 30% of a refunded sale is handed back with it. So a refund or dispute never costs Ruken more than it earned on that sale.
 - Call: a balance below zero is carried to the next statement, as the carried chargeback rules do.
+- Call: a store's purchase reaches the ledger from that store's own server notifications (Apple's App Store Server Notifications, Google's Real-time Developer Notifications), the same way Stripe's webhooks do for the website.
 - Ledger facts are only added. A sale, a refund, a dispute and a split are each their own facts with their times; nothing is changed.
 
 ### 5.8 Refunds
@@ -191,6 +203,8 @@ Everything in design section 6 stays. What is added:
 - US: no refunds on extras, said before paying (5.2). Owner (legal answers, 2026-11-14): EU and UK buyers waive their 14 days with the tick and get the confirming email.
 - Always, as for the membership: a mistaken charge, a minor undoing a purchase, and what the law requires. Staff refund from the admin portal; it is recorded like any staff action and needs a second person, as money actions do (design 5.5).
 - Owner, "5. A": when a game leaves Ruken (its maker takes it down, or staff do), every purchase of its extras in the 14 days before is refunded in full, at once, by the system. The refund is paid out of the game's earnings as above. Call: this happens before the 10th's statement, which is at least 10 days after any sale it covers, so the money has not been paid out yet. Older purchases stay sold.
+- A store's purchase is refunded by that store, under its own rules. When the store says it refunded one, the extra is no longer owned, and the refund comes off the game's earnings like any other.
+- Open for the Owner: Apple does not let an app refund a purchase itself. For a purchase made through Apple in the 14 days before a game leaves Ruken ("5. A"), the spec does not yet say how the money gets back (section 10).
 - Call: when an account is deleted, its purchases go with it, with no refund; the delete screen says so.
 
 ### 5.9 The admin portal
@@ -234,21 +248,15 @@ The first statement that pays a split is checked against the ledger by a person,
 
 ## 9. Launch
 
-Owner, "24. B": launch moves past 30 November.
+Owner, "24. B": launch moves past 30 November. Owner, "3. B": launch waits until the apps are ready. So the launch date is set by the apps' own spec, which is being written next, not by this one.
 
-Proposed: **Monday 14 December 2026, 11:00 CT**, if all of these hold:
-
-- this spec is approved by Sunday 15 November;
-- the maker screens redesign, with these screens in it, has the Owner's "fine" by Thursday 19 November;
-- the LLC is formed and Stripe is live in its name by Monday 7 December;
-- a lawyer has read the terms and the refunds page by Monday 7 December.
-
-If one of those slips, launch moves by the same amount. This date does not count the text and chat helper the Owner wants before launch (board "3. C"), which has no spec yet; it may move the date once it is sized. With launch on 14 December, the first statement is 10 January 2027 and the first payout 15 January 2027 (design 6's dates move with it).
+What this spec's own work needs, for that date: this spec approved; the maker screens redesign (#96), with these screens in it, with the Owner's "fine"; then about a slice's worth of work through every stage of the workflow. Earlier, before the apps, this was proposed as Monday 14 December; that date no longer stands on its own. The text and chat helper (board "3. C") is not counted here either.
 
 ## 10. Open risks
 
 - **The size.** This is as big as a slice. It is planned and built through every stage of the workflow, alongside slices 2 to 5, the wishlist and the beta builds, which are not finished.
 - **The maker agreement.** Selling and splitting are new in it. Version 2 needs a lawyer before the first payout.
 - **Who is the seller.** Ruken takes the payment and keeps 30%, so Ruken is most likely the seller for tax. Its tax registrations and refund rules cover these sales. An accountant confirms.
-- **The apps, and Apple's and Google's rules.** Owner, 2026-11-14: "Ruken app is for PC, Linux, Mac, Android, and iOS; people using the browser version will be as uncommon as people using TikTok or Instagram on browser". The design so far is one website and leaves the desktop app out (design section 2). Inside an App Store or Google Play app, those stores' rules may require their own in-app payment, with their own cut, for extras and for the membership. That could change the buy card (5.2), the fees taken off the top (5.7), the lowest price and the launch date. Held until that check is done; this section is rewritten with its findings.
+- **Apple refunds after a take-down.** Apple does not let an app hand money back itself, so "5. A" has no clear path for a purchase made through Apple. Asked of the Owner.
+- **The stores' rules move.** Apple's fee on links to buy on the web, and Google's fees, are changing through the courts in 2026. The rules are checked again before the plan.
 - **A game that does not unlock.** Staff check each extra by playing (5.5), but a later game update could break an unlock. Reports and the staff refund (5.8) are the way back.
