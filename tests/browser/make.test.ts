@@ -1,9 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signUp } from "./support/account.ts";
 import { expectOneCard, showTheOwner } from "./support/look.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The maker's area: the list of games, and the form that makes one. GitHub is the stand-in on this machine
 // (support/fake-github-server.ts), which lists `ruken-test/broken-game` and `ruken-test/tiny-game` for the person.
+
+// Every journey makes an account, and the site lets one address make five an hour; the counters are cleared before each.
+test.beforeEach(forgetRateLimits);
 
 /** Connects GitHub through the stand-in, which sends the maker to the new-game form. */
 async function connectGitHub(page: Page): Promise<void> {
@@ -64,8 +68,10 @@ test("a repository typed by hand that was never connected is refused", async ({ 
   for (const repository of ["someone/else", "ruken-test/not-yours"]) {
     await page.getByLabel("Name").fill(freshName());
     await page.getByLabel("One line").fill("A tiny game about tapping.");
-    await page.getByLabel("Game files").evaluate((element, value) => {
-      const select = element as HTMLSelectElement;
+    // Add the repository as a choice the form never offered, and pick it, as a person editing the page would.
+    await page.evaluate((value) => {
+      const select = document.querySelector<HTMLSelectElement>("select[name=repo]");
+      if (select === null) throw new Error("the form has no list of repositories");
       const option = document.createElement("option");
       option.value = value;
       select.append(option);
