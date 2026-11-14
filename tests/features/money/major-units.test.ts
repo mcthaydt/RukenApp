@@ -8,7 +8,7 @@ describe("microCentsOf (Stripe's decimal dollars as whole millionths of a cent)"
     ["0.25", 25_000_000n],
     ["10.00", 1_000_000_000n],
     ["0", 0n],
-  ])("reads %j as %j millionths of a cent", (text, micro) => {
+  ])("reads %s as %s millionths of a cent", (text, micro) => {
     expect(microCentsOf(text)).toBe(micro);
   });
 
