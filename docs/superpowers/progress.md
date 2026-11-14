@@ -584,3 +584,25 @@ Branches and tasks:
 | C `beta/play` | 8 playing a beta (`/g/<game>/play?beta=1`) · 9 "Play the beta", under the game's own button | not started; needs slice 2's branch F, slice 3's branches D and H, and the wishlist's branches B, E and F |
 | D `beta/numbers` | 10 the beta's own line in a maker's numbers | not started; needs the wishlist's branch C |
 | E `beta/old-files` | 11 the sweep and a beta's files | not started; needs slice 4's branch L |
+
+## Apps and player features
+
+Spec: `docs/superpowers/specs/2026-11-14-apps-and-player-features-design.md` (approved by the Owner, 2026-11-14: "Approved"; pull request #107). The slices and their order: `docs/superpowers/plans/2026-11-14-apps-slices.md`. Progress: 0% (no code yet).
+
+- [ ] Plan, the slices and slice A (the test copy and the live copy): written on `claude/project-thread-g6mes3`, not merged. Planned against `main` at `31cc54b`. No test ran in the plan session, and no code was written. Read outside the repository: Cloudflare's pages on Wrangler environments, Workers Builds and `hyperdrive create`, Neon's pages on `projects create` and `connection-string`, and the npm registry for `neonctl` (9.5.0).
+- [ ] Plan audit of the same: not started.
+- [x] The seams with the makers' sales plan: agreed between the two plan threads, 2026-11-14, and written in the slice map ("What is shared with the makers' sales plan").
+
+Slice A, `docs/superpowers/plans/2026-11-14-apps-a-test-copy.md`. What it waits for, and what is the Owner's:
+
+- [ ] Q1, where the test copy's games run: with the Owner (the plan's pick: a second domain used only for the test copy's games). Needed before step T8.
+- [ ] Q2, whether the test copy says that it is the test copy: with the Owner (the plan's pick: yes, one line at the top of its screens).
+- [ ] T1 to T3 (an empty database, its Hyperdrive, the bucket), before branch 2.
+- [ ] T4 to T9 (the test Worker, its settings, a Stripe sandbox, the build connection, the test game gate, the check), after branch 2 is merged.
+
+| Branch | Tasks | State |
+|---|---|---|
+| 1 `apps-a/copy` | 1 which copy this is · 2 the database's stamp · 3 the deploy claims the database · 4 a Worker pointed at the wrong database answers nothing · 5 the test copy is open whatever the date · 6 the test copy never takes live payments | not started |
+| 2 `apps-a/test-worker` | 7 the `test` environment · 8 the test copy, running | not started; needs T1 to T3 and branch 1 |
+
+The other slices (H, R, S, F, Q, B, P, V, K on the website; 1, 2, 3, N, $, L for the apps) are not planned yet. Each gets its own plan when what it needs is on `main`.
