@@ -29,6 +29,8 @@
   "include": [
     "src",
     "tests",
+    // The game gate's Worker. Its folder only, not cloudflare/worker.js, which imports the built site.
+    "cloudflare/games",
     "vite.config.ts",
     "playwright.config.ts",
     "prisma.config.ts",

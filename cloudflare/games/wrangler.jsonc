@@ -1,0 +1,16 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  // The game gate: a second Worker, so a game's files never come from Ruken's own address.
+  "name": "ruken-games",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  // Node's crypto, for checking a play pass.
+  "compatibility_flags": ["nodejs_compat"],
+  // Its address is every name under the games domain, a route the Owner adds from the command line.
+  // The domain is not written here: this repository is public.
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  // The same bucket the site writes to. The gate only reads it.
+  "r2_buckets": [{ "binding": "GAME_FILES", "bucket_name": "ruken-games" }],
+}
