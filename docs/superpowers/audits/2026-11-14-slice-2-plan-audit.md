@@ -9,7 +9,7 @@ What was run, and what was not:
 - No test of this repository was run (CLAUDE.md: tests run only on GitHub's runners). This audit is a reading of files.
 - Wrangler 4.156.0, the version the plan pins, was installed in a scratch folder outside the repository. Its `--help` was read for `deploy`, `secret put` and `r2 bucket create`, and its own bundled code (`wrangler-dist/cli.js`) was read for how a deploy treats routes and how `secret put` reads a piped value. Nothing was deployed and nobody signed in.
 - GitHub's and Cloudflare's pages were not fetched again in this session. Where a finding rests on GitHub's REST API, it names the endpoint. Task 24 checks each one on the real site.
-- Nothing in this repository's code, CI or design was changed. Design problems are reported to the coordinator, not edited.
+- Nothing in this repository's code or CI was changed. The design was changed in two lines only, each on the coordinator's word (D3): 5.2's pass, and 5.4's line for the Owner's decision of 2026-11-14.
 
 Counts: 3 block execution, 25 should fix, 20 notes. Every finding that blocks execution or should be fixed is fixed in the plan. Of the notes, 12 are fixed in the plan; 8 stay, each with its reason (N10, N11, N12, N13, N15, N18, N19, N20).
 
@@ -37,7 +37,7 @@ How the plan now has it:
 - **Review Focus 21:** two members, two passes; one member twice, one pass.
 - The FloorFifty "91 MB on every Play" item is closed, and the last note under "Notes for the plans that follow" is rewritten.
 
-Two readings are mine. I asked the coordinator about both, with options (sent 2026-11-14). The plan carries my recommended answer, and the pull request is not marked ready until the coordinator replies:
+Two readings were mine. I asked the coordinator about both, with options (sent 2026-11-14), and the coordinator chose my recommended answer to each (D3):
 
 1. "The same for 24 hours": read strictly, a Play late on the pass's last day could stop partway through. The plan gives a pass 24 hours of life and reuses it while 4 hours are left. So the address stays the same for 20 hours, every Play has at least 4 hours, and a leaked address stops within a day.
 2. Signed-out play reaches only a free game. Those players share one pass per game and files. The game is free, so sharing gives nothing away, and launch-day visitors keep the files in their cache.
@@ -47,6 +47,21 @@ The decision's price, now in the plan: a member whose membership ends cannot sta
 ### D2. The maker agreement's text (O5)
 
 The Owner chose a short, plain, versioned text, now. The coordinator supplies the text and its version before branch M starts. The plan keeps its placeholder and now says so in O5, Task 26 (`MAKER_AGREEMENT_VERSION` is that version; the branch is not marked ready with the placeholder) and Task 28.
+
+### D3. The coordinator's answers, and what came after them (2026-11-14)
+
+- **Answers to D1's two questions:** (a) to both, as recommended. The plan now states them as the coordinator's answers. The coordinator also allowed one design change, made here: design 5.2 now says "a play pass that lasts a day (Call, 2026-11-14, coordinator)" where it said "a short-lived play pass".
+- **The maker agreement's file:** the coordinator asked that the text be a file, read only by `make`. It is `src/features/make/library/maker-agreement-v1.txt`, version `"1"`. It is a `.txt` because nothing renders Markdown and the page shows plain paragraphs. It is imported with Vite's `?raw`, with no package added. Task 26 defines it, Task 28 shows it, and the file map and O5 say so. The coordinator supplies the text before branch M.
+- **The pass in the game's own address:** the coordinator also asked that the plan check the pass from inside the game, since the game can read its own address. Task 21's "the game sees nothing about the player" journey now reads `location.pathname` inside the frame and checks that it holds neither the member's email nor their account id.
+- **Owner, 2026-11-14: "They take games down themselves"** (with the maker agreement, version 1, which the Owner approved with this change):
+  - The design's 5.4 has one line for it, marked "Owner, 2026-11-14". The plan has a new Call and a new task, Task 31 on branch S, after Accept, because its journey needs a live game.
+  - The button: "Take it off Ruken", a quiet button on `/make/<game>`, with a confirm step in plain words.
+  - At once: the game becomes `taken_off`, a new state, the maker's own and apart from staff's `taken_down`. It leaves its page, and the feed once slice 3 builds it. Any update waiting for review is dropped.
+  - Its files are deleted from the bucket, so every pass for it loads nothing more. Its clips are kept.
+  - Each step is recorded with who and when, in a new add-only table, `MakerAction`.
+  - "Put it back" pulls the files again and sends the game for review. It does not go straight back live, for two reasons: its files are gone and must be pulled fresh, and a person should check them before they are live again (design 5.5). Otherwise a maker could take a game off and put it back to slip an unchecked change past staff.
+  - New: Review Focus 25, and a red-then-green journey that loads a member's frame address after the game is taken off and gets 404.
+  - Stays, as a note: a browser that already holds some of the game's files can keep using its copy until its pass runs out. The gate stops serving, but it cannot reach into a browser's cache.
 
 ## Findings
 
@@ -341,5 +356,5 @@ Severity is one of: **blocks execution** (a task cannot be done or proved as wri
 
 ## Reported to the coordinator, not changed here
 
-- Two questions on the reading of D1 (above), sent 2026-11-14 with a recommended answer to each. The pull request waits for the reply.
-- Design 5.2's "a short-lived play pass" reads oddly against a pass that lasts a day. The wording is the design's.
+- Two questions on the reading of D1, sent 2026-11-14 with a recommended answer to each. Answered (a) and (a) (D3).
+- Design 5.2's "a short-lived play pass" read oddly against a pass that lasts a day. The coordinator allowed the change, and it is made (D3).
