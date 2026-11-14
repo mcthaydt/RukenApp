@@ -288,8 +288,10 @@ What the plan waits for, and what is the Owner's:
 - [x] Question 1, how the cost of sending a payout comes out of it. Owner, 2026-11-14: "Hold back, fix later" (B: hold back the cost worked out from Stripe's price list and correct it to Stripe's real charge on a later statement). Tasks 28 to 31.
 - [x] Question 2, which makers can connect a bank at first. Owner, 2026-11-14: "US only for now". Tasks 24 and 25.
 - [x] Question 3, the second person and the fresh authenticator code for approving a payout run. Coordinator, 2026-11-14: this slice names what it needs and Task 33 waits for slice 4 to be on `main`; slice 4's plan must provide the fresh-code check and the finance role.
-- [ ] M1 (the Owner): the first real read of Stripe's fees on the real site, one command, after branch C is merged.
-- [ ] M2 (the Owner): Connect turned on in Stripe, in test mode and then live. A website; no command can do it. The live step sits behind the Owner's legal texts (terms, privacy, a lawyer's maker agreement), which no task here waits for.
+- [ ] M1 (the Owner): the first real read of Stripe's fees, once real payments exist on the live account: the four columns of Stripe's own Fees report from the dashboard, or one Mac zsh line after branch C is merged. It must show Billing and Tax fees that name their payments; if it does not, execution stops and the Owner decides.
+- [ ] M2b (the Owner): one Mac zsh line that sets Ruken's own Stripe payouts to monthly, on the 20th (Owner, 2026-11-14: "Pay you monthly"), so the balance holds enough on the 15th. Not run: it needs the live key.
+- [x] The plan audit's fixes (`docs/superpowers/audits/2026-11-14-slice-5-plan-audit.md`: 3 block launch, 11 should fix, 11 notes) are written into the plan, with the Owner's answers of 2026-11-14: carried money is shared "Only by play"; the odd cent is "Ruken"'s; fees paid with Stripe's credits, "No, skip them"; and the coordinator's: any staff member's play does not count.
+- [ ] M2 (the Owner): asked for now. Connect turned on in Stripe, in test mode and then live. A website; no command can do it. The live step sits behind the Owner's legal texts (terms, privacy, a lawyer's maker agreement), which no task here waits for.
 - [ ] M3 (the Owner): the first payout run checked and approved by two staff accounts, between 10 and 14 December.
 - [ ] M4 (the Owner): the first statement and payout checked on the real site (Task 37).
 

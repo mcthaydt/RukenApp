@@ -16,6 +16,8 @@
 
 **The dates.** Branches A to D must be merged and green before 10 December 2026 (the first statement). Branches E to H must be merged before 15 December 2026 (the first payout). Branches I and J can follow. If a branch has taken twice what was expected, the stop rule applies and the Owner decides what moves (CLAUDE.md, "Pace").
 
+**Audited:** `docs/superpowers/audits/2026-11-14-slice-5-plan-audit.md` (2026-11-14: 3 block launch, 11 should fix, 11 notes). Every finding is fixed below, with the Owner's answers of 2026-11-14 written in where it asked a question. For the dates to hold, slice 4 must be merged and green by 1 December 2026 at the latest (S11); the coordinator has been asked whether branches A and B, which are pure functions and tables and use nothing of slice 4, may start before it if slice 4 slips.
+
 ## Global Constraints
 
 - No session runs tests, lint or typecheck itself. Push, then read CI on the pull request (CLAUDE.md, Owner 2026-11-13).
@@ -50,7 +52,7 @@
 | `purgeDueAccounts`, which keeps the `User` row | slice 1, Task 20 (on `main`) | a deleted member's and maker's money rows keep their account id |
 | `Game` (`id`, `makerUserId`, `name`, `slug`, `publicId`) | slice 2, Task 1 (on `main`) | whose game a play share belongs to, and its name on a statement |
 | `PlaySession` (`userId`, `gameId`, `basis`, `startedAt`), `PlayBeat` (`sessionId`, `receivedAt`, `attentive`), both added and never changed | slice 2, Task 16 | play that counts |
-| `countedMs`, `LONGEST_COUNTED_GAP_MS` in `src/features/play/time.ts` | slice 2, Task 17 | the same counting rule, by the day (Task 6 adds both to `play.ts`'s exports: slice 2's entry file does not export them) |
+| `countedMs`, `LONGEST_COUNTED_GAP_MS`, `PLAY_SESSION_LIFE_MS` in `src/features/play/time.ts` | slice 2, Task 17 | the same counting rule, by the day (Task 6 adds all three to `play.ts`'s exports: slice 2's entry file does not export them) |
 | `/make` (the maker's area), `signedInOnly`, `Caller`, `locals.caller` | slice 1, Task 10; slice 2, Task 27 | where the maker's money screens hang |
 | `staffOnly(caller)` in `src/features/admin/staff-only.ts`, `StaffRole` with `owner` and `finance`, `/admin/games` | slice 2, Tasks 29, 30 | the staff money screens |
 | The stand-in Stripe (`tests/browser/support/fake-stripe-server.ts`), `tests/support/fake-premium-stripe.ts`, `signUp`, `payAsNewMember`, `signInAsStaff`, `addGame` | slice 1, Task 27; slice 2 | journeys and database tests |
@@ -85,15 +87,16 @@ Read on 2026-11-14. Where a page or a package and this plan disagree when execut
   1. **Owner, 2026-11-14: "Hold back, fix later."** How the cost of sending a payout comes out of it. Stripe charges it after the payout. The choices were: (A) take the real cost afterwards, as a line on the maker's next statement; (B) hold back the cost worked out from Stripe's price list, kept in the code as a dated rule, send the rest, and correct to Stripe's real charge on a later statement; (C) Ruken pays it. The Owner chose B. Tasks 28 and 31.
   2. **Owner, 2026-11-14: "US only for now."** Which makers can connect a bank at first. The choices were: (A) the United States only, said in one line on the screen; (B) every country Stripe allows. The Owner chose A. Tasks 24 and 25.
   3. **Coordinator, 2026-11-14: A.** The second person and the code: this slice names exactly what it needs from slice 4 (the fresh-code check for the caller, and the finance role) and the payout-approval task waits for slice 4 to be on `main`; slice 4's plan must provide them. Task 33.
+  4. **Owner, 2026-11-14, on the plan audit's questions** (relayed by the coordinator): Ruken's own Stripe balance, "Pay you monthly" (M2b, Task 30); money carried from a month with no play, "Only by play" (Tasks 7, 21); the odd cent of a payment's two halves, "Ruken" (Task 2); fees paid with Stripe's credits, "No, skip them" (Task 4). **Coordinator, 2026-11-14:** any account with a staff role that day is staff, and its play does not count (Task 18).
 - **Calls** (the Owner can overrule):
   - **A month** is an America/Chicago calendar month, written `YYYY-MM`. A payment belongs to the month its paid period starts in; a yearly payment to that month and the eleven after it, one twelfth each, with the odd cents in the earliest months (carried).
   - **A month closes on the 8th of the next month**, at midnight in Chicago. Until then a fact dated in that month is posted into it; after, into the month that is open. A closed month is never reopened (carried). The old code closed on the 2nd; Stripe's Fees report can run four days behind, so the 8th is the first date by which a month's last fees are in. **It is final on the 10th.** Between the 8th and the 10th nothing about the month can change, and staff can read it on the admin screen before it is final. The old two-day draft and its comparison are not carried: the same check is that a closed month takes no more entries.
   - **Off the top, per payment:** the tax and the card fee, which slice 1 already reads, and every row of Stripe's Fees report that names the payment's invoice, charge or payment intent. A row in a balance transaction a fee was already read from is that same fee and is not taken twice. The rows' fractions of a cent are added up per payment and rounded up to a whole cent, so what is taken is never less than what Stripe charged; at most one cent per payment is taken beyond it.
   - **A fee Stripe charged that names no payment and no payout** (one for the account as a whole) is not taken from makers. It is kept as a fact and shown to staff. If M1 shows that Billing or Tax fees arrive that way, execution stops and the coordinator asks the Owner how they are shared; the plan does not guess.
-  - **Rounding.** The makers' half of a payment is half of what is left, rounded half up, once per payment (carried). The month's pool is divided by one largest-remainder rounding, so the shares add up to the pool exactly and no cent is made or lost (carried).
+  - **Rounding.** Owner, 2026-11-14: the odd cent is "Ruken"'s. The makers' half of a payment is half of what is left, rounded down, once per payment, so Ruken's half is never the smaller one. The month's pool is divided by one largest-remainder rounding, so the shares add up to the pool exactly and no cent is made or lost (carried).
   - **The bringing bonus** is worked out per member and month: half of that member's part of the month's pool, before play divides the rest. It counts for the month of the member's first join and the eleven after it. It goes to the account in `MembershipStart.broughtByUserId` of the member's earliest `MembershipStart` row; a later join never starts a new one, and a first join with no maker, or with the member's own account, gives none.
-  - **A member who played nothing that month:** their part, after any bonus, follows everyone else's play that month (design 6, carried). **A month in which no member played anything:** the play part carries into the next month's pool; bonuses are still paid.
-  - **Play that counts** is slice 2's `member` sessions only. A member's time on a game on a day is the time covered by any of their sessions, each moment once, cut at Chicago midnight, 10,800 seconds at most. It is added up once a day into `PlayDay` rows, so a statement never reads a month of beats.
+  - **A member who played nothing that month:** their part, after any bonus, follows everyone else's play that month (design 6, carried). **A month in which no member played anything:** the play part carries into the next month; bonuses are still paid. Owner, 2026-11-14, on how carried money is shared: "Only by play". The carry is kept apart: the next month shares it by that month's play alone, and no part of it becomes a bringing bonus. November 2026 is such a month (the one game at launch is free), so all of its play part is shared by December's play.
+  - **Play that counts** is slice 2's `member` sessions only, and never a staff member's (coordinator, 2026-11-14: anyone with a staff role that day is staff, and their play does not count). A member's time on a game on a day is the time covered by any of their sessions, each moment once, cut at Chicago midnight, 10,800 seconds at most. It is added up once a day into `PlayDay` rows, so a statement never reads a month of beats.
   - **Whose game** a play share belongs to is the game's `makerUserId` when the month is made final.
   - **Refunds and chargebacks** undo the payment in proportion, each side giving back what it got, and what Stripe keeps on a chargeback (its fees) is shared half and half between the open month's pool and Ruken (carried). They reach the pool, not a maker's finished statement.
   - **No member key.** Slice 1's note expected a `LEDGER_SUBJECT_KEY` and a pseudonymous member key. The payment and play rows the ledger reads already carry the account id, which stays as a tombstone after an account is deleted, so a second name for it would add a secret and hide nothing. Money tables hold ids and amounts only: no email, name or address.
@@ -109,18 +112,23 @@ Live payouts need the real terms, the privacy text and a lawyer's maker agreemen
 
 ## Where execution stops and waits for the Owner
 
-The execution session reports to the coordinator and asks for each of these with the exact lines below. Each line is one command, given for Mac zsh first (the coordinator, 2026-11-14: the Owner is on a Mac and has no checkout of this repository, so no line assumes a checkout, `pnpm` or an installed tool) and for Windows PowerShell second (CLAUDE.md's rule as it stands); a step goes to a website only where no command can do it, and says so. This slice's only command is one call to the site with `curl`, which macOS ships; no step here needs Wrangler or any other tool, so none is fetched with `npx`. Words in CAPITALS are the Owner's own values and are never written in the repository.
+The execution session reports to the coordinator and asks for each of these with the exact lines below. Each line is one command for Mac zsh (coordinator, 2026-11-14, and slice 2's tracker: the Owner works on a Mac and has no checkout of this repository), pasted as it is: none assumes a checkout, `pnpm` or an installed tool. Both commands here are calls with `curl`, which macOS ships, so nothing is fetched with `npx`; their flags (`-sS`, `-X`, `-H`, `-u`, `-d`) were checked against `curl --help`, and the `read -rs "name?prompt"` form is zsh's own and could not be run in the plan's session, which has no zsh, so the Owner's first paste is its check. CLAUDE.md's rule still reads "one line each for Windows PowerShell"; that line is the Owner's to change, and the coordinator has been told. A step goes to a website only where no command can do it, and says so. Words in CAPITALS are the Owner's own values and are never written in the repository.
 
-**M1, asked for when branch C is merged; needed before branch D is marked ready.** The first real read of Stripe's fees. Slice 1's real payment (its Task 31) should already have rows.
+**M1, the first real read of Stripe's fees.** It waits until real payments exist on the live Stripe account (slice 1's Task 31 payment, or the first payments of launch day): before that there is nothing to read. It is asked for as soon as they do, and is needed before branch D is marked ready. Two ways, whichever comes first:
 
-1. Mac zsh: `read -rs "s?JOBS_SECRET: "; echo; curl -sS -X POST "https://SITE/jobs/money" -H "Authorization: Bearer $s" -H "content-type: application/json"` (zsh asks for the secret without showing it, and it stays in this window only; `-sS` hides the progress bar and still shows an error). Windows PowerShell: `$s = Read-Host "JOBS_SECRET"; (Invoke-WebRequest -UseBasicParsing -Method Post -Uri "https://SITE/jobs/money" -Headers @{ Authorization = "Bearer $s" } -ContentType "application/json").Content` (the secret is the one from slice 1's S1 and stays in this window only. The first run asks Stripe for the report; expect `"requested":"requested"` under `"feeReport"`.)
-2. The same line again a few minutes later. Expect `"collected":"stored"` under `"feeReport"`, and under `"fees"` a list of what Stripe charged, by `product` and `feature_name`, with how many rows were `payment`, `payout`, `counted` and `unplaced`. No amount of a person's is shown.
-3. Paste the answer to the coordinator. Execution checks it against "Found while planning", 5: every Billing and Tax row should be `payment`. If one is `unplaced`, or the run `failed`, stop: that is the Owner's decision named under the Calls.
+1. Before branch C is merged, a website (no command is assumed: the Owner has no Stripe tool installed): Stripe's dashboard → Reports → All fees → set the dates to cover the payments → Download → Itemized. From the file, send the coordinator only these four columns: `product`, `feature_name`, `incurred_by_type`, `settled_via`. No amount and nothing about a person.
+2. Once branch C is on `main`: `read -rs "s?JOBS_SECRET: "; echo; curl -sS -X POST -H "Authorization: Bearer $s" -H "content-type: application/json" "https://SITE/jobs/money"; echo; unset s` (zsh asks for the secret without showing it; it is the one from slice 1's S1 and is forgotten when the line ends. The first run asks Stripe for the report; expect `"requested":"requested"` under `"feeReport"`.) Then the same line again a few minutes later: expect `"collected":"stored"`, and under `"fees"` a list of what Stripe charged, by `product` and `feature_name`, with how many rows were of each kind. Paste the answer to the coordinator.
+3. What execution checks in either answer ("Found while planning", 5): for the payments in that stretch there are rows that name the payment (`payment`, or `incurred_by_type` of `invoice` or `charge`) whose `product` is Stripe's Billing and others whose `product` is Stripe's Tax, at least one of each per payment. **If Billing or Tax rows are missing altogether** (Stripe's page says the report leaves out "fees that Stripe invoices after you use a service"), are `unplaced`, are settled by `invoice`, or the run `failed`: stop. Then those fees would not come off the top and Ruken's half would pay them, so it is the Owner's decision named under the Calls, and no month is made final on a guess.
 
-**M2, asked for when branch D starts; needed before branch E is marked ready.**
+**M2, asked for now (2026-11-14), since Stripe reviews a platform before Connect opens; needed before branch E is marked ready.**
 
 1. A website: no command turns Connect on. In Stripe's dashboard, in test mode first: Connect → Get started; choose that Ruken pays out to others; under the Connect settings, name the platform "Ruken" and set its address to the site's. Say "done".
 2. The same in live mode, once the Owner's legal texts are in place ("What the Owner holds"). Until then makers on the real site see the bank screen say payouts are not open yet (Task 25).
+
+**M2b, asked for with M2; needed before branch G is marked ready.** Owner, 2026-11-14, asked how Ruken's own Stripe balance should be kept so that makers can be paid from it: "Pay you monthly". By default Stripe sends an account's balance to its own bank every day, so on the 15th nothing would be left to send to makers. This one line sets Ruken's own payouts to once a month, on the 20th: after the latest day a maker payout can fall on (the 15th, or the 18th when a weekend and a holiday follow it), so the balance on the 15th holds nearly a month of members' payments.
+
+1. `read -rs "k?Stripe secret key (live): "; echo; curl -sS https://api.stripe.com/v1/balance_settings -u "$k:" -d "payments[payouts][schedule][interval]=monthly" -d "payments[payouts][schedule][monthly_payout_days][]=20"; echo; unset k` (zsh asks for the key without showing it and forgets it when the line ends. Expect an answer holding `"interval": "monthly"` and `"monthly_payout_days": [20]`. Checked on 2026-11-14 against Stripe's API reference, "Update balance settings" (`POST /v1/balance_settings`, with exactly these two fields in its own example), and against `stripe` 22.6.2's `BalanceSettings.d.ts` (`payments.payouts.schedule.interval`, `monthly_payout_days`: "numbers between 1--31 … Required and applicable only if `interval` is `monthly`"). The reference's example also sends a `Stripe-Account` header, which is for a connected account; without it the setting is Ruken's own. Not run: it needs the live key.)
+2. Task 30 does not rely on this alone: before it sends anything it reads the balance, and sends nothing when the balance is short.
 
 **M3, on or after 10 December, before 15 December.** The first payout run, approved in the admin portal by the Owner's second staff account, with a fresh code (Task 33). The steps are on the screen; no command.
 
@@ -233,7 +241,14 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 14. The person who proposed a payout run tries to approve it, or approves with an old code: refused (Task 33).
 15. A maker opens another maker's statement by typing its address: a missing page (Task 27).
 16. Stripe's report run still `pending`, or `failed`: nothing is stored, the job says so, and the next run asks again for the same stretch of time (Task 14).
-17. A month's totals after everything is posted: Ruken's revenue is never less than its half of each payment, and every account still adds up to zero (Tasks 8, 21).
+17. A month's totals after everything is posted: Ruken's half is never less than the makers' half, and every account still adds up to zero (Tasks 2, 8, 21).
+18. The 15th comes and Ruken's own Stripe balance holds less than the run needs: nothing is sent, the job says how short it is, and the next day tries again (Task 30).
+19. Money carried from a month with no play: shared by the next month's play alone, never as a bringing bonus (Tasks 7, 21).
+20. A staff member with a membership plays a game, whatever their role: none of it counts (Task 18).
+21. A fee Stripe's credits paid, and a fee Stripe returned: neither comes off the top, and neither holds a month up (Tasks 4, 15).
+22. A session started late one evening, or in the first hour of a 25-hour day: its play after midnight still counts on the day it happened (Task 18).
+23. A dispute decided months after it opened, after newer refunds were stored: still seen and posted (Task 17).
+24. Stripe's Billing or Tax fees never reach the report at all: M1 stops on it, and staff are told when payments go 10 days with no such fee (M1, Task 32).
 
 ---
 
@@ -257,8 +272,7 @@ Pure functions only: no database, no Stripe, no clock. Every file here imports n
 
     | Constant | Value | From |
     |---|---|---|
-    | `MAKERS_SHARE_BPS` | `5000` | design 6: "half Ruken, half makers" (the old `CREATOR_POOL_SHARE_BPS`) |
-    | `BRINGING_MONTHS` | `12` | design 6: "for a member's first 12 months" |
+        | `BRINGING_MONTHS` | `12` | design 6: "for a member's first 12 months" |
     | `DAILY_PLAY_CAP_SECONDS` | `10_800` | design 6: "at most 180 minutes per member, per game, per day" |
     | `PAYOUT_MINIMUM_CENTS` | `2500n` | design 6: "The minimum is $25" |
     | `CLOSE_DAY_OF_MONTH` | `8` | this plan's Call |
@@ -269,7 +283,7 @@ Pure functions only: no database, no Stripe, no clock. Every file here imports n
     | `QUESTION_WINDOW_DAYS` | `90` | carried (`DISPUTE_WINDOW_DAYS`) |
     | `ANSWER_BUSINESS_DAYS` | `10` | carried (`DISPUTE_RESPONSE_BUSINESS_DAYS`) |
 
-    The bonus is "half of the makers' half": it has no constant of its own, because Task 7 halves a weight, not an amount.
+    The bonus is "half of the makers' half": it has no constant of its own, because Task 7 halves a weight, not an amount. The makers' half has none either: it is `left / 2n` in `pool-share.ts` (Task 2).
 
 - [ ] **Step 1 (red):** the carried tests under the new names, and:
 
@@ -307,7 +321,7 @@ it("keeps every rule's number", () => { /* each constant in the table equals its
 - Produces:
   - `posting.ts`, from `OLD/packages/ledger/src/posting.ts`: `interface PostingLine { account: string; amount: bigint; makerUserId?: string }` (a debit is positive, a credit negative, and an entry's lines add up to zero), `withoutZeroLines`, `requireNonNegative`. Trim: everything about store sales, tips and splits (`CreatorShare`, `StoreSaleAmounts`, `TipAmounts`, `postStoreSale`, `postTip`, `creatorLines`).
   - `pool-share.ts`, carried from `OLD/packages/ledger/src/premium-pool.ts` with `premium-pool.test.ts`: `SERVICE_MONTHS = { monthly: 1, annual: 12 }`, `interface Payment { plan: "monthly" | "annual"; firstPeriod: Period; gross: bigint; tax: bigint; fees: bigint }` and `poolContributions(payment: Payment): { period: Period; amount: bigint }[]`.
-  - Changed: the old `fee` (the card fee) is `fees`: the card fee plus every other fee Stripe charged on the payment, in whole cents. Nothing else changes: what is left is `gross − tax − fees`, never below zero; the makers' half is `pct(left, MAKERS_SHARE_BPS)`, rounded once for the whole payment; a yearly payment's half is spread evenly over its twelve months by `lrr`, the odd cents to the earliest months.
+  - Changed: the old `fee` (the card fee) is `fees`: the card fee plus every other fee Stripe charged on the payment, in whole cents. What is left is `gross − tax − fees`, never below zero; the makers' half is `left / 2n`, rounded down, once for the whole payment (Owner, 2026-11-14, asked who gets the odd cent: "Ruken"; the old code rounded half up with `pct`, which gave it to makers); a yearly payment's half is spread evenly over its twelve months by `lrr`, the odd cents to the earliest months.
 
 - [ ] **Step 1 (red):** the carried cases, and, with the stand-in Stripe's numbers ($9.99, 82 cents tax, a 61-cent card fee) and 12 cents of other fees:
 
@@ -316,13 +330,13 @@ const monthly = { plan: "monthly", firstPeriod: "2026-11" as Period, gross: 1081
 it("takes tax and every fee off the top, then gives makers half", () => {
   expect(poolContributions(monthly)).toEqual([{ period: "2026-11", amount: 463n }]);   // 1081 − 82 − 73 = 926; half is 463
 });
-it("gives makers the odd cent, as the carried rule does", () => {
-  expect(poolContributions({ ...monthly, fees: 72n })[0]?.amount).toBe(464n);          // 927 left; half up
+it("gives Ruken the odd cent", () => {
+  expect(poolContributions({ ...monthly, fees: 72n })[0]?.amount).toBe(463n);          // 927 left; half, rounded down
 });
 it("spreads a yearly fee over twelve months, the odd cents first", () => {
   const parts = poolContributions({ plan: "annual", firstPeriod: "2026-11" as Period, gross: 10717n, tax: 817n, fees: 387n });
   expect(parts.map((part) => part.period)).toEqual(["2026-11", "2026-12", "2027-01", "2027-02", "2027-03", "2027-04", "2027-05", "2027-06", "2027-07", "2027-08", "2027-09", "2027-10"]);
-  expect(parts.map((part) => part.amount)).toEqual([397n, 397n, 397n, 397n, 397n, 396n, 396n, 396n, 396n, 396n, 396n, 396n]);   // 9513 left; half up is 4757
+  expect(parts.map((part) => part.amount)).toEqual([397n, 397n, 397n, 397n, 396n, 396n, 396n, 396n, 396n, 396n, 396n, 396n]);   // 9513 left; half, rounded down, is 4756
 });
 it("gives nothing, never less, when the fees are more than what is left", () => {      // Review Focus 1
   expect(poolContributions({ ...monthly, fees: 2000n })).toEqual([{ period: "2026-11", amount: 0n }]);
@@ -376,7 +390,7 @@ it("posts a payment with what is known at the time", () => {
 });
 it("splits a later fee as if it had been known", () => {
   expect(feeParts(paid, 12n)).toEqual({ months: [{ period: "2026-11", amount: 6n }], ruken: 6n });   // 469 → 463
-  expect(feeParts(paid, 1n)).toEqual({ months: [], ruken: 1n });                                       // 938 → 937: half up is still 469
+  expect(feeParts(paid, 1n)).toEqual({ months: [{ period: "2026-11", amount: 1n }], ruken: 0n });   // 938 → 937: half, rounded down, goes 469 → 468
 });
 it("posts a later fee out of Stripe, the month's pool and Ruken's half, adding up to zero", () => {
   expect(postPaymentFee(feeParts(paid, 12n), (period) => `pool:premium:${period}`)).toEqual([
@@ -407,19 +421,21 @@ it("every entry here adds up to zero", () => { /* each result's amounts sum to 0
 **Interfaces:**
 - Produces:
   - `parseCsv(text: string): string[][]` in `src/lib/csv.ts`: commas, quoted fields, a doubled quote inside one, `\r\n` or `\n`, a line break inside a quoted field; a last empty line is not a row. No package.
-  - In `major-units.ts`: `MICRO_PER_CENT = 1_000_000n`; `microCentsOf(text: string): bigint | null`: Stripe's decimal dollars (`"0.06993"`, `"2"`, `"0.25"`) as whole millionths of a cent, read digit by digit, never through a `number`; null for anything that is not digits with at most one point and at most eight decimals, for a minus sign, and for an empty text. `centsRoundedUp(microCents: bigint): bigint`: the least whole cents that cover it.
+  - In `major-units.ts`: `MICRO_PER_CENT = 1_000_000n`; `microCentsOf(text: string): bigint | null`: Stripe's decimal dollars (`"0.06993"`, `"2"`, `"0.25"`) as whole millionths of a cent, read digit by digit, never through a `number`; null for anything that is not digits with at most one point and at most eight decimals, with one optional minus sign in front, and for an empty text. A minus sign gives a negative amount (Stripe returning or crediting a fee). `centsRoundedUp(microCents: bigint): bigint`: the least whole cents that cover it.
   - In `fee-rows.ts`:
     - `FEE_REPORT_TYPE = "all_fees.balance_transaction_created.itemized.2"`, and `FEE_COLUMNS`, the columns asked for, in this order: `balance_transaction_id`, `balance_transaction_created`, `fee_transaction_id`, `incurred_by`, `incurred_by_type`, `incurred_at`, `product`, `feature_name`, `fee_description`, `amount`, `tax`, `currency`, `settled_via`.
     - `interface FeeRow { balanceTransactionId: string; balanceTransactionAt: string; feeTransactionId: string; incurredBy: string; incurredByType: string; incurredAt: string; product: string; featureName: string; description: string; amountText: string; taxText: string; currency: string; settledVia: string }` and `feeRowsFrom(csv: string): FeeRow[]`: the header must be exactly `FEE_COLUMNS` (else it throws "Stripe's fee report has columns this code does not know"); every other line is one row, as text, changed in nothing.
     - `feeMicroCents(row: FeeRow): bigint | null`: `amount` plus `tax` (Stripe's tax on its own fee is part of what Stripe took), or null when either cannot be read or the currency is not `usd`.
     - `interface KnownIds { payments: ReadonlyMap<string, string>; payouts: ReadonlyMap<string, string>; counted: ReadonlySet<string> }`: `payments` maps an invoice, charge or payment-intent id to the payment's invoice id; `payouts` maps a transfer id, a payout id or a maker's Stripe account id to the maker's account id; `counted` holds the balance transactions a fee was already read from (a payment's own, a refund's, a dispute's).
-    - `placeFee(row: FeeRow, known: KnownIds): { kind: "unreadable" } | { kind: "counted" } | { kind: "payment"; stripeInvoiceId: string } | { kind: "payout"; makerUserId: string } | { kind: "unplaced" }`, the first that applies, in that order: `feeMicroCents` is null; `balanceTransactionId` is in `counted`; `incurredBy` is in `payments`; `incurredBy` is in `payouts`; none.
+    - `reportTimeMs(text: string): number | null`: one of the report's times. They carry no zone; the report is asked for in `Etc/UTC` (Task 14), so the text is read as a UTC date and time through Temporal (`PlainDateTime.from`, then UTC), never through `Date.parse`, which would read it as local time. Null when it cannot be read.
+    - `placeFee(row: FeeRow, known: KnownIds): { kind: "unreadable" } | { kind: "credit" } | { kind: "returned" } | { kind: "counted" } | { kind: "payment"; stripeInvoiceId: string } | { kind: "payout"; makerUserId: string } | { kind: "unplaced" }`, the first that applies, in that order: `feeMicroCents` is null, or `reportTimeMs` of `incurredAt` or of `balanceTransactionAt` is null; `settledVia` is `credit` (Owner, 2026-11-14, asked whether fees paid with Stripe's credits come off the top: "No, skip them"); the amount is below zero (a fee Stripe returned: kept and shown to staff, never posted, and never a reason to hold a month up; taking returned fees back into the split is a later spec); `balanceTransactionId` is in `counted`; `incurredBy` is in `payments`; `incurredBy` is in `payouts`; none.
 
 - [ ] **Step 1 (red):**
 
 ```ts
 it.each([["0.06993", 6_993_000n], ["2", 200_000_000n], ["0.25", 25_000_000n], ["10.00", 1_000_000_000n], ["0", 0n]])("reads %j as %j millionths of a cent", (text, micro) => { expect(microCentsOf(text)).toBe(micro); });
-it.each(["", "-0.07", "0.123456789", "1e-3", "0,07", "abc", "1.2.3", " 0.07"])("cannot read %j", (text) => { expect(microCentsOf(text)).toBeNull(); });   // Review Focus 4
+it("reads a returned fee as a negative amount", () => { expect(microCentsOf("-0.07")).toBe(-7_000_000n); });
+it.each(["", "--0.07", "0.07-", "0.123456789", "1e-3", "0,07", "abc", "1.2.3", " 0.07"])("cannot read %j", (text) => { expect(microCentsOf(text)).toBeNull(); });   // Review Focus 4
 it("rounds up to the cent, and leaves a whole cent alone", () => {
   expect(centsRoundedUp(11_988_000n)).toBe(12n); expect(centsRoundedUp(12_000_000n)).toBe(12n); expect(centsRoundedUp(1n)).toBe(1n); expect(centsRoundedUp(0n)).toBe(0n);
 });
@@ -439,6 +455,16 @@ it("does not take a fee twice", () => {                                         
 it("never guesses at a row it cannot read", () => {                                      // Review Focus 4
   expect(placeFee({ ...row, amountText: "n/a" }, known)).toEqual({ kind: "unreadable" });
   expect(placeFee({ ...row, currency: "eur" }, known)).toEqual({ kind: "unreadable" });
+});
+it("skips a fee Stripe's credits paid, and keeps a returned fee out of the split", () => {
+  expect(placeFee({ ...row, settledVia: "credit" }, known)).toEqual({ kind: "credit" });
+  expect(placeFee({ ...row, amountText: "-0.06993" }, known)).toEqual({ kind: "returned" });
+});
+it("reads the report's times as UTC, whatever the machine's own zone", () => {
+  expect(reportTimeMs("2026-12-01 04:30:00")).toBe(Date.parse("2026-12-01T04:30:00Z"));   // November in Chicago
+  expect(periodOf(reportTimeMs("2026-12-01 04:30:00") ?? 0)).toBe("2026-11");
+  expect(reportTimeMs("yesterday")).toBeNull();
+  expect(placeFee({ ...row, incurredAt: "yesterday" }, known)).toEqual({ kind: "unreadable" });
 });
 it("counts Stripe's tax on its own fee as part of the fee", () => { expect(feeMicroCents({ ...row, taxText: "0.00007" })).toBe(7_000_000n); });
 ```
@@ -484,7 +510,7 @@ it("has no bringer with no joins", () => { expect(bringerOf([], "2026-11" as Per
 
 **Files:**
 - Create: `src/features/money/play-day.ts`
-- Modify: `src/features/play/play.ts` (also export `countedMs` and `LONGEST_COUNTED_GAP_MS` from `time.ts`: slice 2's entry file leaves them out, and this is the one place outside `play` that must count the same way)
+- Modify: `src/features/play/play.ts` (also export `countedMs`, `LONGEST_COUNTED_GAP_MS` and `PLAY_SESSION_LIFE_MS` from `time.ts`: slice 2's entry file leaves them out, and this is the one place outside `play` that must count the same way)
 - Test: `tests/features/money/play-day.test.ts`
 
 **Interfaces:**
@@ -535,10 +561,10 @@ it("counts nothing with no sessions, and nothing for a day the sessions do not t
 - Produces, in `makers-pool.ts`, from `OLD/packages/ledger/src/premium-weights.ts` and `pool-outcome.ts` with their tests:
   - `interface MemberMonth { userId: string; contribution: bigint; broughtBy: string | null; plays: readonly { gameId: string; seconds: number }[] }`: `contribution` is the cents this member's payments put into the month (Task 2's parts for the month, with every fee known so far); `broughtBy` is Task 5's answer for the month; `plays` are the month's `PlayDay` rows.
   - `type PoolOutcome = { kind: "shared"; games: { gameId: string; weight: bigint; amount: bigint }[]; bringers: { makerUserId: string; weight: bigint; members: number; amount: bigint }[]; carry: bigint } | { kind: "carry"; amount: bigint }`.
-  - `allocateMakersPool(pool: bigint, members: readonly MemberMonth[]): PoolOutcome`. The carried algorithm with two changes, in weights of `POOL_WEIGHT_SCALE` (billionths of a cent):
+  - `allocateMakersPool(pool: bigint, members: readonly MemberMonth[], carriedIn: bigint = 0n): PoolOutcome`. `carriedIn` is the cents an earlier month with no play carried into this pool (they are part of `pool`). The carried algorithm with three changes, in weights of `POOL_WEIGHT_SCALE` (billionths of a cent):
     1. A member with a zero contribution is left out (carried). For each other member, `whole = contribution × POOL_WEIGHT_SCALE`. With a `broughtBy`: `bonus = whole / 2n` (rounded down) is added to that maker's weight, and `rest = whole − bonus`; with none, `rest = whole`.
     2. A member who played: `rest` is split over their games by seconds, each rounded down (carried). A member who did not: `rest` is added to the idle total (carried).
-    3. The idle total is split over every game by all paying members' seconds (carried). With no seconds at all it becomes the weight of a carry.
+    3. `carriedIn × POOL_WEIGHT_SCALE` is added to the idle total (Owner, 2026-11-14: "Only by play"), so carried money never feeds a bonus. The idle total is split over every game by all paying members' seconds (carried). With no seconds at all it becomes the weight of a carry.
     4. The pool as it stands is split once by `lrr` over the games' weights (keys `game:<id>`), the makers' bonus weights (keys `bring:<userId>`) and the carry (key `carry`). A pool of zero or less, or no weight but the carry's: `{ kind: "carry", amount: pool }` (carried: the whole pool moves on). Games and bringers are listed in id order; a zero share stays in the list.
   - The carried checks stay: a member twice, a negative contribution, seconds that are not a whole number of zero or more each throw.
 - Produces, in `pool-posting.ts`, from `OLD/packages/ledger/src/pool-posting.ts`: `interface PoolEntry { key: string; kind: "pool_share" | "pool_carry"; gameId: string | null; lines: PostingLine[] }`, and
@@ -567,6 +593,10 @@ it("pays the bonus and carries the rest when nobody played", () => {            
   expect(allocateMakersPool(463n, [{ ...member, plays: [] }])).toMatchObject({ kind: "shared", games: [], bringers: [{ makerUserId: "b", amount: 232n }], carry: 231n });
   expect(allocateMakersPool(463n, [{ ...member, broughtBy: null, plays: [] }])).toEqual({ kind: "carry", amount: 463n });
 });
+it("shares carried money by play only, never as a bonus", () => {                        // Owner: "Only by play"
+  const one = { ...member, plays: [{ gameId: "g1", seconds: 60 }] };
+  expect(allocateMakersPool(694n, [one], 231n)).toMatchObject({ bringers: [{ makerUserId: "b", amount: 232n }], games: [{ gameId: "g1", amount: 462n }], carry: 0n });   // without the 231 carried in: 232 and 231
+});
 it("shares the pool as it stands, so a refund lowers every share in proportion", () => { /* the first case with a pool of 232n: bringer 116n, g1 77n, g2 39n */ });
 it("carries a pool of nothing or less, whole", () => { expect(allocateMakersPool(-50n, [member])).toEqual({ kind: "carry", amount: -50n }); });
 it("always shares out exactly the pool", () => { /* for each shared case above: games + bringers + carry === pool */ });
@@ -586,7 +616,7 @@ No new code: this is the old `golden-months.test.ts` rewritten for this design, 
 - [ ] **Step 1:** the month, in one test file, with every amount written out and none computed by the code under test:
   - Three members. A: monthly, $10.81 with 82 cents tax, a 61-cent card fee and 12 cents of later fees; brought by maker X; played game 1 (maker X) for 2 hours and game 2 (maker Y) for 1 hour. B: yearly, $107.17 with $8.17 tax, $3.41 card fee and 46 cents of later fees, in the first of its twelve months; nobody brought them; played game 2 for 30 minutes. C: monthly, the same amounts as A; brought themselves; played nothing.
   - The test posts each payment (`postPaymentPaid`), each later fee (`feeParts`, `postPaymentFee`), then shares the month's pool (`allocateMakersPool`, `postPoolShares`), keeping a map of account balances as it goes, and expects, to the cent: the pool before it is shared; X's bonus; game 1's and game 2's shares; what X and Y are owed; Ruken's revenue; the tax owed; what is left in `premium:deferred` for B's eleven months.
-  - Then, for Review Focus 17 and the Global Constraints: every entry added up to zero; all accounts together add up to zero; `platform:revenue:premium` holds at least the sum, over the three payments, of what was left after tax and every fee, less each payment's makers' half; and the makers' accounts hold exactly what left the pool.
+  - Then, for Review Focus 17 and the Global Constraints: every entry added up to zero; all accounts together add up to zero; Ruken's half, worked out as Task 32 defines it (paid − tax − every fee − the makers' half, which in the journal is `platform:revenue:premium` less `platform:processor_fees`), is never less than the makers' half; and the makers' accounts hold exactly what left the pool.
   - Then one more step in the same file: A's payment is refunded in full (`postRefund`) before the pool is shared; the pool is shared again from the lower amount; the same checks hold.
 
   The file's first comment says how each expected number was worked out, so a reader can redo it with a pencil. Push. Expected: all pass (the functions exist). If a number differs, the hand-worked number is checked first, then the code: stop and report which was wrong before changing either.
@@ -700,9 +730,9 @@ Each task here adds one step of the daily job: it reads facts that already exist
 | `PlayDayRun` | `day` (the id, a `Date`), `rolledAt`. A day is here once its play was added up, even when nobody played |
 | `PlayDay` | `id`, `day Date`, `userId` (a `User`, `onDelete: Restrict`), `gameId` (a `Game`, `onDelete: Restrict`), `seconds Int`, `createdAt`; unique on (`day`, `userId`, `gameId`); index on `day` |
 
-Enums: `FeeRunState { requested, stored, failed }`; `FeeKind { payment, payout, counted }`; `ReversalKind { refund, chargeback_opened, chargeback_won, chargeback_lost }`.
+Enums: `FeeRunState { requested, stored, failed }`; `FeeKind { payment, payout, counted, credit, returned }`; `ReversalKind { refund, chargeback_opened, chargeback_won, chargeback_lost }`.
 
-In the SQL, by hand: the add-only trigger on `PaymentPosting`, `StripeFeeRow`, `FeePosting`, `StripeReversal`, `PlayDay` and `PlayDayRun`; CHECK `PlayDay_seconds_check` (`"seconds" BETWEEN 1 AND 10800`); CHECK `FeePosting_kind_check` (a `payment` row names an invoice and no maker, a `payout` row a maker and no invoice, a `counted` row neither); CHECK `StripeReversal_amounts_check` (none below zero); CHECK `StripeFeeRun_interval_check` (`"intervalEnd" > "intervalStart"`). `StripeFeeRun` is not add-only: its state moves `requested → stored` or `requested → failed`, once, and a trigger refuses any other change.
+In the SQL, by hand: the add-only trigger on `PaymentPosting`, `StripeFeeRow`, `FeePosting`, `StripeReversal`, `PlayDay` and `PlayDayRun`; CHECK `PlayDay_seconds_check` (`"seconds" BETWEEN 1 AND 10800`); CHECK `FeePosting_kind_check` (a `payment` row names an invoice and no maker, a `payout` row a maker and no invoice, a `counted`, `credit` or `returned` row neither); CHECK `StripeReversal_amounts_check` (none below zero); CHECK `StripeFeeRun_interval_check` (`"intervalEnd" > "intervalStart"`). `StripeFeeRun` is not add-only: its state moves `requested → stored` or `requested → failed`, once, and a trigger refuses any other change.
 
 - [ ] **Step 1 (red):** the seven tables exist; `UPDATE` and `DELETE` on each add-only table reject; 10,801 seconds and 0 seconds reject; two rows for one day, person and game reject; a fee run moves to `stored` once and then refuses a change; two runs with the same start reject; a `payment` posting with no invoice rejects. Push. Expected: `postgres` fails in the new cases: the tables do not exist.
 - [ ] **Step 2 (green):** the schema and the migration. Push. Expected: all pass.
@@ -751,20 +781,21 @@ it("keeps the books balanced", async () => { await expectBooksBalanced(prisma); 
 **Interfaces:**
 - `MoneyStripe` gains:
   - `feeReportWindow(): Promise<{ availableFromSec: number; availableToSec: number }>`: `stripe.reporting.reportTypes.retrieve(FEE_REPORT_TYPE)`, its `data_available_start` and `data_available_end`.
-  - `startFeeReport(fromSec: number, toSec: number): Promise<string>`: `stripe.reporting.reportRuns.create({ report_type: FEE_REPORT_TYPE, parameters: { interval_start: fromSec, interval_end: toSec, columns: [...FEE_COLUMNS] } })`; the run's id.
+  - `startFeeReport(fromSec: number, toSec: number): Promise<string>`: `stripe.reporting.reportRuns.create({ report_type: FEE_REPORT_TYPE, parameters: { interval_start: fromSec, interval_end: toSec, columns: [...FEE_COLUMNS], timezone: "Etc/UTC" } })`; the run's id. The zone is sent, not left to Stripe's default, because every time in the report is written in it. The package's comments say a stretch must start "1 second after" `data_available_start` and end "1 second before" `data_available_end`: read once in test mode (where the report runs there) or at M1 whether Stripe refuses the exact ends, and if it does, move each end in by one second in `requestFeeReport` and report it.
   - `feeReport(runId: string): Promise<{ status: "pending" } | { status: "failed"; problem: string } | { status: "succeeded"; csv: string }>`: the run retrieved; when it succeeded, its `result.url` fetched with `Authorization: Bearer <the secret key>` and read as text.
 - Produces, in `fee-report.ts`:
   - `collectFeeReport(deps: { db; clock; stripe }): Promise<"none" | "pending" | "stored" | "failed">`: the one run in state `requested`, if any. Still pending: nothing changes. Failed: the run becomes `failed` with Stripe's words. Succeeded: in one transaction, every line of `feeRowsFrom(csv)` becomes a `StripeFeeRow` (numbered from 1) and the run becomes `stored` with its count.
-  - `requestFeeReport(deps): Promise<"requested" | "waiting" | "nothing_new">`: `waiting` while a run is `requested`. Otherwise the next stretch starts where the last `stored` run ended (the first ever: Stripe's `availableFromSec`) and ends at Stripe's `availableToSec`; `nothing_new` when that is not later than the start; else the run is started and one `StripeFeeRun` row is written. A `failed` run's stretch is asked for again: the next stretch still starts at the last `stored` end.
+  - `requestFeeReport(deps): Promise<"requested" | "waiting" | "nothing_new">`: `waiting` while a run is `requested`. Otherwise the next stretch starts where the last `stored` run ended (the first ever: one day before the oldest `MembershipPayment.paidAt`, and never before Stripe's `availableFromSec`, so an old Stripe account's years of rows are not stored; with no payment yet: `nothing_new`) and ends at Stripe's `availableToSec`; `nothing_new` when that is not later than the start; else the run is started and one `StripeFeeRun` row is written. A `failed` run's stretch is asked for again: the next stretch still starts at the last `stored` end.
   - Why the stretches cannot miss or repeat a fee: the report is by the date a fee reached Ruken's balance, Stripe says its data is complete up to `availableToSec`, and each stretch starts exactly where the last stored one ended.
 
 - [ ] **Step 1 (red):**
 
 ```ts
-it("asks for everything Stripe has, the first time", async () => {
-  stripe.setReportWindow({ availableFromSec: 1_000, availableToSec: 5_000 });
+it("asks from a day before the first payment, the first time", async () => {
+  stripe.setReportWindow({ availableFromSec: 1_000, availableToSec: 5_000 });        // the helper's first payment was paid at 87_400 s
   expect(await requestFeeReport(deps)).toBe("requested");
-  expect(await prisma.stripeFeeRun.findFirstOrThrow()).toMatchObject({ intervalStart: new Date(1_000_000), intervalEnd: new Date(5_000_000), state: "requested" });
+  expect(await prisma.stripeFeeRun.findFirstOrThrow()).toMatchObject({ intervalStart: new Date(1_000_000), intervalEnd: new Date(5_000_000), state: "requested" });   // 87_400 − 86_400 = 1_000
+  /* with no payment at all: "nothing_new", and Stripe is not asked */
 });
 it("waits while Stripe is still working, and asks for nothing else meanwhile", async () => {   // Review Focus 16
   expect(await collectFeeReport(deps)).toBe("pending");
@@ -789,10 +820,11 @@ it("stores nothing when the report's columns are not the ones asked for", async 
 - Test: `tests/features/money/fees.pg.test.ts`
 
 **Interfaces:**
-- Produces: `postFeeRows(deps: { db; clock }): Promise<{ payment: number; payout: number; counted: number; unplaced: number; unreadable: number }>`. It looks at every `StripeFeeRow` with no `FeePosting` whose run was stored in the last 62 days, in run and row order, with `KnownIds` built from the database (`payments` from `PaymentPosting`; `payouts` from Task 28's `Payout` rows and Task 24's `BankAccount` rows, empty until those tables exist; `counted` from `PaymentPosting.balanceTransactionId` and `StripeReversal.balanceTransactionIds`), and for each, by `placeFee`:
+- Produces: `postFeeRows(deps: { db; clock }): Promise<{ payment: number; payout: number; counted: number; credit: number; returned: number; unplaced: number; unreadable: number }>`. It looks at every `StripeFeeRow` with no `FeePosting` whose run was stored in the last 62 days, in run and row order, with `KnownIds` built from the database (`payments` from `PaymentPosting`; `payouts` from Task 28's `Payout` rows and Task 24's `BankAccount` rows, empty until those tables exist; `counted` from `PaymentPosting.balanceTransactionId` and `StripeReversal.balanceTransactionIds`), and for each, by `placeFee`:
   - `counted`: one `FeePosting` row, nothing posted.
-  - `payment`: under `lockLedger`, one `FeePosting` row with the row's `feeMicroCents`, and the cents this row adds to the payment: `centsRoundedUp` of all the payment's `FeePosting` micro-cents with this row, less `centsRoundedUp` of them without it. When that is above zero: one `payment_fee` entry (key `fee:<feeRowId>`, `stripeInvoiceId` set), its lines from `feeParts` (with `payment.fees` the card fee plus every cent already taken for this payment) and `postPaymentFee`, where a month's account is `premium:deferred` when that month has no release entry yet and is not the payment's first month, and otherwise `pool:premium:<postingPeriodForMonth(month)>`. The entry's own month is `postingPeriod` of the row's `incurredAt`.
+  - `payment`: under `lockLedger`, one `FeePosting` row with the row's `feeMicroCents`, and the cents this row adds to the payment: `centsRoundedUp` of all the payment's `FeePosting` micro-cents with this row, less `centsRoundedUp` of them without it. When that is above zero: one `payment_fee` entry (key `fee:<feeRowId>`, `stripeInvoiceId` set), its lines from `feeParts` (with `payment.fees` the card fee plus every cent already taken for this payment) and `postPaymentFee`, where a month's account is `premium:deferred` when that month has no release entry yet and is not the payment's first month, and otherwise `pool:premium:<postingPeriodForMonth(month)>`. The entry's own month is `postingPeriod` of `reportTimeMs(incurredAt)`.
   - `payout`: one `FeePosting` row naming the maker; Task 31 posts it.
+  - `credit` and `returned`: one `FeePosting` row of that kind, nothing posted.
   - `unplaced` and `unreadable`: nothing is written; the row is looked at again on the next run, for 62 days, and counted in the answer. Task 32 shows both to staff, and Task 23 will not make a month final while a row that reached Ruken's balance in that month is `unreadable`.
 
 - [ ] **Step 1 (red):**
@@ -818,6 +850,8 @@ it("leaves a row it cannot read unposted, and says so every run", async () => { 
   expect(await postFeeRows(deps)).toMatchObject({ unreadable: 1 });
   expect(await prisma.feePosting.count()).toBe(0);
 });
+it("does not take a fee Stripe's credits paid, or a returned fee, and neither holds the month up", async () => {   // Owner: "No, skip them"
+  /* a credit-settled row and a negative row for in_1: the pool is unchanged; each has a FeePosting; finalizePeriod is not refused */ });
 it("leaves a fee that names nothing unplaced, and places it once its payment is posted", async () => {
   /* a row for in_2 before in_2 is posted: unplaced; after postUnpostedPayments: payment */ });
 it("keeps the books balanced", async () => { await expectBooksBalanced(prisma); });
@@ -847,9 +881,9 @@ it("keeps the books balanced", async () => { await expectBooksBalanced(prisma); 
 - Test: `tests/features/money/reversals.pg.test.ts`, `tests/features/money/stripe-port.test.ts` (add cases)
 
 **Interfaces:**
-- `MoneyStripe` gains `refundsSince(sec: number)` and `disputesSince(sec: number)`: `stripe.refunds.list` and `stripe.disputes.list` with `created: { gte: sec }`, every page, each with its balance transactions expanded, answered as `{ id; chargeId; amountCents; status; feeCents; returnedCents; balanceTransactionIds; atSec }[]`. For a dispute, the amounts come from its `balance_transactions` as `OLD/packages/core/src/billing/stripe-events.ts` read them (lines 260 to 320): the first one is what the opening took, with its fee; the one with a `net` above zero is what a win gave back.
+- `MoneyStripe` gains `refundsSince(sec: number)` and `disputesSince(sec: number)`: `stripe.refunds.list` and `stripe.disputes.list` with `created: { gte: sec }`, every page, each with its balance transactions expanded, answered as `{ id; chargeId; amountCents; status; feeCents; returnedCents; balanceTransactionIds; atSec }[]`. For a dispute, the amounts come from its `balance_transactions` as `OLD/packages/core/src/billing/stripe-events.ts` read them (lines 260 to 320): the first one is what the opening took, with its fee; the one with a `net` above zero is what a win gave back. It also gains `dispute(id: string)`, one dispute read the same way.
 - Produces, carried from `OLD/packages/core/src/premium/chargeback.ts` with `chargeback.pg.test.ts`:
-  - `readReversals(deps: { db; clock; stripe }): Promise<{ stored: number }>`: both lists since 40 days before the newest `StripeReversal` (the first run: since the oldest `MembershipPayment`); each one whose charge is a `PaymentPosting`'s becomes `StripeReversal` rows that do not exist yet: a succeeded refund, one `refund` row; a dispute, `chargeback_opened` when first seen, and `chargeback_won` or `chargeback_lost` once Stripe says so. One for a charge this database does not have is not Ruken's membership and is skipped.
+  - `readReversals(deps: { db; clock; stripe }): Promise<{ stored: number }>`: both lists since 40 days before the newest `StripeReversal` (the first run: since the oldest `MembershipPayment`); each one whose charge is a `PaymentPosting`'s becomes `StripeReversal` rows that do not exist yet: a succeeded refund, one `refund` row; a dispute, `chargeback_opened` when first seen, and `chargeback_won` or `chargeback_lost` once Stripe says so. One for a charge this database does not have is not Ruken's membership and is skipped. Each run also reads again, by its id (`MoneyStripe.dispute(id)`, `stripe.disputes.retrieve` with its balance transactions), every dispute that has a `chargeback_opened` row and neither a `won` nor a `lost` one: a dispute can take months to decide, and by then it is outside any window measured from the newest row.
   - `postReversals(deps: { db; clock }): Promise<{ posted: number }>`: each `StripeReversal` with no entry, oldest first, under `lockLedger`: a refund posts `postRefund` (key `refund:<id>`); an opened chargeback posts `postChargebackOpened` (key `dispute:<id>:opened`); a won one posts `postChargebackWon` against the opened entry (key `dispute:<id>:won`, `reversesId` the opened entry); a lost one posts nothing (the opened entry already says the money is gone). `paymentLines` is the payment's entry plus its fee entries (Task 3); `deferredLeft` is what is still in `premium:deferred` for that payment; `openPool` is the month of the clock.
 - Changed: facts come from Stripe's lists in the daily job, not from webhook events (the Calls). Trim: ending the membership after a lost dispute (slice 1's webhooks already mirror the subscription Stripe ends or the Owner cancels; this slice changes nothing in `membership`), the "paid after end" branch (slice 1 records no such payment), the per-invoice lock.
 
@@ -861,6 +895,7 @@ it("undoes a refunded payment: each side gives back what it got", async () => {
 it("cancels a yearly payment's unreleased months first", async () => {});                  // Review Focus 5
 it("stores a refund once however many runs see it", async () => {});                       // Review Focus 9
 it("posts nothing for a lost dispute beyond its opening", async () => {});
+it("sees a dispute won long after it opened, whatever came since", async () => { /* opened 70 days ago; a newer refund is stored; then Stripe says won: the won row is stored and posted */ });
 it("skips a refund of a charge that is not a membership payment here", async () => {});
 it("keeps the books balanced after each", async () => { await expectBooksBalanced(prisma); });
 ```
@@ -875,7 +910,7 @@ it("keeps the books balanced after each", async () => { await expectBooksBalance
 - Test: `tests/features/money/play-rollup.pg.test.ts`
 
 **Interfaces:**
-- Produces: `rollUpPlayDays(deps: { db; clock }): Promise<{ days: DateText[] }>`: every Chicago day that has ended, from the day of the oldest `PlaySession` (or, once there is a `PlayDayRun`, the day after the newest), oldest first, at most 40 days a run. For a day, in one transaction: every `member` session with a `userId` that started within 24 hours before the day's end, with its beats; grouped by person and game; `playSecondsOnDay` for each; one `PlayDay` row for each group with a second or more; one `PlayDayRun` row. Sessions of any other basis are never read (design 6: free play, staff play and a maker's own play do not count; slice 2 recorded which was which).
+- Produces: `rollUpPlayDays(deps: { db; clock }): Promise<{ days: DateText[] }>`: every Chicago day that has ended, from the day of the oldest `PlaySession` (or, once there is a `PlayDayRun`, the day after the newest), oldest first, at most 40 days a run. For a day, in one transaction: every `member` session with a `userId` that started in `[startOfDayMs(day) − PLAY_SESSION_LIFE_MS, startOfDayMs(addDays(day, 1)))`, with its beats (a session takes beats for `PLAY_SESSION_LIFE_MS`, 24 hours, so one started the evening before still plays into this day; a window measured back from the day's end would miss it, and on a 25-hour day would miss the day's own first hour); a person with any `StaffAssignment` row is left out (coordinator, 2026-11-14: any staff member's play is staff play, whatever their role; slice 2 records `staff` only for the three game roles); grouped by person and game; `playSecondsOnDay` for each; one `PlayDay` row for each group with a second or more; one `PlayDayRun` row. Sessions of any other basis are never read (design 6: free play, staff play and a maker's own play do not count; slice 2 recorded which was which).
 - A day is added up only after it ends, and a beat is stamped by the server's clock, so a finished day cannot gain a beat later.
 
 - [ ] **Step 1 (red):** with `TestClock`, sessions and beats made through Prisma:
@@ -885,7 +920,9 @@ it("adds up a member's play on a game for a finished day", async () => { /* 20 m
 it("does not touch a day that has not ended", async () => { /* the clock still on the 5th in Chicago: no rows */ });
 it("counts only members' play", async () => { /* sessions with basis free_game, staff and own_game on the same day: no PlayDay for them */ });
 it("counts two tabs once and stops at three hours", async () => {});                          // Review Focus 6
-it("splits a session that crosses midnight between its two days", async () => {});
+it("splits a session that crosses midnight between its two days", async () => { /* started 23:55 on the 5th: 300 seconds on the 5th and 300 on the 6th */ });
+it("counts a session started in the first hour of a 25-hour day", async () => { /* started at 00:30 Chicago time on 7 November 2027: counted on that day */ });
+it("leaves out the play of anyone who is staff, whatever their role", async () => { /* a finance staffer with a membership and a member session: no PlayDay */ });
 it("marks a day done even when nobody played, and never adds a day up twice", async () => {   // Review Focus 9
   /* two runs: one PlayDayRun per day; the second run adds nothing */ });
 it("catches up after missed days, oldest first", async () => {});
@@ -903,10 +940,11 @@ it("catches up after missed days, oldest first", async () => {});
 
 **Interfaces:**
 - Produces:
-  - `runMoneyJob(deps: { db; clock; stripe: MoneyStripe }): Promise<MoneyJobReport>`, the steps in this order, each in its own `try`: a step that throws is named in `problems` with its message and the steps after it still run, except that nothing after a failed `closeDuePeriods` runs (a month must not become final on facts that are not all in):
-    1. `postUnpostedPayments` 2. `collectFeeReport` 3. `requestFeeReport` 4. `postFeeRows` 5. `readReversals` 6. `postReversals` 7. `releaseDueMonths` 8. `rollUpPlayDays` 9. `closeDuePeriods`. Later branches add, after these: `finalizeDuePeriods` (Task 23), `executePayouts` and the payouts' outcomes (Task 30), the payout costs (Task 31).
+  - `runMoneyJob(deps: { db; clock; stripe: MoneyStripe }): Promise<MoneyJobReport>`, the steps in this order, each in its own `try`: a step that throws is named in `problems` with its name in words and its message (each step has one, in `daily.ts`: "posting payments", "collecting Stripe's fee report", "asking Stripe for its fee report", "taking Stripe's fees off the top", "reading refunds and chargebacks from Stripe", "posting refunds and chargebacks", "releasing yearly payments' months", "adding up play", "closing the month", and later "making the month final", "sending payouts", "reading payouts' outcomes", "Stripe's charges for payouts"; staff read these, never a function's name) and the steps after it still run, except that nothing after a failed `closeDuePeriods` runs (a month must not become final on facts that are not all in):
+    1. `postUnpostedPayments` 2. `collectFeeReport` 3. `requestFeeReport` 4. `postFeeRows` 5. `readReversals` 6. `postReversals` 7. `releaseDueMonths` 8. `rollUpPlayDays` 9. `closeDuePeriods`. Later branches add `finalizeDuePeriods` (Task 23) and `executePayouts` and the payouts' outcomes (Task 30) after these, and the payout costs and their corrections (Task 31) before `closeDuePeriods`.
     The facts are read before a month is closed, so what the run of the 8th reads still lands in the month it belongs to.
-  - `interface MoneyJobReport { payments: number; feeReport: { collected: "none" | "pending" | "stored" | "failed"; requested: "requested" | "waiting" | "nothing_new" }; fees: { product: string; featureName: string; kind: "payment" | "payout" | "counted" | "unplaced" | "unreadable"; rows: number }[]; reversals: number; released: number; playDays: string[]; closed: string[]; problems: { step: string; message: string }[] }`. `fees` counts rows only: no amount and nothing about a person.
+    On a Stripe test key (`stripeKeyMode` is `test`, slice 1) with no `STRIPE_API_BASE`, steps 2 and 3 are skipped and the report says `feeReport: { collected: "none", requested: "nothing_new" }` with `skipped: "Stripe's fee report needs a live key"`: Stripe says some report types run only on a live key, and a test deployment must not fail every day. The journeys' stand-in (which sets `STRIPE_API_BASE`) still runs both.
+  - `interface MoneyJobReport { payments: number; feeReport: { collected: "none" | "pending" | "stored" | "failed"; requested: "requested" | "waiting" | "nothing_new" }; fees: { product: string; featureName: string; kind: "payment" | "payout" | "counted" | "credit" | "returned" | "unplaced" | "unreadable"; rows: number }[]; reversals: number; released: number; playDays: string[]; closed: string[]; problems: { step: string; message: string }[] }`. `fees` counts rows only: no amount and nothing about a person.
   - `moneyServices(): { runJob(): Promise<MoneyJobReport> }` in `services.ts`, built once from `prisma()`, `systemClock` and `bindMoneyStripe(membershipServices().stripe)`. `money.ts` re-exports `moneyServices` and, as later tasks add them, what the screens read.
   - `POST /jobs/money`: 404 without the job secret (`hasJobSecret`), as `/jobs/purge-accounts`; otherwise `runJob()` and its report as JSON, always with status 200, so a person who runs it (M1) reads the report even when a step failed.
   - `cloudflare/worker.js` knocks on `/jobs/money` after `/jobs/purge-accounts`, the same way; it throws unless both answered 200, and also when the money report's `problems` is not empty, so a failed run shows as failed in Cloudflare. The purge runs first and is not skipped when the money job fails.
@@ -920,8 +958,9 @@ it("does nothing the second time", async () => {                                
   await runMoneyJob(deps); const before = await balancesOf(prisma);
   expect((await runMoneyJob(deps)).payments).toBe(0); expect(await balancesOf(prisma)).toEqual(before);
 });
-it("carries on after a step that fails, and names it", async () => { /* Stripe's refund list throws: problems [{ step: "readReversals" }]; the play days are still added up */ });
+it("carries on after a step that fails, and names it", async () => { /* Stripe's refund list throws: problems [{ step: "reading refunds and chargebacks from Stripe" }]; the play days are still added up */ });
 it("closes nothing when closing fails, and runs nothing after it", async () => {});
+it("skips Stripe's fee report on a test key, and says so", async () => { /* sk_test_ and no STRIPE_API_BASE: Stripe's report calls are never made; no problem is reported */ });
 it("reads the 8th's facts before it closes the month", async () => { /* a fee row stored on the run of 8 December for a November payment lands in pool:premium:2026-11, and November is closed after it */ });
 ```
 
@@ -946,7 +985,7 @@ it("reads the 8th's facts before it closes the month", async () => { /* a fee ro
 | `Statement` | `id`, `makerUserId` (a `User`, `onDelete: Restrict`), `period` (a `LedgerPeriod`), `document Json`, `totalsHash`, `createdAt`; unique on (`makerUserId`, `period`) |
 | `StatementLine` | `id`, `statementId` (a `Statement`), `source StatementLineSource`, `gameId?`, `ref`, `amountCents BigInt`, `createdAt`; index on `statementId` |
 
-Enums: `PoolShareKind { play, bringing }`; `StatementLineSource { play, bringing, payout_cost, correction }`. In the SQL: the add-only trigger on all four; CHECK `PoolShare_kind_check` (a `play` share names a game and seconds; a `bringing` share names neither a game nor seconds, and names members).
+Enums: `PoolShareKind { play, bringing }`; `StatementLineSource { play, bringing, transfer, payout_cost, correction }`. In the SQL: the add-only trigger on all four; CHECK `PoolShare_kind_check` (a `play` share names a game and seconds; a `bringing` share names neither a game nor seconds, and names members).
 
 - [ ] **Step 1 (red):** the four tables exist; each refuses `UPDATE` and `DELETE`; a second statement for one maker and month rejects; a `play` share with no game rejects. Push. Expected: `postgres` fails in the new cases.
 - [ ] **Step 2 (green):** the schema and the migration. Push. Expected: all pass.
@@ -960,7 +999,7 @@ Enums: `PoolShareKind { play, bringing }`; `StatementLineSource { play, bringing
 **Interfaces:**
 - Produces:
   - `membersOf(tx, period: Period): Promise<MemberMonth[]>`, from `OLD/packages/core/src/money/pools.ts`'s `readPremiumMembers`: for every `PaymentPosting` whose months include `period`, the month's part by `poolContributions` (with `fees` the card fee plus every cent taken for that payment so far), added up per member (`MembershipPayment.userId`); `broughtBy` from `bringerOf` over that member's `MembershipStart` rows; `plays` from the month's `PlayDay` rows, added up per game. In member id order.
-  - `poolFor(tx, period: Period): Promise<{ pool: bigint; members: MemberMonth[]; outcome: PoolOutcome; inputsHash: string }>`: `pool` is minus the balance of `pool:premium:<period>` (the money as it stands, after refunds and chargebacks: carried); `outcome` is `allocateMakersPool(pool, members)`; the hash is of `canonicalJson({ period, pool, members })`. It writes nothing, so Task 32's screen shows a month before it is final with the same function that makes it final.
+  - `poolFor(tx, period: Period): Promise<{ pool: bigint; members: MemberMonth[]; outcome: PoolOutcome; inputsHash: string }>`: `pool` is minus the balance of `pool:premium:<period>` (the money as it stands, after refunds and chargebacks: carried); `outcome` is `allocateMakersPool(pool, members, carriedIn)`, where `carriedIn` is the `carryCents` of the month before's `PoolRun` (zero when there is none); the hash is of `canonicalJson({ period, pool, members })`. It writes nothing, so Task 32's screen shows a month before it is final with the same function that makes it final.
   - `sharePool(tx, period: Period, nowMs: number): Promise<{ shared: boolean }>`: `false` when the month has a `PoolRun`. Otherwise `poolFor`; the entries of `postPoolShares` (the maker of each game from `Game.makerUserId`, read now) or `postPoolCarry`, posted into `period`; one `PoolRun` row; one `PoolShare` row per game and per bringer with an amount above zero.
 
 - [ ] **Step 1 (red):** with a helper in `tests/support/ledger.ts` that makes a member who paid, was brought and played (`aMonth(prisma, clock, [...])`):
@@ -970,6 +1009,7 @@ it("shares the worked month exactly as the pure functions say", async () => {
   /* Task 8's three members, through the database: the same amounts to the cent in maker:<x>:payable and maker:<y>:payable; pool:premium:2026-11 ends at zero */ });
 it("pays the bringer only in a member's first twelve months, and never for bringing yourself", async () => {});   // Review Focus 7
 it("pays bonuses and carries the rest when nobody played", async () => {                      // Review Focus 8
+  /* then December, with play: November's carry is shared among December's games by play, and no bringer's share grows by any of it */
   /* pool:premium:2026-11 ends at zero; pool:premium:2026-12 holds the carry; PoolRun.carryCents says so */ });
 it("still works out the share of a game whose maker's account was deleted", async () => {     // Review Focus 10
   /* the User row is a tombstone: the share is credited to maker:<their id>:payable; then slice 1's purgeDueAccounts runs and every money row is still there, unchanged */ });
@@ -991,13 +1031,13 @@ it("shows the same numbers before the month is shared as after", async () => { /
 **Interfaces:**
 - Produces, pure, in `statement.ts`, from `OLD/packages/ledger/src/statement.ts` with `statement.test.ts`:
   - `interface StatementGame { slug: string; name: string }` (copied in when the month is made final, so a later rename leaves the statement alone).
-  - `type StatementLineDoc = { ref: string; amount: bigint } & ({ source: "play"; game: StatementGame; minutes: number } | { source: "bringing"; members: number } | { source: "payout_cost"; payoutId: string } | { source: "correction"; note: string })`.
-  - `interface StatementDocument { period: Period; finalAt: string; lines: StatementLineDoc[]; totals: { earned: bigint; broughtForward: bigint; owed: bigint } }`: `earned` is the lines added up; `owed` is the maker's balance after every entry up to and including the month; `broughtForward` is `owed − earned`, what stood before this month's lines (less anything sent to their bank since).
-  - `buildStatement(input: { makerUserId: string; period: Period; finalAt: string; shares: readonly { kind: "play" | "bringing"; game: StatementGame | null; amount: bigint; seconds: number | null; members: number | null }[]; others: readonly { kind: "payout_cost" | "correction"; key: string; amount: bigint; payoutId?: string; note?: string }[]; owed: bigint }): { document: StatementDocument; canonical: string; hash: string }`. One `play` line per game, by the game's name; `minutes` is the seconds divided by 60, rounded down; one `bringing` line when any; then payout costs, then corrections, each by key. The same input always gives the same bytes (carried).
+  - `type StatementLineDoc = { ref: string; amount: bigint } & ({ source: "play"; game: StatementGame; minutes: number } | { source: "bringing"; members: number } | { source: "transfer"; payoutId: string; sentOn: DateText } | { source: "payout_cost"; payoutId: string } | { source: "correction"; note: string })`. A payout's `transfer` entry debits the maker by what they were owed; on the statement of the month it was sent in it is two lines, both taking money off: `transfer` (what reached their bank) and `payout_cost` (what was held for Stripe's charge), so the agreement's "shown on your statement" holds after the payout as well as before it.
+  - `interface StatementDocument { period: Period; finalAt: string; lines: StatementLineDoc[]; totals: { earned: bigint; sent: bigint; broughtForward: bigint; owed: bigint } }`: `earned` is the `play`, `bringing` and `correction` lines added up; `sent` is the `transfer` and `payout_cost` lines added up (zero or less); `owed` is the maker's balance after every entry up to and including the month; `broughtForward` is `owed − earned − sent`, what stood before this month's lines. So a statement always reads as a sum: from before, plus earned, less sent, is owed.
+  - `buildStatement(input: { makerUserId: string; period: Period; finalAt: string; shares: readonly { kind: "play" | "bringing"; game: StatementGame | null; amount: bigint; seconds: number | null; members: number | null }[]; others: readonly { kind: "transfer" | "payout_cost" | "correction"; key: string; amount: bigint; payoutId?: string; sentOn?: DateText; note?: string }[]; owed: bigint }): { document: StatementDocument; canonical: string; hash: string }`. One `play` line per game, by the game's name; `minutes` is the seconds divided by 60, rounded down; one `bringing` line when any; then corrections, then each payout's `transfer` and its `payout_cost`, each by key. The same input always gives the same bytes (carried).
   - Trim: store, tip and ad lines, pending and held, the unlock.
 - Produces, in `statements.ts`, from `OLD/packages/core/src/money/statements.ts` with `statements.pg.test.ts`: `writeStatements(tx, period: Period, nowMs: number): Promise<{ makers: string[] }>`: a statement for every account with a `PoolShare` in the month, another maker line posted in the month (Tasks 31, 36), or a balance other than zero; its `Statement` row and one `StatementLine` per line. A second call writes nothing.
 
-- [ ] **Step 1 (red):** `statement.test.ts`: the carried cases that still apply, and: two games sort by name; 119 seconds read as 1 minute; a maker with only a bonus has one line; `owed` under what was `earned` when a payout went out before; the same input in another order gives the same `canonical`. `statements.pg.test.ts`: after `sharePool`, each of the worked month's makers has one statement whose lines add up to what the journal credited them; **a maker owed $24.99 gets a statement, with `owed` 2499** (Review Focus 11); **a maker whose account was deleted gets one too** (Review Focus 10); a second call adds none; a maker with nothing this month and nothing owed gets none. Stubs. Push. Expected: `verify` fails in `statement.test.ts`, `postgres` in `statements.pg.test.ts`.
+- [ ] **Step 1 (red):** `statement.test.ts`: the carried cases that still apply, and: two games sort by name; 119 seconds read as 1 minute; a maker with only a bonus has one line; **the month after a payout: "from before" is last month's owed, the two payout lines take off exactly what was owed then, and the sum holds**; the same input in another order gives the same `canonical`. `statements.pg.test.ts`: after `sharePool`, each of the worked month's makers has one statement whose lines add up to what the journal credited them; **a maker owed $24.99 gets a statement, with `owed` 2499** (Review Focus 11); **a maker whose account was deleted gets one too** (Review Focus 10); a second call adds none; a maker with nothing this month and nothing owed gets none. Stubs. Push. Expected: `verify` fails in `statement.test.ts`, `postgres` in `statements.pg.test.ts`.
 - [ ] **Step 2 (green):** carry, trim and change. Push. Expected: all pass.
 
 ### Task 23: Final on the 10th
@@ -1129,7 +1169,7 @@ Look: `<main class="card">`; the button in each state is the form's one plain `<
 
 ```ts
 test("a maker connects a bank and sees it connected", async ({ page }, testInfo) => {
-  await addGame(page);                                           // slice 2's helper, with whatever it asks for: a signed-in maker with a game
+  await addGame(browser);                                        // slice 2's helper takes the browser (slice 2, Task 30) and answers a maker with a live game; sign in as that maker on `page`
   await page.goto("/make/bank");
   await expect(page.getByText("Ruken pays you through Stripe, straight to your bank.")).toBeVisible();
   await expectOneCard(page); await showTheOwner(page, testInfo, "connect your bank");
@@ -1169,25 +1209,27 @@ test("changing bank details opens Stripe's own page", async ({ page }) => {});
 
     | When | Words |
     |---|---|
-    | the payout was paid | We sent `<send>` to your bank on `<long date>`. |
-    | the payout failed | Your bank sent the money back. Check your bank details, and we'll try again. |
+    | the payout was paid | We sent `<send>` to your bank on `<long date>`. Stripe's cost of sending it, `<cost>`, came out of what you were owed. |
+    | the payout failed | Your bank sent the money back. Change your bank details, and we'll try again. ("Change your bank details" is a link to `/make/bank`, whose `change` action opens Stripe's page.) |
     | a payout is planned, approved or on its way | We'll send `<send>` to your bank on `<long date>`. Stripe's cost of sending it, `<cost>`, comes out of what you're owed. |
-    | nothing is owed, or less than nothing | Nothing is owed right now. |
+    | nothing is owed | Nothing is owed right now. |
+    | less than nothing is owed (a correction took more than was there) | Nothing is owed right now. Stripe's charge was `<amount>` more than we held back; it comes off your next earnings. |
     | owed is under the minimum | This is under `<minimum>`, so it carries over to next month. |
     | the bank is not ready | Connect your bank to be paid. |
-    | otherwise | We'll send this to your bank on `<long date>`. |
+    | otherwise | We'll send this to your bank on `<long date>`, less Stripe's cost of sending it. |
 
     The cost sentence is left out when `costCents` is zero. Until branch G exists `payout` is always null.
 - Produces, reading the database:
   - `makerMoney(deps: { db; clock }, userId: string): Promise<{ owed: bigint; bank: BankState; line: string; statements: { period: Period; name: string; earned: bigint }[] }>`: `owed` is the balance of `maker:<userId>:payable`; the statements newest first.
-  - `statementOf(deps, userId: string, period: Period): Promise<{ name: string; finalOn: DateText; lines: { ref: string; words: string; amount: bigint }[]; earned: bigint; broughtForward: bigint; owed: bigint; line: string } | null>`: null unless this person has a statement for that month. Each line's words:
+  - `statementOf(deps, userId: string, period: Period): Promise<{ name: string; finalOn: DateText; lines: { ref: string; words: string; amount: bigint }[]; earned: bigint; sent: bigint; broughtForward: bigint; owed: bigint; line: string } | null>`: null unless this person has a statement for that month. Each line's words:
 
     | Line | Words |
     |---|---|
     | `play` | `<game's name>` · members played `<minutes words>` |
     | `bringing`, one member | For a member you brought to Ruken |
     | `bringing`, more | For `<n>` members you brought to Ruken |
-    | `payout_cost` | Stripe's cost of sending your payout |
+    | `transfer` | Sent to your bank on `<long date>` |
+    | `payout_cost` | Stripe's cost of sending it |
     | `correction` | the line's own note |
 
 - [ ] **Step 1 (red):** `views.test.ts`: one case per row of both tables, with exact words; `monthName`; `minutesWords(1)`, `(1240)`. `views.pg.test.ts`: after the worked month is made final, maker X's `makerMoney` holds what the journal owes them and one statement; `statementOf` for another maker's month is null (Review Focus 15). The look test: `rows` is in `CLASSES`, has a rule, and the rule holds no colour that is not a token. Stubs. Push. Expected: `verify` fails in `views.test.ts` and the look case, `postgres` in `views.pg.test.ts`.
@@ -1219,7 +1261,7 @@ November 2026                    $41.20
 Statements come on the 10th of each month, for the month before.
 ```
 
-- "You're owed" is a `statement`; the next line is always there; the third is `payLine`. The button is there only while the bank is not `ready`, and goes to `/make/bank`.
+- "You're owed" is a `statement`; the next line is always there; the third is `payLine`. When less than nothing is owed, the heading reads "You're owed $0.00" and `payLine` says why (its table); a minus amount is never the heading. The button is there only while the bank is not `ready`, and goes to `/make/bank`.
 - Each statement is a link to `/make/money/<month>`, in `rows`. With none: only the last line.
 
 **`/make/money/2026-11`:**
@@ -1240,7 +1282,7 @@ How this is worked out
 Back to your money
 ```
 
-- The lines and the three totals are one `rows` list; "You're owed" is its `total`. A line that takes money off shows a minus sign before the dollar sign (`−$2.35`), never brackets or red.
+- The lines and the totals are one `rows` list; "You're owed" is its `total`. In the month after a payout the list also holds, above the totals, "Sent to your bank on 15 December 2026 −$38.85" and "Stripe's cost of sending it −$2.35", and "From before" reads last month's "You're owed", so the sum can be checked. A line that takes money off shows a minus sign before the dollar sign (`−$2.35`), never brackets or red.
 - "How this is worked out" goes to `/split` (Task 34; until that branch is merged the link is left out, with its test).
 - Someone else's month, a month with no statement, or an address that is not a month (`isPeriod` in `load`): 404.
 
@@ -1292,14 +1334,14 @@ Owner, 2026-11-14: "Hold back, fix later." The cost of sending a payout is worke
 | `PayoutRun` | `id`, `period` unique (a `LedgerPeriod`), `state PayoutRunState` default `draft`, `checkedById?`, `checkedAt?`, `approvedById?`, `approvedAt?`, `executedAt?`, `createdAt` |
 | `Payout` | `id`, `runId` (a `PayoutRun`), `makerUserId` (a `User`, `onDelete: Restrict`), `payoutId` unique, `descriptor`, `owedCents BigInt`, `costCents BigInt`, `sendCents BigInt`, `state PayoutState` default `planned`, `skipReason PayoutSkipReason?`, `stripeTransferId?` unique, `stripePayoutId?` unique, `paidAt?`, `failedAt?`, `createdAt`; unique on (`runId`, `makerUserId`) |
 
-Enums: `PayoutRunState { draft, approved, executed }`; `PayoutState { planned, approved, transferred, paid, failed, skipped }`; `PayoutSkipReason { below_minimum, bank_not_ready, nothing_owed }`. In the SQL, copied from the old migration and renamed: CHECK `Payout_payoutId_check` (`^PO-[0-9]{4}-[0-9]{4,}$`), `Payout_descriptor_check` (`'RUKEN ' || "payoutId"`), `Payout_amounts_check` (`"sendCents" > 0 AND "costCents" >= 0 AND "owedCents" = "sendCents" + "costCents"`), CHECK `PayoutRun_two_people_check` (`"approvedById" IS NULL OR "approvedById" <> "checkedById"`); the forward-only trigger on both (`guard_forward_only`, with these two tables' moves); and `Payout_amount_only_down` (`reject_payout_increase`: no amount of a payout ever goes up).
+Enums: `PayoutRunState { draft, approved, executed }`; `PayoutState { planned, approved, transferred, paid, failed, skipped }`; `PayoutSkipReason { below_minimum, bank_not_ready, nothing_owed, account_closed }`. In the SQL, copied from the old migration and renamed: CHECK `Payout_payoutId_check` (`^PO-[0-9]{4}-[0-9]{4,}$`), `Payout_descriptor_check` (`'RUKEN ' || "payoutId"`), `Payout_amounts_check` (`"sendCents" > 0 AND "costCents" >= 0 AND "owedCents" = "sendCents" + "costCents"`), CHECK `PayoutRun_two_people_check` (`"approvedById" IS NULL OR "approvedById" <> "checkedById"`); the forward-only trigger on both (`guard_forward_only`, with these two tables' moves); and `Payout_amount_only_down` (`reject_payout_increase`: no amount of a payout ever goes up).
 
 **Interfaces:**
 - `payout-id.ts`, carried whole from `OLD/packages/ledger/src/payout-id.ts` with its test: `payoutId(period, position)` (`PO-YYMM-NNNN`), `payoutDescriptor(period, position)` (`RUKEN PO-YYMM-NNNN`, what the maker's bank shows).
 - In `rules.ts`: `PAYOUT_COST_RULE = { readFrom: "stripe.com/connect/pricing, 2026-11-14", accountMonthCents: 200n, perPayoutCents: 25n, perPayoutBps: 25 }`, with the comment that this is Stripe's price list, that it is used only to hold a cost back before Stripe charges it, and that Task 31 corrects every payout to what Stripe really charged.
 - `payout-plan.ts`, carried from `OLD/packages/ledger/src/payout-plan.ts` and `dispute.ts`'s `heldCents`, with `payout-plan.test.ts`:
   - `payoutCost(owed: bigint): { send: bigint; cost: bigint }`, new: `send` is the most that, with `accountMonthCents`, `perPayoutCents` and `perPayoutBps` of `send` (rounded up to a cent) added, is not more than `owed`; `cost` is `owed − send`. So the maker's bank gets `send`, and what was held covers Stripe's charge to the cent or by one cent more.
-  - `interface PayoutCandidate { makerUserId: string; owed: bigint; questioned: readonly bigint[]; bankReady: boolean }`; `planPayouts(period, candidates): { payouts: { makerUserId; position; payoutId; descriptor; owed: bigint; cost: bigint; send: bigint }[]; skipped: { makerUserId; reason: PayoutSkipReason; available: bigint }[] }`: what can be paid is `owed` less what open questions hold (`heldCents`); the first reason that applies, in this order: `bank_not_ready`, `nothing_owed` (zero or less), `below_minimum` (under `PAYOUT_MINIMUM_CENTS`, before the cost); payees are numbered in account id order.
+  - `interface PayoutCandidate { makerUserId: string; owed: bigint; questioned: readonly bigint[]; bankReady: boolean; accountOpen: boolean }` (`accountOpen` is `User.status === "active"`: an account waiting to be deleted, or deleted, is never paid; slice 1's purge leaves its Stripe account as it was, so the bank alone would still read ready); `planPayouts(period, candidates): { payouts: { makerUserId; position; payoutId; descriptor; owed: bigint; cost: bigint; send: bigint }[]; skipped: { makerUserId; reason: PayoutSkipReason; available: bigint }[] }`: what can be paid is `owed` less what open questions hold (`heldCents`); the first reason that applies, in this order: `account_closed`, `bank_not_ready`, `nothing_owed` (zero or less), `below_minimum` (under `PAYOUT_MINIMUM_CENTS`, before the cost); payees are numbered in account id order.
   - `recheckPayout(approvedOwed: bigint, now: PayoutCandidate): { pay: { owed; cost; send } } | { skip: PayoutSkipReason }`: the same rules on the payout day; the amount may only go down.
   - `postTransfer(makerUserId, payoutId, amounts: { owed; cost; send }): { key: string; lines: PostingLine[] }`: key `xfer:<payoutId>`; a debit of `owed` to the maker's account, a credit of `send` to `platform:stripe_clearing`, a credit of `cost` to `platform:payout_costs` (new: what was held back from payouts until Stripe takes its charge).
   - Trim: `locked`, `connect_unverified` as two flags, `strike_hold`.
@@ -1313,16 +1355,17 @@ it("holds back Stripe's cost and sends the rest", () => {
 });
 it("never sends more than is owed, whatever the amount", () => { /* for owed from 2500n to 2600n: send + cost === owed, and 225n + roundedUp(send × 0.25%) <= cost */ });
 it("pays at $25.00 and carries $24.99 forward", () => {                                   // Review Focus 11
-  const plan = planPayouts("2026-11" as Period, [{ makerUserId: "a", owed: 2500n, questioned: [], bankReady: true }, { makerUserId: "b", owed: 2499n, questioned: [], bankReady: true }]);
+  const plan = planPayouts("2026-11" as Period, [{ makerUserId: "a", owed: 2500n, questioned: [], bankReady: true, accountOpen: true }, { makerUserId: "b", owed: 2499n, questioned: [], bankReady: true, accountOpen: true }]);
   expect(plan.payouts).toMatchObject([{ makerUserId: "a", payoutId: "PO-2611-0001", descriptor: "RUKEN PO-2611-0001", owed: 2500n, send: 2269n }]);
   expect(plan.skipped).toEqual([{ makerUserId: "b", reason: "below_minimum", available: 2499n }]);
 });
 it("does not pay a maker whose bank is not ready, however much is owed", () => {});      // Review Focus 11
+it("never pays an account that is deleted or waiting to be, whatever its bank says", () => { /* accountOpen false, bankReady true, owed 9000n: skipped, "account_closed"; recheckPayout answers the same on the day */ });   // Review Focus 10
 it("holds a questioned line out of the payout", () => { /* owed 8000n, questioned [3000n]: owed 5000n is planned */ });
 it("lowers a payout on the day, never raises it", () => {                                 // Review Focus 13
-  expect(recheckPayout(8000n, { makerUserId: "a", owed: 6000n, questioned: [], bankReady: true })).toMatchObject({ pay: { owed: 6000n } });
-  expect(recheckPayout(8000n, { makerUserId: "a", owed: 9000n, questioned: [], bankReady: true })).toMatchObject({ pay: { owed: 8000n } });
-  expect(recheckPayout(8000n, { makerUserId: "a", owed: 2000n, questioned: [], bankReady: true })).toEqual({ skip: "below_minimum" });
+  expect(recheckPayout(8000n, { makerUserId: "a", owed: 6000n, questioned: [], bankReady: true, accountOpen: true })).toMatchObject({ pay: { owed: 6000n } });
+  expect(recheckPayout(8000n, { makerUserId: "a", owed: 9000n, questioned: [], bankReady: true, accountOpen: true })).toMatchObject({ pay: { owed: 8000n } });
+  expect(recheckPayout(8000n, { makerUserId: "a", owed: 2000n, questioned: [], bankReady: true, accountOpen: true })).toEqual({ skip: "below_minimum" });
 });
 it("posts a transfer that adds up to zero", () => {});
 ```
@@ -1346,7 +1389,7 @@ it("posts a transfer that adds up to zero", () => {});
   - `payoutRunOf(db, period)`: what Task 33's screen reads: the run, its payouts with each maker's email, and the makers skipped with the reason (worked out again by `planPayouts`, since skipped makers have no row).
 - Trim: `requireOwner` (the route's staff check and the code check replace it), strikes.
 
-- [ ] **Step 1 (red):** the carried cases under the new names, and: making November final drafts one run with a payout for the maker owed $25 or more with a bank, and none for the maker under $25, the maker with no bank, and **the maker whose account was deleted** (their `BankAccount` is not ready; Review Focus 10); the checker cannot approve; an unchecked run cannot be approved; approving twice changes nothing; a run for a month with nobody to pay is drafted empty and can be approved. Stubs. Push. Expected: `postgres` fails in `payouts.pg.test.ts` with "not built yet".
+- [ ] **Step 1 (red):** the carried cases under the new names, and: making November final drafts one run with a payout for the maker owed $25 or more with a bank, and none for the maker under $25, the maker with no bank, and **the maker whose account was deleted, though their bank still reads ready at Stripe: the reason is `account_closed`** (Review Focus 10); the checker cannot approve; an unchecked run cannot be approved; approving twice changes nothing; a run for a month with nobody to pay is drafted empty and can be approved. Stubs. Push. Expected: `postgres` fails in `payouts.pg.test.ts` with "not built yet".
 - [ ] **Step 2 (green):** carry, trim, and the call in `finalizePeriod`. Push. Expected: all pass.
 
 ### Task 30: Sending the payouts on the 15th
@@ -1357,9 +1400,9 @@ it("posts a transfer that adds up to zero", () => {});
 - Test: `tests/features/money/payout-execution.pg.test.ts`, `tests/features/money/stripe-port.test.ts` (add cases), `tests/features/money/daily.pg.test.ts` (add a case)
 
 **Interfaces:**
-- `MoneyStripe` gains, carried from `OLD/packages/billing/src/connect.ts` with their cases, idempotency keys and lookups as they are: `findTransfer(ref)`, `createTransfer(ref & { amount })` (key `xfer:<payoutId>`, group `PR-YYMM`, `metadata.payoutId`), `findPayout(ref)`, `findPayoutAttempt(ref & { attempt })`, `createPayout(ref & { amount; descriptor; attempt? })` (on the maker's account, key `po:<payoutId>`), where `ref` is `{ payoutId; stripeAccountId }`. New: `payoutOutcome(stripeAccountId, stripePayoutId): Promise<{ status: "pending" | "in_transit" | "paid" | "failed" | "canceled"; arrivalSec: number | null }>` (the payout read on the maker's account).
+- `MoneyStripe` gains, carried from `OLD/packages/billing/src/connect.ts` with their cases, idempotency keys and lookups as they are: `findTransfer(ref)`, `createTransfer(ref & { amount })` (key `xfer:<payoutId>`, group `PR-YYMM`, `metadata.payoutId`), `findPayout(ref)`, `findPayoutAttempt(ref & { attempt })`, `createPayout(ref & { amount; descriptor; attempt? })` (on the maker's account, key `po:<payoutId>`), where `ref` is `{ payoutId; stripeAccountId }`. New: `payoutOutcome(stripeAccountId, stripePayoutId): Promise<{ status: "pending" | "in_transit" | "paid" | "failed" | "canceled"; arrivalSec: number | null }>` (the payout read on the maker's account). And new: `availableUsd(): Promise<bigint>` (`stripe.balance.retrieve()`: what is available in US dollars on Ruken's own balance).
 - Produces, carried from `OLD/packages/core/src/money/payout-execution.ts` with `payout-execution.pg.test.ts`:
-  - `executePayouts(deps: { db; clock; stripe }): Promise<{ transferred: string[]; skipped: string[]; paidOut: string[]; errors: { payoutId: string; message: string }[]; executed: string[] }>`: for each `approved` run whose `payoutDate` has come (today's Chicago date), each `approved` payout: check again (`recheckPayout` with `owedForRun` and the bank as stored after a fresh `refreshBank`); move `send` to the maker's Stripe account, first asking Stripe whether an earlier run already did (`findTransfer`); in one transaction under `lockLedger`, post `postTransfer` into the open month and move the payout `approved → transferred`, storing the amounts actually used; then pay the maker's Stripe balance out to their bank (`findPayout`, then `createPayout`). One payout's error leaves it where it was for tomorrow's run and does not stop the others. A run is `executed` once none of its payouts is `approved`.
+  - `executePayouts(deps: { db; clock; stripe }): Promise<{ transferred: string[]; skipped: string[]; paidOut: string[]; errors: { payoutId: string; message: string }[]; executed: string[] }>`: for each `approved` run whose `payoutDate` has come (today's Chicago date), each `approved` payout: check again (`recheckPayout` with `owedForRun` and the bank as stored after a fresh `refreshBank`); move `send` to the maker's Stripe account, first asking Stripe whether an earlier run already did (`findTransfer`); in one transaction under `lockLedger`, post `postTransfer` into the open month and move the payout `approved → transferred`, storing the amounts actually used; then pay the maker's Stripe balance out to their bank (`findPayout`, then `createPayout`). One payout's error leaves it where it was for tomorrow's run and does not stop the others. A run is `executed` once none of its payouts is `approved`. **Before any transfer of a run** it reads Ruken's own balance (`MoneyStripe.availableUsd()`: `stripe.balance.retrieve()`, the `available` amount in `usd`): when that is less than the run's total `sendCents` still to send, it sends nothing for that run, answers `short: { available; needed }`, and the job reports it as a problem; tomorrow's run tries again. A transfer is paid from that balance, and Stripe pays an account's balance out to its own bank unless told otherwise (M2b).
   - `settlePayouts(deps): Promise<{ paid: string[]; failed: string[]; retried: string[] }>`, new, in place of the old Connect webhook: every `transferred` payout with a `stripePayoutId` is read from Stripe: `paid` moves it to `paid` with the arrival date; `failed` or `canceled` moves it to `failed` with the clock's time. A `failed` payout is paid out again (attempt `2`, `3`, as carried) once `refreshBank` shows the maker's bank ready and checked after the failure: the money is still in the maker's Stripe balance, so only the payout is made again.
 - `runMoneyJob` gains steps 11 and 12, `executePayouts` and `settlePayouts`, and the report gains both answers.
 - The stand-ins gain transfers and payouts, with a way for a test to lose an answer (`failNextTransfer({ afterMaking: true })`) and to fail a payout.
@@ -1369,6 +1412,12 @@ it("posts a transfer that adds up to zero", () => {});
 ```ts
 it("sends nothing before the 15th, and sends on it", async () => { /* the clock on the 14th in Chicago: nothing; on the 15th: transferred and paid out, PO-2611-0001, the bank gets sendCents */ });
 it("waits for the next business day when the 15th is not one", async () => {});
+it("sends nothing when Ruken's Stripe balance is short, and says how short", async () => {   // the audit's B1
+  stripe.setAvailableUsd(1000n);                                  // the run needs more
+  expect(await executePayouts(deps)).toMatchObject({ transferred: [], short: { available: 1000n } });
+  expect(stripe.transfers()).toHaveLength(0);
+  stripe.setAvailableUsd(1_000_000n); expect((await executePayouts(deps)).transferred).toHaveLength(1);
+});
 it("does not send twice when Stripe's answer was lost", async () => {                     // Review Focus 12
   stripe.failNextTransfer({ afterMaking: true });
   expect((await executePayouts(deps)).errors).toHaveLength(1);
@@ -1398,10 +1447,10 @@ it("keeps the books balanced, and never touches Ruken's half", async () => {    
 **Interfaces:**
 - Produces:
   - `postPayoutCosts(deps: { db; clock }): Promise<{ posted: number }>`: each `FeePosting` of kind `payout` with no entry, under `lockLedger`: the cents it adds for that maker (rounded up once over the maker's rows, as Task 15 does per payment); one `payout_cost` entry (key `payoutfee:<feeRowId>`): a debit to `platform:payout_costs`, a credit to `platform:stripe_clearing`. The maker's account is not touched: their cost was held back when the payout was sent.
-  - `correctPayoutCosts(deps): Promise<{ corrected: string[] }>`: for each `paid` payout sent 35 days ago or more with no correction yet: Stripe's real charge is the cents of the maker's `payout` fee rows whose `incurredAt` falls in the Chicago month the payout was sent in. When there are such rows and they differ from the payout's `costCents`: one `correction` entry (key `payoutfix:<payoutId>`) between `platform:payout_costs` and the maker's account for the difference, either way; it becomes a line on the maker's next statement with the note "Stripe's cost of sending your payout `<payoutId>` was `<real>`, not `<held>`." When there are no such rows (Stripe charged in a way that names nobody; M1 and the first payout show which), nothing is posted and Task 32's screen shows the payout under "Needs a person".
-- `runMoneyJob` gains steps 13 and 14.
+  - `correctPayoutCosts(deps): Promise<{ corrected: string[] }>` (Owner, 2026-11-14: "Hold back, fix later", corrected "on the next statement"). It runs in the job before `closeDuePeriods`, so its entries land in a month that is still open. For each `paid` or `transferred` payout: Stripe's real charge so far is the cents of the maker's `payout` fee rows that name that payout's own ids (its `stripeTransferId`, its `stripePayoutId` and those of its later attempts), plus the rows that name the maker's Stripe account and reached Ruken's balance in the Chicago month the payout was sent in (Stripe's charge for an account paid that month). The correction is `costCents` less that charge, less what earlier corrections of this payout already posted. On the run of the 8th, when the month the payout was sent in is about to close: when rows were found and the difference is not zero, one `correction` entry (key `payoutfix:<payoutId>:<month>`) between `platform:payout_costs` and the maker's account, posted into that month, so it is a line on the very next statement (a payout sent on 15 December is corrected on 8 January, on December's statement, final 10 January), with the note "Stripe's cost of sending your payout on `<long date>` was `<real>`, not `<held>`." Rows that arrive after that are corrected the same way on the following 8th, into the month then closing. When no row names the payout by then (Stripe charged in a way that names nobody; M1 and the first payout show which), nothing is posted and Task 32's screen lists the payout under "Needs a person".
+- `runMoneyJob` gains `postPayoutCosts` and `correctPayoutCosts`, both placed before `closeDuePeriods` (after `postFeeRows`), so a correction made on the 8th lands in the month that closes that day.
 
-- [ ] **Step 1 (red):** Stripe's rows for a payout equal what was held: the held account ends at zero and the maker gets no line; Stripe charged 10 cents less: the maker is credited 10 cents on their next statement, with the note; 10 cents more: debited 10 cents; no rows after 35 days: no entry, and the payout is listed as unmatched; a second run posts nothing; the books balance and Ruken's half is unchanged. Stubs. Push. Expected: `postgres` fails in `payout-costs.pg.test.ts` with "not built yet".
+- [ ] **Step 1 (red):** Stripe's rows for a payout equal what was held: the held account ends at zero and the maker gets no line; Stripe charged 10 cents less: on the run of 8 January the maker is credited 10 cents **in December, the month the payout was sent in, so it is on December's statement**, with the note; 10 cents more: debited 10 cents; **a row that arrives on 20 January is corrected on 8 February, into January, for the difference only**; rows are matched by the payout's own ids and a second attempt's ids count; no rows by the 8th: no entry, and the payout is listed as unmatched; a second run posts nothing; the books balance and Ruken's half is unchanged. Stubs. Push. Expected: `postgres` fails in `payout-costs.pg.test.ts` with "not built yet".
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass. Branch G is ready to merge; it must be on `main` before 15 December.
 
 ---
@@ -1416,7 +1465,7 @@ it("keeps the books balanced, and never touches Ruken's half", async () => {    
 - Test: `tests/features/money/views.pg.test.ts` (add cases), `tests/browser/admin-money.test.ts`
 
 **Interfaces:**
-- Produces, in `views.ts`: `monthSoFar(deps, period): Promise<{ name: string; stateWords: string; members: number; paid: bigint; tax: bigint; fees: bigint; makersHalf: bigint; rukensHalf: bigint; bonuses: bigint; byPlay: bigint; carry: bigint }>`: `paid`, `tax` and `fees` from the month's payments and their fee entries; `makersHalf`, `bonuses`, `byPlay` and `carry` from `poolFor` (a month not yet final) or its `PoolRun` and `PoolShare` rows (a final one); `rukensHalf` from the journal. And `needsAPerson(deps): Promise<string[]>`, the lines below, each only when it is true.
+- Produces, in `views.ts`: `monthSoFar(deps, period): Promise<{ name: string; stateWords: string; members: number; paid: bigint; tax: bigint; fees: bigint; makersHalf: bigint; rukensHalf: bigint; bonuses: bigint; byPlay: bigint; carry: bigint }>`: `paid`, `tax` and `fees` from the month's payments and their fee entries; `makersHalf`, `bonuses`, `byPlay` and `carry` from `poolFor` (a month not yet final) or its `PoolRun` and `PoolShare` rows (a final one); `rukensHalf` is `paid − tax − fees − makersHalf`, worked out from those four and not read from one account (the journal keeps the card fee in `platform:processor_fees`, as carried, so `platform:revenue:premium` alone is larger by every card fee). And `needsAPerson(deps): Promise<string[]>`, the lines below, each only when it is true.
 
 The screen, for staff with a role in `MONEY_STAFF_ROLES` (anyone else: 404):
 
@@ -1438,7 +1487,7 @@ Ruken's half                       $1,913.39
 Needs a person
 3 fees from Stripe name no payment and no payout: Radar, $0.15.
 1 fee from Stripe could not be read. November will not be final until the code can read it.
-The daily job reported a problem on 9 December 2026: readReversals.
+The daily job reported a problem on 9 December 2026: reading refunds and chargebacks from Stripe.
 
 Payouts for November 2026
 Earlier months
@@ -1446,7 +1495,7 @@ Earlier months
 
 - State words: "Open. Closes on `<long date>`.", "Closed. Final on `<long date>`.", "Final since `<long date>`."
 - The month shown is the newest that is not final, with the open one under it; "Earlier months" lists final months, each a link to the same screen for that month (`?month=2026-10`).
-- "Needs a person" lines: unplaced fees of the last 62 days, by `product`, with their total; unreadable fees, with the month they hold up; the last job run that was not ok, with the steps named; payouts whose real cost was never matched (Task 31); a month due to be final that is not. With none: "Nothing needs a person."
+- "Needs a person" lines: "Stripe's balance is `<available>`, and this month's payouts need `<needed>`." (Task 30); "`<n>` payments have had no fee from Stripe's Billing for 10 days." (a posted payment older than 10 days with no `payment` fee row at all: the sign that Stripe's fees are not reaching the report, the audit's B3); returned fees, with their total (Task 4); unplaced fees of the last 62 days, by `product`, with their total; unreadable fees, with the month they hold up; the last job run that was not ok, with the steps named; payouts whose real cost was never matched (Task 31); a month due to be final that is not. With none: "Nothing needs a person."
 - Under a final month's numbers, "Statements": one row per maker with a statement that month, their account's email and what they earned, from the `Statement` rows (design 5.5 lists statements among what staff see). It is a list only; staff read a maker's lines there, and nothing can be changed.
 - "Payouts for `<month>`" links to Task 33's screen once that month's run exists.
 - Every number is read from the ledger. The screen has no form.
@@ -1455,7 +1504,7 @@ Grandma (for staff): the same sum a maker's statement shows, for the whole month
 
 Look: `<main class="card">`; the numbers in `rows`; the two halves' breakdown is two indented rows; links stay links; a "Needs a person" line is `problem`.
 
-- [ ] **Step 1 (red):** `views.pg.test.ts`: the worked month's `monthSoFar` before and after it is final gives the same numbers; the two halves are equal to the cent or differ by the carried rounding only; each "Needs a person" line appears when its cause does and not otherwise. `admin-money.test.ts`: staff with `finance` see the screen (attached with `showTheOwner`); a `curator` and a member get 404; signed out: sign-in. Push. Expected: `browser` fails (404 at `/admin/money`), `postgres` in the new view cases.
+- [ ] **Step 1 (red):** `views.pg.test.ts`: the worked month's `monthSoFar` before and after it is final gives the same numbers; Ruken's half is the makers' half or more, by at most one cent per payment (the odd cents); each "Needs a person" line appears when its cause does and not otherwise. `admin-money.test.ts`: staff with `finance` see the screen (attached with `showTheOwner`; slice 2's `signInAsStaff` grants `curator`, so this journey grants `finance` itself, through the database helper, as slice 2's helper grants its role); a `curator` and a member get 404; signed out: sign-in. Push. Expected: `browser` fails (404 at `/admin/money`), `postgres` in the new view cases.
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 
 ### Task 33: Checking and approving a payout run (`/admin/money/<month>`)
@@ -1476,6 +1525,7 @@ other@example.test        owed $80.00    Stripe's cost $2.45    to their bank $7
 Not paid this month
 third@example.test        owed $12.00    Under $25. It carries over.
 fourth@example.test       owed $90.00    No bank connected yet.
+(a deleted account)       owed $31.00    Account deleted. Kept on the books.
 
 To send in all            $116.40
 
@@ -1530,7 +1580,7 @@ Each month
 November 2026: 412 members. Makers' half: $1,913.39.
 ```
 
-- The five lines at the top are paragraph 5 of the maker agreement, version 1, word for word. A test reads `src/features/make/library/maker-agreement-v1.txt` and fails when the page and the paragraph differ.
+- The five lines at the top are paragraph 5 of the maker agreement, version 1, word for word. A test reads `src/features/make/library/maker-agreement-v1.txt` and fails when the page and the paragraph differ. The file is on no branch yet (slice 2's branch M brings it), so the five lines printed here are the coordinator's brief of 2026-11-14 and stand in until it lands: the file wins, and the page is made to match it.
 - The example's inputs (what the member paid, the tax, the fees, the two play times) are the made-up values in `split-example.json`, which says in its first key that they are made up; every other number on the page is worked out from them by `poolContributions` and `allocateMakersPool`, so the example cannot drift from the rules.
 - "Each month" has one line per final month, newest first, from `PoolRun`: its members and its `poolCents`. When part of a month carried over, the line adds: "`<carry>` of it carried into the next month, because nobody played." With no final month yet, the heading and its lines are left out.
 
@@ -1605,11 +1655,11 @@ After sending, the statement shows the line with "You asked about this on 12 Dec
 
 Design 7.5: slice 5 ends with "the first statement is right". No code unless a step fails; a fix is its own small branch with its test first.
 
-- [ ] **Step 1, on 8 December or the first day after it that branch D is on `main`:** the Owner runs M1's line once more and pastes the answer. Expected: `"closed":["2026-11"]`, no `problems`, and no `unreadable` or unexpected `unplaced` fee.
+- [ ] **Step 1, on 8 December or the first day after it that branch D is on `main`:** the Owner runs M1's line once more and pastes the answer. Expected: `"closed":["2026-11"]`, no `problems`, and no `unreadable` or unexpected `unplaced` fee, and Billing and Tax rows for November's payments (M1, step 3).
 - [ ] **Step 2, on 10 December:** staff open `/admin/money`. Expected: "November 2026", "Final since 10 December 2026", "Nothing needs a person." Execution works November out by hand from Stripe's own dashboard exports for the month (the payments, their tax, the Fees report) and the play totals, with the method of Task 8's first comment, and compares to the cent: the makers' half, each maker's statement, Ruken's half. Any difference of a cent or more: stop and report with both numbers before anything is paid.
 - [ ] **Step 3:** a maker (the Owner's own maker account for FloorFifty) opens `/make/money` and the November statement on a phone, and says each line makes sense without being told what it means. A line that needs explaining is a wording change, reported and fixed before the 15th.
 - [ ] **Step 4, M3, between 10 and 14 December:** two staff accounts check and approve the November run (Task 33).
-- [ ] **Step 5, on 15 December:** after the day's job, `/admin/money/2026-11` reads "Sent on 15 December 2026" for each payout, the amounts match Stripe's dashboard, and nothing was sent twice. In the days after, each reads as paid, and Stripe's Fees report shows what Stripe charged for sending (Task 31 then matches it; if it cannot, that is reported the same day).
+- [ ] **Step 5, on 15 December:** after the day's job, `/admin/money/2026-11` reads "Sent on 15 December 2026" for each payout, the amounts match Stripe's dashboard, and nothing was sent twice. In the days after, each reads as paid, and Stripe's Fees report shows what Stripe charged for sending (Task 31 then matches it; if it cannot, that is reported the same day). If Connect is not yet open in live mode because the Owner's legal texts are not in place ("What the Owner holds"), nothing is sent: makers see "Payouts aren't open yet", what they are owed carries forward, and that is not a failure of this slice; this step is then done on the first 15th after Connect opens.
 - [ ] **Step 6:** tick the tracker: slice 5 is done when all of this is merged to `main`, green there, and the first statement and payout were right on the real site.
 
 ## Notes for the plans that follow
