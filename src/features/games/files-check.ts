@@ -23,7 +23,7 @@ export interface PulledFile {
 }
 
 /** Whole megabytes of 1,000,000 bytes, rounded up, with a thousands comma: `41 MB`. */
-function megabytes(bytes: number): string {
+export function megabytes(bytes: number): string {
   return `${count(Math.ceil(bytes / 1_000_000))} MB`;
 }
 
