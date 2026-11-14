@@ -24,6 +24,12 @@ export async function userIdOf(email: string): Promise<string> {
   return (await db().user.findUniqueOrThrow({ where: { email }, select: { id: true } })).id;
 }
 
+/** The staff roles the account with this address has, by name. */
+export async function staffRolesOfEmail(email: string): Promise<string[]> {
+  const rows = await db().staffAssignment.findMany({ where: { user: { email } }, select: { role: true } });
+  return rows.map((row) => row.role);
+}
+
 export function membershipStartsOf(email: string): Promise<MembershipStart[]> {
   return db().membershipStart.findMany({ where: { user: { email } }, orderBy: { startedAt: "asc" } });
 }
