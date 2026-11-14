@@ -86,6 +86,53 @@ export async function restoreOnSignIn(prisma: PrismaClient, clock: Clock, userId
   });
 }
 
-export function purgeDueAccounts(deps: DeletionDeps): Promise<number> {
-  throw new Error(`not built yet: ${typeof deps}`);
+/**
+ * The daily job: finishes every deletion whose 14 days are over, and answers how many it finished.
+ *
+ * Each account is finished in a transaction of its own, so one that fails leaves the others done. The request is
+ * claimed first (only the run that marks it purged goes on), so two runs at once never both finish the same
+ * account. The `User` row stays, as a tombstone with nothing of the person in it, so the payment rows that point
+ * at it stay true. A later slice that stores more of a person adds its own removal here, with a test.
+ */
+export async function purgeDueAccounts(deps: DeletionDeps): Promise<number> {
+  const { prisma, clock } = deps;
+  const now = new Date(clock.epochMs());
+  const due = await prisma.deletionRequest.findMany({
+    where: { cancelledAt: null, purgedAt: null, purgeAfter: { lte: now } },
+    select: { id: true, userId: true },
+  });
+
+  let finished = 0;
+  for (const { id, userId } of due) {
+    const done = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.deletionRequest.updateMany({
+        where: { id, cancelledAt: null, purgedAt: null },
+        data: { purgedAt: now },
+      });
+      if (claimed.count === 0) return false;
+
+      const { email } = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
+      await tx.session.deleteMany({ where: { userId } });
+      await tx.account.deleteMany({ where: { userId } });
+      // A mail link is kept by address, or by the person's id (a password reset), so both are cleared.
+      await tx.verification.deleteMany({
+        where: { OR: [{ identifier: email }, { value: email }, { value: userId }] },
+      });
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          status: "deleted",
+          // `.invalid` can never be a real address (RFC 2606), and the person's own address is free to sign up again.
+          email: `deleted-${userId}@deleted.invalid`,
+          name: "Deleted",
+          emailVerified: false,
+          image: null,
+          adultOn: null,
+        },
+      });
+      return true;
+    });
+    if (done) finished += 1;
+  }
+  return finished;
 }
