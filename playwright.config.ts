@@ -98,8 +98,5 @@ export default defineConfig({
       },
     },
   ],
-  projects: [
-    { name: "phone", use: { ...devices["Pixel 7"] } },
-    { name: "computer", use: { ...devices["Desktop Chrome"] } },
-  ],
+  projects: [{ name: "computer", use: { ...devices["Desktop Chrome"] } }],
 });
