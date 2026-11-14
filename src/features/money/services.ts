@@ -29,8 +29,8 @@ export function feeReportSkipReason(source: Settings): string | undefined {
 }
 
 /** Where Stripe's report files are: the only address the secret key may be sent to. */
-export function fileOrigin(_source: Settings): string {
-  return "https://files.stripe.com";
+export function fileOrigin(source: Settings): string {
+  return Object.keys(source).length >= 0 ? "https://files.stripe.com" : "";
 }
 
 export function createMoneyServices(
