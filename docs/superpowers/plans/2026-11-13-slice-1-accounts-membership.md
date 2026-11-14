@@ -856,7 +856,7 @@ Elements, with no class: `body` (felt, chalk, body text), `main` (one centred co
 | `row` | the element around a few short fields | puts them side by side (month, day, year) |
 | `button` | an `<a>` | a link that looks like a button. It is still a link to a journey and to a screen reader |
 | `quiet` | a `<button>` or `a.button` | no fill: it looks like a link. For a second action that must not draw the eye |
-| `pay` | one `<button>` in the whole site | the Dusky Green (`felt-raised`) fill with a `chalk` label: "Continue to payment" (Task 27) and nothing else (changed from pip red, Owner, 2026-11-14: "I feel like red is bad, continue to payment is good") |
+| `pay` | one `<button>` in the whole site | the Blue (`pay`, `#006eb8`) fill with a `chalk` label: "Continue to payment" (Task 27) and nothing else (changed from pip red, then Dusky Green, Owner, 2026-11-14: "I want it to stand out, but red seems bad", then "go with D") |
 | `problem` | the element that holds a refusal | weight 600, so it is seen; it keeps the card's ink |
 
 A `<button>` (or `a.button`) with no other class is the screen's main action: paper with an ink label on the felt, ink with a paper label on a card.
@@ -879,7 +879,7 @@ A `<button>` (or `a.button`) with no other class is the screen's main action: pa
 **Grandma, on every screen.** The look adds no word and takes none away. What it must not break, and how that is checked:
 
 - One thing to do per screen: a card holds at most one filled button; every other way out is an underlined link or a `quiet` button (Task 37 counts them on every screen).
-- No button is red (Owner, 2026-11-14: "I feel like red is bad, continue to payment is good"; Owner, 2026-11-14, on the pip mark: "Keep it"): the one button that spends money, "Continue to payment", is Dusky Green with white words (Tasks 27 and 37), and pip is only the paywall card's one small mark, not built yet. The plan first said red meant money and nothing else.
+- No button is red (Owner, 2026-11-14: "I want it to stand out, but red seems bad", then "go with D"; Owner, 2026-11-14, on the pip mark: "Keep it"): the one button that spends money, "Continue to payment", is Blue (`--pay`, `#006eb8`) with white words (Tasks 27 and 37), and pip is only the paywall card's one small mark, not built yet. The plan first said red meant money and nothing else.
 - Readable: text is 18px on a ground it contrasts with by 4.5:1 or more (Task 35 measures every pair from the tokens); only notes are 14px.
 - Easy to hit: buttons and fields are at least 48px tall.
 - Nothing sideways, nothing moving: no screen scrolls sideways on a phone, also with a very long email address; with reduced motion nothing moves (Task 37).
@@ -1212,7 +1212,7 @@ test("the page still reads, with its button there to press, when the fonts do no
 | `button`, `.button` | `display: inline-flex`, `align-items: center`, `justify-content: center` (an `<a>` is inline, and an inline box ignores a height and a transform: without this a link that looks like a button is neither 48px tall nor gives when pressed); `min-height: var(--size-target)`; 0.5rem by 1.5rem inside; no border; `border-radius: var(--radius-button)`; `font: var(--text-button)`; no underline; `paper` fill with an `ink` label; `transition: transform var(--press-time)` |
 | `.card button`, `.card .button` | `ink` fill with a `paper` label |
 | `.quiet` (and inside `.card`) | no fill; the colour of the text around it; underlined; `font: inherit`; 0.25rem at the sides |
-| `.card .pay` | `felt-raised` fill with a `chalk` label (first `pip` and `paper`; see the Owner's change in the Global Constraints). A comment: used once, on "Continue to payment" |
+| `.card .pay` | `pay` fill with a `chalk` label (first `pip` and `paper`, then `felt-raised`; see the Owner's change in the Global Constraints). A comment: used once, on "Continue to payment" |
 | `button:active`, `.button:active` | `transform: scale(var(--press-scale))` |
 | `.card :focus-visible` | the outline is `ink` |
 | `@media (prefers-reduced-motion: reduce)` | on `button` and `.button`: `transition: none`; on their `:active`: `transform: none` |
@@ -2105,7 +2105,7 @@ Changed, Owner, 2026-11-14, "All six" (a design review of the newest screens): t
 
 Grandma: two short lines say what it costs and what happens next; one button; "Not now" is the way back; coming back from Stripe without paying lands on this same card with the plan still chosen.
 
-Look (design 5.8, branch L): the screen is `<main class="card">`. "Continue to payment" is `<button class="pay">`: **the one Dusky Green button in the whole site** (it was pip red until the Owner's change of 2026-11-14), because it is the one press that spends money. Signed out, the same place holds a plain `<button>` reading "Continue" (ink: it leads to sign-up, not to paying); write the two as an `{#if}` with two buttons, not as one button with a computed class. The two plan choices are radio buttons with their labels, one under the other; "Not now" stays a link; "Keep playing" is `class="button"`; a refusal is `problem`. The price line is ordinary text: money lines are never a `note`. Nothing else on this card, on `/join/done` or on `/me` is `pay`: "Join Ruken", "Change card or cancel", "Manage", "Update card" and "Go to my account" lead somewhere and spend nothing.
+Look (design 5.8, branch L): the screen is `<main class="card">`. "Continue to payment" is `<button class="pay">`: **the one Blue button in the whole site** (it was pip red until the Owner's change of 2026-11-14), because it is the one press that spends money. Signed out, the same place holds a plain `<button>` reading "Continue" (ink: it leads to sign-up, not to paying); write the two as an `{#if}` with two buttons, not as one button with a computed class. The two plan choices are radio buttons with their labels, one under the other; "Not now" stays a link; "Keep playing" is `class="button"`; a refusal is `problem`. The price line is ordinary text: money lines are never a `note`. Nothing else on this card, on `/join/done` or on `/me` is `pay`: "Join Ruken", "Change card or cancel", "Manage", "Update card" and "Go to my account" lead somewhere and spend nothing.
 
 - [ ] **Step 1 (red):**
 
@@ -2130,13 +2130,13 @@ test("Continue to payment opens the payment page", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Pay" })).toBeVisible();   // the stand-in's page
 });
 test("next pointing off the site is ignored", async ({ page }) => { /* /join?next=//evil.example → "Not now" href is "/" */ });
-test("Continue to payment is Dusky Green with white words, and nothing is red", async ({ page }) => {   // Review Focus 16
+test("Continue to payment is Blue with white words, and nothing is red", async ({ page }) => {   // Review Focus 16
   await page.goto("/join");
   expect(await pipRed(page)).toEqual([]);                                             // signed out: "Continue" is ink
   await signUp(page); await page.goto("/join");
   expect(await pipRed(page)).toEqual([]);
   const pay = page.getByRole("button", { name: "Continue to payment" });
-  await expect(pay).toHaveCSS("background-color", rgb(token("--felt-raised")));
+  await expect(pay).toHaveCSS("background-color", rgb(token("--pay")));
   await expect(pay).toHaveCSS("color", rgb(token("--chalk")));
 });
 ```

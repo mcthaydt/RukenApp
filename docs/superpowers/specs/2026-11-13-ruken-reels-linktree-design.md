@@ -221,7 +221,7 @@ Owner, 2026-11-13: "We can use the design present in the previous version as wel
 
 Ruken's own screens wear the Card Table design: the paywall card, sign-up, sign-in and password reset, the person's own page (/me), deleting an account, the maker's area (/make), the admin portal, and the placeholder home page until the feed replaces it. The feed (5.1) stays full-screen clips with Reels' controls, and a maker's page (5.3) keeps the Wada colours its maker picked. The source is the Owner's "Ruken Card Table" design system (approved 2026-10-27); these are its values.
 
-The idea: the page is quiet green felt, and what a person picks up or acts on is a white paper card on it. Red appears only as the one small pip mark on the paywall card, never on a button (Owner, 2026-11-14: "I feel like red is bad, continue to payment is good"; the paid button is not red; Owner, 2026-11-14, on the pip mark: "Keep it"; the button's colour is still the Owner's to pick). No casino imagery, no chips, no gold.
+The idea: the page is quiet green felt, and what a person picks up or acts on is a white paper card on it. Red appears only as the one small pip mark on the paywall card, never on a button (Owner, 2026-11-14: "I want it to stand out, but red seems bad", then "go with D"; the paid button is Blue, `pay` in the table below; Owner, 2026-11-14, on the pip mark: "Keep it"). No casino imagery, no chips, no gold.
 
 - **Colours** (one theme, dark by choice; no gradients):
 
@@ -231,7 +231,8 @@ The idea: the page is quiet green felt, and what a person picks up or acts on is
   | --- | --- | --- |
   | `felt` | `#112f2c` Deep Slate Green | the page |
   | `felt-deep` | `#111314` Black | panels on the felt, the footer |
-  | `felt-raised` | `#004f46` Dusky Green | secondary buttons, tracks, and the paid button ("Continue to payment") with white words (9.5:1) |
+  | `felt-raised` | `#004f46` Dusky Green | secondary buttons, tracks |
+  | `pay` | `#006eb8` Blue | the paid button ("Continue to payment") with white words (5.4:1); never a field (Owner, 2026-11-14: "I want it to stand out, but red seems bad", then "go with D") |
   | `chalk` | `#ffffff` White | all text on felt (14.3:1 on felt) |
   | `sage` | `#b4cdc2` Glaucous Green | notes on felt only (8.5:1), never running text |
   | `paper` | `#ffffff` White | cards; the primary button on felt |

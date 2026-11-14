@@ -50,6 +50,7 @@
   /* Scarlet: the paywall card's one small pip mark, never a button or a field (Owner, 2026-11-14, "Keep it").
      No rule uses it yet; the mark is not built. */
   --pip: #cb2f43;
+  --pay: #006eb8; /* Blue: the paid button ("Continue to payment"), with white words (5.4:1); never a field */
 
   /* Type. A system font stands behind each face, so every word shows if a file does not arrive. */
   --font-display: "Young Serif", Georgia, "Times New Roman", serif; /* headings, card titles */
@@ -388,10 +389,10 @@ form > * + button:not(.quiet) {
   }
 }
 
-/* Used once in the whole site, on "Continue to payment": the one press that spends money. Dusky Green with
-   white words (9.5:1), the card's one coloured button; the rest are ink (Owner, 2026-11-14). */
+/* Used once in the whole site, on "Continue to payment": the one press that spends money. Blue with white
+   words (5.4:1), the card's one coloured button; the rest are ink (Owner, 2026-11-14, "go with D"). */
 .card .pay {
-  background: var(--felt-raised);
+  background: var(--pay);
   color: var(--chalk);
 }
 
