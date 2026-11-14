@@ -4,7 +4,7 @@
   the money is safe and gives one place to go. The asking is a timer, not motion: nothing here moves.
 -->
 <script lang="ts">
-  import { invalidateAll } from "$app/navigation";
+  import { refreshAll } from "$app/navigation";
   import { onMount } from "svelte";
 
   const ASK_EVERY_MS = 2000;
@@ -18,7 +18,7 @@
     const timer = setInterval(() => {
       asked += 1;
       if (asked >= ASKS_BEFORE_SLOW) slow = true;
-      void invalidateAll();
+      void refreshAll();
     }, ASK_EVERY_MS);
     // The timer stops when the page is left.
     return () => {

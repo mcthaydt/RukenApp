@@ -1,7 +1,8 @@
 // The membership feature's entry: what routes and other features may import.
 // Anything not exported here is internal to the feature.
 export type { Arrival } from "./arrival.ts";
-export { dollars, longDate } from "./format.ts";
+export { dollars, longDate, membershipLine } from "./format.ts";
+export type { MembershipButton } from "./format.ts";
 export { PREMIUM_PRICES_CENTS } from "./plans.ts";
 export type { PremiumPlan } from "./plans.ts";
 export { MembershipError } from "./service.ts";
