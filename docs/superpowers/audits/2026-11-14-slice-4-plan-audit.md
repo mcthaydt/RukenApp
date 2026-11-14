@@ -137,6 +137,8 @@
 - **A. Yes, mail them (recommended).** A maker whose page is gone or whose account is suspended may not open Ruken for days, and the reason is theirs to read. Two short plain mails, like the game ones. (If S11's lock mail is wanted too, it is a third.)
 - **B. No mail.** They read the reason when they next open `/make/page` or sign in (`/suspended`).
 
+**Answered.** Owner, 2026-11-14 (relayed by the coordinator): "yes", A. Tasks 17 and 18 keep their two mails; S12 is settled.
+
 ## By 1 December
 
 A and B are seven tasks, all waiting today for slice 2's branch S, which has three slice 2 branches before it. As planned, they can be on `main` by 1 December only if S lands a few days before launch and the screens get "fine" at once. With S1's split, four of the seven tasks can be on `main` this week, and only Tasks 4, 6 and 7 wait for S. B1 must be fixed in the plan before Task 3 starts.
