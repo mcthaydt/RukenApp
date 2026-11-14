@@ -35,13 +35,14 @@ export interface ResendMailerOptions {
 
 /** A failed send: the service's name as the code and its HTTP status as the response code. */
 export class MailError extends Error {
-  constructor(
-    message: string,
-    readonly code: string,
-    readonly responseCode: number,
-  ) {
+  readonly code: string;
+  readonly responseCode: number;
+
+  constructor(message: string, code: string, responseCode: number) {
     super(message);
     this.name = "MailError";
+    this.code = code;
+    this.responseCode = responseCode;
   }
 }
 
