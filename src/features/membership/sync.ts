@@ -11,7 +11,7 @@ export type { SyncOutcome };
  *
  * Every webhook about a subscription, and every change Ruken asks Stripe for (ending a
  * membership), ends here: read the subscription from Stripe, reduce it with the stored
- * row (`reduceMembership` in @ruken/billing), store the result.
+ * row (`reduceMembership` in reducer.ts), store the result.
  *
  * Two deliveries for the same member can run at the same time (Stripe sends
  * `customer.subscription.updated` and `invoice.paid` together). A per-member lock makes them take
