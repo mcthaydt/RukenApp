@@ -170,8 +170,10 @@ describe("screens wear the look and nothing of their own", () => {
     }
   });
 
-  it("the pip-red button is used nowhere yet", () => {
-    // The paywall card makes this its one use, once.
-    expect(screensUsing("pay")).toEqual([]);
+  it("the pip-red button is used once, on the paywall card", () => {
+    // It is the one press that spends money, so it is the one red thing on the whole site.
+    expect(screensUsing("pay")).toEqual([join(ROUTES, "join", "+page.svelte")]);
+    const card = readFileSync(join(ROUTES, "join", "+page.svelte"), "utf8");
+    expect(card.match(/class="pay"/g)).toHaveLength(1);
   });
 });
