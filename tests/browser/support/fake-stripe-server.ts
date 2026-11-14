@@ -11,8 +11,9 @@ import { FEE_COLUMNS, FEE_REPORT_TYPE } from "../../../src/features/money/fee-ro
 // Besides the API it serves two small pages of its own, standing in for Stripe's hosted pages:
 // - /pay/<session>: one "Pay" button. Pressing it makes the subscription active and a paid invoice, tells the
 //   site about it with three signed events, and sends the browser to the checkout's success address.
-//   /pay/<session>?events=later redirects first and sends the events three seconds afterwards, as Stripe
-//   sometimes does.
+//   /pay/<session>?events=later redirects first and holds the events back until POST /test/release/<session>,
+//   as Stripe's news is sometimes late. A journey lets it go when it has looked at the page that waits, so
+//   no timer is raced.
 // - /portal/<session>: one "Cancel membership" button, which sets the subscription to end with its period, tells
 //   the site with a signed event, and sends the browser back.
 // And /state/<checkout session> answers the subscription's status, for a journey that asks what Stripe thinks, and
@@ -26,8 +27,6 @@ const PORT = 12111;
 const PUBLIC_URL = `http://127.0.0.1:${String(PORT)}`;
 const SITE_URL = "http://localhost:4173";
 const WEBHOOK_SECRET = "whsec_test_fake";
-/** How long `?events=later` waits before the events go out. */
-const LATE_EVENTS_MS = 3000;
 
 type Json = Record<string, unknown>;
 
@@ -77,6 +76,8 @@ const products = new Map<string, Json>();
 const prices = new Map<string, Price>();
 const customers = new Map<string, Json>();
 const sessions = new Map<string, Session>();
+/** The events a `?events=later` payment held back, by checkout session, until the journey releases them. */
+const heldEvents = new Map<string, [string, Json][]>();
 const subscriptions = new Map<string, Subscription>();
 const invoices = new Map<string, Invoice>();
 const portals = new Map<string, { customerId: string; returnUrl: string }>();
@@ -611,12 +612,9 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     }
     const { events } = pay(session);
     if (url.searchParams.get("events") === "later") {
-      // Stripe's news is late: the browser is sent back first, and the site hears three seconds later.
-      setTimeout(() => {
-        sendAll(events).catch((error: unknown) => {
-          console.error(`stand-in: late events failed: ${String(error)}`);
-        });
-      }, LATE_EVENTS_MS);
+      // Stripe's news is late: the browser is sent back first, and the site hears only when the journey lets it
+      // (POST /test/release/<session>).
+      heldEvents.set(payPage[1] ?? "", events);
     } else {
       await sendAll(events);
     }
@@ -661,6 +659,21 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     subscription.endedAt = nowSeconds();
     await sendEvent("customer.subscription.deleted", subscriptionJson(subscription));
     plain(response, 200, "ended");
+    return;
+  }
+
+  // Stripe's late news goes out: POST /test/release/<checkout session> sends the events a payment page held back
+  // (`?events=later`), and answers once the site has heard, so the journey's next look already sees it.
+  const release = /^\/test\/release\/([^/]+)$/.exec(path);
+  if (release !== null && method === "POST") {
+    const held = heldEvents.get(release[1] ?? "");
+    if (held === undefined) {
+      plain(response, 404, "No news is being held for that checkout.");
+      return;
+    }
+    heldEvents.delete(release[1] ?? "");
+    await sendAll(held);
+    plain(response, 200, "released");
     return;
   }
 

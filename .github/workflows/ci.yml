@@ -98,7 +98,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps chromium webkit
       - run: pnpm test:browser
       # The report also carries the look's screenshots, which a person looks at (Owner, 2026-11-13: "Screenshots
       # on the board"), so it is kept when every journey passes too.

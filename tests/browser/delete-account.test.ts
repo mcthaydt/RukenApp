@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
-import { signUp } from "./support/account.ts";
+import { pageHasSettled, signUp } from "./support/account.ts";
 import { expectOneCard, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -15,6 +15,8 @@ async function askToBeDeleted(page: Page): Promise<{ email: string; password: st
   await page.getByRole("link", { name: "Delete my account" }).click();
   await page.getByRole("button", { name: "Delete my account" }).click();
   await expect(page.getByRole("heading", { name: "Your account will be deleted." })).toBeVisible();
+  // The heading shows before the page has finished loading, and a goto sent now can collide with it (WebKit, run 43630529979).
+  await pageHasSettled(page);
   return account;
 }
 
