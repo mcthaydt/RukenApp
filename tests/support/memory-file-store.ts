@@ -8,8 +8,11 @@ import type { FileStore, StoredFile } from "../../src/lib/files/store.ts";
 export class MemoryFileStore implements FileStore {
   readonly #files = new Map<string, { bytes: Uint8Array; etag: string }>();
   #puts = 0;
+  /** Every key `head` or `get` was asked for, in order: a test checks that a refused request never reached the bucket. */
+  readonly reads: string[] = [];
 
   head(key: string): Promise<StoredFile | null> {
+    this.reads.push(key);
     const stored = this.#files.get(key);
     return Promise.resolve(stored === undefined ? null : { size: stored.bytes.length, etag: stored.etag });
   }
@@ -18,6 +21,7 @@ export class MemoryFileStore implements FileStore {
     key: string,
     range?: ByteRange,
   ): Promise<{ file: StoredFile; body: ReadableStream<Uint8Array> } | null> {
+    this.reads.push(key);
     const stored = this.#files.get(key);
     if (stored === undefined) return Promise.resolve(null);
     const bytes =
