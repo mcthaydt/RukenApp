@@ -122,6 +122,8 @@ describe("the daily job", () => {
     expect(text).toContain("env.JOBS_SECRET");
     expect(text).not.toContain("test-only");
     expect(text).not.toMatch(/JOBS_SECRET\s*[:=]\s*["'`]/);
+    // SvelteKit refuses a POST with no content type and no matching Origin, so the knock says what it sends.
+    expect(text).toContain("content-type");
   });
 
   // `main` stays the adapter's file, because the adapter writes its output to whatever `main` names; the wrapper
