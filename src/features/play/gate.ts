@@ -5,8 +5,8 @@ import type { FileStore } from "../../lib/files/store.ts";
 import { checkPass } from "./pass.ts";
 
 // The game gate, as one function: Cloudflare's request in, an answer out. It serves two kinds of thing from one
-// bucket. A game's files, under a play pass that Ruken's app signed and this checks on every request; and the clips,
-// to anyone. It runs as its own Worker on addresses of its own, so a game never runs on Ruken's address, and it imports
+// bucket. A game's files, under a play pass that Ruken's app signed and this checks on every request; and the media
+// (a game's clips and a maker's photo), to anyone. It runs as its own Worker on addresses of its own, so a game never runs on Ruken's address, and it imports
 // only plain helpers (no feature entry, no database, no SvelteKit): the Worker has none of them.
 //
 // It never sets a cookie and never reads one: browsers block cookies in a frame from another site anyway, and a
@@ -30,6 +30,8 @@ const NOT_ALLOWED = "Not allowed.";
 const GAME_HOST = /^g-([a-z2-7]{10})$/;
 /** Written out here, not imported: a clip's key, as the games feature makes it. Nothing else is served as a clip. */
 const CLIP_KEY = /^clips\/[a-z2-7]{10}\/(?:upright|wide)-[0-9a-f]{16}\.(?:mp4|webm)$/;
+/** Written out here, not imported: a photo's key, as the pages feature makes it. Nothing else is served as a photo. */
+const PHOTO_KEY = /^photos\/[0-9a-f]{16}\.(?:jpg|png|webp)$/;
 
 /** What a game may ask the browser for. It asks for nothing that reaches a person or their machine. */
 const PERMISSIONS =
@@ -101,13 +103,16 @@ async function serveFile(request: Request, deps: GateDeps, key: string, headers:
   });
 }
 
-/** A clip: shown on pages before anyone plays, so anyone may have it, and a browser keeps it for a year. */
-function serveClip(request: Request, url: URL, deps: GateDeps): Promise<Response> | Response {
+/**
+ * A clip or a photo: shown on pages before anyone plays, so anyone may have it, and a browser keeps it for a year.
+ * The key must be exactly the shape of one or the other, so nothing else in the bucket is ever served from here.
+ */
+function serveMedia(request: Request, url: URL, deps: GateDeps): Promise<Response> | Response {
   const key = url.pathname.slice(1);
-  if (!CLIP_KEY.test(key)) return plain(404, NOT_FOUND, deps);
+  if (!CLIP_KEY.test(key) && !PHOTO_KEY.test(key)) return plain(404, NOT_FOUND, deps);
   const headers = commonHeaders();
   headers.set("content-security-policy", `frame-ancestors ${deps.siteOrigin}`);
-  // A new upload gets a new address, so an old clip is never the one a browser still holds under the new name.
+  // A new upload gets a new address, so an old file is never the one a browser still holds under the new name.
   headers.set("cache-control", "public, max-age=31536000, immutable");
   headers.set("cross-origin-resource-policy", "cross-origin");
   return serveFile(request, deps, key, headers);
@@ -163,7 +168,7 @@ export async function handleGameRequest(request: Request, deps: GateDeps): Promi
   if (url.pathname === "/robots.txt") return plain(200, "User-agent: *\nDisallow: /\n", deps);
 
   const label = url.hostname.split(".")[0] ?? "";
-  if (label === "media") return serveClip(request, url, deps);
+  if (label === "media") return serveMedia(request, url, deps);
   const game = GAME_HOST.exec(label)?.[1];
   if (game === undefined) return plain(404, NOT_FOUND, deps);
   return serveGameFile(request, url, game, deps);
