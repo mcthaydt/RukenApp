@@ -17,14 +17,18 @@ interface WranglerConfig {
   [key: string]: unknown;
 }
 
-/** wrangler.jsonc, with the lines that start with // dropped: the comments sit on lines of their own. */
-function wranglerText(): string {
-  return read("wrangler.jsonc")
+/**
+ * A JSON file that allows comments (wrangler.jsonc, tsconfig.json): the lines that start with // are dropped
+ * (the comments sit on lines of their own) and so is a comma before a closing bracket, which the formatter adds.
+ */
+function jsoncText(path: string): string {
+  return read(path)
     .split("\n")
     .filter((line) => !line.trimStart().startsWith("//"))
-    .join("\n");
+    .join("\n")
+    .replace(/,(\s*[}\]])/g, "$1");
 }
-const wrangler = () => JSON.parse(wranglerText()) as WranglerConfig;
+const wrangler = () => JSON.parse(jsoncText("wrangler.jsonc")) as WranglerConfig;
 
 describe("wrangler.jsonc", () => {
   it("names the built Worker and its static files", () => {
@@ -75,7 +79,7 @@ describe("what runs the site", () => {
   });
 
   it("typechecking sees what Wrangler writes about the Worker's bindings", () => {
-    expect((JSON.parse(read("tsconfig.json")) as { include: string[] }).include).toContain(
+    expect((JSON.parse(jsoncText("tsconfig.json")) as { include: string[] }).include).toContain(
       "worker-configuration.d.ts",
     );
   });
