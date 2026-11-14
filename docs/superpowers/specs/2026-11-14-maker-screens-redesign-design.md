@@ -266,11 +266,17 @@ Sent back:
 
 ### Check and send, now
 
-- **The preview leads.** It is the biggest thing on the screen and it plays: her clip as the feed will show it, with her address, the name, the line and Play over it. "How members will see it in the feed." under it.
-- **Beside it, in this order**: "Last step", the heading, the one Blue button ("Send for review", with "press Enter ↵" on a computer), then the answers.
-- **The answers are a tidy list**, one line each on a computer, a sideways tablet and a sideways phone: what it is (soft ink, a fixed column 190 wide on a computer), what she said, Change. Seven rows fit without scrolling on a computer. The two video rows carry a small playing-size still.
-- On a phone and an upright tablet each row is two short lines (the label small, the answer under it) with Change at the right.
-- **Layouts.** Computer and sideways tablet: preview on the left (520 and 460 wide), heading, button and list on the right. Upright tablet: heading and button on top, then the upright preview (240 wide) beside the list. Phone: heading, upright preview, list, with Send in the bottom bar. Sideways phone: as the sideways tablet, the list scrolling inside itself.
+Owner, 2026-11-14, on the first redo, whose answers were a two-column table in a white box: "This just looks bad man". The table is gone. The screen is the game, laid out.
+
+- **On one side**: "Last step", the heading, the one Blue button ("Send for review", with "press Enter ↵" on a computer).
+- **On the other, the game**:
+  - **Its two videos as large playing tiles, side by side, in their real shapes**: the upright one and the wide one, the same height (264 on a computer, 300 on an upright tablet, 180 on a sideways phone). Each says in a small label whose it is: "On phones", "On computers". Tapping a tile opens it full size.
+  - **Its name and its line, set as a title and a tagline**, the way the feed sets them: the name in Young Serif at 32px, the line under it at 24px in sage.
+  - **The small facts as quiet chips** (Dusky Green, white words): where the files are ("your-name/floor-fifty"), where it plays ("Plays on phones and computers"), and other websites ("Runs on its own", or "Uses api.example.com").
+- **One small "Edit" on each thing**: in the corner of each video, after the name, after the line, inside each chip. It is a small button, not an underlined link on every line. It opens that one question (its button reads "Save") and comes straight back.
+- **Not shown**: file sizes, the file count, and anything that says "None".
+- On a phone: the upright video on the left at 150 × 267, and beside it the wide video with the name and line under it; chips below; Send in the bottom bar.
+- This replaces the feed picture with Play laid over it (section 5a, note 4): the two playing videos with the title and tagline under them are what the feed will show. Call.
 
 ### Sent back, now
 
@@ -286,18 +292,19 @@ Sent back:
 
 Every video on the board is now a `<video>` that plays: on the two video questions, in the feed preview, on the red card, in the lists and on Your games. They loop without sound, as the feed does (main design 5.1). Tapping the video on its question opens it full size with the browser's own play, pause and scrub controls. With reduced motion a video does not start by itself.
 
-The clip is a sample made for the board: a white block hopping up a tower, 3 seconds, drawn on a canvas at 24 frames a second and encoded with ffmpeg, upright (270 × 480) and wide (480 × 270), as MP4 (15,239 and 14,995 bytes) with a WebM copy (18,117 and 19,629 bytes) for browsers without MP4. Sizes measured from the files. They are inside the board's page; nothing is fetched.
+The clip is a sample made for the board: a white block hopping up a tower, 3 seconds, drawn on a canvas at 24 frames a second and encoded with ffmpeg, upright (270 × 480) and wide (480 × 270), as MP4 (18,085 and 16,725 bytes) with a WebM copy (14,561 and 17,198 bytes) for browsers without MP4. Sizes measured from the files. They are inside the board's page; nothing is fetched.
 
 ## 5c. Live is the statement piece
 
 Owner, 2026-11-14: "Let's also make it where Live is a statement piece, have the background uniquely for this page be the vertical or horizontal video, but blurred and bokeh and dimmed so it feels special".
 
 - **Only on the Live screen**, the game's own video fills the whole screen behind the words, playing, looping, without sound. An upright screen uses the upright video and a wide screen the wide one, as the feed does (main design 5.1). Every other screen keeps the plain felt.
-- **Blurred, dimmed, with bokeh.** The video is blurred (26px on the board), darkened to 45% brightness, and covered with the felt colour at 60%. Five soft, blurred circles of sage at 12% drift slowly between the video and the felt layer.
-- **The words stay readable whatever the video shows.** Worked out from those numbers for the brightest the background can be (a pure white video, under a circle): white words 8.77:1, sage notes 5.20:1. Without a circle: 9.35:1 and 5.55:1. The paper list and the buttons sit on top unchanged.
+- **Blurred, dimmed, with bokeh.** The video is blurred (18px on the board), darkened to 55% brightness, and covered with black (`felt-deep`) at 50%, not with the felt colour, so the screen takes the video's own colours and does not read as the green of every other screen (Owner, 2026-11-14, on the first try: "live still shows the green background"). Five soft, blurred circles of sage at 12% drift slowly between the video and the dark layer.
+- **The words stay readable whatever the video shows.** Worked out from those numbers for the brightest the background can be (a pure white video, under a circle): white words 7.70:1, sage notes 4.56:1. Without a circle: 8.13:1 and 4.82:1.
+- **In front of it, the game itself, sharp**: beside the headline and the two buttons sit the video, playing and unblurred (the upright one on upright screens, the wide one on wide), the name and the line with a small "Edit" each, and where it plays as a chip. The same pieces as Check and send; the paper list is gone from this screen.
 - **With reduced motion** the background is one still frame of the video, blurred and dimmed the same way, and the circles do not move.
 - This amends 5.8 for this one screen: it is the only maker screen whose background is not the plain felt, and the only place a blur is used. 5.8's "no glass" stands: nothing is see-through over content; the video is the background, not a pane.
-- Everything else on Live is as section 5 says: the name, "Live" as the headline, "Players can find it on Ruken.", Blue "See it on Ruken", green "Send my newest version for review", and the paper list with Change.
+- The words and buttons are as section 5 says: the name, "Live" as the headline, "Players can find it on Ruken.", Blue "See it on Ruken", green "Send my newest version for review".
 - Left to the plan: what a blurred, playing video costs on a slow phone, and whether such a phone gets the still frame instead.
 
 ## 6. The main design's 5.7: one run, one counter
@@ -337,6 +344,7 @@ Answered: the agreement's date line, "A" (section 5). The delete button, "delete
 
 ## 9. What was looked at, and what was not
 
+- Fifth round: Check and send as tiles, title and chips, and Live with the sharper video background, each looked at in all five sizes with reduced motion on. The sample clip was redrawn in colour (a blue ground) so the background can be told from the felt.
 - Live's background: looked at in all five sizes with reduced motion on (a still); not looked at moving. The contrast figures are worked out from the dimming, not sampled from the screen.
 - Fourth round, Check and send and Sent back: both screens looked at in all five sizes before and after, in Sent back's three states (the video sideways, the name rude, after the fix). The videos played in the test browser (it used the WebM copy; the MP4 copy was checked with ffprobe only, not played). No script errors. Typeform, YouTube Studio, TikTok and App Store Connect were compared from memory, not opened.
 - Third round, after the Owner's seven notes: every screen walked again in all five sizes, with a video added and opened full size; no script errors, nothing sideways on a 400-wide viewer. The agreement's seven points were copied from `src/features/make/library/maker-agreement-v1.txt` on `slice-2/submit`. The last two small fixes (the preview's shape on an upright tablet, a game card's words on an upright tablet) were not looked at again after they were made.
