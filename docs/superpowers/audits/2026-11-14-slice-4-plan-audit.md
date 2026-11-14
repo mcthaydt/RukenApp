@@ -1,6 +1,6 @@
 # Slice 4 plan audit: submitting and the admin portal
 
-**Audited:** `docs/superpowers/plans/2026-11-14-slice-4-submitting-admin.md` on `plan/slice-4` at `18619d3` (pull request #58, not merged), against `main` at `bedb45a`.
+**Audited:** `docs/superpowers/plans/2026-11-14-slice-4-submitting-admin.md` on `plan/slice-4` at `18619d3` (pull request #58, merged since with the plan unchanged), against `main` at `bedb45a`.
 
 **Read:** `CLAUDE.md`, `AGENTS.md`, the design (`docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md`, sections 5.1 to 5.8, 7, 8, 9, 10), the plans of slices 2, 3 and 5 where slice 4 touches them, the slice 5 plan audit, `docs/superpowers/progress.md`, and the code on `main` (`src/features/accounts/` in full, `src/lib/server/mail.ts`, `src/lib/safe-next.ts`, `src/lib/server/rate-limit.ts`, `src/hooks.server.ts`, `cloudflare/worker.js`, `playwright.config.ts`, `tests/browser/support/`).
 
