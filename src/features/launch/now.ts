@@ -5,7 +5,7 @@ export const TEST_LAUNCH_COOKIE = "rk_test_launch";
 
 /** Stub: the real function is written in the next commit. */
 export function createLaunchNow(
-  settings: { LAUNCH_TEST_SWITCH?: string; BETTER_AUTH_URL?: string },
+  settings: { LAUNCH_TEST_SWITCH?: string | undefined; BETTER_AUTH_URL?: string | undefined },
   clock: Clock,
 ): (cookies: { get(name: string): string | undefined }) => number {
   throw new Error(
