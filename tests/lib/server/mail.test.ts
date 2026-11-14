@@ -35,6 +35,21 @@ describe("createResendMailer", () => {
     });
   });
 
+  it("posts to the address it is given instead of Resend's, for the journeys' stand-in", async () => {
+    const fakeFetch = answer(200);
+    const mailer = createResendMailer({
+      apiKey: "k",
+      from: "f",
+      allowlist: undefined,
+      apiBase: "http://127.0.0.1:12113",
+      fetch: fakeFetch,
+    });
+
+    await mailer.send(message);
+
+    expect(fakeFetch.mock.calls[0]?.[0]).toBe("http://127.0.0.1:12113/emails");
+  });
+
   it("with an allowlist set, sends only to listed addresses (any case)", async () => {
     const fakeFetch = answer(200);
     const mailer = createResendMailer({
