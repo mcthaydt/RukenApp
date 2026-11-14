@@ -277,13 +277,13 @@ export function createPagesService(deps: PagesServiceDeps) {
   }
 
   /** Keeps a photo for the person's page, in place of the one it had. */
-  function savePhoto(_userId: string, _upload: { contentType: string; bytes: Uint8Array }): Promise<void> {
-    return Promise.reject(new Error("not built yet: savePhoto"));
+  function savePhoto(userId: string, upload: { contentType: string; bytes: Uint8Array }): Promise<void> {
+    return Promise.reject(new Error(`not built yet: savePhoto ${userId} ${upload.contentType}`));
   }
 
   /** Takes the photo off the person's page and out of the bucket. */
-  function removePhoto(_userId: string): Promise<void> {
-    return Promise.reject(new Error("not built yet: removePhoto"));
+  function removePhoto(userId: string): Promise<void> {
+    return Promise.reject(new Error(`not built yet: removePhoto ${userId}`));
   }
 
   return {

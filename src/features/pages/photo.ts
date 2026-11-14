@@ -14,21 +14,21 @@ export function isPhotoContentType(value: string): value is PhotoContentType {
 }
 
 /** Where a photo lives. The random part gives each photo an address of its own, so a browser that kept the old one never shows it for the new one. */
-export function photoKeyFor(_random16Hex: string, _contentType: PhotoContentType): string {
-  throw new Error("not built yet: photoKeyFor");
+export function photoKeyFor(random16Hex: string, contentType: PhotoContentType): string {
+  throw new Error(`not built yet: photoKeyFor ${random16Hex} ${contentType}`);
 }
 
 /** Whether a key is exactly the shape `photoKeyFor` makes. The gate serves a photo only for such a key. */
-export function isPhotoKey(_key: string): boolean {
-  throw new Error("not built yet: isPhotoKey");
+export function isPhotoKey(key: string): boolean {
+  throw new Error(`not built yet: isPhotoKey ${key}`);
 }
 
 /** Whether the bytes start the way a picture of this type must. */
-export function looksLikePhoto(_bytes: Uint8Array, _contentType: PhotoContentType): boolean {
-  throw new Error("not built yet: looksLikePhoto");
+export function looksLikePhoto(bytes: Uint8Array, contentType: PhotoContentType): boolean {
+  throw new Error(`not built yet: looksLikePhoto ${String(bytes.length)} ${contentType}`);
 }
 
 /** The words for what is wrong with an upload, or null when it is fine. */
-export function photoProblem(_upload: { contentType: string; bytes: Uint8Array }): string | null {
-  throw new Error("not built yet: photoProblem");
+export function photoProblem(upload: { contentType: string; bytes: Uint8Array }): string | null {
+  throw new Error(`not built yet: photoProblem ${upload.contentType}`);
 }
