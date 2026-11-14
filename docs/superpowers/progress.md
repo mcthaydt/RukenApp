@@ -20,7 +20,8 @@ Launch: Monday 30 November 2026, 11:00 CT.
 
 | Session | Stage | Branch | State |
 |---|---|---|---|
-| coordinator (`session_01HNdX7KQVAfWMSYYHFoo8iZ`) | all | — | running |
+| coordinator (`session_01HNdX7JxetgLxE6xxZ7sCnn`) | all | — | running, from 2026-11-14 |
+| coordinator before it (`session_01HNdX7KQVAfWMSYYHFoo8iZ`) | all | — | handed over 2026-11-14; archived once the sessions it started are done |
 | merge (`session_01HNdX7LyTaPth3m82ZhbsXY`) | merges | — | running |
 | plan, slice 1 (`session_01HNdX7HZoCEVyiEQJdDLJrW`) | 2 Plan | `plan/slice-1-accounts` | archived |
 | plan, slice 1, updated to the revised design (`session_01HNdX7JH5Pn3ForHRsNX8Po`) | 2 Plan | `plan/slice-1-accounts` | archived; merged (#10) |
