@@ -83,6 +83,8 @@ const OUTSIDE_A_REQUEST = "The database is only reachable inside a request.";
 // workerd abort after about 1,000 requests; Cloudflare's limit is 128 MB. So one client serves every request, and
 // its adapter hands each call to the connection of the request that made it.
 interface RequestDatabase {
+  /** DIAGNOSTIC ONLY: the request's number, to match its database calls to its start and end lines. */
+  readonly id: number;
   readonly open: () => PrismaClient;
   client: PrismaClient | undefined;
   /** This request's connection, opened by its first query. */
@@ -90,6 +92,23 @@ interface RequestDatabase {
 }
 
 const requests = new AsyncLocalStorage<RequestDatabase>();
+
+// DIAGNOSTIC ONLY: numbers each request and logs each database call's start and end, so a call that never ends,
+// or a request that waits on a call another request started, shows in the log.
+let diagNext = 0;
+export function diagRequestId(): number {
+  return requests.getStore()?.id ?? -1;
+}
+async function diagCall<T>(kind: string, detail: string, run: () => Promise<T>): Promise<T> {
+  const id = diagRequestId();
+  const started = Date.now();
+  console.error(`DB> r${String(id)} ${kind} ${detail.slice(0, 90).replace(/\s+/g, " ")}`);
+  try {
+    return await run();
+  } finally {
+    console.error(`DB< r${String(id)} ${kind} ${String(Date.now() - started)}ms`);
+  }
+}
 
 /**
  * An adapter for one Prisma client that serves every request. It holds no connection of its own: each call goes to
@@ -103,18 +122,21 @@ export function requestScopedAdapter(connect: () => Promise<RequestConnection>):
   const connectionOfRequest = (): Promise<RequestConnection> => {
     const request = requests.getStore();
     if (request === undefined) return Promise.reject(new Error(OUTSIDE_A_REQUEST));
-    request.connection ??= connect();
+    request.connection ??= diagCall("connect", "", connect);
     return request.connection;
   };
   const adapter: RequestScopedAdapter = {
     provider: "postgres",
     // The adapter this one stands for, which is the name Prisma expects for Postgres through `pg`.
     adapterName: "@prisma/adapter-pg",
-    queryRaw: async (query) => (await connectionOfRequest()).queryRaw(query),
-    executeRaw: async (query) => (await connectionOfRequest()).executeRaw(query),
-    executeScript: async (script) => (await connectionOfRequest()).executeScript(script),
-    startTransaction: async (isolationLevel) =>
-      (await connectionOfRequest()).startTransaction(isolationLevel),
+    queryRaw: (query) =>
+      diagCall("queryRaw", query.sql, async () => (await connectionOfRequest()).queryRaw(query)),
+    executeRaw: (query) =>
+      diagCall("executeRaw", query.sql, async () => (await connectionOfRequest()).executeRaw(query)),
+    executeScript: (script) =>
+      diagCall("executeScript", script, async () => (await connectionOfRequest()).executeScript(script)),
+    startTransaction: (isolationLevel) =>
+      diagCall("startTransaction", "", async () => (await connectionOfRequest()).startTransaction(isolationLevel)),
     // Asked before any query, so it cannot wait for a request's connection. These are the `pg` adapter's own answers.
     getConnectionInfo: () => ({ supportsRelationJoins: true }),
     // Nothing is held here to give back; Cloudflare closes each request's connections when the request ends.
@@ -148,7 +170,7 @@ function sharedClient(): PrismaClient {
  */
 export function databasePerRequest(open: () => PrismaClient = sharedClient): Handle {
   return ({ event, resolve }) =>
-    requests.run({ open, client: undefined, connection: undefined }, () => resolve(event));
+    requests.run({ id: ++diagNext, open, client: undefined, connection: undefined }, () => resolve(event));
 }
 
 function currentClient(): PrismaClient {
