@@ -57,9 +57,9 @@ Each row names what the slice builds from the spec, what must be on `main` befor
 | **P** Player pages | The rest of "Player pages": photo, banner, sections, who sees it, image checks, link checks | H, B, F; slice 3's themes and maker page; S | the image-checking service's key and the unsafe-sites key; one choice of image-checking service (that plan's question) |
 | **V** Reviews | "Reviews" | the sales plan's game page; slice 2's play time; slice 4's reports; S | nothing |
 | **K** Hooks | "Ruken hooks": achievements, stats and leaderboards, analytics | the sales plan's hooks script and message reader; B (leaderboards respect blocks); the cookie question (pull request #104); S | nothing |
-| **1** Static build and the feed in a phone shell | "One codebase, three shells" for phones; the feed test from "Native feel" | A; slice 3's feed | a real-phone test of the feed (theirs by rule); for iPhone, the Apple Developer account |
+| **1** Static build and the feed in a phone shell | "One codebase, three shells" for phones; the feed test from "Native feel" | A; slice 3's feed | a real-phone test of the feed (theirs by rule); for iPhone, the Apple Developer account and signing steps A1 to A4 below |
 | **2** Native feel on phones, and offline | "Native feel" (iPhone, iPad, Android, everywhere), "Offline" | 1 | real-phone tests |
-| **3** The computer app | "Native feel" (computers); Ruken's own download; the packages for the Microsoft Store, the Mac App Store, Flathub and the Snap Store | 1 (the static build) | a Windows code-signing certificate; the Microsoft, Flathub and Snap accounts; Apple's for the Mac |
+| **3** The computer app | "Native feel" (computers); Ruken's own download; the packages for the Microsoft Store, the Mac App Store, Flathub and the Snap Store | 1 (the static build) | a Windows code-signing certificate; the Microsoft, Flathub and Snap accounts; for the Mac, Apple's account and signing steps A1, A2, A5 and A6 below |
 | **N** Notifications | "Notifications" | 2 and 3; F; the sales plan's "this extra went on sale"; beta builds' invite | push keys from Apple and Google |
 | **$** Buying through each store | "Buying in each app": price points, each store's purchase, the stores' notifications, restore; the membership through a store | 2 and 3; the sales plan's `ExtraPurchase` and `splitSale`; slice 5's ledger | the store accounts, each store's server keys, and each store's products made by command where one exists |
 | **L** Launch | "Launch", "Accounts and the stores' other rules": "Coming soon", the launch email and notification, the stores' privacy forms, deletion and contact in the app, each app sent for review | everything above | each store's listing and its release (theirs by rule) |
@@ -67,6 +67,38 @@ Each row names what the slice builds from the spec, what must be on `main` befor
 Every slice that adds a screen also carries, in its own plan: the exact words on that screen and how it passes the drunk-grandma test; the screen behind a feature switch; and the every-view screen review before its audit.
 
 **S comes before any slice that adds a screen.** The spec: "Each new screen ships behind a switch". So S is in "Must be on `main` first" for every slice above that adds or changes a screen (F, Q, B, P, V, K, and H if its plan adds a screen for picking a handle). Only work with no screen of its own (A, the data half of H, R's hiding rule) may go before S. If slice 4's admin portal frame is late, S's plan says so as a stop, rather than a screen going out without its switch.
+
+## Signing the apps
+
+Owner, 2026-11-14: "What about apple certificate signing?" The spec says "Signing keys, store accounts and store releases are the Owner's." This section says what signing each app needs, where each key lives, and the Owner's steps in order. The exact secret names and the build commands that use them are fixed in the plans of slices 1 and 3, from each tool's own pages when those plans are written.
+
+**What each app needs.**
+
+| App | What signs it | Used by |
+|---|---|---|
+| iPhone and iPad | An Apple Distribution certificate, and an App Store provisioning profile for Ruken's app id | slice 1 (TestFlight), then every release |
+| iPhone and iPad, notifications | An Apple push key (APNs) | slice N |
+| Mac App Store | The same Apple Distribution certificate, a Mac Installer Distribution certificate, and a Mac App Store profile | slice 3 |
+| Mac, Ruken's own download | A Developer ID Application certificate, and Apple's notarization of every build. Without both, a Mac refuses to open the download | slice 3 |
+| Android | An upload key (a keystore file), with Google Play's own app signing turned on | slice 1 |
+| Windows, Ruken's own download | A Windows code-signing certificate. The Microsoft Store signs its own package | slice 3 |
+| Linux | Nothing of ours to buy: Flathub and the Snap Store sign what they publish | slice 3 |
+
+**Where the keys live.** In this repository's GitHub Actions secrets, typed by the Owner with one command each, never in the repository or the chat. This repository is public, so the plans of slices 1 and 3 keep two rules: a job that reads a signing secret runs only for `main` and release tags, never for a pull request; and a fork's pull request gets no secret at all, which is GitHub's own rule. The build jobs are new CI jobs, so they need the Owner's words quoted in the commit ("Found while planning", 5).
+
+**The Owner's steps for Apple, in order.** They come after the company exists, its D-U-N-S number has arrived and the Apple Developer Program is paid for (the spec, "Needs, and when"). Each plan sends them as one-line commands for the Owner's Mac, with a website step only where Apple gives no command.
+
+- **A1. One App Store Connect API key** (a website: Apple has no command to make the first key). App Store Connect → Users and Access → Integrations → a team key. It downloads one `.p8` file, once, and shows a key id and an issuer id.
+- **A2. Give CI that key:** three `gh secret set` lines, one for the `.p8` file's contents, one for the key id, one for the issuer id. CI uses this key to upload builds, to ask Apple for profiles, and to notarize.
+- **A3. Ruken's app id** (a website, once): Certificates, Identifiers & Profiles → Identifiers → the app's bundle id, with Push Notifications, Associated Domains (for links that open the app) and In-App Purchase turned on.
+- **A4. An Apple Distribution certificate:** made on the Owner's Mac in Xcode's account settings, exported from Keychain as a `.p12` file with a password, then two `gh secret set` lines (the file, base64-encoded, and its password). Slice 1's plan first checks whether Xcode's cloud-managed signing with the A1 key makes this step unnecessary; if it does, A4 is dropped.
+- **A5. A Developer ID Application certificate, and a Mac Installer Distribution certificate**, made and stored the same way as A4. Only the account holder can make a Developer ID certificate, so this one is always the Owner's own step.
+- **A6. Notarization** needs no new key: it uses A1's. Slice 3's plan adds it to the Mac download's build and checks the result with Apple's own tool before the file is published.
+- **A7. A push key (APNs)** for slice N: a second `.p8`, made on the same website page as A3, stored on the Workers as a secret (not in GitHub: the server sends the notifications, not CI).
+
+Certificates run out. Each plan that adds one writes its end date in `docs/superpowers/progress.md`, read from the certificate itself, so it is renewed before a build fails.
+
+**The other platforms**, each in its slice's plan: Android's upload key is one `keytool` line on the Owner's computer and two `gh secret set` lines (slice 1); the Windows certificate is bought on a website and stored the way its seller requires, which today is often a cloud key store, not a file (slice 3).
 
 ## What the spec left to the plan, and which slice's plan answers it
 

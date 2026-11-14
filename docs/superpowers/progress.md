@@ -596,16 +596,18 @@ Spec: `docs/superpowers/specs/2026-11-14-apps-and-player-features-design.md` (ap
 
 Slice A, `docs/superpowers/plans/2026-11-14-apps-a-test-copy.md`. What it waits for, and what is the Owner's:
 
-- [ ] Q1, where the test copy's games run: with the Owner (the plan's pick: a second domain used only for the test copy's games). Needed before step T8.
-- [ ] Q3, an empty database instead of the spec's "database branch": with the Owner (the plan's pick: an empty database). Needed before T1.
-- [ ] T0, the live Worker's Deploy command set to `pnpm run deploy`: the Owner's, before branch 1 is marked ready.
-- [ ] Q2, whether the test copy says that it is the test copy: with the Owner (the plan's pick: yes, one line at the top of its screens).
-- [ ] T1 to T3 (an empty database, its Hyperdrive, the bucket), before branch 2.
-- [ ] T4 to T9 (the test Worker, its settings, a Stripe sandbox, the build connection, the test game gate, the check), after branch 2 is merged.
+- [x] Q1, where the test copy's games run. Owner, 2026-11-14: "1.A": a second domain used only for the test copy's games (step T8).
+- [x] Q2, whether the test copy says that it is the test copy. Owner, 2026-11-14: "2. Just use a banner on the top of pages" (Task 9).
+- [x] Q3, an empty database instead of the spec's "database branch". Owner, 2026-11-14: "3. I'd prefer a mock database so we can see everything actually in the app without being blocked by content": a database of its own, filled with made-up content (Tasks 10 and 11).
+- [ ] T0 (the live Worker's Deploy command becomes `pnpm run deploy`), before branch 1 is marked ready.
+- [ ] T1 to T3 (the test copy's database, its Hyperdrive, the bucket), before branch 2.
+- [ ] T4 to T10 (the test Worker, its settings, a Stripe sandbox, the build connection, the test games domain and gate, the check, the look), after branch 2 is merged.
+- Apple signing (Owner, 2026-11-14: "What about apple certificate signing?"): what each app needs and the Owner's steps A1 to A7 are in the slice map, "Signing the apps". They come after the Apple account, with slices 1, 3 and N.
 
 | Branch | Tasks | State |
 |---|---|---|
-| 1 `apps-a/copy` | 1 which copy this is · 2 the database's stamp · 3 the deploy claims the database · 4 a Worker pointed at the wrong database answers nothing · 5 the test copy is open whatever the date · 6 the test copy never takes live payments | not started |
-| 2 `apps-a/test-worker` | 7 the `test` environment · 8 the test copy, running | not started; needs T1 to T3 and branch 1 |
+| 1 `apps-a/copy` | 1 which copy this is · 2 the database's stamp · 3 the deploy claims the database · 4 a Worker pointed at the wrong database answers nothing · 5 the test copy is open whatever the date · 6 the test copy never takes live payments · 9 the test copy says what it is | not started |
+| 3 `apps-a/fake-content` | 10 the made-up content · 11 the test copy writes its own made-up content | not started; needs branch 1 |
+| 2 `apps-a/test-worker` | 7 the `test` environment · 8 the test copy, running | not started; needs T1 to T3 and branches 1 and 3 |
 
 The other slices (H, R, S, F, Q, B, P, V, K on the website; 1, 2, 3, N, $, L for the apps) are not planned yet. Each gets its own plan when what it needs is on `main`.
