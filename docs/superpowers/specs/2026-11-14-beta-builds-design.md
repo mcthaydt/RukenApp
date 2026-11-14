@@ -89,7 +89,7 @@ ana@example.com          Remove
 ## Needs, and when
 
 - Slice 2 (the pull, review, the play pass and the gate) and the wishlist work on `main`; slice 4's admin portal is not needed (the queue is slice 2's).
-- Members exist only once live payments are open. Until then Ruken is in Stripe's test mode, so before launch "members" are only test accounts. Early beta play for real fans needs live payments open before 30 November, which is the Owner's (terms, privacy and the maker agreement first).
+- Members exist only once live payments are open. Until then Ruken is in Stripe's test mode, so before launch "members" are only test accounts. Early beta play for real fans needs live payments open before 30 November, which is the Owner's (terms, privacy and the maker agreement first). Owner, 2026-11-14: "We'll do that once we finish the app, we won't tell anyone until everything is done." So before launch, betas are tried with test accounts; real fans come once the app is finished and live payments open.
 - Target: on `main` by Friday 27 November, after the wishlist work. If that date is at risk, it ships after launch rather than slowing the launch.
 
 ## Left to the plan
