@@ -180,22 +180,48 @@ test.describe("every card screen has a way home", () => {
     await expect(page).toHaveURL("/");
   });
 
-  for (const path of ["/sign-in", "/no-such-page"]) {
-    test(`${path}: on a wide window the wordmark and card sit in the middle of the felt`, async ({
-      page,
-    }) => {
-      test.skip(!wide(page), "only a wide window centres the column");
-      await page.goto(path);
+  test("the wordmark and the card are at the same height on every screen, so nothing jumps between screens", async ({
+    page,
+  }) => {
+    // Owner, 2026-11-14: top-aligned, not centred up and down, on a computer.
+    const places: { screen: string; mark: number; card: number }[] = [];
+    for (const screen of CARD_SCREENS) {
+      await screen.open(page);
       const mark = await boxOf(page.getByRole("link", { name: "Ruken", exact: true }));
       const card = await boxOf(page.locator("main.card"));
-      const height = page.viewportSize()?.height ?? 0;
-      // The felt above the wordmark equals the felt below the card, to the pixel.
-      closeTo(mark.y, height - bottomOf(card));
+      places.push({ screen: screen.name, mark: mark.y, card: card.y });
+    }
+    const first = places[0];
+    for (const place of places) {
+      closeTo(place.mark, first?.mark ?? 0, 0.5);
+      closeTo(place.card, first?.card ?? 0, 0.5);
+    }
+  });
+});
+
+describe("a link that looks like a button", () => {
+  for (const path of ["/no-such-page", "/reset-password?token=nope"]) {
+    test(`${path}: spans the card on a phone, and is only as wide as its words on a computer`, async ({
+      page,
+    }) => {
+      // The missing page's button, like the main button of every form on a phone (Owner, 2026-11-14).
+      await page.goto(path);
+      if (path.startsWith("/reset")) {
+        await page.getByLabel("New password").fill("a long enough password");
+        await page.getByLabel("Type it again").fill("a long enough password");
+        await page.getByRole("button", { name: "Save password" }).click();
+      }
+      const button = page.locator("main.card a.button");
+      await expect(button).toBeVisible();
+      const heading = await boxOf(page.getByRole("heading", { level: 1 }));
+      const box = await boxOf(button);
+      if (wide(page)) expect(box.width).toBeLessThan(heading.width / 2);
+      else closeTo(box.width, heading.width);
     });
   }
 });
 
-test.describe("home", () => {
+describe("home", () => {
   test("a Sign in button under the line, the paper button on felt", async ({ page }) => {
     await page.goto("/");
     const button = page.getByRole("link", { name: "Sign in", exact: true });
