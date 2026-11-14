@@ -55,6 +55,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | audit, FloorFifty for production (`session_01HNdX7HXjg2huySfHRH521r`, in SNEKPRTY/FloorFifty) | audit | FloorFifty's own branch | running (Owner, 2026-11-14: "audit the game for production excluding known gaps like deployment") |
 | plan, games before launch: the wishlist (`session_01HNdX7J7xTV329GjHcGAkVQ`) | 2 Plan | `spec/wishlist` | plan written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`); not merged; Q1 is with the Owner; Q2 answered by the coordinator; shaped so the beta builds plan adds to it |
 | plan, beta builds | 2 Plan | `spec/beta-builds` | plan written (`docs/superpowers/plans/2026-11-14-beta-builds.md`), not merged; Q1 and Q2 answered by the coordinator, Q3 is with the Owner |
+| plan audit, wishlist and beta builds | 3 Plan audit | `audit/wishlist-beta-plan` | audit written, both plans fixed; draft pull request when fewer than three are open; Q-A with the Owner |
 
 ## Defect: the Worker ran out of memory (2026-11-14)
 
@@ -383,7 +384,7 @@ Stages:
 
 - [x] Spec: approved (Owner, 2026-11-14: "approved").
 - [ ] Plan: written on `spec/wishlist`, planned against `main` at `d497163`; not merged. No test ran in the plan session, and no code was written. Read as code: `main`. Not read as code, because they are not on `main`: slice 2's branches M, S and F, and all of slice 3. Read outside the repository on 2026-11-14: Cloudflare's Cron Triggers page (five fields, UTC, up to 15 minutes for a new trigger to start) and Resend's API pages (10 requests a second for a team; an `Idempotency-Key` header kept 24 hours). Not measured: anything; the plan holds no size, count or timing of its own.
-- [ ] Plan audit.
+- [ ] Plan audit (`docs/superpowers/audits/2026-11-14-wishlist-beta-plan-audit.md`, one audit of both plans, as merged by #69 and #70): 1 blocks execution, 10 should fix, 13 notes, 1 question for the Owner (Q-A: with Q1's A, nobody can become a member before launch, so early beta play on the real site waits for launch day). The blocker and 9 should-fixes are fixed in the two plans; S10 is Q-A. On branch `audit/wishlist-beta-plan`; not done until merged. No test ran.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
@@ -414,7 +415,7 @@ Design: `docs/superpowers/specs/2026-11-14-beta-builds-design.md`, approved by t
 Stages:
 
 - [ ] Plan: written on `spec/beta-builds`, not merged. Planned against `main` at `d497163`; the wishlist plan was read on `spec/wishlist` at `2b5030b` and the two are matched. No test ran in the plan session, and no code was written. Read as code: `main` (slice 1; slice 2's branches A to E, P and S0). Not read as code, because they are not on `main`: slice 2's branches M, S and F, slice 3, slice 4, slice 5 and the wishlist work. Nothing was measured; the plan holds no size, count or timing of its own.
-- [ ] Plan audit.
+- [ ] Plan audit (`docs/superpowers/audits/2026-11-14-wishlist-beta-plan-audit.md`, one audit of both plans, as merged by #69 and #70): 1 blocks execution, 10 should fix, 13 notes, 1 question for the Owner (Q-A: with Q1's A, nobody can become a member before launch, so early beta play on the real site waits for launch day). The blocker and 9 should-fixes are fixed in the two plans; S10 is Q-A. On branch `audit/wishlist-beta-plan`; not done until merged. No test ran.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
