@@ -38,6 +38,22 @@ export async function failTheirCard(email: string, daysAgo: number): Promise<voi
   });
 }
 
+/**
+ * Moves a waiting deletion back in time, so its 14 days are over: asked 15 days ago, due a day ago. The daily job reads
+ * the real clock in a running site, and nothing in a browser can change that, so the dates move instead; the job
+ * compares only `purgeAfter` with now, so the account is finished exactly as it is 14 days on.
+ */
+export async function makeDeletionDue(email: string): Promise<void> {
+  const day = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const moved = await db().deletionRequest.updateMany({
+    where: { user: { email }, cancelledAt: null, purgedAt: null },
+    data: { requestedAt: new Date(now - 15 * day), purgeAfter: new Date(now - day) },
+  });
+  if (moved.count !== 1)
+    throw new Error(`expected one waiting deletion for ${email}, found ${String(moved.count)}`);
+}
+
 /** The staff roles the account with this address has, by name. */
 export async function staffRolesOfEmail(email: string): Promise<string[]> {
   const rows = await db().staffAssignment.findMany({ where: { user: { email } }, select: { role: true } });

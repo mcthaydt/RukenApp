@@ -35,10 +35,13 @@ export async function fillBirthDate(
 
 /**
  * Makes a new account through the sign-up form, as a person would, and waits for the page it lands
- * on. The person is signed in afterwards.
+ * on. The person is signed in afterwards. The address is new unless the journey gives one (a person coming back to
+ * an address they used before).
  */
-export async function signUp(page: Page): Promise<{ email: string; password: string }> {
-  const email = freshEmail();
+export async function signUp(
+  page: Page,
+  email: string = freshEmail(),
+): Promise<{ email: string; password: string }> {
   await page.goto("/sign-up");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
@@ -86,4 +89,13 @@ export async function payAsNewMember(page: Page): Promise<{ email: string; check
 export async function subscriptionStatusAtStandIn(member: { checkoutSessionId: string }): Promise<string> {
   const answer = await fetch(`${STAND_IN_URL}/state/${member.checkoutSessionId}`);
   return answer.text();
+}
+
+/**
+ * The member's paid time runs out at the stand-in Stripe, which tells the site, as Stripe does at the end of a period
+ * the member chose not to renew. After it, the member is not a member any more.
+ */
+export async function letMembershipRunOut(member: { checkoutSessionId: string }): Promise<void> {
+  const answer = await fetch(`${STAND_IN_URL}/test/end/${member.checkoutSessionId}`, { method: "POST" });
+  if (!answer.ok) throw new Error(`the stand-in would not end the membership: ${String(answer.status)}`);
 }
