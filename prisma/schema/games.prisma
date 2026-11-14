@@ -63,6 +63,10 @@ model Game {
   pulls    GamePull[] @relation("GamePulls")
   clips    GameClip[]
 
+  // The play feature's tables point at a game; they are declared in play.prisma.
+  playPasses   PlayPass[]
+  playSessions PlaySession[]
+
   @@index([makerUserId])
 }
 
@@ -84,6 +88,9 @@ model GamePull {
 
   game    Game  @relation("GamePulls", fields: [gameId], references: [id], onDelete: Restrict)
   liveFor Game? @relation("GameLivePull")
+
+  playPasses   PlayPass[]
+  playSessions PlaySession[]
 
   @@index([gameId])
 }
