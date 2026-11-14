@@ -1,3 +1,4 @@
+import type { FileStore } from "../../lib/files/store.ts";
 import type { PageLinkKind, PrismaClient } from "../../lib/server/db.ts";
 import { cleanHandle, HANDLE_TAKEN, handleProblem } from "./handle.ts";
 import { cleanLinkUrl, linkProblem, MAX_LINKS, moveLink, siteNameOf } from "./links.ts";
@@ -24,6 +25,8 @@ export class PageError extends Error {
 
 export interface PagesServiceDeps {
   db: PrismaClient;
+  /** Where a maker's photo is kept: the same bucket as the clips. */
+  files: FileStore;
 }
 
 /** A maker's own view of their page: everything, with the counts and the links they hid. */
@@ -273,7 +276,19 @@ export function createPagesService(deps: PagesServiceDeps) {
     return new Map(pages.map((page) => [page.userId, page.handle]));
   }
 
+  /** Keeps a photo for the person's page, in place of the one it had. */
+  function savePhoto(_userId: string, _upload: { contentType: string; bytes: Uint8Array }): Promise<void> {
+    return Promise.reject(new Error("not built yet: savePhoto"));
+  }
+
+  /** Takes the photo off the person's page and out of the bucket. */
+  function removePhoto(_userId: string): Promise<void> {
+    return Promise.reject(new Error("not built yet: removePhoto"));
+  }
+
   return {
+    savePhoto,
+    removePhoto,
     savePage,
     saveTheme,
     addLink,

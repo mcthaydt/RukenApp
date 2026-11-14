@@ -1,4 +1,5 @@
 import type { Clock } from "../../lib/clock.ts";
+import type { FileStore } from "../../lib/files/store.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 
 // "Delete my account".
@@ -16,6 +17,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export interface DeletionDeps {
   readonly prisma: PrismaClient;
   readonly clock: Clock;
+}
+
+/** What the daily job needs besides that: the bucket a person's files (their photo) are kept in. */
+export interface PurgeDeps extends DeletionDeps {
+  readonly files: FileStore;
 }
 
 /** Prisma's "unique constraint failed" error (P2002). */
@@ -94,7 +100,7 @@ export async function restoreOnSignIn(prisma: PrismaClient, clock: Clock, userId
  * account. The `User` row stays, as a tombstone with nothing of the person in it, so the payment rows that point
  * at it stay true. A later slice that stores more of a person adds its own removal here, with a test.
  */
-export async function purgeDueAccounts(deps: DeletionDeps): Promise<number> {
+export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
   const { prisma, clock } = deps;
   const now = new Date(clock.epochMs());
   const due = await prisma.deletionRequest.findMany({
