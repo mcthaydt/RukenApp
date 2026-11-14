@@ -53,7 +53,7 @@ function sample(): void {
     );
   }
   const memory = /^MemAvailable:\s*(.*)$/m.exec(read("/proc/meminfo"))?.[1] ?? "?";
-  process.stdout.write(
+  process.stderr.write(
     `SAMPLE ${new Date().toISOString()} ${parts.join(" | ")} | memAvailable=${memory} | ${sockets()}\n`,
   );
 }

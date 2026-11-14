@@ -52,6 +52,7 @@ export default defineConfig({
       url: "http://localhost:4173",
       reuseExistingServer: false,
       timeout: 180_000,
+      stdout: "pipe",
       env: {
         DIRECT_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
         // Where `wrangler dev` points the Worker's Hyperdrive binding: the journeys' own database, and no other.

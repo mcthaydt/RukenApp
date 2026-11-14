@@ -6,6 +6,7 @@ import site from "../.svelte-kit/cloudflare/_worker.js";
 export default {
   fetch: site.fetch,
   async scheduled(_controller, env, ctx) {
+    console.error(`SCHED> at ${new Date().toISOString()}`);
     const request = new Request(new URL("/jobs/purge-accounts", env.BETTER_AUTH_URL), {
       method: "POST",
       // SvelteKit refuses a POST with no content type and no matching Origin as a forged form post, so the knock
@@ -13,6 +14,7 @@ export default {
       headers: { authorization: `Bearer ${env.JOBS_SECRET}`, "content-type": "application/json" },
     });
     const response = await site.fetch(request, env, ctx);
+    console.error(`SCHED< status ${String(response.status)} at ${new Date().toISOString()}`);
     if (response.status !== 200) throw new Error(`purge-accounts answered ${response.status}`);
   },
 };
