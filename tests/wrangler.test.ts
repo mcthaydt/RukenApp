@@ -12,6 +12,7 @@ interface WranglerConfig {
   assets?: { binding?: string; directory?: string };
   compatibility_flags?: string[];
   hyperdrive?: Record<string, unknown>[];
+  r2_buckets?: Record<string, unknown>[];
   workers_dev?: boolean;
   preview_urls?: boolean;
   triggers?: { crons?: string[] };
@@ -55,6 +56,12 @@ describe("wrangler.jsonc", () => {
     expect(id).toBe("eb64483c638e4f5eab2ce9dd1b7ea081");
   });
 
+  // Games and clips live in one bucket the Owner makes by hand (G1). Local runs get Miniflare's own bucket; a
+  // `remote` key or a preview bucket would point a journey or a preview at the real one.
+  it("binds one R2 bucket, GAME_FILES on ruken-games, local in the journeys", () => {
+    expect(wrangler().r2_buckets).toEqual([{ binding: "GAME_FILES", bucket_name: "ruken-games" }]);
+  });
+
   it("has one address only: no workers.dev and no preview addresses", () => {
     expect(wrangler().workers_dev).toBe(false);
     expect(wrangler().preview_urls).toBe(false);
@@ -81,6 +88,11 @@ describe("wrangler.jsonc", () => {
 describe("what runs the site", () => {
   it("the journeys run in wrangler dev, the runtime the real site runs in", () => {
     expect(read("playwright.config.ts")).toContain("wrangler dev");
+  });
+
+  // The game gate (a second Worker) is started with the same folder, so both see the one local bucket.
+  it("the journeys keep the local bucket in a folder the gate can be given too", () => {
+    expect(read("playwright.config.ts")).toContain("--persist-to .wrangler/state");
   });
 
   it("the build keeps Prisma's WebAssembly for Wrangler, and leaves the adapter out of Vitest", () => {
