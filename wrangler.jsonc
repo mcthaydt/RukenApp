@@ -19,4 +19,7 @@
   // Cloudflare's connection pool in front of Neon. The id names a setting in the Owner's account; it is not a
   // credential and is useless without the Owner's Cloudflare login (Owner, 2026-11-13: committed here).
   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "eb64483c638e4f5eab2ce9dd1b7ea081" }],
+  // Games and their clips (design 7.3). The Owner makes the bucket once, by hand, before this is deployed (a deploy
+  // fails if it is missing); `wrangler dev` gives a local one and never reaches this one.
+  "r2_buckets": [{ "binding": "GAME_FILES", "bucket_name": "ruken-games" }],
 }
