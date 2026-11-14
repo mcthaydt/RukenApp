@@ -7,7 +7,8 @@ import type { PrismaClient } from "../../lib/server/db.ts";
 import { mailFailureCode, type Mailer } from "../../lib/server/mail.ts";
 import { createRateLimiter } from "../../lib/server/rate-limit.ts";
 import { authLimitsPlugin } from "./auth-limits-plugin.ts";
-import type { CookiePolicy } from "./cookies.ts";
+import { WELCOME_BACK_COOKIE, WELCOME_BACK_MAX_AGE_SECONDS, type CookiePolicy } from "./cookies.ts";
+import { restoreOnSignIn } from "./deletion.ts";
 import { passwordChangedMessage, passwordResetMessage, verificationMessage } from "./mails.ts";
 import { signInPausePlugin } from "./sign-in-pause-plugin.ts";
 import { clearSignInFailures } from "./sign-in-guards.ts";
@@ -217,6 +218,27 @@ export function createAuth(options: AuthOptions) {
         if (ctx.path === "/sign-up/email") throw new APIError("NOT_FOUND");
         return Promise.resolve();
       }),
+    },
+
+    databaseHooks: {
+      session: {
+        create: {
+          // Signing in within 14 days of asking to delete the account undoes it. The next page then says "Welcome
+          // back" once, through a short-lived flag cookie that only the server reads (src/routes/+layout.server.ts).
+          // After the 14 days nothing is restored and the account stays signed out (handle.ts).
+          after: async (session, context) => {
+            if (await restoreOnSignIn(prisma, clock, session.userId)) {
+              context?.setCookie(WELCOME_BACK_COOKIE, "1", {
+                path: "/",
+                maxAge: WELCOME_BACK_MAX_AGE_SECONDS,
+                sameSite: "lax",
+                secure: cookies.secure,
+                httpOnly: true,
+              });
+            }
+          },
+        },
+      },
     },
   });
 }
