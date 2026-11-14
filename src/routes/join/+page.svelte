@@ -14,8 +14,9 @@
   // It is state bound to the two radio buttons, not a value written onto them. When the page comes alive, Svelte
   // reads a choice the person made a moment before, on the page as the server sent it; setting `checked` from a
   // value instead writes the opening plan back over it, and a person on a slow phone loses the plan they picked.
+  // It is a property of one object, so the two bindings below are all that read it: the form posts the buttons' own state.
   // svelte-ignore state_referenced_locally
-  let plan = $state(form?.plan ?? data.plan);
+  let chosen = $state({ plan: form?.plan ?? data.plan });
 </script>
 
 <svelte:head>
@@ -49,11 +50,11 @@
       <!-- Two rows, each a real radio button in a label the width of the card, so the whole row is the target. -->
       <div role="radiogroup" aria-label="Plan">
         <label class="choice">
-          <input type="radio" name="plan" value="monthly" bind:group={plan} />
+          <input type="radio" name="plan" value="monthly" bind:group={chosen.plan} />
           {data.prices.monthly} a month
         </label>
         <label class="choice">
-          <input type="radio" name="plan" value="annual" bind:group={plan} />
+          <input type="radio" name="plan" value="annual" bind:group={chosen.plan} />
           {data.prices.annual} a year
         </label>
       </div>
