@@ -1,12 +1,19 @@
 <!--
-  Your account: who is signed in, one button to sign out, and a plain link to delete the account. The "Confirm
-  your email" line shows only while the address is unconfirmed (membership and saved games arrive in later
-  slices).
+  Your account: who is signed in, where their membership stands, the one thing they can do about it, a quiet way
+  to sign out and a plain link to delete the account. The "Confirm your email" line shows only while the address is
+  unconfirmed.
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
+
+  // What each button under the membership line says (membership/format.ts picks which one).
+  const BUTTON_WORDS = {
+    manageOrCancel: "Manage or cancel",
+    manage: "Manage",
+    updateCard: "Update card",
+  } as const;
 </script>
 
 <svelte:head>
@@ -29,8 +36,20 @@
       </form>
     {/if}
   {/if}
+  <p>{data.membership.line}</p>
+  {#if data.membership.button === "join"}
+    <p><a class="button" href="/join?next=/me">Join Ruken</a></p>
+  {:else}
+    <form method="POST" action="?/portal">
+      {#if form?.portalError}
+        <p class="problem" role="alert">{form.portalError}</p>
+      {/if}
+      <button>{BUTTON_WORDS[data.membership.button]}</button>
+      <small class="note">Opens Stripe, where you can change your card or cancel.</small>
+    </form>
+  {/if}
   <form method="POST" action="/sign-out">
-    <button>Sign out</button>
+    <button class="quiet">Sign out</button>
   </form>
   <p class="note"><a href="/me/delete">Delete my account</a></p>
 </main>
