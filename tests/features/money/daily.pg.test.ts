@@ -181,6 +181,24 @@ describe("the steps", () => {
     expect(problems).toEqual([{ step: "two", message: "two broke" }]);
   });
 
+  it("skips a step that runs only when every step before it went well, if one did not", async () => {
+    const ran: string[] = [];
+    const step = (name: string, fails = false, onlyIfAllWentWell = false): Step => ({
+      name,
+      onlyIfAllWentWell,
+      run: () => {
+        ran.push(name);
+        return fails ? Promise.reject(new Error(`${name} broke`)) : Promise.resolve();
+      },
+    });
+    expect(await runSteps([step("one"), step("last", false, true)])).toEqual([]);
+    expect(ran).toEqual(["one", "last"]);
+    ran.length = 0;
+    const problems = await runSteps([step("one", true), step("two"), step("last", false, true)]);
+    expect(ran).toEqual(["one", "two"]);
+    expect(problems).toEqual([{ step: "one", message: "one broke" }]);
+  });
+
   it("closes nothing when closing fails, and runs nothing after it", async () => {
     const ran: string[] = [];
     const step = (name: string, fails = false, blocksTheRest = false): Step => ({
@@ -283,6 +301,44 @@ describe("the 10th", () => {
       expect(await closeDuePeriods({ db: own.prisma, clock: new TestClock("2026-12-10T07:00:00Z") })).toEqual(
         [],
       );
+    } finally {
+      await own.stop();
+    }
+  });
+
+  it("leaves the month closed in a run where any step failed, and makes it final in the next run that went well", async () => {
+    // Review S1. Stripe is down on the 10th, so the refunds are not all in, and the month's pool would be shared on
+    // what is there.
+    const own = await startTestDatabase();
+    try {
+      const down = quietStripe();
+      down.refundsSince = () => Promise.reject(new Error("Stripe is down"));
+      await addMembershipPayment(own.prisma, down, {
+        ...PAYMENT,
+        invoice: "in_t3",
+        paidAt: "2026-11-02T15:00:00Z",
+      });
+      const first = await runMoneyJob({
+        db: own.prisma,
+        clock: new TestClock("2026-12-10T06:30:00Z"),
+        stripe: down,
+      });
+      expect(first.closed).toEqual(["2026-11"]);
+      expect(first.final).toEqual([]);
+      expect(first.problems).toEqual([
+        { step: "reading refunds and chargebacks from Stripe", message: "Stripe is down" },
+      ]);
+      expect((await own.prisma.ledgerPeriod.findUniqueOrThrow({ where: { period: "2026-11" } })).state).toBe(
+        "closed",
+      );
+
+      const second = await runMoneyJob({
+        db: own.prisma,
+        clock: new TestClock("2026-12-11T06:30:00Z"),
+        stripe: quietStripe(),
+      });
+      expect(second.problems).toEqual([]);
+      expect(second.final).toEqual(["2026-11"]);
     } finally {
       await own.stop();
     }
