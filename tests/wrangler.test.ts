@@ -62,8 +62,12 @@ describe("wrangler.jsonc", () => {
     expect(wrangler().r2_buckets).toEqual([{ binding: "GAME_FILES", bucket_name: "ruken-games" }]);
   });
 
-  it("has one address only: no workers.dev and no preview addresses", () => {
-    expect(wrangler().workers_dev).toBe(false);
+  // Until the Owner buys the site's domain, the site runs on its free workers.dev address (Owner, 2026-11-14:
+  // "Yes, give me the commands to do it"). The games Worker gets no such address (its own test). Preview addresses
+  // stay off, so a build never goes live on an address nobody chose. When the custom domain is added, workers_dev
+  // goes back to false and this test with it.
+  it("runs on its workers.dev address until the custom domain exists, and has no preview addresses", () => {
+    expect(wrangler().workers_dev).toBe(true);
     expect(wrangler().preview_urls).toBe(false);
   });
 
@@ -126,13 +130,23 @@ describe("deploying", () => {
     expect(deploy.indexOf("prisma migrate deploy")).toBeLessThan(deploy.indexOf("wrangler deploy"));
   });
 
-  // The game gate is its own Worker, so a game's files never come from Ruken's address. It goes out after the app,
-  // with the same build's token.
-  it("the deploy command then deploys the game gate", () => {
+  // Workers Builds sets WRANGLER_CI_OVERRIDE_NAME to the name of the Worker the build is connected to, and Wrangler
+  // then deploys under that name whatever the config file says. So a second `wrangler deploy` in the deploy command
+  // (the game gate's) went out as `ruken` and replaced the site with the gate (2026-11-14: every page answered 404).
+  // The deploy command is the site and nothing else: one `wrangler deploy`, and it is the site's.
+  it("the deploy command deploys the site only, never the game gate", () => {
     const deploy = scripts().deploy ?? "";
-    const gate = "wrangler deploy --config cloudflare/games/wrangler.jsonc";
-    expect(deploy).toContain(gate);
-    expect(deploy.indexOf(gate)).toBeGreaterThan(deploy.indexOf("wrangler deploy cloudflare/worker.js"));
+    expect(deploy.match(/wrangler deploy/g)).toHaveLength(1);
+    expect(deploy).toContain("wrangler deploy cloudflare/worker.js");
+    expect(deploy).not.toContain("games/wrangler.jsonc");
+  });
+
+  // The game gate is its own Worker, so a game's files never come from Ruken's address. Its deploy is a script of
+  // its own, run by the Owner once the games domain exists (or by a build connected to the gate itself), and
+  // it never migrates: only the site's deploy touches the database.
+  it("the game gate has a deploy script of its own", () => {
+    const gateDeploy = scripts()["deploy:games"] ?? "";
+    expect(gateDeploy).toBe("wrangler deploy --config cloudflare/games/wrangler.jsonc");
   });
 
   it("the build never migrates", () => {

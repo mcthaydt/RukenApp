@@ -175,6 +175,41 @@ describe("commitOf", () => {
   });
 });
 
+describe("installationOf", () => {
+  it("asks, as the app, which installation holds the repository, and answers its number", async () => {
+    const { github, calls } = gitHubWith([json({ id: 7 })]);
+
+    expect(await github.installationOf("acme/game")).toBe(7n);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ method: "GET", url: `${BASE}/repos/acme/game/installation` });
+    // The app's own token (three parts, as a JWT has), not an installation's.
+    expect(calls[0]?.headers.authorization).toMatch(/^Bearer [\w-]+\.[\w-]+\.[\w-]+$/);
+  });
+
+  it("answers null when the app is not installed on the repository", async () => {
+    const { github } = gitHubWith([json({ message: "Not Found" }, 404)]);
+    expect(await github.installationOf("acme/game")).toBeNull();
+  });
+
+  it("refuses a name that is not owner/name before it asks anything", async () => {
+    const { github, calls } = gitHubWith([]);
+    await expect(github.installationOf("../x")).rejects.toMatchObject({ code: "INVALID" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("names the status and the path when GitHub fails, and not the token", async () => {
+    const { github } = gitHubWith([new Response("busy", { status: 503 })]);
+    const failure = await github.installationOf("acme/game").catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure).not.toBeInstanceOf(GameError);
+    const message = (failure as Error).message;
+    expect(message).toContain("503");
+    expect(message).toContain("/repos/acme/game/installation");
+    expect(message).not.toMatch(/eyJ/);
+  });
+});
+
 describe("tarball", () => {
   it("asks for the commit's files with the repository's token and answers the body", async () => {
     const { github, calls } = gitHubWith([...tokenAnswers(), new Response("the tarball")]);

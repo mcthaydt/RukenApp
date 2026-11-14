@@ -12,10 +12,16 @@ import { tarGz } from "../../support/tar.ts";
 let database: TestDatabase | undefined;
 const files = new MemoryFileStore();
 
-// Saving a clip never reaches GitHub, so a call to it here is a mistake the test should show.
+/** The installation GitHub says holds each repository now. A test sets it to what GitHub would answer. */
+const installations = new Map<string, bigint>();
+
+// Saving a clip never reaches GitHub for files, so a call to it here is a mistake the test should show. Making a game
+// does ask which installation holds the repository, and the maker's stored list must agree.
+const installationOf: GitHub["installationOf"] = (repo) => Promise.resolve(installations.get(repo) ?? null);
 const noGitHub: GitHub = {
   commitOf: () => Promise.reject(new Error("this test reaches for GitHub")),
   tarball: () => Promise.reject(new Error("this test reaches for GitHub")),
+  installationOf,
 };
 let service: GamesService;
 
@@ -34,6 +40,22 @@ afterAll(async () => {
 });
 
 let made = 0;
+let installationsMade = 0;
+
+/** What GitHub told the site a person can reach: one installation with these repositories, and GitHub agrees. */
+async function connectMaker(userId: string, ...repos: string[]): Promise<void> {
+  installationsMade += 1;
+  const installationId = BigInt(1000 + installationsMade);
+  await db().gitHubInstallation.create({
+    data: {
+      userId,
+      installationId,
+      accountLogin: "acme",
+      repositories: { create: repos.map((fullName) => ({ fullName, defaultBranch: "main" })) },
+    },
+  });
+  for (const repo of repos) installations.set(repo, installationId);
+}
 
 /** A plain draft game. Its public id is its own, so its clips' keys can be told apart. */
 async function newGame() {
@@ -137,14 +159,18 @@ describe("saveClip", () => {
 
 /** What a maker's form says, made valid; a test changes the one thing it is about. */
 async function startGame(changes: Partial<Parameters<GamesService["createGame"]>[0]> = {}) {
+  const makerUserId = changes.makerUserId ?? (await createUser(db()));
+  const repo = changes.repo ?? { fullName: "acme/game", branch: null, folder: "" };
+  // The maker has connected GitHub and can reach the repository, as every maker who makes a game must.
+  await connectMaker(makerUserId, repo.fullName);
   return service.createGame({
-    makerUserId: await createUser(db()),
     name: "Tower Run",
     oneLine: "Climb fifty floors.",
     playsOn: "phone_and_computer",
-    repo: { fullName: "acme/game", branch: null, folder: "" },
     connectHosts: [],
     ...changes,
+    makerUserId,
+    repo,
   });
 }
 
@@ -354,11 +380,13 @@ describe("pullLatest", () => {
     const sha = "0123456789abcdef0123456789abcdef01234567";
     const github: GitHub = {
       commitOf: () => Promise.resolve(sha),
+      installationOf,
       tarball: async () =>
         new Blob([await tarGz([{ path: "top/index.html", content: "<html></html>" }])]).stream(),
     };
     const pulling = createGamesService({ db: db(), clock: systemClock, files, github });
     const game = await newGame();
+    await connectMaker(game.makerUserId, "acme/game");
 
     const pull = await pulling.pullLatest(game.id);
 

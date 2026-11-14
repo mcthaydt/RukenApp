@@ -1,4 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
+import { sealState } from "../../../src/features/games/github-connect.ts";
 import { ARRIVAL_COOKIE, sealArrival } from "../../../src/features/membership/arrival.ts";
 import { PrismaClient, type MembershipStart } from "../../support/generated/prisma/client.ts";
 
@@ -41,6 +42,28 @@ export async function failTheirCard(email: string, daysAgo: number): Promise<voi
 export async function staffRolesOfEmail(email: string): Promise<string[]> {
   const rows = await db().staffAssignment.findMany({ where: { user: { email } }, select: { role: true } });
   return rows.map((row) => row.role);
+}
+
+/**
+ * What the site remembers a person can reach on GitHub: each installation with its repositories' names, in a fixed
+ * order. Nothing on a screen shows it yet, so a journey reads the rows.
+ */
+export async function githubConnectionOf(email: string) {
+  const rows = await db().gitHubInstallation.findMany({
+    where: { user: { email } },
+    orderBy: { installationId: "asc" },
+    include: { repositories: { orderBy: { fullName: "asc" } } },
+  });
+  return rows.map((row) => ({
+    installationId: row.installationId,
+    accountLogin: row.accountLogin,
+    repositories: row.repositories.map((repository) => repository.fullName),
+  }));
+}
+
+/** The state GitHub's sign-in sends back for an account, sealed with the app's own secret and the clock. */
+export function connectStateFor(userId: string): string {
+  return sealState(userId, Date.now(), APP_SECRET);
 }
 
 export function membershipStartsOf(email: string): Promise<MembershipStart[]> {

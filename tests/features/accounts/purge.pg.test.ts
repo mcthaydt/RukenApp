@@ -155,6 +155,34 @@ describe("purgeDueAccounts", () => {
     expect(again.id).not.toBe(id);
   });
 
+  // The GitHub connection is a person's data (slice 2): what GitHub said they can reach goes with them.
+  it("removes the person's GitHub installations and repositories, and no one else's", async () => {
+    const leaving = await seedPerson();
+    const staying = await seedPerson();
+    for (const [userId, installationId, fullName] of [
+      [leaving.id, 11n, "leaving/game"],
+      [staying.id, 12n, "staying/game"],
+    ] as const) {
+      await db().gitHubInstallation.create({
+        data: {
+          userId,
+          installationId,
+          accountLogin: "someone",
+          repositories: { create: [{ fullName, defaultBranch: "main" }] },
+        },
+      });
+    }
+    const clock = await askToBeDeleted(leaving.id);
+
+    clock.advance(15 * DAY_MS);
+    await purgeDueAccounts({ prisma: db(), clock });
+
+    expect(await db().gitHubInstallation.count({ where: { userId: leaving.id } })).toBe(0);
+    expect(await db().gitHubRepository.count({ where: { fullName: "leaving/game" } })).toBe(0);
+    expect(await db().gitHubInstallation.count({ where: { userId: staying.id } })).toBe(1);
+    expect(await db().gitHubRepository.count({ where: { fullName: "staying/game" } })).toBe(1);
+  });
+
   // Review Focus 6 of the plan: the money rows are the ledger, so they outlive the person's details. The purge only
   // turns the user row into a tombstone; these rows point at it and must all still be there, unchanged.
   it("leaves the payment, the membership start and the membership rows as they were", async () => {
