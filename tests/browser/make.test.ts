@@ -287,6 +287,8 @@ test("a missing line and a missing repository each have their own refusal screen
   await signUp(page);
   await connectGitHub(page);
 
+  // The refusal is shown, and the box taken to, by the page's script: wait for it, as a person on a slow phone would.
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("Game files").selectOption("ruken-test/tiny-game");
   await page.getByLabel("Name").fill(freshName());
   await page.getByRole("button", { name: "Save and add videos" }).click();
@@ -600,6 +602,7 @@ test("sending with nothing done lists everything missing, marks the boxes and ta
 }, testInfo) => {
   await startGame(page);
 
+  await page.waitForLoadState("networkidle");
   await sendButton(page).click();
 
   await expect(
@@ -620,6 +623,7 @@ test("sending with both videos in but no tick says only that, and the tick takes
   await uploadVideo(page, "Upright video");
   await uploadVideo(page, "Wide video");
 
+  await page.waitForLoadState("networkidle");
   await sendButton(page).click();
 
   await expect(page.getByText("Before you send it: tick the box.")).toBeVisible();
