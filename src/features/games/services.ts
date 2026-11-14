@@ -4,7 +4,14 @@ import { prisma, type PrismaClient } from "../../lib/server/db.ts";
 import { optionalEnv, requireEnv } from "../../lib/server/env.ts";
 import { fileStore } from "../../lib/server/files.ts";
 import { checkAddressPattern, gameAddress } from "./addresses.ts";
-import type { Connection } from "./github-connect.ts";
+import {
+  connectionOf,
+  installUrl,
+  openState,
+  sealState,
+  signInUrl,
+  type Connection,
+} from "./github-connect.ts";
 import { createGitHub } from "./github.ts";
 import { createGamesService, type GamesService } from "./service.ts";
 
@@ -13,7 +20,7 @@ import { createGamesService, type GamesService } from "./service.ts";
 
 type Settings = Readonly<Record<string, string | undefined>>;
 
-/** What the connect screens need, with the app's settings and the clock already in it (stub). */
+/** What the connect screens need, with the app's settings and the clock already in it. */
 export interface GitHubConnect {
   signInUrl(state: string): string;
   installUrl(state: string): string;
@@ -29,8 +36,20 @@ export interface GamesServices {
   address(name: string): string;
 }
 
-/** The only place GitHub's address may be changed: a stand-in server on this machine, for the journeys. */
+/** The only place GitHub's addresses may be changed: a stand-in server on this machine, for the journeys. */
 const STAND_IN_GITHUB = "http://127.0.0.1:";
+
+/**
+ * A GitHub address setting that only a stand-in on this machine may change. Refused at start, so a real site can never
+ * be pointed at a stand-in that answers with whatever it likes.
+ */
+function standInAddress(name: string, source: Settings): string | undefined {
+  const value = optionalEnv(name, source);
+  if (value !== undefined && !value.startsWith(STAND_IN_GITHUB)) {
+    throw new Error(`${name} is for a stand-in on this machine only: it must start with ${STAND_IN_GITHUB}`);
+  }
+  return value;
+}
 
 /**
  * Reads the settings first, so a missing one stops the start with its name before anything is connected. `parts` are
@@ -44,13 +63,13 @@ export function createGamesServices(
   const privateKeyPem = requireEnv("GITHUB_APP_PRIVATE_KEY", source);
   const pattern = requireEnv("GAME_ADDRESS_PATTERN", source);
   checkAddressPattern(pattern);
-  // Refused at start, so a real site can never be pointed at a stand-in that answers with whatever it likes.
-  const apiBase = optionalEnv("GITHUB_API_BASE", source);
-  if (apiBase !== undefined && !apiBase.startsWith(STAND_IN_GITHUB)) {
-    throw new Error(
-      `GITHUB_API_BASE is for a stand-in on this machine only: it must start with ${STAND_IN_GITHUB}`,
-    );
-  }
+  const apiBase = standInAddress("GITHUB_API_BASE", source);
+  const webBase = standInAddress("GITHUB_WEB_BASE", source);
+  const clientId = requireEnv("GITHUB_APP_CLIENT_ID", source);
+  const clientSecret = requireEnv("GITHUB_APP_CLIENT_SECRET", source);
+  const appSlug = requireEnv("GITHUB_APP_SLUG", source);
+  // The site's own secret, as for the arrival cookie: never the play pass secret, which the gate holds too.
+  const stateSecret = requireEnv("BETTER_AUTH_SECRET", source);
 
   const github = createGitHub({
     appId,
@@ -59,20 +78,17 @@ export function createGamesServices(
     ...(apiBase === undefined ? {} : { apiBase }),
   });
   const service = createGamesService({ db: parts.db, clock: parts.clock, files: parts.files, github });
+  // Each is given only the addresses that were set, so an unset one keeps the library's own (GitHub's).
+  const addresses = {
+    ...(apiBase === undefined ? {} : { apiBase }),
+    ...(webBase === undefined ? {} : { webBase }),
+  };
   const connect: GitHubConnect = {
-    signInUrl: (state) => {
-      throw new Error(`not built yet: connect.signInUrl ${state}`);
-    },
-    installUrl: (state) => {
-      throw new Error(`not built yet: connect.installUrl ${state}`);
-    },
-    connectionOf: (code) => Promise.reject(new Error(`not built yet: connect.connectionOf ${code}`)),
-    sealState: (userId) => {
-      throw new Error(`not built yet: connect.sealState ${userId}`);
-    },
-    openState: (value, userId) => {
-      throw new Error(`not built yet: connect.openState ${String(value)} ${userId}`);
-    },
+    signInUrl: (state) => signInUrl({ clientId, state, ...(webBase === undefined ? {} : { webBase }) }),
+    installUrl: (state) => installUrl({ appSlug, state, ...(webBase === undefined ? {} : { webBase }) }),
+    connectionOf: (code) => connectionOf({ code, clientId, clientSecret, ...addresses }),
+    sealState: (userId) => sealState(userId, parts.clock.epochMs(), stateSecret),
+    openState: (value, userId) => openState(value, userId, parts.clock.epochMs(), stateSecret),
   };
   return { service, connect, address: (name) => gameAddress(pattern, name) };
 }

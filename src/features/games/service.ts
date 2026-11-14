@@ -4,7 +4,7 @@ import type { ClipShape, GamePlaysOn, PrismaClient } from "../../lib/server/db.t
 import { clipKeyFor, clipProblem, type ClipContentType } from "./clips.ts";
 import { GameError } from "./game-error.ts";
 import type { Connection } from "./github-connect.ts";
-import { checkBranch, checkRepo, type GitHub } from "./github.ts";
+import { checkBranch, checkRepo, NOT_VISIBLE, type GitHub } from "./github.ts";
 import { newPublicId, slugOf } from "./ids.ts";
 import { pullGame, type Pull } from "./pull.ts";
 
@@ -106,6 +106,25 @@ export function createGamesService(deps: GamesServiceDeps) {
     if (replaced !== null) await deps.files.delete(replaced.key);
   }
 
+  /**
+   * Throws unless this maker may use this repository: GitHub listed it for them when they connected (so they can
+   * reach it themselves), and GitHub still says the same installation holds it now (so the app was not moved or taken
+   * off). Without this, an installation that can read a repository the maker cannot open would let them pull it.
+   * GitHub writes a repository's name one way and the stored list is GitHub's own, so the names are compared as is.
+   */
+  async function checkReachable(makerUserId: string, repoFullName: string): Promise<void> {
+    const listed = await deps.db.gitHubRepository.findMany({
+      where: { fullName: repoFullName, connection: { userId: makerUserId } },
+      select: { connection: { select: { installationId: true } } },
+    });
+    // Nothing is asked of GitHub for a repository the maker was never listed.
+    if (listed.length > 0) {
+      const holding = await deps.github.installationOf(repoFullName);
+      if (holding !== null && listed.some((row) => row.connection.installationId === holding)) return;
+    }
+    throw new GameError("NOT_CONNECTED", NOT_VISIBLE);
+  }
+
   /** An address for a name: the name's own, or with `-2` to `-9` when that is taken. Refuses when all nine are. */
   async function freeSlug(base: string): Promise<string> {
     // Cut before the number goes on, so `<38 characters>-9` still fits the database's 40; a hyphen the cut leaves at
@@ -140,6 +159,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     checkRepo(input.repo.fullName);
     if (input.repo.branch !== null) checkBranch(input.repo.branch);
     checkFolder(input.repo.folder);
+    await checkReachable(input.makerUserId, input.repo.fullName);
 
     return deps.db.game.create({
       data: {
@@ -158,8 +178,17 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
   }
 
-  /** Pulls the maker's latest files for a game, with the service's own GitHub and bucket. */
-  function pullLatest(gameId: string): Promise<Pull> {
+  /**
+   * Pulls the maker's latest files for a game, with the service's own GitHub and bucket. The repository is checked
+   * again every time: the maker may have taken the app off it since the game was made.
+   */
+  async function pullLatest(gameId: string): Promise<Pull> {
+    const game = await deps.db.game.findUnique({
+      where: { id: gameId },
+      select: { makerUserId: true, repoFullName: true },
+    });
+    // A game that is not there is `pullGame`'s to refuse, in its own words.
+    if (game !== null) await checkReachable(game.makerUserId, game.repoFullName);
     return pullGame(deps, gameId);
   }
 
@@ -222,14 +251,43 @@ export function createGamesService(deps: GamesServiceDeps) {
     };
   }
 
-  /** Makes a person's stored installations and repositories exactly what GitHub listed (stub). */
-  function rememberConnection(userId: string, found: Connection[]): Promise<void> {
-    return Promise.reject(new Error(`not built yet: rememberConnection ${userId} ${String(found.length)}`));
+  /**
+   * Makes a person's stored installations and repositories exactly what GitHub listed: rows GitHub stopped listing
+   * are removed, the rest are brought up to date. It is one transaction, so a list that cannot be stored leaves what
+   * was there.
+   */
+  async function rememberConnection(userId: string, found: Connection[]): Promise<void> {
+    await deps.db.$transaction(async (tx) => {
+      await tx.gitHubInstallation.deleteMany({
+        where: { userId, installationId: { notIn: found.map((one) => one.installationId) } },
+      });
+      for (const one of found) {
+        const { id } = await tx.gitHubInstallation.upsert({
+          where: { userId_installationId: { userId, installationId: one.installationId } },
+          create: { userId, installationId: one.installationId, accountLogin: one.accountLogin },
+          update: { accountLogin: one.accountLogin },
+          select: { id: true },
+        });
+        await tx.gitHubRepository.deleteMany({ where: { connectionId: id } });
+        await tx.gitHubRepository.createMany({
+          data: one.repositories.map((repo) => ({ connectionId: id, ...repo })),
+        });
+      }
+    });
   }
 
-  /** A person's stored repositories, sorted by name; it asks GitHub nothing (stub). */
-  function repositoriesFor(userId: string): Promise<{ fullName: string; defaultBranch: string }[]> {
-    return Promise.reject(new Error(`not built yet: repositoriesFor ${userId}`));
+  /** A person's stored repositories, sorted by name. It asks GitHub nothing. */
+  async function repositoriesFor(userId: string): Promise<{ fullName: string; defaultBranch: string }[]> {
+    const rows = await deps.db.gitHubRepository.findMany({
+      where: { connection: { userId } },
+      select: { fullName: true, defaultBranch: true },
+    });
+    // The same repository can sit under two installations, and the form lists it once. Sorted here, by character,
+    // because the database's own order depends on the server's language settings.
+    const byName = new Map(rows.map((row) => [row.fullName, row]));
+    return [...byName.values()].sort((a, b) =>
+      a.fullName < b.fullName ? -1 : a.fullName > b.fullName ? 1 : 0,
+    );
   }
 
   return {
