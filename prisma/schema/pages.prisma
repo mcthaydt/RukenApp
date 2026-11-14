@@ -1,0 +1,55 @@
+// The pages feature's tables: a maker's page and its links.
+//
+// Prisma cannot express the CHECK rules, so they are written by hand at the end of the migration and covered by
+// tests/features/pages/schema.pg.test.ts. These rows are a maker's to change, so there is no add-only trigger;
+// the two counts (`views`, `taps`) only ever rise by one, in code.
+
+/// What a link on a page is: a button with words, or a card for a game that lives somewhere else.
+enum PageLinkKind {
+  link
+  game_elsewhere
+}
+
+/// A maker's page, at `/<handle>`. One per account, made when the maker first saves it.
+/// CHECKs: MakerPage_handle_check, MakerPage_name_check, MakerPage_oneLine_check, MakerPage_counts_check.
+model MakerPage {
+  id        String   @id @default(cuid(2))
+  userId    String   @unique
+  /// The page's address: lower-case letters and digits in runs joined by single hyphens, 3 to 30 characters.
+  handle    String   @unique
+  name      String
+  oneLine   String   @default("")
+  /// A combination from A Dictionary of Color Combinations, by its number; 0 is Ruken's own colours.
+  themeId   Int      @default(0)
+  /// Where the maker's photo is kept in the bucket, once they have added one.
+  photoKey  String?  @unique
+  /// How many times the page was opened by anyone but its maker.
+  views     Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  // Restrict: a person's page is removed by the account purge, in its own transaction, never by a cascade.
+  user  User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  links PageLink[]
+}
+
+/// One link on a page. Only https addresses are kept, and only these are ever sent on to.
+/// CHECKs: PageLink_url_check, PageLink_title_check, PageLink_taps_check.
+model PageLink {
+  id        String       @id @default(cuid(2))
+  pageId    String
+  kind      PageLinkKind
+  title     String
+  url       String
+  /// Where it sits in the page's list, from 0.
+  position  Int
+  hidden    Boolean      @default(false)
+  /// How many times a visitor other than the maker tapped it.
+  taps      Int          @default(0)
+  createdAt DateTime     @default(now()) @db.Timestamptz
+  updatedAt DateTime     @updatedAt @db.Timestamptz
+
+  page MakerPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId, position])
+}
