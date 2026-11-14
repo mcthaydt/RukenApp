@@ -260,7 +260,7 @@ describe("startCheckout", { timeout: 30_000 }, () => {
   });
 });
 
-describe("view", { timeout: 30_000 }, () => {
+describe("view and isMember", { timeout: 30_000 }, () => {
   it("answers none, and not a member, for a person who never joined", async () => {
     const { service } = setup();
     const userId = await createUser(db());
@@ -272,6 +272,7 @@ describe("view", { timeout: 30_000 }, () => {
       endsAt: null,
       pausesAt: null,
     });
+    expect(await service.isMember(userId)).toBe(false);
   });
 
   it("shows an active member's plan and renewal", async () => {
@@ -285,6 +286,7 @@ describe("view", { timeout: 30_000 }, () => {
       endsAt: null,
       pausesAt: null,
     });
+    expect(await service.isMember(userId)).toBe(true);
   });
 
   it("shows when a cancelling membership ends, and no renewal; still a member until then", async () => {
