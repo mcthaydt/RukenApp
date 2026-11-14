@@ -14,7 +14,9 @@ Write from the email address on your account, so we can find you.
 
 Ruken is run by **Ruken App LLC**.
 
-[LAWYER TO CONFIRM; Owner question 5] Ruken has no postal address on this page. Some laws ask for one: California's rules for online services (an address and a phone number), the EU's rules for selling online, US rules for marketing email, and the US copyright agent registration. `research.md` (section 13, conflicts C5 and C6) gives the options, such as a PO box.
+Postal address: [OWNER: postal address]
+
+[OWNER: a phone number, if the lawyer says California's rules for online services need one. `research.md`, section 10.]
 
 ## Quick links
 

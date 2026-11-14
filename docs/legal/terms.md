@@ -8,7 +8,7 @@ These are the rules for using Ruken. By making an account, you agree to them.
 
 ## Who we are
 
-Ruken is run by **Ruken App LLC**. Write to us at **contact@ruken.io**.
+Ruken is run by **Ruken App LLC**, [OWNER: postal address]. Write to us at **contact@ruken.io**.
 
 When these terms say "we" or "Ruken", they mean Ruken App LLC. When they say "you", they mean you.
 
@@ -22,11 +22,14 @@ Ruken is a place to find and play web games.
 
 ## Who can join
 
+Before you sign up, sign in, join or play, we ask you to agree to what Ruken keeps about you. Until you do, you can read Ruken's public pages, and we keep nothing about you. Our [privacy page](./privacy.md) says more.
+
+
 You must be **13 or older** to make an account.
 
 When you sign up, we ask for your date of birth. If you are under 13, we don't make the account, and we keep nothing you typed.
 
-**If you are 13 to 17** [LAWYER TO CONFIRM; the Owner chooses one of these, `research.md` question 3]:
+**If you are 13 to 17** [LAWYER TO CONFIRM; the Owner chooses one of these, `research.md` question 2]:
 
 - *Option A (recommended):* You can make an account, watch and play free games. You can't buy a membership until you are 18.
 - *Option B:* You can buy a membership once a parent or guardian agrees. We email them, and they press a link to say yes. They agree to these terms for you, and they are responsible for the payments.
@@ -50,9 +53,15 @@ When you sign up, we ask for your date of birth. If you are under 13, we don't m
 
 [LAWYER TO CONFIRM] Proposed wording next to the Join button, which is what the law cares about most:
 
-> **$9.99 a month, renews every month until you cancel.** (or **$99 a year, renews every year until you cancel.**) Tax added where it applies. No refunds. Cancel any time in your account.
+> **$9.99 a month, renews every month until you cancel.** (or **$99 a year, renews every year until you cancel.**) Tax added where it applies. All payments are final: no refunds except where the law requires. Cancel any time in your account.
 >
 > [ Join and pay ]
+
+and, only for people in the EU or the UK, a box they must tick before the button works (the strictest the law allows for a service: they pay for the days they used if they change their mind within 14 days; a full waiver is not lawful for a subscription service, `research.md` section 4):
+
+> [ ] Start my membership now. I understand that if I change my mind within 14 days, I get back only the part for the days I didn't have, and after 14 days I get nothing back.
+
+We then email that choice back to them, as the law requires.
 
 and, for a yearly member, the reminder email:
 
@@ -66,7 +75,7 @@ and, for a yearly member, the reminder email:
 
 - Go to your account page and press **"Change card or cancel"**. It opens our payment page, run by Stripe. Cancel there.
 - When you cancel, you keep playing until the end of the month or year you already paid for. Then it stops, and you are not charged again.
-- **We don't give refunds.** Cancelling does not give money back for the time you already paid for. Our [refunds page](./refunds.md) says more.
+- **All payments are final.** Cancelling does not give money back for the time you already paid for. We give money back only where the law requires it; our [refunds page](./refunds.md) lists those times.
 
 ## Deleting your account
 
@@ -110,7 +119,7 @@ The maker agreement is what counts. If this list and the agreement differ, the a
 
 **Taxes for makers** [LAWYER TO CONFIRM]: when you connect your bank, Stripe asks for your tax details for us (in the United States, the details on a Form W-9). If we pay you enough in a year for the tax rules to need it, we send you a tax form (a Form 1099) through Stripe, and send a copy to the IRS. You are responsible for your own taxes on what we pay you.
 
-**A new maker agreement** [LAWYER TO CONFIRM; Owner question 8]: a lawyer is writing a fuller maker agreement. When it is ready, we'll show it to every maker, and you'll need to agree to it before your next payout. Until you do, version 1 stays in place for games already on Ruken.
+**A new maker agreement** [LAWYER TO CONFIRM; Owner question 5]: a lawyer is writing a fuller maker agreement. When it is ready, we'll show it to every maker, and you'll need to agree to it before your next payout. Until you do, version 1 stays in place for games already on Ruken.
 
 Read it here: [maker agreement](/legal/maker-agreement).
 
@@ -125,7 +134,7 @@ Read it here: [maker agreement](/legal/maker-agreement).
 
 ## The law that applies, and disagreements
 
-[LAWYER TO CONFIRM; `research.md` section 11; Owner question 6 names the state]
+[LAWYER TO CONFIRM; `research.md` section 11; Owner question 4 names the state]
 
 - **Talk to us first.** If you have a problem with Ruken, write to contact@ruken.io and tell us what's wrong. Neither of us goes to court until 30 days after you write, so there is time to put it right.
 - **The law of [STATE]**, where Ruken App LLC is formed, applies to these terms, without regard to rules that would pick another place's law.

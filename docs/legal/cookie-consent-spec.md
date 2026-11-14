@@ -2,7 +2,7 @@
 
 **Not legal advice.** A spec for a later build, checked against the code on `main` at `f77ef2d` (14 November 2026). Nothing here is built yet. Sources are in `research.md`, section 5.
 
-The Owner, 2026-11-14: "we need a cookie notice if we're collecting any data and we can't collect any data AT ALL until that's approved".
+The Owner, 2026-11-14: "we need a cookie notice if we're collecting any data and we can't collect any data AT ALL until that's approved", and, asked whether necessary data could run without a yes: "Yes, no data at all until approval". So: before she agrees, nothing is stored or set, not even a sign-in. She can look at public pages. Signing up, signing in, paying and playing start only after she agrees.
 
 ## 1. Everything the site keeps or sends today
 
@@ -50,74 +50,72 @@ No `localStorage`, `sessionStorage`, IndexedDB or `document.cookie` anywhere in 
 
 Games run in a frame on their own address (`cloudflare/games/`). A game may keep its own saved progress in the browser on its own address, and may talk to the outside servers its maker listed (the gate's `connect-src`). Ruken's maker agreement (point 4) says a game must not find out who a player is or collect their details without clearly telling them. While a game is on screen, Ruken's page will send a "still here" beat every few seconds to measure play time (`src/features/play/sessions.ts`), which is how makers are paid. **[LAWYER TO CONFIRM]** whether the beat counts as part of the service the member asked for (Ruken's view) or needs a yes; and what the notice must say about games' own storage.
 
-## 2. Sorted
+## 2. The rule
 
-**Strictly necessary** (the law lets these run without a yes; the notice still says they exist):
-- the sign-in cookie `__Host-rk_session`;
-- `rk_welcome_back` (or replace it with a line in the address, and it goes away);
-- the security records: sign-in IP and browser, rate-limit counters, the failed-sign-in pause;
-- Cloudflare receiving each request, and its 7-day logs;
-- the cookie that remembers the person's cookie choice (new, see below);
-- payment on Stripe's pages, mail through Resend, the database: these run only when the person signs up, joins or asks for a mail.
+**Before she agrees**, Ruken sets no cookie, keeps nothing in the browser, and writes nothing about her to its database or its logs. She can open and read every public page: the feed, clips, makers' pages, game pages, the legal pages.
 
-**Not strictly necessary** (blocked until the person says yes):
-- `rk_arrival`, "which maker brought you".
+**Signing up, signing in, joining, paying and playing** start only after she presses "I agree". Until then those buttons open the notice instead.
 
-**Unclear, for the lawyer:** the play-time beat, and games' own storage.
+**After she agrees**, everything in section 1 runs as it does today, including the cookie that remembers which maker brought her. One yes covers it all; there is no second question.
 
-## 3. What cannot wait for a yes
+**If she says no**, nothing is stored, not even her "no". The notice shows again on her next visit. She can still read public pages.
 
-The Owner's rule is "no data at all until approved". Some data the site cannot work without, and the law does not ask for a yes for it:
+### What no website can avoid
 
-- **Every page request carries the visitor's IP address** to Cloudflare. No site can answer a request without it. This happens before any notice can be shown. Legal basis: GDPR Article 6(1)(f), the site's legitimate interest in delivering and securing itself; not covered by the ePrivacy cookie rule because nothing is stored on the device.
-- **Signing in needs a cookie.** Without `__Host-rk_session` nobody can stay signed in. Legal basis: ePrivacy Article 5(3), strictly necessary; GDPR Article 6(1)(b), the contract.
-- **Security records** (sign-in IP, rate limits, the pause): GDPR Article 6(1)(f) and recital 49.
-- **Payment**: the person goes to Stripe's page to pay; Stripe needs their card. GDPR Article 6(1)(b).
+Every request to any website carries the visitor's IP address, and Cloudflare's network receives it before Ruken's code runs. Ruken cannot read a page to someone without it. Under this rule Ruken does not **keep** it before a yes (section 4 says how), but Cloudflare's network still handles it in transit, under Cloudflare's own terms. The notice and the privacy page say this plainly. The legal basis for that handling is GDPR Article 6(1)(f), and the ePrivacy cookie rule does not cover it because nothing is stored on her device.
 
-Options for the Owner (decision, not mine):
-- **(A) Recommended.** These run without a yes, and the notice says so in plain words. The one optional cookie, `rk_arrival`, waits for a yes. This is what the law asks, and what most sites do.
-- **(B)** Show the notice first and keep Sign up, Sign in and Join shut until the person presses OK. The IP address still reaches Cloudflare on the first page, so this does not reach "nothing at all"; it only delays sign-in. A "No" then means they cannot sign in, which makes the OK a condition of using the site rather than a free choice.
-- **(C)** Also cut Cloudflare's logs to the minimum (turn off Cloudflare's per-request invocation logs and keep Ruken's own lines; Cloudflare documents an `invocation_logs = false` setting, to be checked against the current Wrangler docs). This is a change to the Worker's settings and needs the Owner's words.
+## 3. The notice
 
-## 4. The notice
+At the bottom of every public page until she chooses, and in front of Sign up, Sign in, Join and Play when she presses them. Two buttons of equal size and look. No pre-ticked boxes. Not "by using this site you agree".
 
-Shown at the bottom of the first page a visitor opens, on every page, until they choose. It does not cover the Play button or the feed. Two buttons of equal size and look. No pre-ticked boxes, no "by using this site you agree".
-
-> **Cookies on Ruken**
+> **Before you sign up or play**
 >
-> We use a few small files to keep you signed in and keep accounts safe. Ruken can't work without them.
->
-> Can we also remember which maker's link brought you here? If you join, that maker gets a thank-you share.
+> To sign you in and run your account, Ruken keeps a few things: small files in your browser (cookies), your email, and where you signed in from. We also remember which maker's link brought you here, so they get a thank-you share if you join.
 >
 > We don't show ads. We do not sell your data.
 >
-> [ Yes, that's fine ]  [ No thanks ]
+> [ I agree ]  [ Not now ]
 >
-> More about this: [Privacy](/legal/privacy)
+> What we keep and why: [Privacy](/legal/privacy)
 
-Why these words pass the drunk-grandma test: one question, two answers that say what they do, no word she would not say out loud ("cookies" is in the title only, explained in the first line).
+Why it passes the drunk-grandma test: it says what happens if she presses each button, in words she says out loud, and "Not now" leaves her on the page she was reading.
 
-## 5. What happens
+**"I agree":** sets `rk_consent=1` (6 months; then she is asked again), then carries on with what she pressed (sign up, sign in, join or play).
 
-**Before she chooses:** the strictly necessary items only. `rk_arrival` is not set. A maker's link still opens the page and the game; it just is not remembered.
+**"Not now":** closes the notice. Nothing is set or stored. Buttons that need an account keep opening the notice.
 
-**"Yes, that's fine":** a choice cookie `rk_cookies=yes` is set (6 months, then she is asked again). From then on, opening a maker's page or a game link sets `rk_arrival` as today. The link she arrived on, if she arrived on one in this visit, is remembered at that moment, not before.
+**Taking it back:** a "Cookies" link on every page shows the notice again, with "Withdraw my agreement". That deletes `rk_consent` and `rk_arrival` and signs her out on this browser. It does not delete her account; deleting the account is on the account page.
 
-**"No thanks":** a choice cookie `rk_cookies=no` is set (6 months). `rk_arrival` is never set, and any old one is deleted. Everything else works the same: watching, signing up, joining, playing. If she later joins, no maker gets the bringing bonus for her.
+**Global Privacy Control** (`Sec-GPC: 1`): the notice still shows, since she may still want to sign in; Ruken never sets `rk_arrival` for that browser. [LAWYER TO CONFIRM]
 
-**Changing her mind:** a "Cookies" link in the footer of every page opens the same two buttons. Saying no after yes deletes `rk_arrival`.
+## 4. What must change in the code so nothing is kept before a yes
 
-**Browser "do not track" signals:** a browser that sends Global Privacy Control (`Sec-GPC: 1`) is treated as "No thanks" without asking. [LAWYER TO CONFIRM]
+Each item is later work, test first in CI, not built here.
 
-**Signed-in people:** the choice is per browser, not per account. Nothing is stored in the database about it.
+| # | Today on `main` | Change | Where |
+|---|---|---|---|
+| 1 | No consent check anywhere | A helper `hasConsent(cookies)` reads `rk_consent`. The notice is server-rendered so it works without scripts. | new, in `src/features/accounts/` (it gates sign-in) |
+| 2 | Sign up and sign in set `__Host-rk_session` and write a `Session` row with IP and browser | The sign-up and sign-in pages and their form actions refuse without consent and show the notice. The `/api/auth` route (`forward.ts`) refuses every endpoint without consent, so nothing reaches better-auth (no session, no `RateLimit` row by IP, no `SignInGuard` row, no reset mail). | `src/routes/sign-up`, `src/routes/sign-in`, `src/routes/forgot-password`, `src/routes/reset-password`, `src/features/accounts/forward.ts` |
+| 3 | `rk_arrival` (`remember` in `membership/services.ts`) would be set on a maker's page or game link once slice 3 calls it | `remember` sets it only with consent. Without consent the link still opens; the arrival is not remembered. Withdrawing deletes it. | `src/features/membership/services.ts`, slice 3's routes |
+| 4 | Join, checkout and the billing page need a session already | Covered by 2 (no session without consent). `/join` shows the notice first when there is none. | `src/routes/join` |
+| 5 | Signed-out free play (FloorFifty) writes a `PlayPass` with no user and a `PlaySession` and beats with no user | Play needs consent, signed in or not. Without it the Play button shows the notice. The rows hold no name, email or IP, but they are a record of her visit, so under the Owner's rule they wait. Games also store their own saves in the browser on their own address, which is another reason Play waits. | `src/features/play/sessions.ts`, `passes.ts`, the play route (slice 2/3) |
+| 6 | Cloudflare Workers Logs keep an "invocation" entry for every request for 7 days (`"observability": { "enabled": true }` in both `wrangler.jsonc` files), which may hold the IP and headers | Turn off invocation logs and keep only Ruken's own `console` lines, which never carry an email or IP. Cloudflare documents an `invocation_logs = false` setting; check it against the current Wrangler docs. This is a change to the Worker's settings. | `wrangler.jsonc`, `cloudflare/games/wrangler.jsonc` |
+| 7 | Ruken's own `console.*` lines (`auth.ts`, `membership/services.ts`, `join`, `me`, `me/delete`, `webhooks/stripe`) | No change: none holds an IP or email, and all but the webhook run only for a signed-in person. Add a test that no log line includes an IP or an `@`. | those files |
+| 8 | `rk_welcome_back` | No change: set only when signing in, which needs consent. | `auth.ts` |
+| 9 | Analytics, ads, outside scripts, fonts from elsewhere | None today. Any added later must wait for consent, and needs the Owner's words first (no new tool without them). | — |
+| 10 | Stripe webhooks, the daily job, GitHub callbacks | No change: these are servers talking to Ruken, not a visitor's browser, and concern people who already agreed. | — |
+| 11 | Cloudflare's bot protection (`__cf_bm`, `cf_clearance`) | Not on now. Must stay off for public pages, or the rule breaks. | Cloudflare dashboard |
 
-## 6. What this means for makers
+## 5. What this costs
 
-A visitor who says no, or never answers, cannot be counted as brought by a maker. Some makers will get fewer bringing bonuses than the design expects. The Owner should know this before choosing (`research.md`, Owner question 7).
+- Every visitor sees a notice before signing up or playing, including on launch day, when FloorFifty is free with no account. Free play now needs one press of "I agree" first.
+- A maker's link opened before a yes brings no bonus unless she agrees on that visit, before she leaves.
+- Problems on public pages are harder to find, because Cloudflare's per-request logs are off (item 6).
 
-## 7. Building it (later work, not now)
+## 6. Tests to write first (later)
 
-- The choice cookie: `rk_cookies`, `yes` or `no`, 6 months, `SameSite=Lax`, `Secure`, `Path=/`, HttpOnly (the server renders the notice, so no page script needs to read it).
-- `remember` in `membership/services.ts` checks the choice before setting `rk_arrival`; "No thanks" deletes it.
-- The notice is server-rendered, so it works with scripts off.
-- Tests: a maker link with no choice sets no `rk_arrival`; after "Yes" it does; after "No" it does not and an old one is gone; `Sec-GPC: 1` acts as "No"; the notice's two buttons have equal weight (a browser check).
+- A public page with no `rk_consent`: the answer sets no cookie, and no row is written to any table.
+- Sign up, sign in, forgot password and every `/api/auth` path without consent: refused with the notice; no `Session`, `RateLimit`, `SignInGuard` or `Verification` row.
+- A maker link without consent sets no `rk_arrival`; with consent it does; withdrawing deletes both cookies and the session.
+- Play without consent writes no `PlayPass` or `PlaySession`.
+- The notice's two buttons have the same size and look (a browser check).

@@ -541,5 +541,6 @@ Branches and tasks:
 Not legal advice; a lawyer gives the final say (Owner, 2026-11-14). Round 2, 14 November: the Owner's facts applied (Ruken App LLC, contact@ruken.io, no reply time, takes effect 30 November 2026, "we do not sell your data", no postal address, no refunds); the lawyer's items drafted and marked [LAWYER TO CONFIRM]; `docs/legal/research.md` (sources, ten conflicts between the Owner's facts and the law, twelve Owner questions) and `docs/legal/cookie-consent-spec.md` (every cookie, record, log and outside request on `main`, sorted; the notice; building it is later work) added. Nothing ran: documents only.
 
 - [x] Round 2 drafts written and pushed. 100% of this round.
-- [ ] The Owner's answers to the twelve questions in `research.md` section 14.
+- [x] The Owner's later answers of 2026-11-14 applied: refunds are the strictest the law allows ("Okay we need to comply with law, have a very strict and discouraging refund policy, and if possible, none for the games themselves"); no data at all before agreeing ("Yes, no data at all until approval"; the consent spec now lists the eleven code changes); `[OWNER: postal address]` where the law needs one (a virtual address is coming). Makers' own DLC and subscriptions noted as future (research.md section 4a), no terms drafted.
+- [ ] The Owner's answers to the ten questions left in `research.md` section 14.
 - [ ] A lawyer's review.
