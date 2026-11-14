@@ -34,6 +34,16 @@ export async function fillBirthDate(
 }
 
 /**
+ * Waits until the page the browser landed on has come alive. A URL reads as the new one as soon as a redirect commits,
+ * before that page has finished loading, and a goto sent now can collide with the load still in flight (seen in
+ * WebKit: run 43626711198 after sign-up, run 43629699636 after paying). SvelteKit adds its announcer only once the
+ * page has come alive, so its arrival says the page has settled. No pause.
+ */
+export async function pageHasSettled(page: Page): Promise<void> {
+  await expect(page.locator("#svelte-announcer")).toBeAttached();
+}
+
+/**
  * Makes a new account through the sign-up form, as a person would, and waits for the page it lands
  * on. The person is signed in afterwards. The address is new unless the journey gives one (a person coming back to
  * an address they used before).
@@ -48,10 +58,7 @@ export async function signUp(
   await fillBirthDate(page, yearsAgo(30));
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL("/");
-  // The URL reads "/" as soon as the redirect commits, before that page has finished loading, and a goto sent now
-  // can collide with the load still in flight (seen in WebKit, run 43626711198). SvelteKit adds its announcer only
-  // once the page has come alive, so its arrival says the page the person landed on has settled.
-  await expect(page.locator("#svelte-announcer")).toBeAttached();
+  await pageHasSettled(page);
   return { email, password: JOURNEY_PASSWORD };
 }
 
@@ -86,6 +93,7 @@ export async function payAsNewMember(page: Page): Promise<{ email: string; check
   const checkoutSessionId = new URL(page.url()).pathname.split("/").pop() ?? "";
   await page.getByRole("button", { name: "Pay" }).click();
   await expect(page).toHaveURL("/me");
+  await pageHasSettled(page);
   return { email, checkoutSessionId };
 }
 
