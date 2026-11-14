@@ -70,6 +70,9 @@ model Game {
   // The launch feature's table points at a game; it is declared in launch.prisma.
   wishlist Wishlist[]
 
+  // The money feature's journal entries can name a game; they are declared in money.prisma.
+  journalEntries JournalEntry[]
+
   @@index([makerUserId])
 }
 

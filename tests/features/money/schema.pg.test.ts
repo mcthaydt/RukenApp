@@ -97,7 +97,8 @@ describe("the ledger tables", () => {
   it("refuses to change or delete an entry or a line", async () => {
     const entryId = await postRaw(BALANCED);
     await expect(
-      db().$executeRaw`UPDATE "JournalEntry" SET "kind" = 'refund'::"JournalEntryKind" WHERE "id" = ${entryId}`,
+      db()
+        .$executeRaw`UPDATE "JournalEntry" SET "kind" = 'refund'::"JournalEntryKind" WHERE "id" = ${entryId}`,
     ).rejects.toThrow(/JournalEntry is append-only/);
     await expect(db().$executeRaw`DELETE FROM "JournalEntry" WHERE "id" = ${entryId}`).rejects.toThrow(
       /JournalEntry is append-only/,
@@ -113,10 +114,12 @@ describe("the ledger tables", () => {
   it("refuses an entry into a month that is final", async () => {
     await db().$executeRaw`INSERT INTO "LedgerPeriod" ("period") VALUES ('2026-08')`;
     // A closed month still takes entries: its pool is shared after it closes and before it is final.
-    await db().$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'closed', "closedAt" = now() WHERE "period" = '2026-08'`;
+    await db()
+      .$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'closed', "closedAt" = now() WHERE "period" = '2026-08'`;
     await expect(postRaw(BALANCED, { period: "2026-08" })).resolves.toBeDefined();
 
-    await db().$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'final', "finalAt" = now() WHERE "period" = '2026-08'`;
+    await db()
+      .$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'final', "finalAt" = now() WHERE "period" = '2026-08'`;
     await expect(postRaw(BALANCED, { period: "2026-08" })).rejects.toThrow(
       /2026-08 is final and takes no new entries/,
     );
@@ -125,8 +128,10 @@ describe("the ledger tables", () => {
   describe("a month", () => {
     it("moves only forward: open, closed, final", async () => {
       await db().$executeRaw`INSERT INTO "LedgerPeriod" ("period") VALUES ('2026-07')`;
-      await db().$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'closed', "closedAt" = now() WHERE "period" = '2026-07'`;
-      await db().$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'final', "finalAt" = now() WHERE "period" = '2026-07'`;
+      await db()
+        .$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'closed', "closedAt" = now() WHERE "period" = '2026-07'`;
+      await db()
+        .$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'final', "finalAt" = now() WHERE "period" = '2026-07'`;
 
       await expect(
         db().$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'closed' WHERE "period" = '2026-07'`,
@@ -141,7 +146,8 @@ describe("the ledger tables", () => {
       await expect(
         db().$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'final' WHERE "period" = '2026-06'`,
       ).rejects.toThrow(/moving open → final is not allowed/);
-      await db().$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'closed', "closedAt" = now() WHERE "period" = '2026-06'`;
+      await db()
+        .$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'closed', "closedAt" = now() WHERE "period" = '2026-06'`;
       await expect(
         db().$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'open' WHERE "period" = '2026-06'`,
       ).rejects.toThrow(/moving closed → open is not allowed/);
