@@ -9,6 +9,7 @@ import {
   sendClip,
   startGame,
   uploadClip,
+  videoFile,
   clipLine,
   pageNamedAsVideo,
 } from "./support/game.ts";
@@ -28,8 +29,8 @@ test("a new maker is asked to connect GitHub, then picks a repository", async ({
   await page.getByRole("link", { name: "Add a game" }).click();
   await page.getByRole("link", { name: "Connect GitHub" }).click();
 
-  // The list is sorted by name, so the first repository is the broken one.
-  await expect(page.getByLabel("Game files")).toHaveValue("ruken-test/broken-game");
+  // Nothing is chosen for the maker: a repository picked for them is one they might send without looking.
+  await expect(page.getByLabel("Game files")).toHaveValue("");
   await expectOneCard(page);
   await showTheOwner(page, testInfo, "the new-game form");
 });
@@ -191,6 +192,142 @@ test("the maker agreement is a page anyone can read", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Maker agreement" })).toBeVisible();
   await expect(page.getByText("Version 1", { exact: true })).toBeVisible();
+  // The version is said once: the Owner's file starts with a title line that says it too, and the page leaves it out.
+  await expect(page.getByText(/version 1/i)).toHaveCount(1);
   // Each point is a paragraph of its own, not one wall of words.
   await expect(page.getByText(/^2\. It's yours to share\./)).toBeVisible();
+});
+
+// Review of branch M's screens (Owner: the new-game form and a game's page must pass the drunk-grandma test).
+test("the new-game form says what goes in each box, and which step it is", async ({ page }) => {
+  await signUp(page);
+  await connectGitHub(page);
+
+  await expect(page.getByText("Step 3 of 3")).toBeVisible();
+  await expect(page.getByText("The name players will see.")).toBeVisible();
+  await expect(page.getByText("One short sentence about your game.")).toBeVisible();
+  await expect(page.getByText("The GitHub repository that holds your game.")).toBeVisible();
+  await expect(
+    page.getByText("Choose Computer only if your game needs a keyboard or a mouse."),
+  ).toBeVisible();
+});
+
+test("the new-game form uses plain words for the games that talk to other websites", async ({ page }) => {
+  await signUp(page);
+  await connectGitHub(page);
+
+  await expect(page.getByText("My game talks to a server")).toHaveCount(0);
+  await expect(page.getByText("My game uses other websites")).toBeVisible();
+});
+
+test("pressing the button with no repository chosen says to choose one, and keeps what was typed", async ({
+  page,
+}) => {
+  await signUp(page);
+  await connectGitHub(page);
+
+  await page.getByLabel("Name").fill(freshName());
+  await page.getByLabel("One line").fill("A tiny game about tapping.");
+  await page.getByRole("button", { name: "Next: add your clips" }).click();
+
+  await expect(page.getByText("Choose the repository your game is in.")).toBeVisible();
+  await expect(page.getByLabel("One line")).toHaveValue("A tiny game about tapping.");
+});
+
+test("the fold-outs on the new-game form wear the look, not the browser's triangles", async ({ page }) => {
+  await signUp(page);
+  await connectGitHub(page);
+
+  const summaries = page.locator("summary");
+  await expect(summaries).toHaveCount(2);
+  for (const summary of await summaries.all()) {
+    expect(await summary.evaluate((element) => getComputedStyle(element).listStyleType)).toBe("none");
+  }
+});
+
+test("the new-game form and a game's page both lead back to Your games", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/make/new");
+  await page.getByRole("link", { name: "Back to your games" }).click();
+  await expect(page).toHaveURL("/make");
+
+  await connectGitHub(page);
+  await page.getByRole("link", { name: "Back to your games" }).click();
+  await expect(page).toHaveURL("/make");
+
+  await page.goto("/make/new");
+  await makeGame(page);
+  await page.getByRole("link", { name: "Back to your games" }).click();
+  await expect(page).toHaveURL("/make");
+});
+
+test("a clip that was added shows Replace, not an empty file box, and a new file can still be sent", async ({
+  page,
+}) => {
+  await startGame(page);
+  const upright = clipLine(page, "Upright clip");
+
+  // Not added yet: the file box is there to use, and nothing offers to replace.
+  await expect(page.getByLabel("Upright clip")).toBeVisible();
+  await expect(upright.getByText("Replace", { exact: true })).toHaveCount(0);
+
+  await uploadClip(page, "Upright clip");
+
+  // Added: one word to press, and the file box stays folded away until it is pressed.
+  await expect(page.getByLabel("Upright clip")).toBeHidden();
+  await upright.getByText("Replace", { exact: true }).click();
+  await expect(page.getByLabel("Upright clip")).toBeVisible();
+  await sendClip(page, "Upright clip", videoFile());
+  await expect(upright.getByText("Added", { exact: true })).toBeVisible();
+});
+
+test("a file field wears the look's button", async ({ page }) => {
+  await startGame(page);
+
+  const radius = await page
+    .getByLabel("Upright clip")
+    .evaluate((input) => getComputedStyle(input, "::file-selector-button").borderRadius);
+
+  expect(radius).toBe("12px");
+});
+
+test("a game's page names the address and the other websites only for a game that uses some", async ({
+  page,
+}) => {
+  await signUp(page);
+  await connectGitHub(page);
+
+  await makeGame(page);
+  await expect(page.getByText(/Your game runs at/)).toHaveCount(0);
+  await expect(page.getByText(/which address to allow/)).toHaveCount(0);
+
+  await page.goto("/make/new");
+  await page.getByText("My game uses other websites").click();
+  await page.getByLabel("Websites it uses").fill("api.example.com");
+  await makeGame(page);
+  await expect(page.getByText("Websites your game uses: api.example.com")).toBeVisible();
+  await expect(page.getByText(/If one of them asks which address to allow, give it http/)).toBeVisible();
+});
+
+test("a game's page has one face for its headings", async ({ page }) => {
+  await startGame(page);
+
+  const face = (selector: string) =>
+    page
+      .locator(selector)
+      .first()
+      .evaluate((element) => getComputedStyle(element).fontFamily);
+
+  expect(await face("main h2")).toBe(await face("main h1"));
+});
+
+test("the maker agreement leads back to the page it was opened from, or to Your games", async ({ page }) => {
+  const slug = await startGame(page);
+  await page.getByRole("link", { name: "maker agreement" }).click();
+  await page.getByRole("link", { name: "Back to your game", exact: true }).click();
+  await expect(page).toHaveURL(`/make/${slug}`);
+
+  await page.goto("/legal/maker-agreement");
+  await page.getByRole("link", { name: "Back to your games" }).click();
+  await expect(page).toHaveURL("/make");
 });

@@ -178,6 +178,40 @@ describe("fields", () => {
   });
 });
 
+// The maker's screens use three things the browser draws in its own way: a fold-out (`details`), a file field and a
+// second-level heading. Each wears the look, so no grey triangle, grey button or bold sans-serif line shows.
+describe("what the browser would draw itself", () => {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+
+  /** The declarations of the rule whose selector list holds `selector`, or "" when no rule does. */
+  const declarationsOf = (selector: string) => {
+    for (const rule of withoutComments.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+      const selectors = (rule[1] ?? "").split(",").map((one) => one.trim());
+      if (selectors.includes(selector)) return rule[2] ?? "";
+    }
+    return "";
+  };
+
+  it("a fold-out's summary has none of the browser's triangles", () => {
+    expect(declarationsOf("summary")).toMatch(/list-style:\s*none/);
+    expect(declarationsOf("summary::-webkit-details-marker")).toMatch(/display:\s*none/);
+  });
+
+  it("a fold-out's summary is as easy to press as a button", () => {
+    expect(declarationsOf("summary")).toMatch(/min-height:\s*var\(--size-target\)/);
+  });
+
+  it("a file field's button is a button of the look", () => {
+    const button = declarationsOf('.card input[type="file"]::file-selector-button');
+    expect(button).toMatch(/border-radius:\s*var\(--radius-button\)/);
+    expect(button).toMatch(/font:\s*var\(--text-button\)/);
+  });
+
+  it("a card's second heading is in the display face, as its title is", () => {
+    expect(declarationsOf(".card h2")).toMatch(/font:\s*var\(--text-statement\)/);
+  });
+});
+
 describe("screens wear the look and nothing of their own", () => {
   const CLASSES = [
     "card",

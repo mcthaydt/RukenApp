@@ -258,6 +258,15 @@ describe("createGame", () => {
     });
   });
 
+  // The form lists the maker's repositories and starts on none of them, so a maker who presses the button first is
+  // told to choose, not that the empty box "doesn't look like a GitHub repository".
+  it("asks a maker who chose no repository to choose one", async () => {
+    await expect(startGame({ repo: { fullName: "", branch: null, folder: "" } })).rejects.toMatchObject({
+      code: "INVALID",
+      message: "Choose the repository your game is in.",
+    });
+  });
+
   // Review Focus 17: what a person typed is checked before it is kept or put in an address.
   it.each([
     ["a repository with a slash too many", { fullName: "acme/game/extra", branch: null, folder: "" }],
