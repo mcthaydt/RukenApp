@@ -3,6 +3,8 @@
 export type { Arrival } from "./arrival.ts";
 export { dollars, longDate, membershipLine } from "./format.ts";
 export type { MembershipButton } from "./format.ts";
+export { paywallCard } from "./paywall.ts";
+export type { PaywallCard } from "./paywall.ts";
 export { PREMIUM_PRICES_CENTS } from "./plans.ts";
 export type { PremiumPlan } from "./plans.ts";
 export { MembershipError } from "./service.ts";
