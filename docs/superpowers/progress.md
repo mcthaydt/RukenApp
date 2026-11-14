@@ -70,6 +70,14 @@ Recorded by the coordinator, each quoted as given:
 - FloorFifty: the production audit's two blockers and its should-fix items before 30 November ("A"); the Fly app name `floorfifty-api` ("A"); release.yml passes the build id to the Dockerfile ("A").
 - Branch M's screens: not yet "fine". Owner, 2026-11-14: "do an opus high review of the new developer screens, it's a bit low effort; I don't like the native choose file button, and some of the button text makes things confusing"; "The maker agreement is fine, but I think we need a date and better formatting so it's easier to read".
 
+## The Owner's answers, 2026-11-14 (evening)
+
+Recorded by the coordinator (`session_01HNdX7K6zwn1pnXaJVafHnN`), each quoted as given:
+
+- Branch M's screens, second round (board https://claude.ai/artifact/Y87VssSUtPiFndy3CdNpXr): not "fine". "Why are we not using the blue color for the button, we aren't being consistent." To "the one main button on every screen across the whole site goes Blue; other buttons stay green": "A, and run the screens through fable; it just feels like it's poor UX; like these are not passing drunk grandma for UX at all; extended forms should be typeform-coded". A Fable session (`session_01HNdX7MPi5xjs9QkYizjgne`) writes the redesign and a mockup board for the Owner's "fine" before anything is built.
+- Boards: "the desktop shots are vertical for some reason". Boards for the Owner show computer screens whole and landscape, not cropped to the card column.
+- Pull request #63: "Hold #63 until the redesign is built. Most of the remaining work waits." The work that needs #63 (slice 2 Tasks 30-31 and F-G, slice 3 C onward, wishlist B-G, beta builds, slice 4 A-B, slice 5 F) waits for it.
+
 ## Defect: the Worker ran out of memory (2026-11-14)
 
 Fifth execution session of slice 2 (coordinator `session_01HNdX7JKYUteXqFnZHx6dez`), branch `fix/worker-memory` (pull request #68). "Received signal #6: Aborted" in the browser job, seen four times (runs 43578583711, 43579220096 twice, 43580392279), was workerd running out of memory. The cause was production code: `src/lib/server/db.ts` made a new Prisma client for every request, and each client that starts leaves memory behind in the Worker that `$disconnect()` does not give back. Cloudflare's limit is 128 MB per Worker, so the live site would have met this far sooner than a test run did.
