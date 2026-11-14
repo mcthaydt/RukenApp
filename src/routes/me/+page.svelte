@@ -1,6 +1,7 @@
 <!--
-  Your account: who is signed in, and one button to sign out. The "Confirm your email" line shows
-  only while the address is unconfirmed (membership and saved games arrive in later slices).
+  Your account: who is signed in, one button to sign out, and a plain link to delete the account. The "Confirm
+  your email" line shows only while the address is unconfirmed (membership and saved games arrive in later
+  slices).
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
@@ -31,4 +32,5 @@
   <form method="POST" action="/sign-out">
     <button>Sign out</button>
   </form>
+  <p class="note"><a href="/me/delete">Delete my account</a></p>
 </main>
