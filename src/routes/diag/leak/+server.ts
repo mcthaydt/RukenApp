@@ -1,44 +1,60 @@
-// DIAGNOSTIC ONLY, never merged. One request that does a chosen amount of database work, and says how big the
-// Worker's JavaScript heap is afterwards, so a journey can tell which step leaks.
-import pg from "pg";
-import { createPrismaClient, prisma } from "../../../lib/server/db.ts";
+// DIAGNOSTIC ONLY, never merged. One request that does a chosen amount of database work, so a journey can tell
+// which step leaves memory behind in the Worker.
+import { AsyncLocalStorage } from "node:async_hooks";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient, createPrismaClient, prisma } from "../../../lib/server/db.ts";
 import { platform } from "../../../lib/server/platform.ts";
 import type { RequestHandler } from "./$types";
 
-// One client for the whole isolate, to see whether the cost is in making a client or in each query.
-let shared: ReturnType<typeof createPrismaClient> | undefined;
+const SELECT_ONE = { sql: "SELECT 1", args: [], argTypes: [] };
+
+type RequestAdapter = Awaited<ReturnType<PrismaPg["connect"]>>;
+const perRequest = new AsyncLocalStorage<{ adapter?: Promise<RequestAdapter> }>();
+
+/** The running request's own connection, opened on first use. */
+function requestAdapter(): Promise<RequestAdapter> {
+  const state = perRequest.getStore();
+  if (state === undefined) throw new Error("outside a request");
+  state.adapter ??= new PrismaPg({ connectionString: platform().databaseUrl(), max: 3 }).connect();
+  return state.adapter;
+}
+
+// An adapter that holds no connection and hands every call to the running request's own one, so a single
+// PrismaClient (and its query compiler) can serve every request.
+const delegating = {
+  provider: "postgres" as const,
+  adapterName: "delegating",
+  connect: () =>
+    Promise.resolve({
+      provider: "postgres" as const,
+      adapterName: "delegating",
+      queryRaw: async (query: typeof SELECT_ONE) => (await requestAdapter()).queryRaw(query),
+      executeRaw: async (query: typeof SELECT_ONE) => (await requestAdapter()).executeRaw(query),
+      executeScript: async (script: string) => (await requestAdapter()).executeScript(script),
+      startTransaction: async (level?: Parameters<RequestAdapter["startTransaction"]>[0]) =>
+        (await requestAdapter()).startTransaction(level),
+      getConnectionInfo: () => ({ supportsRelationJoins: true }),
+      dispose: () => Promise.resolve(),
+    }),
+};
+let delegated: PrismaClient | undefined;
 
 export const GET: RequestHandler = async ({ url }) => {
   const mode = url.searchParams.get("mode");
   if (mode === "client") {
     await prisma().$queryRaw`SELECT 1`;
-  } else if (mode === "client-disconnect") {
-    await prisma().$queryRaw`SELECT 1`;
-    await prisma().$disconnect();
-  } else if (mode === "pg-end") {
-    const pool = new pg.Pool({ connectionString: platform().databaseUrl(), max: 3 });
-    await pool.query("SELECT 1");
-    await pool.end();
-  } else if (mode === "pg-noend") {
-    const pool = new pg.Pool({ connectionString: platform().databaseUrl(), max: 3 });
-    await pool.query("SELECT 1");
-  } else if (mode === "shared") {
-    shared ??= createPrismaClient(platform().databaseUrl(), { poolMax: 3 });
-    try {
-      await shared.$queryRaw`SELECT 1`;
-    } catch {
-      /* a connection another request opened may be refused; what matters is the memory */
-    }
-  } else if (mode === "new-only") {
-    createPrismaClient(platform().databaseUrl(), { poolMax: 3 });
-  } else if (mode === "new-disconnect") {
-    await createPrismaClient(platform().databaseUrl(), { poolMax: 3 }).$disconnect();
+  } else if (mode === "connect-only") {
+    const client = createPrismaClient(platform().databaseUrl(), { poolMax: 3 });
+    await client.$connect();
+    await client.$disconnect();
+  } else if (mode === "adapter-only") {
+    const adapter = await new PrismaPg({ connectionString: platform().databaseUrl(), max: 3 }).connect();
+    await adapter.queryRaw(SELECT_ONE);
+    await adapter.dispose();
+  } else if (mode === "delegating") {
+    // @ts-expect-error the stand-in adapter is checked by running it, not by its types
+    delegated ??= new PrismaClient({ adapter: delegating });
+    await perRequest.run({}, () => delegated?.$queryRaw`SELECT 1` as Promise<unknown>);
   }
-  let heapUsed = -1;
-  try {
-    heapUsed = process.memoryUsage().heapUsed;
-  } catch {
-    /* this runtime has no memoryUsage */
-  }
-  return Response.json({ mode, heapUsed });
+  return Response.json({ mode });
 };
