@@ -116,7 +116,7 @@ Owner: "paywall when they try to play."
 - Owner (revised 2026-11-13): the membership is $9.99 a month or $99 a year, no trials. Stripe adds tax where it applies (6).
 - Call: a game marked "computer only" shows "This one needs a computer" on a phone instead of Play, with a button that shares its link.
 - Call: games are plain web games. There is no Ruken SDK and nothing for a game to call. Ruken shows the game in a locked-down frame served from a different address than Ruken's, and the game never receives anything about the player.
-- Call: a game's files are reachable only through a short-lived play pass that Ruken gives a member when they press Play. Without a pass the files do not load.
+- Call: a game's files are reachable only through a play pass that lasts a day (Call, 2026-11-14, coordinator), which Ruken gives a member when they press Play. Without a pass the files do not load.
 - Play time is what the pool is split by. Call: Ruken's own page measures it: time counts while the game is on screen, the tab is showing and the game has the person's attention (the frame has focus), reported every few seconds and recorded by the server's clock. The game is not asked.
 - Call: staff, and a maker on their own game, can play without paying, so a game can be checked. That play never counts for the pool.
 - Owner, 2026-11-13: FloorFifty is free to play on launch day, for everyone, with no account. Every other game stays behind the paywall. Free play never counts for the pool. A game is free only when staff mark it so in the admin portal, with a reason, recorded like any staff action.
@@ -174,6 +174,7 @@ New game
 - Updates. The maker presses "Pull the latest". Call: the new files go through acceptance again and the old ones stay live until then.
 - A maker accepts the maker agreement once, on their first submission, and connects their bank (Stripe) on a screen of its own. Call: a game can be submitted and accepted before the bank is connected; earnings wait.
 - The same area lets the maker edit their page (5.3) and see each game's state in plain words: "Waiting for review", "Live", "Sent back: ", "Taken down: ".
+- Owner, 2026-11-14: "They take games down themselves." A maker can take their own game off Ruken at any time from their area, with no staff step; it leaves at once, and putting it back goes through review again.
 - Grandma: one form, one button. Each field says what goes in it. A refusal says what to fix.
 
 ### 5.5 The admin portal (/admin)
