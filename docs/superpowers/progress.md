@@ -58,7 +58,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan, beta builds | 2 Plan | `spec/beta-builds` | plan written (`docs/superpowers/plans/2026-11-14-beta-builds.md`), not merged; Q1 and Q2 answered by the coordinator, Q3 is with the Owner |
 | plan audit, wishlist and beta builds | 3 Plan audit | `audit/wishlist-beta-plan` | audit written, both plans fixed; draft pull request when fewer than three are open; Q-A with the Owner |
 | execution, wishlist branch A (this session) | 4 Execution | `wishlist/switch` (pull request #77) | Tasks 1 to 4 green; pull request #77 ready for review |
-| execution, journeys for what is built, branch A (this session) | 4 Execution | `tests/journeys-built` (pull request #99, a draft) | Tasks 1 to 4 built and green in CI (run 43623210852, 263 passed); proved red once (run 43623524199); task 5 answered below. Branch B (`tests/tablet-landscape`) starts after A merges |
+| execution, journeys for what is built, branch A (this session) | 4 Execution | `tests/journeys-built` (pull request #99, a draft) | Tasks 1 to 4 built and green in CI (run 43623210852, 263 passed); proved red once (run 43623524199); task 5 answered below. A merged (#99). Branch B, `tests/tablet-landscape` (pull request #101): built and green in CI (job 132538160733) |
 
 ## The Owner's answers, 2026-11-14 (afternoon)
 
@@ -122,6 +122,14 @@ The Owner, 2026-11-14: "We need that for every major expected user experience". 
 - [x] 3. `rejoin.test.ts`: a member cancels, the paid month runs out (the stand-in Stripe's new `POST /test/end/<checkout>`), the card is back, they pay again and are a member.
 - [x] 4. `join.test.ts` no longer waits on `networkidle`: it waits for SvelteKit's `#svelte-announcer`, which renders only once the app has started on the page.
 - These cover behaviour already built, so all three passed at once (run 43623210852: 263 passed, 1 skipped, the memory journey's phone copy). Each was seen red once against a wrong expectation (run 43623524199 on `733b06e`: six failures, three journeys on both devices, each on the broken line), then restored in `f14d30c`; no broken code is merged.
+
+## Journeys on a tablet and a phone in landscape (branch B, `tests/tablet-landscape`, pull request #101)
+
+The Owner, 2026-11-14: "tablet is first class supported, and mobile landscape". Every journey now runs on five projects: phone (Pixel 7), phone-landscape (Pixel 7 landscape, 863x360), tablet (iPad gen 7, 810x1080), tablet-landscape (1080x810) and computer. The tablets keep the iPad's window, pixel density and touch and run on Chromium, which is all CI installs; real WebKit would need a change to `ci.yml`, which is the Owner's to ask for (the coordinator is asking).
+
+- The first run (job 132536390284): 652 passed, 4 failed, 4 skipped. No journey failed. Two look tests did, on the new windows only, and the coordinator agreed to the fixes (2026-11-14): `look.test.ts:16` decided the home heading's size by `isMobile`, where the site decides by width (64px from 48rem), so it now decides by width, with the same two sizes; `look.test.ts:170`'s helper pressed a spot in the window without scrolling the button into it, which at 360px tall missed it, so it scrolls first. No expectation was loosened and no golden moved.
+- Green: job 132538160733, 656 passed and 4 skipped (the memory journey on the four projects that are not the computer, on purpose).
+- CI time, from the jobs: before, job 2m27s (132535387238), `pnpm test:browser` 95 s, 263 passed and 1 skipped on two projects; after, job 3m30s (132538160733), `pnpm test:browser` 2m42s, 656 passed and 4 skipped on five projects. The job limit is 15 minutes. (The first run, before the look fixes, took 4m59s and 3m59s on the same runner pool: runs differ by a minute or more.)
 
 ## Slice 0: Start
 
