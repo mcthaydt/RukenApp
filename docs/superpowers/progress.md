@@ -242,7 +242,7 @@ Plan: `docs/superpowers/plans/2026-11-14-slice-3-feed-maker-page.md`. It ends wi
 Stages:
 
 - [x] Plan: written, merged to main (pull request #53); the Owner's answers to Q1 and Q2 written in afterwards, on a second pull request from `plan/slice-3`. Planned against `main` at `00d616d`. No test ran in the plan session, and no code was written. Outside the repository, in a scratch folder: `dictionary-of-colour-combinations` 1.0.2 was downloaded and its `colors.json` measured (60,245 bytes; 159 colours; combinations 1 to 348: 120 of two colours, 120 of three, 108 of four). Not measured: how many combinations are readable (Task 3 records it). Not read as code: slice 2's branches D to G, which were not on `main`.
-- [ ] Plan audit.
+- [ ] Plan audit (`docs/superpowers/audits/2026-11-14-slice-3-plan-audit.md`, of `main` at `527bca3`): 0 block launch, 14 should fix, 18 notes; the plan is not changed yet. On branch `audit/slice-3-plan`; not done until merged. No test ran; the two packages were downloaded outside the repository (the colour data equals the plan's numbers; 135 of 348 combinations pass the plan's rule).
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
