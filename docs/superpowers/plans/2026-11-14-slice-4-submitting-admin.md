@@ -8,9 +8,9 @@
 
 **Tech Stack:** as slices 1 to 3 (Node 24.22.1, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Prisma 7.10.0, Postgres 16, Vitest 5.0.3, Playwright 1.63.0, Cloudflare Workers, Resend through slice 1's `Mailer`). The authenticator code is checked by one small file carried from the old repository, with `node:crypto` (already used by `play/pass.ts`) and `symmetricEncrypt`/`symmetricDecrypt` from `better-auth/crypto` (better-auth 1.7.7, already installed). **No new package.**
 
-**Spec:** `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md` (sections 5.1 and 5.3 "report", 5.4, 5.5 without Money, 5.7 "A new maker", 5.8, 7.1, 7.2, 8, 9, 10). Read it with `CLAUDE.md`, `AGENTS.md`, slice 1's plan ("How a task runs", "The look", Tasks 4, 20), slice 2's plan ("The Owner's decisions … and the Calls", Tasks 26 to 31, "Notes for the plans that follow"), slice 3's plan (Tasks 4, 5, 7, 13, 22, 24, 25, "Notes for the plans that follow") and slice 5's plan (`docs/superpowers/plans/2026-11-14-slice-5-money.md`, on `plan/slice-5` until it merges: "What this slice needs and no plan provides yet", Tasks 32 and 33).
+**Spec:** `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md` (sections 5.1 and 5.3 "report", 5.4, 5.5 without Money, 5.7 "A new maker", 5.8, 7.1, 7.2, 8, 9, 10). Read it with `CLAUDE.md`, `AGENTS.md`, slice 1's plan ("How a task runs", "The look", Tasks 4, 20), slice 2's plan ("The Owner's decisions … and the Calls", Tasks 26 to 31, "Notes for the plans that follow"), slice 3's plan (Tasks 4, 5, 7, 13, 22, 24, 25, "Notes for the plans that follow") and slice 5's plan (`docs/superpowers/plans/2026-11-14-slice-5-money.md`: "What this slice needs and no plan provides yet", Tasks 32 and 33) and its audit (`docs/superpowers/audits/2026-11-14-slice-5-plan-audit.md`, S11).
 
-**Planned against:** `main` at `527bca3` (slice 1 merged; slice 2's branches A to D and its first-owner command merged; slice 3's plan merged, none of its code), plus what slice 2's and slice 3's plans say their later branches will produce. `src/features/admin/`, `src/features/make/`, `src/features/pages/` and `src/features/feed/` could not be read as code. "What this plan relies on", below, names each piece; if one is not on `main` as named when its task starts, stop and report. The old repository (`mcthaydt/RukenAppFailed`, archived) was read for the carried file and its neighbours; `OLD/` below means its top folder.
+**Planned against:** `main` at `527bca3` (slice 1 merged; slice 2's branches A to D and its first-owner command merged; slice 3's plan merged, none of its code), plus what slice 2's and slice 3's plans say their later branches will produce. `src/features/admin/`, `src/features/make/`, `src/features/pages/` and `src/features/feed/` could not be read as code. `main` was merged into this branch at `b18fb69`, which brought slice 5's plan and its audit; they were read for what they ask of this slice and nothing else that arrived was re-read. "What this plan relies on", below, names each piece; if one is not on `main` as named when its task starts, stop and report. The old repository (`mcthaydt/RukenAppFailed`, archived) was read for the carried file and its neighbours; `OLD/` below means its top folder.
 
 ## Global Constraints
 
@@ -63,7 +63,7 @@
 | 2 | reports; the queue for submitted games | Slice 2 built the queue (`/admin/games`, Task 30). This slice does not build it again: it puts the portal around it and adds live games to it (Task 10). Reports are branches E, F and H. |
 | 3 | onboarding wraps `/make/page`; Report on the feed and a page; a way for `pageByHandle` to answer nothing | branches I, F and G |
 
-Slice 5's payout approval needs **branches A and B only**. They come first, need nothing of slice 3, and are four and three tasks.
+Slice 5's payout approval needs **branches A and B only**. They come first, need nothing of slice 3, and are four and three tasks. Slice 5's audit asks for slice 4 to be green by 1 December for its dates to hold; for the payout approval that day applies to A and B, not to the whole slice.
 
 ## Found while planning
 
