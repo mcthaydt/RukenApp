@@ -11,16 +11,17 @@ const css = lookCss();
 const fontFile = (name: string) => readFileSync(`static/fonts/${name}`);
 
 describe("the tokens (design 5.8)", () => {
+  // The nearest colours in A Dictionary of Color Combinations (Owner, 2026-11-14); design 5.8 names each.
   it.each([
-    ["--felt", "#1c3a2f"],
-    ["--felt-deep", "#142c23"],
-    ["--felt-raised", "#25483a"],
-    ["--chalk", "#eef2ec"],
-    ["--sage", "#a8bfb2"],
-    ["--paper", "#f1efe9"],
-    ["--ink", "#191b1a"],
-    ["--ink-soft", "#4a504c"],
-    ["--pip", "#c43b26"],
+    ["--felt", "#112f2c"], // Deep Slate Green
+    ["--felt-deep", "#111314"], // Black
+    ["--felt-raised", "#004f46"], // Dusky Green
+    ["--chalk", "#ffffff"], // White
+    ["--sage", "#b4cdc2"], // Glaucous Green
+    ["--paper", "#ffffff"], // White
+    ["--ink", "#111314"], // Black
+    ["--ink-soft", "#34454c"], // Slate Color
+    ["--pip", "#cb2f43"], // Scarlet
   ])("%s is %s", (name, value) => {
     expect(token(name)).toBe(value);
   });
@@ -35,13 +36,19 @@ describe("the tokens (design 5.8)", () => {
     ["--text-button", "600 1.125rem/1.2 var(--font-text)"],
     ["--radius-card", "20px"],
     ["--radius-field", "14px"],
-    ["--radius-button", "9999px"],
+    ["--radius-button", "12px"], // buttons are rounded squares, not pills (Owner, 2026-11-14)
     ["--size-target", "48px"],
     ["--width-read", "40rem"],
     ["--press-scale", "0.97"],
     ["--press-time", "160ms"],
   ])("%s is %s", (name, value) => {
     expect(token(name)).toBe(value);
+  });
+
+  it("names the colours' source, the Dictionary of Color Combinations data set, in a comment", () => {
+    expect(css).toMatch(/dictionary-of-colour-combinations/);
+    expect(css).toMatch(/MIT/);
+    expect(css).toMatch(/Matt DesLauriers/);
   });
 
   it("names Young Serif and Schibsted Grotesk first, each with a system font behind it", () => {
@@ -80,9 +87,20 @@ describe("contrast, measured from the tokens (WCAG AA)", () => {
     expect(contrast(token(mark), token(ground))).toBeGreaterThanOrEqual(3);
   });
 
+  // The ratios design 5.8 prints beside each colour, to one decimal. They are measured here, from the tokens.
+  it.each([
+    ["--chalk", "--felt", "14.3"],
+    ["--sage", "--felt", "8.5"],
+    ["--ink", "--paper", "18.6"],
+    ["--ink-soft", "--paper", "10.0"],
+    ["--paper", "--pip", "5.2"],
+  ])("%s on %s measures %s:1, as design 5.8 says", (text, ground, ratio) => {
+    expect(contrast(token(text), token(ground)).toFixed(1)).toBe(ratio);
+  });
+
   it("is measured the way WCAG measures it", () => {
     expect(contrast("#000000", "#ffffff")).toBeCloseTo(21, 5);
-    expect(rgb("#1c3a2f")).toBe("rgb(28, 58, 47)");
+    expect(rgb("#112f2c")).toBe("rgb(17, 47, 44)");
   });
 });
 
