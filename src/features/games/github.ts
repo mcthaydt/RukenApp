@@ -119,7 +119,7 @@ export async function appToken(input: {
 const REPO = /^[A-Za-z0-9_.-]{1,39}\/[A-Za-z0-9_.-]{1,100}$/;
 
 /** Throws unless `repo` is an `owner/name` that is safe to put in a GitHub address. */
-function checkRepo(repo: string): void {
+export function checkRepo(repo: string): void {
   const parts = repo.split("/");
   // `.` and `..` fit the pattern's letters but would climb out of the address.
   if (!REPO.test(repo) || parts.some((part) => /^\.+$/.test(part))) {
@@ -128,7 +128,7 @@ function checkRepo(repo: string): void {
 }
 
 /** Throws unless `branch` is a name we are willing to ask GitHub about. */
-function checkBranch(branch: string): void {
+export function checkBranch(branch: string): void {
   const hasControlCharacter = Array.from(branch).some((char) => {
     const code = char.charCodeAt(0);
     return code < 0x20 || code === 0x7f;
