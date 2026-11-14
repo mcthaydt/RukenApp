@@ -150,7 +150,8 @@ export async function* tarEntries(
         continue;
       }
 
-      let spent = false;
+      // An object, not a plain variable: `bytes` sets it later, which the compiler cannot see from here.
+      const read = { spent: false };
       const entry: TarEntry = {
         path: longPath ?? pathOf(header),
         kind: kindOf(type),
@@ -158,7 +159,7 @@ export async function* tarEntries(
         async bytes(limit) {
           if (size > limit)
             throw new RangeError(`An entry is ${String(size)} bytes, over the limit of ${String(limit)}.`);
-          spent = true;
+          read.spent = true;
           // One array of exactly `size` bytes, filled piece by piece. A list of pieces joined at the end would hold the
           // file twice at once, and a 50 MB file has to fit in a Worker's 128 MB.
           const content = new Uint8Array(size);
@@ -170,7 +171,7 @@ export async function* tarEntries(
       longPath = null;
 
       yield entry;
-      if (!spent) await input.skip(size + paddingAfter(size));
+      if (!read.spent) await input.skip(size + paddingAfter(size));
     }
   } finally {
     await input.close();
