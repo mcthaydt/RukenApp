@@ -58,6 +58,17 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan audit, wishlist and beta builds | 3 Plan audit | `audit/wishlist-beta-plan` | audit written, both plans fixed; draft pull request when fewer than three are open; Q-A with the Owner |
 | execution, wishlist branch A (this session) | 4 Execution | `wishlist/switch` (pull request #77) | Tasks 1 to 4 green; pull request #77 ready for review |
 
+## The Owner's answers, 2026-11-14 (afternoon)
+
+Recorded by the coordinator, each quoted as given:
+
+- Wishlist Q1, paying before launch: "A". Before 11:00 CT on 30 November `/join` shows the price and "Membership opens 30 November." with no pay button (wishlist plan Task 6 is built).
+- Beta Q3, a maker plays their own beta without paying: "A" (no; a maker who is a member adds themselves, as the plan's pick).
+- Slice 5 Q6, a refunded member's weight: "A" to "a refunded member's play stops counting toward developer pay". The weight follows what was not handed back (contribution × (gross − refunded or disputed) / gross, rounded down; a won dispute restores it). A small follow-up to `membersOf` in pool-run.ts plus one test; branch D merged with the carried rule.
+- The open pull request limit: "Yes" to five (CLAUDE.md, Pace).
+- FloorFifty: the production audit's two blockers and its should-fix items before 30 November ("A"); the Fly app name `floorfifty-api` ("A"); release.yml passes the build id to the Dockerfile ("A").
+- Branch M's screens: not yet "fine". Owner, 2026-11-14: "do an opus high review of the new developer screens, it's a bit low effort; I don't like the native choose file button, and some of the button text makes things confusing"; "The maker agreement is fine, but I think we need a date and better formatting so it's easier to read".
+
 ## Defect: the Worker ran out of memory (2026-11-14)
 
 Fifth execution session of slice 2 (coordinator `session_01HNdX7JKYUteXqFnZHx6dez`), branch `fix/worker-memory` (pull request #68). "Received signal #6: Aborted" in the browser job, seen four times (runs 43578583711, 43579220096 twice, 43580392279), was workerd running out of memory. The cause was production code: `src/lib/server/db.ts` made a new Prisma client for every request, and each client that starts leaves memory behind in the Worker that `$disconnect()` does not give back. Cloudflare's limit is 128 MB per Worker, so the live site would have met this far sooner than a test run did.
