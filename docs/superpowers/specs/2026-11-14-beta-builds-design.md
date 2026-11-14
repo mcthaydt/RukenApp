@@ -1,6 +1,6 @@
 # Beta builds
 
-Date: 2026-11-14. Status: written for the Owner's approval. Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`), slice 2's pull and review, and the wishlist design (`2026-11-14-wishlist-before-launch-design.md`); changes them only where this file says so.
+Date: 2026-11-14. Status: approved by the Owner on 2026-11-14 ("yes"). Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`), slice 2's pull and review, and the wishlist design (`2026-11-14-wishlist-before-launch-design.md`); changes them only where this file says so.
 
 ## Why
 
