@@ -1,6 +1,15 @@
 # The maker's screens, redesigned: one question at a time
 
-Date: 2026-11-14. Status: a proposal, second round, waiting for the Owner's "fine" on the board. Nothing here is built.
+Date: 2026-11-14. Status: stopped by the Owner on 2026-11-14, to resume after the makers' sales spec. Nothing here is built.
+
+## Where it stopped
+
+The Owner's words, 2026-11-14:
+
+- "28. B, but I think we're good for now, don't proceed because we're missing some stuff (like the subcriptions, DLC, Revenue Splitting ect;)". Question 28's B was "Keep refining the mockup board in the cloud until it's 'fine', then build."
+- "19. Ask as many questions as we need to". Question 19 was the count of a first game's questions (section 7, question 3). Coordinator's reading, not yet confirmed by the Owner: the run may be as long as it needs, so A, 10 questions, one per screen.
+
+Where it stopped, and what's left. The board and this file are at their sixth round: every maker screen laid out five ways (phone, phone sideways, tablet upright, tablet sideways, computer), with the Owner's notes up to "This just looks bad man" and "live still shows the green background" applied. The Owner has not said "fine" on the board, and has not seen the last round's two changes nobody asked for (Live lost its paper list; Check and send lost the feed picture with Play over it). The redesign does not go on, and nothing is planned or built from it, until a makers' sales spec (subscriptions, DLC, battle passes, revenue splitting between makers) is written, because those add questions and screens to this run. When it resumes: get the Owner's "fine" on the board; fold the sales spec's questions into the one run and its counter; decide the things section 8 leaves to the plan (how staff mark each item sent back and why, where a thumbnail comes from, full-size playback, the cost of Live's video background on a slow phone); then plan. Not checked: whether the board's videos play on the board's own link (they play when the page is opened directly), and how the steps and Live's background look moving. Pull request #96 stays a draft.
 
 Where it is built. Owner, 2026-11-14: "Hold #63 until the redesign is built". The redesign is built on branch `slice-2/submit` and lands as part of pull request #63. "Today" in this file means the screens on that branch, not on main.
 
