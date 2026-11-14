@@ -14,7 +14,7 @@ async function askToBeDeleted(page: Page): Promise<{ email: string; password: st
   await page.goto("/me");
   await page.getByRole("link", { name: "Delete my account" }).click();
   await page.getByRole("button", { name: "Delete my account" }).click();
-  await expect(page.getByRole("heading", { name: "You're signed out." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your account will be deleted." })).toBeVisible();
   return account;
 }
 
@@ -26,8 +26,8 @@ test("a person asks to be deleted, is signed out, and is told the date", async (
   await expectOneCard(page);
   await showTheOwner(page, testInfo, "delete your account");
   await page.getByRole("button", { name: "Delete my account" }).click();
-  await expect(page.getByRole("heading", { name: "You're signed out." })).toBeVisible();
-  await expect(page.getByText(/^Your account will be deleted on \w+, \w+ \d+\.$/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your account will be deleted." })).toBeVisible();
+  await expect(page.getByText(/^We'll delete it on \w+, \w+ \d+\. You're signed out now\.$/)).toBeVisible();
   await expectOneCard(page);
   await showTheOwner(page, testInfo, "signed out, to be deleted");
   // Review Focus 7: the old session cookie of an account that is waiting to be deleted works no more.
@@ -64,9 +64,22 @@ test("a signed-out person is sent to sign in first", async ({ page }) => {
   await expect(page).toHaveURL("/sign-in?next=%2Fme%2Fdelete");
 });
 
-test("/goodbye says nothing of a date it cannot read", async ({ page }) => {
+// The Owner, 2026-11-14, "All six": "Sign in" in "Changed your mind? Sign in before then." is a link to sign in.
+test("the goodbye screen's Sign in is a link, and it leads to sign in", async ({ page }) => {
+  await askToBeDeleted(page);
+  await expect(page.getByText("Changed your mind? Sign in before then.")).toBeVisible();
+  const signIn = page.getByRole("link", { name: "Sign in", exact: true });
+  // Back on /me, so the welcome-back line and the account are the first thing they see.
+  await expect(signIn).toHaveAttribute("href", "/sign-in?next=%2Fme");
+  await signIn.click();
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+});
+
+test("/goodbye says nothing of a date it cannot read, and does not say an account will be deleted", async ({
+  page,
+}) => {
   await page.goto("/goodbye?on=soon");
   await expect(page.getByRole("heading", { name: "You're signed out." })).toBeVisible();
-  await expect(page.getByText(/Your account will be deleted on/)).toHaveCount(0);
+  await expect(page.getByText(/delete/i)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Back to Ruken" })).toHaveAttribute("href", "/");
 });
