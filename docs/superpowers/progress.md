@@ -58,6 +58,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan, beta builds | 2 Plan | `spec/beta-builds` | plan written (`docs/superpowers/plans/2026-11-14-beta-builds.md`), not merged; Q1 and Q2 answered by the coordinator, Q3 is with the Owner |
 | plan audit, wishlist and beta builds | 3 Plan audit | `audit/wishlist-beta-plan` | audit written, both plans fixed; draft pull request when fewer than three are open; Q-A with the Owner |
 | execution, wishlist branch A (this session) | 4 Execution | `wishlist/switch` (pull request #77) | Tasks 1 to 4 green; pull request #77 ready for review |
+| execution, journeys for what is built, branch A (this session) | 4 Execution | `tests/journeys-built` (pull request #99, a draft) | Tasks 1 to 4 built and green in CI (run 43623210852, 263 passed); proved red once (run 43623524199); task 5 answered below. Branch B (`tests/tablet-landscape`) starts after A merges |
 
 ## The Owner's answers, 2026-11-14 (afternoon)
 
@@ -79,6 +80,17 @@ Recorded by the coordinator (`session_01HNdX7K6zwn1pnXaJVafHnN`), each quoted as
 - Boards: "the desktop shots are vertical for some reason". Boards for the Owner show computer screens whole and landscape, not cropped to the card column.
 - Pull request #63: "Hold #63 until the redesign is built. Most of the remaining work waits." The work that needs #63 (slice 2 Tasks 30-31 and F-G, slice 3 C onward, wishlist B-G, beta builds, slice 4 A-B, slice 5 F) waits for it.
 
+## The Owner's answers, 2026-11-14 (late)
+
+Recorded by the coordinator (`session_01HNdX7K6zwn1pnXaJVafHnN`), each quoted as given:
+
+- Buttons, site-wide: "safe is green, not safe is red, rest is blue"; and "delete account should be red obviously". The main forward action is Blue, a safe choice (Keep, Back, Cancel) is green, a destructive one (Delete my account, Throw it away) is red. This amends design 5.8's "red is never a button".
+- Agreement date "A": "Ruken maker agreement, version 1, 14 November 2026". N1 and N2 (edit a game's name and line, throw a draft away): "B", before launch. Q7, a refund counts in the month it happens: "A" (built in #95). Design 5.7's address and page steps join the maker's run of questions: "A".
+- The maker screens redesign, round 1 not fine: "audit the screens, ask does this look yc level - use fable, it looks a bit off, once again take inspiration from typeform; it's just a card in the upper center on desktop; this is not taste forward". Round 2 is on draft #96.
+- End-to-end tests: "We have e2e tests for ruken right? We need that for every major expected user experience". A coverage audit is running.
+- Devices: "we need to add tablet view to our artifacts; tablet is first class supported, and mobile landscape". Every board for the Owner shows phone portrait and landscape, tablet portrait and landscape, and the whole computer window.
+- The screens audit (#71) runs again once the maker screens are rebuilt; its fixes wait until then.
+
 ## Defect: the Worker ran out of memory (2026-11-14)
 
 Fifth execution session of slice 2 (coordinator `session_01HNdX7JKYUteXqFnZHx6dez`), branch `fix/worker-memory` (pull request #68). "Received signal #6: Aborted" in the browser job, seen four times (runs 43578583711, 43579220096 twice, 43580392279), was workerd running out of memory. The cause was production code: `src/lib/server/db.ts` made a new Prisma client for every request, and each client that starts leaves memory behind in the Worker that `$disconnect()` does not give back. Cloudflare's limit is 128 MB per Worker, so the live site would have met this far sooner than a test run did.
@@ -99,6 +111,17 @@ Sixth execution session of slice 2 (coordinator `session_01HNdX7JKYUteXqFnZHx6de
 - Cause: Prisma's DataLoader sends every call made inside an interactive transaction, and every `findUnique`, from one `process.nextTick` that the first caller scheduled. With the one shared client (#68), that tick belongs to whichever request called first and sends the other requests' calls from its context. Node does the same (the new tests fail there); on the Worker a call started by a request that is about to end never finishes. Not tried: reverting #68 (the memory fix stays).
 - The fix: `batchPerRequest` in `src/lib/server/db.ts` gives each request a DataLoader of its own, made from the shared one's class and options. It reaches into Prisma's `_requestHandler`, which is not public, and stops with a message if that moves.
 - The tests: two in `tests/lib/server/db.test.ts` (`createSharedClient`): two requests' queries land on one connection each, and a transaction's statements run in the context of the request that began it. Red, for the right reason: run 43588356815 (verify: both failed on their assertions only, `[connection 1, connection 1]` and `connection 1 got connection 2`). Green: run 43588629575, three attempts of the same commit, all three jobs each time (the hang had struck in most recent runs). Whether it is gone for good is seen over the next runs on main; a hang that returns is reported at once.
+- Were the two failed-then-passed runs before #75? (journeys session, 2026-11-14; asked by the coordinator). Yes, both. Neither run's commit has `batchPerRequest` in `src/lib/server/db.ts`; it reached main as `b148e02` at 11:08 UTC, and #75 merged at 11:22. Run 43586931641 (`slice-3/page-rules`, `4000abd`, started 10:47): attempt 1 failed `pay.test.ts:29` [phone], where `locator.click` on "Pay" timed out at 5000 ms ("waiting for scheduled navigations to finish"), and `connect-github.test.ts:56` [computer], where `toHaveURL("/")` got "/sign-up" (support/account.ts:47), with `[WebServer] stand-in: TypeError: fetch failed` in the log. Run 43589619181 (`wishlist/switch`, `0775620`, started 11:21:18): attempt 1 failed `connect-github.test.ts:35` [phone], where the click on "Create account" timed out at 5000 ms with the same "waiting for scheduled navigations to finish" (support/account.ts:46). Attempt 2 of both passed. All three are a form post that never answers, which is the hang #75 describes; the logs do not carry the Workers message "code had hung" (wrangler hides it), so this is a match of symptom and code version, not proof. The sweep of every CI run after 11:22 UTC (114 runs, 18:50 UTC on 14 November): none is attempt 2 or later, and none of the six browser-job failures is a post that never answers (they are `make.test.ts` on `slice-2/submit` and `money-job.test.ts` on `slice-5/facts`, branches under construction). No second sighting on a build with the fix.
+
+## Journeys for what is already built (branch A, `tests/journeys-built`, pull request #99)
+
+The Owner, 2026-11-14: "We need that for every major expected user experience". Coverage audit: PR #98. Progress: 4 of 5 tasks done, task 5 answered (the finding is under the hang defect above); 100% of branch A when #99 is ready.
+
+- [x] 1. A mail stand-in (`tests/browser/support/fake-mail-server.ts`, port 12113; `support/mail.ts` reads it, waiting by asking again, never by a pause), and journeys in `mailed-links.test.ts`: confirm an email from the mailed link, ask for the link again, finish a password reset from the mailed link, the old password refused, the link used once. `RESEND_API_BASE` is test-only: the site refuses it unless it starts with `http://127.0.0.1:`, the same rule as `GITHUB_API_BASE` (the coordinator, 2026-11-14), and `playwright.config.ts` no longer sets `MAIL_ALLOWLIST`.
+- [x] 2. `purged-account.test.ts`: after the 14 days sign-in is refused and the address makes a new account; and the job leaves a waiting account alone. The 14 days are moved by `makeDeletionDue` (the dates in the database, as `failTheirCard` moves a card), because nothing in a browser can inject a clock into the running Worker (the coordinator agreed).
+- [x] 3. `rejoin.test.ts`: a member cancels, the paid month runs out (the stand-in Stripe's new `POST /test/end/<checkout>`), the card is back, they pay again and are a member.
+- [x] 4. `join.test.ts` no longer waits on `networkidle`: it waits for SvelteKit's `#svelte-announcer`, which renders only once the app has started on the page.
+- These cover behaviour already built, so all three passed at once (run 43623210852: 263 passed, 1 skipped, the memory journey's phone copy). Each was seen red once against a wrong expectation (run 43623524199 on `733b06e`: six failures, three journeys on both devices, each on the broken line), then restored in `f14d30c`; no broken code is merged.
 
 ## Slice 0: Start
 
