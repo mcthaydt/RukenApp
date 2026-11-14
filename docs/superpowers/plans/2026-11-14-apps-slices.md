@@ -51,12 +51,12 @@ Each row names what the slice builds from the spec, what must be on `main` befor
 | **H** Handles for every account | The handle half of "Player pages": every account has a handle, not only makers. How a person picks one is that plan's to say | A; slice 3's `pages` feature (it owns handles today, for makers) | nothing |
 | **R** Age ratings | "Age ratings": the four ratings on a game, the reviewer's change, the 16th-birthday date beside `adultOn`, hiding games above a player's age in the feed, maker pages and links | slice 2's submit (branch M) and slice 4's review screens | nothing |
 | **S** Feature switches | "Feature switches": a table, one `isOn(name)` read on the server, a staff screen to turn each on and off | slice 4's admin portal frame | nothing |
-| **F** Follow and Your games | "Follow", "Your library" | slice 3's feed and maker page; the wishlist | nothing |
-| **Q** Search | "Search" | R (search respects ratings); slice 3's feed | nothing |
-| **B** Blocking and friends | "Friends": requests, block, mute, restrict, Settings → People, Report on each new thing | H; slice 4's reports | nothing |
-| **P** Player pages | The rest of "Player pages": photo, banner, sections, who sees it, image checks, link checks | H, B, F; slice 3's themes and maker page | the image-checking service's key and the unsafe-sites key; one choice of image-checking service (that plan's question) |
-| **V** Reviews | "Reviews" | the sales plan's game page; slice 2's play time; slice 4's reports | nothing |
-| **K** Hooks | "Ruken hooks": achievements, stats and leaderboards, analytics | the sales plan's hooks script and message reader; B (leaderboards respect blocks); the cookie question (pull request #104) | nothing |
+| **F** Follow and Your games | "Follow", "Your library" | slice 3's feed and maker page; the wishlist; S | nothing |
+| **Q** Search | "Search" | R (search respects ratings); slice 3's feed; S | nothing |
+| **B** Blocking and friends | "Friends": requests, block, mute, restrict, Settings → People, Report on each new thing | H; slice 4's reports; S | nothing |
+| **P** Player pages | The rest of "Player pages": photo, banner, sections, who sees it, image checks, link checks | H, B, F; slice 3's themes and maker page; S | the image-checking service's key and the unsafe-sites key; one choice of image-checking service (that plan's question) |
+| **V** Reviews | "Reviews" | the sales plan's game page; slice 2's play time; slice 4's reports; S | nothing |
+| **K** Hooks | "Ruken hooks": achievements, stats and leaderboards, analytics | the sales plan's hooks script and message reader; B (leaderboards respect blocks); the cookie question (pull request #104); S | nothing |
 | **1** Static build and the feed in a phone shell | "One codebase, three shells" for phones; the feed test from "Native feel" | A; slice 3's feed | a real-phone test of the feed (theirs by rule); for iPhone, the Apple Developer account |
 | **2** Native feel on phones, and offline | "Native feel" (iPhone, iPad, Android, everywhere), "Offline" | 1 | real-phone tests |
 | **3** The computer app | "Native feel" (computers); Ruken's own download; the packages for the Microsoft Store, the Mac App Store, Flathub and the Snap Store | 1 (the static build) | a Windows code-signing certificate; the Microsoft, Flathub and Snap accounts; Apple's for the Mac |
@@ -64,7 +64,9 @@ Each row names what the slice builds from the spec, what must be on `main` befor
 | **$** Buying through each store | "Buying in each app": price points, each store's purchase, the stores' notifications, restore; the membership through a store | 2 and 3; the sales plan's `ExtraPurchase` and `splitSale`; slice 5's ledger | the store accounts, each store's server keys, and each store's products made by command where one exists |
 | **L** Launch | "Launch", "Accounts and the stores' other rules": "Coming soon", the launch email and notification, the stores' privacy forms, deletion and contact in the app, each app sent for review | everything above | each store's listing and its release (theirs by rule) |
 
-Every slice that adds a screen also carries, in its own plan: the exact words on that screen and how it passes the drunk-grandma test; the screen behind a feature switch once S is on `main`; and the every-view screen review before its audit.
+Every slice that adds a screen also carries, in its own plan: the exact words on that screen and how it passes the drunk-grandma test; the screen behind a feature switch; and the every-view screen review before its audit.
+
+**S comes before any slice that adds a screen.** The spec: "Each new screen ships behind a switch". So S is in "Must be on `main` first" for every slice above that adds or changes a screen (F, Q, B, P, V, K, and H if its plan adds a screen for picking a handle). Only work with no screen of its own (A, the data half of H, R's hiding rule) may go before S. If slice 4's admin portal frame is late, S's plan says so as a stop, rather than a screen going out without its switch.
 
 ## What the spec left to the plan, and which slice's plan answers it
 
@@ -91,14 +93,15 @@ Agreed between the two plan threads on 2026-11-14. The sales plan's file is the 
 | The store sources: price points, purchase sheets, the stores' notifications, restore | apps, slice $ | adds rows with a store `source`; calls `splitSale`; changes nothing in `extras` beyond what its plan says |
 | The store price | settled by sales, built by apps | the smallest price point of that store that is not below the website price times 1.10, compared in whole numbers with no rounding first; a store with no fixed points uses that amount rounded up to a cent; no point high enough means the extra is not sold in that store, and staff are told |
 | The membership bought through a store | apps, slice $ | changes slice 1's `membership`, not `extras` |
-| The hooks script | sales makes it; apps adds to it, slice K | `src/features/play/ruken-hooks.browser.js`, served by the game gate at `/__ruken/hooks.js`. Envelope both ways: `{ ruken: 1, type: "<area>.<name>", ...fields }`. `readGameMessage(data): GameMessage \| null` and the frame check live in `src/features/play/frame-messages.ts`. Sales owns `extras.*`; apps adds `achievements.*`, `stats.*`, `events.*` to the same union and script |
+| The hooks script | sales makes it; apps adds to it, slice K | `src/features/play/ruken-hooks.browser.js` (new, not on `main` yet), served by the game gate at `/__ruken/hooks.js`. Envelope both ways: `{ ruken: 1, type: "<area>.<name>", ...fields }`. `readGameMessage(data): GameMessage \| null` and the frame check live in `src/features/play/frame-messages.ts` (new, made by sales). Sales owns `extras.*`; apps adds `achievements.*`, `stats.*`, `events.*` to the same union and script |
 | Reserved folders in a game | sales | `__ruken/` and `ruken-extras/` |
 | The game's page | sales | apps adds the reviews summary and list, slice V |
-| Handles for every account | apps, slice H | sales looks a person up by handle for a split. H comes first on the website track for this |
-| "May A reach B" | apps, slice B | sales asks it before a split invite. If B is not on `main` when that task starts, the sales task stops and reports |
+| Handles for every account | apps, slice H | sales looks a person up by handle for a split. H comes first on the website track for this. The lookup lives in `accounts` (its entry), not `pages`: `extras` sits below `pages` in `FEATURE_ORDER`, so by the layer rule (`tests/architecture.test.ts`) it cannot import `pages`. H moves the handle from `MakerPage` down to the account |
+| "May A reach B" | apps, slice B | sales asks it before a split invite. If B is not on `main` when that task starts, the sales task stops and reports. It lives in a new feature, `people`, placed directly above `accounts` in `FEATURE_ORDER`, so every feature that offers a way to reach someone (beta invites in `games`, splits in `extras`, pages, leaderboards in `play`) can import it |
 | A game's rating | apps, slice R | an extra carries its game's rating; sales reads it through the feature's entry |
 | "This extra went on sale" | apps, slice N | called from the staff accept route, not from `extras`: `acceptExtra` answers `{ wentOnSale: boolean }` and the route calls the apps' function |
 | The Apple hold after a take-down | sales | a question to the Owner in the sales plan |
+| A store sale's fee | sales shapes it, apps fills it, slice $ | Not settled. `ExtraPurchase.feeCents` assumes the fee is known when the purchase is recorded. Apple's transaction data carries the price, and the plan audit found nothing in it that carries Apple's commission; Google's notifications carry a token. If a store's fee arrives only later (its sales or earnings reports), it has to be a fact added later, and the game's share held until it arrives. To be checked against each store's own pages before the sales plan fixes `ExtraPurchase`'s shape |
 
 ## Found while planning
 

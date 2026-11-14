@@ -591,12 +591,14 @@ Branches and tasks:
 Spec: `docs/superpowers/specs/2026-11-14-apps-and-player-features-design.md` (approved by the Owner, 2026-11-14: "Approved"; pull request #107). The slices and their order: `docs/superpowers/plans/2026-11-14-apps-slices.md`. Progress: 0% (no code yet).
 
 - [ ] Plan, the slices and slice A (the test copy and the live copy): written on `claude/project-thread-g6mes3`, not merged. Planned against `main` at `31cc54b`. No test ran in the plan session, and no code was written. Read outside the repository: Cloudflare's pages on Wrangler environments, Workers Builds and `hyperdrive create`, Neon's pages on `projects create` and `connection-string`, and the npm registry for `neonctl` (9.5.0).
-- [ ] Plan audit of the same: not started.
+- [x] Plan audit of the same: `docs/superpowers/audits/2026-11-14-apps-a-plan-audit.md` (2026-11-14), on the same branch. One blocker (the live build's Deploy command skips the claim; fixed with a new Owner step, T0), five should-fix, all written into the plans; one fact left open for the sales plan (a store sale's fee). No test ran.
 - [x] The seams with the makers' sales plan: agreed between the two plan threads, 2026-11-14, and written in the slice map ("What is shared with the makers' sales plan").
 
 Slice A, `docs/superpowers/plans/2026-11-14-apps-a-test-copy.md`. What it waits for, and what is the Owner's:
 
 - [ ] Q1, where the test copy's games run: with the Owner (the plan's pick: a second domain used only for the test copy's games). Needed before step T8.
+- [ ] Q3, an empty database instead of the spec's "database branch": with the Owner (the plan's pick: an empty database). Needed before T1.
+- [ ] T0, the live Worker's Deploy command set to `pnpm run deploy`: the Owner's, before branch 1 is marked ready.
 - [ ] Q2, whether the test copy says that it is the test copy: with the Owner (the plan's pick: yes, one line at the top of its screens).
 - [ ] T1 to T3 (an empty database, its Hyperdrive, the bucket), before branch 2.
 - [ ] T4 to T9 (the test Worker, its settings, a Stripe sandbox, the build connection, the test game gate, the check), after branch 2 is merged.

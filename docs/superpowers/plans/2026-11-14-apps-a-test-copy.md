@@ -39,11 +39,12 @@ Each is the plan writer's choice, shown here so the Owner or the coordinator can
 5. **Migrate, then claim, then deploy.** The claim needs the table a migration makes. A deploy pointed at the wrong database therefore runs the migrations there before the claim refuses. That is safe: both copies follow `main`, so those are migrations that database was about to get anyway, and no code is deployed.
 6. **The test copy is open whatever the date.** The spec's test purchases need a site that is open. The journeys already have a setting for this, `LAUNCH_TEST_SWITCH=on`, refused anywhere but this machine. Task 5 also allows it on the test copy, and nowhere else.
 7. **One Wrangler file with an environment, not a second file.** Cloudflare's own pages give this shape for a lasting second Worker: an `env` block, `wrangler deploy --env test`, and the repository connected to both Workers.
-8. **The test copy sends real mail and runs the daily job**, as the live one does, so what is tested is what runs. Its mail comes from "Ruken Test".
+8. **The test copy sends real mail and runs the daily job**, as the live one does, so what is tested is what runs. Its mail comes from "Ruken Test". `MAIL_ALLOWLIST` (which `src/lib/server/mail.ts` has for a test environment) is left unset: the test copy's database starts empty, so it holds only accounts testers made themselves, and an allowlist would need a new setting for every tester.
+9. **`/healthz` now asks the database.** It answered without the database before. With the guard (Task 4) in front of everything, it answers `ok` only when the database is reachable and stamped for this copy, which is what T0 and T9 check.
 
 ## Questions for the Owner
 
-Nothing in branch 1 waits for these. Q1 is needed before step T8.
+Nothing in branch 1 waits for these. Q3 is needed before T1, and Q1 before T8.
 
 **Q1. Where do the test copy's games run?** Each game needs its own name under a games domain, and a free `workers.dev` address has no names under it.
 - a) A second, separate domain used only for the test copy's games. Costs that domain's yearly price. **Recommended**: it is the spec's "its own games address", and a test game can never share an address with a live one.
@@ -54,9 +55,19 @@ Nothing in branch 1 waits for these. Q1 is needed before step T8.
 - a) Yes: one thin line at the top of every screen on the test copy only, "Test copy. Nothing here is real." **Recommended**, because a tester with both installed can otherwise mistake one for the other. A yes adds one small task to this plan.
 - b) No. The two look the same.
 
+**Q3. Is an empty database all right in place of the spec's "database branch"?** The spec's words are "its own Worker, database branch, bucket and games address", and the same paragraph says the two copies "never share data". A Neon branch starts as a copy of everything in the live database, including every account.
+- a) An empty database of its own (Call 1). **Recommended**: no live account ever reaches the test copy, and it has its own password.
+- b) A branch of the live database, as written, with the live accounts in it.
+
+Needed before T1.
+
 ## Where execution stops and waits for the Owner
 
 The Owner's steps are commands to paste, one line each. They are written for the Owner's Mac; where Windows PowerShell differs, the PowerShell line follows it. `PASTE`, `TEST-ADDRESS` and words in capitals are filled in by the Owner and never typed into the repository or the chat, except the two values the steps ask for by name.
+
+**Before branch 1 is marked ready: T0.** The live Worker's build runs the Deploy command typed in its settings, not `package.json`: since 2026-11-14 that is `pnpm exec prisma migrate deploy && pnpm exec wrangler deploy cloudflare/worker.js`, written out (the design, "One build, one Worker"; `docs/superpowers/progress.md`, "The site's deploy only"). Task 3's claim lives in `pnpm run deploy`, so without T0 the live build would deploy Task 4's guard to an unstamped database, and every live page would answer 503. Send T0 to the coordinator word for word when Task 3 is green.
+
+- **T0.** The live Worker's Deploy command (a website: Workers Builds has no command for its settings). Cloudflare → Workers → `ruken` → Settings → Build → Deploy command: `pnpm run deploy`. Save. Say "done". Branch 1 is not marked ready until then.
 
 **Before branch 2 starts: T1 to T3.** Send them to the coordinator word for word when branch 1's pull request is opened.
 
@@ -69,7 +80,7 @@ The Owner's steps are commands to paste, one line each. They are written for the
 **After branch 2 is merged and green on `main`: T4 to T9.**
 
 - **T4.** Make the test Worker, from a clone of this repository: `git switch main && git pull && pnpm install && pnpm build && DIRECT_DATABASE_URL="PASTE" pnpm run deploy:test`
-  PowerShell: `git switch main; git pull; pnpm install; pnpm build; $env:DIRECT_DATABASE_URL="PASTE"; pnpm run deploy:test`
+  PowerShell: `git switch main; git pull; pnpm install; pnpm build; $env:DIRECT_DATABASE_URL="PASTE"; pnpm run deploy:test; Remove-Item Env:DIRECT_DATABASE_URL` (the last part clears the password from the window)
   It prints the test copy's address, `https://ruken-test.SOMETHING.workers.dev`. That is `TEST-ADDRESS` below. Pages answer errors until T5 is done.
 - **T5.** The test Worker's settings. A typed one is `npx -y wrangler@4.156.0 secret put NAME --name ruken-test` (it asks for the value). A random one is `openssl rand -hex 32 | npx -y wrangler@4.156.0 secret put NAME --name ruken-test` (PowerShell: `$b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); ([BitConverter]::ToString($b) -replace '-','') | npx -y wrangler@4.156.0 secret put NAME --name ruken-test`).
 
@@ -89,13 +100,13 @@ The Owner's steps are commands to paste, one line each. They are written for the
 - **T6.** A Stripe sandbox (a website: Stripe has no command that makes a sandbox). In Stripe, make a sandbox named "Ruken test copy". Inside it, repeat slice 1's S2 with `TEST-ADDRESS`: Stripe Tax, the customer portal, and a webhook to `TEST-ADDRESS/webhooks/stripe`. Its secret key and the webhook's signing secret are T5's two Stripe values.
 - **T7.** Connect the repository to the test Worker (a website: Workers Builds has no command for it). `ruken-test` → Settings → Builds → connect this repository, branch `main`, the same build command as the live Worker, deploy command `pnpm run deploy:test`, and one build secret, `DIRECT_DATABASE_URL`, with T1's address. From then on every merge to `main` deploys both copies.
 - **T8.** The test copy's game gate, once Q1 is answered. With `TEST-GAMES-DOMAIN` on this Cloudflare account and its `*` record made as in slice 2's G3 step 1:
-  1. `pnpm exec wrangler deploy --config cloudflare/games/wrangler.jsonc --env test --route "*.TEST-GAMES-DOMAIN/*"`
+  1. `pnpm run deploy:games:test -- --route "*.TEST-GAMES-DOMAIN/*"` (the script Task 7 tests, with the route added on the command line)
   2. `s=$(openssl rand -hex 32); printf %s "$s" | npx -y wrangler@4.156.0 secret put PLAY_PASS_SECRET --name ruken-test; printf %s "$s" | npx -y wrangler@4.156.0 secret put PLAY_PASS_SECRET --name ruken-games-test` (one new secret, given to both test Workers; PowerShell as G3 step 3 with the two `--name` endings)
   3. `printf %s "TEST-ADDRESS" | npx -y wrangler@4.156.0 secret put SITE_ORIGIN --name ruken-games-test` (PowerShell: `"TEST-ADDRESS" | npx …`)
   4. `printf %s "https://{name}.TEST-GAMES-DOMAIN" | npx -y wrangler@4.156.0 secret put GAME_ADDRESS_PATTERN --name ruken-test` (type `{name}` as it is)
 - **T9.** Check it: `curl -s TEST-ADDRESS/healthz` (PowerShell: `(Invoke-WebRequest -UseBasicParsing "TEST-ADDRESS/healthz").Content`). Expect `ok`. Say "done".
 
-**Stop rules, beyond CLAUDE.md's.** Stop and report at once if: the first live deploy after branch 1 merges does not succeed (Task 4, step 5); CI's `browser` job fails anywhere but the step a task names; or `node` cannot load `scripts/claim-copy.ts` on a runner.
+**Stop rules, beyond CLAUDE.md's.** Stop and report at once if: the Owner has not said "done" to T0 when branch 1 is otherwise ready; the first live deploy after branch 1 merges does not succeed, or the live `/healthz` does not answer `ok` after it (Task 4, step 5); CI's `browser` job fails anywhere but the step a task names; or `node` cannot load `scripts/claim-copy.ts` on a runner.
 
 ## How a task runs
 
@@ -333,10 +344,10 @@ The report lines, exactly: `copy guard: this Worker is the <copy> copy, but its 
   - a refusal carries `cache-control: no-store`.
 
   Push with `copyGuard` a stub. Expected: `verify` fails in `copy-guard.test.ts` only.
-- [ ] **Step 2 (green):** write the guard. In `src/hooks.server.ts` the sequence becomes `databasePerRequest()`, then `copyGuard(...)`, then `createHandle(...)`, with `copy: () => readCopy()`, `stamped: () => stampedCopy((sql, values) => prisma().$queryRawUnsafe(sql, ...values))` and `report: (message) => console.error(message)`. A comment at the guard says why it sits second (it needs this request's database, and must run before anything reads a row), and one at `$queryRawUnsafe` says why it is safe here (the two statements are fixed text in `copy.ts`; the only value is passed apart from them). Push. Expected: all pass, with every existing journey unchanged: `/healthz` still answers `ok`.
+- [ ] **Step 2 (green):** write the guard. In `src/hooks.server.ts` the sequence becomes `databasePerRequest()`, then `copyGuard(...)`, then `createHandle(...)`, with `copy: () => readCopy()`, `stamped: () => stampedCopy((sql, values) => prisma().$queryRawUnsafe(sql, ...values))` and `report: (message) => console.error(message)`. A comment at the guard says why it sits second (it needs this request's database, and must run before anything reads a row); the existing comment's "so /healthz answers without them" is kept true for the sign-in services and gains that `/healthz` does ask the guard, so it answers `ok` only on a stamped database. One at `$queryRawUnsafe` says why it is safe here (the two statements are fixed text in `copy.ts`; the only value is passed apart from them). Push. Expected: all pass, with every existing journey unchanged: `/healthz` still answers `ok`.
 - [ ] **Step 3:** commit, tick the tracker, report.
-- [ ] **Step 4:** when Tasks 5 and 6 are green too, mark the branch's pull request ready.
-- [ ] **Step 5: the first live deploy.** After the merge, read the check Cloudflare's build puts on the merge commit on `main`. Expected: success, which means the live database was stamped `live` before the new code went out. If it failed, the live site is still on its earlier version; stop, and report the build's last lines to the coordinator at once. Ask the Owner, through the coordinator, for one line: `curl -s LIVE-ADDRESS/healthz`, expecting `ok`.
+- [ ] **Step 4:** when Tasks 5 and 6 are green too, and the Owner has said "done" to T0, mark the branch's pull request ready. Without T0 the live build skips the claim (see "Where execution stops").
+- [ ] **Step 5: the first live deploy.** After the merge, read the check Cloudflare's build puts on the merge commit on `main`. Expected: success. If it failed, the live site is still on its earlier version; stop, and report the build's last lines to the coordinator at once. A successful build alone does not prove the stamp (a build that skipped the claim also succeeds), so then ask the Owner, through the coordinator, for one line: `curl -s LIVE-ADDRESS/healthz` (PowerShell: `(Invoke-WebRequest -UseBasicParsing "LIVE-ADDRESS/healthz").Content`). `ok` is the pass. The 503 line means the live database has no stamp: report at once, and the Owner runs `DIRECT_DATABASE_URL="PASTE" node scripts/claim-copy.ts live` from a clone of `main` (PowerShell: `$env:DIRECT_DATABASE_URL="PASTE"; node scripts/claim-copy.ts live; Remove-Item Env:DIRECT_DATABASE_URL`) with the live database's direct address.
 
 ### Task 5: The test copy is open whatever the date
 
@@ -414,7 +425,7 @@ Branch 2. **Before any code:** the coordinator has the test Hyperdrive id from T
   - it has no `name`, `route`, `routes`, `main` or `triggers` of its own (the name is Wrangler's `ruken-test`; the rest is the live copy's);
   - its Hyperdrive binding is `HYPERDRIVE`, its id matches `/^[0-9a-f]{32}$/`, is not all zeros, equals the id from T2 written out in the test, **and is not the live copy's id**; it has no `remote` and no `localConnectionString`;
   - its bucket is `[{ binding: "GAME_FILES", bucket_name: "ruken-games-test" }]`;
-  - **the test copy has every binding the live copy has:** for each of `hyperdrive` and `r2_buckets`, the list of `binding` names in the environment equals the top level's, and `Object.keys(vars)` equals the top level's. A comment says what it catches: a binding added to the live copy and forgotten here;
+  - **the test copy has every binding the live copy has:** for each key in a list in the test of every key Wrangler does not carry into an environment (Wrangler's own page on environments, read when the test is written: `vars`, `hyperdrive`, `r2_buckets`, `kv_namespaces`, `d1_databases`, `services`, `queues`, `durable_objects` and the rest it names), the top level and the environment either both lack it or both have the same `binding` names (for `vars`, the same keys). A second case: every top-level key of `wrangler.jsonc` is in that list or in a second list of the keys Wrangler does carry, so a key of a new kind fails CI until someone says which it is. A comment says what they catch: a binding added to the live copy and forgotten here;
   - `deploy:test` migrates, then runs `node scripts/claim-copy.ts test`, then `wrangler deploy cloudflare/worker.js --env test`, in that order, with one `wrangler deploy` in it;
   - `deploy` contains no `--env` and no `claim-copy.ts test`.
 
