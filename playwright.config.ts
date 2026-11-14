@@ -110,8 +110,18 @@ export default defineConfig({
       },
     },
   ],
+  // Every journey runs on each of these (the Owner, 2026-11-14: "tablet is first class supported, and mobile landscape").
+  // The iPad's own browser is WebKit, but CI installs Chromium only, so the tablets keep the iPad's window, pixel
+  // density and touch and run on Chromium. What a journey proves is the site's layout and behaviour at that window,
+  // not Safari's engine.
   projects: [
     { name: "phone", use: { ...devices["Pixel 7"] } },
+    { name: "phone-landscape", use: { ...devices["Pixel 7 landscape"] } },
+    { name: "tablet", use: { ...devices["iPad (gen 7)"], defaultBrowserType: "chromium" } },
+    {
+      name: "tablet-landscape",
+      use: { ...devices["iPad (gen 7) landscape"], defaultBrowserType: "chromium" },
+    },
     { name: "computer", use: { ...devices["Desktop Chrome"] } },
   ],
 });
