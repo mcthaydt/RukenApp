@@ -12,6 +12,29 @@ export interface MoneyStripe {
    * its balance transaction does not exist, so the caller can leave the payment for the next run.
    */
   paymentIds(stripeInvoiceId: string): Promise<PaymentIds>;
+  /** The stretch of time Stripe's fee report can be asked for, in Unix seconds. */
+  feeReportWindow(): Promise<FeeReportWindow>;
+  /** Starts a report run over a stretch of time, and answers the run's id. */
+  startFeeReport(fromSec: number, toSec: number): Promise<string>;
+  /** How a report run stands and, once it has finished, the text of its file. */
+  feeReport(runId: string): Promise<FeeReportAnswer>;
+}
+
+export interface FeeReportWindow {
+  readonly availableFromSec: number;
+  readonly availableToSec: number;
+}
+
+export type FeeReportAnswer =
+  | { readonly status: "pending" }
+  | { readonly status: "failed"; readonly problem: string }
+  | { readonly status: "succeeded"; readonly csv: string };
+
+/** What reading a report's file needs: Stripe's secret key (the file answers to nothing else) and a way to fetch. */
+export interface FileAccess {
+  readonly secretKey: string;
+  /** Replaced by a test; the global `fetch` otherwise. */
+  readonly fetch?: typeof fetch;
 }
 
 export interface PaymentIds {
@@ -26,9 +49,13 @@ export class NotAtStripeYet extends Error {
 }
 
 /** The port on a real Stripe client. */
-export function bindMoneyStripe(stripe: Stripe): MoneyStripe {
+export function bindMoneyStripe(stripe: Stripe, files: FileAccess): MoneyStripe {
   return {
     paymentIds: (stripeInvoiceId) => readPaymentIds(stripe, stripeInvoiceId),
+    feeReportWindow: () => Promise.reject(new Error(`not built yet: feeReportWindow ${typeof stripe}`)),
+    startFeeReport: (fromSec, toSec) =>
+      Promise.reject(new Error(`not built yet: startFeeReport ${String(fromSec)} ${String(toSec)}`)),
+    feeReport: (runId) => Promise.reject(new Error(`not built yet: feeReport ${runId} ${typeof files}`)),
   };
 }
 

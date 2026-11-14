@@ -377,15 +377,26 @@ describe("the fact tables", () => {
         UPDATE "StripeFeeRun" SET "state" = 'failed'::"FeeRunState", "problem" = 'no data' WHERE "id" = ${run}`;
     });
 
-    it("is refused a second run for the same start, and an end that is not after the start", async () => {
-      await insertFeeRun(500_000);
-      await expect(insertFeeRun(500_000)).rejects.toThrow(/StripeFeeRun_intervalStart_key/);
+    it("is refused a second live run for any of the same time, and an end that is not after the start", async () => {
+      await insertFeeRun(500_000); // 500,000 to 505,000
+      await expect(insertFeeRun(500_000)).rejects.toThrow(/already asked for part of this stretch/);
+      await expect(insertFeeRun(502_000)).rejects.toThrow(/already asked for part of this stretch/);
+      await insertFeeRun(505_000); // the next stretch starts exactly where this one ended
       const id = randomUUID();
       await expect(
         db().$executeRaw`
           INSERT INTO "StripeFeeRun" ("id", "intervalStart", "intervalEnd", "stripeReportRunId", "requestedAt")
           VALUES (${id}, to_timestamp(900000), to_timestamp(900000), ${`frr_${id}`}, now())`,
       ).rejects.toThrow(/StripeFeeRun_interval_check/);
+    });
+
+    it("is asked for the same stretch again once its run failed", async () => {
+      const failed = await insertFeeRun(800_000);
+      await db().$executeRaw`
+        UPDATE "StripeFeeRun" SET "state" = 'failed'::"FeeRunState", "problem" = 'no data' WHERE "id" = ${failed}`;
+      const again = await insertFeeRun(800_000);
+      expect(again).not.toBe(failed);
+      await expect(insertFeeRun(800_000)).rejects.toThrow(/already asked for part of this stretch/);
     });
 
     it("numbers its rows once each", async () => {
