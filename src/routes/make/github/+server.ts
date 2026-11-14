@@ -10,8 +10,9 @@ export const GET: RequestHandler = ({ locals, url }) => {
   const { userId } = signedInOnly(locals.caller, url);
   const { connect } = gamesServices();
   const state = connect.sealState(userId);
-  redirect(
-    303,
-    url.searchParams.get("choose") === "1" ? connect.installUrl(state) : connect.signInUrl(state),
-  );
+  const target =
+    url.searchParams.get("choose") === "1" ? connect.installUrl(state) : connect.signInUrl(state);
+  // SvelteKit refuses a redirect to another site unless it is told which one. Only GitHub's own address, the one just
+  // built from the app's settings, is allowed.
+  redirect(303, target, { external: [new URL(target).origin] });
 };
