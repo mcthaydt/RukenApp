@@ -1671,6 +1671,21 @@ Changed your mind? Sign in before then and nothing is deleted.
 Keep my account
 ```
 
+Changed, Owner, 2026-11-14, "All six" (a design review of the newest screens): a paying member's screen has the no-refund line second, and a way to stop paying without deleting, both before "Changed your mind?":
+
+```
+Delete your account?
+
+We'll sign you out everywhere now, and delete your account in 14 days.
+Your membership ends now. There is no refund for the time left, and signing in again does not bring it back.
+Only want to stop paying? Cancel your membership instead.        (a quiet button, which looks like a link: it posts to /me?/portal)
+Changed your mind? Sign in before then and nothing is deleted.
+
+[ Delete my account ]
+
+Keep my account
+```
+
 For staff, in place of the button: "Staff accounts are removed by another staff member." Afterwards, `/goodbye?on=<yyyy-mm-dd>`, where the day is `chicagoDayOf(purgeAfter)`:
 
 ```
@@ -1681,6 +1696,8 @@ Changed your mind? Sign in before then.
 
 Back to Ruken
 ```
+
+Changed, Owner, 2026-11-14, "All six" (a design review of the newest screens): with a readable day the heading is "Your account will be deleted.", the next line "We'll delete it on Friday, November 27. You're signed out now.", and "Sign in" in "Changed your mind? Sign in before then." is a link to `/sign-in?next=%2Fme`. With no readable day the heading stays "You're signed out." and nothing says an account will be deleted.
 
 The date is a Chicago calendar day in words: weekday, month, day. Put the small formatter in `src/lib/long-date.ts` here with a unit test, and have Task 23's `format.ts` re-export it: `longDay(day: string): string | null` writes a `YYYY-MM-DD` day (null for text that is not a real day), formatting it as that calendar day and never through an instant, so a day cannot slip to the one before; `longDate(at: Date): string` is `longDay(chicagoDayOf(at.getTime()))`, for the instants on `/me`. `/goodbye` passes `on` to `longDay` and shows the page without the date line when it answers null.
 
@@ -1697,8 +1714,8 @@ test("a person asks to be deleted, is signed out, and is told the date", async (
   await page.getByRole("link", { name: "Delete my account" }).click();
   await expect(page.getByRole("heading", { name: "Delete your account?" })).toBeVisible();
   await page.getByRole("button", { name: "Delete my account" }).click();
-  await expect(page.getByRole("heading", { name: "You're signed out." })).toBeVisible();
-  await expect(page.getByText(/^Your account will be deleted on \w+, \w+ \d+\.$/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your account will be deleted." })).toBeVisible();   // was "You're signed out." (All six)
+  await expect(page.getByText(/^We'll delete it on \w+, \w+ \d+\. You're signed out now\.$/)).toBeVisible();
   await page.goto("/me");
   await expect(page).toHaveURL(/\/sign-in/);                       // Review Focus 7
 });
@@ -2072,6 +2089,13 @@ You pay on the next page, then come straight back.
 Not now
 ```
 
+Changed, Owner, 2026-11-14, "All six" (a design review of the newest screens): the card also says "Renews until you cancel. You can cancel any time from your account." Signed out, the line under it is "First you make an account, then you pay. Then you come straight back." (the next page is sign-up); signed in it stays "You pay on the next page, then come straight back." The plans are two full-width rows, each a real radio button in a `<label class="choice">` and each reading its price once:
+
+```
+(•) $9.99 a month
+( ) $99 a year
+```
+
 - The prices on the card come from `PREMIUM_PRICES_CENTS` through `dollars`, passed by `load`; they are not typed into the page.
 - Signed out, "Continue" goes to `/sign-up?next=` the same card with the plan kept; back on the card, the button reads "Continue to payment". That is the only point where the card asks for sign-in (design 5.2).
 - Signed in, "Continue to payment" starts the checkout and sends the browser to Stripe. The checkout takes the arrival from the `rk_arrival` cookie at that moment. The card shows nothing about it and has no field for it.
@@ -2081,7 +2105,7 @@ Not now
 
 Grandma: two short lines say what it costs and what happens next; one button; "Not now" is the way back; coming back from Stripe without paying lands on this same card with the plan still chosen.
 
-Look (design 5.8, branch L): the screen is `<main class="card">`. "Continue to payment" is `<button class="pay">`: **the one pip-red button in the whole site**, because it is the one press that spends money. Signed out, the same place holds a plain `<button>` reading "Continue" (ink: it leads to sign-up, not to paying); write the two as an `{#if}` with two buttons, not as one button with a computed class. The two plan choices are radio buttons with their labels, one under the other; "Not now" stays a link; "Keep playing" is `class="button"`; a refusal is `problem`. The price line is ordinary text: money lines are never a `note`. Nothing else on this card, on `/join/done` or on `/me` is `pay`: "Join Ruken", "Manage or cancel", "Manage", "Update card" and "Go to my account" lead somewhere and spend nothing.
+Look (design 5.8, branch L): the screen is `<main class="card">`. "Continue to payment" is `<button class="pay">`: **the one pip-red button in the whole site**, because it is the one press that spends money. Signed out, the same place holds a plain `<button>` reading "Continue" (ink: it leads to sign-up, not to paying); write the two as an `{#if}` with two buttons, not as one button with a computed class. The two plan choices are radio buttons with their labels, one under the other; "Not now" stays a link; "Keep playing" is `class="button"`; a refusal is `problem`. The price line is ordinary text: money lines are never a `note`. Nothing else on this card, on `/join/done` or on `/me` is `pay`: "Join Ruken", "Change card or cancel", "Manage", "Update card" and "Go to my account" lead somewhere and spend nothing.
 
 - [ ] **Step 1 (red):**
 
@@ -2095,10 +2119,10 @@ test("the card says the price and what happens next", async ({ page }) => {
 });
 test("a signed-out person is asked to sign up only after pressing Continue, and keeps their plan", async ({ page }) => {
   await page.goto("/join?next=/me");
-  await page.getByLabel("Yearly").check();
+  await page.getByRole("radio", { name: "$99 a year" }).check();          // was getByLabel("Yearly") (All six)
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page).toHaveURL(/\/sign-up\?next=/);
-  /* finish sign-up → back on /join, "Yearly" still checked, button "Continue to payment" */
+  /* finish sign-up → back on /join, "$99 a year" still checked, button "Continue to payment" */
 });
 test("Continue to payment opens the payment page", async ({ page }) => {
   await signUp(page); await page.goto("/join");
@@ -2210,18 +2234,18 @@ test("a member who came through no maker's link has no maker recorded", async ({
 | State | Line | Button |
 |---|---|---|
 | `none`, `ended` | You're not a member. | Join Ruken (link to `/join?next=/me`) |
-| `active` | You're a member. $9.99 a month. Renews on Monday, December 14. (yearly: "$99 a year") | Manage or cancel |
+| `active` | You're a member. $9.99 a month. Renews on Monday, December 14. (yearly: "$99 a year") | Change card or cancel |
 | `canceling` | Your membership ends on Monday, December 14. You can play until then. | Manage |
 | `past_due`, still a member | We couldn't charge your card. Update it by Monday, December 14 to keep playing. | Update card |
 | `past_due`, no longer a member (`member` false: the seven days are over) | We couldn't charge your card, so your membership is paused. Update your card to play again. | Update card |
 
-Under each button but "Join Ruken": "Opens Stripe, where you can change your card or cancel." Those buttons post one action, `portal`, which redirects to `service.portalLink(userId)`. The dates come from `longDate` on `renewsAt`, `endsAt` and `pausesAt`; the price from `dollars`. The table is one pure function, `membershipLine(view: MembershipView): { line: string; button: "join" | "manageOrCancel" | "manage" | "updateCard" }` in `format.ts`, re-exported by `membership.ts`, so every row is tested without a browser, including the two `past_due` rows no journey can reach (the stand-in has no failing card).
+Under each button but "Join Ruken": "Opens our payment page, run by Stripe." (changed, Owner, 2026-11-14, "All six" (a design review of the newest screens): the button was "Manage or cancel" and the line "Opens Stripe, where you can change your card or cancel."; "Delete my account" now sits two rem under "Sign out", so the two 48px tap areas do not overlap). Those buttons post one action, `portal`, which redirects to `service.portalLink(userId)`. The dates come from `longDate` on `renewsAt`, `endsAt` and `pausesAt`; the price from `dollars`. The table is one pure function, `membershipLine(view: MembershipView): { line: string; button: "join" | "manageOrCancel" | "manage" | "updateCard" }` in `format.ts`, re-exported by `membership.ts`, so every row is tested without a browser, including the two `past_due` rows no journey can reach (the stand-in has no failing card).
 
-**On `/me/delete`**, a member also sees: "Your membership ends now. There is no refund for the time left, and signing in again does not bring it back." The action calls `service.endNow(userId)` before `requestDeletion`; if `endNow` throws, nothing is deleted and the page says "Something went wrong on our side. Try again in a moment." `MembershipStart` rows stay, like payment rows, whether the deleted account is the member's or the maker's: they hold account ids and a link's path, and the daily job leaves them alone.
+**On `/me/delete`**, a member also sees, before "Changed your mind?": "Your membership ends now. There is no refund for the time left, and signing in again does not bring it back." (moved up, Owner, 2026-11-14, "All six" (a design review of the newest screens)), and "Only want to stop paying? Cancel your membership instead.", which opens the same Stripe page as "Change card or cancel" The action calls `service.endNow(userId)` before `requestDeletion`; if `endNow` throws, nothing is deleted and the page says "Something went wrong on our side. Try again in a moment." `MembershipStart` rows stay, like payment rows, whether the deleted account is the member's or the maker's: they hold account ids and a link's path, and the daily job leaves them alone.
 
 Grandma: one line says where the person stands; one button says what they can do about it; the line under it says where the button goes.
 
-Look (design 5.8, branch L): from this task the membership action is `/me`'s one filled button: "Join Ruken" is `class="button"`, and "Manage or cancel", "Manage" and "Update card" are plain buttons. So "Sign out" becomes `class="quiet"`, to keep one main action on the card. "Opens Stripe, where you can change your card or cancel." is a `note`; the membership line itself is ordinary text. None of them is `pay`. On `/me/delete`, the member's extra line is ordinary text. The second journey below ("a member sees what they pay") also calls `expectOneCard(page)` and `showTheOwner` on `/me` as a member: one card, one filled button, no red. Not in `CARD_SCREENS`, for the reason in Task 37 (sign-ups are counted).
+Look (design 5.8, branch L): from this task the membership action is `/me`'s one filled button: "Join Ruken" is `class="button"`, and "Change card or cancel", "Manage" and "Update card" are plain buttons. So "Sign out" becomes `class="quiet"`, to keep one main action on the card. "Opens our payment page, run by Stripe." is a `note`; the membership line itself is ordinary text. None of them is `pay`. On `/me/delete`, the member's extra line is ordinary text. The second journey below ("a member sees what they pay") also calls `expectOneCard(page)` and `showTheOwner` on `/me` as a member: one card, one filled button, no red. Not in `CARD_SCREENS`, for the reason in Task 37 (sign-ups are counted).
 
 - [ ] **Step 1 (red):**
 
@@ -2237,7 +2261,7 @@ test("a member sees what they pay and when it renews", async ({ page }) => {
 });
 test("a member cancels on Stripe and is told when it ends", async ({ page }) => {      // design 8: "A member can cancel."
   await payAsNewMember(page);
-  await page.getByRole("button", { name: "Manage or cancel" }).click();
+  await page.getByRole("button", { name: "Change card or cancel" }).click();           // was "Manage or cancel" (All six)
   await page.getByRole("button", { name: "Cancel membership" }).click();              // the stand-in's portal
   await expect(page).toHaveURL("/me");
   await expect(page.getByText(/^Your membership ends on \w+, \w+ \d+\. You can play until then\.$/)).toBeVisible();
@@ -2247,7 +2271,7 @@ test("a member who deletes their account is told the membership ends now", async
   await page.goto("/me/delete");
   await expect(page.getByText("Your membership ends now. There is no refund for the time left, and signing in again does not bring it back.")).toBeVisible();
   await page.getByRole("button", { name: "Delete my account" }).click();
-  await expect(page.getByRole("heading", { name: "You're signed out." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your account will be deleted." })).toBeVisible();   // was "You're signed out." (All six)
   expect(await subscriptionStatusAtStandIn(member)).toBe("canceled");   // asks the stand-in, by the checkout session id payAsNewMember kept
 });
 test("a member who opens the card is told they are one", async ({ page }) => { /* "You're already a member." and link "Keep playing" */ });
@@ -2261,7 +2285,7 @@ test("a member who opens the card is told they are one", async ({ page }) => { /
 No code unless a check fails. Nothing here is typed into the repository.
 
 - [ ] **Step 1: S2 done.** S2 was asked for at Task 21 and is done before the site's first deploy, which is S1 step 9. If it is not, this step waits for the Owner's "done".
-- [ ] **Step 2: Stripe test mode, on the real site.** A person signs up, opens `/join`, pays with Stripe's test card, lands on `/me` as a member, presses "Manage or cancel", cancels in Stripe's portal, and sees "Your membership ends on …". In Stripe's dashboard the Owner confirms: the product "Ruken membership" and its two prices exist at $9.99 and $99, tax was worked out on the invoice, and the webhook deliveries answered 200. Record in progress.md what was checked, by whom and when. If a step fails, report what the page and Stripe's webhook log say; a fix is a new small branch with its own failing test first.
+- [ ] **Step 2: Stripe test mode, on the real site.** A person signs up, opens `/join`, pays with Stripe's test card, lands on `/me` as a member, presses "Change card or cancel", cancels in Stripe's portal, and sees "Your membership ends on …". In Stripe's dashboard the Owner confirms: the product "Ruken membership" and its two prices exist at $9.99 and $99, tax was worked out on the invoice, and the webhook deliveries answered 200. Record in progress.md what was checked, by whom and when. If a step fails, report what the page and Stripe's webhook log say; a fix is a new small branch with its own failing test first.
 - [ ] **Step 3: STOP S3.** Report that slice 1 is done in test mode and that live mode waits for the Owner: live keys, the live webhook endpoint, `STRIPE_LIVE=true`, real terms and privacy text, and the Owner's own payment with a real card (design 8). Live mode is not a condition for starting slice 2.
 - [ ] **Step 4:** set slice 1's row in progress.md from what is true: "done" only when every branch is merged, main is green, and Step 2 passed.
 
