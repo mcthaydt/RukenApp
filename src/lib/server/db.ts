@@ -99,15 +99,35 @@ let diagNext = 0;
 export function diagRequestId(): number {
   return requests.getStore()?.id ?? -1;
 }
-async function diagCall<T>(kind: string, detail: string, run: () => Promise<T>): Promise<T> {
+async function diagCall<T>(kind: string, detail: string, run: () => Promise<T>, owner = diagRequestId()): Promise<T> {
   const id = diagRequestId();
+  const who = id === owner ? `r${String(id)}` : `r${String(owner)}(now in r${String(id)})`;
   const started = Date.now();
-  console.error(`DB> r${String(id)} ${kind} ${detail.slice(0, 90).replace(/\s+/g, " ")}`);
+  console.error(`DB> ${who} ${kind} ${detail.slice(0, 90).replace(/\s+/g, " ")}`);
+  const waiting = setTimeout(() => console.error(`DBWAIT ${who} ${kind} still waiting after 3000ms`), 3000);
   try {
     return await run();
   } finally {
-    console.error(`DB< r${String(id)} ${kind} ${String(Date.now() - started)}ms`);
+    clearTimeout(waiting);
+    console.error(`DB< ${who} ${kind} ${String(Date.now() - started)}ms`);
   }
+}
+
+// DIAGNOSTIC ONLY: logs every call made on a transaction, which the adapter's own methods never see.
+function diagTransaction<T extends object>(transaction: T): T {
+  const owner = diagRequestId();
+  return new Proxy(transaction, {
+    get(target, property) {
+      const value: unknown = Reflect.get(target, property);
+      if (typeof value !== "function") return value;
+      return (...args: unknown[]) => {
+        const first: unknown = args[0];
+        const detail =
+          typeof first === "object" && first !== null && "sql" in first ? String((first as { sql: unknown }).sql) : "";
+        return diagCall(`tx.${String(property)}`, detail, () => (value as (...a: unknown[]) => Promise<unknown>).apply(target, args), owner);
+      };
+    },
+  });
 }
 
 /**
@@ -136,7 +156,9 @@ export function requestScopedAdapter(connect: () => Promise<RequestConnection>):
     executeScript: (script) =>
       diagCall("executeScript", script, async () => (await connectionOfRequest()).executeScript(script)),
     startTransaction: (isolationLevel) =>
-      diagCall("startTransaction", "", async () => (await connectionOfRequest()).startTransaction(isolationLevel)),
+      diagCall("startTransaction", "", async () =>
+        diagTransaction(await (await connectionOfRequest()).startTransaction(isolationLevel)),
+      ),
     // Asked before any query, so it cannot wait for a request's connection. These are the `pg` adapter's own answers.
     getConnectionInfo: () => ({ supportsRelationJoins: true }),
     // Nothing is held here to give back; Cloudflare closes each request's connections when the request ends.
