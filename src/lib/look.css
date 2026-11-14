@@ -36,8 +36,8 @@
   color-scheme: dark;
 
   /* Colour. Surfaces are told apart by a tone step, never by a line or a shadow. Each value is the nearest
-     colour (CIELAB) in the 159 of the MIT-licensed dictionary-of-colour-combinations data set, by Matt
-     DesLauriers, from A Dictionary of Color Combinations; the book's name for it is beside it. */
+     colour (CIELAB) in the 159 of A Dictionary of Color Combinations, from its MIT-licensed data set,
+     dictionary-of-colour-combinations, by Matt DesLauriers. The book's name for each is beside it. */
   --felt: #112f2c; /* Deep Slate Green: the page */
   --felt-deep: #111314; /* Black: panels on the felt, the footer */
   --felt-raised: #004f46; /* Dusky Green: secondary buttons, tracks */
