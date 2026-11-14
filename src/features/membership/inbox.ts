@@ -1,6 +1,7 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 import type { StripeEvent } from "./events.ts";
+import { keptEvent } from "./kept-event.ts";
 
 /**
  * The Stripe webhook inbox. Every verified delivery is written to `WebhookInbox` before anything acts
@@ -10,6 +11,8 @@ import type { StripeEvent } from "./events.ts";
  * - a delivery whose handling fails is kept, with the error, and Stripe sends it again;
  * - every event Ruken acted on, and when, can be looked up later, and slice 5 can read the kept
  *   events (disputes and refunds are stored and not acted on yet).
+ *
+ * What is kept of an event is `keptEvent`'s (kept-event.ts): ids, amounts and states, never the person's details.
  *
  * Out of order delivery is safe because the handlers read Stripe's current state rather than the
  * event.
@@ -32,8 +35,8 @@ export async function storeStripeDelivery(
     data: [
       {
         deliveryId: event.id,
-        // The event as plain JSON, the way Postgres keeps it.
-        payload: JSON.parse(JSON.stringify(event)) as object,
+        // Only what Ruken uses, as plain JSON the way Postgres keeps it: never the person's email, name or address.
+        payload: JSON.parse(JSON.stringify(keptEvent(event))) as object,
         receivedAt: new Date(receivedAtMs),
       },
     ],

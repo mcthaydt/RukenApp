@@ -154,4 +154,64 @@ describe("purgeDueAccounts", () => {
 
     expect(again.id).not.toBe(id);
   });
+
+  // Review Focus 6 of the plan: the money rows are the ledger, so they outlive the person's details. The purge only
+  // turns the user row into a tombstone; these rows point at it and must all still be there, unchanged.
+  it("leaves the payment, the membership start and the membership rows as they were", async () => {
+    const { id } = await seedPerson();
+    const paidAt = new Date("2026-10-14T17:00:00Z");
+    await db().billingCustomer.create({ data: { userId: id, stripeCustomerId: `cus_${id}` } });
+    await db().premiumMembership.create({
+      data: {
+        userId: id,
+        stripeSubscriptionId: `sub_${id}`,
+        plan: "monthly",
+        state: "active",
+        currentPeriodEnd: new Date("2026-11-14T17:00:00Z"),
+      },
+    });
+    await db().membershipPayment.create({
+      data: {
+        stripeInvoiceId: `in_${id}`,
+        userId: id,
+        stripeSubscriptionId: `sub_${id}`,
+        plan: "monthly",
+        periodStart: paidAt,
+        paidAt,
+        grossCents: 999n,
+        taxCents: 0n,
+        cardFeeCents: 59n,
+      },
+    });
+    await db().membershipStart.create({
+      data: {
+        checkoutIntentId: `intent_${id}`,
+        userId: id,
+        stripeSubscriptionId: `sub_${id}`,
+        plan: "monthly",
+        startedAt: paidAt,
+      },
+    });
+    const before = await moneyRowsOf(id);
+    const clock = await askToBeDeleted(id);
+
+    clock.advance(15 * DAY_MS);
+
+    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(1);
+    expect(await moneyRowsOf(id)).toEqual(before);
+    expect(before.payments).toHaveLength(1);
+    expect(before.starts).toHaveLength(1);
+    expect(before.memberships).toHaveLength(1);
+    expect(before.customers).toHaveLength(1);
+  });
 });
+
+/** Every money row that names the person, as stored, so a test can compare before and after. */
+async function moneyRowsOf(userId: string) {
+  return {
+    customers: await db().billingCustomer.findMany({ where: { userId } }),
+    memberships: await db().premiumMembership.findMany({ where: { userId } }),
+    payments: await db().membershipPayment.findMany({ where: { userId } }),
+    starts: await db().membershipStart.findMany({ where: { userId } }),
+  };
+}
