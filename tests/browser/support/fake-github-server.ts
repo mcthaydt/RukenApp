@@ -68,19 +68,20 @@ const repositories = new Map<string, Repository>([
 
 let commitCounter = 0;
 
+/** Every answer is made by one of these three. Each returns `true`, "answered", so a branch can end with `return send(...)`. */
 function send(
   response: ServerResponse,
   status: number,
   body: string | Uint8Array,
   type = "application/json",
-): void {
+): boolean {
   response.writeHead(status, { "content-type": type });
   response.end(body);
+  return true;
 }
 
-const sendJson = (response: ServerResponse, status: number, value: unknown): void => {
+const sendJson = (response: ServerResponse, status: number, value: unknown): boolean =>
   send(response, status, JSON.stringify(value));
-};
 
 function readBody(request: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -100,10 +101,11 @@ function tokenOf(request: IncomingMessage): string | null {
 }
 
 /** Sends the browser back to the site's callback, as GitHub does after a sign-in or an installation. */
-function backToSite(response: ServerResponse, state: string, extra = ""): void {
+function backToSite(response: ServerResponse, state: string, extra = ""): boolean {
   const back = `${SITE_URL}/make/github/callback?code=${CODE}&state=${encodeURIComponent(state)}${extra}`;
   response.writeHead(302, { location: back });
   response.end();
+  return true;
 }
 
 /** The repository named in a `/repos/<owner>/<name>/...` path, or undefined. */
@@ -111,7 +113,8 @@ function repositoryIn(parts: string[]): Repository | undefined {
   return repositories.get(`${parts[1] ?? ""}/${parts[2] ?? ""}`);
 }
 
-async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
+/** Answers one request. The answer is `true` once it has been given. */
+async function handle(request: IncomingMessage, response: ServerResponse): Promise<boolean> {
   const url = new URL(request.url ?? "/", `http://127.0.0.1:${String(PORT)}`);
   const parts = url.pathname.split("/").filter((part) => part !== "");
   const token = tokenOf(request);
