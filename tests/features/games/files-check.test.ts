@@ -66,9 +66,10 @@ describe("checkGameFiles", () => {
       { path: "b-lfs", size: 130, kind: "lfs" },
       { path: "a-link", size: 10, kind: "link" },
     ];
-    expect(checkGameFiles(files, INDEX)).toMatchObject({
+    expect(checkGameFiles(files, INDEX)).toEqual({
       ok: false,
-      problem: expect.stringContaining("a-link"),
+      problem:
+        "a-link is a link to another file. Ruken copies real files only. Replace it with the file itself.",
     });
   });
 
@@ -130,9 +131,10 @@ describe("checkGameFiles", () => {
 
   it("finds a top-of-site address in href and in single quotes, and takes the first", () => {
     const html = "<link href='/css/a.css'><script src=\"/js/b.js\"></script>";
-    expect(checkGameFiles(tiny, html)).toMatchObject({
+    expect(checkGameFiles(tiny, html)).toEqual({
       ok: false,
-      problem: expect.stringContaining("/css/a.css"),
+      problem:
+        "index.html loads /css/a.css from the top of the site. On Ruken a game lives in a folder, so write it without the first slash: css/a.css.",
     });
   });
 });
