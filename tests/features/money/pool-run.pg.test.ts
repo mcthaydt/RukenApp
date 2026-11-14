@@ -106,7 +106,7 @@ describe("sharePool", () => {
     const x = await addGame(db());
     const y = await addGame(db());
     const clock = new TestClock("2027-03-20T12:00:00Z");
-    const member = (invoice: string, broughtBy: string | "self" | null, joinedAt: string): MonthMember => ({
+    const member = (invoice: string, broughtBy: string | null, joinedAt: string): MonthMember => ({
       payment: monthly(invoice, "2027-03"),
       broughtBy,
       joinedAt,

@@ -137,7 +137,7 @@ export interface MonthMember {
   /** Billing and Tax fees that came after the payment, in cents. */
   readonly laterFeeCents?: number;
   /** The maker whose link they joined through, `"self"` for their own, or null for nobody. */
-  readonly broughtBy: string | "self" | null;
+  readonly broughtBy: string | null;
   /** When they first joined, if not when they paid. */
   readonly joinedAt?: string;
   /** What they played in the month, by game. */
