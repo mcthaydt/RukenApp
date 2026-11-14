@@ -64,6 +64,31 @@ test("pressing anywhere on a plan's row picks it", async ({ page }) => {
   await expect(page.getByRole("radio", { name: "$9.99 a month" })).not.toBeChecked();
 });
 
+// A journey failed once in CI (slice 2's run 222, computer): the yearly plan was lost on the way to sign-up. The card set
+// each radio button from the plan in the address, and when the page came alive that put the monthly plan back over a
+// choice made a moment before. A person on a slow phone can do the same. This holds the page's scripts back, picks the
+// plan on the page as the server sent it, lets the scripts run, and checks the choice is still there and still sent.
+test("a plan picked before the page has come alive is kept when it does", async ({ page }) => {
+  let release: () => void = () => undefined;
+  const scriptsMayRun = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(/\.m?js(\?.*)?$/, async (route) => {
+    await scriptsMayRun;
+    await route.continue();
+  });
+  // The scripts are held, so the page never finishes loading: the server's page is all there is to wait for.
+  await page.goto("/join?next=/me", { waitUntil: "commit" });
+  await page.getByRole("radio", { name: "$99 a year" }).check();
+  release();
+  // Every script has arrived and run once the network has been quiet.
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("radio", { name: "$99 a year" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "$9.99 a month" })).not.toBeChecked();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL(/\/sign-up\?next=.*plan%3Dannual/);
+});
+
 test("a signed-out person is asked to sign up only after pressing Continue, and keeps their plan", async ({
   page,
 }) => {
