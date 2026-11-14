@@ -610,3 +610,30 @@ Branches and tasks:
 | C `beta/play` | 8 playing a beta (`/g/<game>/play?beta=1`) · 9 "Play the beta", under the game's own button | not started; needs slice 2's branch F, slice 3's branches D and H, and the wishlist's branches B, E and F |
 | D `beta/numbers` | 10 the beta's own line in a maker's numbers | not started; needs the wishlist's branch C |
 | E `beta/old-files` | 11 the sweep and a beta's files | not started; needs slice 4's branch L |
+
+## Apps and player features
+
+Spec: `docs/superpowers/specs/2026-11-14-apps-and-player-features-design.md` (approved by the Owner, 2026-11-14: "Approved"; pull request #107). The slices and their order: `docs/superpowers/plans/2026-11-14-apps-slices.md`. Progress: 0% (no code yet).
+
+- [ ] Plan, the slices and slice A (the test copy and the live copy): written on `claude/project-thread-g6mes3`, not merged. Planned against `main` at `31cc54b`. No test ran in the plan session, and no code was written. Read outside the repository: Cloudflare's pages on Wrangler environments, Workers Builds and `hyperdrive create`, Neon's pages on `projects create` and `connection-string`, and the npm registry for `neonctl` (9.5.0).
+- [x] Plan audit of the same: `docs/superpowers/audits/2026-11-14-apps-a-plan-audit.md` (2026-11-14), on the same branch. One blocker (the live build's Deploy command skips the claim; fixed with a new Owner step, T0), five should-fix, all written into the plans; one fact left open for the sales plan (a store sale's fee). No test ran.
+- [x] Second audit pass, on Tasks 9 to 11 and "Signing the apps" (`293e1c9`): in the same audit file. Nothing blocks; three should-fix and three notes written into the plans. No test ran.
+- [x] The seams with the makers' sales plan: agreed between the two plan threads, 2026-11-14, and written in the slice map ("What is shared with the makers' sales plan").
+
+Slice A, `docs/superpowers/plans/2026-11-14-apps-a-test-copy.md`. What it waits for, and what is the Owner's:
+
+- [x] Q1, where the test copy's games run. Owner, 2026-11-14: "1.A": a second domain used only for the test copy's games (step T8).
+- [x] Q2, whether the test copy says that it is the test copy. Owner, 2026-11-14: "2. Just use a banner on the top of pages" (Task 9).
+- [x] Q3, an empty database instead of the spec's "database branch". Owner, 2026-11-14: "3. I'd prefer a mock database so we can see everything actually in the app without being blocked by content": a database of its own, filled with made-up content (Tasks 10 and 11).
+- [ ] T0 (the live Worker's Deploy command becomes `pnpm run deploy`), before branch 1 is marked ready.
+- [ ] T1 to T3 (the test copy's database, its Hyperdrive, the bucket), before branch 2.
+- [ ] T4 to T10 (the test Worker, its settings, a Stripe sandbox, the build connection, the test games domain and gate, the check, the look), after branch 2 is merged.
+- Apple signing (Owner, 2026-11-14: "What about apple certificate signing?"): what each app needs and the Owner's steps A1 to A7 are in the slice map, "Signing the apps". They come after the Apple account, with slices 1, 3 and N.
+
+| Branch | Tasks | State |
+|---|---|---|
+| 1 `apps-a/copy` | 1 which copy this is · 2 the database's stamp · 3 the deploy claims the database · 4 a Worker pointed at the wrong database answers nothing · 5 the test copy is open whatever the date · 6 the test copy never takes live payments · 9 the test copy says what it is | not started |
+| 3 `apps-a/fake-content` | 10 the made-up content · 11 the test copy writes its own made-up content | not started; needs branch 1 |
+| 2 `apps-a/test-worker` | 7 the `test` environment · 8 the test copy, running | not started; needs T1 to T3 and branches 1 and 3 |
+
+The other slices (H, R, S, F, Q, B, P, V, K on the website; 1, 2, 3, N, $, L for the apps) are not planned yet. Each gets its own plan when what it needs is on `main`.
