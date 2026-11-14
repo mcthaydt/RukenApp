@@ -35,19 +35,21 @@
   /* One theme, dark by choice. A card sets its own scheme to light. */
   color-scheme: dark;
 
-  /* Colour. Surfaces are told apart by a tone step, never by a line or a shadow. */
-  --felt: #1c3a2f; /* the page */
-  --felt-deep: #142c23; /* panels on the felt, the footer */
-  --felt-raised: #25483a; /* secondary buttons, tracks */
-  --chalk: #eef2ec; /* all text on felt (10.9:1 on felt) */
-  --sage: #a8bfb2; /* notes on felt only (6.3:1), never running text */
-  --paper: #f1efe9; /* cards; the primary button on felt */
-  --ink: #191b1a; /* all text on paper (15.1:1) */
-  --ink-soft: #4a504c; /* notes on paper (7.2:1) */
-  /* The one paid action ("Continue to payment") and small markers; never a field. One step darker than the
-     design sheet's #c63c26: that measures 4.48:1 with paper text, under the 4.5:1 a button's label needs,
-     and this measures 4.57:1. */
-  --pip: #c43b26;
+  /* Colour. Surfaces are told apart by a tone step, never by a line or a shadow. Each value is the nearest
+     colour (CIELAB) in the 159 of the MIT-licensed dictionary-of-colour-combinations data set, by Matt
+     DesLauriers, from A Dictionary of Color Combinations; the book's name for it is beside it. */
+  --felt: #112f2c; /* Deep Slate Green: the page */
+  --felt-deep: #111314; /* Black: panels on the felt, the footer */
+  --felt-raised: #004f46; /* Dusky Green: secondary buttons, tracks */
+  --chalk: #ffffff; /* White: all text on felt (14.3:1 on felt) */
+  --sage: #b4cdc2; /* Glaucous Green: notes on felt only (8.5:1), never running text */
+  --paper: #ffffff; /* White: cards; the primary button on felt */
+  --ink: #111314; /* Black: all text on paper (18.6:1) */
+  --ink-soft: #34454c; /* Slate Color: notes on paper (10.0:1) */
+  /* Scarlet: the one paid action ("Continue to payment") and small markers; never a field. The book's nearest
+     red to the old pip, Red Orange #dd4027, gives paper text only 4.3:1, under the 4.5:1 a button's label
+     needs, so this is the nearest red that passes: 5.2:1. */
+  --pip: #cb2f43;
 
   /* Type. A system font stands behind each face, so every word shows if a file does not arrive. */
   --font-display: "Young Serif", Georgia, "Times New Roman", serif; /* headings, card titles */
@@ -64,11 +66,11 @@
   --text-small: 400 0.875rem/1.45 var(--font-text); /* notes only, 14px */
   --text-button: 600 1.125rem/1.2 var(--font-text); /* buttons */
 
-  /* Shape. Cards and panels have rounded corners and every button is a full pill. No borders or hairline
+  /* Shape. Cards and panels have 20px corners and every button 12px ones. No borders or hairline
      rules except on real form fields; no shadow at rest. */
   --radius-card: 20px;
   --radius-field: 14px;
-  --radius-button: 9999px;
+  --radius-button: 12px;
   --size-target: 48px; /* the least height of a button or a field */
   --width-read: 40rem; /* the widest a column of reading goes */
 
