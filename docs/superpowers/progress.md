@@ -20,7 +20,9 @@ Launch: Monday 30 November 2026, 11:00 CT.
 
 | Session | Stage | Branch | State |
 |---|---|---|---|
-| coordinator (`session_01HNdX7KRXRooxa8mKcJNjV6`) | all | — | running, from 2026-11-14 (handed over from `session_01HNdX7JxetgLxE6xxZ7sCnn`) |
+| coordinator (`session_01HNdX7JopLaJTd1JphMYiu7`) | all | — | running, from 2026-11-14 18:15 UTC (handed over from `session_01HNdX7K6zwn1pnXaJVafHnN` at the 500k limit) |
+| coordinator before it (`session_01HNdX7K6zwn1pnXaJVafHnN`) | all | — | handed over 2026-11-14 18:15 UTC |
+| coordinator before it (`session_01HNdX7KRXRooxa8mKcJNjV6`) | all | — | handed over 2026-11-14 |
 | coordinator before it (`session_01HNdX7JxetgLxE6xxZ7sCnn`) | all | — | handed over 2026-11-14 |
 | coordinator before it (`session_01HNdX7KQVAfWMSYYHFoo8iZ`) | all | — | handed over 2026-11-14; archived once the sessions it started are done |
 | merge (`session_01HNdX7LyTaPth3m82ZhbsXY`) | merges | — | idle, holding for the coordinator's next pull request |
@@ -58,7 +60,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan, beta builds | 2 Plan | `spec/beta-builds` | plan written (`docs/superpowers/plans/2026-11-14-beta-builds.md`), not merged; Q1 and Q2 answered by the coordinator, Q3 is with the Owner |
 | plan audit, wishlist and beta builds | 3 Plan audit | `audit/wishlist-beta-plan` | audit written, both plans fixed; draft pull request when fewer than three are open; Q-A with the Owner |
 | execution, wishlist branch A (this session) | 4 Execution | `wishlist/switch` (pull request #77) | Tasks 1 to 4 green; pull request #77 ready for review |
-| execution, journeys for what is built, branch A (this session) | 4 Execution | `tests/journeys-built` (pull request #99, a draft) | Tasks 1 to 4 built and green in CI (run 43623210852, 263 passed); proved red once (run 43623524199); task 5 answered below. Branch B (`tests/tablet-landscape`) starts after A merges |
+| execution, journeys for what is built, branch A (this session) | 4 Execution | `tests/journeys-built` (pull request #99, a draft) | Tasks 1 to 4 built and green in CI (run 43623210852, 263 passed); proved red once (run 43623524199); task 5 answered below. A merged (#99). Branch B, `tests/tablet-landscape` (pull request #101): built and green in CI (job 132538160733) |
 
 ## The Owner's answers, 2026-11-14 (afternoon)
 
@@ -91,6 +93,19 @@ Recorded by the coordinator (`session_01HNdX7K6zwn1pnXaJVafHnN`), each quoted as
 - Devices: "we need to add tablet view to our artifacts; tablet is first class supported, and mobile landscape". Every board for the Owner shows phone portrait and landscape, tablet portrait and landscape, and the whole computer window.
 - The screens audit (#71) runs again once the maker screens are rebuilt; its fixes wait until then.
 
+## The Owner's answers, 2026-11-14 (night)
+
+Recorded by the coordinator (`session_01HNdX7JopLaJTd1JphMYiu7`, which took over from `session_01HNdX7K6zwn1pnXaJVafHnN` at about 18:15 UTC), each quoted as given:
+
+- Makers' own sales. The Owner: "developers can have paid DLC/subscriptions ala Xbox Game Pass-like; this should actually be how they primarily make their money". Then "24. B" (a maker's DLC and subscriptions come before launch, so launch moves past 30 November), "25. A" (the membership pool stays; a maker's own sales come on top), "26. 30%" (Ruken's cut of a maker's own sales), "27. A" (only members can buy a maker's DLC or subscriptions). This needs its own spec with the Owner, then a plan, an audit and the build. It touches the launch date, Stripe Connect, the maker agreement, the legal drafts (no refunds on games) and slice 5. The new launch date is set once that plan is sized.
+- FloorFifty's screens: "Nah dude, the floor fifty UI is fucked; be willing to do a complete overhaul to give MAXIMUM UX/UI experience, it's completely unacceptable many places, especially on mobile"; "Why is the floor fifty thing no longer centered?" (the splash on an iPhone SE held sideways: the title and the SNEKPRTY wordmark sit off centre); "Audit the layout for aesthetics too"; "we have a new SNEKPRTY logo"; "Why are a lot of them saying 'not reached' reach it".
+- Visual audits: "Do not begin the visual screen audit until we have EVERY view we need". Every screen is captured on every view (phone upright and sideways on a small and a large iPhone and a Pixel, iPad both ways, both computer windows, standalone and inside the Ruken frame, with results, replays, 20- and 50-player races, the tutorial, errors and the turn-upright cover) on a machine with a GPU before anyone judges it. This holds for every visual audit from now on.
+- The maker screens, where to finish them: "28. b) Keep refining the mockup board in the cloud until it's 'fine', then build."
+- FloorFifty's screens walk: "We need to do the screenboard when something isn't running on my mac, the fan is running hard so something is running, and why can't those be trigged remotely like how we do our tests?" Then "29. A" to "make FloorFifty's screenshot walk a job we can start remotely (workflow_dispatch on the Mac runner, uploads screenshots as an artifact), run only when nothing else is using the Mac, then the board is built from the full set". The FloorFifty shepherd (`session_01HNdX7MkCdmezDw4jymder6`) adds the workflow.
+- Later the same night: "31. B, when I say subscriptions, I mean like battle passes" (a maker's one-off DLC and battle passes both come at launch); "Huge feature that I forgot to mention; I want revenue splitting for developers. They should be able to select members and decide how money in will be split" (this reopens design section 2's "teams and contributor splits" and 5.3's "No teams" for the makers' sales spec); "28. B, but I think we're good for now, don't proceed because we're missing some stuff (like the subcriptions, DLC, Revenue Splitting ect;)" (the maker screens redesign stops until the makers' sales spec is done); "19. Ask as many questions as we need to"; "23. A" (the browser tests also run in WebKit, Safari's engine, on tablet and phone); "29. A" (FloorFifty: capture every screen on the Mac, then a Fable overhaul spec, then build on the Mac with the Owner steering). Legal: "Honor the 14 days, add a my parents say yes tick, find me the absolute cheapest way to have a virtual address".
+- Consent: "no data at all until approval". Nothing is stored, not even a session, before the person agrees to cookies.
+- Legal: Ruken App LLC, contact@ruken.io, no reply time promised, effective at launch, "we do not sell data", the strictest lawful refund policy and none for games if the law allows, no postal address yet (the Owner is getting a virtual address).
+
 ## Defect: the Worker ran out of memory (2026-11-14)
 
 Fifth execution session of slice 2 (coordinator `session_01HNdX7JKYUteXqFnZHx6dez`), branch `fix/worker-memory` (pull request #68). "Received signal #6: Aborted" in the browser job, seen four times (runs 43578583711, 43579220096 twice, 43580392279), was workerd running out of memory. The cause was production code: `src/lib/server/db.ts` made a new Prisma client for every request, and each client that starts leaves memory behind in the Worker that `$disconnect()` does not give back. Cloudflare's limit is 128 MB per Worker, so the live site would have met this far sooner than a test run did.
@@ -122,6 +137,14 @@ The Owner, 2026-11-14: "We need that for every major expected user experience". 
 - [x] 3. `rejoin.test.ts`: a member cancels, the paid month runs out (the stand-in Stripe's new `POST /test/end/<checkout>`), the card is back, they pay again and are a member.
 - [x] 4. `join.test.ts` no longer waits on `networkidle`: it waits for SvelteKit's `#svelte-announcer`, which renders only once the app has started on the page.
 - These cover behaviour already built, so all three passed at once (run 43623210852: 263 passed, 1 skipped, the memory journey's phone copy). Each was seen red once against a wrong expectation (run 43623524199 on `733b06e`: six failures, three journeys on both devices, each on the broken line), then restored in `f14d30c`; no broken code is merged.
+
+## Journeys on a tablet and a phone in landscape (branch B, `tests/tablet-landscape`, pull request #101)
+
+The Owner, 2026-11-14: "tablet is first class supported, and mobile landscape". Every journey now runs on five projects: phone (Pixel 7), phone-landscape (Pixel 7 landscape, 863x360), tablet (iPad gen 7, 810x1080), tablet-landscape (1080x810) and computer. The tablets keep the iPad's window, pixel density and touch and run on Chromium, which is all CI installs; real WebKit would need a change to `ci.yml`, which is the Owner's to ask for (the coordinator is asking).
+
+- The first run (job 132536390284): 652 passed, 4 failed, 4 skipped. No journey failed. Two look tests did, on the new windows only, and the coordinator agreed to the fixes (2026-11-14): `look.test.ts:16` decided the home heading's size by `isMobile`, where the site decides by width (64px from 48rem), so it now decides by width, with the same two sizes; `look.test.ts:170`'s helper pressed a spot in the window without scrolling the button into it, which at 360px tall missed it, so it scrolls first. No expectation was loosened and no golden moved.
+- Green: job 132538160733, 656 passed and 4 skipped (the memory journey on the four projects that are not the computer, on purpose).
+- CI time, from the jobs: before, job 2m27s (132535387238), `pnpm test:browser` 95 s, 263 passed and 1 skipped on two projects; after, job 3m30s (132538160733), `pnpm test:browser` 2m42s, 656 passed and 4 skipped on five projects. The job limit is 15 minutes. (The first run, before the look fixes, took 4m59s and 3m59s on the same runner pool: runs differ by a minute or more.)
 
 ## Slice 0: Start
 
