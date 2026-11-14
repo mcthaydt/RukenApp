@@ -8,6 +8,7 @@ import {
   type PrismaClient,
   type RequestConnection,
 } from "../../../src/lib/server/db.ts";
+import { PrismaClient as NodePrismaClient } from "../../support/generated/prisma/client.ts";
 
 // A Worker may not use a database connection that another request opened, so every request gets a client of
 // its own, and `prisma()` always reaches the client of the request that is running.
@@ -211,7 +212,7 @@ describe("createSharedClient", () => {
   async function twoRequestsRunning(work: (client: PrismaClient, who: string) => Promise<unknown>) {
     // The connections' transactions ask this client, which is made from the connections, so they reach it by name.
     const { connect, notes } = fakeConnections(() => client);
-    const client = createSharedClient(connect);
+    const client = createSharedClient(connect, NodePrismaClient as unknown as typeof PrismaClient);
     const open = () => client;
     await Promise.all([request(() => work(client, "one"), open), request(() => work(client, "two"), open)]);
     return notes;

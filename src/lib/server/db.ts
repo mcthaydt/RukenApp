@@ -127,9 +127,15 @@ export function requestScopedAdapter(connect: () => Promise<RequestConnection>):
   };
 }
 
-/** The client every request shares, with `connect` opening a request's connection when it first asks. */
-export function createSharedClient(connect: () => Promise<RequestConnection>): PrismaClient {
-  return new PrismaClient({ adapter: requestScopedAdapter(connect) });
+/**
+ * The client every request shares, with `connect` opening a request's connection when it first asks. `Client` is the
+ * Worker's own client; a test that runs in Node passes Node's, which has the same shape.
+ */
+export function createSharedClient(
+  connect: () => Promise<RequestConnection>,
+  Client: typeof PrismaClient = PrismaClient,
+): PrismaClient {
+  return new Client({ adapter: requestScopedAdapter(connect) });
 }
 
 // The one client the whole Worker uses, made when the first request needs it.
