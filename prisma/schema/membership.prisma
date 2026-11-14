@@ -109,6 +109,9 @@ model MembershipPayment {
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
+  // The money feature's posting of this payment; declared in money.prisma.
+  posting PaymentPosting?
+
   @@index([userId])
 }
 

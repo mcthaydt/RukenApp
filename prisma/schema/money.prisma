@@ -1,5 +1,7 @@
-// The money feature's ledger: a double-entry journal and the months it is kept in. Every journal row is a fact that is
-// added and never changed, so a wrong entry is corrected by a new one (the add-only triggers are in the migration).
+// The money feature's ledger: a double-entry journal and the months it is kept in, and the facts it is worked out
+// from (payments posted, Stripe's fee report and what was placed from it, refunds and chargebacks, each day's play).
+// Every one of these rows is a fact that is added and never changed, so a wrong entry is corrected by a new one (the
+// add-only triggers are in the migrations).
 // Amounts are whole cents in a BigInt; a debit is positive and a credit negative, so an entry's lines add up to zero.
 //
 // Prisma cannot express the CHECK rules or the triggers, so they are written by hand at the end of the migration and
@@ -83,4 +85,145 @@ model JournalLine {
 
   @@index([entryId])
   @@index([account])
+}
+
+/// How a Stripe fee report run stands. It moves from requested to stored or to failed, once.
+enum FeeRunState {
+  requested
+  stored
+  failed
+}
+
+/// What a line of Stripe's fee report was placed as: a fee of a payment (taken off the top), of a maker's payout, one
+/// already counted from a balance transaction read before, one Stripe's credits paid, or one Stripe gave back.
+enum FeeKind {
+  payment
+  payout
+  counted
+  credit
+  returned
+}
+
+enum ReversalKind {
+  refund
+  chargeback_opened
+  chargeback_won
+  chargeback_lost
+}
+
+/// One payment that has been posted, with the three Stripe ids a fee in the report is placed by. Added and never
+/// changed. Trigger: PaymentPosting_append_only.
+model PaymentPosting {
+  stripeInvoiceId       String   @id
+  /// The month the payment's first part went to (the month it was posted into, which is not always its own).
+  firstPeriod           String
+  stripeChargeId        String   @unique
+  stripePaymentIntentId String?  @unique
+  /// The payment's own balance transaction, which the card fee was read from.
+  balanceTransactionId  String   @unique
+  postedAt              DateTime @db.Timestamptz
+  createdAt             DateTime @default(now()) @db.Timestamptz
+
+  payment MembershipPayment @relation(fields: [stripeInvoiceId], references: [stripeInvoiceId], onDelete: Restrict)
+}
+
+/// One stretch of time asked of Stripe for its fee report. The stretches never overlap. It is the one fact table that
+/// moves: requested, then stored or failed, once (StripeFeeRun_forward_only). CHECK: StripeFeeRun_interval_check.
+model StripeFeeRun {
+  id                String      @id @default(cuid(2))
+  intervalStart     DateTime    @unique @db.Timestamptz
+  intervalEnd       DateTime    @db.Timestamptz
+  stripeReportRunId String      @unique
+  state             FeeRunState @default(requested)
+  rowCount          Int?
+  /// Stripe's words, when the run failed.
+  problem           String?
+  requestedAt       DateTime    @db.Timestamptz
+  storedAt          DateTime?   @db.Timestamptz
+  createdAt         DateTime    @default(now()) @db.Timestamptz
+
+  rows StripeFeeRow[]
+}
+
+/// One line of Stripe's fee report, exactly as Stripe wrote it: the amounts are decimal dollars and the times carry
+/// no zone. Added and never changed. Trigger: StripeFeeRow_append_only.
+model StripeFeeRow {
+  id                   String @id @default(cuid(2))
+  runId                String
+  rowNumber            Int
+  balanceTransactionId String
+  balanceTransactionAt String
+  feeTransactionId     String
+  incurredBy           String
+  incurredByType       String
+  incurredAt           String
+  product              String
+  featureName          String
+  description          String
+  amountText           String
+  taxText              String
+  currency             String
+  settledVia           String
+  createdAt            DateTime @default(now()) @db.Timestamptz
+
+  run     StripeFeeRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  posting FeePosting?
+
+  @@unique([runId, rowNumber])
+  @@index([incurredBy])
+}
+
+/// One report line that was placed. The amount is in millionths of a cent. Added and never changed.
+/// CHECK: FeePosting_kind_check. Trigger: FeePosting_append_only.
+model FeePosting {
+  feeRowId        String   @id
+  kind            FeeKind
+  stripeInvoiceId String?
+  makerUserId     String?
+  microCents      BigInt
+  postedAt        DateTime @db.Timestamptz
+  createdAt       DateTime @default(now()) @db.Timestamptz
+
+  feeRow StripeFeeRow @relation(fields: [feeRowId], references: [id], onDelete: Restrict)
+  maker  User?         @relation(fields: [makerUserId], references: [id], onDelete: Restrict)
+}
+
+/// A refund or a dispute's step, as Stripe reported it. Added and never changed.
+/// CHECK: StripeReversal_amounts_check. Trigger: StripeReversal_append_only.
+model StripeReversal {
+  /// Made in code: `refund:<Stripe's id>`, or `dispute:<Stripe's id>:opened`, `:won` or `:lost`.
+  id                    String       @id
+  kind                  ReversalKind
+  stripeInvoiceId       String
+  amountCents           BigInt
+  /// Stripe's dispute fee; zero for a refund.
+  feeCents              BigInt
+  /// What Stripe gave back: a card fee with a refund, the money with a won dispute.
+  returnedCents         BigInt
+  balanceTransactionIds String[]
+  at                    DateTime     @db.Timestamptz
+  createdAt             DateTime     @default(now()) @db.Timestamptz
+}
+
+/// A day whose play was added up, even when nobody played. Added and never changed. Trigger: PlayDayRun_append_only.
+model PlayDayRun {
+  day      DateTime @id @db.Date
+  rolledAt DateTime @db.Timestamptz
+}
+
+/// How long one person played one game on one Chicago day, at most three hours. Added and never changed.
+/// CHECK: PlayDay_seconds_check. Trigger: PlayDay_append_only.
+model PlayDay {
+  id        String   @id @default(cuid(2))
+  day       DateTime @db.Date
+  userId    String
+  gameId    String
+  seconds   Int
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+
+  @@unique([day, userId, gameId])
+  @@index([day])
 }

@@ -306,7 +306,7 @@ describe("the fact tables", () => {
         const maker = await newMaker();
         const invoice = await newPayment(maker);
         await insertPaymentPosting(invoice);
-        const feeRow = await insertFeeRow(await insertFeeRun(100_000 + counter * 10_000));
+        const feeRow = await insertFeeRow(await insertFeeRun(10_000_000 + counter * 10_000));
         await insertFeePosting(feeRow);
         await db().$executeRaw`
           INSERT INTO "StripeReversal"
