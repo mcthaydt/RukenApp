@@ -1,11 +1,12 @@
-import { sequence } from "@sveltejs/kit/hooks";
 import { authServices, createHandle } from "./features/accounts/accounts.ts";
-import { keepBackgroundWorkAlive } from "./lib/server/background.ts";
+import { requireEnv } from "./lib/server/env.ts";
+import { setPlatform } from "./lib/server/platform.ts";
 
-// keepBackgroundWorkAlive is first, so every route and form is inside it and mail sent after the
-// answer is kept alive by the host. createHandle then says who sent the request; it builds the
-// sign-in services on the first request that needs them, so /healthz answers without them.
-export const handle = sequence(
-  keepBackgroundWorkAlive,
-  createHandle(() => authServices().handleDeps),
-);
+// The platform is what the host gives that code cannot get anywhere else. Until the site runs on Workers
+// (the next task) it still runs in Node, where started work runs to its end by itself and the database's
+// address is a setting.
+setPlatform({ databaseUrl: () => requireEnv("DATABASE_URL"), waitUntil: () => undefined });
+
+// createHandle says who sent the request; it builds the sign-in services on the first request that needs
+// them, so /healthz answers without them.
+export const handle = createHandle(() => authServices().handleDeps);

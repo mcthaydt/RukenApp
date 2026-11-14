@@ -1,5 +1,6 @@
 // What the host gives that code cannot get anywhere else: the database's address and a way to keep work
-// alive after the answer. The host sets it once, in src/hooks.server.ts; tests set their own.
+// alive after the answer. The host sets it once, in src/hooks.server.ts; every test sets its own, so no test
+// needs Cloudflare. This file imports nothing from the host, for the same reason.
 
 export interface Platform {
   /** The address of the database for this request. */
@@ -8,10 +9,13 @@ export interface Platform {
   waitUntil(work: Promise<unknown>): void;
 }
 
+let current: Platform | undefined;
+
 export function setPlatform(next: Platform): void {
-  throw new Error(`not built yet: ${next.databaseUrl()}`);
+  current = next;
 }
 
 export function platform(): Platform {
-  throw new Error("not built yet");
+  if (current === undefined) throw new Error("No platform is set. src/hooks.server.ts sets it.");
+  return current;
 }
