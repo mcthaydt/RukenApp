@@ -1,11 +1,113 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
+import { lockLedger, postEntry, postingPeriodForMonth } from "./journal.ts";
+import { centsRoundedUp } from "./major-units.ts";
+import { postRelease, releaseKey, releases } from "./payment-posting.ts";
+import { addMonths, parsePeriod, periodOf, type Period } from "./period.ts";
+import { cancelledMonths } from "./reversal-posting.ts";
+
+/**
+ * Releasing a yearly payment's months. A yearly payment puts its first month's part into that month's pool at once
+ * and keeps the other eleven in `premium:deferred`. When each later month opens, that month's part moves into the
+ * month's pool, so it goes only to the games members play that month.
+ *
+ * The daily job calls this, so a run that was missed is repaired by the next one: it looks at every month that has
+ * opened and posts what is missing. Each release has its own key (`release:<invoice>:<month>`), so running twice posts
+ * nothing twice. A release for a month that has closed goes into the open month's pool instead; a closed month is
+ * never reopened.
+ */
 
 export interface ReleaseDeps {
   readonly db: PrismaClient;
   readonly clock: Clock;
 }
 
-export function releaseDueMonths(deps: ReleaseDeps): Promise<{ released: number }> {
-  return Promise.reject(new Error(`not built yet: releaseDueMonths ${typeof deps}`));
+/** Payments older than this have released everything, so the daily scan stops looking at them. */
+const RELEASE_WINDOW_MS = 400 * 24 * 60 * 60 * 1000;
+
+/** How many months a yearly payment sets aside: all but the first. */
+const LATER_MONTHS = 11;
+
+/** Posts every release that is due and not yet posted. Answers how many it posted. */
+export async function releaseDueMonths(deps: ReleaseDeps): Promise<{ released: number }> {
+  const nowMs = deps.clock.epochMs();
+  const currentMonth = periodOf(nowMs);
+  const yearly = await deps.db.paymentPosting.findMany({
+    where: { postedAt: { gte: new Date(nowMs - RELEASE_WINDOW_MS) }, payment: { plan: "annual" } },
+    orderBy: { postedAt: "asc" },
+    select: { stripeInvoiceId: true, firstPeriod: true },
+  });
+  let released = 0;
+  for (const { stripeInvoiceId, firstPeriod } of yearly) {
+    for (let offset = 1; offset <= LATER_MONTHS; offset += 1) {
+      // Months written `YYYY-MM` sort in time order, so a plain comparison finds the months that have opened.
+      const month = addMonths(parsePeriod(firstPeriod), offset);
+      if (month > currentMonth) break;
+      if (await releaseMonth(deps.db, stripeInvoiceId, month, nowMs)) released += 1;
+    }
+  }
+  return { released };
+}
+
+/**
+ * Posts what is missing of one month's release: its part (worked out from every fee taken from the payment so far),
+ * less what a refund or chargeback that stands cancelled from it, less what earlier releases of that month moved.
+ * Usually that is the whole part, once, under `release:<invoice>:<month>`. A month released in part while a dispute
+ * stood is topped up after the dispute is won, under `:2` (then `:3`). Nothing is ever taken back here: a fee that
+ * comes after a month was released was taken from that month's pool by its own entry, and a reversal has its own.
+ *
+ * One transaction per release, under the ledger's lock, reading what it needs inside it: a fee or a dispute posted a
+ * moment earlier is seen, and one being posted waits for this release to commit.
+ */
+async function releaseMonth(db: PrismaClient, stripeInvoiceId: string, month: Period, nowMs: number) {
+  const baseKey = releaseKey(stripeInvoiceId, month);
+  return db.$transaction(async (tx) => {
+    await lockLedger(tx);
+    const payment = await tx.membershipPayment.findUniqueOrThrow({ where: { stripeInvoiceId } });
+    const posting = await tx.paymentPosting.findUniqueOrThrow({ where: { stripeInvoiceId } });
+    const taken = await tx.feePosting.aggregate({
+      where: { stripeInvoiceId, kind: "payment" },
+      _sum: { microCents: true },
+    });
+    const parts = releases({
+      plan: payment.plan,
+      firstPeriod: parsePeriod(posting.firstPeriod),
+      gross: payment.grossCents,
+      tax: payment.taxCents,
+      fees: payment.cardFeeCents + centsRoundedUp(taken._sum.microCents ?? 0n),
+    });
+
+    // What a refund or a chargeback that stands took out of the months set aside: its entries' lines on
+    // `premium:deferred`, less what a won dispute gave back. It cancels the latest months first.
+    const cancelledLines = await tx.journalLine.aggregate({
+      where: {
+        account: "premium:deferred",
+        entry: { stripeInvoiceId, kind: { in: ["refund", "chargeback"] } },
+      },
+      _sum: { amount: true },
+    });
+    const cancelled = cancelledMonths(parts, cancelledLines._sum.amount ?? 0n);
+    const part = parts.find((candidate) => candidate.period === month)?.amount ?? 0n;
+    const target = part - (cancelled.get(month) ?? 0n);
+
+    const earlier = await tx.journalEntry.findMany({
+      where: { OR: [{ idempotencyKey: baseKey }, { idempotencyKey: { startsWith: `${baseKey}:` } }] },
+      include: { lines: { where: { account: "premium:deferred" } } },
+    });
+    const alreadyReleased = earlier
+      .flatMap((entry) => entry.lines)
+      .reduce((total, line) => total + line.amount, 0n);
+    const missing = target - alreadyReleased;
+    if (missing <= 0n) return false;
+
+    const period = await postingPeriodForMonth(tx, month, nowMs);
+    await postEntry(tx, {
+      key: earlier.length === 0 ? baseKey : `${baseKey}:${String(earlier.length + 1)}`,
+      period,
+      kind: "release",
+      stripeInvoiceId,
+      lines: postRelease({ period, amount: missing }),
+    });
+    return true;
+  });
 }

@@ -129,9 +129,11 @@ model PaymentPosting {
 
 /// One stretch of time asked of Stripe for its fee report. The stretches never overlap. It is the one fact table that
 /// moves: requested, then stored or failed, once (StripeFeeRun_forward_only). CHECK: StripeFeeRun_interval_check.
+/// Trigger StripeFeeRun_no_overlap: no two runs that are not failed cover any of the same time; a failed run's stretch
+/// is asked for again, so the start is not unique.
 model StripeFeeRun {
   id                String      @id @default(cuid(2))
-  intervalStart     DateTime    @unique @db.Timestamptz
+  intervalStart     DateTime    @db.Timestamptz
   intervalEnd       DateTime    @db.Timestamptz
   stripeReportRunId String      @unique
   state             FeeRunState @default(requested)
