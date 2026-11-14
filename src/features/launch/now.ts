@@ -8,5 +8,7 @@ export function createLaunchNow(
   settings: { LAUNCH_TEST_SWITCH?: string; BETTER_AUTH_URL?: string },
   clock: Clock,
 ): (cookies: { get(name: string): string | undefined }) => number {
-  throw new Error(`not built yet: createLaunchNow ${String(settings.LAUNCH_TEST_SWITCH)} ${String(clock.epochMs())}`);
+  throw new Error(
+    `not built yet: createLaunchNow ${String(settings.LAUNCH_TEST_SWITCH)} ${String(clock.epochMs())}`,
+  );
 }

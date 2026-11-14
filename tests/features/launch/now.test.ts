@@ -22,14 +22,17 @@ describe("the launch time a request sees", () => {
     expect(now(before)).toBe(clock.epochMs());
   });
 
-  it.each(["https://ruken.example", "https://localhost:4173", "http://localhost.evil.example", "not a url", undefined])(
-    "refuses to start with the switch on at %j",
-    (address) => {
-      expect(() => createLaunchNow({ LAUNCH_TEST_SWITCH: "on", BETTER_AUTH_URL: address }, clock)).toThrow(
-        "LAUNCH_TEST_SWITCH is for tests on this machine",
-      );
-    },
-  );
+  it.each([
+    "https://ruken.example",
+    "https://localhost:4173",
+    "http://localhost.evil.example",
+    "not a url",
+    undefined,
+  ])("refuses to start with the switch on at %j", (address) => {
+    expect(() => createLaunchNow({ LAUNCH_TEST_SWITCH: "on", BETTER_AUTH_URL: address }, clock)).toThrow(
+      "LAUNCH_TEST_SWITCH is for tests on this machine",
+    );
+  });
 
   it.each(["true", "off", "ON"])("refuses a value it does not know (%j)", (value) => {
     expect(() =>
