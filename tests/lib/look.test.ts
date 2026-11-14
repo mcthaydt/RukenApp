@@ -168,6 +168,16 @@ describe("the fonts", () => {
 });
 
 // Screens are plain elements and the look's few classes; they carry no colour, size or style of their own.
+describe("fields", () => {
+  // A maker's form has a list (`select`) and a box for several lines (`textarea`) as well as `input`s. They are
+  // styled by the one rule that styles an input, so they are not left as the browser's own grey.
+  it("one rule gives an input, a select and a textarea the same edge", () => {
+    const selector =
+      /A field is the one place an edge is allowed[\s\S]*?\*\/\s*([^{]+)\{/.exec(css)?.[1] ?? "";
+    for (const element of ["input", "select", "textarea"]) expect(selector).toContain(element);
+  });
+});
+
 describe("screens wear the look and nothing of their own", () => {
   const CLASSES = [
     "card",
