@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   purgeDueAccounts,
   requestDeletion,
@@ -23,6 +23,15 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await database?.stop();
+});
+
+// The test file shares one database, so a deletion an earlier test left waiting would come due in a later test that
+// moves the clock on. Each test starts with none waiting.
+beforeEach(async () => {
+  await db().deletionRequest.updateMany({
+    where: { cancelledAt: null, purgedAt: null },
+    data: { cancelledAt: new Date(0) },
+  });
 });
 
 const DAY_MS = 24 * 60 * 60 * 1000;

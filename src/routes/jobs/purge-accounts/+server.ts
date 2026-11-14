@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import { purgeDueAccounts } from "../../../features/accounts/accounts.ts";
 import { systemClock } from "../../../lib/clock.ts";
 import { prisma } from "../../../lib/server/db.ts";
@@ -19,5 +19,5 @@ export const POST: RequestHandler = async ({ request }) => {
   if (!carriesSecret(request.headers.get("authorization"), optionalEnv("JOBS_SECRET")))
     error(404, "Not found");
   const purged = await purgeDueAccounts({ prisma: prisma(), clock: systemClock });
-  return json({ purged });
+  return Response.json({ purged });
 };
