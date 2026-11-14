@@ -466,3 +466,121 @@ describe("the fact tables", () => {
     });
   });
 });
+
+// The month's pool and the statements made from it: what was shared, to whom, and what each maker was shown. They are
+// facts too, so none is changed after it is written.
+describe("the pool and statement tables", () => {
+  const TABLES = ["PoolRun", "PoolShare", "Statement", "StatementLine"];
+
+  async function newGame(makerUserId: string): Promise<string> {
+    counter += 1;
+    const id = randomUUID();
+    await db().$executeRaw`
+      INSERT INTO "Game"
+        ("id", "publicId", "slug", "makerUserId", "name", "oneLine", "playsOn", "repoFullName", "updatedAt")
+      VALUES
+        (${id}, ${newPublicId()}, ${`pool-game-${String(counter)}`}, ${makerUserId}, 'A game', 'A game about a thing.',
+         'phone_and_computer'::"GamePlaysOn", 'acme/game', now())`;
+    return id;
+  }
+
+  /** A month that has been shared: its row in the ledger and its pool run. */
+  async function sharedMonth(period: string): Promise<void> {
+    await db().$executeRaw`INSERT INTO "LedgerPeriod" ("period") VALUES (${period}) ON CONFLICT DO NOTHING`;
+    await db().$executeRaw`
+      INSERT INTO "PoolRun" ("period", "poolCents", "carryCents", "members", "inputsHash", "sharedAt")
+      VALUES (${period}, 1000, 0, 2, ${"a".repeat(64)}, now())`;
+  }
+
+  async function insertShare(
+    period: string,
+    kind: "play" | "bringing",
+    maker: string,
+    values: { gameId?: string | null; seconds?: number | null; members?: number | null } = {},
+  ): Promise<void> {
+    await db().$executeRaw`
+      INSERT INTO "PoolShare" ("id", "period", "kind", "makerUserId", "gameId", "weight", "amountCents", "seconds", "members")
+      VALUES (${randomUUID()}, ${period}, ${kind}::"PoolShareKind", ${maker}, ${values.gameId ?? null}, 5, 500,
+              ${values.seconds ?? null}, ${values.members ?? null})`;
+  }
+
+  async function insertStatement(maker: string, period: string): Promise<string> {
+    const id = randomUUID();
+    await db().$executeRaw`
+      INSERT INTO "Statement" ("id", "makerUserId", "period", "document", "totalsHash")
+      VALUES (${id}, ${maker}, ${period}, '{}'::jsonb, ${"b".repeat(64)})`;
+    return id;
+  }
+
+  it("has all four tables", async () => {
+    const rows = await db().$queryRaw<{ tablename: string }[]>`
+      SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = ANY(${TABLES})`;
+    expect(rows.map((row) => row.tablename).sort()).toEqual([...TABLES].sort());
+  });
+
+  it.each(TABLES)("%s refuses an update and a delete", async (table) => {
+    const maker = await newMaker();
+    const game = await newGame(maker);
+    const period = `2031-${String((counter % 12) + 1).padStart(2, "0")}`;
+    await sharedMonth(period);
+    await insertShare(period, "play", maker, { gameId: game, seconds: 60 });
+    const statement = await insertStatement(maker, period);
+    await db().$executeRaw`
+      INSERT INTO "StatementLine" ("id", "statementId", "source", "gameId", "ref", "amountCents")
+      VALUES (${randomUUID()}, ${statement}, 'play'::"StatementLineSource", ${game}, 'game', 500)`;
+    const change = {
+      PoolRun: `UPDATE "PoolRun" SET "poolCents" = 1`,
+      PoolShare: `UPDATE "PoolShare" SET "amountCents" = 1`,
+      Statement: `UPDATE "Statement" SET "totalsHash" = 'c'`,
+      StatementLine: `UPDATE "StatementLine" SET "amountCents" = 1`,
+    }[table];
+    await expect(db().$executeRawUnsafe(change ?? "")).rejects.toThrow(new RegExp(`${table} is append-only`));
+    await expect(db().$executeRawUnsafe(`DELETE FROM "${table}"`)).rejects.toThrow(
+      new RegExp(`${table} is append-only`),
+    );
+  });
+
+  it("is one statement for a maker and a month", async () => {
+    const maker = await newMaker();
+    await sharedMonth("2032-01");
+    await insertStatement(maker, "2032-01");
+    await expect(insertStatement(maker, "2032-01")).rejects.toThrow(/Statement_makerUserId_period_key/);
+    await sharedMonth("2033-01");
+    await insertStatement(maker, "2033-01");
+  });
+
+  it("says what a share is for: a play share names a game and seconds, a bringing share neither and names members", async () => {
+    const maker = await newMaker();
+    const game = await newGame(maker);
+    await sharedMonth("2032-03");
+    await expect(insertShare("2032-03", "play", maker, { seconds: 60 })).rejects.toThrow(
+      /PoolShare_kind_check/,
+    );
+    await expect(insertShare("2032-03", "play", maker, { gameId: game })).rejects.toThrow(
+      /PoolShare_kind_check/,
+    );
+    await expect(insertShare("2032-03", "bringing", maker, { gameId: game, members: 1 })).rejects.toThrow(
+      /PoolShare_kind_check/,
+    );
+    await expect(insertShare("2032-03", "bringing", maker, { seconds: 60, members: 1 })).rejects.toThrow(
+      /PoolShare_kind_check/,
+    );
+    await expect(insertShare("2032-03", "bringing", maker)).rejects.toThrow(/PoolShare_kind_check/);
+    await insertShare("2032-03", "play", maker, { gameId: game, seconds: 60 });
+    await insertShare("2032-03", "bringing", maker, { members: 1 });
+  });
+
+  it("is one play share for a game and a month, and one bringing share for a maker and a month", async () => {
+    const maker = await newMaker();
+    const game = await newGame(maker);
+    await sharedMonth("2032-04");
+    await insertShare("2032-04", "play", maker, { gameId: game, seconds: 60 });
+    await expect(insertShare("2032-04", "play", maker, { gameId: game, seconds: 90 })).rejects.toThrow(
+      /PoolShare_play_key/,
+    );
+    await insertShare("2032-04", "bringing", maker, { members: 1 });
+    await expect(insertShare("2032-04", "bringing", maker, { members: 2 })).rejects.toThrow(
+      /PoolShare_bringing_key/,
+    );
+  });
+});
