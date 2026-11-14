@@ -7,7 +7,7 @@ import {
   sessionInfo,
   type Auth,
 } from "../../../src/features/accounts/auth.ts";
-import { cookiePolicy } from "../../../src/features/accounts/cookies.ts";
+import { cookiePolicy, WELCOME_BACK_COOKIE } from "../../../src/features/accounts/cookies.ts";
 import { signInWithPassword, type FormEvent } from "../../../src/features/accounts/forms.ts";
 import {
   SIGN_IN_FAILURE_LIMIT,
@@ -834,6 +834,71 @@ describe("account sign-in pause", () => {
     expect(logged).toContain("password changed notice not sent: EENVELOPE 550");
     expect(logged.join("\n")).not.toContain(email);
     expect((await signIn(email, "a brand new horse")).status).toBe(200);
+  });
+});
+
+describe("signing in while a deletion waits", () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  /** Signs up, then asks to delete the account, with the purge `purgeInDays` days away (negative: already past). */
+  async function deletingAccount(purgeInDays: number) {
+    const email = nextEmail();
+    await post("/sign-up/email", { email, password: "correct horse", name: "Pat" });
+    const user = await db().user.update({ where: { email }, data: { status: "pending_deletion" } });
+    await db().session.deleteMany({ where: { userId: user.id } });
+    // The hook reads the real clock, so the dates are relative to now.
+    const now = Date.now();
+    await db().deletionRequest.create({
+      data: {
+        userId: user.id,
+        requestedAt: new Date(now - 15 * DAY_MS),
+        purgeAfter: new Date(now + purgeInDays * DAY_MS),
+      },
+    });
+    return { email, userId: user.id };
+  }
+
+  const setsWelcomeBack = (response: Response) =>
+    response.headers.getSetCookie().some((line) => line.startsWith(`${WELCOME_BACK_COOKIE}=1;`));
+
+  it("restores the account within the 14 days and flags the welcome back", async () => {
+    const { email, userId } = await deletingAccount(7);
+    const response = await post("/sign-in/email", { email, password: "correct horse" });
+
+    expect(response.status).toBe(200);
+    expect((await db().user.findUniqueOrThrow({ where: { id: userId } })).status).toBe("active");
+    expect(setsWelcomeBack(response)).toBe(true);
+    const info = await sessionInfo(theAuth(), new Headers({ cookie: cookieHeaderFrom(response) }));
+    expect(info?.userStatus).toBe("active");
+  });
+
+  it("flags the welcome back for a cookie a script cannot read, short-lived, on the whole site", async () => {
+    const { email } = await deletingAccount(7);
+    const response = await post("/sign-in/email", { email, password: "correct horse" });
+
+    const line = response.headers
+      .getSetCookie()
+      .find((setCookie) => setCookie.startsWith(`${WELCOME_BACK_COOKIE}=`));
+    expect(line).toMatch(/Max-Age=300/);
+    expect(line).toMatch(/Path=\//);
+    expect(line).toMatch(/HttpOnly/i);
+    expect(line).toMatch(/SameSite=Lax/i);
+  });
+
+  it("keeps an account whose 14 days are over signed out, and flags nothing", async () => {
+    const { email } = await deletingAccount(-1);
+    const response = await post("/sign-in/email", { email, password: "correct horse" });
+
+    expect(setsWelcomeBack(response)).toBe(false);
+    const info = await sessionInfo(theAuth(), new Headers({ cookie: cookieHeaderFrom(response) }));
+    expect(info?.userStatus).toBe("pending_deletion");
+  });
+
+  it("flags nothing for an ordinary sign-in", async () => {
+    const email = nextEmail();
+    await post("/sign-up/email", { email, password: "correct horse", name: "Pat" });
+    const response = await post("/sign-in/email", { email, password: "correct horse" });
+    expect(setsWelcomeBack(response)).toBe(false);
   });
 });
 
