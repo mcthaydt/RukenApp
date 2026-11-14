@@ -4,6 +4,7 @@ import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { fakeMoneyStripe } from "../../support/fake-money-stripe.ts";
 import { addGame, addSession } from "../../support/play.ts";
+import { postEntry, postingPeriod } from "../../../src/features/money/journal.ts";
 import { closeDuePeriods } from "../../../src/features/money/periods.ts";
 import {
   addMembershipPayment,
@@ -130,6 +131,33 @@ describe("runMoneyJob", () => {
     });
     expect(report.problems).toEqual([]);
     expect(untouched.reportStarts).toEqual([]);
+  });
+
+  it("names a yearly payment it cannot release, and still releases the others", async () => {
+    // Review B1. The first payment's second release was already posted with other lines, which needs a person to
+    // look. The job says so by the payment's name, and the payment after it is released all the same.
+    const yearly = { ...PAYMENT, plan: "annual", gross: 10_810n, tax: 820n, cardFee: 330n } as const;
+    await addMembershipPayment(db(), stripe, { ...yearly, invoice: "in_y1", paidAt: "2026-11-05T15:00:00Z" });
+    await addMembershipPayment(db(), stripe, { ...yearly, invoice: "in_y2", paidAt: "2026-11-06T15:00:00Z" });
+    const clock = new TestClock("2026-12-02T12:00:00Z");
+    await db().$transaction(async (tx) => {
+      const period = await postingPeriod(tx, clock.epochMs(), clock.epochMs());
+      await postEntry(tx, {
+        key: "release:in_y1:2026-12:2",
+        period,
+        kind: "release",
+        stripeInvoiceId: "in_y1",
+        lines: [
+          { account: "platform:processor_fees", amount: 1n },
+          { account: "platform:stripe_clearing", amount: -1n },
+        ],
+      });
+    });
+    const report = await runMoneyJob({ db: db(), clock, stripe });
+    expect(report.released).toBe(1);
+    expect(report.problems).toEqual([
+      { step: "releasing yearly payments' months", message: expect.stringContaining("in_y1") as string },
+    ]);
   });
 
   it("keeps the books balanced", async () => {

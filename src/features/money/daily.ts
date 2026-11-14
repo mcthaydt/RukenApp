@@ -6,7 +6,7 @@ import { finalizeDuePeriods } from "./finalize.ts";
 import { postUnpostedPayments } from "./payments.ts";
 import { closeDuePeriods } from "./periods.ts";
 import { rollUpPlayDays } from "./play-rollup.ts";
-import { releaseDueMonths } from "./releases.ts";
+import { releaseDueMonths, type ReleaseFailure } from "./releases.ts";
 import { postReversals, readReversals } from "./reversals.ts";
 import type { MoneyStripe } from "./stripe-port.ts";
 
@@ -71,6 +71,12 @@ export async function runSteps(steps: readonly Step[]): Promise<{ step: string; 
   return problems;
 }
 
+/** The words for payments that could not be released: each by its invoice, with the reason in the error's words. */
+function describeReleaseFailures(failed: readonly ReleaseFailure[]): string {
+  const list = failed.map((failure) => `${failure.stripeInvoiceId} (${failure.message})`).join("; ");
+  return `${String(failed.length)} yearly payment${failed.length === 1 ? "" : "s"} could not be released: ${list}`;
+}
+
 export async function runMoneyJob(deps: MoneyJobDeps): Promise<MoneyJobReport> {
   const { db, clock, stripe } = deps;
   let payments = 0;
@@ -130,7 +136,10 @@ export async function runMoneyJob(deps: MoneyJobDeps): Promise<MoneyJobReport> {
     {
       name: "releasing yearly payments' months",
       run: async () => {
-        released = (await releaseDueMonths({ db, clock })).released;
+        const result = await releaseDueMonths({ db, clock });
+        released = result.released;
+        // The others were released; the step still fails, so the report names what a person must look at.
+        if (result.failed !== undefined) throw new Error(describeReleaseFailures(result.failed));
       },
     },
     {
