@@ -972,7 +972,7 @@ it("pays the bringer only in a member's first twelve months, and never for bring
 it("pays bonuses and carries the rest when nobody played", async () => {                      // Review Focus 8
   /* pool:premium:2026-11 ends at zero; pool:premium:2026-12 holds the carry; PoolRun.carryCents says so */ });
 it("still works out the share of a game whose maker's account was deleted", async () => {     // Review Focus 10
-  /* the User row is a tombstone: the share is credited to maker:<their id>:payable */ });
+  /* the User row is a tombstone: the share is credited to maker:<their id>:payable; then slice 1's purgeDueAccounts runs and every money row is still there, unchanged */ });
 it("shares a month once", async () => { /* a second call: { shared: false }, no new entries */ });
 it("never takes from Ruken's half", async () => {                                              // Review Focus 17
   /* platform:revenue:premium is the same before and after sharePool */ });
@@ -1059,7 +1059,7 @@ Waits for M2 (Connect turned on in test mode) before it is marked ready, and for
   - `bankOf(db, userId): Promise<BankState>` (from the stored row) and `bankDashboard(deps, userId): Promise<string | null>` (null unless `ready`).
 - Trim: `applyAccountUpdated` and the Connect webhook (the Calls).
 
-- [ ] **Step 1 (red):** the carried cases under the new names, and: a first press makes one account and one row, a second press reuses it; a sixth press in an hour is `busy`; Connect not turned on is `not_open` with no row; `refreshBank` moves `none → unfinished → ready` as the fake's account changes, and back to `unfinished` when Stripe turns payouts off; the table holds no column for a bank's number or a person's name. Stubs. Push. Expected: `postgres` fails in `bank.pg.test.ts`, `verify` in the new port cases.
+- [ ] **Step 1 (red):** the carried cases under the new names, and: a first press makes one account and one row, a second press reuses it; a sixth press in an hour is `busy`; Connect not turned on is `not_open` with no row; `refreshBank` moves `none → unfinished → ready` as the fake's account changes, and back to `unfinished` when Stripe turns payouts off; the table holds no column for a bank's number or a person's name; a deleted maker's row stays after slice 1's `purgeDueAccounts` (it holds Stripe's id for the account and three yes-or-no flags, nothing of the person, and money may still be owed to it). Stubs. Push. Expected: `postgres` fails in `bank.pg.test.ts`, `verify` in the new port cases.
 - [ ] **Step 2 (green):** the code and the migration. Push. Expected: all pass.
 
 ### Task 25: Connect your bank (`/make/bank`)
@@ -1447,6 +1447,7 @@ Earlier months
 - State words: "Open. Closes on `<long date>`.", "Closed. Final on `<long date>`.", "Final since `<long date>`."
 - The month shown is the newest that is not final, with the open one under it; "Earlier months" lists final months, each a link to the same screen for that month (`?month=2026-10`).
 - "Needs a person" lines: unplaced fees of the last 62 days, by `product`, with their total; unreadable fees, with the month they hold up; the last job run that was not ok, with the steps named; payouts whose real cost was never matched (Task 31); a month due to be final that is not. With none: "Nothing needs a person."
+- Under a final month's numbers, "Statements": one row per maker with a statement that month, their account's email and what they earned, from the `Statement` rows (design 5.5 lists statements among what staff see). It is a list only; staff read a maker's lines there, and nothing can be changed.
 - "Payouts for `<month>`" links to Task 33's screen once that month's run exists.
 - Every number is read from the ledger. The screen has no form.
 
