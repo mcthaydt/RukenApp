@@ -10,6 +10,8 @@ export interface GitHub {
   commitOf(repo: string, branch: string | null): Promise<string>;
   /** The commit's files as one gzipped tarball, streamed. */
   tarball(repo: string, commitSha: string): Promise<ReadableStream<Uint8Array<ArrayBuffer>>>;
+  /** The number of the installation of the app that holds a repository now, or null when the app is not there. */
+  installationOf(repo: string): Promise<bigint | null>;
 }
 
 export interface GitHubOptions {
@@ -23,7 +25,8 @@ export interface GitHubOptions {
   apiBase?: string;
 }
 
-const NOT_VISIBLE = "Ruken can't see that repository. Choose it on GitHub, then try again.";
+/** What a person is told when Ruken cannot reach their repository, whatever the reason. */
+export const NOT_VISIBLE = "Ruken can't see that repository. Choose it on GitHub, then try again.";
 const NO_BRANCH = "We couldn't find that branch in your repository.";
 const NOT_A_KEY = "GITHUB_APP_PRIVATE_KEY is not a private key in PEM form.";
 
@@ -181,21 +184,31 @@ export function createGitHub(options: GitHubOptions): GitHub {
   const failure = (method: string, path: string, response: Response) =>
     new Error(`GitHub answered ${String(response.status)} to ${method} ${path}`);
 
-  /** A token for this one repository that can only read its files, good for an hour. */
-  async function repositoryToken(repo: string): Promise<string> {
-    const jwt = await appToken({
+  /** The app's own short token, from the app's key and the clock. */
+  function appJwt(): Promise<string> {
+    return appToken({
       appId: options.appId,
       privateKeyPem: options.privateKeyPem,
       nowMs: options.clock.epochMs(),
     });
+  }
 
-    const installationPath = `/repos/${repo}/installation`;
-    const installation = await request(installationPath, { token: jwt });
-    if (installation.status === 404) throw new GameError("NOT_CONNECTED", NOT_VISIBLE);
-    if (!installation.ok) throw failure("GET", installationPath, installation);
-    const installationId = await jsonField(installation, "id");
-    if (typeof installationId !== "number")
-      throw new Error(`GitHub's answer to GET ${installationPath} had no id`);
+  /** The number of the installation that holds a repository, asked as the app; null when the app is not there. */
+  async function installationNumber(repo: string, jwt: string): Promise<number | null> {
+    const path = `/repos/${repo}/installation`;
+    const response = await request(path, { token: jwt });
+    if (response.status === 404) return null;
+    if (!response.ok) throw failure("GET", path, response);
+    const id = await jsonField(response, "id");
+    if (typeof id !== "number") throw new Error(`GitHub's answer to GET ${path} had no id`);
+    return id;
+  }
+
+  /** A token for this one repository that can only read its files, good for an hour. */
+  async function repositoryToken(repo: string): Promise<string> {
+    const jwt = await appJwt();
+    const installationId = await installationNumber(repo, jwt);
+    if (installationId === null) throw new GameError("NOT_CONNECTED", NOT_VISIBLE);
 
     const tokenPath = `/app/installations/${String(installationId)}/access_tokens`;
     const name = repo.split("/")[1] ?? repo;
@@ -211,6 +224,12 @@ export function createGitHub(options: GitHubOptions): GitHub {
   }
 
   return {
+    async installationOf(repo) {
+      checkRepo(repo);
+      const id = await installationNumber(repo, await appJwt());
+      return id === null ? null : BigInt(id);
+    },
+
     async commitOf(repo, branch) {
       checkRepo(repo);
       if (branch !== null) checkBranch(branch);

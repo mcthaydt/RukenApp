@@ -1,0 +1,75 @@
+// The play feature's tables: the pass that opens a game's files, a play session, and its beats. Each row is a fact
+// that is added and never changed (the add-only triggers are in the migration), because the money slice reads them:
+// who played what, why they could, and each beat's time on the server's clock.
+//
+// Prisma cannot express the CHECK rules or the triggers, so they are written by hand at the end of the migration and
+// covered by tests/features/play/schema.pg.test.ts.
+
+/// Why a play was allowed. Only `member` plays count for pay (design 6): a free game, staff and a maker's own game never do.
+enum PlayBasis {
+  member
+  free_game
+  staff
+  own_game
+}
+
+/// A play pass: what lets a browser load one pull of one game's files. A pass's id leads to one row, and that row to
+/// one person, so a leaked address is traced to the member it was made for.
+/// CHECKs: PlayPass_id_check, PlayPass_time_check.
+model PlayPass {
+  /// Made in code: 22 characters of base64url.
+  id        String   @id
+  gameId    String
+  pullId    String
+  /// Null: the one shared pass of a free game, for everyone who is signed out.
+  userId    String?
+  madeAt    DateTime @db.Timestamptz
+  expiresAt DateTime @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  game     Game          @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  pull     GamePull      @relation(fields: [pullId], references: [id], onDelete: Restrict)
+  user     User?         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  sessions PlaySession[]
+
+  @@index([gameId, pullId, userId, expiresAt])
+}
+
+/// One time a person pressed Play. Its token is shown to the page once and only its hash is kept.
+/// CHECKs: PlaySession_tokenHash_check, PlaySession_basis_check.
+model PlaySession {
+  /// Made in code.
+  id        String    @id
+  gameId    String
+  pullId    String
+  passId    String
+  /// Null: nobody was signed in (only a free game is played by nobody).
+  userId    String?
+  basis     PlayBasis
+  /// SHA-256 of the session's token, in 64 lower-case hex characters.
+  tokenHash String
+  startedAt DateTime  @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  game  Game        @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  pull  GamePull    @relation(fields: [pullId], references: [id], onDelete: Restrict)
+  pass  PlayPass    @relation(fields: [passId], references: [id], onDelete: Restrict)
+  user  User?       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  beats PlayBeat[]
+
+  @@index([userId, startedAt])
+  @@index([gameId, startedAt])
+}
+
+/// A page's "still here" message, stamped with the server's clock when it arrived.
+model PlayBeat {
+  id         BigInt   @id @default(autoincrement())
+  sessionId  String
+  receivedAt DateTime @db.Timestamptz
+  /// False when the page said the person had looked away.
+  attentive  Boolean
+
+  session PlaySession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  @@index([sessionId, receivedAt])
+}

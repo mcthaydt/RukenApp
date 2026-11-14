@@ -50,6 +50,13 @@ model User {
 
   // The games feature's tables point at a person; they are declared in games.prisma.
   games Game[]
+
+  // The play feature's tables point at a person; they are declared in play.prisma.
+  playPasses   PlayPass[]
+  playSessions PlaySession[]
+
+  // What GitHub said this person can reach; declared in games.prisma.
+  githubInstallations GitHubInstallation[]
 }
 
 model Session {
