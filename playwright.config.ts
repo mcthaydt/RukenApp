@@ -77,6 +77,10 @@ export default defineConfig({
         GITHUB_WEB_BASE: "http://127.0.0.1:12112",
         // A game's address in the journeys: `*.localhost` names reach this machine, so a browser can open them.
         GAME_ADDRESS_PATTERN: "http://{name}.localhost:8788",
+        // The journeys' site is open whatever the date, so every journey that presses Play keeps passing after the
+        // 30th as before it. A cookie makes one browser see the day before. The site refuses this setting unless its
+        // own address is this machine, and the real site never has it.
+        LAUNCH_TEST_SWITCH: "on",
       },
     },
     {
