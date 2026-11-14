@@ -44,7 +44,6 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan, slice 5 (`session_01HNdX7LvaghiDzFbcAXYQhH`) | 2 Plan | `plan/slice-5` | plan written (Owner, 2026-11-14: "Slice 5 plan", beside slice 2's building); merged (#55); its three questions answered (2026-11-14) and written in by a follow-up pull request |
 | execution, slice 2, first session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) | 4 Execution | `slice-2/game` (pull request #44) | running |
 | fixes, slice 1 (`session_01HNdX7Lkceicj4sgwma7Dcp`) | 6 Fixes | `slice-1/fixes` (pull request #45) | running |
-| plan audit, slice 4 | 3 Plan audit | `audit/slice-4-plan` | done: audit written of the plan on `plan/slice-4` at `18619d3` (1 blocks launch, 13 should fix, 17 notes, 1 question for the Owner; `docs/superpowers/audits/2026-11-14-slice-4-plan-audit.md`); the plan is not changed here. No test ran |
 | plan audit, slice 5 | 3 Plan audit | `audit/slice-5-plan` | done: audit written of the plan on `plan/slice-5` at `4caaba7` (3 block launch, 11 should fix, 11 notes; `docs/superpowers/audits/2026-11-14-slice-5-plan-audit.md`); the plan is not changed here, a follow-up pull request writes the fixes and the answers of 2026-11-14 in. No test ran |
 | plan, slice 4 | 2 Plan | `plan/slice-4` (pull request #58) | plan written (Owner, 2026-11-14: "Start slice 4 plan now"); not merged |
 
@@ -280,7 +279,7 @@ Plan: `docs/superpowers/plans/2026-11-14-slice-4-submitting-admin.md`. It ends w
 Stages:
 
 - [ ] Plan: written on `plan/slice-4` (pull request #58), not merged. Planned against `main` at `527bca3`, with `main` merged in at `b18fb69`. No test ran in the plan session, and no code was written. Read as code: `main`, and the old repository's admin sign-in (`apps/admin/src/lib/server/auth/`), attached read-only for this. Not read as code, because they are not on `main`: slice 2's `admin` and `make` features, and all of slice 3. Read from the registry: `uqr` 0.1.3's licence and integrity (`npm view`). Not measured: anything else; the plan holds no size, count or timing of its own.
-- [ ] Plan audit.
+- [ ] Plan audit (`docs/superpowers/audits/2026-11-14-slice-4-plan-audit.md`, of the plan at `18619d3`): 1 blocks launch, 13 should fix, 17 notes, 1 question for the Owner (Q1, the page and suspension mails); the plan is not changed yet. On branch `audit/slice-4-plan`; not done until merged. No test ran; `uqr` 0.1.3 was checked from the registry and `better-auth/crypto` 1.7.7 read in `node_modules`.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
