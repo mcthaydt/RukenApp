@@ -27,7 +27,6 @@
     "@sveltejs/kit": "3.0.0",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@types/node": "24.19.1",
-    "@types/nodemailer": "8.0.2",
     "@types/pg": "8.23.1",
     "eslint": "10.11.0",
     "eslint-plugin-svelte": "3.23.0",
@@ -47,7 +46,6 @@
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
     "better-auth": "1.7.7",
-    "nodemailer": "10.0.13",
     "pg": "8.23.1",
     "stripe": "22.6.2"
   }

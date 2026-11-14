@@ -22,7 +22,9 @@ export default defineConfig({
       // The hook now runs on every request, so the sign-in settings must exist. All plainly fake.
       BETTER_AUTH_SECRET: "test-only-secret-not-used-anywhere-real",
       BETTER_AUTH_URL: "http://localhost:4173",
-      SMTP_URL: "test:",
+      // No journey uses this address, so the journeys send no mail and need no mail server.
+      RESEND_API_KEY: "re_test_fake",
+      MAIL_ALLOWLIST: "nobody@ruken.test",
       MAIL_FROM: "Ruken <hello@ruken.test>",
     },
   },

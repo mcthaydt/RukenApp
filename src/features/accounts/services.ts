@@ -6,7 +6,7 @@ import {
   type PrismaClient,
 } from "../../lib/server/db.ts";
 import { optionalEnv, requireEnv } from "../../lib/server/env.ts";
-import { createSmtpMailer, smtpTransport, type Mailer } from "../../lib/server/mail.ts";
+import { createResendMailer, type Mailer } from "../../lib/server/mail.ts";
 import { setBirthDate } from "./age.ts";
 import { createAuth, sessionInfo, type Auth } from "./auth.ts";
 import { cookiePolicy, type CookiePolicy } from "./cookies.ts";
@@ -40,7 +40,7 @@ export interface AuthServices {
 export function createAuthServices(source: Settings, db?: PrismaClient): AuthServices {
   const secret = requireEnv("BETTER_AUTH_SECRET", source);
   const baseURL = requireEnv("BETTER_AUTH_URL", source);
-  const smtpUrl = requireEnv("SMTP_URL", source);
+  const resendApiKey = requireEnv("RESEND_API_KEY", source);
   const mailFrom = requireEnv("MAIL_FROM", source);
   const allowlist = optionalEnv("MAIL_ALLOWLIST", source);
 
@@ -51,7 +51,7 @@ export function createAuthServices(source: Settings, db?: PrismaClient): AuthSer
     });
   const clock = systemClock;
   const cookies = cookiePolicy(baseURL);
-  const mailer = createSmtpMailer({ from: mailFrom, allowlist, transport: smtpTransport(smtpUrl) });
+  const mailer = createResendMailer({ apiKey: resendApiKey, from: mailFrom, allowlist });
   const auth = createAuth({ prisma, secret, baseURL, mailer, cookies, clock });
 
   const handleDeps: HandleDeps = {
