@@ -47,6 +47,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | fixes, slice 1 (`session_01HNdX7Lkceicj4sgwma7Dcp`) | 6 Fixes | `slice-1/fixes` (pull request #45) | running |
 | plan audit, slice 5 | 3 Plan audit | `audit/slice-5-plan` | done: audit written of the plan on `plan/slice-5` at `4caaba7` (3 block launch, 11 should fix, 11 notes; `docs/superpowers/audits/2026-11-14-slice-5-plan-audit.md`); the plan is not changed here, a follow-up pull request writes the fixes and the answers of 2026-11-14 in. No test ran |
 | plan, slice 4 | 2 Plan | `plan/slice-4` (pull request #58) | plan written (Owner, 2026-11-14: "Start slice 4 plan now"); not merged |
+| screens audit (Owner, 2026-11-14: "take a screenshot of every single screen, every orientation, every device type, audit them one by one") | audit | `audit/screens` | done: 39 states of `main` at `6ad0214`, 390 screenshots on 10 views each (live test-mode site, 7 states on a local copy), every one looked at; `docs/superpowers/audits/2026-11-14-screens-audit.md`: 2 block launch, 13 should fix, 14 notes; findings reported, not fixed. No test ran |
 
 ## Slice 0: Start
 
