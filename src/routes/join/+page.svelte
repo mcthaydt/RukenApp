@@ -33,21 +33,26 @@
   {:else}
     <h1>Join Ruken to play</h1>
     <p>{data.prices.monthly} a month, or {data.prices.annual} a year. Tax is added where it applies.</p>
-    <p>You pay on the next page, then come straight back.</p>
+    <p>Renews until you cancel. You can cancel any time from your account.</p>
+    {#if data.signedIn}
+      <p>You pay on the next page, then come straight back.</p>
+    {:else}
+      <!-- Signed out, the next page is sign-up, so the steps are said in the order they happen. -->
+      <p>First you make an account, then you pay. Then you come straight back.</p>
+    {/if}
     <form method="POST" action="?/join">
       <input type="hidden" name="next" value={data.next} />
-      <p>
-        <label>
+      <!-- Two rows, each a real radio button in a label the width of the card, so the whole row is the target. -->
+      <div role="radiogroup" aria-label="Plan">
+        <label class="choice">
           <input type="radio" name="plan" value="monthly" checked={plan === "monthly"} />
-          Monthly {data.prices.monthly} a month
+          {data.prices.monthly} a month
         </label>
-      </p>
-      <p>
-        <label>
+        <label class="choice">
           <input type="radio" name="plan" value="annual" checked={plan === "annual"} />
-          Yearly {data.prices.annual} a year
+          {data.prices.annual} a year
         </label>
-      </p>
+      </div>
       {#if form?.error}
         <p class="problem" role="alert">{form.error}</p>
       {/if}

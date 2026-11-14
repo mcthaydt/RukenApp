@@ -167,6 +167,8 @@ describe("screens wear the look and nothing of their own", () => {
     "problem",
     "wordmark",
     "panel",
+    "choice",
+    "apart",
   ];
   const ROUTES = "src/routes";
 
