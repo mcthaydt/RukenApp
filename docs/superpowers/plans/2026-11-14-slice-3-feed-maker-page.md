@@ -69,9 +69,9 @@ Read on 2026-11-14, on `main` at `00d616d`. Where the code and this plan disagre
 - **Owner** (design 5.1, 5.3, 5.7, as approved and revised): the feed matches Instagram Reels, one game per screen, upright clip on an upright screen and wide clip on a wide one; a clip starts without sound and a tap turns it on; share is in at launch, and like, save, follow and the two tabs come later; one feed, newly accepted games first, then the rest by how much members played them in the last seven days; `/g/<game>` opens the feed at that clip; a maker's page is Linktree with a game twist, themed from A Dictionary of Color Combinations, live as soon as it is saved, with https links only; two hints on the first clip, once per device.
 - **Owner, 2026-11-14** (design 5.2, 5.8): the paywall card is the paper card laid over the clip the person tapped, dimmed; one small pip-red mark on that card ("Keep it"); "Continue to payment" is Blue; buttons 12px, cards 20px.
 - **Owner, 2026-11-14**, relayed by the coordinator: start this plan now, beside slice 2's building.
-- **Open, asked of the coordinator on 2026-11-14. Each is held to one task, which does not start without its answer.**
-  - **Q1. Social icons** (design 5.3 names them). The repository has no icon source. A (recommended): about ten marks copied as path data from the CC0 `simple-icons` set, with its licence beside them, as the colour data is. B: no icons; a social link is a small button with the site's name. C: no social row at launch. Task 23 is written for A and says what B and C change.
-  - **Q2. The maker's photo** (design 5.3). A (recommended): served like a clip, from the `media` name, by one more key shape on slice 2's gate. B: no photo at launch; the first letter of the name in a circle. Branch G (Tasks 20 and 21) is written for A; under B it is not built, and Task 22's letter is all there is.
+- **Asked of the coordinator on 2026-11-14, and answered by the Owner the same day** (relayed by the coordinator):
+  - **Q1. Social icons** (design 5.3 names them). The repository had no icon source. Owner, 2026-11-14: "Real icons". About ten marks are copied as path data from the CC0 `simple-icons` set, as files with its licence beside them, the way the colour data is; no package is added (Task 23). The other choices were small buttons with the site's name, or no social row at launch.
+  - **Q2. The maker's photo** (design 5.3). Owner, 2026-11-14: "Yes". A photo is served like a clip, from the `media` name, by one more key shape on slice 2's gate (branch G, Tasks 20 and 21). The other choice was no photo at launch.
 - **Calls** (the Owner can overrule):
   - **The feed is one page of clips**, the newest order worked out on the server, fifty games at most (`FEED_MAX`), with no "load more": launch day has one game. The page scrolls by the browser's own snap, so swipe and wheel need no script; the arrow keys are three lines of script.
   - **"Newly accepted" is seven days** (`NEW_FOR_MS`) from the first time staff accepted the game. An accepted update, or a game its maker took off and put back, is not new again.
@@ -94,9 +94,8 @@ Read on 2026-11-14, on `main` at `00d616d`. Where the code and this plan disagre
 
 ## Where execution stops and waits for the Owner
 
-There is no command for the Owner in this slice: no new setting, secret, bucket or address. The stops are:
+There is no command for the Owner in this slice: no new setting, secret, bucket or address. Q1 and Q2 are answered (above), so nothing waits on them. The stops are:
 
-- **Q1** before Task 23 and **Q2** before branch G (Tasks 20 and 21), above. The coordinator relays the answers.
 - **"Fine" on the screenshots**, once per branch that has screens (D, E, F, H, I; each branch's last step): the execution session sends the coordinator the green run and one line per screen; the Owner looks at `look: <screen>`, phone and computer.
 - **The real site**, Task 27: a person opens it on a phone and on a computer.
 
@@ -120,9 +119,9 @@ Ten branches. Each starts from `main` only after what it needs is merged and gre
 | D | `slice-3/feed` | 13 to 15 | C; slice 2's branch F | the feed at `/`, share, and the feed at `/g/<game>` |
 | E | `slice-3/feed-controls` | 16, 17 | D | sound and the current clip, the two hints |
 | F | `slice-3/paywall-clip` | 18, 19 | D | the paywall card over the dimmed clip, with its pip mark |
-| G | `slice-3/photo` | 20, 21 | B; slice 2's branch D; Q2 | a maker's photo, stored and served |
-| H | `slice-3/maker-page` | 22, 23 | B, D; Q1 for Task 23 | `/<handle>`: games, links, colours; link taps; social icons |
-| I | `slice-3/edit-page` | 24 to 26 | H (and G, if Q2 is A) | the four `/make/page` screens |
+| G | `slice-3/photo` | 20, 21 | B; slice 2's branch D | a maker's photo, stored and served |
+| H | `slice-3/maker-page` | 22, 23 | B, D | `/<handle>`: games, links, colours; link taps; social icons |
+| I | `slice-3/edit-page` | 24 to 26 | G, H | the four `/make/page` screens |
 | J | `slice-3/real-site` | 27 | all of the above | design 8's lines for this slice, in journeys and on the real site |
 
 A and B use nothing of slice 2 and nothing of each other, so they can run side by side, and before slice 2 is merged if the coordinator and the Owner choose. G can run beside C to F.
@@ -150,7 +149,7 @@ src/features/pages/
   library/colours.json           the 159 colours, as the data set has them
   library/colours-LICENSE.txt    the data set's MIT licence
   library/colours-source.json    where the file came from: package, version, tarball, integrity, bytes, sha256
-  library/social-icons.json, social-icons-LICENSE.txt    (Task 23, if Q1 is A)
+  library/social-icons.json, social-icons-LICENSE.txt, social-icons-source.json    (Task 23)
 src/features/feed/
   feed.ts                entry (server)
   feed.browser.ts        entry for components
@@ -896,7 +895,7 @@ test("a member's card has no mark", async ({ page }) => { /* payAsNewMember(page
 
 # Branch G: `slice-3/photo`
 
-Needs branch B, slice 2's branch D (the gate) on `main`, and the answer to Q2. Under answer B this branch is not built.
+Needs branch B and slice 2's branch D (the gate) on `main`. Owner, 2026-11-14, on the photo: "Yes" (Q2).
 
 ### Task 20: A maker's photo: the rules, saving it, and removing it
 
@@ -940,7 +939,7 @@ it("the gate's photo pattern is the pages feature's", () => { /* for a list of g
 
 # Branch H: `slice-3/maker-page`
 
-Needs branches B and D. Task 23 needs the answer to Q1.
+Needs branches B and D.
 
 ### Task 22: A maker's page (`/<handle>`)
 
@@ -1031,9 +1030,9 @@ test("a member's sign-up records the maker's page they came through", async ({ p
   `THEMES` and `rgb` are imported by the test from `src/features/pages/themes.ts` and slice 1's look support. Push. Expected: `browser` fails in `maker-page.test.ts` (404 at `/<handle>`) and in the new `pay.test.ts` case; "Ruken's own addresses" and the missing-page case pass already, say so.
 - [ ] **Step 2 (green):** the component, the matcher, the two routes, the layout's list. Push. Expected: all pass, the architecture test included (`src/params/` reaches `pages` through its browser entry).
 
-### Task 23: Social icons (waits for Q1)
+### Task 23: Social icons
 
-Written for answer A. Under B, the same links are shown in the same row as small buttons with the site's name, and no file is copied: leave out `social-icons.json`, its licence and its source record, and the icon cases below. Under C, this task is not built.
+Owner, 2026-11-14: "Real icons" (Q1).
 
 **Files:**
 - Create: `src/features/pages/library/social-icons.json`, `social-icons-LICENSE.txt`, `social-icons-source.json`, `prisma/migrations/<timestamp>_social_links/migration.sql`
@@ -1057,7 +1056,7 @@ Grandma: a row of marks a person already knows, each named for a screen reader, 
 
 # Branch I: `slice-3/edit-page`
 
-Needs branch H (and G, when Q2 is A). Four small screens, each one paper card with one thing to do. All four need an account: signed out, the person goes to sign-in and comes back, as slice 2's `/make` does. Slice 4's onboarding uses the first for its step 1 and the others for its step 2.
+Needs branches G and H. Four small screens, each one paper card with one thing to do. All four need an account: signed out, the person goes to sign-in and comes back, as slice 2's `/make` does. Slice 4's onboarding uses the first for its step 1 and the others for its step 2.
 
 ### Task 24: Your page (`/make/page`)
 
@@ -1093,7 +1092,7 @@ Once there is a page, the fields hold what was saved, the note reads "People fin
 See your page
 Opened 12 times.
 
-Add a photo            (or "Change your photo"; only when Q2 is A)
+Add a photo            (or "Change your photo")
 Pick your colours
 Your links
 ```
@@ -1141,7 +1140,7 @@ test("the maker's area links to the page", async ({ page }) => { /* /make has a 
 ### Task 25: Your colours and your photo (`/make/page/colours`, `/make/page/photo`)
 
 **Files:**
-- Create: `src/features/pages/ThemePicker.svelte`, `src/routes/make/page/colours/+page.server.ts`, `+page.svelte`, and, when Q2 is A, `src/routes/make/page/photo/+page.server.ts`, `+page.svelte`
+- Create: `src/features/pages/ThemePicker.svelte`, `src/routes/make/page/colours/+page.server.ts`, `+page.svelte`, `src/routes/make/page/photo/+page.server.ts`, `+page.svelte`
 - Modify: `src/features/pages/pages.browser.ts`
 - Test: `tests/browser/edit-page.test.ts` (add cases)
 
@@ -1165,7 +1164,7 @@ Back to your page
 
 Grandma: tap the colours you like, press Save. Each tile shows what words and buttons will look like in it.
 
-**`/make/page/photo`** (when Q2 is A):
+**`/make/page/photo`:**
 
 ```
 Your photo
@@ -1200,7 +1199,6 @@ test("every tile is easy to hit, and there is one for each offered combination",
 test("a number that is not offered is refused, and the colours stay", async ({ page }) => {                             // Review Focus 7
   /* post theme=349 to the form's action with page.request, signed in: 400; /<handle> keeps its colours */ });
 test("someone with no page yet is sent to make one first", async ({ page }) => { /* signUp; /make/page/colours and /make/page/photo → /make/page */ });
-// when Q2 is A:
 test("a maker adds a photo, changes it and removes it", async ({ page }, testInfo) => {
   /* tinyPng(): the 67 bytes of a 1 by 1 PNG, from base64 "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==".
      Choose it, Save photo → saved. /<handle> has an img whose src matches /^http:\/\/media\.localhost:8788\/photos\/[0-9a-f]{16}\.(jpg|png)$/ and that address answers 200 as an image.
@@ -1235,7 +1233,7 @@ Address
 [ https:// ]
 (•) A link
 ( ) A game somewhere else
-( ) A small icon, for YouTube, Discord and the like      (only when Q1 is A or B)
+( ) A small icon, for YouTube, Discord and the like
 
 [ Add link ]
 
@@ -1269,7 +1267,7 @@ test("nobody changes another maker's links", async ({ page, browser }) => { /* p
 test("the card has one filled button", async ({ page }) => { /* filledButtons(page) has count 1: "Add link" */ });
 ```
 
-  When Q1 is A or B, one more case: "A small icon" with a YouTube address shows under "Elsewhere" on the page, and with `https://example.com` is refused with "We don't have an icon for that site yet. Add it as a link." Push. Expected: `browser` fails in the new cases (404 at `/make/page/links`).
+  One more case: "A small icon" with a YouTube address shows under "Elsewhere" on the page, and with `https://example.com` is refused with "We don't have an icon for that site yet. Add it as a link." Push. Expected: `browser` fails in the new cases (404 at `/make/page/links`).
 - [ ] **Step 2 (green):** the route. Push. Expected: all pass.
 - [ ] **Step 3:** send the coordinator the green run and one line each for "your page, before it is made", "your page, saved", "pick your colours", "your photo" and "your links". Mark the branch ready after "fine".
 
