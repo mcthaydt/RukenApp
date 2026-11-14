@@ -5,6 +5,15 @@ import { rgb, token } from "../../support/look-tokens.ts";
 // size, a font, a request), not taste. A screenshot is attached for a person to look at; nothing compares it.
 
 /**
+ * What a computed `font-family` must start with: exactly this family, first. Chromium writes the family in
+ * quotes (`"Young Serif", Georgia, ...`) and WebKit drops them (`Young Serif, Georgia, ...`), so the quotes are
+ * optional; the name and its place at the front of the list are as strict as before.
+ */
+export function startsWithFamily(family: string): RegExp {
+  return new RegExp(`^"?${family}"?(,|$)`);
+}
+
+/**
  * Every card screen that a journey reaches without making an account, and how. Each `open` ends by waiting
  * for the screen's heading, so the checks that follow see the finished page.
  */

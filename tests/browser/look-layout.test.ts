@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { signUp } from "./support/account.ts";
-import { boxOf, CARD_SCREENS, type Box } from "./support/look.ts";
+import { boxOf, CARD_SCREENS, startsWithFamily, type Box } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The Owner looked at the screenshots of branch L ("fix all the issues", 2026-11-14). These journeys pin what
@@ -169,7 +169,7 @@ test.describe("every card screen has a way home", () => {
       await screen.open(page);
       const wordmark = page.getByRole("link", { name: "Ruken", exact: true });
       await expect(wordmark).toHaveAttribute("href", "/");
-      await expect(wordmark).toHaveCSS("font-family", /^"Young Serif"/);
+      await expect(wordmark).toHaveCSS("font-family", startsWithFamily("Young Serif"));
       await expect(wordmark).toHaveCSS("color", rgb(token("--chalk")));
       await expect(wordmark).toHaveCSS("text-decoration-line", "none");
       const mark = await boxOf(wordmark);
