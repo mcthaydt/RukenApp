@@ -31,8 +31,8 @@ afterAll(async () => {
 const stripe = fakeMoneyStripe();
 
 /** Shares a month at a moment, the way making it final does. */
-function share(period: string, at: string) {
-  return db().$transaction((tx) => sharePool(tx, parsePeriod(period), Date.parse(at)));
+function share(period: string, at: string, prisma: PrismaClient = db()) {
+  return prisma.$transaction((tx) => sharePool(tx, parsePeriod(period), Date.parse(at)));
 }
 
 /** A monthly payment of $10.81 (82 cents of it tax, a 61-cent card fee), paid on the 2nd of the month. */
@@ -49,57 +49,68 @@ function monthly(invoice: string, month: string) {
 
 describe("sharePool", () => {
   it("shares the worked month exactly as the pure functions say", async () => {
-    // Task 8's three members. A: monthly, brought by X, played X's game 1 for 2 hours and Y's game 2 for 1 hour. B:
-    // yearly, brought by nobody, played game 2 for half an hour. C: monthly, brought themselves, played nothing.
-    const one = await addGame(db());
-    const two = await addGame(db());
-    const clock = new TestClock("2026-11-20T12:00:00Z");
-    const yearly = {
-      invoice: "in_wb",
-      gross: 10_717n,
-      tax: 817n,
-      cardFee: 341n,
-      plan: "annual",
-      paidAt: "2026-11-02T15:00:00Z",
-    } as const;
-    await aMonth(db(), stripe, clock, [
-      {
-        payment: monthly("in_wa", "2026-11"),
-        laterFeeCents: 12,
-        broughtBy: one.makerUserId,
-        plays: [
-          { gameId: one.gameId, seconds: 7200 },
-          { gameId: two.gameId, seconds: 3600 },
-        ],
-      },
-      { payment: yearly, laterFeeCents: 46, broughtBy: null, plays: [{ gameId: two.gameId, seconds: 1800 }] },
-      { payment: monthly("in_wc", "2026-11"), laterFeeCents: 12, broughtBy: "self", plays: [] },
-    ]);
-    expect((await balancesOf(db()))["pool:premium:2026-11"]).toBe(-1323n);
+    // In a database of its own: the yearly member covers eleven more months, which the other tests would read.
+    const own = await startTestDatabase();
+    const prisma = own.prisma;
+    try {
+      // Task 8's three members. A: monthly, brought by X, played X's game 1 for 2 hours and Y's game 2 for 1 hour. B:
+      // yearly, brought by nobody, played game 2 for half an hour. C: monthly, brought themselves, played nothing.
+      const one = await addGame(prisma);
+      const two = await addGame(prisma);
+      const clock = new TestClock("2026-11-20T12:00:00Z");
+      const yearly = {
+        invoice: "in_wb",
+        gross: 10_717n,
+        tax: 817n,
+        cardFee: 341n,
+        plan: "annual",
+        paidAt: "2026-11-02T15:00:00Z",
+      } as const;
+      await aMonth(prisma, stripe, clock, [
+        {
+          payment: monthly("in_wa", "2026-11"),
+          laterFeeCents: 12,
+          broughtBy: one.makerUserId,
+          plays: [
+            { gameId: one.gameId, seconds: 7200 },
+            { gameId: two.gameId, seconds: 3600 },
+          ],
+        },
+        {
+          payment: yearly,
+          laterFeeCents: 46,
+          broughtBy: null,
+          plays: [{ gameId: two.gameId, seconds: 1800 }],
+        },
+        { payment: monthly("in_wc", "2026-11"), laterFeeCents: 12, broughtBy: "self", plays: [] },
+      ]);
+      expect((await balancesOf(prisma))["pool:premium:2026-11"]).toBe(-1323n);
 
-    expect(await share("2026-11", "2026-12-10T12:00:00Z")).toEqual({ shared: true });
-    const balances = await balancesOf(db());
-    // X is owed the bonus (231) and game 1 (419); Y is owed game 2 (673). The pool is empty.
-    expect(balances[`maker:${one.makerUserId}:payable`]).toBe(-650n);
-    expect(balances[`maker:${two.makerUserId}:payable`]).toBe(-673n);
-    expect(balances["pool:premium:2026-11"] ?? 0n).toBe(0n);
-    expect(await db().poolRun.findUniqueOrThrow({ where: { period: "2026-11" } })).toMatchObject({
-      poolCents: 1323n,
-      carryCents: 0n,
-      members: 3,
-    });
-    const shares = await db().poolShare.findMany({
-      where: { period: "2026-11" },
-      orderBy: { amountCents: "asc" },
-    });
-    expect(shares.map((row) => [row.kind, row.amountCents, row.seconds, row.members])).toEqual([
-      ["bringing", 231n, null, 1],
-      ["play", 419n, 7200, null],
-      ["play", 673n, 5400, null],
-    ]);
-    await expectBooksBalanced(db());
+      expect(await share("2026-11", "2026-12-10T12:00:00Z", prisma)).toEqual({ shared: true });
+      const balances = await balancesOf(prisma);
+      // X is owed the bonus (231) and game 1 (419); Y is owed game 2 (673). The pool is empty.
+      expect(balances[`maker:${one.makerUserId}:payable`]).toBe(-650n);
+      expect(balances[`maker:${two.makerUserId}:payable`]).toBe(-673n);
+      expect(balances["pool:premium:2026-11"] ?? 0n).toBe(0n);
+      expect(await prisma.poolRun.findUniqueOrThrow({ where: { period: "2026-11" } })).toMatchObject({
+        poolCents: 1323n,
+        carryCents: 0n,
+        members: 3,
+      });
+      const shares = await prisma.poolShare.findMany({
+        where: { period: "2026-11" },
+        orderBy: { amountCents: "asc" },
+      });
+      expect(shares.map((row) => [row.kind, row.amountCents, row.seconds, row.members])).toEqual([
+        ["bringing", 231n, null, 1],
+        ["play", 419n, 7200, null],
+        ["play", 673n, 5400, null],
+      ]);
+      await expectBooksBalanced(prisma);
+    } finally {
+      await own.stop();
+    }
   });
-
   it("pays the bringer only in a member's first twelve months, and never for bringing yourself", async () => {
     // Review Focus 7. In March 2027: M1 joined December 2026 (month four of twelve), M2 joined March 2026 (month
     // thirteen), M3 brought themselves, M4's first join had no maker and a later one named Y.
