@@ -48,7 +48,12 @@ async function holdAnswersTo(page: Page, address: RegExp) {
     await mayFinish;
     await route.continue();
   });
-  return { release: () => release(), requestsSoFar: () => requests };
+  return {
+    release: () => {
+      release();
+    },
+    requestsSoFar: () => requests,
+  };
 }
 
 /** Where a thing's words are, from the top of its first line to the bottom of its last (its box also holds air). */
