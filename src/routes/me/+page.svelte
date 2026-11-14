@@ -10,7 +10,7 @@
 
   // What each button under the membership line says (membership/format.ts picks which one).
   const BUTTON_WORDS = {
-    manageOrCancel: "Manage or cancel",
+    manageOrCancel: "Change card or cancel",
     manage: "Manage",
     updateCard: "Update card",
   } as const;
@@ -45,11 +45,11 @@
         <p class="problem" role="alert">{form.portalError}</p>
       {/if}
       <button>{BUTTON_WORDS[data.membership.button]}</button>
-      <small class="note">Opens Stripe, where you can change your card or cancel.</small>
+      <small class="note">Opens our payment page, run by Stripe.</small>
     </form>
   {/if}
   <form method="POST" action="/sign-out">
     <button class="quiet">Sign out</button>
   </form>
-  <p class="note"><a href="/me/delete">Delete my account</a></p>
+  <p class="note apart"><a href="/me/delete">Delete my account</a></p>
 </main>
