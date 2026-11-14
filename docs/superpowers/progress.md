@@ -13,7 +13,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | 1 | Accounts and membership | Every branch is merged to main: A #13, B #14, C #18, D #21, G #26, L #25, E0 #31, E #33, F #35, H #36, the Hyperdrive id #38, and the palette and 12px buttons #42. Plan, Cloudflare revision and look plan, with their audits, merged (#10, #12, #15, #19, #22, #23); the implementation audit merged (#43). The audit's six fixes are on `slice-1/fixes` (pull request #45, a draft). Open: S1 and S2 (the Owner), and Task 31 on the real site | 90% |
 | 2 | Games and play | plan merged (#27). Plan audit written, with the plan fixed and the coordinator's answers and the Owner's decision of 2026-11-14 (makers take their own games off Ruken) in it, merged (#29). The first execution session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) is on branch A, `slice-2/game` (pull request #44, a draft; the progress here is its own to set). Open: the maker agreement's text (the coordinator supplies it before branch M), FloorFifty's two clips and four items in FloorFifty's own repository | 45% (tasks 1 to 14 of 31 green: branches A to D) |
 | 3 | The feed and the maker's page | plan merged (#53); no code yet. Q1 (social icons) and Q2 (the maker's photo) are answered by the Owner, 2026-11-14 | 0% |
-| 4 | Submitting and the admin portal | plan written on `plan/slice-4` (Owner, 2026-11-14: "Start slice 4 plan now"); in a pull request, not merged; no code yet. Four questions are with the Owner (the authenticator, "usually within a day", what suspending does, two things for after launch) | 0% |
+| 4 | Submitting and the admin portal | plan written on `plan/slice-4` (pull request #58; Owner, 2026-11-14: "Start slice 4 plan now"), not merged; no code yet. Four questions are with the Owner (the authenticator, "usually within a day", what suspending does, two things for after launch) | 0% |
 | 5 | Money (after launch, before 10 December) | plan written, on `plan/slice-5` (pull request #55, a draft), started alongside slice 2's build (Owner, 2026-11-14: "Slice 5 plan"). Three questions asked and not yet answered: the cost of sending a payout and which countries (the Owner), the second person and the code (the coordinator). Nothing built | 0% |
 
 ## Sessions
@@ -45,7 +45,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | execution, slice 2, first session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) | 4 Execution | `slice-2/game` (pull request #44) | running |
 | fixes, slice 1 (`session_01HNdX7Lkceicj4sgwma7Dcp`) | 6 Fixes | `slice-1/fixes` (pull request #45) | running |
 | plan audit, slice 5 | 3 Plan audit | `audit/slice-5-plan` | done: audit written of the plan on `plan/slice-5` at `4caaba7` (3 block launch, 11 should fix, 11 notes; `docs/superpowers/audits/2026-11-14-slice-5-plan-audit.md`); the plan is not changed here, a follow-up pull request writes the fixes and the answers of 2026-11-14 in. No test ran |
-| plan, slice 4 | 2 Plan | `plan/slice-4` | plan written (Owner, 2026-11-14: "Start slice 4 plan now"); in a pull request |
+| plan, slice 4 | 2 Plan | `plan/slice-4` (pull request #58) | plan written (Owner, 2026-11-14: "Start slice 4 plan now"); not merged |
 
 ## Slice 0: Start
 
@@ -278,7 +278,7 @@ Plan: `docs/superpowers/plans/2026-11-14-slice-4-submitting-admin.md`. It ends w
 
 Stages:
 
-- [ ] Plan: written on `plan/slice-4`, in a pull request, not merged. Planned against `main` at `527bca3`. No test ran in the plan session, and no code was written. Read as code: `main`, and the old repository's admin sign-in (`apps/admin/src/lib/server/auth/`), attached read-only for this. Not read as code, because they are not on `main`: slice 2's `admin` and `make` features, and all of slice 3. Not measured: anything; the plan holds no size, count or timing of its own.
+- [ ] Plan: written on `plan/slice-4` (pull request #58), not merged. Planned against `main` at `527bca3`, with `main` merged in at `b18fb69`. No test ran in the plan session, and no code was written. Read as code: `main`, and the old repository's admin sign-in (`apps/admin/src/lib/server/auth/`), attached read-only for this. Not read as code, because they are not on `main`: slice 2's `admin` and `make` features, and all of slice 3. Not measured: anything; the plan holds no size, count or timing of its own.
 - [ ] Plan audit.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
