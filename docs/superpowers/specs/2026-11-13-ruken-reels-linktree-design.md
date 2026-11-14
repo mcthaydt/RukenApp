@@ -82,6 +82,37 @@ Picked: B. The Owner handed over how it is built ("Make it happen"), so this is 
 
 Each screen says how it passes the drunk grandma test: one obvious next step, words a person says out loud, and a plain way back.
 
+### 5.0 Before launch: the opening page (/)
+
+Owner, 2026-11-14: "Yes, build it". Until Monday 30 November 2026, 11:00 CT, `/` is a short opening page for players; from that minute it is the feed (5.1), switched by the clock with no deploy. The page is for players, and its one action is to make an account now (Owner).
+
+```
+┌─────────────────────┐
+│ Ruken               │
+│                     │
+│ Games, one swipe    │
+│ at a time.          │
+│  ┌───────────────┐  │
+│  │ a phone, the  │  │
+│  │ FloorFifty    │  │
+│  │ upright clip  │  │
+│  │ on a loop     │  │
+│  └───────────────┘  │
+│ Opens Monday        │
+│ 30 November         │
+│ [ Make an account ] │
+│ Sign in             │
+└─────────────────────┘
+```
+
+- One line says what Ruken is: "Games, one swipe at a time."
+- A phone shows FloorFifty's upright clip, muted, on a loop. Until that clip exists it shows a still image of the game.
+- "Opens Monday 30 November", then one button, "Make an account", which goes to sign-up. A small "Sign in" link sits under it for people who already have an account.
+- Someone signed in sees "You're in. See you on the 30th." and a link to their account instead of the button.
+- No waitlist, no counts, no countdown, no claims. The look is section 5.8's, with restraint: nothing moves but the clip, and the page loads fast.
+- The switch reads the injected clock in America/Chicago, so it is tested at 10:59 and 11:00 on the 30th.
+- Drunk grandma: one sentence to read, one button to press, and "Sign in" for the way back in.
+
 ### 5.1 The feed (/)
 
 Owner: "Match the UI/UX of Instagram reels primarily"; TikTok only where Reels is silent. Owner: "we have vertical video for vertical screens, horizontal video for horizontal screens."
@@ -341,6 +372,7 @@ Each slice is one cycle of the workflow (plan, plan audit, execution, implementa
 |---|---|---|
 | 0 | Start. The coordinator sets up the new repository: CLAUDE.md, AGENTS.md, this spec, progress.md, the app skeleton and the CI workflow | an empty app, green on main |
 | 1 | Accounts and membership. Sign-in, the subscription, the paywall card, deployed to a real address | a stranger can sign up, pay and cancel |
+| 1b | The opening page. Section 5.0, ahead of slice 3 (Owner, 2026-11-14) | `/` shows the opening page until 11:00 CT on 30 November, then the feed |
 | 2 | Games and play. A game and its clips, the GitHub pull, the game gate, the play pass, play time | a member can play a pulled game, and the time is recorded |
 | 3 | The feed and the maker's page. Sections 5.1, 5.3 and 5.6, and the viewer's onboarding (5.7) | the two screens, with real games in them |
 | 4 | Submitting and the admin portal. Sections 5.4 and 5.5, without the money screens, and the maker's onboarding (5.7) | a maker submits; staff accept, send back and take down |

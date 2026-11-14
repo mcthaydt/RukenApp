@@ -43,10 +43,15 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan, slice 3 | 2 Plan | `plan/slice-3` | plan written (Owner, 2026-11-14: start the slice 3 plan now, beside slice 2's building); merged (#53); the Owner's two answers follow on a second pull request |
 | plan, slice 5 (`session_01HNdX7LvaghiDzFbcAXYQhH`) | 2 Plan | `plan/slice-5` | plan written (Owner, 2026-11-14: "Slice 5 plan", beside slice 2's building); merged (#55); its three questions answered (2026-11-14) and written in by a follow-up pull request |
 | execution, slice 2, first session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) | 4 Execution | `slice-2/game` (pull request #44) | running |
-| execution, slice 1, the workers.dev address (`session_01HNdX7J9Q2najQBUNUTdg4k`) | 4 Execution | `slice-1/workers-dev` (merged #61), `slice-1/deploy-site-only` (pull request #64) | running |
+| execution, slice 1, the workers.dev address (`session_01HNdX7J9Q2najQBUNUTdg4k`) | 4 Execution | `slice-1/workers-dev` (merged #61), `slice-1/deploy-site-only` (merged #64) | archived |
 | fixes, slice 1 (`session_01HNdX7Lkceicj4sgwma7Dcp`) | 6 Fixes | `slice-1/fixes` (pull request #45) | running |
 | plan audit, slice 5 | 3 Plan audit | `audit/slice-5-plan` | done: audit written of the plan on `plan/slice-5` at `4caaba7` (3 block launch, 11 should fix, 11 notes; `docs/superpowers/audits/2026-11-14-slice-5-plan-audit.md`); the plan is not changed here, a follow-up pull request writes the fixes and the answers of 2026-11-14 in. No test ran |
 | plan, slice 4 | 2 Plan | `plan/slice-4` (pull request #58) | plan written (Owner, 2026-11-14: "Start slice 4 plan now"); not merged |
+| coordinator, fourth (`session_01HNdX7JKYUteXqFnZHx6dez`) | 1 Spec, coordination | `spec/opening-page` | running (took over 2026-11-14 09:20 UTC at the 500k limit) |
+| spec, the opening page | 1 Spec | `spec/opening-page` | design 5.0 written (Owner, 2026-11-14: "Yes, build it"); planned next, ahead of slice 3 |
+| execution, slice 3, branch A (`session_01HNdX7Lu88QTewJX8NtAg8u`) | 4 Execution | `slice-3/themes` | running (needs slice 1 only) |
+| audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | running (Owner, 2026-11-14: "take a screenshot of every single screen, every orientation, every device type, audit them one by one") |
+| audit, FloorFifty for production (`session_01HNdX7HXjg2huySfHRH521r`, in SNEKPRTY/FloorFifty) | audit | FloorFifty's own branch | running (Owner, 2026-11-14: "audit the game for production excluding known gaps like deployment") |
 
 ## Slice 0: Start
 
