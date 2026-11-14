@@ -64,6 +64,9 @@ model User {
   // The launch feature's tables point at a person; they are declared in launch.prisma.
   wishlist     Wishlist[]
   wishlistMail WishlistMail?
+
+  // The money feature's ledger lines name a maker; they are declared in money.prisma.
+  journalLines JournalLine[]
 }
 
 model Session {

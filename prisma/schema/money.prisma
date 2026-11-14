@@ -1,0 +1,86 @@
+// The money feature's ledger: a double-entry journal and the months it is kept in. Every journal row is a fact that is
+// added and never changed, so a wrong entry is corrected by a new one (the add-only triggers are in the migration).
+// Amounts are whole cents in a BigInt; a debit is positive and a credit negative, so an entry's lines add up to zero.
+//
+// Prisma cannot express the CHECK rules or the triggers, so they are written by hand at the end of the migration and
+// covered by tests/features/money/schema.pg.test.ts.
+
+/// Where a month stands. It moves open, then closed, then final, and never back: a closed month takes no more facts
+/// of its own (a late one is posted into the open month), and a final month takes no entry at all.
+enum LedgerPeriodState {
+  open
+  closed
+  final
+}
+
+/// What an entry is about. The posting functions in src/features/money/ name the kind of every entry they make.
+enum JournalEntryKind {
+  payment
+  payment_fee
+  release
+  refund
+  chargeback
+  pool_share
+  pool_carry
+  transfer
+  payout_cost
+  correction
+}
+
+/// One calendar month in America/Chicago, written `YYYY-MM`. It is made the first time something posts into it.
+/// CHECK: LedgerPeriod_period_check. Triggers: LedgerPeriod_forward_only.
+model LedgerPeriod {
+  period    String            @id
+  state     LedgerPeriodState @default(open)
+  closedAt  DateTime?         @db.Timestamptz
+  finalAt   DateTime?         @db.Timestamptz
+  createdAt DateTime          @default(now()) @db.Timestamptz
+
+  entries JournalEntry[]
+}
+
+/// One thing that happened to the money, with the lines that say where it went. Added and never changed.
+/// Triggers: JournalEntry_append_only, JournalEntry_balances, JournalEntry_open_period.
+model JournalEntry {
+  id              String           @id @default(cuid(2))
+  /// The same event posts once: a second try with this key and the same lines does nothing.
+  idempotencyKey  String           @unique
+  period          String
+  kind            JournalEntryKind
+  /// The payment (a Stripe invoice) the entry belongs to, when it has one.
+  stripeInvoiceId String?
+  gameId          String?
+  /// The entry this one undoes, when it is a refund or a chargeback.
+  reversesId      String?
+  /// SHA-256 of the lines, so a repeat is told from the same key with other lines.
+  linesHash       String
+  createdAt       DateTime         @default(now()) @db.Timestamptz
+
+  ledgerPeriod LedgerPeriod   @relation(fields: [period], references: [period], onDelete: Restrict)
+  game         Game?          @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  reverses     JournalEntry?  @relation("EntryReversal", fields: [reversesId], references: [id], onDelete: Restrict)
+  reversedBy   JournalEntry[] @relation("EntryReversal")
+  lines        JournalLine[]
+
+  @@index([period])
+  @@index([stripeInvoiceId])
+}
+
+/// One line of an entry. A maker's line names the maker, and a maker's account is `maker:<id>:payable` and no other.
+/// CHECK: JournalLine_maker_check. Triggers: JournalLine_append_only, JournalLine_balances.
+model JournalLine {
+  id          String   @id @default(cuid(2))
+  entryId     String
+  /// Where the money sits, such as `platform:revenue:premium` or `pool:premium:2026-11`.
+  account     String
+  makerUserId String?
+  /// Whole cents: a debit is positive, a credit negative.
+  amount      BigInt
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  entry JournalEntry @relation(fields: [entryId], references: [id], onDelete: Restrict)
+  maker User?        @relation(fields: [makerUserId], references: [id], onDelete: Restrict)
+
+  @@index([entryId])
+  @@index([account])
+}
