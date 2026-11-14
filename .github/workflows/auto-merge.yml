@@ -38,26 +38,35 @@ jobs:
 
   # GitHub's "delete branch after merge" setting does not act on merges made by auto-merge here, so merged
   # branches piled up. Owner, 2026-11-13: "Yes, add it" to deleting them here.
-  # A branch is deleted only if a merged pull request came from it and the branch still points at exactly the
-  # commit that was merged: a branch that got new commits after its merge is left alone, and so is main.
+  # Branches of pull requests closed without merging piled up too. Owner, 2026-11-14: "Yes, no unnecessary PR,
+  # branches, anything" to deleting those as well, a day after the close, so a mistaken close can be undone.
+  # A branch is deleted only if it still points at exactly the commit its pull request ended on: a branch that
+  # got new commits afterwards is someone's work in progress and is left alone. So is a branch that an open
+  # pull request still uses, and so are main and audit/maker-screens (unmerged work kept on purpose).
   delete-merged-branches:
     name: delete merged branches
     if: github.event_name == 'schedule' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Delete branches whose pull request is merged
+      - name: Delete branches whose pull request is merged, or closed for a day
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
+          # ISO 8601 times in UTC compare correctly as plain strings.
+          export CUTOFF=$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ)
+          open_refs=$(gh api "repos/$REPO/pulls?state=open&per_page=100" --jq '.[].head.ref')
           gh api "repos/$REPO/pulls?state=closed&per_page=50" \
-            --jq '.[] | select(.merged_at != null and .head.repo.full_name == env.REPO) | "\(.head.ref) \(.head.sha)"' |
+            --jq '.[] | select(.head.repo.full_name == env.REPO)
+                  | select(.merged_at != null or .closed_at < env.CUTOFF)
+                  | "\(.head.ref) \(.head.sha)"' |
           while read -r ref sha; do
-            [ "$ref" = "main" ] && continue
+            case "$ref" in main|audit/maker-screens) continue ;; esac
+            printf '%s\n' "$open_refs" | grep -qxF "$ref" && continue
             current=$(gh api "repos/$REPO/git/ref/heads/$ref" --jq .object.sha 2>/dev/null) || continue
             if [ "$current" = "$sha" ]; then
-              echo "Deleting $ref (merged at $sha)"
+              echo "Deleting $ref (its pull request ended at $sha)"
               gh api -X DELETE "repos/$REPO/git/refs/heads/$ref"
             fi
           done
