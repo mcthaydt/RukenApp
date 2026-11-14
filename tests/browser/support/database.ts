@@ -88,3 +88,11 @@ export function arrivalCookie(link: { makerUserId: string; path: string }): {
     url: "http://localhost:4173",
   };
 }
+
+/** The posting of the payment a member made, or null while the daily money job has not posted it. */
+export async function paymentPostingOf(email: string): Promise<{ stripeInvoiceId: string } | null> {
+  return db().paymentPosting.findFirst({
+    where: { payment: { user: { email } } },
+    select: { stripeInvoiceId: true },
+  });
+}
