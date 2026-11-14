@@ -288,6 +288,18 @@ Every video on the board is now a `<video>` that plays: on the two video questio
 
 The clip is a sample made for the board: a white block hopping up a tower, 3 seconds, drawn on a canvas at 24 frames a second and encoded with ffmpeg, upright (270 × 480) and wide (480 × 270), as MP4 (15,239 and 14,995 bytes) with a WebM copy (18,117 and 19,629 bytes) for browsers without MP4. Sizes measured from the files. They are inside the board's page; nothing is fetched.
 
+## 5c. Live is the statement piece
+
+Owner, 2026-11-14: "Let's also make it where Live is a statement piece, have the background uniquely for this page be the vertical or horizontal video, but blurred and bokeh and dimmed so it feels special".
+
+- **Only on the Live screen**, the game's own video fills the whole screen behind the words, playing, looping, without sound. An upright screen uses the upright video and a wide screen the wide one, as the feed does (main design 5.1). Every other screen keeps the plain felt.
+- **Blurred, dimmed, with bokeh.** The video is blurred (26px on the board), darkened to 45% brightness, and covered with the felt colour at 60%. Five soft, blurred circles of sage at 12% drift slowly between the video and the felt layer.
+- **The words stay readable whatever the video shows.** Worked out from those numbers for the brightest the background can be (a pure white video, under a circle): white words 8.77:1, sage notes 5.20:1. Without a circle: 9.35:1 and 5.55:1. The paper list and the buttons sit on top unchanged.
+- **With reduced motion** the background is one still frame of the video, blurred and dimmed the same way, and the circles do not move.
+- This amends 5.8 for this one screen: it is the only maker screen whose background is not the plain felt, and the only place a blur is used. 5.8's "no glass" stands: nothing is see-through over content; the video is the background, not a pane.
+- Everything else on Live is as section 5 says: the name, "Live" as the headline, "Players can find it on Ruken.", Blue "See it on Ruken", green "Send my newest version for review", and the paper list with Change.
+- Left to the plan: what a blurred, playing video costs on a slow phone, and whether such a phone gets the still frame instead.
+
 ## 6. The main design's 5.7: one run, one counter
 
 Owner, 2026-11-14: "13. A". 5.7 gave a new maker three steps with a "Step 1 of 3" line: the short address, the page, the first game. They are now the first questions of the same run, with the one counter. The "Step 1 of 3" line goes. Slice 4 builds them.
@@ -325,6 +337,7 @@ Answered: the agreement's date line, "A" (section 5). The delete button, "delete
 
 ## 9. What was looked at, and what was not
 
+- Live's background: looked at in all five sizes with reduced motion on (a still); not looked at moving. The contrast figures are worked out from the dimming, not sampled from the screen.
 - Fourth round, Check and send and Sent back: both screens looked at in all five sizes before and after, in Sent back's three states (the video sideways, the name rude, after the fix). The videos played in the test browser (it used the WebM copy; the MP4 copy was checked with ffprobe only, not played). No script errors. Typeform, YouTube Studio, TikTok and App Store Connect were compared from memory, not opened.
 - Third round, after the Owner's seven notes: every screen walked again in all five sizes, with a video added and opened full size; no script errors, nothing sideways on a 400-wide viewer. The agreement's seven points were copied from `src/features/make/library/maker-agreement-v1.txt` on `slice-2/submit`. The last two small fixes (the preview's shape on an upright tablet, a game card's words on an upright tablet) were not looked at again after they were made.
 - Tablet and sideways phone: every screen of the board looked at in all five sizes, one walk-through, no script errors.
