@@ -35,6 +35,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan audit, slice 1, the look (`session_01HNdX7KyU3nkcc8rAByjXX3`) | 3 Plan audit | `audit/slice-1-look` (pull request #23) | done; merged to main (#23) |
 | plan, slice 2 (`session_01HNdX7Hp1xcTXw4d8CYVZnv`) | 2 Plan | `plan/slice-2` | archived; merged (#27) |
 | plan audit, slice 2 | 3 Plan audit | `audit/slice-2-plan` | done: audit written (3 block execution, 25 should fix, 20 notes), the plan fixed, the coordinator's answers and the Owner's decision of 2026-11-14 written in; pull request #29 marked ready |
+| execution, slice 2, first session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) | 4 Execution | `slice-2/*`, from branch A | running, from 2026-11-14 03:04 UTC |
 
 ## Slice 0: Start
 
@@ -134,7 +135,7 @@ Stages:
 
 - [x] Plan: written, merged to main (pull request #27). No test ran in the plan session. Outside the repository, in a scratch folder: Cloudflare's limits, R2, routes and Workers Builds pages were read, and two local Workers (Wrangler 4.156.0) were run against one local R2 bucket (they share it when started one after the other; started together, one stops with "database is locked").
 - [ ] Plan audit (`docs/superpowers/audits/2026-11-14-slice-2-plan-audit.md`), with the plan fixed: 3 block execution, 25 should fix, 20 notes; every one that blocks or should be fixed is fixed in the plan, and 8 notes stay, each with its reason. The coordinator's decision of 2026-11-14 is written in, test first: one play pass per member per game, the same for that member for a day, never shared between members (the four-hour pass made on every Play is gone). The coordinator answered its two questions (2026-11-14). On its pull request (#29); not done until merged and green. No test ran in the audit session. Wrangler 4.156.0 was installed in a scratch folder outside the repository, and its `--help` and its own code were read for the Owner's commands.
-- [ ] Execution, branch by branch (below).
+- [ ] Execution, branch by branch (below). Owner, 2026-11-14: slice 2's building starts now, in parallel with slice 1's implementation audit, although slice 1's Task 20 step 3 and Task 31 still wait for the live site. The Owner answered "Yes, start both now" to "Start slice 2's building now, alongside slice 1's audit?" (relayed by the coordinator). First execution session (`session_01HNdX7JtPQz8kdqJs6ub2QH`, branch A `slice-2/game`) started 2026-11-14 at 03:04 UTC.
 - [ ] Implementation audit.
 - [ ] Fixes.
 
