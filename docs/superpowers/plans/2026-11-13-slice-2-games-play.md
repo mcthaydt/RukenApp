@@ -14,6 +14,8 @@
 
 **Planned against:** `main` at `adc9590` (slice 1's branches A to D merged) plus what slice 1's plan says its later branches will produce; `main` has moved on since (it was merged into this branch at `44f841c`, with slice 1's membership branch on it), and nothing in it was re-read against this plan. Execution of slice 2 starts only when slice 1 is merged and green (design 7.5). "What this plan relies on from slice 1", below, names each piece; if one is not on `main` as named when its task starts, stop and report.
 
+**Audited:** `docs/superpowers/audits/2026-11-14-slice-2-plan-audit.md` (2026-11-14, against `main` at `45ea388`: slice 1's branches A to D and G merged). Every finding is fixed below or says why it stays. The coordinator's decision of 2026-11-14 on the play pass (one pass per member per game for a day) is written in.
+
 ## Global Constraints
 
 - No session runs tests, lint or typecheck itself. Push, then read CI on the pull request (CLAUDE.md, Owner 2026-11-13).
@@ -21,7 +23,7 @@
 - No new dependency. Anything that seems to need one is a stop: report it with the exact name and version, for the Owner's yes.
 - `.github/workflows/ci.yml` does not change in this slice. The journeys' extra servers are started by `playwright.config.ts`.
 - This repository is public. No secret, real address or key goes in: not the site's address, not the games' address, not the GitHub App's id or key. Test values are plainly fake. The RSA key the tests need is made fresh when Playwright or a test starts and is never a file in the repository.
-- **Games are untrusted.** A game's files are never served from Ruken's own address. The game's frame gets no query, no fragment, no message, no cookie and no referrer from Ruken: the play pass names a game and a set of files, never a person.
+- **Games are untrusted.** A game's files are never served from Ruken's own address. The game's frame gets no query, no fragment, no message, no cookie and no referrer from Ruken: the play pass names a game, a set of files and a random id of its own, never a person. Only Ruken's database ties that id to an account.
 - **Without a pass the files do not load.** Every address of a game file contains a pass that the gate checks on every request.
 - Nobody types a fact. A game's size, file count and commit are measured from the pull; play time is measured by Ruken's page and stamped by the server's clock; no screen or form has a field for an amount or a count.
 - Play facts are only ever added, never changed (`PlaySession`, `PlayBeat`, `GamePull`).
@@ -29,7 +31,7 @@
 - Layers: `games` may import `accounts` and `membership`; `play` may import those and `games`; `make` and `admin` sit above both. All four are already in `FEATURE_ORDER`. Shared helpers with no feature logic go in `src/lib/`. Tests live only in `tests/`, mirroring `src/`.
 - Comments say why, never which plan asked. A carried file loses its old-plan references (`P4 §8`, `R-25`, `M2.1f` and the like) and keeps the reason.
 - Every screen and message passes the drunk grandma test. The words in this plan are the words to ship; a change to them is a deviation to report.
-- Ruken's own screens wear the Card Table look from `src/lib/look.css` and only its classes. This slice adds five classes, each with its rule and its name in `CLASSES` (Task 19) and its first use soon after. No file under `src/routes/` gets a `<style>` block, a `style=` attribute or a colour of its own. Nothing in this slice is pip red.
+- Ruken's own screens wear the Card Table look from `src/lib/look.css` and only its classes. This slice adds five classes, each with its rule and its name in `CLASSES` on the branch of its first use: `clip` and `frame` in Task 19 for Task 30, `stage`, `bar` and `back` in Task 21. It also gives `select` and `textarea` the field rule `input` has (Task 27). No file under `src/routes/` gets a `<style>` block, a `style=` attribute or a colour of its own. Nothing in this slice is pip red.
 - Every journey file starts with `test.beforeEach(forgetRateLimits)`, and every new screen is attached with `showTheOwner` for the Owner to see before its branch is marked ready (slice 1, Task 37).
 
 ## What this plan relies on from slice 1
@@ -41,16 +43,17 @@
 | `wrangler.jsonc`, `tests/wrangler.test.ts`, the `deploy` script, `pnpm generate` running `wrangler types` | Tasks 16, 34 | the bucket binding; the gate's deploy |
 | `requireEnv`, `optionalEnv` | Task 3 | settings |
 | `Clock`, `systemClock`, `chicagoDayOf`, `TestClock` | Task 2 | every time |
-| `RateLimiter`, `createRateLimiter` | Task 4 | the play-start limit |
+| `RateLimiter`, `createRateLimiter`: `hit(key, { max, windowMs })`, our keys starting `api:` (on `main`) | Task 4 | the play-start limit |
 | `startTestDatabase()`, `tests/browser/support/database.ts` (`userIdOf`, `membershipStartsOf`) | Tasks 1, 29, 34 | database tests; journeys that must read a row |
-| `Caller`, `locals.caller`, `signedInOnly`, `staffRolesOf`, the `StaffAssignment` table and `StaffRole`, `authServices()` | Tasks 1, 10, 11 | who is asking, the maker's screens, and whether they are staff |
+| `Caller` (`{ kind: "user"; userId; sessionId; staffRoles }`, read fresh on every request), `locals.caller`, `signedInOnly`, `staffRolesOf`, the `StaffAssignment` table and `StaffRole` (`owner`, `curator`, `support`, `moderator`, `head_curator`, `finance`), `authServices()` (all on `main`) | Tasks 1, 10, 11 | who is asking, the maker's screens, and whether they are staff |
 | `membershipServices().service.isMember(userId)`, `membershipServices().arrival.remember(cookies, { makerUserId, path })` | Task 26 | may this person play; the arrival from `/g/<game>` |
 | `/join?next=…`, its "Not now" link, `safeNextPath` | Tasks 3, 27 | the paywall on the way to a game |
 | The stand-in Stripe, `payAsNewMember(page)`, `signUp(page)`, `signUpInItsOwnContext(browser)` | Tasks 13, 27, 29 | journeys that need a member |
 | The daily job's secret check on `POST /jobs/purge-accounts` (`Authorization: Bearer <JOBS_SECRET>`, 404 without it), `JOBS_SECRET` in the journeys' settings | Task 20 | the first staff account (Task 29) |
-| `reject_append_only_change()`, the trigger function in the membership migration | Task 21 | the add-only tables |
+| `reject_append_only_change()`, the trigger function in the membership migration (on `main`). It takes the table's name as its argument: `CREATE TRIGGER "<Table>_append_only" BEFORE UPDATE OR DELETE ON "<Table>" FOR EACH ROW EXECUTE FUNCTION reject_append_only_change('<Table>')`, as the membership migration attaches it | Task 21 | the add-only tables |
+| `purgeDueAccounts` in `src/features/accounts/deletion.ts`: "each later slice that adds a person's data adds its own removal here, with a test" | Task 20 | removing a person's GitHub connection (Task 15) |
 | `src/lib/look.css`, `CLASSES`, `tests/lib/look.test.ts`, `expectOneCard`, `showTheOwner`, `pipRed`, `token`, `rgb`, `forgetRateLimits` | Tasks 13, 35 to 37 | the look of the two new screens |
-| `src/routes/+error.svelte` | Task 12 | a game that is not there |
+| `src/routes/+error.svelte` (on `main`: "We can't find that page." for 404, "Something went wrong on our side." for anything else, never the error's own text) | Task 12 | a game that is not there; Task 21 gives it a 429 line |
 | The purge keeps the `User` row (status `deleted`) | Task 20 | a deleted maker's or member's play facts keep their account id |
 
 ## Found while planning
@@ -65,6 +68,8 @@ Read on 2026-11-13. Where a page or a package and this plan disagree when execut
 6. **A route may use a wildcard name** (`*.example.com/*`), needs a proxied DNS record for the names it serves, and the most specific route wins (https://developers.cloudflare.com/workers/configuration/routing/routes/).
 7. **The old "recent input" rule cannot be kept.** The old page learned about input from the SDK inside the game. With no SDK, Ruken's page cannot see inside a frame on another address. Design 5.2 already names what counts: on screen, tab showing, frame focused.
 8. **GitHub** (REST API version `2022-11-28`): an app signs a short RS256 token with its private key; `GET /repos/{owner}/{repo}/installation` answers the installation for a repository the app was installed on (404 when it was not); `POST /app/installations/{id}/access_tokens` gives a one-hour token that can be narrowed to one repository and `contents: read`; `GET /repos/{owner}/{repo}/commits/{ref}` with `Accept: application/vnd.github.sha` answers the commit's id as text; `GET /repos/{owner}/{repo}/tarball/{ref}` redirects to the files as a `.tar.gz`. GitHub hands out the key as PKCS#1 (`BEGIN RSA PRIVATE KEY`); Web Crypto imports PKCS#8 only, so the code wraps the key itself and the Owner converts nothing (Task 8). The old repository's GitHub code (`OLD/packages/api-contract/src/github.ts`) was a contract only, with nothing behind it; none of it is carried.
+9. **A deploy whose config names no route leaves the Worker's routes alone** (read in the audit, 2026-11-14, in Wrangler 4.156.0's own `wrangler-dist/cli.js`): `wrangler deploy` publishes routes only when the config or `--route` names some (`if (routesOnly.length > 0) … publishRoutes(…)`, a `PUT` that replaces them all). So the route the Owner adds in G3 should outlive Workers Builds' deploys; Task 24 step 1 still checks it on the real site. `wrangler secret put` trims the end of a value it is piped (`trimTrailingWhitespace(… readFromStdin())`), and creates the Worker as a draft when it does not exist yet.
+10. **Which repositories a person can reach** (GitHub's REST API, "List repositories accessible to the user access token"): `GET /user/installations/{installation_id}/repositories`, asked with the person's own token, lists only the repositories of that installation the person can reach. `GET /installation/repositories`, asked with the installation's token, lists every repository the installation holds, whoever asks. In an organisation's installation, those can include private repositories the person cannot open. So Ruken asks with the person's token, at the moment they connect (Task 15).
 
 ## The Owner's decisions, the open questions, and the Calls in this plan
 
@@ -74,23 +79,25 @@ Read on 2026-11-13. Where a page or a package and this plan disagree when execut
   - The coordinator's instructions with it: acceptance still needs a person (design 5.5), so this slice has the smallest staff Accept and Send back, one list and one page behind slice 1's staff roles, which slice 4's admin portal absorbs. The maker's three-step onboarding (design 5.7) stays in slice 4: its first two steps need the handle and the page, which arrive in slice 3; this slice builds its step 3.
   - What slice 4 then keeps: the three-step onboarding; the admin portal around the acceptance queue (its other queues, admin sessions, the authenticator code, two superadmins, granting roles); the mails to a maker (accepted, sent back, taken down); taking a game down; marking a game free with a reason; reports and moderation.
 - **Calls** (the Owner can overrule):
-  - **The pass.** `v1.<payload>.<mac>`: the payload is `{ g: <the game's public id>, p: <the pull's id>, exp: <seconds> }` as JSON in base64url; the mac is HMAC-SHA256 over `"ruken-play-pass-v1:" + payload` with `PLAY_PASS_SECRET`. It sits in the address as the first folder: `https://g-<id>.<games domain>/<pass>/index.html`. So every file the game asks for by a relative address carries it, with no cookie (browsers block cookies in a frame from another site) and nothing for the game to do. It holds nothing about the person.
-  - **The pass lasts 4 hours.** A game loads files as it goes (the next level, a sound), so a pass that ended after a minute would break a game in the middle. Four hours is longer than the 180 minutes a day that count for pay. A pass that leaks lets a stranger load that one game until it runs out; it cannot be renewed.
+  - **The pass.** `v1.<payload>.<mac>`: the payload is `{ i: <the pass's own random id>, g: <the game's public id>, p: <the pull's id>, c: <the game's servers>, exp: <seconds> }` as JSON in base64url; the mac is HMAC-SHA256 over `"ruken-play-pass-v1:" + payload` with `PLAY_PASS_SECRET`. It sits in the address as the first folder: `https://g-<id>.<games domain>/<pass>/index.html`. So every file the game asks for by a relative address carries it, with no cookie (browsers block cookies in a frame from another site) and nothing for the game to do. It holds nothing about the person: `i` is random, and only Ruken's `PlayPass` table ties it to an account.
+  - **Coordinator, 2026-11-14: one pass per member per game, for a day.** A member gets one pass for a game's files, and the same pass for that member for 24 hours, so the game's addresses stay the same and the browser keeps the files it downloaded (FloorFifty is 91 MB). A pass is never shared between members: a leaked address traces, through its `i`, to the one member it was made for, and stops within a day. In numbers (the audit's reading, pending the coordinator's answer to its question 1): a pass lasts `PASS_LIFE_MS`, 24 hours, from when it is made; the next Play by the same person, for the same game and the same files, gets the same pass back while at least `PASS_MIN_LEFT_MS`, 4 hours, is left, so every Play has four hours or more to load files as it goes (a level, a sound); after that a new pass is made. A new pull, once accepted, gets new passes, because its files have a new address. A member whose membership ends cannot start a Play (the paywall), but a pass already given keeps loading that game's files from that address until it runs out, at most a day. Someone signed out reaches a game only when it is free; they all share one pass per game and files, made and renewed the same way (the audit's reading, pending the coordinator's answer to its question 2), because the game is free to everyone and launch-day visitors then keep its files too. A game sees its pass in its own address, so it can tell that two Plays on one day came from the same browser; it could already, from the saves it keeps on its own address.
   - **Its own secret.** `PLAY_PASS_SECRET` is held by both Workers and is not `BETTER_AUTH_SECRET`, so the gate holds nothing that could forge a sign-in or an arrival.
   - **A game's addresses must be relative** (`assets/main.js`, not `/assets/main.js`), as on itch.io. The pull refuses an `index.html` that loads from the top of the site, and says how to fix it.
-  - **The frame.** `sandbox="allow-scripts allow-same-origin allow-pointer-lock"` and `allow="gamepad; fullscreen; autoplay; clipboard-write; web-share"`, plus `referrerpolicy="no-referrer"`. The sandbox and the first three permissions are carried from `OLD/packages/sdk-host/src/game-frame.ts`; the last two are what FloorFifty needs. The sandbox is safe only because every game has its own address. `allow-same-origin` means the game's own address, which it needs to keep its saves; popups, forms, downloads, modals and navigating Ruken's page are all left out. The gate's headers allow only Ruken's site to frame a game.
-  - **A game's servers.** A game's scripts may connect to the game's own files and to the servers its maker listed on the form, and nowhere else. The maker writes names, one per line ("api.example.com"), five at most; each allows https and wss to that name. The list is kept with each pull, staff see it when they review, the pass carries it (signed, so it cannot be changed), and the gate puts it in the page's `content-security-policy` as `connect-src`. Pictures, scripts and fonts from other sites are not limited in this slice. A game's server that checks where players come from must allow the game's address on Ruken, which the maker's page shows.
+  - **The frame.** `sandbox="allow-scripts allow-same-origin allow-pointer-lock"` and `allow="gamepad; fullscreen; autoplay; clipboard-write; web-share"`, plus `referrerpolicy="no-referrer"`. The sandbox and the first three permissions are carried from `OLD/packages/sdk-host/src/game-frame.ts`; the last two are what FloorFifty needs. The sandbox is safe only because every game has its own address. `allow-same-origin` means the game's own address, which it needs to keep its saves; popups, forms, downloads, modals, orientation lock and navigating Ruken's page are all left out. The gate's headers allow only Ruken's site to frame a game. A game that needs to be "cross-origin isolated" (some engines' threaded builds) does not run: neither Ruken's page nor the gate sends the headers that would allow it, and nothing in this slice adds them.
+  - **No service worker.** A game's own script could install a service worker on its address, which could keep serving the game's files from the browser after its pass ran out. The gate refuses a request that a browser makes for a service worker's script (it carries the header `service-worker: script`) with 403, so the pass stays the only way in.
+  - **A game's servers.** A game's scripts may connect to the game's own files, to `blob:` and `data:` addresses (made inside the browser; engines read their own sounds and pictures that way) and to the servers its maker listed on the form, and nowhere else. The maker writes names, one per line ("api.example.com"), five at most; each allows https and wss to that name. The list is kept with each pull, staff see it when they review, the pass carries it (signed, so it cannot be changed), and the gate puts it in the page's `content-security-policy` as `connect-src`. Pictures, scripts and fonts from other sites are not limited in this slice. A game's server that checks where players come from must allow the game's address on Ruken, which the maker's page shows.
   - **Play time.** While a game is open, Ruken's page looks once a second: is the tab showing, is the frame on screen, does the frame have focus. Every 15 seconds it sends a beat that says one thing: "attentive the whole time since the last beat you took: yes or no". The server stamps the beat with its own clock and stores it. A beat with "yes" counts the server's time since the beat before it (or since the session started), up to 45 seconds; a beat with "no" counts nothing. So the total can never pass real time on the server's clock, one or two lost beats are forgiven, and a longer silence counts 45 seconds at most. Nothing counts until the person first taps or clicks inside the game, because the frame has no focus before that.
-  - **What is stored.** One `PlaySession` row per opening of a game (the game, the pull, the person or nobody, and why they could play: `member`, `free_game`, `staff` or `own_game`), and one `PlayBeat` row per beat (the server's time, attentive or not). Rows are never changed. When more than one reason applies, the one that does not count for pay wins: own game, then staff, then a free game, then member. Slice 5 counts `member` sessions only and applies the 180-minute cap from the beats' times in America/Chicago; two tabs of one member overlap in the rows and slice 5 must not count the same minute twice.
+  - **What is stored.** One `PlayPass` row per pass made (its id, the game, the pull, the person or nobody, when it was made and when it runs out), one `PlaySession` row per opening of a game (the game, the pull, the pass, the person or nobody, and why they could play: `member`, `free_game`, `staff` or `own_game`), and one `PlayBeat` row per beat (the server's time, attentive or not). Rows are never changed. When more than one reason applies, the one that does not count for pay wins: own game, then staff, then a free game, then member. Slice 5 counts `member` sessions only and applies the 180-minute cap from the beats' times in America/Chicago; two tabs of one member overlap in the rows and slice 5 must not count the same minute twice.
   - **Every reload is a new session**, with its own secret for its beats. A session takes beats for 24 hours (the carried lifetime).
   - **Free is a flag on the game** (`freeToPlay`), false for every game. Slice 2 reads it; only tests set it. The admin portal (slice 4) sets it with a reason, recorded like any staff action.
   - **A phone** is a browser whose `User-Agent` contains `Mobi` or `Android`. A tablet that says it is a computer is treated as one.
   - **Play lands in the game.** The Play button goes to `/g/<game>/play`; someone who may not play is sent to `/join?next=/g/<game>/play`, so after paying they are in the game (design 5.2), not back on its page. Slice 1's note said `next=/g/<game>`; this is the one change to it. "Not now" on the paywall then goes to `/g/<game>`.
   - **Before the feed exists**, `/g/<game>` is one paper card: the game's name, its one line, its clip playing without sound, and Play. It is a placeholder, like the home page; slice 3 replaces it with the feed opened at that clip. The home page does not list games: on the real site a game is reached by its address, which its maker's page for it links to once it is live.
   - **Submitting is two screens, not one form**: the fields and the repository, then the game's own page with its files, its two clips and Send for review. Two 30 MB videos in one form would sit in the Worker's memory together; one clip per request does not. And a refused pull is seen before anything is sent.
-  - **Connecting GitHub asks GitHub who the person is.** The installation number GitHub puts in the address after an install can be typed by anyone, so Ruken does not trust it: it uses GitHub's sign-in for apps to ask which installations the person can reach, stores those, and pulls only from a repository under one of them. That needs the app's client id and secret (G2).
-  - **A live game's update**: "Pull the latest" on a live game pulls and sends the update for review in one press; the game stays live on its old files until staff accept.
+  - **Connecting GitHub asks GitHub who the person is.** The installation number GitHub puts in the address after an install can be typed by anyone, so Ruken does not trust it: it uses GitHub's sign-in for apps to ask, as the person, which installations they can reach and which repositories in each they can reach ("Found while planning", 10), stores those, and pulls only from a repository on that list. The person's token is used once, at that moment, and never stored, so the list is as fresh as their last connection; connecting again refreshes it. That needs the app's client id and secret (G2).
+  - **A live game's update**: "Pull the latest" on a live game pulls and sends the update for review in one press; the game stays live on its old files until staff accept. On a game already waiting, it puts the new files in the old ones' place in the queue. A live game's clips cannot be changed in this slice: a new clip would go live at once, without a person's yes. Slice 4 brings changing them through review.
   - **The first staff account** is made by one command behind `JOBS_SECRET` that works only while there is no staff account at all (Task 29). Staff accept games in this slice without the authenticator code, which arrives with slice 4; accepting is not a money action.
+  - **Which staff play without paying.** Those who check games: `owner`, `head_curator` and `curator`, the same three who may open the staff pages. One list, `GAME_STAFF_ROLES` in `src/features/accounts/staff.ts`, is used by both, so play and the staff pages never disagree. `support`, `moderator` and `finance` play as anyone else does.
   - **No mail yet** when a game is accepted or sent back; the maker's page says where the game stands. Slice 4 brings the mails.
   - **The in-game line** ("Tap ← to go back to the feed", design 5.7) is built here with the play screen, not in slice 3, as the coordinator asked. ← goes to `/g/<game>`, which is the feed at that clip once slice 3 lands.
   - **The way back is a slim bar above the game**, not a button over it, so Ruken never covers a game's own buttons.
@@ -109,8 +116,8 @@ A separate session checked FloorFifty against this design on 2026-11-13 (relayed
 - **O3, closed: no ready folder exists yet.** The repository has one branch and its built folder is not committed. All its addresses are relative, and nothing was reported in Git LFS. FloorFifty must commit a built folder (for example a branch its own build writes) before Ruken can pull it; the form's branch and folder fields then point at it.
 - **O4, open: its two clips**, an upright and a wide video, 30 MB or less each, are the Owner's to make (design 9).
 - **The Owner's items in FloorFifty's own repository and servers**, none of them part of this plan: remove the handshake wait; have its build commit a ready-to-run folder to a branch; allow the game's address on Ruken (`https://g-<public id>.GAMES-DOMAIN`, shown on the game's page in the maker's area) on its game server; and bring its production server's https back, which is down today.
-- **Worth the Owner's eye: 91 MB on every Play.** A pass is part of every file's address, so a browser cannot reuse what it downloaded under an earlier pass. FloorFifty asks for about 300 files after it loads. On a phone that is slow and costs data, against the design's "playing within a minute". The last note under "Notes for the plans that follow" has the fix and its price; it needs the Owner's yes.
-- **O5. The maker agreement's text.** A maker accepts it once, on their first submission (design 5.4). The old repository's legal pages were drafts waiting for counsel (slice 1 found the same for terms and privacy). The text is the Owner's; Task 28 cannot ship without it, and `MAKER_AGREEMENT_VERSION` is its date.
+- **Closed by the coordinator, 2026-11-14: 91 MB on every Play.** A pass is part of every file's address, so a browser could not reuse what it downloaded under an earlier pass. Now a member keeps one pass per game for a day ("Calls"), so the second Play that day reuses the browser's copy.
+- **O5. The maker agreement's text.** A maker accepts it once, on their first submission (design 5.4). The old repository's legal pages were drafts waiting for counsel (slice 1 found the same for terms and privacy). The Owner chose a short, plain version now, with a version of its own (relayed by the coordinator, 2026-11-14); the coordinator supplies the text and its version before branch M starts. Until then the plan keeps its placeholder: `MAKER_AGREEMENT_VERSION` is that version, and Task 28 cannot ship without the text.
 
 Task 24 (the real site) cannot be finished until O4, O5 and the Owner's FloorFifty items are done.
 
@@ -124,9 +131,9 @@ The execution session reports to the coordinator and asks for each of these with
 2. `pnpm exec wrangler r2 bucket create ruken-games`
 3. Say "done".
 
-**G2, asked for when branch C starts; needed before branch E merges** (once the connect screens are on `main`, the real site's `/make` needs these settings).
+**G2, asked for when branch C starts; needed before branch E is marked ready** (once the connect screens are on `main`, the real site's `/make` needs these settings; they also need G3's `GAME_ADDRESS_PATTERN`, below).
 
-1. `Start-Process "https://github.com/settings/apps/new?name=Ruken&url=https://SITE&public=true&webhook_active=false&contents=read&request_oauth_on_install=true&callback_urls[]=https://SITE/make/github/callback"` (a website: GitHub has no command for making an app. The page opens filled in: public, no webhook, read-only access to a repository's contents, and sign-in during installation, coming back to the site. Press "Create GitHub App". On the app's page: note the "App ID" and the "Client ID"; press "Generate a new client secret" and copy it; press "Generate a private key", which downloads a `.pem` file. The app's short name is the last part of its public address, `github.com/apps/SHORT-NAME`.)
+1. `Start-Process "https://github.com/settings/apps/new?name=Ruken&url=https://SITE&public=true&webhook_active=false&contents=read&request_oauth_on_install=true&callback_urls[]=https://SITE/make/github/callback"` (a website: GitHub has no command for making an app. The page opens filled in: public, no webhook, read-only access to a repository's contents, and sign-in during installation, coming back to the site. Press "Create GitHub App"; if GitHub says the name is taken, add a word, as "Ruken Games", and the short name follows it. On the app's page: note the "App ID" and the "Client ID"; press "Generate a new client secret" and copy it; press "Generate a private key", which downloads a `.pem` file. The app's short name is the last part of its public address, `github.com/apps/SHORT-NAME`.)
 2. `"APP-ID" | pnpm exec wrangler secret put GITHUB_APP_ID`
 3. `"CLIENT-ID" | pnpm exec wrangler secret put GITHUB_APP_CLIENT_ID`
 4. `pnpm exec wrangler secret put GITHUB_APP_CLIENT_SECRET` (it asks for the value; paste the client secret there, so it is never in the window's history).
@@ -134,14 +141,14 @@ The execution session reports to the coordinator and asks for each of these with
 6. `Get-Content -Raw "PATH-TO-THE-DOWNLOADED.pem" | pnpm exec wrangler secret put GITHUB_APP_PRIVATE_KEY`
 7. Keep the `.pem` file somewhere safe or delete it; it is a key. Say "done". (Installing the app on FloorFifty's repository is not a step here: the site's own "Connect GitHub" does it.)
 
-**G3, asked for when branch D starts; needed for G4.**
+**G3, asked for when branch D starts; needed before branch E is marked ready, and for G4.** `gamesServices()` will not start without `GAME_ADDRESS_PATTERN`, and every maker's screen calls it, so the real site's `/make` answers "Something went wrong" until step 5 is done.
 
-1. A website, because no command can buy a domain or change its DNS. If no games domain is owned yet, buy one (Cloudflare: Domain Registration → Register Domains; or any registrar). It must be on this Cloudflare account and say "Active" (if it is not listed, "Onboard a domain" and follow it). Everything after this step is a command. Then that domain → DNS → Records → Add record: Type `AAAA`, Name `*`, IPv6 address `100::`, Proxy status "Proxied".
+1. A website: no command can buy a domain, and Wrangler has no command for DNS (Cloudflare's API has one, but it needs an API token that is itself made on the website, so the dashboard is one step instead of two). If no games domain is owned yet, buy one (Cloudflare: Domain Registration → Register Domains; or any registrar). It must be on this Cloudflare account and say "Active" (if it is not listed, "Onboard a domain" and follow it). Everything after this step is a command. Then that domain → DNS → Records → Add record: Type `AAAA`, Name `*`, IPv6 address `100::`, Proxy status "Proxied".
 2. `git switch main; git pull; pnpm install; pnpm exec wrangler deploy --config cloudflare/games/wrangler.jsonc --route "*.GAMES-DOMAIN/*"` (from `main` as it is now, so what goes out is what was merged: makes the gate Worker, `ruken-games`, if the site's own deploy has not already, and gives it every name under the games domain).
 3. `$b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); $s = [BitConverter]::ToString($b) -replace '-',''; $s | pnpm exec wrangler secret put PLAY_PASS_SECRET; $s | pnpm exec wrangler secret put PLAY_PASS_SECRET --config cloudflare/games/wrangler.jsonc` (one new random secret, given to both Workers; it is never shown).
 4. `"https://SITE" | pnpm exec wrangler secret put SITE_ORIGIN --config cloudflare/games/wrangler.jsonc`
 5. `"https://{name}.GAMES-DOMAIN" | pnpm exec wrangler secret put GAME_ADDRESS_PATTERN` (type `{name}` as it is: the site fills it in).
-6. `(Invoke-WebRequest "https://media.GAMES-DOMAIN/__ruken/health").Content` (expect `ok`). Say "done", and tell the coordinator the games domain.
+6. `(Invoke-WebRequest -UseBasicParsing "https://media.GAMES-DOMAIN/__ruken/health").Content` (expect `ok`; `-UseBasicParsing` keeps Windows PowerShell 5.1 from asking for Internet Explorer's engine, and PowerShell 7 accepts it). Say "done", and tell the coordinator the games domain.
 
 **G4, at Task 24, after O4, O5 and the Owner's FloorFifty items.** One command, then the site itself (Task 24 has the steps): make the Owner's account the first staff account; submit FloorFifty on `/make` like any maker; accept it on `/admin/games`; play it. FloorFifty's own repository must first hold a folder that runs as a plain web game (O2, O3); changing that repository is the Owner's, not this plan's.
 
@@ -162,16 +169,16 @@ Ten branches, in this order. Each starts from `main` only after the one before i
 | E | `slice-2/connect-github` | 15, 25 | a maker connects GitHub on the site; a stand-in GitHub for the journeys (waits for G2) |
 | M | `slice-2/submit` | 26 to 28 | a maker submits a game and sees it "Waiting for review" |
 | P | `slice-2/play-rules` | 16 to 18 | the play tables, who may play and what counts, sessions and beats |
-| S | `slice-2/accept` | 19, 29, 30 | the look's five new classes; the first staff account; staff accept a game or send it back |
+| S | `slice-2/accept` | 19, 29, 30 | the look's `clip` and `frame`; the first staff account; staff accept a game or send it back |
 | F | `slice-2/play` | 20 to 23 | the two screens, play time, design 8's journeys |
 | G | `slice-2/real-site` | 24 | FloorFifty submitted, accepted and played on the real site (waits for G3, G4 and the open items) |
 
 ## File map
 
 ```
-prisma/schema/games.prisma               Game, GamePull, GameClip                       (branch A)
-prisma/schema/play.prisma                PlaySession, PlayBeat                          (branch P)
-prisma/schema/make.prisma                GitHubInstallation, MakerAgreement             (branches E, M)
+prisma/schema/games.prisma               Game, GamePull, GameClip (branch A); GitHubInstallation, GitHubRepository (branch E); GameReview (branch M)
+prisma/schema/play.prisma                PlayPass, PlaySession, PlayBeat                (branch P)
+prisma/schema/make.prisma                MakerAgreement                                 (branch M)
 wrangler.jsonc                           gains the R2 bucket                            (branch B)
 cloudflare/games/wrangler.jsonc          the gate Worker: its name, the bucket, no address (branch D)
 cloudflare/games/worker.ts               what Cloudflare runs for the gate: settings in, handleGameRequest out
@@ -183,7 +190,7 @@ src/lib/files/r2-store.ts                r2FileStore(bucket)
 src/lib/files/tar.ts                     tarEntries: the files in a .tar.gz stream
 src/lib/server/files.ts                  setFileStore, fileStore: the bucket, set once by the hook
 src/lib/server/job-secret.ts             hasJobSecret(request)                          (branch S)
-src/lib/look.css                         gains clip, stage, bar, back, frame            (branch S)
+src/lib/look.css                         select and textarea as fields (branch M); clip, frame (branch S); stage, bar, back (branch F)
 src/features/games/
   games.ts             entry
   ids.ts               slugOf, newPublicId, PUBLIC_ID
@@ -194,7 +201,7 @@ src/features/games/
   github-connect.ts    who the person is on GitHub, and which installations they can reach
   review.ts            the maker's words for each state
   pull.ts              pullGame: check, then store, then one GamePull row
-  service.ts           createGame, pullLatest, saveClip, sendForReview, accept, sendBack, liveGameBySlug
+  service.ts           createGame, pullLatest, saveClip, sendForReview, accept, sendBack, liveGameBySlug, the GitHub connection
   services.ts          built once from the settings
 src/features/make/
   make.ts              entry
@@ -210,6 +217,7 @@ src/features/play/
   frame.ts             GAME_FRAME_SANDBOX, GAME_FRAME_ALLOW
   may-play.ts          playBasis, isPhone, backFromPaywall
   time.ts              the beat rules and countedMs
+  passes.ts            passFor: the one pass a person has for a game's files today, or a new one
   sessions.ts          startPlay, startReviewPlay, recordBeat, playSummary
   attention.ts         the page's watcher: attentive since the last beat taken (browser)
   services.ts          built once from the settings
@@ -219,7 +227,8 @@ src/routes/
   g/[game]/play/beat/+server.ts                     a beat
   make/, make/new/, make/[game]/                    the maker's area, the new-game form, a game's page
   make/github/, make/github/callback/               connecting GitHub
-  legal/maker-agreement/                            the Owner's text
+  legal/maker-agreement/                            the Owner's text (O5)
+  +error.svelte                                     gains a line for 429 (Task 21)
   admin/games/, admin/games/[game]/                 staff: the waiting list, Accept and Send back
   jobs/first-owner/+server.ts                       the first staff account
 tests/support/memory-file-store.ts       a FileStore in memory
@@ -258,6 +267,10 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 18. A live game whose update is sent back: still live, on its old files (Task 26).
 19. Someone who is not staff opens the staff pages, or another maker opens a game's page in the maker's area: a missing page (Tasks 28, 30).
 20. A game whose scripts try to reach a server its maker did not list: the browser refuses, because the gate's header names only the listed ones (Tasks 4, 13).
+21. Two members open the same game on the same day: two passes, never one; the same member opening it again gets the same pass back (Task 18).
+22. A game's script asks the browser to install a service worker on its address: the gate refuses the script, so nothing outlives the pass (Task 13).
+23. A member of an organisation that installed the Ruken app can reach one of its repositories and picks another, private one: refused, because GitHub listed only what that person can reach (Tasks 15, 27).
+24. The first beat of a session arrives a moment after it started (a journey's page clock runs ahead of the server's): taken, not refused as too soon (Task 18).
 
 ---
 
@@ -274,13 +287,13 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 
 | Model | Columns |
 |---|---|
-| `Game` | `id` (cuid(2)), `publicId` unique, `slug` unique, `makerUserId` (a `User`, `onDelete: Restrict`), `name`, `oneLine`, `playsOn GamePlaysOn`, `state GameState` default `draft`, `stateReason?`, `freeToPlay` default false, `repoFullName`, `repoBranch?` (null: the repository's own default), `repoFolder` default `""`, `connectHosts String[]` (the servers the game talks to), `livePullId?` unique (a `GamePull`), `createdAt`, `updatedAt`; index on `makerUserId` |
+| `Game` | `id` (cuid(2)), `publicId` unique, `slug` unique, `makerUserId` (a `User`, `onDelete: Restrict`), `name`, `oneLine`, `playsOn GamePlaysOn`, `state GameState` default `draft`, `stateReason?`, `freeToPlay` default false, `repoFullName`, `repoBranch?` (null: the repository's own default), `repoFolder` default `""`, `connectHosts String[]` (the servers the game talks to), `livePullId?` unique (a `GamePull`), `pullProblem?` (the words of the last pull's refusal, for the game's page; null once a pull passes), `createdAt`, `updatedAt`; index on `makerUserId` |
 | `GamePull` | `id` (set in code), `gameId` (a `Game`), `commitSha`, `fileCount Int`, `totalBytes BigInt`, `connectHosts String[]` (the game's list as it stood at this pull, so what staff reviewed is what runs), `pulledAt`, `createdAt`; index on `gameId`. No `updatedAt`: one row per pull that passed the checks, added and never changed |
 | `GameClip` | `id`, `gameId` (a `Game`), `shape ClipShape`, `key` unique, `contentType`, `bytes Int`, `createdAt`, `updatedAt`; unique on (`gameId`, `shape`) |
 
 Enums: `GamePlaysOn { phone_and_computer, computer_only }`, `GameState { draft, waiting, live, sent_back, taken_down }`, `ClipShape { upright, wide }`.
 
-In the migration SQL, by hand: CHECK `Game_publicId_check` (`"publicId" ~ '^[a-z2-7]{10}$'`); CHECK `Game_slug_check` (`"slug" ~ '^[a-z0-9]+(-[a-z0-9]+)*$'` and 3 to 40 characters); CHECK `Game_repoFolder_check`, copied from `OLD/packages/db/prisma/migrations/20261105000000_n26_0_github_releases/migration.sql` lines 96 to 102 (no leading or trailing slash, no `..` step, 200 characters at most); CHECK `Game_live_check` (`"state" <> 'live' OR "livePullId" IS NOT NULL`); CHECK `GamePull_commitSha_check` (`"commitSha" ~ '^[0-9a-f]{40}$'`); CHECK `GamePull_counts_check` (`"fileCount" > 0 AND "totalBytes" > 0`); and the add-only trigger on `GamePull` (`reject_append_only_change()`, which slice 1's membership migration made).
+In the migration SQL, by hand: CHECK `Game_publicId_check` (`"publicId" ~ '^[a-z2-7]{10}$'`); CHECK `Game_slug_check` (`"slug" ~ '^[a-z0-9]+(-[a-z0-9]+)*$'` and 3 to 40 characters); CHECK `Game_repoFolder_check`, copied from `OLD/packages/db/prisma/migrations/20261105000000_n26_0_github_releases/migration.sql` lines 96 to 102 (no leading or trailing slash, no `..` step, 200 characters at most); CHECK `Game_live_check` (`"state" <> 'live' OR "livePullId" IS NOT NULL`); CHECK `GamePull_commitSha_check` (`"commitSha" ~ '^[0-9a-f]{40}$'`); CHECK `GamePull_counts_check` (`"fileCount" > 0 AND "totalBytes" > 0`); and the add-only trigger on `GamePull` (`reject_append_only_change('GamePull')`, the function slice 1's membership migration made, attached as that migration attaches it).
 
 - [ ] **Step 1 (red):**
 
@@ -469,7 +482,7 @@ it("refuses a page named as a video and stores nothing", async () => {          
 
 # Branch C: `slice-2/github-pull`
 
-First, before any code: send the coordinator G2 word for word. Nothing in this branch waits for it; branch E is not marked ready until it is done.
+First, before any code: send the coordinator G2 word for word. Nothing in this branch waits for it; branch E is not marked ready until it and G3 are done.
 
 ### Task 8: Signing in to GitHub as the app
 
@@ -481,7 +494,7 @@ First, before any code: send the coordinator G2 word for word. Nothing in this b
 - Produces:
   - `appToken(input: { appId: string; privateKeyPem: string; nowMs: number }): Promise<string>`: an RS256 JWT with `iss` the app id, `iat` sixty seconds before now and `exp` nine minutes after, signed with Web Crypto (`RSASSA-PKCS1-v1_5`, SHA-256). The key may be PKCS#8 (`BEGIN PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`, what GitHub downloads), with or without a last line break (Wrangler trims the end of a secret it is piped); a PKCS#1 key is wrapped into PKCS#8 in code, by `pkcs8FromPkcs1(der: Uint8Array): Uint8Array`, with a comment that says why (Web Crypto imports only PKCS#8, and the Owner should not have to convert a key). Any other text throws `GITHUB_APP_PRIVATE_KEY is not a private key in PEM form.`
   - `interface GitHub { commitOf(repo: string, branch: string | null): Promise<string>; tarball(repo: string, commitSha: string): Promise<ReadableStream<Uint8Array>> }` and `createGitHub(options: { appId: string; privateKeyPem: string; clock: Clock; fetch?: typeof fetch; apiBase?: string }): GitHub`. Each method first gets a token for that one repository: `GET {apiBase}/repos/{repo}/installation` with the app token, then `POST {apiBase}/app/installations/{id}/access_tokens` with the body `{ "repositories": ["<name>"], "permissions": { "contents": "read" } }`. `commitOf` is `GET /repos/{repo}/commits/{branch ?? "HEAD"}` with `Accept: application/vnd.github.sha`; `tarball` is `GET /repos/{repo}/tarball/{commitSha}`, following its redirect, and answers the body. Every request sends `User-Agent: ruken` and `X-GitHub-Api-Version: 2022-11-28`. `apiBase` defaults to `https://api.github.com`. The chosen `fetch` is called as a plain function (Workers refuse `fetch` called as a method of another object).
-  - What GitHub's refusals become: a 404 from `/installation`, `GameError("NOT_CONNECTED", "Ruken can't see that repository. Install the Ruken app on it in GitHub, then try again.")`; a 404 or 422 from `/commits/…`, `GameError("INVALID", "We couldn't find that branch in your repository.")`; anything else that is not 2xx, an `Error` naming the status and the path, never the token.
+  - What GitHub's refusals become: a 404 from `/installation`, `GameError("NOT_CONNECTED", "Ruken can't see that repository. Choose it on GitHub, then try again.")` (the same words as Task 15's refusal: a maker meets one sentence for one problem); a 404 or 422 from `/commits/…`, `GameError("INVALID", "We couldn't find that branch in your repository.")`; anything else that is not 2xx, an `Error` naming the status and the path, never the token.
   - `repo` is checked first against `/^[A-Za-z0-9_.-]{1,39}\/[A-Za-z0-9_.-]{1,100}$/`, and a branch against 1 to 200 characters with no space, `..` or control character: a failing one throws `GameError("INVALID", …)` before any request, so nothing a person typed is ever put into a GitHub address unchecked.
   - `freshRsaKey(): { pkcs1Pem: string; pkcs8Pem: string; publicKey: KeyObject }` in `tests/support/rsa.ts`, from `node:crypto`'s `generateKeyPairSync("rsa", { modulusLength: 2048 })`. No key is a file in the repository.
 
@@ -519,11 +532,11 @@ it("never puts the token in an error", async () => { /* a 500 from the tarball: 
 
 **Interfaces:**
 - Produces:
-  - `tarEntries(gzipped: ReadableStream<Uint8Array>): AsyncGenerator<TarEntry>` with `interface TarEntry { path: string; kind: "file" | "directory" | "link" | "other"; size: number; bytes(limit: number): Promise<Uint8Array> }`. It unzips with `DecompressionStream("gzip")` and reads 512-byte headers. A regular file (type `0` or NUL) is `file`; `5` is `directory`; `1` and `2` are `link`; a pax header (`x`) or a GNU long name (`L`) gives the next entry its full path; a pax global header (`g`) is skipped; anything else is `other`. `bytes(limit)` reads the entry's content and throws `RangeError` if `size` is over `limit`, before reading; an entry whose `bytes` was not asked for is skipped without being held in memory. A file that ends in the middle of an entry throws `The download ended early.`
+  - `tarEntries(gzipped: ReadableStream<Uint8Array>): AsyncGenerator<TarEntry>` with `interface TarEntry { path: string; kind: "file" | "directory" | "link" | "other"; size: number; bytes(limit: number): Promise<Uint8Array> }`. It unzips with `DecompressionStream("gzip")` and reads 512-byte headers. A regular file (type `0` or NUL) is `file`; `5` is `directory`; `1` and `2` are `link`; a pax header (`x`) or a GNU long name (`L`) gives the next entry its full path; a pax global header (`g`) is skipped; anything else is `other`. `bytes(limit)` reads the entry's content and throws `RangeError` if `size` is over `limit`, before reading; it makes one `Uint8Array` of exactly `size` bytes first and copies each piece of the stream into it, never a list of pieces joined at the end, so a 50 MB file costs 50 MB of the Worker's 128 MB and not twice that (a comment says so). An entry whose `bytes` was not asked for is skipped without being held in memory. A file that ends in the middle of an entry throws `The download ended early.`
   - `tarGz(files: readonly { path: string; content: Uint8Array | string; link?: true }[]): Promise<Uint8Array>` in `tests/support/tar.ts`: writes ustar headers (a pax `x` header for a path over 100 characters), two empty blocks at the end, gzipped with `CompressionStream`. Test code only.
 - It imports nothing, so it has no feature logic and the Worker can bundle it.
 
-- [ ] **Step 1 (red):** round trips through `tarGz`: three files come back with their paths, sizes and bytes, in order; a 150-character path comes back whole; a link is `link`; an entry not read is skipped and the next one is still right; `bytes(10)` on a 11-byte file throws `RangeError`; a tarball cut in half throws "The download ended early."; a 5 MB file read in 64 KB chunks comes back the same (the reader must not depend on how the stream is cut). Stub `tarEntries`. Push. Expected: `verify` fails in `tar.test.ts` with "not built yet".
+- [ ] **Step 1 (red):** round trips through `tarGz`: three files come back with their paths, sizes and bytes, in order; a 150-character path comes back whole; a link is `link`; an entry not read is skipped and the next one is still right; `bytes(10)` on a 11-byte file throws `RangeError`; a tarball cut in half throws "The download ended early."; a 5 MB file read in 64 KB chunks comes back the same (the reader must not depend on how the stream is cut), and a header split across two chunks is read whole. Stub `tarEntries`. Push. Expected: `verify` fails in `tar.test.ts` with "not built yet".
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 
 ### Task 10: The pull
@@ -536,9 +549,9 @@ it("never puts the token in an error", async () => { /* a 500 from the tarball: 
 - Consumes: `GitHub` (Task 8), `tarEntries` (Task 9), `checkGameFiles` and the limits (Task 4), `FileStore` (Task 6), `normalizePath` (Task 3).
 - Produces: `pullGame(deps: { db: PrismaClient; clock: Clock; github: GitHub; files: FileStore }, gameId: string): Promise<{ id: string; commitSha: string; fileCount: number; totalBytes: number }>`.
   1. Read the game's `repoFullName`, `repoBranch`, `repoFolder` and `publicId`. `commitSha = await github.commitOf(…)`.
-  2. **First pass, storing nothing.** Read `github.tarball(repo, commitSha)`. GitHub puts everything under one top folder; an entry counts when its path, after that top folder, sits under `repoFolder`. Build the `PulledFile` list (a file of 200 bytes or less is read to see whether it is an LFS pointer; the top `index.html` is read, up to 2 MB, for the address check). Stop reading as soon as the count or the total passes its limit. `checkGameFiles` decides; a refusal throws `GameError("FILES_REFUSED", problem)`.
+  2. **First pass, storing nothing.** Read `github.tarball(repo, commitSha)`. GitHub puts everything under one top folder; an entry counts when its path, after that top folder, sits under `repoFolder`. Build the `PulledFile` list (a file of 200 bytes or less is read to see whether it is an LFS pointer; the top `index.html` is read, up to 2 MB, for the address check). Stop reading as soon as the count or the total passes its limit. `checkGameFiles` decides; a refusal sets the game's `pullProblem` to its words and then throws `GameError("FILES_REFUSED", problem)`. GitHub's tarball holds the whole commit, not only the folder: a repository whose other folders are big is downloaded whole twice, and that is why FloorFifty's ready folder goes on a branch of its own (O3).
   3. **Second pass.** `pullId = randomUUID()`. Read the same commit's tarball again and `put` each file under `files/<publicId>/<pullId>/<normalizePath(path)>`.
-  4. Insert the `GamePull` row with that id, the commit, the count, the bytes and the game's `connectHosts` as they are now, and answer it. The game's `livePullId` is not touched.
+  4. Insert the `GamePull` row with that id, the commit, the count, the bytes and the game's `connectHosts` as they are now, set the game's `pullProblem` to null, and answer the row. The game's `livePullId` is not touched.
 - The key uses the path as `normalizePath` answers it for the percent-encoded path, so the name stored is the name the gate will look for.
 
 - [ ] **Step 1 (red):** a fake `GitHub` whose `tarball` answers `tarGz(…)` of a top folder `acme-game-0123abc/` and counts its calls:
@@ -556,7 +569,9 @@ it("stores nothing when the files are refused, and leaves the live game alone", 
   expect(files.keys()).toEqual(keysOfPullA);
   expect((await prisma.game.findUniqueOrThrow({ where: { id: game.id } })).livePullId).toBe(pullA.id);
   expect(await prisma.gamePull.count({ where: { gameId: game.id } })).toBe(1);
+  expect((await prisma.game.findUniqueOrThrow({ where: { id: game.id } })).pullProblem).toBe("We couldn't find an index.html at the top of that folder. Ruken starts a game from index.html.");
 });
+it("forgets the last refusal once a pull passes", async () => { /* a refused pull, then a good one: pullProblem is null */ });
 it("refuses a pointer to Git LFS by name", async () => { /* message names the path */ });           // Review Focus 5
 it("reads the commit it resolved, both times", async () => { /* tarball called twice, both with SHA */ });
 it("a second pull gets its own folder and the first one's files stay", async () => { /* both sets of keys present */ });
@@ -574,7 +589,7 @@ it("a second pull gets its own folder and the first one's files stay", async () 
 
 **Interfaces:**
 - Produces, added to `createGamesService`:
-  - `createGame(input: { makerUserId: string; name: string; oneLine: string; playsOn: GamePlaysOn; repo: { fullName: string; branch: string | null; folder: string }; connectHosts: string[] }): Promise<{ id: string; slug: string; publicId: string }>`. `name` is 1 to 60 characters after trimming and `oneLine` 1 to 100, else `GameError("INVALID", "A game needs a name." | "A game's name can be up to 60 characters." | "A game needs one line about it." | "The one line can be up to 100 characters.")`; a name with no address (`slugOf` null), `"Pick a name with at least three letters or numbers."`; a taken slug gets `-2`, `-3`, up to `-9`, then `"That name is taken. Pick another."`. The repository name and the folder are checked as Task 8 and Task 1's CHECK do.
+  - `createGame(input: { makerUserId: string; name: string; oneLine: string; playsOn: GamePlaysOn; repo: { fullName: string; branch: string | null; folder: string }; connectHosts: string[] }): Promise<{ id: string; slug: string; publicId: string }>`. `name` is 1 to 60 characters after trimming and `oneLine` 1 to 100, else `GameError("INVALID", "A game needs a name." | "A game's name can be up to 60 characters." | "A game needs one line about it." | "The one line can be up to 100 characters.")`; a name with no address (`slugOf` null), `"Pick a name with at least three letters or numbers."`; a taken slug gets `-2`, `-3`, up to `-9`, then `"That name is taken. Pick another."`; before a suffix is added the slug is cut to 38 characters and any hyphen at its end dropped, so it still fits Task 1's 40-character CHECK. The repository name and the folder are checked as Task 8 and Task 1's CHECK do.
   - `pullLatest(gameId): Promise<…>`: `pullGame` with the service's own deps.
   - `goLive(gameId: string, pullId: string): Promise<void>` (Task 26 replaces it with sending for review and accepting; until then it is what makes a game live in tests): the pull must be this game's and both clips must exist, else `GameError("NOT_READY", "A game needs its files, an upright clip and a wide clip before it can go live.")`; then `state: "live"`, `livePullId`, `stateReason: null`, in one update.
   - `liveGameBySlug(slug: string): Promise<LiveGame | null>` with `interface LiveGame { id: string; publicId: string; slug: string; name: string; oneLine: string; playsOn: GamePlaysOn; freeToPlay: boolean; makerUserId: string; livePullId: string; connectHosts: string[]; clips: { upright: string; wide: string } }` (`clips` holds the two keys; `connectHosts` is the live pull's list). Null unless the state is `live`.
@@ -583,14 +598,14 @@ it("a second pull gets its own folder and the first one's files stay", async () 
   - `games.ts` re-exports `gamesServices`, `GameError`, `type LiveGame`, `type ClipShape`, `type GamePlaysOn`, `CLIP_MAX_BYTES`, `isClipKey`.
 - This slice builds no way to send a game back or take it down: nothing here uses one. Slice 4 does.
 
-- [ ] **Step 1 (red):** one case per refusal of `createGame` with its words; two games named "Floor Fifty" get `floor-fifty` and `floor-fifty-2`; `goLive` without a wide clip refuses with the words above and with both clips makes the game live; `liveGameBySlug` is null for a draft and answers the two clip keys for a live game; `addresses.test.ts`: `gameAddress("https://{name}.games.test", "g-aaaaaaaaaa")` is `https://g-aaaaaaaaaa.games.test`, `http://{name}.localhost:8788` is accepted, and `http://{name}.games.test`, `https://games.test`, `https://{name}.games.test/x` and `https://x.{name}.games.test` each throw; `services.test.ts`: `GITHUB_API_BASE=https://evil.example` throws, a missing `GAME_ADDRESS_PATTERN` throws "Missing setting GAME_ADDRESS_PATTERN". Stubs. Push. Expected: `postgres` fails in `service.pg.test.ts`, `verify` in the other two, with "not built yet".
+- [ ] **Step 1 (red):** one case per refusal of `createGame` with its words; two games named "Floor Fifty" get `floor-fifty` and `floor-fifty-2`; two games with the same 40-character name get the name and its first 38 characters with `-2`; `goLive` without a wide clip refuses with the words above and with both clips makes the game live; `liveGameBySlug` is null for a draft and answers the two clip keys for a live game; `addresses.test.ts`: `gameAddress("https://{name}.games.test", "g-aaaaaaaaaa")` is `https://g-aaaaaaaaaa.games.test`, `http://{name}.localhost:8788` is accepted, and `http://{name}.games.test`, `https://games.test`, `https://{name}.games.test/x` and `https://x.{name}.games.test` each throw; `services.test.ts`: `GITHUB_API_BASE=https://evil.example` throws, a missing `GAME_ADDRESS_PATTERN` throws "Missing setting GAME_ADDRESS_PATTERN". Stubs. Push. Expected: `postgres` fails in `service.pg.test.ts`, `verify` in the other two, with "not built yet".
 - [ ] **Step 2 (green):** the code, and the four new names in `.env.example` with fake values and a line each. Push. Expected: all pass, the layer test included. Branch C is ready to merge.
 
 ---
 
 # Branch D: `slice-2/gate`
 
-First, before any code: send the coordinator G3 word for word. Nothing in this branch waits for it.
+First, before any code: send the coordinator G3 word for word. Nothing in this branch waits for it; branch E is not marked ready until it is done (the maker's screens need `GAME_ADDRESS_PATTERN`).
 
 ### Task 12: The play pass
 
@@ -600,25 +615,32 @@ First, before any code: send the coordinator G3 word for word. Nothing in this b
 
 **Interfaces:**
 - Produces, with `node:crypto` only (both Workers have `nodejs_compat`), in the pattern of slice 1's `arrival.ts` and `OLD/packages/core/src/runtime/launch-token.ts`:
-  - `PASS_LIFE_MS = 4 * 60 * 60 * 1000`.
-  - `interface PassClaims { game: string; pull: string; connect: string[]; expiresAtMs: number }`.
-  - `makePass(claims: PassClaims, secret: string): string`: `v1.<payload>.<mac>`; the payload is `{ "g": game, "p": pull, "c": connect, "exp": <whole seconds> }` as JSON in base64url; the mac is HMAC-SHA256 over `"ruken-play-pass-v1:" + payload`, in base64url.
-  - `checkPass(value: string, secret: string, nowMs: number): PassClaims | null`: null for anything but three dot-separated parts starting `v1`, a mac that does not match (compared with `timingSafeEqual`), JSON that does not parse, a `g` that does not match `PUBLIC_ID`'s pattern (written out here, so this file imports no feature), a `p` that is not 1 to 64 characters of `[A-Za-z0-9-]`, a `c` that is not a list of at most five strings of the shape Task 4 allows (written out here), an `exp` that is not a whole number, or a pass whose time has come (`nowMs >= exp * 1000`). It never throws. An empty secret throws at once in both functions: `The play pass secret is not set.`
+  - `PASS_LIFE_MS = 24 * 60 * 60 * 1000` and `PASS_MIN_LEFT_MS = 4 * 60 * 60 * 1000`, with a comment that says why each: a member keeps one pass per game for a day so the browser keeps the game's files (the coordinator, 2026-11-14), and a pass is handed out again only while four hours are left, so no Play starts on a pass about to run out.
+  - `interface PassClaims { id: string; game: string; pull: string; connect: string[]; expiresAtMs: number }`. `id` is the pass's own random id, 22 characters of base64url (16 random bytes); it is the `PlayPass` row's id (Task 16), which is how a leaked address is traced to the one person it was made for.
+  - `newPassId(randomBytes?: (n: number) => Uint8Array): string`: 16 bytes from `crypto.getRandomValues` by default, in base64url.
+  - `makePass(claims: PassClaims, secret: string): string`: `v1.<payload>.<mac>`; the payload is `{ "i": id, "g": game, "p": pull, "c": connect, "exp": <whole seconds> }` as JSON in base64url; the mac is HMAC-SHA256 over `"ruken-play-pass-v1:" + payload`, in base64url. The same claims and secret always make the same pass, so a pass rebuilt from its row is the address the browser already has.
+  - `checkPass(value: string, secret: string, nowMs: number): PassClaims | null`: null for anything but three dot-separated parts starting `v1`, a mac that does not match (compared with `timingSafeEqual`), JSON that does not parse, an `i` that is not 22 characters of `[A-Za-z0-9_-]`, a `g` that does not match `PUBLIC_ID`'s pattern (written out here, so this file imports no feature), a `p` that is not 1 to 64 characters of `[A-Za-z0-9-]`, a `c` that is not a list of at most five strings of the shape Task 4 allows (written out here), an `exp` that is not a whole number, or a pass whose time has come (`nowMs >= exp * 1000`). It never throws. An empty secret throws at once in both functions: `The play pass secret is not set.`
 - The file imports nothing from the app, so the gate can bundle it.
 
 - [ ] **Step 1 (red):**
 
 ```ts
-const claims = { game: "aaaaaaaaaa", pull: "0b0e6c2e-3f0a-4a8e-9d0a-1c2d3e4f5a6b", connect: ["api.example.com"], expiresAtMs: 1_800_000_000_000 };
+const claims = { id: "AAAAAAAAAAAAAAAAAAAAAA", game: "aaaaaaaaaa", pull: "0b0e6c2e-3f0a-4a8e-9d0a-1c2d3e4f5a6b", connect: ["api.example.com"], expiresAtMs: 1_800_000_000_000 };
 it("opens what it made, until it runs out", () => {
   const pass = makePass(claims, "s");
   expect(checkPass(pass, "s", 1_799_999_999_999)).toEqual(claims);
   expect(checkPass(pass, "s", 1_800_000_000_000)).toBeNull();
 });
-it("holds nothing but a game, a pull, its servers and a time", () => {
+it("holds nothing but its own id, a game, a pull, its servers and a time", () => {
   const payload = JSON.parse(Buffer.from(makePass(claims, "s").split(".")[1] ?? "", "base64url").toString());
-  expect(Object.keys(payload).sort()).toEqual(["c", "exp", "g", "p"]);
+  expect(Object.keys(payload).sort()).toEqual(["c", "exp", "g", "i", "p"]);
 });
+it("makes the same pass from the same claims", () => { expect(makePass(claims, "s")).toBe(makePass({ ...claims }, "s")); });
+it("lasts a day, and is handed out again only while four hours are left", () => {
+  expect(PASS_LIFE_MS).toBe(86_400_000); expect(PASS_MIN_LEFT_MS).toBe(14_400_000);
+});
+it("makes an id of 16 random bytes", () => { expect(newPassId(() => new Uint8Array(16))).toBe("AAAAAAAAAAAAAAAAAAAAAA"); });
+it("ignores a pass whose id is the wrong shape", () => { expect(checkPass(makePass({ ...claims, id: "short" }, "s"), "s", 0)).toBeNull(); });
 it("is one path segment", () => { expect(makePass(claims, "s")).toMatch(/^[A-Za-z0-9_.-]+$/); });
 it("ignores a pass made with another secret", () => { expect(checkPass(makePass(claims, "other"), "s", 0)).toBeNull(); });
 it("ignores a payload changed after signing", () => { /* swap in another game's payload, keep the mac: null */ });
@@ -642,9 +664,9 @@ it("refuses to work with no secret", () => { expect(() => makePass(claims, "")).
   2. `/__ruken/health`: 200 `ok`, `cache-control: no-store`. `/robots.txt`: `User-agent: *\nDisallow: /\n`.
   3. The host's first label decides. `media`: step 4. `g-<ten characters of a-z2-7>`: step 5. Anything else: 404.
   4. **A clip.** The path without its first slash must pass `isClipKey`'s pattern (written out in this file) or the answer is 404. Served from that key with `cache-control: public, max-age=31536000, immutable` and `cross-origin-resource-policy: cross-origin`, to anyone.
-  5. **A game file.** The path is `/<pass>/<rest>`. `checkPass(pass, passSecret, nowMs)` null, or its `game` is not the host's game: **403** with the one line below, and the bucket is never asked. `/<pass>` with no slash after it: 308 to `/<pass>/`. `normalizePath(rest)` null: 400. `rest` empty: `index.html`. The key is `files/<game>/<pull>/<path>`; no such file: 404.
+  5. **A game file.** The path is `/<pass>/<rest>`. `checkPass(pass, passSecret, nowMs)` null, or its `game` is not the host's game: **403** with the one line below, and the bucket is never asked. A request with the header `service-worker: script` (what a browser sends when a page asks it to install a service worker): **403** too, before the pass is read, with a comment that says why (a service worker could go on serving the game's files after the pass runs out). `/<pass>` with no slash after it: 308 to `/<pass>/`. `normalizePath(rest)` null: 400. `rest` empty: `index.html`. The key is `files/<game>/<pull>/<path>`; no such file: 404.
   6. Serving, for both: the type from `servedTypeFor` and never from the file; `etag`; `If-None-Match` answers 304; a `Range` answers 206 or 416 as the carried code does; a precompressed `.br` or `.gz` file is sent as it is under its `content-encoding` and never as a range (the carried `encodeBody: "manual"`); `HEAD` answers the headers with no body.
-- Headers on every answer: `x-content-type-options: nosniff`, `referrer-policy: no-referrer` (so a pass in an address is never sent on to a third site), `x-robots-tag: noindex`, and `content-security-policy` with `frame-ancestors <siteOrigin>` (only Ruken's site may put a game in a frame). A game file also gets `cross-origin-resource-policy: same-origin`, `cache-control: private, max-age=14400` and the `permissions-policy` (`gamepad=(self), fullscreen=(self), autoplay=(self), clipboard-write=(self), web-share=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()`). A game file's `content-security-policy` is `frame-ancestors <siteOrigin>; connect-src 'self'` followed by `https://<name> wss://<name>` for each name in the pass's `connect`: the browser then refuses any other connection the game's scripts try. An answer that is not a file is plain text with `content-security-policy: default-src 'none'; frame-ancestors <siteOrigin>` and `cache-control: no-store`.
+- Headers on every answer: `x-content-type-options: nosniff`, `referrer-policy: no-referrer` (so a pass in an address is never sent on to a third site), `x-robots-tag: noindex`, and `content-security-policy` with `frame-ancestors <siteOrigin>` (only Ruken's site may put a game in a frame). A game file also gets `cross-origin-resource-policy: same-origin`, `cache-control: private, max-age=<the pass's seconds left, rounded down>` (so the browser keeps the files for exactly as long as their address works, at most a day, and never past it) and the `permissions-policy` (`gamepad=(self), fullscreen=(self), autoplay=(self), clipboard-write=(self), web-share=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()`). A game file's `content-security-policy` is `frame-ancestors <siteOrigin>; connect-src 'self' blob: data:` followed by `https://<name> wss://<name>` for each name in the pass's `connect`: the browser then refuses any other connection the game's scripts try. `blob:` and `data:` are addresses made inside the browser, not servers; game engines read their own sounds and pictures through them. An answer that is not a file is plain text with `content-security-policy: default-src 'none'; frame-ancestors <siteOrigin>` and `cache-control: no-store`.
 - The words, shown inside the game's frame, each one line: 403, "This game's link has run out. Go back and press Play again."; 404, "Not found."; 400, "We could not read that address."
 - No answer ever has a `set-cookie` header, and the handler never reads `cookie`.
 
@@ -668,8 +690,12 @@ it("loads nothing without a pass", async () => {                        // desig
   expect(files.reads).toEqual([]);                                      // the bucket was never asked
 });
 it("lets the game reach its own files and the servers in its pass, and nothing else", async () => {       // Review Focus 20
-  expect((await get(`/${pass}/`)).headers.get("content-security-policy")).toBe("frame-ancestors https://ruken.test; connect-src 'self' https://api.example.com wss://api.example.com");
-  /* a pass with no servers: "…; connect-src 'self'" */ });
+  expect((await get(`/${pass}/`)).headers.get("content-security-policy")).toBe("frame-ancestors https://ruken.test; connect-src 'self' blob: data: https://api.example.com wss://api.example.com");
+  /* a pass with no servers: "…; connect-src 'self' blob: data:" */ });
+it("keeps a file in the browser only as long as its pass works", async () => {
+  /* nowMs one hour before the pass runs out: cache-control "private, max-age=3600" */ });
+it("refuses to hand out a service worker", async () => {                                                        // Review Focus 22
+  /* a good pass, main.js, with the header service-worker: script → 403; files.reads is empty */ });
 it("refuses a pass made for another game", async () => { /* pass for bbbbbbbbbb on g-aaaaaaaaaa: 403 */ });      // Review Focus 1
 it("refuses a pass that has run out, in words a person can act on", async () => {                                // Review Focus 3
   const response = await get(`/${pass}/main.js`, { nowMs: claims.expiresAtMs });
@@ -725,7 +751,7 @@ it("is not found on any other name", async () => { /* http://www.games.test/: 40
 
   - `cloudflare/games/worker.ts`: `export default { fetch(request, env) { return handleGameRequest(request, { files: r2FileStore(env.GAME_FILES), passSecret: env.PLAY_PASS_SECRET, siteOrigin: env.SITE_ORIGIN, nowMs: Date.now() }); } }`, with `interface Env { GAME_FILES: R2Bucket; PLAY_PASS_SECRET: string; SITE_ORIGIN: string }` declared in the file. It imports `../../src/features/play/gate.ts` and `../../src/lib/files/r2-store.ts` directly and nothing else, with a comment that says why: `play.ts`, the feature's entry, brings the database with it, and this Worker has none. `Date.now()` is allowed here and only here: this file is the edge where the real clock is read, as `systemClock` is for the app.
   - `package.json`: `"deploy": "prisma migrate deploy && wrangler deploy && wrangler deploy --config cloudflare/games/wrangler.jsonc"`. The gate goes out after the app, with the same build's token ("Found while planning", 5).
-  - `tests/browser/support/when-up.ts`: `node tests/browser/support/when-up.ts <url>` asks the address once a second and exits 0 at the first 200, or 1 after 170 seconds.
+  - `tests/browser/support/when-up.ts`: `node tests/browser/support/when-up.ts <url>` asks the address once a second and exits 0 at the first 200, or 1 after as long as the app's own `webServer` entry is given to start (its `timeout`; 180 seconds today), so it never gives up on an app that Playwright would still wait for. The gate's own `timeout`, 240 seconds, is that plus a minute for the gate to start.
   - `playwright.config.ts`: one more `webServer` entry, `command: "node tests/browser/support/when-up.ts http://localhost:4173/healthz && pnpm exec wrangler dev --config cloudflare/games/wrangler.jsonc --port 8788 --persist-to .wrangler/state"`, ready when `http://localhost:8788/__ruken/health` answers 200, `timeout: 240_000`, with `env`: `PLAY_PASS_SECRET: "test-only-play-pass-secret"`, `SITE_ORIGIN: "http://localhost:4173"`, `CLOUDFLARE_INCLUDE_PROCESS_ENV: "true"`. The comment says why it waits: two local Workers that open the same storage folder at the same moment stop with "database is locked" ("Found while planning", 4). The app's `env` gains `PLAY_PASS_SECRET` (the same value) and `GAME_ADDRESS_PATTERN: "http://{name}.localhost:8788"`.
 
 - [ ] **Step 1 (red):** `games-worker.test.ts` (reads files as text; the config is parsed after dropping the `//` lines): the name is `ruken-games`; `main` is `worker.ts`; `compatibility_flags` contains `nodejs_compat`; `workers_dev` and `preview_urls` are false; `r2_buckets` is the one entry above; there is no `vars`, `route`, `routes` or `hyperdrive` key; the text holds no `https://` but the schema's own line and nothing matching `/[a-z0-9-]+\.(com|net|org|io|dev|gg|games)\b/` (no real address); `worker.ts` imports exactly the two files named above. `tests/wrangler.test.ts`: the `deploy` script contains `wrangler deploy --config cloudflare/games/wrangler.jsonc` after the app's `wrangler deploy`. `game-gate.test.ts`:
@@ -742,7 +768,7 @@ test("a game's address gives nothing without a pass", async ({ page }) => {
 ```
 
   Push. Expected: `verify` fails in `games-worker.test.ts` and `wrangler.test.ts` (no such file, no such script); `browser` fails in `game-gate.test.ts` (nothing listens on 8788).
-- [ ] **Step 2 (green):** the files. Push. Expected: all pass, and every earlier journey passes with the fourth server running.
+- [ ] **Step 2 (green):** the files. Push. Expected: all pass, and every earlier journey passes with the gate running beside the app and the stand-in Stripe.
 - [ ] **Step 3: if green does not come.** One thing here could not be settled by reading. Signs: the gate's `wrangler dev`, or the app's, stops with `SQLITE_BUSY` or "database is locked", or the `browser` job times out starting servers. One fix: give the gate its own folder (`--persist-to .wrangler/games-state`) and stop; the journeys of Tasks 15 to 23 need the shared bucket, so report to the coordinator with the log lines and wait. Any other failure of the green push: stop and report at once (CLAUDE.md, Pace: no fourth attempt).
 
 Branch D is ready to merge.
@@ -756,28 +782,29 @@ Owner, 2026-11-13: "Users should be able to upload it on the site by connecting 
 ### Task 15: A maker's GitHub connection
 
 **Files:**
-- Create: `prisma/schema/make.prisma` (first part), `prisma/migrations/<timestamp>_github_connection/migration.sql`, `src/features/games/github-connect.ts`
-- Modify: `prisma/schema/accounts.prisma` (relation), `src/features/games/github.ts`, `src/features/games/service.ts`, `src/features/games/services.ts`, `src/features/games/games.ts`, `.env.example`
-- Test: `tests/features/games/github-connect.test.ts`, `tests/features/games/connection.pg.test.ts`
+- Create: `prisma/migrations/<timestamp>_github_connection/migration.sql`, `src/features/games/github-connect.ts`
+- Modify: `prisma/schema/games.prisma`, `prisma/schema/accounts.prisma` (relation), `src/features/games/github.ts`, `src/features/games/service.ts`, `src/features/games/services.ts`, `src/features/games/games.ts`, `src/features/accounts/deletion.ts` (the purge), `.env.example`
+- Test: `tests/features/games/github-connect.test.ts`, `tests/features/games/connection.pg.test.ts`, `tests/features/accounts/purge.pg.test.ts` (add a case)
 
-**Why it is more than a link.** After a maker installs the Ruken app, GitHub sends them back with an installation's number in the address. A number in an address can be typed by anyone, and an installation can read private repositories. So Ruken never trusts that number: it asks GitHub, as the person (GitHub's sign-in for apps), which installations that person can reach, and stores only those.
+**Why it is more than a link.** After a maker installs the Ruken app, GitHub sends them back with an installation's number in the address. A number in an address can be typed by anyone, and an installation can read private repositories, including, in an organisation, ones this person cannot open. So Ruken never trusts that number: it asks GitHub, as the person (GitHub's sign-in for apps), which installations that person can reach and which repositories in each, and stores only those ("Found while planning", 10).
 
-**The table** (`prisma/schema/make.prisma`): `GitHubInstallation`: `id`, `userId` (a `User`), `installationId` (`BigInt`), `accountLogin`, `createdAt`, `updatedAt`; unique on (`userId`, `installationId`); index on `userId`. A row means: GitHub said this person can reach this installation.
+**The tables** (`prisma/schema/games.prisma`, beside the games that use them: the games service reads them). `GitHubInstallation`: `id`, `userId` (a `User`), `installationId` (`BigInt`), `accountLogin`, `createdAt`, `updatedAt`; unique on (`userId`, `installationId`); index on `userId`. A row means: GitHub said this person can reach this installation. `GitHubRepository`: `id`, `connectionId` (a `GitHubInstallation`, `onDelete: Cascade`), `fullName`, `defaultBranch`, `createdAt`; unique on (`connectionId`, `fullName`). A row means: GitHub said this person can reach this repository through that installation. Both are a person's data, so the purge removes them.
 
 **Interfaces:**
 - Produces, in `github-connect.ts`, each with the injected `fetch`, `apiBase` (default `https://api.github.com`) and `webBase` (default `https://github.com`):
   - `signInUrl(input: { clientId: string; state: string; webBase?: string }): string`: `{webBase}/login/oauth/authorize?client_id=…&state=…`.
   - `installUrl(input: { appSlug: string; state: string; webBase?: string }): string`: `{webBase}/apps/{appSlug}/installations/new?state=…`.
-  - `sealState(userId: string, nowMs: number, secret: string): string` and `openState(value: string | undefined, userId: string, nowMs: number, secret: string): boolean`: the arrival cookie's pattern (HMAC-SHA256 over `"ruken-github-state-v1:" + payload`), holding the account's id and the time; it opens only for the same account and for ten minutes. It stops someone from finishing a connection that another person started.
-  - `installationsOf(input: { code: string; clientId: string; clientSecret: string; … }): Promise<{ installationId: bigint; accountLogin: string }[]>`: `POST {webBase}/login/oauth/access_token` (JSON, `Accept: application/json`) for the person's token, then `GET {apiBase}/user/installations` with it, every page. The person's token is used once and never stored. A refused code throws `GameError("NOT_CONNECTED", "GitHub didn't finish connecting. Try again.")`.
-- Added to `GitHub` (Task 8): `repositoriesOf(installationId: bigint): Promise<{ fullName: string; defaultBranch: string; private: boolean }[]>` (`GET /installation/repositories` with that installation's token, every page, 300 repositories at most), and `installationOf(repo: string): Promise<bigint | null>` (what `/repos/{repo}/installation` answers).
+  - `sealState(userId: string, nowMs: number, secret: string): string` and `openState(value: string | undefined, userId: string, nowMs: number, secret: string): boolean`: the arrival cookie's pattern (HMAC-SHA256 over `"ruken-github-state-v1:" + payload`), holding the account's id and the time; it opens only for the same account and for ten minutes. It stops someone from finishing a connection that another person started. The secret is `BETTER_AUTH_SECRET`, the app's own, as for the arrival cookie: never `PLAY_PASS_SECRET`, which the gate holds too.
+  - `connectionOf(input: { code: string; clientId: string; clientSecret: string; … }): Promise<{ installationId: bigint; accountLogin: string; repositories: { fullName: string; defaultBranch: string }[] }[]>`: `POST {webBase}/login/oauth/access_token` (JSON, `Accept: application/json`) for the person's token; then with it `GET {apiBase}/user/installations`, every page; then for each installation `GET {apiBase}/user/installations/{id}/repositories`, every page, 300 repositories in all at most. The person's token is used for these calls only and never stored. A refused code throws `GameError("NOT_CONNECTED", "GitHub didn't finish connecting. Try again.")`.
+- Added to `GitHub` (Task 8): `installationOf(repo: string): Promise<bigint | null>` (what `/repos/{repo}/installation` answers, with the app's token).
 - Added to the games service:
-  - `rememberInstallations(userId: string, found: { installationId: bigint; accountLogin: string }[]): Promise<void>`: upserts each, and removes this person's rows that GitHub no longer lists.
-  - `repositoriesFor(userId: string): Promise<{ fullName: string; defaultBranch: string }[]>`: over the person's stored installations, sorted by name. An installation GitHub no longer knows (404) is dropped from the table and skipped.
-  - `createGame` and `pullLatest` now check that `github.installationOf(repo)` is one of the maker's stored installations, else `GameError("NOT_CONNECTED", "Ruken can't see that repository. Choose it on GitHub, then try again.")`. A maker can only pull a repository they themselves connected.
-- Settings: `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_SLUG`, optional `GITHUB_WEB_BASE` (accepted only when it starts with `http://127.0.0.1:`, like `GITHUB_API_BASE`). `gamesServices()` gains `connect: { signInUrl(state), installUrl(state), installationsOf(code) }`.
+  - `rememberConnection(userId: string, found: …the answer of connectionOf…): Promise<void>`: in one transaction, this person's installations and repositories become exactly what GitHub listed (rows GitHub stopped listing are removed).
+  - `repositoriesFor(userId: string): Promise<{ fullName: string; defaultBranch: string }[]>`: the person's stored repositories, sorted by name. It asks GitHub nothing.
+  - `createGame` and `pullLatest` now check that the repository is one of the maker's stored repositories and that `github.installationOf(repo)` is still that row's installation, else `GameError("NOT_CONNECTED", "Ruken can't see that repository. Choose it on GitHub, then try again.")`. A maker can only pull a repository GitHub said they themselves can reach.
+- `purgeDueAccounts` (slice 1, Task 20) also deletes the person's `GitHubInstallation` rows (their repositories go with them), inside the same transaction per account.
+- Settings: `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_SLUG`, optional `GITHUB_WEB_BASE` (accepted only when it starts with `http://127.0.0.1:`, like `GITHUB_API_BASE`). `gamesServices()` gains `connect: { signInUrl(state), installUrl(state), connectionOf(code), sealState(userId), openState(value, userId) }`, the last two reading `BETTER_AUTH_SECRET` and the clock.
 
-- [ ] **Step 1 (red):** `github-connect.test.ts`: the two addresses, exactly; a state opens for its own account within ten minutes and not for another account, a changed value, or after ten minutes and one millisecond; `installationsOf` posts the code with the id and the secret, asks `/user/installations` with the token it got, follows a second page, and never puts the token or the secret in an error. `connection.pg.test.ts`: `rememberInstallations` stores what GitHub listed and forgets what it stopped listing; `repositoriesFor` lists both installations' repositories by name; **a maker cannot make or pull a game from a repository under someone else's installation** (the fake `installationOf` answers an id the maker does not hold: `NOT_CONNECTED`, and `tarball` is never called). Every earlier `createGame` and `pullGame` test gains a stored installation. Stubs. Push. Expected: `verify` fails in `github-connect.test.ts`, `postgres` in `connection.pg.test.ts` (no table; "not built yet").
+- [ ] **Step 1 (red):** `github-connect.test.ts`: the two addresses, exactly; a state opens for its own account within ten minutes and not for another account, a changed value, or after ten minutes and one millisecond; `connectionOf` posts the code with the id and the secret, asks `/user/installations` and then `/user/installations/<id>/repositories` with the person's token it got (never with an app or installation token), follows a second page of each, and never puts the token or the secret in an error. `connection.pg.test.ts`: `rememberConnection` stores what GitHub listed and forgets what it stopped listing; `repositoriesFor` lists both installations' repositories by name; **a maker cannot make or pull a game from a repository GitHub did not list for them, even one under an installation they reach** (Review Focus 23: the fake `installationOf` answers the maker's own installation for `acme/private-other`, which is not in their stored list: `NOT_CONNECTED`, and `tarball` is never called); and the same for a repository under someone else's installation. Every earlier `createGame` and `pullGame` test gains a stored installation and repository. `purge.pg.test.ts`: a purged account's GitHub rows are gone; another person's stay. Stubs. Push. Expected: `verify` fails in `github-connect.test.ts`, `postgres` in `connection.pg.test.ts` (no table; "not built yet") and in the new purge case.
 - [ ] **Step 2 (green):** the code, the migration and the four names in `.env.example`. Push. Expected: all pass.
 
 ### Task 25: Connecting on the site, and a stand-in GitHub
@@ -789,10 +816,10 @@ Owner, 2026-11-13: "Users should be able to upload it on the site by connecting 
 
 **Interfaces:**
 - `GET /make/github` (signed in, else to sign-in and back): sets nothing but a fresh state and redirects (303) to `signInUrl`. `GET /make/github?choose=1`: the same, to `installUrl` (GitHub's own page for choosing repositories).
-- `GET /make/github/callback?code=…&state=…`: signed out, to sign-in. A state that does not open, or no code: redirect to `/make/new?github=failed`. Otherwise `installationsOf(code)`, `rememberInstallations`, and redirect to `/make/new`. GitHub comes back here both after signing in and after choosing repositories, because the app is set to ask for sign-in during installation (G2).
-- **The stand-in GitHub.** `fake-github-server.ts` is a plain `node:http` server on `127.0.0.1:12112`, started by Playwright, ready when `GET /ready` answers 200. It holds one installation (number 1, account `ruken-test`) with two repositories, `ruken-test/tiny-game` and `ruken-test/broken-game` (no `index.html`). It answers: `GET /login/oauth/authorize` (redirects at once to the app's callback with `code=test-code` and the `state` it was given); `GET /apps/ruken-test-app/installations/new` (the same redirect, with `installation_id=1&setup_action=install`); `POST /login/oauth/access_token`; `GET /user/installations`; `GET /installation/repositories`; and Task 8's four calls for both repositories, the tarballs made at start with `tarGz` from `tests/fixtures/` under a top folder. Every API call must carry an `Authorization` header or gets 401. `POST /next-commit` gives `tiny-game` a new commit id.
+- `GET /make/github/callback?code=…&state=…`: signed out, to sign-in. A state that does not open, or no code: redirect to `/make/new?github=failed`. Otherwise `connectionOf(code)`, `rememberConnection`, and redirect to `/make/new`. GitHub comes back here both after signing in and after installing, because the app is set to ask for sign-in during installation (G2). Whether it also comes back after a maker changes which repositories an existing installation may read is not settled by reading: Task 24 step 2 checks it on the real site, and either way pressing "Connect GitHub" again refreshes the list.
+- **The stand-in GitHub.** `fake-github-server.ts` is a plain `node:http` server on `127.0.0.1:12112`, started by Playwright, ready when `GET /ready` answers 200. It holds one installation (number 1, account `ruken-test`) with two repositories, `ruken-test/tiny-game` and `ruken-test/broken-game` (no `index.html`). It also knows a third repository, `ruken-test/not-yours`, in the same installation but not listed for the person (Review Focus 23). It answers: `GET /login/oauth/authorize` (redirects at once to the app's callback with `code=test-code` and the `state` it was given); `GET /apps/ruken-test-app/installations/new` (the same redirect, with `installation_id=1&setup_action=install`); `POST /login/oauth/access_token`; `GET /user/installations`; `GET /user/installations/1/repositories` (the first two repositories only); and Task 8's four calls for all three repositories, the tarballs made at start with `tarGz` from `tests/fixtures/` under a top folder. Every API call must carry an `Authorization` header or gets 401. `POST /next-commit` gives `tiny-game` a new commit id.
 - **The tiny game.** `index.html` holds `<h1>Tiny game</h1>`, `<button id="tap">Tap</button>`, an `<img src="img/dot.png">` and `<script src="main.js"></script>`; `main.js` sets `document.body.dataset.loaded = "yes"` and writes into `<pre id="seen">` the JSON of what a game can see: `{ referrer: document.referrer, search: location.search, hash: location.hash, name: window.name, cookie: document.cookie }`. `dot.png` is a one-pixel PNG. All addresses are relative.
-- `playwright.config.ts`: the third server; the app's `env` gains `GITHUB_APP_ID: "1"`, `GITHUB_APP_SLUG: "ruken-test-app"`, `GITHUB_APP_CLIENT_ID: "test-client"`, `GITHUB_APP_CLIENT_SECRET: "test-only-client-secret"`, `GITHUB_API_BASE` and `GITHUB_WEB_BASE` (both `http://127.0.0.1:12112`), and `GITHUB_APP_PRIVATE_KEY`, a PKCS#1 key made when the config loads with `generateKeyPairSync` (never a file).
+- `playwright.config.ts`: the stand-in GitHub, one more `webServer` entry beside the app, the stand-in Stripe and the gate; the app's `env` gains `GITHUB_APP_ID: "1"`, `GITHUB_APP_SLUG: "ruken-test-app"`, `GITHUB_APP_CLIENT_ID: "test-client"`, `GITHUB_APP_CLIENT_SECRET: "test-only-client-secret"`, `GITHUB_API_BASE` and `GITHUB_WEB_BASE` (both `http://127.0.0.1:12112`), and `GITHUB_APP_PRIVATE_KEY`, a PKCS#1 key made when the config loads with `generateKeyPairSync` (never a file).
 
 - [ ] **Step 1 (red):**
 
@@ -801,18 +828,19 @@ test("connecting GitHub comes back with the maker's repositories remembered", as
   const maker = await signUp(page);
   await page.goto("/make/github");
   await expect(page).toHaveURL("/make/new");                       // through the stand-in and back; /make/new itself arrives in Task 27
-  expect(await installationsOf(maker.email)).toMatchObject([{ installationId: 1n, accountLogin: "ruken-test" }]);
+  expect(await githubConnectionOf(maker.email)).toMatchObject([{ installationId: 1n, accountLogin: "ruken-test",
+    repositories: ["ruken-test/broken-game", "ruken-test/tiny-game"] }]);   // never ruken-test/not-yours
 });
 test("a callback with a state nobody started is refused, and nothing is remembered", async ({ page }) => {
   const maker = await signUp(page);
   await page.goto("/make/github/callback?code=test-code&state=made-up");
   await expect(page).toHaveURL("/make/new?github=failed");
-  expect(await installationsOf(maker.email)).toEqual([]);
+  expect(await githubConnectionOf(maker.email)).toEqual([]);
 });
 test("signed out, connecting asks for sign-in first", async ({ page }) => { /* /make/github → /sign-in?next=… */ });
 ```
 
-  `installationsOf(email)` goes in `tests/browser/support/database.ts`. Until Task 27, `/make/new` is a 404, and `toHaveURL` still holds: say so in the report line. Commit the stand-in and the fixtures with the tests. Push. Expected: `browser` fails in `connect-github.test.ts`: 404 at `/make/github`.
+  `githubConnectionOf(email)` (each installation with its repositories' names, sorted) goes in `tests/browser/support/database.ts`. Until Task 27, `/make/new` is a 404, and `toHaveURL` still holds: say so in the report line. Commit the stand-in and the fixtures with the tests. Push. Expected: `browser` fails in `connect-github.test.ts`: 404 at `/make/github`.
 - [ ] **Step 2 (green):** the two routes. Push. Expected: all pass. Branch E is ready to merge.
 
 ---
@@ -826,26 +854,29 @@ test("signed out, connecting asks for sign-in first", async ({ page }) => { /* /
 - Modify: `prisma/schema/games.prisma`, `prisma/schema/make.prisma`, `src/features/games/service.ts`, `src/features/games/games.ts`
 - Test: `tests/features/games/review.test.ts`, `tests/features/games/review.pg.test.ts`, `tests/features/make/agreement.pg.test.ts`
 
-**The tables:** `Game` gains `pendingPullId?` unique (a `GamePull`: the files waiting for a person's yes). New `GameReview`: `id`, `gameId`, `pullId`, `staffUserId` (a `User`), `decision ReviewDecision { accepted, sent_back }`, `reason?`, `decidedAt`, `createdAt`; added and never changed (the add-only trigger); CHECK `GameReview_reason_check` (a `sent_back` row has a reason of 1 to 500 characters). It is the record design 5.5 asks of every staff action: who, what, when. New `MakerAgreement`: `id`, `userId` unique, `version`, `acceptedAt`, `createdAt`; added and never changed.
+**The tables:** `Game` gains `pendingPullId?` unique (a `GamePull`: the files waiting for a person's yes) and `pendingSince?` (when they were sent: the queue's order and its "sent 2 hours ago"). New `GameReview` (in `games.prisma`): `id`, `gameId`, `pullId`, `staffUserId` (a `User`), `decision ReviewDecision { accepted, sent_back }`, `reason?`, `decidedAt`, `createdAt`; added and never changed (the add-only trigger, `reject_append_only_change('GameReview')`); CHECK `GameReview_reason_check` (a `sent_back` row has a reason of 1 to 500 characters). It is the record design 5.5 asks of every staff action: who, what, when. New `MakerAgreement` (in `make.prisma`): `id`, `userId` unique, `version` (the version of the text that was accepted, O5), `acceptedAt`, `createdAt`; added and never changed (`reject_append_only_change('MakerAgreement')`). It is kept when an account is purged: it is the record of what a maker agreed to.
 
 **Interfaces:**
 - Produces, pure, in `review.ts`: `stateWords(game: { state: GameState; stateReason: string | null; hasPending: boolean }): string`, the maker's plain words (design 5.4): `draft` → "Not sent yet"; `waiting` → "Waiting for review"; `live` → "Live"; `live` with files pending → "Live. Your update is waiting for review"; `live` with a reason and nothing pending → "Live. Your update was sent back: `<reason>`"; `sent_back` → "Sent back: `<reason>`"; `taken_down` → "Taken down: `<reason>`".
 - Added to the games service (the old `goLive` of Task 11 is replaced by these, and its tests move here):
-  - `sendForReview(gameId: string, makerUserId: string): Promise<void>`: the game is this maker's; its newest pull exists; both clips exist; else `GameError("NOT_READY", …)` with the first of: "Pull your game's files first.", "Add an upright clip.", "Add a wide clip." Then `pendingPullId` is the newest pull, and a game that is not live becomes `waiting`. A live game stays live on its old files (design 5.4: "the old ones stay live until then").
-  - `waitingGames(): Promise<{ slug; name; makerEmail; sentAt }[]>`: every game with a pending pull, oldest first.
+  - `sendForReview(gameId: string, makerUserId: string): Promise<void>`: the game is this maker's; its newest pull exists; both clips exist; else `GameError("NOT_READY", …)` with the first of: "Pull your game's files first.", "Add an upright clip.", "Add a wide clip." Then `pendingPullId` is the newest pull, `pendingSince` the clock's time, and a game that is not live becomes `waiting`. A live game stays live on its old files (design 5.4: "the old ones stay live until then").
+  - `pullLatest` (Task 11) on a game with a pending pull: the new pull takes the pending one's place and `pendingSince` is the clock's time, so staff always review the newest files.
+  - `saveClip` (Task 7) on a live game: `GameError("NOT_READY", "A live game's clips can't be changed yet.")`, and nothing is stored: a new clip would go live without a person's yes (slice 4 brings changing them through review).
+  - `waitingGames(): Promise<{ slug; name; makerEmail; sentAt }[]>`: every game with a pending pull, oldest `pendingSince` first; `sentAt` is `pendingSince`.
   - `accept(gameId: string, staffUserId: string): Promise<void>`: in one transaction, `livePullId` becomes the pending pull, `pendingPullId` and `stateReason` null, state `live`, and one `GameReview` row. Nothing pending: `GameError("NOT_READY", "Nothing is waiting for review.")`.
   - `sendBack(gameId: string, staffUserId: string, reason: string): Promise<void>`: the reason is 1 to 500 characters after trimming, else `GameError("INVALID", "Say what the maker should fix.")`; then `pendingPullId` null, `stateReason` the reason, state `sent_back` unless the game is live, and one `GameReview` row.
-  - `gamesOf(makerUserId)` and `gameForMaker(slug, makerUserId)`: what the maker's screens show (name, state words, the newest pull's count and bytes or none, which clips exist, the repository). `gameForReview(slug)`: the same for staff, plus the pending pull's id and the two pending clip keys.
-- `src/features/make/`: `MAKER_AGREEMENT_VERSION` (a date, set when the Owner's text is in: open item O5), `hasAgreed(db, userId): Promise<boolean>` and `agree(db, clock, userId): Promise<void>` (one row, once; a repeat adds nothing) in `agreement.ts`; `make.ts` re-exports them. `make` sits above `games` in the layer order.
+  - `gamesOf(makerUserId)` and `gameForMaker(slug, makerUserId)`: what the maker's screens show (name, state words, the newest pull's count and bytes or none, which clips exist, the repository). `gameForReview(slug)`: the same for staff, plus the pending pull's id, its count, bytes and servers (`connectHosts`), and the two clip keys.
+- `src/features/make/`: `MAKER_AGREEMENT_VERSION` (the version the coordinator supplies with the Owner's text before branch M starts, O5; the placeholder until then is the plan's, and the branch cannot be marked ready with it), `hasAgreed(db, userId): Promise<boolean>` and `agree(db, clock, userId): Promise<void>` (one row, once; a repeat adds nothing) in `agreement.ts`; `make.ts` re-exports them. `make` sits above `games` in the layer order.
 
-- [ ] **Step 1 (red):** `review.test.ts`: one case per line of `stateWords`. `review.pg.test.ts`: each refusal of `sendForReview` with its words; sending makes a draft `waiting`; `accept` makes it live on those files and writes one review row with the staff account; `sendBack` with no reason refuses, with one stores it; **a live game whose update is sent back is still live on its old files**; **a live game whose update is accepted is live on the new files, and the old pull's files are still in the bucket**; `waitingGames` is oldest first; another maker cannot send someone else's game (`NOT_FOUND`). `agreement.pg.test.ts`: not agreed, then agreed; a second `agree` leaves one row. Stubs. Push. Expected: `verify` fails in `review.test.ts`, `postgres` in the two others.
+- [ ] **Step 1 (red):** `review.test.ts`: one case per line of `stateWords`. `review.pg.test.ts`: each refusal of `sendForReview` with its words; sending makes a draft `waiting`; `accept` makes it live on those files and writes one review row with the staff account; `sendBack` with no reason refuses, with one stores it; **a live game whose update is sent back is still live on its old files**; **a live game whose update is accepted is live on the new files, and the old pull's files are still in the bucket**; pulling again while waiting replaces the pending pull; a live game's clip is refused with the words above and its old clip stays; `waitingGames` is oldest first; another maker cannot send someone else's game (`NOT_FOUND`). `agreement.pg.test.ts`: not agreed, then agreed; a second `agree` leaves one row. Stubs. Push. Expected: `verify` fails in `review.test.ts`, `postgres` in the two others.
 - [ ] **Step 2 (green):** the code and the migration. Push. Expected: all pass.
 
 ### Task 27: The maker's area and the new-game form (`/make`, `/make/new`)
 
 **Files:**
 - Create: `src/routes/make/+page.server.ts`, `+page.svelte`, `src/routes/make/new/+page.server.ts`, `+page.svelte`
-- Test: `tests/browser/make.test.ts`
+- Modify: `src/lib/look.css` (`select` and `textarea` take the rule `input` has), `tests/lib/look.test.ts`
+- Test: `tests/browser/make.test.ts`, `tests/lib/look.test.ts` (a case: the field rule's selector holds `input`, `select` and `textarea`)
 
 Both need an account (signed out: to sign-in and back). The maker's three-step onboarding (design 5.7: pick your address, your page, your first game) stays in slice 4: its first two steps need the handle and the page, which arrive with slice 3. This slice builds what will be its step 3.
 
@@ -889,26 +920,27 @@ Plays on      (•) Phone and computer   ( ) Computer only
 ```
 
 - "Connect GitHub" is a link to `/make/github`; "Choose other repositories on GitHub" a link to `/make/github?choose=1`. Connected with no repository chosen yet: "Ruken can't see any of your repositories yet." and one link, "Choose repositories on GitHub".
-- "Change the branch or folder" opens two fields: Branch ("Leave empty for your main branch.") and Folder ("Leave empty if index.html is at the top.").
+- "Change the branch or folder" and "My game talks to a server" are each a `<details>` with its `<summary>`, so they open with no script. The first opens two fields: Branch ("Leave empty for your main branch.") and Folder ("Leave empty if index.html is at the top.").
 - "My game talks to a server" opens one box: "Game servers", with "One per line, like api.example.com. Leave empty if your game runs on its own." It is read by `connectHostsFrom`; its refusal shows beside it.
+- Under the button, one `note`: "Copying your game can take a minute. Keep this page open." (a pull of FloorFifty's size is a long wait with nothing moving, and a person must know the press was taken).
 - The action `create`: `createGame` (the repository must be one of `repositoriesFor(userId)`), then `pullLatest`, then redirect (303) to `/make/<slug>`. A refused name or line shows its words above the button and keeps what was typed. A refused pull is not a failed form: the game is made, and its page says what to fix.
 - `?github=failed` shows "GitHub didn't finish connecting. Try again." above "Connect GitHub".
 
 Grandma: one thing per screen: connect, then four short fields and one button; the branch and folder stay closed unless wanted; every refusal says what to fix.
 
-Look: `<main class="card">` on both; "Add a game" and "Connect GitHub" are `class="button"`; "Next: add your clips" is the form's one `<button>`; the other links stay links; the hints are `note`; a refusal is `problem`. No red.
+Look: `<main class="card">` on both; "Add a game" and "Connect GitHub" are `class="button"`; "Next: add your clips" is the form's one `<button>`; the other links stay links; the hints are `note`; a refusal is `problem`. The repository list is a `<select>` and "Game servers" a `<textarea>`: slice 1's look styles `input` only, so this task gives `select` and `textarea` the same field rule in `look.css` (an element rule, no new class). No red.
 
 - [ ] **Step 1 (red):**
 
 ```ts
-test("a new maker is asked to connect GitHub, then picks a repository", async ({ page }) => {
+test("a new maker is asked to connect GitHub, then picks a repository", async ({ page }, testInfo) => {
   await signUp(page);
   await page.goto("/make");
   await expect(page.getByText("You haven't added a game yet.")).toBeVisible();
   await page.getByRole("link", { name: "Add a game" }).click();
   await page.getByRole("link", { name: "Connect GitHub" }).click();
   await expect(page.getByLabel("Game files")).toHaveValue("ruken-test/broken-game");       // the list, by name
-  await expectOneCard(page); await showTheOwner(page, "the new-game form");
+  await expectOneCard(page); await showTheOwner(page, testInfo, "the new-game form");
 });
 test("the form makes the game, pulls its files and goes to its page", async ({ page }) => {
   /* connect; fill Name "Tiny game <random>", One line; choose ruken-test/tiny-game; press "Next: add your clips" */
@@ -916,7 +948,7 @@ test("the form makes the game, pulls its files and goes to its page", async ({ p
 });
 test("a name that is too short is refused in words, and what was typed stays", async ({ page }) => { /* "!!" → "Pick a name with at least three letters or numbers." */ });
 test("a repository typed by hand that was never connected is refused", async ({ page }) => {
-  /* change the select's value to "someone/else" with page.evaluate, submit → "Ruken can't see that repository. Choose it on GitHub, then try again." */ });
+  /* change the select's value to "someone/else", then to "ruken-test/not-yours" (its installation is the maker's, but GitHub did not list it for them), with page.evaluate, submit → "Ruken can't see that repository. Choose it on GitHub, then try again." each time */ });   // Review Focus 17, 23
 test("signed out, the maker's area asks for sign-in", async ({ page }) => { /* /make → /sign-in?next=%2Fmake */ });
 ```
 
@@ -942,15 +974,16 @@ Wide clip     Not added yet. A video, up to 30 MB.         [ choose a file ] [ U
 [ Send for review ]
 ```
 
-- The second line is `stateWords`. When the last pull was refused, the Game files line reads the refusal itself (Task 4's words) in place of the count.
+- The second line is `stateWords`. When the last pull was refused (the game's `pullProblem`, Task 10), the Game files line reads the refusal itself (Task 4's words) in place of the count.
 - Each clip is a form of its own with one file and one button. A request whose `content-length` is over 31,000,000 bytes is refused with "A clip can be up to 30 MB." before its body is read; then `saveClip`. Its refusals are Task 5's words, beside that clip.
 - The agreement line shows only until the maker has agreed once; "maker agreement" links to `/legal/maker-agreement`. Sending without the tick: "Tick the box to agree to the maker agreement."
 - "Send for review": `agree` (when ticked), then `sendForReview`. After it, the state line reads "Waiting for review" and one line under it: "Come back here to see when it's live." (Design 5.7's line is "We'll email you when it's live"; the mail arrives in slice 4, and a screen must not promise a mail that is not sent, so slice 4 changes the line with it.)
-- For a live game, "Pull the latest" pulls and sends the update for review in one press, and the state reads "Live. Your update is waiting for review".
+- For a live game, "Pull the latest" pulls and sends the update for review in one press, and the state reads "Live. Your update is waiting for review". A live game's clip lines read "Added" with no file and no Upload (Task 26: they cannot be changed yet).
+- Under "Pull the latest", one `note`: "Copying your game can take a minute. Keep this page open."
 - Under the files line, one quiet line: "Your game runs at `https://g-<public id>.<games domain>`. If your game's server checks where players come from, allow this address." and, when servers are listed, "Talks to: api.example.com".
 - A live game's page has one more link under its name, "See it on Ruken", to `/g/<slug>`.
 - Someone else's game, or none: 404.
-- `/legal/maker-agreement` shows the Owner's text (open item O5). Until the text is in the repository, this task cannot ship: stop and report.
+- `/legal/maker-agreement` shows the Owner's text (open item O5), which the coordinator supplies, with its version, before branch M starts. Its look: `<main class="card">`, the heading "Maker agreement", one `note` "Version <MAKER_AGREEMENT_VERSION>", then the text as paragraphs. It needs no account, so it is added to `CARD_SCREENS`. Until the text is in the repository, this task cannot ship: stop and report.
 
 **Calls** (the Owner can overrule): the design's sketch has one form and one button; this is two screens (the form, then this page). Two 30 MB videos in one form would be held in the Worker's memory together with their copies, near its 128 MB; one clip per request stays well under. And a pull that is refused is then shown before anything is sent.
 
@@ -961,7 +994,7 @@ Look: `<main class="card">`; "Send for review" is the one plain `<button>`; "Pul
 - [ ] **Step 1 (red):**
 
 ```ts
-test("a maker submits a game and sees it waiting for review", async ({ page }) => {          // design 8
+test("a maker submits a game and sees it waiting for review", async ({ page }, testInfo) => {          // design 8
   const slug = await startGame(page);                         // the steps of Task 27's second test
   await expect(page.getByText("Not sent yet")).toBeVisible();
   await expect(page.getByText(/3 files/)).toBeVisible();
@@ -970,7 +1003,7 @@ test("a maker submits a game and sees it waiting for review", async ({ page }) =
   await page.getByRole("button", { name: "Send for review" }).click();
   await expect(page.getByText("Waiting for review")).toBeVisible();
   await expect(page.getByText("Come back here to see when it's live.")).toBeVisible();
-  await expectOneCard(page); await showTheOwner(page, "a game waiting for review");
+  await expectOneCard(page); await showTheOwner(page, testInfo, "a game waiting for review");
 });
 test("sending without clips says which one is missing", async ({ page }) => { /* "Add an upright clip." */ });
 test("sending without agreeing says so, and the second game does not ask again", async ({ page }) => {});
@@ -980,7 +1013,7 @@ test("a repository with no index.html says what to fix, on the game's page", asy
 test("another maker cannot open this game's page", async ({ page, browser }) => { /* 404 */ });
 ```
 
-  `startGame(page)` and `uploadClip(page, label)` (a file made in the test: four length bytes, `ftyp`, zeros, named `clip.mp4`) go in `tests/browser/support/game.ts`. Push. Expected: `browser` fails in the new cases: 404 at `/make/<slug>`.
+  `startGame(page)` and `uploadClip(page, label)` (a file made in the test: four length bytes, `ftyp`, zeros, named `clip.mp4`) go in `tests/browser/support/game.ts`, and "the maker agreement" (`/legal/maker-agreement`) goes in `CARD_SCREENS`. Push. Expected: `browser` fails in the new cases: 404 at `/make/<slug>`.
 - [ ] **Step 2 (green):** the route. Push. Expected: all pass. Branch M is ready to merge after the Owner has seen its screens' screenshots and said "fine" (as slice 1's Task 37 step 3).
 
 ---
@@ -996,14 +1029,15 @@ test("another maker cannot open this game's page", async ({ page, browser }) => 
 
 | Model | Columns |
 |---|---|
-| `PlaySession` | `id` (set in code), `gameId` (a `Game`), `pullId` (a `GamePull`), `userId?` (a `User`; null: nobody was signed in), `basis PlayBasis`, `tokenHash`, `startedAt`, `createdAt`; index on (`userId`, `startedAt`) and on (`gameId`, `startedAt`) |
+| `PlayPass` | `id` (set in code: the pass's own id, 22 characters), `gameId` (a `Game`), `pullId` (a `GamePull`), `userId?` (a `User`; null: the shared pass of a free game for everyone signed out), `madeAt`, `expiresAt`, `createdAt`; index on (`gameId`, `pullId`, `userId`, `expiresAt`). Which person a leaked address was made for |
+| `PlaySession` | `id` (set in code), `gameId` (a `Game`), `pullId` (a `GamePull`), `passId` (a `PlayPass`), `userId?` (a `User`; null: nobody was signed in), `basis PlayBasis`, `tokenHash`, `startedAt`, `createdAt`; index on (`userId`, `startedAt`) and on (`gameId`, `startedAt`) |
 | `PlayBeat` | `id` (`BigInt`, autoincrement), `sessionId` (a `PlaySession`), `receivedAt`, `attentive Boolean`; index on (`sessionId`, `receivedAt`) |
 
-Enum `PlayBasis { member, free_game, staff, own_game }`. No `updatedAt` on either: a row is added and never changed. In the SQL, by hand: CHECK `PlaySession_tokenHash_check` (64 lower-case hex characters); CHECK `PlaySession_basis_check` (`"userId" IS NOT NULL OR "basis" = 'free_game'`: only a free game is played by nobody); the add-only trigger on both tables.
+Enum `PlayBasis { member, free_game, staff, own_game }`. No `updatedAt` on any: a row is added and never changed. In the SQL, by hand: CHECK `PlaySession_tokenHash_check` (64 lower-case hex characters); CHECK `PlaySession_basis_check` (`"userId" IS NOT NULL OR "basis" = 'free_game'`: only a free game is played by nobody); CHECK `PlayPass_id_check` (`"id" ~ '^[A-Za-z0-9_-]{22}$'`); CHECK `PlayPass_time_check` (`"expiresAt" > "madeAt"`); the add-only trigger on all three tables, each with its own name.
 
-These rows are everything slice 5 needs for the 180-minute rule: the member (`userId`), the game, why the play was allowed, and each beat's time on the server's clock, from which the America/Chicago day is worked out.
+`PlayPass` is the coordinator's decision of 2026-11-14 made traceable: a pass's id leads to one row, and that row to one person. These rows are everything slice 5 needs for the 180-minute rule: the member (`userId`), the game, why the play was allowed, and each beat's time on the server's clock, from which the America/Chicago day is worked out.
 
-- [ ] **Step 1 (red):** the two tables exist; `UPDATE` and `DELETE` on each reject; a session with no user and basis `member` rejects, with `free_game` passes; a token hash of the wrong shape rejects. Push. Expected: `postgres` fails in `schema.pg.test.ts`: the tables do not exist.
+- [ ] **Step 1 (red):** the three tables exist; `UPDATE` and `DELETE` on each reject; a pass id of the wrong shape rejects; a session with no user and basis `member` rejects, with `free_game` passes; a token hash of the wrong shape rejects. Push. Expected: `postgres` fails in `tests/features/play/schema.pg.test.ts`: the tables do not exist.
 - [ ] **Step 2 (green):** the schema and the migration. Push. Expected: all pass.
 
 ### Task 17: Who may play, and what counts
@@ -1058,21 +1092,22 @@ it.each([["/g/floor-fifty/play", "/g/floor-fifty"], ["/me", "/"], ["/g/x/play/be
 it("knows a phone by what it says it is", () => { /* a Pixel's and an iPhone's User-Agent: true; a desktop Chrome's and null: false */ });
 ```
 
-  `frame.test.ts`: the two exact strings, and the sandbox holds none of `allow-top-navigation`, `allow-popups`, `allow-forms`, `allow-modals`, `allow-downloads`. Stubs. Push. Expected: `verify` fails in the three files with "not built yet".
+  `frame.test.ts`: the two exact strings, and the sandbox holds none of `allow-top-navigation`, `allow-popups`, `allow-forms`, `allow-modals`, `allow-downloads`, `allow-orientation-lock`. Stubs. Push. Expected: `verify` fails in the three files with "not built yet".
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 
 ### Task 18: Sessions and beats
 
 **Files:**
-- Create: `src/features/play/sessions.ts`, `src/features/play/services.ts`, `src/features/play/play.ts`
+- Create: `src/features/play/passes.ts`, `src/features/play/sessions.ts`, `src/features/play/services.ts`, `src/features/play/play.ts`
 - Modify: `.env.example`
-- Test: `tests/features/play/sessions.pg.test.ts`, `tests/features/play/services.test.ts`
+- Test: `tests/features/play/sessions.pg.test.ts` (it proves `passFor` through `startPlay`, the only way a pass is handed out), `tests/features/play/services.test.ts`
 
 **Interfaces:**
-- Consumes: `playBasis`, the time rules, `makePass`, `PASS_LIFE_MS`, `LiveGame`, `RateLimiter`.
+- Consumes: `playBasis`, the time rules, `makePass`, `newPassId`, `PASS_LIFE_MS`, `PASS_MIN_LEFT_MS`, `LiveGame`, `RateLimiter`.
 - Produces, from `createPlayService(deps: { db: PrismaClient; clock: Clock; rateLimiter: RateLimiter; passSecret: string; address(name: string): string })`:
-  - `startPlay(input: { game: LiveGame; viewer: { userId: string; isStaff: boolean; isMember: boolean } | null; clientAddress: string }): Promise<{ frameUrl: string; session: { id: string; token: string } } | { refused: "join" | "busy" }>`. `playBasis` null: `{ refused: "join" }` and nothing is stored. More than `PLAY_STARTS_PER_ADDRESS` (`{ limit: 30, windowSeconds: 60 }`, key `play:start:<clientAddress>`, both declared in this file): `{ refused: "busy" }`. Otherwise: a `PlaySession` row (`id` from `randomUUID()`, the basis, the game's `livePullId`, `startedAt` from the clock, `tokenHash` the SHA-256 in hex of a 32-byte random token in base64url); `frameUrl` is `` `${address("g-" + game.publicId)}/${makePass({ game: game.publicId, pull: game.livePullId, connect: game.connectHosts, expiresAtMs: now + PASS_LIFE_MS }, passSecret)}/` ``. The token itself is answered once and never stored.
-  - `recordBeat(input: { sessionId: string; token: string; attentive: boolean }): Promise<"recorded" | "too_soon" | "over" | "unknown">`. No such session, or the token's hash does not match (compared with `timingSafeEqual`): `unknown`. The clock is past `startedAt + PLAY_SESSION_LIFE_MS`: `over`. The session's latest beat (or its start) is less than `BEAT_TOO_SOON_MS` ago: `too_soon`, and nothing is stored. Otherwise one `PlayBeat` row with the clock's time. Two beats in the same instant may both be stored; `countedMs` gives the second one nothing.
+  - In `passes.ts`, `passFor(deps: { db; clock; passSecret }, input: { game: { id: string; publicId: string }; pull: { id: string; connectHosts: string[] }; userId: string | null }): Promise<string>`: the coordinator's decision of 2026-11-14 in one function. The newest `PlayPass` row for this game, this pull and this person (or, for `userId` null, the shared row with no person) whose `expiresAt` is at least `PASS_MIN_LEFT_MS` away: the pass rebuilt from it with `makePass` (the same string the browser already has). None: a new row (`id` from `newPassId()`, `madeAt` now, `expiresAt` now + `PASS_LIFE_MS`) and its pass. Two Plays at the same moment may make two rows for one person; both passes work, and each traces to that person.
+  - `startPlay(input: { game: LiveGame; viewer: { userId: string; isStaff: boolean; isMember: boolean } | null; clientAddress: string }): Promise<{ frameUrl: string; session: { id: string; token: string } } | { refused: "join" | "busy" }>`. `playBasis` null: `{ refused: "join" }` and nothing is stored, and no pass is handed out, so a member whose membership ended gets no pass however recently they had one. More than `PLAY_STARTS_PER_ADDRESS` (`{ max: 30, windowMs: 60_000 }`, the shape of slice 1's `RateLimitRule`, key `api:play-start:<clientAddress>`, both declared in this file): `{ refused: "busy" }`. Otherwise: the pass from `passFor` (the viewer's id, or null); a `PlaySession` row (`id` from `randomUUID()`, the basis, the game's `livePullId`, the pass's id, `startedAt` from the clock, `tokenHash` the SHA-256 in hex of a 32-byte random token in base64url); `frameUrl` is `` `${address("g-" + game.publicId)}/${pass}/` ``. The token itself is answered once and never stored.
+  - `recordBeat(input: { sessionId: string; token: string; attentive: boolean }): Promise<"recorded" | "too_soon" | "over" | "unknown">`. No such session, or the token's hash does not match (compared with `timingSafeEqual`): `unknown`. The clock is past `startedAt + PLAY_SESSION_LIFE_MS`: `over`. The session's latest beat is less than `BEAT_TOO_SOON_MS` ago: `too_soon`, and nothing is stored. The first beat of a session is never too soon: measured from the start, it would refuse the journeys' first beat, whose page clock runs ahead of the server's (Review Focus 24), and it adds no time the clock did not see. Otherwise one `PlayBeat` row with the clock's time. Two beats in the same instant may both be stored; `countedMs` gives the second one nothing.
   - `playSummary(gameId: string): Promise<{ sessions: number; beats: number; countedSeconds: number }>`: over every session of the game, `countedMs` summed and rounded down to seconds.
   - `playServices(): { service }` in `services.ts`, built once from `PLAY_PASS_SECRET`, with `prisma()`, `systemClock`, a `RateLimiter` and `gamesServices().address`.
   - `play.ts` re-exports `playServices`, `backFromPaywall`, `isPhone`, `GAME_FRAME_SANDBOX`, `GAME_FRAME_ALLOW`, `type PlayBasis`.
@@ -1085,9 +1120,22 @@ it("gives a member a frame address under a pass for that game's live files, and 
   const url = new URL(frameUrlOf(started));
   expect(url.origin).toBe(`https://g-${game.publicId}.games.test`);
   expect(url.search).toBe(""); expect(url.hash).toBe("");
-  expect(checkPass(url.pathname.split("/")[1] ?? "", "s", clock.epochMs())).toEqual({ game: game.publicId, pull: game.livePullId, connect: game.connectHosts, expiresAtMs: clock.epochMs() + PASS_LIFE_MS });
-  expect(await prisma.playSession.findMany()).toMatchObject([{ userId: member.userId, gameId: game.id, pullId: game.livePullId, basis: "member" }]);
+  const claims = checkPass(url.pathname.split("/")[1] ?? "", "s", clock.epochMs());
+  expect(claims).toMatchObject({ game: game.publicId, pull: game.livePullId, connect: game.connectHosts, expiresAtMs: clock.epochMs() + PASS_LIFE_MS });
+  expect(await prisma.playPass.findUniqueOrThrow({ where: { id: claims?.id ?? "" } })).toMatchObject({ userId: member.userId });   // a leak traces to one member
+  expect(await prisma.playSession.findMany()).toMatchObject([{ userId: member.userId, gameId: game.id, pullId: game.livePullId, passId: claims?.id, basis: "member" }]);
 });
+it("gives the same member the same address for that game all day", async () => {                                 // Review Focus 21
+  const first = frameUrlOf(await service.startPlay({ game, viewer: member, clientAddress: "203.0.113.1" }));
+  clock.advance(PASS_LIFE_MS - PASS_MIN_LEFT_MS);
+  expect(frameUrlOf(await service.startPlay({ game, viewer: member, clientAddress: "203.0.113.1" }))).toBe(first);
+  clock.advance(1);
+  expect(frameUrlOf(await service.startPlay({ game, viewer: member, clientAddress: "203.0.113.1" }))).not.toBe(first);   // under four hours left: a new pass
+});
+it("never gives two members the same address", async () => { /* member and otherMember, same game, same moment: two frame URLs, two PlayPass rows */ });
+it("gives a new address once the game's files change", async () => { /* a second pull goes live: another pass */ });
+it("hands no pass to a member whose membership ended, however recent their last one", async () => { /* isMember false on the second Play: { refused: "join" }; one PlayPass row */ });
+it("shares one pass for a free game among everyone signed out", async () => { /* viewer null twice: the same frame URL; the row's userId is null; a signed-in member gets another */ });
 it("stores nothing for someone who may not play", async () => { /* { refused: "join" }; no rows */ });
 it("records a free game played by nobody", async () => { /* viewer null, freeToPlay: basis "free_game", userId null */ });
 it("never stores the token itself", async () => { /* no column of the row equals the token; tokenHash is sha256(token) */ });
@@ -1101,7 +1149,7 @@ it("stamps a beat with the server's clock", async () => {
   expect(await service.recordBeat({ sessionId: a.id, token: a.token, attentive: true })).toBe("recorded");
   expect((await prisma.playBeat.findFirstOrThrow()).receivedAt).toEqual(new Date(clock.epochMs()));
 });
-it("drops a beat that comes too soon after the last", async () => { /* advance 1 s: "too_soon", no row */ });
+it("takes the first beat at once, and drops one that comes too soon after the last", async () => { /* first beat right after the start: "recorded" (Review Focus 24); advance 1 s: "too_soon", no new row */ });
 it("stops taking beats a day after the session started", async () => { /* advance 24 h + 1 ms: "over" */ });
 it("adds up what counted", async () => { /* three beats 15 s apart, the second not attentive: countedSeconds 30, beats 3, sessions 1 */ });
 it("slows down an address that opens games too fast", async () => { /* the 31st start in a minute: { refused: "busy" } */ });
@@ -1118,26 +1166,23 @@ Branch P is ready to merge.
 
 Acceptance needs a person (design 5.5). This is the smallest version of it: one staff-only list and one staff-only page, behind slice 1's staff roles. Slice 4's admin portal takes both screens in as its acceptance queue and adds what is not here.
 
-### Task 19: The look of a game's page and of the play screen
+### Task 19: The look of a game's clips and its frame
 
 **Files:**
 - Modify: `src/lib/look.css`, `tests/lib/look.test.ts` (`CLASSES`), `tests/browser/support/look.ts` if it lists classes
 - Test: `tests/lib/look.test.ts` (add cases)
 
-Five classes, each with its rule here and its first use in Tasks 30, 20 and 21 (slice 1: a class arrives with its rule, its first use and its name in `CLASSES`). Design 5.8's tokens only; no new colour.
+Two classes, each with its rule here and its first use in Task 30, on this branch (slice 1: a class arrives with its rule, its first use and its name in `CLASSES`; CLAUDE.md: nothing is built ahead of its user). The play screen's three classes, `stage`, `bar` and `back`, arrive with the play screen itself, in Task 21. Design 5.8's tokens only; no new colour.
 
 | Class | Goes on | What it does |
 |---|---|---|
-| `clip` | a `<video>` in a card | a block as wide as the card, at most 60% of the window's height, 20px corners, `ink` behind it while it loads, `object-fit: cover` |
-| `stage` | the play screen's `<main>` | fills the window (`100dvh`, no gutter, no width limit), `felt-deep` ground, a column: the bar, then the frame |
-| `bar` | the strip above the game | 48px tall, `felt-deep`, chalk text at 14px, its contents in a row with a 0.5rem gap |
-| `back` | the ← link in the bar | a 48px by 48px target; the arrow is chalk on `felt-raised`, a full pill (design 5.8: `felt-raised` is for secondary buttons; this is its first rule) |
-| `frame` | the game's `<iframe>` | takes all the room left, no edge, `felt-deep` behind it while the game loads |
+| `clip` | a `<video>` | a block as wide as the space it is in, at most 60% of the window's height, 20px corners, `ink` behind it while it loads, `object-fit: cover` |
+| `frame` | a game's `<iframe>` | a block as wide as the space it is in, 70% of the window's height (`70dvh`), no edge, `felt-deep` behind it while the game loads. Task 21 adds a rule for it inside `stage`, where it takes all the room left |
 
-**Calls in the look** (the Owner can overrule): the play screen has no paper card, because the thing to do there is the game itself; the bar is 48px so ← is as easy to hit as any button; the line in the bar is 14px `chalk` (`chalk` on `felt-deep` is 13.1:1), a note beside a control, not running text; nothing on either screen moves, so reduced motion changes nothing, and the line in the bar leaves without a fade.
+**Calls in the look** (the Owner can overrule): the staff page's game is a fixed share of the window, so the clips above it and the two choices below it stay within a scroll; nothing on it moves, so reduced motion changes nothing.
 
-- [ ] **Step 1 (red):** `tests/lib/look.test.ts`: `CLASSES` holds the five names; `look.css` has a rule for each; the `back` rule's two colours are the tokens above and their contrast, measured from the tokens as Task 35 does, is at least 4.5:1; the `bar` and `back` rules name 3rem (48px). Push. Expected: `verify` fails in `look.test.ts`: no such rules.
-- [ ] **Step 2 (green):** the rules. Push. Expected: all pass. (The slice 1 case "every class in `CLASSES` is used by a screen", if it exists as built, fails until Task 21: if so, keep that one case red until Task 21's green push and say so in each report line; no other case may stay red.)
+- [ ] **Step 1 (red):** `tests/lib/look.test.ts`: `CLASSES` holds `clip` and `frame`; `look.css` has a rule for each; the `frame` rule's ground is `felt-deep` and the `clip` rule's is `ink`. Push. Expected: `verify` fails in `look.test.ts`: no such rules.
+- [ ] **Step 2 (green):** the rules. Push. Expected: all pass. No class is in `CLASSES` without a screen that uses it once Task 30 is green, which is before branch S is marked ready.
 
 ### Task 29: The first staff account
 
@@ -1149,11 +1194,12 @@ Five classes, each with its rule here and its first use in Tasks 30, 20 and 21 (
 Slice 1 has the staff table and nothing that grants a role. Without one, nobody could accept FloorFifty.
 
 - `hasJobSecret(request: Request): boolean`: the check slice 1's Task 20 wrote inside `/jobs/purge-accounts` (`Authorization: Bearer <JOBS_SECRET>`, compared in constant time), moved here unchanged so both use one.
+- `GAME_STAFF_ROLES: readonly StaffRole[] = ["owner", "head_curator", "curator"]` in `staff.ts`, re-exported by `accounts.ts`: the staff who check games, so who opens the staff pages (Task 30) and who plays without paying (Task 21) is one list.
 - `grantFirstOwner(db, clock, email: string): Promise<"granted" | "already_one" | "no_account">` in `staff.ts`: when no `StaffAssignment` row exists at all, the account with that email gets the role `owner`. Once any staff row exists it only ever answers `already_one`. So it can make the first staff account and never a second.
 - `POST /jobs/first-owner`, JSON `{ "email" }`: 404 without the secret; then `granted` → 200 `{ "granted": true }`, `already_one` → 409 `{ "problem": "There is already a staff account." }`, `no_account` → 400 `{ "problem": "No account has that email. Sign up on the site first." }`.
 - Slice 4 brings the rest of the old rules (two superadmins, the authenticator code, admin sessions, granting roles in the portal). Accepting a game is not a money action, so this slice does not wait for them. Worth the Owner's eye.
 
-- [ ] **Step 1 (red):** `job-secret.test.ts`: no header, a wrong secret and `Bearer ` alone are false; the right one is true. `staff.pg.test.ts`: granted once; a second call for anyone answers `already_one` and adds nothing; an unknown email is `no_account`. `first-owner.test.ts`: without the secret 404 and no row; with it 200, and `staffRolesOf` then holds `owner`; again 409. (The journeys' database is shared, so this file runs its "granted" case only when no staff row exists yet and otherwise asserts the 409: write it so either order of files passes.) Stubs. Push. Expected: `verify` and `postgres` fail with "not built yet"; `browser` fails with 404 where 200 or 409 is expected.
+- [ ] **Step 1 (red):** `job-secret.test.ts`: no header, a wrong secret and `Bearer ` alone are false; the right one is true. `staff.pg.test.ts`: granted once; a second call for anyone answers `already_one` and adds nothing; an unknown email is `no_account`. `first-owner.test.ts`: without the secret 404 and no row; with it 200, and `staffRolesOf` then holds `owner`; again 409. (The journeys' database is shared, so this file runs its "granted" case only when no staff row exists yet and otherwise asserts the 409: write it so either order of files passes. Once branch S's other journeys exist, a staff row usually exists first, so the journey mostly proves the 404 and the 409; the grant itself is proved by `staff.pg.test.ts`. Say which ran in the report line.) Stubs. Push. Expected: `verify` and `postgres` fail with "not built yet"; `browser` fails with 404 where 200 or 409 is expected.
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass, slice 1's purge-job tests included.
 
 ### Task 30: Accept and Send back (`/admin/games`)
@@ -1165,8 +1211,8 @@ Slice 1 has the staff table and nothing that grants a role. Without one, nobody 
 
 This branch comes after branch P (Tasks 16 to 18), because the staff page plays the game.
 
-- `staffOnly(caller: Caller, roles: readonly StaffRole[]): { userId: string }` in `src/features/admin/staff-only.ts`: throws SvelteKit's `error(404)` for anyone signed out or without one of `owner`, `head_curator`, `curator`. 404, not "forbidden", so the address looks like any address the site does not have.
-- `startReviewPlay(input: { game: { id; publicId }; pullId: string; staffUserId: string }): Promise<{ frameUrl: string; session: … }>` in `play`: `startPlay` for files that are not live yet; the session's basis is `staff`, so it never counts for pay.
+- `staffOnly(caller: Caller): { userId: string }` in `src/features/admin/staff-only.ts`: throws SvelteKit's `error(404)` for anyone signed out or whose `caller.staffRoles` holds none of `GAME_STAFF_ROLES` (Task 29). The roles come from the caller, which the hook reads fresh on every request; nothing reads them again. 404, not "forbidden", so the address looks like any address the site does not have.
+- `startReviewPlay(input: { game: { id; publicId }; pullId: string; staffUserId: string }): Promise<{ frameUrl: string; session: … }>` in `play`: `startPlay` for files that are not live yet. It reads the pull's own `connectHosts` from its row (the servers staff are reviewing), gets the staff member's pass from `passFor` for that pull, and records the session with basis `staff`, so it never counts for pay.
 
 **`/admin/games`:**
 
@@ -1203,20 +1249,20 @@ Send back, and say what to fix   [                          ]   [ Send back ]
 
 Grandma: the list says what is waiting; the page shows the clips and the game, then two choices, and the one that needs words has its field beside it.
 
-Look: `<main class="card">` on the list. The review page is wider than a card can hold a game: `<main>` with no card, the clips `clip`, the game `frame` inside a box of fixed height; "Accept" is its one plain `<button>`, "Send back" is `class="quiet"`. No red: nothing here spends money.
+Look: `<main class="card">` on the list. The review page is wider than a card can hold a game: `<main>` with no card, the clips `clip`, the game `frame` (Task 19: 70% of the window's height, so no box of its own is needed); "Accept" is its one plain `<button>`, "Send back" is `class="quiet"`. No red: nothing here spends money.
 
-**The journeys' helper.** `addGame(browser, options?: { name?: string; playsOn?: "phone_and_computer" | "computer_only"; free?: boolean }): Promise<{ slug: string; publicId: string; makerEmail: string; makerUserId: string }>` in `tests/browser/support/game.ts`: in a browser context of its own, a maker signs up, connects, submits `ruken-test/tiny-game` with both clips (Tasks 27 and 28's steps); then a staff account (a second sign-up, given the `curator` role through `tests/browser/support/database.ts`, as nothing on the site grants one) accepts it. For `free`, it sets `freeToPlay` on the row the same way (the portal that sets it arrives in slice 4). Every journey of branch F gets its game this way, through the real screens.
+**The journeys' helper.** `addGame(browser, options?: { name?: string; playsOn?: "phone_and_computer" | "computer_only"; free?: boolean }): Promise<{ slug: string; publicId: string; makerEmail: string; makerUserId: string }>` in `tests/browser/support/game.ts`: in a browser context of its own, a maker signs up, connects, submits `ruken-test/tiny-game` with both clips (Tasks 27 and 28's steps); then a staff account (a second sign-up, given the `curator` role through `tests/browser/support/database.ts`, as nothing on the site grants one) accepts it. For `free`, it sets `freeToPlay` on the row the same way (the portal that sets it arrives in slice 4). Every journey of branch F gets its game this way, through the real screens. Beside it in the same file: `submitGame(browser): Promise<{ slug; name; publicId; makerEmail }>` (the maker's part alone, up to "Waiting for review", in a context of its own) and `signInAsStaff(page): Promise<{ email }>` (a sign-up in `page`, then the `curator` role). The role is given by `grantStaffRole(email, role)` in `tests/browser/support/database.ts`, one `StaffAssignment` row.
 
-- [ ] **Step 1 (red):** `staff-only.test.ts`: signed out, a member with no role and a `finance` role are 404; `curator` passes. The `sessions.pg.test.ts` case: `startReviewPlay` records basis `staff` and a pass for the pending pull. `accept.test.ts`:
+- [ ] **Step 1 (red):** `staff-only.test.ts`: signed out, a member with no role, a `finance` role and a `moderator` role are 404; `owner`, `head_curator` and `curator` pass. The `sessions.pg.test.ts` case: `startReviewPlay` records basis `staff` and a pass for the pending pull whose `connect` is that pull's servers. `accept.test.ts`:
 
 ```ts
-test("staff accept a waiting game, and it is live at its address", async ({ page, browser }) => {      // design 8
+test("staff accept a waiting game, and it is live at its address", async ({ page, browser }, testInfo) => {      // design 8
   const waiting = await submitGame(browser);                    // a maker's steps, up to "Waiting for review"
   await signInAsStaff(page);
   await page.goto("/admin/games");
   await page.getByRole("link", { name: waiting.name }).click();
   await expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");   // staff play it before it is live
-  await showTheOwner(page, "a game being reviewed");
+  await showTheOwner(page, testInfo, "a game being reviewed");
   await page.getByRole("button", { name: "Accept" }).click();
   await expect(page).toHaveURL("/admin/games");
   expect((await page.goto(`/g/${waiting.slug}`))?.status()).toBe(200);
@@ -1273,7 +1319,7 @@ Look: `<main class="card">`; the name is the card's `h1`; the one line is ordina
 
 ```ts
 test.beforeEach(forgetRateLimits);
-test("a game's page shows its name, its line, its clip and Play", async ({ page, browser }) => {
+test("a game's page shows its name, its line, its clip and Play", async ({ page, browser }, testInfo) => {
   const game = await addGame(browser, { name: "Tiny game" });
   await page.goto(`/g/${game.slug}`);
   await expect(page.getByRole("heading", { name: "Tiny game" })).toBeVisible();
@@ -1284,7 +1330,7 @@ test("a game's page shows its name, its line, its clip and Play", async ({ page,
   await expect(sources.nth(0)).toHaveAttribute("media", "(orientation: portrait)");
   await expect(sources.nth(0)).toHaveAttribute("src", new RegExp(`^http://media\\.localhost:8788/clips/${game.publicId}/upright-[0-9a-f]{16}\\.mp4$`));
   await expect(sources.nth(1)).toHaveAttribute("src", /\/wide-[0-9a-f]{16}\.mp4$/);
-  await expectOneCard(page); await showTheOwner(page, "a game's page");
+  await expectOneCard(page); await showTheOwner(page, testInfo, "a game's page");
 });
 test("the clip's address answers anyone, as video", async ({ page, browser }) => { /* page.goto(the src) → 200, content-type video/mp4 */ });
 test("landing on a game's page remembers its maker's link", async ({ page, browser }) => {
@@ -1301,7 +1347,7 @@ test("a computer-only game says so on a phone, and offers its link", async ({ pa
     await expect(page.getByRole("link", { name: "Play" })).toHaveCount(0);
     await page.getByRole("button", { name: "Share the link" }).click();          // the test browser has no share sheet
     await expect(page.getByText(/^(Link copied\.|Copy the address from the bar at the top\.)$/)).toBeVisible();
-    await showTheOwner(page, "a computer-only game on a phone");
+    await showTheOwner(page, testInfo, "a computer-only game on a phone");
   } else {
     await expect(page.getByRole("link", { name: "Play" })).toBeVisible();
   }
@@ -1315,8 +1361,8 @@ test("a computer-only game says so on a phone, and offers its link", async ({ pa
 
 **Files:**
 - Create: `src/routes/g/[game]/play/+page.server.ts`, `src/routes/g/[game]/play/+page.svelte`
-- Modify: `src/routes/join/+page.server.ts` ("Not now" uses `backFromPaywall`)
-- Test: `tests/browser/play.test.ts`, `tests/browser/join.test.ts` (one case)
+- Modify: `src/routes/join/+page.server.ts` and, if the link's address is written there, `+page.svelte` ("Not now" uses `backFromPaywall`); `src/routes/+error.svelte` (a line for 429); `src/lib/look.css`, `tests/lib/look.test.ts` (`CLASSES` gains `stage`, `bar`, `back`)
+- Test: `tests/browser/play.test.ts`, `tests/browser/join.test.ts` (one case), `tests/browser/error-page.test.ts` (one case), `tests/lib/look.test.ts` (add cases)
 
 **The screen:**
 
@@ -1329,7 +1375,7 @@ test("a computer-only game says so on a phone, and offers its link", async ({ pa
 └─────────────────────────────────┘
 ```
 
-- `load`, in this order: `liveGameBySlug` (null: 404); a computer-only game on a phone: redirect (303) to `/g/<slug>`; `startPlay` with the caller (`isStaff` from `staffRolesOf`, `isMember` from `isMember`; signed out: `viewer: null`) and `getClientAddress()`. `{ refused: "join" }`: redirect (303) to `` `/join?next=${encodeURIComponent(`/g/${slug}/play`)}` ``. `{ refused: "busy" }`: the error page with 429 and "You've opened a lot of games just now. Try again in a minute." Otherwise it answers `{ name, slug, frameUrl, session }`.
+- `load`, in this order: `liveGameBySlug` (null: 404); a computer-only game on a phone: redirect (303) to `/g/<slug>`; `startPlay` with the caller (`isStaff`: `caller.staffRoles` holds one of `GAME_STAFF_ROLES`; `isMember` from `isMember`; signed out: `viewer: null`) and `getClientAddress()`. `{ refused: "join" }`: redirect (303) to `` `/join?next=${encodeURIComponent(`/g/${slug}/play`)}` ``. `{ refused: "busy" }`: `error(429)`. The error page on `main` shows its own words and never the error's text, so it gains one branch: for 429, "You've opened a lot of games just now." and "Try again in a minute.", with its "Back to Ruken". Otherwise it answers `{ name, slug, frameUrl, session }`.
 - The page is `<main class="stage">`: a `<div class="bar">` holding `<a class="back" href="/g/<slug>" aria-label="Back to the feed">←</a>` and `<p role="status">Tap ← to go back to the feed</p>`; then `<iframe class="frame" title="<name>" src={frameUrl} sandbox={GAME_FRAME_SANDBOX} allow={GAME_FRAME_ALLOW} referrerpolicy="no-referrer">`. The frame has no `name`, and the page sends it no message.
 - The line (design 5.7, "The first time in a game") shows for 5 seconds and is then removed from the page; it shows only the first time on a device (a `localStorage` entry, `rk_seen_back`, set when it is first shown). With no script it simply stays.
 - ← is a plain link: it works with no script, by keyboard, and whatever the game is doing. Leaving the page removes the frame, so a game that keeps running while hidden (FloorFifty's race does) stops when the person goes back.
@@ -1338,12 +1384,20 @@ test("a computer-only game says so on a phone, and offers its link", async ({ pa
 
 Grandma: the game fills the screen; the one thing of Ruken's is ←, and one short line says what it does, then gets out of the way. Someone who has not paid sees the price card, not a broken game.
 
-Look: `stage`, `bar`, `back`, `frame` (Task 19). No card, no red.
+Look: `frame` (Task 19) and three classes that arrive here, with their rules and their names in `CLASSES`, because this screen is their first use:
+
+| Class | Goes on | What it does |
+|---|---|---|
+| `stage` | the play screen's `<main>` | fills the window (`100dvh`, no gutter, no width limit), `felt-deep` ground, a column: the bar, then the frame; `.stage .frame` takes all the room left (`flex: 1`, no fixed height) |
+| `bar` | the strip above the game | 48px tall, `felt-deep`, chalk text at 14px, its contents in a row with a 0.5rem gap |
+| `back` | the ← link in the bar | a 48px by 48px target; the arrow is chalk on `felt-raised`, a full pill (design 5.8: `felt-raised` is for secondary buttons; this is its first rule) |
+
+Calls in the look (the Owner can overrule): the play screen has no paper card, because the thing to do there is the game itself; the bar is 48px so ← is as easy to hit as any button; the line in the bar is 14px `chalk` (`chalk` on `felt-deep` is 13.1:1), a note beside a control, not running text; nothing moves, so reduced motion changes nothing, and the line leaves without a fade. No card, no red.
 
 - [ ] **Step 1 (red):**
 
 ```ts
-test("a member presses Play and the game loads, in a frame on another address", async ({ page, browser }) => {
+test("a member presses Play and the game loads, in a frame on another address", async ({ page, browser }, testInfo) => {
   const game = await addGame(browser);
   await payAsNewMember(page);
   await page.goto(`/g/${game.slug}`);
@@ -1353,7 +1407,7 @@ test("a member presses Play and the game loads, in a frame on another address", 
   await expect(frame).toHaveAttribute("referrerpolicy", "no-referrer");
   await expect(frame).toHaveAttribute("src", new RegExp(`^http://g-${game.publicId}\\.localhost:8788/v1\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+/$`));
   await expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");   // main.js ran: a second file loaded under the pass
-  await showTheOwner(page, "a game being played");
+  await showTheOwner(page, testInfo, "a game being played");
 });
 test("the game sees nothing about the player", async ({ page, browser }) => {
   /* as above, then read #seen inside the frame */
@@ -1393,8 +1447,8 @@ test("a phone that opens a computer-only game's play address is sent to its page
 test("nothing on the play screen is red, and nothing scrolls sideways", async ({ page, browser }) => { /* pipRed(page) is []; scrollWidth equals clientWidth */ });
 ```
 
-  If slice 1's stand-in Stripe has no way to end a membership at once from a journey, the eighth test instead sets the member's `PremiumMembership` row to `ended` through `tests/browser/support/database.ts`; say which in the report line. Push. Expected: `browser` fails in `play.test.ts`: 404 at `/g/<slug>/play`; the `join.test.ts` case fails on the link's address (`/`).
-- [ ] **Step 2 (green):** the route and the one line in `/join`. Push. Expected: all pass.
+  Slice 1's stand-in Stripe ends a membership only at the period's end (its portal) or with the account (`/me/delete`), so the eighth test sets the member's `PremiumMembership` row to `state: ended` through `endMembershipOf(email)` in `tests/browser/support/database.ts`: slice 1's one rule for "is a member" (`access.ts`) reads `ended` as not a member. Also in the red push: `tests/lib/look.test.ts` gains the three classes, a rule for each, the `back` rule's two colours (chalk on `felt-raised`, at least 4.5:1, measured from the tokens as Task 35 does) and 3rem (48px) in the `bar` and `back` rules; `error-page.test.ts` gains: a 429 shows "You've opened a lot of games just now." (reached by opening `/g/<slug>/play` 31 times in a minute for a free game, with `forgetRateLimits` before it). Push. Expected: `browser` fails in `play.test.ts`: 404 at `/g/<slug>/play`; the `join.test.ts` case fails on the link's address (`/`); the `error-page.test.ts` case fails (404, not 429); `verify` fails in `look.test.ts` (no such rules).
+- [ ] **Step 2 (green):** the route, the one line in `/join`, the 429 branch and the three rules. Push. Expected: all pass.
 
 ### Task 22: Play time
 
@@ -1409,7 +1463,7 @@ test("nothing on the play screen is red, and nothing scrolls sideways", async ({
 - Produces:
   - `createAttention(): { look(now: { tabShowing: boolean; frameOnScreen: boolean; frameFocused: boolean }): void; report(): boolean; taken(): void }` in `attention.ts`, pure, with no browser API in it. `look` is called once a second and whenever the tab is hidden; any look where one of the three is false marks the stretch as broken. `report()` answers whether every look since the last `taken()` was attentive, and false when there was no look at all. `taken()` starts a new stretch; it is called only when the server took the beat, so a beat that was lost is still spoken for by the next one.
   - `play.browser.ts` re-exports `createAttention` and `BEAT_EVERY_MS`.
-  - `POST /g/<game>/play/beat`, JSON body `{ "session": string, "token": string, "attentive": boolean }`: a body of any other shape, or over 1,000 bytes, answers 400; `recordBeat`'s `recorded` answers 204, `too_soon` 429, `over` 410, `unknown` 404. It reads no cookie and needs no sign-in: the session's token is the proof, so free play by nobody is recorded too.
+  - `POST /g/<game>/play/beat`, JSON body `{ "session": string, "token": string, "attentive": boolean }`: a body of any other shape, or over 1,000 bytes, answers 400; `recordBeat`'s `recorded` answers 204, `too_soon` 429, `over` 410, `unknown` 404. It reads no cookie and needs no sign-in: the session's token is the proof, so free play by nobody is recorded too. It reads the body as text and parses it as JSON whatever its `content-type`, because `navigator.sendBeacon` sends a string as `text/plain`.
   - In the page's script: one timer looks once a second (`document.visibilityState === "visible"`; the frame's box overlaps the window; `document.activeElement` is the frame and `document.hasFocus()`); `visibilitychange` looks at once; every `BEAT_EVERY_MS` it posts `report()` with `fetch(…, { keepalive: true })` and calls `taken()` on a 204; a 410 or 404 stops the timer; on `pagehide` it sends one last beat with `navigator.sendBeacon`. It never focuses the frame itself: time starts when the person first taps or clicks the game.
 
 - [ ] **Step 1 (red):**
@@ -1472,15 +1526,16 @@ Slice 1 proved "A member's sign-up records the maker's link they came through" w
 
 No code unless a check fails. Nothing here is typed into the repository. It needs G1, G2 and G3 done, O4 and O5 closed, the Owner's FloorFifty items done (a built folder on a branch, the handshake wait removed, its server up and allowing the game's address), and every branch before it on `main` and deployed.
 
-- [ ] **Step 1: the gate's route outlives a deploy.** After the first merge to `main` that follows G3, the Owner runs `(Invoke-WebRequest "https://media.GAMES-DOMAIN/__ruken/health").Content` again and expects `ok`. If it fails, the automatic deploy dropped the route the Owner added by hand. One fix, on a small branch with its test first: the deploy command reads the games domain from a build variable (`wrangler deploy --config cloudflare/games/wrangler.jsonc --route "*.$GAMES_DOMAIN/*"`), and the Owner adds `GAMES_DOMAIN` under the `ruken` Worker's build variables (a website step: Workers Builds has no command for it). Then stop and report.
+- [ ] **Step 1: the gate's route outlives a deploy.** After the first merge to `main` that follows G3, the Owner runs `(Invoke-WebRequest -UseBasicParsing "https://media.GAMES-DOMAIN/__ruken/health").Content` again and expects `ok`. If it fails, the automatic deploy dropped the route the Owner added by hand. One fix, on a small branch with its test first: the deploy command reads the games domain from a build variable (`wrangler deploy --config cloudflare/games/wrangler.jsonc --route "*.$GAMES_DOMAIN/*"`), and the Owner adds `GAMES_DOMAIN` under the `ruken` Worker's build variables (a website step: Workers Builds has no command for it). Then stop and report.
 - [ ] **Step 2: G4.** Send these to the coordinator word for word, with the branch and the folder from O3 filled in. Only the first is a command; the rest is the site itself, used the way any maker and any staff member will use it.
   1. `$secret = Read-Host "JOBS_SECRET"; Invoke-RestMethod -Method Post -Uri "https://SITE/jobs/first-owner" -Headers @{ Authorization = "Bearer $secret" } -ContentType "application/json" -Body (@{ email = "THE-OWNER'S-ACCOUNT-EMAIL" } | ConvertTo-Json)` (expect `granted: True`. The secret is the one from slice 1's S1 and stays in this window only. Sign up on the site first.)
   2. On the site, signed in as that account: `/make` → "Add a game" → "Connect GitHub" (GitHub asks which repositories Ruken may read: choose the account that owns FloorFifty, "Only select repositories", FloorFifty) → Name "Floor Fifty", its one line, the repository, the branch and folder under "Change the branch or folder", FloorFifty's game server's name under "My game talks to a server" → "Next: add your clips" → upload the upright and the wide clip → tick the agreement → "Send for review".
   3. `/make/floor-fifty` shows the address the game runs at: allow it on FloorFifty's game server (the Owner's item).
+  Then, once, the one thing about GitHub reading could not settle: on GitHub, change which repositories the Ruken app may read (add one, then take it away again), and say whether GitHub came back to the site by itself afterwards. Either way, "Connect GitHub" again shows the new list. Record which in progress.md.
   4. `/admin/games` → Floor Fifty → watch both clips, play it → "Accept".
   5. `/make/floor-fifty` → "See it on Ruken" → Play. After a minute of play as a member, `/admin/games/floor-fifty` reads "Played so far" with counted time above zero.
-- [ ] **Step 3: what a person checks**, the Owner or the coordinator with the Owner, on a phone and on a computer, and what is recorded in progress.md (what was checked, by whom, when; no address, no email): the file count and size on the maker's page equal O1's measurement; the game's page shows the right clip for the screen; signed out, Play shows the price card; a member (Stripe test mode, from slice 1's Task 31) lands in the game after paying and it runs; ← goes back; the counted seconds rose; the game's own address without a pass (`https://g-<public id>.GAMES-DOMAIN/index.html`, the public id read from the frame's address while playing) shows "This game's link has run out…" and no game.
-- [ ] **Step 4:** if the pull fails on the real site with Cloudflare's "exceeded resource limits", report the Worker's log line (CPU or memory) and the game's measured size. Do not raise a limit or change the pull without the coordinator's answer. If FloorFifty loads and does not run, that is O2: report what the browser's console says; the fix is in FloorFifty's repository, which is the Owner's.
+- [ ] **Step 3: what a person checks**, the Owner or the coordinator with the Owner, on a phone and on a computer, and what is recorded in progress.md (what was checked, by whom, when; no address, no email): the file count and size on the maker's page equal O1's measurement; the game's page shows the right clip for the screen; signed out, Play shows the price card; a member (Stripe test mode, from slice 1's Task 31) lands in the game after paying and it runs; ← goes back; the counted seconds rose; pressing ← and then Play again the same day gives the frame the same address and the game starts without downloading its files again (the browser's network panel, or a visibly faster start); the game's own address without a pass (`https://g-<public id>.GAMES-DOMAIN/index.html`, the public id read from the frame's address while playing) shows "This game's link has run out…" and no game.
+- [ ] **Step 4:** if the pull fails on the real site with Cloudflare's "exceeded resource limits", report the Worker's log line (CPU or memory) and the game's measured size. Do not raise a limit or change the pull without the coordinator's answer. If FloorFifty loads and does not run, that is O2: report what the browser's console says; the fix is in FloorFifty's repository, which is the Owner's. A console line about the sandbox (orientation lock, a popup), a service worker, or `connect-src` names something this plan leaves out on purpose: report it with the line, and change nothing without the coordinator's answer.
 - [ ] **Step 5:** set slice 2's row in progress.md from what is true: "done" only when every branch is merged, main is green, and Step 3 passed.
 
 ---
@@ -1488,9 +1543,9 @@ No code unless a check fails. Nothing here is typed into the repository. It need
 ## Notes for the plans that follow
 
 - **Slice 3 (the feed).** `/g/<game>` becomes the feed opened at that clip; its `load` keeps the `arrival.remember` call. The clip addresses come from `gamesServices().address("media")`. The feed's Play goes to `/g/<game>/play`, which already decides between the game, the paywall and "needs a computer"; the feed shows "This one needs a computer" from the same `isPhone`. "Share the link" on the placeholder page is the seed of the feed's share. The feed's order needs "how much members played in the last seven days": `countedMs` over `member` sessions is the measure. `/<handle>` calls `arrival.remember` the same way.
-- **Slice 4 (submitting and the admin portal).** The submit path and the smallest Accept and Send back are already here (Owner, 2026-11-13). Slice 4 keeps: the maker's three-step onboarding (address, page, first game), with `/make/new` as its step 3; the admin portal around `/admin/games` (its other queues, admin sessions, the authenticator code, two superadmins, granting roles, with `/jobs/first-owner` replaced by the carried first-owner rule); the mails to a maker when a game is accepted, sent back or taken down, and the line "We'll email you when it's live" in place of "Come back here to see when it's live."; `taken_down` and moderation; the staff action that sets `freeToPlay` with a reason; editing a game's name, line and "Plays on" after it is made; connecting the bank; and deleting a game's old pulls from the bucket. A taken-down game stops at once for new plays (`liveGameBySlug` is null); a pass already given lasts up to four hours unless the files are deleted.
+- **Slice 4 (submitting and the admin portal).** The submit path and the smallest Accept and Send back are already here (Owner, 2026-11-13). Slice 4 keeps: the maker's three-step onboarding (address, page, first game), with `/make/new` as its step 3; the admin portal around `/admin/games` (its other queues, admin sessions, the authenticator code, two superadmins, granting roles, with `/jobs/first-owner` replaced by the carried first-owner rule); the mails to a maker when a game is accepted, sent back or taken down, and the line "We'll email you when it's live" in place of "Come back here to see when it's live."; `taken_down` and moderation; the staff action that sets `freeToPlay` with a reason; editing a game's name, line and "Plays on" after it is made; connecting the bank; and deleting a game's old pulls from the bucket. A taken-down game stops at once for new plays (`liveGameBySlug` is null); a pass already given lasts up to a day unless the files are deleted, and a member's own address keeps working for that member until then; taking a game down should end its passes early (one of the items below).
 - **Slice 5 (money).** Play that counts: sessions with basis `member` only. Time: `countedMs` over a session's beats, cut at America/Chicago midnight by each beat's `receivedAt`, at most 180 minutes per member, per game, per day. Two sessions of one member can overlap (two tabs, two devices); count each moment once. `PlaySession.pullId` says which files were played, should a dispute need it.
 - **The privacy text** (the Owner's, before live mode) should say that Ruken records when a game is open and has the person's attention, and that a game runs on another address and may talk to the servers its maker listed.
-- Worth the Owner's eye before launch, left out on purpose: a limit on which other sites a game may load pictures, scripts and fonts from; a sweep of old `PlayBeat` rows (four a minute for each person playing; nothing removes them); a limit on beats per session beyond "not sooner than five seconds"; ending a pass early when a game is taken down.
+- Worth the Owner's eye before launch, left out on purpose: a limit on which other sites a game may load pictures, scripts and fonts from; a sweep of old `PlayBeat` rows (four a minute for each person playing; nothing removes them); a limit on beats per session beyond "not sooner than five seconds"; ending a pass early when a game is taken down; what happens to a maker's live games when the maker's account is deleted (this slice leaves them as they are; the purge removes only the maker's GitHub connection); a sweep of old `PlayPass` rows; a check of a game's scripts and styles, not only its `index.html`, for addresses that start at the top of the site (today such a file is refused by the gate, 403, and the maker finds out by playing).
 - The gate has no cache in front of the bucket. If the Worker's numbers ever show it slow, Cloudflare's cache API in front of `files/` is the first thing to try; a file's address already changes with every pull.
-- A browser keeps a game's files only for the life of one pass (the address changes with each Play), and FloorFifty is 91 MB. The fix, if the Owner wants it: one pass per game and pull for everyone for a fixed window (say a day), so the address stays the same and the browser keeps the files. Its price: a leaked address works for anyone until the window ends, not for four hours. It is a small change to `makePass`'s time and nothing else; it needs the Owner's yes.
+- The coordinator's decision of 2026-11-14 (one pass per member per game, for a day) replaced the four-hour pass made on every Play. A browser now keeps a game's files for as long as the member's pass lasts (the gate's `max-age` is the pass's time left). Slice 5 can read `PlaySession.passId` and `PlayPass.userId` to find whose address a leaked one was.
