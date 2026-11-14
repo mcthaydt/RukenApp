@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { payAsNewMember, signUp, subscriptionStatusAtStandIn } from "./support/account.ts";
+import { failTheirCard } from "./support/database.ts";
 import { boxOf, expectOneCard, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -94,6 +95,30 @@ test("someone who is not a member is not told their membership ends", async ({ p
   await expect(page.getByRole("heading", { name: "Delete your account?" })).toBeVisible();
   await expect(page.getByText(/Your membership ends now/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Only want to stop paying/ })).toHaveCount(0);
+});
+
+// Audit finding 2: a card that failed more than seven days ago pauses the membership, and pressing "Continue to payment"
+// would only bounce the person. The screen says so and sends them to fix the card. The row is set by hand (the stand-in
+// has no failing card), 8 days back, so the seven days are over.
+test("a member whose card failed more than a week ago is told, and sent to fix it", async ({
+  page,
+}, testInfo) => {
+  const { email } = await payAsNewMember(page);
+  await failTheirCard(email, 8);
+  await page.goto("/join?next=/me");
+  await expect(page.getByRole("heading", { name: "Your membership is paused" })).toBeVisible();
+  await expect(
+    page.getByText(
+      "We couldn't charge your card, so your membership is paused. Update your card to play again.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/a month, or/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Continue to payment" })).toHaveCount(0);
+  await expectOneCard(page);
+  await showTheOwner(page, testInfo, "the paywall card, card failed (membership paused)");
+  // The one button opens the same Stripe page /me opens.
+  await page.getByRole("button", { name: "Update card" }).click();
+  await expect(page.getByRole("button", { name: "Cancel membership" })).toBeVisible();
 });
 
 test("a member who opens the card is told they are one", async ({ page }) => {

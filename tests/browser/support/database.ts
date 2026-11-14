@@ -24,6 +24,19 @@ export async function userIdOf(email: string): Promise<string> {
   return (await db().user.findUniqueOrThrow({ where: { email }, select: { id: true } })).id;
 }
 
+/**
+ * Puts a member's membership where a failed card leaves it: past due, the first failure `daysAgo` days back. The
+ * stand-in Stripe has no failing card, so a journey cannot get there by paying; this is the only way to see that
+ * screen.
+ */
+export async function failTheirCard(email: string, daysAgo: number): Promise<void> {
+  const failedAt = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+  await db().premiumMembership.updateMany({
+    where: { user: { email } },
+    data: { state: "past_due", pastDueSince: failedAt },
+  });
+}
+
 export function membershipStartsOf(email: string): Promise<MembershipStart[]> {
   return db().membershipStart.findMany({ where: { user: { email } }, orderBy: { startedAt: "asc" } });
 }
