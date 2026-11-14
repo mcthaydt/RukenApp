@@ -8,3 +8,9 @@ export async function staffRolesOf(db: PrismaClient, userId: string): Promise<St
   const rows = await db.staffAssignment.findMany({ where: { userId }, select: { role: true } });
   return rows.map((row) => row.role);
 }
+
+export type FirstOwnerOutcome = "granted" | "already_one" | "no_account";
+
+export function grantFirstOwner(db: PrismaClient, email: string): Promise<FirstOwnerOutcome> {
+  return Promise.reject(new Error(`not built yet: ${typeof db} ${email}`));
+}

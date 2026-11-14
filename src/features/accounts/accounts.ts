@@ -14,7 +14,7 @@ export {
   signUpWithPassword,
 } from "./forms.ts";
 export { signedInOnly, signedInRedirect } from "./pages.ts";
-export { staffRolesOf } from "./staff.ts";
+export { grantFirstOwner, staffRolesOf, type FirstOwnerOutcome } from "./staff.ts";
 export { authServices } from "./services.ts";
 export {
   DELETION_WAIT_DAYS,
