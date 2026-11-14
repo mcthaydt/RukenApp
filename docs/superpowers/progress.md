@@ -126,7 +126,13 @@ The Owner's answers in the spec conversation, 2026-11-14, each quoted as given: 
 Stages:
 
 - [x] Spec: approved (Owner, 2026-11-14: "Approved"). No test ran; no code was written.
-- [ ] Plan.
+- [ ] Plan: written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-makers-sales.md`: 33 tasks in 14 branches), on a branch, not merged. It is ticked when it is on main. Build progress: 0 of 33 tasks.
+  - What ran: nothing. No test, lint or typecheck, and no code. The plan is a document.
+  - What was not checked, and is behind a stop in the plan: the names of the Stripe calls in `stripe` 22.6.2 (the package was not installed in the session); where a membership keeps its card; Stripe's fees on a one-off invoice; the wrangler line for the bucket's expiry rule; Apple's refund window; the stores' price lists and whether their notifications state the store's cut. The session could search the web but not open a page.
+  - The three things the spec left to the plan: the gate learns what a pass's player owns from a small object in the games bucket named by the pass's id, so the address never changes; a store's price is the smallest price that store offers at or above the website price plus 10%, worked out by one function, built with the stores; how long a sale Apple never answers about is held is Q1, with the Owner.
+  - Slice 5's branches E to K are re-planned in the plan's own section: E at any time, F to J after this plan's branch F (`sales/ledger`), K with this plan's last branch.
+  - Agreed with the apps' plan: the stores, handles (in `accounts`), blocking (in `people`), ratings and notifications are its; sales, ownership, the buy card, the split function, the hooks' script and the game's page are this plan's.
+  - Open: Q1; the maker agreement's version 2 text; the maker screens redesign (#96) with these screens in it.
 - [ ] Plan audit.
 - [ ] Execution.
 - [ ] Implementation audit.
@@ -601,15 +607,3 @@ Branches and tasks:
 | C `beta/play` | 8 playing a beta (`/g/<game>/play?beta=1`) · 9 "Play the beta", under the game's own button | not started; needs slice 2's branch F, slice 3's branches D and H, and the wishlist's branches B, E and F |
 | D `beta/numbers` | 10 the beta's own line in a maker's numbers | not started; needs the wishlist's branch C |
 | E `beta/old-files` | 11 the sweep and a beta's files | not started; needs slice 4's branch L |
-
-## Makers' sales: the plan (2026-11-14)
-
-Plan: `docs/superpowers/plans/2026-11-14-makers-sales.md`, for the spec `docs/superpowers/specs/2026-11-14-makers-sales-design.md` (approved by the Owner, 2026-11-14: "Approved"). Written against `main` at `5a28504`. State: on a branch, not merged. Progress of the build: 0% (0 of 33 tasks).
-
-- What ran: nothing. No test, lint or typecheck, and no code. The plan is a document.
-- What was not checked, and is behind a stop in the plan: the names of the Stripe calls in `stripe` 22.6.2 (the package was not installed in the session); where a membership keeps its card; Stripe's fees on a one-off invoice; the wrangler line for the bucket's expiry rule; Apple's refund window; the stores' price lists and whether their notifications state the store's cut. The session could search the web but not open a page.
-- The three things the spec left to the plan: the gate learns what a pass's player owns from a small object in the games bucket named by the pass's id, so the address never changes; a store's price is the smallest price that store offers at or above the website price plus 10%, worked out by one function, built with the stores; how long a sale Apple never answers about is held is Q1, with the Owner.
-- Slice 5's branches E to K are re-planned in the plan's own section: E at any time, F to J after this plan's branch F (`sales/ledger`), K with this plan's last branch.
-- Agreed with the apps' plan: the stores, handles (in `accounts`), blocking (in `people`), ratings and notifications are its; sales, ownership, the buy card, the split function, the hooks' script and the game's page are this plan's.
-- Open: Q1; the maker agreement's version 2 text; the maker screens redesign (#96) with these screens in it.
-- Next: the plan audit.
