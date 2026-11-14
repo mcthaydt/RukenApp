@@ -95,7 +95,7 @@ test("the home page sits on the felt, with no card and no red", async ({ page },
   await showTheOwner(page, testInfo, "home");
 });
 
-test("the main button on a card is ink with a paper label and 12px corners, in Schibsted Grotesk 600", async ({
+test("the main button on a card is ink, 12px corners, a paper label in Schibsted Grotesk 600", async ({
   page,
 }) => {
   const asked: string[] = [];
