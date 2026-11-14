@@ -71,6 +71,9 @@ export function cleanHandle(raw: string): string {
   return raw.trim().toLowerCase().replace(/^@/, "");
 }
 
+/** What a person is told about an address that is someone else's, or one of Ruken's own words. */
+export const HANDLE_TAKEN = "That one is taken. Pick another.";
+
 /**
  * What is wrong with an address, in a person's words, or null when it is fine. The first problem found is the one
  * said. It cleans the address itself, so "Admin" and "admin" get the same answer. A reserved word gets the same
@@ -81,6 +84,6 @@ export function handleProblem(raw: string): string | null {
   if (handle.length < HANDLE_MIN) return `Use at least ${String(HANDLE_MIN)} letters or numbers.`;
   if (handle.length > HANDLE_MAX) return `That's too long. Use ${String(HANDLE_MAX)} characters or fewer.`;
   if (!HANDLE.test(handle)) return "Use only letters, numbers and hyphens.";
-  if (RESERVED_HANDLES.has(handle)) return "That one is taken. Pick another.";
+  if (RESERVED_HANDLES.has(handle)) return HANDLE_TAKEN;
   return null;
 }
