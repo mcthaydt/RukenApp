@@ -10,10 +10,7 @@ export interface DeletionDeps {
   readonly clock: Clock;
 }
 
-export function requestDeletion(
-  deps: DeletionDeps,
-  userId: string,
-): Promise<{ purgeAfter: Date } | "staff"> {
+export function requestDeletion(deps: DeletionDeps, userId: string): Promise<{ purgeAfter: Date } | "staff"> {
   throw new Error(`not built yet: ${typeof deps} ${typeof userId}`);
 }
 

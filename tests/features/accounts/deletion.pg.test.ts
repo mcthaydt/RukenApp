@@ -68,7 +68,10 @@ describe("requestDeletion", () => {
   it("leaves one open request when two arrive at the same moment, and answers both the same date", async () => {
     const userId = await createUser(db());
 
-    const answers = await Promise.all([requestDeletion(depsAt(NOW), userId), requestDeletion(depsAt(NOW), userId)]);
+    const answers = await Promise.all([
+      requestDeletion(depsAt(NOW), userId),
+      requestDeletion(depsAt(NOW), userId),
+    ]);
 
     expect(answers).toEqual([{ purgeAfter: IN_14_DAYS }, { purgeAfter: IN_14_DAYS }]);
     expect(await db().deletionRequest.count({ where: { userId } })).toBe(1);
