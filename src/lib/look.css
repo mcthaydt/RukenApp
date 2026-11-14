@@ -93,17 +93,6 @@ body {
   font: var(--text-body);
 }
 
-/* On a wide window a short screen would hang from the top of a large empty felt. The wordmark and the card
-   are one column, so the felt is shared evenly above and below it. A phone keeps the column at the top,
-   where a thumb and a keyboard expect it. */
-@media (min-width: 48rem) {
-  body {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-}
-
 /* One centred column of reading, with a gutter on a phone. */
 main {
   width: min(100% - 2rem, var(--width-read));
@@ -111,7 +100,9 @@ main {
 }
 
 /* The way home, above every screen but the home page itself (src/routes/+layout.svelte). It sits in the same
-   column as the card. On a phone it is close to the top edge; on a wide window it has the room the card has. */
+   column as the card. On a phone it is close to the top edge; on a wide window it has more room. It is always
+   at the top, so the wordmark and the card are at the same height on every screen and nothing jumps between
+   screens (Owner, 2026-11-14). */
 header {
   width: min(100% - 2rem, var(--width-read));
   margin: 0.5rem auto 0;
@@ -323,17 +314,20 @@ button,
 }
 
 /* The main button of a form is a step and a half under the last field. On a phone it spans the card, so a
-   thumb finds it anywhere along the bottom; a quiet button stays as wide as its words. */
+   thumb finds it anywhere along the bottom; a quiet button stays as wide as its words. A link that looks like
+   a button, alone in its line ("Back to Ruken"), is the same button and spans the card the same way. */
 form > * + button:not(.quiet) {
   margin-top: 1.5rem;
 }
 
-.card form > button:not(.quiet) {
+.card form > button:not(.quiet),
+.card p > a.button:only-child {
   width: 100%;
 }
 
 @media (min-width: 48rem) {
-  .card form > button:not(.quiet) {
+  .card form > button:not(.quiet),
+  .card p > a.button:only-child {
     width: auto;
   }
 }
