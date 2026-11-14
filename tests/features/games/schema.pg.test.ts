@@ -25,7 +25,9 @@ let counter = 0;
 
 async function newMaker(): Promise<string> {
   counter += 1;
-  const user = await db().user.create({ data: { name: "Maker", email: `maker-${counter}@example.test` } });
+  const user = await db().user.create({
+    data: { name: "Maker", email: `maker-${String(counter)}@example.test` },
+  });
   return user.id;
 }
 
@@ -43,7 +45,7 @@ async function insertGame(makerUserId: string, values: GameValues = {}): Promise
   counter += 1;
   const id = randomUUID();
   const publicId = values.publicId ?? "abcdefghij";
-  const slug = values.slug ?? `game-${counter}`;
+  const slug = values.slug ?? `game-${String(counter)}`;
   const repoFolder = values.repoFolder ?? "";
   const state = values.state ?? "draft";
   const livePullId = values.livePullId ?? null;
