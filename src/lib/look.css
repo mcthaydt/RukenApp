@@ -584,6 +584,7 @@ details > .field {
   text-decoration: underline;
 }
 
+.card h1 + a.game,
 .card a.game + a.game {
   margin-top: 1.5rem;
 }

@@ -195,7 +195,7 @@
           {sending ? "Sending your game…" : game.state === "sent_back" ? "Send it again" : "Send for review"}
         </button>
       {:else}
-        <button class="quiet" disabled={sending} aria-busy={sending}>
+        <button class="quiet apart" disabled={sending} aria-busy={sending}>
           {sending ? "Sending your game…" : game.state === "sent_back" ? "Send it again" : "Send for review"}
         </button>
       {/if}
