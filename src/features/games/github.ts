@@ -9,7 +9,7 @@ export interface GitHub {
   /** The id of the commit a branch points at now. A null branch means the repository's default branch. */
   commitOf(repo: string, branch: string | null): Promise<string>;
   /** The commit's files as one gzipped tarball, streamed. */
-  tarball(repo: string, commitSha: string): Promise<ReadableStream<Uint8Array>>;
+  tarball(repo: string, commitSha: string): Promise<ReadableStream<Uint8Array<ArrayBuffer>>>;
 }
 
 export interface GitHubOptions {
@@ -84,7 +84,8 @@ function base64url(bytes: Uint8Array): string {
     .replaceAll("=", "");
 }
 
-const utf8 = (text: string): Uint8Array => new TextEncoder().encode(text);
+// `Uint8Array<ArrayBuffer>`, not the wider default: Web Crypto takes only bytes that are not in a shared buffer.
+const utf8 = (text: string): Uint8Array<ArrayBuffer> => new TextEncoder().encode(text);
 
 /**
  * The short token that says "this is the app": RS256, issued by the app's id. It starts a minute in the past because
