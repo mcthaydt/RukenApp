@@ -4,6 +4,7 @@ import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { fakeMoneyStripe } from "../../support/fake-money-stripe.ts";
 import { addGame, addSession } from "../../support/play.ts";
+import { closeDuePeriods } from "../../../src/features/money/periods.ts";
 import {
   addMembershipPayment,
   balancesOf,
@@ -57,6 +58,7 @@ describe("runMoneyJob", () => {
       released: 0,
       playDays: [],
       closed: ["2026-10"],
+      final: ["2026-10"], // an empty month, due on 10 November, is made final once it is closed
       problems: [],
     });
   });
@@ -188,6 +190,72 @@ describe("the 8th", () => {
       expect(balances["pool:premium:2026-11"]).toBe(-463n);
       const november = await own.prisma.ledgerPeriod.findUniqueOrThrow({ where: { period: "2026-11" } });
       expect(november.state).toBe("closed");
+    } finally {
+      await own.stop();
+    }
+  });
+});
+
+describe("the 10th", () => {
+  it("makes the month final after it closes it, in the same run when both are due", async () => {
+    const own = await startTestDatabase();
+    try {
+      const stripe = quietStripe();
+      const game = await addGame(own.prisma);
+      await addMembershipPayment(own.prisma, stripe, {
+        ...PAYMENT,
+        invoice: "in_t1",
+        paidAt: "2026-11-02T15:00:00Z",
+      });
+      const report = await runMoneyJob({
+        db: own.prisma,
+        clock: new TestClock("2026-12-10T06:30:00Z"),
+        stripe,
+      });
+      expect(report.closed).toEqual(["2026-11"]);
+      expect(report.final).toEqual(["2026-11"]);
+      expect(report.problems).toEqual([]);
+      expect((await own.prisma.ledgerPeriod.findUniqueOrThrow({ where: { period: "2026-11" } })).state).toBe(
+        "final",
+      );
+    } finally {
+      await own.stop();
+    }
+  });
+
+  it("reports a fee it cannot read under the step's own words, and leaves the month closed", async () => {
+    const own = await startTestDatabase();
+    try {
+      const stripe = quietStripe();
+      await addMembershipPayment(own.prisma, stripe, {
+        ...PAYMENT,
+        invoice: "in_t2",
+        paidAt: "2026-11-02T15:00:00Z",
+      });
+      await storedFeeRows(
+        own.prisma,
+        [{ amountText: "n/a", balanceTransactionAt: "2026-11-20 10:00:00" }],
+        "2026-12-05T00:00:00Z",
+      );
+      const report = await runMoneyJob({
+        db: own.prisma,
+        clock: new TestClock("2026-12-10T06:30:00Z"),
+        stripe,
+      });
+      expect(report.final).toEqual([]);
+      expect(report.problems).toEqual([
+        {
+          step: "making the month final",
+          message: expect.stringContaining("Stripe sent a fee this code cannot read") as string,
+        },
+      ]);
+      expect((await own.prisma.ledgerPeriod.findUniqueOrThrow({ where: { period: "2026-11" } })).state).toBe(
+        "closed",
+      );
+      // Closing is not undone by it, and the facts are all in.
+      expect(await closeDuePeriods({ db: own.prisma, clock: new TestClock("2026-12-10T07:00:00Z") })).toEqual(
+        [],
+      );
     } finally {
       await own.stop();
     }

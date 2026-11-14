@@ -40,6 +40,8 @@ export interface MoneyJobReport {
   readonly released: number;
   readonly playDays: readonly string[];
   readonly closed: readonly string[];
+  /** The months made final in this run. */
+  readonly final: readonly string[];
   readonly problems: readonly { readonly step: string; readonly message: string }[];
 }
 
@@ -78,6 +80,7 @@ export async function runMoneyJob(deps: MoneyJobDeps): Promise<MoneyJobReport> {
   let released = 0;
   let playDays: readonly string[] = [];
   let closed: readonly string[] = [];
+  const final: readonly string[] = [];
 
   const feeReportSteps: Step[] =
     deps.feeReportSkipped === undefined
@@ -156,6 +159,7 @@ export async function runMoneyJob(deps: MoneyJobDeps): Promise<MoneyJobReport> {
     released,
     playDays,
     closed,
+    final,
     problems,
   };
 }
