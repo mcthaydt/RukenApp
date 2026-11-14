@@ -1,16 +1,16 @@
 # Ruken terms
 
-**Draft for review. Not legal advice.**
+**Draft for review. Not legal advice. A lawyer gives the final say.** Parts marked [LAWYER TO CONFIRM] are drafted for the lawyer to check; the reasons and sources are in `research.md`.
 
-Last changed: [OWNER: the date these terms take effect]
+Takes effect: 30 November 2026.
 
 These are the rules for using Ruken. By making an account, you agree to them.
 
 ## Who we are
 
-Ruken is run by [OWNER: the company's full legal name], at [OWNER: the company's postal address].
+Ruken is run by **Ruken App LLC**. Write to us at **contact@ruken.io**.
 
-When these terms say "we" or "Ruken", they mean that company. When they say "you", they mean you.
+When these terms say "we" or "Ruken", they mean Ruken App LLC. When they say "you", they mean you.
 
 ## What Ruken is
 
@@ -26,7 +26,11 @@ You must be **13 or older** to make an account.
 
 When you sign up, we ask for your date of birth. If you are under 13, we don't make the account, and we keep nothing you typed.
 
-[LAWYER: Members aged 13 to 17 can pay for a membership as the app is built today. Check whether a parent or guardian must agree first, and in which places.]
+**If you are 13 to 17** [LAWYER TO CONFIRM; the Owner chooses one of these, `research.md` question 3]:
+
+- *Option A (recommended):* You can make an account, watch and play free games. You can't buy a membership until you are 18.
+- *Option B:* You can buy a membership once a parent or guardian agrees. We email them, and they press a link to say yes. They agree to these terms for you, and they are responsible for the payments.
+- *Option C:* To buy a membership, you must have a parent or guardian's permission. They agree to these terms for you, and they are responsible for the payments.
 
 ## Your account
 
@@ -38,23 +42,38 @@ When you sign up, we ask for your date of birth. If you are under 13, we don't m
 
 - A membership costs **$9.99 a month** or **$99 a year**. Tax is added where it applies.
 - There is no free trial.
-- It **renews by itself** at the end of each month or year, until you cancel. Your card is charged each time it renews.
-- You can cancel at any time. See "Cancelling" below.
+- **It renews by itself until you cancel.** A monthly membership is charged $9.99 (plus any tax) every month. A yearly one is charged $99 (plus any tax) every year. We charge the card you used, on the same day of the month or year you joined.
+- You can cancel at any time, online. See "Cancelling" below.
+- **Before a yearly membership renews**, we email you 15 to 45 days ahead, with the price and how to cancel. [LAWYER TO CONFIRM; not built yet]
+- **If the price changes**, we email you before your next renewal at the new price, with how to cancel. [LAWYER TO CONFIRM how much notice]
+- After you join, we email you these renewal terms and how to cancel, so you can keep them. [LAWYER TO CONFIRM; not built yet]
 
-[LAWYER: Check the wording needed for automatic renewal in each place members live, such as reminders before a yearly renewal.]
+[LAWYER TO CONFIRM] Proposed wording next to the Join button, which is what the law cares about most:
+
+> **$9.99 a month, renews every month until you cancel.** (or **$99 a year, renews every year until you cancel.**) Tax added where it applies. No refunds. Cancel any time in your account.
+>
+> [ Join and pay ]
+
+and, for a yearly member, the reminder email:
+
+> Subject: Your Ruken membership renews on [date]
+>
+> Your yearly Ruken membership renews on [date]. We'll charge $99 plus any tax to your card ending [1234].
+>
+> Don't want it? Cancel before [date] here: [link to account page]. You keep playing until [date].
 
 ## Cancelling
 
 - Go to your account page and press **"Change card or cancel"**. It opens our payment page, run by Stripe. Cancel there.
 - When you cancel, you keep playing until the end of the month or year you already paid for. Then it stops, and you are not charged again.
-- Cancelling does not give money back for the time you already paid for. Our refund page says more: [refunds](./refunds.md).
+- **We don't give refunds.** Cancelling does not give money back for the time you already paid for. Our [refunds page](./refunds.md) says more.
 
 ## Deleting your account
 
 - You can delete your account from your account page.
 - If you are a member, your membership **ends right away** when you ask. There is no refund for the time left.
 - You then have **14 days** to change your mind. Just sign in again. Signing in brings back your account, not your membership.
-- After 14 days, we remove your details. Our privacy page says what is removed and what is kept: [privacy](./privacy.md).
+- After 14 days, we remove your details. Our [privacy page](./privacy.md) says what is removed and what is kept.
 
 ## Games on Ruken
 
@@ -63,17 +82,16 @@ When you sign up, we ask for your date of birth. If you are under 13, we don't m
 - A game plays in a locked-down window. It never gets your sign-in or your account details.
 - A maker can take their game off Ruken at any time. A game you liked may go away.
 
-[LAWYER: What Ruken promises, and does not promise, about games made by others, and about the service being available.]
-
 ## How to behave
 
 - Don't try to play games without paying, or help others do that.
 - Don't try to break into Ruken, or into anyone's account.
 - Don't use Ruken to break the law or to hurt anyone.
+- Don't put anything on a maker's page that you don't have the right to share.
 
 Staff can take down a game or a maker's page, or suspend an account, when the rules are broken. We always say why.
 
-[OWNER: Any other rules you want here, for example about what can go on a maker's page.]
+**Reporting a game or a page.** If something on Ruken breaks the law or uses your work without permission, write to contact@ruken.io with a link to it and what is wrong. [LAWYER TO CONFIRM: a US copyright agent registered with the Copyright Office, and the EU's reporting rules, `research.md` sections 6 and 10]
 
 ## Makers
 
@@ -90,22 +108,37 @@ How makers are paid, in short:
 
 The maker agreement is what counts. If this list and the agreement differ, the agreement wins.
 
-[LAWYER: Makers' tax forms and tax reporting (for example W-9 and 1099 in the United States), and whether a lawyer's version of the maker agreement replaces version 1 before live payouts.]
+**Taxes for makers** [LAWYER TO CONFIRM]: when you connect your bank, Stripe asks for your tax details for us (in the United States, the details on a Form W-9). If we pay you enough in a year for the tax rules to need it, we send you a tax form (a Form 1099) through Stripe, and send a copy to the IRS. You are responsible for your own taxes on what we pay you.
+
+**A new maker agreement** [LAWYER TO CONFIRM; Owner question 8]: a lawyer is writing a fuller maker agreement. When it is ready, we'll show it to every maker, and you'll need to agree to it before your next payout. Until you do, version 1 stays in place for games already on Ruken.
 
 Read it here: [maker agreement](/legal/maker-agreement).
 
 ## If something goes wrong
 
-[LAWYER: Limits on what Ruken is responsible for, and what happens if there is a dispute.]
+[LAWYER TO CONFIRM; `research.md` section 12]
 
-## The law that applies
+- **Ruken is offered "as is".** We work hard to keep it running, but we can't promise it will always be available, fast, or free of mistakes.
+- **Games are made by makers.** We check each game before it goes live, but we don't promise a game will work, or work on your device, and we're not responsible for what a maker's game does.
+- **The most we're responsible for** is what you paid Ruken in the 12 months before the problem, or $50 if you paid nothing. We're not responsible for losses we couldn't have expected, like lost profits or lost data.
+- **Nothing here takes away rights you have by law** that can't be taken away. Some places don't allow some of the limits above; where they don't, those limits don't apply to you.
 
-[LAWYER: Which country's and state's law applies, and where disputes are settled.]
+## The law that applies, and disagreements
+
+[LAWYER TO CONFIRM; `research.md` section 11; Owner question 6 names the state]
+
+- **Talk to us first.** If you have a problem with Ruken, write to contact@ruken.io and tell us what's wrong. Neither of us goes to court until 30 days after you write, so there is time to put it right.
+- **The law of [STATE]**, where Ruken App LLC is formed, applies to these terms, without regard to rules that would pick another place's law.
+- **Courts.** A disagreement goes to the courts of [STATE]. You can also use small claims court where you live, if it can hear the case.
+- **If you live in the EU or the UK**, you keep the protection of the law where you live, and you can go to court there.
 
 ## Changes to these terms
 
-[LAWYER: How we tell members about changes, how much notice we give, and what happens if someone does not agree.]
+[LAWYER TO CONFIRM how much notice]
+
+- If we change these terms, we'll email members and makers at least 30 days before the change takes effect, and say what changed. The date at the top of this page changes too.
+- If you don't agree, you can cancel or delete your account before the change takes effect. If you keep using Ruken after that, the new terms apply.
 
 ## Contact
 
-Questions? See our [contact page](./contact.md).
+Questions? Write to **contact@ruken.io**. See our [contact page](./contact.md).

@@ -1,12 +1,12 @@
 # Ruken privacy
 
-**Draft for review. Not legal advice.**
+**Draft for review. Not legal advice. A lawyer gives the final say.** Parts marked [LAWYER TO CONFIRM] are drafted for the lawyer to check; the reasons and sources are in `research.md`.
 
-Last changed: [OWNER: the date this page takes effect]
+Takes effect: 30 November 2026.
 
 This page says what Ruken keeps about you, why, who helps us keep it, and how long we keep it.
 
-Ruken is run by [OWNER: the company's full legal name], at [OWNER: the company's postal address].
+Ruken is run by **Ruken App LLC**. Write to us at **contact@ruken.io**.
 
 ## The short version
 
@@ -15,7 +15,8 @@ Ruken is run by [OWNER: the company's full legal name], at [OWNER: the company's
 - When you sign in, we keep your device's internet address, to keep your account safe.
 - Stripe handles your card. We never see your card number.
 - We count how long members play each game, so we can pay the makers.
-- Ruken has no ads.
+- Ruken has no ads. **We do not sell your data.**
+- We only remember which maker's link brought you if you say yes.
 - You can delete your account from your account page. After 14 days, your details are gone.
 
 ## What we keep, and why
@@ -37,16 +38,21 @@ Ruken is run by [OWNER: the company's full legal name], at [OWNER: the company's
 
 ### Which maker brought you
 
-- When you open a maker's page or a link to a game, we put **one small file (a cookie)** in your browser. It remembers which maker's link you came through, which link, and when.
+- **Only if you say yes.** The first time you visit, we ask: "Can we also remember which maker's link brought you here?" If you say no, or don't answer, we don't.
+- If you say yes, when you open a maker's page or a link to a game, we put **one small file (a cookie)** in your browser. It remembers which maker's link you came through, which link, and when.
 - If you then become a member, we record that maker, so they get a bonus for bringing you. That is part of how makers are paid.
-- The cookie lasts up to 400 days, or until a newer maker link replaces it. You can clear it in your browser at any time.
+- The cookie lasts up to 400 days, or until a newer maker link replaces it. You can change your answer with the **Cookies** link at the bottom of every page, or clear it in your browser at any time.
+- [LAWYER TO CONFIRM] The question is not built yet; `cookie-consent-spec.md` describes it.
 
-### Other cookies
+### Cookies Ruken needs to work
 
-- **A sign-in cookie** keeps you signed in. Without it, you would have to sign in on every page.
-- **A short "welcome back" cookie** shows one message after you undo deleting your account.
+These don't need your yes, because Ruken can't work without them:
 
-We don't use cookies for ads or tracking across other sites.
+- **A sign-in cookie** keeps you signed in. Without it, you would have to sign in on every page. It lasts up to 30 days, or until you sign out.
+- **A short "welcome back" cookie** shows one message after you undo deleting your account. It lasts 5 minutes.
+- **A cookie that remembers your yes or no** to the question above, so we don't ask on every page. It lasts 6 months, then we ask again.
+
+We don't use cookies for ads or for tracking you on other sites. When you pay, you are on Stripe's own page, and Stripe uses its own cookies there under [Stripe's privacy policy](https://stripe.com/privacy).
 
 ### What you play
 
@@ -70,9 +76,9 @@ If you ask us to tell you when a game is out, we keep that list, and a note that
 
 ### Logs
 
-Our hosting company, Cloudflare, keeps logs of requests to Ruken, so we can find and fix problems.
+Our hosting company, Cloudflare, keeps logs of requests to Ruken for **7 days**, so we can find and fix problems. Every request to any website carries your device's internet address (IP address), so Cloudflare sees it. Our own log lines never include your email address.
 
-[OWNER: What is in these logs (for example IP addresses), and how long they are kept. Check the Cloudflare account's log settings.]
+[OWNER: Check one log entry in the Cloudflare dashboard (Workers, ruken, Observability) and say whether it shows IP addresses. The page then says so plainly.]
 
 ## Who helps us
 
@@ -86,9 +92,9 @@ These companies handle some of your data for us:
 | Resend | Sends our emails |
 | GitHub | For makers only: lets Ruken read the game repositories a maker picks |
 
-[LAWYER: Check that each company has a data processing agreement in place, and what to say about data stored or sent outside the member's country.]
+[LAWYER TO CONFIRM] Check that each company has a data processing agreement in place, and what to say about data stored or sent outside the member's country (most of these companies keep data in the United States).
 
-We don't sell your data. [OWNER: Confirm this promise.]
+**We do not sell your data.** We don't share it with anyone for ads.
 
 ## How long we keep it
 
@@ -98,31 +104,55 @@ We don't sell your data. [OWNER: Confirm this promise.]
 - **What stays after that:** a few records with no name or email on them. These are your payment records, your play records, which maker brought you, and, for makers, that you agreed to the maker agreement. We keep them so our payment records and makers' pay stay correct.
 - **Stripe keeps its own records** of your payments, under its own rules.
 
-[LAWYER: How long payment and tax records must be kept by law, and whether the records that stay need a set end date.]
+[LAWYER TO CONFIRM] How long payment and tax records must be kept by law (US tax records are often kept 7 years), and whether the records that stay need a set end date.
 
-[OWNER: How long the records that stay after deletion are kept.]
+[OWNER: How long the records that stay after deletion are kept. Suggested: 7 years, then removed.]
 
 ## Your choices
 
 - **Delete your account:** go to your account page and press **"Delete my account"**.
-- **Get a copy of your data**, or ask us to **delete or fix** something: write to us using our [contact page](./contact.md). Tell us the email address on your account.
+- **Get a copy of your data**, or ask us to **delete or fix** something: email **contact@ruken.io** from the email address on your account.
+- **How we check it's you** [OWNER: question 2 in `research.md`; proposed]: we write back to the email address on the account with a link. We act only after you press it. If you write from a different address, we ask you to write from the one on your account. We never ask for your password.
+- **Say no to the maker cookie** at any time with the **Cookies** link at the bottom of every page.
 
-[OWNER: How soon you will answer, and how you will check it is really the account's owner asking.]
+### If you live in the EU or the UK
 
-[LAWYER: Which privacy rights apply where members live (for example in Europe or California), and anything this page must add for them.]
+[LAWYER TO CONFIRM; `research.md` section 6]
 
-## Children
+- **Who is responsible for your data:** Ruken App LLC, contact@ruken.io.
+- **Why we use it** (the law calls this the "legal basis"):
+  - to run your account and membership, because you asked us to (a contract);
+  - to keep accounts safe and Ruken working, like the sign-in records, the limits on tries and the logs (our legitimate interest in security);
+  - to keep payment and tax records (the law requires it);
+  - to remember which maker brought you (only with your yes, and you can take it back at any time).
+- **Your rights:** to get a copy of your data, to fix it, to have it deleted, to limit how we use it, to object, and to take it with you. Ask at contact@ruken.io.
+- **Data sent abroad:** Ruken and the companies above keep data in the United States. [LAWYER TO CONFIRM the safeguards to name.]
+- **Complaints:** you can complain to the data protection authority where you live (in the UK, the Information Commissioner's Office).
+
+### If you live in California
+
+[LAWYER TO CONFIRM; `research.md` section 6]
+
+- You can ask what we keep about you, ask for a copy, ask us to fix it, and ask us to delete it. We won't treat you differently for asking.
+- **We do not sell or share your personal information**, as California's law uses those words. So there is nothing to opt out of.
+- What we keep, why, and who helps us are listed above.
+
+## Children and teenagers
 
 Ruken is for people 13 and up. If you are under 13, you can't make an account, and we keep nothing you typed at sign-up.
 
-If you think a child under 13 has an account, please tell us using our [contact page](./contact.md).
+If you think a child under 13 has an account, please tell us at contact@ruken.io, and we'll delete it.
 
-[LAWYER: Check the rules for members aged 13 to 17, and for children's data, in each place members live.]
+**If you are 13 to 17** [LAWYER TO CONFIRM; `research.md` section 2]:
+
+- We keep the same things about you as about anyone else, and nothing more. We only keep the day you turn 18, not your date of birth.
+- We never use your data for ads, and we never sell it.
+- [Depends on Owner question 3: whether you can buy a membership, and whether a parent is asked first.]
 
 ## Changes to this page
 
-[LAWYER: How we tell members when this page changes.]
+If we change this page in a way that matters, we email members and makers before it takes effect, and say what changed. The date at the top changes too. [LAWYER TO CONFIRM how much notice.]
 
 ## Contact
 
-Questions about your data? See our [contact page](./contact.md).
+Questions about your data? Write to **contact@ruken.io**. See our [contact page](./contact.md).

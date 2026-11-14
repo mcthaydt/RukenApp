@@ -535,3 +535,11 @@ Branches and tasks:
 | C `beta/play` | 8 playing a beta (`/g/<game>/play?beta=1`) · 9 "Play the beta", under the game's own button | not started; needs slice 2's branch F, slice 3's branches D and H, and the wishlist's branches B, E and F |
 | D `beta/numbers` | 10 the beta's own line in a maker's numbers | not started; needs the wishlist's branch C |
 | E `beta/old-files` | 11 the sweep and a beta's files | not started; needs slice 4's branch L |
+
+## Legal drafts (branch `spec/legal-drafts`, pull request #100, a draft)
+
+Not legal advice; a lawyer gives the final say (Owner, 2026-11-14). Round 2, 14 November: the Owner's facts applied (Ruken App LLC, contact@ruken.io, no reply time, takes effect 30 November 2026, "we do not sell your data", no postal address, no refunds); the lawyer's items drafted and marked [LAWYER TO CONFIRM]; `docs/legal/research.md` (sources, ten conflicts between the Owner's facts and the law, twelve Owner questions) and `docs/legal/cookie-consent-spec.md` (every cookie, record, log and outside request on `main`, sorted; the notice; building it is later work) added. Nothing ran: documents only.
+
+- [x] Round 2 drafts written and pushed. 100% of this round.
+- [ ] The Owner's answers to the twelve questions in `research.md` section 14.
+- [ ] A lawyer's review.
