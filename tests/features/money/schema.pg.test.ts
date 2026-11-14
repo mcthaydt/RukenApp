@@ -401,35 +401,36 @@ describe("the fact tables", () => {
       const maker = await newMaker();
       const invoice = await newPayment(maker);
       const run = await insertFeeRun(700_000);
-      const row = async (n: number) => insertFeeRow(run, n);
+      let rowNumber = 0;
+      const row = async () => insertFeeRow(run, ++rowNumber);
 
       // A payment posting with no invoice, or with a maker.
-      await expect(insertFeePosting(await row(1), { kind: "payment" })).rejects.toThrow(
+      await expect(insertFeePosting(await row(), { kind: "payment" })).rejects.toThrow(
         /FeePosting_kind_check/,
       );
       await expect(
-        insertFeePosting(await row(2), { kind: "payment", invoice, makerUserId: maker }),
+        insertFeePosting(await row(), { kind: "payment", invoice, makerUserId: maker }),
       ).rejects.toThrow(/FeePosting_kind_check/);
-      await insertFeePosting(await row(3), { kind: "payment", invoice });
+      await insertFeePosting(await row(), { kind: "payment", invoice });
 
       // A payout posting with no maker, or with an invoice.
-      await expect(insertFeePosting(await row(4), { kind: "payout" })).rejects.toThrow(
+      await expect(insertFeePosting(await row(), { kind: "payout" })).rejects.toThrow(
         /FeePosting_kind_check/,
       );
       await expect(
-        insertFeePosting(await row(5), { kind: "payout", invoice, makerUserId: maker }),
+        insertFeePosting(await row(), { kind: "payout", invoice, makerUserId: maker }),
       ).rejects.toThrow(/FeePosting_kind_check/);
-      await insertFeePosting(await row(6), { kind: "payout", makerUserId: maker });
+      await insertFeePosting(await row(), { kind: "payout", makerUserId: maker });
 
       // A counted, credit or returned posting names neither.
       for (const kind of ["counted", "credit", "returned"]) {
-        await expect(insertFeePosting(await row(7), { kind, invoice })).rejects.toThrow(
+        await expect(insertFeePosting(await row(), { kind, invoice })).rejects.toThrow(
           /FeePosting_kind_check/,
         );
-        await expect(insertFeePosting(await row(8), { kind, makerUserId: maker })).rejects.toThrow(
+        await expect(insertFeePosting(await row(), { kind, makerUserId: maker })).rejects.toThrow(
           /FeePosting_kind_check/,
         );
-        await insertFeePosting(await row(9 + ["counted", "credit", "returned"].indexOf(kind)), { kind });
+        await insertFeePosting(await row(), { kind });
       }
     });
   });
