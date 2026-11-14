@@ -13,6 +13,7 @@ const FEATURE_ORDER = [
   "accounts",
   "membership",
   "games",
+  "launch",
   "play",
   "money",
   "pages",

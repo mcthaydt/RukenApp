@@ -129,6 +129,9 @@ export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
       await tx.account.deleteMany({ where: { userId } });
       // What GitHub said the person can reach is theirs; their repositories go with their installations.
       await tx.gitHubInstallation.deleteMany({ where: { userId } });
+      // The games a person wanted are theirs. The launch email's row (`WishlistMail`) is left: it holds only the
+      // tombstone's id and when a mail went, and is add-only, so the job still finds it and never mails twice.
+      await tx.wishlist.deleteMany({ where: { userId } });
       // The person's page, and its links with it, so the address is free for someone else. It stays up for the 14
       // days of the wait, and goes only here.
       await tx.makerPage.deleteMany({ where: { userId } });
