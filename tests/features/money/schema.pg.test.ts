@@ -126,6 +126,24 @@ describe("the ledger tables", () => {
     );
   });
 
+  it("refuses a line added under an old entry of a month that is final", async () => {
+    // Review S2. A pair of lines that add up to zero keeps the entry balanced, so only the line's own check stops it.
+    await db().$executeRaw`INSERT INTO "LedgerPeriod" ("period") VALUES ('2026-05')`;
+    const entryId = await postRaw(BALANCED, { period: "2026-05" });
+    await db()
+      .$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'closed', "closedAt" = now() WHERE "period" = '2026-05'`;
+    await db()
+      .$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'final', "finalAt" = now() WHERE "period" = '2026-05'`;
+    await expect(
+      db().$executeRaw`
+        INSERT INTO "JournalLine" ("id", "entryId", "account", "amount")
+        VALUES (${randomUUID()}, ${entryId}, 'platform:cash', 5), (${randomUUID()}, ${entryId}, 'platform:fees', -5)`,
+    ).rejects.toThrow(/2026-05 is final and takes no new lines/);
+    const lines = await db().$queryRaw<{ amount: bigint }[]>`
+      SELECT "amount" FROM "JournalLine" WHERE "entryId" = ${entryId}`;
+    expect(lines).toHaveLength(2);
+  });
+
   describe("a month", () => {
     it("moves only forward: open, closed, final", async () => {
       await db().$executeRaw`INSERT INTO "LedgerPeriod" ("period") VALUES ('2026-07')`;
