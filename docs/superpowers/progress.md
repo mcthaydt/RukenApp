@@ -558,3 +558,7 @@ Branches and tasks:
 | C `beta/play` | 8 playing a beta (`/g/<game>/play?beta=1`) · 9 "Play the beta", under the game's own button | not started; needs slice 2's branch F, slice 3's branches D and H, and the wishlist's branches B, E and F |
 | D `beta/numbers` | 10 the beta's own line in a maker's numbers | not started; needs the wishlist's branch C |
 | E `beta/old-files` | 11 the sweep and a beta's files | not started; needs slice 4's branch L |
+
+## Legal pages
+
+Drafts of the terms, privacy, refunds and contact pages, and the cookie notice spec, are on branch `legal/pages` (a draft pull request), waiting for the lawyer. Not legal advice.
