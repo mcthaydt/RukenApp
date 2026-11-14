@@ -17,6 +17,7 @@ The Owner's words, 2026-11-14, on the first board of this redesign:
 
 - "audit the screens, ask does this look yc level - use fable, it looks a bit off, once again take inspiration from typeform; it's just a card in the upper center on desktop; this is not taste forward". Section 2a is that audit; section 4 is the layout that answers it.
 - "delete account should be red obviously". Section 1.
+- "safe is green, not safe is red, rest is blue". Section 1.
 - "13. A": the address and page steps join the one run of questions. Section 6.
 
 Lines marked **Owner** are the Owner's words. Lines marked **Call** are this design's choices; the Owner can overrule any of them. Lines marked **Pending** wait for the Owner's answer and are not built until it comes.
@@ -31,12 +32,13 @@ Owner, 2026-11-14: "the one main button on every screen across the whole site go
 - **Any other button** is green: `felt-raised` `#004f46` with white words (9.52:1, measured). Back, "Send my newest version for review".
 - **Links stay links**: ink, underlined, for leaving the task ("Finish later", "Not now", "Back to your games").
 - In 5.8's table, `pay` now reads "the one main button on every screen, with white words; never a field"; `paper` reads "cards" only (it was also the main button on felt); `felt-raised` keeps "secondary buttons, tracks". The ink button on paper goes.
+- **The rule in one line.** Owner, 2026-11-14: "safe is green, not safe is red, rest is blue". The button that goes forward (Next, Send for review, Save, Continue to payment) is Blue. A safe choice (Back, Keep it, Keep my account, Cancel) is green. The one that deletes (Delete my account, Throw it away) is red. A screen with nothing to go forward to has no Blue button.
 - **The button that deletes is red.** Owner, 2026-11-14: "delete account should be red obviously". On "Delete your account?" and "Throw Floor Fifty away?" the button that deletes is `pip` `#cb2f43` with white words (5.21:1, measured). This amends 5.8, which said red is "never on a button": red is now on the one button that deletes, on those two screens, and nowhere else. In 5.8's table `pip` reads "the one small mark on the paywall card, and the button that deletes".
-- 5.8's Grandma line becomes: "the felt asks one thing, paper is what you touch, and the one Blue button is the next step; the only red button is the one that deletes."
+- 5.8's Grandma line becomes: "the felt asks one thing, paper is what you touch, and the one Blue button is the next step; green is the safe way back, and the only red button is the one that deletes."
 - The paywall's "Continue to payment" stays Blue. It is no longer the only Blue button on the site; its words and the money lines beside it say that money is spent.
 - Measured, and worth knowing: Blue on the felt itself (the home page's "Sign in") is 2.67:1 against the page. The button is read by its white words, which pass; the home page goes when the feed replaces it.
 - Measured, the buttons against what they sit on: Blue 2.67:1 on felt and 3.48:1 on the phone's bottom bar (`felt-deep`); red 2.75:1 and 3.57:1; green 1.50:1 and 1.96:1. Every button is read by its white words, which pass on all three.
-- **Pending (question 1).** On the two deleting screens, the other button keeps. Call, recommended: it stays Blue ("Keep my account", "Keep it"), so every screen still has its one Blue button and it is the safe one. Enter does nothing on these two screens.
+- **The two deleting screens** ("Delete your account?", "Throw Floor Fifty away?") have a green button that keeps and a red one that deletes, and no Blue button. Enter does nothing on them.
 
 ## 2. Where she stalls today
 
@@ -117,7 +119,7 @@ Short screens stay short. The long form becomes one run of questions.
 | | Waiting | Floor Fifty · Waiting for review | Back to your games | Change something |
 | | Sent back | Floor Fifty · Sent back · What to fix | Send it again | Change, on each answer · Back to your games |
 | | Live | Floor Fifty · Live | See it on Ruken | Send my newest version for review · Change, on the name, the line and where it plays · Back to your games |
-| | Throw a draft away | Throw Floor Fifty away? | Keep it | Throw it away, red |
+| | Throw a draft away | Throw Floor Fifty away? | none | Keep it, green · Throw it away, red |
 | | Your games | Your games | Add a game | each game is one link |
 
 The table counts the game's questions as "of 6", as a maker's second game does. On a first game they are 5 to 10 of 10 (section 6).
@@ -184,7 +186,7 @@ No new colours, typefaces or sizes: every size below is already in 5.8's scale.
 - **Sent back.** "What to fix" and staff's words first, as today; under them the same list as Check and send; the button stays "Send it again".
 - **Live.** The Blue button is "See it on Ruken" (stall 14). "Send my newest version for review" becomes a green button with today's note. Taking a game off Ruken (main design 5.4) is not on this branch and is not designed here.
 - **Changing a name or a line** (the review's N1; Owner, 2026-11-14: "B", before launch). Before a game is live, Change on Check and send does it. On a live game, the Live screen lists the name, the line and where it plays, each with Change; Change opens that one question, its button reads "Save", and it comes straight back. Under the name box there: "Its address on Ruken stays the same, so links you've shared keep working." A game that was taken down cannot be changed.
-- **Throwing a draft away** (the review's N2; Owner, 2026-11-14: "B", before launch). A game that was never sent, or was sent back, has a small link, "Throw this game away", at the foot of every question and of Check and send, the size of "Delete my account" on Your account. It opens one short screen: "Throw Floor Fifty away?", "Its files and videos are deleted from Ruken. Nothing changes on GitHub.", "You can't undo this." Blue is "Keep it"; red is "Throw it away" (section 1). Afterwards Your games says "Floor Fifty was thrown away." once. Call: a game that is waiting, live or taken down has no such link; a live game leaves by the maker's own take-down (main design 5.4). This screen and "Delete your account?" are the same screen with different words; question 1 covers both.
+- **Throwing a draft away** (the review's N2; Owner, 2026-11-14: "B", before launch). A game that was never sent, or was sent back, has a small link, "Throw this game away", at the foot of every question and of Check and send, the size of "Delete my account" on Your account. It opens one short screen: "Throw Floor Fifty away?", "Its files and videos are deleted from Ruken. Nothing changes on GitHub.", "You can't undo this." Green is "Keep it"; red is "Throw it away" (section 1). Afterwards Your games says "Floor Fifty was thrown away." once. Call: a game that is waiting, live or taken down has no such link; a live game leaves by the maker's own take-down (main design 5.4). This screen and "Delete your account?" are the same screen with different words.
 - **Your games.** Each game is a paper card (section 4.2), with the new state words, "Not finished. Go on from question 3."
 - **Every other screen of Ruken's own.** Only the main button's colour changes (section 1).
 
@@ -206,7 +208,7 @@ Owner, 2026-11-14: "13. A". 5.7 gave a new maker three steps with a "Step 1 of 3
 
 ## 7. Questions only the Owner can answer
 
-1. **The other button on the two deleting screens.** A (recommended): "Keep my account" and "Keep it" stay Blue, beside the red button. B: they are green, so red is the only strong colour on the screen.
+1. Answered. The other button on the two deleting screens is green: Owner, 2026-11-14, "safe is green, not safe is red, rest is blue" (section 1).
 2. **Paper only for what she touches, and steps that move.** A (recommended): as on the board; this changes 5.8's "one paper card per screen" and "nothing else moves" for these screens. B: keep one paper card per screen, made larger and centred in the window, and nothing moves.
 3. **A first game's count.** A (recommended): 10 questions, the photo, the line about her and the colours each on their own screen. B: 8, with the page's three parts on one screen.
 
