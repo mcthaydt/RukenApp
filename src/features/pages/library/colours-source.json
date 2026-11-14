@@ -1,0 +1,9 @@
+{
+  "package": "dictionary-of-colour-combinations",
+  "version": "1.0.2",
+  "tarball": "https://registry.npmjs.org/dictionary-of-colour-combinations/-/dictionary-of-colour-combinations-1.0.2.tgz",
+  "integrity": "sha512-7IiYWH/oZvfxuXP9pyf+H6WgRRvgavKZ4NsKdHTzmSQJUCITqQj3aNEQFFlBvPc5tnIgAIczGaMvJxZce6Vp4w==",
+  "path": "package/colors.json",
+  "bytes": 60245,
+  "sha256": "555f11c32eb8133078fd470dd7d5320533aaa8b636f12fa06a8dd3d0ee2703b4"
+}
