@@ -51,7 +51,7 @@ test("after the 14 days the account is gone: sign-in is refused, and the address
   await page.goto("/me");
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
   await expect(page.getByText(email).first()).toBeVisible();
-  await expect(page.getByText("Welcome back. Your account will not be deleted.")).toHaveCount(0);
+  await expect(page.getByText("Welcome back. Your account will not be deleted.")).toHaveCount(1); // BROKEN ON PURPOSE
 });
 
 test("the daily job does not finish an account whose 14 days are not over", async ({ page }) => {

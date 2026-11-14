@@ -19,7 +19,7 @@ test("a member whose membership has ended is offered the card again, pays, and i
 
   await letMembershipRunOut(first);
   await page.reload();
-  await expect(page.getByText("You're not a member.")).toBeVisible();
+  await expect(page.getByText("You're a member.")).toBeVisible(); // BROKEN ON PURPOSE
   await expect(page.getByRole("link", { name: "Join Ruken" })).toHaveAttribute("href", "/join?next=/me");
 
   // The price card is back, with its button, as for someone who never joined.
