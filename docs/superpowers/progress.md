@@ -54,6 +54,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | spec, the landing page | 1 Spec | none | parked (Owner, 2026-11-14: "We'll address the landing page when they can upload a game"); players first, then developers (Owner: "Appeal to players first, then developers"); `/` stays as it is until then |
 | spec, games before launch: the wishlist and a maker's numbers | 1 Spec | `spec/wishlist` | approved (Owner, 2026-11-14: "approved"); `docs/superpowers/specs/2026-11-14-wishlist-before-launch-design.md`; plan next |
 | spec, apps on every store and player features (`session_01QYLU1hRNP3UyNS6WiJtdtM`) | 1 Spec | `claude/project-thread-c705pv` | approved (Owner, 2026-11-14: "Approved"); `docs/superpowers/specs/2026-11-14-apps-and-player-features-design.md`; plan next, starting with the test copy. Launch waits for the last store to approve (Owner, 2026-11-14: "3. B") |
+| plan, makers' sales (extras and splits) | 2 Plan | `claude/project-thread-300r65` | plan written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-makers-sales.md`: 33 tasks in 14 branches, and slice 5's branches E to K re-planned); not merged; no test ran and no code was written; Q1 (how long a sale Apple never answers about is held) is with the Owner; plan audit next |
 | execution, slice 3, branch A (`session_01HNdX7Lu88QTewJX8NtAg8u`) | 4 Execution | `slice-3/themes` | running (needs slice 1 only) |
 | audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | done: 39 states of `main` at `6ad0214`, 390 screenshots on 10 views each (live test-mode site, 7 states on a local copy), every one looked at; `docs/superpowers/audits/2026-11-14-screens-audit.md`: 2 block launch, 13 should fix, 14 notes; findings reported, not fixed. No test ran |
 | audit, FloorFifty for production (`session_01HNdX7HXjg2huySfHRH521r`, in SNEKPRTY/FloorFifty) | audit | FloorFifty's own branch | running (Owner, 2026-11-14: "audit the game for production excluding known gaps like deployment") |
@@ -600,3 +601,15 @@ Branches and tasks:
 | C `beta/play` | 8 playing a beta (`/g/<game>/play?beta=1`) · 9 "Play the beta", under the game's own button | not started; needs slice 2's branch F, slice 3's branches D and H, and the wishlist's branches B, E and F |
 | D `beta/numbers` | 10 the beta's own line in a maker's numbers | not started; needs the wishlist's branch C |
 | E `beta/old-files` | 11 the sweep and a beta's files | not started; needs slice 4's branch L |
+
+## Makers' sales: the plan (2026-11-14)
+
+Plan: `docs/superpowers/plans/2026-11-14-makers-sales.md`, for the spec `docs/superpowers/specs/2026-11-14-makers-sales-design.md` (approved by the Owner, 2026-11-14: "Approved"). Written against `main` at `5a28504`. State: on a branch, not merged. Progress of the build: 0% (0 of 33 tasks).
+
+- What ran: nothing. No test, lint or typecheck, and no code. The plan is a document.
+- What was not checked, and is behind a stop in the plan: the names of the Stripe calls in `stripe` 22.6.2 (the package was not installed in the session); where a membership keeps its card; Stripe's fees on a one-off invoice; the wrangler line for the bucket's expiry rule; Apple's refund window; the stores' price lists and whether their notifications state the store's cut. The session could search the web but not open a page.
+- The three things the spec left to the plan: the gate learns what a pass's player owns from a small object in the games bucket named by the pass's id, so the address never changes; a store's price is the smallest price that store offers at or above the website price plus 10%, worked out by one function, built with the stores; how long a sale Apple never answers about is held is Q1, with the Owner.
+- Slice 5's branches E to K are re-planned in the plan's own section: E at any time, F to J after this plan's branch F (`sales/ledger`), K with this plan's last branch.
+- Agreed with the apps' plan: the stores, handles (in `accounts`), blocking (in `people`), ratings and notifications are its; sales, ownership, the buy card, the split function, the hooks' script and the game's page are this plan's.
+- Open: Q1; the maker agreement's version 2 text; the maker screens redesign (#96) with these screens in it.
+- Next: the plan audit.
