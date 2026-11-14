@@ -53,6 +53,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | execution, slice 3, branch A (`session_01HNdX7Lu88QTewJX8NtAg8u`) | 4 Execution | `slice-3/themes` | running (needs slice 1 only) |
 | audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | done: 39 states of `main` at `6ad0214`, 390 screenshots on 10 views each (live test-mode site, 7 states on a local copy), every one looked at; `docs/superpowers/audits/2026-11-14-screens-audit.md`: 2 block launch, 13 should fix, 14 notes; findings reported, not fixed. No test ran |
 | audit, FloorFifty for production (`session_01HNdX7HXjg2huySfHRH521r`, in SNEKPRTY/FloorFifty) | audit | FloorFifty's own branch | running (Owner, 2026-11-14: "audit the game for production excluding known gaps like deployment") |
+| plan, games before launch: the wishlist (`session_01HNdX7J7xTV329GjHcGAkVQ`) | 2 Plan | `spec/wishlist` | plan written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`); not merged; Q1 is with the Owner; Q2 answered by the coordinator; shaped so the beta builds plan adds to it |
 | plan, beta builds | 2 Plan | `spec/beta-builds` | plan written (`docs/superpowers/plans/2026-11-14-beta-builds.md`), not merged; Q1 and Q2 answered by the coordinator, Q3 is with the Owner |
 
 ## Defect: the Worker ran out of memory (2026-11-14)
@@ -373,6 +374,38 @@ Branches and tasks (none started):
 - [ ] I `slice-5/split-page`: Task 34 (the public page).
 - [ ] J `slice-5/questions`: Tasks 35, 36 (a maker asks about a line; staff answer).
 - [ ] K `slice-5/real-site`: Task 37 (the first statement and payout on the real site).
+
+## Games before launch: the wishlist and a maker's numbers
+
+Design: `docs/superpowers/specs/2026-11-14-wishlist-before-launch-design.md`, approved by the Owner on 2026-11-14. Plan: `docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`. It ends with: accepted games are in the feed with Wishlist until 11:00 CT on 30 November, then Play; one email at launch; a maker's numbers on `/make/<game>`. To be on `main` by Wednesday 25 November. It is not one of the six slices, so the overall percentage above does not count it. Progress: 0% (nothing built).
+
+Stages:
+
+- [x] Spec: approved (Owner, 2026-11-14: "approved").
+- [ ] Plan: written on `spec/wishlist`, planned against `main` at `d497163`; not merged. No test ran in the plan session, and no code was written. Read as code: `main`. Not read as code, because they are not on `main`: slice 2's branches M, S and F, and all of slice 3. Read outside the repository on 2026-11-14: Cloudflare's Cron Triggers page (five fields, UTC, up to 15 minutes for a new trigger to start) and Resend's API pages (10 requests a second for a team; an `Idempotency-Key` header kept 24 hours). Not measured: anything; the plan holds no size, count or timing of its own.
+- [ ] Plan audit.
+- [ ] Execution, branch by branch (below).
+- [ ] Implementation audit.
+- [ ] Fixes.
+
+What the plan waits for, and what is the Owner's:
+
+- [ ] Q1, before launch, can someone pay on `/join`? Asked 2026-11-14. The plan's pick: no, the card reads "Membership opens 30 November." (Task 6, built only on the Owner's yes).
+- [x] Q2, the real-site checks that need a stranger to play cannot be made by a person before launch once the play gate is on `main`. Coordinator, 2026-11-14: keep the gate strict; those two lines are checked by a person at 11:00 on launch day.
+- [ ] "Fine" on the screenshots of branches C, E and F (and B, if Task 6 is built), phone and computer, before and after.
+- [ ] The look at the real site before launch, and at 11:00 CT on 30 November (Task 15).
+
+Branches and tasks:
+
+| Branch | Tasks | State |
+|---|---|---|
+| A `wishlist/switch` | 1 the switch · 2 the journeys' switch · 3 the wishlist's tables and service · 4 a deleted account's wishlist | not started; needs nothing that is not on `main` |
+| B `wishlist/play-gate` | 5 nobody but a game's maker and staff plays before launch · 6 `/join` holds payments until launch (only on the Owner's answer to Q1) | not started; needs A and slice 2's branch F |
+| C `wishlist/numbers` | 7 how much a game was played · 8 a maker's numbers on `/make/<game>` | not started; needs A and slice 2's branch M |
+| D `wishlist/launch-mail` | 9 the email's words · 10 one email a person, once · 11 the job's address and its cron | not started; needs A and slice 3's branch C |
+| E `wishlist/button` | 12 the button's post · 13 Wishlist in the feed and at a game's address | not started; needs A, B and slice 3's branch D |
+| F `wishlist/maker-page` | 14 Wishlist on a maker's page | not started; needs E and slice 3's branch H |
+| G `wishlist/real-site` | 15 the design's goals in one journey, and on the real site | not started |
 
 ## Beta builds
 
