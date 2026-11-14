@@ -85,7 +85,7 @@ Read on 2026-11-14, on `main` at `d497163`. Where the code and this plan disagre
 ## The Owner's decisions, the open questions, and the Calls in this plan
 
 - **Owner, 2026-11-14** (the beta design): a beta comes from a branch; "Nothing goes on the site without approval"; "you have to be a subscriber to play the beta"; "game creator can select members to be a part of the beta"; "yes, they can play early". Not in this: betas from a commit or a GitHub release, testers who are not members, public beta links, feedback tools, a limit on testers.
-- **Asked of the coordinator on 2026-11-14, for the Owner. Until answered, the plan is written on the first choice of each, as a Call:**
+- **Asked of the coordinator on 2026-11-14.** Answered the same day: Q1 is (a) and Q2 is (a), both the coordinator's Calls; Q3 is with the Owner, and the plan keeps (a) as its marked pick until the Owner answers:
   - **Q1. Which games can have a beta?** (a) Only a game that is live (accepted). The plan's pick: the design puts "Play the beta" under the game's own button, and a game that was never accepted has no button anywhere. (b) Also a game that was never accepted, which needs a new place for testers to find it.
   - **Q2. How does a maker end a beta?** (a) No new button: they remove the testers or pull a newer beta; taking the game off Ruken ends it too. The plan's pick. (b) A "Stop the beta" button on `/make/<game>`.
   - **Q3. Can a maker play their own beta without paying?** (a) No: only picked members, as the design says; a maker who is a member adds themselves. The plan's pick. (b) Yes: the maker gets "Play the beta" on their own game.

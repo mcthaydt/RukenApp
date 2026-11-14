@@ -53,7 +53,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | execution, slice 3, branch A (`session_01HNdX7Lu88QTewJX8NtAg8u`) | 4 Execution | `slice-3/themes` | running (needs slice 1 only) |
 | audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | running (Owner, 2026-11-14: "take a screenshot of every single screen, every orientation, every device type, audit them one by one") |
 | audit, FloorFifty for production (`session_01HNdX7HXjg2huySfHRH521r`, in SNEKPRTY/FloorFifty) | audit | FloorFifty's own branch | running (Owner, 2026-11-14: "audit the game for production excluding known gaps like deployment") |
-| plan, beta builds | 2 Plan | `spec/beta-builds` | plan written (`docs/superpowers/plans/2026-11-14-beta-builds.md`), not merged; three questions for the Owner are with the coordinator (Q1 to Q3 in the plan) |
+| plan, beta builds | 2 Plan | `spec/beta-builds` | plan written (`docs/superpowers/plans/2026-11-14-beta-builds.md`), not merged; Q1 and Q2 answered by the coordinator, Q3 is with the Owner |
 
 ## Slice 0: Start
 
@@ -376,9 +376,9 @@ Stages:
 
 What the plan waits for, and what is the Owner's:
 
-- [ ] Q1, which games can have a beta (the plan's pick: only a live game).
-- [ ] Q2, how a maker ends a beta (the plan's pick: no new button; remove the testers or pull a newer beta).
-- [ ] Q3, whether a maker plays their own beta without paying (the plan's pick: no; only picked members).
+- [x] Q1, which games can have a beta. Coordinator, 2026-11-14: only an accepted (live) game.
+- [x] Q2, how a maker ends a beta. Coordinator, 2026-11-14: nothing new; they remove the testers or pull a newer beta.
+- [ ] Q3, whether a maker plays their own beta without paying: with the Owner (the plan's pick: no; only picked members).
 - [ ] "Fine" on the screenshots of branches B, C and D, phone and computer.
 - [ ] The look at the real site with two test accounts (Task 9, step 4), once games can be played there.
 
