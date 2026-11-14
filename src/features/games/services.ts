@@ -12,7 +12,7 @@ export function createGamesServices(
   source: Readonly<Record<string, string | undefined>>,
   parts: { db: PrismaClient; clock: Clock; files: FileStore },
 ): GamesServices {
-  throw new Error(`not built yet: ${String(source.GITHUB_APP_ID)} ${String(parts.db === undefined)}`);
+  throw new Error(`not built yet: ${String(source.GITHUB_APP_ID)} ${String(parts.clock.epochMs())}`);
 }
 
 export function gamesServices(): GamesServices {
