@@ -6,7 +6,7 @@
 
 **Architecture:** One new feature, `moderation` (reports), and more of `admin` (the portal's screens, the mails to a maker, the guards). The authenticator code, staff roles, the record of staff actions and suspension live in `accounts`, the lowest feature, so every feature above can read them. Taking a game down and marking it free are added to slice 2's games service; taking a page down is added to slice 3's pages service. The maker's three steps are three small routes under `/make/start` that call slice 3's and slice 2's own services and components; no screen is built twice.
 
-**Tech Stack:** as slices 1 to 3 (Node 24.22.1, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Prisma 7.10.0, Postgres 16, Vitest 5.0.3, Playwright 1.63.0, Cloudflare Workers, Resend through slice 1's `Mailer`). The authenticator code is checked by one small file carried from the old repository, with `node:crypto` (already used by `play/pass.ts`) and `symmetricEncrypt`/`symmetricDecrypt` from `better-auth/crypto` (better-auth 1.7.7, already installed). **No new package.**
+**Tech Stack:** as slices 1 to 3 (Node 24.22.1, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Prisma 7.10.0, Postgres 16, Vitest 5.0.3, Playwright 1.63.0, Cloudflare Workers, Resend through slice 1's `Mailer`). The authenticator code is checked by one small file carried from the old repository, with `node:crypto` (already used by `play/pass.ts`) and `symmetricEncrypt`/`symmetricDecrypt` from `better-auth/crypto` (better-auth 1.7.7, already installed). **One new package, with the Owner's words:** `uqr` 0.1.3, pinned exactly, which draws the QR picture on the authenticator's set-up screen (Owner, 2026-11-14: "QR code to scan"; Task 4).
 
 **Spec:** `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md` (sections 5.1 and 5.3 "report", 5.4, 5.5 without Money, 5.7 "A new maker", 5.8, 7.1, 7.2, 8, 9, 10). Read it with `CLAUDE.md`, `AGENTS.md`, slice 1's plan ("How a task runs", "The look", Tasks 4, 20), slice 2's plan ("The Owner's decisions … and the Calls", Tasks 26 to 31, "Notes for the plans that follow"), slice 3's plan (Tasks 4, 5, 7, 13, 22, 24, 25, "Notes for the plans that follow") and slice 5's plan (`docs/superpowers/plans/2026-11-14-slice-5-money.md`: "What this slice needs and no plan provides yet", Tasks 32 and 33) and its audit (`docs/superpowers/audits/2026-11-14-slice-5-plan-audit.md`, S11).
 
@@ -16,7 +16,7 @@
 
 - No session runs tests, lint or typecheck itself. Push, then read CI on the pull request (CLAUDE.md, Owner 2026-11-13).
 - Every task is test-first, in two pushes, exactly as slice 1's "How a task runs" says: red (the test and stubs that throw `not built yet`), then green. A pull request is opened as a draft at the first push and marked ready only when its branch's last task is green.
-- No new dependency. Anything that seems to need one is a stop: report it with the exact name and version, for the Owner's yes.
+- One new dependency, `uqr` 0.1.3, added in Task 4 and nowhere else (Owner, 2026-11-14: "QR code to scan"). No other. Anything else that seems to need one is a stop: report it with the exact name and version, for the Owner's yes.
 - `.github/workflows/ci.yml` does not change in this slice.
 - This repository is public. No secret, real address or key goes in: no staff member's email, no authenticator key. Test values are plainly fake. No strategy, research or reason behind a business decision goes in any file, comment, commit or pull request.
 - Not built in this slice: the money screens of the portal, the second person on a payout and connecting the bank (slice 5; this slice gives it the code check and the roles it asks for); like, save, follow (a later spec); sign in with Google (after launch). No button, table or column is made for any of them (CLAUDE.md: build nothing ahead of its user).
@@ -43,6 +43,7 @@
 | `safeNextPath`, `src/routes/+error.svelte`, `src/lib/look.css`, `CLASSES`, `CARD_SCREENS`, `expectOneCard`, `filledButtons`, `showTheOwner`, `forgetRateLimits`, `signUp`, `signUpInItsOwnContext` | slice 1 | the screens and the journeys |
 | `grantFirstOwner`, `POST /jobs/first-owner`, `hasJobSecret` (on `main`) | slice 2, Task 29 | the first owner; this slice keeps it as it is |
 | `GAME_STAFF_ROLES` in `src/features/accounts/staff.ts`; `staffOnly(caller)` in `src/features/admin/staff-only.ts`; `src/features/admin/admin.ts`; `/admin/games`, `/admin/games/<game>` with Accept and Send back | slice 2, Tasks 29, 30 | the portal's first queue, which this slice builds around |
+| `PlayPass` (`pullId`, when it runs out), `PASS_LIFE_MS`; the daily job's route and its secret check; the Worker's scheduled handler in `cloudflare/worker.js` | slices 1 and 2 | deleting old files (Task 25) |
 | The games service: `accept`, `sendBack`, `waitingGames`, `gameForReview`, `gameForMaker`, `gamesOf`, `pullLatest`, `sendForReview`, `takeOff`, `putBack`, `liveGameBySlug`, `createGame`; `stateWords`; `GameError`; `Game.state` (`taken_down` is in the enum and nothing sets it), `Game.stateReason`, `Game.freeToPlay`; `GameReview`; `MakerAction`; `FileStore.deleteAll(prefix)` | slice 2, Tasks 11, 26, 31 | taking a game down, sending it again, marking it free, editing it |
 | `/make`, `/make/new`, `/make/<game>` and the line "Come back here to see when it's live." | slice 2, Tasks 27, 28 | onboarding's step 3; the line this slice replaces |
 | `submitGame`, `addGame`, `signInAsStaff`, `signInAs`, `grantStaffRole(email, role)`, `startGame`, `uploadClip` in `tests/browser/support/` | slice 2, Tasks 28, 30, 31 | the journeys |
@@ -50,7 +51,7 @@
 | `Feed.svelte` (the right side under Share), `MakerPage.svelte` (its foot), `clipOf(page, slug)`, `makePage` | slice 3, Tasks 13, 14, 22 | where Report goes |
 | `liveGames` and the feed service | slice 3, Tasks 9, 12 | a suspended maker's games leave the feed |
 
-**What slice 4 adds to earlier slices' features:** to `accounts`, the authenticator, granting roles, `StaffAction` and suspension; to `games`, `takeDown`, `setFree`, `updateGame`, and `putBack` for a taken-down game; to `pages`, a page that is taken down. Nothing of theirs is changed in meaning. `staffOnly` gains a second, optional argument (Task 4).
+**What slice 4 adds to earlier slices' features:** to `accounts`, the authenticator, granting roles, `StaffAction` and suspension; to `games`, `takeDown`, `setFree`, `updateGame`, `putBack` for a taken-down game, and a clip that waits for review; to `play`, the clean-up of old files; to `pages`, a page that is taken down. Nothing of theirs is changed in meaning. `staffOnly` gains a second, optional argument (Task 4).
 
 **What other slices get from this one, by name:**
 
@@ -72,25 +73,27 @@ Read on 2026-11-14, on `main` at `527bca3` and in the old repository. Where the 
 1. **The old admin was a second app with its own sign-in.** `OLD/apps/admin` had its own better-auth, with better-auth's two-factor plugin, a code at every sign-in, recovery codes, sessions of 30 minutes idle and 12 hours in all, and `Session.stepUpAt` for "a fresh code". Design 7.1 has one app and one sign-in. What design 5.5 keeps of it is three rules: a role sets what someone may do; money actions need a second person and a fresh code; there are at least two superadmins. So what is carried is the one file that does not depend on that app, `OLD/apps/admin/src/lib/server/auth/totp-step.ts` (42 lines: which 30-second step a code belongs to, RFC 6238) with its test, and three of its rules as numbers: a code is accepted once; ten wrong codes in a row lock the codes for fifteen minutes; ten tries a minute. The rest of that app is not carried.
 2. **The carried file keyed its HMAC with the key's text**, because better-auth's plugin does. Here the key is 20 random bytes and the HMAC is keyed with those bytes, which is what RFC 6238 and every authenticator app do. The file's test values do not change: RFC 6238's test key is the 20 bytes of the text `12345678901234567890`, whose base32 is `GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ`.
 3. **better-auth already has what encrypts the key.** `better-auth/crypto` exports `symmetricEncrypt({ key, data })` and `symmetricDecrypt({ key, data })` (read in `node_modules`, 1.7.7). The key is kept encrypted with `BETTER_AUTH_SECRET`, so this slice needs no new setting and the Owner types nothing.
-4. **The old admin drew a QR picture with `uqr` 0.1.3.** That package is not in this repository's `package.json`. This plan draws no QR (question 1b).
+4. **The old admin drew a QR picture with `uqr` 0.1.3**, and the Owner asked for the same here (question 1b). Read on 2026-11-14 from the registry (`npm view uqr@0.1.3`): MIT, no dependencies, integrity `sha512-0rjE8iEJe4YmT9TOhwsZtqCMRLc5DXZUI2UEYUUg63ikBkqqE5EYWaI0etFe/5KUcmcYwLih2RND1kq+hrUJXA==`; its `renderSVG(data, options?)` answers the picture as SVG text, black on white. It is not in this repository's `package.json` or lockfile yet.
 5. **`main` has no `GAME_STAFF_ROLES` yet**: `src/features/accounts/staff.ts` holds `staffRolesOf` and `grantFirstOwner` only, and there is no `src/features/admin/`. Both arrive with slice 2's branch S, which branches A and B therefore need.
 6. **Nothing on `main` reads `head_curator` or `support` apart** from the lists they are in. The staff screen offers the four roles something uses (Task 7).
 7. **Slice 3's test of reserved words reads `src/routes/`**, so `/report` and `/suspended` fail it until they are listed. Tasks 15 and 17 list them. `admin` and `make` are already words Ruken uses.
-8. **Not settled by reading:** whether `authServices()` hands out its `Mailer` (Task 8 says what to do if not); how slice 3's `Feed.svelte` lays out its right side (Task 16 places Report under Share, as design 5.1's sketch does, in whatever markup is there).
+8. **`GamePull` rows are add-only** (slice 2: its trigger refuses a change), so "these files were deleted" cannot be a column on the pull. Task 25 keeps it in a small table of its own. **A `PlayPass` row says which pull it is for and when it runs out** (slice 2, Task 16), which is exactly what says whether anyone can still load a pull's files.
+9. **Not settled by reading:** whether `authServices()` hands out its `Mailer` (Task 8 says what to do if not); how slice 3's `Feed.svelte` lays out its right side (Task 16 places Report under Share, as design 5.1's sketch does, in whatever markup is there).
 
 ## The Owner's decisions, the open questions, and the Calls in this plan
 
 - **Owner** (design 5.4, 5.5, 5.7, 8, 9, as approved): staff accept and moderate in an admin portal, and the admin rules stay; every clip and every maker's page has a Report button with a short list of reasons; staff can take down a game, take down a page or suspend an account, each with a reason that is recorded and sent to the maker; a new maker is walked through three steps, one screen each; two superadmin accounts with authenticator apps are the Owner's.
 - **Owner, 2026-11-14**, relayed by the coordinator: "Start slice 4 plan now".
-- **Asked of the coordinator on 2026-11-14.** Until the Owner answers, the working answer is the one marked; a task that depends on an answer says so.
-  1. **How the authenticator code is checked.** (A) Our own small check: the carried file, one table, better-auth's encrypt and decrypt; sign-in is not touched. (B) better-auth's two-factor plugin, as the old admin used it: a second step in sign-in itself, recovery codes, its own tables, and changes to the carried sign-in forms. Working answer: A. Branch A.
-  1b. **A QR picture on the set-up screen.** (A) None: the key as text to type, and a link that opens the authenticator app when the screen is on the phone itself. (B) Add `uqr` 0.1.3, which the old repository pinned, to draw one; a new dependency here, so the Owner's yes. Working answer: A. Task 5.
-  2. **"usually within a day"** (design 5.7: shown only if staff can meet it). (A) The line ends at "when it's live." (B) It ends "usually within a day." Working answer: A. Task 9.
-  3. **What suspending an account does** (design 5.5 names it and says no more). (A) It stops what others see and what the person can put up: their page and games leave Ruken and they cannot save a page, send a game or send a report; they can still sign in, play as a member, cancel and delete their account; staff can lift it. (B) They cannot sign in at all, and staff end a member's membership by hand at Stripe. Working answer: A. Task 18.
-  4. **Changing a live game's clips through review, and deleting a game's old files from the bucket** (slice 2's notes left both here; the design asks for neither). (A) After launch. (B) One more branch here. Working answer: A; neither is in this plan.
+- **Asked of the coordinator on 2026-11-14, and answered the same day** (relayed by the coordinator):
+  1. **How the authenticator code is checked.** Coordinator, 2026-11-14: our own small check: the old file carried with its test, one table, better-auth's encrypt and decrypt; no plugin, and sign-in is not touched (branch A). The other choice was better-auth's two-factor plugin, as the old admin used it.
+  1b. **A QR picture on the set-up screen.** Owner, 2026-11-14: "QR code to scan". `uqr` 0.1.3, pinned exactly, is added as the Owner's approved new dependency, and the set-up screen shows the picture; the key as text and the link that opens the app stay under it, for a phone that cannot scan its own screen (Task 4).
+  2. **"usually within a day"** (design 5.7: shown only if staff can meet it). Owner, 2026-11-14: "No promise". The line ends at "when it's live." (Task 9).
+  3. **What suspending an account does.** Owner, 2026-11-14: "Hide them, keep sign-in". Their page and games leave Ruken and they cannot save a page, send a game or send a report; they can still sign in, play as a member, cancel and delete their account; staff can lift it (Task 18). The other choice was a full lock-out.
+  4. **Changing a live game's clips through review, and deleting a game's old files from the bucket** (slice 2's notes left both to this slice). Owner, 2026-11-14: "Before launch". Both are in this slice, as branch L (Tasks 24 and 25), placed after branches A and B so those two stay first.
 - **Calls** (the Owner can overrule):
   - **One sign-in, and a code only where it guards something.** Staff sign in as everyone does. An authenticator code is asked for before changing who is staff (this slice) and before a money action (slice 5), and it is good for ten minutes in the session that entered it. Accepting a game, sending one back, taking something down and suspending do not ask for a code: they are not money actions (slice 2 made the same Call for Accept), each is recorded, and each can be undone. The old admin's short sessions and its code at every sign-in are not carried. Worth the Owner's eye.
   - **A code is accepted once, and wrong ones lock.** The 30-second step of the last right code is kept for each person, and a code whose step is not newer is refused like a wrong one, so a code read over a shoulder cannot be used again. Ten wrong codes in a row lock that person's codes for fifteen minutes. A code from the step before or after the current one is taken, so a phone's clock a little off still works.
+  - **The QR picture is black on white**, as `uqr` draws it, whatever the palette: a phone's camera must read it. It is served as a picture from an address of its own, only to the person it is for and only until their set-up is finished.
   - **The first right code finishes the set-up** and counts as a fresh code. Until then the key can be shown again; after it, never.
   - **A lost phone.** Another owner presses "Reset authenticator" beside that person on `/admin/staff`, and the person sets up again. Nobody resets their own. This is one reason there are two owners. There are no recovery codes.
   - **Who may do what.** The staff screen offers four roles, in the words a person would say: Owner (`owner`: everything, and who is staff), Checks games (`curator`), Handles reports (`moderator`), Money (`finance`). `head_curator` and `support` stay in the enum, as carried, and keep what slice 2 gave them; nothing here offers them. Reports are opened by `MODERATION_STAFF_ROLES`, `owner` and `moderator`; games by slice 2's `GAME_STAFF_ROLES`; the staff screen by `owner` alone.
@@ -106,14 +109,15 @@ Read on 2026-11-14, on `main` at `527bca3` and in the old repository. Where the 
   - **The mails** are five, all to a maker, all plain text: your game is live; your game was sent back, and why; your game was taken down, and why; your page was taken down, and why; your account is suspended, and why. The first three are design 7.1's list; the last two are design 5.5's "a reason that is recorded and sent to the maker". Each is sent after the answer, and a failed send is logged by its code only (slice 1's rule).
   - **The three steps live at `/make/start`.** Someone with no page and no game who opens `/make` is sent there. Step 1 saves the page with the address as its name, so the page exists from the first step; step 2 offers the name, the one line, a photo and the colours on one screen, each of which can be left as it is; step 3 is slice 2's `/make/new`, with the "Step 3 of 3" line. "Skip for now" on step 2 goes to step 3. Anyone can leave the steps for `/make` at any time.
   - **"Free or taken" is said as the person types**, by a small address that answers for one name, asked half a second after the last key. With no script the Save button says the same thing.
+  - **A new clip on a live game is sent for review by uploading it**, in one press, the way "Pull the latest" on a live game is (slice 2). The old clip stays on screen until a person says yes; Accept shows the new one and deletes the old; Send back deletes the new one and says why.
+  - **A game's old files are deleted by the daily job** once nothing can load them: the pull is not the game's live one, not the one waiting, not its newest, and every pass given for it has run out. At most twenty pulls a run, so one night's job stays small. What was deleted, when, and how many files, is written down by the job.
   - **A game's name, one line and "Plays on" can be changed by its maker at any time**, live or not. They are words like a page's words: live when saved, and moderated through Report. The game's address does not change with its name, so a shared link keeps working.
 
 ## Where execution stops and waits for the Owner
 
 There is no command for the Owner in this slice: no new setting, secret, bucket or address (the authenticator's key is kept under a secret the site already has). What the Owner does is done on the site's own screens, because that is the product. The stops are:
 
-- **Questions 1 to 3**, before the task each names. Branch A's first push waits for question 1; nothing else in A or B waits.
-- **"Fine" on the screenshots**, once per branch that has screens (A, B, C, D, F, G, H, I, J; each branch's last step).
+- **"Fine" on the screenshots**, once per branch that has screens (A, B, L, C, D, F, G, H, I, J; each branch's last step).
 - **The two owners**, when branch B is on `main` and deployed (Task 7, step 3). The Owner, signed in as the first owner (slice 2's G4): opens `/admin/authenticator` and sets up their authenticator app; has a second person sign up on the site; adds them on `/admin/staff` as Owner; that person sets up their own authenticator. Slice 5's payout approval can start after this.
 - **FloorFifty free on launch day** (Task 23): one press on its staff page, with a reason.
 - **The real site**, Task 23.
@@ -128,14 +132,15 @@ As slice 1's plan, word for word: two pushes (red with stubs, then green), the t
 
 ## Branches
 
-Eleven branches. Each starts from `main` only after what it needs is merged and green; at most three pull requests are open at once.
+Twelve branches. Each starts from `main` only after what it needs is merged and green; at most three pull requests are open at once.
 
 | # | Branch | Tasks | Needs on `main` | Ends with |
 |---|---|---|---|---|
 | A | `slice-4/staff-security` | 1 to 4 | slice 1; slice 2's branch S | an authenticator can be set up, a code entered, and `freshCodeOnly` asked |
 | B | `slice-4/staff-roles` | 5 to 7 | A | the portal's front; an owner adds and removes staff; two owners |
+| L | `slice-4/game-updates` | 24, 25 | slice 2's branches M, P and S | a live game's clips change through review; old files leave the bucket |
 | C | `slice-4/maker-mails` | 8, 9 | slice 2's branches M and S | a maker is mailed when their game is live or sent back |
-| D | `slice-4/take-down` | 10 to 12 | B, C | staff take a game down and mark one free; the maker sends it again |
+| D | `slice-4/take-down` | 10 to 12 | B, C, L | staff take a game down and mark one free; the maker sends it again |
 | E | `slice-4/report-rules` | 13, 14 | slice 2; slice 3's branch B | the reports table, the reasons, the reports service |
 | F | `slice-4/report` | 15, 16 | E; slice 3's branches D and H | Report on a clip and on a maker's page |
 | G | `slice-4/standing` | 17, 18 | C, E; slice 3's branches B and C | a page can be taken down; an account can be suspended |
@@ -144,7 +149,7 @@ Eleven branches. Each starts from `main` only after what it needs is merged and 
 | J | `slice-4/edit-game` | 22 | slice 2's branch M | a maker changes a game's name, line and "Plays on" |
 | K | `slice-4/real-site` | 23 | all of the above | design 8's lines for this slice, in journeys and on the real site |
 
-A and B are first and are all slice 5 waits for. C, E, I and J use nothing of A or B and can run beside them. If the date presses, J is the branch that can move after launch without breaking a line of design 8; that is the Owner's choice, not this plan's.
+A and B are first and are all slice 5 waits for. L is placed third (Owner, 2026-11-14: "Before launch") and carries a letter out of order because it was added after the others were named, as slice 2's Task 25 carries a number out of order. L, C, E, I and J use nothing of A or B and can run beside them. D starts after L: both change `/admin/games/<game>`. If the date presses, J is the branch that can move after launch without breaking a line of design 8; that is the Owner's choice, not this plan's.
 
 ## File map
 
@@ -152,6 +157,11 @@ A and B are first and are all slice 5 waits for. C, E, I and J use nothing of A 
 prisma/schema/accounts.prisma            StaffAuthenticator, StaffCodeEntry (A); StaffAction (B); AccountSuspension (G)
 prisma/schema/moderation.prisma          Report                                               (E)
 prisma/schema/pages.prisma               MakerPage gains takenDownAt, takenDownReason         (G)
+package.json, pnpm-lock.yaml             uqr 0.1.3, pinned exactly (A; Owner, 2026-11-14: "QR code to scan")
+prisma/schema/games.prisma               GameClip gains pending                               (L)
+prisma/schema/play.prisma                PullCleanup                                          (L)
+src/features/play/sweep.ts               sweepOldPulls: delete files nothing can load any more (L)
+src/routes/jobs/sweep-pulls/+server.ts   the daily job's second call                          (L)
 src/lib/totp.ts                          which 30-second step a code belongs to; base32; the app link (A, carried)
 src/features/accounts/
   authenticator.ts       start, enter a code, is a code fresh; the lock; a code is used once  (A)
@@ -171,12 +181,14 @@ src/features/admin/
   admin.ts               entry: staffOnly, freshCodeOnly, the mails, the role lists and words
   staff-only.ts          staffOnly(caller, roles = GAME_STAFF_ROLES)                           (A)
   fresh-code.ts          freshCodeOnly(event)                                                  (A)
+  authenticator-picture.ts   qrPicture(link): the set-up key as a QR picture, SVG text        (A)
   roles.ts               OFFERED_ROLES and their words; MODERATION_STAFF_ROLES                 (B, H)
   maker-mails.ts         the five mails' words; tellMaker                                      (C, D, G)
   age.ts                 agoWords: "2 hours ago"                                               (H)
 src/routes/
   admin/+page.server.ts, +page.svelte                 the portal's front                      (B)
   admin/authenticator/, admin/code/                   set up; enter a code                    (A)
+  admin/authenticator/picture/+server.ts              the QR picture                          (A)
   admin/staff/                                        who is staff                            (B)
   admin/games/, admin/games/[game]/                   gain live games, Take it down, Free     (D)
   admin/reports/, admin/reports/[report]/, admin/suspended/                                   (H)
@@ -193,7 +205,7 @@ src/hooks.server.ts                                   the suspended step        
 tests/support/totp.ts                    codeAt(key, ms): a code for a test
 tests/browser/support/staff.ts           setUpAuthenticator, giveFreshCode, signInAsOwner
 tests/features/accounts/…  tests/features/moderation/…  tests/features/admin/…  tests/lib/totp.test.ts   mirror src/
-tests/browser/authenticator.test.ts, staff.test.ts, maker-mails.test.ts, take-down.test.ts, report.test.ts,
+tests/browser/authenticator.test.ts, staff.test.ts, game-updates.test.ts, sweep-job.test.ts, maker-mails.test.ts, take-down.test.ts, report.test.ts,
   standing.test.ts, reports-queue.test.ts, first-steps.test.ts, edit-game.test.ts, submit-and-moderate.test.ts;
   accept.test.ts, make.test.ts, feed.test.ts, maker-page.test.ts and edit-page.test.ts gain cases
 ```
@@ -221,11 +233,15 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 17. A new maker types an address that is taken, reserved, or too short, with and without script: told at once in the same words, and step 2 is not reached (Task 21).
 18. A maker leaves the steps half way and comes back a day later: `/make` takes them to the first step they have not done, never back to step 1 with their address gone (Task 21).
 
+19. A maker uploads a new clip to a live game, then a second one before staff look, then staff send it back: the feed shows the old clip the whole time, and no new clip's file is left in the bucket (Task 24).
+20. The daily job meets a pull that is not live any more but whose pass, given yesterday afternoon, still has an hour left: its files stay; the next night they go, and a game's live files, waiting files and newest files are never touched (Task 25).
+21. Someone signed in as another staff member, or signed out, asks for the QR picture's address; or its owner asks after finishing set-up: 404, and the key is never in a picture again (Task 4).
+
 ---
 
 # Branch A: `slice-4/staff-security`
 
-Needs slice 2's branch S. Small on purpose: slice 5's payout approval waits for this branch and the next. **Its first push waits for the Owner's answer to question 1.** If the answer is B, stop and report: Tasks 1 to 3 change shape.
+Needs slice 2's branch S. Small on purpose: slice 5's payout approval waits for this branch and the next.
 
 ### Task 1: Which code is right (`src/lib/totp.ts`)
 
@@ -331,13 +347,17 @@ it("answers not_set for someone with no authenticator, and is not fresh", async 
 ### Task 4: The two screens, and `freshCodeOnly`
 
 **Files:**
-- Create: `src/features/admin/fresh-code.ts`, `src/routes/admin/authenticator/+page.server.ts`, `+page.svelte`, `src/routes/admin/code/+page.server.ts`, `+page.svelte`, `tests/browser/support/staff.ts`, `tests/browser/authenticator.test.ts`
-- Modify: `src/features/admin/staff-only.ts`, `src/features/admin/admin.ts`, `src/features/accounts/staff.ts` and `accounts.ts` (`STAFF_ROLES`), `tests/browser/support/database.ts`
-- Test: `tests/features/admin/staff-only.test.ts` (add cases), `tests/features/admin/fresh-code.pg.test.ts`, `tests/browser/authenticator.test.ts`
+- Create: `src/features/admin/fresh-code.ts`, `src/features/admin/authenticator-picture.ts`, `src/routes/admin/authenticator/picture/+server.ts`, `src/routes/admin/authenticator/+page.server.ts`, `+page.svelte`, `src/routes/admin/code/+page.server.ts`, `+page.svelte`, `tests/browser/support/staff.ts`, `tests/browser/authenticator.test.ts`
+- Modify: `package.json` and `pnpm-lock.yaml` (`uqr` 0.1.3), `src/features/admin/staff-only.ts`, `src/features/admin/admin.ts`, `src/features/accounts/staff.ts` and `accounts.ts` (`STAFF_ROLES`), `tests/browser/support/database.ts`
+- Test: `tests/features/admin/staff-only.test.ts` (add cases), `tests/features/admin/fresh-code.pg.test.ts`, `tests/features/admin/authenticator-picture.test.ts`, `tests/browser/authenticator.test.ts`
+
+**The one new package** (Owner, 2026-11-14: "QR code to scan"): `pnpm add --save-exact uqr@0.1.3`, in `dependencies`. The commit that adds it quotes the Owner's words. Before the push, read the lockfile's line for it: the integrity must be the one in "Found while planning", 4; if it is not, stop and report. Only `authenticator-picture.ts` imports it.
 
 **Interfaces:**
 - `STAFF_ROLES: readonly StaffRole[]`, all six, in `accounts/staff.ts`: "any staff at all".
 - `staffOnly(caller: Caller, roles: readonly StaffRole[] = GAME_STAFF_ROLES): { userId: string; sessionId: string }`: as slice 2's, with the list to check as a second, optional argument, and the session's id in the answer. Every call slice 2 made still means what it meant.
+- `qrPicture(link: string): string` in `authenticator-picture.ts`, re-exported by `admin.ts`: `renderSVG(link)` from `uqr`, black on white as it comes. A comment says why it takes no colour from the look: a camera has to read it.
+- `GET /admin/authenticator/picture`: for staff whose authenticator is `started`, `qrPicture(authenticatorLink(key, email))` as `image/svg+xml` with `cache-control: no-store`; for anyone else, and once the set-up is finished, 404.
 - `freshCodeOnly(event: { locals: App.Locals; url: URL }): Promise<void>` in `fresh-code.ts`, re-exported by `admin.ts`: `staffOnly(caller, STAFF_ROLES)` (so 404 for anyone else); `authenticatorState` not `ready`, `redirect(303, "/admin/authenticator?next=<here>")`; `hasFreshCode` false, `redirect(303, "/admin/code?next=<here>")`; else it returns. `<here>` is `url.pathname + url.search`, URL-encoded.
 
 **`/admin/authenticator`** (any staff), before it is set up:
@@ -348,10 +368,12 @@ Set up your authenticator
 An authenticator is an app on your phone that shows a new 6-digit code every 30 seconds. Ruken asks for a code before anything that moves money or changes who is staff.
 
 1. Open your authenticator app and add an account.
-2. Choose to type a setup key, and type this one:
+2. Scan this picture with the app:
 
+   [ the QR picture ]
+
+   Can't scan it? Type this key into the app instead:
    GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ
-
    Reading this on your phone? Open it in your authenticator app
 
 3. Type the code the app shows now.
@@ -362,6 +384,7 @@ Code
 [ Finish ]
 ```
 
+- The picture is `<img src="/admin/authenticator/picture" alt="A QR code for your authenticator app" width="220" height="220">`: a plain picture, so the screen needs no script, no markup written from text and no style of its own.
 - `load`: `startAuthenticator`. The key is shown in groups of four, in a `<code data-key="<the key, no spaces>">`; "Open it in your authenticator app" is a link to `authenticatorLink(key, <the person's email>)`. The page is sent with `cache-control: no-store`.
 - Action `finish`: `enterCode`. `ok`: a 303 to `safeNextPath(next)`, or to `/admin/authenticator` with no `next`. `wrong`: `<p class="problem" role="alert">That code didn't work. Wait for a new one and try again.</p>`. `locked`: "Too many wrong codes. Try again in 15 minutes."
 - Once it is set up, the screen is: the heading "Your authenticator is set up", the line "Ruken will ask for a code before anything that moves money or changes who is staff.", the `note` "Lost your phone? Ask another owner to reset it.", and a link, "Back to the staff pages", to `/admin`. No key, ever again.
@@ -386,13 +409,13 @@ Back
 - The field: `name="code"`, `inputmode="numeric"`, `autocomplete="one-time-code"`, `maxlength="7"`, autofocused. Both screens' fields are the same.
 - Action `enter`: at most 10 a minute a person (`hit("api:staff-code:<userId>", { max: 10, windowMs: 60_000 })`; over it, the locked words); `enterCode`; `ok`: a 303 to `safeNextPath(next)`, which is `/admin` for anything that is not a path on this site; the two refusals as above. "Back" is a link to the same checked `next`.
 
-Grandma: each screen asks for one thing. The set-up is three numbered lines in the order a person does them. A wrong code says what to do next. The line under Continue says why the page they come back to looks as it did.
+Grandma: each screen asks for one thing. The set-up is three numbered lines in the order a person does them; scanning comes first because it is one move, and typing the key is there for when it cannot be done. A wrong code says what to do next. The line under Continue says why the page they come back to looks as it did.
 
 Look: `<main class="card">` on both; `h1`; the steps are an `<ol>` of ordinary text; the key is a `statement`; the hint is a `note`; the refusal is `problem`; Finish and Continue are each the card's one filled button; the rest are links. No new class, no red, no Blue.
 
 **The journeys' helpers**, `tests/browser/support/staff.ts`: `signInAsOwner(page): Promise<{ email }>` (a sign-up in `page`, then `grantStaffRole(email, "owner")`); `setUpAuthenticator(page): Promise<{ key: string }>` (opens `/admin/authenticator`, reads `data-key`, types `codeAt(key, Date.now())`, presses Finish); `giveFreshCode(email): Promise<void>` in `tests/browser/support/database.ts` (writes a confirmed `StaffAuthenticator` if there is none and a `StaffCodeEntry` for each of that person's sessions, dated now). A code works once and the journeys do not wait thirty seconds for another, so only this file's journeys type real codes; every other journey that needs a fresh code uses `giveFreshCode`.
 
-- [ ] **Step 1 (red):** `staff-only.test.ts`: with `["owner"]`, a curator is 404 and an owner passes; with `STAFF_ROLES`, a `support` role passes and a member with no role is 404; with no second argument, slice 2's cases as they were. `fresh-code.pg.test.ts`: signed out and no role, 404; staff with no authenticator, a redirect to `/admin/authenticator?next=%2Fadmin%2Fstaff`; staff with one and no entry, to `/admin/code?next=%2Fadmin%2Fstaff`; with an entry from this session nine minutes ago, it returns; from ten minutes ago, the redirect (Review Focus 2). `authenticator.test.ts`:
+- [ ] **Step 1 (red):** `authenticator-picture.test.ts`: `qrPicture("otpauth://totp/Ruken:a%40example.com?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=Ruken")` starts with `<svg`, holds no `<script`, and is the same text for the same link; two different links give different text. (Whether a phone reads it is checked by a person, in step 3 and on the real site: no test here decodes a picture, and no decoder is added for one.) `staff-only.test.ts`: with `["owner"]`, a curator is 404 and an owner passes; with `STAFF_ROLES`, a `support` role passes and a member with no role is 404; with no second argument, slice 2's cases as they were. `fresh-code.pg.test.ts`: signed out and no role, 404; staff with no authenticator, a redirect to `/admin/authenticator?next=%2Fadmin%2Fstaff`; staff with one and no entry, to `/admin/code?next=%2Fadmin%2Fstaff`; with an entry from this session nine minutes ago, it returns; from ten minutes ago, the redirect (Review Focus 2). `authenticator.test.ts`:
 
 ```ts
 test.beforeEach(forgetRateLimits);
@@ -400,6 +423,9 @@ test("a staff member sets up their authenticator, then enters a code when asked"
   await signInAsOwner(page);
   await page.goto("/admin/authenticator");
   await expectOneCard(page); await showTheOwner(page, testInfo, "setting up an authenticator");
+  const picture = await page.request.get("/admin/authenticator/picture");
+  expect(picture.status()).toBe(200); expect(picture.headers()["content-type"]).toContain("image/svg+xml");
+  await expect(page.getByRole("img", { name: "A QR code for your authenticator app" })).toBeVisible();
   const key = (await page.locator("[data-key]").getAttribute("data-key"))!;
   await page.getByLabel("Code").fill("000000");
   await page.getByRole("button", { name: "Finish" }).click();
@@ -408,6 +434,7 @@ test("a staff member sets up their authenticator, then enters a code when asked"
   await page.getByRole("button", { name: "Finish" }).click();
   await expect(page.getByRole("heading", { name: "Your authenticator is set up" })).toBeVisible();
   await expect(page.locator("[data-key]")).toHaveCount(0);
+  expect((await page.request.get("/admin/authenticator/picture")).status()).toBe(404);          // Review Focus 21
   await showTheOwner(page, testInfo, "an authenticator, set up");
   await page.goto("/admin/code?next=%2Fadmin%2Fauthenticator");
   await expectOneCard(page); await showTheOwner(page, testInfo, "entering a code");
@@ -419,13 +446,13 @@ test("the same code does not work twice", async ({ page }) => { /* set up; /admi
 test("a code never sends anyone off the site", async ({ page }) => {
   /* /admin/code?next=https://elsewhere.example and ?next=//elsewhere.example: after a right code, the address is /admin */ });   // Review Focus 5
 test("neither screen is there for anyone else, and no key is made", async ({ page }) => {
-  /* signed out and a plain member: 404 on both; no StaffAuthenticator row for the member */ });                                   // Review Focus 4
+  /* signed out and a plain member: 404 on both and on the picture; no StaffAuthenticator row for the member */ });               // Review Focus 4, 21
 test("each card has one filled button", async ({ page }) => { /* filledButtons(page) has count 1 on both */ });
 ```
 
   Stubs. Push. Expected: `verify` fails in the new `staff-only.test.ts` cases, `postgres` in `fresh-code.pg.test.ts`, `browser` in `authenticator.test.ts` (404 at `/admin/authenticator` for an owner).
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass, slice 2's `accept.test.ts` included.
-- [ ] **Step 3:** send the coordinator the green run and one line each for "setting up an authenticator", "an authenticator, set up" and "entering a code", and say that `freshCodeOnly` and `staffOnly(caller, roles)` are on the branch as slice 5's Tasks 32 and 33 name them. Mark the branch ready after "fine".
+- [ ] **Step 3:** send the coordinator the green run and one line each for "setting up an authenticator", "an authenticator, set up" and "entering a code"; ask that the Owner, when they look, point a phone's authenticator app at the picture in the computer screenshot's place on a local or deployed run if one is at hand (the real check is the Owner's own set-up, Task 7 step 3); and say that `freshCodeOnly` and `staffOnly(caller, roles)` are on the branch as slice 5's Tasks 32 and 33 name them. Mark the branch ready after "fine".
 
 ---
 
@@ -578,6 +605,109 @@ test("only an owner opens it", async ({ page }) => { /* a curator and a finance 
 
 ---
 
+# Branch L: `slice-4/game-updates`
+
+Owner, 2026-11-14: "Before launch". Needs slice 2's branches M, P and S; nothing of branches A and B, which stay first. It carries its letter and its task numbers out of order because it was added after the others were named.
+
+### Task 24: A live game's clips change through review
+
+**Files:**
+- Create: `prisma/migrations/<timestamp>_pending_clips/migration.sql`
+- Modify: `prisma/schema/games.prisma`, `src/features/games/service.ts`, `src/features/games/review.ts`, `src/routes/make/[game]/+page.server.ts`, `+page.svelte`, `src/routes/admin/games/[game]/+page.server.ts`, `+page.svelte`
+- Test: `tests/features/games/pending-clips.pg.test.ts`, `tests/features/games/review.pg.test.ts` (the case that refused a live game's clip is replaced), `tests/browser/game-updates.test.ts`
+
+Slice 2 refused a new clip on a live game, because it would have gone live with no person's yes. Here it waits beside the old one.
+
+**The table:** `GameClip` gains `pending Boolean` default false, and its unique key becomes (`gameId`, `shape`, `pending`): a game has at most one shown clip and one waiting clip of each shape.
+
+**Interfaces**, in the games service:
+- `saveClip` on a **live** game no longer refuses: the clip is checked as before and stored as that shape's waiting clip (an earlier waiting one of that shape is replaced and its file deleted), and `pendingSince` is set to the clock's time if it is empty. The shown clip is not touched. On a game that is not live, `saveClip` is as slice 2 built it.
+- `waitingGames()`: every game with files waiting **or a clip waiting**, oldest `pendingSince` first.
+- `accept`: with files waiting, as slice 2; and, in the same transaction, each waiting clip takes its shape's place (the old row goes, the waiting one's `pending` becomes false). After the transaction, each replaced clip's file is deleted from the bucket. With only clips waiting, the `GameReview` row names the live pull. With nothing waiting at all, slice 2's refusal.
+- `sendBack`: as slice 2; and the waiting clips' rows go in the transaction and their files after it.
+- `takeOff` and `putBack` (slice 2) and `takeDown` (Task 10) drop waiting clips the same way.
+- `gameForMaker` and `gameForReview` answer, for each shape, the shown clip's key and the waiting one's, if any. `stateWords`' `hasPending` is true for files or clips waiting, so the maker reads "Live. Your update is waiting for review" for either.
+- A file is deleted only after the row that named it is gone, never before: a failed delete leaves a stray file, not a row that points at nothing.
+
+**On `/make/<game>`**, a live game's clip lines get their file field back:
+
+```
+Upright clip  Added. To change it, choose a new one. We'll check it before it's shown.   [ choose a file ] [ Upload ]
+Wide clip     A new one is waiting for review.                                           [ choose a file ] [ Upload ]
+```
+
+**On `/admin/games/<game>`**, a waiting clip is shown in the old one's place with the words "New upright clip" (or "New wide clip") above it, and the line under the heading says what is new: "New files", "New clips", or "New files and new clips".
+
+Grandma: the maker's line says what will happen before they press, and what is happening after. Staff are told which part is new, so they know what to look at.
+
+Look: no new class; the labels are `note`.
+
+- [ ] **Step 1 (red):** `pending-clips.pg.test.ts`: a new upright clip on a live game leaves `liveGameBySlug`'s clip keys as they were and puts the game in `waitingGames`; a second upload replaces the first and the first one's file is gone from the bucket; `accept` shows the new clip, deletes the old one's file, and writes a `GameReview` naming the live pull; `sendBack` keeps the old clip, deletes the new one's file and stores the reason; **upload, upload again, send back: the shown clip never changed and the bucket holds exactly the game's two shown clips** (Review Focus 19); taking the game off drops a waiting clip; a draft game's `saveClip` is unchanged. `game-updates.test.ts`:
+
+```ts
+test.beforeEach(forgetRateLimits);
+test("a maker changes a live game's clip, and it is shown only after staff accept it", async ({ page, browser }, testInfo) => {
+  const game = await addGame(browser);
+  const before = await clipAddressOnPage(browser, game.slug);               // the <source> address a visitor is given
+  await signInAs(page, game.makerEmail);
+  await page.goto(`/make/${game.slug}`);
+  await uploadClip(page, "Upright clip");
+  await expect(page.getByText("A new one is waiting for review.")).toBeVisible();
+  await expect(page.getByText("Live. Your update is waiting for review")).toBeVisible();
+  await showTheOwner(page, testInfo, "a live game with a new clip waiting");
+  expect(await clipAddressOnPage(browser, game.slug)).toBe(before);
+  const staff = await browser.newPage(); await signInAsStaff(staff);
+  await staff.goto(`/admin/games/${game.slug}`);
+  await expect(staff.getByText("New upright clip")).toBeVisible();
+  await showTheOwner(staff, testInfo, "a new clip, for staff");
+  await staff.getByRole("button", { name: "Accept" }).click();
+  expect(await clipAddressOnPage(browser, game.slug)).not.toBe(before);
+  expect((await page.request.get(before)).status()).toBe(404);              // the old clip's file is gone
+});
+test("a new clip that is sent back is never shown, and the maker reads why", async ({ page, browser }) => {});
+```
+
+  Stubs. Push. Expected: `postgres` fails (the column is missing; `saveClip` refuses a live game), `browser` fails (no file field on a live game).
+- [ ] **Step 2 (green):** the code and the migration. Push. Expected: all pass, slice 2's `accept.test.ts` and `make.test.ts` included.
+
+### Task 25: Old files leave the bucket
+
+**Files:**
+- Create: `prisma/migrations/<timestamp>_pull_cleanup/migration.sql`, `src/features/play/sweep.ts`, `src/routes/jobs/sweep-pulls/+server.ts`
+- Modify: `prisma/schema/play.prisma`, `src/features/play/play.ts`, `cloudflare/worker.js` (the scheduled handler makes a second call, to `/jobs/sweep-pulls`, the way it calls `/jobs/purge-accounts`), `tests/wrangler.test.ts` or the Worker's own test if one asserts the calls
+- Test: `tests/features/play/sweep.pg.test.ts`, `tests/browser/sweep-job.test.ts`
+
+Every pull keeps its files under `files/<public id>/<pull id>/`, and nothing removes them when a newer pull goes live, when a waiting pull is replaced, or when one is sent back.
+
+**The table** (`play.prisma`): `PullCleanup`: `pullId` the id (a `GamePull`), `deletedAt`, `objects Int` (how many were deleted: measured, never typed), `createdAt`; added and never changed (`reject_append_only_change('PullCleanup')`). It is its own table because a `GamePull` row cannot be changed.
+
+**Interfaces:**
+- `SWEEP_PULLS_A_RUN = 20`
+- `sweepOldPulls(deps: { db: PrismaClient; clock: Clock; files: FileStore }): Promise<{ pulls: number; objects: number }>` in `sweep.ts`, re-exported by `play.ts`. A pull is swept when all of these hold: it has no `PullCleanup` row; it is not its game's `livePullId` or `pendingPullId`; it is not its game's newest pull (a maker can still send that one for review); and no `PlayPass` for it runs out after now. Oldest `pulledAt` first, at most `SWEEP_PULLS_A_RUN`. For each: `deleteAll("files/<public id>/<pull id>/")`, then one `PullCleanup` row with the number deleted. The file delete comes first: if the run stops between the two, the next run deletes nothing more and writes the row.
+- The four conditions are one query; a comment beside it says why each is there, in a line each.
+- `POST /jobs/sweep-pulls`: 404 without the job's secret (`hasJobSecret`); else `sweepOldPulls`, answered as JSON `{ "pulls": <n>, "objects": <n> }`.
+- A game its maker took off, or staff took down, already has no files (slice 2's `takeOff`, Task 10's `takeDown`); the sweep finds nothing there and writes a row with 0.
+
+- [ ] **Step 1 (red):** `sweep.pg.test.ts`, with a `TestClock` and a `MemoryFileStore`:
+
+```ts
+it("deletes the files of a pull that a newer one replaced, once its passes have run out", async () => {
+  /* pull 1 live, a member's pass for it; pull 2 accepted. Sweep at once: nothing (the pass has 23 hours left).
+     Clock +23 h: nothing. Clock +24 h and a second: pull 1's files are gone, pull 2's are all there, one PullCleanup row with the count */ });   // Review Focus 20
+it("never touches a game's live files, its waiting files, or its newest files", async () => {
+  /* a live game with an update waiting; a sent-back game whose newest pull is the one sent back: after a sweep a week later every file is there */ });   // Review Focus 20
+it("deletes a waiting pull that the maker replaced before staff looked", async () => {});
+it("takes twenty pulls a run, oldest first", async () => { /* 25 old pulls: 20 rows after one run, 25 after two */ });
+it("does a pull once", async () => { /* a second run right after: no new row, nothing deleted */ });
+it("writes the row on the next run if the first stopped after deleting", async () => { /* files already gone, no row: one row, objects 0 */ });
+```
+
+  `sweep-job.test.ts`: without the secret 404; with it 200 and the two numbers. Stubs. Push. Expected: `postgres` fails with "not built yet"; `browser` fails with 404 where 200 is expected.
+- [ ] **Step 2 (green):** the code and the migration. Push. Expected: all pass.
+- [ ] **Step 3:** send the coordinator the two runs (before: `main`; after: this branch) and one line each for "a live game with a new clip waiting" and "a new clip, for staff". Mark the branch ready after "fine".
+
+---
+
 # Branch C: `slice-4/maker-mails`
 
 Needs slice 2's branches M and S. Uses nothing of branches A and B.
@@ -607,7 +737,7 @@ Needs slice 2's branches M and S. Uses nothing of branches A and B.
 - Test: `tests/browser/maker-mails.test.ts`, `tests/browser/make.test.ts` (the changed line), `tests/features/games/review.pg.test.ts` (one case)
 
 - After `accept`, the action calls `tellMaker(…, "game live mail", email === null ? null : gameLiveMessage(…))`; after `sendBack`, the same with `gameSentBackMessage`. The mailer is the one `authServices()` builds; if it does not hand it out, `src/features/accounts/services.ts` gains the one line that does. The decision is already saved when the mail is tried, so a mail that fails never undoes it.
-- On `/make/<game>`, the line under "Waiting for review" changes from "Come back here to see when it's live." to **"We'll email you when it's live."** (design 5.7; question 2's working answer. If the Owner answers B, the line is "We'll email you when it's live, usually within a day.").
+- On `/make/<game>`, the line under "Waiting for review" changes from "Come back here to see when it's live." to **"We'll email you when it's live."** (design 5.7; Owner, 2026-11-14: "No promise", so the line ends there).
 
 Grandma: the mail says what happened in its subject, and its last line is where to go.
 
@@ -710,7 +840,7 @@ Its maker is emailed this reason: The clip shows another game.
 ```
 
   "Keep it up" is a link back. The second press calls `takeDown`, then `tellMaker` with `gameTakenDownMessage`, then goes to `/admin/games`.
-- A live game with an update waiting keeps slice 2's Accept and Send back for the update, and shows these two lines under them.
+- A live game with an update waiting (new files, new clips, or both: Task 24) keeps Accept and Send back for the update, and shows these two lines under them.
 - A game that is `taken_down` shows its reason and, when `filesLeft`, one `quiet` button, "Delete the rest of its files" (`deleteAll` again), as slice 2's page does for a game taken off.
 - Actions: `free`, `paid`, `confirm` (shows the card; refuses an empty reason with "Say why, so the maker knows what to fix."), `takeDown`, `deleteRest`. Each starts with `staffOnly(caller)`. None asks for a code (the Calls).
 
@@ -889,7 +1019,7 @@ Look: both are in their feature's own component, as slice 3 keeps the feed's and
 
 # Branch G: `slice-4/standing`
 
-Needs branches C and E, and slice 3's branches B and C. **Task 18 waits for the Owner's answer to question 3**; if the answer is B, stop and report: its effects change.
+Needs branches C and E, and slice 3's branches B and C.
 
 ### Task 17: A page that is taken down
 
@@ -927,6 +1057,8 @@ Look: the first line is a `problem`; the button is `quiet`, so Save stays the ca
 - Create: `prisma/migrations/<timestamp>_suspension/migration.sql`, `src/features/accounts/suspension.ts`, `src/routes/suspended/+page.server.ts`, `+page.svelte`
 - Modify: `prisma/schema/accounts.prisma` (`AccountSuspension`; `StaffActionKind` gains `account_suspended`, `suspension_lifted`), `src/features/accounts/caller.ts`, `handle.ts`, `accounts.ts`, `deletion.ts`, `src/hooks.server.ts`, `src/features/games/service.ts`, `src/features/pages/service.ts`, `src/features/pages/handle.ts` (`suspended` joins `RESERVED_HANDLES`), `src/features/admin/maker-mails.ts`
 - Test: `tests/features/accounts/suspension.pg.test.ts`, `tests/features/accounts/handle.test.ts` (add cases), `tests/features/games/service.pg.test.ts`, `tests/features/pages/taken-down.pg.test.ts` (one case each), `tests/features/admin/maker-mails.test.ts` (one case), `tests/browser/standing.test.ts` (add cases)
+
+Owner, 2026-11-14: "Hide them, keep sign-in".
 
 **The table:** `AccountSuspension`: `userId` the id (a `User`), `reason`, `staffUserId`, `at`. A row means suspended; lifting deletes it. Both are also written to `StaffAction`, which is the lasting record. CHECK `AccountSuspension_reason_check` (1 to 500 characters).
 
@@ -1267,7 +1399,6 @@ Look: `<main class="card">`; `choice` rows; Save is the one filled button. No ne
 ## Notes for the plans that follow
 
 - **Slice 5 (money).** `freshCodeOnly(event)` and `staffOnly(caller, roles)` are in `src/features/admin/admin.ts` as Tasks 32 and 33 name them. A code is fresh for ten minutes in the session that entered it (`CODE_FRESH_MS`). `giveFreshCode(email)` in `tests/browser/support/database.ts` is how a journey gets one without waiting thirty seconds for a second code. "Money" (`finance`) is offered on `/admin/staff`; `/admin`'s list takes one more line for the money pages. The second person on a payout is slice 5's own rule; `recordStaffAction` is there for its actions, each new kind added to `StaffActionKind` in its own migration. A suspended maker's statements and payouts are a question for the Owner before the first payout: nothing here holds money back.
-- **After launch, left out on purpose** (question 4): changing a live game's clips through review (today: take it off, change them, put it back); deleting a game's old pulls from the bucket.
 - **The privacy text** (the Owner's, before live mode) should say that a report made while signed in is kept with the account that made it, that staff do not see who reported, and that an authenticator's key is kept encrypted.
-- Worth the Owner's eye before launch, left out on purpose: staff sign in as everyone does, with no code at sign-in and no shorter session (the Calls); taking something down and suspending ask for no code; there are no recovery codes, so two owners who both lose their phones need the database; there is no QR picture on the set-up screen (question 1b); the record of staff actions has no screen of its own yet, only the table; a report's reporter is never told what was decided; reports are limited by address, so many people behind one address share five an hour; a suspended member keeps paying and playing until they cancel; a suspended maker's games are hidden but a pass already given lasts up to a day; nothing tells a maker when a suspension is lifted; a deleted maker's live games stay as slice 2 left them.
+- Worth the Owner's eye before launch, left out on purpose: staff sign in as everyone does, with no code at sign-in and no shorter session (the Calls); taking something down and suspending ask for no code; there are no recovery codes, so two owners who both lose their phones need the database; the record of staff actions has no screen of its own yet, only the table; a report's reporter is never told what was decided; reports are limited by address, so many people behind one address share five an hour; a suspended member keeps paying and playing until they cancel; a suspended maker's games are hidden but a pass already given lasts up to a day; nothing tells a maker when a suspension is lifted; a deleted maker's live games stay as slice 2 left them; the nightly clean-up takes twenty pulls a night, so a long backlog takes several nights; clips that were replaced before this slice, if any object was ever left behind, are not looked for.
 - `head_curator` and `support` are in `StaffRole` and are offered nowhere. If nothing ever uses them, removing them is one migration; if the Owner wants a second level of staff, that is where it goes.

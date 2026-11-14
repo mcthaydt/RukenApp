@@ -13,7 +13,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | 1 | Accounts and membership | Every branch is merged to main: A #13, B #14, C #18, D #21, G #26, L #25, E0 #31, E #33, F #35, H #36, the Hyperdrive id #38, and the palette and 12px buttons #42. Plan, Cloudflare revision and look plan, with their audits, merged (#10, #12, #15, #19, #22, #23); the implementation audit merged (#43). The audit's six fixes are on `slice-1/fixes` (pull request #45, a draft). Open: S1 and S2 (the Owner), and Task 31 on the real site | 90% |
 | 2 | Games and play | plan merged (#27). Plan audit written, with the plan fixed and the coordinator's answers and the Owner's decision of 2026-11-14 (makers take their own games off Ruken) in it, merged (#29). The first execution session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) is on branch A, `slice-2/game` (pull request #44, a draft; the progress here is its own to set). Open: the maker agreement's text (the coordinator supplies it before branch M), FloorFifty's two clips and four items in FloorFifty's own repository | 45% (tasks 1 to 14 of 31 green: branches A to D) |
 | 3 | The feed and the maker's page | plan merged (#53); no code yet. Q1 (social icons) and Q2 (the maker's photo) are answered by the Owner, 2026-11-14 | 0% |
-| 4 | Submitting and the admin portal | plan written on `plan/slice-4` (pull request #58; Owner, 2026-11-14: "Start slice 4 plan now"), not merged; no code yet. Four questions are with the Owner (the authenticator, "usually within a day", what suspending does, two things for after launch) | 0% |
+| 4 | Submitting and the admin portal | plan written on `plan/slice-4` (pull request #58; Owner, 2026-11-14: "Start slice 4 plan now"), not merged; no code yet. The Owner's four answers of 2026-11-14 are written in | 0% |
 | 5 | Money (after launch, before 10 December) | plan written, on `plan/slice-5` (pull request #55, a draft), started alongside slice 2's build (Owner, 2026-11-14: "Slice 5 plan"). Three questions asked and not yet answered: the cost of sending a payout and which countries (the Owner), the second person and the code (the coordinator). Nothing built | 0% |
 
 ## Sessions
@@ -278,7 +278,7 @@ Plan: `docs/superpowers/plans/2026-11-14-slice-4-submitting-admin.md`. It ends w
 
 Stages:
 
-- [ ] Plan: written on `plan/slice-4` (pull request #58), not merged. Planned against `main` at `527bca3`, with `main` merged in at `b18fb69`. No test ran in the plan session, and no code was written. Read as code: `main`, and the old repository's admin sign-in (`apps/admin/src/lib/server/auth/`), attached read-only for this. Not read as code, because they are not on `main`: slice 2's `admin` and `make` features, and all of slice 3. Not measured: anything; the plan holds no size, count or timing of its own.
+- [ ] Plan: written on `plan/slice-4` (pull request #58), not merged. Planned against `main` at `527bca3`, with `main` merged in at `b18fb69`. No test ran in the plan session, and no code was written. Read as code: `main`, and the old repository's admin sign-in (`apps/admin/src/lib/server/auth/`), attached read-only for this. Not read as code, because they are not on `main`: slice 2's `admin` and `make` features, and all of slice 3. Read from the registry: `uqr` 0.1.3's licence and integrity (`npm view`). Not measured: anything else; the plan holds no size, count or timing of its own.
 - [ ] Plan audit.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
@@ -286,11 +286,12 @@ Stages:
 
 What the plan waits for, and what is the Owner's:
 
-- [ ] Q1, how the authenticator code is checked (working answer: our own small check, no package), and Q1b, a QR picture on the set-up screen (working answer: none). Branch A's first push waits for Q1.
-- [ ] Q2, "usually within a day" after a maker sends a game (working answer: the line ends at "when it's live."). Task 9.
-- [ ] Q3, what suspending an account does (working answer: their page and games leave Ruken and they cannot put anything up; they can still sign in, play, cancel and delete). Task 18.
-- [ ] Q4, changing a live game's clips through review and deleting old files from the bucket (working answer: after launch; neither is in the plan).
-- [ ] "Fine" on the screenshots of branches A, B, C, D, F, G, H, I and J, phone and computer; before and after where a screen existed.
+- [x] Q1, how the authenticator code is checked. Coordinator, 2026-11-14: our own small check, carried from the old file with its test; no plugin (branch A).
+- [x] Q1b, a QR picture on the set-up screen. Owner, 2026-11-14: "QR code to scan": `uqr` 0.1.3, pinned exactly, is the one new package; the typed key and the app link stay as a fallback (Task 4).
+- [x] Q2, "usually within a day" after a maker sends a game. Owner, 2026-11-14: "No promise": the line ends at "when it's live." (Task 9).
+- [x] Q3, what suspending an account does. Owner, 2026-11-14: "Hide them, keep sign-in" (Task 18).
+- [x] Q4, changing a live game's clips through review and deleting old files from the bucket. Owner, 2026-11-14: "Before launch": branch L, Tasks 24 and 25, placed after A and B.
+- [ ] "Fine" on the screenshots of branches A, B, L, C, D, F, G, H, I and J, phone and computer; before and after where a screen existed.
 - [ ] The two owners, each with an authenticator, once branch B is deployed (Task 7, step 3). Slice 5's payout approval starts after this.
 - [ ] FloorFifty marked free on its staff page, and the look at the real site (Task 23).
 
@@ -298,13 +299,14 @@ Branches and tasks:
 
 | Branch | Tasks | State |
 |---|---|---|
-| A `slice-4/staff-security` | 1 which code is right · 2 the authenticator tables · 3 setting up, entering a code, is it fresh · 4 the two screens and `freshCodeOnly` | not started; needs slice 2's branch S and Q1 |
+| A `slice-4/staff-security` | 1 which code is right · 2 the authenticator tables · 3 setting up, entering a code, is it fresh · 4 the two screens, the QR picture and `freshCodeOnly` | not started; needs slice 2's branch S |
 | B `slice-4/staff-roles` | 5 the record of staff actions and the rules for roles · 6 the portal's front · 7 who is staff | not started |
+| L `slice-4/game-updates` | 24 a live game's clips change through review · 25 old files leave the bucket | not started |
 | C `slice-4/maker-mails` | 8 the words of the mails · 9 a maker is told when their game is live or sent back | not started |
 | D `slice-4/take-down` | 10 taking a game down, marking one free · 11 the maker sends it again · 12 live games on the staff pages | not started |
 | E `slice-4/report-rules` | 13 the reports table and the reasons · 14 the reports service | not started |
 | F `slice-4/report` | 15 the report screen · 16 Report on a clip and on a maker's page | not started; needs slice 3's branches D and H |
-| G `slice-4/standing` | 17 a page that is taken down · 18 a suspended account | not started; Task 18 needs Q3 |
+| G `slice-4/standing` | 17 a page that is taken down · 18 a suspended account | not started |
 | H `slice-4/reports-queue` | 19 deciding a report · 20 the reports queue, and suspended accounts | not started |
 | I `slice-4/first-steps` | 21 a new maker's three steps | not started; needs slice 3's branch I |
 | J `slice-4/edit-game` | 22 changing a game's name, one line and "Plays on" | not started |
