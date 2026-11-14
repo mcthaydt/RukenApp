@@ -14,7 +14,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | 2 | Games and play | plan merged (#27). Plan audit written, with the plan fixed and the coordinator's answers and the Owner's decision of 2026-11-14 (makers take their own games off Ruken) in it, merged (#29). The first execution session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) is on branch A, `slice-2/game` (pull request #44, a draft; the progress here is its own to set). Open: the maker agreement's text (the coordinator supplies it before branch M), FloorFifty's two clips and four items in FloorFifty's own repository | 48% (tasks 1 to 15 of 31 green) |
 | 3 | The feed and the maker's page | plan merged (#53); no code yet. Q1 (social icons) and Q2 (the maker's photo) are answered by the Owner, 2026-11-14 | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
-| 5 | Money (after launch, before 10 December) | not started | 0% |
+| 5 | Money (after launch, before 10 December) | plan written, on `plan/slice-5` (pull request #55, a draft), started alongside slice 2's build (Owner, 2026-11-14: "Slice 5 plan"). Three questions asked and not yet answered: the cost of sending a payout and which countries (the Owner), the second person and the code (the coordinator). Nothing built | 0% |
 
 ## Sessions
 
@@ -41,6 +41,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | implementation audit, slice 1 (`session_01HNdX7Megz3EP14633F3phc`) | 5 Implementation audit | `audit/slice-1-implementation` | done; merged (#43): 0 block launch, 6 should fix, 9 notes |
 | execution, slice 1, the palette and button corners, fifth session (`session_01HNdX7M6L5FmYJyW99p6dtd`) | 4 Execution | `slice-1/wada-palette` (pull request #42) | done; merged (#42) |
 | plan, slice 3 | 2 Plan | `plan/slice-3` | plan written (Owner, 2026-11-14: start the slice 3 plan now, beside slice 2's building); merged (#53); the Owner's two answers follow on a second pull request |
+| plan, slice 5 (`session_01HNdX7LvaghiDzFbcAXYQhH`) | 2 Plan | `plan/slice-5` | plan written (Owner, 2026-11-14: "Slice 5 plan", beside slice 2's building); pull request #55, a draft; three questions asked of the coordinator and not yet answered |
 | execution, slice 2, first session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) | 4 Execution | `slice-2/game` (pull request #44) | running |
 | fixes, slice 1 (`session_01HNdX7Lkceicj4sgwma7Dcp`) | 6 Fixes | `slice-1/fixes` (pull request #45) | running |
 
@@ -268,3 +269,40 @@ Branches and tasks:
 | H `slice-3/maker-page` | 22 a maker's page · 23 social icons | not started |
 | I `slice-3/edit-page` | 24 your page · 25 your colours and your photo · 26 your links | not started |
 | J `slice-3/real-site` | 27 design 8's lines for this slice, and the real site | not started |
+
+## Slice 5: Money
+
+Plan: `docs/superpowers/plans/2026-11-14-slice-5-money.md`. It ends with: the first statement is right. Planned beside slice 2's building (Owner, 2026-11-14: "Slice 5 plan"); execution starts only when slice 4 is merged and green. Branches A to D must be on `main` before 10 December 2026 (the first statement), and E to H before 15 December 2026 (the first payout).
+
+Stages:
+
+- [ ] Plan: written on `plan/slice-5` (pull request #55), planned against `main` at `00d616d`, with `main` merged in at `7753369`. No test ran in the plan session, and no code was written. Read outside the repository: the old repository's money code (`packages/ledger`, `packages/core/src/money`, `packages/core/src/premium`, `packages/billing/src/connect.ts`, the money migration) at `188e8a0`; the `stripe` 22.6.2 package's own types for balance transactions and report runs; and Stripe's pages on the Fees report, standalone fees, balance transaction types and Connect's prices. Not checked, because it needs a live Stripe account: what the rows of Stripe's Fees report look like for a Billing fee and a Tax fee (the plan's stop M1 reads them before the first statement).
+- [ ] Plan audit.
+- [ ] Execution, branch by branch (below).
+- [ ] Implementation audit.
+- [ ] Fixes.
+
+What the plan waits for, and what is the Owner's:
+
+- [x] Where Stripe's Billing and Tax fees are read from (the open item in slice 1's notes): Stripe's Fees report, through its Reporting API, one row per fee, each naming the payment that caused it. Nobody types an amount. A fee shows up to four days after Stripe takes it, so a month closes for late facts on the 8th.
+- [ ] Question 1, the Owner's: how the cost of sending a payout comes out of it. A, the real cost afterwards, on the next statement; B, hold back the cost worked out from Stripe's price list and correct it later (the plan's working answer); C, Ruken pays. Held to branch G (Tasks 28 to 31).
+- [ ] Question 2, the Owner's: which makers can connect a bank at first. A, the United States only (the plan's working answer); B, every country Stripe allows. Held to Task 24.
+- [ ] Question 3, the coordinator's: the second person and the fresh authenticator code for approving a payout run are slice 4's, and slice 4 has no plan. A, this slice names what it needs and Task 33 waits (the plan's working answer); B, this slice builds them.
+- [ ] M1 (the Owner): the first real read of Stripe's fees on the real site, one command, after branch C is merged.
+- [ ] M2 (the Owner): Connect turned on in Stripe, in test mode and then live. A website; no command can do it. The live step sits behind the Owner's legal texts (terms, privacy, a lawyer's maker agreement), which no task here waits for.
+- [ ] M3 (the Owner): the first payout run checked and approved by two staff accounts, between 10 and 14 December.
+- [ ] M4 (the Owner): the first statement and payout checked on the real site (Task 37).
+
+Branches and tasks (none started):
+
+- [ ] A `slice-5/money-rules`: Tasks 1 to 8 (the rules as pure functions; one whole month worked through).
+- [ ] B `slice-5/ledger`: Tasks 9 to 11 (the ledger tables, the journal, months that close).
+- [ ] C `slice-5/facts`: Tasks 12 to 19 (payments, Stripe's fees, releases, refunds and chargebacks, daily play, the daily money job).
+- [ ] D `slice-5/statements`: Tasks 20 to 23 (the pool, statements, final on the 10th).
+- [ ] E `slice-5/bank`: Tasks 24, 25 (connect your bank).
+- [ ] F `slice-5/maker-money`: Tasks 26, 27 (what you're owed; a statement).
+- [ ] G `slice-5/payouts`: Tasks 28 to 31 (the payout run, sent on the 15th, its cost).
+- [ ] H `slice-5/admin-money`: Tasks 32, 33 (the month for staff; approving a payout run).
+- [ ] I `slice-5/split-page`: Task 34 (the public page).
+- [ ] J `slice-5/questions`: Tasks 35, 36 (a maker asks about a line; staff answer).
+- [ ] K `slice-5/real-site`: Task 37 (the first statement and payout on the real site).
