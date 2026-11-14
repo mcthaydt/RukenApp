@@ -11,7 +11,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
 | 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan's revision is merged (#15) with the Owner's yes to its package list, and its plan audit with fixes (#19). Owner, 2026-11-13: the Card Table look on Ruken's own screens (design 5.8, #20); the plan has a branch for it, L `slice-1/look` (tasks 35 to 37), after branch D and before E0: merged (#22); its plan audit is on a branch (`audit/slice-1-look`), not done until merged and green. Execution: branch A (tasks 1 to 4) merged (#13); branch B (tasks 5 to 8) merged (#14); branch C (tasks 9 to 11) merged (#18). Branch D (screens, tasks 12 to 15) done on #21, not yet merged. L (the look) follows D, then E0 (Cloudflare) | 40% |
-| 2 | Games and play | plan written, on its pull request (#27, marked ready); not done until merged and green. Open for the Owner: the maker agreement's text, FloorFifty's two clips and four items in FloorFifty's own repository. Nothing is built | 0% |
+| 2 | Games and play | plan merged (#27). Plan audit written, with the plan fixed and the coordinator's answers and the Owner's decision of 2026-11-14 (makers take their own games off Ruken) in it, on its pull request (#29, marked ready); not done until merged and green. Open: the maker agreement's text (the coordinator supplies it before branch M), FloorFifty's two clips and four items in FloorFifty's own repository. Nothing is built | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
 | 5 | Money (after launch, before 10 December) | not started | 0% |
@@ -32,7 +32,8 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | execution, slice 1, branch G (membership) (`session_01HNdX7LRjMhjdjX3L55msBT`) | 4 Execution | `slice-1/membership` | running (parallel with the second execution session; the Owner chose the parallel run, 2026-11-13) |
 | plan, slice 1, the look (`session_01HNdX7Hzv3QVMVyjewBSg1u`) | 2 Plan | `plan/slice-1-look` | archived; merged (#22) |
 | plan audit, slice 1, the look (`session_01HNdX7KyU3nkcc8rAByjXX3`) | 3 Plan audit | `audit/slice-1-look` (pull request #23) | done; merged to main (#23) |
-| plan, slice 2 (`session_01HNdX7Hp1xcTXw4d8CYVZnv`) | 2 Plan | `plan/slice-2` | the plan is written, with the Owner's two answers and the FloorFifty findings in it; pull request #27 marked ready |
+| plan, slice 2 (`session_01HNdX7Hp1xcTXw4d8CYVZnv`) | 2 Plan | `plan/slice-2` | archived; merged (#27) |
+| plan audit, slice 2 | 3 Plan audit | `audit/slice-2-plan` | done: audit written (3 block execution, 25 should fix, 20 notes), the plan fixed, the coordinator's answers and the Owner's decision of 2026-11-14 written in; pull request #29 marked ready |
 
 ## Slice 0: Start
 
@@ -129,8 +130,8 @@ Plan: `docs/superpowers/plans/2026-11-13-slice-2-games-play.md`. It ends with: a
 
 Stages:
 
-- [ ] Plan: written, on `plan/slice-2` (pull request #27, marked ready); not done until merged and green. No test ran in the plan session. Outside the repository, in a scratch folder: Cloudflare's limits, R2, routes and Workers Builds pages were read, and two local Workers (Wrangler 4.156.0) were run against one local R2 bucket (they share it when started one after the other; started together, one stops with "database is locked").
-- [ ] Plan audit.
+- [x] Plan: written, merged to main (pull request #27). No test ran in the plan session. Outside the repository, in a scratch folder: Cloudflare's limits, R2, routes and Workers Builds pages were read, and two local Workers (Wrangler 4.156.0) were run against one local R2 bucket (they share it when started one after the other; started together, one stops with "database is locked").
+- [ ] Plan audit (`docs/superpowers/audits/2026-11-14-slice-2-plan-audit.md`), with the plan fixed: 3 block execution, 25 should fix, 20 notes; every one that blocks or should be fixed is fixed in the plan, and 8 notes stay, each with its reason. The coordinator's decision of 2026-11-14 is written in, test first: one play pass per member per game, the same for that member for a day, never shared between members (the four-hour pass made on every Play is gone). The coordinator answered its two questions (2026-11-14). On its pull request (#29); not done until merged and green. No test ran in the audit session. Wrangler 4.156.0 was installed in a scratch folder outside the repository, and its `--help` and its own code were read for the Owner's commands.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
@@ -138,7 +139,8 @@ Stages:
 What the plan waited for, and what is still the Owner's:
 
 - [x] The FloorFifty findings, 2026-11-13 (relayed by the coordinator): it runs as a plain web game once one line in its own repository drops the old SDK's ten-second wait; it is an online game and must reach its own game server, so a maker lists a game's servers and the gate lets the game reach only those; measured 326 files, 91,441,454 bytes, largest 10,680,799 bytes, so the limits are 400 MB, 1,500 files and 50 MB a file; its repository has no ready-to-run folder yet. Still the Owner's: its two clips, and four items in FloorFifty's own repository and servers (the plan lists them).
-- [ ] The maker agreement's text, the Owner's (open item O5): a maker accepts it once, on their first submission.
+- [ ] The maker agreement's text, the Owner's (open item O5): a maker accepts it once, on their first submission. The Owner chose a short, plain version now, with a version of its own; the Owner approved version 1 with the line on taking games off Ruken; it will be `src/features/make/library/maker-agreement-v1.txt`, and the coordinator supplies the text before branch M (2026-11-14).
+- [x] Owner, 2026-11-14: "They take games down themselves." A maker takes their own game off Ruken from `/make/<game>`, with a confirm step; it leaves at once and its files are deleted; "Put it back" goes through review again. Planned as Task 31 (branch S); one line in design 5.4.
 - [x] Owner, 2026-11-13, where games live: a separate domain used only for games, each game on its own name under it. The Owner will buy one; buying it is the one website step of G3.
 - [x] Owner, 2026-11-13, how a game gets on the site: "Users should be able to upload it on the site by connecting their github and selecting repo then adding whatever else they need". No staff door. The maker's submit path (design 5.4) and the smallest staff Accept and Send back are in this slice; the three-step onboarding, the mails, taking down and the rest of the admin portal stay in slice 4.
 
@@ -150,17 +152,17 @@ Branches and tasks (tasks 25 to 30 were added with the Owner's answer, so their 
 | B `slice-2/storage` | 6 the bucket behind one interface · 7 saving a clip | not started; not marked ready until G1 |
 | C `slice-2/github-pull` | 8 signing in to GitHub as the app · 9 reading a tarball · 10 the pull · 11 the games service | not started |
 | D `slice-2/gate` | 12 the play pass · 13 the gate · 14 the gate as its own Worker | not started |
-| E `slice-2/connect-github` | 15 a maker's GitHub connection · 25 connecting on the site, and a stand-in GitHub | not started; not marked ready until G2 |
+| E `slice-2/connect-github` | 15 a maker's GitHub connection · 25 connecting on the site, and a stand-in GitHub | not started; not marked ready until G2 and G3 |
 | M `slice-2/submit` | 26 sending for review: the rules and the tables · 27 the maker's area and the new-game form · 28 a game's page in the maker's area (needs O5) | not started |
 | P `slice-2/play-rules` | 16 the play tables · 17 who may play, and what counts · 18 sessions and beats | not started |
-| S `slice-2/accept` | 19 the look's five new classes · 29 the first staff account · 30 Accept and Send back | not started |
+| S `slice-2/accept` | 19 the look's clip and frame · 29 the first staff account · 30 Accept and Send back · 31 a maker takes their own game off Ruken | not started |
 | F `slice-2/play` | 20 a game's page · 21 playing · 22 play time · 23 design 8's journeys from a real link | not started |
 | G `slice-2/real-site` | 24 FloorFifty submitted, accepted and played on the real site | not started; needs G1 to G4, O4, O5 and the Owner's FloorFifty items |
 
 The Owner's own tasks, and where execution stops for each (the plan has each as one-line PowerShell commands; a website only where no command exists):
 
 - [ ] G1, when branch B starts, before it is marked ready: sign in to Cloudflare from the command line and make the R2 bucket `ruken-games`.
-- [ ] G2, when branch C starts, before branch E is marked ready: make the Ruken GitHub App (a website step, opened filled in by one command), then give the site its id, client id, client secret, short name and key as secrets, one command each.
+- [ ] G2, when branch C starts, before branch E is marked ready (G3 too): make the Ruken GitHub App (a website step, opened filled in by one command), then give the site its id, client id, client secret, short name and key as secrets, one command each.
 - [ ] G3, when branch D starts: buy the games domain if needed and put it on Cloudflare with a wildcard DNS record (the website step); then by command: the gate Worker deployed with its route, one new pass secret on both Workers, the site's address on the gate, the games' address pattern on the site.
 - [ ] G4, at Task 24: one command makes the Owner's account the first staff account; then on the site itself: submit FloorFifty on `/make`, accept it on `/admin/games`, play it. Changes to FloorFifty's own repository, if it needs any to run without the old SDK, and its two clips, are the Owner's and not part of the plan.
 
