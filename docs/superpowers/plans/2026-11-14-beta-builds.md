@@ -53,7 +53,7 @@
 | `memberBeatsByGame(since)` (reads `member` sessions only) | slice 3, Task 10 | the feed's order ignores beta play; Task 5 pins it |
 | `startPlay`'s `launchNowMs` and its `{ refused: "not_open" }`, checked inside `startPlay`; the play route's redirect to `/g/<slug>` for it | wishlist plan, Task 5 | the rule the beta is the exception to; `startBetaPlay` takes no launch time |
 | `beforeLaunch(context)`, `atLaunch(context)` in `tests/browser/support/launch.ts`; the journeys' site is open unless the cookie says before | wishlist plan, Task 2 | a journey in which a tester plays before launch |
-| `playNumbers(gameId, since)` (bases `member` and `free_game`, a play is a session with an attentive beat), `makerNumberLines`, `PLAYED_FOR_MS`, the numbers under the state line on `/make/<game>` for a live game | wishlist plan, Tasks 7, 8 | the beta's own two lines |
+| `playNumbers(gameId, since, bases)` (the bases are always named, with no default; a play is a session with an attentive beat), `COUNTED_BASES` (`["member", "free_game"]`), `makerNumberLines`, `PLAYED_FOR_MS`, the numbers in one `<section data-numbers>` under the state line on `/make/<game>` for a live game | wishlist plan, Tasks 7, 8 | the beta's own two lines |
 | `Feed.svelte`'s and `MakerPage.svelte`'s `launch` prop: before launch, "Opens 30 November" and a form with one button, "Wishlist" or "On your wishlist", in place of Play and of the computer-only line | wishlist plan, Tasks 13, 14 | "Play the beta" goes under that button before launch, under Play after |
 | `sweepOldPulls` and its one query of four conditions; `PullCleanup` | slice 4, Task 25 | a replaced beta's files leave the bucket |
 | `takeDown` | slice 4, Task 10 | a taken-down game loses its beta (Task 3) |
@@ -61,12 +61,12 @@
 
 ## The wishlist plan
 
-The wishlist plan (`docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`) was read on its branch on 2026-11-14, after this plan's first draft, and the two are matched here. If its audit changes one of these four, the session that meets the difference stops and reports.
+The wishlist plan (`docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`) was read on its branch on 2026-11-14, after this plan's first draft, and the two are matched here; the joint plan audit (`docs/superpowers/audits/2026-11-14-wishlist-beta-plan-audit.md`) matched them again against the wishlist plan as merged. If anything later changes one of these four, the session that meets the difference stops and reports.
 
 1. **The play gate is inside `startPlay`** (its Task 5): before launch it refuses everyone whose basis is not `own_game` or `staff`, with `not_open`. A beta never goes through `startPlay`. `startBetaPlay` (Task 5 here) takes no launch time and asks no switch, and the route's `?beta=1` branch (Task 8) comes before the route's call to `startPlay`. That is the design's exception: a picked member plays a beta before 30 November, alongside the maker and staff.
-2. **The maker's numbers name the bases that count**: `playNumbers` reads `member` and `free_game` sessions only, so a `beta` session is never in "Played 340 times". Task 10 gives `playNumbers` a third, optional argument for the bases, and the beta's lines are the same counting with `["beta"]`.
-3. **The button's place.** Before launch a clip holds "Opens 30 November" and the Wishlist form; after, Play. "Play the beta" goes directly under whichever is there (Task 9).
-4. **`/make/<game>`.** The numbers sit under the game's state line, with "Play it yourself" before launch. The Beta section goes below them, and the beta's two numbers lines follow the game's own numbers.
+2. **The maker's numbers name the bases that count**: `playNumbers(gameId, since, bases)` takes the list and has no default; the game's own lines ask it with `COUNTED_BASES` (`member` and `free_game`), so a `beta` session is never in "Played 340 times". The beta's lines are the same counting with `["beta"]` (Task 10); `playNumbers` itself does not change.
+3. **The button's place.** Before launch a clip holds "Opens 30 November" and the Wishlist form; after, Play. Either sits alone in one `<div data-play-slot>` in each clip of the feed and each game of a maker's page. "Play the beta" is the element right after that wrapper, outside it (Task 9).
+4. **`/make/<game>`.** The numbers are one `<section data-numbers>` right under the game's state line, with "Play it yourself" before launch. The beta's numbers lines go inside that section, after the game's own (Task 10); the Beta section goes below it (Task 6).
 
 ## Found while planning
 
@@ -152,7 +152,7 @@ src/features/games/
   games.ts             re-exports type BetaGame
 src/features/play/
   may-play.ts          PlayBasis gains "beta"
-  sessions.ts          gains startBetaPlay; playNumbers takes the bases to count (branch D)
+  sessions.ts          gains startBetaPlay
   services.ts          hands the play service the games feature's betaFor
 src/features/make/
   testers.ts           testerFrom: an email or a handle, to an account's id
@@ -404,7 +404,7 @@ it("hands nothing to someone the tester list does not answer for", async () => {
   /* betaFor answers null: { refused: "not_tester" }; no PlayPass row, no PlaySession row */ });
 it("asks the list at every Play, however recent the last pass", async () => { /* a first Play works; betaFor then answers null; the second is refused and adds no row */ });
 it("plays before the launch moment", async () => { /* TestClock at 2026-11-20T12:00:00Z: started, not refused */ }); // Review Focus 6
-it("keeps the beta's pass apart from the release's for the same member", async () => { /* startPlay and startBetaPlay: two frame addresses, two pulls */ });
+it("keeps the beta's pass apart from the release's for the same member", async () => { /* startPlay (with launchNowMs: LAUNCH_MS, which the wishlist plan makes required) and startBetaPlay: two frame addresses, two pulls */ });
 it("slows down an address that opens betas too fast", async () => { /* the 31st start in a minute: { refused: "busy" } */ });
 it("leaves beta beats out of what members played", async () => {                                                 // Review Focus 10
   /* three attentive beats on a beta session, three on a member's: memberBeatsByGame (slice 3, Task 10) answers 3.
@@ -431,7 +431,7 @@ Needs branch A, and slice 3's branch B (`pageByHandle`, `handlesOf`) on `main`. 
 - Modify: `src/routes/make/[game]/+page.server.ts`, `src/routes/make/[game]/+page.svelte`, `tests/browser/support/fake-github-server.ts`
 - Test: `tests/browser/beta-maker.test.ts`
 
-**The screen.** For a game that is `live`, below everything slice 2 put on the page (and below the wishlist's numbers, once they are there) and above "Take it off Ruken":
+**The screen.** For a game that is `live`, below everything slice 2 put on the page (and below the wishlist's `<section data-numbers>` and its "Players can play from 30 November." line, once they are there) and above "Take it off Ruken":
 
 ```
 Beta
@@ -624,7 +624,7 @@ test("beta play sends beats like any play", async ({ page, browser }) => {
 - Test: `tests/browser/beta-play.test.ts` (add cases)
 
 - Each of the three `load`s adds `betaSlugs: await gamesServices().beta.slugsFor(<the caller's user id, or null>)` to what it answers. Signed out, or a person who tests nothing, costs no membership query (Task 4).
-- `Feed.svelte` and `MakerPage.svelte` take `betaSlugs: string[]` (default `[]`). For a game whose slug is in it, directly under that game's own button (the Wishlist form before launch, the Play link after), one link, and none at all for a clip whose `needsComputer` is true (a phone cannot play that beta either, before launch or after): `<a href="/g/<slug>/play?beta=1">Play the beta</a>`.
+- `Feed.svelte` and `MakerPage.svelte` take `betaSlugs: string[]` (default `[]`). For a game whose slug is in it, one link, `<a href="/g/<slug>/play?beta=1">Play the beta</a>`, as the element right after that game's `<div data-play-slot>` (the wishlist plan's wrapper, which holds the Wishlist form before launch and Play after, and nothing else), outside it, so it sits directly under the game's own button in either state. In the feed there is none at all for a clip whose `needsComputer` is true (a phone cannot play that beta either, before launch or after). A maker's page does not know the device (slice 3, Task 22, hands it no `needsComputer`), so there the link is shown as that page shows Play, and a phone that presses it on a computer-only game is sent to the game's page by Task 8's second step.
 - Its styles live in the two components, as their other styles do: smaller than the game's own button and clearly second to it. In the feed: chalk text at 14px, weight 600, underlined, on the band, with a 48px tall target. On a maker's page: the page's own text colour, the same size and target. No new colour is written; both use the custom properties the component already has.
 - Slice 3's feed case "Play is the only thing with words to press" checks buttons; this is a link, so it stands. The wishlist's button is a `<button>` in a form and the beta's is a link beside it; no case of theirs counts links.
 
@@ -643,8 +643,8 @@ test("a tester sees Play the beta under the game's button, in the feed, at the g
   const link = clip.getByRole("link", { name: "Play the beta" });
   await expect(link).toHaveAttribute("href", `/g/${game.slug}/play?beta=1`);
   expect((await boxOf(link)).height).toBeGreaterThanOrEqual(48);
-  /* the link's top is at or below the bottom of the Play link in the same clip; then beforeLaunch(page.context()) and a reload:
-     it is at or below the bottom of the button named Wishlist, and "Opens 30 November" is still there */
+  /* the link is not inside the clip's [data-play-slot], and its top is at or below the bottom of that [data-play-slot], which holds the Play link;
+     then beforeLaunch(page.context()) and a reload: the same, with the slot holding the button named Wishlist, and "Opens 30 November" is still there */
   await showTheOwner(page, testInfo, "Play the beta, in the feed");
   await page.goto(`/${handle}`);
   await expect(page.getByRole("article").filter({ hasText: game.name }).getByRole("link", { name: "Play the beta" })).toBeVisible();
@@ -673,10 +673,10 @@ Needs branch A, and the wishlist plan's branch C (`wishlist/numbers`: `playNumbe
 ### Task 10: The beta's own line in a maker's numbers
 
 **Files:**
-- Modify: `src/features/play/sessions.ts`, `src/features/make/numbers.ts`, `src/features/make/make.ts`, `src/routes/make/[game]/+page.server.ts`, `+page.svelte`
+- Modify: `src/features/make/numbers.ts`, `src/features/make/make.ts`, `src/routes/make/[game]/+page.server.ts`, `+page.svelte`
 - Test: `tests/features/play/sessions.pg.test.ts` (add a case), `tests/features/make/numbers.test.ts` (add cases), `tests/browser/beta-maker.test.ts` (add a case)
 
-- `playNumbers(gameId: string, since: Date, bases: readonly PlayBasis[] = ["member", "free_game"]): Promise<{ plays: number; minutes: number }>` in `src/features/play/sessions.ts` (wishlist plan, Task 7): the third argument is new, and with it left out every caller means what it meant. The query takes the list as a parameter; nothing else about it changes.
+- `playNumbers(gameId: string, since: Date, bases: readonly PlayBasis[])` (wishlist plan, Task 7) already takes the bases, with no default. It does not change here: the beta's lines ask it with `["beta"]`, the game's own lines keep asking it with `COUNTED_BASES`.
 - `betaNumberLines(input: { plays: number; minutes: number }): string[]` in `src/features/make/numbers.ts`, re-exported by `make.ts`: the wishlist plan's own plays and minutes lines (`makerNumberLines` with `open: true` and no wishlists), each with "Beta: " in front and its first letter in lower case:
 
   ```
@@ -685,10 +685,10 @@ Needs branch A, and the wishlist plan's branch C (`wishlist/numbers`: `playNumbe
   ```
 
   and, from the same source, "Beta: played 1 time in the last 7 days", "Beta: less than a minute played in the last 7 days", and the one line "Beta: no plays in the last 7 days".
-- `load` of `/make/<game>`: for a live game with a beta branch named, `playNumbers(game.id, new Date(systemClock.epochMs() - PLAYED_FOR_MS), ["beta"])` (the real clock, as the wishlist plan's own call: beats are stamped with it), before launch and after: a beta is played before launch. The lines go right after the game's own numbers, as ordinary text.
+- `load` of `/make/<game>`: for a live game with a beta branch named, `playNumbers(game.id, new Date(systemClock.epochMs() - PLAYED_FOR_MS), ["beta"])` (the real clock, as the wishlist plan's own call: beats are stamped with it), before launch and after: a beta is played before launch. The lines are paragraphs of ordinary text inside the wishlist's `<section data-numbers>`, after the game's own lines.
 - Beta play has no maker's-own or staff play to leave out: a `beta` session is always a picked member's.
 
-- [ ] **Step 1 (red):** `sessions.pg.test.ts`, with `TestClock`: a game with two `member` sessions and three `beta` sessions that each have an attentive beat in the last seven days, and one `beta` session eight days ago: `playNumbers(id, since)` answers 2 plays, `playNumbers(id, since, ["beta"])` answers 3, and the minutes follow the same split (Review Focus 10). `tests/features/make/numbers.test.ts`: one case per line above. `beta-maker.test.ts`: after a tester has played the beta and touched it once (the steps of Task 8's beat case; if branch C is not on `main` yet, the session and its beat are written through `tests/browser/support/database.ts`, and the report line says so), the maker's page shows "Beta: played 1 time in the last 7 days" and the game's own plays line reads "No plays in the last 7 days"; a live game with no beta branch shows no line that starts "Beta:". Stubs. Push. Expected: `verify` fails in `numbers.test.ts`, `postgres` in the new case (the third argument is ignored), `browser` in the new case.
+- [ ] **Step 1 (red):** `sessions.pg.test.ts`, with `TestClock`: a game with two `member` sessions and three `beta` sessions that each have an attentive beat in the last seven days, and one `beta` session eight days ago: `playNumbers(id, since, COUNTED_BASES)` answers 2 plays, `playNumbers(id, since, ["beta"])` answers 3, and the minutes follow the same split (Review Focus 10). `tests/features/make/numbers.test.ts`: one case per line above. `beta-maker.test.ts`: after a tester has played the beta and touched it once (the steps of Task 8's beat case; if branch C is not on `main` yet, the session and its beat are written through `tests/browser/support/database.ts`, and the report line says so), the maker's page shows "Beta: played 1 time in the last 7 days" and the game's own plays line reads "No plays in the last 7 days"; a live game with no beta branch shows no line that starts "Beta:". Stubs. Push. Expected: `verify` fails in `numbers.test.ts`, `browser` in the new case; the `postgres` case passes already (it pins that a `beta` session counts only where `["beta"]` is named, with `playNumbers` as the wishlist built it), and the report line says so.
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass. Send the coordinator the run and one line for "a maker's numbers, with a beta"; mark the branch ready after "fine".
 
 ---

@@ -51,9 +51,11 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | spec, the landing page | 1 Spec | none | parked (Owner, 2026-11-14: "We'll address the landing page when they can upload a game"); players first, then developers (Owner: "Appeal to players first, then developers"); `/` stays as it is until then |
 | spec, games before launch: the wishlist and a maker's numbers | 1 Spec | `spec/wishlist` | approved (Owner, 2026-11-14: "approved"); `docs/superpowers/specs/2026-11-14-wishlist-before-launch-design.md`; plan next |
 | execution, slice 3, branch A (`session_01HNdX7Lu88QTewJX8NtAg8u`) | 4 Execution | `slice-3/themes` | running (needs slice 1 only) |
-| audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | running (Owner, 2026-11-14: "take a screenshot of every single screen, every orientation, every device type, audit them one by one") |
+| audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | done: 39 states of `main` at `6ad0214`, 390 screenshots on 10 views each (live test-mode site, 7 states on a local copy), every one looked at; `docs/superpowers/audits/2026-11-14-screens-audit.md`: 2 block launch, 13 should fix, 14 notes; findings reported, not fixed. No test ran |
 | audit, FloorFifty for production (`session_01HNdX7HXjg2huySfHRH521r`, in SNEKPRTY/FloorFifty) | audit | FloorFifty's own branch | running (Owner, 2026-11-14: "audit the game for production excluding known gaps like deployment") |
+| plan, games before launch: the wishlist (`session_01HNdX7J7xTV329GjHcGAkVQ`) | 2 Plan | `spec/wishlist` | plan written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`); not merged; Q1 is with the Owner; Q2 answered by the coordinator; shaped so the beta builds plan adds to it |
 | plan, beta builds | 2 Plan | `spec/beta-builds` | plan written (`docs/superpowers/plans/2026-11-14-beta-builds.md`), not merged; Q1 and Q2 answered by the coordinator, Q3 is with the Owner |
+| plan audit, wishlist and beta builds | 3 Plan audit | `audit/wishlist-beta-plan` | audit written, both plans fixed; draft pull request when fewer than three are open; Q-A with the Owner |
 
 ## Defect: the Worker ran out of memory (2026-11-14)
 
@@ -375,6 +377,38 @@ Branches and tasks (none started):
 - [ ] J `slice-5/questions`: Tasks 35, 36 (a maker asks about a line; staff answer).
 - [ ] K `slice-5/real-site`: Task 37 (the first statement and payout on the real site).
 
+## Games before launch: the wishlist and a maker's numbers
+
+Design: `docs/superpowers/specs/2026-11-14-wishlist-before-launch-design.md`, approved by the Owner on 2026-11-14. Plan: `docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`. It ends with: accepted games are in the feed with Wishlist until 11:00 CT on 30 November, then Play; one email at launch; a maker's numbers on `/make/<game>`. To be on `main` by Wednesday 25 November. It is not one of the six slices, so the overall percentage above does not count it. Progress: 0% (nothing built).
+
+Stages:
+
+- [x] Spec: approved (Owner, 2026-11-14: "approved").
+- [ ] Plan: written on `spec/wishlist`, planned against `main` at `d497163`; not merged. No test ran in the plan session, and no code was written. Read as code: `main`. Not read as code, because they are not on `main`: slice 2's branches M, S and F, and all of slice 3. Read outside the repository on 2026-11-14: Cloudflare's Cron Triggers page (five fields, UTC, up to 15 minutes for a new trigger to start) and Resend's API pages (10 requests a second for a team; an `Idempotency-Key` header kept 24 hours). Not measured: anything; the plan holds no size, count or timing of its own.
+- [ ] Plan audit (`docs/superpowers/audits/2026-11-14-wishlist-beta-plan-audit.md`, one audit of both plans, as merged by #69 and #70): 1 blocks execution, 10 should fix, 13 notes, 1 question for the Owner (Q-A: with Q1's A, nobody can become a member before launch, so early beta play on the real site waits for launch day). The blocker and 9 should-fixes are fixed in the two plans; S10 is Q-A. On branch `audit/wishlist-beta-plan`; not done until merged. No test ran.
+- [ ] Execution, branch by branch (below).
+- [ ] Implementation audit.
+- [ ] Fixes.
+
+What the plan waits for, and what is the Owner's:
+
+- [ ] Q1, before launch, can someone pay on `/join`? Asked 2026-11-14. The plan's pick: no, the card reads "Membership opens 30 November." (Task 6, built only on the Owner's yes).
+- [x] Q2, the real-site checks that need a stranger to play cannot be made by a person before launch once the play gate is on `main`. Coordinator, 2026-11-14: keep the gate strict; those two lines are checked by a person at 11:00 on launch day.
+- [ ] "Fine" on the screenshots of branches C, E and F (and B, if Task 6 is built), phone and computer, before and after.
+- [ ] The look at the real site before launch, and at 11:00 CT on 30 November (Task 15).
+
+Branches and tasks:
+
+| Branch | Tasks | State |
+|---|---|---|
+| A `wishlist/switch` | 1 the switch · 2 the journeys' switch · 3 the wishlist's tables and service · 4 a deleted account's wishlist | not started; needs nothing that is not on `main` |
+| B `wishlist/play-gate` | 5 nobody but a game's maker and staff plays before launch · 6 `/join` holds payments until launch (only on the Owner's answer to Q1) | not started; needs A and slice 2's branch F |
+| C `wishlist/numbers` | 7 how much a game was played · 8 a maker's numbers on `/make/<game>` | not started; needs A and slice 2's branch M |
+| D `wishlist/launch-mail` | 9 the email's words · 10 one email a person, once · 11 the job's address and its cron | not started; needs A and slice 3's branch C |
+| E `wishlist/button` | 12 the button's post · 13 Wishlist in the feed and at a game's address | not started; needs A, B and slice 3's branch D |
+| F `wishlist/maker-page` | 14 Wishlist on a maker's page | not started; needs E and slice 3's branch H |
+| G `wishlist/real-site` | 15 the design's goals in one journey, and on the real site | not started |
+
 ## Beta builds
 
 Design: `docs/superpowers/specs/2026-11-14-beta-builds-design.md`, approved by the Owner on 2026-11-14. Plan: `docs/superpowers/plans/2026-11-14-beta-builds.md`. It ends with: a picked member presses "Play the beta" and is in a beta that staff accepted, and that play never counts toward pay. Target: on `main` by Friday 27 November, after the wishlist work; at risk (the plan's "The date" says why), and if it is late it ships after launch.
@@ -382,7 +416,7 @@ Design: `docs/superpowers/specs/2026-11-14-beta-builds-design.md`, approved by t
 Stages:
 
 - [ ] Plan: written on `spec/beta-builds`, not merged. Planned against `main` at `d497163`; the wishlist plan was read on `spec/wishlist` at `2b5030b` and the two are matched. No test ran in the plan session, and no code was written. Read as code: `main` (slice 1; slice 2's branches A to E, P and S0). Not read as code, because they are not on `main`: slice 2's branches M, S and F, slice 3, slice 4, slice 5 and the wishlist work. Nothing was measured; the plan holds no size, count or timing of its own.
-- [ ] Plan audit.
+- [ ] Plan audit (`docs/superpowers/audits/2026-11-14-wishlist-beta-plan-audit.md`, one audit of both plans, as merged by #69 and #70): 1 blocks execution, 10 should fix, 13 notes, 1 question for the Owner (Q-A: with Q1's A, nobody can become a member before launch, so early beta play on the real site waits for launch day). The blocker and 9 should-fixes are fixed in the two plans; S10 is Q-A. On branch `audit/wishlist-beta-plan`; not done until merged. No test ran.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
