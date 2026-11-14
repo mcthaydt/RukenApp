@@ -55,7 +55,8 @@ export const GET: RequestHandler = async ({ url }) => {
     // @ts-expect-error the stand-in adapter is checked by running it, not by its types
     delegated ??= new PrismaClient({ adapter: delegating });
     const client = delegated;
-    await perRequest.run({}, () => client.$queryRaw`SELECT 1`);
+    // Prisma's promises start when awaited, so the await must happen inside the request's context.
+    await perRequest.run({}, async () => await client.$queryRaw`SELECT 1`);
   }
   return Response.json({ mode });
 };
