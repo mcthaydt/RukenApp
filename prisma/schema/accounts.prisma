@@ -67,6 +67,8 @@ model User {
 
   // The money feature's ledger lines name a maker; they are declared in money.prisma.
   journalLines JournalLine[]
+  feePostings  FeePosting[]
+  playDays     PlayDay[]
 }
 
 model Session {

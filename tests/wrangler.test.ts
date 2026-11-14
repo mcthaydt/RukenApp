@@ -171,6 +171,13 @@ describe("the daily job", () => {
     expect(text).toContain("content-type");
   });
 
+  it("knocks on the money job after the purge, and does not skip the purge when the money job fails", () => {
+    const text = read("cloudflare/worker.js");
+    expect(text).toContain("/jobs/purge-accounts");
+    expect(text).toContain("/jobs/money");
+    expect(text.indexOf("/jobs/money")).toBeGreaterThan(text.indexOf("/jobs/purge-accounts"));
+  });
+
   // `main` stays the adapter's file, because the adapter writes its output to whatever `main` names; the wrapper
   // is what gets run and deployed, so both commands name it.
   it("is what is deployed and what the journeys run", () => {

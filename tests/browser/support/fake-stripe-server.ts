@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import Stripe from "stripe";
+import { FEE_COLUMNS, FEE_REPORT_TYPE } from "../../../src/features/money/fee-rows.ts";
 
 // A stand-in Stripe for the journeys. It runs in Node on the runner, beside `wrangler dev`, and answers in
 // Stripe's JSON shapes exactly the calls the membership makes (src/features/membership/stripe-port.ts), so a
@@ -15,6 +16,10 @@ import Stripe from "stripe";
 // - /portal/<session>: one "Cancel membership" button, which sets the subscription to end with its period, tells
 //   the site with a signed event, and sends the browser back.
 // And /state/<checkout session> answers the subscription's status, for a journey that asks what Stripe thinks.
+//
+// For the money feature (src/features/money/stripe-port.ts) it also answers Stripe's Reporting API for the Fees report:
+// a report run finishes at once, and its file (served at /files/<run>.csv, to a request that carries the secret key)
+// holds the rows a journey said the next report holds, with POST /test/fees. Refunds and disputes are empty lists.
 
 const PORT = 12111;
 const PUBLIC_URL = `http://127.0.0.1:${String(PORT)}`;
@@ -74,6 +79,12 @@ const sessions = new Map<string, Session>();
 const subscriptions = new Map<string, Subscription>();
 const invoices = new Map<string, Invoice>();
 const portals = new Map<string, { customerId: string; returnUrl: string }>();
+/** Fee report runs, by id, and the rows every report holds (set by a journey with POST /test/fees). */
+const reportRuns = new Set<string>();
+let reportRows: { product: string; featureName: string; amount: string }[] = [];
+let reportDataEnd = 0;
+/** The key the site holds, which a report's file must be asked for with. */
+const SECRET_KEY = "sk_test_fake";
 let counter = 0;
 
 /** A new id in Stripe's style. One counter for every kind, so two kinds never share a number. */
@@ -82,7 +93,7 @@ function nextId(prefix: string): string {
   return `${prefix}_${String(counter)}`;
 }
 
-const stripe = new Stripe("sk_test_fake");
+const stripe = new Stripe(SECRET_KEY);
 
 function nowSeconds(): number {
   return Math.floor(Date.now() / 1000);
@@ -246,6 +257,40 @@ function invoiceJson(invoice: Invoice): Json {
   };
 }
 
+function reportRunJson(id: string): Json {
+  return {
+    id,
+    object: "reporting.report_run",
+    status: "succeeded",
+    error: null,
+    result: { id: `file_${id}`, object: "file", url: `${PUBLIC_URL}/files/${id}.csv` },
+  };
+}
+
+/** The fee report as Stripe writes it: the columns that were asked for, and a row for each fee a journey said. */
+function feeReportCsv(): string {
+  // Each fee is Stripe's, on the newest payment this stand-in knows.
+  const newest = [...invoices.keys()].at(-1) ?? "in_none";
+  const lines = reportRows.map((row, index) =>
+    [
+      `txn_fee_${String(index)}`,
+      "2026-11-20 10:00:00",
+      `fee_${String(index)}`,
+      newest,
+      "invoice",
+      "2026-11-20 10:00:00",
+      row.product,
+      row.featureName,
+      `${row.product} fee`,
+      row.amount,
+      "0",
+      "usd",
+      "balance",
+    ].join(","),
+  );
+  return `${[FEE_COLUMNS.join(","), ...lines].join("\n")}\n`;
+}
+
 // ---- The signed events the site gets ----
 
 async function sendEvent(type: string, object: Json): Promise<void> {
@@ -341,7 +386,8 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   const method = request.method ?? "GET";
   const path = url.pathname;
   // The SDK sends a GET's and a DELETE's fields in the query and a POST's in the body; both are read the same way.
-  const fields = { ...parseForm(url.search.slice(1)), ...parseForm(await readBody(request)) };
+  const body = await readBody(request);
+  const fields = { ...parseForm(url.search.slice(1)), ...parseForm(body) };
 
   if (method === "GET" && path === "/ready") {
     send(response, { ready: true });
@@ -482,9 +528,61 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       latest_charge: {
         id: `ch_${invoice.id}`,
         object: "charge",
-        balance_transaction: { object: "balance_transaction", fee: invoice.fee },
+        balance_transaction: { id: `txn_${invoice.id}`, object: "balance_transaction", fee: invoice.fee },
       },
     });
+    return;
+  }
+
+  // ---- The Reporting API, for the Fees report ----
+  if (path === `/v1/reporting/report_types/${FEE_REPORT_TYPE}` && method === "GET") {
+    // Data from long ago up to a second ago. Every answer ends later than the one before, so each knock of the job
+    // has a new stretch to ask for however fast the journeys knock.
+    reportDataEnd = Math.max(nowSeconds() - 1, reportDataEnd + 1);
+    send(response, {
+      id: FEE_REPORT_TYPE,
+      object: "reporting.report_type",
+      data_available_start: 1_000_000_000,
+      data_available_end: reportDataEnd,
+    });
+    return;
+  }
+  if (path === "/v1/reporting/report_runs" && method === "POST") {
+    const id = nextId("frr");
+    reportRuns.add(id);
+    send(response, reportRunJson(id));
+    return;
+  }
+  const reportRun = /^\/v1\/reporting\/report_runs\/([^/]+)$/.exec(path);
+  if (reportRun !== null && method === "GET") {
+    const id = reportRun[1] ?? "";
+    if (!reportRuns.has(id)) {
+      stripeError(response, 404, "resource_missing", "No such report run");
+      return;
+    }
+    send(response, reportRunJson(id));
+    return;
+  }
+  // The report's file answers only to the secret key, as Stripe's does.
+  const reportFile = /^\/files\/([^/]+)\.csv$/.exec(path);
+  if (reportFile !== null && method === "GET") {
+    if (request.headers.authorization !== `Bearer ${SECRET_KEY}`) {
+      plain(response, 401, "A report file is read with the secret key.");
+      return;
+    }
+    plain(response, 200, feeReportCsv());
+    return;
+  }
+  // Refunds and disputes: a journey never makes one.
+  if ((path === "/v1/refunds" || path === "/v1/disputes") && method === "GET") {
+    send(response, list([], path));
+    return;
+  }
+  // What the next fee report holds, for a journey that checks the fees are read: `{ rows: [{ product, featureName, amount }] }`.
+  if (path === "/test/fees" && method === "POST") {
+    const said = JSON.parse(body) as { rows: { product: string; featureName: string; amount: string }[] };
+    reportRows = said.rows;
+    plain(response, 200, "ok");
     return;
   }
 
