@@ -22,6 +22,7 @@ describe("the tokens (design 5.8)", () => {
     ["--ink", "#111314"], // Black
     ["--ink-soft", "#34454c"], // Slate Color
     ["--pip", "#cb2f43"], // Scarlet
+    ["--pay", "#006eb8"], // Blue
   ])("%s is %s", (name, value) => {
     expect(token(name)).toBe(value);
   });
@@ -66,11 +67,11 @@ describe("the tokens (design 5.8)", () => {
     expect(token("--font-text")).toMatch(/^"Schibsted Grotesk", .*system-ui.*sans-serif$/);
   });
 
-  // The Owner, 2026-11-14, "I feel like red is bad, continue to payment is good": the paid button is Dusky Green with
-  // white words, and no rule paints anything red.
-  it("paints the paid button Dusky Green with white words, and uses no red anywhere", () => {
+  // The Owner, 2026-11-14, "I want it to stand out, but red seems bad", then "go with D": the paid button is Blue with
+  // white words, and no rule paints the pip red (it is the paywall card's one small mark, not built yet).
+  it("paints the paid button Blue with white words, and no rule uses the pip red", () => {
     const pay = /\.card \.pay\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
-    expect(pay).toMatch(/background:\s*var\(--felt-raised\);/);
+    expect(pay).toMatch(/background:\s*var\(--pay\);/);
     expect(pay).toMatch(/color:\s*var\(--chalk\);/);
     expect(css).not.toMatch(/var\(--pip\)/);
   });
@@ -93,7 +94,8 @@ describe("contrast, measured from the tokens (WCAG AA)", () => {
     ["--ink", "--paper"],
     ["--ink-soft", "--paper"],
     ["--paper", "--ink"], // the main button on a card
-    ["--paper", "--pip"], // the one paid action
+    ["--paper", "--pip"], // the pip mark's words, if it ever has any
+    ["--chalk", "--pay"], // the paid button
   ])("%s on %s reaches 4.5:1", (text, ground) => {
     expect(contrast(token(text), token(ground))).toBeGreaterThanOrEqual(4.5);
   });
@@ -102,7 +104,7 @@ describe("contrast, measured from the tokens (WCAG AA)", () => {
     ["--ink", "--paper"], // a field's edge
     ["--paper", "--felt"], // the focus ring, the card and the main button on felt
     ["--pip", "--paper"], // the old red button against its card
-    ["--felt-raised", "--paper"], // the paid button against its card
+    ["--pay", "--paper"], // the paid button against its card
   ])("%s shows against %s (3:1)", (mark, ground) => {
     expect(contrast(token(mark), token(ground))).toBeGreaterThanOrEqual(3);
   });
@@ -114,7 +116,7 @@ describe("contrast, measured from the tokens (WCAG AA)", () => {
     ["--ink", "--paper", "18.6"],
     ["--ink-soft", "--paper", "10.0"],
     ["--paper", "--pip", "5.2"],
-    ["--chalk", "--felt-raised", "9.5"], // the paid button's words
+    ["--chalk", "--pay", "5.4"], // the paid button's words
   ])("%s on %s measures %s:1, as design 5.8 says", (text, ground, ratio) => {
     expect(contrast(token(text), token(ground)).toFixed(1)).toBe(ratio);
   });

@@ -127,9 +127,9 @@ test("next pointing off the site is ignored", async ({ page }) => {
   await expect(page.locator('input[name="next"]')).toHaveValue("/");
 });
 
-// Review Focus 16, as the Owner changed it (2026-11-14, "I feel like red is bad, continue to payment is good"): the paid
-// button is Dusky Green with white words, and red is on no screen of Ruken's at all.
-test("Continue to payment is Dusky Green with white words, and nothing on the card is red", async ({
+// Review Focus 16, as the Owner changed it (2026-11-14, "I want it to stand out, but red seems bad", then "go with D"):
+// the paid button is Blue with white words, and no button is red. The pip mark is not built yet, so nothing is.
+test("Continue to payment is Blue with white words, and nothing on the card is red", async ({
   page,
 }, testInfo) => {
   await page.goto("/join");
@@ -141,7 +141,7 @@ test("Continue to payment is Dusky Green with white words, and nothing on the ca
   const pay = page.getByRole("button", { name: "Continue to payment" });
   await expect(pay).toBeVisible();
   expect(await pipRed(page)).toEqual([]);
-  await expect(pay).toHaveCSS("background-color", rgb(token("--felt-raised")));
+  await expect(pay).toHaveCSS("background-color", rgb(token("--pay")));
   await expect(pay).toHaveCSS("color", rgb(token("--chalk")));
   await showTheOwner(page, testInfo, "the paywall card, signed in");
 });
