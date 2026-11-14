@@ -10,8 +10,10 @@
   // Node's crypto, async_hooks and process.env, which sign-in and Prisma's driver need.
   "compatibility_flags": ["nodejs_compat"],
   "assets": { "binding": "ASSETS", "directory": ".svelte-kit/cloudflare" },
-  // One address only: the custom domain the Owner adds in the dashboard. No workers.dev address, no preview addresses.
-  "workers_dev": false,
+  // Until the Owner buys the site's domain, the site runs on its free workers.dev address (Owner, 2026-11-14: "Yes,
+  // give me the commands to do it"). BETTER_AUTH_URL is set to that address. Once the custom domain is added in the
+  // dashboard this goes back to false, so the custom domain is the one address. No preview addresses either way.
+  "workers_dev": true,
   "preview_urls": false,
   "observability": { "enabled": true },
   // Once a day, at 09:17 UTC, early morning in Chicago. The handler is in cloudflare/worker.js.
