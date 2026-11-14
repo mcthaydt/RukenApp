@@ -267,7 +267,9 @@ describe("releaseDueMonths", () => {
 
     expect(result.released).toBe(1);
     expect(result.failed?.map((failure) => failure.stripeInvoiceId)).toEqual(["in_r8"]);
-    expect((await releasesOf("in_r9")).map((entry) => entry.idempotencyKey)).toEqual(["release:in_r9:2045-02"]);
+    expect((await releasesOf("in_r9")).map((entry) => entry.idempotencyKey)).toEqual([
+      "release:in_r9:2045-02",
+    ]);
   });
 
   it("keeps the books balanced", async () => {
