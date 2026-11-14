@@ -56,6 +56,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan, games before launch: the wishlist (`session_01HNdX7J7xTV329GjHcGAkVQ`) | 2 Plan | `spec/wishlist` | plan written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`); not merged; Q1 is with the Owner; Q2 answered by the coordinator; shaped so the beta builds plan adds to it |
 | plan, beta builds | 2 Plan | `spec/beta-builds` | plan written (`docs/superpowers/plans/2026-11-14-beta-builds.md`), not merged; Q1 and Q2 answered by the coordinator, Q3 is with the Owner |
 | plan audit, wishlist and beta builds | 3 Plan audit | `audit/wishlist-beta-plan` | audit written, both plans fixed; draft pull request when fewer than three are open; Q-A with the Owner |
+| execution, wishlist branch A (this session) | 4 Execution | `wishlist/switch` (pull request #77) | running: Tasks 1 and 2 green |
 
 ## Defect: the Worker ran out of memory (2026-11-14)
 
@@ -379,7 +380,7 @@ Branches and tasks (none started):
 
 ## Games before launch: the wishlist and a maker's numbers
 
-Design: `docs/superpowers/specs/2026-11-14-wishlist-before-launch-design.md`, approved by the Owner on 2026-11-14. Plan: `docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`. It ends with: accepted games are in the feed with Wishlist until 11:00 CT on 30 November, then Play; one email at launch; a maker's numbers on `/make/<game>`. To be on `main` by Wednesday 25 November. It is not one of the six slices, so the overall percentage above does not count it. Progress: 0% (nothing built).
+Design: `docs/superpowers/specs/2026-11-14-wishlist-before-launch-design.md`, approved by the Owner on 2026-11-14. Plan: `docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`. It ends with: accepted games are in the feed with Wishlist until 11:00 CT on 30 November, then Play; one email at launch; a maker's numbers on `/make/<game>`. To be on `main` by Wednesday 25 November. It is not one of the six slices, so the overall percentage above does not count it. Progress: 13% (tasks 1 and 2 of 15 green on branch A).
 
 Stages:
 
@@ -401,7 +402,7 @@ Branches and tasks:
 
 | Branch | Tasks | State |
 |---|---|---|
-| A `wishlist/switch` | 1 the switch · 2 the journeys' switch · 3 the wishlist's tables and service · 4 a deleted account's wishlist | not started; needs nothing that is not on `main` |
+| A `wishlist/switch` | 1 the switch · 2 the journeys' switch · 3 the wishlist's tables and service · 4 a deleted account's wishlist | on `wishlist/switch`, pull request #77 (a draft). Task 1 green (run 43589619181; red run 43589381268; the browser job failed once on the known connect-github hang and passed on one re-run). Task 2 green (run 43590725584; red run 43590461436). Ruling, Task 2: the settings type of `createLaunchNow` takes `string \| undefined`, because the project's `exactOptionalPropertyTypes` refuses the plan's `string` when a test passes an undefined address. Tasks 3 and 4 not started |
 | B `wishlist/play-gate` | 5 nobody but a game's maker and staff plays before launch · 6 `/join` holds payments until launch (only on the Owner's answer to Q1) | not started; needs A and slice 2's branch F |
 | C `wishlist/numbers` | 7 how much a game was played · 8 a maker's numbers on `/make/<game>` | not started; needs A and slice 2's branch M |
 | D `wishlist/launch-mail` | 9 the email's words · 10 one email a person, once · 11 the job's address and its cron | not started; needs A and slice 3's branch C |

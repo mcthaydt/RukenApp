@@ -60,6 +60,10 @@ model User {
 
   // The pages feature's table points at a person; it is declared in pages.prisma.
   makerPage MakerPage?
+
+  // The launch feature's tables point at a person; they are declared in launch.prisma.
+  wishlist     Wishlist[]
+  wishlistMail WishlistMail?
 }
 
 model Session {
