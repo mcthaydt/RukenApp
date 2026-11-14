@@ -12,7 +12,7 @@
   <title>Forgot your password? · Ruken</title>
 </svelte:head>
 
-<main>
+<main class="card">
   {#if form?.sent}
     <h1>Check your email</h1>
     <p role="status">If {form.email} has an account, we sent a link. It works once, for an hour.</p>
@@ -27,7 +27,7 @@
         </label>
       </p>
       {#if form?.error}
-        <p role="alert">{form.error}</p>
+        <p class="problem" role="alert">{form.error}</p>
       {/if}
       <button>Send the link</button>
     </form>
