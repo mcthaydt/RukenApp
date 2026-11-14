@@ -131,6 +131,22 @@ header + main {
   text-decoration: none;
 }
 
+/* A short line on the felt, above a screen's card and in the same column: the welcome-back line after signing in
+   undid a deletion. It is a darker patch of felt than the page, so it reads as part of the table and not as a
+   second card. */
+.panel {
+  width: min(100% - 2rem, var(--width-read));
+  margin: 1rem auto 0;
+  padding: 1rem 1.5rem;
+  background: var(--felt-deep);
+  color: var(--chalk);
+  border-radius: var(--radius-card);
+}
+
+.panel + main {
+  margin-top: 1rem;
+}
+
 h1 {
   margin: 0;
   font: var(--text-section);

@@ -128,7 +128,18 @@ describe("the fonts", () => {
 
 // Screens are plain elements and the look's few classes; they carry no colour, size or style of their own.
 describe("screens wear the look and nothing of their own", () => {
-  const CLASSES = ["card", "statement", "note", "row", "button", "quiet", "pay", "problem", "wordmark"];
+  const CLASSES = [
+    "card",
+    "statement",
+    "note",
+    "row",
+    "button",
+    "quiet",
+    "pay",
+    "problem",
+    "wordmark",
+    "panel",
+  ];
   const ROUTES = "src/routes";
 
   /** Every .svelte file under src/routes, as a path from the repository's root. */

@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -14,6 +14,7 @@ interface WranglerConfig {
   hyperdrive?: Record<string, unknown>[];
   workers_dev?: boolean;
   preview_urls?: boolean;
+  triggers?: { crons?: string[] };
   [key: string]: unknown;
 }
 
@@ -105,6 +106,32 @@ describe("deploying", () => {
 
   it("the build never migrates", () => {
     expect(scripts().build).not.toContain("migrate");
+  });
+});
+
+describe("the daily job", () => {
+  const scripts = () => (JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts;
+
+  it("runs once a day, at 09:17 UTC", () => {
+    expect(wrangler().triggers?.crons).toEqual(["17 9 * * *"]);
+  });
+
+  it("is a wrapper around the built site that knocks with the Worker's secret and holds none of its own", () => {
+    expect(existsSync("cloudflare/worker.js")).toBe(true);
+    const text = read("cloudflare/worker.js");
+    expect(text).toContain("env.JOBS_SECRET");
+    expect(text).not.toContain("test-only");
+    expect(text).not.toMatch(/JOBS_SECRET\s*[:=]\s*["'`]/);
+    // SvelteKit refuses a POST with no content type and no matching Origin, so the knock says what it sends.
+    expect(text).toContain("content-type");
+  });
+
+  // `main` stays the adapter's file, because the adapter writes its output to whatever `main` names; the wrapper
+  // is what gets run and deployed, so both commands name it.
+  it("is what is deployed and what the journeys run", () => {
+    expect(scripts().deploy).toContain("wrangler deploy cloudflare/worker.js");
+    expect(read("playwright.config.ts")).toContain("wrangler dev cloudflare/worker.js");
+    expect(read("playwright.config.ts")).toContain("--test-scheduled");
   });
 });
 

@@ -16,3 +16,11 @@ export {
 export { signedInOnly, signedInRedirect } from "./pages.ts";
 export { staffRolesOf } from "./staff.ts";
 export { authServices } from "./services.ts";
+export {
+  DELETION_WAIT_DAYS,
+  purgeDueAccounts,
+  requestDeletion,
+  restoreOnSignIn,
+  type DeletionDeps,
+} from "./deletion.ts";
+export { WELCOME_BACK_COOKIE } from "./cookies.ts";

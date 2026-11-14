@@ -2,7 +2,9 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   // The Worker's name. The Owner's empty Worker has the same name (S1), so the first deploy lands on it.
   "name": "ruken",
-  // Written by `pnpm build` (SvelteKit's Cloudflare adapter).
+  // Written by `pnpm build` (SvelteKit's Cloudflare adapter). It stays the adapter's file because the adapter writes
+  // its output to whatever `main` names; what is run and deployed is cloudflare/worker.js, which wraps this file and
+  // adds the daily job. It is named on the command line: `pnpm run deploy` and the journeys' `wrangler dev`.
   "main": ".svelte-kit/cloudflare/_worker.js",
   "compatibility_date": "2026-10-01",
   // Node's crypto, async_hooks and process.env, which sign-in and Prisma's driver need.
@@ -12,6 +14,8 @@
   "workers_dev": false,
   "preview_urls": false,
   "observability": { "enabled": true },
+  // Once a day, at 09:17 UTC, early morning in Chicago. The handler is in cloudflare/worker.js.
+  "triggers": { "crons": ["17 9 * * *"] },
   // Cloudflare's connection pool in front of Neon. The id names a setting in the Owner's account; it is not a
   // credential. Until S1 gives the real one this is thirty-two zeros, which only `wrangler dev` accepts.
   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }],

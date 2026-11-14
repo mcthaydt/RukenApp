@@ -13,7 +13,8 @@ export default defineConfig({
   use: { baseURL: "http://localhost:4173", trace: "off", actionTimeout: 5_000 },
   webServer: {
     // The app reads a database, so the migrations run before the build, as the deploy command does.
-    command: "pnpm exec prisma migrate deploy && pnpm build && pnpm exec wrangler dev --port 4173",
+    command:
+      "pnpm exec prisma migrate deploy && pnpm build && pnpm exec wrangler dev cloudflare/worker.js --port 4173 --test-scheduled",
     url: "http://localhost:4173",
     reuseExistingServer: false,
     timeout: 180_000,
@@ -30,6 +31,8 @@ export default defineConfig({
       RESEND_API_KEY: "re_test_fake",
       MAIL_ALLOWLIST: "nobody@ruken.test",
       MAIL_FROM: "Ruken <hello@ruken.test>",
+      // The daily job's secret, so the journeys can knock on it. Plainly fake.
+      JOBS_SECRET: "test-only-jobs-secret",
     },
   },
   projects: [

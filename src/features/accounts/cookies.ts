@@ -44,3 +44,9 @@ export function copyAuthCookies(
     });
   }
 }
+
+/** Set when signing in undid a waiting deletion, so the next page can say so once (the root layout reads and clears it). */
+export const WELCOME_BACK_COOKIE = "rk_welcome_back";
+
+/** Five minutes: long enough to survive the redirect after sign-in, short enough that it cannot show up days later. */
+export const WELCOME_BACK_MAX_AGE_SECONDS = 5 * 60;
