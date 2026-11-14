@@ -83,6 +83,8 @@ describe("finalizePeriod", () => {
         where: { makerUserId_period: { makerUserId: maker, period: "2026-11" } },
       });
 
+      // Through the model client, Prisma words a trigger's refusal as a foreign-key error; the database's own words are
+      // in the driver's error.
       await expect(
         prisma.$transaction((tx) =>
           postEntry(tx, {
@@ -95,7 +97,13 @@ describe("finalizePeriod", () => {
             ],
           }),
         ),
-      ).rejects.toThrow(/final/);
+      ).rejects.toMatchObject({
+        meta: {
+          driverAdapterError: {
+            cause: { originalMessage: "period 2026-11 is final and takes no new entries" },
+          },
+        },
+      });
 
       // A fee row for a November payment, stored on 12 December: posted into December.
       clock.set("2026-12-12T12:00:00Z");
