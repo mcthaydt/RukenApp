@@ -1,0 +1,33 @@
+// The launch feature's tables: who wants which game before launch, and who has been told it is out.
+//
+// Prisma cannot express the add-only trigger, so it is written by hand at the end of the migration and covered by
+// tests/features/launch/schema.pg.test.ts.
+
+/// A game a person wants to be told about when Ruken opens. One row per person and game; taking it off the list
+/// deletes the row. A game is never deleted (a maker takes it off, staff take it down), so its rows stay, and the
+/// screens and the email read live games only.
+model Wishlist {
+  id        String   @id @default(cuid(2))
+  userId    String
+  gameId    String
+  /// When the person added it, on the server's clock.
+  addedAt   DateTime @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, gameId])
+  @@index([gameId])
+}
+
+/// The launch email went to this person, at this time. One row per person, added and never changed: a second run of
+/// the job finds the row and sends nothing. It holds only an id, so it stays when the account is deleted.
+/// Trigger: WishlistMail_append_only.
+model WishlistMail {
+  userId    String   @id
+  sentAt    DateTime @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+}

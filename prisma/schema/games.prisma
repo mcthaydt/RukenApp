@@ -67,6 +67,9 @@ model Game {
   playPasses   PlayPass[]
   playSessions PlaySession[]
 
+  // The launch feature's table points at a game; it is declared in launch.prisma.
+  wishlist Wishlist[]
+
   @@index([makerUserId])
 }
 
