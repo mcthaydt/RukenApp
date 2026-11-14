@@ -235,6 +235,41 @@ describe("releaseDueMonths", () => {
     expect(await deferredLeft("in_r7")).toBe(0n);
   });
 
+  it("carries on past a payment it cannot release, and names that payment", async () => {
+    // Review B1. The first payment's second release was already posted with other lines, which needs a person to
+    // look. The payment after it must still be released.
+    await postedPayment(db(), stripe, new TestClock("2045-01-15T18:00:00Z"), {
+      ...YEARLY,
+      invoice: "in_r8",
+      paidAt: "2045-01-15T18:00:00Z",
+    });
+    await postedPayment(db(), stripe, new TestClock("2045-01-16T18:00:00Z"), {
+      ...YEARLY,
+      invoice: "in_r9",
+      paidAt: "2045-01-16T18:00:00Z",
+    });
+    const february = new TestClock(firstOf(2045, 2));
+    await db().$transaction(async (tx) => {
+      const period = await postingPeriod(tx, february.epochMs(), february.epochMs());
+      await postEntry(tx, {
+        key: "release:in_r8:2045-02:2",
+        period,
+        kind: "release",
+        stripeInvoiceId: "in_r8",
+        lines: [
+          { account: "platform:processor_fees", amount: 1n },
+          { account: "platform:stripe_clearing", amount: -1n },
+        ],
+      });
+    });
+
+    const result = await releaseDueMonths({ db: db(), clock: february });
+
+    expect(result.released).toBe(1);
+    expect(result.failed?.map((failure) => failure.stripeInvoiceId)).toEqual(["in_r8"]);
+    expect((await releasesOf("in_r9")).map((entry) => entry.idempotencyKey)).toEqual(["release:in_r9:2045-02"]);
+  });
+
   it("keeps the books balanced", async () => {
     await expectBooksBalanced(db());
   });

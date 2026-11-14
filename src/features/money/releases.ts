@@ -28,8 +28,16 @@ const RELEASE_WINDOW_MS = 400 * 24 * 60 * 60 * 1000;
 /** How many months a yearly payment sets aside: all but the first. */
 const LATER_MONTHS = 11;
 
+/** A yearly payment whose release could not be posted, and why in the error's own words. */
+export interface ReleaseFailure {
+  readonly stripeInvoiceId: string;
+  readonly message: string;
+}
+
 /** Posts every release that is due and not yet posted. Answers how many it posted. */
-export async function releaseDueMonths(deps: ReleaseDeps): Promise<{ released: number }> {
+export async function releaseDueMonths(
+  deps: ReleaseDeps,
+): Promise<{ released: number; failed?: readonly ReleaseFailure[] }> {
   const nowMs = deps.clock.epochMs();
   const currentMonth = periodOf(nowMs);
   const yearly = await deps.db.paymentPosting.findMany({
