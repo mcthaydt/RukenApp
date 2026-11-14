@@ -4,6 +4,7 @@ import { prisma, type PrismaClient } from "../../lib/server/db.ts";
 import { optionalEnv, requireEnv } from "../../lib/server/env.ts";
 import { fileStore } from "../../lib/server/files.ts";
 import { checkAddressPattern, gameAddress } from "./addresses.ts";
+import type { Connection } from "./github-connect.ts";
 import { createGitHub } from "./github.ts";
 import { createGamesService, type GamesService } from "./service.ts";
 
@@ -12,8 +13,18 @@ import { createGamesService, type GamesService } from "./service.ts";
 
 type Settings = Readonly<Record<string, string | undefined>>;
 
+/** What the connect screens need, with the app's settings and the clock already in it (stub). */
+export interface GitHubConnect {
+  signInUrl(state: string): string;
+  installUrl(state: string): string;
+  connectionOf(code: string): Promise<Connection[]>;
+  sealState(userId: string): string;
+  openState(value: string | undefined, userId: string): boolean;
+}
+
 export interface GamesServices {
   service: GamesService;
+  connect: GitHubConnect;
   /** The address a game is played at, from its public id (`g-<id>`). */
   address(name: string): string;
 }
@@ -48,7 +59,22 @@ export function createGamesServices(
     ...(apiBase === undefined ? {} : { apiBase }),
   });
   const service = createGamesService({ db: parts.db, clock: parts.clock, files: parts.files, github });
-  return { service, address: (name) => gameAddress(pattern, name) };
+  const connect: GitHubConnect = {
+    signInUrl: (state) => {
+      throw new Error(`not built yet: connect.signInUrl ${state}`);
+    },
+    installUrl: (state) => {
+      throw new Error(`not built yet: connect.installUrl ${state}`);
+    },
+    connectionOf: (code) => Promise.reject(new Error(`not built yet: connect.connectionOf ${code}`)),
+    sealState: (userId) => {
+      throw new Error(`not built yet: connect.sealState ${userId}`);
+    },
+    openState: (value, userId) => {
+      throw new Error(`not built yet: connect.openState ${String(value)} ${userId}`);
+    },
+  };
+  return { service, connect, address: (name) => gameAddress(pattern, name) };
 }
 
 // The bucket is looked up each time it is used, not once: on Cloudflare the binding belongs to the request that is

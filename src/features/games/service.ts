@@ -3,6 +3,7 @@ import type { FileStore } from "../../lib/files/store.ts";
 import type { ClipShape, GamePlaysOn, PrismaClient } from "../../lib/server/db.ts";
 import { clipKeyFor, clipProblem, type ClipContentType } from "./clips.ts";
 import { GameError } from "./game-error.ts";
+import type { Connection } from "./github-connect.ts";
 import { checkBranch, checkRepo, type GitHub } from "./github.ts";
 import { newPublicId, slugOf } from "./ids.ts";
 import { pullGame, type Pull } from "./pull.ts";
@@ -221,7 +222,25 @@ export function createGamesService(deps: GamesServiceDeps) {
     };
   }
 
-  return { saveClip, createGame, pullLatest, goLive, liveGameBySlug };
+  /** Makes a person's stored installations and repositories exactly what GitHub listed (stub). */
+  function rememberConnection(userId: string, found: Connection[]): Promise<void> {
+    return Promise.reject(new Error(`not built yet: rememberConnection ${userId} ${String(found.length)}`));
+  }
+
+  /** A person's stored repositories, sorted by name; it asks GitHub nothing (stub). */
+  function repositoriesFor(userId: string): Promise<{ fullName: string; defaultBranch: string }[]> {
+    return Promise.reject(new Error(`not built yet: repositoriesFor ${userId}`));
+  }
+
+  return {
+    saveClip,
+    createGame,
+    pullLatest,
+    goLive,
+    liveGameBySlug,
+    rememberConnection,
+    repositoriesFor,
+  };
 }
 
 export type GamesService = ReturnType<typeof createGamesService>;

@@ -49,7 +49,8 @@ model User {
   broughtMembershipStarts MembershipStart[]   @relation("MembershipStartMaker")
 
   // The games feature's tables point at a person; they are declared in games.prisma.
-  games Game[]
+  games               Game[]
+  githubInstallations GitHubInstallation[]
 }
 
 model Session {

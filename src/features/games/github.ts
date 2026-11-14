@@ -10,6 +10,8 @@ export interface GitHub {
   commitOf(repo: string, branch: string | null): Promise<string>;
   /** The commit's files as one gzipped tarball, streamed. */
   tarball(repo: string, commitSha: string): Promise<ReadableStream<Uint8Array<ArrayBuffer>>>;
+  /** The number of the installation of the app that holds a repository now, or null when the app is not there. */
+  installationOf(repo: string): Promise<bigint | null>;
 }
 
 export interface GitHubOptions {
@@ -211,6 +213,10 @@ export function createGitHub(options: GitHubOptions): GitHub {
   }
 
   return {
+    installationOf(repo) {
+      return Promise.reject(new Error(`not built yet: installationOf ${repo}`));
+    },
+
     async commitOf(repo, branch) {
       checkRepo(repo);
       if (branch !== null) checkBranch(branch);
