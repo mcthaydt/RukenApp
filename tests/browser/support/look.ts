@@ -72,6 +72,18 @@ export async function boxOf(thing: Locator): Promise<Box> {
   return box;
 }
 
+/**
+ * Where each line of a thing's words starts, left to right, one number per line. A bounding box cannot show this: a
+ * button's box starts at the card's edge even when its wrapped words are centred inside it, so the words are measured.
+ */
+export function lineStarts(thing: Locator): Promise<number[]> {
+  return thing.evaluate((element) => {
+    const words = document.createRange();
+    words.selectNodeContents(element);
+    return [...words.getClientRects()].map((line) => line.left);
+  });
+}
+
 /** The text of every element whose background colour, text colour or any edge colour is the pip red. */
 export function pipRed(page: Page): Promise<string[]> {
   const pip = rgb(token("--pip"));

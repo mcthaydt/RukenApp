@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { payAsNewMember, signUp, subscriptionStatusAtStandIn } from "./support/account.ts";
 import { failTheirCard } from "./support/database.ts";
-import { boxOf, expectOneCard, showTheOwner } from "./support/look.ts";
+import { boxOf, expectOneCard, lineStarts, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -71,11 +71,19 @@ test("a paying member's delete screen says the no-refund line first, and offers 
       "Your membership ends now. There is no refund for the time left, and signing in again does not bring it back.",
     ),
   );
-  const changedMind = await boxOf(
-    page.getByText("Changed your mind? Sign in before then and nothing is deleted."),
-  );
+  const changedMindLine = page.getByText("Changed your mind? Sign in before then and nothing is deleted.");
+  const changedMind = await boxOf(changedMindLine);
   expect(noRefund.y).toBeGreaterThan(first.y);
   expect(changedMind.y).toBeGreaterThan(noRefund.y);
+  // The Owner, 2026-11-14, "fine, line it up": the quiet button's words start where the card's other words start, on
+  // every line, on a phone (where they wrap) and on a computer.
+  // (NaN if a line were missing, which fails the comparison below rather than passing it.)
+  const [cardEdge = Number.NaN] = await lineStarts(changedMindLine);
+  const quietLines = await lineStarts(
+    page.getByRole("button", { name: "Only want to stop paying? Cancel your membership instead." }),
+  );
+  expect(quietLines.length).toBeGreaterThan(0);
+  for (const start of quietLines) expect(start).toBeCloseTo(cardEdge, 0);
   await showTheOwner(page, testInfo, "delete your account, as a paying member");
 
   // It is a button that looks like a link: opening Stripe's page is a post, which a link cannot make.
