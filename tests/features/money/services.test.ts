@@ -1,6 +1,10 @@
 import Stripe from "stripe";
 import { afterAll, describe, expect, it } from "vitest";
-import { createMoneyServices, feeReportSkipReason } from "../../../src/features/money/services.ts";
+import {
+  createMoneyServices,
+  feeReportSkipReason,
+  fileOrigin,
+} from "../../../src/features/money/services.ts";
 import { createPrismaClient } from "../../../src/lib/server/db.ts";
 import { TestClock } from "../../support/test-clock.ts";
 
@@ -36,5 +40,17 @@ describe("feeReportSkipReason", () => {
     expect(
       feeReportSkipReason({ STRIPE_SECRET_KEY: "sk_test_fake", STRIPE_API_BASE: "http://127.0.0.1:12111" }),
     ).toBeUndefined();
+  });
+});
+
+describe("fileOrigin", () => {
+  it("is Stripe's file host on a real Stripe", () => {
+    expect(fileOrigin({ STRIPE_SECRET_KEY: "sk_live_fake" })).toBe("https://files.stripe.com");
+  });
+
+  it("is the stand-in's own address when the Stripe address is changed, and nothing else", () => {
+    expect(
+      fileOrigin({ STRIPE_SECRET_KEY: "sk_test_fake", STRIPE_API_BASE: "http://127.0.0.1:12111/v1" }),
+    ).toBe("http://127.0.0.1:12111");
   });
 });

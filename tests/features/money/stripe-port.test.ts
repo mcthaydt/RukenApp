@@ -13,6 +13,9 @@ function invoice(payment: Record<string, unknown>) {
 
 const KEY = "sk_test_fake";
 
+/** Where Stripe's report files are, for these tests: the only address the key may be sent to. */
+const FILES = { secretKey: KEY, origin: "https://files.example" } as const;
+
 const CHARGED = { id: "ch_1", balance_transaction: { id: "txn_1" } };
 const BARE_CHARGE = { id: "ch_2", balance_transaction: { id: "txn_2" } };
 
@@ -56,17 +59,17 @@ function fakeStripe(answers: Answers = {}) {
 function portWithFile(stripe: Stripe, body = "a,b\n") {
   const fetchFile = vi.fn((): Promise<Response> => Promise.resolve(new Response(body)));
   const fetch = fetchFile as unknown as typeof globalThis.fetch;
-  return { fetchFile, port: bindMoneyStripe(stripe, { secretKey: KEY, fetch }) };
+  return { fetchFile, port: bindMoneyStripe(stripe, { ...FILES, fetch }) };
 }
 
 function idsOf(stripe: Stripe) {
-  return bindMoneyStripe(stripe, { secretKey: KEY }).paymentIds("in_1");
+  return bindMoneyStripe(stripe, FILES).paymentIds("in_1");
 }
 
 describe("paymentIds", () => {
   it("reads the three ids from an invoice paid through a payment intent", async () => {
     const { fake, stripe } = fakeStripe();
-    await expect(bindMoneyStripe(stripe, { secretKey: KEY }).paymentIds("in_1")).resolves.toEqual({
+    await expect(bindMoneyStripe(stripe, FILES).paymentIds("in_1")).resolves.toEqual({
       chargeId: "ch_1",
       paymentIntentId: "pi_1",
       balanceTransactionId: "txn_1",
@@ -79,7 +82,7 @@ describe("paymentIds", () => {
 
   it("reads them from an invoice paid by a bare charge, with no payment intent", async () => {
     const { fake, stripe } = fakeStripe({ invoice: invoice({ charge: "ch_2" }) });
-    await expect(bindMoneyStripe(stripe, { secretKey: KEY }).paymentIds("in_1")).resolves.toEqual({
+    await expect(bindMoneyStripe(stripe, FILES).paymentIds("in_1")).resolves.toEqual({
       chargeId: "ch_2",
       paymentIntentId: null,
       balanceTransactionId: "txn_2",
@@ -157,12 +160,26 @@ describe("the fee report", () => {
     });
   });
 
+  it.each([
+    ["another host", "https://files.other.example/report.csv"],
+    ["a host that only starts like Stripe's", "https://files.example.evil.test/report.csv"],
+    ["a plain http address", "http://files.example/report.csv"],
+    ["an address with a login in it", "https://files.example@evil.test/report.csv"],
+    ["something that is not an address", "report.csv"],
+  ])("never sends the key to %s", async (_name, url) => {
+    const run = { id: "frr_1", status: "succeeded", result: { url } };
+    const { stripe } = fakeStripe({ run });
+    const { port, fetchFile } = portWithFile(stripe);
+    await expect(port.feeReport("frr_1")).rejects.toThrow(/did not send the key/);
+    expect(fetchFile).not.toHaveBeenCalled();
+  });
+
   it("refuses a file Stripe will not hand over", async () => {
     const run = { id: "frr_1", status: "succeeded", result: { url: "https://files.example/report.csv" } };
     const { stripe } = fakeStripe({ run });
     const refused = vi.fn((): Promise<Response> => Promise.resolve(new Response("no", { status: 401 })));
     const fetch = refused as unknown as typeof globalThis.fetch;
-    const port = bindMoneyStripe(stripe, { secretKey: KEY, fetch });
+    const port = bindMoneyStripe(stripe, { ...FILES, fetch });
     await expect(port.feeReport("frr_1")).rejects.toThrow(/401/);
   });
 });
