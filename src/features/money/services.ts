@@ -28,11 +28,19 @@ export function feeReportSkipReason(source: Settings): string | undefined {
     : undefined;
 }
 
+/** Where Stripe's report files are: the only address the secret key may be sent to. */
+export function fileOrigin(_source: Settings): string {
+  return "https://files.stripe.com";
+}
+
 export function createMoneyServices(
   source: Settings,
   parts: { prisma: PrismaClient; clock: Clock; stripe: Stripe },
 ): MoneyServices {
-  const stripe = bindMoneyStripe(parts.stripe, { secretKey: requireEnv("STRIPE_SECRET_KEY", source) });
+  const stripe = bindMoneyStripe(parts.stripe, {
+    secretKey: requireEnv("STRIPE_SECRET_KEY", source),
+    origin: fileOrigin(source),
+  });
   const feeReportSkipped = feeReportSkipReason(source);
   return {
     runJob: () =>

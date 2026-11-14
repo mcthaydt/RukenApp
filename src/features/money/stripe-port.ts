@@ -72,6 +72,8 @@ export type FeeReportAnswer =
 /** What reading a report's file needs: Stripe's secret key (the file answers to nothing else) and a way to fetch. */
 export interface FileAccess {
   readonly secretKey: string;
+  /** The only address (scheme, host and port) the key is sent to. */
+  readonly origin: string;
   /** Replaced by a test; the global `fetch` otherwise. */
   readonly fetch?: typeof fetch;
 }
