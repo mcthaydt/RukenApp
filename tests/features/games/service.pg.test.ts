@@ -1,12 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { GitHub } from "../../../src/features/games/github.ts";
-import { newPublicId } from "../../../src/features/games/ids.ts";
+import { newPublicId, PUBLIC_ID } from "../../../src/features/games/ids.ts";
 import { createGamesService, type GamesService } from "../../../src/features/games/service.ts";
 import { systemClock } from "../../../src/lib/clock.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
+import { tarGz } from "../../support/tar.ts";
 
 let database: TestDatabase | undefined;
 const files = new MemoryFileStore();
@@ -131,5 +132,237 @@ describe("saveClip", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     expect(files.keys()).toEqual(before);
+  });
+});
+
+/** What a maker's form says, made valid; a test changes the one thing it is about. */
+async function startGame(changes: Partial<Parameters<GamesService["createGame"]>[0]> = {}) {
+  return service.createGame({
+    makerUserId: await createUser(db()),
+    name: "Tower Run",
+    oneLine: "Climb fifty floors.",
+    playsOn: "phone_and_computer",
+    repo: { fullName: "acme/game", branch: null, folder: "" },
+    connectHosts: [],
+    ...changes,
+  });
+}
+
+describe("createGame", () => {
+  it("makes a draft game, with an address and a public id of its own", async () => {
+    const maker = await createUser(db());
+    const made = await startGame({
+      makerUserId: maker,
+      name: "  Floor Fifty  ",
+      playsOn: "computer_only",
+      repo: { fullName: "acme/floor-fifty", branch: "release", folder: "web/build" },
+      connectHosts: ["api.example.com"],
+    });
+
+    expect(made.slug).toBe("floor-fifty");
+    expect(made.publicId).toMatch(PUBLIC_ID);
+    expect(await db().game.findUniqueOrThrow({ where: { id: made.id } })).toMatchObject({
+      makerUserId: maker,
+      name: "Floor Fifty",
+      oneLine: "Climb fifty floors.",
+      playsOn: "computer_only",
+      state: "draft",
+      freeToPlay: false,
+      repoFullName: "acme/floor-fifty",
+      repoBranch: "release",
+      repoFolder: "web/build",
+      connectHosts: ["api.example.com"],
+      livePullId: null,
+    });
+  });
+
+  it.each([
+    ["", "A game needs a name."],
+    ["   ", "A game needs a name."],
+    ["x".repeat(61), "A game's name can be up to 60 characters."],
+    ["!!", "Pick a name with at least three letters or numbers."],
+    ["ab", "Pick a name with at least three letters or numbers."],
+  ])("refuses the name %j", async (name, message) => {
+    await expect(startGame({ name })).rejects.toMatchObject({ name: "GameError", code: "INVALID", message });
+  });
+
+  it.each([
+    ["", "A game needs one line about it."],
+    ["  ", "A game needs one line about it."],
+    ["y".repeat(101), "The one line can be up to 100 characters."],
+  ])("refuses the one line %j", async (oneLine, message) => {
+    await expect(startGame({ oneLine })).rejects.toMatchObject({ code: "INVALID", message });
+  });
+
+  it("takes a name of 60 characters and a line of 100", async () => {
+    await expect(
+      startGame({ name: `Sixty ${"z".repeat(54)}`, oneLine: "y".repeat(100) }),
+    ).resolves.toBeDefined();
+  });
+
+  it("gives two games with one name addresses of their own", async () => {
+    const first = await startGame({ name: "Cloud Nine" });
+    const second = await startGame({ name: "Cloud Nine" });
+    expect(first.slug).toBe("cloud-nine");
+    expect(second.slug).toBe("cloud-nine-2");
+  });
+
+  it("cuts a 40-character address to 38 before it adds a number", async () => {
+    const name = "b".repeat(40);
+    expect((await startGame({ name })).slug).toBe(name);
+    expect((await startGame({ name })).slug).toBe(`${"b".repeat(38)}-2`);
+  });
+
+  it("drops a hyphen the cut leaves at the end", async () => {
+    const name = `${"c".repeat(37)} dd`;
+    expect((await startGame({ name })).slug).toBe(`${"c".repeat(37)}-dd`);
+    expect((await startGame({ name })).slug).toBe(`${"c".repeat(37)}-2`);
+  });
+
+  it("stops at -9 and says the name is taken", async () => {
+    const slugs: string[] = [];
+    for (let i = 0; i < 9; i += 1) slugs.push((await startGame({ name: "Popular Game" })).slug);
+    expect(slugs).toEqual([
+      "popular-game",
+      ...[2, 3, 4, 5, 6, 7, 8, 9].map((n) => `popular-game-${String(n)}`),
+    ]);
+    await expect(startGame({ name: "Popular Game" })).rejects.toMatchObject({
+      code: "INVALID",
+      message: "That name is taken. Pick another.",
+    });
+  });
+
+  // Review Focus 17: what a person typed is checked before it is kept or put in an address.
+  it.each([
+    ["a repository with a slash too many", { fullName: "acme/game/extra", branch: null, folder: "" }],
+    ["a repository that climbs", { fullName: "../x", branch: null, folder: "" }],
+    ["a branch with a space", { fullName: "acme/game", branch: "a b", folder: "" }],
+    ["a folder that starts with a slash", { fullName: "acme/game", branch: null, folder: "/web" }],
+    ["a folder that ends with a slash", { fullName: "acme/game", branch: null, folder: "web/" }],
+    ["a folder that climbs", { fullName: "acme/game", branch: null, folder: "a/../b" }],
+    ["a folder of 201 characters", { fullName: "acme/game", branch: null, folder: "f".repeat(201) }],
+  ])("refuses %s, and makes no game", async (_why, repo) => {
+    const before = await db().game.count();
+    await expect(startGame({ repo })).rejects.toMatchObject({ code: "INVALID" });
+    expect(await db().game.count()).toBe(before);
+  });
+});
+
+/** A pull row for a game, as a passing pull leaves it. */
+async function addPull(gameId: string, connectHosts: string[] = []): Promise<string> {
+  const pull = await db().gamePull.create({
+    data: {
+      id: crypto.randomUUID(),
+      gameId,
+      commitSha: "a".repeat(40),
+      fileCount: 3,
+      totalBytes: 1000n,
+      connectHosts,
+      pulledAt: new Date(),
+    },
+  });
+  return pull.id;
+}
+
+async function addBothClips(gameId: string): Promise<void> {
+  await service.saveClip(gameId, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
+  await service.saveClip(gameId, "wide", { contentType: "video/mp4", bytes: mp4Bytes() });
+}
+
+const NOT_READY = "A game needs its files, an upright clip and a wide clip before it can go live.";
+
+describe("goLive", () => {
+  it("refuses a game with no wide clip, and it stays a draft", async () => {
+    const game = await newGame();
+    const pullId = await addPull(game.id);
+    await service.saveClip(game.id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
+
+    await expect(service.goLive(game.id, pullId)).rejects.toMatchObject({
+      code: "NOT_READY",
+      message: NOT_READY,
+    });
+    expect(await db().game.findUniqueOrThrow({ where: { id: game.id } })).toMatchObject({
+      state: "draft",
+      livePullId: null,
+    });
+  });
+
+  it("refuses a pull that belongs to another game", async () => {
+    const game = await newGame();
+    await addBothClips(game.id);
+    const otherPull = await addPull((await newGame()).id);
+
+    await expect(service.goLive(game.id, otherPull)).rejects.toMatchObject({
+      code: "NOT_READY",
+      message: NOT_READY,
+    });
+    await expect(service.goLive(game.id, "no-such-pull")).rejects.toMatchObject({ code: "NOT_READY" });
+  });
+
+  it("makes the game live on that pull, and forgets why it was sent back", async () => {
+    const game = await newGame();
+    await addBothClips(game.id);
+    const pullId = await addPull(game.id);
+    await db().game.update({
+      where: { id: game.id },
+      data: { state: "sent_back", stateReason: "Fix the sound." },
+    });
+
+    await service.goLive(game.id, pullId);
+
+    expect(await db().game.findUniqueOrThrow({ where: { id: game.id } })).toMatchObject({
+      state: "live",
+      livePullId: pullId,
+      stateReason: null,
+    });
+  });
+});
+
+describe("liveGameBySlug", () => {
+  it("is null for a draft and for an address that is nobody's", async () => {
+    const game = await newGame();
+    expect(await service.liveGameBySlug(game.slug)).toBeNull();
+    expect(await service.liveGameBySlug("nobody-has-this")).toBeNull();
+  });
+
+  it("answers the game, its clips' keys and the live pull's servers", async () => {
+    const game = await newGame();
+    await addBothClips(game.id);
+    const pullId = await addPull(game.id, ["api.example.com"]);
+    await service.goLive(game.id, pullId);
+    const clips = await db().gameClip.findMany({ where: { gameId: game.id } });
+    const keyOf = (shape: string) => clips.find((clip) => clip.shape === shape)?.key;
+
+    expect(await service.liveGameBySlug(game.slug)).toEqual({
+      id: game.id,
+      publicId: game.publicId,
+      slug: game.slug,
+      name: "A game",
+      oneLine: "A game about a thing.",
+      playsOn: "phone_and_computer",
+      freeToPlay: false,
+      makerUserId: game.makerUserId,
+      livePullId: pullId,
+      connectHosts: ["api.example.com"],
+      clips: { upright: keyOf("upright"), wide: keyOf("wide") },
+    });
+  });
+});
+
+describe("pullLatest", () => {
+  it("pulls with the service's own GitHub and bucket", async () => {
+    const sha = "0123456789abcdef0123456789abcdef01234567";
+    const github: GitHub = {
+      commitOf: () => Promise.resolve(sha),
+      tarball: async () =>
+        new Blob([await tarGz([{ path: "top/index.html", content: "<html></html>" }])]).stream(),
+    };
+    const pulling = createGamesService({ db: db(), clock: systemClock, files, github });
+    const game = await newGame();
+
+    const pull = await pulling.pullLatest(game.id);
+
+    expect(pull).toMatchObject({ commitSha: sha, fileCount: 1 });
+    expect(files.keys()).toContain(`files/${game.publicId}/${pull.id}/index.html`);
   });
 });

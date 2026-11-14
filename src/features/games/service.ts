@@ -1,9 +1,10 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { FileStore } from "../../lib/files/store.ts";
-import type { ClipShape, PrismaClient } from "../../lib/server/db.ts";
+import type { ClipShape, GamePlaysOn, PrismaClient } from "../../lib/server/db.ts";
 import { clipKeyFor, clipProblem, type ClipContentType } from "./clips.ts";
 import { GameError } from "./game-error.ts";
 import type { GitHub } from "./github.ts";
+import type { Pull } from "./pull.ts";
 
 // What a game goes through, from its first clip to going live. It is built from what it needs (the database, the
 // clock, the bucket, GitHub) so a test hands it stand-ins and no test reaches for the real ones.
@@ -15,6 +16,32 @@ export interface GamesServiceDeps {
   clock: Clock;
   files: FileStore;
   github: GitHub;
+}
+
+/** A live game as the pages and the gate need it. `clips` holds the two clips' keys in the bucket. */
+export interface LiveGame {
+  id: string;
+  publicId: string;
+  slug: string;
+  name: string;
+  oneLine: string;
+  playsOn: GamePlaysOn;
+  freeToPlay: boolean;
+  makerUserId: string;
+  livePullId: string;
+  /** The servers the live pull's game may reach (the list as it stood at that pull). */
+  connectHosts: string[];
+  clips: { upright: string; wide: string };
+}
+
+/** What a maker types to start a game, after the form has read it. */
+export interface CreateGameInput {
+  makerUserId: string;
+  name: string;
+  oneLine: string;
+  playsOn: GamePlaysOn;
+  repo: { fullName: string; branch: string | null; folder: string };
+  connectHosts: string[];
 }
 
 /** 16 random hex characters: what gives each uploaded clip an address of its own (see `clipKeyFor`). */
@@ -55,7 +82,23 @@ export function createGamesService(deps: GamesServiceDeps) {
     if (replaced !== null) await deps.files.delete(replaced.key);
   }
 
-  return { saveClip };
+  function createGame(input: CreateGameInput): Promise<{ id: string; slug: string; publicId: string }> {
+    throw new Error(`not built yet: ${input.name}`);
+  }
+
+  function pullLatest(gameId: string): Promise<Pull> {
+    throw new Error(`not built yet: ${gameId}`);
+  }
+
+  function goLive(gameId: string, pullId: string): Promise<void> {
+    throw new Error(`not built yet: ${gameId} ${pullId}`);
+  }
+
+  function liveGameBySlug(slug: string): Promise<LiveGame | null> {
+    throw new Error(`not built yet: ${slug}`);
+  }
+
+  return { saveClip, createGame, pullLatest, goLive, liveGameBySlug };
 }
 
 export type GamesService = ReturnType<typeof createGamesService>;
