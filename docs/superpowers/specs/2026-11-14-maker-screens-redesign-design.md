@@ -18,6 +18,7 @@ The Owner's words, 2026-11-14, on the first board of this redesign:
 - "audit the screens, ask does this look yc level - use fable, it looks a bit off, once again take inspiration from typeform; it's just a card in the upper center on desktop; this is not taste forward". Section 2a is that audit; section 4 is the layout that answers it.
 - "delete account should be red obviously". Section 1.
 - "safe is green, not safe is red, rest is blue". Section 1.
+- "we need to add tablet view to our artifacts; tablet is first class supported, and mobile landscape". Sections 4.4 and 4.5; the board shows every screen five ways.
 - "13. A": the address and page steps join the one run of questions. Section 6.
 
 Lines marked **Owner** are the Owner's words. Lines marked **Call** are this design's choices; the Owner can overrule any of them. Lines marked **Pending** wait for the Owner's answer and are not built until it comes.
@@ -156,7 +157,28 @@ No new colours, typefaces or sizes: every size below is already in 5.8's scale.
 - Two-half screens stack: heading, then the sheet, with the button in the bar.
 - A second button that is not Back (Live's "Send my newest version for review") sits in the screen, not in the bar.
 
-### 4.4 What moves
+### 4.4 On a tablet
+
+Owner, 2026-11-14: "tablet is first class supported, and mobile landscape". A tablet is its own layout, not a stretched phone or a squeezed computer. Drawn at 820 × 1180 upright and 1180 × 820 sideways.
+
+- **The question is 64px**, as on a computer. The answer, choices and buttons are the computer's sizes, which are already finger-sized (60 and 72 tall).
+- **Buttons sit under the answer**, not in a bottom bar: on a tablet the bottom edge is far from both hands and is where the on-screen keyboard comes up. There is no "press Enter ↵"; that shows only where there is a mouse.
+- **Sideways** is the computer's layout: the 760 column centred both ways, and the two halves side by side.
+- **Upright** is one column, 640 wide, centred both ways. The two halves stack: the heading and its buttons first, so the button is in view without scrolling, then the sheet of paper under them, scrolling inside itself.
+- Your games: "Add a game" level with the heading, each game a paper card, as on a computer.
+
+### 4.5 On a phone held sideways
+
+Drawn at 852 × 393. Height is the scarce thing, and the keyboard takes half of it.
+
+- **Two halves, always.** The question on the left at 36px, with the counter over it; the answer, the hint and the buttons on the right, by the right thumb.
+- **No bottom bar.** Back and the Blue button sit under the answer, the Blue one filling the rest of the row, 52 tall.
+- The top bar and the track stay. "Skip for now" and "Throw this game away" sit under the question on the left.
+- Screens with a sheet of paper: the heading and the button on the left, the sheet on the right, and the screen scrolls.
+- Your games: the heading and "Add a game" on the left, the games on the right.
+- Both sides keep clear of the notch and the home indicator.
+
+### 4.6 What moves
 
 5.8 says "Pressing a button scales it to 0.97; nothing else moves." Added for these screens:
 
@@ -165,7 +187,7 @@ No new colours, typefaces or sizes: every size below is already in 5.8's scale.
 - A picked choice and a video's block change tone over 250 to 300ms.
 - **With reduced motion nothing moves**, as 5.8 says: the next question is simply there.
 
-### 4.5 What does not change
+### 4.7 What does not change
 
 - **Answers are kept.** Every Next saves. From the first Next the game is in Your games as "Not finished. Go on from question 3.", and tapping it opens that question with her answers in place, on any device she signs in on.
 - **Each question has its own address**, so the browser's Back works and a reload stays on the question. Each works as a plain page and form before its script wakes; the step's movement is the only part that needs script.
@@ -223,6 +245,7 @@ Answered: the agreement's date line, "A" (section 5). The delete button, "delete
 
 ## 9. What was looked at, and what was not
 
+- Tablet and sideways phone: every screen of the board looked at in all five sizes, one walk-through, no script errors.
 - Second round. Looked at: every stop of the first board (15 screens, each on the phone and in the 1280 × 800 window), then every screen of the new board the same way, with the first-game run of 10, the refusal on the name, GitHub connected, a video added and a choice picked. No script errors, nothing sideways on a 400-wide phone. Step movement was looked at with reduced motion on only; the moving version was not recorded.
 - Measured this round: the sizes in section 2a, from the first board's own stylesheet; the button contrasts in section 1, from 5.8's colour values.
 - Looked at, first round: all 84 screenshots in the playwright-report of run 43616066455 (42 screens, phone and computer), one sheet at a time; the maker routes and `look.css` on `slice-2/submit`; the maker screens review on `audit/maker-screens`.
