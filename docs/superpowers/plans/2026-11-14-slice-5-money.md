@@ -12,7 +12,7 @@
 
 **Old repository:** `mcthaydt/RukenAppFailed` at commit `188e8a07546ba19c431468ddf2624e3cc4173d4e`, written below as `OLD/`. Attach it read-only (`add_repo`, access "read") and clone it beside this repository. Do not register it as a repository root.
 
-**Planned against:** `main` at `00d616d` (slice 1's branches and slice 2's branches A to C merged) plus what slice 2's plan says its later branches will produce, and nothing of slices 3 and 4, which have no plan yet. Execution starts only when slice 4 is merged and green (design 7.5). "What this plan relies on", below, names each piece; if one is not on `main` as named when its task starts, stop and report.
+**Planned against:** `main` at `00d616d` (slice 1's branches and slice 2's branches A to C merged) plus what slice 2's plan says its later branches will produce, and nothing of slice 4, which has no plan yet. Slice 3's plan (`docs/superpowers/plans/2026-11-14-slice-3-feed-maker-page.md`) was merged while this one was being written; this plan relies on nothing in it, and notes one thing it already gives: `split` is in its `RESERVED_HANDLES`, so `/split` (Task 34) can never be a maker's address. `main` was merged into this branch at `7753369`; nothing else that arrived with it was re-read against this plan. Execution starts only when slice 4 is merged and green (design 7.5). "What this plan relies on", below, names each piece; if one is not on `main` as named when its task starts, stop and report.
 
 **The dates.** Branches A to D must be merged and green before 10 December 2026 (the first statement). Branches E to H must be merged before 15 December 2026 (the first payout). Branches I and J can follow. If a branch has taken twice what was expected, the stop rule applies and the Owner decides what moves (CLAUDE.md, "Pace").
 
@@ -56,7 +56,7 @@
 | The stand-in Stripe (`tests/browser/support/fake-stripe-server.ts`), `tests/support/fake-premium-stripe.ts`, `signUp`, `payAsNewMember`, `signInAsStaff`, `addGame` | slice 1, Task 27; slice 2 | journeys and database tests |
 | `src/lib/look.css`, `CLASSES`, `CARD_SCREENS`, `expectOneCard`, `showTheOwner`, `forgetRateLimits` | slice 1, branch L | the look of the new screens |
 
-**What this slice needs and no plan provides yet** (slices 3 and 4 have no plan):
+**What this slice needs and no plan provides yet** (slice 4 has no plan):
 
 - **A fresh authenticator code and a second person** (design 5.5: "money actions need a second person and a fresh code from an authenticator app"). Admin sessions, the code and the two superadmins are slice 4's. This plan names what it needs in Task 33 and builds nothing of it. The statement on the 10th needs none of it (the daily job makes it from the clock); the payout on the 15th does. Asked of the coordinator on 2026-11-14 (question 3 below).
 - **A maker's handle and page** (slice 3) are not needed: a statement names games, and a maker is an account.
@@ -153,7 +153,7 @@ Eleven branches, in this order. Each starts from `main` only after the one befor
 ```
 prisma/schema/money.prisma               LedgerPeriod, JournalEntry, JournalLine (branch B); PaymentPosting, StripeFeeRun, StripeFeeRow,
                                          FeePosting, StripeReversal, PlayDayRun, PlayDay (branch C); PoolRun, PoolShare, Statement,
-                                         StatementLine (branch D); BankAccount (branch E); PayoutRun, Payout (branch G); StatementQuestion (branch J)
+                                         StatementLine (branch D); BankAccount (branch E); PayoutRun, Payout (branch G); MoneyJobRun (branch H); StatementQuestion (branch J)
 cloudflare/worker.js                     knocks on /jobs/money after /jobs/purge-accounts            (branch C)
 src/lib/csv.ts                           parseCsv: rows of text from a CSV file
 src/lib/look.css                         gains `rows`                                                 (branch F)
@@ -194,7 +194,8 @@ src/features/money/
   finalize.ts            finalizeDuePeriods                          (carried, trimmed)
   bank.ts                startBankSetup, refreshBank, bankOf
   payouts.ts             draftPayoutRun, approvePayoutRun            (carried, trimmed)
-  payout-execution.ts    executePayouts                              (carried, changed)
+  payout-execution.ts    executePayouts, settlePayouts               (carried, changed)
+  payout-costs.ts        postPayoutCosts, correctPayoutCosts
   questions.ts           askAbout, answerQuestion                    (carried, trimmed)
   daily.ts               runMoneyJob: the steps, in order
   views.ts               makerMoney, statementOf, monthSoFar, splitNumbers: what the screens read
@@ -941,7 +942,7 @@ it("reads the 8th's facts before it closes the month", async () => { /* a fee ro
 | Model | Columns |
 |---|---|
 | `PoolRun` | `period` (the id; a `LedgerPeriod`), `poolCents BigInt` (the makers' half for the month, as shared), `carryCents BigInt`, `members Int` (members whose money was in it), `inputsHash`, `sharedAt`, `createdAt` |
-| `PoolShare` | `id`, `period` (a `PoolRun`), `kind PoolShareKind`, `makerUserId` (a `User`), `gameId?` (a `Game`), `weight BigInt`, `amountCents BigInt`, `seconds Int?` (members' counted play on the game that month), `members Int?` (members the bonus is for); unique on (`period`, `kind`, `makerUserId`, `gameId`) |
+| `PoolShare` | `id`, `period` (a `PoolRun`), `kind PoolShareKind`, `makerUserId` (a `User`), `gameId?` (a `Game`), `weight BigInt`, `amountCents BigInt`, `seconds Int?` (members' counted play on the game that month), `members Int?` (members the bonus is for); unique on (`period`, `gameId`) for a `play` share and on (`period`, `makerUserId`) for a `bringing` share (two partial unique indexes, in the SQL: a `bringing` share has no game, and Postgres lets nulls repeat) |
 | `Statement` | `id`, `makerUserId` (a `User`, `onDelete: Restrict`), `period` (a `LedgerPeriod`), `document Json`, `totalsHash`, `createdAt`; unique on (`makerUserId`, `period`) |
 | `StatementLine` | `id`, `statementId` (a `Statement`), `source StatementLineSource`, `gameId?`, `ref`, `amountCents BigInt`, `createdAt`; index on `statementId` |
 
@@ -1614,7 +1615,7 @@ Design 7.5: slice 5 ends with "the first statement is right". No code unless a s
 
 - **Free-play codes** (design 6) are not here. When they are built, play on a code is its own play basis in slice 2's `playBasis` and never reaches `PlayDay`, which reads `member` sessions only.
 - **Sign in with Google** (design 2) changes nothing here: a member is an account.
-- **Slice 3's feed order** needs "how much members played in the last seven days". `PlayDay` has it per day and game, already capped; the feed can add up seven days of it without reading beats.
+- **Slice 3's feed order** adds up a week of members' beats on every open, and its notes say that if that is ever slow "the first thing to try is a sum kept per day". `PlayDay` is that sum, per day and game, already capped.
 - **Slice 4's mails** could tell a maker a statement is ready; design 7.1's list of mails would need the Owner's words first.
 - Worth the Owner's eye, left out on purpose: a daily comparison of Stripe's paid invoices with `MembershipPayment`, so a payment whose webhook never arrived is still found (slice 1's note; without it such a payment is in nobody's pool); a sweep of old `StripeFeeRow` and `PlayBeat` rows; tax forms for makers (Stripe can make them for Express accounts; that is a Stripe setting and a later spec); makers outside the United States (question 2); a maker's statement as a file to download; and what happens to money owed to an account that was deleted (it stays owed, on the books, and is never sent).
 - The journal can answer any "why is this number what it is" by its entries: every entry has a key that names the Stripe id or the month it came from, and nothing is ever changed. A question that needs more than reading it is a sign something is missing from the screens, and worth reporting.
