@@ -23,7 +23,7 @@ export default defineConfig({
     {
       // The app reads a database, so the migrations run before the build, as the deploy command does.
       command:
-        "pnpm exec prisma migrate deploy && pnpm build && pnpm exec wrangler dev cloudflare/worker.js --port 4173 --test-scheduled",
+        "pnpm exec prisma migrate deploy && pnpm build && pnpm exec wrangler dev cloudflare/worker.js --port 4173 --test-scheduled --persist-to .wrangler/state",
       url: "http://localhost:4173",
       reuseExistingServer: false,
       timeout: 180_000,

@@ -4,10 +4,15 @@ import type { FileStore } from "../files/store.ts";
 // every test sets its own, so no test needs Cloudflare. It is a setter of its own, not a member of `Platform`,
 // so nothing that builds a `Platform` has to know about files.
 
+// An opener, not a store: on Cloudflare the bucket binding belongs to the request that is running, so it is
+// looked up each time it is asked for.
+let current: (() => FileStore) | undefined;
+
 export function setFileStore(open: () => FileStore): void {
-  throw new Error(`not built yet: ${String(open)}`);
+  current = open;
 }
 
 export function fileStore(): FileStore {
-  throw new Error("not built yet");
+  if (current === undefined) throw new Error("No file store is set. src/hooks.server.ts sets it.");
+  return current();
 }
