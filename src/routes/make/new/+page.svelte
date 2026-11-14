@@ -27,7 +27,8 @@
     {#if data.connectionFailed}
       <p class="problem" role="alert">GitHub didn't finish connecting. Try again.</p>
     {/if}
-    <p><a class="button" href="/make/github?choose=1">Connect GitHub</a></p>
+    <!-- A server redirect to GitHub, not a page: the browser must ask the server, not route to a game called "github". -->
+    <p><a class="button" href="/make/github?choose=1" data-sveltekit-reload>Connect GitHub</a></p>
   {:else}
     <form method="POST" action="?/create">
       <p>
@@ -53,7 +54,7 @@
             {/each}
           </select>
         </label>
-        <a href="/make/github?choose=1">Choose other repositories on GitHub</a>
+        <a href="/make/github?choose=1" data-sveltekit-reload>Choose other repositories on GitHub</a>
       </p>
       <!-- Open again after a refusal when something was typed in it, so a person sees what they typed. -->
       <details open={Boolean(form?.branch) || Boolean(form?.folder)}>

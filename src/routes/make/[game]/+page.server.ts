@@ -42,7 +42,6 @@ function shapeOf(value: string | null): ClipShape {
 
 export const load: PageServerLoad = async (event) => {
   const { userId, game } = await ownGame(event);
-  const { address } = gamesServices();
   return {
     game,
     filesLine:
@@ -51,7 +50,7 @@ export const load: PageServerLoad = async (event) => {
         : `${filesWords(game.newestPull.fileCount)}, ${sizeWords(game.newestPull.totalBytes)}`,
     // Shown only until the maker has agreed once.
     agreed: await hasAgreed(prisma(), userId),
-    address: address(`g-${game.publicId}`),
+    address: gamesServices().address(`g-${game.publicId}`),
   };
 };
 

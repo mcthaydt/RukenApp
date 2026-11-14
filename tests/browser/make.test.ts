@@ -190,5 +190,7 @@ test("the maker agreement is a page anyone can read", async ({ page }) => {
   await page.goto("/legal/maker-agreement");
 
   await expect(page.getByRole("heading", { name: "Maker agreement" })).toBeVisible();
-  await expect(page.getByText("Version 1")).toBeVisible();
+  await expect(page.getByText("Version 1", { exact: true })).toBeVisible();
+  // Each point is a paragraph of its own, not one wall of words.
+  await expect(page.getByText(/^2\. It's yours to share\./)).toBeVisible();
 });
