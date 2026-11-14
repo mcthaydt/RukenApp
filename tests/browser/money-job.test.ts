@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { payAsNewMember } from "./support/account.ts";
-import { paymentPostingOf } from "./support/database.ts";
+import { feeRowsKept, paymentPostingOf } from "./support/database.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -71,6 +71,7 @@ test("a member who paid is posted, and Stripe's fees are asked for and then read
   for (let knocks = 0; knocks < 3; knocks += 1) reports.push(await knock(request));
   expect(reports.map((report) => report.feeReport.requested)).toContain("requested");
   expect(reports.map((report) => report.feeReport.collected)).toContain("stored");
-  expect(reports.flatMap((report) => report.fees).some((fee) => fee.product === "billing")).toBe(true);
+  // Read from the rows themselves: whichever knock stored the report, the rows are kept.
+  expect(await feeRowsKept("billing")).toBeGreaterThan(0);
   for (const report of reports) expect(report.problems).toEqual([]);
 });

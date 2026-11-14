@@ -24,7 +24,18 @@ export interface FeeDeps {
   readonly clock: Clock;
 }
 
-/** How many report rows the run placed as each kind, and how many it could not place or read. */
+/** How many rows of one kind of Stripe fee (by Stripe's own names for it) the run looked at. Counts only: no amount. */
+export interface FeeBreakdown {
+  readonly product: string;
+  readonly featureName: string;
+  readonly kind: keyof Omit<FeeCounts, "breakdown">;
+  readonly rows: number;
+}
+
+/**
+ * How many report rows the run placed as each kind, and how many it could not place or read, and the same rows by what
+ * Stripe called the fee, so a person can see which of Stripe's fees reach the books and which do not.
+ */
 export interface FeeCounts {
   readonly payment: number;
   readonly payout: number;
@@ -33,6 +44,7 @@ export interface FeeCounts {
   readonly returned: number;
   readonly unplaced: number;
   readonly unreadable: number;
+  readonly breakdown: readonly FeeBreakdown[];
 }
 
 /**
@@ -58,13 +70,26 @@ export async function postFeeRows(deps: FeeDeps): Promise<FeeCounts> {
   });
   const known = await knownIds(deps.db);
   const counts = { payment: 0, payout: 0, counted: 0, credit: 0, returned: 0, unplaced: 0, unreadable: 0 };
+  const breakdown = new Map<
+    string,
+    { product: string; featureName: string; kind: FeeBreakdown["kind"]; rows: number }
+  >();
   for (const row of rows) {
     const place = placeFee(row, known);
     counts[place.kind] += 1;
+    const key = `${row.product}\n${row.featureName}\n${place.kind}`;
+    const seen = breakdown.get(key) ?? {
+      product: row.product,
+      featureName: row.featureName,
+      kind: place.kind,
+      rows: 0,
+    };
+    seen.rows += 1;
+    breakdown.set(key, seen);
     if (place.kind === "unplaced" || place.kind === "unreadable") continue;
     await deps.db.$transaction((tx) => placeRow(tx, row, place, nowMs));
   }
-  return counts;
+  return { ...counts, breakdown: [...breakdown.values()] };
 }
 
 /** What a row can be placed against, read from what has been posted so far. */

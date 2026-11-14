@@ -9,4 +9,4 @@ export { PREMIUM_PRICES_CENTS } from "./plans.ts";
 export type { PremiumPlan } from "./plans.ts";
 export { MembershipError } from "./service.ts";
 export type { MembershipView } from "./service.ts";
-export { membershipServices } from "./services.ts";
+export { membershipServices, stripeKeyMode } from "./services.ts";

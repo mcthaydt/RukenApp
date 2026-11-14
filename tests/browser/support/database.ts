@@ -96,3 +96,8 @@ export async function paymentPostingOf(email: string): Promise<{ stripeInvoiceId
     select: { stripeInvoiceId: true },
   });
 }
+
+/** How many rows of Stripe's fee report of one kind (by Stripe's name for it, such as "billing") the site has kept. */
+export function feeRowsKept(product: string): Promise<number> {
+  return db().stripeFeeRow.count({ where: { product } });
+}
