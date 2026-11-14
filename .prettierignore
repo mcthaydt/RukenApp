@@ -1,8 +1,10 @@
 pnpm-lock.yaml
 .svelte-kit/
 build/
-.netlify/
+.wrangler/
+worker-configuration.d.ts
 src/lib/server/generated/
+tests/support/generated/
 playwright-report/
 test-results/
 # The design and the workflow are kept word for word as the Owner approved them.

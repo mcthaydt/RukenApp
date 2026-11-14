@@ -2,8 +2,11 @@ node_modules/
 .pnpm-store/
 build/
 .svelte-kit/
-.netlify/
+.wrangler/
+.dev.vars*
+worker-configuration.d.ts
 src/lib/server/generated/
+tests/support/generated/
 coverage/
 playwright-report/
 test-results/

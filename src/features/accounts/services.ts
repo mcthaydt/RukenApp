@@ -1,10 +1,5 @@
 import { systemClock, type Clock } from "../../lib/clock.ts";
-import {
-  createPrismaClient,
-  poolMaxFromEnv,
-  prisma as sharedPrisma,
-  type PrismaClient,
-} from "../../lib/server/db.ts";
+import { prisma as requestPrisma, type PrismaClient } from "../../lib/server/db.ts";
 import { optionalEnv, requireEnv } from "../../lib/server/env.ts";
 import { createResendMailer, type Mailer } from "../../lib/server/mail.ts";
 import { setBirthDate } from "./age.ts";
@@ -19,9 +14,6 @@ import { staffRolesOf } from "./staff.ts";
 
 type Settings = Readonly<Record<string, string | undefined>>;
 
-/** Each function instance keeps its pool small. */
-const DEFAULT_POOL_MAX = 3;
-
 export interface AuthServices {
   prisma: PrismaClient;
   clock: Clock;
@@ -35,7 +27,7 @@ export interface AuthServices {
 
 /**
  * Reads the settings first, so a missing one stops the start with its name before anything is
- * connected. `db` is the database client; left out, one is made from `DATABASE_URL`.
+ * connected. `db` is the database client; left out, the running request's (`prisma()`).
  */
 export function createAuthServices(source: Settings, db?: PrismaClient): AuthServices {
   const secret = requireEnv("BETTER_AUTH_SECRET", source);
@@ -44,11 +36,7 @@ export function createAuthServices(source: Settings, db?: PrismaClient): AuthSer
   const mailFrom = requireEnv("MAIL_FROM", source);
   const allowlist = optionalEnv("MAIL_ALLOWLIST", source);
 
-  const prisma =
-    db ??
-    createPrismaClient(requireEnv("DATABASE_URL", source), {
-      poolMax: poolMaxFromEnv(source, DEFAULT_POOL_MAX),
-    });
+  const prisma = db ?? requestPrisma();
   const clock = systemClock;
   const cookies = cookiePolicy(baseURL);
   const mailer = createResendMailer({ apiKey: resendApiKey, from: mailFrom, allowlist });
@@ -72,6 +60,6 @@ let shared: AuthServices | undefined;
 
 /** The process-wide sign-in services, created on first use. */
 export function authServices(): AuthServices {
-  shared ??= createAuthServices(process.env, sharedPrisma());
+  shared ??= createAuthServices(process.env);
   return shared;
 }

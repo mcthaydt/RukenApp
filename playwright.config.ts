@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Browser journeys (design section 8) run against the built app, served by `vite preview`.
+// Browser journeys (design section 8) run against the built app, served by `wrangler dev`: the Workers runtime
+// the real site runs in.
 // CI runs them on GitHub's runners only (CLAUDE.md: no session runs tests itself).
 export default defineConfig({
   testDir: "tests/browser",
@@ -11,14 +12,17 @@ export default defineConfig({
   // journey that cannot find its form says so quickly.
   use: { baseURL: "http://localhost:4173", trace: "off", actionTimeout: 5_000 },
   webServer: {
-    // The app now reads a database, so the migrations run before the build, as they do on Netlify.
-    command: "pnpm exec prisma migrate deploy && pnpm build && pnpm preview --port 4173 --strictPort",
+    // The app reads a database, so the migrations run before the build, as the deploy command does.
+    command: "pnpm exec prisma migrate deploy && pnpm build && pnpm exec wrangler dev --port 4173",
     url: "http://localhost:4173",
     reuseExistingServer: false,
     timeout: 180_000,
     env: {
-      DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
       DIRECT_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
+      // Where `wrangler dev` points the Worker's Hyperdrive binding: the journeys' own database, and no other.
+      CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: process.env.TEST_DATABASE_URL ?? "",
+      // So `wrangler dev` gives the Worker the settings below (there is no .dev.vars file).
+      CLOUDFLARE_INCLUDE_PROCESS_ENV: "true",
       // The hook now runs on every request, so the sign-in settings must exist. All plainly fake.
       BETTER_AUTH_SECRET: "test-only-secret-not-used-anywhere-real",
       BETTER_AUTH_URL: "http://localhost:4173",
