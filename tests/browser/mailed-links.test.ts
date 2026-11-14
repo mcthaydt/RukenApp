@@ -22,7 +22,7 @@ test("a new person opens the link in the mail and their email is confirmed", asy
 
   await page.goto("/me");
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
-  await expect(page.getByText("Confirm your email.")).toHaveCount(1); // BROKEN ON PURPOSE
+  await expect(page.getByText("Confirm your email.")).toHaveCount(0);
 });
 
 test("a link asked for again confirms the email too, and lands on the person's page", async ({ page }) => {
