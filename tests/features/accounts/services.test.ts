@@ -56,7 +56,9 @@ describe("createAuthServices", () => {
 
   it("takes a mail address of a stand-in on this machine", async () => {
     await inRequest(() => {
-      expect(() => createAuthServices({ ...settings, RESEND_API_BASE: "http://127.0.0.1:12113" })).not.toThrow();
+      expect(() =>
+        createAuthServices({ ...settings, RESEND_API_BASE: "http://127.0.0.1:12113" }),
+      ).not.toThrow();
     });
   });
 
