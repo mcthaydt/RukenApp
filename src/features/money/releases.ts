@@ -34,7 +34,11 @@ export interface ReleaseFailure {
   readonly message: string;
 }
 
-/** Posts every release that is due and not yet posted. Answers how many it posted. */
+/**
+ * Posts every release that is due and not yet posted. Answers how many it posted, and (only when there were any) the
+ * payments it could not release. One payment that fails never stops the others: its error is kept, the loop goes on
+ * to the next payment, and the caller reports it. A payment that fails is tried again by the next run.
+ */
 export async function releaseDueMonths(
   deps: ReleaseDeps,
 ): Promise<{ released: number; failed?: readonly ReleaseFailure[] }> {
@@ -46,15 +50,20 @@ export async function releaseDueMonths(
     select: { stripeInvoiceId: true, firstPeriod: true },
   });
   let released = 0;
+  const failed: ReleaseFailure[] = [];
   for (const { stripeInvoiceId, firstPeriod } of yearly) {
-    for (let offset = 1; offset <= LATER_MONTHS; offset += 1) {
-      // Months written `YYYY-MM` sort in time order, so a plain comparison finds the months that have opened.
-      const month = addMonths(parsePeriod(firstPeriod), offset);
-      if (month > currentMonth) break;
-      if (await releaseMonth(deps.db, stripeInvoiceId, month, nowMs)) released += 1;
+    try {
+      for (let offset = 1; offset <= LATER_MONTHS; offset += 1) {
+        // Months written `YYYY-MM` sort in time order, so a plain comparison finds the months that have opened.
+        const month = addMonths(parsePeriod(firstPeriod), offset);
+        if (month > currentMonth) break;
+        if (await releaseMonth(deps.db, stripeInvoiceId, month, nowMs)) released += 1;
+      }
+    } catch (error) {
+      failed.push({ stripeInvoiceId, message: error instanceof Error ? error.message : String(error) });
     }
   }
-  return { released };
+  return failed.length === 0 ? { released } : { released, failed };
 }
 
 /**
@@ -94,7 +103,11 @@ async function releaseMonth(db: PrismaClient, stripeInvoiceId: string, month: Pe
       },
       _sum: { amount: true },
     });
-    const cancelled = cancelledMonths(parts, cancelledLines._sum.amount ?? 0n);
+    // A fee that came after a refund made the parts add up to less than the refund cancelled (the fee's own part of
+    // those months was never set aside), so what a payment's months can lose stops at what they are worth.
+    const worth = parts.reduce((total, release) => total + release.amount, 0n);
+    const standing = cancelledLines._sum.amount ?? 0n;
+    const cancelled = cancelledMonths(parts, standing < worth ? standing : worth);
     const part = parts.find((candidate) => candidate.period === month)?.amount ?? 0n;
     const target = part - (cancelled.get(month) ?? 0n);
 
