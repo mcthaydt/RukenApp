@@ -124,8 +124,9 @@ test("sending without clips says which one is missing", async ({ page }) => {
   await page.getByRole("button", { name: "Send for review" }).click();
   await expect(page.getByText("Add an upright clip.")).toBeVisible();
 
+  // The tick was taken when the maker pressed the button, so the box is not asked again.
+  await expect(page.getByLabel("I agree to the maker agreement")).toHaveCount(0);
   await uploadClip(page, "Upright clip");
-  await page.getByLabel("I agree to the maker agreement").check();
   await page.getByRole("button", { name: "Send for review" }).click();
   await expect(page.getByText("Add a wide clip.")).toBeVisible();
 });
