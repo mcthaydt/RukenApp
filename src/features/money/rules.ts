@@ -1,7 +1,7 @@
 // The numbers of the money rules (stub: red step).
 
 /** Stands in for a value that is not written yet; reading it fails the test that needs it. */
-function notBuilt<T>(name: string): T {
+function notBuilt(name: string): never {
   throw new Error(`not built yet: ${name}`);
 }
 
