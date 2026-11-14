@@ -201,7 +201,6 @@ describe("the 10th", () => {
     const own = await startTestDatabase();
     try {
       const stripe = quietStripe();
-      const game = await addGame(own.prisma);
       await addMembershipPayment(own.prisma, stripe, {
         ...PAYMENT,
         invoice: "in_t1",
