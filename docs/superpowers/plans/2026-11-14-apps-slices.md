@@ -94,9 +94,11 @@ Owner, 2026-11-14: "What about apple certificate signing?" The spec says "Signin
 - **A4. An Apple Distribution certificate:** made on the Owner's Mac in Xcode's account settings, exported from Keychain as a `.p12` file with a password, then two `gh secret set` lines (the file, base64-encoded, and its password). Slice 1's plan first checks whether Xcode's cloud-managed signing with the A1 key makes this step unnecessary; if it does, A4 is dropped.
 - **A5. A Developer ID Application certificate, and a Mac Installer Distribution certificate**, made and stored the same way as A4. Only the account holder can make a Developer ID certificate, so this one is always the Owner's own step.
 - **A6. Notarization** needs no new key: it uses A1's. Slice 3's plan adds it to the Mac download's build and checks the result with Apple's own tool before the file is published.
-- **A7. A push key (APNs)** for slice N: a second `.p8`, made on the same website page as A3, stored on the Workers as a secret (not in GitHub: the server sends the notifications, not CI).
+- **A7. A push key (APNs)** for slice N: a second `.p8`, made on the same Apple developer website as A3 (its Keys page), stored on the Workers as a secret (not in GitHub: the server sends the notifications, not CI).
 
-Certificates run out. Each plan that adds one writes its end date in `docs/superpowers/progress.md`, read from the certificate itself, so it is renewed before a build fails.
+Certificates and provisioning profiles run out (a profile after a year). Each plan that adds one writes its end date in `docs/superpowers/progress.md`, read from the certificate itself, so it is renewed before a build fails.
+
+**Updates to Ruken's own download.** An app installed from Ruken's own site does not update through a store. If slice 3 gives it Tauri's updater, that updater checks every update with a key pair of its own, separate from Apple's and Microsoft's. Losing its private key stops every installed copy from updating. Slice 3's plan says whether the download updates itself, and if so, adds that key to the steps here.
 
 **The other platforms**, each in its slice's plan: Android's upload key is one `keytool` line on the Owner's computer and two `gh secret set` lines (slice 1); the Windows certificate is bought on a website and stored the way its seller requires, which today is often a cloud key store, not a file (slice 3).
 

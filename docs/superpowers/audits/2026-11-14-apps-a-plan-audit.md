@@ -74,3 +74,37 @@ Line numbers are those of the plans before the fixes below.
 - T5 lists every setting the code requires (`requireEnv`), and T8 covers the gate's two (`SITE_ORIGIN`, `PLAY_PASS_SECRET`). The test Hyperdrive is made with caching turned off, as the live one was (slice 1, Call 3).
 - The seams against the sales spec: an extra carries its game's rating; a split adds people by handle only; a blocked person cannot be added; the store price rule gives $1.09 for $0.99, as the sales spec's example says; the reviews sit on the game's page.
 - The drunk-grandma test: the one new line a visitor can see (Task 4's 503) and Q2's line are short, plain, and say what to do or what is true.
+
+## Second pass: what was added in `293e1c9`
+
+Date: 2026-11-14. Only what `d60a611` and `293e1c9` added: slice A's Tasks 9 to 11 and the changes around them, the slice map's "Signing the apps", and the two seam rows the plan threads agreed. Read beside them on `main` (`5a28504`): `src/routes/+layout.server.ts`, `src/routes/+layout.svelte`, `src/lib/look.css` (`.panel`), `src/lib/server/mail.ts`, `src/lib/server/job-secret.ts`, `src/features/pages/links.ts` and `handle.ts`, `src/features/games/clips.ts`, `prisma/schema/games.prisma`, `tests/fixtures/tiny-game/`, `tests/browser/support/look.ts`, `playwright.config.ts`. No test ran.
+
+Nothing found blocks execution. The names the tasks use are on `main`: `MAX_LINKS` (30, exported through `pages.ts`), `looksLikeVideo`, `hasJobSecret`, `showTheOwner`, the `.panel` class, the six `GameState` values and two `GamePlaysOn` values, `tests/fixtures/tiny-game/`, and the journeys' `JOBS_SECRET`. The seams for the store fee and for `proposeSplit` agree with the first pass's S4 and S5. Branch 3 going before branch 2, so that the ten-minute timer never meets a Worker that runs the whole daily job on it, is right.
+
+| Rank | Found | Fixed in the plans here |
+|---|---|---|
+| Blocks execution | 0 | — |
+| Should fix | 3 | 3 |
+| Note | 4 | 3 (N8 left) |
+
+### S6. The banner's words cannot reach the layout as planned
+
+- Task 9: `TEST_COPY_WORDS` lives in `src/lib/server/copy.ts`, and the line is drawn in `+layout.svelte`. That file is also built for the browser, and SvelteKit refuses to build a browser file that imports anything under `src/lib/server/`.
+- **Fixed:** the layout's data carries `testCopyLine: string | null`, the words or nothing, and the layout imports nothing new.
+
+### S7. "No mail server answers" a `.test` address, but Resend is still asked
+
+- Task 10, Review Focus 7, Call 8. The made-up accounts' addresses end in `.test`, and nothing kept them from the mailer. Any flow that mails an account would hand one to Resend: a statement to a made-up maker from the test copy's money job, or, later, a friend request to a made-up player. Resend either refuses it, so that flow fails, or accepts it and it bounces. A bounce counts against the sending address the test copy shares with the live one (Call 8).
+- **Fixed:** `src/lib/server/mail.ts` never sends to a `.test` address and answers `false`, as it does for the allowlist. This is tested first in `tests/lib/server/mail.test.ts`, as part of Task 10.
+
+### S8. A handle a tester took would stop the seed for good
+
+- Task 10. The test copy is open, so a tester can take a handle or slug before a later `content.json` adds it. The unique index would then fail the seed's one transaction every ten minutes, and nothing new would ever be written.
+- **Fixed:** the seed looks each handle and slug up first, leaves out a maker whose handle a real person holds, with that maker's games, and names it in a new `skipped` field of the answer. It has its own database case.
+
+### Notes
+
+- **N5 (fixed).** The run is keyed on the content's hash only, so a change to the seed's code alone would never run. Now `content.json` carries a `version`, and any change to `write.ts` adds one to it.
+- **N6 (fixed).** On the test copy, the banner pushes full-screen screens (slice 3's feed) down by its height. Task 9 now says so, so those slices' screen reviews expect it.
+- **N7 (fixed, slice map).** Provisioning profiles expire after a year, as certificates do. Now both are tracked. The push key (A7) is made on the developer site's Keys page, not A3's Identifiers page. If Ruken's own download updates itself through Tauri's updater, that needs a key pair of its own, so slice 3's plan now has to say.
+- **N8 (left).** The Signing section's facts (which certificate signs which app; that only the account holder can make a Developer ID certificate; that Play App Signing re-signs Android builds; that the Microsoft Store and Flathub sign their own packages) match what this auditor knows. They were not checked against Apple's, Google's or Microsoft's pages in this pass, and slices 1 and 3 read them from those pages, as the section says.

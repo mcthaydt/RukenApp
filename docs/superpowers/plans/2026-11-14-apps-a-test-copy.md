@@ -143,6 +143,7 @@ Branch 2 is last on purpose. Its `test` environment adds a ten-minute timer, and
 | `src/features/seed/seed.ts`, `content.ts`, `write.ts` (new) | 10 | The made-up content: reading it, checking it, writing it once per change |
 | `src/features/seed/library/` (new) | 10 | `content.json`, the tiny game's files, two clips, and a README saying how each file was made |
 | `prisma/schema/seed.prisma`, `prisma/migrations/<timestamp>_seed_run/migration.sql` (new) | 10 | The `SeedRun` table |
+| `src/lib/server/mail.ts` | 10 | Never sends to a `.test` address |
 | `src/routes/jobs/seed-test-copy/+server.ts` (new), `cloudflare/worker.js` | 11 | The job's address, and the timer that knocks on it |
 | `tests/features/seed/content.test.ts`, `seed.pg.test.ts`, `tests/browser/seed-job.test.ts` (new), `tests/architecture.test.ts` | 10, 11 | |
 | `tests/wrangler.test.ts`, `tests/cloudflare/games-worker.test.ts`, `tests/features/launch/now.test.ts`, `tests/features/membership/services.test.ts` | 1, 3, 5, 6, 7 | |
@@ -158,7 +159,7 @@ The ways this is most likely to hurt someone, most likely first. Each has its te
 5. **`LAUNCH_TEST_SWITCH=on` is typed into the live Worker.** Expected: as today, every page fails instead of the site opening early. Task 5 keeps the existing refusals and adds the live copy's.
 
 6. **The made-up content reaches the live copy.** Expected: it cannot. The job's address answers 404 on the live copy, the function refuses any copy but `test` before it writes a row, and the live Worker has no ten-minute timer. Tasks 10, 11 and 7.
-7. **A made-up account is signed in to, or sent mail.** Expected: neither can happen. It has no password and no sign-in row, and its address ends in `.test`, which no mail server answers. Task 10.
+7. **A made-up account is signed in to, or sent mail.** Expected: neither can happen. It has no password and no sign-in row, and its address ends in `.test`, which the mailer never sends to, whatever flow asks (a statement, a later slice's friend request). Task 10.
 8. **The seed overwrites what a tester did.** Expected: it never deletes, and it writes only rows it made itself. Task 10.
 
 ---
@@ -457,12 +458,12 @@ Branch 1. Owner, 2026-11-14: "Just use a banner on the top of pages".
 - Modify: `src/lib/server/copy.ts`, `src/routes/+layout.server.ts`, `src/routes/+layout.svelte`, `tests/lib/server/copy.test.ts`, `tests/browser/copy.test.ts`
 
 **Interfaces:**
-- Produces: `TEST_COPY_WORDS = "Test copy. Nothing here is real."` in `src/lib/server/copy.ts`; the layout's data gains `testCopy: boolean`.
+- Produces: `TEST_COPY_WORDS = "Test copy. Nothing here is real."` in `src/lib/server/copy.ts`; the layout's data gains `testCopyLine: string | null` (the words on the test copy, `null` on the live one). The words travel in the data because `+layout.svelte` is also built for the browser, and SvelteKit refuses to build a browser file that imports anything under `src/lib/server/`.
 
-**The line.** On the test copy only, the first thing on every page, above the wordmark: a `<p role="note">` with the look's existing `panel` class, holding `TEST_COPY_WORDS`. No new class and no `<style>`. If `panel` cannot sit at the top of the page without a change to `src/lib/look.css`, stop and report: a change to the look is the Owner's to see. Grandma: five words that say what this place is; nothing to press. It is not behind a feature switch (slice S): it is tied to the copy, never shows on the live copy, and the Owner asked for it by name.
+**The line.** On the test copy only, the first thing on every page, above the wordmark: a `<p role="note">` with the look's existing `panel` class, holding `TEST_COPY_WORDS`. No new class and no `<style>`. If `panel` cannot sit at the top of the page without a change to `src/lib/look.css`, stop and report: a change to the look is the Owner's to see. Grandma: five words that say what this place is; nothing to press. The feed (slice 3) and any other full-screen screen still to come sit inside this layout, so the line pushes them down by its height on the test copy only; those slices' screen reviews on the test copy see it. It is not behind a feature switch (slice S): it is tied to the copy, never shows on the live copy, and the Owner asked for it by name.
 
 - [ ] **Step 1 (red):** in `tests/lib/server/copy.test.ts`, `TEST_COPY_WORDS` is exactly `Test copy. Nothing here is real.` (push with it exported as an empty string). In `tests/browser/copy.test.ts`, a journey "the live copy shows no test line": on `/` and on `/sign-in`, `page.getByText("Test copy")` has count 0, and each screen is attached with `showTheOwner`. Expected: `verify` fails in the words case only; the journey passes already, and stays as the guard against the line ever showing on the live copy.
-- [ ] **Step 2 (green):** the constant; `testCopy: readCopy() === "test"` in the layout's `load`; the line in the layout. Push. Expected: all pass.
+- [ ] **Step 2 (green):** the constant; `testCopyLine: readCopy() === "test" ? TEST_COPY_WORDS : null` in the layout's `load`; in the layout, `{#if data.testCopyLine}` around the line, which shows `data.testCopyLine`. The layout imports nothing new. Push. Expected: all pass.
 - [ ] **Step 3:** commit, tick the tracker, report. What no check covers, said plainly in the report: the journeys' site is the live copy, so nothing in CI sees the line showing. The Owner's look at T10 is that check.
 
 ### Task 10: The made-up content
@@ -471,20 +472,21 @@ Branch 3. Owner, 2026-11-14: "I'd prefer a mock database so we can see everythin
 
 **Files:**
 - Create: `src/features/seed/seed.ts`, `content.ts`, `write.ts`, `src/features/seed/library/content.json`, `library/README.md`, `library/tiny-game/` (the three files of `tests/fixtures/tiny-game/`, copied), `library/clips/upright.mp4`, `library/clips/wide.mp4`, `prisma/schema/seed.prisma`, `prisma/migrations/<timestamp>_seed_run/migration.sql`, `tests/features/seed/content.test.ts`, `tests/features/seed/seed.pg.test.ts`
-- Modify: `tests/architecture.test.ts` (`"seed"` is added last in `FEATURE_ORDER`, above `admin`: it writes every feature's tables, and nothing imports it but its job's route)
+- Modify: `src/lib/server/mail.ts`, `tests/lib/server/mail.test.ts` (no mail to a `.test` address), `tests/architecture.test.ts` (`"seed"` is added last in `FEATURE_ORDER`, above `admin`: it writes every feature's tables, and nothing imports it but its job's route)
 
 **Interfaces:**
 - Consumes: `Copy` (Task 1); `PrismaClient`; `FileStore` from `src/lib/files/store.ts`; `Clock`.
 - Produces, from `src/features/seed/seed.ts`:
   - `seedContent(): SeedContent`, where `SeedContent` is `{ makers: SeedMaker[]; players: SeedPlayer[]; games: SeedGame[] }`, read from `library/content.json` and checked.
   - `contentHash(): Promise<string>`: SHA-256, in hex, over `content.json` and every file in `library/tiny-game/` and `library/clips/`, through Web Crypto.
-  - `seedTestCopy(deps: { prisma: PrismaClient; files: FileStore; clock: Clock; copy: Copy }): Promise<{ ran: boolean; contentHash: string }>`.
+  - `seedTestCopy(deps: { prisma: PrismaClient; files: FileStore; clock: Clock; copy: Copy }): Promise<{ ran: boolean; contentHash: string; skipped: string[] }>`.
 
 **What `content.json` holds, at least.** Every name is plainly made up.
 - 8 makers, each with a handle, a name, one line, one of the look's themes and its links. Between them: every theme at least once, one maker with no games, one page with the most links a page may have (`MAX_LINKS`), and one whose name and one line are the longest the forms allow, so a screen's worst case can be seen.
 - 30 players, each with a name.
 - 20 games, each with a slug, a name, one line, its maker's handle, what it plays on and whether it is free to play. Between them: at least 14 live, at least one in every other `GameState` (`draft`, `waiting`, `sent_back`, `taken_off`, `taken_down`), every `GamePlaysOn` value, at least one free game, and one whose name and one line are the longest the forms allow.
 - Every account's address is `<handle or player-n>@seed.ruken.test`. The `.test` ending is kept for names that never resolve, so no mail can reach anyone.
+- **The mailer never tries such an address.** Handing one to Resend would not be silent: it is either refused, so the flow that sent it fails, or accepted and bounced, which counts against the live copy's sending address (Call 8 shares it). So `src/lib/server/mail.ts` gains one rule, beside `MAIL_ALLOWLIST`: an address whose domain ends in `.test` is not sent, and `send` answers `false`, as it does for an address the allowlist keeps out. Test first, in `tests/lib/server/mail.test.ts`: `someone@seed.ruken.test` is not sent and answers `false`, with no call to Resend; `someone@example.com` is sent as today. This is in Step 1 and Step 2 below, and `src/lib/server/mail.ts` and its test join this task's files.
 
 **The files.** The tiny game is what every made-up game runs. The two clips are two-second loops of one flat colour, upright (360 by 640) and wide (640 by 360), made once with `ffmpeg` in the session. `library/README.md` records the exact command for each, each file's size and SHA-256 as measured, and that they were made for Ruken. If the session has no `ffmpeg`, stop and report. The code reads the text files with Vite's `?raw` and the others with `?inline`. If the Worker build or Vitest cannot load them that way, stop and report.
 
@@ -498,6 +500,8 @@ Branch 3. Owner, 2026-11-14: "I'd prefer a mock database so we can see everythin
 5. Answer `{ ran: true, contentHash }`.
 
 It never deletes a row, and never changes a row whose account address does not end in `@seed.ruken.test` or whose maker's does not.
+
+**A handle or slug a tester already took.** The test copy is open, so a tester can take a handle or a game's slug before a later change to `content.json` adds it. Before the transaction, the seed looks each one up; one held by an account that is not made up is left out, with that maker's games, and named in the answer, `{ ran, contentHash, skipped: string[] }`. Without this, the unique index would fail the whole transaction every ten minutes, and nothing new would ever be written. The `SeedRun` row is still added, so the next run does not try again until the content changes.
 
 - [ ] **Step 1 (red):** the two test files, with the three functions as stubs, `content.json` as `{ "makers": [], "players": [], "games": [] }`, and no schema change.
 
@@ -517,7 +521,8 @@ It never deletes a row, and never changes a row whose account address does not e
   - no made-up account has an `Account` row (so none can be signed in to), and a `CaptureMailer` given to the test saw no mail;
   - a second call answers `ran: false`, and no row's `updatedAt` moved;
   - a person who signed up themselves, with a page and a game of their own, is unchanged after a run;
-  - with one game's one line changed in the content (the test passes its own content), the next call answers `ran: true`, that game's row has the new line, and there are still 20 games.
+  - with one game's one line changed in the content (the test passes its own content), the next call answers `ran: true`, that game's row has the new line, and there are still 20 games;
+  - when a person who signed up themselves already has one maker's handle, the call answers `ran: true` with that handle in `skipped`, their page is unchanged, every other maker is written, and that maker's games are not.
 
   Expected: `verify` fails in `content.test.ts` and `postgres` fails in `seed.pg.test.ts`, both on the stubs or the empty content. `browser` passes.
 - [ ] **Step 2 (green):** the content, the files and their README, the schema and migration, the three functions. Push. Expected: all pass, the migrations drift check and the layer rule included.
@@ -576,7 +581,7 @@ No code unless a check fails. Nothing here is typed into the repository.
 - **Every later plan** can ask which copy it is with `readCopy()`, and should need to only at an edge like Tasks 5 and 6. A screen never asks.
 - **Slices 1 to 3 (the shells):** a test build of an app points at the test copy's address and goes out through TestFlight, Google Play's internal testing or Microsoft's private audience; a live build points at the live copy's. The address is a build setting of the shell, not `RUKEN_COPY`, which only a Worker has.
 - **Slice $ (store purchases):** Apple's and Google's sandbox notifications go to the test copy only. A store notification names its environment; the live copy refuses a sandbox one and the test copy refuses a production one, the same way `STRIPE_LIVE` refuses the other mode's events today.
-- **Every slice that adds something a person can see** (a review, a follow, a friend, an achievement, an extra) adds made-up examples of it to `src/features/seed/library/content.json` and to `seedTestCopy`, in its own plan, so the test copy always shows every screen with something in it.
+- **Every slice that adds something a person can see** (a review, a follow, a friend, an achievement, an extra) adds made-up examples of it to `src/features/seed/library/content.json` and to `seedTestCopy`, in its own plan, so the test copy always shows every screen with something in it. The run is keyed on the hash of the content files only, so a change to the seed's code alone never runs again: `content.json` holds a `"version"` number, and any change to `write.ts` adds one to it (a case in `content.test.ts` says so in its name, and checks `version` is a whole number of 1 or more).
 - **Slices 1 to 3** also show the test copy's line in a test build of an app. It comes from the server with every page's data today (Task 9); the static build keeps it.
 - **Slice S (feature switches):** switches are rows in each copy's own database, so a switch turned on in the test copy changes nothing in the live one.
 - **Worth the Owner's eye, left out on purpose:**
