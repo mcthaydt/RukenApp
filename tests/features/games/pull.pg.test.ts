@@ -38,6 +38,8 @@ function fakeGitHub(entries: readonly Entry[]) {
       seen.commits += 1;
       return Promise.resolve(SHA);
     },
+    // Pulling never asks which installation holds a repository; the games service checks that before it pulls.
+    installationOf: () => Promise.resolve(null),
     tarball: async (_repo, commitSha) => {
       seen.tarballs.push(commitSha);
       const tar = await tarGz(entries.map((entry) => ({ ...entry, path: `${TOP}/${entry.path}` })));

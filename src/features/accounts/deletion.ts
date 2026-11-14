@@ -114,6 +114,8 @@ export async function purgeDueAccounts(deps: DeletionDeps): Promise<number> {
       const { email } = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
       await tx.session.deleteMany({ where: { userId } });
       await tx.account.deleteMany({ where: { userId } });
+      // What GitHub said the person can reach is theirs; their repositories go with their installations.
+      await tx.gitHubInstallation.deleteMany({ where: { userId } });
       // A mail link is kept by address, or by the person's id (a password reset), so both are cleared.
       await tx.verification.deleteMany({
         where: { OR: [{ identifier: email }, { value: email }, { value: userId }] },

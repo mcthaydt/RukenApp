@@ -1,4 +1,13 @@
+import { generateKeyPairSync } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
+
+// The Ruken GitHub App's private key, made here each time the config loads and never written to a file. GitHub hands
+// out an app's key as PKCS#1, so the stand-in's journeys use that form too.
+const GITHUB_APP_PRIVATE_KEY = generateKeyPairSync("rsa", {
+  modulusLength: 2048,
+  publicKeyEncoding: { type: "spki", format: "pem" },
+  privateKeyEncoding: { type: "pkcs1", format: "pem" },
+}).privateKey;
 
 // Browser journeys (design section 8) run against the built app, served by `wrangler dev`: the Workers runtime
 // the real site runs in.
@@ -12,6 +21,15 @@ export default defineConfig({
   // journey that cannot find its form says so quickly.
   use: { baseURL: "http://localhost:4173", trace: "off", actionTimeout: 5_000 },
   webServer: [
+    {
+      // A stand-in for GitHub (tests/browser/support/fake-github-server.ts): the sign-in and installation pages, the
+      // lists of a person's installations and repositories, and the app's own calls, so the journeys can connect a
+      // maker's GitHub and pull a game with no network. It is ready when it answers /ready.
+      command: "node tests/browser/support/fake-github-server.ts",
+      url: "http://127.0.0.1:12112/ready",
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
     {
       // A stand-in for Stripe's API and its hosted pages (tests/browser/support/fake-stripe-server.ts), so the
       // journeys can pay and cancel with no network. It is ready when it answers /ready.
@@ -49,6 +67,14 @@ export default defineConfig({
         STRIPE_API_BASE: "http://127.0.0.1:12111",
         // The secret the app signs play passes with, which the game gate checks them with. Plainly fake.
         PLAY_PASS_SECRET: "test-only-play-pass-secret",
+        // Games come from the maker's GitHub, which is the stand-in on this machine. All plainly fake.
+        GITHUB_APP_ID: "1",
+        GITHUB_APP_SLUG: "ruken-test-app",
+        GITHUB_APP_CLIENT_ID: "test-client",
+        GITHUB_APP_CLIENT_SECRET: "test-only-client-secret",
+        GITHUB_APP_PRIVATE_KEY,
+        GITHUB_API_BASE: "http://127.0.0.1:12112",
+        GITHUB_WEB_BASE: "http://127.0.0.1:12112",
         // A game's address in the journeys: `*.localhost` names reach this machine, so a browser can open them.
         GAME_ADDRESS_PATTERN: "http://{name}.localhost:8788",
       },

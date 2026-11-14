@@ -111,3 +111,38 @@ model GameClip {
 
   @@unique([gameId, shape])
 }
+
+/// One installation of the Ruken GitHub App that GitHub said a person can reach: asked of GitHub as that person
+/// (never taken from an address, which anyone can type). A row means: GitHub said this person can reach this
+/// installation. It is a person's data, so the account purge removes it.
+model GitHubInstallation {
+  id             String   @id @default(cuid(2))
+  userId         String
+  /// GitHub's own number for the installation.
+  installationId BigInt
+  /// The person or organisation the app is installed on.
+  accountLogin   String
+  createdAt      DateTime @default(now()) @db.Timestamptz
+  updatedAt      DateTime @updatedAt @db.Timestamptz
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  repositories GitHubRepository[]
+
+  @@unique([userId, installationId])
+  @@index([userId])
+}
+
+/// One repository GitHub said a person can reach through one installation. A row means: GitHub said this person
+/// can reach this repository through that installation.
+model GitHubRepository {
+  id            String   @id @default(cuid(2))
+  connectionId  String
+  /// `owner/name`.
+  fullName      String
+  defaultBranch String
+  createdAt     DateTime @default(now()) @db.Timestamptz
+
+  connection GitHubInstallation @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, fullName])
+}
