@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // The Worker's name. The Owner's empty Worker has the same name (S1), so the first deploy lands on it.
+  "name": "ruken",
+  // Written by `pnpm build` (SvelteKit's Cloudflare adapter).
+  "main": ".svelte-kit/cloudflare/_worker.js",
+  "compatibility_date": "2026-10-01",
+  // Node's crypto, async_hooks and process.env, which sign-in and Prisma's driver need.
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "binding": "ASSETS", "directory": ".svelte-kit/cloudflare" },
+  // One address only: the custom domain the Owner adds in the dashboard. No workers.dev address, no preview addresses.
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  // Cloudflare's connection pool in front of Neon. The id names a setting in the Owner's account; it is not a
+  // credential. Until S1 gives the real one this is thirty-two zeros, which only `wrangler dev` accepts.
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }],
+}

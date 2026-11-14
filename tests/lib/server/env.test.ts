@@ -7,8 +7,8 @@ describe("requireEnv", () => {
   });
 
   it("names the missing setting and where to set it", () => {
-    expect(() => requireEnv("SMTP_URL", {})).toThrow(
-      "Missing setting SMTP_URL. Set it in Netlify's environment settings.",
+    expect(() => requireEnv("RESEND_API_KEY", {})).toThrow(
+      "Missing setting RESEND_API_KEY. Add it as a secret on the Worker in Cloudflare.",
     );
   });
 

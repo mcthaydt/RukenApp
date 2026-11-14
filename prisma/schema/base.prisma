@@ -7,10 +7,23 @@
 // end of the migration SQL and named in a comment beside each model. tests/lib/server/migrations.pg.test.ts
 // and the feature tests cover them.
 
+// Two generators, because a Worker and Node load Prisma's query engine differently: a Worker may not compile
+// WebAssembly from bytes at run time, and Node has no `?module` import. The two clients have the same shape.
+
+// The app, which runs as a Cloudflare Worker.
 generator client {
   provider = "prisma-client"
   // Relative to this file. The folder is ignored by git, Prettier and ESLint: `pnpm generate` makes it.
   output   = "../../src/lib/server/generated/prisma"
+  runtime  = "workerd"
+}
+
+// The tests, which run in Node on GitHub's runners.
+generator nodeClient {
+  provider = "prisma-client"
+  // Ignored the same way as the app's folder.
+  output   = "../../tests/support/generated/prisma"
+  runtime  = "nodejs"
 }
 
 datasource db {

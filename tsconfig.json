@@ -21,8 +21,17 @@
     "erasableSyntaxOnly": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
+    // Must stay true: worker-configuration.d.ts declares the Workers versions of Request, Response and the
+    // like beside the browser's, and they agree only because declaration files are not checked.
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "tests", "vite.config.ts", "playwright.config.ts", "prisma.config.ts"]
+  "include": [
+    "src",
+    "tests",
+    "vite.config.ts",
+    "playwright.config.ts",
+    "prisma.config.ts",
+    "worker-configuration.d.ts"
+  ]
 }

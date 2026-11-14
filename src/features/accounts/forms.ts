@@ -177,7 +177,8 @@ export async function signUpWithPassword(
   if (response.status === 422) return fail(400, { ...kept, error: FORM_MESSAGES.accountExists });
   if (!response.ok) return otherFailure(response, kept);
 
-  const { user } = (await response.json()) as { user: { id: string } };
+  // `json<T>()` is how the Workers types let a body be read as a known shape.
+  const { user } = await response.json<{ user: { id: string } }>();
   await deps.setBirthDate(user.id, date);
   redirect(303, safeNextPath(form.next));
 }
@@ -261,7 +262,7 @@ export async function callAuth(
 /** The `code` better-auth puts in an error body (like INVALID_TOKEN), or undefined when there is none. */
 async function errorCodeOf(response: Response): Promise<string | undefined> {
   try {
-    const body = (await response.clone().json()) as { code?: unknown };
+    const body = await response.clone().json<{ code?: unknown }>();
     return typeof body.code === "string" ? body.code : undefined;
   } catch {
     return undefined;
