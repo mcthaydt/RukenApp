@@ -240,6 +240,54 @@ Drawn at 852 × 393. Owner, 2026-11-14: "we have wayyyy too much empty space on 
    - A maker's page (address, photo, line about her, colours) is not part of a game's review; it is live when saved and moderated through Report (main design 5.3). So it has no rows here. If the Owner wants page details reviewed and marked the same way, that changes 5.3 and needs their words.
 7. **Your games have thumbnails** ("Show a thumbnail for Your games"). Each game's card carries a still from its wide video on the left, 96 × 54 on a phone and 128 × 72 on a computer. A game with no video yet shows a plain sage block.
 
+## 5b. Check and send and Sent back, audited and redone
+
+Owner, 2026-11-14: "Audit check and send and sent back, they still read as poor UX/UI to me, but we're much much closer; also they look like screenshots and not videos you can preview".
+
+### What read poorly
+
+Looked at in all five sizes, as a tired stranger, and beside how Typeform ends a form and how upload and review screens in YouTube Studio, TikTok and App Store Connect are laid out (from memory of those products; none was opened for this).
+
+Check and send:
+
+- **Nothing led.** The heading, a small preview and a seven-row list had about the same weight. Those products lead with the thing itself, playing, and put the facts beside it.
+- **The preview was a still picture**, 480 wide on a computer, smaller than the heading above it.
+- **The list was loose.** Seven rows of two lines each, label over answer, with Change at the far right edge of a wide sheet, a long way from the answer it changes.
+- **On a phone** the preview and seven tall rows made a long scroll before anything could be compared.
+- On an upright tablet the list ran under the fold with its last rows cut off.
+
+Sent back:
+
+- **The one thing to fix was a red line in a list of seven**, fifth from the top, below the fold on a computer and on a sideways phone. She had to hunt for it.
+- **Six green "Accepted" lines were as loud as the one red one.** Green everywhere reads as noise, and the red drowns.
+- **The fix was a link called Change**, the same as on the six rows that needed nothing.
+- **"Send it again" was Blue before anything was fixed**, so the obvious next press was the wrong one.
+- The sentence under "What to fix" and the red line said the same thing twice, in two places.
+
+### Check and send, now
+
+- **The preview leads.** It is the biggest thing on the screen and it plays: her clip as the feed will show it, with her address, the name, the line and Play over it. "How members will see it in the feed." under it.
+- **Beside it, in this order**: "Last step", the heading, the one Blue button ("Send for review", with "press Enter ↵" on a computer), then the answers.
+- **The answers are a tidy list**, one line each on a computer, a sideways tablet and a sideways phone: what it is (soft ink, a fixed column 190 wide on a computer), what she said, Change. Seven rows fit without scrolling on a computer. The two video rows carry a small playing-size still.
+- On a phone and an upright tablet each row is two short lines (the label small, the answer under it) with Change at the right.
+- **Layouts.** Computer and sideways tablet: preview on the left (520 and 460 wide), heading, button and list on the right. Upright tablet: heading and button on top, then the upright preview (240 wide) beside the list. Phone: heading, upright preview, list, with Send in the bottom bar. Sideways phone: as the sideways tablet, the list scrolling inside itself.
+
+### Sent back, now
+
+- **It leads with only what needs fixing.** Under the name and "Sent back": "One thing to fix. Then send it again."
+- **Each thing to fix is a red card** (`pip`, white words, 5.21:1 measured): what it is in Young Serif ("Upright video", or "Name: Floor Fifty"), the reason in plain words, the video itself playing if it is a video, and "Fix this". The whole card is the button. It opens that one question and comes straight back.
+- **The Blue button names the fix**: "Fix the upright video", "Fix the name". It does what the first red card does. "Send it again" is not offered while something is red.
+- **What passed is folded away in green**: one Dusky Green card (white words, 9.52:1 measured), "6 accepted", with "Show". Opened, it is the same tidy list, each row with Change.
+- **Once everything is fixed** the red cards go, the line reads "Fixed. Send it again when you're ready.", the green card opens as "All 7 ready to send", and the Blue button becomes "Send it again".
+- This replaces the marks on every row described in section 5a, note 6: red and green are now two kinds of card, not a word on each row. The Owner's rule is unchanged: every item, not only videos, is either accepted or sent back with a reason.
+- Layouts. Computer, sideways tablet, sideways phone: heading, line and Blue button on the left, the cards on the right. Upright tablet and phone: stacked, with the Blue button in the phone's bottom bar.
+
+### The videos on the board are real
+
+Every video on the board is now a `<video>` that plays: on the two video questions, in the feed preview, on the red card, in the lists and on Your games. They loop without sound, as the feed does (main design 5.1). Tapping the video on its question opens it full size with the browser's own play, pause and scrub controls. With reduced motion a video does not start by itself.
+
+The clip is a sample made for the board: a white block hopping up a tower, 3 seconds, drawn on a canvas at 24 frames a second and encoded with ffmpeg, upright (270 × 480) and wide (480 × 270), as MP4 (15,239 and 14,995 bytes) with a WebM copy (18,117 and 19,629 bytes) for browsers without MP4. Sizes measured from the files. They are inside the board's page; nothing is fetched.
+
 ## 6. The main design's 5.7: one run, one counter
 
 Owner, 2026-11-14: "13. A". 5.7 gave a new maker three steps with a "Step 1 of 3" line: the short address, the page, the first game. They are now the first questions of the same run, with the one counter. The "Step 1 of 3" line goes. Slice 4 builds them.
@@ -277,6 +325,7 @@ Answered: the agreement's date line, "A" (section 5). The delete button, "delete
 
 ## 9. What was looked at, and what was not
 
+- Fourth round, Check and send and Sent back: both screens looked at in all five sizes before and after, in Sent back's three states (the video sideways, the name rude, after the fix). The videos played in the test browser (it used the WebM copy; the MP4 copy was checked with ffprobe only, not played). No script errors. Typeform, YouTube Studio, TikTok and App Store Connect were compared from memory, not opened.
 - Third round, after the Owner's seven notes: every screen walked again in all five sizes, with a video added and opened full size; no script errors, nothing sideways on a 400-wide viewer. The agreement's seven points were copied from `src/features/make/library/maker-agreement-v1.txt` on `slice-2/submit`. The last two small fixes (the preview's shape on an upright tablet, a game card's words on an upright tablet) were not looked at again after they were made.
 - Tablet and sideways phone: every screen of the board looked at in all five sizes, one walk-through, no script errors.
 - Second round. Looked at: every stop of the first board (15 screens, each on the phone and in the 1280 × 800 window), then every screen of the new board the same way, with the first-game run of 10, the refusal on the name, GitHub connected, a video added and a choice picked. No script errors, nothing sideways on a 400-wide phone. Step movement was looked at with reduced motion on only; the moving version was not recorded.
