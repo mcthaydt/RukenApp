@@ -38,7 +38,9 @@ model LedgerPeriod {
   finalAt   DateTime?         @db.Timestamptz
   createdAt DateTime          @default(now()) @db.Timestamptz
 
-  entries JournalEntry[]
+  entries    JournalEntry[]
+  poolRun    PoolRun?
+  statements Statement[]
 }
 
 /// One thing that happened to the money, with the lines that say where it went. Added and never changed.
@@ -228,4 +230,96 @@ model PlayDay {
 
   @@unique([day, userId, gameId])
   @@index([day])
+}
+
+/// What a month's pool is shared by: the games' play, or the bringing bonus.
+enum PoolShareKind {
+  play
+  bringing
+}
+
+/// What a line of a maker's statement is: a game's share, a bringing bonus, money sent to the maker's bank, what Stripe
+/// charged for sending it, or a correction.
+enum StatementLineSource {
+  play
+  bringing
+  transfer
+  payout_cost
+  correction
+}
+
+/// The month's pool, shared once. `poolCents` is the makers' half as it stood, `carryCents` the part that moves on to
+/// the next month (when members paid and nobody played), `members` how many members' money was in it, and
+/// `inputsHash` a hash of what it was worked out from. Added and never changed. Trigger: PoolRun_append_only.
+model PoolRun {
+  period     String   @id
+  poolCents  BigInt
+  carryCents BigInt
+  members    Int
+  inputsHash String
+  sharedAt   DateTime @db.Timestamptz
+  createdAt  DateTime @default(now()) @db.Timestamptz
+
+  ledgerPeriod LedgerPeriod @relation(fields: [period], references: [period], onDelete: Restrict)
+  shares       PoolShare[]
+}
+
+/// One share of a month's pool: a game's (with its seconds of members' play) or a maker's bringing bonus (with the
+/// members it is for). Added and never changed. CHECK: PoolShare_kind_check. Triggers: PoolShare_append_only. Partial
+/// unique indexes, which Prisma cannot express: PoolShare_play_key (one play share for a game and a month) and
+/// PoolShare_bringing_key (one bringing share for a maker and a month).
+model PoolShare {
+  id          String        @id @default(cuid(2))
+  period      String
+  kind        PoolShareKind
+  makerUserId String
+  gameId      String?
+  weight      BigInt
+  amountCents BigInt
+  /// Members' counted play on the game that month, for a play share.
+  seconds     Int?
+  /// The members a bringing bonus is for.
+  members     Int?
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+
+  poolRun PoolRun @relation(fields: [period], references: [period], onDelete: Restrict)
+  maker   User    @relation(fields: [makerUserId], references: [id], onDelete: Restrict)
+  game    Game?   @relation(fields: [gameId], references: [id], onDelete: Restrict)
+
+  @@index([makerUserId])
+}
+
+/// What one maker was shown for one month, as it was made final: the document, and a hash of it. Added and never
+/// changed. Trigger: Statement_append_only.
+model Statement {
+  id          String   @id @default(cuid(2))
+  makerUserId String
+  period      String
+  document    Json
+  totalsHash  String
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  maker        User            @relation(fields: [makerUserId], references: [id], onDelete: Restrict)
+  ledgerPeriod LedgerPeriod    @relation(fields: [period], references: [period], onDelete: Restrict)
+  lines        StatementLine[]
+
+  @@unique([makerUserId, period])
+}
+
+/// One line of a statement, kept as a row so a maker's lines can be searched and questioned. Added and never changed.
+/// Trigger: StatementLine_append_only.
+model StatementLine {
+  id          String              @id @default(cuid(2))
+  statementId String
+  source      StatementLineSource
+  gameId      String?
+  /// What the line is about, in the statement's own words' key: a game's slug, a payout's id, a correction's key.
+  ref         String
+  amountCents BigInt
+  createdAt   DateTime            @default(now()) @db.Timestamptz
+
+  statement Statement @relation(fields: [statementId], references: [id], onDelete: Restrict)
+  game      Game?     @relation(fields: [gameId], references: [id], onDelete: Restrict)
+
+  @@index([statementId])
 }

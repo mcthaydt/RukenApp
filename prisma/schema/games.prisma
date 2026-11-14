@@ -74,6 +74,10 @@ model Game {
   journalEntries JournalEntry[]
   playDays       PlayDay[]
 
+  // The money feature's pool shares and statement lines can name a game; they are declared in money.prisma.
+  poolShares     PoolShare[]
+  statementLines StatementLine[]
+
   @@index([makerUserId])
 }
 
