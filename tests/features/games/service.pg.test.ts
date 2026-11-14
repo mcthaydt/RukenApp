@@ -295,54 +295,10 @@ async function addBothClips(gameId: string): Promise<void> {
   await service.saveClip(gameId, "wide", { contentType: "video/mp4", bytes: mp4Bytes() });
 }
 
-const NOT_READY = "A game needs its files, an upright clip and a wide clip before it can go live.";
-
-describe("goLive", () => {
-  it("refuses a game with no wide clip, and it stays a draft", async () => {
-    const game = await newGame();
-    const pullId = await addPull(game.id);
-    await service.saveClip(game.id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
-
-    await expect(service.goLive(game.id, pullId)).rejects.toMatchObject({
-      code: "NOT_READY",
-      message: NOT_READY,
-    });
-    expect(await db().game.findUniqueOrThrow({ where: { id: game.id } })).toMatchObject({
-      state: "draft",
-      livePullId: null,
-    });
-  });
-
-  it("refuses a pull that belongs to another game", async () => {
-    const game = await newGame();
-    await addBothClips(game.id);
-    const otherPull = await addPull((await newGame()).id);
-
-    await expect(service.goLive(game.id, otherPull)).rejects.toMatchObject({
-      code: "NOT_READY",
-      message: NOT_READY,
-    });
-    await expect(service.goLive(game.id, "no-such-pull")).rejects.toMatchObject({ code: "NOT_READY" });
-  });
-
-  it("makes the game live on that pull, and forgets why it was sent back", async () => {
-    const game = await newGame();
-    await addBothClips(game.id);
-    const pullId = await addPull(game.id);
-    await db().game.update({
-      where: { id: game.id },
-      data: { state: "sent_back", stateReason: "Fix the sound." },
-    });
-
-    await service.goLive(game.id, pullId);
-
-    expect(await db().game.findUniqueOrThrow({ where: { id: game.id } })).toMatchObject({
-      state: "live",
-      livePullId: pullId,
-      stateReason: null,
-    });
-  });
-});
+/** Puts a game live on a pull, as an accepted review leaves it (review.pg.test.ts proves the review itself). */
+async function makeLive(gameId: string, pullId: string): Promise<void> {
+  await db().game.update({ where: { id: gameId }, data: { state: "live", livePullId: pullId } });
+}
 
 describe("liveGameBySlug", () => {
   it("is null for a draft and for an address that is nobody's", async () => {
@@ -355,7 +311,7 @@ describe("liveGameBySlug", () => {
     const game = await newGame();
     await addBothClips(game.id);
     const pullId = await addPull(game.id, ["api.example.com"]);
-    await service.goLive(game.id, pullId);
+    await makeLive(game.id, pullId);
     const clips = await db().gameClip.findMany({ where: { gameId: game.id } });
     const keyOf = (shape: string) => clips.find((clip) => clip.shape === shape)?.key;
 

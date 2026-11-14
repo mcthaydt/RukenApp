@@ -1,6 +1,6 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { FileStore } from "../../lib/files/store.ts";
-import type { ClipShape, GamePlaysOn, PrismaClient } from "../../lib/server/db.ts";
+import type { ClipShape, GamePlaysOn, GameState, PrismaClient } from "../../lib/server/db.ts";
 import { clipKeyFor, clipProblem, type ClipContentType } from "./clips.ts";
 import { GameError } from "./game-error.ts";
 import type { Connection } from "./github-connect.ts";
@@ -44,6 +44,37 @@ export interface CreateGameInput {
   playsOn: GamePlaysOn;
   repo: { fullName: string; branch: string | null; folder: string };
   connectHosts: string[];
+}
+
+/** What the maker's list shows for a game: its name and where it stands, in words. */
+export interface MakerGameRow {
+  slug: string;
+  name: string;
+  words: string;
+}
+
+/** What a game's page in the maker's area shows. Sizes are measured from the pull; nobody types them. */
+export interface MakerGame {
+  id: string;
+  slug: string;
+  publicId: string;
+  name: string;
+  state: GameState;
+  words: string;
+  repoFullName: string;
+  repoBranch: string | null;
+  repoFolder: string;
+  connectHosts: string[];
+  /** The words of the last pull's refusal, or null. */
+  pullProblem: string | null;
+  newestPull: { id: string; fileCount: number; totalBytes: number } | null;
+  clips: { upright: boolean; wide: boolean };
+}
+
+/** What staff see of a game waiting for review: the maker's view, and the files that wait. */
+export interface ReviewGame extends MakerGame {
+  pending: { id: string; fileCount: number; totalBytes: number; connectHosts: string[] } | null;
+  clipKeys: { upright: string | null; wide: string | null };
 }
 
 const NAME_MAX = 60;
@@ -192,26 +223,39 @@ export function createGamesService(deps: GamesServiceDeps) {
     return pullGame(deps, gameId);
   }
 
-  /**
-   * Makes a game live on one of its pulls. Sending for review and accepting replace this; until they exist it is what
-   * puts a game on the site. The pull must be this game's, and both clips must be there.
-   */
-  async function goLive(gameId: string, pullId: string): Promise<void> {
-    const [pull, clipCount] = await Promise.all([
-      deps.db.gamePull.findFirst({ where: { id: pullId, gameId }, select: { id: true } }),
-      // A game has at most one clip of each shape, so two clips are one of each.
-      deps.db.gameClip.count({ where: { gameId } }),
-    ]);
-    if (pull === null || clipCount < 2) {
-      throw new GameError(
-        "NOT_READY",
-        "A game needs its files, an upright clip and a wide clip before it can go live.",
-      );
-    }
-    await deps.db.game.update({
-      where: { id: gameId },
-      data: { state: "live", livePullId: pullId, stateReason: null },
-    });
+  /** Sends a game's newest files for review (stub). */
+  function sendForReview(gameId: string, makerUserId: string): Promise<void> {
+    return Promise.reject(new Error(`not built yet: sendForReview ${gameId} ${makerUserId}`));
+  }
+
+  /** Staff's yes (stub). */
+  function accept(gameId: string, staffUserId: string): Promise<void> {
+    return Promise.reject(new Error(`not built yet: accept ${gameId} ${staffUserId}`));
+  }
+
+  /** Staff's no, with what to fix (stub). */
+  function sendBack(gameId: string, staffUserId: string, reason: string): Promise<void> {
+    return Promise.reject(new Error(`not built yet: sendBack ${gameId} ${staffUserId} ${reason}`));
+  }
+
+  /** Games waiting for a person's yes, oldest first (stub). */
+  function waitingGames(): Promise<{ slug: string; name: string; makerEmail: string; sentAt: Date }[]> {
+    return Promise.reject(new Error("not built yet: waitingGames"));
+  }
+
+  /** A maker's games for their list (stub). */
+  function gamesOf(makerUserId: string): Promise<MakerGameRow[]> {
+    return Promise.reject(new Error(`not built yet: gamesOf ${makerUserId}`));
+  }
+
+  /** One of a maker's games for its page, or null (stub). */
+  function gameForMaker(slug: string, makerUserId: string): Promise<MakerGame | null> {
+    return Promise.reject(new Error(`not built yet: gameForMaker ${slug} ${makerUserId}`));
+  }
+
+  /** A game for staff, or null (stub). */
+  function gameForReview(slug: string): Promise<ReviewGame | null> {
+    return Promise.reject(new Error(`not built yet: gameForReview ${slug}`));
   }
 
   /** The game at `/g/<slug>`, only while it is live. */
@@ -294,7 +338,13 @@ export function createGamesService(deps: GamesServiceDeps) {
     saveClip,
     createGame,
     pullLatest,
-    goLive,
+    sendForReview,
+    accept,
+    sendBack,
+    waitingGames,
+    gamesOf,
+    gameForMaker,
+    gameForReview,
     liveGameBySlug,
     rememberConnection,
     repositoriesFor,
