@@ -9,12 +9,14 @@ import { token } from "../../../support/look-tokens.ts";
 
 const LIBRARY = new URL("../../../../src/features/pages/library/", import.meta.url);
 const read = (name: string) => readFileSync(new URL(name, LIBRARY));
-const source = JSON.parse(read("colours-source.json").toString("utf8")) as {
-  package: string;
-  version: string;
-  sha256: string;
-  bytes: number;
-};
+/** The source record, read when a test asks, so a missing record fails its own test and not the whole file. */
+const sourceRecord = () =>
+  JSON.parse(read("colours-source.json").toString("utf8")) as {
+    package: string;
+    version: string;
+    sha256: string;
+    bytes: number;
+  };
 
 /** How many colours a combination holds, for each number from 1 to 348. */
 const sizes = Array.from({ length: 348 }, (_, index) => coloursOf(index + 1).length);
@@ -75,6 +77,7 @@ describe("the book's colours", () => {
 describe("the data file's record", () => {
   it("is the file its source record names", () => {
     const file = read("colours.json");
+    const source = sourceRecord();
     expect(source.package).toBe("dictionary-of-colour-combinations");
     expect(source.version).toBe("1.0.2");
     expect(file.length).toBe(source.bytes);
