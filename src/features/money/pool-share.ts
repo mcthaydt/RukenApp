@@ -52,3 +52,12 @@ export function poolContributions(payment: Payment): PoolContribution[] {
   );
   return months.map((period) => ({ period, amount: shares.get(period) ?? 0n }));
 }
+
+/**
+ * How much of a payment's part of a month still counts toward a member's weight in the pool: the part times what was
+ * not handed back over what was paid, rounded down to a whole cent. A refund, or a dispute that is open or was lost,
+ * hands money back; a dispute that was won does not. Handing back all of it, or more, leaves nothing.
+ */
+export function keptWeight(part: bigint, gross: bigint, handedBack: bigint): bigint {
+  throw new Error(`not built yet: keptWeight(${String(part)}, ${String(gross)}, ${String(handedBack)})`);
+}

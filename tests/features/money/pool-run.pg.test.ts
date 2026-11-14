@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { requestDeletion, purgeDueAccounts } from "../../../src/features/accounts/deletion.ts";
 import { parsePeriod } from "../../../src/features/money/period.ts";
-import { poolFor, sharePool } from "../../../src/features/money/pool-run.ts";
+import { membersOf, poolFor, sharePool } from "../../../src/features/money/pool-run.ts";
+import { postReversals } from "../../../src/features/money/reversals.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { fakeMoneyStripe } from "../../support/fake-money-stripe.ts";
@@ -254,5 +255,145 @@ describe("sharePool", () => {
 
   it("keeps the books balanced", async () => {
     await expectBooksBalanced(db());
+  });
+});
+
+describe("a member's weight after refunds and disputes (Owner, 2026-11-14)", () => {
+  // A monthly payment of $10.81 puts 469 cents in its month's pool. A member's weight is that part times what was not
+  // handed back over what was paid, rounded down. Each test works in a month of its own; the reversal rows are what
+  // the daily job keeps from Stripe, written here as it would write them.
+
+  function membersIn(period: string) {
+    return db().$transaction((tx) => membersOf(tx, parsePeriod(period)));
+  }
+
+  /** One member who paid in `month` and played, and the invoice the reversal rows will name. */
+  async function aMember(month: string, invoice: string, otherInvoice?: string): Promise<string[]> {
+    const game = await addGame(db());
+    const clock = new TestClock(`${month}-20T12:00:00Z`);
+    const members: MonthMember[] = [invoice, ...(otherInvoice === undefined ? [] : [otherInvoice])].map(
+      (name) => ({
+        payment: monthly(name, month),
+        broughtBy: null,
+        plays: [{ gameId: game.gameId, seconds: 600 }],
+      }),
+    );
+    return aMonth(db(), stripe, clock, members);
+  }
+
+  function addReversal(
+    invoice: string,
+    id: string,
+    kind: "refund" | "chargeback_opened" | "chargeback_won" | "chargeback_lost",
+    amountCents: bigint,
+    at: string,
+  ) {
+    return db().stripeReversal.create({
+      data: {
+        id,
+        kind,
+        stripeInvoiceId: invoice,
+        amountCents,
+        feeCents: 0n,
+        returnedCents: 0n,
+        balanceTransactionIds: [],
+        at: new Date(at),
+      },
+    });
+  }
+
+  it("weighs a member who was fully refunded as nothing", async () => {
+    const [refunded, kept] = await aMember("2028-02", "in_r1a", "in_r1b");
+    await addReversal("in_r1a", "refund:re_r1a", "refund", 1081n, "2028-02-12T12:00:00Z");
+    const weights = Object.fromEntries((await membersIn("2028-02")).map((m) => [m.userId, m.contribution]));
+    expect(weights[refunded ?? ""]).toBe(0n);
+    expect(weights[kept ?? ""]).toBe(469n); // someone else's refund changes nothing here
+  });
+
+  it("halves the weight of a member refunded half, rounded down", async () => {
+    await aMember("2028-03", "in_r2");
+    await addReversal("in_r2", "refund:re_r2", "refund", 540n, "2028-03-12T12:00:00Z");
+    // 541 of 1081 is kept: 469 × 541 / 1081 = 234.72, so 234.
+    expect((await membersIn("2028-03")).map((m) => m.contribution)).toEqual([234n]);
+  });
+
+  it("adds up several refunds of one payment, and never goes below nothing", async () => {
+    await aMember("2028-04", "in_r3");
+    await addReversal("in_r3", "refund:re_r3a", "refund", 700n, "2028-04-12T12:00:00Z");
+    await addReversal("in_r3", "refund:re_r3b", "refund", 700n, "2028-04-13T12:00:00Z");
+    expect((await membersIn("2028-04")).map((m) => m.contribution)).toEqual([0n]);
+  });
+
+  it("weighs a member whose dispute was lost like a refund of the same money", async () => {
+    await aMember("2028-05", "in_r4");
+    await addReversal("in_r4", "dispute:dp_r4:opened", "chargeback_opened", 540n, "2028-05-12T12:00:00Z");
+    await addReversal("in_r4", "dispute:dp_r4:lost", "chargeback_lost", 540n, "2028-05-20T12:00:00Z");
+    expect((await membersIn("2028-05")).map((m) => m.contribution)).toEqual([234n]); // the 540 of the half refund
+  });
+
+  it("weighs a member with a dispute still open as if it were lost, until it is won", async () => {
+    await aMember("2028-06", "in_r5");
+    await addReversal("in_r5", "dispute:dp_r5:opened", "chargeback_opened", 1081n, "2028-06-12T12:00:00Z");
+    expect((await membersIn("2028-06")).map((m) => m.contribution)).toEqual([0n]);
+  });
+
+  it("puts the weight back when a dispute is won", async () => {
+    await aMember("2028-07", "in_r6");
+    await addReversal("in_r6", "dispute:dp_r6:opened", "chargeback_opened", 1081n, "2028-07-12T12:00:00Z");
+    await addReversal("in_r6", "dispute:dp_r6:won", "chargeback_won", 1081n, "2028-08-20T12:00:00Z");
+    expect((await membersIn("2028-07")).map((m) => m.contribution)).toEqual([469n]);
+  });
+
+  it("shares a month without the play of a member who was refunded in full", async () => {
+    // Task 8's refund step, through the database, in a database of its own: posting reversals posts every one kept.
+    // A (brought by X, played X's game) and B (nobody brought them, played Y's game) each put 469 in the pool. A is
+    // refunded in full: the refund takes back A's 469 and half of what Stripe kept (the 61-cent card fee, 31 rounded
+    // up) from the pool, which is then 469 + 469 − 469 − 31 = 438. A weighs nothing, so X has no bonus and no play
+    // counted for X's game, and Y's game takes the whole 438.
+    const own = await startTestDatabase();
+    const prisma = own.prisma;
+    try {
+      const x = await addGame(prisma);
+      const y = await addGame(prisma);
+      const clock = new TestClock("2028-09-20T12:00:00Z");
+      await aMonth(prisma, stripe, clock, [
+        {
+          payment: monthly("in_r7a", "2028-09"),
+          broughtBy: x.makerUserId,
+          plays: [{ gameId: x.gameId, seconds: 3600 }],
+        },
+        {
+          payment: monthly("in_r7b", "2028-09"),
+          broughtBy: null,
+          plays: [{ gameId: y.gameId, seconds: 3600 }],
+        },
+      ]);
+      await prisma.stripeReversal.create({
+        data: {
+          id: "refund:re_r7a",
+          kind: "refund",
+          stripeInvoiceId: "in_r7a",
+          amountCents: 1081n,
+          feeCents: 0n,
+          returnedCents: 0n,
+          balanceTransactionIds: [],
+          at: new Date("2028-09-15T12:00:00Z"),
+        },
+      });
+      expect(await postReversals({ db: prisma, clock })).toEqual({ posted: 1 });
+      expect((await balancesOf(prisma))["pool:premium:2028-09"]).toBe(-438n);
+
+      await share("2028-09", "2028-10-10T12:00:00Z", prisma);
+      const balances = await balancesOf(prisma);
+      expect(balances[`maker:${y.makerUserId}:payable`]).toBe(-438n);
+      expect(balances[`maker:${x.makerUserId}:payable`]).toBeUndefined();
+      expect(balances["pool:premium:2028-09"] ?? 0n).toBe(0n);
+      expect(await prisma.poolRun.findUniqueOrThrow({ where: { period: "2028-09" } })).toMatchObject({
+        members: 1,
+      });
+      await expectBooksBalanced(prisma);
+    } finally {
+      await own.stop();
+    }
   });
 });
