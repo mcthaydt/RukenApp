@@ -37,7 +37,7 @@ We give money back only when the law says we must:
 
 1. **We charged you by mistake.** For example, we charged you after you had cancelled. Write to us and we'll put it right.
 2. **You live in the EU or the UK** [LAWYER TO CONFIRM; does not apply if memberships are sold in the US only, Owner question 3]. The law gives you 14 days from joining to change your mind. When you join, you ask us to start your membership straight away. If you change your mind within the 14 days, we keep the part for the days you had, and give back only the rest. After 14 days, there is no money back. To change your mind, write to contact@ruken.io within the 14 days.
-3. **You were under 18 when you paid** [LAWYER TO CONFIRM; depends on Owner question 2]. Where the law lets someone under 18 undo a purchase, write to us.
+3. **You were under 18 when you paid** [LAWYER TO CONFIRM]. Where the law lets someone under 18 undo a purchase, write to us.
 4. **Any other right the law gives you** that can't be taken away. Nothing on this page takes those away.
 
 We don't give money back for anything else. That includes: not playing, playing less than you planned, forgetting to cancel, a game leaving Ruken, a game not working on your device, or changing your mind after 14 days.

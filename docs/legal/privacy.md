@@ -149,7 +149,7 @@ If you think a child under 13 has an account, please tell us at contact@ruken.io
 
 - We keep the same things about you as about anyone else, and nothing more. We only keep the day you turn 18, not your date of birth.
 - We never use your data for ads, and we never sell it.
-- [Depends on Owner question 2: whether you can buy a membership, and whether a parent is asked first.]
+- To buy a membership, you tick a box saying a parent or guardian says yes. We keep that you ticked it, and when.
 
 ## Changes to this page
 

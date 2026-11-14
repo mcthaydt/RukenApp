@@ -29,11 +29,15 @@ You must be **13 or older** to make an account.
 
 When you sign up, we ask for your date of birth. If you are under 13, we don't make the account, and we keep nothing you typed.
 
-**If you are 13 to 17** [LAWYER TO CONFIRM; the Owner chooses one of these, `research.md` question 2]:
+**If you are 13 to 17** [LAWYER TO CONFIRM; Owner, 2026-11-14: "add a my parents say yes tick"]:
 
-- *Option A (recommended):* You can make an account, watch and play free games. You can't buy a membership until you are 18.
-- *Option B:* You can buy a membership once a parent or guardian agrees. We email them, and they press a link to say yes. They agree to these terms for you, and they are responsible for the payments.
-- *Option C:* To buy a membership, you must have a parent or guardian's permission. They agree to these terms for you, and they are responsible for the payments.
+- You can make an account, watch, and play free games.
+- To buy a membership, a parent or guardian must say yes first. When you join, you tick a box that says they did.
+- By saying yes, your parent or guardian agrees to these terms for you, and agrees to the payments.
+
+The tick, shown only to people under 18, before the Join button works:
+
+> [ ] My parent or guardian says yes. They know it costs $9.99 a month (or $99 a year) and renews until it's cancelled.
 
 ## Your account
 
