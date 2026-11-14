@@ -26,8 +26,8 @@ function fakeStripe(answers: { invoice?: unknown; intent?: unknown; run?: unknow
     charges: { retrieve: vi.fn((): Promise<unknown> => Promise.resolve(BARE_CHARGE)) },
     reporting: {
       reportTypes: {
-        retrieve: vi.fn(
-          (): Promise<unknown> => Promise.resolve({ data_available_start: 1_000, data_available_end: 5_000 }),
+        retrieve: vi.fn((): Promise<unknown> =>
+          Promise.resolve({ data_available_start: 1_000, data_available_end: 5_000 }),
         ),
       },
       reportRuns: {

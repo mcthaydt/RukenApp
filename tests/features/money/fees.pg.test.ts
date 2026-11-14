@@ -6,8 +6,14 @@ import { parsePeriod } from "../../../src/features/money/period.ts";
 import { closePeriod } from "../../../src/features/money/periods.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
-import { feeRow, fakeMoneyStripe } from "../../support/fake-money-stripe.ts";
-import { addMembershipPayment, expectBooksBalanced, movedBy } from "../../support/ledger.ts";
+import { fakeMoneyStripe } from "../../support/fake-money-stripe.ts";
+import {
+  addMembershipPayment,
+  expectBooksBalanced,
+  movedBy,
+  postedPayment as postPaymentOnClock,
+  storedFeeRows,
+} from "../../support/ledger.ts";
 import { TestClock } from "../../support/test-clock.ts";
 
 // Taking Stripe's other fees off the top. Each test pays for an invoice of its own, in a month of its own, and reads how
@@ -33,36 +39,18 @@ const stripe = fakeMoneyStripe();
 const MONTHLY = { gross: 1081n, tax: 82n, cardFee: 61n, plan: "monthly" } as const;
 
 /** A payment made and posted, on a clock that stands at `now`. */
-async function postedPayment(
+function postedPayment(
   invoice: string,
   paidAt: string,
   now: TestClock,
   more: { plan?: "monthly" | "annual"; gross?: bigint; tax?: bigint; cardFee?: bigint } = {},
 ): Promise<void> {
-  await addMembershipPayment(db(), stripe, { ...MONTHLY, ...more, invoice, paidAt });
-  await postUnpostedPayments({ db: db(), clock: now, stripe });
+  return postPaymentOnClock(db(), stripe, now, { ...MONTHLY, ...more, invoice, paidAt });
 }
 
-let runs = 0;
-
-/** A fee report run that was stored at `storedAt`, with these rows (each as Stripe wrote it). */
-async function storedRows(rows: Partial<FeeRow>[], storedAt: string): Promise<void> {
-  runs += 1;
-  const start = 10_000_000 + runs * 10_000;
-  const run = await db().stripeFeeRun.create({
-    data: {
-      intervalStart: new Date(start * 1000),
-      intervalEnd: new Date((start + 5_000) * 1000),
-      stripeReportRunId: `frr_fees_${String(runs)}`,
-      state: "stored",
-      rowCount: rows.length,
-      requestedAt: new Date(storedAt),
-      storedAt: new Date(storedAt),
-    },
-  });
-  await db().stripeFeeRow.createMany({
-    data: rows.map((row, index) => ({ ...feeRow(row), runId: run.id, rowNumber: index + 1 })),
-  });
+/** A fee report run stored at `storedAt`, with these rows. */
+function storedRows(rows: Partial<FeeRow>[], storedAt: string): Promise<void> {
+  return storedFeeRows(db(), rows, storedAt);
 }
 
 describe("postFeeRows", () => {

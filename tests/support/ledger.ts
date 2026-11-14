@@ -1,7 +1,10 @@
 import { expect } from "vitest";
 import type { PrismaClient } from "../../src/lib/server/db.ts";
+import type { Clock } from "../../src/lib/clock.ts";
+import type { FeeRow } from "../../src/features/money/fee-rows.ts";
+import { postUnpostedPayments } from "../../src/features/money/payments.ts";
 import { createUser } from "./create-user.ts";
-import type { FakeMoneyStripe } from "./fake-money-stripe.ts";
+import { feeRow, type FakeMoneyStripe } from "./fake-money-stripe.ts";
 
 /** Every account's balance, summed over every line the journal holds. An account nothing posted to is absent. */
 export async function balancesOf(prisma: PrismaClient): Promise<Record<string, bigint>> {
@@ -84,4 +87,44 @@ export async function addMembershipPayment(
     });
   }
   return userId;
+}
+
+/** A payment made and posted into the books, on a clock that stands at the moment it is posted. */
+export async function postedPayment(
+  prisma: PrismaClient,
+  stripe: FakeMoneyStripe,
+  clock: Clock,
+  setup: PaymentSetup,
+): Promise<void> {
+  await addMembershipPayment(prisma, stripe, setup);
+  await postUnpostedPayments({ db: prisma, clock, stripe });
+}
+
+let fakeRuns = 0;
+
+/**
+ * A fee report run stored at `storedAt`, holding these rows (each filled in as Stripe would write it). Each run is
+ * for a stretch of time of its own, so a test can store as many as it likes.
+ */
+export async function storedFeeRows(
+  prisma: PrismaClient,
+  rows: readonly Partial<FeeRow>[],
+  storedAt: string,
+): Promise<void> {
+  fakeRuns += 1;
+  const startSec = 10_000_000 + fakeRuns * 10_000;
+  const run = await prisma.stripeFeeRun.create({
+    data: {
+      intervalStart: new Date(startSec * 1000),
+      intervalEnd: new Date((startSec + 5_000) * 1000),
+      stripeReportRunId: `frr_stored_${String(fakeRuns)}`,
+      state: "stored",
+      rowCount: rows.length,
+      requestedAt: new Date(storedAt),
+      storedAt: new Date(storedAt),
+    },
+  });
+  await prisma.stripeFeeRow.createMany({
+    data: rows.map((row, index) => ({ ...feeRow(row), runId: run.id, rowNumber: index + 1 })),
+  });
 }

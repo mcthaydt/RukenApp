@@ -57,7 +57,9 @@ async function postPayment(deps: PaymentDeps, payment: PaymentRow, ids: PaymentI
   return deps.db.$transaction(async (tx) => {
     await lockLedger(tx);
     // A run that waited for the lock finds what the one before it posted.
-    const already = await tx.paymentPosting.findUnique({ where: { stripeInvoiceId: payment.stripeInvoiceId } });
+    const already = await tx.paymentPosting.findUnique({
+      where: { stripeInvoiceId: payment.stripeInvoiceId },
+    });
     if (already !== null) return false;
     // Two months, by two rules: the month the payment's first part goes to follows the month it pays for, and the
     // entry itself is in the month it was paid. Each is its own month while that is open, else the month now.
