@@ -13,6 +13,7 @@
     "generate": "svelte-kit sync && prisma generate && wrangler types",
     "build": "pnpm generate && vite build",
     "preview": "vite preview",
+    "deploy": "prisma migrate deploy && wrangler deploy",
     "lint": "pnpm generate && eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "pnpm generate && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
