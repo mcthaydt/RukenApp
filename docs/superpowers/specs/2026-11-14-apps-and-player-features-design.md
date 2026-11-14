@@ -28,7 +28,7 @@ Each answer is quoted, with the question it answers.
 - Hooks: "we just need ruken hooks (which we should have for analytics anyway) that work like Steam achievements".
 - Images: "A", checked automatically before anyone sees them. Links: "A", checked against an unsafe-sites list, and no outside links for under-16s. Under-18 pages: "A", friends only unless the player changes it.
 - Launch date: "Show "Coming soon" with no date until the last store approves, then email wishlisters + notification if they opt'd it".
-- Hook analytics: "B, but anonymous handles, you can see details though like location, age, device, just relevant information". The guardrail for small games (question 25) is waiting for the Owner.
+- Hook analytics: "B, but anonymous handles, you can see details though like location, age, device, just relevant information". Small games: "A", so country and age band are shown only as totals of 10 or more players.
 
 ## Goals
 
@@ -175,7 +175,7 @@ One search box. It finds games by name and makers by name or handle, typo-tolera
 - **Analytics.** Owner, 2026-11-14: "B, but anonymous handles, you can see details though like location, age, device, just relevant information". The maker can also report named events, like "level_3_done".
   - The maker sees each player's progress under an anonymous name. That name is random, different in every game, and never linked to the player's handle, page or email, so a maker can't follow a player across games.
   - The details are kept coarse: the country (from the connection, never GPS or a city), an age band ("13–15", "16–17" or "18+", never an exact age or birth date), and the device ("iPhone", "Android tablet", "Windows computer", and so on).
-  - Question 25 (the guardrail for small games) is waiting for the Owner. The working answer: each player's row shows the anonymous name, their events and the device. Country and age band appear only as group totals, and only where at least 10 players share them.
+  - Small games (Owner, 2026-11-14: "A"): each player's row shows the anonymous name, their events and the device. Country and age band appear only as group totals, and only where at least 10 players share them.
   - Events are recorded only for players who agreed to analytics in the cookie question. Nothing is recorded for anyone else.
   - Ruken never sells this data, and makers agree not to try to work out who a player is.
 - Achievements and stats are part of a player's own account, so they are kept for everyone signed in.
