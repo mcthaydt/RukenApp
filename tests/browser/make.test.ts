@@ -65,18 +65,19 @@ test("a repository typed by hand that was never connected is refused", async ({ 
   await connectGitHub(page);
   const refused = "Ruken can't see that repository. Choose it on GitHub, then try again.";
 
+  // The form only offers the repositories GitHub listed, so a person who edits the page is simulated by changing the
+  // field as the form is sent.
+  let wanted = "";
+  await page.route(/\/make\/new\?\/create$/, async (route) => {
+    const body = new URLSearchParams(route.request().postData() ?? "");
+    body.set("repo", wanted);
+    await route.continue({ postData: body.toString() });
+  });
+
   for (const repository of ["someone/else", "ruken-test/not-yours"]) {
+    wanted = repository;
     await page.getByLabel("Name").fill(freshName());
     await page.getByLabel("One line").fill("A tiny game about tapping.");
-    // Add the repository as a choice the form never offered, and pick it, as a person editing the page would.
-    await page.evaluate((value) => {
-      const select = document.querySelector<HTMLSelectElement>("select[name=repo]");
-      if (select === null) throw new Error("the form has no list of repositories");
-      const option = document.createElement("option");
-      option.value = value;
-      select.append(option);
-      select.value = value;
-    }, repository);
     await page.getByRole("button", { name: "Next: add your clips" }).click();
 
     await expect(page.getByText(refused)).toBeVisible();
