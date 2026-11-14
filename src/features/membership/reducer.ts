@@ -94,6 +94,8 @@ export function reduceMembership(
   }
 
   // active (or trialing, which can't happen without trials and reads the same): a payment went
-  // through, so any run of failures is over.
-  return { ...common, state: snapshot.cancelAtPeriodEnd ? "canceling" : "active", pastDueSince: null };
+  // through, so any run of failures is over. Stripe can record a cancellation as `cancel_at_period_end`
+  // or as a set `cancel_at` time, so either one means the member has cancelled.
+  const cancelled = snapshot.cancelAtPeriodEnd || snapshot.cancelAtMs !== null;
+  return { ...common, state: cancelled ? "canceling" : "active", pastDueSince: null };
 }
