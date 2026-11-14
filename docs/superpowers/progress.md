@@ -50,7 +50,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | coordinator, fourth (`session_01HNdX7JKYUteXqFnZHx6dez`) | 1 Spec, coordination | `spec/opening-page` | running (took over 2026-11-14 09:20 UTC at the 500k limit) |
 | spec, the landing page | 1 Spec | none | parked (Owner, 2026-11-14: "We'll address the landing page when they can upload a game"); players first, then developers (Owner: "Appeal to players first, then developers"); `/` stays as it is until then |
 | spec, games before launch: the wishlist and a maker's numbers | 1 Spec | `spec/wishlist` | approved (Owner, 2026-11-14: "approved"); `docs/superpowers/specs/2026-11-14-wishlist-before-launch-design.md`; plan next |
-| plan, games before launch: the wishlist (`session_01HNdX7J7xTV329GjHcGAkVQ`) | 2 Plan | `spec/wishlist` | plan written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`); not merged; two questions for the Owner are with the coordinator (Q1, Q2) |
+| plan, games before launch: the wishlist (`session_01HNdX7J7xTV329GjHcGAkVQ`) | 2 Plan | `spec/wishlist` | plan written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`); not merged; Q1 is with the Owner; Q2 answered by the coordinator; shaped so the beta builds plan adds to it |
 | execution, slice 3, branch A (`session_01HNdX7Lu88QTewJX8NtAg8u`) | 4 Execution | `slice-3/themes` | running (needs slice 1 only) |
 | audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | running (Owner, 2026-11-14: "take a screenshot of every single screen, every orientation, every device type, audit them one by one") |
 | audit, FloorFifty for production (`session_01HNdX7HXjg2huySfHRH521r`, in SNEKPRTY/FloorFifty) | audit | FloorFifty's own branch | running (Owner, 2026-11-14: "audit the game for production excluding known gaps like deployment") |
@@ -377,7 +377,7 @@ Stages:
 What the plan waits for, and what is the Owner's:
 
 - [ ] Q1, before launch, can someone pay on `/join`? Asked 2026-11-14. The plan's pick: no, the card reads "Membership opens 30 November." (Task 6, built only on the Owner's yes).
-- [ ] Q2, the real-site checks that need a stranger to play cannot be made by a person before launch once the play gate is on `main`. Asked 2026-11-14. The plan's pick: keep the gate strict; those two lines are checked by a person at 11:00 on launch day.
+- [x] Q2, the real-site checks that need a stranger to play cannot be made by a person before launch once the play gate is on `main`. Coordinator, 2026-11-14: keep the gate strict; those two lines are checked by a person at 11:00 on launch day.
 - [ ] "Fine" on the screenshots of branches C, E and F (and B, if Task 6 is built), phone and computer, before and after.
 - [ ] The look at the real site before launch, and at 11:00 CT on 30 November (Task 15).
 

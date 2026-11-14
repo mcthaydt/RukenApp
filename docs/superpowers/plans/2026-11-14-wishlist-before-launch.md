@@ -53,6 +53,13 @@
 
 **What slice 4 should know** (it is not built yet): its Task 25 also changes `cloudflare/worker.js`'s scheduled handler. Task 11 here changes only which address a run knocks on, by the cron that started it; whichever of the two lands second merges `main` in and keeps both. Its Task 18 (a suspended maker's games leave `liveGames`) needs nothing here: the email and the screens read live games through the games service.
 
+**What the beta builds plan gets from this one** (its design is `docs/superpowers/specs/2026-11-14-beta-builds-design.md`, planned beside this plan; relayed by the coordinator, 2026-11-14). Four things this plan holds, so beta adds to them without rewriting:
+
+1. **Plays are counted by naming the bases that count.** `playNumbers(gameId, since, bases)` takes the list (Task 7); this plan calls it with `COUNTED_BASES`, `["member", "free_game"]`. It is never written as "everything but the maker's own and staff's", so a new basis counts nowhere until someone names it.
+2. **The before-launch refusal is in `startPlay`, the ordinary play path, and is keyed on the basis** (Task 5). Nothing in the play route's `load` refuses before `startPlay` is called, so a branch of that `load` that goes another way (its own start function) is not refused by this plan's rule.
+3. **The Wishlist or Play button sits in one wrapper that is always there**, `<div data-play-slot>`, in each clip of the feed and each game of a maker's page (Tasks 13, 14), so a second line can go right under the button in either state.
+4. **On `/make/<game>` the numbers are one block, `<section data-numbers>`, right under the state line** (Task 8); anything else about the game goes below it.
+
 ## Found while planning
 
 Read on 2026-11-14, on `main` at `d497163`. Where the code and this plan disagree when execution reads it, stop and report.
@@ -71,9 +78,9 @@ Read on 2026-11-14, on `main` at `d497163`. Where the code and this plan disagre
 ## The Owner's decisions, the open questions, and the Calls in this plan
 
 - **Owner, 2026-11-14** (the design, as approved): one launch switch, by the clock (approach A); accepted games show "Opens 30 November" and Wishlist where Play goes, in the feed, on the maker's page and at `/g/<game>`; signed out, Wishlist goes to the short sign-up and straight back; the play route refuses everyone before launch but the game's own maker and staff; FloorFifty is shown the same way; one email at launch to confirmed addresses, recorded so a second run sends nothing new; light numbers on `/make/<game>`, no charts.
-- **Asked of the coordinator on 2026-11-14, for the Owner. Not answered when this plan was written; each is marked where it bites, and nothing built depends on the answer until its task.**
+- **Asked of the coordinator on 2026-11-14.** Q2 is answered; Q1 is with the Owner and is marked where it bites.
   - **Q1. Before launch, can someone pay?** A (this plan's pick): before launch `/join` shows the price and one line, "Membership opens 30 November.", and no payment can start (Task 6). B: no code; the Owner keeps Stripe in test mode until launch morning. C: allow paying early. **Task 6 is built only on the Owner's A.**
-  - **Q2. The real-site checks that need a stranger to play.** Once the play gate is on `main`, only a game's maker and staff can play on the real site until launch, so design 8's "a stranger signs up, pays with a real card, and is in the game they tapped" and "anyone can play FloorFifty without an account" cannot be checked there by a person before 11:00 on the 30th. A (this plan's pick): the gate stays strict; those two lines are proved by CI's journeys and checked by a person at 11:00 on launch day; everything else is checked before, with the Owner as maker and staff. B: hold branch B back until slices 2 and 3 have made those checks. C: a setting that opens the real site early (not offered by this plan: it is the failure the design names). **The plan is written for A; B changes only when branch B merges.**
+  - **Q2. The real-site checks that need a stranger to play.** Once the play gate is on `main`, only a game's maker and staff can play on the real site until launch, so design 8's "a stranger signs up, pays with a real card, and is in the game they tapped" and "anyone can play FloorFifty without an account" cannot be checked there by a person before 11:00 on the 30th. A (this plan's pick): the gate stays strict; those two lines are proved by CI's journeys and checked by a person at 11:00 on launch day; everything else is checked before, with the Owner as maker and staff. B: hold branch B back until slices 2 and 3 have made those checks. C: a setting that opens the real site early (not offered by this plan: it is the failure the design names). **Coordinator, 2026-11-14: A; the gate stays strict.**
 - **Calls** (the Owner can overrule):
   - **Where the switch lives.** `src/features/launch/`, between `games` and `play`: the switch, the wishlist and the email in one small feature. `play` reads the switch from below; `feed`, `pages` and `make` sit above and never touch it: their routes hand the screen what to show.
   - **The journeys' switch.** A tests-only setting, `LAUNCH_TEST_SWITCH=on`, makes the journeys' site open whatever the date, and a cookie, `rk_test_launch=before`, makes one browser's requests see the day before launch. The site refuses to start with the setting on unless its own address (`BETTER_AUTH_URL`) is plain `http` on `localhost` or `127.0.0.1`, so it cannot be turned on for the real site by mistake. The real site reads the real clock and ignores the cookie. Worth the Owner's eye: it is the one place a setting touches launch.
@@ -97,7 +104,6 @@ Read on 2026-11-14, on `main` at `d497163`. Where the code and this plan disagre
 There is no setting, secret, bucket or address for the Owner here. `LAUNCH_TEST_SWITCH` is for the journeys and is never set on the real site. The stops are:
 
 - **Q1's answer**, before Task 6. Branch B's Task 5 does not wait for it.
-- **Q2's answer**, before branch B is marked ready.
 - **"Fine" on the screenshots**, once per branch that has screens: B (if Task 6 is built), C, E, F.
 - **The real site**, Task 15, before launch and at 11:00 on launch day.
 - **Launch day, only if Cloudflare shows the 17:00 run failed and the later runs did not finish it** (Task 15, step 4): one command for Windows PowerShell, `$secret = Read-Host "JOBS_SECRET"; Invoke-RestMethod -Method Post -Uri "https://SITE/jobs/launch-mail" -Headers @{ Authorization = "Bearer $secret" } -ContentType "application/json"` (the answer says how many were sent and how many are left; run it again while `left` is above 0).
@@ -146,7 +152,7 @@ src/features/launch/
 src/lib/server/mail.ts                   MailMessage gains idempotencyKey                        (D)
 src/features/accounts/deletion.ts        the purge removes a person's wishlist                   (A)
 src/features/play/sessions.ts            startPlay takes launchNowMs, refuses not_open (B); playNumbers (C)
-src/features/make/numbers.ts             makerNumberLines, PLAYED_FOR_MS                         (C)
+src/features/make/numbers.ts             makerNumberLines, PLAYED_FOR_MS, COUNTED_BASES          (C)
 src/features/feed/Feed.svelte            Wishlist in place of Play before launch                 (E)
 src/features/pages/MakerPage.svelte      the same, on a maker's page                             (F)
 src/routes/
@@ -339,7 +345,7 @@ In the purge's transaction, beside the line that removes a person's GitHub conne
 
 # Branch B: `wishlist/play-gate`
 
-Needs branch A, and slice 2's branch F (`/g/<game>/play`) on `main`. Q2's answer is needed before this branch is marked ready.
+Needs branch A, and slice 2's branch F (`/g/<game>/play`) on `main`.
 
 ### Task 5: Nobody but a game's maker and staff plays before launch
 
@@ -351,7 +357,7 @@ Needs branch A, and slice 2's branch F (`/g/<game>/play`) on `main`. Q2's answer
 **Interfaces:**
 - Consumes: `isOpen` (Task 1), `launchServices().now` (Task 2), `playBasis` (slice 2, Task 17).
 - Produces:
-  - `startPlay(input: { game: LiveGame; viewer: … | null; clientAddress: string; launchNowMs: number })` answers, besides what slice 2 built, `{ refused: "not_open" }`. The rule, first in the function: when `isOpen(input.launchNowMs)` is false and `playBasis(…)` is neither `"own_game"` nor `"staff"`, it answers `{ refused: "not_open" }`; nothing is stored, no pass is made, and the rate limit is not touched. `launchNowMs` is required, so every caller must say what time it is. A comment says why the check is here and not in the route: this is the one place a pass is handed out.
+  - `startPlay(input: { game: LiveGame; viewer: … | null; clientAddress: string; launchNowMs: number })` answers, besides what slice 2 built, `{ refused: "not_open" }`. The rule, first in the function: when `isOpen(input.launchNowMs)` is false and `playBasis(…)` is neither `"own_game"` nor `"staff"`, it answers `{ refused: "not_open" }`; nothing is stored, no pass is made, and the rate limit is not touched. `launchNowMs` is required, so every caller must say what time it is. A comment says why the check is here and not in the route: this is the one place the ordinary Play hands out a pass. The route's `load` refuses nothing for launch before it calls `startPlay`.
   - `startReviewPlay` is not changed: only staff reach it.
   - The play route passes `launchNowMs: launchServices().now(cookies)`, and for `{ refused: "not_open" }` redirects (303) to `/g/<slug>`. Its other answers are as slice 2 built them.
 - Every existing `startPlay` call in the tests gains `launchNowMs: LAUNCH_MS`; no assertion of theirs changes.
@@ -419,7 +425,7 @@ Look: no new class; the line is ordinary text on the card, not a `problem` (noth
 
 - [ ] **Step 1 (red):** the `switch.test.ts` case; and in `join.test.ts`, before launch (`beforeLaunch`): the price card shows "Membership opens 30 November." and no button named "Continue" or "Continue to payment", signed out and signed in; a post by hand to the pay action lands on `/join` and the stand-in Stripe saw no checkout; `showTheOwner` "the paywall card before launch". Without the cookie: the card is as today. Stub the constant as an empty string. Push. Expected: `verify` fails in the one new case; `browser` fails in the new cases (the button is there).
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass, slice 1's pay journeys included.
-- [ ] **Step 3:** send the coordinator the two runs and one line for "the paywall card before launch". Mark the branch ready after "fine", and after Q2's answer.
+- [ ] **Step 3:** send the coordinator the two runs and one line for "the paywall card before launch". Mark the branch ready after "fine".
 
 ---
 
@@ -434,7 +440,8 @@ Needs branch A, and slice 2's branch M (`/make/<game>`) on `main`.
 - Test: `tests/features/play/sessions.pg.test.ts` (add cases)
 
 **Interfaces:**
-- Produces, added to `createPlayService`: `playNumbers(gameId: string, since: Date): Promise<{ plays: number; minutes: number }>`. Over this game's `PlaySession` rows whose basis is `member` or `free_game` and whose `startedAt` is at or after `since`: `plays` is how many of them have at least one attentive beat; `minutes` is their counted time added up, in whole minutes, rounded down. Counted time is slice 2's rule: each attentive beat adds the time since the beat before it in its session (or since the session started), `LONGEST_COUNTED_GAP_MS` at most.
+- Produces, added to `createPlayService`: `playNumbers(gameId: string, since: Date, bases: readonly PlayBasis[]): Promise<{ plays: number; minutes: number }>`. Over this game's `PlaySession` rows whose basis is one of `bases` and whose `startedAt` is at or after `since`: `plays` is how many of them have at least one attentive beat; `minutes` is their counted time added up, in whole minutes, rounded down. Counted time is slice 2's rule: each attentive beat adds the time since the beat before it in its session (or since the session started), `LONGEST_COUNTED_GAP_MS` at most.
+- An empty `bases` answers zeros without asking the database. The list is always named by the caller: the function has no default, so a basis counts only where someone wrote it down.
 - One `$queryRaw`, because the page must not read a week of beats into the Worker: the gap before each beat is `"receivedAt"` minus `LAG("receivedAt") OVER (PARTITION BY "sessionId" ORDER BY "receivedAt", "id")`, or minus the session's `"startedAt"` for its first beat; each gap is cut with `LEAST` at the limit, passed in as a parameter from `LONGEST_COUNTED_GAP_MS`; attentive gaps are summed. A comment says that this is `countedMs` written for the database, and that the test below holds the two together. The database's `bigint` answers are turned into numbers before they leave the function.
 
 - [ ] **Step 1 (red):** with `TestClock`, sessions and beats made through `startPlay` and `recordBeat`:
@@ -443,11 +450,13 @@ Needs branch A, and slice 2's branch M (`/make/<game>`) on `main`.
 it("counts plays and whole minutes, exactly as countedMs does", async () => {
   /* a member's session of 9 attentive beats 15 s apart (135 s) and a free game's visitor's of 4 (60 s), both on one free game:
      { plays: 2, minutes: 3 }; and minutes equals Math.floor(sum of countedMs over the same rows / 60_000) */ });
-it("leaves out the maker's own play and staff's", async () => { /* own_game and staff sessions with beats: { plays: 0, minutes: 0 } */ });   // Review Focus 13
+it("counts only the bases it is given", async () => {                                            // Review Focus 13
+  /* member, free_game, own_game and staff sessions, each with beats: with ["member", "free_game"] the maker's own and staff's are left out;
+     with ["member"] only the member's counts; with [] it answers zeros */ });
 it("does not call it a play when the person never touched the game", async () => { /* only beats that are not attentive: plays 0 */ });
 it("counts a long silence as 45 seconds", async () => { /* one attentive beat ten minutes after the start, then 5 more 15 s apart: 120 s → minutes 2 */ });
 it("leaves out a session that started before the window, and another game's", async () => {});
-it("answers zeros for a game nobody played", async () => { expect(await service.playNumbers(game.id, since)).toEqual({ plays: 0, minutes: 0 }); });
+it("answers zeros for a game nobody played", async () => { expect(await service.playNumbers(game.id, since, ["member", "free_game"])).toEqual({ plays: 0, minutes: 0 }); });
 ```
 
   Stub. Push. Expected: `postgres` fails in the new cases with "not built yet".
@@ -482,9 +491,10 @@ Wishlisted by 12 people before launch
 **Interfaces:**
 - Produces, pure, in `numbers.ts`, re-exported by `make.ts`:
   - `PLAYED_FOR_MS = 7 * 24 * 60 * 60 * 1000`.
+  - `COUNTED_BASES: readonly PlayBasis[] = ["member", "free_game"]`, with a comment: how much a game was played, so free play counts and the maker's own and staff's do not (design).
   - `makerNumberLines(input: { open: boolean; wishlists: number; plays: number; minutes: number }): string[]`, the words under "The numbers' words" in the Calls, numbers written with `toLocaleString("en-US")`. Lines take no full stop (design 5.8: labels do not).
-- `load`, for a game whose state is `live` only: `open` from `isOpen(launchServices().now(cookies))`; `wishlists` from `countFor(game.id, userId)`; when open, `playNumbers(game.id, new Date(systemClock.epochMs() - PLAYED_FOR_MS))` (the real clock: beats are stamped with it); it answers `numbers: string[]` and `playItYourself: boolean` (true before launch). A game in any other state gets no numbers.
-- The page: each line of `numbers` as a paragraph of ordinary text; before launch, the `note` "Players can play from 30 November." and beside it a link, "Play it yourself", to `/g/<slug>/play`.
+- `load`, for a game whose state is `live` only: `open` from `isOpen(launchServices().now(cookies))`; `wishlists` from `countFor(game.id, userId)`; when open, `playNumbers(game.id, new Date(systemClock.epochMs() - PLAYED_FOR_MS), COUNTED_BASES)` (the real clock: beats are stamped with it); it answers `numbers: string[]` and `playItYourself: boolean` (true before launch). A game in any other state gets no numbers.
+- The page: right under the state line, one `<section data-numbers>` holding each line of `numbers` as a paragraph of ordinary text; before launch, the `note` "Players can play from 30 November." and beside it a link, "Play it yourself", to `/g/<slug>/play`.
 - `tests/browser/support/database.ts`: `addWishlistRow(email: string, slug: string): Promise<void>`, one row written straight into the journeys' database (the button arrives in branch E).
 
 Grandma: each number is a sentence a person would say, and says what it counts and over how long. There is nothing to press but the one link, which says what it does.
@@ -760,7 +770,7 @@ test("from launch on, it adds nothing", async ({ page, browser }) => {
 **Interfaces:**
 - Produces, in `wish.ts`, with no browser API named in it, re-exported by `launch.browser.ts`: `sendWish(post: (body: URLSearchParams) => Promise<Response>, want: "on" | "off"): Promise<{ on: boolean } | { go: string } | "failed">`. It posts `want`, and answers the JSON's `on`, or its `go`; a response that is not 200, a body of another shape, or a `post` that rejects answers `"failed"`.
 - `load` of `/`: gains `launch: await wishlistView(launchServices(), { caller: locals.caller, cookies })`. `load` of `/g/[game]`: the same, with `arrivedAt: { id: game.id, slug: game.slug }`, so the game a signed-out person pressed is added when they come back. Both pages pass `launch={data.launch}` to `<Feed>`.
-- `Feed.svelte` gains the prop `launch: { opens: string; wishlisted: string[] } | null`. With null it is exactly as slice 3 built it. Otherwise, in every clip's band, in place of Play and in place of the computer-only line and its button:
+- `Feed.svelte` gains the prop `launch: { opens: string; wishlisted: string[] } | null`. With null it is exactly as slice 3 built it. Play (or the computer-only line and its button) moves inside one `<div data-play-slot>` in every clip's band, open or not, with nothing else in it. Before launch that wrapper holds, in their place:
   - `<p>` with `launch.opens`.
   - `<form method="post" action="/g/<slug>/wishlist">` holding `<input type="hidden" name="want">` (`off` when the game is on the list, else `on`), `<input type="hidden" name="back" value="/g/<slug>">` and one `<button aria-pressed={on}>`: a heart drawn as one plain line shape (`aria-hidden`; filled when on) and the words "Wishlist", or "On your wishlist" when on.
   - With script, the form's submit is taken over: `sendWish` with `fetch` to the form's address and `accept: application/json`; `{ on }` changes that clip's button in place; `{ go }` goes there (`location.assign`); `"failed"` lets the form post in the ordinary way.
@@ -777,6 +787,7 @@ test("before launch a game shows the day it opens and Wishlist, and no Play", as
   const clip = clipOf(page, game.slug);
   await expect(clip.getByText("Opens 30 November")).toBeVisible();
   await expect(clip.getByRole("button", { name: "Wishlist" })).toHaveAttribute("aria-pressed", "false");
+  await expect(clip.locator("[data-play-slot]").getByRole("button", { name: "Wishlist" })).toHaveCount(1);
   await expect(page.getByRole("link", { name: "Play" })).toHaveCount(0);
   const box = await boxOf(clip.getByRole("button", { name: "Wishlist" })); expect(box.height).toBeGreaterThanOrEqual(48);
   await showTheOwner(page, testInfo, "the feed before launch");
@@ -818,7 +829,7 @@ test("a computer-only game on a phone shows the same before launch", async ({ pa
 test("a long name and the button do not push the feed sideways", async ({ page, browser }) => {  // Review Focus 15
   /* a 40-character name of "W": scrollWidth equals clientWidth */ });
 test("from 11:00 the button is Play", async ({ page, browser }) => {
-  /* no cookie: the clip has the link Play, no text "Opens 30 November" and no button named "Wishlist" or "On your wishlist" */ });
+  /* no cookie: the clip has the link Play, inside its one [data-play-slot]; no text "Opens 30 November" and no button named "Wishlist" or "On your wishlist" */ });
 ```
 
   `fillSignUp(page)` is the part of slice 1's `signUp` that fills and sends the form on the page it is given; if `signUp` cannot be split that way, add it beside `signUp` in `tests/browser/support/account.ts`. In `feed.test.ts`, slice 3's case "Play is the only thing with words to press" gains its second half: with `beforeLaunch`, the only buttons with words in a clip are "Wishlist" or "On your wishlist". Stubs for `sendWish`. Push. Expected: `verify` fails in `wish.test.ts`; `browser` fails in every new case but the last (the clip shows Play).
@@ -838,7 +849,7 @@ Needs branch E, and slice 3's branch H (`/<handle>`) on `main`.
 - Test: `tests/browser/maker-page.test.ts` (add cases)
 
 - `load` gains `launch: await wishlistView(launchServices(), { caller: locals.caller, cookies })` (no `arrivedAt`: the wish cookie is spent at the game's own address). The page passes it to `<MakerPage>`.
-- `MakerPage.svelte` gains the same prop as the feed. With null it is as slice 3 built it. Otherwise each game, in place of Play, shows `launch.opens` and the same form as the feed's, with `back` set to `/<handle>`, taken over by `sendWish` in the same way. Signed out, the person goes to sign-up and lands on the game's own address, wishlisted (Task 12).
+- `MakerPage.svelte` gains the same prop as the feed. With null it is as slice 3 built it. Each game's Play moves inside one `<div data-play-slot>`, open or not. Before launch the wrapper holds, in its place, `launch.opens` and the same form as the feed's, with `back` set to `/<handle>`, taken over by `sendWish` in the same way. Signed out, the person goes to sign-up and lands on the game's own address, wishlisted (Task 12).
 - Its styles, in the component: the button is exactly what Play is on that page, in the theme's button colours; the heart takes the label's colour; the line above it is the page's text colour.
 
 Grandma: under each of a maker's games, the day it opens and one button, the same word as in the feed.
