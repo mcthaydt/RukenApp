@@ -101,7 +101,7 @@ export async function restoreOnSignIn(prisma: PrismaClient, clock: Clock, userId
  * at it stay true. A later slice that stores more of a person adds its own removal here, with a test.
  */
 export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
-  const { prisma, clock } = deps;
+  const { prisma, clock, files } = deps;
   const now = new Date(clock.epochMs());
   const due = await prisma.deletionRequest.findMany({
     where: { cancelledAt: null, purgedAt: null, purgeAfter: { lte: now } },
@@ -110,6 +110,13 @@ export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
 
   let finished = 0;
   for (const { id, userId } of due) {
+    // A photo is served to anyone who has its address, so it goes before the page that points at it. It goes first
+    // and not after: if the bucket fails, the account is not yet marked done and tomorrow's run tries again, where a
+    // photo left behind once the page is gone would have nothing pointing at it to be found by. A missing file is
+    // not an error, so a run that comes back to an account an earlier run half finished is fine.
+    const page = await prisma.makerPage.findUnique({ where: { userId }, select: { photoKey: true } });
+    if (page !== null && page.photoKey !== null) await files.delete(page.photoKey);
+
     const done = await prisma.$transaction(async (tx) => {
       const claimed = await tx.deletionRequest.updateMany({
         where: { id, cancelledAt: null, purgedAt: null },

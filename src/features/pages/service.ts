@@ -2,6 +2,7 @@ import type { FileStore } from "../../lib/files/store.ts";
 import type { PageLinkKind, PrismaClient } from "../../lib/server/db.ts";
 import { cleanHandle, HANDLE_TAKEN, handleProblem } from "./handle.ts";
 import { cleanLinkUrl, linkProblem, MAX_LINKS, moveLink, siteNameOf } from "./links.ts";
+import { photoKeyFor, photoProblem, type PhotoContentType } from "./photo.ts";
 import { offeredTheme, themeById, type Theme } from "./themes.ts";
 
 // What a maker does with their page, and what a visitor gets from it. It is built from what it needs (the database)
@@ -64,8 +65,15 @@ function brokeUniqueKey(error: unknown, column: string): boolean {
   return where.includes(column);
 }
 
+/** 16 random hex characters: what gives each photo an address of its own (see `photoKeyFor`). */
+function randomHex16(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(8)), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
 export function createPagesService(deps: PagesServiceDeps) {
-  const { db } = deps;
+  const { db, files } = deps;
 
   /** The page's id, for a person who has one; otherwise the refusal. */
   async function pageIdOf(userId: string): Promise<string> {
@@ -276,14 +284,36 @@ export function createPagesService(deps: PagesServiceDeps) {
     return new Map(pages.map((page) => [page.userId, page.handle]));
   }
 
-  /** Keeps a photo for the person's page, in place of the one it had. */
-  function savePhoto(userId: string, upload: { contentType: string; bytes: Uint8Array }): Promise<void> {
-    return Promise.reject(new Error(`not built yet: savePhoto ${userId} ${upload.contentType}`));
+  /**
+   * Keeps a photo for the person's page, in place of the one it had. A photo that breaks the photo rules is refused
+   * before anything is stored. The new file is stored and the page points at it before the old file is deleted, so a
+   * failure part way leaves the page with its old photo, and at worst a file nobody points at.
+   */
+  async function savePhoto(
+    userId: string,
+    upload: { contentType: string; bytes: Uint8Array },
+  ): Promise<void> {
+    const problem = photoProblem(upload);
+    if (problem !== null) throw new PageError("INVALID", problem);
+    // `photoProblem` returned null, so the type is one of the three a photo may have.
+    const contentType = upload.contentType as PhotoContentType;
+
+    const page = await db.makerPage.findUnique({ where: { userId }, select: { id: true, photoKey: true } });
+    if (page === null) throw new PageError("NOT_FOUND", "You don't have a page yet.");
+
+    const key = photoKeyFor(randomHex16(), contentType);
+    await files.put(key, upload.bytes);
+    await db.makerPage.update({ where: { id: page.id }, data: { photoKey: key } });
+    if (page.photoKey !== null) await files.delete(page.photoKey);
   }
 
-  /** Takes the photo off the person's page and out of the bucket. */
-  function removePhoto(userId: string): Promise<void> {
-    return Promise.reject(new Error(`not built yet: removePhoto ${userId}`));
+  /** Takes the photo off the person's page, then out of the bucket. A page with no photo is left as it is. */
+  async function removePhoto(userId: string): Promise<void> {
+    const page = await db.makerPage.findUnique({ where: { userId }, select: { id: true, photoKey: true } });
+    if (page === null) throw new PageError("NOT_FOUND", "You don't have a page yet.");
+    if (page.photoKey === null) return;
+    await db.makerPage.update({ where: { id: page.id }, data: { photoKey: null } });
+    await files.delete(page.photoKey);
   }
 
   return {
