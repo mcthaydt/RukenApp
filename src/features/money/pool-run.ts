@@ -7,7 +7,7 @@ import { centsRoundedUp } from "./major-units.ts";
 import { allocateMakersPool, type MemberMonth, type PoolOutcome } from "./makers-pool.ts";
 import { addMonths, parsePeriod, type Period } from "./period.ts";
 import { postPoolCarry, postPoolShares } from "./pool-posting.ts";
-import { poolContributions, SERVICE_MONTHS } from "./pool-share.ts";
+import { keptWeight, poolContributions, SERVICE_MONTHS } from "./pool-share.ts";
 
 /**
  * A month's pool: who paid into it, what they played, and how it is shared. `poolFor` works it out and writes nothing,
@@ -19,7 +19,14 @@ import { poolContributions, SERVICE_MONTHS } from "./pool-share.ts";
 export type PoolTx = MoneyTx &
   Pick<
     PrismaClient,
-    "paymentPosting" | "feePosting" | "playDay" | "membershipStart" | "poolRun" | "poolShare" | "game"
+    | "paymentPosting"
+    | "feePosting"
+    | "stripeReversal"
+    | "playDay"
+    | "membershipStart"
+    | "poolRun"
+    | "poolShare"
+    | "game"
   >;
 
 /** The longest plan pays for 12 months, so only a payment whose first month is within 11 of `period` can cover it. */
@@ -30,9 +37,11 @@ const LONGEST_PLAN_MONTHS_BACK = 11;
  * so far taken off, refunds not: they lower the pool instead, and so every share in proportion), who gets the bringing
  * bonus for them, and what they played in the month, by game.
  *
- * A refunded member keeps their weight (carried rule, design 6: refunds and chargebacks follow the carried rules). The
- * alternative, taking their contribution to nothing, would make the pool pay for money it was already refunded twice:
- * once in the lower pool and again in the lower weights.
+ * `contribution` is the member's weight, not only what they paid in: each payment's part counts in proportion to what
+ * was not handed back (Owner, 2026-11-14: "a refunded member's play stops counting toward developer pay"). A refund,
+ * and a dispute that is open or was lost, hand money back; a dispute that was won puts it back. The refund also lowers
+ * the pool itself, so a refunded member's money leaves twice over: the money in the pool, and the share of it they can
+ * draw by playing. The pool is shared among the members whose payments were not handed back.
  */
 export async function membersOf(tx: PoolTx, period: Period): Promise<MemberMonth[]> {
   const postings = await tx.paymentPosting.findMany({
@@ -49,6 +58,11 @@ export async function membersOf(tx: PoolTx, period: Period): Promise<MemberMonth
   });
   const microCentsOf = new Map(taken.map((row) => [row.stripeInvoiceId, row._sum.microCents ?? 0n]));
 
+  const handedBack = await handedBackBy(
+    tx,
+    covering.map((posting) => posting.stripeInvoiceId),
+  );
+
   const contributions = new Map<string, bigint>();
   for (const posting of covering) {
     const { payment } = posting;
@@ -60,7 +74,8 @@ export async function membersOf(tx: PoolTx, period: Period): Promise<MemberMonth
       fees: payment.cardFeeCents + centsRoundedUp(microCentsOf.get(posting.stripeInvoiceId) ?? 0n),
     });
     const part = parts.find((candidate) => candidate.period === period)?.amount ?? 0n;
-    contributions.set(payment.userId, (contributions.get(payment.userId) ?? 0n) + part);
+    const weight = keptWeight(part, payment.grossCents, handedBack.get(posting.stripeInvoiceId) ?? 0n);
+    contributions.set(payment.userId, (contributions.get(payment.userId) ?? 0n) + weight);
   }
   const userIds = [...contributions.keys()].sort();
 
@@ -94,6 +109,26 @@ export async function membersOf(tx: PoolTx, period: Period): Promise<MemberMonth
       .filter((day) => day.userId === userId)
       .map((day) => ({ gameId: day.gameId, seconds: day._sum.seconds ?? 0 })),
   }));
+}
+
+/**
+ * How much of each payment was handed back, in cents, as Stripe's refunds and disputes stand now. A payment with
+ * nothing handed back is absent. A refund counts; so does a dispute from the day it opens, unless it was later won
+ * (the money came back); a dispute that was lost is already counted from its opening.
+ */
+async function handedBackBy(tx: PoolTx, invoiceIds: readonly string[]): Promise<Map<string, bigint>> {
+  const rows = await tx.stripeReversal.findMany({
+    where: { stripeInvoiceId: { in: [...invoiceIds] } },
+    select: { id: true, kind: true, stripeInvoiceId: true, amountCents: true },
+  });
+  const wonIds = new Set(rows.filter((row) => row.kind === "chargeback_won").map((row) => row.id));
+  const handedBack = new Map<string, bigint>();
+  for (const row of rows) {
+    const wasWon = row.kind === "chargeback_opened" && wonIds.has(row.id.replace(/:opened$/, ":won"));
+    if ((row.kind !== "refund" && row.kind !== "chargeback_opened") || wasWon) continue;
+    handedBack.set(row.stripeInvoiceId, (handedBack.get(row.stripeInvoiceId) ?? 0n) + row.amountCents);
+  }
+  return handedBack;
 }
 
 /**
