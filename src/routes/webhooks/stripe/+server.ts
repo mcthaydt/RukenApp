@@ -11,18 +11,18 @@ export const POST: RequestHandler = async ({ request }) => {
   // The signature covers these exact bytes, so the body is read as text and never parsed first.
   const payload = await request.text();
   const signature = request.headers.get("stripe-signature");
-  const { verify, receive } = membershipServices();
+  const membership = membershipServices();
 
   let event;
   try {
     if (signature === null) throw new Error("no signature");
-    event = await verify(payload, signature);
+    event = await membership.verify(payload, signature);
   } catch {
     return new Response("Bad signature", { status: 400 });
   }
 
   try {
-    await receive(event);
+    await membership.receive(event);
   } catch (error) {
     // Answered 500 so Stripe sends the event again; the inbox kept it, and handling it twice does no harm.
     console.error(
