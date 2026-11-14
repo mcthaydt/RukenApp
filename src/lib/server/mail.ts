@@ -46,8 +46,7 @@ export class MailError extends Error {
 }
 
 export function createResendMailer(options: ResendMailerOptions): Mailer {
-  void options;
-  throw new Error("not built yet");
+  throw new Error(`not built yet: ${options.from}`);
 }
 
 export function createSmtpMailer(options: SmtpMailerOptions): Mailer {
