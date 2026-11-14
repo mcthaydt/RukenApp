@@ -15,8 +15,13 @@
 <main class="card">
   <h1>Maker agreement</h1>
   <p class="note">Version {data.version}</p>
-  {#each data.paragraphs as paragraph, index (index)}
-    <p>{paragraph}</p>
+  {#each data.points as point, index (index)}
+    <p>
+      {#if point.title !== null}
+        <strong>{point.title}</strong><br />
+      {/if}
+      {point.body}
+    </p>
   {/each}
   <p><a href={data.back.href}>{data.back.words}</a></p>
 </main>

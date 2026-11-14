@@ -6,9 +6,14 @@
   cannot be changed yet, so its clip lines only say "Added". The way back to the maker's games is the last line.
 -->
 <script lang="ts">
+  import { enhance } from "$app/forms";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
+
+  // True from the press of "Get the newest version from GitHub" until the answer comes: the note about the wait is
+  // true only then. Without script the page simply waits and the note is not shown.
+  let copying = $state(false);
 
   const game = $derived(data.game);
   // The states in which the maker may still change the clips and send the game: not live, not taken off or down.
@@ -44,9 +49,21 @@
     <p>{game.repoFullName}</p>
   {/if}
   {#if canPull}
-    <form method="POST" action="?/pull">
-      <button class="quiet">Pull the latest</button>
-      <p class="note">Copying your game can take a minute. Keep this page open.</p>
+    <form
+      method="POST"
+      action="?/pull"
+      use:enhance={() => {
+        copying = true;
+        return async ({ update }) => {
+          await update();
+          copying = false;
+        };
+      }}
+    >
+      <button class="quiet">Get the newest version from GitHub</button>
+      {#if copying}
+        <p class="note">Copying your game can take a minute. Keep this page open.</p>
+      {/if}
     </form>
   {/if}
   <!-- The address matters only to a game that uses other websites, which may ask where a player comes from. -->

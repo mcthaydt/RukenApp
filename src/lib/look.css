@@ -188,6 +188,11 @@ a:not(.button, .wordmark),
   font: var(--text-statement);
 }
 
+/* Bold is the heavier face we load (600), not a face the browser makes by smearing the lighter one. */
+strong {
+  font-weight: 600;
+}
+
 /* The focus ring on felt. */
 :focus-visible {
   outline: 3px solid var(--paper);
@@ -318,6 +323,9 @@ summary {
   align-items: center;
   gap: 0.5rem;
   min-height: var(--size-target);
+  /* The height the target adds is taken back from the margins, as for a link, so one rem separates its words from the
+     line above and not two. */
+  margin-block: calc((var(--size-target) - 1lh) / -2);
   list-style: none;
   text-decoration: underline;
   cursor: pointer;

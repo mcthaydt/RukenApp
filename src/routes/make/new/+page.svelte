@@ -1,15 +1,20 @@
 <!--
   The new-game form, the third step of a maker's start (design 5.7), with a way back to the maker's games. Before
   GitHub is connected: one sentence and one button. After: name, one line, which repository, where it plays, and one
-  button; each box says what goes in it (design 5.4), and no repository is chosen for the maker. The branch and folder,
+  button, which reads as the last step; each box says what goes in it (design 5.4), and no repository is chosen for the maker. The branch and folder,
   and the other websites a game uses, stay closed unless wanted (a `details` opens with no script). Copying a game can
   take a minute, so a note under the button says the press was taken. Every refusal sits above the button, in words that
   say what to fix, and what was typed stays.
 -->
 <script lang="ts">
+  import { enhance } from "$app/forms";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
+
+  // True from the press of the button until the answer comes: copying a game can take a minute, and the note about it
+  // is true only then. Without script the page simply waits and the note is not shown.
+  let copying = $state(false);
 
   // Where the game plays: after a refusal the one that was chosen. State bound to the two radio buttons, not a value
   // written onto them, as on the paywall card: a person on a slow phone keeps the choice made before the page woke.
@@ -33,7 +38,17 @@
     <!-- A server redirect to GitHub, not a page: the browser must ask the server, not route to a game called "github". -->
     <p><a class="button" href="/make/github?choose=1" data-sveltekit-reload>Connect GitHub</a></p>
   {:else}
-    <form method="POST" action="?/create">
+    <form
+      method="POST"
+      action="?/create"
+      use:enhance={() => {
+        copying = true;
+        return async ({ update }) => {
+          await update();
+          copying = false;
+        };
+      }}
+    >
       <p>
         <label>
           Name
@@ -62,8 +77,8 @@
           </select>
         </label>
         <span class="note">The GitHub repository that holds your game.</span>
-        <a href="/make/github?choose=1" data-sveltekit-reload>Choose other repositories on GitHub</a>
       </p>
+      <p><a href="/make/github?choose=1" data-sveltekit-reload>Choose other repositories on GitHub</a></p>
       <!-- Open again after a refusal when something was typed in it, so a person sees what they typed. -->
       <details open={Boolean(form?.branch) || Boolean(form?.folder)}>
         <summary>Change the branch or folder</summary>
@@ -112,8 +127,10 @@
       {#if form?.error}
         <p class="problem" role="alert">{form.error}</p>
       {/if}
-      <button>Next: add your clips</button>
-      <p class="note">Copying your game can take a minute. Keep this page open.</p>
+      <button>Save and add your clips</button>
+      {#if copying}
+        <p class="note">Copying your game can take a minute. Keep this page open.</p>
+      {/if}
     </form>
   {/if}
   <p><a href="/make">Back to your games</a></p>
