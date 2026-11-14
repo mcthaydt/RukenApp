@@ -66,6 +66,15 @@ describe("the tokens (design 5.8)", () => {
     expect(token("--font-text")).toMatch(/^"Schibsted Grotesk", .*system-ui.*sans-serif$/);
   });
 
+  // The Owner, 2026-11-14, "I feel like red is bad, continue to payment is good": the paid button is Dusky Green with
+  // white words, and no rule paints anything red.
+  it("paints the paid button Dusky Green with white words, and uses no red anywhere", () => {
+    const pay = /\.card \.pay\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(pay).toMatch(/background:\s*var\(--felt-raised\);/);
+    expect(pay).toMatch(/color:\s*var\(--chalk\);/);
+    expect(css).not.toMatch(/var\(--pip\)/);
+  });
+
   it("is one dark theme, with none of what the design rules out", () => {
     expect(css).toMatch(/:root\s*\{[^}]*color-scheme:\s*dark;/);
     expect(css).not.toMatch(
@@ -92,7 +101,8 @@ describe("contrast, measured from the tokens (WCAG AA)", () => {
   it.each([
     ["--ink", "--paper"], // a field's edge
     ["--paper", "--felt"], // the focus ring, the card and the main button on felt
-    ["--pip", "--paper"], // the paid button against its card
+    ["--pip", "--paper"], // the old red button against its card
+    ["--felt-raised", "--paper"], // the paid button against its card
   ])("%s shows against %s (3:1)", (mark, ground) => {
     expect(contrast(token(mark), token(ground))).toBeGreaterThanOrEqual(3);
   });
@@ -104,6 +114,7 @@ describe("contrast, measured from the tokens (WCAG AA)", () => {
     ["--ink", "--paper", "18.6"],
     ["--ink-soft", "--paper", "10.0"],
     ["--paper", "--pip", "5.2"],
+    ["--chalk", "--felt-raised", "9.5"], // the paid button's words
   ])("%s on %s measures %s:1, as design 5.8 says", (text, ground, ratio) => {
     expect(contrast(token(text), token(ground)).toFixed(1)).toBe(ratio);
   });
@@ -200,8 +211,8 @@ describe("screens wear the look and nothing of their own", () => {
     }
   });
 
-  it("the pip-red button is used once, on the paywall card", () => {
-    // It is the one press that spends money, so it is the one red thing on the whole site.
+  it("the paid button is used once, on the paywall card", () => {
+    // It is the one press that spends money, so it is the one button with this class on the whole site.
     expect(screensUsing("pay")).toEqual([join(ROUTES, "join", "+page.svelte")]);
     const card = readFileSync(join(ROUTES, "join", "+page.svelte"), "utf8");
     expect(card.match(/class="pay"/g)).toHaveLength(1);

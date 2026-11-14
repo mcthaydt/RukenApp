@@ -127,18 +127,21 @@ test("next pointing off the site is ignored", async ({ page }) => {
   await expect(page.locator('input[name="next"]')).toHaveValue("/");
 });
 
-// Review Focus 16: a second red button, or red anywhere else, fails here before it merges.
-test("red is on Continue to payment and nowhere else", async ({ page }, testInfo) => {
+// Review Focus 16, as the Owner changed it (2026-11-14, "I feel like red is bad, continue to payment is good"): the paid
+// button is Dusky Green with white words, and red is on no screen of Ruken's at all.
+test("Continue to payment is Dusky Green with white words, and nothing on the card is red", async ({
+  page,
+}, testInfo) => {
   await page.goto("/join");
   await expect(page.getByRole("button", { name: "Continue" })).toBeVisible();
   expect(await pipRed(page)).toEqual([]);
 
   await signUp(page);
   await page.goto("/join");
-  await expect(page.getByRole("button", { name: "Continue to payment" })).toBeVisible();
-  expect(await pipRed(page)).toEqual(["Continue to payment"]);
   const pay = page.getByRole("button", { name: "Continue to payment" });
-  await expect(pay).toHaveCSS("background-color", rgb(token("--pip")));
-  await expect(pay).toHaveCSS("color", rgb(token("--paper")));
+  await expect(pay).toBeVisible();
+  expect(await pipRed(page)).toEqual([]);
+  await expect(pay).toHaveCSS("background-color", rgb(token("--felt-raised")));
+  await expect(pay).toHaveCSS("color", rgb(token("--chalk")));
   await showTheOwner(page, testInfo, "the paywall card, signed in");
 });
