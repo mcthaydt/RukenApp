@@ -1,7 +1,7 @@
 /*
   The look of Ruken's own screens: the Card Table (design 5.8). The page is quiet green felt, and what a
-  person picks up or acts on is a paper card on it. Nothing is red (Owner, 2026-11-14). No casino imagery, no
-  chips, no gold.
+  person picks up or acts on is a paper card on it. Red is only the paywall card's one small pip mark, never a
+  button (Owner, 2026-11-14). No casino imagery, no chips, no gold.
   tests/lib/look.test.ts reads this file as text and pins every token, so a change here fails there first.
 */
 
@@ -47,8 +47,8 @@
   --paper: #ffffff; /* White: cards; the primary button on felt */
   --ink: #111314; /* Black: all text on paper (18.6:1) */
   --ink-soft: #34454c; /* Slate Color: notes on paper (10.0:1) */
-  /* Scarlet. No rule uses it since the Owner, 2026-11-14, "I feel like red is bad, continue to payment is good",
-     moved the paid button to Dusky Green; the token waits for the Owner's word on whether it goes. */
+  /* Scarlet: the paywall card's one small pip mark, never a button or a field (Owner, 2026-11-14, "Keep it").
+     No rule uses it yet; the mark is not built. */
   --pip: #cb2f43;
 
   /* Type. A system font stands behind each face, so every word shows if a file does not arrive. */

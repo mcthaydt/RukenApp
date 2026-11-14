@@ -319,7 +319,7 @@ Each line names an input the design implies and no ordinary test would meet. Eac
 13. A browser that cannot fetch the font files (blocked, offline, a slow train): every word still shows, in the system's own font, and every button is still there to press (Task 36).
 14. A person whose phone asks for reduced motion: nothing on any screen moves, also when a button is pressed (Task 37).
 15. A very long email address on a phone: the card wraps it and the page never scrolls sideways (Task 37).
-16. A new screen that paints red, a second Dusky Green button, or its own colours: the pip check and the plain-screens check fail before it merges (Tasks 27 and 37).
+16. A new screen that paints a red button, a second coloured button, or its own colours: the pip check and the plain-screens check fail before it merges (Tasks 27 and 37).
 
 ---
 
@@ -879,7 +879,7 @@ A `<button>` (or `a.button`) with no other class is the screen's main action: pa
 **Grandma, on every screen.** The look adds no word and takes none away. What it must not break, and how that is checked:
 
 - One thing to do per screen: a card holds at most one filled button; every other way out is an underlined link or a `quiet` button (Task 37 counts them on every screen).
-- Nothing is red (Owner, 2026-11-14: "I feel like red is bad, continue to payment is good"): no screen shows pip, and the one button that spends money, "Continue to payment", is Dusky Green with white words (Tasks 27 and 37). The plan first said red meant money and nothing else.
+- No button is red (Owner, 2026-11-14: "I feel like red is bad, continue to payment is good"; Owner, 2026-11-14, on the pip mark: "Keep it"): the one button that spends money, "Continue to payment", is Dusky Green with white words (Tasks 27 and 37), and pip is only the paywall card's one small mark, not built yet. The plan first said red meant money and nothing else.
 - Readable: text is 18px on a ground it contrasts with by 4.5:1 or more (Task 35 measures every pair from the tokens); only notes are 14px.
 - Easy to hit: buttons and fields are at least 48px tall.
 - Nothing sideways, nothing moving: no screen scrolls sideways on a phone, also with a very long email address; with reduced motion nothing moves (Task 37).

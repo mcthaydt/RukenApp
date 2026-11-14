@@ -221,7 +221,7 @@ Owner, 2026-11-13: "We can use the design present in the previous version as wel
 
 Ruken's own screens wear the Card Table design: the paywall card, sign-up, sign-in and password reset, the person's own page (/me), deleting an account, the maker's area (/make), the admin portal, and the placeholder home page until the feed replaces it. The feed (5.1) stays full-screen clips with Reels' controls, and a maker's page (5.3) keeps the Wada colours its maker picked. The source is the Owner's "Ruken Card Table" design system (approved 2026-10-27); these are its values.
 
-The idea: the page is quiet green felt, and what a person picks up or acts on is a white paper card on it. Nothing is red (Owner, 2026-11-14: "I feel like red is bad, continue to payment is good"; the paid button is Dusky Green). No casino imagery, no chips, no gold.
+The idea: the page is quiet green felt, and what a person picks up or acts on is a white paper card on it. Red appears only as the one small pip mark on the paywall card, never on a button (Owner, 2026-11-14: "I feel like red is bad, continue to payment is good"; the paid button is not red; Owner, 2026-11-14, on the pip mark: "Keep it"; the button's colour is still the Owner's to pick). No casino imagery, no chips, no gold.
 
 - **Colours** (one theme, dark by choice; no gradients):
 
@@ -237,7 +237,7 @@ The idea: the page is quiet green felt, and what a person picks up or acts on is
   | `paper` | `#ffffff` White | cards; the primary button on felt |
   | `ink` | `#111314` Black | all text on paper (18.6:1) |
   | `ink-soft` | `#34454c` Slate Color | notes on paper (10.0:1) |
-  | `pip` | `#cb2f43` Scarlet | nothing now: the paid button moved to Dusky Green (Owner, 2026-11-14: "I feel like red is bad, continue to payment is good"), and the token waits for the Owner's word on whether it goes. It was the one paid action and small markers; paper text on it is 5.2:1; never a field. The book's nearest red to the old pip, Red Orange `#dd4027`, gives paper text only 4.3:1, so the nearest red that passes 4.5:1 is used. |
+  | `pip` | `#cb2f43` Scarlet | the one small mark on the paywall card, never a button (Owner, 2026-11-14, on the pip mark: "Keep it"; the paid button moved off red, Owner, 2026-11-14: "I feel like red is bad, continue to payment is good"). It was also the paid button; paper text on it is 5.2:1; never a field. The book's nearest red to the old pip, Red Orange `#dd4027`, gives paper text only 4.3:1, so the nearest red that passes 4.5:1 is used. |
 
   Surfaces are told apart by a tone step, never by a line or a shadow.
 - **Type.** Young Serif (400) for headings and card titles; Schibsted Grotesk, 400 for text and 600 for buttons. Both are under the SIL Open Font License and are served from Ruken's own address with their licences beside them; the site makes no request to a font service. Sizes: section heading 64px (36px on a phone), card title 32px, statement 24px, body 18px at 1.55 leading, small 14px for notes only. Sentence case; left aligned.
@@ -245,7 +245,7 @@ The idea: the page is quiet green felt, and what a person picks up or acts on is
 - **Motion.** Pressing a button scales it to 0.97; nothing else moves. With reduced motion, nothing moves at all.
 - **Never.** Eyebrow labels, tiny uppercase labels, gradients, glass, shadows at rest, emoji, icons on feature cards, index numbers.
 - **Its copy rules hold too.** Every money line carries its qualifier ("Tax is added where it applies."), labels take no full stop, sentences do, and nothing claims a fact Ruken does not have. Prices and product words come from this design, not from the old pages ($9.99 and "membership", not $7.99 and "Premium").
-- Grandma: one paper card per screen holds the one thing to do; the one coloured button, Dusky Green with white words, appears only where money is spent.
+- Grandma: one paper card per screen holds the one thing to do; the one coloured button appears only where money is spent, and it is never red.
 - Owner, 2026-11-14: the paper card is the one thing shared by every surface: the paywall card over a dimmed clip in the feed, the cards on Ruken's own screens, and the maker's page, so they read as one product. On the paywall card, one small pip-red mark makes it read as a playing card. The account screens are not polished further after the two fixes of 14 November; the look's effort goes to the screens the goals depend on (the feed, Play and the paywall, the maker's page).
 
 ## 6. Money
