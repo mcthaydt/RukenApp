@@ -178,6 +178,7 @@ Found while planning:
 
 Notes for later slices:
 
+- Owner, 2026-11-14 (design 5.2 and 5.8): the paywall is the paper card laid over the dimmed clip the person tapped, and the paper card is shared by the feed, Ruken's own screens and the maker's page. Slice 1's paywall card (branch H) sits on the felt, as there is no clip yet; slice 2's game page and slice 3's feed and maker's page lay it over the clip. The account screens get no more polish after the two fixes of 14 November.
 - Prisma, Postgres and a Postgres job in CI arrive with slice 1, when the first table does. Adding that job changes `ci.yml`, which needs the Owner's words quoted in the commit; design 7.4 is those words.
 - `src/index.ts` from CLAUDE.md's structure is not made: an app has no public surface for others to import. Routes in `src/routes/` reach features through their entry files.
 - Testing Library and jsdom arrive with the first component test.
