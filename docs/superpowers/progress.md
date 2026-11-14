@@ -14,7 +14,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | 2 | Games and play | plan merged (#27). Plan audit written, with the plan fixed and the coordinator's answers and the Owner's decision of 2026-11-14 (makers take their own games off Ruken) in it, merged (#29). The first execution session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) is on branch A, `slice-2/game` (pull request #44, a draft; the progress here is its own to set). Open: the maker agreement's text (the coordinator supplies it before branch M), FloorFifty's two clips and four items in FloorFifty's own repository | 45% (tasks 1 to 14 of 31 green: branches A to D) |
 | 3 | The feed and the maker's page | plan written, on `plan/slice-3` (pull request #53); no code yet. Open: Q1 (social icons) and Q2 (the maker's photo), asked of the coordinator for the Owner | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
-| 5 | Money (after launch, before 10 December) | plan written, on `plan/slice-5` (a draft pull request), started alongside slice 2's build (Owner, 2026-11-14: "Slice 5 plan"). Three questions asked and not yet answered: the cost of sending a payout and which countries (the Owner), the second person and the code (the coordinator). Nothing built | 0% |
+| 5 | Money (after launch, before 10 December) | plan written, on `plan/slice-5` (pull request #55, a draft), started alongside slice 2's build (Owner, 2026-11-14: "Slice 5 plan"). Three questions asked and not yet answered: the cost of sending a payout and which countries (the Owner), the second person and the code (the coordinator). Nothing built | 0% |
 
 ## Sessions
 
@@ -41,7 +41,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | implementation audit, slice 1 (`session_01HNdX7Megz3EP14633F3phc`) | 5 Implementation audit | `audit/slice-1-implementation` | done; merged (#43): 0 block launch, 6 should fix, 9 notes |
 | execution, slice 1, the palette and button corners, fifth session (`session_01HNdX7M6L5FmYJyW99p6dtd`) | 4 Execution | `slice-1/wada-palette` (pull request #42) | done; merged (#42) |
 | plan, slice 3 | 2 Plan | `plan/slice-3` | plan written (Owner, 2026-11-14: start the slice 3 plan now, beside slice 2's building); pull request #53 |
-| plan, slice 5 (`session_01HNdX7LvaghiDzFbcAXYQhH`) | 2 Plan | `plan/slice-5` | plan written (Owner, 2026-11-14: "Slice 5 plan", beside slice 2's building); a draft pull request; three questions asked of the coordinator and not yet answered |
+| plan, slice 5 (`session_01HNdX7LvaghiDzFbcAXYQhH`) | 2 Plan | `plan/slice-5` | plan written (Owner, 2026-11-14: "Slice 5 plan", beside slice 2's building); pull request #55, a draft; three questions asked of the coordinator and not yet answered |
 | execution, slice 2, first session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) | 4 Execution | `slice-2/game` (pull request #44) | running |
 | fixes, slice 1 (`session_01HNdX7Lkceicj4sgwma7Dcp`) | 6 Fixes | `slice-1/fixes` (pull request #45) | running |
 
@@ -276,7 +276,7 @@ Plan: `docs/superpowers/plans/2026-11-14-slice-5-money.md`. It ends with: the fi
 
 Stages:
 
-- [ ] Plan: written on `plan/slice-5` (a draft pull request), planned against `main` at `00d616d`, with `main` merged in at `7753369`. No test ran in the plan session, and no code was written. Read outside the repository: the old repository's money code (`packages/ledger`, `packages/core/src/money`, `packages/core/src/premium`, `packages/billing/src/connect.ts`, the money migration) at `188e8a0`; the `stripe` 22.6.2 package's own types for balance transactions and report runs; and Stripe's pages on the Fees report, standalone fees, balance transaction types and Connect's prices. Not checked, because it needs a live Stripe account: what the rows of Stripe's Fees report look like for a Billing fee and a Tax fee (the plan's stop M1 reads them before the first statement).
+- [ ] Plan: written on `plan/slice-5` (pull request #55), planned against `main` at `00d616d`, with `main` merged in at `7753369`. No test ran in the plan session, and no code was written. Read outside the repository: the old repository's money code (`packages/ledger`, `packages/core/src/money`, `packages/core/src/premium`, `packages/billing/src/connect.ts`, the money migration) at `188e8a0`; the `stripe` 22.6.2 package's own types for balance transactions and report runs; and Stripe's pages on the Fees report, standalone fees, balance transaction types and Connect's prices. Not checked, because it needs a live Stripe account: what the rows of Stripe's Fees report look like for a Billing fee and a Tax fee (the plan's stop M1 reads them before the first statement).
 - [ ] Plan audit.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
