@@ -1,12 +1,15 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { THEMES } from "../../../src/features/pages/themes.ts";
-import { createPagesService, type PagesService } from "../../../src/features/pages/service.ts";
+import { isPhotoKey } from "../../../src/features/pages/photo.ts";
+import { createPagesService, PageError, type PagesService } from "../../../src/features/pages/service.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
+import { MemoryFileStore } from "../../support/memory-file-store.ts";
 
 let database: TestDatabase | undefined;
 let service: PagesService;
+const files = new MemoryFileStore();
 
 function db(): PrismaClient {
   if (database === undefined) throw new Error("the database did not start");
@@ -15,7 +18,7 @@ function db(): PrismaClient {
 
 beforeAll(async () => {
   database = await startTestDatabase();
-  service = createPagesService({ db: db() });
+  service = createPagesService({ db: db(), files });
 });
 
 afterAll(async () => {
@@ -362,5 +365,128 @@ describe("what a visitor sees and counts", () => {
       ]),
     );
     expect(await service.handlesOf([])).toEqual(new Map());
+  });
+});
+
+// The first bytes of a PNG and a JPEG: all a photo is checked for, and all a test needs.
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 4, 5, 6, 7]);
+
+/** The key a maker's page holds for its photo, which a test that has just saved one knows is there. */
+async function photoKeyOf(userId: string): Promise<string> {
+  const key = (await service.pageOf(userId))?.photoKey;
+  if (key === null || key === undefined) throw new Error("the page has no photo");
+  return key;
+}
+
+describe("a maker's photo", () => {
+  it("stores a photo and remembers where it is", async () => {
+    const { userId } = await makerWithPage();
+    await service.savePhoto(userId, { contentType: "image/png", bytes: PNG });
+
+    const key = await photoKeyOf(userId);
+    expect(isPhotoKey(key)).toBe(true);
+    expect(key.endsWith(".png")).toBe(true);
+    expect((await files.head(key))?.size).toBe(PNG.length);
+  });
+
+  it("puts a second photo in place of the first, and the first goes", async () => {
+    const { userId } = await makerWithPage();
+    await service.savePhoto(userId, { contentType: "image/png", bytes: PNG });
+    const first = await photoKeyOf(userId);
+
+    await service.savePhoto(userId, { contentType: "image/jpeg", bytes: JPEG });
+    const second = await photoKeyOf(userId);
+
+    expect(second).not.toBe(first);
+    expect(second.endsWith(".jpg")).toBe(true);
+    expect(await files.head(first)).toBeNull();
+    expect((await files.head(second))?.size).toBe(JPEG.length);
+  });
+
+  it("refuses a photo that breaks a rule, and stores nothing", async () => {
+    const { userId } = await makerWithPage();
+    const put = vi.spyOn(files, "put");
+    try {
+      const page = new TextEncoder().encode("<!doctype html><script>alert(1)</script>");
+      await expect(
+        service.savePhoto(userId, { contentType: "image/png", bytes: page }),
+      ).rejects.toMatchObject({
+        code: "INVALID",
+        message: "That file doesn't look like a picture. Save it as a JPEG or PNG and try again.",
+      });
+      await expect(service.savePhoto(userId, { contentType: "image/gif", bytes: PNG })).rejects.toMatchObject(
+        {
+          code: "INVALID",
+          message: "A photo is a JPEG, PNG or WebP picture.",
+        },
+      );
+      expect(put).not.toHaveBeenCalled();
+      expect((await service.pageOf(userId))?.photoKey).toBeNull();
+    } finally {
+      put.mockRestore();
+    }
+  });
+
+  it("leaves the photo a page has when a new one is refused", async () => {
+    const { userId } = await makerWithPage();
+    await service.savePhoto(userId, { contentType: "image/png", bytes: PNG });
+    const kept = await photoKeyOf(userId);
+
+    await expect(
+      service.savePhoto(userId, { contentType: "image/png", bytes: new Uint8Array([1, 2, 3]) }),
+    ).rejects.toBeInstanceOf(PageError);
+
+    expect(await photoKeyOf(userId)).toBe(kept);
+    expect(await files.head(kept)).not.toBeNull();
+  });
+
+  it("says so when the person has no page yet, and stores nothing", async () => {
+    const userId = await createUser(db());
+    const put = vi.spyOn(files, "put");
+    try {
+      await expect(service.savePhoto(userId, { contentType: "image/png", bytes: PNG })).rejects.toMatchObject(
+        {
+          code: "NOT_FOUND",
+        },
+      );
+      expect(put).not.toHaveBeenCalled();
+    } finally {
+      put.mockRestore();
+    }
+  });
+
+  it("removes the photo from the page and from the store", async () => {
+    const { userId } = await makerWithPage();
+    await service.savePhoto(userId, { contentType: "image/png", bytes: PNG });
+    const key = await photoKeyOf(userId);
+
+    await service.removePhoto(userId);
+
+    expect((await service.pageOf(userId))?.photoKey).toBeNull();
+    expect(await files.head(key)).toBeNull();
+  });
+
+  it("removes nothing, without a fuss, from a page that has no photo", async () => {
+    const { userId } = await makerWithPage();
+    await expect(service.removePhoto(userId)).resolves.toBeUndefined();
+    expect((await service.pageOf(userId))?.photoKey).toBeNull();
+  });
+
+  it("says so when the person has no page to take a photo off", async () => {
+    const userId = await createUser(db());
+    await expect(service.removePhoto(userId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("shows visitors the photo's key, and no other page's", async () => {
+    const mine = await makerWithPage();
+    const other = await makerWithPage();
+    await service.savePhoto(mine.userId, {
+      contentType: "image/webp",
+      bytes: new Uint8Array([0x52, 0x49, 0x46, 0x46, 1, 0, 0, 0, 0x57, 0x45, 0x42, 0x50]),
+    });
+
+    expect((await service.pageByHandle(mine.handle))?.photoKey).toBe(await photoKeyOf(mine.userId));
+    expect((await service.pageByHandle(other.handle))?.photoKey).toBeNull();
   });
 });

@@ -2,6 +2,7 @@ import { error } from "@sveltejs/kit";
 import { purgeDueAccounts } from "../../../features/accounts/accounts.ts";
 import { systemClock } from "../../../lib/clock.ts";
 import { prisma } from "../../../lib/server/db.ts";
+import { fileStore } from "../../../lib/server/files.ts";
 import { hasJobSecret } from "../../../lib/server/job-secret.ts";
 import type { RequestHandler } from "./$types";
 
@@ -9,6 +10,6 @@ import type { RequestHandler } from "./$types";
 // secret, so it looks like any address the site does not have. With no secret set nobody is let in.
 export const POST: RequestHandler = async ({ request }) => {
   if (!hasJobSecret(request)) error(404, "Not found");
-  const purged = await purgeDueAccounts({ prisma: prisma(), clock: systemClock });
+  const purged = await purgeDueAccounts({ prisma: prisma(), clock: systemClock, files: fileStore() });
   return Response.json({ purged });
 };

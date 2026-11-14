@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { isPhotoKey } from "../../../src/features/pages/photo.ts";
 import { handleGameRequest } from "../../../src/features/play/gate.ts";
 import { makePass, type PassClaims } from "../../../src/features/play/pass.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
@@ -22,6 +23,9 @@ const RAN_OUT = "This game's link has run out. Go back and press Play again.";
 const PAGE = "<html>page</html>";
 const MAIN = "console.log(1);";
 const CLIP_KEY = "clips/aaaaaaaaaa/upright-0123456789abcdef.mp4";
+const PHOTO_KEY = "photos/0123456789abcdef.png";
+// The first bytes of a PNG: the gate takes the type from the key's name and never looks inside.
+const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 let files: MemoryFileStore;
 
@@ -36,6 +40,7 @@ beforeEach(async () => {
   await put("files/aaaaaaaaaa/p1/LICENSE", "no extension");
   await put("files/aaaaaaaaaa/p1/big.js.br", new Uint8Array([1, 2, 3, 4]));
   await put(CLIP_KEY, new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]));
+  await put(PHOTO_KEY, PNG_BYTES);
   files.reads.length = 0;
 });
 
@@ -263,6 +268,64 @@ describe("a game's clips", () => {
   it("says a clip is not found when it is not there", async () => {
     const response = await get("/clips/aaaaaaaaaa/wide-0123456789abcdef.mp4", { host: "media.games.test" });
     expect(response.status).toBe(404);
+  });
+});
+
+describe("a maker's photo", () => {
+  // A photo is shown on a maker's page before anyone plays, so anyone may have it, as a clip is.
+  it("sends a photo to anyone, to keep for a year", async () => {
+    const response = await get(`/${PHOTO_KEY}`, { host: "media.games.test" });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/png");
+    expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+    expect(response.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(PNG_BYTES);
+  });
+
+  // Review Focus 13: the media name serves a clip or a photo and nothing else, and never reaches the store to find out.
+  it("serves nothing from the media name that is not a clip or a photo", async () => {
+    for (const path of [
+      "/photos/0123456789abcdef.svg",
+      "/photos/0123456789abcdef.html",
+      "/photos/../files/aaaaaaaaaa/p1/index.html",
+      "/photos/",
+      "/photos",
+    ]) {
+      expect((await get(path, { host: "media.games.test" })).status).toBe(404);
+    }
+    expect(files.reads).toEqual([]);
+  });
+
+  it("never serves a photo from a game's own name", async () => {
+    const response = await get(`/${PHOTO_KEY}`);
+    // Like any address with no pass: refused, and the store is not asked.
+    expect(response.status).toBe(403);
+    expect(await response.text()).toBe(RAN_OUT);
+    expect(files.reads).toEqual([]);
+  });
+
+  // The gate keeps its own copy of the key's shape (it imports no feature), so the two must never drift apart.
+  it("takes the keys the pages feature makes and refuses the ones it refuses", async () => {
+    const keys = [
+      "photos/0123456789abcdef.jpg",
+      "photos/0123456789abcdef.png",
+      "photos/0123456789abcdef.webp",
+      "photos/0123456789abcdef.svg",
+      "photos/0123456789abcdef.html",
+      "photos/0123456789abcdef.png.exe",
+      "photos/123456789abcdef.png",
+      "photos/0123456789ABCDEF.png",
+      "photos/x/0123456789abcdef.png",
+      "photos/0123456789abcdef0.png",
+      "files/0123456789abcdef.png",
+    ];
+    for (const key of keys) {
+      // Every key is in the store, so a 404 can only be the gate's own refusal.
+      await files.put(key, PNG_BYTES);
+      const response = await get(`/${key}`, { host: "media.games.test" });
+      expect(response.status, key).toBe(isPhotoKey(key) ? 200 : 404);
+    }
   });
 });
 

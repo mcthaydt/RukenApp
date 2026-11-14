@@ -8,6 +8,7 @@ import { newPublicId } from "../../../src/features/games/ids.ts";
 import { createWishlist } from "../../../src/features/launch/wishlist.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
+import { MemoryFileStore } from "../../support/memory-file-store.ts";
 import { TestClock } from "../../support/test-clock.ts";
 
 // The daily job that finishes a deletion once its 14 days are over.
@@ -35,6 +36,9 @@ beforeEach(async () => {
     data: { cancelledAt: new Date(0) },
   });
 });
+
+// The bucket a person's photo is kept in.
+const files = new MemoryFileStore();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const START = "2026-10-14T17:00:00Z";
@@ -86,7 +90,7 @@ describe("purgeDueAccounts", () => {
 
     clock.advance(13 * DAY_MS);
 
-    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(0);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
     const user = await db().user.findUniqueOrThrow({ where: { id } });
     expect(user.status).toBe("pending_deletion");
     expect(user.name).toBe("Leaving");
@@ -101,7 +105,7 @@ describe("purgeDueAccounts", () => {
     });
 
     clock.advance(15 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(1);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
 
     expect(await db().user.findUniqueOrThrow({ where: { id } })).toMatchObject({
       status: "deleted",
@@ -127,9 +131,9 @@ describe("purgeDueAccounts", () => {
     const { id } = await seedPerson();
     const clock = await askToBeDeleted(id);
     clock.advance(15 * DAY_MS);
-    await purgeDueAccounts({ prisma: db(), clock });
+    await purgeDueAccounts({ prisma: db(), clock, files });
 
-    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(0);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
   });
 
   it("skips a request that signing in cancelled", async () => {
@@ -140,7 +144,7 @@ describe("purgeDueAccounts", () => {
 
     clock.advance(12 * DAY_MS);
 
-    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(0);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
     const user = await db().user.findUniqueOrThrow({ where: { id } });
     expect(user.status).toBe("active");
     expect(user.name).toBe("Leaving");
@@ -150,7 +154,7 @@ describe("purgeDueAccounts", () => {
     const { id, email } = await seedPerson();
     const clock = await askToBeDeleted(id);
     clock.advance(15 * DAY_MS);
-    await purgeDueAccounts({ prisma: db(), clock });
+    await purgeDueAccounts({ prisma: db(), clock, files });
 
     const again = await db().user.create({ data: { name: "Back", email } });
 
@@ -177,7 +181,7 @@ describe("purgeDueAccounts", () => {
     const clock = await askToBeDeleted(leaving.id);
 
     clock.advance(15 * DAY_MS);
-    await purgeDueAccounts({ prisma: db(), clock });
+    await purgeDueAccounts({ prisma: db(), clock, files });
 
     expect(await db().gitHubInstallation.count({ where: { userId: leaving.id } })).toBe(0);
     expect(await db().gitHubRepository.count({ where: { fullName: "leaving/game" } })).toBe(0);
@@ -211,12 +215,12 @@ describe("purgeDueAccounts", () => {
     const clock = await askToBeDeleted(leaving.id);
 
     clock.advance(13 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(0);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
     expect(await db().makerPage.count({ where: { userId: leaving.id } })).toBe(1);
     expect(await db().pageLink.count({ where: { page: { userId: leaving.id } } })).toBe(2);
 
     clock.advance(2 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(1);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
 
     expect(await db().makerPage.count({ where: { userId: leaving.id } })).toBe(0);
     expect(await db().pageLink.count({ where: { page: { handle: "leaving-maker" } } })).toBe(0);
@@ -230,6 +234,37 @@ describe("purgeDueAccounts", () => {
     // Nobody else's page is touched.
     expect(await db().makerPage.count({ where: { userId: staying.id } })).toBe(1);
     expect(await db().pageLink.count({ where: { page: { userId: staying.id } } })).toBe(2);
+  });
+
+  // Review Focus 14: a photo is a person's data too, and is public by its address until it is deleted.
+  it("removes a person's photo from the store with their page, and leaves everyone else's", async () => {
+    const leaving = await seedPerson();
+    const staying = await seedPerson();
+    const keys = {
+      leaving: "photos/00000000000000a1.png",
+      staying: "photos/00000000000000b2.png",
+    };
+    for (const [userId, handle, photoKey] of [
+      [leaving.id, "leaving-with-photo", keys.leaving],
+      [staying.id, "staying-with-photo", keys.staying],
+    ] as const) {
+      await db().makerPage.create({ data: { userId, handle, name: "A maker", photoKey } });
+      await files.put(photoKey, new Uint8Array([1, 2, 3]));
+    }
+    // A leaving person with no photo is no trouble either.
+    const without = await seedPerson();
+    await db().makerPage.create({
+      data: { userId: without.id, handle: "leaving-no-photo", name: "A maker" },
+    });
+    const clock = await askToBeDeleted(leaving.id);
+    await requestDeletion({ prisma: db(), clock }, without.id);
+
+    clock.advance(15 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(2);
+
+    expect(await files.head(keys.leaving)).toBeNull();
+    expect(await files.head(keys.staying)).not.toBeNull();
+    expect(await db().makerPage.count({ where: { userId: leaving.id } })).toBe(0);
   });
 
   // The games a person wanted are theirs (the wishlist, before launch). The launch email's row holds only an id and a
@@ -258,12 +293,12 @@ describe("purgeDueAccounts", () => {
     const wishlist = createWishlist({ db: db(), clock });
 
     clock.advance(13 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(0);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
     expect(await db().wishlist.count({ where: { userId: leaving.id } })).toBe(1);
     expect(await wishlist.countFor(game.id, maker.id)).toBe(2);
 
     clock.advance(2 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(1);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
 
     expect(await db().wishlist.count({ where: { userId: leaving.id } })).toBe(0);
     expect(await wishlist.countFor(game.id, maker.id)).toBe(1);
@@ -314,7 +349,7 @@ describe("purgeDueAccounts", () => {
 
     clock.advance(15 * DAY_MS);
 
-    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(1);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
     expect(await moneyRowsOf(id)).toEqual(before);
     expect(before.payments).toHaveLength(1);
     expect(before.starts).toHaveLength(1);
