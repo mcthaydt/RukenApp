@@ -1,15 +1,29 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
+import agreementText from "./library/maker-agreement-v1.txt?raw";
 
-// What a maker has agreed to (stub: the code comes after its tests have been seen failing).
+// What a maker has agreed to. The text is the Owner's, kept word for word in library/maker-agreement-v1.txt and shown
+// as plain paragraphs. A new version is a new file and a new number; a maker is asked to agree again before the next
+// game goes up (the agreement's own last point).
 
-export const MAKER_AGREEMENT_VERSION = "";
-export const MAKER_AGREEMENT_TEXT = "";
+/** The version of the text in `library/maker-agreement-v1.txt`. */
+export const MAKER_AGREEMENT_VERSION = "1";
 
-export function hasAgreed(_db: PrismaClient, userId: string): Promise<boolean> {
-  return Promise.reject(new Error(`not built yet: hasAgreed ${userId}`));
+/** The text, as it is in the file. */
+export const MAKER_AGREEMENT_TEXT: string = agreementText;
+
+/** True once this maker has agreed. */
+export async function hasAgreed(db: PrismaClient, userId: string): Promise<boolean> {
+  return (await db.makerAgreement.count({ where: { userId } })) > 0;
 }
 
-export function agree(_db: PrismaClient, clock: Clock, userId: string): Promise<void> {
-  return Promise.reject(new Error(`not built yet: agree ${userId} ${String(clock.epochMs())}`));
+/**
+ * Records that this maker agreed to this version, once: a second call adds nothing. A row is only ever added, so it is
+ * written with "do nothing if it is there", not an update.
+ */
+export async function agree(db: PrismaClient, clock: Clock, userId: string): Promise<void> {
+  await db.makerAgreement.createMany({
+    data: [{ userId, version: MAKER_AGREEMENT_VERSION, acceptedAt: new Date(clock.epochMs()) }],
+    skipDuplicates: true,
+  });
 }
