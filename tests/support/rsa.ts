@@ -7,8 +7,8 @@ import { generateKeyPairSync, type KeyObject } from "node:crypto";
 export function freshRsaKey(): { pkcs1Pem: string; pkcs8Pem: string; publicKey: KeyObject } {
   const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
   return {
-    pkcs1Pem: privateKey.export({ type: "pkcs1", format: "pem" }),
-    pkcs8Pem: privateKey.export({ type: "pkcs8", format: "pem" }),
+    pkcs1Pem: privateKey.export({ type: "pkcs1", format: "pem" }).toString(),
+    pkcs8Pem: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
     publicKey,
   };
 }
