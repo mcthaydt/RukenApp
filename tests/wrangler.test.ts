@@ -126,6 +126,15 @@ describe("deploying", () => {
     expect(deploy.indexOf("prisma migrate deploy")).toBeLessThan(deploy.indexOf("wrangler deploy"));
   });
 
+  // The game gate is its own Worker, so a game's files never come from Ruken's address. It goes out after the app,
+  // with the same build's token.
+  it("the deploy command then deploys the game gate", () => {
+    const deploy = scripts().deploy ?? "";
+    const gate = "wrangler deploy --config cloudflare/games/wrangler.jsonc";
+    expect(deploy).toContain(gate);
+    expect(deploy.indexOf(gate)).toBeGreaterThan(deploy.indexOf("wrangler deploy cloudflare/worker.js"));
+  });
+
   it("the build never migrates", () => {
     expect(scripts().build).not.toContain("migrate");
   });
