@@ -48,6 +48,10 @@ export async function signUp(
   await fillBirthDate(page, yearsAgo(30));
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL("/");
+  // The URL reads "/" as soon as the redirect commits, before that page has finished loading, and a goto sent now
+  // can collide with the load still in flight (seen in WebKit, run 43626711198). SvelteKit adds its announcer only
+  // once the page has come alive, so its arrival says the page the person landed on has settled.
+  await expect(page.locator("#svelte-announcer")).toBeAttached();
   return { email, password: JOURNEY_PASSWORD };
 }
 
