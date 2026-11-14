@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
 import { createGamesService, type GamesService } from "../../../src/features/games/service.ts";
 import { systemClock } from "../../../src/lib/clock.ts";
@@ -9,6 +10,12 @@ import { MemoryFileStore } from "../../support/memory-file-store.ts";
 
 let database: TestDatabase | undefined;
 const files = new MemoryFileStore();
+
+// Saving a clip never reaches GitHub, so a call to it here is a mistake the test should show.
+const noGitHub: GitHub = {
+  commitOf: () => Promise.reject(new Error("this test reaches for GitHub")),
+  tarball: () => Promise.reject(new Error("this test reaches for GitHub")),
+};
 let service: GamesService;
 
 function db(): PrismaClient {
@@ -18,7 +25,7 @@ function db(): PrismaClient {
 
 beforeAll(async () => {
   database = await startTestDatabase();
-  service = createGamesService({ db: db(), clock: systemClock, files, github: {} });
+  service = createGamesService({ db: db(), clock: systemClock, files, github: noGitHub });
 });
 
 afterAll(async () => {
