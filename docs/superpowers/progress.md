@@ -278,7 +278,7 @@ Plan: `docs/superpowers/plans/2026-11-14-slice-5-money.md`. It ends with: the fi
 Stages:
 
 - [x] Plan: written, merged to main (pull request #55), planned against `main` at `00d616d`, with `main` merged in at `7753369`. No test ran in the plan session, and no code was written. Read outside the repository: the old repository's money code (`packages/ledger`, `packages/core/src/money`, `packages/core/src/premium`, `packages/billing/src/connect.ts`, the money migration) at `188e8a0`; the `stripe` 22.6.2 package's own types for balance transactions and report runs; and Stripe's pages on the Fees report, standalone fees, balance transaction types and Connect's prices. Not checked, because it needs a live Stripe account: what the rows of Stripe's Fees report look like for a Billing fee and a Tax fee (the plan's stop M1 reads them before the first statement).
-- [ ] Plan audit.
+- [x] Plan audit (`docs/superpowers/audits/2026-11-14-slice-5-plan-audit.md`, merged in #57): 3 block launch, 11 should fix, 11 notes. All 25 are fixed in the plan by the plan session's follow-up pull request, with the Owner's and the coordinator's answers of 2026-11-14 written in; none was left as it stood.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
