@@ -193,6 +193,11 @@ describe("a fee that arrives after the payment", () => {
     ]);
   });
 
+  it("refuses a later fee of nothing, or less", () => {
+    expect(() => feeParts(paid, 0n)).toThrow(RangeError);
+    expect(() => feeParts(paid, -1n)).toThrow(RangeError);
+  });
+
   it("always takes exactly the fee, split between makers and Ruken, however late it comes", () => {
     for (const fee of [1n, 2n, 7n, 12n, 61n, 500n, 2000n]) {
       const parts = feeParts(paid, fee);
