@@ -52,6 +52,14 @@ describe("reduceMembership: Stripe status to Ruken state", () => {
     );
   });
 
+  // Stripe can record "cancel at the end of the period" as a set `cancel_at` time with cancel_at_period_end false.
+  // The member has still cancelled, so /me must say when it ends, never "Renews on".
+  it("is canceling when Stripe sets cancel_at alone, ending at that time", () => {
+    expect(reduceMembership(row(), snapshot({ cancelAtMs: PERIOD_END }), NOW)).toEqual(
+      row({ state: "canceling", cancelAtMs: PERIOD_END }),
+    );
+  });
+
   it("is past_due on past_due", () => {
     expect(reduceMembership(row(), snapshot({ status: "past_due" }), NOW)).toEqual(
       row({ state: "past_due", pastDueSince: NOW }),

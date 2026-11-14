@@ -3,6 +3,7 @@ import {
   dollars,
   MembershipError,
   membershipServices,
+  paywallCard,
   PREMIUM_PRICES_CENTS,
   type PremiumPlan,
 } from "../../features/membership/membership.ts";
@@ -32,12 +33,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     prices: { monthly: dollars(PREMIUM_PRICES_CENTS.monthly), annual: dollars(PREMIUM_PRICES_CENTS.annual) },
     signedIn: caller.kind === "user",
     // Asked only of someone signed in, so a stranger can read the card before the site has any Stripe settings.
-    member: caller.kind === "user" && (await membershipServices().service.isMember(caller.userId)),
+    card: paywallCard(caller.kind === "user" ? await membershipServices().service.view(caller.userId) : null),
   };
 };
 
 const RATE_LIMITED = "You've started a lot of checkouts just now. Try again in a minute.";
 const WENT_WRONG = "Something went wrong on our side. Try again in a moment.";
+// A membership that has not ended but is not running: it has just ended and Stripe's word has not arrived, or a payment
+// has just gone through and the membership is on its way.
+const MEMBERSHIP_CHANGING = "Your membership is being updated. Try again in a minute.";
 
 export const actions: Actions = {
   join: async ({ locals, request, cookies }) => {
@@ -64,7 +68,13 @@ export const actions: Actions = {
       payAt = started.url;
     } catch (error) {
       if (error instanceof MembershipError) {
-        if (error.code === "ALREADY_MEMBER") redirect(303, next);
+        if (error.code === "ALREADY_MEMBER") {
+          // A real member goes on to where they were going. Someone who only has a membership that is not running
+          // would be sent straight back here, so they are told in words instead.
+          const card = paywallCard(await service.view(locals.caller.userId));
+          if (card.kind === "member") redirect(303, next);
+          return fail(409, { plan, error: MEMBERSHIP_CHANGING });
+        }
         return fail(error.code === "RATE_LIMITED" ? 429 : 400, {
           plan,
           error: error.code === "RATE_LIMITED" ? RATE_LIMITED : WENT_WRONG,

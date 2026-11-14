@@ -2,7 +2,8 @@
   The paywall card: what it costs and what happens next, in two lines; two plans; one button. Signed out the
   button leads to sign-up and is plain ink; signed in it is the pip-red "Continue to payment", the one press in the
   whole site that spends money, so the one red thing. "Not now" is the way back. A member who opens the card is
-  told so and sent on.
+  told so and sent on. Someone whose card failed more than seven days ago is told so, with one "Update card" button
+  to Stripe's page, in place of the price (paywall.ts).
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
@@ -18,9 +19,17 @@
 </svelte:head>
 
 <main class="card">
-  {#if data.member}
+  {#if data.card.kind === "member"}
     <h1>You're already a member.</h1>
     <p><a class="button" href={data.next}>Keep playing</a></p>
+  {:else if data.card.kind === "paused"}
+    <h1>Your membership is paused</h1>
+    <p>{data.card.line}</p>
+    <!-- The same Stripe page /me opens, where the member changes their card. -->
+    <form method="POST" action="/me?/portal">
+      <button>Update card</button>
+    </form>
+    <p><a href="/">Not now</a></p>
   {:else}
     <h1>Join Ruken to play</h1>
     <p>{data.prices.monthly} a month, or {data.prices.annual} a year. Tax is added where it applies.</p>

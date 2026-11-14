@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import type { StripeEvent } from "../../../src/features/membership/events.ts";
+import { handleStripeEvent, type StripeEvent } from "../../../src/features/membership/events.ts";
 import { processStripeDelivery, storeStripeDelivery } from "../../../src/features/membership/inbox.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
@@ -53,6 +53,60 @@ describe("storeStripeDelivery", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ receivedAt: new Date(NOW), processedAt: null, error: null });
     expect(rows[0]?.payload).toEqual(event);
+  });
+});
+
+// The Owner, 2026-11-14: "Store only what we use". A deleted person's email, name and address must not stay in
+// Ruken's database inside the events it keeps, so the row never holds them.
+describe("storeStripeDelivery and a person's details", () => {
+  const completedCheckout = () =>
+    stripeEvent({
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_kept_1",
+          payment_status: "paid",
+          subscription: "sub_kept_1",
+          customer: "cus_kept_1",
+          metadata: { kind: "premium", plan: "monthly", userId: "user_kept_1" },
+          customer_email: "grace.kept@example.test",
+          customer_details: {
+            email: "grace.kept@example.test",
+            name: "Grace Kept",
+            address: { line1: "12 Elm Street", city: "Springfield" },
+          },
+        },
+      },
+    });
+
+  it("stores no email, name or address of the person", async () => {
+    const inboxId = await storeStripeDelivery(db(), completedCheckout(), Date.parse(NOW));
+    const row = await db().webhookInbox.findUniqueOrThrow({ where: { id: inboxId } });
+    const stored = JSON.stringify(row.payload);
+    for (const detail of ["grace.kept@example.test", "Grace Kept", "12 Elm Street", "Springfield"]) {
+      expect(stored).not.toContain(detail);
+    }
+  });
+
+  it("still gives the handlers what they read, when the stored row is handled", async () => {
+    const inboxId = await storeStripeDelivery(db(), completedCheckout(), Date.parse(NOW));
+    const completeCheckout = vi.fn(() => Promise.resolve());
+    const handlers = {
+      completeCheckout,
+      expireCheckout: vi.fn(() => Promise.resolve()),
+      syncSubscription: vi.fn(() => Promise.resolve("updated" as const)),
+      recordInvoicePaid: vi.fn(() => Promise.resolve({ outcome: "recorded" as const })),
+      report: vi.fn(),
+    };
+    const d = deps(vi.fn((stored: StripeEvent) => handleStripeEvent(handlers, stored)));
+
+    await expect(processStripeDelivery(d, inboxId)).resolves.toBe("processed");
+
+    expect(completeCheckout).toHaveBeenCalledWith({
+      stripeCheckoutSessionId: "cs_kept_1",
+      subscriptionId: "sub_kept_1",
+      atMs: 1_793_620_800_000,
+    });
   });
 });
 

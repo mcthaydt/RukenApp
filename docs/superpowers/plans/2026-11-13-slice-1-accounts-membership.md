@@ -135,7 +135,7 @@ Ten branches, in this order. Each starts from `main` only after the one before i
 
 ## Where execution stops and waits for the Owner
 
-The execution session reports to the coordinator and asks for each of these with the exact steps below. It does not work around a missing credential. A stop holds only the check that needs it: the next branch starts as soon as the branch before it is merged and green (a stop's own step is done when the Owner says "done"). The one hard wait is S2: branch H is not merged until S2 is done, because once it is on `main` the real site's `/me` and `/join` need the Stripe settings.
+The execution session reports to the coordinator and asks for each of these with the exact steps below. It does not work around a missing credential. A stop holds only the check that needs it: the next branch starts as soon as the branch before it is merged and green (a stop's own step is done when the Owner says "done"). The one hard wait is S2: the site is not deployed until S2 is done, because once `main` is deployed the real site's `/me` and `/join` need the Stripe settings. Branch H merges when green; S2 is needed before the site's first deploy, not before H merges (Call, coordinator, 2026-11-14).
 
 **S1, in two parts, asked for at Task 16 step 3. The Owner, in each service's own pages, never in the repository.** It needs Cloudflare's Workers Paid plan, $5 a month (Owner, 2026-11-13: OK).
 
@@ -155,7 +155,7 @@ Part two, the site:
    - `BETTER_AUTH_URL`: the site's address with `https://` and no trailing slash.
    - `RESEND_API_KEY`: the key from step 5. `MAIL_FROM`: `Ruken <hello@your-domain>`, on the verified domain.
 8. First, the domain → DNS → Records: if a record named exactly the site's address already exists (an A, AAAA or CNAME, for example one left from Netlify or the registrar's parking page), delete it; Cloudflare refuses a Custom Domain while one is there ("already has externally managed DNS records"). Leave the Resend records from step 5 alone. Then that Worker → Settings → Domains & Routes → Add → Custom Domain → the site's address. Cloudflare makes the DNS record and the https certificate itself. For the other spelling (with or without `www`): if it has no DNS record, add one as the redirect template asks (an `AAAA` record for that name with the address `100::`, proxied, the orange cloud on); then the domain → Rules → Redirect Rules → the "Redirect from WWW to root" template (or its opposite), so both spellings end at the one address.
-9. That Worker → Settings → Build → Connect → GitHub → `mcthaydt/RukenApp`, branch `main`. Build command: `pnpm build`. Deploy command: `pnpm run deploy`. Root directory: empty. Under Branch control, **leave "Builds for non-production branches" (also shown as "Enable preview builds") unticked**: nothing is built from a pull request. Under "Build variables and secrets" add `DIRECT_DATABASE_URL` with the address from step 2, as a secret. Only the deploy command reads it, to run the migrations, and the deploy command runs only for `main`. Do steps 6 to 8 before this one: if connecting starts a build at once, the Worker's secrets and address are already there.
+9. **Only after S2 is done. Do not connect the repository before then.** Connecting can start a build of `main` at once, and `main` holds branch H, so a deploy without S2's three Stripe secrets answers 500 on `/me`, `/me/delete`, signed-in `/join` and `/webhooks/stripe`. (S2 needs steps 6 to 8 above: the Worker for its secrets, and the site's address for its webhook.) That Worker → Settings → Build → Connect → GitHub → `mcthaydt/RukenApp`, branch `main`. Build command: `pnpm build`. Deploy command: `pnpm run deploy`. Root directory: empty. Under Branch control, **leave "Builds for non-production branches" (also shown as "Enable preview builds") unticked**: nothing is built from a pull request. Under "Build variables and secrets" add `DIRECT_DATABASE_URL` with the address from step 2, as a secret. Only the deploy command reads it, to run the migrations, and the deploy command runs only for `main`. Do steps 6 to 8 and S2 before this one: if connecting starts a build at once, the Worker's secrets (these and S2's) and address are already there.
 10. Say "done" to the coordinator, and tell the coordinator the site's address (it is not written in the repository). If a build started by itself at step 9, say whether it passed (Worker → Deployments). Otherwise the first real deploy starts with the next merge to `main`, which the execution session makes.
 
 **S2, asked for when branch G starts (Task 21), needed before the site's first deploy (changed 2026-11-14 from "before branch H merges", with the Owner's "That's fine, document that though": nothing is deployed before the domain exists, so H merges when green). The Owner, in Stripe test mode:**
@@ -1781,7 +1781,7 @@ it("lets the same address sign up again afterwards", async () => { /* a new User
 
 ### Task 21: The membership tables
 
-First, before any code: send the coordinator the S2 steps ("Where execution stops", above) word for word, with the API version that `stripe` 22.6.2 pins (read it from the package itself, for example its `apiVersion` file once Task 22 adds it; if that is the first moment it can be read, send S2 with Task 22's red push), for the Owner. Branch H does not merge until S2 is done.
+First, before any code: send the coordinator the S2 steps ("Where execution stops", above) word for word, with the API version that `stripe` 22.6.2 pins (read it from the package itself, for example its `apiVersion` file once Task 22 adds it; if that is the first moment it can be read, send S2 with Task 22's red push), for the Owner. S2 is done before the site's first deploy, not before branch H merges.
 
 **Files:**
 - Create: `prisma/schema/membership.prisma`, `prisma/migrations/<timestamp>_membership/migration.sql`
@@ -2254,13 +2254,13 @@ test("a member who opens the card is told they are one", async ({ page }) => { /
 ```
 
   `payAsNewMember` is Task 29's. `subscriptionStatusAtStandIn(member): Promise<string>` goes in `tests/browser/support/account.ts`; the stand-in gains `GET /state/<checkout session id>` answering the subscription's status. `format.test.ts` gains one case per row of the table above, with its exact line. Stub `membershipLine`. Push. Expected: `browser` fails in `membership.test.ts`: no "You're not a member." on `/me`; `verify` fails in `format.test.ts` with "not built yet".
-- [ ] **Step 2 (green):** the page changes. Push. Expected: all pass. The branch is marked ready to merge once S2 is done ("Where execution stops").
+- [ ] **Step 2 (green):** the page changes. Push. Expected: all pass. The branch is marked ready to merge when green; S2 is needed before the site's first deploy ("Where execution stops").
 
 ### Task 31: Paying and cancelling on the real site
 
 No code unless a check fails. Nothing here is typed into the repository.
 
-- [ ] **Step 1: S2 done.** S2 was asked for at Task 21 and is done before branch H merged. If it is not, this step waits for the Owner's "done".
+- [ ] **Step 1: S2 done.** S2 was asked for at Task 21 and is done before the site's first deploy, which is S1 step 9. If it is not, this step waits for the Owner's "done".
 - [ ] **Step 2: Stripe test mode, on the real site.** A person signs up, opens `/join`, pays with Stripe's test card, lands on `/me` as a member, presses "Manage or cancel", cancels in Stripe's portal, and sees "Your membership ends on …". In Stripe's dashboard the Owner confirms: the product "Ruken membership" and its two prices exist at $9.99 and $99, tax was worked out on the invoice, and the webhook deliveries answered 200. Record in progress.md what was checked, by whom and when. If a step fails, report what the page and Stripe's webhook log say; a fix is a new small branch with its own failing test first.
 - [ ] **Step 3: STOP S3.** Report that slice 1 is done in test mode and that live mode waits for the Owner: live keys, the live webhook endpoint, `STRIPE_LIVE=true`, real terms and privacy text, and the Owner's own payment with a real card (design 8). Live mode is not a condition for starting slice 2.
 - [ ] **Step 4:** set slice 1's row in progress.md from what is true: "done" only when every branch is merged, main is green, and Step 2 passed.
