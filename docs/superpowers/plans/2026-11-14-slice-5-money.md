@@ -58,7 +58,7 @@
 
 **What this slice needs and no plan provides yet** (slice 4 has no plan):
 
-- **A fresh authenticator code and a second person** (design 5.5: "money actions need a second person and a fresh code from an authenticator app"). Admin sessions, the code and the two superadmins are slice 4's. This plan names what it needs in Task 33 and builds nothing of it. The statement on the 10th needs none of it (the daily job makes it from the clock); the payout on the 15th does. Asked of the coordinator on 2026-11-14 (question 3 below).
+- **A fresh authenticator code and a second person** (design 5.5: "money actions need a second person and a fresh code from an authenticator app"). Admin sessions, the code and the two superadmins are slice 4's. This plan names what it needs in Task 33 and builds nothing of it. The statement on the 10th needs none of it (the daily job makes it from the clock); the payout on the 15th does. Coordinator, 2026-11-14 (question 3 below): this slice names what it needs and waits; **slice 4's plan must provide** a check, called from a form action, that the staff session entered a code from its authenticator app within the last ten minutes, and the `finance` role on at least two staff accounts.
 - **A maker's handle and page** (slice 3) are not needed: a statement names games, and a maker is an account.
 - **Mails.** Design 7.1 lists the mails Ruken sends, and a statement is not one of them, so this slice sends none. A maker finds a new statement in the maker's area.
 
@@ -73,7 +73,7 @@ Read on 2026-11-14. Where a page or a package and this plan disagree when execut
 5. **Not in Stripe's pages, so read at M1:** the exact `product` and `feature_name` of a Billing fee and a Tax fee, whether those rows name the invoice or the charge in `incurred_by`, and how many decimals `amount` carries. The plan does not depend on the names (a row is placed by the id it names), and it stops, without guessing, on a row it cannot read.
 6. **The old money code** (`OLD/packages/ledger`, `OLD/packages/core/src/money`, `OLD/packages/core/src/premium`, `OLD/packages/billing/src/connect.ts`) is a double-entry journal with months that close and finalize, a pool split "user-centric" (each member's money goes to the games that member played), statements built from journal lines, a payout plan with the $25 minimum and `PO-YYMM-NNNN` ids, and chargebacks that undo a payment in proportion. It took only the card fee off the top, had no bringing bonus, capped play another way, froze a draft of each pool two days before finalizing and compared the two, kept a pseudonymous member key, an earnings "unlock", holds for takedown claims, contributor splits, an ad pool, a store and tips. Design 7.2 carries "the Premium pool, postings, statements, payout plan and ID, chargebacks, arithmetic, periods". Everything else in that list is not carried.
 7. **The old Connect code** made one Express account per payee with the `transfers` capability and a manual payout schedule, moved a payout with a transfer and then a payout on the connected account, and guarded each with an idempotency key and a lookup, because "Stripe forgets idempotency keys after about 24 hours". It learned an account's state and a payout's outcome from a second webhook address with its own secret. This plan reads both from Stripe in the daily job and when the maker opens the bank screen, so there is no second address and no new secret.
-8. **Stripe's price for sending a payout** is charged to Ruken's account after the payout, not taken from it: "$2 per monthly active account" and "0.25% + 25¢ per payout sent" (https://stripe.com/connect/pricing, read 2026-11-14). The real charge is a row in the Fees report days later. How it "comes out of that payout" (the agreement's words) is the Owner's question 1.
+8. **Stripe's price for sending a payout** is charged to Ruken's account after the payout, not taken from it: "$2 per monthly active account" and "0.25% + 25¢ per payout sent" (https://stripe.com/connect/pricing, read 2026-11-14). The real charge is a row in the Fees report days later. How it "comes out of that payout" (the agreement's words) was the Owner's question 1, answered on 2026-11-14.
 9. **The daily job runs once, at 09:17 UTC**: 03:17 in Chicago in winter and 04:17 in summer. So "the 10th" and "the 15th" mean the job's run on that Chicago date, in the small hours.
 
 ## The Owner's decisions, the open questions, and the Calls in this plan
@@ -81,10 +81,10 @@ Read on 2026-11-14. Where a page or a package and this plan disagree when execut
 - **Owner, 2026-11-13** (design 6, as approved and revised): tax and every fee Stripe charges on a payment (card, Billing, Tax) come off the top; what is left is half Ruken, half makers; a yearly fee is spread across its twelve months; Ruken's half is never reduced to pay makers; for a member's first 12 months half of that member's makers' share goes to the maker who brought them, by the last arrival before paying, with no time limit, for the first join only, and never for bringing yourself; the rest is divided by play time, at most 180 minutes per member, per game, per day; free play, staff play and a maker's own play never count; statements are final on the 10th and paid on the 15th (the next business day if that is a weekend or holiday) through Stripe Connect; the minimum is $25 and smaller balances carry forward; the cost of sending a payout comes out of that maker's payout and is shown on their statement; chargebacks and refunds follow the carried rules.
 - **Owner, 2026-11-14** (the maker agreement, version 1, paragraphs 5 and 6, relayed by the coordinator): the same rules in the words makers agreed to. "Never lose money" and "payouts and the bringing bonus come only from the makers' half" (relayed with it).
 - **Owner, 2026-11-14:** this plan is written now, beside slice 2's build ("Slice 5 plan").
-- **Asked on 2026-11-14, not yet answered.** Each has the plan's working answer, which is the recommendation; the task that depends on it does not start before the answer, and says so.
-  1. **Owner: how the cost of sending a payout comes out of it.** Stripe charges it after the payout. (A) Take the real cost afterwards, as a line on the maker's next statement. (B) Hold back the cost worked out from Stripe's price list, kept in the code as a dated rule, send the rest, and correct to Stripe's real charge on a later statement. (C) Ruken pays it. Working answer: B. Tasks 28 and 31.
-  2. **Owner: which makers can connect a bank at first.** (A) The United States only, said in one line on the screen. (B) Every country Stripe allows. Working answer: A. Task 24.
-  3. **Coordinator: the second person and the code.** (A) This slice names what it needs from slice 4 and Task 33 waits for it. (B) This slice builds them. Working answer: A. Task 33.
+- **Asked on 2026-11-14 and answered the same day** (relayed by the coordinator).
+  1. **Owner, 2026-11-14: "Hold back, fix later."** How the cost of sending a payout comes out of it. Stripe charges it after the payout. The choices were: (A) take the real cost afterwards, as a line on the maker's next statement; (B) hold back the cost worked out from Stripe's price list, kept in the code as a dated rule, send the rest, and correct to Stripe's real charge on a later statement; (C) Ruken pays it. The Owner chose B. Tasks 28 and 31.
+  2. **Owner, 2026-11-14: "US only for now."** Which makers can connect a bank at first. The choices were: (A) the United States only, said in one line on the screen; (B) every country Stripe allows. The Owner chose A. Tasks 24 and 25.
+  3. **Coordinator, 2026-11-14: A.** The second person and the code: this slice names exactly what it needs from slice 4 (the fresh-code check for the caller, and the finance role) and the payout-approval task waits for slice 4 to be on `main`; slice 4's plan must provide them. Task 33.
 - **Calls** (the Owner can overrule):
   - **A month** is an America/Chicago calendar month, written `YYYY-MM`. A payment belongs to the month its paid period starts in; a yearly payment to that month and the eleven after it, one twelfth each, with the odd cents in the earliest months (carried).
   - **A month closes on the 8th of the next month**, at midnight in Chicago. Until then a fact dated in that month is posted into it; after, into the month that is open. A closed month is never reopened (carried). The old code closed on the 2nd; Stripe's Fees report can run four days behind, so the 8th is the first date by which a month's last fees are in. **It is final on the 10th.** Between the 8th and the 10th nothing about the month can change, and staff can read it on the admin screen before it is final. The old two-day draft and its comparison are not carried: the same check is that a closed month takes no more entries.
@@ -109,11 +109,11 @@ Live payouts need the real terms, the privacy text and a lawyer's maker agreemen
 
 ## Where execution stops and waits for the Owner
 
-The execution session reports to the coordinator and asks for each of these with the exact lines below. Each line is one command for Windows PowerShell; a step goes to a website only where no command can do it, and says so. Words in CAPITALS are the Owner's own values and are never written in the repository.
+The execution session reports to the coordinator and asks for each of these with the exact lines below. Each line is one command, given for Mac zsh first (the coordinator, 2026-11-14: the Owner is on a Mac and has no checkout of this repository, so no line assumes a checkout, `pnpm` or an installed tool) and for Windows PowerShell second (CLAUDE.md's rule as it stands); a step goes to a website only where no command can do it, and says so. This slice's only command is one call to the site with `curl`, which macOS ships; no step here needs Wrangler or any other tool, so none is fetched with `npx`. Words in CAPITALS are the Owner's own values and are never written in the repository.
 
 **M1, asked for when branch C is merged; needed before branch D is marked ready.** The first real read of Stripe's fees. Slice 1's real payment (its Task 31) should already have rows.
 
-1. `$s = Read-Host "JOBS_SECRET"; (Invoke-WebRequest -UseBasicParsing -Method Post -Uri "https://SITE/jobs/money" -Headers @{ Authorization = "Bearer $s" } -ContentType "application/json").Content` (the secret is the one from slice 1's S1 and stays in this window only. The first run asks Stripe for the report; expect `"requested":"requested"` under `"feeReport"`.)
+1. Mac zsh: `read -rs "s?JOBS_SECRET: "; echo; curl -sS -X POST "https://SITE/jobs/money" -H "Authorization: Bearer $s" -H "content-type: application/json"` (zsh asks for the secret without showing it, and it stays in this window only; `-sS` hides the progress bar and still shows an error). Windows PowerShell: `$s = Read-Host "JOBS_SECRET"; (Invoke-WebRequest -UseBasicParsing -Method Post -Uri "https://SITE/jobs/money" -Headers @{ Authorization = "Bearer $s" } -ContentType "application/json").Content` (the secret is the one from slice 1's S1 and stays in this window only. The first run asks Stripe for the report; expect `"requested":"requested"` under `"feeReport"`.)
 2. The same line again a few minutes later. Expect `"collected":"stored"` under `"feeReport"`, and under `"fees"` a list of what Stripe charged, by `product` and `feature_name`, with how many rows were `payment`, `payout`, `counted` and `unplaced`. No amount of a person's is shown.
 3. Paste the answer to the coordinator. Execution checks it against "Found while planning", 5: every Billing and Tax row should be `payment`. If one is `unplaced`, or the run `failed`, stop: that is the Owner's decision named under the Calls.
 
@@ -140,10 +140,10 @@ Eleven branches, in this order. Each starts from `main` only after the one befor
 | B | `slice-5/ledger` | 9 to 11 | the ledger tables, the journal, months that close |
 | C | `slice-5/facts` | 12 to 19 | payments, Stripe's fees, yearly releases, refunds and chargebacks, and daily play, all posted by one daily job (then M1) |
 | D | `slice-5/statements` | 20 to 23 | the month's pool, every maker's statement, final on the 10th |
-| E | `slice-5/bank` | 24, 25 | a maker connects a bank (waits for M2 and question 2) |
+| E | `slice-5/bank` | 24, 25 | a maker connects a bank (waits for M2) |
 | F | `slice-5/maker-money` | 26, 27 | a maker sees what they are owed and reads a statement |
-| G | `slice-5/payouts` | 28 to 31 | the payout run, sent on the 15th, and its cost (waits for question 1) |
-| H | `slice-5/admin-money` | 32, 33 | staff see the month; a second person approves the payout run (waits for slice 4's pieces and question 3) |
+| G | `slice-5/payouts` | 28 to 31 | the payout run, sent on the 15th, and its cost |
+| H | `slice-5/admin-money` | 32, 33 | staff see the month; a second person approves the payout run (waits for slice 4's pieces) |
 | I | `slice-5/split-page` | 34 | the public page: the split, a worked example, and each month's totals |
 | J | `slice-5/questions` | 35, 36 | a maker questions a statement line; staff answer |
 | K | `slice-5/real-site` | 37 | the first statement and payout checked on the real site (M4) |
@@ -1035,7 +1035,7 @@ it("is final once", async () => { /* a second run: [], nothing new */ });
 
 # Branch E: `slice-5/bank`
 
-Waits for M2 (Connect turned on in test mode) before it is marked ready, and for the Owner's answer to question 2 before Task 24 starts.
+Waits for M2 (Connect turned on in test mode) before it is marked ready.
 
 ### Task 24: A maker's bank, at Stripe
 
@@ -1048,7 +1048,7 @@ Waits for M2 (Connect turned on in test mode) before it is marked ready, and for
 
 **Interfaces:**
 - `MoneyStripe` gains, carried from `OLD/packages/billing/src/connect.ts` with the matching cases of `connect.test.ts`:
-  - `createAccount(input: { userId: string }): Promise<string>`: an Express account with the `transfers` capability asked for, a manual payout schedule (money leaves only when Ruken says), `metadata: { userId }` and the idempotency key `connect:<userId>`, so two presses make one account. Changed: `country: "US"` (question 2's working answer: the United States only; if the Owner answers B, the country is left to Stripe's own screen and this line goes).
+  - `createAccount(input: { userId: string }): Promise<string>`: an Express account with the `transfers` capability asked for, a manual payout schedule (money leaves only when Ruken says), `metadata: { userId }` and the idempotency key `connect:<userId>`, so two presses make one account. Changed: `country: "US"` (Owner, 2026-11-14: "US only for now").
   - `onboardingLink(input: { stripeAccountId; returnUrl; refreshUrl }): Promise<string>` (`accountLinks.create`, type `account_onboarding`).
   - `accountStatus(stripeAccountId: string): Promise<{ detailsSubmitted: boolean; transfersActive: boolean; payoutsEnabled: boolean }>` (the account read now; `transfersActive` is `capabilities.transfers === "active"`).
   - New: `dashboardLink(stripeAccountId: string): Promise<string>` (`accounts.createLoginLink`): Stripe's own page where an Express account changes its bank.
@@ -1114,7 +1114,7 @@ Back to your games
 ```
 
 - `load` calls `refreshBank` when the person has a `BankAccount` (so the screen is true the moment they come back from Stripe), else answers `none`. "$25" is `dollars(PAYOUT_MINIMUM_CENTS)` and "the 15th" comes from `PAYOUT_DAY_OF_MONTH`, both passed by `load`; neither is typed into the page.
-- The line about the United States is shown only in the first state and only while question 2's answer is A.
+- The line about the United States is shown only in the first state (Owner, 2026-11-14: "US only for now").
 - "Connect your bank" and "Finish with Stripe" are the same action, `connect`: `startBankSetup`, then a redirect (303) to Stripe's address. `not_open` shows the fourth card. `busy` shows, above the button: "You've tried that a lot just now. Try again in an hour."
 - "Change your bank details" is the action `change`: a redirect (303) to `bankDashboard`.
 - `GET /make/bank/back` is where Stripe sends the person, finished or not: a redirect (303) to `/make/bank`, which reads the state fresh.
@@ -1276,7 +1276,7 @@ test("with no statements yet, the screen says when they come", async ({ page }) 
 
 # Branch G: `slice-5/payouts`
 
-Does not start before the Owner's answer to question 1. The tasks below are written for the working answer, B. **If the Owner answers A** (take the real cost afterwards): `payoutCost` and `PAYOUT_COST_RULE` are not built, every `costCents` is zero and the whole of what is owed is sent; Task 31 posts each of Stripe's payout fees straight to the maker's account (a debit to `maker:<userId>:payable`, a credit to `platform:stripe_clearing`), where it is a `payout_cost` line on their next statement; and `payLine`'s cost sentence is never shown.
+Owner, 2026-11-14: "Hold back, fix later." The cost of sending a payout is worked out from Stripe's price list, kept in the code as a dated rule, and held back when the payout is sent; Task 31 corrects each payout to what Stripe really charged, on a later statement.
 
 ### Task 28: The payout plan
 
@@ -1460,7 +1460,7 @@ Look: `<main class="card">`; the numbers in `rows`; the two halves' breakdown is
 
 ### Task 33: Checking and approving a payout run (`/admin/money/<month>`)
 
-**Does not start until slice 4 is merged, and the coordinator has answered question 3.** Design 5.5: "money actions need a second person and a fresh code from an authenticator app". This task builds the second person (two different staff accounts, Task 29) and calls slice 4's check for the code. It needs from slice 4, by whatever names slice 4's plan gives them: (1) a function a form action calls with the request, which passes only when this staff session entered a code from its authenticator app within the last ten minutes, and otherwise sends the person to slice 4's code screen and back; (2) the two superadmin accounts of design 9. If slice 4 on `main` has no such function, stop and report: this plan builds none of it.
+**Does not start until slice 4 is on `main`** (coordinator, 2026-11-14). Design 5.5: "money actions need a second person and a fresh code from an authenticator app". This task builds the second person (two different staff accounts, Task 29) and calls slice 4's check for the code. It needs from slice 4, by whatever names slice 4's plan gives them: (1) a function a form action calls with the request, which passes only when this staff session entered a code from its authenticator app within the last ten minutes, and otherwise sends the person to slice 4's code screen and back; (2) the two superadmin accounts of design 9. If slice 4 on `main` has no such function, stop and report: this plan builds none of it.
 
 **Files:**
 - Create: `src/routes/admin/money/[period]/+page.server.ts`, `+page.svelte`
@@ -1618,5 +1618,5 @@ Design 7.5: slice 5 ends with "the first statement is right". No code unless a s
 - **Sign in with Google** (design 2) changes nothing here: a member is an account.
 - **Slice 3's feed order** adds up a week of members' beats on every open, and its notes say that if that is ever slow "the first thing to try is a sum kept per day". `PlayDay` is that sum, per day and game, already capped.
 - **Slice 4's mails** could tell a maker a statement is ready; design 7.1's list of mails would need the Owner's words first.
-- Worth the Owner's eye, left out on purpose: a daily comparison of Stripe's paid invoices with `MembershipPayment`, so a payment whose webhook never arrived is still found (slice 1's note; without it such a payment is in nobody's pool); a sweep of old `StripeFeeRow` and `PlayBeat` rows; tax forms for makers (Stripe can make them for Express accounts; that is a Stripe setting and a later spec); makers outside the United States (question 2); a maker's statement as a file to download; and what happens to money owed to an account that was deleted (it stays owed, on the books, and is never sent).
+- Worth the Owner's eye, left out on purpose: a daily comparison of Stripe's paid invoices with `MembershipPayment`, so a payment whose webhook never arrived is still found (slice 1's note; without it such a payment is in nobody's pool); a sweep of old `StripeFeeRow` and `PlayBeat` rows; tax forms for makers (Stripe can make them for Express accounts; that is a Stripe setting and a later spec); makers outside the United States (Owner, 2026-11-14: "US only for now"); a maker's statement as a file to download; and what happens to money owed to an account that was deleted (it stays owed, on the books, and is never sent).
 - The journal can answer any "why is this number what it is" by its entries: every entry has a key that names the Stripe id or the month it came from, and nothing is ever changed. A question that needs more than reading it is a sign something is missing from the screens, and worth reporting.
