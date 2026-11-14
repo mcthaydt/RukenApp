@@ -1,6 +1,6 @@
 <!--
-  The maker's area. One list: each game's name, which links to its page, and where it stands in words. With none, one
-  line and the same button. The one next step on the screen is "Add a game".
+  The maker's area. One list: each game is one link as a whole, with its name, where it stands and what to do next, in
+  words. With none, what a maker needs ready and the same button. The one next step on the screen is "Add a game".
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
@@ -16,14 +16,14 @@
   <h1>Your games</h1>
   {#if data.games.length === 0}
     <p>You haven't added a game yet.</p>
+    <p>You'll need your game on GitHub, ready to run in a browser, and two short videos of it.</p>
   {:else}
     {#each data.games as game (game.slug)}
-      <p>
-        <a href={`/make/${game.slug}`}>{game.name}</a>
-        <br />
-        {game.words}
-      </p>
+      <a class="game" href={`/make/${game.slug}`}>
+        <span class="statement">{game.name}</span>
+        <span>{game.words}</span>
+      </a>
     {/each}
   {/if}
-  <p><a class="button" href="/make/new">Add a game</a></p>
+  <p class="apart"><a class="button" href="/make/new">Add a game</a></p>
 </main>

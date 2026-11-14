@@ -3,7 +3,9 @@ import { signedInOnly } from "../../../features/accounts/accounts.ts";
 import {
   connectHostsFrom,
   GameError,
+  gameFieldProblems,
   gamesServices,
+  type GameField,
   type GamePlaysOn,
 } from "../../../features/games/games.ts";
 import type { Actions, PageServerLoad } from "./$types";
@@ -12,10 +14,16 @@ import type { Actions, PageServerLoad } from "./$types";
 // button. What a maker types is not believed: the repository must be one GitHub listed for them, and every field is
 // checked again by the games service.
 
+/** The words for each box that is wrong, shown under that box: the form's fields, and the websites box. */
+type NewGameProblems = Partial<Record<GameField | "servers", string>>;
+
 export const load: PageServerLoad = async ({ locals, url }) => {
   const { userId } = signedInOnly(locals.caller, url);
+  const { service } = gamesServices();
   return {
-    repositories: await gamesServices().service.repositoriesFor(userId),
+    repositories: await service.repositoriesFor(userId),
+    // Connected with nothing chosen on GitHub is a different screen from not connected at all.
+    connected: await service.hasConnectedGitHub(userId),
     connectionFailed: url.searchParams.get("github") === "failed",
   };
 };
@@ -47,9 +55,19 @@ export const actions: Actions = {
       servers: fieldOf(form, "servers"),
     };
 
-    // The servers are read first: their refusal shows beside the box that holds them.
+    // Every refusal is found at once, so a maker fixes the whole form in one go and each shows under its own box.
     const servers = connectHostsFrom(typed.servers);
-    if ("problem" in servers) return fail(400, { ...typed, serversProblem: servers.problem });
+    const problems: NewGameProblems = gameFieldProblems({
+      name: typed.name,
+      oneLine: typed.oneLine,
+      repo: {
+        fullName: typed.repo,
+        branch: typed.branch === "" ? null : typed.branch,
+        folder: typed.folder,
+      },
+    });
+    if ("problem" in servers) problems.servers = servers.problem;
+    if ("problem" in servers || Object.keys(problems).length > 0) return fail(400, { ...typed, problems });
 
     const made = await service
       .createGame({
@@ -68,7 +86,13 @@ export const actions: Actions = {
         if (error instanceof GameError) return error;
         throw error;
       });
-    if (made instanceof GameError) return fail(400, { ...typed, error: made.message });
+    if (made instanceof GameError) {
+      // What only the service can know (the repository is not one GitHub listed, the name is taken) shows under its box.
+      const late: NewGameProblems = {};
+      if (made.field === undefined) return fail(400, { ...typed, problems: late, error: made.message });
+      late[made.field] = made.message;
+      return fail(400, { ...typed, problems: late });
+    }
 
     // A refused pull is not a failed form: the game is made, and its page says what to fix.
     await service.pullLatest(made.id).catch((error: unknown) => {

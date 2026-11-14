@@ -391,6 +391,7 @@ What the plan waits for, and what is the Owner's:
 - [x] Q2, "usually within a day" after a maker sends a game. Owner, 2026-11-14: "No promise": the line ends at "when it's live." (Task 9).
 - [x] Q3, what suspending an account does. Owner, 2026-11-14: "Hide them, keep sign-in" (Task 18).
 - [x] Q4, changing a live game's clips through review and deleting old files from the bucket. Owner, 2026-11-14: "Before launch": branch L, Tasks 24 and 25, placed after A and B.
+- [ ] "Step 3 of 3" on `/make/new` was removed on branch M (maker screens review F7), because steps 1 and 2 do not exist yet. When this slice builds the maker's first two steps, `/make/new` shows "Step 3 of 3" only to a maker who arrived through them.
 - [ ] "Fine" on the screenshots of branches A, B, L, C, D, F, G, H, I and J, phone and computer; before and after where a screen existed.
 - [ ] The two owners, each with an authenticator, once branch B is deployed (Task 7, step 3). Slice 5's payout approval starts after this.
 - [ ] FloorFifty marked free on its staff page, and the look at the real site (Task 23).

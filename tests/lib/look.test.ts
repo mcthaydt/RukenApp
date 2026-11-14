@@ -263,6 +263,7 @@ describe("screens wear the look and nothing of their own", () => {
     "file",
     "step",
     "game",
+    "field",
   ];
   const ROUTES = "src/routes";
 

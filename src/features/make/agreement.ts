@@ -35,7 +35,7 @@ export interface AgreementPoint {
   body: string;
 }
 
-/** The agreement read from its file. Not built yet. */
+/** The agreement read from its file, ready to be set as a numbered list. */
 export interface ParsedAgreement {
   version: string;
   /** The date the file's title line carries ("14 November 2026"), or null when it carries none. */
@@ -43,6 +43,30 @@ export interface ParsedAgreement {
   points: AgreementPoint[];
 }
 
+/** The file's first line: its title and version, and the date of the version when the file carries one. */
+const TITLE_LINE = /^Ruken maker agreement, version (\d+)(?:, (\d{1,2} [A-Z][a-z]+ \d{4}))?$/;
+
+/** A numbered point starts with its own number and short title ("1. Your game stays yours."), then the point itself. */
+const NUMBERED_POINT = /^(\d+)\. ([^.]+\.)\s+(.+)$/;
+
+/**
+ * Reads the agreement's file. The words are the file's, untouched: only where they sit is worked out here. The date is
+ * read from the file's own title line and never from the page or the build, so a new version cannot go up looking old.
+ */
 export function parseAgreement(text: string): ParsedAgreement {
-  throw new Error(`parseAgreement is not built yet (${String(text.length)})`);
+  const [first = "", ...rest] = text.split(/\r?\n/).map((line) => line.trim());
+  const title = TITLE_LINE.exec(first);
+  if (title === null) {
+    throw new Error(
+      `The maker agreement must start with its title line, "Ruken maker agreement, version N": ${first}`,
+    );
+  }
+  const points = rest
+    .filter((line) => line !== "")
+    .map((line): AgreementPoint => {
+      const point = NUMBERED_POINT.exec(line);
+      if (point === null) throw new Error(`A line of the maker agreement is not a numbered point: ${line}`);
+      return { number: Number(point[1]), title: point[2] ?? "", body: point[3] ?? "" };
+    });
+  return { version: title[1] ?? "", updated: title[2] ?? null, points };
 }

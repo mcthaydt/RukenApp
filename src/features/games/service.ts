@@ -4,10 +4,11 @@ import type { ClipShape, GamePlaysOn, GameState, PrismaClient } from "../../lib/
 import { clipKeyFor, clipProblem, type ClipContentType } from "./clips.ts";
 import { GameError } from "./game-error.ts";
 import type { Connection } from "./github-connect.ts";
-import { checkBranch, checkRepo, NOT_VISIBLE, type GitHub } from "./github.ts";
+import { gameFieldProblems, type GameField } from "./fields.ts";
+import { NOT_VISIBLE, type GitHub } from "./github.ts";
 import { newPublicId, slugOf } from "./ids.ts";
 import { pullGame, type Pull } from "./pull.ts";
-import { stateWords } from "./review.ts";
+import { listWords, stateParts, stateWords } from "./review.ts";
 
 // What a game goes through, from its first clip to going live. It is built from what it needs (the database, the
 // clock, the bucket, GitHub) so a test hands it stand-ins and no test reaches for the real ones.
@@ -61,7 +62,13 @@ export interface MakerGame {
   publicId: string;
   name: string;
   state: GameState;
+  /** The state in one line, with staff's reason after a colon when there is one. */
   words: string;
+  /** The state alone, and staff's reason apart from it, so a screen sets the reason as a paragraph. */
+  headline: string;
+  reason: string | null;
+  /** True while an update waits for a person's yes. */
+  hasPending: boolean;
   repoFullName: string;
   repoBranch: string | null;
   repoFolder: string;
@@ -69,7 +76,8 @@ export interface MakerGame {
   /** The words of the last pull's refusal, or null. */
   pullProblem: string | null;
   newestPull: { id: string; fileCount: number; totalBytes: number } | null;
-  clips: { upright: boolean; wide: boolean };
+  /** The size of each video that was added, measured when it was saved, or null when it was not added. */
+  clips: { upright: number | null; wide: number | null };
 }
 
 /** What staff see of a game waiting for review: the maker's view, and the files that wait. */
@@ -78,29 +86,12 @@ export interface ReviewGame extends MakerGame {
   clipKeys: { upright: string | null; wide: string | null };
 }
 
-const NAME_MAX = 60;
 /** The most a reason for sending a game back may say. */
 const REASON_MAX = 500;
-const ONE_LINE_MAX = 100;
 /** The page's address may end in `-2` to `-9`, so a name that makes the same address nine times over is refused. */
 const MAX_SLUG_NUMBER = 9;
 /** 38 characters and `-9` is 40, the most the database takes for an address. */
 const SLUG_STEM_MAX = 38;
-
-/** Throws unless `folder` is a folder inside a repository: "" for the top, no slash at either end, no `..` step. */
-function checkFolder(folder: string): void {
-  if (
-    folder.length > 200 ||
-    folder.startsWith("/") ||
-    folder.endsWith("/") ||
-    folder.split("/").includes("..")
-  ) {
-    throw new GameError(
-      "INVALID",
-      "That doesn't look like a folder. Write it like web/build, with no slash at the start or end.",
-    );
-  }
-}
 
 /** A game's pulls, the newest first. A plain array, not `as const`, because Prisma takes only a mutable one. */
 const NEWEST_FIRST: ({ pulledAt: "desc" } | { createdAt: "desc" })[] = [
@@ -137,7 +128,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
     if (game === null) throw new GameError("NOT_FOUND", "We can't find that game.");
     // A new clip would go live without a person's yes. Changing a live game's clips through review comes in slice 4.
-    if (game.state === "live") throw new GameError("NOT_READY", "A live game's clips can't be changed yet.");
+    if (game.state === "live") throw new GameError("NOT_READY", "A live game's videos can't be changed yet.");
 
     const key = clipKeyFor(game.publicId, shape, randomHex16(), contentType);
     const replaced = await deps.db.gameClip.findUnique({ where: { gameId_shape: { gameId, shape } } });
@@ -167,7 +158,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       const holding = await deps.github.installationOf(repoFullName);
       if (holding !== null && listed.some((row) => row.connection.installationId === holding)) return;
     }
-    throw new GameError("NOT_CONNECTED", NOT_VISIBLE);
+    throw new GameError("NOT_CONNECTED", NOT_VISIBLE, "repo");
   }
 
   /** An address for a name: the name's own, or with `-2` to `-9` when that is taken. Refuses when all nine are. */
@@ -182,7 +173,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     const rows = await deps.db.game.findMany({ where: { slug: { in: candidates } }, select: { slug: true } });
     const taken = new Set(rows.map((row) => row.slug));
     const free = candidates.find((candidate) => !taken.has(candidate));
-    if (free === undefined) throw new GameError("INVALID", "That name is taken. Pick another.");
+    if (free === undefined) throw new GameError("INVALID", "That name is taken. Pick another.", "name");
     return free;
   }
 
@@ -191,19 +182,16 @@ export function createGamesService(deps: GamesServiceDeps) {
    * repository, the branch and the folder, so nothing unchecked is ever put in a GitHub address later.
    */
   async function createGame(input: CreateGameInput): Promise<{ id: string; slug: string; publicId: string }> {
+    // Every field is checked, and the first one wrong is what is thrown: a screen that wants all of them asks
+    // `gameFieldProblems` itself, and this guard stays for any caller that does not.
+    const [firstWrong] = Object.entries(gameFieldProblems(input)) as [GameField, string][];
+    if (firstWrong !== undefined) throw new GameError("INVALID", firstWrong[1], firstWrong[0]);
     const name = input.name.trim();
-    if (name === "") throw new GameError("INVALID", "A game needs a name.");
-    if (name.length > NAME_MAX) throw new GameError("INVALID", "A game's name can be up to 60 characters.");
     const oneLine = input.oneLine.trim();
-    if (oneLine === "") throw new GameError("INVALID", "A game needs one line about it.");
-    if (oneLine.length > ONE_LINE_MAX)
-      throw new GameError("INVALID", "The one line can be up to 100 characters.");
     const base = slugOf(name);
-    if (base === null) throw new GameError("INVALID", "Pick a name with at least three letters or numbers.");
+    if (base === null)
+      throw new GameError("INVALID", "Pick a name with at least three letters or numbers.", "name");
 
-    checkRepo(input.repo.fullName);
-    if (input.repo.branch !== null) checkBranch(input.repo.branch);
-    checkFolder(input.repo.folder);
     await checkReachable(input.makerUserId, input.repo.fullName);
 
     return deps.db.game.create({
@@ -263,10 +251,10 @@ export function createGamesService(deps: GamesServiceDeps) {
     const newest = game.pulls[0];
     if (newest === undefined) throw new GameError("NOT_READY", "Pull your game's files first.");
     if (!game.clips.some((clip) => clip.shape === "upright")) {
-      throw new GameError("NOT_READY", "Add an upright clip.");
+      throw new GameError("NOT_READY", "Add an upright video.");
     }
     if (!game.clips.some((clip) => clip.shape === "wide"))
-      throw new GameError("NOT_READY", "Add a wide clip.");
+      throw new GameError("NOT_READY", "Add a wide video.");
 
     await deps.db.game.update({
       where: { id: gameId },
@@ -369,7 +357,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     pullProblem: true,
     pendingPullId: true,
     pulls: { orderBy: NEWEST_FIRST, take: 1, select: { id: true, fileCount: true, totalBytes: true } },
-    clips: { select: { shape: true, key: true } },
+    clips: { select: { shape: true, key: true, bytes: true } },
   } as const;
 
   /** A game row as the maker sees it. */
@@ -387,20 +375,20 @@ export function createGamesService(deps: GamesServiceDeps) {
     pullProblem: string | null;
     pendingPullId: string | null;
     pulls: { id: string; fileCount: number; totalBytes: bigint }[];
-    clips: { shape: ClipShape; key: string }[];
+    clips: { shape: ClipShape; key: string; bytes: number }[];
   }): MakerGame {
     const newest = row.pulls[0];
+    const state = { state: row.state, stateReason: row.stateReason, hasPending: row.pendingPullId !== null };
     return {
       id: row.id,
       slug: row.slug,
       publicId: row.publicId,
       name: row.name,
       state: row.state,
-      words: stateWords({
-        state: row.state,
-        stateReason: row.stateReason,
-        hasPending: row.pendingPullId !== null,
-      }),
+      words: stateWords(state),
+      headline: stateParts(state).headline,
+      reason: stateParts(state).reason,
+      hasPending: state.hasPending,
       repoFullName: row.repoFullName,
       repoBranch: row.repoBranch,
       repoFolder: row.repoFolder,
@@ -411,26 +399,36 @@ export function createGamesService(deps: GamesServiceDeps) {
           ? null
           : { id: newest.id, fileCount: newest.fileCount, totalBytes: Number(newest.totalBytes) },
       clips: {
-        upright: row.clips.some((clip) => clip.shape === "upright"),
-        wide: row.clips.some((clip) => clip.shape === "wide"),
+        upright: row.clips.find((clip) => clip.shape === "upright")?.bytes ?? null,
+        wide: row.clips.find((clip) => clip.shape === "wide")?.bytes ?? null,
       },
     };
   }
 
-  /** A maker's games for their list, newest first, with each one's state in words. */
+  /** A maker's games for their list, newest first, with where each stands and what to do next, in words. */
   async function gamesOf(makerUserId: string): Promise<MakerGameRow[]> {
     const rows = await deps.db.game.findMany({
       where: { makerUserId },
       orderBy: { createdAt: "desc" },
-      select: { slug: true, name: true, state: true, stateReason: true, pendingPullId: true },
+      select: {
+        slug: true,
+        name: true,
+        state: true,
+        stateReason: true,
+        pendingPullId: true,
+        pullProblem: true,
+        clips: { select: { shape: true } },
+      },
     });
     return rows.map((row) => ({
       slug: row.slug,
       name: row.name,
-      words: stateWords({
+      words: listWords({
         state: row.state,
         stateReason: row.stateReason,
         hasPending: row.pendingPullId !== null,
+        filesProblem: row.pullProblem !== null,
+        bothVideos: row.clips.length === 2,
       }),
     }));
   }
@@ -546,6 +544,14 @@ export function createGamesService(deps: GamesServiceDeps) {
     );
   }
 
+  /**
+   * True once the maker has connected GitHub, even if they chose no repository there. The new-game screen tells "not
+   * connected" (one button to connect) from "connected, but Ruken can see nothing yet" (one button to choose some).
+   */
+  async function hasConnectedGitHub(userId: string): Promise<boolean> {
+    return (await deps.db.gitHubInstallation.count({ where: { userId } })) > 0;
+  }
+
   return {
     saveClip,
     createGame,
@@ -560,6 +566,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     liveGameBySlug,
     rememberConnection,
     repositoriesFor,
+    hasConnectedGitHub,
   };
 }
 

@@ -32,7 +32,7 @@ function count(value: number): string {
   return value.toLocaleString("en-US");
 }
 
-const CONNECT_HOSTS_PROBLEM = "Write each server as a name like api.example.com, one per line, five at most.";
+const CONNECT_HOSTS_PROBLEM = "Write each website like api.example.com, one per line. Five at most.";
 
 // A name with at least one dot, in labels of letters, digits and inner hyphens, and an optional port. No scheme,
 // path or `*`: the gate puts each name in a `connect-src` as `https://<name> wss://<name>`.
