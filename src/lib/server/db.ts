@@ -127,17 +127,20 @@ export function requestScopedAdapter(connect: () => Promise<RequestConnection>):
   };
 }
 
+/** The client every request shares, with `connect` opening a request's connection when it first asks. */
+export function createSharedClient(connect: () => Promise<RequestConnection>): PrismaClient {
+  return new PrismaClient({ adapter: requestScopedAdapter(connect) });
+}
+
 // The one client the whole Worker uses, made when the first request needs it.
 let workerClient: PrismaClient | undefined;
 
 function sharedClient(): PrismaClient {
-  workerClient ??= new PrismaClient({
-    adapter: requestScopedAdapter(() =>
-      pgAdapter(platform().databaseUrl(), {
-        poolMax: poolMaxFromEnv(process.env, DEFAULT_POOL_MAX),
-      }).connect(),
-    ),
-  });
+  workerClient ??= createSharedClient(() =>
+    pgAdapter(platform().databaseUrl(), {
+      poolMax: poolMaxFromEnv(process.env, DEFAULT_POOL_MAX),
+    }).connect(),
+  );
   return workerClient;
 }
 
