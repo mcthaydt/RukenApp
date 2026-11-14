@@ -17,11 +17,11 @@
   <title>Create your account · Ruken</title>
 </svelte:head>
 
-<main>
+<main class="card">
   {#if form?.tooYoung}
     <h1>Ruken isn't for you yet.</h1>
     <p>Come back when you're 13.</p>
-    <p><a href="/">Back to Ruken</a></p>
+    <p><a class="button" href="/">Back to Ruken</a></p>
   {:else}
     <h1>Create your account</h1>
     <form method="POST">
@@ -37,27 +37,49 @@
           Password
           <input type="password" name="password" autocomplete="new-password" />
         </label>
-        <br />
-        At least 10 characters.
+        <small class="note">At least 10 characters.</small>
       </p>
       <fieldset>
         <legend>When were you born?</legend>
-        <label>
-          Month
-          <input type="text" name="month" inputmode="numeric" autocomplete="bday-month" value={form?.month} />
-        </label>
-        <label>
-          Day
-          <input type="text" name="day" inputmode="numeric" autocomplete="bday-day" value={form?.day} />
-        </label>
-        <label>
-          Year
-          <input type="text" name="year" inputmode="numeric" autocomplete="bday-year" value={form?.year} />
-        </label>
-        <p>We only check that you're 13 or older. We don't keep your birthday.</p>
+        <div class="row">
+          <label>
+            Month
+            <input
+              type="text"
+              name="month"
+              inputmode="numeric"
+              autocomplete="bday-month"
+              placeholder="MM"
+              value={form?.month}
+            />
+          </label>
+          <label>
+            Day
+            <input
+              type="text"
+              name="day"
+              inputmode="numeric"
+              autocomplete="bday-day"
+              placeholder="DD"
+              value={form?.day}
+            />
+          </label>
+          <label>
+            Year
+            <input
+              type="text"
+              name="year"
+              inputmode="numeric"
+              autocomplete="bday-year"
+              placeholder="YYYY"
+              value={form?.year}
+            />
+          </label>
+        </div>
+        <p class="note">We only check that you're 13 or older. We don't keep your birthday.</p>
       </fieldset>
       {#if form?.error}
-        <p role="alert">{form.error}</p>
+        <p class="problem" role="alert">{form.error}</p>
       {/if}
       <button>Create account</button>
     </form>

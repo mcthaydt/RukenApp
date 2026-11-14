@@ -17,7 +17,7 @@
   <title>Sign in · Ruken</title>
 </svelte:head>
 
-<main>
+<main class="card">
   <h1>Sign in</h1>
   {#if data.reset}
     <p role="status">Your password is updated. Sign in with it.</p>
@@ -37,7 +37,7 @@
       </label>
     </p>
     {#if form?.error}
-      <p role="alert">{form.error}</p>
+      <p class="problem" role="alert">{form.error}</p>
     {/if}
     <button>Sign in</button>
   </form>

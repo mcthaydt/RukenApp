@@ -100,8 +100,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:browser
-      - name: Keep the browser report when a journey fails
-        if: failure()
+      # The report also carries the look's screenshots, which a person looks at (Owner, 2026-11-13: "Screenshots
+      # on the board"), so it is kept when every journey passes too.
+      - name: Keep the browser report, with the look's screenshots
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-report

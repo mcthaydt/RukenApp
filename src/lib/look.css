@@ -1,0 +1,361 @@
+/*
+  The look of Ruken's own screens: the Card Table (design 5.8). The page is quiet green felt, and what a
+  person picks up or acts on is a paper card on it. Red appears only where a card would have a pip: the one
+  paid action. No casino imagery, no chips, no gold.
+  tests/lib/look.test.ts reads this file as text and pins every token, so a change here fails there first.
+*/
+
+/* Both faces are under the SIL Open Font License. The files and their licences are in static/fonts/,
+   served from Ruken's own address: the site makes no request to a font service. */
+@font-face {
+  font-family: "Young Serif";
+  src: url("/fonts/young-serif-latin-400-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Schibsted Grotesk";
+  src: url("/fonts/schibsted-grotesk-latin-400-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Schibsted Grotesk";
+  src: url("/fonts/schibsted-grotesk-latin-600-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+:root {
+  /* One theme, dark by choice. A card sets its own scheme to light. */
+  color-scheme: dark;
+
+  /* Colour. Surfaces are told apart by a tone step, never by a line or a shadow. */
+  --felt: #1c3a2f; /* the page */
+  --felt-deep: #142c23; /* panels on the felt, the footer */
+  --felt-raised: #25483a; /* secondary buttons, tracks */
+  --chalk: #eef2ec; /* all text on felt (10.9:1 on felt) */
+  --sage: #a8bfb2; /* notes on felt only (6.3:1), never running text */
+  --paper: #f1efe9; /* cards; the primary button on felt */
+  --ink: #191b1a; /* all text on paper (15.1:1) */
+  --ink-soft: #4a504c; /* notes on paper (7.2:1) */
+  /* The one paid action ("Continue to payment") and small markers; never a field. One step darker than the
+     design sheet's #c63c26: that measures 4.48:1 with paper text, under the 4.5:1 a button's label needs,
+     and this measures 4.57:1. */
+  --pip: #c43b26;
+
+  /* Type. A system font stands behind each face, so every word shows if a file does not arrive. */
+  --font-display: "Young Serif", Georgia, "Times New Roman", serif; /* headings, card titles */
+  --font-text:
+    "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; /* text, buttons */
+
+  /* Sizes are in rem, so they follow a person's own text-size setting; at the usual setting they are the
+     design's pixels. */
+  --text-section: 400 2.25rem/1 var(--font-display); /* section heading, 36px on a phone */
+  --text-section-wide: 400 4rem/1 var(--font-display); /* section heading, 64px from a wide window */
+  --text-card-title: 400 2rem/1.1 var(--font-display); /* card title, 32px */
+  --text-statement: 400 1.5rem/1.2 var(--font-display); /* statement, 24px */
+  --text-body: 400 1.125rem/1.55 var(--font-text); /* body, 18px */
+  --text-small: 400 0.875rem/1.45 var(--font-text); /* notes only, 14px */
+  --text-button: 600 1.125rem/1.2 var(--font-text); /* buttons */
+
+  /* Shape. Cards and panels have rounded corners and every button is a full pill. No borders or hairline
+     rules except on real form fields; no shadow at rest. */
+  --radius-card: 20px;
+  --radius-field: 14px;
+  --radius-button: 9999px;
+  --size-target: 48px; /* the least height of a button or a field */
+  --width-read: 40rem; /* the widest a column of reading goes */
+
+  /* Motion. Pressing a button scales it a little; nothing else moves. */
+  --press-scale: 0.97;
+  --press-time: 160ms;
+}
+
+/* The page itself. Space comes only from the rules here: the browser's own margins on headings and
+   paragraphs are dropped. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--felt);
+  color: var(--chalk);
+  font: var(--text-body);
+}
+
+/* One centred column of reading, with a gutter on a phone. */
+main {
+  width: min(100% - 2rem, var(--width-read));
+  margin: 3rem auto;
+}
+
+/* The way home, above every screen but the home page itself (src/routes/+layout.svelte). It sits in the same
+   column as the card. On a phone it is close to the top edge; on a wide window it has more room. It is always
+   at the top, so the wordmark and the card are at the same height on every screen and nothing jumps between
+   screens (Owner, 2026-11-14). */
+header {
+  width: min(100% - 2rem, var(--width-read));
+  margin: 0.5rem auto 0;
+}
+
+header + main {
+  margin-top: 1rem;
+}
+
+@media (min-width: 48rem) {
+  header {
+    margin-top: 3rem;
+  }
+
+  header + main {
+    margin-top: 1.5rem;
+  }
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  min-height: var(--size-target);
+  font: var(--text-statement);
+  text-decoration: none;
+}
+
+h1 {
+  margin: 0;
+  font: var(--text-section);
+}
+
+@media (min-width: 48rem) {
+  h1 {
+    font: var(--text-section-wide);
+  }
+}
+
+/* One rem between a paragraph and what is above it, and none below, so a card's last line does not leave
+   a gap the card did not ask for. */
+p {
+  margin: 1rem 0 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* A link in a line of words, or on a line of its own, is as easy to tap as a button. The words stay one line
+   tall, so the height a target adds is taken back from the margins above and below it: the line keeps its
+   place and the lines around it keep their rhythm (one rem between the words). Two such lines in a row
+   overlap by a few pixels of air, never of words. A quiet button is the same thing as a link. */
+a:not(.button, .wordmark),
+.quiet {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-target);
+  margin-block: calc((var(--size-target) - 1lh) / -2);
+}
+
+.statement {
+  font: var(--text-statement);
+}
+
+/* The focus ring on felt. */
+:focus-visible {
+  outline: 3px solid var(--paper);
+  outline-offset: 3px;
+}
+
+/* The paper card: what a person picks up or acts on. Each screen has one, and it holds the one thing to do.
+   Its colour-scheme is light, so what the browser draws itself inside a card (a field it filled in from saved
+   details, a radio button) is dark on paper, never light. A long address wraps instead of pushing the card
+   sideways. */
+.card {
+  padding: 1.5rem;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  color: var(--ink);
+  color-scheme: light;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 48rem) {
+  .card {
+    padding: 2rem;
+  }
+}
+
+.card h1 {
+  font: var(--text-card-title);
+  /* A long title breaks into even lines, not a full line and a stray word. */
+  text-wrap: balance;
+}
+
+/* A step and a half between the title and what it introduces. */
+.card h1 + * {
+  margin-top: 1.5rem;
+}
+
+/* One rem between one thing and the next. */
+.card > * + *,
+form > * + * {
+  margin-top: 1rem;
+}
+
+/* Notes only, never running text. A note sits a small step under what it explains, the same on every
+   screen. */
+.note {
+  display: block;
+  margin-top: 0.375rem;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
+.card .note {
+  color: var(--ink-soft);
+}
+
+/* A refusal is seen by its weight, not by a colour: red means money and nothing else. */
+.problem {
+  font-weight: 600;
+}
+
+/* A group of fields follows the same rem as everything else; the browser's own margin, padding and legend
+   padding would put it out of line with the fields above. */
+fieldset {
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+label {
+  display: block;
+}
+
+/* A field is the one place an edge is allowed, and it is ink so a field is not faint on paper. */
+input:not([type="radio"], [type="checkbox"]) {
+  width: 100%;
+  min-height: var(--size-target);
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-field);
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--ink);
+}
+
+/* Month, day and year sit side by side and share a phone's width, so they never push the card sideways. */
+.row {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.row > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* A button, or a link that looks like one. Flex, because an inline link ignores a height and a transform:
+   without it a link-button would be neither 48px tall nor give when pressed. The main button is paper with an
+   ink label on felt, and ink with a paper label on a card. */
+button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--size-target);
+  padding: 0.5rem 1.5rem;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--text-button);
+  text-decoration: none;
+  transition: transform var(--press-time);
+  cursor: pointer;
+}
+
+.card button,
+.card .button {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* A second action that must not draw the eye: no fill, it looks like a link. No padding, so its words start
+   where the words above it start. */
+.quiet,
+.card .quiet {
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+}
+
+/* The main button of a form is a step and a half under the last field. On a phone it spans the card, so a
+   thumb finds it anywhere along the bottom; a quiet button stays as wide as its words. A link that looks like
+   a button, alone in its line ("Back to Ruken"), is the same button and spans the card the same way. */
+form > * + button:not(.quiet) {
+  margin-top: 1.5rem;
+}
+
+.card form > button:not(.quiet),
+.card p > a.button:only-child {
+  width: 100%;
+}
+
+@media (min-width: 48rem) {
+  .card form > button:not(.quiet),
+  .card p > a.button:only-child {
+    width: auto;
+  }
+}
+
+/* Used once in the whole site, on "Continue to payment": the one press that spends money. */
+.card .pay {
+  background: var(--pip);
+  color: var(--paper);
+}
+
+button:active,
+.button:active {
+  transform: scale(var(--press-scale));
+}
+
+/* The focus ring on a card. */
+.card :focus-visible {
+  outline-color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .button {
+    transition: none;
+  }
+
+  button:active,
+  .button:active {
+    transform: none;
+  }
+}
