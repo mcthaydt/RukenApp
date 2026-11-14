@@ -1,5 +1,7 @@
 import { expect } from "vitest";
 import type { PrismaClient } from "../../src/lib/server/db.ts";
+import { createUser } from "./create-user.ts";
+import type { FakeMoneyStripe } from "./fake-money-stripe.ts";
 
 /** Every account's balance, summed over every line the journal holds. An account nothing posted to is absent. */
 export async function balancesOf(prisma: PrismaClient): Promise<Record<string, bigint>> {
@@ -17,4 +19,53 @@ export async function expectBooksBalanced(prisma: PrismaClient): Promise<void> {
   const balances = await balancesOf(prisma);
   const total = Object.values(balances).reduce((sum, balance) => sum + balance, 0n);
   expect(total).toBe(0n);
+}
+
+export interface PaymentSetup {
+  /** The invoice's id, such as `in_1`. Its charge, payment intent and balance transaction take the same number. */
+  readonly invoice: string;
+  readonly gross: bigint;
+  readonly tax: bigint;
+  readonly cardFee: bigint;
+  readonly plan: "monthly" | "annual";
+  /** When it was paid, and the start of the month it pays for. Both default to 2 November 2026, 15:00 UTC. */
+  readonly paidAt?: string;
+  readonly periodStart?: string;
+  /** Set to leave the payment out of the fake Stripe, as a payment whose charge Stripe has not made yet. */
+  readonly notAtStripe?: boolean;
+}
+
+/**
+ * A paid membership invoice as slice 1 keeps it: one `MembershipPayment` row from a new member, and (unless
+ * `notAtStripe`) the three ids the fake Stripe answers for it. Answers the payer's id.
+ */
+export async function addMembershipPayment(
+  prisma: PrismaClient,
+  stripe: FakeMoneyStripe,
+  setup: PaymentSetup,
+): Promise<string> {
+  const userId = await createUser(prisma);
+  const paidAt = setup.paidAt ?? "2026-11-02T15:00:00Z";
+  await prisma.membershipPayment.create({
+    data: {
+      stripeInvoiceId: setup.invoice,
+      userId,
+      stripeSubscriptionId: `sub_${setup.invoice}`,
+      plan: setup.plan,
+      periodStart: new Date(setup.periodStart ?? paidAt),
+      paidAt: new Date(paidAt),
+      grossCents: setup.gross,
+      taxCents: setup.tax,
+      cardFeeCents: setup.cardFee,
+    },
+  });
+  if (setup.notAtStripe !== true) {
+    const number = setup.invoice.replace(/^in_/, "");
+    stripe.addPayment(setup.invoice, {
+      chargeId: `ch_${number}`,
+      paymentIntentId: `pi_${number}`,
+      balanceTransactionId: `txn_${number}`,
+    });
+  }
+  return userId;
 }
