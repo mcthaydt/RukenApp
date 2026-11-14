@@ -104,6 +104,10 @@ async function diagCall<T>(kind: string, detail: string, run: () => Promise<T>, 
   const who = id === owner ? `r${String(id)}` : `r${String(owner)}(now in r${String(id)})`;
   const started = Date.now();
   console.error(`DB> ${who} ${kind} ${detail.slice(0, 90).replace(/\s+/g, " ")}`);
+  if (id !== owner) {
+    Error.stackTraceLimit = 80;
+    console.error(`WRONGCTX ${who} ${kind} stack: ${new Error("wrong context").stack?.replace(/\n/g, " | ") ?? ""}`);
+  }
   const waiting = setTimeout(() => console.error(`DBWAIT ${who} ${kind} still waiting after 3000ms`), 3000);
   try {
     return await run();
