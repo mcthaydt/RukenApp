@@ -116,6 +116,9 @@ export async function purgeDueAccounts(deps: DeletionDeps): Promise<number> {
       await tx.account.deleteMany({ where: { userId } });
       // What GitHub said the person can reach is theirs; their repositories go with their installations.
       await tx.gitHubInstallation.deleteMany({ where: { userId } });
+      // The person's page, and its links with it, so the address is free for someone else. It stays up for the 14
+      // days of the wait, and goes only here.
+      await tx.makerPage.deleteMany({ where: { userId } });
       // A mail link is kept by address, or by the person's id (a password reset), so both are cleared.
       await tx.verification.deleteMany({
         where: { OR: [{ identifier: email }, { value: email }, { value: userId }] },

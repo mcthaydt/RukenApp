@@ -83,7 +83,7 @@ Read on 2026-11-14, on `main` at `d497163`. Where the code and this plan disagre
   - **Q2. The real-site checks that need a stranger to play.** Once the play gate is on `main`, only a game's maker and staff can play on the real site until launch, so design 8's "a stranger signs up, pays with a real card, and is in the game they tapped" and "anyone can play FloorFifty without an account" cannot be checked there by a person before 11:00 on the 30th. A (this plan's pick): the gate stays strict; those two lines are proved by CI's journeys and checked by a person at 11:00 on launch day; everything else is checked before, with the Owner as maker and staff. B: hold branch B back until slices 2 and 3 have made those checks. C: a setting that opens the real site early (not offered by this plan: it is the failure the design names). **Coordinator, 2026-11-14: A; the gate stays strict.**
 - **Calls** (the Owner can overrule):
   - **Where the switch lives.** `src/features/launch/`, between `games` and `play`: the switch, the wishlist and the email in one small feature. `play` reads the switch from below; `feed`, `pages` and `make` sit above and never touch it: their routes hand the screen what to show.
-  - **The journeys' switch.** A tests-only setting, `LAUNCH_TEST_SWITCH=on`, makes the journeys' site open whatever the date, and a cookie, `rk_test_launch=before`, makes one browser's requests see the day before launch. The site refuses to start with the setting on unless its own address (`BETTER_AUTH_URL`) is plain `http` on `localhost` or `127.0.0.1`, so it cannot be turned on for the real site by mistake. The real site reads the real clock and ignores the cookie. Worth the Owner's eye: it is the one place a setting touches launch.
+  - **The journeys' switch.** A tests-only setting, `LAUNCH_TEST_SWITCH=on`, makes the journeys' site open whatever the date, and a cookie, `rk_test_launch=before`, makes one browser's requests see the day before launch. With the setting on and the site's own address (`BETTER_AUTH_URL`) anything but plain `http` on `localhost` or `127.0.0.1`, the site throws the first time anything asks for the launch time, so its pages fail rather than open early: it cannot be turned on for the real site by mistake. The real site reads the real clock and ignores the cookie. Worth the Owner's eye: it is the one place a setting touches launch.
   - **The play gate is inside `startPlay`**, the only place a pass is handed out, so no route can forget it. Before launch it refuses everyone whose reason to play is not "their own game" or "staff", before the paywall and before anything is stored. The play address then sends the person back to the game, which says when it opens.
   - **A maker reaches their own game before launch from `/make/<game>`**: one line, "Players can play from 30 November.", and a link, "Play it yourself". The feed shows everyone the same thing, maker and staff included. Staff reach any accepted game by its play address; they played it when they accepted it.
   - **Wishlist is a form that posts**, so it works with no script; with script the same form is sent in the background and the button changes in place, so the clip keeps playing. A link can never add a game: only a post from Ruken's own page does.
@@ -133,6 +133,8 @@ Seven small branches. Each starts from `main` only after what it needs is merged
 **A can start today.** B, C and D need nothing of each other and can run side by side as their slice 2 and slice 3 branches land. **E needs B**: with the button on `main` and no gate, a person could still play by typing a game's play address. Between B and E, Play on the real site sends a person back to the game they were on; merge E as soon after B as slice 3's branch D allows, and the coordinator holds the Owner's first Accept on the real site until E is on `main`. D must be deployed days, not minutes, before the 30th (a new cron takes up to fifteen minutes to start).
 
 **For 25 November:** A to E are the design's goals for the feed, `/g/<game>`, play, the email and the numbers, and are right after slice 3's branch D. F waits for slice 3's branch H; if H is late, F is the branch that slips, and a maker's page then shows Play before launch, which sends the person back to the game, where Wishlist is. That is the Owner's choice to accept, not this plan's.
+
+**How likely 25 November is** (the plan audit, from `main` and progress.md on 14 November). Slice 2's branches A to E, P and S0 are merged; M is a draft; S and F have not started. Of slice 3 only A is merged. E, the branch that puts Wishlist in the feed, waits on five branches of other slices in a row (slice 2's M, S and F; slice 3's C and D) and on B, then one "fine" round. At the pace of 13 and 14 November, A to E by the 25th is possible with no slack; F is the likeliest to slip. D must also be deployed days before the 30th, after the site's first deploy, which waits on the Owner's domain (18 November).
 
 ## File map
 
@@ -288,7 +290,7 @@ it.each(["http://localhost:4173", "http://127.0.0.1:4173"])("on this machine (%s
 
 | Model | Columns |
 |---|---|
-| `Wishlist` | `id` (`cuid(2)`), `userId` (a `User`), `gameId` (a `Game`), `addedAt`, `createdAt`; unique on (`userId`, `gameId`); index on `gameId`. Removing a game deletes the row |
+| `Wishlist` | `id` (`cuid(2)`), `userId` (a `User`), `gameId` (a `Game`), `addedAt`, `createdAt`; unique on (`userId`, `gameId`); index on `gameId`. A game is never deleted (it is taken off or taken down), so its rows stay; the email and the screens read live games only |
 | `WishlistMail` | `userId` the id (a `User`), `sentAt`, `createdAt`; added and never changed (`reject_append_only_change('WishlistMail')`) |
 
 Relations are `onDelete: Restrict`, as the other tables'.
@@ -442,7 +444,7 @@ Needs branch A, and slice 2's branch M (`/make/<game>`) on `main`.
 **Interfaces:**
 - Produces, added to `createPlayService`: `playNumbers(gameId: string, since: Date, bases: readonly PlayBasis[]): Promise<{ plays: number; minutes: number }>`. Over this game's `PlaySession` rows whose basis is one of `bases` and whose `startedAt` is at or after `since`: `plays` is how many of them have at least one attentive beat; `minutes` is their counted time added up, in whole minutes, rounded down. Counted time is slice 2's rule: each attentive beat adds the time since the beat before it in its session (or since the session started), `LONGEST_COUNTED_GAP_MS` at most.
 - An empty `bases` answers zeros without asking the database. The list is always named by the caller: the function has no default, so a basis counts only where someone wrote it down.
-- One `$queryRaw`, because the page must not read a week of beats into the Worker: the gap before each beat is `"receivedAt"` minus `LAG("receivedAt") OVER (PARTITION BY "sessionId" ORDER BY "receivedAt", "id")`, or minus the session's `"startedAt"` for its first beat; each gap is cut with `LEAST` at the limit, passed in as a parameter from `LONGEST_COUNTED_GAP_MS`; attentive gaps are summed. A comment says that this is `countedMs` written for the database, and that the test below holds the two together. The database's `bigint` answers are turned into numbers before they leave the function.
+- One `$queryRaw`, because the page must not read a week of beats into the Worker: the gap before each beat is `"receivedAt"` minus `LAG("receivedAt") OVER (PARTITION BY "sessionId" ORDER BY "receivedAt", "id")`, or minus the session's `"startedAt"` for its first beat; each gap is held at 0 at least with `GREATEST` and cut with `LEAST` at the limit, passed in as a parameter from `LONGEST_COUNTED_GAP_MS`; attentive gaps are summed. The `LAG` is worked out in an inner query over **every** beat of the session, attentive or not, and only the outer query keeps the attentive ones: `countedMs` makes every beat the "before" of the next, so filtering first would count the time a person looked away. A comment says that this is `countedMs` written for the database, and that the test below holds the two together. The database's `bigint` answers are turned into numbers before they leave the function.
 
 - [ ] **Step 1 (red):** with `TestClock`, sessions and beats made through `startPlay` and `recordBeat`:
 
@@ -454,6 +456,9 @@ it("counts only the bases it is given", async () => {                           
   /* member, free_game, own_game and staff sessions, each with beats: with ["member", "free_game"] the maker's own and staff's are left out;
      with ["member"] only the member's counts; with [] it answers zeros */ });
 it("does not call it a play when the person never touched the game", async () => { /* only beats that are not attentive: plays 0 */ });
+it("starts the count again after a look away, as countedMs does", async () => {
+  /* beats 15 s apart: attentive, not attentive, attentive (45 s after the start): countedMs answers 30 s, and so does the query (minutes 0, plays 1);
+     a query that dropped the look away before its LAG would answer 45 s */ });
 it("counts a long silence as 45 seconds", async () => { /* one attentive beat ten minutes after the start, then 5 more 15 s apart: 120 s → minutes 2 */ });
 it("leaves out a session that started before the window, and another game's", async () => {});
 it("answers zeros for a game nobody played", async () => { expect(await service.playNumbers(game.id, since, ["member", "free_game"])).toEqual({ plays: 0, minutes: 0 }); });
@@ -708,7 +713,7 @@ Needs branches A and B, and slice 3's branch D (the feed at `/` and at `/g/<game
     1. `liveGameBySlug(params.game)`; null is a 404. A `want` that is neither word is a 400.
     2. Open: nothing changes; the answer goes to `/g/<slug>`.
     3. Signed out: for `want=on` it sets the wish cookie to the slug (`httpOnly`, `sameSite: "lax"`, `secure` as the site's other cookies are, path `/`, 30 minutes); the answer goes to `` `/sign-up?next=${encodeURIComponent(`/g/${slug}`)}` ``.
-    4. Signed in: `add` or `remove`; the answer goes to `safeNextPath(back)`, or `/g/<slug>` when `back` is missing or refused.
+    4. Signed in: `add` or `remove`; the answer goes to `back` when `safeNextPath(back)` answers it unchanged, else to `/g/<slug>`. (`safeNextPath` answers `/` for an address it refuses, so its answer alone would send `back=https://elsewhere.example` home, not to the game.)
     5. The answer's form: a request whose `accept` header holds `application/json` gets 200 and `{ "on": true | false }` for step 4, or `{ "go": "<address>" }` for steps 2 and 3; any other request gets a 303 to that address.
   - There is no `GET`: a link cannot add a game. SvelteKit already refuses a form post from another site.
 
