@@ -93,10 +93,51 @@ body {
   font: var(--text-body);
 }
 
+/* On a wide window a short screen would hang from the top of a large empty felt. The wordmark and the card
+   are one column, so the felt is shared evenly above and below it. A phone keeps the column at the top,
+   where a thumb and a keyboard expect it. */
+@media (min-width: 48rem) {
+  body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
 /* One centred column of reading, with a gutter on a phone. */
 main {
   width: min(100% - 2rem, var(--width-read));
   margin: 3rem auto;
+}
+
+/* The way home, above every screen but the home page itself (src/routes/+layout.svelte). It sits in the same
+   column as the card. On a phone it is close to the top edge; on a wide window it has the room the card has. */
+header {
+  width: min(100% - 2rem, var(--width-read));
+  margin: 0.5rem auto 0;
+}
+
+header + main {
+  margin-top: 1rem;
+}
+
+@media (min-width: 48rem) {
+  header {
+    margin-top: 3rem;
+  }
+
+  header + main {
+    margin-top: 1.5rem;
+  }
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  min-height: var(--size-target);
+  font: var(--text-statement);
+  text-decoration: none;
 }
 
 h1 {
@@ -119,6 +160,18 @@ p {
 a {
   color: inherit;
   text-decoration: underline;
+}
+
+/* A link in a line of words, or on a line of its own, is as easy to tap as a button. The words stay one line
+   tall, so the height a target adds is taken back from the margins above and below it: the line keeps its
+   place and the lines around it keep their rhythm (one rem between the words). Two such lines in a row
+   overlap by a few pixels of air, never of words. A quiet button is the same thing as a link. */
+a:not(.button, .wordmark),
+.quiet {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-target);
+  margin-block: calc((var(--size-target) - 1lh) / -2);
 }
 
 .statement {
@@ -153,6 +206,13 @@ a {
 
 .card h1 {
   font: var(--text-card-title);
+  /* A long title breaks into even lines, not a full line and a stray word. */
+  text-wrap: balance;
+}
+
+/* A step and a half between the title and what it introduces. */
+.card h1 + * {
+  margin-top: 1.5rem;
 }
 
 /* One rem between one thing and the next. */
@@ -161,9 +221,11 @@ form > * + * {
   margin-top: 1rem;
 }
 
-/* Notes only, never running text. */
+/* Notes only, never running text. A note sits a small step under what it explains, the same on every
+   screen. */
 .note {
   display: block;
+  margin-top: 0.375rem;
   color: var(--sage);
   font: var(--text-small);
 }
@@ -177,23 +239,29 @@ form > * + * {
   font-weight: 600;
 }
 
+/* A group of fields follows the same rem as everything else; the browser's own margin, padding and legend
+   padding would put it out of line with the fields above. */
 fieldset {
-  margin: 0;
+  margin: 1rem 0 0;
   padding: 0;
   border: 0;
+}
+
+legend {
+  padding: 0;
 }
 
 label {
   display: block;
 }
 
-/* A field is the one place an edge is allowed. */
+/* A field is the one place an edge is allowed, and it is ink so a field is not faint on paper. */
 input:not([type="radio"], [type="checkbox"]) {
   width: 100%;
   min-height: var(--size-target);
   margin-top: 0.25rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--ink-soft);
+  border: 1px solid var(--ink);
   border-radius: var(--radius-field);
   background: none;
   color: inherit;
@@ -209,6 +277,7 @@ input[type="checkbox"] {
 .row {
   display: flex;
   gap: 0.75rem;
+  margin-top: 0.5rem;
 }
 
 .row > * {
@@ -242,14 +311,31 @@ button,
   color: var(--paper);
 }
 
-/* A second action that must not draw the eye: no fill, it looks like a link. */
+/* A second action that must not draw the eye: no fill, it looks like a link. No padding, so its words start
+   where the words above it start. */
 .quiet,
 .card .quiet {
-  padding: 0 0.25rem;
+  padding: 0;
   background: none;
   color: inherit;
   font: inherit;
   text-decoration: underline;
+}
+
+/* The main button of a form is a step and a half under the last field. On a phone it spans the card, so a
+   thumb finds it anywhere along the bottom; a quiet button stays as wide as its words. */
+form > * + button:not(.quiet) {
+  margin-top: 1.5rem;
+}
+
+.card form > button:not(.quiet) {
+  width: 100%;
+}
+
+@media (min-width: 48rem) {
+  .card form > button:not(.quiet) {
+    width: auto;
+  }
 }
 
 /* Used once in the whole site, on "Continue to payment": the one press that spends money. */

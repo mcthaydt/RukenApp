@@ -29,6 +29,7 @@
           New password
           <input type="password" name="password" autocomplete="new-password" />
         </label>
+        <small class="note">At least 10 characters.</small>
       </p>
       <p>
         <label>
@@ -41,5 +42,6 @@
       {/if}
       <button>Save password</button>
     </form>
+    <p><a href="/sign-in">Back to sign in</a></p>
   {/if}
 </main>

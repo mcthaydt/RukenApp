@@ -49,16 +49,31 @@
               name="month"
               inputmode="numeric"
               autocomplete="bday-month"
+              placeholder="MM"
               value={form?.month}
             />
           </label>
           <label>
             Day
-            <input type="text" name="day" inputmode="numeric" autocomplete="bday-day" value={form?.day} />
+            <input
+              type="text"
+              name="day"
+              inputmode="numeric"
+              autocomplete="bday-day"
+              placeholder="DD"
+              value={form?.day}
+            />
           </label>
           <label>
             Year
-            <input type="text" name="year" inputmode="numeric" autocomplete="bday-year" value={form?.year} />
+            <input
+              type="text"
+              name="year"
+              inputmode="numeric"
+              autocomplete="bday-year"
+              placeholder="YYYY"
+              value={form?.year}
+            />
           </label>
         </div>
         <p class="note">We only check that you're 13 or older. We don't keep your birthday.</p>

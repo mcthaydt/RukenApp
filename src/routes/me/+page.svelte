@@ -20,11 +20,11 @@
       <p role="status">Sent. Check your email.</p>
     {:else}
       <form method="POST" action="?/resend">
-        <p>Confirm your email. We sent a link to {data.email}.</p>
+        <p>Confirm your email. We sent you a link.</p>
         {#if form?.error}
           <p class="problem" role="alert">{form.error}</p>
         {/if}
-        <button class="quiet">Send it again</button>
+        <p><button class="quiet">Send it again</button></p>
       </form>
     {/if}
   {/if}
