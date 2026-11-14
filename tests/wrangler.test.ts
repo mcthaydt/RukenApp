@@ -62,8 +62,12 @@ describe("wrangler.jsonc", () => {
     expect(wrangler().r2_buckets).toEqual([{ binding: "GAME_FILES", bucket_name: "ruken-games" }]);
   });
 
-  it("has one address only: no workers.dev and no preview addresses", () => {
-    expect(wrangler().workers_dev).toBe(false);
+  // Until the Owner buys the site's domain, the site runs on its free workers.dev address (Owner, 2026-11-14:
+  // "Yes, give me the commands to do it"). The games Worker gets no such address (its own test). Preview addresses
+  // stay off, so a build never goes live on an address nobody chose. When the custom domain is added, workers_dev
+  // goes back to false and this test with it.
+  it("runs on its workers.dev address until the custom domain exists, and has no preview addresses", () => {
+    expect(wrangler().workers_dev).toBe(true);
     expect(wrangler().preview_urls).toBe(false);
   });
 
