@@ -54,6 +54,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | spec, the landing page | 1 Spec | none | parked (Owner, 2026-11-14: "We'll address the landing page when they can upload a game"); players first, then developers (Owner: "Appeal to players first, then developers"); `/` stays as it is until then |
 | spec, games before launch: the wishlist and a maker's numbers | 1 Spec | `spec/wishlist` | approved (Owner, 2026-11-14: "approved"); `docs/superpowers/specs/2026-11-14-wishlist-before-launch-design.md`; plan next |
 | spec, apps on every store and player features (`session_01QYLU1hRNP3UyNS6WiJtdtM`) | 1 Spec | `claude/project-thread-c705pv` | approved (Owner, 2026-11-14: "Approved"); `docs/superpowers/specs/2026-11-14-apps-and-player-features-design.md`; plan next, starting with the test copy. Launch waits for the last store to approve (Owner, 2026-11-14: "3. B") |
+| plan, makers' sales (extras and splits) | 2 Plan | `claude/project-thread-300r65` | plan written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-makers-sales.md`: 33 tasks in 14 branches, and slice 5's branches E to K re-planned); not merged; no test ran and no code was written; Q1 (how long a sale Apple never answers about is held) answered by the Owner, 2026-11-14: "Until Apple answers, or 97 days"; plan audit done 2026-11-14 (3 blocking, 10 should-fix; all but one open fact fixed in the plan), on the same branch; execution next |
 | execution, slice 3, branch A (`session_01HNdX7Lu88QTewJX8NtAg8u`) | 4 Execution | `slice-3/themes` | running (needs slice 1 only) |
 | audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | done: 39 states of `main` at `6ad0214`, 390 screenshots on 10 views each (live test-mode site, 7 states on a local copy), every one looked at; `docs/superpowers/audits/2026-11-14-screens-audit.md`: 2 block launch, 13 should fix, 14 notes; findings reported, not fixed. No test ran |
 | audit, FloorFifty for production (`session_01HNdX7HXjg2huySfHRH521r`, in SNEKPRTY/FloorFifty) | audit | FloorFifty's own branch | running (Owner, 2026-11-14: "audit the game for production excluding known gaps like deployment") |
@@ -115,6 +116,30 @@ Recorded by the coordinator (`session_01HNdX7JopLaJTd1JphMYiu7`), each quoted as
 - Legal: the Owner's answers are in the legal drafts (see the legal pages' pull request); the working notes stay outside this public repository.
 - FloorFifty's environments check: `production` and `staging` have no protection rules; the collaborators are `mcthaydt` and `SNEKPRTY`, both the Owner's. So any FloorFifty workflow can use the Fly token, which is accepted while only the Owner can push.
 - Boards: "keep the numbers in order please".
+
+## Makers' sales: extras and splits
+
+Design: `docs/superpowers/specs/2026-11-14-makers-sales-design.md`, approved by the Owner on 2026-11-14 ("Approved", with the apps' spec #107), on pull request #106. It is not one of the six slices, so the overall percentage above does not count it. Progress: 15% (the spec approved; the plan written and audited, not merged; nothing built).
+
+The Owner's answers in the spec conversation, 2026-11-14, each quoted as given: "B, what's the best UX/UI for that?" (buy from Ruken's Extras button and when the game asks); "By the back arrow? we also need a store inside of ruken itself, like on the game page"; "2. A" (a season pass has a start and end date, sold only in its season); "3. A" (only the game's maker changes a split, from that moment on, with an email to everyone in it); "a) Yes, check it like a game, including playing to see it unlocks"; "5. A" (a game taken down refunds its extras bought in the 14 days before, from the game's earnings). From the Owner board: "2. A" (card fees off the top, then 70/30; lowest price $0.99).
+
+Stages:
+
+- [x] Spec: approved (Owner, 2026-11-14: "Approved"). No test ran; no code was written.
+- [ ] Plan: written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-makers-sales.md`: 33 tasks in 14 branches), on a branch, not merged. It is ticked when it is on main. Build progress: 0 of 33 tasks.
+  - What ran: nothing. No test, lint or typecheck, and no code. The plan is a document.
+  - What was not checked, and is behind a stop in the plan: the names of the Stripe calls in `stripe` 22.6.2 (the package was not installed in the session); where a membership keeps its card; Stripe's fees on a one-off invoice; the wrangler line for the bucket's expiry rule; Apple's refund window; the stores' price lists and whether their notifications state the store's cut. The session could search the web but not open a page.
+  - The three things the spec left to the plan: the gate learns what a pass's player owns from a small object in the games bucket named by the pass's id, so the address never changes; a store's price is the smallest price that store offers at or above the website price plus 10%, worked out by one function, built with the stores; how long a sale Apple never answers about is held is Q1, with the Owner.
+  - Slice 5's branches E to K are re-planned in the plan's own section: E at any time, F to J after this plan's branch F (`sales/ledger`), K with this plan's last branch.
+  - Agreed with the apps' plan: the stores, handles (in `accounts`), blocking (in `people`), ratings and notifications are its; sales, ownership, the buy card, the split function, the hooks' script and the game's page are this plan's.
+  - Q1 answered by the Owner, 2026-11-14: "Until Apple answers, or 97 days". Open: the maker agreement's version 2 text; the maker screens redesign (#96) with these screens in it.
+- [ ] Plan audit: done 2026-11-14 (`docs/superpowers/audits/2026-11-14-makers-sales-plan-audit.md`), on the plan's branch, not merged.
+  - What ran: nothing. No test. The Stripe calls were read in `stripe` 22.6.2's own types and the R2 expiry line in `wrangler` 4.156.0's source (both packed into a scratch folder, not installed); all are right as named.
+  - Fixed in the plan: the script tag a game adds was refused at pull; an extra's invoice item would have been charged again on the next membership renewal; a second press or an old Stripe page could cancel a payment that then went through; plus ten smaller ones (the audit lists them).
+  - Still open: Stripe's fee on an invoice Ruken makes (M-S2 stays); Apple's 90 days (not read from Apple's page); a support address for two mails (a stop in Tasks 14 and 28).
+- [ ] Execution.
+- [ ] Implementation audit.
+- [ ] Fixes.
 
 ## Defect: the Worker ran out of memory (2026-11-14)
 
