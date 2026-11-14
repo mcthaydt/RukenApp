@@ -91,6 +91,23 @@ describe("what runs the site", () => {
   });
 });
 
+describe("deploying", () => {
+  const scripts = () => (JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts;
+
+  // Workers Builds runs the deploy command only for the production branch, so a preview build, if anyone ever
+  // switched previews on, runs `build` and never reaches the real database.
+  it("the deploy command migrates the database first, so the code never meets an older one", () => {
+    const deploy = scripts().deploy ?? "";
+    expect(deploy).toContain("prisma migrate deploy");
+    expect(deploy).toContain("wrangler deploy");
+    expect(deploy.indexOf("prisma migrate deploy")).toBeLessThan(deploy.indexOf("wrangler deploy"));
+  });
+
+  it("the build never migrates", () => {
+    expect(scripts().build).not.toContain("migrate");
+  });
+});
+
 describe("Netlify is gone", () => {
   const ROOTS = ["src", "tests"];
   const FILES = [
