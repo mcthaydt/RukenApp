@@ -5,13 +5,19 @@ import { databasePerRequest, prisma, type PrismaClient } from "../../../src/lib/
 // A Worker may not use a database connection that another request opened, so every request gets a client of
 // its own, and `prisma()` always reaches the client of the request that is running.
 
-const fakeClient = (name: string) =>
-  ({
-    name,
-    whoAmI() {
-      return this.name;
-    },
-  }) as unknown as PrismaClient;
+class FakeClient {
+  readonly name: string;
+
+  constructor(name: string) {
+    this.name = name;
+  }
+
+  whoAmI(): string {
+    return this.name;
+  }
+}
+
+const fakeClient = (name: string) => new FakeClient(name) as unknown as PrismaClient;
 
 /** Runs `work` as one request: the handle opens what it needs, `work` runs inside, and the request ends. */
 const request = (work: () => unknown, open: () => PrismaClient) =>
