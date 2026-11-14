@@ -96,7 +96,7 @@ export function allocateMakersPool(
     carryWeight = idleTotal;
   }
 
-  // Keys sort games before nothing else that matters: ties between equal remainders go to the lower key.
+  // Ties between equal remainders go to the lower key, so a bringer's `bring:` comes before the `carry`, and that before a `game:`.
   const items: { key: string; weight: bigint }[] = [];
   for (const [gameId, weight] of gameWeights) if (weight > 0n) items.push({ key: `game:${gameId}`, weight });
   const bringerIds = [...bringerWeights.keys()].sort();
@@ -104,12 +104,10 @@ export function allocateMakersPool(
     const weight = bringerWeights.get(makerUserId)?.weight ?? 0n;
     if (weight > 0n) items.push({ key: `bring:${makerUserId}`, weight });
   }
-  const sharesNothing = items.length === 0;
-  if (pool <= 0n || sharesNothing) return { kind: "carry", amount: pool };
+  if (pool <= 0n || items.length === 0) return { kind: "carry", amount: pool };
   if (carryWeight > 0n) items.push({ key: "carry", weight: carryWeight });
 
   const shares = lrr(pool, items);
-  const weightOf = (key: string) => items.find((item) => item.key === key)?.weight ?? 0n;
   return {
     kind: "shared",
     games: [...gameWeights.keys()]
@@ -117,14 +115,14 @@ export function allocateMakersPool(
       .filter((gameId) => (gameWeights.get(gameId) ?? 0n) > 0n)
       .map((gameId) => ({
         gameId,
-        weight: weightOf(`game:${gameId}`),
+        weight: gameWeights.get(gameId) ?? 0n,
         amount: shares.get(`game:${gameId}`) ?? 0n,
       })),
     bringers: bringerIds
       .filter((makerUserId) => (bringerWeights.get(makerUserId)?.weight ?? 0n) > 0n)
       .map((makerUserId) => ({
         makerUserId,
-        weight: weightOf(`bring:${makerUserId}`),
+        weight: bringerWeights.get(makerUserId)?.weight ?? 0n,
         members: bringerWeights.get(makerUserId)?.members ?? 0,
         amount: shares.get(`bring:${makerUserId}`) ?? 0n,
       })),
