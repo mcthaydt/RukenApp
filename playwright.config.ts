@@ -47,6 +47,26 @@ export default defineConfig({
         STRIPE_WEBHOOK_SECRET: "whsec_test_fake",
         STRIPE_LIVE: "false",
         STRIPE_API_BASE: "http://127.0.0.1:12111",
+        // The secret the app signs play passes with, which the game gate checks them with. Plainly fake.
+        PLAY_PASS_SECRET: "test-only-play-pass-secret",
+        // A game's address in the journeys: `*.localhost` names reach this machine, so a browser can open them.
+        GAME_ADDRESS_PATTERN: "http://{name}.localhost:8788",
+      },
+    },
+    {
+      // The game gate, a second Worker (cloudflare/games) on its own port, reading the app's local bucket from the
+      // same folder. It starts only once the app answers: two local Workers that open the same storage folder at
+      // the same moment stop with "database is locked". Its timeout is the app's plus a minute for it to start.
+      command:
+        "node tests/browser/support/when-up.ts http://localhost:4173/healthz && pnpm exec wrangler dev --config cloudflare/games/wrangler.jsonc --port 8788 --persist-to .wrangler/state",
+      url: "http://localhost:8788/__ruken/health",
+      reuseExistingServer: false,
+      timeout: 240_000,
+      env: {
+        PLAY_PASS_SECRET: "test-only-play-pass-secret",
+        SITE_ORIGIN: "http://localhost:4173",
+        // So `wrangler dev` gives the gate the settings above (there is no .dev.vars file).
+        CLOUDFLARE_INCLUDE_PROCESS_ENV: "true",
       },
     },
   ],
