@@ -35,7 +35,7 @@ The Owner's answers on the app stores, 2026-11-14, quoted as given (the question
 
 - "Ruken app is for PC, Linux, Mac, Android, and iOS; people using the browser version will be as uncommon as people using TikTok or Instagram on browser; like they do it, but they DEF. prefer to use the apps".
 - "1. A, but also upcharge on place that take a cut by 10%": a store's fee comes off the top before the 70/30, like card fees; and where a store takes a cut, the price there is 10% higher.
-- "2. Download on our site, but also Steam, Microsoft Store, Apple Store for Mac, and whatever Linux has".
+- "2. Download on our site, but also Steam, Microsoft Store, Apple Store for Mac, and whatever Linux has". Then, the same day: "We can cut steam".
 - "3. B": launch waits until the apps are ready.
 - "4. A": in the iPhone and Android apps an extra is bought through Apple's or Google's own purchase, and on the website through Ruken's; whatever was bought, wherever, is owned on every device.
 
@@ -162,7 +162,7 @@ In the maker's area, on each game. The look comes from the maker screens redesig
 
 - **Add an extra**: kind (DLC or season pass), name, one line, a picture, a price, and for a season pass its first and last day. The id the game uses is made from the name and shown to the maker to copy into their game.
 - **The price** is picked from a fixed list: $0.99, $1.99, $2.99, $3.99, $4.99, $7.99, $9.99, $14.99, $19.99, $29.99, $49.99. Call: a list, because nobody types an amount (AGENTS.md); $0.99 is the floor the Owner chose (board "2. A").
-- **Store prices.** Owner: "upcharge on place that take a cut by 10%". Where a store takes a cut (the App Store, Google Play, the Microsoft Store, Steam), the price is the nearest price that store offers at or above the website price plus 10%. Code works it out from each store's price list, so the maker picks one price and never types another. Call: for example, $0.99 on the website is $1.09 in the iPhone app.
+- **Store prices.** Owner: "upcharge on place that take a cut by 10%". Where a store takes a cut (the App Store, Google Play, the Mac App Store, the Microsoft Store), the price is the nearest price that store offers at or above the website price plus 10%. Code works it out from each store's price list, so the maker picks one price and never types another. Call: for example, $0.99 on the website is $1.09 in the iPhone app.
 - **Season dates** are picked on a calendar, in America/Chicago days. A season starts no earlier than staff accepting it and lasts at least a day. Call: at most 365 days.
 - **Send for review**. Staff check it like a game (Owner, "a) Yes, check it like a game"): see the name, picture and price, and play the game to see it unlocks. States in plain words, as for games: "Waiting for review", "On sale", "Sent back: <reason>", "Season over", "Taken off sale".
 - **A change** to any of it goes back to review; the accepted version stays on sale until the change is accepted. Call: one rule for every change, so nothing goes on sale unchecked.
