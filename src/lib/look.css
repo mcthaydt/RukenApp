@@ -244,6 +244,12 @@ form > * + * {
   color: var(--ink-soft);
 }
 
+/* An action under another action ("Sign out", then "Delete my account"): each is a 48px target, so their lines are
+   two rem apart, enough that the targets meet and never overlap. A thumb cannot hit the wrong one. */
+.card .apart {
+  margin-top: 2rem;
+}
+
 /* A refusal is seen by its weight, not by a colour: red means money and nothing else. */
 .problem {
   font-weight: 600;
@@ -281,6 +287,36 @@ input:not([type="radio"], [type="checkbox"]) {
 input[type="radio"],
 input[type="checkbox"] {
   accent-color: var(--ink);
+}
+
+/* A choice of one among a few, such as the two plans: a row the width of the card, the whole row a target, with a
+   real radio button in it. The chosen row has a heavier edge as well as the filled circle, so it can be told at a
+   glance; the extra edge is taken from the row's padding, so nothing moves when the choice changes. */
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--size-target);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-field);
+  cursor: pointer;
+}
+
+.choice + .choice {
+  margin-top: 0.75rem;
+}
+
+.choice:has(input:checked) {
+  padding: calc(0.5rem - 2px) calc(0.75rem - 2px);
+  border-width: 3px;
+}
+
+.choice input {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
 }
 
 /* Month, day and year sit side by side and share a phone's width, so they never push the card sideways. */
@@ -322,10 +358,12 @@ button,
 }
 
 /* A second action that must not draw the eye: no fill, it looks like a link. No padding, so its words start
-   where the words above it start. */
+   where the words above it start. Words start at the left on every line: a browser centres a button's words by
+   default, which shows only once they wrap onto a second line, as on a phone. */
 .quiet,
 .card .quiet {
   padding: 0;
+  text-align: start;
   background: none;
   color: inherit;
   font: inherit;
