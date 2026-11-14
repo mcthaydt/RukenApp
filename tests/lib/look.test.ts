@@ -51,6 +51,16 @@ describe("the tokens (design 5.8)", () => {
     expect(css).toMatch(/Matt DesLauriers/);
   });
 
+  // AGENTS.md: files from others keep their own licences beside them, as the fonts' do.
+  it("keeps that data set's MIT licence beside the stylesheet, and the comment points at it", () => {
+    const name = "dictionary-of-colour-combinations-LICENSE.txt";
+    const licence = readFileSync(`src/lib/${name}`, "utf8");
+    expect(licence).toMatch(/^The MIT License \(MIT\)\nCopyright \(c\) 2020 Matt DesLauriers\n/);
+    expect(licence).toContain("Permission is hereby granted, free of charge");
+    expect(licence).toContain('THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND');
+    expect(css).toContain(name);
+  });
+
   it("names Young Serif and Schibsted Grotesk first, each with a system font behind it", () => {
     expect(token("--font-display")).toMatch(/^"Young Serif", .*serif$/);
     expect(token("--font-text")).toMatch(/^"Schibsted Grotesk", .*system-ui.*sans-serif$/);
