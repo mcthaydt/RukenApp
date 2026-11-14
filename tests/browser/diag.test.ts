@@ -24,7 +24,7 @@ const line = (text: string) => process.stdout.write(`DIAG ${text}\n`);
 
 test("what each kind of request leaves behind", async ({ request }) => {
   test.setTimeout(600_000);
-  const kinds = ["none", "client", "client-disconnect", "new-only", "new-disconnect", "none", "client"];
+  const kinds = ["none", "pg-end", "pg-noend", "shared", "client", "pg-end", "client"];
   for (const mode of kinds) {
     const before = workerdMemoryMb();
     let heapFirst = -1;
