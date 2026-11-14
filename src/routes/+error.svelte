@@ -11,12 +11,12 @@
   <title>Ruken</title>
 </svelte:head>
 
-<main>
+<main class="card">
   {#if page.status === 404}
     <h1>We can't find that page.</h1>
   {:else}
     <h1>Something went wrong on our side.</h1>
     <p>Try again in a moment.</p>
   {/if}
-  <p><a href="/">Back to Ruken</a></p>
+  <p><a class="button" href="/">Back to Ruken</a></p>
 </main>
