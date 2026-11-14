@@ -45,6 +45,16 @@ describe("wrangler.jsonc", () => {
     expect(wrangler().hyperdrive?.[0]?.binding).toBe("HYPERDRIVE");
   });
 
+  // The id names a Hyperdrive setting in the Owner's Cloudflare account. It is not a credential and is useless without
+  // the Owner's login (Owner, 2026-11-13: committed here). The thirty-two zeros are the stand-in that only
+  // `wrangler dev` accepts; a real deploy needs the Owner's id.
+  it("holds the Owner's Hyperdrive id: 32 lowercase hex characters, not the zeros", () => {
+    const id = wrangler().hyperdrive?.[0]?.id;
+    expect(id).toMatch(/^[0-9a-f]{32}$/);
+    expect(id).not.toMatch(/^0+$/);
+    expect(id).toBe("eb64483c638e4f5eab2ce9dd1b7ea081");
+  });
+
   it("has one address only: no workers.dev and no preview addresses", () => {
     expect(wrangler().workers_dev).toBe(false);
     expect(wrangler().preview_urls).toBe(false);
