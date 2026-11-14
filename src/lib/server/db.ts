@@ -87,6 +87,8 @@ interface RequestDatabase {
   client: PrismaClient | undefined;
   /** This request's connection, opened by its first query. */
   connection: Promise<RequestConnection> | undefined;
+  /** This request's own Prisma DataLoader, made by its first call (see `batchPerRequest`). */
+  loader: PrismaDataLoader | undefined;
 }
 
 const requests = new AsyncLocalStorage<RequestDatabase>();
@@ -95,9 +97,9 @@ const requests = new AsyncLocalStorage<RequestDatabase>();
  * An adapter for one Prisma client that serves every request. It holds no connection of its own: each call goes to
  * the connection the running request opened with `connect`, opened when that request first asks.
  *
- * Prisma gathers same-shaped `findUnique` calls made in one tick into one batch and runs it for the first caller.
- * That caller is still waiting for its answer, so its connection is alive, and the other callers only wait for the
- * result: no request touches a connection that has been closed.
+ * Prisma gathers same-shaped `findUnique` calls made in one tick into one batch. `batchPerRequest` keeps those
+ * batches inside one request, so a batch never mixes requests, and a call always arrives in the context of the
+ * request that made it.
  */
 export function requestScopedAdapter(connect: () => Promise<RequestConnection>): RequestScopedAdapterFactory {
   const connectionOfRequest = (): Promise<RequestConnection> => {
@@ -127,17 +129,68 @@ export function requestScopedAdapter(connect: () => Promise<RequestConnection>):
   };
 }
 
+/** The part of Prisma's request handling that `batchPerRequest` swaps: what takes each call the client makes. */
+interface PrismaDataLoader {
+  request(query: unknown): Promise<unknown>;
+  readonly options: unknown;
+}
+type PrismaDataLoaderClass = new (options: unknown) => PrismaDataLoader;
+
+/**
+ * Gives every request a Prisma DataLoader of its own, instead of the one the client has.
+ *
+ * Prisma collects the calls made in one tick (every call made inside an interactive transaction, and every
+ * `findUnique`) and sends them from a `process.nextTick` that the first caller scheduled. With one client for all
+ * requests, that tick belongs to whichever request called first, and it sent the other requests' calls from its own
+ * context: the call took that request's connection, and on the Worker it was started by a request that was about to
+ * end, so it never finished and the other request hung (the browser journeys' "Worker's code had hung").
+ * A loader per request keeps each tick, and everything it sends, inside one request.
+ *
+ * This reaches into Prisma, which has no setting for it (`_requestHandler` and the loader's `options` are not
+ * public). It stops with a message if either is gone, so a Prisma upgrade cannot quietly bring the hang back.
+ */
+function batchPerRequest(client: PrismaClient): void {
+  const handler = (client as unknown as { _requestHandler?: { dataloader?: PrismaDataLoader } })
+    ._requestHandler;
+  const shared = handler?.dataloader;
+  if (handler === undefined || shared === undefined || typeof shared.request !== "function") {
+    throw new Error("Prisma no longer keeps its DataLoader where db.ts expects it; update batchPerRequest.");
+  }
+  const DataLoader = shared.constructor as PrismaDataLoaderClass;
+  handler.dataloader = {
+    options: shared.options,
+    request: (query) => {
+      const request = requests.getStore();
+      // Outside a request nothing can reach the database anyway (the adapter refuses), so Prisma's own loader will do.
+      if (request === undefined) return shared.request(query);
+      request.loader ??= new DataLoader(shared.options);
+      return request.loader.request(query);
+    },
+  };
+}
+
+/**
+ * The client every request shares, with `connect` opening a request's connection when it first asks. `Client` is the
+ * Worker's own client; a test that runs in Node passes Node's, which has the same shape.
+ */
+export function createSharedClient(
+  connect: () => Promise<RequestConnection>,
+  Client: typeof PrismaClient = PrismaClient,
+): PrismaClient {
+  const client = new Client({ adapter: requestScopedAdapter(connect) });
+  batchPerRequest(client);
+  return client;
+}
+
 // The one client the whole Worker uses, made when the first request needs it.
 let workerClient: PrismaClient | undefined;
 
 function sharedClient(): PrismaClient {
-  workerClient ??= new PrismaClient({
-    adapter: requestScopedAdapter(() =>
-      pgAdapter(platform().databaseUrl(), {
-        poolMax: poolMaxFromEnv(process.env, DEFAULT_POOL_MAX),
-      }).connect(),
-    ),
-  });
+  workerClient ??= createSharedClient(() =>
+    pgAdapter(platform().databaseUrl(), {
+      poolMax: poolMaxFromEnv(process.env, DEFAULT_POOL_MAX),
+    }).connect(),
+  );
   return workerClient;
 }
 
@@ -148,7 +201,7 @@ function sharedClient(): PrismaClient {
  */
 export function databasePerRequest(open: () => PrismaClient = sharedClient): Handle {
   return ({ event, resolve }) =>
-    requests.run({ open, client: undefined, connection: undefined }, () => resolve(event));
+    requests.run({ open, client: undefined, connection: undefined, loader: undefined }, () => resolve(event));
 }
 
 function currentClient(): PrismaClient {
