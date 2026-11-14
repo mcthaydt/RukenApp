@@ -48,7 +48,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan audit, slice 5 | 3 Plan audit | `audit/slice-5-plan` | done: audit written of the plan on `plan/slice-5` at `4caaba7` (3 block launch, 11 should fix, 11 notes; `docs/superpowers/audits/2026-11-14-slice-5-plan-audit.md`); the plan is not changed here, a follow-up pull request writes the fixes and the answers of 2026-11-14 in. No test ran |
 | plan, slice 4 | 2 Plan | `plan/slice-4` (pull request #58) | plan written (Owner, 2026-11-14: "Start slice 4 plan now"); not merged |
 | coordinator, fourth (`session_01HNdX7JKYUteXqFnZHx6dez`) | 1 Spec, coordination | `spec/opening-page` | running (took over 2026-11-14 09:20 UTC at the 500k limit) |
-| spec, the opening page | 1 Spec | `spec/opening-page` | design 5.0 written (Owner, 2026-11-14: "Yes, build it"); planned next, ahead of slice 3 |
+| spec, the landing page | 1 Spec | none | parked (Owner, 2026-11-14: "We'll address the landing page when they can upload a game"); players first, then developers (Owner: "Appeal to players first, then developers"); `/` stays as it is until then |
 | execution, slice 3, branch A (`session_01HNdX7Lu88QTewJX8NtAg8u`) | 4 Execution | `slice-3/themes` | running (needs slice 1 only) |
 | audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | running (Owner, 2026-11-14: "take a screenshot of every single screen, every orientation, every device type, audit them one by one") |
 | audit, FloorFifty for production (`session_01HNdX7HXjg2huySfHRH521r`, in SNEKPRTY/FloorFifty) | audit | FloorFifty's own branch | running (Owner, 2026-11-14: "audit the game for production excluding known gaps like deployment") |
