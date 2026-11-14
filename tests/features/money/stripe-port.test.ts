@@ -11,28 +11,15 @@ function invoice(payment: Record<string, unknown>) {
 }
 
 const CHARGED = { id: "ch_1", balance_transaction: { id: "txn_1" } };
+const BARE_CHARGE = { id: "ch_2", balance_transaction: { id: "txn_2" } };
 
-function fakeStripe(answers: { invoice?: unknown; intent?: unknown; charge?: unknown } = {}) {
+function fakeStripe(answers: { invoice?: unknown; intent?: unknown } = {}) {
+  const invoiceAnswer = answers.invoice ?? invoice({ payment_intent: "pi_1" });
+  const intentAnswer = answers.intent ?? { id: "pi_1", latest_charge: CHARGED };
   const fake = {
-    invoices: {
-      retrieve: vi.fn(
-        (): Promise<unknown> => Promise.resolve(answers.invoice ?? invoice({ payment_intent: "pi_1" })),
-      ),
-    },
-    paymentIntents: {
-      retrieve: vi.fn(
-        (): Promise<unknown> =>
-          Promise.resolve(
-            answers.intent ?? { id: "pi_1", latest_charge: CHARGED },
-          ),
-      ),
-    },
-    charges: {
-      retrieve: vi.fn(
-        (): Promise<unknown> =>
-          Promise.resolve(answers.charge ?? { id: "ch_2", balance_transaction: { id: "txn_2" } }),
-      ),
-    },
+    invoices: { retrieve: vi.fn((): Promise<unknown> => Promise.resolve(invoiceAnswer)) },
+    paymentIntents: { retrieve: vi.fn((): Promise<unknown> => Promise.resolve(intentAnswer)) },
+    charges: { retrieve: vi.fn((): Promise<unknown> => Promise.resolve(BARE_CHARGE)) },
   };
   return { fake, stripe: fake as unknown as Stripe };
 }
