@@ -16,6 +16,7 @@ interface WranglerConfig {
   workers_dev?: boolean;
   preview_urls?: boolean;
   triggers?: { crons?: string[] };
+  vars?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -71,8 +72,13 @@ describe("wrangler.jsonc", () => {
     expect(wrangler().preview_urls).toBe(false);
   });
 
-  it("holds no variables and no route: those are the Owner's, set in Cloudflare", () => {
-    for (const key of ["vars", "route", "routes"]) expect(wrangler()).not.toHaveProperty(key);
+  // The one variable in this file. It is not a secret, and written here it cannot be typed wrong on one Worker.
+  it("says it is the live copy, and holds no other variable", () => {
+    expect(wrangler().vars).toEqual({ RUKEN_COPY: "live" });
+  });
+
+  it("holds no route: that is the Owner's, set in Cloudflare", () => {
+    for (const key of ["route", "routes"]) expect(wrangler()).not.toHaveProperty(key);
   });
 
   it("cannot be pointed at a real database by a change here: no remote, no local connection string", () => {
@@ -109,6 +115,11 @@ describe("what runs the site", () => {
     expect((JSON.parse(jsoncText("tsconfig.json")) as { include: string[] }).include).toContain(
       "worker-configuration.d.ts",
     );
+  });
+
+  // The deploy command loads this file in plain Node, before any build, so it can import nothing.
+  it("src/lib/server/copy.ts imports nothing", () => {
+    expect(read("src/lib/server/copy.ts")).not.toMatch(/^\s*import\s/m);
   });
 
   it("package.json names neither Netlify's adapter nor nodemailer", () => {
