@@ -146,6 +146,16 @@ The Owner, 2026-11-14: "tablet is first class supported, and mobile landscape". 
 - Green: job 132538160733, 656 passed and 4 skipped (the memory journey on the four projects that are not the computer, on purpose).
 - CI time, from the jobs: before, job 2m27s (132535387238), `pnpm test:browser` 95 s, 263 passed and 1 skipped on two projects; after, job 3m30s (132538160733), `pnpm test:browser` 2m42s, 656 passed and 4 skipped on five projects. The job limit is 15 minutes. (The first run, before the look fixes, took 4m59s and 3m59s on the same runner pool: runs differ by a minute or more.)
 
+## Journeys in WebKit on a phone and a tablet (branch `tests/webkit`, pull request #103, a draft)
+
+The Owner, 2026-11-14: "23. A" to "Also run the browser tests in Safari's engine (WebKit) on tablet and phone". Four WebKit projects are added to `playwright.config.ts`: `phone-webkit` (iPhone 15), `phone-landscape-webkit` (iPhone 15 landscape), `tablet-webkit` (iPad gen 7) and `tablet-landscape-webkit` (iPad gen 7 landscape). The Chromium projects and the computer are as they were. `ci.yml` changes in one place: the browser job installs `webkit` as well as `chromium`.
+
+- [x] 1. The four projects, and the WebKit install in `ci.yml` (commit quotes the Owner).
+- [ ] 2. A green browser job. Not yet: the first run (43626711198, job 132544081430) has 37 failures, all on the WebKit projects, none on Chromium. Reported to the coordinator; nothing loosened, skipped or moved.
+  - 36 (nine tests on each of the four): `look.test.ts:16`, `look.test.ts:38` and the seven `look-layout.test.ts:168` wordmark tests expect `font-family` to match `/^"Young Serif"/`; WebKit returns the value without quotes (`Young Serif, Georgia, Times New Roman, serif`). The fonts load; Safari spells the value differently. Waiting for the coordinator's answer on the expectations.
+  - 1: `delete-account.test.ts:54` on `phone-webkit` only: `page.goto("/me/delete")` "is interrupted by another navigation to /" right after sign-up. It passed on the other three WebKit projects in the same run. One sighting, not yet explained.
+- CI time, from the jobs: before, the browser job 3m30s (132538160733, five projects, 656 passed and 4 skipped); with WebKit, 11m04s (132544081430, nine projects, 1143 passed, 8 skipped and 37 failed, `pnpm test:browser` about 9.5 minutes). The job limit is 15 minutes.
+
 ## Slice 0: Start
 
 - [x] The design and the workflow committed as the first commit (`697aacb`).
