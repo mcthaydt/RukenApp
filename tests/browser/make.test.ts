@@ -1,6 +1,17 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { signUp } from "./support/account.ts";
 import { expectOneCard, showTheOwner } from "./support/look.ts";
+import {
+  BROKEN_GAME,
+  connectGitHub,
+  freshName,
+  makeGame,
+  sendClip,
+  startGame,
+  uploadClip,
+  clipLine,
+  pageNamedAsVideo,
+} from "./support/game.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The maker's area: the list of games, and the form that makes one. GitHub is the stand-in on this machine
@@ -8,15 +19,6 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Every journey makes an account, and the site lets one address make five an hour; the counters are cleared before each.
 test.beforeEach(forgetRateLimits);
-
-/** Connects GitHub through the stand-in, which sends the maker to the new-game form. */
-async function connectGitHub(page: Page): Promise<void> {
-  await page.goto("/make/github");
-  await expect(page).toHaveURL("/make/new");
-}
-
-/** A name no other journey has used, so its page address is its own. */
-const freshName = () => `Tiny game ${crypto.randomUUID().slice(0, 8)}`;
 
 test("a new maker is asked to connect GitHub, then picks a repository", async ({ page }, testInfo) => {
   await signUp(page);
@@ -41,7 +43,6 @@ test("the form makes the game, pulls its files and goes to its page", async ({ p
   await page.getByLabel("Game files").selectOption("ruken-test/tiny-game");
   await page.getByRole("button", { name: "Next: add your clips" }).click();
 
-  // The game's own page arrives in the next task; until then the address is a 404 page, and the address still holds.
   await expect(page).toHaveURL(/\/make\/tiny-game-[a-z0-9]+$/);
 });
 
@@ -97,4 +98,96 @@ test("signed out, the maker's area asks for sign-in", async ({ page }) => {
   await page.goto("/make");
 
   await expect(page).toHaveURL("/sign-in?next=%2Fmake");
+});
+
+// A game's page (design 5.4): the checklist a maker works down, top to bottom.
+test("a maker submits a game and sees it waiting for review", async ({ page }, testInfo) => {
+  await startGame(page);
+  await expect(page.getByText("Not sent yet")).toBeVisible();
+  await expect(page.getByText(/3 files/)).toBeVisible();
+
+  await uploadClip(page, "Upright clip");
+  await uploadClip(page, "Wide clip");
+  await page.getByLabel("I agree to the maker agreement").check();
+  await page.getByRole("button", { name: "Send for review" }).click();
+
+  await expect(page.getByText("Waiting for review")).toBeVisible();
+  await expect(page.getByText("Come back here to see when it's live.")).toBeVisible();
+  await expectOneCard(page);
+  await showTheOwner(page, testInfo, "a game waiting for review");
+});
+
+test("sending without clips says which one is missing", async ({ page }) => {
+  await startGame(page);
+
+  await page.getByLabel("I agree to the maker agreement").check();
+  await page.getByRole("button", { name: "Send for review" }).click();
+  await expect(page.getByText("Add an upright clip.")).toBeVisible();
+
+  await uploadClip(page, "Upright clip");
+  await page.getByLabel("I agree to the maker agreement").check();
+  await page.getByRole("button", { name: "Send for review" }).click();
+  await expect(page.getByText("Add a wide clip.")).toBeVisible();
+});
+
+test("sending without agreeing says so, and the second game does not ask again", async ({ page }) => {
+  await startGame(page);
+  await uploadClip(page, "Upright clip");
+  await uploadClip(page, "Wide clip");
+
+  await page.getByRole("button", { name: "Send for review" }).click();
+  await expect(page.getByText("Tick the box to agree to the maker agreement.")).toBeVisible();
+
+  await page.getByLabel("I agree to the maker agreement").check();
+  await page.getByRole("button", { name: "Send for review" }).click();
+  await expect(page.getByText("Waiting for review")).toBeVisible();
+
+  // Once agreed, a maker is not asked again.
+  await page.goto("/make/new");
+  await makeGame(page);
+  await expect(page.getByLabel("I agree to the maker agreement")).toHaveCount(0);
+});
+
+test("a web page named as a video is refused beside its clip", async ({ page }) => {
+  await startGame(page);
+
+  await sendClip(page, "Upright clip", pageNamedAsVideo());
+
+  await expect(
+    clipLine(page, "Upright clip").getByText(
+      "That file doesn't look like a video. Export it as MP4 or WebM and try again.",
+    ),
+  ).toBeVisible();
+});
+
+test("a repository with no index.html says what to fix, on the game's page", async ({ page }) => {
+  await startGame(page, BROKEN_GAME);
+
+  await expect(
+    page.getByText(
+      "We couldn't find an index.html at the top of that folder. Ruken starts a game from index.html.",
+    ),
+  ).toBeVisible();
+});
+
+test("another maker cannot open this game's page", async ({ page, browser, baseURL }) => {
+  const slug = await startGame(page);
+  const stranger = await browser.newContext(baseURL === undefined ? {} : { baseURL });
+  try {
+    const other = await stranger.newPage();
+    await signUp(other);
+
+    const answer = await other.goto(`/make/${slug}`);
+
+    expect(answer?.status()).toBe(404);
+  } finally {
+    await stranger.close();
+  }
+});
+
+test("the maker agreement is a page anyone can read", async ({ page }) => {
+  await page.goto("/legal/maker-agreement");
+
+  await expect(page.getByRole("heading", { name: "Maker agreement" })).toBeVisible();
+  await expect(page.getByText("Version 1")).toBeVisible();
 });

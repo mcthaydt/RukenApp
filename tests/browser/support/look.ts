@@ -55,6 +55,14 @@ export const CARD_SCREENS: { name: string; open(page: Page): Promise<void> }[] =
     },
   },
   {
+    // Needs no account: a maker reads it before they agree to it.
+    name: "the maker agreement",
+    open: async (page) => {
+      await page.goto("/legal/maker-agreement");
+      await expect(page.getByRole("heading", { name: "Maker agreement" })).toBeVisible();
+    },
+  },
+  {
     name: "a missing page",
     open: async (page) => {
       await page.goto("/no-such-page");
