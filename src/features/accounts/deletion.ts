@@ -85,3 +85,7 @@ export async function restoreOnSignIn(prisma: PrismaClient, clock: Clock, userId
     return true;
   });
 }
+
+export function purgeDueAccounts(deps: DeletionDeps): Promise<number> {
+  throw new Error(`not built yet: ${typeof deps}`);
+}
