@@ -223,11 +223,6 @@ export function createMembershipService(deps: MembershipServiceDeps) {
 
     view,
 
-    /** Whether the person is a member right now. */
-    async isMember(userId: string): Promise<boolean> {
-      return (await view(userId)).member;
-    },
-
     /**
      * Where a checkout stands, for the page the person lands on after paying. Null for a ref that is
      * not this person's, so one person cannot look at another's.
