@@ -55,6 +55,9 @@ export const actions: Actions = {
       servers: fieldOf(form, "servers"),
     };
 
+    // A refusal gives back what was typed, the words for each box that is wrong, and words for the form as a whole.
+    const refuse = (problems: NewGameProblems, error?: string) => fail(400, { ...typed, problems, error });
+
     // Every refusal is found at once, so a maker fixes the whole form in one go and each shows under its own box.
     const servers = connectHostsFrom(typed.servers);
     const problems: NewGameProblems = gameFieldProblems({
@@ -67,7 +70,7 @@ export const actions: Actions = {
       },
     });
     if ("problem" in servers) problems.servers = servers.problem;
-    if ("problem" in servers || Object.keys(problems).length > 0) return fail(400, { ...typed, problems });
+    if ("problem" in servers || Object.keys(problems).length > 0) return refuse(problems);
 
     const made = await service
       .createGame({
@@ -88,10 +91,8 @@ export const actions: Actions = {
       });
     if (made instanceof GameError) {
       // What only the service can know (the repository is not one GitHub listed, the name is taken) shows under its box.
-      const late: NewGameProblems = {};
-      if (made.field === undefined) return fail(400, { ...typed, problems: late, error: made.message });
-      late[made.field] = made.message;
-      return fail(400, { ...typed, problems: late });
+      if (made.field === undefined) return refuse({}, made.message);
+      return refuse({ [made.field]: made.message });
     }
 
     // A refused pull is not a failed form: the game is made, and its page says what to fix.

@@ -1,3 +1,4 @@
+import { writeFile } from "node:fs/promises";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { signUp } from "./account.ts";
 
@@ -64,12 +65,16 @@ export function quickTimeFile(): UploadFile {
   return { name: "holiday.mov", mimeType: "video/quicktime", buffer: Buffer.alloc(64) };
 }
 
-/** An MP4 over the 30 MB limit, 31 MB of it. */
-export function tooBigVideo(): UploadFile {
+/**
+ * An MP4 over the 30 MB limit, 31 MB of it, written to a file at `path`. It is chosen by its path, not handed over as
+ * bytes: 31 MB sent to the browser as bytes can take longer than a step is allowed.
+ */
+export async function tooBigVideo(path: string): Promise<string> {
   const buffer = Buffer.alloc(31_000_000);
   buffer.writeUInt32BE(64, 0);
   buffer.write("ftyp", 4, "ascii");
-  return { name: "too-big.mp4", mimeType: "video/mp4", buffer };
+  await writeFile(path, buffer);
+  return path;
 }
 
 /** One video's place on a game's page, by its title: "Upright video", "Wide video" or "Game files". */
@@ -83,7 +88,7 @@ export function fileFieldOf(page: Page, title: string): Locator {
 }
 
 /** Chooses a file for one video. With script on, choosing is all it takes: the video is added at once. */
-export async function chooseVideo(page: Page, title: string, file: UploadFile): Promise<void> {
+export async function chooseVideo(page: Page, title: string, file: UploadFile | string): Promise<void> {
   await fileFieldOf(page, title).setInputFiles(file);
 }
 

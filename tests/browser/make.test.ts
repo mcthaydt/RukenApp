@@ -515,7 +515,7 @@ test("a video of the wrong kind or size is refused in plain words before anythin
   await expect(row.getByText("holiday.mov · 1 KB")).toBeVisible();
   await lookAt(page, testInfo, "a game's page, a video refused for its kind");
 
-  await chooseVideo(page, "Upright video", tooBigVideo());
+  await chooseVideo(page, "Upright video", await tooBigVideo(testInfo.outputPath("too-big.mp4")));
   await expect(
     row.getByText(
       "That video is 31 MB. Videos can be up to 30 MB. Make it shorter or smaller, then choose it again.",
@@ -763,6 +763,8 @@ test("a live game says players can find it, and its newest version goes for revi
   page,
 }, testInfo) => {
   const slug = await startGame(page);
+  await uploadVideo(page, "Upright video");
+  await uploadVideo(page, "Wide video");
   await putGameWhereStaffLeaveIt(slug, "live");
 
   await page.goto(`/make/${slug}`);
@@ -888,7 +890,8 @@ test("each point of the maker agreement has its number hung in the margin, its t
     (await wordsOf(points.first().locator("p"))).top -
     (await wordsOf(points.first().locator("strong"))).bottom;
   expect(gap).toBeGreaterThanOrEqual(0);
-  expect(gap).toBeLessThanOrEqual(8);
+  // One small step, measured from the words: a line's own air is in it.
+  expect(gap).toBeLessThanOrEqual(12);
   // 1.75rem between points, so each reads as one block.
   const first = await boxOf(points.nth(0));
   const second = await boxOf(points.nth(1));

@@ -8,6 +8,7 @@
 -->
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { invalidateAll } from "$app/navigation";
   import { tick } from "svelte";
   import { focusFirstRefused } from "../../../lib/focus.ts";
   import Points from "../../legal/maker-agreement/Points.svelte";
@@ -155,8 +156,10 @@
         // A second press while the first is out would send twice.
         if (sending) cancel();
         sending = true;
-        return async ({ update }) => {
+        return async ({ result, update }) => {
           await update();
+          // A refused send still recorded the tick, so what the page knows (the box is not asked again) is read anew.
+          if (result.type === "failure") await invalidateAll();
           sending = false;
           // A refused send takes the maker to the first thing still missing, so a phone scrolls to it.
           await tick();
