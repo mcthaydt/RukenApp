@@ -193,6 +193,14 @@ One search box. It finds games by name and makers by name or handle, typo-tolera
 - The stores' privacy forms ("nutrition labels", Data safety) are filled from what Ruken actually stores.
 - Published contact details are in the app (Apple rule 1.2).
 
+### Test copy and live copy
+
+Owner, 2026-11-14: "we need a dev vs prod setup and the ability to A | B test", then "A and A" to the coordinator's two questions.
+
+- This is the first step of the build. A separate test copy of Ruken (its own Worker, database branch, bucket and games address) runs beside the live one. It uses Stripe test mode, Apple's and Google's sandbox purchases, and Microsoft's test flights. The store builds that point at it go out as test builds: TestFlight, Google Play internal testing, and Microsoft's private audience. Live builds point only at the live copy, and the two never share data.
+- **Feature switches** are built in with the apps. Each new screen ships behind a switch staff can turn on and off without a new build. Switches are read from Ruken's server and record nothing about anyone.
+- **A/B tests come after launch**, as their own small spec, and only for people who agreed to analytics.
+
 ### Builds and checks
 
 - All builds run on GitHub's hosted runners: Linux for Android and Linux, Windows for Windows, and macOS for iOS and macOS. Lint, typecheck and the tests run there too, as now.
@@ -223,7 +231,7 @@ Names are left to the plan.
 
 ## Left to the plan
 
-- How the work splits into slices, and their order. The feed in a phone shell goes first, to test scrolling.
+- How the work splits into slices, and their order. The test copy comes first, then the feed in a phone shell to test scrolling.
 - The Capacitor and Tauri plugins for each piece, each with its version and why.
 - Which image-checking service to use (it is new, and approved by the Owner's "A").
 - The exact words on every new screen, and how each one passes the drunk-grandma test.
