@@ -74,6 +74,8 @@ export const actions: Actions = {
       console.error(`checkout did not start: ${error instanceof Error ? error.message : "unknown error"}`);
       return fail(500, { plan, error: WENT_WRONG });
     }
-    redirect(303, payAt);
+    // Stripe's page is another site, which SvelteKit 3's redirect refuses unless told. The address is Stripe's answer to
+    // our own call and never anything a person typed; `external: true` still refuses a `javascript:` address.
+    redirect(303, payAt, { external: true });
   },
 };
