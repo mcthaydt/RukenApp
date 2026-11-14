@@ -47,6 +47,9 @@ model User {
   membershipPayments      MembershipPayment[]
   membershipStarts        MembershipStart[]   @relation("MembershipStartMember")
   broughtMembershipStarts MembershipStart[]   @relation("MembershipStartMaker")
+
+  // The games feature's tables point at a person; they are declared in games.prisma.
+  games Game[]
 }
 
 model Session {
