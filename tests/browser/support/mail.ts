@@ -15,7 +15,8 @@ export interface Mail {
 
 async function mailKeptFor(email: string): Promise<Mail[]> {
   const answer = await fetch(`${MAIL_URL}/mail?to=${encodeURIComponent(email)}`);
-  return (await answer.json()) as Mail[];
+  const kept: Mail[] = await answer.json();
+  return kept;
 }
 
 /** The newest mail to this address with this subject. Waits for it to arrive; fails if it never does. */
