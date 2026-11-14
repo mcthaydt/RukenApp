@@ -68,6 +68,15 @@ Fifth execution session of slice 2 (coordinator `session_01HNdX7JKYUteXqFnZHx6de
 - Not tried and not needed: retries, longer timeouts, splitting the runs, skipping a journey.
 - Branches `fix/workerd-abort` and `diag/workerd-abort-2` (the diagnostics, pull requests #65 and #67, both closed) are still on GitHub: this session cannot delete a branch through its proxy, so the merge session removes them.
 
+## Defect: a browser journey hung (2026-11-14)
+
+Sixth execution session of slice 2 (coordinator `session_01HNdX7JKYUteXqFnZHx6dez`), branch `fix/per-request-batching` (pull request #75, a draft until the runs below are in). "The Workers runtime canceled this request because it detected that your Worker's code had hung" in the browser job, a phone or computer journey that posts to `/join` or `/sign-up` (runs 43583075489, 43585020139, and again in 43587377066 and the three diagnostic runs below).
+
+- What the diagnostic showed (draft #74, closed; its branch `diag/hang` stays until this is merged; runs 43586201619, 43586556080, 43586926580): every hung request stopped inside a Prisma interactive transaction, and Postgres showed that transaction "idle in transaction", waiting for the Worker's next statement, which never arrived. Each time, another request started a transaction within about 25 ms. Logging every call made on a transaction showed one request's statement running in the async context of the other: `r8(now in r7) tx.queryRaw UPDATE ...`; the stack ended in Prisma's `singleLoader`. That statement never completed and never reached Postgres.
+- Cause: Prisma's DataLoader sends every call made inside an interactive transaction, and every `findUnique`, from one `process.nextTick` that the first caller scheduled. With the one shared client (#68), that tick belongs to whichever request called first and sends the other requests' calls from its context. Node does the same (the new tests fail there); on the Worker a call started by a request that is about to end never finishes. Not tried: reverting #68 (the memory fix stays).
+- The fix: `batchPerRequest` in `src/lib/server/db.ts` gives each request a DataLoader of its own, made from the shared one's class and options. It reaches into Prisma's `_requestHandler`, which is not public, and stops with a message if that moves.
+- The tests: two in `tests/lib/server/db.test.ts` (`createSharedClient`): two requests' queries land on one connection each, and a transaction's statements run in the context of the request that began it. Red, for the right reason: run 43588356815 (verify: both failed on their assertions only, `[connection 1, connection 1]` and `connection 1 got connection 2`). Green: run 43588629575, three attempts of the same commit, all three jobs each time (the hang had struck in most recent runs). Whether it is gone for good is seen over the next runs on main; a hang that returns is reported at once.
+
 ## Slice 0: Start
 
 - [x] The design and the workflow committed as the first commit (`697aacb`).
