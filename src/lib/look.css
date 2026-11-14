@@ -1,7 +1,7 @@
 /*
   The look of Ruken's own screens: the Card Table (design 5.8). The page is quiet green felt, and what a
-  person picks up or acts on is a paper card on it. Red appears only where a card would have a pip: the one
-  paid action. No casino imagery, no chips, no gold.
+  person picks up or acts on is a paper card on it. Red is only the paywall card's one small pip mark, never a
+  button (Owner, 2026-11-14). No casino imagery, no chips, no gold.
   tests/lib/look.test.ts reads this file as text and pins every token, so a change here fails there first.
 */
 
@@ -47,10 +47,10 @@
   --paper: #ffffff; /* White: cards; the primary button on felt */
   --ink: #111314; /* Black: all text on paper (18.6:1) */
   --ink-soft: #34454c; /* Slate Color: notes on paper (10.0:1) */
-  /* Scarlet: the one paid action ("Continue to payment") and small markers; never a field. The book's nearest
-     red to the old pip, Red Orange #dd4027, gives paper text only 4.3:1, under the 4.5:1 a button's label
-     needs, so this is the nearest red that passes: 5.2:1. */
+  /* Scarlet: the paywall card's one small pip mark, never a button or a field (Owner, 2026-11-14, "Keep it").
+     No rule uses it yet; the mark is not built. */
   --pip: #cb2f43;
+  --pay: #006eb8; /* Blue: the paid button ("Continue to payment"), with white words (5.4:1); never a field */
 
   /* Type. A system font stands behind each face, so every word shows if a file does not arrive. */
   --font-display: "Young Serif", Georgia, "Times New Roman", serif; /* headings, card titles */
@@ -389,10 +389,11 @@ form > * + button:not(.quiet) {
   }
 }
 
-/* Used once in the whole site, on "Continue to payment": the one press that spends money. */
+/* Used once in the whole site, on "Continue to payment": the one press that spends money. Blue with white
+   words (5.4:1), the card's one coloured button; the rest are ink (Owner, 2026-11-14, "go with D"). */
 .card .pay {
-  background: var(--pip);
-  color: var(--paper);
+  background: var(--pay);
+  color: var(--chalk);
 }
 
 button:active,
