@@ -21,6 +21,16 @@ The Owner's words, 2026-11-14, on the first board of this redesign:
 - "we need to add tablet view to our artifacts; tablet is first class supported, and mobile landscape". Sections 4.4 and 4.5; the board shows every screen five ways.
 - "13. A": the address and page steps join the one run of questions. Section 6.
 
+The Owner's notes on the second board, 2026-11-14, word for word. Section 5a answers each.
+
+1. "The preview for add your upright video looks small, will we be able to click it and see it larger? Actually just redesign 5 and 6 to have more oomph"
+2. "For the agreement, computer 'Points 4 to 7 read as they do today. They are cut short on this board only.' is concerning; show me what it will actually look like"
+3. "Finish later on phone sideways should be bottom right, too easy to accidentally press above the label"
+4. "Check and send should show a preview of what it'll actually look like live"
+5. "In general, we have wayyyy too much empty space on phone sideways view; as a rule of thumb, lean into making phone sideways as much like tablet sideways as possible"
+6. "For sent back, show previews of media content, and use green for accepted and red for what failed"
+7. "Show a thumbnail for Your games"
+
 Lines marked **Owner** are the Owner's words. Lines marked **Call** are this design's choices; the Owner can overrule any of them. Lines marked **Pending** wait for the Owner's answer and are not built until it comes.
 
 This amends the main design (`2026-11-13-ruken-reels-linktree-design.md`): its section 5.8 (the colour rule for buttons, section 1 below; where paper is used, the sizes and what moves, section 4 below) and its sections 5.4 and 5.7 (how a maker submits a game, sections 3 to 5 below). Everything else in it stands.
@@ -138,7 +148,7 @@ No new colours, typefaces or sizes: every size below is already in 5.8's scale.
 - **One question per screen**, written on the felt in Young Serif, chalk, at the section-heading size: 64px on a computer, 36px on a phone. Left aligned, as 5.8 says.
 - **The counter** sits over the question in words, "Question 2 of 10", body size, sage. Along the very top edge of the window runs a track, one piece per question, 6px tall, the answered ones chalk on Dusky Green. After the last question the words read "Almost done" (the agreement) and "Last step" (Check and send), and the track goes.
 - **The answer is paper.** A text box is one white slab, no outline, 12px corners, 24px type, 72 tall on a computer and 64 on a phone. Choices are paper cards with their words in Young Serif; once one is picked the others step down to sage, so the picked one is the white one. Two choices sit side by side on a computer and stack on a phone. A page's colours are small pictures of the page.
-- **A video's shape is drawn**: an upright block for the upright video, a wide block for the wide one, Dusky Green while empty and paper once a video is in.
+- **The video is the hero of its question** (section 5a, note 1).
 - **The hint** is one line under the answer, body size, sage. A refusal sits under it in chalk, semibold, in today's words, with the box marked.
 - **Top bar**: "Ruken" on the left, "Finish later" on the right, a link.
 - **"Throw this game away"** is the small link, 14px sage, at the bottom left of the window on a computer and at the foot of the screen on a phone. It is there to be found, not read.
@@ -169,13 +179,15 @@ Owner, 2026-11-14: "tablet is first class supported, and mobile landscape". A ta
 
 ### 4.5 On a phone held sideways
 
-Drawn at 852 × 393. Height is the scarce thing, and the keyboard takes half of it.
+Drawn at 852 × 393. Owner, 2026-11-14: "we have wayyyy too much empty space on phone sideways view; as a rule of thumb, lean into making phone sideways as much like tablet sideways as possible".
 
-- **Two halves, always.** The question on the left at 36px, with the counter over it; the answer, the hint and the buttons on the right, by the right thumb.
-- **No bottom bar.** Back and the Blue button sit under the answer, the Blue one filling the rest of the row, 52 tall.
-- The top bar and the track stay. "Skip for now" and "Throw this game away" sit under the question on the left.
-- Screens with a sheet of paper: the heading and the button on the left, the sheet on the right, and the screen scrolls.
-- Your games: the heading and "Add a game" on the left, the games on the right.
+**The rule: a sideways phone is the sideways tablet, made smaller.** Same layout, same order, same places for things. Only these change, because the screen is 393 tall:
+
+- The question is 36px, the box 56 tall, buttons 52 tall. The column is 600 wide, centred both ways.
+- Choices sit two across, so a list of them does not push the buttons off the screen. Sign-in's two boxes sit side by side.
+- The two halves stay side by side: the heading and its button on the left, the sheet of paper on the right, scrolling inside itself.
+- Buttons sit under the answer, as on a tablet. No bottom bar.
+- **"Finish later" is at the bottom right**, not the top right. Owner, 2026-11-14: "Finish later on phone sideways should be bottom right, too easy to accidentally press above the label". "Throw this game away" stays at the bottom left.
 - Both sides keep clear of the notch and the home indicator.
 
 ### 4.6 What moves
@@ -212,6 +224,17 @@ Drawn at 852 × 393. Height is the scarce thing, and the keyboard takes half of 
 - **Your games.** Each game is a paper card (section 4.2), with the new state words, "Not finished. Go on from question 3."
 - **Every other screen of Ruken's own.** Only the main button's colour changes (section 1).
 
+## 5a. The Owner's notes on the second board, and what each changed
+
+1. **The two videos have the screen** ("just redesign 5 and 6 to have more oomph"). The video is the biggest thing on its question. Before a video is in, its frame is already there at full size in the right shape, Dusky Green, saying "Taller than wide" or "Wider than tall"; tapping the frame chooses a video, the same as the Blue button. Once a video is in, it shows in the frame with a Play mark. Sizes: an upright video is 540 tall beside the question on a computer and a sideways tablet, 500 tall under the question on an upright tablet, 340 tall on a phone, 250 tall beside the question on a sideways phone. A wide video is 640 wide under the question on a computer and tablets, the full width on a phone, 380 wide beside the question on a sideways phone.
+   **Tapping it opens it full size** ("will we be able to click it and see it larger?"): the video fills the screen on black and plays. "Close" is a green button at the top right; Escape closes it too.
+2. **The agreement is shown whole** ("show me what it will actually look like"). The board shows all seven points, word for word from the agreement's file on `slice-2/submit` (`maker-agreement-v1.txt`). Nothing is cut. Each point is a number in Young Serif, a bold title, and its words under it. On a computer it is the sheet on the right; where the window is too short for all seven, the sheet scrolls inside itself and "I agree" stays in view on the left.
+3. **"Finish later" on a sideways phone is at the bottom right** (section 4.5).
+4. **Check and send shows the game as members will see it** ("a preview of what it'll actually look like live"). Above the Send button: her clip, with her address, the name, the line and Play laid over it, as the feed (main design 5.1) shows a game. Under it: "How members will see it in the feed." An upright screen shows the upright clip and a wide screen the wide one, as the feed does. The two video rows of the list carry a small picture each. Call: the preview is a picture of the feed, not the feed; its Play does nothing.
+5. **A sideways phone is the sideways tablet, made smaller** (section 4.5). This is now the rule for every screen.
+6. **Sent back shows the videos and says what passed** ("show previews of media content, and use green for accepted and red for what failed"). Every row of the list carries one of two marks, in words and in colour: "Accepted" in Dusky Green (9.52:1 on paper, measured) or "Needs fixing" in red (`pip`, 5.21:1 on paper, measured). The two video rows show the video, outlined in the same colour. This is the second place red appears; 5.8's `pip` line gains "and the words Needs fixing on a game that was sent back". **This needs the staff side**: when staff send a game back they must say which parts failed. Today they write one note. Left to the plan (section 8).
+7. **Your games have thumbnails** ("Show a thumbnail for Your games"). Each game's card carries a still from its wide video on the left, 96 × 54 on a phone and 128 × 72 on a computer. A game with no video yet shows a plain sage block.
+
 ## 6. The main design's 5.7: one run, one counter
 
 Owner, 2026-11-14: "13. A". 5.7 gave a new maker three steps with a "Step 1 of 3" line: the short address, the page, the first game. They are now the first questions of the same run, with the one counter. The "Step 1 of 3" line goes. Slice 4 builds them.
@@ -238,6 +261,10 @@ Answered: the agreement's date line, "A" (section 5). The delete button, "delete
 
 ## 8. Left to the plan
 
+- How staff mark which parts of a game failed when they send it back, so that Sent back can say "Accepted" and "Needs fixing" on each row (section 5a, note 6).
+- Where a game's thumbnail comes from (a still from the wide video) and when it is made.
+- How a video plays full size on each kind of device.
+
 - Where a half-answered game is kept so that it shows in Your games from the first Next, before its files are copied.
 - The address of each question.
 - The held-back test that the agreement's file carries a date, now that the date is decided.
@@ -245,6 +272,7 @@ Answered: the agreement's date line, "A" (section 5). The delete button, "delete
 
 ## 9. What was looked at, and what was not
 
+- Third round, after the Owner's seven notes: every screen walked again in all five sizes, with a video added and opened full size; no script errors, nothing sideways on a 400-wide viewer. The agreement's seven points were copied from `src/features/make/library/maker-agreement-v1.txt` on `slice-2/submit`. The last two small fixes (the preview's shape on an upright tablet, a game card's words on an upright tablet) were not looked at again after they were made.
 - Tablet and sideways phone: every screen of the board looked at in all five sizes, one walk-through, no script errors.
 - Second round. Looked at: every stop of the first board (15 screens, each on the phone and in the 1280 × 800 window), then every screen of the new board the same way, with the first-game run of 10, the refusal on the name, GitHub connected, a video added and a choice picked. No script errors, nothing sideways on a 400-wide phone. Step movement was looked at with reduced motion on only; the moving version was not recorded.
 - Measured this round: the sizes in section 2a, from the first board's own stylesheet; the button contrasts in section 1, from 5.8's colour values.
