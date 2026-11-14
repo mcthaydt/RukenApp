@@ -10,8 +10,13 @@
 
   let { data, form }: PageProps = $props();
 
-  // After a refusal the card keeps the plan that was chosen; on a first visit it is the one in the address.
-  let plan = $derived(form?.plan ?? data.plan);
+  // The plan the card opens on: after a refusal the one that was chosen, on a first visit the one in the address.
+  // It is state bound to the two radio buttons, not a value written onto them. When the page comes alive, Svelte
+  // reads a choice the person made a moment before, on the page as the server sent it; setting `checked` from a
+  // value instead writes the opening plan back over it, and a person on a slow phone loses the plan they picked.
+  // It is a property of one object, so the two bindings below are all that read it: the form posts the buttons' own state.
+  // svelte-ignore state_referenced_locally
+  let chosen = $state({ plan: form?.plan ?? data.plan });
 </script>
 
 <svelte:head>
@@ -32,22 +37,27 @@
     <p><a href="/">Not now</a></p>
   {:else}
     <h1>Join Ruken to play</h1>
-    <p>{data.prices.monthly} a month, or {data.prices.annual} a year. Tax is added where it applies.</p>
-    <p>You pay on the next page, then come straight back.</p>
+    <p>Tax is added where it applies.</p>
+    <p>Renews until you cancel. You can cancel any time from your account.</p>
+    {#if data.signedIn}
+      <p>You pay on the next page, then come straight back.</p>
+    {:else}
+      <!-- Signed out, the next page is sign-up, so the steps are said in the order they happen. -->
+      <p>First you make an account, then you pay. Then you come straight back.</p>
+    {/if}
     <form method="POST" action="?/join">
       <input type="hidden" name="next" value={data.next} />
-      <p>
-        <label>
-          <input type="radio" name="plan" value="monthly" checked={plan === "monthly"} />
-          Monthly {data.prices.monthly} a month
+      <!-- Two rows, each a real radio button in a label the width of the card, so the whole row is the target. -->
+      <div role="radiogroup" aria-label="Plan">
+        <label class="choice">
+          <input type="radio" name="plan" value="monthly" bind:group={chosen.plan} />
+          {data.prices.monthly} a month
         </label>
-      </p>
-      <p>
-        <label>
-          <input type="radio" name="plan" value="annual" checked={plan === "annual"} />
-          Yearly {data.prices.annual} a year
+        <label class="choice">
+          <input type="radio" name="plan" value="annual" bind:group={chosen.plan} />
+          {data.prices.annual} a year
         </label>
-      </p>
+      </div>
       {#if form?.error}
         <p class="problem" role="alert">{form.error}</p>
       {/if}

@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { signUp } from "./support/account.ts";
-import { CARD_SCREENS } from "./support/look.ts";
+import { boxOf, CARD_SCREENS, type Box } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The Owner looked at the screenshots of branch L ("fix all the issues", 2026-11-14). These journeys pin what
@@ -9,15 +9,6 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 // Every distance is measured from the page itself, in px at the usual text size.
 
 test.beforeEach(forgetRateLimits);
-
-type Box = { x: number; y: number; width: number; height: number };
-
-/** Where a thing is on the page. Throws, saying so, when it is not there to measure. */
-async function boxOf(thing: Locator): Promise<Box> {
-  const box = await thing.boundingBox();
-  if (box === null) throw new Error("there is nothing on the page to measure");
-  return box;
-}
 
 const bottomOf = (box: Box): number => box.y + box.height;
 
@@ -109,6 +100,19 @@ test.describe("your account", () => {
     // And what follows it, now the membership line, comes at the same rhythm: no hole below the button.
     const membership = await boxOf(page.getByText("You're not a member.", { exact: true }));
     closeTo(membership.y - (bottomOf(box) - air), 16);
+  });
+
+  // The Owner, 2026-11-14, "All six": two tap targets that overlap are one wrong tap from deleting an account.
+  test("Sign out and Delete my account have room between them, so their tap areas do not overlap", async ({
+    page,
+  }) => {
+    await signUp(page);
+    await page.goto("/me");
+    const signOut = await boxOf(page.getByRole("button", { name: "Sign out" }));
+    const remove = await boxOf(page.getByRole("link", { name: "Delete my account" }));
+    expect(signOut.height).toBeGreaterThanOrEqual(48);
+    expect(remove.height).toBeGreaterThanOrEqual(48);
+    expect(remove.y).toBeGreaterThanOrEqual(bottomOf(signOut));
   });
 
   test("a quiet button is never stretched across the card", async ({ page }) => {
