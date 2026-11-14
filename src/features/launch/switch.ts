@@ -5,8 +5,7 @@ export const LAUNCH_MS = 0;
 
 /** Stub. */
 export function isOpen(nowMs: number): boolean {
-  void nowMs;
-  throw new Error("not built yet");
+  throw new Error(`not built yet: isOpen ${String(nowMs)}`);
 }
 
 /** Stub. */
