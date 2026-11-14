@@ -95,7 +95,7 @@ test("the home page sits on the felt, with no card and no red", async ({ page },
   await showTheOwner(page, testInfo, "home");
 });
 
-test("the main button on a card is an ink pill with a paper label in Schibsted Grotesk 600", async ({
+test("the main button on a card is ink, 12px corners, a paper label in Schibsted Grotesk 600", async ({
   page,
 }) => {
   const asked: string[] = [];
@@ -104,7 +104,7 @@ test("the main button on a card is an ink pill with a paper label in Schibsted G
   const button = page.getByRole("button", { name: "Create account" });
   await expect(button).toHaveCSS("background-color", rgb(token("--ink")));
   await expect(button).toHaveCSS("color", rgb(token("--paper")));
-  await expect(button).toHaveCSS("border-top-left-radius", "9999px");
+  await expect(button).toHaveCSS("border-top-left-radius", "12px");
   await expect(button).toHaveCSS("border-top-width", "0px");
   await expect(button).toHaveCSS("font-weight", "600");
   expect((await button.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(48);
