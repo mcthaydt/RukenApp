@@ -2,6 +2,7 @@ import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 import { collectFeeReport, requestFeeReport } from "./fee-report.ts";
 import { postFeeRows, type FeeBreakdown } from "./fees.ts";
+import { finalizeDuePeriods } from "./finalize.ts";
 import { postUnpostedPayments } from "./payments.ts";
 import { closeDuePeriods } from "./periods.ts";
 import { rollUpPlayDays } from "./play-rollup.ts";
@@ -12,8 +13,8 @@ import type { MoneyStripe } from "./stripe-port.ts";
 /**
  * The site's daily money job: every step that turns what Stripe and the games recorded into the books, in one fixed
  * order, each able to run twice without posting twice. The facts are read before a month is closed, so what the run of
- * the 8th reads still lands in the month it belongs to. Later branches add the steps for making a month final and for
- * payouts (after these) and for the cost of payouts (before closing).
+ * the 8th reads still lands in the month it belongs to, and a month is made final only after the closing step. Later
+ * branches add the steps for payouts (after these) and for the cost of payouts (before closing).
  */
 
 export interface MoneyJobDeps {
@@ -80,7 +81,7 @@ export async function runMoneyJob(deps: MoneyJobDeps): Promise<MoneyJobReport> {
   let released = 0;
   let playDays: readonly string[] = [];
   let closed: readonly string[] = [];
-  const final: readonly string[] = [];
+  let final: readonly string[] = [];
 
   const feeReportSteps: Step[] =
     deps.feeReportSkipped === undefined
@@ -143,6 +144,12 @@ export async function runMoneyJob(deps: MoneyJobDeps): Promise<MoneyJobReport> {
       blocksTheRest: true,
       run: async () => {
         closed = await closeDuePeriods({ db, clock });
+      },
+    },
+    {
+      name: "making the month final",
+      run: async () => {
+        final = await finalizeDuePeriods({ db, clock });
       },
     },
   ]);

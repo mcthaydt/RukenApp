@@ -123,7 +123,8 @@ describe("writeStatements", () => {
         ],
       });
     });
-    expect(await finish("2028-04", "2028-05-10T12:00:00Z")).toEqual([maker.makerUserId]);
+    // Makers owed money from earlier months in this database get a statement too: what stood before is carried forward.
+    expect(await finish("2028-04", "2028-05-10T12:00:00Z")).toContain(maker.makerUserId);
     const statement = await db().statement.findUniqueOrThrow({
       where: { makerUserId_period: { makerUserId: maker.makerUserId, period: "2028-04" } },
     });
@@ -166,7 +167,7 @@ describe("writeStatements", () => {
     await requestDeletion({ prisma: db(), clock: asked }, game.makerUserId);
     asked.advance(15 * 24 * 60 * 60 * 1000);
     await purgeDueAccounts({ prisma: db(), clock: asked, files: new MemoryFileStore() });
-    expect(await finish("2028-09", "2028-10-10T12:00:00Z")).toEqual([game.makerUserId]);
+    expect(await finish("2028-09", "2028-10-10T12:00:00Z")).toContain(game.makerUserId);
     expect(await db().statement.count({ where: { makerUserId: game.makerUserId, period: "2028-09" } })).toBe(
       1,
     );
@@ -183,7 +184,9 @@ describe("writeStatements", () => {
         plays: [{ gameId: game.gameId, seconds: 600 }],
       },
     ]);
-    expect(await finish("2028-11", "2028-12-10T12:00:00Z")).toEqual([game.makerUserId]);
+    const made = await finish("2028-11", "2028-12-10T12:00:00Z");
+    expect(made).toContain(game.makerUserId);
+    expect(made).not.toContain(idle.makerUserId);
     const count = await db().statement.count();
     expect(
       await db().$transaction((tx) =>
