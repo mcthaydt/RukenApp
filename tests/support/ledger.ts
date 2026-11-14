@@ -3,6 +3,7 @@ import type { PrismaClient } from "../../src/lib/server/db.ts";
 import type { Clock } from "../../src/lib/clock.ts";
 import type { FeeRow } from "../../src/features/money/fee-rows.ts";
 import { postUnpostedPayments } from "../../src/features/money/payments.ts";
+import { postFeeRows } from "../../src/features/money/fees.ts";
 import { createUser } from "./create-user.ts";
 import { feeRow, type FakeMoneyStripe } from "./fake-money-stripe.ts";
 
@@ -127,4 +128,74 @@ export async function storedFeeRows(
   await prisma.stripeFeeRow.createMany({
     data: rows.map((row, index) => ({ ...feeRow(row), runId: run.id, rowNumber: index + 1 })),
   });
+}
+
+/** One member of a month, as `aMonth` makes them. */
+export interface MonthMember {
+  /** What they paid. Its `paidAt` (2 November 2026 unless said) is the month. */
+  readonly payment: PaymentSetup;
+  /** Billing and Tax fees that came after the payment, in cents. */
+  readonly laterFeeCents?: number;
+  /** The maker whose link they joined through, `"self"` for their own, or null for nobody. */
+  readonly broughtBy: string | null;
+  /** When they first joined, if not when they paid. */
+  readonly joinedAt?: string;
+  /** What they played in the month, by game. */
+  readonly plays: readonly { gameId: string; seconds: number }[];
+}
+
+/**
+ * Members who paid, were brought (or not) and played, all in the books as the daily job would have left them: each
+ * payment posted, each later fee taken off the top, each join and each day's play kept. The clock stands in the month.
+ * Answers the members' ids in the order given.
+ */
+export async function aMonth(
+  prisma: PrismaClient,
+  stripe: FakeMoneyStripe,
+  clock: Clock,
+  members: readonly MonthMember[],
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (const member of members) {
+    const userId = await addMembershipPayment(prisma, stripe, member.payment);
+    ids.push(userId);
+    const paidAt = member.payment.paidAt ?? "2026-11-02T15:00:00Z";
+    const brought = member.broughtBy === "self" ? userId : member.broughtBy;
+    await prisma.membershipStart.create({
+      data: {
+        checkoutIntentId: crypto.randomUUID(),
+        userId,
+        stripeSubscriptionId: `sub_${member.payment.invoice}`,
+        plan: member.payment.plan === "annual" ? "annual" : "monthly",
+        startedAt: new Date(member.joinedAt ?? paidAt),
+        broughtByUserId: brought,
+        arrivalPath: brought === null ? null : "/a-game",
+        arrivedAt: brought === null ? null : new Date(member.joinedAt ?? paidAt),
+      },
+    });
+    for (const play of member.plays) {
+      await prisma.playDay.create({
+        data: {
+          day: new Date(`${paidAt.slice(0, 10)}T00:00:00Z`),
+          userId,
+          gameId: play.gameId,
+          seconds: play.seconds,
+        },
+      });
+    }
+  }
+  await postUnpostedPayments({ db: prisma, clock, stripe });
+  for (const member of members) {
+    const cents = member.laterFeeCents ?? 0;
+    if (cents === 0) continue;
+    const amountText = `${String(Math.floor(cents / 100))}.${String(cents % 100).padStart(2, "0")}`;
+    const incurredAt = (member.payment.paidAt ?? "2026-11-02T15:00:00Z").slice(0, 10) + " 12:00:00";
+    await storedFeeRows(
+      prisma,
+      [{ incurredBy: member.payment.invoice, amountText, incurredAt }],
+      new Date(clock.epochMs()).toISOString(),
+    );
+  }
+  await postFeeRows({ db: prisma, clock });
+  return ids;
 }

@@ -5,8 +5,10 @@ import { createUser } from "./create-user.ts";
 
 let games = 0;
 
-/** A game and a pull of its files (a play pass and a session point at both), made by a new maker. */
-export async function addGame(prisma: PrismaClient): Promise<{ gameId: string; pullId: string }> {
+/** A game and a pull of its files (a play pass and a session point at both), made by a new maker, or by `maker`. */
+export async function addGame(
+  prisma: PrismaClient,
+): Promise<{ gameId: string; pullId: string; makerUserId: string }> {
   games += 1;
   const makerUserId = await createUser(prisma);
   const game = await prisma.game.create({
@@ -31,7 +33,7 @@ export async function addGame(prisma: PrismaClient): Promise<{ gameId: string; p
       pulledAt: new Date("2026-11-01T00:00:00Z"),
     },
   });
-  return { gameId: game.id, pullId: pull.id };
+  return { gameId: game.id, pullId: pull.id, makerUserId };
 }
 
 export interface SessionSetup {

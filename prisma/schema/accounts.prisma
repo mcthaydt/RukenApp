@@ -69,6 +69,10 @@ model User {
   journalLines JournalLine[]
   feePostings  FeePosting[]
   playDays     PlayDay[]
+
+  // The money feature's pool shares and statements name a maker; they are declared in money.prisma.
+  poolShares PoolShare[]
+  statements Statement[]
 }
 
 model Session {
