@@ -1,0 +1,137 @@
+// The membership feature's tables: who pays, what Stripe says about it, and the facts slice 5 will post.
+// Money is whole cents (BigInt). Every amount, tax, fee and date here is read from Stripe; nobody types one.
+
+enum PremiumPlan {
+  monthly
+  annual
+}
+
+/// Mirrors Stripe. It can go back and forth (past_due → active after a retry), so it is not a
+/// one-way state machine.
+enum PremiumState {
+  active
+  past_due
+  canceling
+  ended
+}
+
+enum CheckoutState {
+  open
+  completed
+  expired
+  cancelled
+}
+
+/// The Stripe customer a person pays as. One per person, made the first time they start to pay.
+model BillingCustomer {
+  id               String   @id @default(cuid(2))
+  userId           String   @unique
+  stripeCustomerId String   @unique
+  createdAt        DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+/// Mirrors the member's Stripe subscription. "Is this person a member" is read from this row and the
+/// clock, never from a flag a person can set.
+model PremiumMembership {
+  id                   String       @id @default(cuid(2))
+  userId               String       @unique
+  stripeSubscriptionId String       @unique
+  plan                 PremiumPlan
+  state                PremiumState
+  currentPeriodEnd     DateTime     @db.Timestamptz
+  cancelAt             DateTime?    @db.Timestamptz
+  /// When the first payment of the current run of failures failed; null while payments succeed.
+  /// Access pauses seven days after it, and never past the paid period.
+  pastDueSince         DateTime?    @db.Timestamptz
+  createdAt            DateTime     @default(now()) @db.Timestamptz
+  updatedAt            DateTime     @updatedAt @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+/// A hosted Stripe Checkout, found again by its ref when the person comes back from paying.
+/// The three arrival columns are the arrival as it stood when this checkout started: the maker whose
+/// link the person last arrived through, that link's path, and when. They are copied to
+/// MembershipStart when the checkout completes.
+model CheckoutIntent {
+  id                      String        @id @default(cuid(2))
+  userId                  String
+  plan                    PremiumPlan
+  stripeCheckoutSessionId String        @unique
+  /// A relative path on Ruken.
+  returnTo                String
+  state                   CheckoutState @default(open)
+  completedAt             DateTime?     @db.Timestamptz
+  broughtByUserId         String?
+  arrivalPath             String?
+  arrivedAt               DateTime?     @db.Timestamptz
+  createdAt               DateTime      @default(now()) @db.Timestamptz
+  updatedAt               DateTime      @updatedAt @db.Timestamptz
+
+  user      User  @relation("CheckoutIntentPayer", fields: [userId], references: [id], onDelete: Restrict)
+  broughtBy User? @relation("CheckoutIntentMaker", fields: [broughtByUserId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+}
+
+/// Every Stripe event that passed its signature check, kept as received, so slice 5 can post them and
+/// a failed one can be handled again. `deliveryId` is Stripe's event id: the same event twice is one row.
+model WebhookInbox {
+  id          String    @id @default(cuid(2))
+  deliveryId  String    @unique
+  payload     Json
+  receivedAt  DateTime  @db.Timestamptz
+  processedAt DateTime? @db.Timestamptz
+  error       String?
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+}
+
+/// One paid invoice, as Stripe reported it. Added, never changed or deleted.
+/// `cardFeeCents` is only the card fee on the payment's own balance transaction. Stripe's Billing and
+/// Tax fees are not on that transaction, so slice 5 finds them another way.
+/// SQL: CHECK "MembershipPayment_amounts_check" (gross above zero, tax and fee not below zero);
+/// trigger "MembershipPayment_append_only" rejects UPDATE and DELETE.
+model MembershipPayment {
+  id                   String      @id @default(cuid(2))
+  stripeInvoiceId      String      @unique
+  userId               String
+  stripeSubscriptionId String
+  plan                 PremiumPlan
+  periodStart          DateTime    @db.Timestamptz
+  paidAt               DateTime    @db.Timestamptz
+  grossCents           BigInt
+  taxCents             BigInt
+  cardFeeCents         BigInt
+  createdAt            DateTime    @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+}
+
+/// One row per completed checkout: who started paying, when, and which maker's link they last arrived
+/// through, if any. Every join is recorded as it happened, also a maker's own and a second one; the
+/// rules for the maker's bonus are applied later, by reading these rows. Added, never changed or deleted.
+/// SQL: CHECK "MembershipStart_arrival_check" (the three arrival columns are all null or all set);
+/// trigger "MembershipStart_append_only" rejects UPDATE and DELETE.
+model MembershipStart {
+  id                   String      @id @default(cuid(2))
+  checkoutIntentId     String      @unique
+  userId               String
+  stripeSubscriptionId String
+  plan                 PremiumPlan
+  startedAt            DateTime    @db.Timestamptz
+  broughtByUserId      String?
+  arrivalPath          String?
+  arrivedAt            DateTime?   @db.Timestamptz
+  createdAt            DateTime    @default(now()) @db.Timestamptz
+
+  user      User  @relation("MembershipStartMember", fields: [userId], references: [id], onDelete: Restrict)
+  broughtBy User? @relation("MembershipStartMaker", fields: [broughtByUserId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([broughtByUserId])
+}

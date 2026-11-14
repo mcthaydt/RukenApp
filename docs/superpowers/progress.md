@@ -11,7 +11,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 |---|---|---|---|
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
 | 1 | Accounts and membership | Owner, 2026-11-13: Cloudflare instead of Netlify; the plan's revision is merged (#15) with the Owner's yes to its package list, and its plan audit with fixes (#19). Owner, 2026-11-13: the Card Table look on Ruken's own screens (design 5.8, #20); the plan has a branch for it, L `slice-1/look` (tasks 35 to 37), after branch D and before E0: merged (#22); its plan audit is on a branch (`audit/slice-1-look`), not done until merged and green. Execution: branch A (tasks 1 to 4) merged (#13); branch B (tasks 5 to 8) merged (#14); branch C (tasks 9 to 11) merged (#18). Branch D (screens, tasks 12 to 15) merged (#21). Branch L (the look, tasks 35 to 37) in progress. L (the look) follows D, then E0 (Cloudflare) | 40% |
-| 2 | Games and play | not started | 0% |
+| 2 | Games and play | plan written, on its pull request (#27, marked ready); not done until merged and green. Open for the Owner: the maker agreement's text, FloorFifty's two clips and four items in FloorFifty's own repository. Nothing is built | 0% |
 | 3 | The feed and the maker's page | not started | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
 | 5 | Money (after launch, before 10 December) | not started | 0% |
@@ -29,8 +29,10 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | plan audit, slice 1, Cloudflare revision (`session_01HNdX7JhDxq8Wks8Rcajo3A`) | 3 Plan audit | `audit/slice-1-cloudflare` | archived; merged (#19) |
 | execution, slice 1 (`session_01HNdX7J8VTGzcZShtgMUqyv`) | 4 Execution | `slice-1/*` | archived (handed off at 90 minutes, after branch C) |
 | execution, slice 1, second session (`session_01HNdX7MUtPbFudeSaJywXHC`) | 4 Execution | `slice-1/account-screens` and after | running |
+| execution, slice 1, branch G (membership) (`session_01HNdX7LRjMhjdjX3L55msBT`) | 4 Execution | `slice-1/membership` | running (parallel with the second execution session; the Owner chose the parallel run, 2026-11-13) |
 | plan, slice 1, the look (`session_01HNdX7Hzv3QVMVyjewBSg1u`) | 2 Plan | `plan/slice-1-look` | archived; merged (#22) |
 | plan audit, slice 1, the look (`session_01HNdX7KyU3nkcc8rAByjXX3`) | 3 Plan audit | `audit/slice-1-look` (pull request #23) | done; merged to main (#23) |
+| plan, slice 2 (`session_01HNdX7Hp1xcTXw4d8CYVZnv`) | 2 Plan | `plan/slice-2` | the plan is written, with the Owner's two answers and the FloorFifty findings in it; pull request #27 marked ready |
 
 ## Slice 0: Start
 
@@ -99,7 +101,7 @@ Branches and tasks. Each task is ticked with its two CI runs (the failing test, 
 | E0 `slice-1/cloudflare` | 32 mail over HTTP, settings that say Cloudflare · 33 the platform, and work after the answer · 34 the site runs on Workers (one database client per request, the journeys in `wrangler dev`, `/healthz`) | not started; the package list is approved (Owner, 2026-11-13); starts after branch L |
 | E `slice-1/deploy` | 16 the site on its real address | not started; waits for branch E0 |
 | F `slice-1/delete-account` | 17 asking to be deleted, and undoing it · 18 signing in undoes it · 19 the delete screens · 20 the daily job (a Cron Trigger) | not started |
-| G `slice-1/membership` | 21 the membership tables · 22 prices and joining · 23 the membership rules and the arrival cookie · 24 reading and ending a subscription · 25 the webhook · 26 the membership service | not started |
+| G `slice-1/membership` | 21 the membership tables · 22 prices and joining · 23 the membership rules and the arrival cookie · 24 reading and ending a subscription · 25 the webhook · 26 the membership service | done on its pull request (#26), not yet merged (branch G's own session; it needs only A to D). Tasks 21 to 26 are green (run 120: unit 314 tests in 30 files, postgres 137 tests in 11 files, as the runs print them); one thing is not built: the `longDate` re-export (see Task 23). [x] Task 21 the membership tables (CI runs 97 red, 99 green; 8 tests). [x] Task 22 prices and joining (CI runs 101 red, 103 green; the carried checkout tests, 2 new stripe-client cases and 3 for the new prices). `PremiumPlan` is defined in `plans.ts` (Task 23's reducer re-exports it), because Task 22 needs it a task before the reducer exists. `stripe` 22.6.2 added to `package.json` (it is on the plan's list). [x] Task 23 the membership rules and the arrival cookie (CI runs 105 red but it failed lint, a template string in the arrival test, so it was fixed and pushed again; 106 red for the right reason, 108 green). The `longDate` re-export in `format.ts` and the entry waits for branch F's Task 19 (`src/lib/long-date.ts` is not on main); everything else in Task 23 is built. [x] Task 24 reading and ending a subscription (CI runs 109 red, 111 green). Rulings: `readCardFee` stays, private to `subscription.ts`, because `readPaidPremiumInvoice` needs it though the plan trims it from the client file; `receiptUrl` is dropped from `PaidPremiumInvoice` (no receipt is sent); `bindPremiumStripe` keeps the carried price caching. [x] Task 25 the webhook, the inbox and what each event does (CI runs 112 red, 113 green). Ruling: `SyncOutcome` and `InvoicePaidOutcome` are declared in `events.ts` (Task 25 cannot import Task 26's files); `sync.ts` and `service.ts` import them from there. [x] Task 26 the membership service (CI runs 114 red but it failed lint, a method taken apart in the services test, so it was fixed and pushed again; 116 red for the right reason; run 118, the first green, failed 7 service tests on the postgres job because the test and the fake numbered Stripe ids from two counters and collided on `cus_N`; one shared counter fixed it; 120 green). Rulings: the service does its database work inside the member-lock transaction (the test database's pool is two connections); `startCheckout` refuses a `returnTo` that is not a path on Ruken |
 | H `slice-1/paywall` | 27 the stand-in Stripe and the paywall card · 28 the webhook route · 29 coming back from paying · 30 membership on /me, cancelling, deleting · 31 paying and cancelling on the real site | not started |
 
 The Owner's own tasks, and where execution stops for each:
@@ -120,6 +122,56 @@ Found while planning:
 - The old repository's terms and privacy pages are outlines marked "draft", waiting for counsel. They are not carried in this slice.
 - The membership product and its prices are made in Stripe by the carried code, so the Owner types no price into Stripe.
 - The carried code refuses to charge when Stripe already holds a price under its lookup key at another amount. A Stripe account that ran the old code holds the old $7.99 and $79 prices, so the new prices and their product get new names (`ruken_membership_monthly`, `ruken_membership_annual`, `ruken_membership`). The old product and prices stay in that account, unused; archiving them there is the Owner's.
+
+## Slice 2: Games and play
+
+Plan: `docs/superpowers/plans/2026-11-13-slice-2-games-play.md`. It ends with: a member can play a pulled game, and the time is recorded. Planned in parallel with slice 1's execution (Owner, 2026-11-13); execution starts only when slice 1 is merged and green.
+
+Stages:
+
+- [ ] Plan: written, on `plan/slice-2` (pull request #27, marked ready); not done until merged and green. No test ran in the plan session. Outside the repository, in a scratch folder: Cloudflare's limits, R2, routes and Workers Builds pages were read, and two local Workers (Wrangler 4.156.0) were run against one local R2 bucket (they share it when started one after the other; started together, one stops with "database is locked").
+- [ ] Plan audit.
+- [ ] Execution, branch by branch (below).
+- [ ] Implementation audit.
+- [ ] Fixes.
+
+What the plan waited for, and what is still the Owner's:
+
+- [x] The FloorFifty findings, 2026-11-13 (relayed by the coordinator): it runs as a plain web game once one line in its own repository drops the old SDK's ten-second wait; it is an online game and must reach its own game server, so a maker lists a game's servers and the gate lets the game reach only those; measured 326 files, 91,441,454 bytes, largest 10,680,799 bytes, so the limits are 400 MB, 1,500 files and 50 MB a file; its repository has no ready-to-run folder yet. Still the Owner's: its two clips, and four items in FloorFifty's own repository and servers (the plan lists them).
+- [ ] The maker agreement's text, the Owner's (open item O5): a maker accepts it once, on their first submission.
+- [x] Owner, 2026-11-13, where games live: a separate domain used only for games, each game on its own name under it. The Owner will buy one; buying it is the one website step of G3.
+- [x] Owner, 2026-11-13, how a game gets on the site: "Users should be able to upload it on the site by connecting their github and selecting repo then adding whatever else they need". No staff door. The maker's submit path (design 5.4) and the smallest staff Accept and Send back are in this slice; the three-step onboarding, the mails, taking down and the rest of the admin portal stay in slice 4.
+
+Branches and tasks (tasks 25 to 30 were added with the Owner's answer, so their numbers are out of order):
+
+| Branch | Tasks | State |
+|---|---|---|
+| A `slice-2/game` | 1 the games tables · 2 a game's address and id · 3 safe paths, file types, byte ranges · 4 checking a game's files · 5 the clip rules | not started |
+| B `slice-2/storage` | 6 the bucket behind one interface · 7 saving a clip | not started; not marked ready until G1 |
+| C `slice-2/github-pull` | 8 signing in to GitHub as the app · 9 reading a tarball · 10 the pull · 11 the games service | not started |
+| D `slice-2/gate` | 12 the play pass · 13 the gate · 14 the gate as its own Worker | not started |
+| E `slice-2/connect-github` | 15 a maker's GitHub connection · 25 connecting on the site, and a stand-in GitHub | not started; not marked ready until G2 |
+| M `slice-2/submit` | 26 sending for review: the rules and the tables · 27 the maker's area and the new-game form · 28 a game's page in the maker's area (needs O5) | not started |
+| P `slice-2/play-rules` | 16 the play tables · 17 who may play, and what counts · 18 sessions and beats | not started |
+| S `slice-2/accept` | 19 the look's five new classes · 29 the first staff account · 30 Accept and Send back | not started |
+| F `slice-2/play` | 20 a game's page · 21 playing · 22 play time · 23 design 8's journeys from a real link | not started |
+| G `slice-2/real-site` | 24 FloorFifty submitted, accepted and played on the real site | not started; needs G1 to G4, O4, O5 and the Owner's FloorFifty items |
+
+The Owner's own tasks, and where execution stops for each (the plan has each as one-line PowerShell commands; a website only where no command exists):
+
+- [ ] G1, when branch B starts, before it is marked ready: sign in to Cloudflare from the command line and make the R2 bucket `ruken-games`.
+- [ ] G2, when branch C starts, before branch E is marked ready: make the Ruken GitHub App (a website step, opened filled in by one command), then give the site its id, client id, client secret, short name and key as secrets, one command each.
+- [ ] G3, when branch D starts: buy the games domain if needed and put it on Cloudflare with a wildcard DNS record (the website step); then by command: the gate Worker deployed with its route, one new pass secret on both Workers, the site's address on the gate, the games' address pattern on the site.
+- [ ] G4, at Task 24: one command makes the Owner's account the first staff account; then on the site itself: submit FloorFifty on `/make`, accept it on `/admin/games`, play it. Changes to FloorFifty's own repository, if it needs any to run without the old SDK, and its two clips, are the Owner's and not part of the plan.
+
+Found while planning:
+
+- The old game host never checked a pass: it kept games apart by address only. The file serving is carried; the pass is new, in the old launch token's format.
+- No new package: the tarball reader, the GitHub App sign-in and the pass are small files of the app's own. `ci.yml` does not change.
+- The old "recent input" rule for play time cannot be kept without an SDK: Ruken's page cannot see inside a frame on another address. Time counts while the tab shows, the frame is on screen and the frame has focus (design 5.2).
+- Connecting GitHub asks GitHub who the person is: the installation number GitHub puts in the address after an install can be typed by anyone, so Ruken stores only the installations GitHub says the person can reach. That needs the app's client id and secret.
+- Submitting is two screens, not the design's one form: two 30 MB clips in one request would sit in the Worker's memory together.
+- Play lands in the game: a non-member is sent to `/join?next=/g/<game>/play` (slice 1's note said `/g/<game>`), so they are in the game after paying.
 
 Notes for later slices:
 
