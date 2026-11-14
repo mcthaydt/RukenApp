@@ -14,6 +14,20 @@ import { staffRolesOf } from "./staff.ts";
 
 type Settings = Readonly<Record<string, string | undefined>>;
 
+const STAND_IN_MAIL = "http://127.0.0.1:";
+
+/**
+ * The mail service's address, which only a stand-in on this machine may replace. Refused at start, so a real site can
+ * never be pointed away from Resend, where its sign-in links would go to whoever runs the other end.
+ */
+function standInAddress(name: string, source: Settings): string | undefined {
+  const value = optionalEnv(name, source);
+  if (value !== undefined && !value.startsWith(STAND_IN_MAIL)) {
+    throw new Error(`${name} is for a stand-in on this machine only: it must start with ${STAND_IN_MAIL}`);
+  }
+  return value;
+}
+
 export interface AuthServices {
   prisma: PrismaClient;
   clock: Clock;
@@ -35,11 +49,17 @@ export function createAuthServices(source: Settings, db?: PrismaClient): AuthSer
   const resendApiKey = requireEnv("RESEND_API_KEY", source);
   const mailFrom = requireEnv("MAIL_FROM", source);
   const allowlist = optionalEnv("MAIL_ALLOWLIST", source);
+  const mailApiBase = standInAddress("RESEND_API_BASE", source);
 
   const prisma = db ?? requestPrisma();
   const clock = systemClock;
   const cookies = cookiePolicy(baseURL);
-  const mailer = createResendMailer({ apiKey: resendApiKey, from: mailFrom, allowlist });
+  const mailer = createResendMailer({
+    apiKey: resendApiKey,
+    from: mailFrom,
+    allowlist,
+    ...(mailApiBase === undefined ? {} : { apiBase: mailApiBase }),
+  });
   const auth = createAuth({ prisma, secret, baseURL, mailer, cookies, clock });
 
   const handleDeps: HandleDeps = {

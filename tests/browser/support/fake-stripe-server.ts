@@ -15,7 +15,8 @@ import { FEE_COLUMNS, FEE_REPORT_TYPE } from "../../../src/features/money/fee-ro
 //   sometimes does.
 // - /portal/<session>: one "Cancel membership" button, which sets the subscription to end with its period, tells
 //   the site with a signed event, and sends the browser back.
-// And /state/<checkout session> answers the subscription's status, for a journey that asks what Stripe thinks.
+// And /state/<checkout session> answers the subscription's status, for a journey that asks what Stripe thinks, and
+// POST /test/end/<checkout session> lets the paid time run out.
 //
 // For the money feature (src/features/money/stripe-port.ts) it also answers Stripe's Reporting API for the Fees report:
 // a report run finishes at once, and its file (served at /files/<run>.csv, to a request that carries the secret key)
@@ -643,6 +644,23 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       await sendEvent("customer.subscription.updated", subscriptionJson(subscription));
     }
     redirect(response, portal.returnUrl);
+    return;
+  }
+
+  // The paid month runs out: POST /test/end/<checkout session> ends the subscription that checkout made, as Stripe does
+  // at the end of a period the member chose to cancel, and tells the site with the signed event. It answers once the
+  // site has heard, so the journey's next page already knows.
+  const runsOut = /^\/test\/end\/([^/]+)$/.exec(path);
+  if (runsOut !== null && method === "POST") {
+    const subscription = subscriptions.get(sessions.get(runsOut[1] ?? "")?.subscriptionId ?? "");
+    if (subscription === undefined) {
+      plain(response, 404, "No subscription was made by that checkout.");
+      return;
+    }
+    subscription.status = "canceled";
+    subscription.endedAt = nowSeconds();
+    await sendEvent("customer.subscription.deleted", subscriptionJson(subscription));
+    plain(response, 200, "ended");
     return;
   }
 

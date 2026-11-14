@@ -84,8 +84,9 @@ test("a plan picked before the page has come alive is kept when it does", async 
   await page.goto("/join?next=/me", { waitUntil: "commit" });
   await page.getByRole("radio", { name: "$99 a year" }).check();
   release();
-  // Every script has arrived and run once the network has been quiet.
-  await page.waitForLoadState("networkidle");
+  // SvelteKit adds its screen-reader announcer to the page once the app has started and the page has come alive
+  // (hydrated), so its arrival says the scripts have run. It is the page's own sign, not a quiet network or a pause.
+  await expect(page.locator("#svelte-announcer")).toBeAttached();
   await expect(page.getByRole("radio", { name: "$99 a year" })).toBeChecked();
   await expect(page.getByRole("radio", { name: "$9.99 a month" })).not.toBeChecked();
   await page.getByRole("button", { name: "Continue" }).click();

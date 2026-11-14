@@ -53,4 +53,20 @@ describe("createAuthServices", () => {
       );
     });
   });
+
+  it("takes a mail address of a stand-in on this machine", async () => {
+    await inRequest(() => {
+      expect(() =>
+        createAuthServices({ ...settings, RESEND_API_BASE: "http://127.0.0.1:12113" }),
+      ).not.toThrow();
+    });
+  });
+
+  it("refuses a mail address that is not a stand-in on this machine, so the real site cannot be pointed away from Resend", async () => {
+    await inRequest(() => {
+      expect(() => createAuthServices({ ...settings, RESEND_API_BASE: "https://mail.example" })).toThrow(
+        /RESEND_API_BASE is for a stand-in on this machine only/,
+      );
+    });
+  });
 });
