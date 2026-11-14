@@ -4,6 +4,8 @@ import {
   requestDeletion,
   restoreOnSignIn,
 } from "../../../src/features/accounts/deletion.ts";
+import { newPublicId } from "../../../src/features/games/ids.ts";
+import { createWishlist } from "../../../src/features/launch/wishlist.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { TestClock } from "../../support/test-clock.ts";
@@ -228,6 +230,46 @@ describe("purgeDueAccounts", () => {
     // Nobody else's page is touched.
     expect(await db().makerPage.count({ where: { userId: staying.id } })).toBe(1);
     expect(await db().pageLink.count({ where: { page: { userId: staying.id } } })).toBe(2);
+  });
+
+  // The games a person wanted are theirs (the wishlist, before launch). The launch email's row holds only an id and a
+  // time, and is add-only, so it stays.
+  it("keeps a person's wishlist for the 14 days, then removes it, and keeps the launch email's row", async () => {
+    // Review Focus 14
+    const leaving = await seedPerson();
+    const staying = await seedPerson();
+    const maker = await seedPerson();
+    const game = await db().game.create({
+      data: {
+        publicId: newPublicId(),
+        slug: "wanted-game",
+        makerUserId: maker.id,
+        name: "A game",
+        oneLine: "A game about a thing.",
+        playsOn: "phone_and_computer",
+        repoFullName: "acme/game",
+      },
+    });
+    for (const userId of [leaving.id, staying.id]) {
+      await db().wishlist.create({ data: { userId, gameId: game.id, addedAt: new Date(START) } });
+    }
+    await db().wishlistMail.create({ data: { userId: leaving.id, sentAt: new Date(START) } });
+    const clock = await askToBeDeleted(leaving.id);
+    const wishlist = createWishlist({ db: db(), clock });
+
+    clock.advance(13 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(0);
+    expect(await db().wishlist.count({ where: { userId: leaving.id } })).toBe(1);
+    expect(await wishlist.countFor(game.id, maker.id)).toBe(2);
+
+    clock.advance(2 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(1);
+
+    expect(await db().wishlist.count({ where: { userId: leaving.id } })).toBe(0);
+    expect(await wishlist.countFor(game.id, maker.id)).toBe(1);
+    expect(await db().wishlistMail.count({ where: { userId: leaving.id } })).toBe(1);
+    // Nobody else's list is touched.
+    expect(await db().wishlist.count({ where: { userId: staying.id } })).toBe(1);
   });
 
   // Review Focus 6 of the plan: the money rows are the ledger, so they outlive the person's details. The purge only
