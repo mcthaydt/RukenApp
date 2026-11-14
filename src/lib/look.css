@@ -220,6 +220,13 @@ a:not(.button, .wordmark),
   text-wrap: balance;
 }
 
+/* A card's second-level heading ("Game files" on a game's page) is in the display face too, so a card has one
+   heading face and not a bold sans-serif line under a serif title. */
+.card h2 {
+  margin: 1.5rem 0 0;
+  font: var(--text-statement);
+}
+
 /* A step and a half between the title and what it introduces. */
 .card h1 + * {
   margin-top: 1.5rem;
@@ -284,6 +291,49 @@ textarea {
   background: none;
   color: inherit;
   font: inherit;
+}
+
+/* A file field's button is a button of the look, as the words on it ("Choose File") are the browser's own. The field
+   keeps its edge, so a person sees where the file goes. */
+.card input[type="file"] {
+  padding: 0.25rem;
+}
+
+.card input[type="file"]::file-selector-button {
+  min-height: calc(var(--size-target) - 0.5rem);
+  margin-inline-end: 0.75rem;
+  padding: 0.25rem 1rem;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--ink);
+  color: var(--paper);
+  font: var(--text-button);
+  cursor: pointer;
+}
+
+/* A fold-out ("Replace", "My game uses other websites") is a line to press, as easy to hit as a button. It has a plus
+   where the browser draws its own triangle, and a minus while it is open, so what it does is in words and a mark. */
+summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--size-target);
+  list-style: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary::after {
+  content: "+";
+  text-decoration: none;
+}
+
+details[open] > summary::after {
+  content: "\2212";
 }
 
 input[type="radio"],

@@ -1,5 +1,6 @@
 <!--
-  The maker agreement: the heading, its version, and the Owner's text as paragraphs. Nothing on it is a button.
+  The maker agreement: the heading, its version (said once), the Owner's text as paragraphs, and the way back. Nothing
+  on it is a button.
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
@@ -17,4 +18,5 @@
   {#each data.paragraphs as paragraph, index (index)}
     <p>{paragraph}</p>
   {/each}
+  <p><a href={data.back.href}>{data.back.words}</a></p>
 </main>
