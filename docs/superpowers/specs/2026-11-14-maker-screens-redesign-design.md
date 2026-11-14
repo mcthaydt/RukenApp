@@ -49,6 +49,7 @@ Owner, 2026-11-14: "the one main button on every screen across the whole site go
 - The paywall's "Continue to payment" stays Blue. It is no longer the only Blue button on the site; its words and the money lines beside it say that money is spent.
 - Measured, and worth knowing: Blue on the felt itself (the home page's "Sign in") is 2.67:1 against the page. The button is read by its white words, which pass; the home page goes when the feed replaces it.
 - Measured, the buttons against what they sit on: Blue 2.67:1 on felt and 3.48:1 on the phone's bottom bar (`felt-deep`); red 2.75:1 and 3.57:1; green 1.50:1 and 1.96:1. Every button is read by its white words, which pass on all three.
+- **"Back to your games" on Waiting is Blue.** Owner, 2026-11-14: "Back to your games should be blue yes". It is that screen's way forward. As a link under another button (Sent back, Live) it stays a link.
 - **The two deleting screens** ("Delete your account?", "Throw Floor Fifty away?") have a green button that keeps and a red one that deletes, and no Blue button. Enter does nothing on them.
 
 ## 2. Where she stalls today
@@ -139,7 +140,7 @@ The table counts the game's questions as "of 6", as a maker's second game does. 
 
 ## 4. How a screen is laid out
 
-The rule, one line: **the felt is the whole window and asks the question; paper is only what she touches.** Paper is the box she types in, a choice she picks, a game in her list, a sheet she reads. This is 5.8's own idea ("what a person picks up or acts on is a white paper card on it") taken at its word, and it is how Typeform uses its page. It replaces "one paper card per screen holds the one thing to do" on the maker's screens, sign-in and the account screens. The paywall card stays a card, over the clip. **Pending (question 2)**, because it changes 5.8.
+The rule, one line: **the felt is the whole window and asks the question; paper is only what she touches.** Paper is the box she types in, a choice she picks, a game in her list, a sheet she reads. This is 5.8's own idea ("what a person picks up or acts on is a white paper card on it") taken at its word, and it is how Typeform uses its page. It replaces "one paper card per screen holds the one thing to do" on the maker's screens, sign-in and the account screens. The paywall card stays a card, over the clip. Owner, 2026-11-14, to this and to steps that move (section 4.6): "18. A, change the design rule". 5.8 is amended: its idea line stands; "one paper card per screen holds the one thing to do" becomes "the felt asks one thing and paper is what you touch"; and its Motion line gains the step in section 4.6.
 
 No new colours, typefaces or sizes: every size below is already in 5.8's scale.
 
@@ -232,7 +233,11 @@ Drawn at 852 × 393. Owner, 2026-11-14: "we have wayyyy too much empty space on 
 3. **"Finish later" on a sideways phone is at the bottom right** (section 4.5).
 4. **Check and send shows the game as members will see it** ("a preview of what it'll actually look like live"). Above the Send button: her clip, with her address, the name, the line and Play laid over it, as the feed (main design 5.1) shows a game. Under it: "How members will see it in the feed." An upright screen shows the upright clip and a wide screen the wide one, as the feed does. The two video rows of the list carry a small picture each. Call: the preview is a picture of the feed, not the feed; its Play does nothing.
 5. **A sideways phone is the sideways tablet, made smaller** (section 4.5). This is now the rule for every screen.
-6. **Sent back shows the videos and says what passed** ("show previews of media content, and use green for accepted and red for what failed"). Every row of the list carries one of two marks, in words and in colour: "Accepted" in Dusky Green (9.52:1 on paper, measured) or "Needs fixing" in red (`pip`, 5.21:1 on paper, measured). The two video rows show the video, outlined in the same colour. This is the second place red appears; 5.8's `pip` line gains "and the words Needs fixing on a game that was sent back". **This needs the staff side**: when staff send a game back they must say which parts failed. Today they write one note. Left to the plan (section 8).
+6. **Sent back marks every item** ("show previews of media content, and use green for accepted and red for what failed"; then, to be clear: "not just for media do red and green because we'll reject a game name if it's profane"). Every row of the list, the name, the one line, the game files, where it plays, each video and the other websites, carries one of two marks, in words and in colour: "Accepted" in Dusky Green (9.52:1 on paper, measured), or "Sent back." in red (`pip`, 5.21:1 on paper, measured) followed by the reason in plain words on the same line. The two video rows show the video, outlined in the same colour. Each row keeps its Change link, which opens that one question and comes straight back, so the fix is beside the reason.
+   - The board's two examples: the upright video, "Sent back. It's sideways. Turn it the right way up."; and the name, "Sent back. We can't show this name on Ruken. It's rude. Pick another." The line under "What to fix" says the same in a sentence.
+   - This is the second place red appears; 5.8's `pip` line gains "and the words Sent back on an item of a game that was sent back".
+   - **This needs the staff side**: when staff send a game back they pick the items that failed and give each a reason. Today they write one note. Left to the plan (section 8).
+   - A maker's page (address, photo, line about her, colours) is not part of a game's review; it is live when saved and moderated through Report (main design 5.3). So it has no rows here. If the Owner wants page details reviewed and marked the same way, that changes 5.3 and needs their words.
 7. **Your games have thumbnails** ("Show a thumbnail for Your games"). Each game's card carries a still from its wide video on the left, 96 × 54 on a phone and 128 × 72 on a computer. A game with no video yet shows a plain sage block.
 
 ## 6. The main design's 5.7: one run, one counter
@@ -254,14 +259,14 @@ Owner, 2026-11-14: "13. A". 5.7 gave a new maker three steps with a "Step 1 of 3
 ## 7. Questions only the Owner can answer
 
 1. Answered. The other button on the two deleting screens is green: Owner, 2026-11-14, "safe is green, not safe is red, rest is blue" (section 1).
-2. **Paper only for what she touches, and steps that move.** A (recommended): as on the board; this changes 5.8's "one paper card per screen" and "nothing else moves" for these screens. B: keep one paper card per screen, made larger and centred in the window, and nothing moves.
+2. Answered. Paper only for what she touches, and steps that move: Owner, 2026-11-14, "18. A, change the design rule" (section 4).
 3. **A first game's count.** A (recommended): 10 questions, the photo, the line about her and the colours each on their own screen. B: 8, with the page's three parts on one screen.
 
 Answered: the agreement's date line, "A" (section 5). The delete button, "delete account should be red obviously" (section 1). The address and page steps, "13. A" (section 6).
 
 ## 8. Left to the plan
 
-- How staff mark which parts of a game failed when they send it back, so that Sent back can say "Accepted" and "Needs fixing" on each row (section 5a, note 6).
+- How staff mark which parts of a game failed when they send it back, and why, item by item, so that Sent back can say "Accepted" or "Sent back." with its reason on each row (section 5a, note 6).
 - Where a game's thumbnail comes from (a still from the wide video) and when it is made.
 - How a video plays full size on each kind of device.
 
