@@ -82,7 +82,7 @@ Every session reports to the coordinator with send_message, short and factual; p
 ### Pace
 
 - A branch is small enough to review in one sitting, and merges or closes within two days. Never build on a branch that is not in main.
-- At most three pull requests open. (Owner, 2026-11-13: checks run on GitHub's runners, so the old "one in CI at a time" limit, which was for the owner's own machines, is dropped.)
+- At most five pull requests open (Owner, 2026-11-14: "Yes" to raising the limit from three to five). (Owner, 2026-11-13: checks run on GitHub's runners, so the old "one in CI at a time" limit, which was for the owner's own machines, is dropped.)
 - Stop and tell the owner when a task has taken twice what was expected, when the third fix for the same failure has not worked, or when a look has been through two rounds without their "fine". Do not start a fourth attempt.
 
 ### Truth
