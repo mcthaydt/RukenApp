@@ -114,11 +114,12 @@ test("the main button on a card is an ink pill with a paper label in Schibsted G
   expect(asked).toContain("/fonts/schibsted-grotesk-latin-600-normal.woff2");
 });
 
-test("a field has an edge and is easy to hit; a note is small and soft", async ({ page }) => {
+test("a field has an ink edge and is easy to hit; a note is small and soft", async ({ page }) => {
   await page.goto("/sign-up");
   const email = page.getByLabel("Email");
   await expect(email).toHaveCSS("border-top-width", "1px");
-  await expect(email).toHaveCSS("border-top-color", rgb(token("--ink-soft")));
+  // Owner, 2026-11-14 ("fix all the issues"): the soft edge made fields look faint, so the edge is ink.
+  await expect(email).toHaveCSS("border-top-color", rgb(token("--ink")));
   await expect(email).toHaveCSS("border-top-left-radius", "14px");
   expect((await email.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(48);
   const note = page.getByText("At least 10 characters.");

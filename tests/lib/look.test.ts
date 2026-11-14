@@ -73,7 +73,7 @@ describe("contrast, measured from the tokens (WCAG AA)", () => {
   });
 
   it.each([
-    ["--ink-soft", "--paper"], // a field's edge
+    ["--ink", "--paper"], // a field's edge
     ["--paper", "--felt"], // the focus ring, the card and the main button on felt
     ["--pip", "--paper"], // the paid button against its card
   ])("%s shows against %s (3:1)", (mark, ground) => {
@@ -128,7 +128,7 @@ describe("the fonts", () => {
 
 // Screens are plain elements and the look's few classes; they carry no colour, size or style of their own.
 describe("screens wear the look and nothing of their own", () => {
-  const CLASSES = ["card", "statement", "note", "row", "button", "quiet", "pay", "problem"];
+  const CLASSES = ["card", "statement", "note", "row", "button", "quiet", "pay", "problem", "wordmark"];
   const ROUTES = "src/routes";
 
   /** Every .svelte file under src/routes, as a path from the repository's root. */
