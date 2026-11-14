@@ -103,3 +103,12 @@ export async function letMembershipRunOut(member: { checkoutSessionId: string })
   const answer = await fetch(`${STAND_IN_URL}/test/end/${member.checkoutSessionId}`, { method: "POST" });
   if (!answer.ok) throw new Error(`the stand-in would not end the membership: ${String(answer.status)}`);
 }
+
+/**
+ * Stripe's late news goes out: a payment page opened with `?events=later` holds the site's three events back until
+ * this is called, so a journey can look at the page that waits for them and then let them arrive, with no timer to race.
+ */
+export async function releaseLateNews(checkoutSessionId: string): Promise<void> {
+  const answer = await fetch(`${STAND_IN_URL}/test/release/${checkoutSessionId}`, { method: "POST" });
+  if (!answer.ok) throw new Error(`the stand-in would not release its news: ${String(answer.status)}`);
+}

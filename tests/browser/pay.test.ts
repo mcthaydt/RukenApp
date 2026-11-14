@@ -4,6 +4,7 @@ import {
   freshEmail,
   JOURNEY_PASSWORD,
   payAsNewMember,
+  releaseLateNews,
   signUpInItsOwnContext,
   yearsAgo,
 } from "./support/account.ts";
@@ -44,13 +45,17 @@ test("someone else's checkout ref goes back to the card", async ({ page }) => {
 test("when Stripe's news is late, the page says so and goes on by itself", async ({ page }) => {
   await signUpFromTheCard(page);
   await page.getByRole("button", { name: "Continue to payment" }).click();
-  // The stand-in's own page, asked to send its news three seconds after it sends the browser back.
+  // The stand-in's own page, asked to hold its news back until this journey lets it go. The payment page's address
+  // ends in the checkout's id, which is what the release is asked for.
   await page.goto(`${page.url()}?events=later`);
+  const checkoutSessionId = new URL(page.url()).pathname.split("/").pop() ?? "";
   await page.getByRole("button", { name: "Pay" }).click();
   await expect(page.getByRole("heading", { name: "Finishing up…" })).toBeVisible();
-  // Looked at right away, and with values only: the page moves on to /me by itself (design 5.8). Both wait.
+  // Looked at while the news is still held, and with values only: the page moves on to /me by itself once it
+  // arrives (design 5.8).
   await expect(page.locator("main.card")).toHaveCSS("background-color", rgb(token("--paper")));
   await expect(page.getByRole("heading", { level: 1 })).toHaveCSS("font-size", "32px");
+  await releaseLateNews(checkoutSessionId);
   await expect(page).toHaveURL("/me"); // waits on the page, not a sleep
 });
 
