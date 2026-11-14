@@ -25,3 +25,48 @@ export function coloursOf(combination: number): string[] {
     (colour) => colour.hex,
   );
 }
+
+/** The least contrast, as WCAG's ratio, between any text and what it sits on (design 5.3: readable or not offered). */
+export const MIN_CONTRAST = 4.5;
+
+/** The four jobs a page gives its colours. */
+export interface Arrangement {
+  ground: string;
+  text: string;
+  button: string;
+  buttonText: string;
+}
+
+/** The best way to give a combination's colours their four jobs, or null when no way is readable. */
+export function arrange(colours: readonly string[]): Arrangement | null {
+  throw new Error(`not built yet: arrange ${String(colours.length)}`);
+}
+
+/** An arrangement of one of the book's combinations, by its number, with all the combination's colours. */
+export interface Theme extends Arrangement {
+  id: number;
+  colours: string[];
+}
+
+/** Every combination that has a readable arrangement, in number order. */
+export const THEMES: readonly Theme[] = [];
+
+/** The Card Table's own colours (felt, chalk, paper, ink): what a page wears until its maker picks a theme. */
+export const DEFAULT_THEME: Theme = {
+  id: 0,
+  colours: ["#112f2c", "#ffffff"],
+  ground: "#112f2c",
+  text: "#ffffff",
+  button: "#ffffff",
+  buttonText: "#111314",
+};
+
+/** The offered theme with this number, or null for anything else, a made-up number included. */
+export function offeredTheme(id: number): Theme | null {
+  throw new Error(`not built yet: offeredTheme ${String(id)}`);
+}
+
+/** The offered theme with this number, or the default theme. */
+export function themeById(id: number): Theme {
+  throw new Error(`not built yet: themeById ${String(id)}`);
+}
