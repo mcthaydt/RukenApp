@@ -273,7 +273,7 @@ Branches and tasks:
 
 ## Slice 5: Money
 
-Plan: `docs/superpowers/plans/2026-11-14-slice-5-money.md`. It ends with: the first statement is right. Planned beside slice 2's building (Owner, 2026-11-14: "Slice 5 plan"); execution starts only when slice 4 is merged and green. Branches A to D must be on `main` before 10 December 2026 (the first statement), and E to H before 15 December 2026 (the first payout).
+Plan: `docs/superpowers/plans/2026-11-14-slice-5-money.md`. It ends with: the first statement is right. Planned beside slice 2's building (Owner, 2026-11-14: "Slice 5 plan"); branches A to D may start once the pieces of slices 1 and 2 they use are on `main` (coordinator, 2026-11-14); only the payout approval waits for slice 4. Branches A to D must be on `main` before 10 December 2026 (the first statement), and E to H before 15 December 2026 (the first payout).
 
 Stages:
 
