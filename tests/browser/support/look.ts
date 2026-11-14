@@ -113,9 +113,12 @@ export function pipRed(page: Page): Promise<string[]> {
   }, pip);
 }
 
-/** The filled buttons on a card: every button or link-button that is not the quiet kind. */
+/** The filled buttons on a card: every button or link-button that is not the quiet kind, and a file picker's words
+ * when the picker is not the quiet one. */
 export function filledButtons(page: Page): Locator {
-  return page.locator(".card button:not(.quiet), .card a.button:not(.quiet)");
+  return page.locator(
+    ".card button:not(.quiet), .card a.button:not(.quiet), .card .file:not([data-quiet]) > span",
+  );
 }
 
 /**

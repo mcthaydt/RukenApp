@@ -30,3 +30,47 @@ export function stateWords(game: {
       return because("Taken down");
   }
 }
+
+/** A game's state as a headline, and the reason apart when there is one. Not built yet. */
+export function stateParts(game: { state: GameState; stateReason: string | null; hasPending: boolean }): {
+  headline: string;
+  reason: string | null;
+} {
+  throw new Error(`stateParts is not built yet (${game.state})`);
+}
+
+/** The two lines a game has in the maker's list: where it stands and what to do. Not built yet. */
+export function listWords(game: {
+  state: GameState;
+  stateReason: string | null;
+  hasPending: boolean;
+  filesProblem: boolean;
+  bothVideos: boolean;
+}): string {
+  throw new Error(`listWords is not built yet (${game.state})`);
+}
+
+/** The one next step, under a game's state on its own page. Not built yet. */
+export function nextStepWords(game: {
+  state: GameState;
+  stateReason: string | null;
+  hasPending: boolean;
+  filesProblem: boolean;
+  upright: boolean;
+  wide: boolean;
+}): string | null {
+  throw new Error(`nextStepWords is not built yet (${game.state})`);
+}
+
+/** What is still missing before a game can be sent. */
+export interface MissingBeforeSend {
+  files: boolean;
+  upright: boolean;
+  wide: boolean;
+  agreement: boolean;
+}
+
+/** One sentence naming everything still missing, or null when nothing is. Not built yet. */
+export function beforeSendWords(missing: MissingBeforeSend): string | null {
+  throw new Error(`beforeSendWords is not built yet (${String(missing.files)})`);
+}

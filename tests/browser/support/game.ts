@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { signUp } from "./account.ts";
 
-// The steps every maker journey shares: a maker with a game, and its clips. GitHub is the stand-in on this machine
+// The steps every maker journey shares: a maker with a game, and its videos. GitHub is the stand-in on this machine
 // (support/fake-github-server.ts), which lists `ruken-test/tiny-game` and `ruken-test/broken-game` for the person.
 
 /** The stand-in's game that pulls cleanly, and the one with no index.html that the pull refuses. */
@@ -20,9 +20,9 @@ export async function connectGitHub(page: Page): Promise<void> {
 /** Fills the new-game form for a repository and sends it, then waits for the game's page. Returns its address's end. */
 export async function makeGame(page: Page, repository = TINY_GAME): Promise<string> {
   await page.getByLabel("Name").fill(freshName(repository === TINY_GAME ? "Tiny game" : "Broken game"));
-  await page.getByLabel("One line").fill("A tiny game about tapping.");
+  await page.getByLabel("One line about your game").fill("A tiny game about tapping.");
   await page.getByLabel("Game files").selectOption(repository);
-  await page.getByRole("button", { name: "Save and add your clips" }).click();
+  await page.getByRole("button", { name: "Save and add videos" }).click();
   // A game's address has a hyphen in it; `/make/new` and `/make/github` do not.
   await expect(page).toHaveURL(/\/make\/[a-z0-9]+(-[a-z0-9]+)+$/);
   return new URL(page.url()).pathname.split("/").pop() ?? "";
@@ -35,16 +35,23 @@ export async function startGame(page: Page, repository = TINY_GAME): Promise<str
   return makeGame(page, repository);
 }
 
+/** A file as Playwright takes it. */
+export interface UploadFile {
+  name: string;
+  mimeType: string;
+  buffer: Buffer;
+}
+
 /** A small file that is a video as far as Ruken can tell: four length bytes, `ftyp`, then zeros. */
-export function videoFile(): { name: string; mimeType: string; buffer: Buffer } {
+export function videoFile(name = "clip.mp4"): UploadFile {
   const buffer = Buffer.alloc(64);
   buffer.writeUInt32BE(64, 0);
   buffer.write("ftyp", 4, "ascii");
-  return { name: "clip.mp4", mimeType: "video/mp4", buffer };
+  return { name, mimeType: "video/mp4", buffer };
 }
 
 /** A web page that says it is a video, which Ruken must refuse. */
-export function pageNamedAsVideo(): { name: string; mimeType: string; buffer: Buffer } {
+export function pageNamedAsVideo(): UploadFile {
   return {
     name: "clip.mp4",
     mimeType: "video/mp4",
@@ -52,23 +59,40 @@ export function pageNamedAsVideo(): { name: string; mimeType: string; buffer: Bu
   };
 }
 
-/** The clip's own line on a game's page: its label, what it says now, and its file field and button. */
-export function clipLine(page: Page, label: string): Locator {
-  return page.locator("form", { has: page.getByLabel(label) });
+/** A QuickTime file: a video, but not one Ruken takes. */
+export function quickTimeFile(): UploadFile {
+  return { name: "holiday.mov", mimeType: "video/quicktime", buffer: Buffer.alloc(64) };
 }
 
-/** Chooses a file for one clip and presses its Upload. Does not wait: the answer may be a refusal. */
-export async function sendClip(
-  page: Page,
-  label: string,
-  file: { name: string; mimeType: string; buffer: Buffer },
-): Promise<void> {
-  await page.getByLabel(label).setInputFiles(file);
-  await clipLine(page, label).getByRole("button", { name: "Upload" }).click();
+/** An MP4 over the 30 MB limit, 31 MB of it. */
+export function tooBigVideo(): UploadFile {
+  const buffer = Buffer.alloc(31_000_000);
+  buffer.writeUInt32BE(64, 0);
+  buffer.write("ftyp", 4, "ascii");
+  return { name: "too-big.mp4", mimeType: "video/mp4", buffer };
 }
 
-/** Uploads a good clip for one line ("Upright clip" or "Wide clip") and waits until the line says it is added. */
-export async function uploadClip(page: Page, label: string): Promise<void> {
-  await sendClip(page, label, videoFile());
-  await expect(clipLine(page, label).getByText("Added", { exact: true })).toBeVisible();
+/** One video's place on a game's page, by its title: "Upright video", "Wide video" or "Game files". */
+export function stepOf(page: Page, title: string): Locator {
+  return page.getByRole("region", { name: title });
 }
+
+/** The file field inside a video's place, which Ruken's own picker holds. */
+export function fileFieldOf(page: Page, title: string): Locator {
+  return stepOf(page, title).locator('input[type="file"]');
+}
+
+/** Chooses a file for one video. With script on, choosing is all it takes: the video is added at once. */
+export async function chooseVideo(page: Page, title: string, file: UploadFile): Promise<void> {
+  await fileFieldOf(page, title).setInputFiles(file);
+}
+
+/** Adds a good video for one place ("Upright video" or "Wide video") and waits until it says it is added. */
+export async function uploadVideo(page: Page, title: string): Promise<void> {
+  await chooseVideo(page, title, videoFile());
+  await expect(stepOf(page, title).getByText(/^Added/)).toBeVisible();
+}
+
+/** The press that sends a game for review: "Send for review", or "Send it again" for a game that was sent back. */
+export const sendButton = (page: Page): Locator =>
+  page.getByRole("button", { name: /^(Send for review|Send it again)$/ });

@@ -230,6 +230,20 @@ Handoff, sixth execution session (coordinator `session_01HNdX7JKYUteXqFnZHx6dez`
 - Git: author `mcthaydt`, no Claude attribution. Merge main into a branch, never rebase; no force-push. `gh pr close` and `gh pr ready` do not work (GraphQL is blocked here): use `gh api -X PATCH repos/mcthaydt/RukenApp/pulls/<n> -f state=closed` and `gh api -X POST repos/mcthaydt/RukenApp/pulls/<n>/ccr/ready_for_review`. Prettier may be run on files to format them; no other check is run here.
 - Two notes: a push to a branch cancels its CI run in progress (the workflow cancels older runs), so wait for a red run to finish before pushing the green. A script-enhanced form (`use:enhance`) is new in the app (the copy note); a journey that needs it waits with `page.waitForLoadState("networkidle")`, as `join.test.ts` does.
 
+Seventh session, slice 2 (stage 6, fixes of the maker screens review; coordinator `session_01HNdX7JKYUteXqFnZHx6dez`, started 2026-11-14 about 13:00 UTC). Progress: 15% (the red is pushed, nothing is green yet).
+
+- Source: `docs/superpowers/audits/2026-11-14-maker-screens-review.md` (merged into `slice-2/submit` first, as asked, so it travels with #63; main was merged in after it). The Owner, 2026-11-14: "it's a bit low effort; I don't like the native choose file button, and some of the button text makes things confusing"; "The maker agreement is fine, but I think we need a date and better formatting so it's easier to read".
+- In scope: F1 to F22. Not in scope, waiting for the Owner's words: N1 (editing a game's name and line) and N2 (throwing away a draft). N3 to N9 are notes.
+- The agreement's date: the Owner must OK changing the file's first line to carry its date. Until then `maker-agreement-v1.txt` is untouched, the page reads a date from the title line when there is one, and shows only "Version 1" when there is none. The test that the file carries a date is not written, for the same reason.
+- Rulings: (1) The clip rules the browser also needs (the 30 MB limit, the two types) live in `src/lib/video-choice.ts`, not in the games feature, because a screen may reach a feature only through its entry and that entry holds the server's code. (2) "Clip" becomes "video" in every word a maker reads, not only the ones F14 names. (3) The next-step line under a game's state is body size in every state, not `note`, since a tired maker must not have to squint at the one thing to do (F9 sets it as a note; F8 as body). (4) A refused picker gets no heavier edge (it is a button, not a box); its refusal is in bold words under the video's line, and the box that is refused is marked `aria-invalid`.
+
+| Finding | State |
+|---|---|
+| F1 our own picker; F2 added when chosen | red pushed |
+| F3 button words; F4 no double press; F5 Game files first; F6 refusals under their boxes; F7 no "Step 3 of 3" | red pushed |
+| F8 one checklist; F9 sent back; F10 the agreement; F11 Your games | red pushed |
+| F12 to F22 (should fix) | red pushed |
+
 The Owner's own tasks, and where execution stops for each:
 
 - [ ] The site on its workers.dev address (Owner, 2026-11-14: "Can we get the site up on cloudflare pages, we did it for automata already", then "Yes, give me the commands to do it"), branch `slice-1/workers-dev`: `workers_dev` is true in `wrangler.jsonc` and its test pins true. Until the domain exists: the site runs on `ruken.<account>.workers.dev` with `BETTER_AUTH_URL` set to it; email goes only to the Resend account's own address (sender `onboarding@resend.dev`, no verified domain); games cannot be played (the games Worker has no address and no route until the games domain exists). Nothing else in the code assumed the custom domain: every origin comes from `BETTER_AUTH_URL`. `workers_dev` goes back to false when the custom domain is added.

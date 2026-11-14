@@ -125,8 +125,8 @@ async function stateOf(gameId: string) {
 describe("sendForReview", () => {
   it.each([
     ["no files", false, true, true, "Pull your game's files first."],
-    ["no upright clip", true, false, true, "Add an upright clip."],
-    ["no wide clip", true, true, false, "Add a wide clip."],
+    ["no upright video", true, false, true, "Add an upright video."],
+    ["no wide video", true, true, false, "Add a wide video."],
   ])(
     "refuses a game with %s, in words, and changes nothing",
     async (_why, pulled, upright, wide, message) => {
@@ -356,7 +356,7 @@ describe("a live game's clips", () => {
 
     await expect(
       service.saveClip(game.id, "wide", { contentType: "video/mp4", bytes: mp4Bytes() }),
-    ).rejects.toMatchObject({ code: "NOT_READY", message: "A live game's clips can't be changed yet." });
+    ).rejects.toMatchObject({ code: "NOT_READY", message: "A live game's videos can't be changed yet." });
 
     expect(files.keys()).toEqual(before);
     expect(await db().gameClip.count({ where: { gameId: game.id } })).toBe(2);
@@ -393,16 +393,38 @@ describe("what the screens show", () => {
     expect(await service.gamesOf(await createUser(db()))).toEqual([]);
   });
 
+  it("gives staff's reason apart from the headline, and the list its next step", async () => {
+    const game = await readyGame();
+    expect(await service.gamesOf(game.makerUserId)).toEqual([
+      { slug: game.slug, name: "A game", words: "Not sent yet. Send it for review." },
+    ]);
+
+    await service.sendForReview(game.id, game.makerUserId);
+    await service.sendBack(game.id, await createUser(db()), "The clip is sideways.");
+
+    expect(await service.gameForMaker(game.slug, game.makerUserId)).toMatchObject({
+      headline: "Sent back",
+      reason: "The clip is sideways.",
+      words: "Sent back: The clip is sideways.",
+    });
+    expect(await service.gamesOf(game.makerUserId)).toEqual([
+      { slug: game.slug, name: "A game", words: "Sent back. See what to fix." },
+    ]);
+  });
+
   it("gives a game's page to its maker only", async () => {
     const game = await readyGame();
 
     expect(await service.gameForMaker(game.slug, game.makerUserId)).toMatchObject({
       slug: game.slug,
       name: "A game",
+      headline: "Not sent yet",
       words: "Not sent yet",
       repoFullName: "acme/game",
       newestPull: { id: game.pullId, fileCount: 3, totalBytes: 1000 },
-      clips: { upright: true, wide: true },
+      // What each video measured when it was added, never typed.
+      clips: { upright: expect.any(Number) as number, wide: expect.any(Number) as number },
+      reason: null,
     });
     expect(await service.gameForMaker(game.slug, await createUser(db()))).toBeNull();
     expect(await service.gameForMaker("no-such-game", game.makerUserId)).toBeNull();

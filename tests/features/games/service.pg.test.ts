@@ -143,7 +143,7 @@ describe("saveClip", () => {
 
     await expect(
       service.saveClip(game.id, "upright", { contentType: "image/png", bytes: mp4Bytes() }),
-    ).rejects.toMatchObject({ code: "INVALID", message: "Clips are MP4 or WebM video." });
+    ).rejects.toMatchObject({ code: "INVALID", message: "Videos are MP4 or WebM." });
   });
 
   it("says a game is not there when there is none, and stores nothing", async () => {
@@ -209,7 +209,12 @@ describe("createGame", () => {
     ["!!", "Pick a name with at least three letters or numbers."],
     ["ab", "Pick a name with at least three letters or numbers."],
   ])("refuses the name %j", async (name, message) => {
-    await expect(startGame({ name })).rejects.toMatchObject({ name: "GameError", code: "INVALID", message });
+    await expect(startGame({ name })).rejects.toMatchObject({
+      name: "GameError",
+      code: "INVALID",
+      message,
+      field: "name",
+    });
   });
 
   it.each([
@@ -217,7 +222,11 @@ describe("createGame", () => {
     ["  ", "A game needs one line about it."],
     ["y".repeat(101), "The one line can be up to 100 characters."],
   ])("refuses the one line %j", async (oneLine, message) => {
-    await expect(startGame({ oneLine })).rejects.toMatchObject({ code: "INVALID", message });
+    await expect(startGame({ oneLine })).rejects.toMatchObject({
+      code: "INVALID",
+      message,
+      field: "oneLine",
+    });
   });
 
   it("takes a name of 60 characters and a line of 100", async () => {
@@ -255,6 +264,7 @@ describe("createGame", () => {
     await expect(startGame({ name: "Popular Game" })).rejects.toMatchObject({
       code: "INVALID",
       message: "That name is taken. Pick another.",
+      field: "name",
     });
   });
 

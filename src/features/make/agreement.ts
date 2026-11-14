@@ -27,3 +27,22 @@ export async function agree(db: PrismaClient, clock: Clock, userId: string): Pro
     skipDuplicates: true,
   });
 }
+
+/** One numbered point of the agreement: its number, its short title, and the point itself. */
+export interface AgreementPoint {
+  number: number;
+  title: string;
+  body: string;
+}
+
+/** The agreement read from its file. Not built yet. */
+export interface ParsedAgreement {
+  version: string;
+  /** The date the file's title line carries ("14 November 2026"), or null when it carries none. */
+  updated: string | null;
+  points: AgreementPoint[];
+}
+
+export function parseAgreement(text: string): ParsedAgreement {
+  throw new Error(`parseAgreement is not built yet (${String(text.length)})`);
+}
