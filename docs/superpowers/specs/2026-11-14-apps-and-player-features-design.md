@@ -45,7 +45,7 @@ Each answer is quoted, with the question it answers.
 - Downloading games to play offline.
 - Chat, comments and direct messages. Friends see activity but don't talk.
 - Notifications nobody asked for, such as recommended clips.
-- A game SDK beyond the hooks below. Games still get nothing about the player.
+- A game SDK beyond the hooks below. Games still get nothing about the player beyond which of their own extras the player owns.
 - Sign in with Apple or Google. It is still after launch, and adding Google will bring Sign in with Apple with it (Apple rule 4.8).
 
 ## What would make it a failure even if it works
@@ -169,7 +169,7 @@ One search box. It finds games by name and makers by name or handle, typo-tolera
 
 ### Ruken hooks: achievements, leaderboards and analytics
 
-- A small Ruken script a maker can add to their game. It sends events out of the game's frame to the Ruken page around it, with `postMessage`. The game never receives anything back about the player.
+- A small Ruken script a maker can add to their game. It sends events out of the game's frame to the Ruken page around it, with `postMessage`. The game never receives anything about the player, except which of that game's own extras they own and whether Ruken's buy card is open (makers' sales spec, 5.4). Neither one names the person. The same script also carries a game's request to open the buy card, so makers add one script for both.
 - **Achievements**, on the model of Steam's: the maker lists each achievement in the game's settings (a name, a line, an icon, and whether it's hidden until earned). The game reports "unlocked: <id>" and Ruken records it for the signed-in player. Players see their own achievements, and how rare each one is ("12% of players have this").
 - **Stats and leaderboards**, on the model of Steam's: the maker names a stat (for example "best score", higher or lower wins). The game reports a value, and Ruken keeps each player's best. Leaderboards show handles. They respect blocks and under-18 privacy, so an under-18 shows as "a player" to anyone who isn't their friend.
 - **Analytics.** Owner, 2026-11-14: "B, but anonymous handles, you can see details though like location, age, device, just relevant information". The maker can also report named events, like "level_3_done".
