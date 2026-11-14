@@ -113,6 +113,7 @@ Owner: "paywall when they try to play."
 
 - Tapping Play as a member opens the game full screen, with one Ruken control: a way back to the feed.
 - Tapping Play as anyone else shows one card: the price, a monthly and a yearly choice, and one button. It asks for sign-in only at that point. After paying, the person lands in the game they tapped.
+  - Owner, 2026-11-14 (yes to the design review's recommendation): the card is the paper card of 5.8, laid over the clip they tapped, which stays on screen, dimmed, behind it; the person never leaves the feed to see the price. Where there is no clip behind it (a link straight to /join, or before the feed exists), the same card sits on the felt.
 - Owner (revised 2026-11-13): the membership is $9.99 a month or $99 a year, no trials. Stripe adds tax where it applies (6).
 - Call: a game marked "computer only" shows "This one needs a computer" on a phone instead of Play, with a button that shares its link.
 - Call: games are plain web games. There is no Ruken SDK and nothing for a game to call. Ruken shows the game in a locked-down frame served from a different address than Ruken's, and the game never receives anything about the player.
@@ -241,6 +242,7 @@ The idea: the page is quiet green felt, and what a person picks up or acts on is
 - **Never.** Eyebrow labels, tiny uppercase labels, gradients, glass, shadows at rest, emoji, icons on feature cards, index numbers.
 - **Its copy rules hold too.** Every money line carries its qualifier ("Tax is added where it applies."), labels take no full stop, sentences do, and nothing claims a fact Ruken does not have. Prices and product words come from this design, not from the old pages ($9.99 and "membership", not $7.99 and "Premium").
 - Grandma: one paper card per screen holds the one thing to do; the pip-red button appears only where money is spent.
+- Owner, 2026-11-14: the paper card is the one thing shared by every surface: the paywall card over a dimmed clip in the feed, the cards on Ruken's own screens, and the maker's page, so they read as one product. On the paywall card, one small pip-red mark makes it read as a playing card. The account screens are not polished further after the two fixes of 14 November; the look's effort goes to the screens the goals depend on (the feed, Play and the paywall, the maker's page).
 
 ## 6. Money
 
