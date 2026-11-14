@@ -62,7 +62,7 @@ Stages:
 - [x] Plan for the look (design 5.8): branch L `slice-1/look`, tasks 35 to 37, added to the plan after branch D; Tasks 18, 19, 27, 29 and 30 say which of the look's classes their screens use. Merged to main (pull request #22). No test ran in the plan session; the two font tarballs were downloaded into a scratch folder outside the repository, and their integrity values, file sizes and SHA-256 checksums were measured there.
 - [ ] Plan audit of the look (`docs/superpowers/audits/2026-11-13-slice-1-look-plan-audit.md`), with the plan fixed: 1 blocks execution, 8 should fix, 9 notes; all fixed in the plan but two notes that stay, each with its reason. The Owner's answer to its one question is in the plan (below). On its pull request (#23); not done until merged and green. No test ran in the audit session; the two font tarballs were downloaded again outside the repository, and every integrity value, size and checksum equals the plan's.
 - [ ] Execution, branch by branch (below).
-- [ ] Implementation audit.
+- [ ] Implementation audit (`docs/superpowers/audits/2026-11-14-slice-1-implementation-audit.md`), of `main` at `e328675`: 0 block launch, 6 should fix, 9 notes. Written on `audit/slice-1-implementation`; not done until merged and green. No test ran in the audit session; the code was read, and CI's records were read through the GitHub API. Open, not defects: Task 16 steps 5 and 6, Task 20 step 3 and Task 31, which need the live site.
 - [ ] Fixes.
 
 Resumed: the Owner's concept review is done; the plan audit is merged.
