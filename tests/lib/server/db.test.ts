@@ -209,17 +209,13 @@ describe("createSharedClient", () => {
 
   /** Two requests at the same moment, each running `work` on the shared client. */
   async function twoRequestsRunning(work: (client: PrismaClient, who: string) => Promise<unknown>) {
-    let client: PrismaClient | undefined;
-    const shared = () => {
-      if (client === undefined) throw new Error("the client is not made yet");
-      return client;
-    };
-    const { connect, notes } = fakeConnections(shared);
-    client = createSharedClient(connect);
-    const open = () => shared();
+    // The connections' transactions ask this client, which is made from the connections, so they reach it by name.
+    const { connect, notes } = fakeConnections(() => client);
+    const client = createSharedClient(connect);
+    const open = () => client;
     await Promise.all([
-      request(() => work(shared(), "one"), open),
-      request(() => work(shared(), "two"), open),
+      request(() => work(client, "one"), open),
+      request(() => work(client, "two"), open),
     ]);
     return notes;
   }
