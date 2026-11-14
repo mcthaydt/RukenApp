@@ -358,10 +358,12 @@ button,
 }
 
 /* A second action that must not draw the eye: no fill, it looks like a link. No padding, so its words start
-   where the words above it start. */
+   where the words above it start. Words start at the left on every line: a browser centres a button's words by
+   default, which shows only once they wrap onto a second line, as on a phone. */
 .quiet,
 .card .quiet {
   padding: 0;
+  text-align: start;
   background: none;
   color: inherit;
   font: inherit;
