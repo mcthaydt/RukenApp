@@ -25,6 +25,31 @@ export interface SmtpMailerOptions {
   transport: Transporter;
 }
 
+export interface ResendMailerOptions {
+  apiKey: string;
+  from: string;
+  allowlist: string | undefined;
+  /** Left out, the global `fetch`. */
+  fetch?: typeof fetch;
+}
+
+/** A failed send: the service's name as the code and its HTTP status as the response code. */
+export class MailError extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+    readonly responseCode: number,
+  ) {
+    super(message);
+    this.name = "MailError";
+  }
+}
+
+export function createResendMailer(options: ResendMailerOptions): Mailer {
+  void options;
+  throw new Error("not built yet");
+}
+
 export function createSmtpMailer(options: SmtpMailerOptions): Mailer {
   const allowed = parseAllowlist(options.allowlist);
   return {

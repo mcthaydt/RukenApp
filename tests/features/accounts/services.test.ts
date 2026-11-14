@@ -6,7 +6,7 @@ const settings = {
   DATABASE_URL: "postgresql://postgres:x@127.0.0.1:1/ruken",
   BETTER_AUTH_SECRET: "a".repeat(32),
   BETTER_AUTH_URL: "https://ruken.example",
-  SMTP_URL: "test:",
+  RESEND_API_KEY: "re_test_fake",
   MAIL_FROM: "Ruken <hello@ruken.test>",
 };
 
@@ -30,9 +30,9 @@ describe("createAuthServices", () => {
     );
   });
 
-  it("refuses to start without the mail address, naming it", () => {
-    expect(() => createAuthServices({ ...settings, SMTP_URL: undefined })).toThrow(
-      "Missing setting SMTP_URL",
+  it("refuses to start without the mail key, naming it", () => {
+    expect(() => createAuthServices({ ...settings, RESEND_API_KEY: undefined })).toThrow(
+      "Missing setting RESEND_API_KEY",
     );
   });
 });
