@@ -1,3 +1,4 @@
+import type { Handle } from "@sveltejs/kit";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "./generated/prisma/client.ts";
 
@@ -59,4 +60,9 @@ export function prisma(): PrismaClient {
     shared = createPrismaClient(url, { poolMax: poolMaxFromEnv(process.env, DEFAULT_POOL_MAX) });
   }
   return shared;
+}
+
+/** Gives each request a database client of its own, opened when the request first uses it. */
+export function databasePerRequest(open?: () => PrismaClient): Handle {
+  throw new Error(`not built yet: ${typeof open}`);
 }
