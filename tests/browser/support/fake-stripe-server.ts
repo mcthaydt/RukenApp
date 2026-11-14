@@ -418,8 +418,10 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   const checkout = /^\/v1\/checkout\/sessions\/([^/]+)(\/expire)?$/.exec(path);
   if (checkout !== null) {
     const session = sessions.get(checkout[1] ?? "");
-    if (session === undefined) stripeError(response, 404, "resource_missing", "No such checkout session");
-    return;
+    if (session === undefined) {
+      stripeError(response, 404, "resource_missing", "No such checkout session");
+      return;
+    }
     if (checkout[2] !== undefined) {
       if (session.status !== "open") {
         stripeError(
@@ -439,8 +441,10 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   const subscriptionPath = /^\/v1\/subscriptions\/([^/]+)$/.exec(path);
   if (subscriptionPath !== null) {
     const subscription = subscriptions.get(subscriptionPath[1] ?? "");
-    if (subscription === undefined) stripeError(response, 404, "resource_missing", "No such subscription");
-    return;
+    if (subscription === undefined) {
+      stripeError(response, 404, "resource_missing", "No such subscription");
+      return;
+    }
     if (method === "DELETE") {
       subscription.status = "canceled";
       subscription.endedAt = nowSeconds();
@@ -553,7 +557,6 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   }
 
   plain(response, 404, `the stand-in does not answer ${method} ${path}`);
-  return;
 }
 
 createServer((request, response) => {
