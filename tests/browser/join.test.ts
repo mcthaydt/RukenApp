@@ -12,7 +12,10 @@ const RENEWS = "Renews until you cancel. You can cancel any time from your accou
 test("the card says the price, that it renews, and what happens next", async ({ page }) => {
   await page.goto("/join");
   await expect(page.getByRole("heading", { name: "Join Ruken to play" })).toBeVisible();
-  await expect(page.getByText("$9.99 a month, or $99 a year. Tax is added where it applies.")).toBeVisible();
+  // The prices are in the two rows, once each; the line above them says only about tax (the Owner, "All six").
+  await expect(page.getByText("Tax is added where it applies.", { exact: true })).toBeVisible();
+  await expect(page.getByText("$9.99 a month")).toHaveCount(1);
+  await expect(page.getByText("$99 a year")).toHaveCount(1);
   await expect(page.getByText(RENEWS)).toBeVisible();
   // Signed out, the next page is sign-up, so the card says the two steps in their order.
   await expect(
