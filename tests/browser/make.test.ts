@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { signUp } from "./support/account.ts";
 import { expectOneCard, showTheOwner } from "./support/look.ts";
 import {
@@ -42,7 +42,7 @@ test("the form makes the game, pulls its files and goes to its page", async ({ p
   await page.getByLabel("Name").fill(freshName());
   await page.getByLabel("One line").fill("A tiny game about tapping.");
   await page.getByLabel("Game files").selectOption("ruken-test/tiny-game");
-  await page.getByRole("button", { name: "Next: add your clips" }).click();
+  await page.getByRole("button", { name: "Save and add your clips" }).click();
 
   await expect(page).toHaveURL(/\/make\/tiny-game-[a-z0-9]+$/);
 });
@@ -53,7 +53,7 @@ test("a name that is too short is refused in words, and what was typed stays", a
 
   await page.getByLabel("Name").fill("!!");
   await page.getByLabel("One line").fill("A tiny game about tapping.");
-  await page.getByRole("button", { name: "Next: add your clips" }).click();
+  await page.getByRole("button", { name: "Save and add your clips" }).click();
 
   await expect(page.getByText("Pick a name with at least three letters or numbers.")).toBeVisible();
   await expect(page.getByLabel("Name")).toHaveValue("!!");
@@ -80,7 +80,7 @@ test("a repository typed by hand that was never connected is refused", async ({ 
     wanted = repository;
     await page.getByLabel("Name").fill(freshName());
     await page.getByLabel("One line").fill("A tiny game about tapping.");
-    await page.getByRole("button", { name: "Next: add your clips" }).click();
+    await page.getByRole("button", { name: "Save and add your clips" }).click();
 
     await expect(page.getByText(refused)).toBeVisible();
   }
@@ -228,7 +228,7 @@ test("pressing the button with no repository chosen says to choose one, and keep
 
   await page.getByLabel("Name").fill(freshName());
   await page.getByLabel("One line").fill("A tiny game about tapping.");
-  await page.getByRole("button", { name: "Next: add your clips" }).click();
+  await page.getByRole("button", { name: "Save and add your clips" }).click();
 
   await expect(page.getByText("Choose the repository your game is in.")).toBeVisible();
   await expect(page.getByLabel("One line")).toHaveValue("A tiny game about tapping.");
@@ -330,4 +330,135 @@ test("the maker agreement leads back to the page it was opened from, or to Your 
   await page.goto("/legal/maker-agreement");
   await page.getByRole("link", { name: "Back to your games" }).click();
   await expect(page).toHaveURL("/make");
+});
+
+// Second look at branch M's screens.
+
+/** Where a thing's words are, from the top of its first line to the bottom of its last (its box also holds air). */
+function wordsOf(thing: Locator): Promise<{ top: number; bottom: number }> {
+  return thing.evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const lines = [...range.getClientRects()];
+    return {
+      top: Math.min(...lines.map((line) => line.top)),
+      bottom: Math.max(...lines.map((line) => line.bottom)),
+    };
+  });
+}
+
+/** Fills the new-game form and presses its button, without waiting for the game's page. */
+async function makeGameWithoutWaiting(page: Page): Promise<void> {
+  await page.getByLabel("Name").fill(freshName());
+  await page.getByLabel("One line").fill("A tiny game about tapping.");
+  await page.getByLabel("Game files").selectOption("ruken-test/tiny-game");
+  await page.getByRole("button", { name: "Save and add your clips" }).click();
+}
+
+test("the new-game form's last button reads as the last step, and the other link has air above it", async ({
+  page,
+}) => {
+  await signUp(page);
+  await connectGitHub(page);
+
+  await expect(page.getByText("Step 3 of 3")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save and add your clips" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Next: add your clips" })).toHaveCount(0);
+
+  const hint = await wordsOf(page.getByText("The GitHub repository that holds your game."));
+  const link = await wordsOf(page.getByRole("link", { name: "Choose other repositories on GitHub" }));
+  expect(link.top - hint.bottom).toBeGreaterThanOrEqual(12);
+});
+
+// Copying a game takes a minute, and the note about it is true only then. The scripts must have run for the page to
+// know a copy has started, so the journey waits for them; a copy is held at the server until the note has been seen.
+test("the note about copying shows only while the new game is being copied", async ({ page }) => {
+  await signUp(page);
+  await connectGitHub(page);
+  const note = page.getByText("Copying your game can take a minute. Keep this page open.");
+  await expect(note).toHaveCount(0);
+
+  let release = () => {};
+  const copyMayFinish = new Promise<void>((done) => {
+    release = done;
+  });
+  await page.route(/\/make\/new\?\/create/, async (route) => {
+    await copyMayFinish;
+    await route.continue();
+  });
+  await page.waitForLoadState("networkidle");
+  await makeGameWithoutWaiting(page);
+
+  await expect(note).toBeVisible();
+  release();
+  await expect(page).toHaveURL(/\/make\/tiny-game-[a-z0-9]+$/);
+});
+
+test("a game's page offers the newest version in plain words, and the copying note shows only while it runs", async ({
+  page,
+}) => {
+  const slug = await startGame(page);
+  const note = page.getByText("Copying your game can take a minute. Keep this page open.");
+  await expect(page.getByRole("button", { name: "Pull the latest" })).toHaveCount(0);
+  await expect(note).toHaveCount(0);
+
+  let release = () => {};
+  const copyMayFinish = new Promise<void>((done) => {
+    release = done;
+  });
+  await page.route(/\/make\/[^/]+\?\/pull/, async (route) => {
+    await copyMayFinish;
+    await route.continue();
+  });
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: "Get the newest version from GitHub" }).click();
+
+  await expect(note).toBeVisible();
+  release();
+  await expect(note).toHaveCount(0);
+  await expect(page).toHaveURL(`/make/${slug}`);
+});
+
+test('on a game\'s page "Replace" sits one line under "Added", with no big gap', async ({ page }) => {
+  await startGame(page);
+  await uploadClip(page, "Upright clip");
+
+  const line = clipLine(page, "Upright clip");
+  const added = await wordsOf(line.getByText("Added", { exact: true }));
+  const replace = await wordsOf(line.getByText("Replace", { exact: true }));
+
+  // One rem between one line and the next is 16px; a few more would still read as one group.
+  expect(replace.top - added.bottom).toBeGreaterThan(0);
+  expect(replace.top - added.bottom).toBeLessThanOrEqual(24);
+});
+
+test("each point of the maker agreement has its title in bold, on a line of its own", async ({ page }) => {
+  await page.goto("/legal/maker-agreement");
+
+  const titles = page.locator("main p strong");
+  await expect(titles).toHaveCount(7);
+  await expect(titles.first()).toHaveText("1. Your game stays yours.");
+  await expect(titles.first()).toHaveCSS("font-weight", "600");
+  const bodyStartsBelow = await titles.first().evaluate((title) => {
+    const paragraph = title.parentElement;
+    const words = [...(paragraph?.childNodes ?? [])].filter((node) => node.nodeType === Node.TEXT_NODE).pop();
+    if (words === undefined) return false;
+    const range = document.createRange();
+    range.selectNodeContents(words);
+    const first = range.getClientRects()[0];
+    return first !== undefined && first.top >= title.getBoundingClientRect().bottom - 1;
+  });
+  expect(bodyStartsBelow).toBe(true);
+});
+
+test("Your games shows each game with where it stands, for the Owner to look at", async ({
+  page,
+}, testInfo) => {
+  await startGame(page);
+
+  await page.goto("/make");
+
+  await expect(page.getByText("Not sent yet")).toBeVisible();
+  await expectOneCard(page);
+  await showTheOwner(page, testInfo, "Your games");
 });

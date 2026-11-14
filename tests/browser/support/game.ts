@@ -22,7 +22,7 @@ export async function makeGame(page: Page, repository = TINY_GAME): Promise<stri
   await page.getByLabel("Name").fill(freshName(repository === TINY_GAME ? "Tiny game" : "Broken game"));
   await page.getByLabel("One line").fill("A tiny game about tapping.");
   await page.getByLabel("Game files").selectOption(repository);
-  await page.getByRole("button", { name: "Next: add your clips" }).click();
+  await page.getByRole("button", { name: "Save and add your clips" }).click();
   // A game's address has a hyphen in it; `/make/new` and `/make/github` do not.
   await expect(page).toHaveURL(/\/make\/[a-z0-9]+(-[a-z0-9]+)+$/);
   return new URL(page.url()).pathname.split("/").pop() ?? "";
