@@ -1,4 +1,5 @@
 import type { Cookies } from "@sveltejs/kit";
+import type Stripe from "stripe";
 import type { Clock } from "../../lib/clock.ts";
 import { optionalEnv, requireEnv } from "../../lib/server/env.ts";
 import { createRateLimiter } from "../../lib/server/rate-limit.ts";
@@ -39,6 +40,8 @@ export interface ArrivalCookie {
 
 export interface MembershipServices {
   service: MembershipService;
+  /** The one Stripe client, for the features above the membership (the money feature reads payments through it). */
+  stripe: Stripe;
   arrival: ArrivalCookie;
   /** Checks a webhook body against its signature; rejects when it is not from Stripe or is too old. */
   verify(payload: string, signature: string): Promise<StripeEvent>;
@@ -120,6 +123,7 @@ export function createMembershipServices(source: Settings, auth: AuthParts): Mem
 
   return {
     service,
+    stripe,
     arrival: arrivalCookie(arrivalSecret, clock, cookies.secure),
     verify: (payload, signature) =>
       verifyStripeWebhook({ payload, signature, secret: webhookSecret, nowMs: clock.epochMs() }),
