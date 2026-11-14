@@ -147,6 +147,36 @@ describe("sharePool", () => {
     expect(bringing.map((row) => [row.makerUserId, row.members])).toEqual([[x.makerUserId, 1]]);
   });
 
+  it("gives the bonus to the join with the least id when two joins are at the same moment", async () => {
+    // N4 of the implementation audit. The second join is made later but its id sorts first, so only an order by id
+    // (and not the order the database happens to return the rows in) picks it.
+    const x = await addGame(db());
+    const y = await addGame(db());
+    const clock = new TestClock("2027-08-20T12:00:00Z");
+    const [userId] = await aMonth(db(), stripe, clock, [
+      {
+        payment: monthly("in_n4", "2027-08"),
+        broughtBy: x.makerUserId,
+        plays: [{ gameId: x.gameId, seconds: 600 }],
+      },
+    ]);
+    await db().membershipStart.create({
+      data: {
+        id: "0-same-moment",
+        checkoutIntentId: crypto.randomUUID(),
+        userId: userId ?? "",
+        stripeSubscriptionId: "sub_in_n4_second",
+        plan: "monthly",
+        startedAt: new Date("2027-08-02T15:00:00Z"),
+        broughtByUserId: y.makerUserId,
+        arrivalPath: "/a-game",
+        arrivedAt: new Date("2027-08-02T15:00:00Z"),
+      },
+    });
+    const members = await db().$transaction((tx) => membersOf(tx, parsePeriod("2027-08")));
+    expect(members.map((member) => member.broughtBy)).toEqual([y.makerUserId]);
+  });
+
   it("pays bonuses and carries the rest when nobody played, and shares the carry by play next month", async () => {
     // Review Focus 8 and 19. May 2027: one member paid, was brought by X, and nobody played anything.
     const x = await addGame(db());
@@ -337,11 +367,61 @@ describe("a member's weight after refunds and disputes (Owner, 2026-11-14)", () 
     expect((await membersIn("2028-06")).map((m) => m.contribution)).toEqual([0n]);
   });
 
-  it("puts the weight back when a dispute is won", async () => {
+  it("puts the weight back when a dispute is won in the same month it was opened", async () => {
     await aMember("2028-07", "in_r6");
     await addReversal("in_r6", "dispute:dp_r6:opened", "chargeback_opened", 1081n, "2028-07-12T12:00:00Z");
-    await addReversal("in_r6", "dispute:dp_r6:won", "chargeback_won", 1081n, "2028-08-20T12:00:00Z");
+    await addReversal("in_r6", "dispute:dp_r6:won", "chargeback_won", 1081n, "2028-07-20T12:00:00Z");
     expect((await membersIn("2028-07")).map((m) => m.contribution)).toEqual([469n]);
+  });
+
+  // Owner, 2026-11-14: "a refund counts in the month it happens". The money of a refund, or of a dispute, leaves the
+  // pool of the month it happens in, so only that month's weight, and the months after it, are lowered; a month
+  // already reckoned keeps the weight it had.
+
+  it("keeps the weight of an earlier month when the refund comes in the next month", async () => {
+    await aMember("2028-10", "in_r8");
+    await addReversal("in_r8", "refund:re_r8", "refund", 1081n, "2028-11-05T12:00:00Z");
+    expect((await membersIn("2028-10")).map((m) => m.contribution)).toEqual([469n]);
+  });
+
+  it("counts a refund by its Chicago month, not its UTC one", async () => {
+    // 01:00 UTC on 1 December is 19:00 on 30 November in Chicago.
+    await aMember("2028-11", "in_r9");
+    await addReversal("in_r9", "refund:re_r9", "refund", 1081n, "2028-12-01T01:00:00Z");
+    expect((await membersIn("2028-11")).map((m) => m.contribution)).toEqual([0n]);
+  });
+
+  it("keeps the lowered weight of the month a dispute was opened in when it is won in a later month", async () => {
+    // The opening took the money out of December's pool; winning puts it into January's, so December's weight stays low.
+    await aMember("2028-12", "in_r10");
+    await addReversal("in_r10", "dispute:dp_r10:opened", "chargeback_opened", 1081n, "2028-12-12T12:00:00Z");
+    await addReversal("in_r10", "dispute:dp_r10:won", "chargeback_won", 1081n, "2029-01-20T12:00:00Z");
+    expect((await membersIn("2028-12")).map((m) => m.contribution)).toEqual([0n]);
+  });
+
+  it("lowers the months of a yearly payment from the month of the refund on, and not the ones before", async () => {
+    const game = await addGame(db());
+    const clock = new TestClock("2029-01-20T12:00:00Z");
+    await aMonth(db(), stripe, clock, [
+      {
+        payment: {
+          invoice: "in_r11",
+          gross: 10_717n,
+          tax: 817n,
+          cardFee: 341n,
+          plan: "annual",
+          paidAt: "2029-01-02T15:00:00Z",
+        },
+        broughtBy: null,
+        plays: [{ gameId: game.gameId, seconds: 600 }],
+      },
+    ]);
+    await addReversal("in_r11", "refund:re_r11", "refund", 10_717n, "2029-03-10T12:00:00Z");
+    const weightIn = async (period: string) => (await membersIn(period)).map((m) => m.contribution);
+    expect((await weightIn("2029-01"))[0]).toBeGreaterThan(0n);
+    expect((await weightIn("2029-02"))[0]).toBeGreaterThan(0n);
+    expect(await weightIn("2029-03")).toEqual([0n]);
+    expect(await weightIn("2029-04")).toEqual([0n]);
   });
 
   it("shares a month without the play of a member who was refunded in full", async () => {
