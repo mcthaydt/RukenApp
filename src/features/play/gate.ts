@@ -6,8 +6,9 @@ import { checkPass } from "./pass.ts";
 
 // The game gate, as one function: Cloudflare's request in, an answer out. It serves two kinds of thing from one
 // bucket. A game's files, under a play pass that Ruken's app signed and this checks on every request; and the media
-// (a game's clips and a maker's photo), to anyone. It runs as its own Worker on addresses of its own, so a game never runs on Ruken's address, and it imports
-// only plain helpers (no feature entry, no database, no SvelteKit): the Worker has none of them.
+// (a game's clips and a maker's photo), to anyone. It runs as its own Worker on addresses of its own, so a game never
+// runs on Ruken's address, and it imports only plain helpers (no feature entry, no database, no SvelteKit): the Worker
+// has none of them.
 //
 // It never sets a cookie and never reads one: browsers block cookies in a frame from another site anyway, and a
 // game must not be able to tell a person from one.
