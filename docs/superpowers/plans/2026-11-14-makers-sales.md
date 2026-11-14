@@ -6,13 +6,15 @@
 
 **Architecture:** One new feature, `extras`, between `launch` and `play`: the catalog, its review states, orders, ownership, and the small file a game reads. Ownership reaches the game gate as a small object in the games bucket, named by the play pass's id, so a purchase never changes a game's address. The money side goes into the existing `money` feature: a sale is split by one pure function (fees and tax are inputs, so a store's sale is the same call), a game's split is a list of add-only facts, and a statement is already one per person because every line sits on a person's own account. An extra is charged as a one-off Stripe invoice paid with the member's saved card, so Stripe's fee report, refunds and disputes are placed by the code that already places a membership payment's.
 
-**Tech Stack:** as slices 1 to 5 (Node 24, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Prisma 7.10.0, Postgres 16, Vitest 5.0.3, Playwright 1.63.0, Cloudflare Workers and R2, `stripe` 22.6.2, `@js-temporal/polyfill` 0.5.1). New from what is already there: Stripe invoices made by Ruken (`invoices.createPreview`, `invoices.create`, `finalizeInvoice`, `pay`), Checkout in `payment` mode, `refunds.create`; Ed25519 through Web Crypto; one text-module rule in the game gate's `wrangler.jsonc`. **No new package.**
+**Tech Stack:** as slices 1 to 5 (Node 24, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Prisma 7.10.0, Postgres 16, Vitest 5.0.3, Playwright 1.63.0, Cloudflare Workers and R2, `stripe` 22.6.2, `@js-temporal/polyfill` 0.5.1). New from what is already there: Stripe invoices made by Ruken (`invoices.createPreview`, `invoices.create`, `finalizeInvoice`, `pay`), Checkout in `payment` mode and `checkout.sessions.expire`, `refunds.create`; Ed25519 through Web Crypto. **No new package**, and no change to either Worker's config.
 
 **Spec:** `docs/superpowers/specs/2026-11-14-makers-sales-design.md` (approved by the Owner, 2026-11-14: "Approved"; pull request #106). Read it with `CLAUDE.md`, `AGENTS.md`, the apps' spec (`docs/superpowers/specs/2026-11-14-apps-and-player-features-design.md`), the design (`2026-11-13-ruken-reels-linktree-design.md`, sections 5.2, 5.5, 5.8, 6), slice 5's plan (`docs/superpowers/plans/2026-11-14-slice-5-money.md`: "How a task runs", its Calls, and branches E to K, which this plan re-plans), and `docs/superpowers/progress.md`.
 
+**Plan audit:** `docs/superpowers/audits/2026-11-14-makers-sales-plan-audit.md` (2026-11-14). Its fixes are made in this file; read it for why.
+
 **Planned against:** `main` at `5a28504` (the apps' spec merged; the sales spec was read on its own branch at `d821cbd` and merged to `main` as `c66c731` while this was being written, with no change to its text). Read as code: `src/features/play`, `src/features/money`, `src/features/membership`, `src/features/games`, `src/features/pages`, `cloudflare/games`, `prisma/schema`, `tests/architecture.test.ts`. Not read as code, because they are not on `main`: the play screen and the game frame (slice 2's branch F), the maker's area and the staff queue (slice 2's branches M and S), the feed and the maker's page (slice 3's branches C to J), all of slice 4, slice 5's branches E to K, and everything the apps' spec adds. "What this plan relies on" names each piece; if one is not on `main` as named when its task starts, stop and report.
 
-**Not checked, and why.** No test, lint or typecheck ran in the plan session, and no code was written. The `stripe` package is not installed in the plan session, so the Stripe calls named here were not read against its types: Task 13 reads them first and stops if one is missing. Stripe's prices, Apple's refund window and the stores' price lists were not read from their own pages (the session could search but not open a page); each place that depends on one says so and names who reads it.
+**Not checked, and why.** No test, lint or typecheck ran in the plan session, and no code was written. The plan audit read the Stripe calls named here in `stripe` 22.6.2's own types (`docs/superpowers/audits/2026-11-14-makers-sales-plan-audit.md`); every one exists. Task 13 still reads them first and stops if one is missing. Stripe's prices, Apple's refund window and the stores' price lists were not read from their own pages (the session could search but not open a page); each place that depends on one says so and names who reads it.
 
 ## Global Constraints
 
@@ -63,7 +65,7 @@ The Owner's decisions are quoted in the spec, section 2, and are not repeated he
 - **The names** (spec 8). The owned file is `/<pass>/__ruken/owned.json`. An extra's protected folder is `ruken-extras/<the extra's id>/` at the top of the game's folder. The script is at `/__ruken/hooks.js` on every game address. The messages are `extras.buy`, `extras.card` and `extras.owned`. A game's page is `/g/<game>/about`. `__ruken` and `ruken-extras` are folders a game cannot use for anything else.
 - **An extra's id** is made from its first name (`level-pack-2`: lower-case letters and digits in runs joined by hyphens, 3 to 40 characters), is unique in its game, and never changes, whatever the extra is renamed to.
 - **A change in review.** An extra has a live version and, at most, one version waiting. Buyers see and pay for the live one until staff accept the other.
-- **Who owns what while testing.** A game's maker playing their own game, and staff, are handed every extra of that game, so they can see it unlock. Each can also play with none. Neither is a purchase and neither reaches the ledger.
+- **Who owns what while testing.** A game's maker playing their own game, and staff, are handed every extra of that game, so they can see it unlock. Each can also play with none. Neither is a purchase and neither reaches the ledger. A person keeps one pass per game for the day (`passFor`), so "with" and "without" are the same pass: the latest Play decides what that pass owns, in every tab open on it. Staff check one way, then the other.
 - **A maker cannot buy their own game's extra.** The button reads "Yours ✓".
 - **An extra is paid with a Stripe invoice made on the spot.** The amount with tax is read from Stripe before the tap; the tap pays it with the card the membership uses. A card that needs the bank's check, a refusal, or no saved card goes to Stripe's own payment page and comes back.
 - **The split of a sale.** What is left after tax and fees is the game's 70%, rounded down, and Ruken's is the rest (Owner, 2026-11-14, on the odd cent of a membership payment: "Ruken"). The game's part is shared among the people in its split by one largest-remainder rounding, so the parts always add up.
@@ -99,10 +101,9 @@ Each line the Owner pastes is one command, for the Mac first and Windows PowerSh
 
 **M-S1, before branch D is deployed: the key that signs the owned note.** It is a secret of the site and never of the gate.
 
-- Mac: `openssl genpkey -algorithm ed25519 -outform DER | base64 | tr -d '\n' | pnpm dlx wrangler@4.156.0 secret put OWNED_NOTE_KEY --name ruken`
-- Windows PowerShell: `$k = [Convert]::ToBase64String((openssl genpkey -algorithm ed25519 -outform DER)); $k | pnpm dlx wrangler@4.156.0 secret put OWNED_NOTE_KEY --name ruken; Remove-Variable k`
+- Mac and Windows PowerShell, the same line: `node -e "process.stdout.write(require('node:crypto').generateKeyPairSync('ed25519').privateKey.export({type:'pkcs8',format:'der'}).toString('base64'))" | pnpm dlx wrangler@4.156.0 secret put OWNED_NOTE_KEY --name ruken`
 
-Neither line was run in the plan session. PowerShell can alter binary output passed between programs, so the Windows line is the one to distrust: Task 9's start check refuses a key it cannot read, with the setting's name, and the first deploy is the proof. One more, the same day, so yesterday's owned objects leave the bucket by themselves. It was not run either, and its exact words were not checked against wrangler 4.156.0's own help; execution reads `wrangler r2 bucket lifecycle add --help` in CI's log before the Owner is handed the line, and corrects it here if it differs:
+Node makes the key on both computers and writes text, not bytes, so nothing binary passes between programs (the Mac's own `openssl` is LibreSSL, which may not make Ed25519 keys; that was not checked). The line was not run. Task 9's start check refuses a key it cannot read, with the setting's name, and trims spaces and line ends first (PowerShell adds one to piped text); the first deploy is the proof. One more, the same day, so yesterday's owned objects leave the bucket by themselves. It was not run either; the plan audit read it against wrangler 4.156.0's own source (`r2 bucket lifecycle add <bucket> <name> <prefix> --expire-days <n>`, which asks nothing when all four are given):
 
 - Mac and Windows: `pnpm dlx wrangler@4.156.0 r2 bucket lifecycle add ruken-games owned-files owned/ --expire-days 2`
 
@@ -144,8 +145,7 @@ prisma/schema/money.prisma               GameSplit, GameSplitShare, GameSplitAns
                                          SaleRefundRequest, SaleRefundApproval (branch K); SaleTakeDown (branch L)
 tests/architecture.test.ts               FEATURE_ORDER gains "extras" after "launch"                  (branch A)
 src/lib/files/picture.ts                 looksLikePicture, pictureProblem: moved out of pages/photo.ts (branch A)
-cloudflare/games/wrangler.jsonc          one rule: *.browser.js files are bundled as text             (branch D)
-cloudflare/games/worker.ts               hands the gate the script's text                              (branch D)
+cloudflare/games/worker.ts               hands the gate the script's text (HOOKS_SCRIPT)               (branch D)
 src/features/extras/
   extras.ts              entry
   rules.ts               the price list, the limits, the countries that need the tick
@@ -155,7 +155,7 @@ src/features/extras/
   service.ts             add, change, send, take off; accept, send back
   owned-note.ts          signOwnedNote, checkOwnedNote, publicKeyOf
   owned.ts               ownedKeysFor, writeOwned, refreshOwned
-  stripe-port.ts         ExtrasStripe: savedCard, quote, payNow, payPage, paidInvoice, voidOrder, refund
+  stripe-port.ts         ExtrasStripe: ensureProduct, savedCard, quote, payNow, payPage, paidInvoice, voidOrder, refund
   orders.ts              quoteExtra, buyExtra, settleOrder, revokePurchase, restorePurchase
   views.ts               extrasOf(game, viewer): what the game's page and the Extras card read
   mails.ts               the confirming email; accepted, sent back, taken off sale
@@ -163,9 +163,9 @@ src/features/extras/
 src/features/play/
   gate.ts                the owned file, ruken-extras/, /__ruken/hooks.js                              (branch D)
   frame-messages.ts      readGameMessage, isFromGame                                                   (branch D)
-  ruken-hooks.browser.js the one script a maker adds to their game                                     (branch D)
+  hooks-script.ts        HOOKS_SCRIPT: the text of the one script a maker adds to their game           (branch D)
   sessions.ts            startPlay writes the pass's owned object                                      (branch D)
-src/features/games/files-check.ts        a pull with a top folder `__ruken` is refused                (branch D)
+src/features/games/files-check.ts        a top folder `__ruken` is refused; `/__ruken/hooks.js` is the one top-of-site address allowed (branch D)
 src/features/money/
   rules.ts               SALE_GAME_SHARE_BPS, MAX_SPLIT_PEOPLE, TAKE_DOWN_REFUND_DAYS
   sale-split.ts          splitSale, shareAmong                                                         (branch B)
@@ -181,8 +181,9 @@ src/routes/
   .well-known/ruken-owned-key/+server.ts          the public key a game's server checks the note with (branch D)
   g/[game]/about/                                 a game's page                                        (branch G)
   g/[game]/extras/[extra]/quote, /buy, /back      the buy card's three addresses                       (branch G)
+  g/[game]/BuyCard.svelte                         the buy card, beside the two screens that show it    (branch G)
   make/[game]/extras/, make/[game]/add-extra/, make/[game]/extras/[extra]/  a game's extras and the form (branch I)
-  make/hooks/                                     how a game uses extras                               (branch I)
+  help/hooks/                                     how a game uses extras                               (branch I)
   make/[game]/split/                              who shares a game's money                            (branch J)
   me/splits/[split]/                              say yes or no                                        (branch J)
   admin/extras/[extra]/                           staff check an extra                                 (branch K)
@@ -198,10 +199,10 @@ tests/browser/buy-extra.test.ts, game-page.test.ts, in-game-extras.test.ts, make
 
 Each line names an input the spec implies and no ordinary test would meet. Each has its test in the task named.
 
-1. Buy pressed twice, or in two tabs at once: one order, one charge, one purchase (Tasks 12, 14).
+1. Buy pressed twice, or in two tabs at once: one order, one charge, one purchase; a press never cancels a payment another press or Stripe's page is still making (Tasks 12, 13, 14).
 2. Stripe took the money and the answer was lost: the next press, the return page or the webhook finds the paid invoice and never charges again (Task 14).
 3. A pass made before the purchase: its address is unchanged, the owned file changes within the same request that paid, and `ruken-extras/<extra>/` opens under it (Tasks 10, 14).
-4. A pass of game A used to ask for game B's extra, an extra id with `..` or a slash in it, a pass with no owned object at all, and an owned object that is not JSON: "Not found.", never an error and never a file (Task 10).
+4. A pass of game A used to ask for game B's extra, an extra id with `..` or a slash in it, `ruken%2Dextras/` (the folder's name with a letter encoded), a pass with no owned object at all, and an owned object that is not JSON: "Not found.", never an error and never a file (Task 10).
 5. A message that claims to be from the game but comes from another window or another address, a message naming an extra the game does not have, and a game that sends a thousand messages a second: ignored; nothing is charged without the person's own tap on Ruken's card (Tasks 11, 23).
 6. A sale whose fees are more than what is left after tax: the game's part is nothing, never less than nothing, and the entry still adds up (Task 4).
 7. A split of three at 33, 33 and 34 on a sale that leaves one cent: one person gets the cent, the same person every time, and the parts add up (Task 4).
@@ -444,8 +445,8 @@ CHECK `GameSplitShare_percent_check` (1 to 100). A deferred constraint trigger, 
 - `proposeSplit(deps: { db; clock; mailer; siteOrigin }, input: { gameId; makerUserId; shares: readonly Share[] }): Promise<{ splitId: string; started: boolean }>`:
   - the game is this maker's (else `MoneyError("NOT_FOUND")`); `splitProblem` is null (else `MoneyError("INVALID", <its words>)`);
   - every person but the maker has an account that is `active` and whose `adultOn` is today or earlier in Chicago; anyone else is `MoneyError("INVALID", "We can't add that person.")`, the same words for an account that is not there, is deleted, or is under 18, so the form never says which (spec 5.6);
+  - the same shares as the split in force: `MoneyError("INVALID", "Those are the shares already.")`, checked before anything is ended, so a repeat leaves a waiting split alone;
   - a split waiting for this game is ended as `replaced`;
-  - the same shares as the split in force: `MoneyError("INVALID", "Those are the shares already.")`;
   - the split and its shares are added with the maker's own answer, yes; when the maker is the only person left to answer, it starts in the same transaction (`started: true`) and the change mail goes out; otherwise each other person gets the invitation.
 - `answerSplit(deps, input: { splitId; userId; yes: boolean }): Promise<"started" | "waiting" | "declined">`: the person is in the split and has not answered, and the split has no start and no end (else `NOT_FOUND`); a yes that completes it adds the `GameSplitStart` at the clock's time, in the same transaction, and mails everyone in the old and the new split; a no ends it as `declined` and mails the maker.
 - `withdrawSplit(deps, input: { splitId; makerUserId }): Promise<void>`: ends a waiting split as `withdrawn`.
@@ -492,7 +493,7 @@ CHECK `GameSplitShare_percent_check` (1 to 100). A deferred constraint trigger, 
 
 **Files:**
 - Create: `src/features/extras/owned-note.ts`, `owned.ts`, `prisma/migrations/<timestamp>_owned_files/migration.sql`, `src/routes/.well-known/ruken-owned-key/+server.ts`
-- Modify: `prisma/schema/extras.prisma`, `src/features/extras/services.ts`, `extras.ts`, `src/features/play/sessions.ts`, `src/features/play/services.ts`, `tests/support/extras.ts`
+- Modify: `prisma/schema/extras.prisma`, `src/features/extras/services.ts`, `extras.ts`, `src/features/play/sessions.ts`, `src/features/play/services.ts`, `tests/support/extras.ts`, `playwright.config.ts` (`OWNED_NOTE_KEY` beside `PLAY_PASS_SECRET` in both site blocks: a fixed Ed25519 key made for tests and named so, as `tests/support/rsa.ts` holds one)
 - Test: `tests/features/extras/owned-note.test.ts`, `owned.pg.test.ts`, `tests/features/play/sessions.pg.test.ts` (add cases), `tests/features/extras/services.test.ts`
 
 **The table:** `OwnedFile`: `passId` (the id), `userId`, `gameId`, `mode OwnedMode { bought, all, none }`, `expiresAt`, `writtenAt`. It says which passes have an object in the bucket, so a purchase can write them again without `extras` reading the play feature's tables. Not add-only: `writtenAt` and `mode` move.
@@ -501,7 +502,7 @@ CHECK `GameSplitShare_percent_check` (1 to 100). A deferred constraint trigger, 
 - `owned-note.ts` (Web Crypto only; imports nothing of the app):
   - `signOwnedNote(claims: { game: string; pass: string; extras: readonly string[]; expiresAtMs: number }, privateKey: CryptoKey): Promise<string>`: `v1.<payload>.<signature>`, both base64url; the payload is JSON `{ g, p, x, exp }` with `x` sorted and `exp` in seconds; the signature is Ed25519 over `ruken-owned-v1:` followed by the payload text.
   - `checkOwnedNote(note: string, publicKey: CryptoKey, nowMs: number): Promise<{ game; pass; extras; expiresAtMs } | null>`: never throws.
-  - `importOwnedKey(base64Pkcs8: string): Promise<{ privateKey: CryptoKey; publicJwk: JsonWebKey }>`: throws "OWNED_NOTE_KEY must be an Ed25519 private key (PKCS8, base64)." for anything else.
+  - `importOwnedKey(base64Pkcs8: string): Promise<{ privateKey: CryptoKey; publicJwk: JsonWebKey }>`: trims spaces and line ends first (a key piped in from PowerShell ends with one); throws "OWNED_NOTE_KEY must be an Ed25519 private key (PKCS8, base64)." for anything else.
 - `owned.ts`:
   - `OWNED_KEY = (passId: string) => \`owned/${passId}.json\``.
   - `ownedKeysFor(db, input: { userId: string | null; gameId: string; mode: OwnedMode }): Promise<string[]>`: `none`, or nobody signed in: `[]`; `all`: every extra of the game that has any version; `bought`: the keys of this person's paid orders for the game (Task 12; until then, `[]`). Sorted.
@@ -533,16 +534,18 @@ it("refuses to start with an OWNED_NOTE_KEY that is not an Ed25519 key, naming t
 ### Task 10: The gate: the owned file, protected folders, the script's address
 
 **Files:**
-- Modify: `src/features/play/gate.ts`, `cloudflare/games/worker.ts`, `cloudflare/games/wrangler.jsonc` (`"rules": [{ "type": "Text", "globs": ["**/*.browser.js"], "fallthrough": true }]`), `src/features/games/files-check.ts`
-- Create: `src/features/play/ruken-hooks.browser.js` (in this task one line, a comment; Task 11 writes it)
+- Modify: `src/features/play/gate.ts`, `cloudflare/games/worker.ts`, `src/features/games/files-check.ts`
+- Create: `src/features/play/hooks-script.ts` (in this task `export const HOOKS_SCRIPT = "";` with its comment; Task 11 writes it). The script is a string in a `.ts` file, not a `.js` file bundled as text: no Worker config changes, the site and the gate import it as any module, and strict TypeScript and lint never try to read a browser script as part of the app. (`.browser.ts` already means "safe for a screen to import" in `pages`; this name keeps clear of it.)
 - Test: `tests/features/play/gate.test.ts` (add cases), `tests/cloudflare/games-worker.test.ts` (add cases), `tests/features/games/files-check.test.ts` (add a case)
 
 **What changes in `handleGameRequest`** (`GateDeps` gains `hooksScript: string`):
 - `GET /__ruken/hooks.js` on any game address, with no pass: the script, `content-type: text/javascript; charset=utf-8`, `cache-control: public, max-age=300`, the common headers. It holds no secret, and its address is the same in every copy of Ruken, so a maker writes one script tag.
+- Every check below is made on the name after `normalizePath`, never on the raw address: the raw one is still percent-encoded, so `ruken%2Dextras/…` would otherwise slip past.
 - Under a good pass, the path `__ruken/owned.json`: the body of `owned/<claims.id>.json` from the bucket as it is, or `{"extras":[],"note":null}` when there is none; `content-type: application/json`, `cache-control: no-store`, the game file's other headers. Any other path under `__ruken/`: "Not found."
-- Under a good pass, a path that starts `ruken-extras/<segment>/`: served only when `<segment>` is one of the `extras` in that pass's owned object; otherwise 404 "Not found.", the same answer as a file that is not there. The object is read with `files.get` on each such request and parsed with a `try`; anything that is not an object with an array of strings counts as owning nothing.
+- Under a good pass, any name whose first folder is `ruken-extras`: served only when it is `ruken-extras/<segment>/<more>` and `<segment>` is one of the `extras` in that pass's owned object; otherwise 404 "Not found.", the same answer as a file that is not there. The object is read with `files.get` on each such request and parsed with a `try`; anything that is not an object with an array of strings counts as owning nothing. These files go out with `cache-control: private, no-cache` instead of the game's `max-age`: the browser asks again each time (a 304 when nothing changed), so a refund or a lost dispute takes the files back at once instead of at the end of the day.
 - Everything else is served as before, and no other request reads the owned object.
 - `checkGameFiles` refuses a pull with a top folder named `__ruken`: "Your game has a folder called `__ruken`. Ruken uses that name. Call it something else." A folder `ruken-extras` is allowed: that is where protected files go.
+- `checkGameFiles` today refuses any `src` or `href` in `index.html` that starts with one `/` (`TOP_OF_SITE_ADDRESS`, "index.html loads … from the top of the site"). The script tag is exactly such an address, so without this change every game that adds it is refused at pull. Exactly `/__ruken/hooks.js` is allowed; every other top-of-site address is refused as before.
 
 - [ ] **Step 1 (red):**
 
@@ -562,15 +565,15 @@ it("serves the script on every game address with no pass, and nothing else under
 it("reads the owned object for no request outside ruken-extras/ and the owned file", async () => { /* a counting store: 0 reads for /PASS/main.js */ });
 ```
 
-  The Worker test: the config has the text rule and nothing else new (no route, variable, database or binding); `worker.ts` imports the script and passes it. Push. Expected: `verify` fails in the new cases.
+  Also: `/PASS/ruken%2Dextras/level-pack/secret.txt` is 404 for a pass that owns nothing and 200 for one that owns it (the check is on the decoded name); a protected file answers `cache-control: private, no-cache`; `files-check.test.ts`: an `index.html` with `<script src="/__ruken/hooks.js"></script>` passes and one with `<script src="/main.js">` is still refused. The Worker test: `worker.ts` imports `HOOKS_SCRIPT` and passes it, and `wrangler.jsonc` is unchanged. Push. Expected: `verify` fails in the new cases.
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass, and the journeys' gate still starts (`browser`).
 
 ### Task 11: The script and the message reader
 
 **Files:**
 - Create: `src/features/play/frame-messages.ts`
-- Modify: `src/features/play/ruken-hooks.browser.js`, `src/features/play/play.ts`, `tests/fixtures/tiny-game/index.html` and `main.js` (the script tag; a button "Buy level pack" that calls `ruken.extras.buy("level-pack")`; a line of text that reads "Level pack: yours" or "Level pack: locked" from `ruken.extras.owned()` and again on every change; a line "Card: open" or "Card: closed"), `tests/fixtures/tiny-game/ruken-extras/level-pack/secret.txt`
-- Test: `tests/features/play/frame-messages.test.ts`, `tests/features/play/ruken-hooks.test.ts`
+- Modify: `src/features/play/hooks-script.ts`, `src/features/play/play.ts`, `tests/fixtures/tiny-game/index.html` and `main.js` (the script tag; a button "Buy level pack" that calls `ruken.extras.buy("level-pack")`; a line of text that reads "Level pack: yours" or "Level pack: locked" from `ruken.extras.owned()` and again on every change; a line "Card: open" or "Card: closed"), `tests/fixtures/tiny-game/ruken-extras/level-pack/secret.txt`
+- Test: `tests/features/play/frame-messages.test.ts`, `tests/features/play/hooks-script.test.ts` (mirroring `hooks-script.ts`)
 
 **The envelope**, both ways (agreed with the apps' plan thread, which adds its own areas to the same union and script): `{ ruken: 1, type: "<area>.<name>", ...fields }`.
 
@@ -580,7 +583,7 @@ it("reads the owned object for no request outside ruken-extras/ and the owned fi
   - `readGameMessage(data: unknown): GameMessage | null`: an object with `ruken === 1`, a known `type`, and for `extras.buy` an `extra` that passes `isExtraKey`, imported from `extras`' entry file. Anything else is null.
   - `isFromGame(event: { source: unknown; origin: string }, frame: { window: unknown; origin: string }): boolean`: both must match.
   - `cardMessage(open: boolean)` and `ownedMessage(extras: readonly string[])`: the two envelopes Ruken sends, `{ ruken: 1, type: "extras.card", open }` and `{ ruken: 1, type: "extras.owned", extras }`.
-- `ruken-hooks.browser.js`: a plain classic script, no build step, no import, that sets `window.ruken` once:
+- `HOOKS_SCRIPT`: the text of a plain classic script, no build step, no import, written as one template string with no `${` in it (a test checks), that sets `window.ruken` once:
   - `ruken.extras.owned(): Promise<string[]>`: fetches `/<pass>/__ruken/owned.json` (the pass is the first folder of `location.pathname`), `cache: "no-store"`.
   - `ruken.extras.note(): Promise<string | null>`: the signed note from the same file, for a game with its own server.
   - `ruken.extras.buy(extra: string): void`: `window.parent.postMessage({ ruken: 1, type: "extras.buy", extra }, "*")`. The message holds nothing secret, and only Ruken's page can frame a game.
@@ -597,7 +600,7 @@ it("reads a buy message and nothing else", () => {                              
 it("believes a message only from the game's own window at the game's own address", () => {});
 ```
 
-  `ruken-hooks.test.ts` reads the script as text and runs it with `new Function` against a stand-in `window`, `fetch` and `parent`: `buy` posts the envelope; `owned` asks for `/PASS/__ruken/owned.json`; a message from a window that is not the parent calls no listener; running the script twice sets `window.ruken` once. Push. Expected: `verify` fails in both files.
+  `hooks-script.test.ts` runs `HOOKS_SCRIPT` with `new Function` against a stand-in `window`, `fetch` and `parent`: `buy` posts the envelope; `owned` asks for `/PASS/__ruken/owned.json`; a message from a window that is not the parent calls no listener; running the script twice sets `window.ruken` once. Push. Expected: `verify` fails in both files.
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass. Branch D is ready to merge after M-S1.
 
 ---
@@ -614,7 +617,7 @@ it("believes a message only from the game's own window at the game's own address
 | Model | Columns |
 |---|---|
 | `ExtraOrder` | `id`, `userId`, `extraId`, `versionId` (the version and price the buyer was shown), `source PurchaseSource { stripe, apple, google, microsoft }`, `state OrderState { open, paid, cancelled, refunded }` default `open`, `stripeInvoiceId?` unique, `stripeCheckoutSessionId?` unique, `waiverAt?`, `guardianAt?`, `createdAt`, `updatedAt`. It mirrors where a purchase stands, so it moves, forward only: `open → paid` or `cancelled`; `paid → refunded`; `refunded → paid` (a dispute that is won). |
-| `ExtraPurchase` | `id`, `orderId` unique, `userId`, `extraId`, `gameId`, `versionId`, `source`, `sourceId` (for Stripe, the invoice's id), `stripeChargeId?` unique, `stripePaymentIntentId?` unique, `balanceTransactionId?` unique, `grossCents`, `taxCents`, `feeCents` (the fee known at the sale: for Stripe, the one on the payment's own balance transaction; later fees are their own facts), `country?` (two letters, as Stripe's tax location says), `boughtAt`, `createdAt`; unique on (`source`, `sourceId`). Added and never changed: the fact the ledger posts. It holds ids and amounts only. |
+| `ExtraPurchase` | `id`, `orderId` unique, `userId`, `extraId`, `gameId`, `versionId`, `source`, `sourceId` (for Stripe, the invoice's id), `stripeChargeId?` unique, `stripePaymentIntentId?` unique, `balanceTransactionId?` unique, `invoiceNumber?` and `receiptNumber?` (what Stripe prints on the buyer's invoice and receipt, so staff can find a purchase from what the buyer reads them, Task 29), `grossCents`, `taxCents`, `feeCents` (the fee known at the sale: for Stripe, the one on the payment's own balance transaction; later fees are their own facts), `country?` (two letters, as Stripe's tax location says), `boughtAt`, `createdAt`; unique on (`source`, `sourceId`). Added and never changed: the fact the ledger posts. It holds ids and amounts only. |
 
 In the SQL: the partial unique index `ExtraOrder_one_live` on (`userId`, `extraId`) `WHERE "state" IN ('open', 'paid')`, which is what makes a second charge impossible; CHECK `ExtraPurchase_amounts_check` (`"grossCents" > 0 AND "taxCents" >= 0 AND "feeCents" >= 0 AND "taxCents" < "grossCents"`); the add-only trigger on `ExtraPurchase`; the forward-only trigger on `ExtraOrder.state` with the four moves above.
 
@@ -628,19 +631,20 @@ In the SQL: the partial unique index `ExtraOrder_one_live` on (`userId`, `extraI
 - Modify: `tests/browser/support/fake-stripe-server.ts`
 - Test: `tests/features/extras/stripe-port.test.ts`
 
-- [ ] **Step 0 (read first; M-S3):** read `stripe` 22.6.2's own types for `invoices.createPreview`, `invoices.create`, `invoiceItems.create`, `invoices.finalizeInvoice`, `invoices.pay`, `invoices.voidInvoice`, `refunds.create`, `checkout.sessions.create` (`mode: "payment"`, `invoice_creation`), `subscriptions.retrieve` (`default_payment_method`) and `paymentMethods.retrieve`. In Stripe's test mode, with a membership bought through Ruken's checkout, read where its card is kept. Report both in one line. If a call below does not exist as named, or the card is on neither the subscription nor the customer, stop and report; do not reach for another way to charge.
+- [ ] **Step 0 (read first; M-S3):** read `stripe` 22.6.2's own types for `invoices.createPreview`, `invoices.create`, `invoiceItems.create`, `invoices.finalizeInvoice`, `invoices.pay`, `invoices.voidInvoice`, `refunds.create`, `checkout.sessions.create` (`mode: "payment"`, `invoice_creation`, `expires_at`), `checkout.sessions.expire`, `subscriptions.retrieve` (`default_payment_method`) and `paymentMethods.retrieve` (the plan audit read every one there; this confirms it in CI's install). In Stripe's test mode, with a membership bought through Ruken's checkout, read where its card is kept, and which of the paid invoice's `number` and its charge's `receipt_number` the buyer's receipt email prints. Report all three in one line. If a call below does not exist as named, or the card is on neither the subscription nor the customer, stop and report; do not reach for another way to charge.
 
 **Interfaces (produces):** `interface ExtrasStripe`, bound by `bindExtrasStripe(stripe: Stripe)`, each call with an idempotency key made from the order's id:
+- `ensureProduct(): Promise<void>`: the product `ruken_extra` made once if it is missing, with the membership's tax code (`PREMIUM_TAX_CODE`; the accountant's check of it covers extras too), exactly as `ensurePremiumProduct` does for `ruken_membership`. Every amount below is `currency: "usd"` with `tax_behavior: "exclusive"`, so Stripe Tax adds tax on top.
 - `savedCard(input: { stripeSubscriptionId: string }): Promise<{ paymentMethodId: string; last4: string } | null>`.
 - `quote(input: { customerId; priceCents: bigint; name: string }): Promise<{ totalCents: bigint; taxCents: bigint; country: string | null }>`: `invoices.createPreview` for one item of `priceCents` in US dollars, tax worked out by Stripe and added on top, under the one product `ruken_extra` with the membership's tax code. Nothing is created at Stripe.
-- `payNow(input: { orderId; customerId; paymentMethodId; priceCents; name; metadata: { kind: "extra"; orderId: string } }): Promise<{ kind: "paid"; stripeInvoiceId: string } | { kind: "needs_page"; stripeInvoiceId: string } | { kind: "declined"; stripeInvoiceId: string }>`: an invoice item, an invoice (`collection_method: "charge_automatically"`, `auto_advance: false`, automatic tax on), finalized, paid with that card. A card that needs the bank's check is `needs_page`; a refusal is `declined`; anything else is thrown.
-- `voidOrder(stripeInvoiceId: string): Promise<void>`: voids an invoice that was not paid, so it can never be paid later from Stripe's own page.
+- `payNow(input: { orderId; customerId; paymentMethodId; priceCents; name; metadata: { kind: "extra"; orderId: string } }): Promise<{ kind: "paid"; stripeInvoiceId: string } | { kind: "needs_page"; stripeInvoiceId: string } | { kind: "declined"; stripeInvoiceId: string }>`: **the invoice first** (`collection_method: "charge_automatically"`, `auto_advance: false`, `pending_invoice_items_behavior: "exclude"`, automatic tax on, the metadata), **then the item on it** (`invoiceItems.create({ invoice: <that invoice's id>, … })`), then finalized and paid with that card. The order matters for money: an invoice item made with no `invoice` waits on the customer, and Stripe's own words for `invoice` are "For subscription invoices, when left blank, the invoice item will be added to the next upcoming scheduled invoice". The member would be charged for the extra again with their next membership renewal, and this invoice would be for $0. A card that needs the bank's check is `needs_page`; a refusal is `declined`; anything else is thrown.
+- `voidOrder(input: { stripeInvoiceId: string | null; checkoutSessionId: string | null }): Promise<"voided" | "was_paid">`: voids an invoice that was not paid and expires a Checkout page that was not used (`checkout.sessions.expire`), so neither can be paid later. When Stripe answers that one was paid meanwhile, the answer is `was_paid` and nothing is voided: the caller settles the order instead.
 - `refund(input: { stripeChargeId: string; key: string }): Promise<{ stripeRefundId: string }>`: `refunds.create` for the whole charge, with `key` as the idempotency key, so asking twice refunds once. Used by the staff refund (Task 29) and a game that leaves (Task 30).
-- `payPage(input: { orderId; customerId; priceCents; name; returnUrl: string; cancelUrl: string; metadata }): Promise<{ url: string; checkoutSessionId: string }>`: Checkout in `payment` mode for the same one item, automatic tax on, `invoice_creation` on (so this path too ends in an invoice), cards only.
-- `paidInvoice(input: { stripeInvoiceId } | { checkoutSessionId }): Promise<PaidExtraInvoice | null>`: null unless Stripe says it is paid; else `{ stripeInvoiceId, chargeId, paymentIntentId, balanceTransactionId, gross, tax, fee, country, paidAtMs, orderId }`, every amount from Stripe, the fee from the charge's own balance transaction (as `readPaidPremiumInvoice` reads a membership's). A balance transaction that is not there yet throws `NotAtStripeYet`.
-- The fakes: `FakeExtrasStripe` in memory with `declineNext()`, `needPageNext()`, `loseNextAnswer()` (the invoice is paid and the call throws) and a tax rate a test sets; the stand-in server answers the same calls and gains a page for the payment-mode checkout with two buttons, "Pay" and "Go back".
+- `payPage(input: { orderId; customerId; priceCents; name; returnUrl: string; cancelUrl: string; metadata }): Promise<{ url: string; checkoutSessionId: string }>`: Checkout in `payment` mode for the same one item, automatic tax on, `invoice_creation` on with the same metadata in `invoice_data.metadata` (so this path too ends in an invoice, and that invoice's `invoice.paid` carries `kind: "extra"` for the webhook), `adaptive_pricing: { enabled: false }` (an extra is priced in US dollars), cards only, and `expires_at` 30 minutes from the clock (Stripe's shortest), so an abandoned page stops taking money soon.
+- `paidInvoice(input: { stripeInvoiceId } | { checkoutSessionId }): Promise<PaidExtraInvoice | null>`: null unless Stripe says it is paid; else `{ stripeInvoiceId, chargeId, paymentIntentId, balanceTransactionId, gross, tax, fee, country, paidAtMs, orderId }`, every amount from Stripe, the fee from the charge's own balance transaction (as `readPaidPremiumInvoice` reads a membership's), plus the invoice's `number` and the charge's `receipt_number`. A balance transaction that is not there yet throws `NotAtStripeYet`. An invoice paid in another currency than `usd`, or with `amount_paid` of 0, throws for a person to look at, as `readPaidPremiumInvoice` refuses a membership's.
+- The fakes: `FakeExtrasStripe` in memory with `declineNext()`, `needPageNext()`, `loseNextAnswer()` (the invoice is paid and the call throws), `payPageBeforeExpire()` (the open Checkout page completes, so `expire` is refused as Stripe refuses it), `pendingInvoiceItems(customer)` and `voidedInvoices()`, and a tax rate a test sets; the stand-in server answers the same calls and gains a page for the payment-mode checkout with two buttons, "Pay" and "Go back".
 
-- [ ] **Step 1 (red):** the port's cases against a stubbed client: each call's exact parameters and idempotency key (`extra-order:<orderId>:item`, `:invoice`, `:finalize`, `:pay`, `:page`); `quote` creates nothing; `paidInvoice` is null for an open invoice and throws `NotAtStripeYet` before the balance transaction exists; the metadata carries the order's id and no account id or email. Push. Expected: `verify` fails in `stripe-port.test.ts`.
+- [ ] **Step 1 (red):** the port's cases against a stubbed client: each call's exact parameters and idempotency key (`extra-order:<orderId>:invoice`, `:item`, `:finalize`, `:pay`, `:page`), in that order, and the item names the invoice; `quote` creates nothing; `voidOrder` answers `was_paid` when Stripe says the invoice was paid or the page completed; a `eur` invoice throws; `paidInvoice` is null for an open invoice and throws `NotAtStripeYet` before the balance transaction exists; the metadata carries the order's id and no account id or email. Push. Expected: `verify` fails in `stripe-port.test.ts`.
 - [ ] **Step 2 (green):** the code and the fakes. Push. Expected: all pass.
 
 ### Task 14: Buying
@@ -653,15 +657,17 @@ In the SQL: the partial unique index `ExtraOrder_one_live` on (`userId`, `extraI
 **Interfaces (produces):**
 - `views.ts`: `extrasOf(db, input: { gameId; viewer: { userId: string; isMember: boolean; isMaker: boolean } | null; today: string }): Promise<ExtraCard[]>`: the game's extras with a live version, not taken off, whose season (if any) is running, in the order they first went on sale; each `{ key, kind, name, oneLine, pictureKey, priceCents, seasonEnds: string | null, button: "buy" | "join" | "yours" }` (`yours` for a paid order and for the game's own maker; `join` for anyone who is not a member).
 - `orders.ts`, from `createOrders(deps: { db; clock; stripe: ExtrasStripe; files; noteKey; mailer; rateLimiter })`:
-  - `quoteExtra(input: { userId; gameSlug; extraKey }): Promise<Quote | Refusal>`: `Quote = { versionId; name; oneLine; pictureKey; priceCents; taxCents; totalCents; cardLast4: string | null; needsWaiver: boolean; needsGuardian: boolean }`. `needsWaiver` is whether Stripe's tax country is in `WAIVER_COUNTRIES`; `needsGuardian` is whether `adultOn` is after today. `Refusal = { refused: "not_member" | "not_on_sale" | "season_over" | "yours" | "busy" }`. At most `EXTRA_QUOTES_PER_PERSON` (`{ max: 30, windowMs: 60_000 }`).
+  - `quoteExtra(input: { userId; gameSlug; extraKey }): Promise<Quote | Refusal>`: `Quote = { versionId; name; oneLine; pictureKey; priceCents; taxCents; totalCents; cardLast4: string | null; needsWaiver: boolean; needsGuardian: boolean }`. `needsWaiver` is whether Stripe's tax country is in `WAIVER_COUNTRIES`; `needsGuardian` is whether `adultOn` is after today **or null** (the schema: "Null means the age is unknown, and every under-18 default applies"). `Refusal = { refused: "not_member" | "not_on_sale" | "season_over" | "yours" | "busy" | "buying" }`. At most `EXTRA_QUOTES_PER_PERSON` (`{ max: 30, windowMs: 60_000 }`).
   - `buyExtra(input: { userId; gameSlug; extraKey; versionId; waiver: boolean; guardian: boolean; returnUrl: string }): Promise<{ kind: "owned"; extras: string[] } | { kind: "pay_page"; url: string } | { kind: "declined"; payPageUrl: string } | { kind: "changed"; quote: Quote } | { refused: Refusal["refused"] | "tick_needed" }>`, in this order:
     1. the same checks as the quote, at the clock's time (a membership that ended, a season that ended a minute ago, an extra taken off sale: refused, nothing charged);
     2. `versionId` is no longer the live version: `changed`, with the new quote, and nothing is charged (Review Focus 14);
     3. a tick that is needed and missing: `tick_needed`;
-    4. this person's live order for this extra, if there is one: a `paid` one answers `owned`; an `open` one is settled first (`settleOrder`), and if Stripe says it was not paid its invoice is voided and it is cancelled;
-    5. a new `ExtraOrder`, `open`. The unique index makes a second press at the same moment fail to insert; that press reads the first one's order and waits on it;
+    4. this person's live order for this extra, if there is one: a `paid` one answers `owned`; an `open` one is settled first (`settleOrder`). If Stripe says it was not paid:
+       - when it was made less than `ORDER_IN_FLIGHT_MS` (2 minutes) ago and has no Checkout page, another press is still paying it: the answer is `{ refused: "buying" }` and nothing is touched. A press never voids a payment another press may be finishing;
+       - otherwise `voidOrder` with its invoice and its Checkout page. `voided`: the order is cancelled and this press goes on. `was_paid`: the order is settled as paid and the answer is `owned`;
+    5. a new `ExtraOrder`, `open`. The unique index makes a second press at the same moment fail to insert; that press goes back to step 4 once, which answers `owned` or `buying`;
     6. with a saved card, `payNow`: `paid` goes to `settleOrder`; `needs_page` and `declined` void that invoice and answer with `payPage`'s address (as `pay_page` or `declined`); with no saved card, `payPage`.
-  - `settleOrder(input: { orderId } | { checkoutSessionId } | { stripeInvoiceId }): Promise<"paid" | "not_paid">`: asks Stripe (`paidInvoice`); when paid, in one transaction: the order becomes `paid`, the `ExtraPurchase` is added (a repeat adds nothing), and then `refreshOwned` rewrites that person's owned objects for the game; then, for a buyer in `WAIVER_COUNTRIES`, the confirming email. Safe to run any number of times, from the buy call, the return page and the webhook.
+  - `settleOrder(input: { orderId } | { checkoutSessionId } | { stripeInvoiceId }): Promise<"paid" | "not_paid">`: asks Stripe (`paidInvoice`). Stripe saying paid for an order already `cancelled` should not happen after step 4; if it does, nothing is changed and it is reported as a thrown error with the order's id, for the job's "Needs a person" (a charge with no extra is a failure the spec names). When paid, in one transaction: the order becomes `paid`, the `ExtraPurchase` is added (a repeat adds nothing), and then `refreshOwned` rewrites that person's owned objects for the game; then, for a buyer in `WAIVER_COUNTRIES`, the confirming email. Safe to run any number of times, from the buy call, the return page and the webhook.
   - `revokePurchase(input: { source; sourceId }): Promise<void>` and `restorePurchase(...)`: the order becomes `refunded` (or `paid` again) and the owned objects are written again. Called by `money` when it reads a refund or a dispute (Task 17).
 - The webhook: `src/routes/webhooks/stripe/+server.ts` already keeps and handles every verified event through `membership.receive`. After it, for `invoice.paid` and `checkout.session.completed` whose object's `metadata.kind` is `"extra"`, it calls `extrasServices().orders.settleOrder(...)`. Membership's own handler already ignores a checkout that is not `premium`; Step 1 proves that it also leaves an extra's `invoice.paid` alone (an invoice with no subscription) and, if it does not, this task changes `recordInvoicePaid`'s caller to skip an invoice whose `metadata.kind` is `"extra"`, with that test.
 - `mails.ts`: `confirmingMessage(to, input: { name: string; total: string; boughtOn: string })`. Subject: "You bought `<name>` on Ruken".
@@ -675,16 +681,30 @@ In the SQL: the partial unique index `ExtraOrder_one_live` on (`userId`, `extraI
   If something is wrong with it, write to us: <support address>
   ```
 
-  The support address is the one slice 1's mails use, passed in.
+  The support address is passed in. There is none on `main` (slice 1's mails name no address to write to, and the legal pages' branch adds none). If none is on `main` when this task starts, stop and ask the coordinator: the address is the Owner's, and no mail goes out with a made-up one. The same holds for the staff mail in Task 28.
 
 - [ ] **Step 1 (red):**
 
 ```ts
 it("charges once however often Buy is pressed, and from two tabs at once", async () => {       // Review Focus 1
   const [one, two] = await Promise.all([orders.buyExtra(input), orders.buyExtra(input)]);
-  expect([one.kind, two.kind]).toEqual(["owned", "owned"]);
+  expect([one, two]).toContainEqual(expect.objectContaining({ kind: "owned" }));
+  for (const answer of [one, two]) expect(answer).toMatchObject(answer.kind === "owned" ? {} : { refused: "buying" });
   expect(stripe.paidInvoices()).toHaveLength(1);
+  expect(stripe.voidedInvoices()).toHaveLength(0);                     // the second press voided nothing
   expect(await prisma.extraPurchase.count()).toBe(1);
+});
+it("never charges for the extra on the next membership renewal", async () => {
+  await orders.buyExtra(input);
+  expect(stripe.pendingInvoiceItems(member.customerId)).toHaveLength(0);   // the item sits on its own invoice
+});
+it("pays an order whose Stripe page was paid while a new press was cancelling it", async () => {
+  stripe.needPageNext();
+  await orders.buyExtra(input);                                         // goes to Stripe's page
+  clock.advance(3 * 60_000);
+  stripe.payPageBeforeExpire();                                         // the buyer pays there just as they press again
+  expect(await orders.buyExtra(input)).toMatchObject({ kind: "owned" });
+  expect(stripe.paidInvoices()).toHaveLength(1);
 });
 it("finds the payment when Stripe took the money and the answer was lost", async () => {         // Review Focus 2
   stripe.loseNextAnswer();
@@ -698,7 +718,7 @@ it("rewrites the owned object of a pass made before the purchase, in the same ca
   expect(JSON.parse(files.text(`owned/${pass.id}.json`)).extras).toEqual(["level-pack"]);
 });
 it("shows the new price instead of charging one the buyer did not see", async () => {});       // Review Focus 14
-it("refuses, and charges nothing: a membership that ended, a minor with no guardian tick, an EU buyer with no tick, a season over by a minute", async () => {});   // Review Focus 13, 15
+it("refuses, and charges nothing: a membership that ended, a minor with no guardian tick, someone whose age is unknown with no guardian tick, an EU buyer with no tick, a season over by a minute", async () => {});   // Review Focus 13, 15
 it("sends a card the bank wants to check to Stripe's page, and voids the invoice that was not paid", async () => {});
 it("mails the confirmation to a buyer in the EU or the UK, once, and to nobody else", async () => {});
 it("answers 'yours' for a maker on their own game, and never makes an order", async () => {});
@@ -826,7 +846,7 @@ Grandma: one blue Play at the top; each extra says what it is and has one button
 ### Task 21: The buy card
 
 **Files:**
-- Create: `src/routes/g/[game]/extras/[extra]/quote/+server.ts`, `buy/+server.ts`, `back/+server.ts`, `src/lib/BuyCard.svelte`
+- Create: `src/routes/g/[game]/extras/[extra]/quote/+server.ts`, `buy/+server.ts`, `back/+server.ts`, `src/routes/g/[game]/BuyCard.svelte` (beside the two screens under `/g/<game>/` that show it, as slice 2 keeps `ClipPicker.svelte` beside its screen; `src/lib/` holds no feature's screens)
 - Modify: `src/routes/g/[game]/about/+page.svelte`, `tests/browser/support/game.ts` (`addGameWithExtra(browser)`: a live game from the tiny fixture with "Level pack" accepted at $2.99)
 - Test: `tests/browser/buy-extra.test.ts`
 
@@ -849,7 +869,7 @@ No refunds.
 
 - Opening it asks `quote` (`GET`, JSON). The "Tax" line is there only when the tax is above zero. With no saved card, "Card ending" reads "You'll pay on Stripe's page and come straight back."
 - When `needsWaiver`: a tick box above the button, "I want this now. I know I can't change my mind and get my money back once I have it." When `needsGuardian`: "My parent or guardian says yes." The button stays grey until each box shown is ticked.
-- Buy posts to `buy` (JSON, with the quote's `versionId` and the ticks). `owned`: the card reads "It's yours" for a moment and slides away, and the list shows "Yours ✓". `pay_page`: the browser goes to Stripe's page; Stripe sends it to `back`, which settles the order and returns to where the person was (`safeNext`), where the card reads "It's yours" once. `declined`: "Your bank said no. Try another card." with "Try another card" (blue, to Stripe's page) and "Not now". `changed`: the card shows the new price and "The price changed. Have a look before you buy." `refused`: one line each: "Join Ruken to buy extras.", "This isn't on sale any more.", "The season is over.", "Something went wrong on our side. You have not been charged. Try again." (also for a thrown error).
+- Buy posts to `buy` (JSON, with the quote's `versionId` and the ticks). `owned`: the card reads "It's yours" for a moment and slides away, and the list shows "Yours ✓". `pay_page`: the browser goes to Stripe's page; Stripe sends it to `back`, which settles the order and returns to where the person was (`safeNextPath`, `src/lib/safe-next.ts`), where the card reads "It's yours" once. `declined`: "Your bank said no. Try another card." with "Try another card" (blue, to Stripe's page) and "Not now". `changed`: the card shows the new price and "The price changed. Have a look before you buy." `refused`: one line each: "Join Ruken to buy extras.", "This isn't on sale any more.", "The season is over.", "You're already buying this. Give it a moment." (`buying`, with "Not now" only), "Something went wrong on our side. You have not been charged. Try again." (also for a thrown error).
 - `quote` and `buy` need a signed-in caller (else 401, and the card shows the paywall's way in); both read the person from the session and nothing about them from the request.
 - Before buying, a line under the Extras list says "Tax is added where it applies. No refunds."; on the card the tax is known, so it says "No refunds." (spec 5.2's sketch shows the first; the amount with tax before the tap is what the spec's words ask for).
 
@@ -946,7 +966,7 @@ Your game calls this extra:   level-pack-2   [ Copy ]
 How a game uses extras
 ```
 
-- "How a game uses extras" goes to `/make/hooks` (Task 25).
+- "How a game uses extras" goes to `/help/hooks` (Task 25).
 - "Change it": the same form, filled in, without the kind; its button is "Send the change for review". Under it, for an extra on sale: "Players keep buying it as it is now until we accept the change."
 - "Take off sale" (red), then one question on the same page, "Take it off sale? People who bought it keep it." with "Take it off sale" (red) and "Keep it on sale" (green). For a draft that was never on sale, "Remove" (red) instead.
 - Another maker's game or extra is a missing page.
@@ -956,10 +976,10 @@ Grandma: one form, one button; each field says what goes in it; the price is a l
 - [ ] **Step 1 (red):** a maker adds "Level pack" at $2.99 to a live game and sees "Waiting for review" and the id `level-pack`; a season pass with a last day before its first is refused beside that field and the name typed is still there; the price field is a `<select>` whose options are exactly the eleven prices; no field on the form is a number box; a change to an extra on sale shows "A change is waiting for review." and the game's page still sells the old price; take off sale asks first and then reads "Taken off sale"; a second maker gets 404; `showTheOwner` for the three screens. Push. Expected: `browser` fails: 404 at `/make/<game>/extras`.
 - [ ] **Step 2 (green):** the routes. Push. Expected: all pass.
 
-### Task 25: How a game uses extras (`/make/hooks`)
+### Task 25: How a game uses extras (`/help/hooks`)
 
 **Files:**
-- Create: `src/routes/make/hooks/+page.svelte`, `+page.server.ts`
+- Create: `src/routes/help/hooks/+page.svelte`, `+page.server.ts`. Not under `/make/`: `/make/<game>` takes a game's slug, and a game named "Hooks" would lose its page to this one. `help` is a reserved handle (`RESERVED_HANDLES`), so nothing else can claim `/help/`.
 - Test: `tests/browser/maker-extras.test.ts` (add cases)
 
 One page for makers, signed in or not, in plain words with five short parts, each with the lines to copy:
@@ -972,7 +992,7 @@ One page for makers, signed in or not, in plain words with five short parts, eac
 
 The apps' plan adds its own parts (achievements, stats, events) to this page.
 
-- [ ] **Step 1 (red):** the page shows the five parts; the script tag on the page is, letter for letter, the one in `tests/fixtures/tiny-game/index.html`, and every `ruken.extras.` call named on the page exists in `ruken-hooks.browser.js` (the journey reads both files, so the page cannot drift from the script); the extra's screen links here. Push. Expected: `browser` fails: 404 at `/make/hooks`.
+- [ ] **Step 1 (red):** the page shows the five parts; the script tag on the page is, letter for letter, the one in `tests/fixtures/tiny-game/index.html`, and every `ruken.extras.` call named on the page exists in `HOOKS_SCRIPT` (the journey reads both, so the page cannot drift from the script); the extra's screen links here. Push. Expected: `browser` fails: 404 at `/help/hooks`.
 - [ ] **Step 2 (green):** the page. Push. Expected: all pass. Branch I is ready to merge after the Owner's "fine".
 
 ---
@@ -1028,6 +1048,7 @@ Nothing changes until everyone on the list has said yes.
 ```
 
 - Signed out: sign-in, then back here. Someone who is not in this split, or a split that is over, started or already answered by them: a missing page, except their own started split, which reads "You share what Floor Fifty earns. Your share is 40%."
+- Under the share, before the buttons: "To be paid, you need a bank account in the United States." Ruken cannot know where someone banks before they connect, and Stripe Connect pays only there (spec 5.6), so the person reads it before saying yes rather than finding out after.
 - Yes: "You're in." and, when their bank is not connected, "Connect your bank to be paid" (blue), to slice 5's `/make/bank`; until that branch is on `main` the button is left out, with its test. No: "Okay. Nothing changes."
 
 - [ ] **Step 1 (red):** the launched line, through the database's stand-ins: a maker asks `@drummer`; the invitation's link opens this page; yes starts the split; a sale made before the yes is posted to the maker alone and one made after is posted 60 and 40 (the journey runs the money job through its route and reads both people's balances); a no leaves the maker at 100% and mails them; a stranger gets 404; `showTheOwner` for both screens and the mail's text. Push. Expected: `browser` fails: 404.
@@ -1069,9 +1090,9 @@ Nothing changes until everyone on the list has said yes.
 **Interfaces (produces):**
 - `requestSaleRefund(deps: { db; clock }, input: { purchaseId; staffUserId; why }): Promise<{ requestId: string }>`: the purchase's order is `paid` and its source is `stripe` (a store's purchase: `MoneyError("INVALID", "This was bought in a store's app. Only that store can refund it.")`).
 - `approveSaleRefund(deps: { db; clock; stripe: ExtrasStripe; orders }, input: { requestId; staffUserId }): Promise<void>`: a different person from the asker (else `MoneyError("INVALID", "A second person has to approve this.")`); `stripe.refund({ stripeChargeId, key: "sale-refund:<requestId>" })`, the whole purchase; the approval row; `orders.revokePurchase`. The ledger learns of it as it learns of any refund, from Stripe, on the next daily job (Task 17); nothing is posted here.
-- `saleForRefund(db, stripeInvoiceId: string)` and `refundsWaiting(db)`: what the screen reads.
+- `saleForRefund(db, number: string)` and `refundsWaiting(db)`: what the screen reads.
 
-**The screen** (`/admin/money/refunds`, the `finance` role, with `freshCodeOnly` on both actions): a box, "The invoice number on the buyer's Stripe receipt", and "Find". The purchase found shows the extra, the game, the day and the amount, three choices ("A mistaken charge", "A minor's purchase", "The law requires it") and "Ask for a refund" (blue). Below: "Waiting for a second person", each with "Approve the refund" (red, since it takes money back) and "Leave it" (green). The asker sees their own request without the Approve button and the line "Someone else has to approve this."
+**The screen** (`/admin/money/refunds`, the `finance` role, with `freshCodeOnly` on both actions): a box, "The number on the buyer's Stripe receipt", and "Find". It finds a purchase by its `receiptNumber` or its `invoiceNumber` (Task 12), whichever Task 13's first step showed the receipt prints, never by Stripe's internal id, which a buyer never sees. The purchase found shows the extra, the game, the day and the amount, three choices ("A mistaken charge", "A minor's purchase", "The law requires it") and "Ask for a refund" (blue). Below: "Waiting for a second person", each with "Approve the refund" (red, since it takes money back) and "Leave it" (green). The asker sees their own request without the Approve button and the line "Someone else has to approve this."
 
 - [ ] **Step 1 (red):** one person asks and cannot approve, in the function and in the database; a second approves, Stripe's stand-in is asked once however often the button is pressed, and the buyer's owned object no longer lists the extra; the daily job then posts the worked refund (Task 6's numbers); a store's purchase is refused with the words; a second request for one purchase is refused; `curator` gets 404; `showTheOwner`. Stubs. Push. Expected: `postgres` and `browser` fail in the new files and cases.
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass. Branch K is ready to merge after the Owner's "fine".
@@ -1185,7 +1206,7 @@ The apps' plan builds the stores. These are decided here so both plans agree; no
 - **Apple and a game that left** (spec 5.8; Q1). `refundSalesOfGameThatLeft` leaves Apple's purchases alone. The apps' plan adds: one email to each such buyer with Apple's refund page; `SaleHold` (`purchaseId` the id, `heldAt`, `until`) and `SaleHoldEnd` (`purchaseId` the id, `why { refunded, refused, time }`, `at`), both add-only; `until` is 97 days after the purchase under Q1's answer (a), with the 90 read from Apple's own page first; the people's parts of a held sale, added up per person, are `PayoutCandidate.held`. A hold ends when Apple's notification says refunded or refused, or when `until` passes in the daily job.
 - **Blocking** (spec 5.6). The apps' plan adds its "may A reach B" check, from its feature `people`, to `proposeSplit`, both ways, with the sentence already in use: "We can't add that person."
 - **A game's rating** (spec 5.5). `extrasOf` takes the apps' plan's "may this person see this game" and answers nothing when they may not; the buy addresses refuse the same way.
-- **The hooks.** The apps' plan adds its areas to `GameMessage`, to `ruken-hooks.browser.js` and to `/make/hooks`. The envelope, the origin check and "one script" are this plan's.
+- **The hooks.** The apps' plan adds its areas to `GameMessage`, to `HOOKS_SCRIPT` (`src/features/play/hooks-script.ts`) and to `/help/hooks`. The envelope, the origin check and "one script" are this plan's.
 - **Test and live copies.** Everything here reads its Stripe keys and bucket from the settings the apps' plan's first step splits in two; `OWNED_NOTE_KEY` is one key per copy.
 
 ## Notes for the plans that follow
