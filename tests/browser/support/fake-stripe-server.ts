@@ -141,24 +141,19 @@ function readBody(request: IncomingMessage): Promise<string> {
 
 // ---- Stripe's JSON shapes ----
 
-// The answers below return `undefined`, so a route can end with `return send(...)`.
-
-function stripeError(response: ServerResponse, status: number, code: string, message: string): undefined {
+function stripeError(response: ServerResponse, status: number, code: string, message: string): void {
   response.writeHead(status, { "content-type": "application/json" });
   response.end(JSON.stringify({ error: { type: "invalid_request_error", code, message } }));
-  return undefined;
 }
 
-function send(response: ServerResponse, body: unknown): undefined {
+function send(response: ServerResponse, body: unknown): void {
   response.writeHead(200, { "content-type": "application/json" });
   response.end(JSON.stringify(body));
-  return undefined;
 }
 
-function plain(response: ServerResponse, status: number, body: string): undefined {
+function plain(response: ServerResponse, status: number, body: string): void {
   response.writeHead(status, { "content-type": "text/plain" });
   response.end(body);
-  return undefined;
 }
 
 function list(data: unknown[], url: string): Json {
@@ -326,31 +321,32 @@ async function sendAll(events: [string, Json][]): Promise<void> {
   for (const [type, object] of events) await sendEvent(type, object);
 }
 
-function page(response: ServerResponse, title: string, button: string): undefined {
+function page(response: ServerResponse, title: string, button: string): void {
   response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
   response.end(
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title></head>` +
       `<body><h1>${title}</h1><form method="POST"><button>${button}</button></form></body></html>`,
   );
-  return undefined;
 }
 
-function redirect(response: ServerResponse, to: string): undefined {
+function redirect(response: ServerResponse, to: string): void {
   response.writeHead(303, { location: to });
   response.end();
-  return undefined;
 }
 
 // ---- The router ----
 
-async function handle(request: IncomingMessage, response: ServerResponse): Promise<undefined> {
+async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const url = new URL(request.url ?? "/", PUBLIC_URL);
   const method = request.method ?? "GET";
   const path = url.pathname;
   // The SDK sends a GET's and a DELETE's fields in the query and a POST's in the body; both are read the same way.
   const fields = { ...parseForm(url.search.slice(1)), ...parseForm(await readBody(request)) };
 
-  if (method === "GET" && path === "/ready") return send(response, { ready: true });
+  if (method === "GET" && path === "/ready") {
+    send(response, { ready: true });
+    return;
+  }
 
   // ---- The API ----
   const product = /^\/v1\/products(?:\/([^/]+))?$/.exec(path);
@@ -363,19 +359,25 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
         name: text(fields, "name"),
         tax_code: text(fields, "tax_code"),
       });
-      return send(response, products.get(id));
+      send(response, products.get(id));
+      return;
     }
     const found = products.get(product[1] ?? "");
-    if (found === undefined) return stripeError(response, 404, "resource_missing", "No such product");
-    return send(response, found);
+    if (found === undefined) {
+      stripeError(response, 404, "resource_missing", "No such product");
+      return;
+    }
+    send(response, found);
+    return;
   }
 
   if (path === "/v1/prices" && method === "GET") {
     const keys = Object.values(child(fields, "lookup_keys"));
-    return send(
+    send(
       response,
       list([...prices.values()].filter((price) => keys.includes(price.lookupKey)).map(priceJson), path),
     );
+    return;
   }
   if (path === "/v1/prices" && method === "POST") {
     const interval = text(child(fields, "recurring"), "interval") === "year" ? "year" : "month";
@@ -386,13 +388,15 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       interval,
     };
     prices.set(price.id, price);
-    return send(response, priceJson(price));
+    send(response, priceJson(price));
+    return;
   }
 
   if (path === "/v1/customers" && method === "POST") {
     const customer = { id: nextId("cus"), object: "customer", email: text(fields, "email") };
     customers.set(customer.id, customer);
-    return send(response, customer);
+    send(response, customer);
+    return;
   }
 
   if (path === "/v1/checkout/sessions" && method === "POST") {
@@ -408,53 +412,67 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       subscriptionId: null,
     };
     sessions.set(session.id, session);
-    return send(response, sessionJson(session));
+    send(response, sessionJson(session));
+    return;
   }
   const checkout = /^\/v1\/checkout\/sessions\/([^/]+)(\/expire)?$/.exec(path);
   if (checkout !== null) {
     const session = sessions.get(checkout[1] ?? "");
-    if (session === undefined)
-      return stripeError(response, 404, "resource_missing", "No such checkout session");
+    if (session === undefined) stripeError(response, 404, "resource_missing", "No such checkout session");
+    return;
     if (checkout[2] !== undefined) {
       if (session.status !== "open") {
-        return stripeError(
+        stripeError(
           response,
           400,
           "checkout_session_not_open",
           "Only an open Checkout Session can be expired",
         );
+        return;
       }
       session.status = "expired";
     }
-    return send(response, sessionJson(session));
+    send(response, sessionJson(session));
+    return;
   }
 
   const subscriptionPath = /^\/v1\/subscriptions\/([^/]+)$/.exec(path);
   if (subscriptionPath !== null) {
     const subscription = subscriptions.get(subscriptionPath[1] ?? "");
-    if (subscription === undefined)
-      return stripeError(response, 404, "resource_missing", "No such subscription");
+    if (subscription === undefined) stripeError(response, 404, "resource_missing", "No such subscription");
+    return;
     if (method === "DELETE") {
       subscription.status = "canceled";
       subscription.endedAt = nowSeconds();
     }
-    return send(response, subscriptionJson(subscription));
+    send(response, subscriptionJson(subscription));
+    return;
   }
 
   // The membership only lists unpaid invoices of a subscription it is ending; the stand-in never makes one.
-  if (path === "/v1/invoices" && method === "GET") return send(response, list([], path));
+  if (path === "/v1/invoices" && method === "GET") {
+    send(response, list([], path));
+    return;
+  }
   const invoicePath = /^\/v1\/invoices\/([^/]+)$/.exec(path);
   if (invoicePath !== null) {
     const invoice = invoices.get(invoicePath[1] ?? "");
-    if (invoice === undefined) return stripeError(response, 404, "resource_missing", "No such invoice");
-    return send(response, invoiceJson(invoice));
+    if (invoice === undefined) {
+      stripeError(response, 404, "resource_missing", "No such invoice");
+      return;
+    }
+    send(response, invoiceJson(invoice));
+    return;
   }
 
   const intent = /^\/v1\/payment_intents\/pi_([^/]+)$/.exec(path);
   if (intent !== null) {
     const invoice = invoices.get(intent[1] ?? "");
-    if (invoice === undefined) return stripeError(response, 404, "resource_missing", "No such payment");
-    return send(response, {
+    if (invoice === undefined) {
+      stripeError(response, 404, "resource_missing", "No such payment");
+      return;
+    }
+    send(response, {
       id: `pi_${invoice.id}`,
       object: "payment_intent",
       latest_charge: {
@@ -463,6 +481,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
         balance_transaction: { object: "balance_transaction", fee: invoice.fee },
       },
     });
+    return;
   }
 
   if (path === "/v1/billing_portal/sessions" && method === "POST") {
@@ -471,15 +490,22 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       customerId: text(fields, "customer") ?? "",
       returnUrl: text(fields, "return_url") ?? SITE_URL,
     });
-    return send(response, { id, object: "billing_portal.session", url: `${PUBLIC_URL}/portal/${id}` });
+    send(response, { id, object: "billing_portal.session", url: `${PUBLIC_URL}/portal/${id}` });
+    return;
   }
 
   // ---- The hosted pages ----
   const payPage = /^\/pay\/([^/]+)$/.exec(path);
   if (payPage !== null) {
     const session = sessions.get(payPage[1] ?? "");
-    if (session?.status !== "open") return plain(response, 404, "No open payment page here.");
-    if (method === "GET") return page(response, "Stand-in payment page", "Pay");
+    if (session?.status !== "open") {
+      plain(response, 404, "No open payment page here.");
+      return;
+    }
+    if (method === "GET") {
+      page(response, "Stand-in payment page", "Pay");
+      return;
+    }
     const { events } = pay(session);
     if (url.searchParams.get("events") === "later") {
       // Stripe's news is late: the browser is sent back first, and the site hears three seconds later.
@@ -491,14 +517,21 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     } else {
       await sendAll(events);
     }
-    return redirect(response, session.successUrl);
+    redirect(response, session.successUrl);
+    return;
   }
 
   const portalPage = /^\/portal\/([^/]+)$/.exec(path);
   if (portalPage !== null) {
     const portal = portals.get(portalPage[1] ?? "");
-    if (portal === undefined) return plain(response, 404, "No portal here.");
-    if (method === "GET") return page(response, "Stand-in billing portal", "Cancel membership");
+    if (portal === undefined) {
+      plain(response, 404, "No portal here.");
+      return;
+    }
+    if (method === "GET") {
+      page(response, "Stand-in billing portal", "Cancel membership");
+      return;
+    }
     const subscription = [...subscriptions.values()].find(
       (candidate) => candidate.customerId === portal.customerId && candidate.status === "active",
     );
@@ -507,17 +540,20 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       subscription.cancelAt = subscription.periodEnd;
       await sendEvent("customer.subscription.updated", subscriptionJson(subscription));
     }
-    return redirect(response, portal.returnUrl);
+    redirect(response, portal.returnUrl);
+    return;
   }
 
   // What the journeys ask: the status of the subscription a checkout session made.
   const state = /^\/state\/([^/]+)$/.exec(path);
   if (state !== null) {
     const subscriptionId = sessions.get(state[1] ?? "")?.subscriptionId ?? "";
-    return plain(response, 200, subscriptions.get(subscriptionId)?.status ?? "none");
+    plain(response, 200, subscriptions.get(subscriptionId)?.status ?? "none");
+    return;
   }
 
-  return plain(response, 404, `the stand-in does not answer ${method} ${path}`);
+  plain(response, 404, `the stand-in does not answer ${method} ${path}`);
+  return;
 }
 
 createServer((request, response) => {
