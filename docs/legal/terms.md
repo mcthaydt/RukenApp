@@ -141,8 +141,8 @@ Read it here: [maker agreement](/legal/maker-agreement).
 [LAWYER TO CONFIRM; `research.md` section 11; Owner question 4 names the state]
 
 - **Talk to us first.** If you have a problem with Ruken, write to contact@ruken.io and tell us what's wrong. Neither of us goes to court until 30 days after you write, so there is time to put it right.
-- **The law of [STATE]**, where Ruken App LLC is formed, applies to these terms, without regard to rules that would pick another place's law.
-- **Courts.** A disagreement goes to the courts of [STATE]. You can also use small claims court where you live, if it can hear the case.
+- **The law of [OWNER: state]**, where Ruken App LLC is formed, applies to these terms, without regard to rules that would pick another place's law.
+- **Courts.** A disagreement goes to the courts of [OWNER: state]. You can also use small claims court where you live, if it can hear the case.
 - **If you live in the EU or the UK**, you keep the protection of the law where you live, and you can go to court there.
 
 ## Changes to these terms
@@ -154,4 +154,4 @@ Read it here: [maker agreement](/legal/maker-agreement).
 
 ## Contact
 
-Questions? Write to **contact@ruken.io**. See our [contact page](./contact.md).
+Questions? Chat with us, text us, or write to **contact@ruken.io**. See our [contact page](./contact.md).

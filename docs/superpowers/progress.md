@@ -565,5 +565,5 @@ Not legal advice; a lawyer gives the final say (Owner, 2026-11-14). Round 2, 14 
 
 - [x] Round 2 drafts written and pushed. 100% of this round.
 - [x] The Owner's later answers of 2026-11-14 applied: refunds are the strictest the law allows ("Okay we need to comply with law, have a very strict and discouraging refund policy, and if possible, none for the games themselves"); no data at all before agreeing ("Yes, no data at all until approval"; the consent spec now lists the eleven code changes); `[OWNER: postal address]` where the law needs one (a virtual address is coming). Makers' own DLC and subscriptions noted as future (research.md section 4a), no terms drafted.
-- [ ] The Owner's answers to the ten questions left in `research.md` section 14.
+- [x] The Owner's answers to every question in `research.md` section 14, applied 2026-11-14: a parent-says-yes tick; sell to anyone with the EU/UK 14 days; a "Request my data" button in Settings; contact by AI-first chat and text, no calls; 7 years for kept records; Cloudflare's per-request logs off; a DMCA agent; a lawyer's maker agreement v2; an accountant for sales tax. Ruken App LLC is not formed yet, so the pages say `[OWNER: state]` and can't take effect until it is.
 - [ ] A lawyer's review.

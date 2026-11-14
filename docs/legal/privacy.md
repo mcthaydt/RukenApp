@@ -79,7 +79,7 @@ If you ask us to tell you when a game is out, we keep that list, and a note that
 
 Every request to any website carries your device's internet address (IP address). Our hosting company, Cloudflare, needs it to send you the page, before we can even ask you anything. We don't keep it in our logs. Our own log lines say only what went wrong, never your email or internet address, and Cloudflare keeps them for 7 days so we can find and fix problems.
 
-[Not built yet: turning off Cloudflare's per-request logs is item 6 in `cookie-consent-spec.md`. Until it is, Cloudflare keeps a log entry for each request for 7 days.]
+[Not done yet: turning off Cloudflare's per-request logs is item 6 in `cookie-consent-spec.md`, approved by the Owner on 2026-11-14. It needs a change to Ruken's Cloudflare settings. Until then, Cloudflare keeps a log entry for each request for 7 days.]
 
 ## Who helps us
 
@@ -107,13 +107,14 @@ These companies handle some of your data for us:
 
 [LAWYER TO CONFIRM] How long payment and tax records must be kept by law (US tax records are often kept 7 years), and whether the records that stay need a set end date.
 
-[OWNER: How long the records that stay after deletion are kept. Suggested: 7 years, then removed.]
+We keep the records that stay for **7 years** after the payment or play they record, then remove them.
 
 ## Your choices
 
 - **Delete your account:** go to your account page and press **"Delete my account"**.
-- **Get a copy of your data**, or ask us to **delete or fix** something: email **contact@ruken.io** from the email address on your account.
-- **How we check it's you** [OWNER: question 1 in `research.md`; proposed]: we write back to the email address on the account with a link. We act only after you press it. If you write from a different address, we ask you to write from the one on your account. We never ask for your password.
+- **Get a copy of your data:** go to **Settings** and press **"Request my data"**. [Not built yet.]
+- **Fix something, or ask a question about your data:** chat with us, text us, or email **contact@ruken.io** from the email address on your account.
+- **How we check it's you:** ask from Ruken's settings while signed in, so we know it's your account. We also email a link to the address on your account, and act only after you press it. That stops someone who got hold of your signed-in device for a minute. We never ask for your password.
 - **Take back your agreement** at any time with the **Cookies** link at the bottom of every page. That signs you out on that browser and removes our cookies from it. Your account stays until you delete it.
 
 ### If you live in the EU or the UK
