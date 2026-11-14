@@ -1,6 +1,6 @@
 # Makers' sales: extras and splits
 
-Date: 2026-11-14. Status: written for the Owner's approval; not approved yet. Revised the same day with the Owner's answers on the app stores (5.2, 5.5, 5.7, 5.8). The launch date now follows the apps' own spec (9). Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`) and changes it only where this file says so.
+Date: 2026-11-14. Status: approved by the Owner on 2026-11-14 ("Approved"), together with the apps' spec (#107). Revised the same day with the Owner's answers on the app stores (5.2, 5.5, 5.7, 5.8). The launch date now follows the apps' own spec (9). Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`) and changes it only where this file says so.
 
 Lines marked **Owner** are the Owner's words or decisions. Lines marked **Call** are the spec writer's choices, shown to the Owner, who can overrule any of them. Nothing marked Call was agreed unless it says so.
 

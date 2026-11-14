@@ -117,13 +117,13 @@ Recorded by the coordinator (`session_01HNdX7JopLaJTd1JphMYiu7`), each quoted as
 
 ## Makers' sales: extras and splits
 
-Design: `docs/superpowers/specs/2026-11-14-makers-sales-design.md`, written for the Owner's approval on 2026-11-14 on branch `claude/project-thread-poe4ma`; not approved, not merged. It is not one of the six slices, so the overall percentage above does not count it. Progress: 10% (the spec written; nothing planned or built).
+Design: `docs/superpowers/specs/2026-11-14-makers-sales-design.md`, approved by the Owner on 2026-11-14 ("Approved", with the apps' spec #107), on pull request #106. It is not one of the six slices, so the overall percentage above does not count it. Progress: 10% (the spec approved; nothing planned or built).
 
 The Owner's answers in the spec conversation, 2026-11-14, each quoted as given: "B, what's the best UX/UI for that?" (buy from Ruken's Extras button and when the game asks); "By the back arrow? we also need a store inside of ruken itself, like on the game page"; "2. A" (a season pass has a start and end date, sold only in its season); "3. A" (only the game's maker changes a split, from that moment on, with an email to everyone in it); "a) Yes, check it like a game, including playing to see it unlocks"; "5. A" (a game taken down refunds its extras bought in the 14 days before, from the game's earnings). From the Owner board: "2. A" (card fees off the top, then 70/30; lowest price $0.99).
 
 Stages:
 
-- [ ] Spec: written, waiting for the Owner's approval. No test ran; no code was written.
+- [x] Spec: approved (Owner, 2026-11-14: "Approved"). No test ran; no code was written.
 - [ ] Plan.
 - [ ] Plan audit.
 - [ ] Execution.
