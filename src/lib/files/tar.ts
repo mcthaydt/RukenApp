@@ -23,7 +23,7 @@ const utf8 = new TextDecoder();
  */
 class ByteReader {
   readonly #reader: ReadableStreamDefaultReader<Uint8Array>;
-  #piece = new Uint8Array(0);
+  #piece: Uint8Array = new Uint8Array(0);
   #at = 0;
 
   constructor(stream: ReadableStream<Uint8Array>) {
