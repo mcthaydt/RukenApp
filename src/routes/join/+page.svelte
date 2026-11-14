@@ -37,7 +37,7 @@
     <p><a href="/">Not now</a></p>
   {:else}
     <h1>Join Ruken to play</h1>
-    <p>{data.prices.monthly} a month, or {data.prices.annual} a year. Tax is added where it applies.</p>
+    <p>Tax is added where it applies.</p>
     <p>Renews until you cancel. You can cancel any time from your account.</p>
     {#if data.signedIn}
       <p>You pay on the next page, then come straight back.</p>
