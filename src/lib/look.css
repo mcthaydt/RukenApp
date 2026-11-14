@@ -272,7 +272,9 @@ label {
 }
 
 /* A field is the one place an edge is allowed, and it is ink so a field is not faint on paper. */
-input:not([type="radio"], [type="checkbox"]) {
+input:not([type="radio"], [type="checkbox"]),
+select,
+textarea {
   width: 100%;
   min-height: var(--size-target);
   margin-top: 0.25rem;
