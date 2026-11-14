@@ -5,7 +5,7 @@
 <script lang="ts">
   import type { PageProps } from "./$types";
 
-  let { data }: PageProps = $props();
+  let { data, form }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -19,7 +19,16 @@
   {:else}
     <p>We'll sign you out everywhere now, and delete your account in 14 days.</p>
     <p>Changed your mind? Sign in before then and nothing is deleted.</p>
+    {#if data.paying}
+      <p>
+        Your membership ends now. There is no refund for the time left, and signing in again does not bring it
+        back.
+      </p>
+    {/if}
     <form method="POST">
+      {#if form?.error}
+        <p class="problem" role="alert">{form.error}</p>
+      {/if}
       <button>Delete my account</button>
     </form>
   {/if}

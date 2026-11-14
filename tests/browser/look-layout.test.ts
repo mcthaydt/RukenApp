@@ -106,9 +106,9 @@ test.describe("your account", () => {
     const air = await airAround(again);
     const line = await boxOf(page.getByText("Confirm your email. We sent you a link.", { exact: true }));
     closeTo(box.y + air - bottomOf(line), 16);
-    // And the button under it follows at the same rhythm: no hole below the words.
-    const signOut = await boxOf(page.getByRole("button", { name: "Sign out" }));
-    closeTo(signOut.y - (bottomOf(box) - air), 16);
+    // And what follows it, now the membership line, comes at the same rhythm: no hole below the button.
+    const membership = await boxOf(page.getByText("You're not a member.", { exact: true }));
+    closeTo(membership.y - (bottomOf(box) - air), 16);
   });
 
   test("a quiet button is never stretched across the card", async ({ page }) => {
