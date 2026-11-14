@@ -230,7 +230,7 @@ Handoff, sixth execution session (coordinator `session_01HNdX7JKYUteXqFnZHx6dez`
 - Git: author `mcthaydt`, no Claude attribution. Merge main into a branch, never rebase; no force-push. `gh pr close` and `gh pr ready` do not work (GraphQL is blocked here): use `gh api -X PATCH repos/mcthaydt/RukenApp/pulls/<n> -f state=closed` and `gh api -X POST repos/mcthaydt/RukenApp/pulls/<n>/ccr/ready_for_review`. Prettier may be run on files to format them; no other check is run here.
 - Two notes: a push to a branch cancels its CI run in progress (the workflow cancels older runs), so wait for a red run to finish before pushing the green. A script-enhanced form (`use:enhance`) is new in the app (the copy note); a journey that needs it waits with `page.waitForLoadState("networkidle")`, as `join.test.ts` does.
 
-Seventh session, slice 2 (stage 6, fixes of the maker screens review; coordinator `session_01HNdX7JKYUteXqFnZHx6dez`, started 2026-11-14 about 13:00 UTC). Progress: 95% (green in run 43615227949; two spacing fixes from looking at the screenshots follow, then the Owner's look).
+Seventh session, slice 2 (stage 6, fixes of the maker screens review; coordinator `session_01HNdX7JKYUteXqFnZHx6dez`, started 2026-11-14 about 13:00 UTC). Progress: 100% of F1 to F22 built and green (run 43616066455, head `7b423d4`: verify, postgres and browser pass; `playwright-report` artifact 14122496915). Waiting for the Owner's "fine" on the screenshots, and for the Owner's OK to put the date in the agreement file's title line. #63 stays a draft.
 
 - Source: `docs/superpowers/audits/2026-11-14-maker-screens-review.md` (merged into `slice-2/submit` first, as asked, so it travels with #63; main was merged in after it). The Owner, 2026-11-14: "it's a bit low effort; I don't like the native choose file button, and some of the button text makes things confusing"; "The maker agreement is fine, but I think we need a date and better formatting so it's easier to read".
 - In scope: F1 to F22. Not in scope, waiting for the Owner's words: N1 (editing a game's name and line) and N2 (throwing away a draft). N3 to N9 are notes.
@@ -238,15 +238,15 @@ Seventh session, slice 2 (stage 6, fixes of the maker screens review; coordinato
 - Red seen: run 43613642699 (head `a761243`): `verify` passed lint and typecheck and failed only in the new and changed unit tests (`size-words`, `video-choice`, `fields`, `review`, `agreement`, `clips`, `files-check`, and the look cases); `postgres` and `browser` failed. (The first red push, `f514dd0`, was voided by one lint error in my journey file: a void arrow.)
 - First run of the code, 43614413822 (head `6bbde02`): `postgres` passed; `verify` failed typecheck (a union that dropped `error` in `/make/new`'s action); `browser` passed 333 and failed 8 (4 journeys on two devices): the 31 MB file handed over as bytes timed out (it is now chosen by path), a refused send left the agreement box on screen (the page's data is read anew after a refused send), my live-game journey had no videos so the send was rightly refused, and the agreement's title-to-words gap measured 8.9px against my guess of 8 (the guess is now 12, which is still one small step).
 - Second run, 43614831943 (head `8fb5204`): `postgres` passed; `verify` failed lint (`invalidateAll` is deprecated: now `refreshAll`); `browser` passed 340, failed 1 (a focus check pressed before the page's script had run; the journey now waits, as the others do).
-- Third run, 43615227949 (head `9e3fb28`): verify, postgres and browser all pass (341 journeys); `playwright-report` artifact 14122201963. Looking at its screenshots: the first game in Your games sat tight under the title, and a quiet Send sat tight under the agreement fold-out; both fixed in the next commit.
+- Last run, 43616066455 (head `7b423d4`): all three jobs pass, with the two spacing fixes. Third run, 43615227949 (head `9e3fb28`): verify, postgres and browser all pass (341 journeys); `playwright-report` artifact 14122201963. Looking at its screenshots: the first game in Your games sat tight under the title, and a quiet Send sat tight under the agreement fold-out; both fixed in the next commit.
 - Rulings: (1) The clip rules the browser also needs (the 30 MB limit, the two types) live in `src/lib/video-choice.ts`, not in the games feature, because a screen may reach a feature only through its entry and that entry holds the server's code. (2) "Clip" becomes "video" in every word a maker reads, not only the ones F14 names. (3) The next-step line under a game's state is body size in every state, not `note`, since a tired maker must not have to squint at the one thing to do (F9 sets it as a note; F8 as body). (5) A new look class, `field` (a box with its label, hint and refusal), was added to the look test's list in the green commit, with `file`, `step` and `game`; the red already named the other three. (4) A refused picker gets no heavier edge (it is a button, not a box); its refusal is in bold words under the video's line, and the box that is refused is marked `aria-invalid`.
 
 | Finding | State |
 |---|---|
-| F1 our own picker; F2 added when chosen | code pushed |
-| F3 button words; F4 no double press; F5 Game files first; F6 refusals under their boxes; F7 no "Step 3 of 3" | code pushed |
-| F8 one checklist; F9 sent back; F10 the agreement (the date waits for the Owner's OK on the file's title line); F11 Your games | code pushed |
-| F12 to F22 (should fix) | code pushed |
+| F1 our own picker; F2 added when chosen | green (run 43616066455) |
+| F3 button words; F4 no double press; F5 Game files first; F6 refusals under their boxes; F7 no "Step 3 of 3" | green (run 43616066455) |
+| F8 one checklist; F9 sent back; F10 the agreement (the date waits for the Owner's OK on the file's title line); F11 Your games | green (run 43616066455) |
+| F12 to F22 (should fix) | green (run 43616066455) |
 
 The Owner's own tasks, and where execution stops for each:
 
