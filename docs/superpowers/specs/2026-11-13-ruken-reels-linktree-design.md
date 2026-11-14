@@ -225,17 +225,19 @@ The idea: the page is quiet green felt, and what a person picks up or acts on is
 
 - **Colours** (one theme, dark by choice; no gradients):
 
+  Owner, 2026-11-14: "Can we shift the palette of the site to the closest reference from A Dictionary Of Color Combinations - they're actually gorgeous", then "A: closest from the book". Each colour is the nearest (CIELAB) of the 159 colours in the MIT-licensed dictionary-of-colour-combinations data set (the same data maker pages use, 5.3), named as the book names it. The ratios were measured from those values. The Card Table's earlier values are in this file's history.
+
   | Token | Value | Used for |
   | --- | --- | --- |
-  | `felt` | `#1c3a2f` | the page |
-  | `felt-deep` | `#142c23` | panels on the felt, the footer |
-  | `felt-raised` | `#25483a` | secondary buttons, tracks |
-  | `chalk` | `#eef2ec` | all text on felt (10.9:1 on felt) |
-  | `sage` | `#a8bfb2` | notes on felt only (6.3:1), never running text |
-  | `paper` | `#f1efe9` | cards; the primary button on felt |
-  | `ink` | `#191b1a` | all text on paper (15.1:1) |
-  | `ink-soft` | `#4a504c` | notes on paper (7.2:1) |
-  | `pip` | `#c43b26` | the one paid action ("Continue to payment") and small markers; paper text on it is 4.57:1; never a field. Call, 2026-11-13: one step darker than the design sheet's `#c63c26`, which measures 4.48:1 with paper text. |
+  | `felt` | `#112f2c` Deep Slate Green | the page |
+  | `felt-deep` | `#111314` Black | panels on the felt, the footer |
+  | `felt-raised` | `#004f46` Dusky Green | secondary buttons, tracks |
+  | `chalk` | `#ffffff` White | all text on felt (14.3:1 on felt) |
+  | `sage` | `#b4cdc2` Glaucous Green | notes on felt only (8.5:1), never running text |
+  | `paper` | `#ffffff` White | cards; the primary button on felt |
+  | `ink` | `#111314` Black | all text on paper (18.6:1) |
+  | `ink-soft` | `#34454c` Slate Color | notes on paper (10.0:1) |
+  | `pip` | `#cb2f43` Scarlet | the one paid action ("Continue to payment") and small markers; paper text on it is 5.2:1; never a field. The book's nearest red to the old pip, Red Orange `#dd4027`, gives paper text only 4.3:1, so the nearest red that passes 4.5:1 is used. |
 
   Surfaces are told apart by a tone step, never by a line or a shadow.
 - **Type.** Young Serif (400) for headings and card titles; Schibsted Grotesk, 400 for text and 600 for buttons. Both are under the SIL Open Font License and are served from Ruken's own address with their licences beside them; the site makes no request to a font service. Sizes: section heading 64px (36px on a phone), card title 32px, statement 24px, body 18px at 1.55 leading, small 14px for notes only. Sentence case; left aligned.

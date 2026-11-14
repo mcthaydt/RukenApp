@@ -47,6 +47,14 @@ export const CARD_SCREENS: { name: string; open(page: Page): Promise<void> }[] =
     },
   },
   {
+    // Signed out, where its one button is the ink "Continue" and nothing on it is red.
+    name: "the paywall card",
+    open: async (page) => {
+      await page.goto("/join");
+      await expect(page.getByRole("heading", { name: "Join Ruken to play" })).toBeVisible();
+    },
+  },
+  {
     name: "a missing page",
     open: async (page) => {
       await page.goto("/no-such-page");

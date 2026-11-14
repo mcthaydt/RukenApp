@@ -11,30 +11,45 @@ export default defineConfig({
   // A missing page or field fails in 5 seconds, not after the whole 30-second test timeout, so a
   // journey that cannot find its form says so quickly.
   use: { baseURL: "http://localhost:4173", trace: "off", actionTimeout: 5_000 },
-  webServer: {
-    // The app reads a database, so the migrations run before the build, as the deploy command does.
-    command:
-      "pnpm exec prisma migrate deploy && pnpm build && pnpm exec wrangler dev cloudflare/worker.js --port 4173 --test-scheduled",
-    url: "http://localhost:4173",
-    reuseExistingServer: false,
-    timeout: 180_000,
-    env: {
-      DIRECT_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
-      // Where `wrangler dev` points the Worker's Hyperdrive binding: the journeys' own database, and no other.
-      CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: process.env.TEST_DATABASE_URL ?? "",
-      // So `wrangler dev` gives the Worker the settings below (there is no .dev.vars file).
-      CLOUDFLARE_INCLUDE_PROCESS_ENV: "true",
-      // The hook now runs on every request, so the sign-in settings must exist. All plainly fake.
-      BETTER_AUTH_SECRET: "test-only-secret-not-used-anywhere-real",
-      BETTER_AUTH_URL: "http://localhost:4173",
-      // No journey uses this address, so the journeys send no mail and need no mail server.
-      RESEND_API_KEY: "re_test_fake",
-      MAIL_ALLOWLIST: "nobody@ruken.test",
-      MAIL_FROM: "Ruken <hello@ruken.test>",
-      // The daily job's secret, so the journeys can knock on it. Plainly fake.
-      JOBS_SECRET: "test-only-jobs-secret",
+  webServer: [
+    {
+      // A stand-in for Stripe's API and its hosted pages (tests/browser/support/fake-stripe-server.ts), so the
+      // journeys can pay and cancel with no network. It is ready when it answers /ready.
+      command: "node tests/browser/support/fake-stripe-server.ts",
+      url: "http://127.0.0.1:12111/ready",
+      reuseExistingServer: false,
+      timeout: 30_000,
     },
-  },
+    {
+      // The app reads a database, so the migrations run before the build, as the deploy command does.
+      command:
+        "pnpm exec prisma migrate deploy && pnpm build && pnpm exec wrangler dev cloudflare/worker.js --port 4173 --test-scheduled",
+      url: "http://localhost:4173",
+      reuseExistingServer: false,
+      timeout: 180_000,
+      env: {
+        DIRECT_DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
+        // Where `wrangler dev` points the Worker's Hyperdrive binding: the journeys' own database, and no other.
+        CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: process.env.TEST_DATABASE_URL ?? "",
+        // So `wrangler dev` gives the Worker the settings below (there is no .dev.vars file).
+        CLOUDFLARE_INCLUDE_PROCESS_ENV: "true",
+        // The hook now runs on every request, so the sign-in settings must exist. All plainly fake.
+        BETTER_AUTH_SECRET: "test-only-secret-not-used-anywhere-real",
+        BETTER_AUTH_URL: "http://localhost:4173",
+        // No journey uses this address, so the journeys send no mail and need no mail server.
+        RESEND_API_KEY: "re_test_fake",
+        MAIL_ALLOWLIST: "nobody@ruken.test",
+        MAIL_FROM: "Ruken <hello@ruken.test>",
+        // The daily job's secret, so the journeys can knock on it. Plainly fake.
+        JOBS_SECRET: "test-only-jobs-secret",
+        // Money goes through the stand-in Stripe, never the real one. All plainly fake.
+        STRIPE_SECRET_KEY: "sk_test_fake",
+        STRIPE_WEBHOOK_SECRET: "whsec_test_fake",
+        STRIPE_LIVE: "false",
+        STRIPE_API_BASE: "http://127.0.0.1:12111",
+      },
+    },
+  ],
   projects: [
     { name: "phone", use: { ...devices["Pixel 7"] } },
     { name: "computer", use: { ...devices["Desktop Chrome"] } },
