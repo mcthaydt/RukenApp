@@ -51,6 +51,8 @@ export interface Step {
   readonly name: string;
   /** True for a step the rest must not run without: a month must not become final on facts that are not all in. */
   readonly blocksTheRest?: boolean;
+  /** True for a step that must not run in a run where any step before it failed. */
+  readonly onlyIfAllWentWell?: boolean;
   run(): Promise<void>;
 }
 
