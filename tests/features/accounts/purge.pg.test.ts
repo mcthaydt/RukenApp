@@ -183,6 +183,53 @@ describe("purgeDueAccounts", () => {
     expect(await db().gitHubRepository.count({ where: { fullName: "staying/game" } })).toBe(1);
   });
 
+  // A maker's page is a person's data (slice 3): it stays up while the 14 days run, and goes with the person.
+  it("keeps a person's page up for the 14 days, then removes it and its links, and frees the address", async () => {
+    // Review Focus 14
+    const leaving = await seedPerson();
+    const staying = await seedPerson();
+    for (const [userId, handle] of [
+      [leaving.id, "leaving-maker"],
+      [staying.id, "staying-maker"],
+    ] as const) {
+      await db().makerPage.create({
+        data: {
+          userId,
+          handle,
+          name: "A maker",
+          links: {
+            create: [
+              { kind: "link", title: "One", url: "https://example.com/1", position: 0 },
+              { kind: "link", title: "Two", url: "https://example.com/2", position: 1 },
+            ],
+          },
+        },
+      });
+    }
+    const clock = await askToBeDeleted(leaving.id);
+
+    clock.advance(13 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(0);
+    expect(await db().makerPage.count({ where: { userId: leaving.id } })).toBe(1);
+    expect(await db().pageLink.count({ where: { page: { userId: leaving.id } } })).toBe(2);
+
+    clock.advance(2 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock })).toBe(1);
+
+    expect(await db().makerPage.count({ where: { userId: leaving.id } })).toBe(0);
+    expect(await db().pageLink.count({ where: { page: { handle: "leaving-maker" } } })).toBe(0);
+    expect((await db().user.findUniqueOrThrow({ where: { id: leaving.id } })).status).toBe("deleted");
+    // Another account can take the address at once.
+    await expect(
+      db().makerPage.create({
+        data: { userId: (await seedPerson()).id, handle: "leaving-maker", name: "New" },
+      }),
+    ).resolves.toMatchObject({ handle: "leaving-maker" });
+    // Nobody else's page is touched.
+    expect(await db().makerPage.count({ where: { userId: staying.id } })).toBe(1);
+    expect(await db().pageLink.count({ where: { page: { userId: staying.id } } })).toBe(2);
+  });
+
   // Review Focus 6 of the plan: the money rows are the ledger, so they outlive the person's details. The purge only
   // turns the user row into a tombstone; these rows point at it and must all still be there, unchanged.
   it("leaves the payment, the membership start and the membership rows as they were", async () => {

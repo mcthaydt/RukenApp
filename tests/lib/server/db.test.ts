@@ -1,12 +1,14 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import { describe, expect, it, vi } from "vitest";
 import {
+  createSharedClient,
   databasePerRequest,
   prisma,
   requestScopedAdapter,
   type PrismaClient,
   type RequestConnection,
 } from "../../../src/lib/server/db.ts";
+import { PrismaClient as NodePrismaClient } from "../../support/generated/prisma/client.ts";
 
 // A Worker may not use a database connection that another request opened, so every request gets a client of
 // its own, and `prisma()` always reaches the client of the request that is running.
@@ -161,5 +163,85 @@ describe("requestScopedAdapter", () => {
     const { adapter } = await sharedAdapter();
 
     await expect(adapter.queryRaw(QUERY)).rejects.toThrow("The database is only reachable inside a request.");
+  });
+});
+
+// Prisma batches the calls made in one tick and sends the batch from the tick's first caller. With one client for
+// every request, a request's call could be sent from another request's context: its statement then went out
+// on that request's connection, or, on the Worker, was started by a request that was about to end, and never
+// finished (two browser journeys hung that way). Each request must be served from its own context.
+describe("createSharedClient", () => {
+  const NO_ROWS = { columnNames: [], columnTypes: [], rows: [] };
+
+  /**
+   * Stand-ins for the connections a request opens, numbered in the order they open. Each notes every query it
+   * gets. A query whose first value is a connection's name is a probe: it says which connection answered it.
+   */
+  function fakeConnections(shared: () => PrismaClient) {
+    const notes: string[] = [];
+    let opened = 0;
+    const connect = () => {
+      const name = `connection ${String(++opened)}`;
+      const connection = {
+        queryRaw: (query: { args: unknown[] }) => {
+          notes.push(`${name} got ${String(query.args[0])}`);
+          return Promise.resolve(NO_ROWS);
+        },
+        // A transaction of this connection. Each statement it runs asks the client from where it runs, and the
+        // connection that answers is the one of the request whose context the statement runs in.
+        startTransaction: () =>
+          Promise.resolve({
+            provider: "postgres",
+            adapterName: "fake",
+            options: { usePhantomQuery: false },
+            queryRaw: async () => {
+              await shared().$queryRaw`SELECT ${name}`;
+              return NO_ROWS;
+            },
+            executeRaw: () => Promise.resolve(0),
+            commit: () => Promise.resolve(),
+            rollback: () => Promise.resolve(),
+          }),
+      };
+      return Promise.resolve(connection as unknown as RequestConnection);
+    };
+    return { connect, notes };
+  }
+
+  /** Two requests at the same moment, each running `work` on the shared client. */
+  async function twoRequestsRunning(work: (client: PrismaClient, who: string) => Promise<unknown>) {
+    // The connections' transactions ask this client, which is made from the connections, so they reach it by name.
+    const { connect, notes } = fakeConnections(() => client);
+    const client = createSharedClient(connect, NodePrismaClient as unknown as typeof PrismaClient);
+    const open = () => client;
+    await Promise.all([request(() => work(client, "one"), open), request(() => work(client, "two"), open)]);
+    return notes;
+  }
+
+  it("sends each request's queries to the connection that request opened", async () => {
+    const notes = await twoRequestsRunning((client, who) =>
+      who === "one"
+        ? client.user.findUnique({ where: { id: "id-one" } })
+        : client.user.findUnique({ where: { email: "two@example.test" } }),
+    );
+
+    // Each of the two connections got exactly one query. Sent from one request's context, both would land on
+    // the first connection.
+    expect(notes.map((note) => note.split(" got ")[0]).sort()).toEqual(["connection 1", "connection 2"]);
+  });
+
+  it("runs a transaction's statements in the context of the request that began the transaction", async () => {
+    const notes = await twoRequestsRunning((client) =>
+      client.$transaction(async (transaction) => {
+        await transaction.user.findUnique({ where: { id: "id" } });
+        await transaction.user.findUnique({ where: { email: "someone@example.test" } });
+      }),
+    );
+
+    // A probe is "connection N got connection M": the statement of a transaction on connection M was run from
+    // the context of the request whose connection is N.
+    const probes = notes.filter((note) => note.includes(" got connection "));
+    expect(probes.length).toBeGreaterThan(0);
+    expect(probes.filter((note) => note.split(" got ")[0] !== note.split(" got ")[1])).toEqual([]);
   });
 });

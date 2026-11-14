@@ -12,7 +12,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
 | 1 | Accounts and membership | Every branch is merged to main: A #13, B #14, C #18, D #21, G #26, L #25, E0 #31, E #33, F #35, H #36, the Hyperdrive id #38, and the palette and 12px buttons #42. Plan, Cloudflare revision and look plan, with their audits, merged (#10, #12, #15, #19, #22, #23); the implementation audit merged (#43). The audit's six fixes are on `slice-1/fixes` (pull request #45, a draft). Open: S1 and S2 (the Owner), and Task 31 on the real site | 90% |
 | 2 | Games and play | plan merged (#27). Plan audit written, with the plan fixed and the coordinator's answers and the Owner's decision of 2026-11-14 (makers take their own games off Ruken) in it, merged (#29). The first execution session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) is on branch A, `slice-2/game` (pull request #44, a draft; the progress here is its own to set). Open: the maker agreement's text (the coordinator supplies it before branch M), FloorFifty's two clips and four items in FloorFifty's own repository | 52% (tasks 1 to 16 of 31 green: branches A to E, E waiting on G2 and G3) |
-| 3 | The feed and the maker's page | plan merged (#53); no code yet. Q1 (social icons) and Q2 (the maker's photo) are answered by the Owner, 2026-11-14 | 0% |
+| 3 | The feed and the maker's page | plan merged (#53). Branch A merged (#66); branch B built on pull request #73 (a draft). Q1 (social icons) and Q2 (the maker's photo) are answered by the Owner, 2026-11-14 | 30% (tasks 1 to 8 of 27 green) |
 | 4 | Submitting and the admin portal | plan written on `plan/slice-4` (pull request #58; Owner, 2026-11-14: "Start slice 4 plan now"), not merged; no code yet. The Owner's four answers of 2026-11-14 are written in | 0% |
 | 5 | Money (after launch, before 10 December) | plan merged (#55), started alongside slice 2's build (Owner, 2026-11-14: "Slice 5 plan"). Its three questions are answered and written in: the cost of sending a payout is held back and fixed later, bank accounts in the United States only for now (the Owner), and the second person and the code come from slice 4 (the coordinator). Nothing built | 0% |
 
@@ -51,9 +51,11 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | spec, the landing page | 1 Spec | none | parked (Owner, 2026-11-14: "We'll address the landing page when they can upload a game"); players first, then developers (Owner: "Appeal to players first, then developers"); `/` stays as it is until then |
 | spec, games before launch: the wishlist and a maker's numbers | 1 Spec | `spec/wishlist` | approved (Owner, 2026-11-14: "approved"); `docs/superpowers/specs/2026-11-14-wishlist-before-launch-design.md`; plan next |
 | execution, slice 3, branch A (`session_01HNdX7Lu88QTewJX8NtAg8u`) | 4 Execution | `slice-3/themes` | running (needs slice 1 only) |
-| audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | running (Owner, 2026-11-14: "take a screenshot of every single screen, every orientation, every device type, audit them one by one") |
+| audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | done: 39 states of `main` at `6ad0214`, 390 screenshots on 10 views each (live test-mode site, 7 states on a local copy), every one looked at; `docs/superpowers/audits/2026-11-14-screens-audit.md`: 2 block launch, 13 should fix, 14 notes; findings reported, not fixed. No test ran |
 | audit, FloorFifty for production (`session_01HNdX7HXjg2huySfHRH521r`, in SNEKPRTY/FloorFifty) | audit | FloorFifty's own branch | running (Owner, 2026-11-14: "audit the game for production excluding known gaps like deployment") |
+| plan, games before launch: the wishlist (`session_01HNdX7J7xTV329GjHcGAkVQ`) | 2 Plan | `spec/wishlist` | plan written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`); not merged; Q1 is with the Owner; Q2 answered by the coordinator; shaped so the beta builds plan adds to it |
 | plan, beta builds | 2 Plan | `spec/beta-builds` | plan written (`docs/superpowers/plans/2026-11-14-beta-builds.md`), not merged; Q1 and Q2 answered by the coordinator, Q3 is with the Owner |
+| plan audit, wishlist and beta builds | 3 Plan audit | `audit/wishlist-beta-plan` | audit written, both plans fixed; draft pull request when fewer than three are open; Q-A with the Owner |
 
 ## Defect: the Worker ran out of memory (2026-11-14)
 
@@ -66,6 +68,15 @@ Fifth execution session of slice 2 (coordinator `session_01HNdX7JKYUteXqFnZHx6de
 - The tests: `tests/lib/server/db.test.ts` (four, on the adapter) and `tests/browser/worker-memory.test.ts` (300 requests that ask the database; it fails when the Worker's processes grow more than 250 MB, where a client per request grew about 835 MB). Red: run 43582206648 (verify failed on `not built yet` in the four new tests only, after lint and typecheck passed; the journey drove workerd to the abort). Green: run 43582428735 (verify, postgres and browser all pass; the memory journey passes in 3.2 seconds, 241 journeys passed and the one skipped is that journey's phone copy, which is skipped on purpose; no abort).
 - Not tried and not needed: retries, longer timeouts, splitting the runs, skipping a journey.
 - Branches `fix/workerd-abort` and `diag/workerd-abort-2` (the diagnostics, pull requests #65 and #67, both closed) are still on GitHub: this session cannot delete a branch through its proxy, so the merge session removes them.
+
+## Defect: a browser journey hung (2026-11-14)
+
+Sixth execution session of slice 2 (coordinator `session_01HNdX7JKYUteXqFnZHx6dez`), branch `fix/per-request-batching` (pull request #75, a draft until the runs below are in). "The Workers runtime canceled this request because it detected that your Worker's code had hung" in the browser job, a phone or computer journey that posts to `/join` or `/sign-up` (runs 43583075489, 43585020139, and again in 43587377066 and the three diagnostic runs below).
+
+- What the diagnostic showed (draft #74, closed; its branch `diag/hang` stays until this is merged; runs 43586201619, 43586556080, 43586926580): every hung request stopped inside a Prisma interactive transaction, and Postgres showed that transaction "idle in transaction", waiting for the Worker's next statement, which never arrived. Each time, another request started a transaction within about 25 ms. Logging every call made on a transaction showed one request's statement running in the async context of the other: `r8(now in r7) tx.queryRaw UPDATE ...`; the stack ended in Prisma's `singleLoader`. That statement never completed and never reached Postgres.
+- Cause: Prisma's DataLoader sends every call made inside an interactive transaction, and every `findUnique`, from one `process.nextTick` that the first caller scheduled. With the one shared client (#68), that tick belongs to whichever request called first and sends the other requests' calls from its context. Node does the same (the new tests fail there); on the Worker a call started by a request that is about to end never finishes. Not tried: reverting #68 (the memory fix stays).
+- The fix: `batchPerRequest` in `src/lib/server/db.ts` gives each request a DataLoader of its own, made from the shared one's class and options. It reaches into Prisma's `_requestHandler`, which is not public, and stops with a message if that moves.
+- The tests: two in `tests/lib/server/db.test.ts` (`createSharedClient`): two requests' queries land on one connection each, and a transaction's statements run in the context of the request that began it. Red, for the right reason: run 43588356815 (verify: both failed on their assertions only, `[connection 1, connection 1]` and `connection 1 got connection 2`). Green: run 43588629575, three attempts of the same commit, all three jobs each time (the hang had struck in most recent runs). Whether it is gone for good is seen over the next runs on main; a hang that returns is reported at once.
 
 ## Slice 0: Start
 
@@ -270,6 +281,7 @@ Stages:
 - [ ] Plan audit (`docs/superpowers/audits/2026-11-14-slice-3-plan-audit.md`, of `main` at `527bca3`): 0 block launch, 14 should fix, 18 notes; the plan is not changed yet. On branch `audit/slice-3-plan`; not done until merged. No test ran; the two packages were downloaded outside the repository (the colour data equals the plan's numbers; 135 of 348 combinations pass the plan's rule).
 - [ ] Execution, branch by branch (below).
   - Branch A `slice-3/themes` (execution session, from `main` at `6ad0214`, draft pull request #66). [ ] Task 1 the colour data: red seen in run 43580375224 (head `b4c3cbf`): `verify` failed in `colours.test.ts` with "not built yet: coloursOf"; `postgres` and `browser` passed. A first red (run 43580116712) failed only because the test read the source record when the file loaded, so it was fixed to read it inside its own test. The colour package was downloaded outside the repository and measured: tarball integrity, `colors.json` 60,245 bytes and its SHA-256 equal the plan's numbers, and its licence is byte for byte the one already in `src/lib/`. [x] Task 1 done: green in run 43580581843 (head `c3ce09b`): unit 782 tests in 59 files, postgres 262 in 19, browser green. The test file is `tests/features/pages/library/colours.test.ts`, mirroring the data file (audit N12). [ ] Task 2 contrast, in the app: red seen in run 43580777472 (head `c4778c7`): `verify` failed the four cases in `tests/lib/colour.test.ts` with "not built yet: contrast"; `postgres` and `browser` passed. [x] Task 2 done: green in run 43581058479 (head `dc3eb40`): unit 786 tests, postgres 262, browser green; `look-tokens.ts` re-exports `contrast`, and `tests/lib/look.test.ts` passed unchanged. [x] Task 3 which combinations are offered: red seen in run 43581338126 (head `3e99d12`): `verify` failed 9 of 801 tests in `themes.test.ts`, all "not built yet" or the empty list, nothing else. Green in run 43581594199 (head `2095c84`): unit 801 tests in 61 files, postgres 262 in 19, browser green. **Offered themes: 135 of 348**, read from that run's log (`offered themes: 135 of 348`); it is over the plan's stop line of 50, so the picker is not thin. Branch A is built; pull request #66 is marked ready once this tracker commit is green.
+  - Branch B `slice-3/page-rules` (execution session, from `main` at `59fa8af`). Four pull requests were open when it started (the cap is three), and CI runs on pull requests, not on branch pushes, so the draft (#73) waited for a slot. [x] Task 4 the pages tables: red seen in run 43585781888 (head `ebbf865`): 8 tests failed, all in `schema.pg.test.ts`, with `relation "MakerPage" does not exist`; verify and browser passed. Green: run 43586071381 (head `8eb46f9`), all three jobs. [x] Task 5 the rules for an address: red seen in run 43586285383 (head `39c0ef7`): `verify` failed 17 cases, all in `handle.test.ts`, with `not built yet` (lint and typecheck clean). Green: run 43586513461 (head `4aa670d`), all three jobs. [x] Task 6 the rules for a link: red seen in run 43586681971 (head `eeac854`): `verify` failed 34 cases, all in `links.test.ts`, with `not built yet`. Green: run 43586931641 (head `4000abd`): verify and postgres passed; browser failed on `pay.test.ts:29` and `connect-github.test.ts:56` and passed on the re-run (attempt 2). [x] Task 7 the pages service: red seen in run 43587335831 (head `611e333`): postgres failed 30 cases, all in `service.pg.test.ts`, with `not built yet`. Green: run 43587566467 (head `1ac180d`): verify and postgres passed (300 postgres tests, the 30 new ones among them); browser failed on `pay.test.ts:58`, and on the re-run (attempt 2) on `membership.test.ts:32`. [x] Task 8 a deleted account's page goes: red seen in run 43588037935 (head `ccf9fc1`): one postgres case failed, `purge.pg.test.ts`, "expected 1 to be 0" (the page was still there after the job); everything else passed. Green: run 43588306871 (head `f42ea27`): verify (856 unit tests) and postgres (301 tests in 21 files) passed; browser failed on `pay.test.ts:29`. The browser job's failures in every run from Task 6 on are the coordinator's known defect (the shared Prisma client from #68 hangs a transaction when two run at once; the slice 2 session is fixing it in pull request #75): none of them is in a file this branch touches, and the browser job passed in the red of Task 5 and the green of Task 6's re-run. The last run, 43588568648 (head `0fb509a`, main merged in), is green on all three jobs (browser: 241 passed); that is the run branch B's tasks 4 to 8 stand on. Rulings so far, mine: (1) `cleanLinkUrl` keeps the address as the browser's URL parser wrote it (`URL.href`), not as typed (audit S2: `HTTPS://x.com`, `https:\\x.com` and a pasted line break would otherwise pass the check and fail the database's lower-case `https://` rule or a redirect's header); its length limit applies to the kept form, and `linkProblem` also measures what was typed; cost if wrong: an address shows with a trailing slash or percent signs. (2) `handleProblem` cleans its own input (the plan's test passes `"Admin"` and expects the reserved words); `HANDLE_TAKEN` is exported so the service can tell "taken" from "invalid" without comparing prose. (3) `createPagesService` takes `{ db }` and not `{ db, clock }`: nothing in it reads time (Prisma stamps `updatedAt`); a later branch whose test passes a clock will need one added. (4) The migration is `20261114120000_pages`, made with `prisma migrate diff` (Prisma 7.10.0 installed in a scratch folder outside the repository) from `main`'s schema, then the CHECK rules by hand.
 - [ ] Implementation audit.
 - [ ] Fixes.
 
@@ -285,7 +297,7 @@ Branches and tasks:
 | Branch | Tasks | State |
 |---|---|---|
 | A `slice-3/themes` | 1 the colour data · 2 contrast, in the app · 3 which combinations are offered | built, on pull request #66 (135 of 348 combinations offered); not done until merged and green on main |
-| B `slice-3/page-rules` | 4 the pages tables · 5 the rules for an address · 6 the rules for a link · 7 the pages service · 8 a deleted account's page goes | not started |
+| B `slice-3/page-rules` | 4 the pages tables · 5 the rules for an address · 6 the rules for a link · 7 the pages service · 8 a deleted account's page goes | built, on pull request #73; green on all three jobs in run 43588568648 (the browser job had failed earlier only on the known shared-client defect, below); not done until merged and green on main |
 | C `slice-3/order` | 9 the live games · 10 how much members played each game · 11 the order · 12 the feed service | not started; needs slice 2's branches M, P and S |
 | D `slice-3/feed` | 13 the feed · 14 share · 15 a game's address opens the feed at that clip | not started; needs slice 2's branch F |
 | E `slice-3/feed-controls` | 16 the clip on screen, and sound · 17 the two hints | not started |
@@ -374,6 +386,38 @@ Branches and tasks (none started):
 - [ ] J `slice-5/questions`: Tasks 35, 36 (a maker asks about a line; staff answer).
 - [ ] K `slice-5/real-site`: Task 37 (the first statement and payout on the real site).
 
+## Games before launch: the wishlist and a maker's numbers
+
+Design: `docs/superpowers/specs/2026-11-14-wishlist-before-launch-design.md`, approved by the Owner on 2026-11-14. Plan: `docs/superpowers/plans/2026-11-14-wishlist-before-launch.md`. It ends with: accepted games are in the feed with Wishlist until 11:00 CT on 30 November, then Play; one email at launch; a maker's numbers on `/make/<game>`. To be on `main` by Wednesday 25 November. It is not one of the six slices, so the overall percentage above does not count it. Progress: 0% (nothing built).
+
+Stages:
+
+- [x] Spec: approved (Owner, 2026-11-14: "approved").
+- [ ] Plan: written on `spec/wishlist`, planned against `main` at `d497163`; not merged. No test ran in the plan session, and no code was written. Read as code: `main`. Not read as code, because they are not on `main`: slice 2's branches M, S and F, and all of slice 3. Read outside the repository on 2026-11-14: Cloudflare's Cron Triggers page (five fields, UTC, up to 15 minutes for a new trigger to start) and Resend's API pages (10 requests a second for a team; an `Idempotency-Key` header kept 24 hours). Not measured: anything; the plan holds no size, count or timing of its own.
+- [ ] Plan audit (`docs/superpowers/audits/2026-11-14-wishlist-beta-plan-audit.md`, one audit of both plans, as merged by #69 and #70): 1 blocks execution, 10 should fix, 13 notes, 1 question for the Owner (Q-A: with Q1's A, nobody can become a member before launch, so early beta play on the real site waits for launch day). The blocker and 9 should-fixes are fixed in the two plans; S10 is Q-A. On branch `audit/wishlist-beta-plan`; not done until merged. No test ran.
+- [ ] Execution, branch by branch (below).
+- [ ] Implementation audit.
+- [ ] Fixes.
+
+What the plan waits for, and what is the Owner's:
+
+- [ ] Q1, before launch, can someone pay on `/join`? Asked 2026-11-14. The plan's pick: no, the card reads "Membership opens 30 November." (Task 6, built only on the Owner's yes).
+- [x] Q2, the real-site checks that need a stranger to play cannot be made by a person before launch once the play gate is on `main`. Coordinator, 2026-11-14: keep the gate strict; those two lines are checked by a person at 11:00 on launch day.
+- [ ] "Fine" on the screenshots of branches C, E and F (and B, if Task 6 is built), phone and computer, before and after.
+- [ ] The look at the real site before launch, and at 11:00 CT on 30 November (Task 15).
+
+Branches and tasks:
+
+| Branch | Tasks | State |
+|---|---|---|
+| A `wishlist/switch` | 1 the switch · 2 the journeys' switch · 3 the wishlist's tables and service · 4 a deleted account's wishlist | not started; needs nothing that is not on `main` |
+| B `wishlist/play-gate` | 5 nobody but a game's maker and staff plays before launch · 6 `/join` holds payments until launch (only on the Owner's answer to Q1) | not started; needs A and slice 2's branch F |
+| C `wishlist/numbers` | 7 how much a game was played · 8 a maker's numbers on `/make/<game>` | not started; needs A and slice 2's branch M |
+| D `wishlist/launch-mail` | 9 the email's words · 10 one email a person, once · 11 the job's address and its cron | not started; needs A and slice 3's branch C |
+| E `wishlist/button` | 12 the button's post · 13 Wishlist in the feed and at a game's address | not started; needs A, B and slice 3's branch D |
+| F `wishlist/maker-page` | 14 Wishlist on a maker's page | not started; needs E and slice 3's branch H |
+| G `wishlist/real-site` | 15 the design's goals in one journey, and on the real site | not started |
+
 ## Beta builds
 
 Design: `docs/superpowers/specs/2026-11-14-beta-builds-design.md`, approved by the Owner on 2026-11-14. Plan: `docs/superpowers/plans/2026-11-14-beta-builds.md`. It ends with: a picked member presses "Play the beta" and is in a beta that staff accepted, and that play never counts toward pay. Target: on `main` by Friday 27 November, after the wishlist work; at risk (the plan's "The date" says why), and if it is late it ships after launch.
@@ -381,7 +425,7 @@ Design: `docs/superpowers/specs/2026-11-14-beta-builds-design.md`, approved by t
 Stages:
 
 - [ ] Plan: written on `spec/beta-builds`, not merged. Planned against `main` at `d497163`; the wishlist plan was read on `spec/wishlist` at `2b5030b` and the two are matched. No test ran in the plan session, and no code was written. Read as code: `main` (slice 1; slice 2's branches A to E, P and S0). Not read as code, because they are not on `main`: slice 2's branches M, S and F, slice 3, slice 4, slice 5 and the wishlist work. Nothing was measured; the plan holds no size, count or timing of its own.
-- [ ] Plan audit.
+- [ ] Plan audit (`docs/superpowers/audits/2026-11-14-wishlist-beta-plan-audit.md`, one audit of both plans, as merged by #69 and #70): 1 blocks execution, 10 should fix, 13 notes, 1 question for the Owner (Q-A: with Q1's A, nobody can become a member before launch, so early beta play on the real site waits for launch day). The blocker and 9 should-fixes are fixed in the two plans; S10 is Q-A. On branch `audit/wishlist-beta-plan`; not done until merged. No test ran.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
 - [ ] Fixes.
