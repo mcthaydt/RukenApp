@@ -69,7 +69,10 @@ export type FeeReportAnswer =
   | { readonly status: "failed"; readonly problem: string }
   | { readonly status: "succeeded"; readonly csv: string };
 
-/** What reading a report's file needs: Stripe's secret key (the file answers to nothing else) and a way to fetch. */
+/**
+ * What reading a report's file needs: Stripe's secret key (the file answers to nothing else), the one origin the key
+ * may be sent to, and a way to fetch.
+ */
 export interface FileAccess {
   readonly secretKey: string;
   /** The only address (scheme, host and port) the key is sent to. */
@@ -185,10 +188,31 @@ async function readFeeReport(stripe: Stripe, files: FileAccess, runId: string): 
   const url = run.result?.url;
   if (url === undefined || url === null)
     throw new Error(`Stripe's report run ${runId} finished with no file`);
+  refuseUnlessAtTheFileHost(url, files.origin);
   const fetchFile = files.fetch ?? fetch;
   const response = await fetchFile(url, { headers: { Authorization: `Bearer ${files.secretKey}` } });
   if (!response.ok) throw new Error(`Stripe's report file answered ${String(response.status)}`);
   return { status: "succeeded", csv: await response.text() };
+}
+
+/**
+ * The report's address comes from Stripe's answer, so it is checked before the secret key is sent to it: the key goes
+ * only to the origin (scheme, host and port) the file is meant to be at. Comparing parsed origins, and not text, is
+ * what stops a host that only starts like it, a plain http address, or a login written in front of another host.
+ * The refusal names no address, because a report address can carry a signature.
+ */
+function refuseUnlessAtTheFileHost(url: string, origin: string): void {
+  let at: string | null = null;
+  try {
+    at = new URL(url).origin;
+  } catch {
+    // Not an address at all: refused below, like any other address that is not the file host's.
+  }
+  if (at !== new URL(origin).origin) {
+    throw new Error(
+      `Stripe's report file is not at ${new URL(origin).host}, so Ruken did not send the key to it`,
+    );
+  }
 }
 
 /** The id of something Stripe sends either as its id or expanded. */
