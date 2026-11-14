@@ -2089,7 +2089,7 @@ You pay on the next page, then come straight back.
 Not now
 ```
 
-Changed, Owner, 2026-11-14, "All six" (a design review of the newest screens): the card also says "Renews until you cancel. You can cancel any time from your account." Signed out, the line under it is "First you make an account, then you pay. Then you come straight back." (the next page is sign-up); signed in it stays "You pay on the next page, then come straight back." The plans are two full-width rows, each a real radio button in a `<label class="choice">` and each reading its price once:
+Changed, Owner, 2026-11-14, "All six" (a design review of the newest screens): the line above the rows is only "Tax is added where it applies." (each price is in its row, once); the card also says "Renews until you cancel. You can cancel any time from your account." Signed out, the line under it is "First you make an account, then you pay. Then you come straight back." (the next page is sign-up); signed in it stays "You pay on the next page, then come straight back." The plans are two full-width rows, each a real radio button in a `<label class="choice">` and each reading its price once:
 
 ```
 (•) $9.99 a month
