@@ -1,0 +1,106 @@
+// The games feature's tables: a game, the files pulled from its maker's GitHub repository, and its clips.
+// A game is untrusted code from a maker; nothing here holds a secret or a sign-in.
+//
+// Prisma cannot express the CHECK rules or the add-only trigger, so they are written by hand at the end of
+// the migration and covered by tests/features/games/schema.pg.test.ts.
+
+/// Where a game can be played. A phone is a browser whose User-Agent says so (play feature).
+enum GamePlaysOn {
+  phone_and_computer
+  computer_only
+}
+
+/// Where a game stands. `taken_off` is the maker's own doing; `taken_down` is staff's (a later slice).
+enum GameState {
+  draft
+  waiting
+  live
+  sent_back
+  taken_off
+  taken_down
+}
+
+/// The two clips a game needs: one for a phone held upright and one for a wide screen.
+enum ClipShape {
+  upright
+  wide
+}
+
+/// A game as its maker described it, and where it stands. `publicId` never changes (it names the game's own
+/// address and its files, so a renamed game keeps its saves); `slug` is the page's address and may be made
+/// again from a new name.
+/// CHECKs: Game_publicId_check, Game_slug_check, Game_repoFolder_check, Game_live_check.
+model Game {
+  id           String      @id @default(cuid(2))
+  publicId     String      @unique
+  slug         String      @unique
+  makerUserId  String
+  name         String
+  oneLine      String
+  playsOn      GamePlaysOn
+  state        GameState   @default(draft)
+  /// Why it was sent back, in a person's words. Null in every other state.
+  stateReason  String?
+  /// Set by staff for a game that is free to everyone. False for every game until slice 4.
+  freeToPlay   Boolean     @default(false)
+  /// `owner/name` on GitHub.
+  repoFullName String
+  /// Null: the repository's own default branch.
+  repoBranch   String?
+  /// The folder inside the repository that holds the built game; "" is the top.
+  repoFolder   String      @default("")
+  /// The servers the game talks to, as the maker listed them (`api.example.com`, five at most).
+  connectHosts String[]    @default([])
+  /// The pull the game is live on. Set only while `state` is live.
+  livePullId   String?     @unique
+  /// The words of the last pull's refusal, for the game's page; null once a pull passes.
+  pullProblem  String?
+  createdAt    DateTime    @default(now()) @db.Timestamptz
+  updatedAt    DateTime    @updatedAt @db.Timestamptz
+
+  maker    User       @relation(fields: [makerUserId], references: [id], onDelete: Restrict)
+  livePull GamePull?  @relation("GameLivePull", fields: [livePullId], references: [id], onDelete: Restrict)
+  pulls    GamePull[] @relation("GamePulls")
+  clips    GameClip[]
+
+  @@index([makerUserId])
+}
+
+/// One pull that passed its checks: a commit's files, copied into the bucket under this row's id. Added and
+/// never changed, so what staff reviewed is what stays in the bucket (the add-only trigger is in the migration).
+/// CHECKs: GamePull_commitSha_check, GamePull_counts_check.
+model GamePull {
+  /// Made in code, because the bucket's folder for these files is named by it before the row exists.
+  id           String   @id
+  gameId       String
+  commitSha    String
+  /// Measured from the pull; nobody types them.
+  fileCount    Int
+  totalBytes   BigInt
+  /// The game's server list as it stood at this pull, so what staff reviewed is what runs.
+  connectHosts String[]
+  pulledAt     DateTime @db.Timestamptz
+  createdAt    DateTime @default(now()) @db.Timestamptz
+
+  game    Game  @relation("GamePulls", fields: [gameId], references: [id], onDelete: Restrict)
+  liveFor Game? @relation("GameLivePull")
+
+  @@index([gameId])
+}
+
+/// A game's clip of one shape. A new upload takes the old one's place (and gets its own address).
+model GameClip {
+  id          String    @id @default(cuid(2))
+  gameId      String
+  shape       ClipShape
+  /// Where the video lives in the bucket: `clips/<publicId>/<shape>-<16 hex>.<mp4|webm>`.
+  key         String    @unique
+  contentType String
+  bytes       Int
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+
+  @@unique([gameId, shape])
+}
