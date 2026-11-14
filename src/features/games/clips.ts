@@ -1,11 +1,11 @@
 import type { ClipShape } from "../../lib/server/db.ts";
-import { megabytes } from "./files-check.ts";
+import { VIDEO_MAX_BYTES, wholeMegabytes } from "../../lib/video-choice.ts";
 
 // The two clips every game has: one upright (for a phone held upright) and one wide, short videos that play without
 // sound. They are stored in the bucket under a key made here, and served to anyone from the media address.
 
-/** 30 MB: a short loop fits easily, and two of them are saved one request at a time. */
-export const CLIP_MAX_BYTES = 30_000_000;
+/** 30 MB: a short loop fits easily, and two of them are saved one request at a time. The browser checks the same. */
+export const CLIP_MAX_BYTES = VIDEO_MAX_BYTES;
 
 /** The video types a clip may have, and the file extension each gets in its key. */
 const EXTENSIONS = { "video/mp4": "mp4", "video/webm": "webm" } as const;
@@ -63,9 +63,9 @@ function startsWith(bytes: Uint8Array, expected: readonly number[], offset: numb
  */
 export function clipProblem(upload: { contentType: string; bytes: Uint8Array }): string | null {
   const { contentType, bytes } = upload;
-  if (!isClipContentType(contentType)) return "Clips are MP4 or WebM video.";
+  if (!isClipContentType(contentType)) return "Videos are MP4 or WebM.";
   if (bytes.length > CLIP_MAX_BYTES) {
-    return `That clip is ${megabytes(bytes.length)}. A clip can be up to ${megabytes(CLIP_MAX_BYTES)}.`;
+    return `That video is ${wholeMegabytes(bytes.length)}. Videos can be up to ${wholeMegabytes(CLIP_MAX_BYTES)}. Make it shorter or smaller, then choose it again.`;
   }
   if (!looksLikeVideo(bytes, contentType)) {
     return "That file doesn't look like a video. Export it as MP4 or WebM and try again.";

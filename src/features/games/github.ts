@@ -123,6 +123,8 @@ const REPO = /^[A-Za-z0-9_.-]{1,39}\/[A-Za-z0-9_.-]{1,100}$/;
 
 /** Throws unless `repo` is an `owner/name` that is safe to put in a GitHub address. */
 export function checkRepo(repo: string): void {
+  // The form lists the maker's repositories and starts on none, so an empty one means "not chosen yet".
+  if (repo === "") throw new GameError("INVALID", "Choose the repository your game is in.");
   const parts = repo.split("/");
   // `.` and `..` fit the pattern's letters but would climb out of the address.
   if (!REPO.test(repo) || parts.some((part) => /^\.+$/.test(part))) {

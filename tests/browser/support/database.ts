@@ -101,3 +101,38 @@ export async function paymentPostingOf(email: string): Promise<{ stripeInvoiceId
 export function feeRowsKept(product: string): Promise<number> {
   return db().stripeFeeRow.count({ where: { product } });
 }
+
+/**
+ * Leaves a maker connected to GitHub with no repository listed for them, as when they connected and chose none. The
+ * stand-in always lists two, so this is the only way to see that screen.
+ */
+export async function forgetTheirRepositories(email: string): Promise<void> {
+  await db().gitHubRepository.deleteMany({ where: { connection: { user: { email } } } });
+}
+
+/**
+ * Puts a game where staff's decision would: sent back with a reason, or live on its newest files. There is no staff
+ * screen on this branch, so a journey cannot get there by clicking; the row is set as `sendBack` and `accept` set it.
+ */
+export async function putGameWhereStaffLeaveIt(
+  slug: string,
+  decision: { sentBack: string } | "live",
+): Promise<void> {
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { id: true, pulls: { orderBy: { createdAt: "desc" }, take: 1, select: { id: true } } },
+  });
+  const newest = game.pulls[0];
+  if (decision === "live") {
+    if (newest === undefined) throw new Error(`${slug} has no pull to make live`);
+    await db().game.update({
+      where: { id: game.id },
+      data: { state: "live", stateReason: null, pendingPullId: null, livePullId: newest.id },
+    });
+    return;
+  }
+  await db().game.update({
+    where: { id: game.id },
+    data: { state: "sent_back", stateReason: decision.sentBack, pendingPullId: null },
+  });
+}

@@ -55,13 +55,19 @@ model Game {
   livePullId   String?     @unique
   /// The words of the last pull's refusal, for the game's page; null once a pull passes.
   pullProblem  String?
+  /// The files waiting for a person's yes. A live game stays live on its old files until it is accepted.
+  pendingPullId String?   @unique
+  /// When those files were sent: the review queue's order, and its "sent 2 hours ago".
+  pendingSince  DateTime? @db.Timestamptz
   createdAt    DateTime    @default(now()) @db.Timestamptz
   updatedAt    DateTime    @updatedAt @db.Timestamptz
 
   maker    User       @relation(fields: [makerUserId], references: [id], onDelete: Restrict)
   livePull GamePull?  @relation("GameLivePull", fields: [livePullId], references: [id], onDelete: Restrict)
+  pendingPull GamePull? @relation("GamePendingPull", fields: [pendingPullId], references: [id], onDelete: Restrict)
   pulls    GamePull[] @relation("GamePulls")
   clips    GameClip[]
+  reviews  GameReview[]
 
   // The play feature's tables point at a game; they are declared in play.prisma.
   playPasses   PlayPass[]
@@ -99,6 +105,8 @@ model GamePull {
 
   game    Game  @relation("GamePulls", fields: [gameId], references: [id], onDelete: Restrict)
   liveFor Game? @relation("GameLivePull")
+  pendingFor Game? @relation("GamePendingPull")
+  reviews GameReview[]
 
   playPasses   PlayPass[]
   playSessions PlaySession[]
@@ -156,4 +164,31 @@ model GitHubRepository {
   connection GitHubInstallation @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@unique([connectionId, fullName])
+}
+
+/// What staff decided about a game's files.
+enum ReviewDecision {
+  accepted
+  sent_back
+}
+
+/// The record design 5.5 asks of every staff action: who, what, when. Added and never changed (the add-only trigger is
+/// in the migration).
+/// CHECKs: GameReview_reason_check.
+model GameReview {
+  id          String         @id @default(cuid(2))
+  gameId      String
+  pullId      String
+  staffUserId String
+  decision    ReviewDecision
+  /// What the maker should fix: 1 to 500 characters for `sent_back`, null for `accepted`.
+  reason      String?
+  decidedAt   DateTime       @db.Timestamptz
+  createdAt   DateTime       @default(now()) @db.Timestamptz
+
+  game  Game     @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  pull  GamePull @relation(fields: [pullId], references: [id], onDelete: Restrict)
+  staff User     @relation("GameReviewStaff", fields: [staffUserId], references: [id], onDelete: Restrict)
+
+  @@index([gameId])
 }

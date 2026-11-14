@@ -90,14 +90,14 @@ describe("clipProblem", () => {
   });
 
   it("refuses a file that is not a clip type", () => {
-    expect(clipProblem({ contentType: "image/gif", bytes: MP4 })).toBe("Clips are MP4 or WebM video.");
+    expect(clipProblem({ contentType: "image/gif", bytes: MP4 })).toBe("Videos are MP4 or WebM.");
   });
 
-  it("refuses a clip over the limit, in whole megabytes rounded up", () => {
+  it("refuses a video over the limit, in the words the picker uses", () => {
     const big = new Uint8Array(CLIP_MAX_BYTES + 1);
     big.set(MP4);
     expect(clipProblem({ contentType: "video/mp4", bytes: big })).toBe(
-      "That clip is 31 MB. A clip can be up to 30 MB.",
+      "That video is 31 MB. Videos can be up to 30 MB. Make it shorter or smaller, then choose it again.",
     );
   });
 

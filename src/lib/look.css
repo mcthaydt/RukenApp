@@ -209,6 +209,11 @@ a:not(.button, .wordmark),
   font: var(--text-statement);
 }
 
+/* Bold is the heavier face we load (600), not a face the browser makes by smearing the lighter one. */
+strong {
+  font-weight: 600;
+}
+
 /* The focus ring on felt. */
 :focus-visible {
   outline: 3px solid var(--paper);
@@ -239,6 +244,13 @@ a:not(.button, .wordmark),
   font: var(--text-card-title);
   /* A long title breaks into even lines, not a full line and a stray word. */
   text-wrap: balance;
+}
+
+/* A card's second-level heading ("Game files" on a game's page) is in the display face too, so a card has one
+   heading face and not a bold sans-serif line under a serif title. */
+.card h2 {
+  margin: 1.5rem 0 0;
+  font: var(--text-statement);
 }
 
 /* A step and a half between the title and what it introduces. */
@@ -293,7 +305,9 @@ label {
 }
 
 /* A field is the one place an edge is allowed, and it is ink so a field is not faint on paper. */
-input:not([type="radio"], [type="checkbox"]) {
+input:not([type="radio"], [type="checkbox"]),
+select,
+textarea {
   width: 100%;
   min-height: var(--size-target);
   margin-top: 0.25rem;
@@ -303,6 +317,35 @@ input:not([type="radio"], [type="checkbox"]) {
   background: none;
   color: inherit;
   font: inherit;
+}
+
+/* A fold-out ("My game uses other websites") is a line to press, as easy to hit as a button. It has an arrow where the
+   browser draws its own triangle: pointing right while it is shut, and down while it is open, the usual sign for "opens
+   here" (a plus read as "add"). */
+summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--size-target);
+  /* The height the target adds is taken back from the margins, as for a link, so one rem separates its words from the
+     line above and not two. */
+  margin-block: calc((var(--size-target) - 1lh) / -2);
+  list-style: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary::after {
+  content: "\203A";
+  text-decoration: none;
+}
+
+details[open] > summary::after {
+  content: "\2304";
 }
 
 input[type="radio"],
@@ -329,6 +372,20 @@ input[type="checkbox"] {
 }
 
 .choice:has(input:checked) {
+  padding: calc(0.5rem - 2px) calc(0.75rem - 2px);
+  border-width: 3px;
+}
+
+/* A refused box has the heavier edge a chosen row has, so it is seen without colour; the extra edge is taken from the
+   padding, so nothing moves when a box is refused. */
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  padding: calc(0.5rem - 2px) calc(0.75rem - 2px);
+  border-width: 3px;
+}
+
+.choice:has(input[aria-invalid="true"]) {
   padding: calc(0.5rem - 2px) calc(0.75rem - 2px);
   border-width: 3px;
 }
@@ -410,6 +467,151 @@ form > * + button:not(.quiet) {
   }
 }
 
+/* A box with its label, its hint and, when it is refused, its refusal under the hint, a small step apart. A link under
+   the hint ("Don't see your game?") keeps its own 48px target without borrowing from the margins around it. */
+.field > * + * {
+  margin-top: 0.375rem;
+}
+
+.field > .problem {
+  display: block;
+}
+
+.field > a {
+  margin-block: 0;
+}
+
+details > .field {
+  margin-top: 1rem;
+}
+
+/* Ruken's own file picker (the browser's "Choose File" is not drawn by Ruken). The real file field stays in the page,
+   hidden from sight only: one pixel, clipped and clear, never `display: none`, so the keyboard still reaches it, a
+   reader still reads it and Enter or Space still opens the picker. The words over it are a button of the look: ink on
+   a card, the whole width on a phone and as wide as its words from 48rem. A quiet picker looks like a link. */
+.file {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.file > input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.file > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--size-target);
+  padding: 0.5rem 1.5rem;
+  border-radius: var(--radius-button);
+  background: var(--ink);
+  color: var(--paper);
+  font: var(--text-button);
+  transition: transform var(--press-time);
+}
+
+@media (min-width: 48rem) {
+  .file > span {
+    width: fit-content;
+  }
+}
+
+.file[data-quiet] > span {
+  width: auto;
+  padding: 0;
+  justify-content: flex-start;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+}
+
+.file:active > span {
+  transform: scale(var(--press-scale));
+}
+
+/* The focus ring, on the words a person sees, when the keyboard is on the hidden field. */
+.card .file:has(:focus-visible) > span {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* A row of a checklist ("Game files", "Upright video"): a label, one line of where it stands and its one button, a
+   small step apart, with two rem between rows. A quiet button in a row has no negative margins: the step above it is
+   what spaces it. A group of rows ("the two videos") has a step and a half between its own. */
+.step {
+  margin-top: 2rem;
+}
+
+.step > * + *,
+.step form > * + * {
+  margin-top: 0.5rem;
+}
+
+.step > .step {
+  margin-top: 1.5rem;
+}
+
+.step .quiet {
+  margin-block: 0;
+}
+
+/* A game in the maker's list is one link as a whole: its name in the statement face, then where it stands and what to
+   do next in body, 1.5rem from the next game. */
+.card a.game {
+  display: block;
+  margin-block: 0;
+  text-decoration: none;
+}
+
+.card a.game > span {
+  display: block;
+}
+
+.card a.game > .statement {
+  text-decoration: underline;
+}
+
+.card h1 + a.game,
+.card a.game + a.game {
+  margin-top: 1.5rem;
+}
+
+/* A numbered list of points (the maker agreement): the number is the list's own, in the display face and hung in the
+   left margin, so every title and every point starts on one line. 1.75rem between points makes each one a block. */
+.card ol {
+  margin: 1.5rem 0 0;
+  padding-left: 2.5rem;
+}
+
+.card li::marker {
+  font: var(--text-statement);
+}
+
+.card li + li {
+  margin-top: 1.75rem;
+}
+
+.card li > strong {
+  display: block;
+}
+
+.card li > p {
+  margin-top: 0.25rem;
+}
+
 /* Used once in the whole site, on "Continue to payment": the one press that spends money. Blue with white
    words (5.4:1), the card's one coloured button; the rest are ink (Owner, 2026-11-14, "go with D"). */
 .card .pay {
@@ -429,12 +631,14 @@ button:active,
 
 @media (prefers-reduced-motion: reduce) {
   button,
-  .button {
+  .button,
+  .file > span {
     transition: none;
   }
 
   button:active,
-  .button:active {
+  .button:active,
+  .file:active > span {
     transform: none;
   }
 }

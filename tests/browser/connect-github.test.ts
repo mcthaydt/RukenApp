@@ -1,11 +1,16 @@
 import { expect, test } from "@playwright/test";
 import { signUp } from "./support/account.ts";
 import { connectStateFor, githubConnectionOf, userIdOf } from "./support/database.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // A maker connects their GitHub on the site and the site remembers which repositories GitHub says they can reach. The
 // stand-in GitHub (support/fake-github-server.ts) holds one installation with three repositories the app can read, two
 // of them listed for the person. `/make/new` itself arrives in a later task, so until then it is a 404 page, and
 // `toHaveURL` still holds for it.
+
+// Every journey but the last makes an account, and the site lets one address make five an hour; the counters are
+// cleared before each.
+test.beforeEach(forgetRateLimits);
 
 test("connecting GitHub comes back with the maker's repositories remembered", async ({ page }) => {
   const maker = await signUp(page);
