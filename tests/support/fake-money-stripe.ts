@@ -2,9 +2,11 @@ import { FEE_COLUMNS, type FeeRow } from "../../src/features/money/fee-rows.ts";
 import {
   NotAtStripeYet,
   type FeeReportAnswer,
+  type DisputeRead,
   type FeeReportWindow,
   type MoneyStripe,
   type PaymentIds,
+  type RefundRead,
 } from "../../src/features/money/stripe-port.ts";
 
 /**
@@ -17,6 +19,8 @@ export class FakeMoneyStripe implements MoneyStripe {
   private readonly payments = new Map<string, PaymentIds>();
   private window: FeeReportWindow | undefined;
   private readonly reports = new Map<string, FeeReportAnswer>();
+  private readonly refunds = new Map<string, RefundRead>();
+  private readonly disputes = new Map<string, DisputeRead>();
 
   /** Says Stripe now holds this invoice's charge and balance transaction. */
   addPayment(stripeInvoiceId: string, ids: PaymentIds): void {
@@ -31,6 +35,23 @@ export class FakeMoneyStripe implements MoneyStripe {
   /** Says how a report run ended. A run no test said anything about is still pending. A CSV text means it succeeded. */
   setReport(runId: string, outcome: FeeReportAnswer | string): void {
     this.reports.set(runId, typeof outcome === "string" ? { status: "succeeded", csv: outcome } : outcome);
+  }
+
+  /** Says Stripe holds this refund. */
+  addRefund(refund: RefundRead): void {
+    this.refunds.set(refund.id, refund);
+  }
+
+  /** Says Stripe holds this dispute, as it stands now. */
+  addDispute(dispute: DisputeRead): void {
+    this.disputes.set(dispute.id, dispute);
+  }
+
+  /** Changes a dispute Stripe holds, as its being decided would. */
+  changeDispute(disputeId: string, changes: Partial<DisputeRead>): void {
+    const dispute = this.disputes.get(disputeId);
+    if (dispute === undefined) throw new Error(`the test never added ${disputeId}`);
+    this.disputes.set(disputeId, { ...dispute, ...changes });
   }
 
   paymentIds(stripeInvoiceId: string): Promise<PaymentIds> {
@@ -52,6 +73,20 @@ export class FakeMoneyStripe implements MoneyStripe {
 
   feeReport(runId: string): Promise<FeeReportAnswer> {
     return Promise.resolve(this.reports.get(runId) ?? { status: "pending" });
+  }
+
+  refundsSince(sec: number): Promise<RefundRead[]> {
+    return Promise.resolve([...this.refunds.values()].filter((refund) => refund.atSec >= sec));
+  }
+
+  disputesSince(sec: number): Promise<DisputeRead[]> {
+    return Promise.resolve([...this.disputes.values()].filter((dispute) => dispute.atSec >= sec));
+  }
+
+  dispute(disputeId: string): Promise<DisputeRead> {
+    const dispute = this.disputes.get(disputeId);
+    if (dispute === undefined) return Promise.reject(new Error(`no dispute ${disputeId}`));
+    return Promise.resolve(dispute);
   }
 }
 

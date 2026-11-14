@@ -16,7 +16,15 @@ const KEY = "sk_test_fake";
 const CHARGED = { id: "ch_1", balance_transaction: { id: "txn_1" } };
 const BARE_CHARGE = { id: "ch_2", balance_transaction: { id: "txn_2" } };
 
-function fakeStripe(answers: { invoice?: unknown; intent?: unknown; run?: unknown } = {}) {
+interface Answers {
+  invoice?: unknown;
+  intent?: unknown;
+  run?: unknown;
+  refunds?: unknown[];
+  disputes?: unknown[];
+}
+
+function fakeStripe(answers: Answers = {}) {
   const invoiceAnswer = answers.invoice ?? invoice({ payment_intent: "pi_1" });
   const intentAnswer = answers.intent ?? { id: "pi_1", latest_charge: CHARGED };
   const runAnswer = answers.run ?? { id: "frr_1", status: "pending" };
@@ -24,6 +32,11 @@ function fakeStripe(answers: { invoice?: unknown; intent?: unknown; run?: unknow
     invoices: { retrieve: vi.fn((): Promise<unknown> => Promise.resolve(invoiceAnswer)) },
     paymentIntents: { retrieve: vi.fn((): Promise<unknown> => Promise.resolve(intentAnswer)) },
     charges: { retrieve: vi.fn((): Promise<unknown> => Promise.resolve(BARE_CHARGE)) },
+    refunds: { list: listOf(...(answers.refunds ?? [])) },
+    disputes: {
+      list: listOf(...(answers.disputes ?? [])),
+      retrieve: vi.fn((): Promise<unknown> => Promise.resolve(answers.disputes?.[0])),
+    },
     reporting: {
       reportTypes: {
         retrieve: vi.fn((): Promise<unknown> =>
@@ -151,5 +164,111 @@ describe("the fee report", () => {
     const fetch = refused as unknown as typeof globalThis.fetch;
     const port = bindMoneyStripe(stripe, { secretKey: KEY, fetch });
     await expect(port.feeReport("frr_1")).rejects.toThrow(/401/);
+  });
+});
+
+/** A list the way Stripe's SDK answers one: it can be read page by page, with `for await`. */
+function listOf(...items: unknown[]) {
+  return vi.fn(() => ({
+    [Symbol.asyncIterator]: () => {
+      let next = 0;
+      return {
+        next: () => {
+          const done = next >= items.length;
+          const value: unknown = items[next];
+          next += 1;
+          return Promise.resolve({ value, done });
+        },
+      };
+    },
+  }));
+}
+
+/** A balance transaction as a dispute or a refund carries it. */
+function balance(id: string, fee: number, net: number, created = 1_000) {
+  return { id, fee, net, created };
+}
+
+describe("refunds and disputes", () => {
+  it("reads a refund's amount, its charge, and the card fee Stripe gave back with it", async () => {
+    const refund = {
+      id: "re_1",
+      charge: "ch_1",
+      amount: 500,
+      status: "succeeded",
+      created: 1_000,
+      balance_transaction: balance("txn_r1", -12, -488),
+    };
+    const { fake, stripe } = fakeStripe({ refunds: [refund] });
+    await expect(portWithFile(stripe).port.refundsSince(900)).resolves.toEqual([
+      {
+        id: "re_1",
+        chargeId: "ch_1",
+        amountCents: 500n,
+        status: "succeeded",
+        feeCents: 0n,
+        returnedCents: 12n,
+        balanceTransactionIds: ["txn_r1"],
+        atSec: 1_000,
+      },
+    ]);
+    expect(fake.refunds.list).toHaveBeenCalledWith({
+      created: { gte: 900 },
+      expand: ["data.balance_transaction"],
+    });
+  });
+
+  it("reads an open dispute: its fee, and what of what Stripe took it gave back at once", async () => {
+    const dispute = {
+      id: "dp_1",
+      charge: "ch_1",
+      amount: 1081,
+      status: "needs_response",
+      created: 2_000,
+      balance_transactions: [balance("txn_d1", 1500, -2581, 2_000)],
+    };
+    const { fake, stripe } = fakeStripe({ disputes: [dispute] });
+    const expected = {
+      id: "dp_1",
+      chargeId: "ch_1",
+      amountCents: 1081n,
+      status: "needs_response",
+      feeCents: 1500n,
+      returnedCents: 0n, // 1,081 + 1,500 is 2,581, and all 2,581 was taken
+      reinstatedCents: null,
+      balanceTransactionIds: ["txn_d1"],
+      atSec: 2_000,
+      closedAtSec: null,
+    };
+    const { port } = portWithFile(stripe);
+    await expect(port.disputesSince(1_500)).resolves.toEqual([expected]);
+    expect(fake.disputes.list).toHaveBeenCalledWith({ created: { gte: 1_500 } });
+    await expect(port.dispute("dp_1")).resolves.toEqual(expected);
+    expect(fake.disputes.retrieve).toHaveBeenCalledWith("dp_1");
+  });
+
+  it("reads what a won dispute gave back, from the one balance transaction that adds money", async () => {
+    const dispute = {
+      id: "dp_1",
+      charge: "ch_1",
+      amount: 1081,
+      status: "won",
+      created: 2_000,
+      balance_transactions: [balance("txn_d1", 1500, -2581, 2_000), balance("txn_d2", 0, 1081, 3_000)],
+    };
+    const { stripe } = fakeStripe({ disputes: [dispute] });
+    const [read] = await portWithFile(stripe).port.disputesSince(0);
+    expect(read).toMatchObject({
+      status: "won",
+      reinstatedCents: 1081n,
+      closedAtSec: 3_000,
+      balanceTransactionIds: ["txn_d1", "txn_d2"],
+    });
+  });
+
+  it("leaves out a dispute whose withdrawal Stripe has not made yet, to be read again next run", async () => {
+    const dispute = { id: "dp_1", charge: "ch_1", amount: 1081, status: "needs_response", created: 2_000 };
+    const { stripe } = fakeStripe({ disputes: [{ ...dispute, balance_transactions: [] }] });
+    await expect(portWithFile(stripe).port.disputesSince(0)).resolves.toEqual([]);
   });
 });

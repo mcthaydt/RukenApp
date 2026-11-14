@@ -29,12 +29,6 @@ afterAll(async () => {
 const FIRST_PAYMENT_AT = new Date(87_400_000).toISOString();
 const PAYMENT = { gross: 1081n, tax: 82n, cardFee: 61n, plan: "monthly" } as const;
 
-function setUp() {
-  const stripe = fakeMoneyStripe();
-  const clock = new TestClock("2026-12-01T12:00:00Z");
-  return { stripe, clock, deps: { db: db(), clock, stripe } };
-}
-
 /** The run row Stripe was asked for, by the stretch's start in seconds. */
 async function runStartingAt(startSec: number) {
   return db().stripeFeeRun.findFirstOrThrow({
@@ -44,18 +38,21 @@ async function runStartingAt(startSec: number) {
 }
 
 describe("asking for the fee report, one stretch after another", () => {
-  const { stripe, clock, deps } = setUp();
+  const stripe = fakeMoneyStripe();
+  const clock = new TestClock("2026-12-01T12:00:00Z");
+  // The database starts in beforeAll, after this body has run, so the dependencies are made when a test asks.
+  const deps = () => ({ db: db(), clock, stripe });
 
   it("asks for nothing while there is no payment, and does not ask Stripe", async () => {
     stripe.setReportWindow({ availableFromSec: 1_000, availableToSec: 5_000 });
-    expect(await requestFeeReport(deps)).toBe("nothing_new");
+    expect(await requestFeeReport(deps())).toBe("nothing_new");
     expect(stripe.reportStarts).toEqual([]);
     expect(await db().stripeFeeRun.count()).toBe(0);
   });
 
   it("asks from a day before the first payment, the first time", async () => {
     await addMembershipPayment(db(), stripe, { ...PAYMENT, invoice: "in_1", paidAt: FIRST_PAYMENT_AT });
-    expect(await requestFeeReport(deps)).toBe("requested");
+    expect(await requestFeeReport(deps())).toBe("requested");
     expect(stripe.reportStarts).toEqual([{ fromSec: 1_000, toSec: 5_000 }]); // 87,400 − 86,400 = 1,000
     expect(await db().stripeFeeRun.findFirstOrThrow()).toMatchObject({
       intervalStart: new Date(1_000_000),
@@ -67,8 +64,8 @@ describe("asking for the fee report, one stretch after another", () => {
 
   it("waits while Stripe is still working, and asks for nothing else meanwhile", async () => {
     // Review Focus 16
-    expect(await collectFeeReport(deps)).toBe("pending");
-    expect(await requestFeeReport(deps)).toBe("waiting");
+    expect(await collectFeeReport(deps())).toBe("pending");
+    expect(await requestFeeReport(deps())).toBe("waiting");
     expect(await db().stripeFeeRow.count()).toBe(0);
     expect(stripe.reportStarts).toHaveLength(1);
   });
@@ -82,7 +79,7 @@ describe("asking for the fee report, one stretch after another", () => {
         { incurredBy: "ch_1", amountText: "0.04995", taxText: "0.001", settledVia: "invoice" },
       ]),
     );
-    expect(await collectFeeReport(deps)).toBe("stored");
+    expect(await collectFeeReport(deps())).toBe("stored");
     const rows = await db().stripeFeeRow.findMany({
       where: { runId: first.id },
       orderBy: { rowNumber: "asc" },
@@ -106,12 +103,12 @@ describe("asking for the fee report, one stretch after another", () => {
       rowCount: 2,
       storedAt: new Date(clock.epochMs()),
     });
-    expect(await collectFeeReport(deps)).toBe("none"); // nothing is waiting any more
+    expect(await collectFeeReport(deps())).toBe("none"); // nothing is waiting any more
   });
 
   it("starts the next stretch where the last one ended", async () => {
     stripe.setReportWindow({ availableFromSec: 1_000, availableToSec: 9_000 });
-    expect(await requestFeeReport(deps)).toBe("requested");
+    expect(await requestFeeReport(deps())).toBe("requested");
     expect(stripe.reportStarts.at(-1)).toEqual({ fromSec: 5_000, toSec: 9_000 });
     expect(await runStartingAt(5_000)).toMatchObject({
       intervalEnd: new Date(9_000_000),
@@ -123,14 +120,14 @@ describe("asking for the fee report, one stretch after another", () => {
     // Review Focus 16
     const run = await runStartingAt(5_000);
     stripe.setReport(run.stripeReportRunId, { status: "failed", problem: "no data for this stretch" });
-    expect(await collectFeeReport(deps)).toBe("failed");
+    expect(await collectFeeReport(deps())).toBe("failed");
     expect(await runStartingAt(5_000)).toMatchObject({
       state: "failed",
       problem: "no data for this stretch",
     });
     expect(await db().stripeFeeRow.count({ where: { runId: run.id } })).toBe(0);
 
-    expect(await requestFeeReport(deps)).toBe("requested");
+    expect(await requestFeeReport(deps())).toBe("requested");
     expect(stripe.reportStarts.at(-1)).toEqual({ fromSec: 5_000, toSec: 9_000 }); // the same start
     const again = await runStartingAt(5_000);
     expect(again.id).not.toBe(run.id);
@@ -140,19 +137,19 @@ describe("asking for the fee report, one stretch after another", () => {
   it("asks for nothing when Stripe has nothing new", async () => {
     const run = await runStartingAt(5_000);
     stripe.setReport(run.stripeReportRunId, feeReportCsv([]));
-    expect(await collectFeeReport(deps)).toBe("stored");
+    expect(await collectFeeReport(deps())).toBe("stored");
     expect(await runStartingAt(5_000)).toMatchObject({ state: "stored", rowCount: 0 });
     const asked = stripe.reportStarts.length;
-    expect(await requestFeeReport(deps)).toBe("nothing_new"); // Stripe's data still ends at 9,000
+    expect(await requestFeeReport(deps())).toBe("nothing_new"); // Stripe's data still ends at 9,000
     expect(stripe.reportStarts).toHaveLength(asked);
   });
 
   it("stores nothing when the report's columns are not the ones asked for", async () => {
     stripe.setReportWindow({ availableFromSec: 1_000, availableToSec: 12_000 });
-    expect(await requestFeeReport(deps)).toBe("requested");
+    expect(await requestFeeReport(deps())).toBe("requested");
     const run = await runStartingAt(9_000);
     stripe.setReport(run.stripeReportRunId, { status: "succeeded", csv: "id,amount\nx,1\n" });
-    await expect(collectFeeReport(deps)).rejects.toThrow(/columns this code does not know/);
+    await expect(collectFeeReport(deps())).rejects.toThrow(/columns this code does not know/);
     expect(await runStartingAt(9_000)).toMatchObject({ state: "requested", rowCount: null });
     expect(await db().stripeFeeRow.count({ where: { runId: run.id } })).toBe(0);
   });

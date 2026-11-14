@@ -18,6 +18,44 @@ export interface MoneyStripe {
   startFeeReport(fromSec: number, toSec: number): Promise<string>;
   /** How a report run stands and, once it has finished, the text of its file. */
   feeReport(runId: string): Promise<FeeReportAnswer>;
+  /** Every refund created at or after `sec` (Unix seconds), every page of Stripe's list. */
+  refundsSince(sec: number): Promise<RefundRead[]>;
+  /** Every dispute created at or after `sec`, every page. */
+  disputesSince(sec: number): Promise<DisputeRead[]>;
+  /** One dispute as Stripe shows it now: a dispute can take months to be decided. */
+  dispute(disputeId: string): Promise<DisputeRead>;
+}
+
+/** A refund, as the money feature needs it. */
+export interface RefundRead {
+  readonly id: string;
+  readonly chargeId: string;
+  readonly amountCents: bigint;
+  readonly status: string;
+  /** Always zero: a refund has no dispute fee. Kept so a refund and a dispute read alike. */
+  readonly feeCents: bigint;
+  /** The card fee Stripe gave back with the refund, when it did. */
+  readonly returnedCents: bigint;
+  readonly balanceTransactionIds: readonly string[];
+  readonly atSec: number;
+}
+
+/**
+ * A dispute, as the money feature needs it. `feeCents` is Stripe's dispute fee and `returnedCents` the part of what it
+ * took that it gave back at once (a card fee). A won dispute gives the money back in a second balance transaction,
+ * which is `reinstatedCents`, null until Stripe has made it. `closedAtSec` is when that happened (null while open).
+ */
+export interface DisputeRead {
+  readonly id: string;
+  readonly chargeId: string;
+  readonly amountCents: bigint;
+  readonly status: string;
+  readonly feeCents: bigint;
+  readonly returnedCents: bigint;
+  readonly reinstatedCents: bigint | null;
+  readonly balanceTransactionIds: readonly string[];
+  readonly atSec: number;
+  readonly closedAtSec: number | null;
 }
 
 export interface FeeReportWindow {
@@ -56,6 +94,9 @@ export function bindMoneyStripe(stripe: Stripe, files: FileAccess): MoneyStripe 
     startFeeReport: (fromSec, toSec) =>
       Promise.reject(new Error(`not built yet: startFeeReport ${String(fromSec)} ${String(toSec)}`)),
     feeReport: (runId) => Promise.reject(new Error(`not built yet: feeReport ${runId} ${typeof files}`)),
+    refundsSince: (sec) => Promise.reject(new Error(`not built yet: refundsSince ${String(sec)}`)),
+    disputesSince: (sec) => Promise.reject(new Error(`not built yet: disputesSince ${String(sec)}`)),
+    dispute: (disputeId) => Promise.reject(new Error(`not built yet: dispute ${disputeId}`)),
   };
 }
 
