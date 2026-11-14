@@ -2,3 +2,4 @@
 export { TEST_LAUNCH_COOKIE } from "./now.ts";
 export { launchServices } from "./services.ts";
 export { isOpen, LAUNCH_MS, OPENS_WORDS } from "./switch.ts";
+export type { Wishlist } from "./wishlist.ts";
