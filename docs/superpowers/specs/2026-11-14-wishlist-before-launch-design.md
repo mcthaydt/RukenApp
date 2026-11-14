@@ -1,6 +1,6 @@
 # Games before launch: the wishlist and a maker's numbers
 
-Date: 2026-11-14. Status: written for the Owner's approval. Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`) and changes it only where this file says so.
+Date: 2026-11-14. Status: approved by the Owner on 2026-11-14 ("approved"). Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`) and changes it only where this file says so.
 
 ## Why
 
