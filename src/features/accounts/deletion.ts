@@ -1,8 +1,16 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 
+// "Delete my account".
+//
+// Asking starts a 14-day wait. During it the account is `pending_deletion`: every read treats it like a
+// signed-out stranger (handle.ts) and every session is gone, so the person is signed out everywhere at once.
+// Signing in again before `purgeAfter` undoes it (`restoreOnSignIn`, called when a session is made). After the
+// 14 days the daily job (`purgeDueAccounts`) removes the person's details and leaves a tombstone.
+
 /** How long a person has to change their mind. */
 export const DELETION_WAIT_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** What deletion needs: a database and the time. */
 export interface DeletionDeps {
@@ -10,10 +18,70 @@ export interface DeletionDeps {
   readonly clock: Clock;
 }
 
-export function requestDeletion(deps: DeletionDeps, userId: string): Promise<{ purgeAfter: Date } | "staff"> {
-  throw new Error(`not built yet: ${typeof deps} ${typeof userId}`);
+/** Prisma's "unique constraint failed" error (P2002). */
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
 
-export function restoreOnSignIn(prisma: PrismaClient, clock: Clock, userId: string): Promise<boolean> {
-  throw new Error(`not built yet: ${typeof prisma} ${typeof clock} ${typeof userId}`);
+/** The open request (at most one: a partial unique index), if any. */
+function openRequest(db: Pick<PrismaClient, "deletionRequest">, userId: string) {
+  return db.deletionRequest.findFirst({
+    where: { userId, cancelledAt: null, purgedAt: null },
+    select: { purgeAfter: true },
+  });
+}
+
+/**
+ * Starts the wait for a person, or answers the date of the wait already running (asking twice changes
+ * nothing). A person with a staff role gets "staff" and nothing changes: staff are removed by another staff
+ * member, so access is never ended by accident.
+ */
+export async function requestDeletion(
+  deps: DeletionDeps,
+  userId: string,
+): Promise<{ purgeAfter: Date } | "staff"> {
+  const { prisma, clock } = deps;
+  if ((await prisma.staffAssignment.count({ where: { userId } })) > 0) return "staff";
+
+  const now = clock.epochMs();
+  const purgeAfter = new Date(now + DELETION_WAIT_DAYS * DAY_MS);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const open = await openRequest(tx, userId);
+      if (open !== null) return { purgeAfter: open.purgeAfter };
+
+      await tx.deletionRequest.create({ data: { userId, requestedAt: new Date(now), purgeAfter } });
+      await tx.user.update({ where: { id: userId }, data: { status: "pending_deletion" } });
+      // Signed out everywhere: the next request from any of the person's devices is signed out.
+      await tx.session.deleteMany({ where: { userId } });
+      return { purgeAfter };
+    });
+  } catch (error) {
+    // Two requests at the same moment: the partial unique index lets one in. The other answers with the
+    // request that won, as a second request after the first would.
+    if (isUniqueViolation(error)) {
+      const open = await openRequest(prisma, userId);
+      if (open !== null) return { purgeAfter: open.purgeAfter };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Sign-in calls this for every new session. Within the 14 days it cancels the waiting deletion and makes the
+ * account active again, and answers true so sign-in can say "Welcome back. Your account will not be deleted."
+ * Otherwise (nothing waiting, or the 14 days are over and only the daily job is left) it changes nothing and
+ * answers false; such an account stays signed out.
+ */
+export async function restoreOnSignIn(prisma: PrismaClient, clock: Clock, userId: string): Promise<boolean> {
+  const now = new Date(clock.epochMs());
+  return prisma.$transaction(async (tx) => {
+    const cancelled = await tx.deletionRequest.updateMany({
+      where: { userId, cancelledAt: null, purgedAt: null, purgeAfter: { gt: now } },
+      data: { cancelledAt: now },
+    });
+    if (cancelled.count === 0) return false;
+    await tx.user.update({ where: { id: userId }, data: { status: "active" } });
+    return true;
+  });
 }
