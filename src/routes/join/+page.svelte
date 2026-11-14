@@ -1,7 +1,7 @@
 <!--
   The paywall card: what it costs and what happens next, in two lines; two plans; one button. Signed out the
-  button leads to sign-up and is plain ink; signed in it is the pip-red "Continue to payment", the one press in the
-  whole site that spends money, so the one red thing. "Not now" is the way back. A member who opens the card is
+  button leads to sign-up and is plain ink; signed in it is the Blue "Continue to payment", the one press in
+  the whole site that spends money, so the one coloured button. "Not now" is the way back. A member who opens the card is
   told so and sent on. Someone whose card failed more than seven days ago is told so, with one "Update card" button
   to Stripe's page, in place of the price (paywall.ts).
 -->
