@@ -12,7 +12,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | 0 | Start: CLAUDE.md, AGENTS.md, the spec, this tracker, the app skeleton, the CI workflow | done (merged to main as `e8c55e2`, green) | 100% |
 | 1 | Accounts and membership | Every branch is merged to main: A #13, B #14, C #18, D #21, G #26, L #25, E0 #31, E #33, F #35, H #36, the Hyperdrive id #38, and the palette and 12px buttons #42. Plan, Cloudflare revision and look plan, with their audits, merged (#10, #12, #15, #19, #22, #23); the implementation audit merged (#43). The audit's six fixes are on `slice-1/fixes` (pull request #45, a draft). Open: S1 and S2 (the Owner), and Task 31 on the real site | 90% |
 | 2 | Games and play | plan merged (#27). Plan audit written, with the plan fixed and the coordinator's answers and the Owner's decision of 2026-11-14 (makers take their own games off Ruken) in it, merged (#29). The first execution session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) is on branch A, `slice-2/game` (pull request #44, a draft; the progress here is its own to set). Open: the maker agreement's text (the coordinator supplies it before branch M), FloorFifty's two clips and four items in FloorFifty's own repository | 45% (tasks 1 to 14 of 31 green: branches A to D) |
-| 3 | The feed and the maker's page | plan written, on `plan/slice-3` (pull request #53); no code yet. Open: Q1 (social icons) and Q2 (the maker's photo), asked of the coordinator for the Owner | 0% |
+| 3 | The feed and the maker's page | plan merged (#53); no code yet. Q1 (social icons) and Q2 (the maker's photo) are answered by the Owner, 2026-11-14 | 0% |
 | 4 | Submitting and the admin portal | not started | 0% |
 | 5 | Money (after launch, before 10 December) | plan written, on `plan/slice-5` (pull request #55, a draft), started alongside slice 2's build (Owner, 2026-11-14: "Slice 5 plan"). Three questions asked and not yet answered: the cost of sending a payout and which countries (the Owner), the second person and the code (the coordinator). Nothing built | 0% |
 
@@ -40,7 +40,7 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | execution, slice 1, fourth session (`session_01HNdX7Jm2eo6hTkRAq2GpdE`) | 4 Execution | `slice-1/delete-account`, `slice-1/paywall` | archived; branches F (#35) and H (#36) merged |
 | implementation audit, slice 1 (`session_01HNdX7Megz3EP14633F3phc`) | 5 Implementation audit | `audit/slice-1-implementation` | done; merged (#43): 0 block launch, 6 should fix, 9 notes |
 | execution, slice 1, the palette and button corners, fifth session (`session_01HNdX7M6L5FmYJyW99p6dtd`) | 4 Execution | `slice-1/wada-palette` (pull request #42) | done; merged (#42) |
-| plan, slice 3 | 2 Plan | `plan/slice-3` | plan written (Owner, 2026-11-14: start the slice 3 plan now, beside slice 2's building); pull request #53 |
+| plan, slice 3 | 2 Plan | `plan/slice-3` | plan written (Owner, 2026-11-14: start the slice 3 plan now, beside slice 2's building); merged (#53); the Owner's two answers follow on a second pull request |
 | plan, slice 5 (`session_01HNdX7LvaghiDzFbcAXYQhH`) | 2 Plan | `plan/slice-5` | plan written (Owner, 2026-11-14: "Slice 5 plan", beside slice 2's building); pull request #55, a draft; three questions asked of the coordinator and not yet answered |
 | execution, slice 2, first session (`session_01HNdX7JtPQz8kdqJs6ub2QH`) | 4 Execution | `slice-2/game` (pull request #44) | running |
 | fixes, slice 1 (`session_01HNdX7Lkceicj4sgwma7Dcp`) | 6 Fixes | `slice-1/fixes` (pull request #45) | running |
@@ -242,7 +242,7 @@ Plan: `docs/superpowers/plans/2026-11-14-slice-3-feed-maker-page.md`. It ends wi
 
 Stages:
 
-- [ ] Plan: written on `plan/slice-3` (pull request #53), planned against `main` at `00d616d`. No test ran in the plan session, and no code was written. Outside the repository, in a scratch folder: `dictionary-of-colour-combinations` 1.0.2 was downloaded and its `colors.json` measured (60,245 bytes; 159 colours; combinations 1 to 348: 120 of two colours, 120 of three, 108 of four). Not measured: how many combinations are readable (Task 3 records it). Not read as code: slice 2's branches D to G, which were not on `main`.
+- [x] Plan: written, merged to main (pull request #53); the Owner's answers to Q1 and Q2 written in afterwards, on a second pull request from `plan/slice-3`. Planned against `main` at `00d616d`. No test ran in the plan session, and no code was written. Outside the repository, in a scratch folder: `dictionary-of-colour-combinations` 1.0.2 was downloaded and its `colors.json` measured (60,245 bytes; 159 colours; combinations 1 to 348: 120 of two colours, 120 of three, 108 of four). Not measured: how many combinations are readable (Task 3 records it). Not read as code: slice 2's branches D to G, which were not on `main`.
 - [ ] Plan audit.
 - [ ] Execution, branch by branch (below).
 - [ ] Implementation audit.
@@ -250,8 +250,8 @@ Stages:
 
 What the plan waits for, and what is the Owner's:
 
-- [ ] Q1, social icons on a maker's page: A, about ten marks copied from the CC0 simple-icons set with its licence (the plan's recommendation); B, small buttons with the site's name; C, no social row at launch. Held to Task 23.
-- [ ] Q2, the maker's photo: A, served from the games' media address by one more key on slice 2's gate (the plan's recommendation); B, no photo at launch. Held to branch G.
+- [x] Q1, social icons on a maker's page. Owner, 2026-11-14: "Real icons": about ten marks copied from the CC0 simple-icons set as files, with its licence beside them (Task 23).
+- [x] Q2, the maker's photo. Owner, 2026-11-14: "Yes": served from the games' media address by one more key on slice 2's gate (branch G).
 - [ ] "Fine" on the screenshots of branches D, E, F, H and I, phone and computer.
 - [ ] The look at the real site (Task 27).
 
@@ -265,8 +265,8 @@ Branches and tasks:
 | D `slice-3/feed` | 13 the feed · 14 share · 15 a game's address opens the feed at that clip | not started; needs slice 2's branch F |
 | E `slice-3/feed-controls` | 16 the clip on screen, and sound · 17 the two hints | not started |
 | F `slice-3/paywall-clip` | 18 the paywall card over the clip · 19 the pip mark | not started |
-| G `slice-3/photo` | 20 a maker's photo · 21 the gate serves a photo | not started; needs Q2 and slice 2's branch D |
-| H `slice-3/maker-page` | 22 a maker's page · 23 social icons | not started; Task 23 needs Q1 |
+| G `slice-3/photo` | 20 a maker's photo · 21 the gate serves a photo | not started; needs slice 2's branch D |
+| H `slice-3/maker-page` | 22 a maker's page · 23 social icons | not started |
 | I `slice-3/edit-page` | 24 your page · 25 your colours and your photo · 26 your links | not started |
 | J `slice-3/real-site` | 27 design 8's lines for this slice, and the real site | not started |
 
