@@ -14,6 +14,7 @@ const GITHUB_APP_PRIVATE_KEY = generateKeyPairSync("rsa", {
 // CI runs them on GitHub's runners only (CLAUDE.md: no session runs tests itself).
 export default defineConfig({
   testDir: "tests/browser",
+  testMatch: /diag\.test\.ts/,
   forbidOnly: true,
   retries: 0,
   reporter: [["list"], ["html", { open: "never" }]],
@@ -51,6 +52,7 @@ export default defineConfig({
         CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: process.env.TEST_DATABASE_URL ?? "",
         // So `wrangler dev` gives the Worker the settings below (there is no .dev.vars file).
         CLOUDFLARE_INCLUDE_PROCESS_ENV: "true",
+        WRANGLER_LOG: "debug",
         // The hook now runs on every request, so the sign-in settings must exist. All plainly fake.
         BETTER_AUTH_SECRET: "test-only-secret-not-used-anywhere-real",
         BETTER_AUTH_URL: "http://localhost:4173",
