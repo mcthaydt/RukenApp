@@ -67,7 +67,8 @@ None.
 **S4. The paper card on a maker's page, which the Owner asked for, is not in the plan.**
 - Where: design 5.8, line 250 ("the paper card is the one thing shared by every surface: the paywall card over a dimmed clip in the feed, the cards on Ruken's own screens, and the maker's page"); `progress.md:233`; the plan's Owner bullet (line 70) and Task 22's styles (line 976).
 - What is wrong: the plan's maker page has game cards and "game somewhere else" cards with 20px corners in the theme's button colours. It says nothing of the paper card the Owner said ties the three surfaces together, so the Owner's 2026-11-14 decision is not carried. It may be met by the card's shape alone (20px, no border, no shadow, a tone step) or may mean a paper surface. The plan does not say which.
-- Fix: the plan session writes the Owner's line into "The Owner's decisions" and says how the maker's page carries it. The coordinator asks the Owner if the reading is not plain: "On a maker's page, should the game cards be the white paper card, or the paper card's shape in the page's own colours?"
+- Fix: the plan session writes the Owner's line into "The Owner's decisions" and says how the maker's page carries it.
+- Answered: Owner, 2026-11-14 (relayed by the coordinator): "Page's own colours". On a maker's page, the cards keep the paper card's shape (20px corners, no border, no shadow) but are filled with the colours the maker picked. Task 22's styles already do this. What is left is to write the Owner's answer into the plan's decisions, and to name it in Task 22's styles.
 
 **S5. The itch.io mark is named wrong, so Task 23 stops at once.**
 - Where: Task 23 (lines 1042 to 1045).
@@ -173,5 +174,5 @@ None.
 
 ## For the coordinator
 
-- No question for the Owner blocks execution. S4 may need one (the paper card on a maker's page). S8 is worth the Owner's eye at branch I's screenshots.
+- No question for the Owner blocks execution. S4 is answered (Owner, 2026-11-14: "Page's own colours"). S8 is worth the Owner's eye at branch I's screenshots.
 - S1, S2, S5, S9, S10 and S11 would each fail in CI or stop a task as the plan is written. They are cheapest fixed in the plan before branches A to D start.
