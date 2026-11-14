@@ -1,7 +1,7 @@
 <!--
   Delete my account: what happens now, what happens in 14 days, and how to undo it. A paying member is told first that
   the membership ends now with no refund, and can cancel it without deleting. "Keep my account" is the way back. The
-  button spends no money, so it is the card's one plain button, never the pip-red one.
+  button spends no money, so it is the card's one plain button, never the green one that spends.
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
