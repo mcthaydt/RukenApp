@@ -1,8 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
-import { createPrismaClient, type PrismaClient } from "../../src/lib/server/db.ts";
+import type { PrismaClient } from "../../src/lib/server/db.ts";
+import { PrismaClient as NodePrismaClient } from "./generated/prisma/client.ts";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const PRISMA_BIN = fileURLToPath(new URL("../../node_modules/.bin/prisma", import.meta.url));
@@ -50,7 +52,11 @@ export async function startTestDatabase(): Promise<TestDatabase> {
   const url = new URL(serverUrl);
   url.pathname = `/${name}`;
   runPrisma(url.toString(), ["migrate", "deploy"]);
-  const prisma = createPrismaClient(url.toString(), { poolMax: 2 });
+  // The app's client is generated for Workers and the tests run in Node, so they use the Node-generated one. The
+  // two have the same shape and differ only in how they load WebAssembly, hence one cast.
+  const prisma = new NodePrismaClient({
+    adapter: new PrismaPg({ connectionString: url.toString(), max: 2 }),
+  }) as unknown as PrismaClient;
 
   return {
     url: url.toString(),

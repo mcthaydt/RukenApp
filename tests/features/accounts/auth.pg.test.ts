@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { isRedirect } from "@sveltejs/kit";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createAuth,
   PUBLIC_ROUTE_HEADER,
@@ -14,9 +14,9 @@ import {
   SIGN_IN_PAUSE_MS,
   SIGN_IN_WINDOW_MS,
 } from "../../../src/features/accounts/sign-in-guard.ts";
-import { keepBackgroundWorkAlive } from "../../../src/lib/server/background.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import type { MailMessage, Mailer } from "../../../src/lib/server/mail.ts";
+import { setPlatform } from "../../../src/lib/server/platform.ts";
 import { TestClock } from "../../support/test-clock.ts";
 import { createCaptureMailer } from "../../support/capture-mailer.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
@@ -838,6 +838,11 @@ describe("account sign-in pause", () => {
 });
 
 describe("mail after the answer", () => {
+  // Mail goes through the default `runAfterAnswer`, which asks the platform to keep it alive.
+  beforeEach(() => {
+    setPlatform({ databaseUrl: () => "", waitUntil: () => undefined });
+  });
+
   it("answers a reset request without waiting for the mail to go", async () => {
     // A mail server that never answers. The requests must not wait for it, or the time of the
     // answer would say whether the address has an account (only real accounts get mail).
@@ -875,7 +880,7 @@ describe("mail after the answer", () => {
     expect((reset as Response).status).toBe(200);
   });
 
-  it("hands the mail to the platform's waitUntil by default, so the host does not freeze it half sent", async () => {
+  it("hands the mail to the platform's waitUntil by default, so the Worker is not stopped with it half sent", async () => {
     const sent: MailMessage[] = [];
     const mailer: Mailer = {
       send: (message) => {
@@ -893,19 +898,20 @@ describe("mail after the answer", () => {
     const email = nextEmail();
     await db().user.create({ data: { email, name: "Pat", emailVerified: true } });
     const kept: Promise<unknown>[] = [];
-    const event = { platform: { context: { waitUntil: (promise: Promise<unknown>) => kept.push(promise) } } };
-
-    await keepBackgroundWorkAlive({
-      event: event as unknown as Parameters<typeof keepBackgroundWorkAlive>[0]["event"],
-      resolve: () =>
-        defaultAuth.handler(
-          new Request(`${ORIGIN}/api/auth/request-password-reset`, {
-            method: "POST",
-            headers: { "content-type": "application/json", origin: ORIGIN, "x-ruken-client-ip": nextIp() },
-            body: JSON.stringify({ email, redirectTo: "/reset-password" }),
-          }),
-        ),
+    setPlatform({
+      databaseUrl: () => "",
+      waitUntil: (work) => {
+        kept.push(work);
+      },
     });
+
+    await defaultAuth.handler(
+      new Request(`${ORIGIN}/api/auth/request-password-reset`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: ORIGIN, "x-ruken-client-ip": nextIp() },
+        body: JSON.stringify({ email, redirectTo: "/reset-password" }),
+      }),
+    );
 
     expect(kept).toHaveLength(1);
     await Promise.all(kept);
