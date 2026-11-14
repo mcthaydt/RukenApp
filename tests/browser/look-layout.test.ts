@@ -199,7 +199,7 @@ test.describe("every card screen has a way home", () => {
   });
 });
 
-describe("a link that looks like a button", () => {
+test.describe("a link that looks like a button", () => {
   for (const path of ["/no-such-page", "/reset-password?token=nope"]) {
     test(`${path}: spans the card on a phone, and is only as wide as its words on a computer`, async ({
       page,
@@ -221,7 +221,7 @@ describe("a link that looks like a button", () => {
   }
 });
 
-describe("home", () => {
+test.describe("home", () => {
   test("a Sign in button under the line, the paper button on felt", async ({ page }) => {
     await page.goto("/");
     const button = page.getByRole("link", { name: "Sign in", exact: true });
