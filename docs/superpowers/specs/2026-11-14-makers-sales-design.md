@@ -204,7 +204,7 @@ Everything in design section 6 stays. What is added:
 - Always, as for the membership: a mistaken charge, a minor undoing a purchase, and what the law requires. Staff refund from the admin portal; it is recorded like any staff action and needs a second person, as money actions do (design 5.5).
 - Owner, "5. A": when a game leaves Ruken (its maker takes it down, or staff do), every purchase of its extras in the 14 days before is refunded in full, at once, by the system. The refund is paid out of the game's earnings as above. Call: this happens before the 10th's statement, which is at least 10 days after any sale it covers, so the money has not been paid out yet. Older purchases stay sold.
 - A store's purchase is refunded by that store, under its own rules. When the store says it refunded one, the extra is no longer owned, and the refund comes off the game's earnings like any other.
-- Open for the Owner: Apple does not let an app refund a purchase itself. For a purchase made through Apple in the 14 days before a game leaves Ruken ("5. A"), the spec does not yet say how the money gets back (section 10).
+- Owner, 2026-11-14: "Email Apple buyers a link to Apple's refund page and hold the maker's money until Apple decides". Apple does not let an app refund a purchase itself. So when a game leaves Ruken, each person who bought one of its extras through Apple in the 14 days before gets one email with a link to Apple's refund page. The game's earnings from those sales are held, not paid out, until Apple's notifications say it refunded them or not.
 - Call: when an account is deleted, its purchases go with it, with no refund; the delete screen says so.
 
 ### 5.9 The admin portal
@@ -248,7 +248,7 @@ The first statement that pays a split is checked against the ledger by a person,
 
 ## 9. Launch
 
-Owner, "24. B": launch moves past 30 November. Owner, "3. B": launch waits until the apps are ready. So the launch date is set by the apps' own spec, which is being written next, not by this one.
+Owner, "24. B": launch moves past 30 November. Owner, "3. B": launch waits until the apps are ready. So the launch date is set by the apps' own spec, not by this one (Owner, 2026-11-14, on the apps: "All eight, with launch set by whichever store approves last").
 
 What this spec's own work needs, for that date: this spec approved; the maker screens redesign (#96), with these screens in it, with the Owner's "fine"; then about a slice's worth of work through every stage of the workflow. Earlier, before the apps, this was proposed as Monday 14 December; that date no longer stands on its own. The text and chat helper (board "3. C") is not counted here either.
 
@@ -257,6 +257,6 @@ What this spec's own work needs, for that date: this spec approved; the maker sc
 - **The size.** This is as big as a slice. It is planned and built through every stage of the workflow, alongside slices 2 to 5, the wishlist and the beta builds, which are not finished.
 - **The maker agreement.** Selling and splitting are new in it. Version 2 needs a lawyer before the first payout.
 - **Who is the seller.** Ruken takes the payment and keeps 30%, so Ruken is most likely the seller for tax. Its tax registrations and refund rules cover these sales. An accountant confirms.
-- **Apple refunds after a take-down.** Apple does not let an app hand money back itself, so "5. A" has no clear path for a purchase made through Apple. Asked of the Owner.
+- **Apple refunds after a take-down.** Apple decides, not Ruken. A held sale that Apple never refunds and never answers about needs a rule for how long it is held; the plan proposes one to the Owner.
 - **The stores' rules move.** Apple's fee on links to buy on the web, and Google's fees, are changing through the courts in 2026. The rules are checked again before the plan.
 - **A game that does not unlock.** Staff check each extra by playing (5.5), but a later game update could break an unlock. Reports and the staff refund (5.8) are the way back.
