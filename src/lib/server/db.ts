@@ -47,6 +47,33 @@ export function poolMaxFromEnv(
   return value;
 }
 
+/** What one request holds: its own connection to the database, which Prisma's `pg` adapter hands out. */
+export type RequestConnection = Awaited<ReturnType<PrismaPg["connect"]>>;
+
+/** The calls Prisma's client makes of an adapter, answered by whichever connection the running request opened. */
+export interface RequestScopedAdapter extends Pick<
+  RequestConnection,
+  "queryRaw" | "executeRaw" | "executeScript" | "startTransaction" | "getConnectionInfo" | "dispose"
+> {
+  readonly provider: "postgres";
+  readonly adapterName: string;
+}
+
+/** What `new PrismaClient({ adapter })` takes. */
+export interface RequestScopedAdapterFactory {
+  readonly provider: "postgres";
+  readonly adapterName: string;
+  connect(): Promise<RequestScopedAdapter>;
+}
+
+/**
+ * An adapter for one Prisma client that serves every request. It holds no connection of its own: each call goes to
+ * the connection the running request opened with `connect`, opened when that request first asks.
+ */
+export function requestScopedAdapter(connect: () => Promise<RequestConnection>): RequestScopedAdapterFactory {
+  throw new Error(`not built yet (${connect.name})`);
+}
+
 /** Each request keeps its pool small: Hyperdrive pools the real connections in front of the database. */
 const DEFAULT_POOL_MAX = 3;
 
