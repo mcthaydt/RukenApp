@@ -10,8 +10,12 @@
 
   let { data, form }: PageProps = $props();
 
-  // After a refusal the card keeps the plan that was chosen; on a first visit it is the one in the address.
-  let plan = $derived(form?.plan ?? data.plan);
+  // The plan the card opens on: after a refusal the one that was chosen, on a first visit the one in the address.
+  // It is state bound to the two radio buttons, not a value written onto them. When the page comes alive, Svelte
+  // reads a choice the person made a moment before, on the page as the server sent it; setting `checked` from a
+  // value instead writes the opening plan back over it, and a person on a slow phone loses the plan they picked.
+  // svelte-ignore state_referenced_locally
+  let plan = $state(form?.plan ?? data.plan);
 </script>
 
 <svelte:head>
@@ -45,11 +49,11 @@
       <!-- Two rows, each a real radio button in a label the width of the card, so the whole row is the target. -->
       <div role="radiogroup" aria-label="Plan">
         <label class="choice">
-          <input type="radio" name="plan" value="monthly" checked={plan === "monthly"} />
+          <input type="radio" name="plan" value="monthly" bind:group={plan} />
           {data.prices.monthly} a month
         </label>
         <label class="choice">
-          <input type="radio" name="plan" value="annual" checked={plan === "annual"} />
+          <input type="radio" name="plan" value="annual" bind:group={plan} />
           {data.prices.annual} a year
         </label>
       </div>
