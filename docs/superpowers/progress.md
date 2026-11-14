@@ -376,7 +376,13 @@ What the plan waits for, and what is the Owner's:
 
 Branches and tasks (none started):
 
-- [ ] A `slice-5/money-rules`: Tasks 1 to 8 (the rules as pure functions; one whole month worked through).
+- [ ] A `slice-5/money-rules` (draft pull request #80; execution session `session_01HNdX7MZjazb79EYJjcYMHy`): Tasks 1 to 8 (the rules as pure functions; one whole month worked through). **Progress: 3 of 8 tasks green in CI, Task 4 built, 4 of 37 tasks in the slice (about 11%).**
+  - [x] Task 1: rules, arithmetic, period, calendar, canonical JSON. Red seen (after one stub lint fix), green read in CI.
+  - [x] Task 2: a payment's makers' half, month by month. Red seen, green read in CI.
+  - [x] Task 3: the entries a payment makes; refunds and chargebacks. Red seen, green read in CI.
+  - [ ] Task 4: reading Stripe's Fees report. Red seen (csv, fee-rows, major-units fail with "not built yet"); green pushed, CI result next.
+  - [ ] Tasks 5 to 8: not started.
+  - Rulings so far: (1) `fast-check` is not a dependency of this repository and none may be added, so the carried property tests are fixed-seed or fixed-sweep loops (same cases every run). (2) A task's green is pushed together with the next task's red; the red was always read in CI first. (3) A small `posting.test.ts` covers the two carried helpers in `posting.ts`. (4) `postChargebackOpened` adds up several lines of one account itself, so a caller passes a payment's lines and its later fees' lines together. (5) `feeRowsFrom` throws on a row with the wrong number of fields, as it does on wrong columns, rather than guess.
 - [ ] B `slice-5/ledger`: Tasks 9 to 11 (the ledger tables, the journal, months that close).
 - [ ] C `slice-5/facts`: Tasks 12 to 19 (payments, Stripe's fees, releases, refunds and chargebacks, daily play, the daily money job).
 - [ ] D `slice-5/statements`: Tasks 20 to 23 (the pool, statements, final on the 10th).
