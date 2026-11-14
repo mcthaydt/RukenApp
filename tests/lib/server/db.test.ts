@@ -213,10 +213,7 @@ describe("createSharedClient", () => {
     const { connect, notes } = fakeConnections(() => client);
     const client = createSharedClient(connect);
     const open = () => client;
-    await Promise.all([
-      request(() => work(client, "one"), open),
-      request(() => work(client, "two"), open),
-    ]);
+    await Promise.all([request(() => work(client, "one"), open), request(() => work(client, "two"), open)]);
     return notes;
   }
 
