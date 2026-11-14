@@ -241,7 +241,7 @@ The idea: the page is quiet green felt, and what a person picks up or acts on is
 
   Surfaces are told apart by a tone step, never by a line or a shadow.
 - **Type.** Young Serif (400) for headings and card titles; Schibsted Grotesk, 400 for text and 600 for buttons. Both are under the SIL Open Font License and are served from Ruken's own address with their licences beside them; the site makes no request to a font service. Sizes: section heading 64px (36px on a phone), card title 32px, statement 24px, body 18px at 1.55 leading, small 14px for notes only. Sentence case; left aligned.
-- **Shape.** Cards and panels 20px corners, every button a full pill. No borders or hairline rules except on real form fields; no shadow at rest.
+- **Shape.** Cards and panels 20px corners, buttons 12px corners (Owner, 2026-11-14: "make the buttons a bit less rounded too"; they were full pills). No borders or hairline rules except on real form fields; no shadow at rest.
 - **Motion.** Pressing a button scales it to 0.97; nothing else moves. With reduced motion, nothing moves at all.
 - **Never.** Eyebrow labels, tiny uppercase labels, gradients, glass, shadows at rest, emoji, icons on feature cards, index numbers.
 - **Its copy rules hold too.** Every money line carries its qualifier ("Tax is added where it applies."), labels take no full stop, sentences do, and nothing claims a fact Ruken does not have. Prices and product words come from this design, not from the old pages ($9.99 and "membership", not $7.99 and "Premium").
