@@ -21,6 +21,11 @@ export interface ResendMailerOptions {
    * with real-looking accounts cannot email strangers. Unset or empty sends to anyone.
    */
   allowlist: string | undefined;
+  /**
+   * Where Resend's API is. Left out, Resend's own. The journeys point it at a stand-in on this machine
+   * (tests/browser/support/fake-mail-server.ts) so they can read the mail the site sends.
+   */
+  apiBase?: string;
   /** Left out, the global `fetch`. A test passes its own, so nothing goes over the network. */
   fetch?: typeof fetch;
 }
@@ -50,10 +55,11 @@ export function createResendMailer(options: ResendMailerOptions): Mailer {
   // Kept in a constant and called as a plain function: Workers refuse a `fetch` called as a method of
   // another object ("Illegal invocation").
   const send = options.fetch ?? fetch;
+  const emailsUrl = `${options.apiBase ?? "https://api.resend.com"}/emails`;
   return {
     async send(message) {
       if (allowed !== null && !allowed.has(message.to.trim().toLowerCase())) return false;
-      const answer = await send("https://api.resend.com/emails", {
+      const answer = await send(emailsUrl, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${options.apiKey}`,
