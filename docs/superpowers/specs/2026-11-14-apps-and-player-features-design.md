@@ -1,6 +1,6 @@
 # Ruken apps on every store, and what players get
 
-Date: 2026-11-14. Status: written, waiting for the Owner's approval. Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`), the wishlist design (`2026-11-14-wishlist-before-launch-design.md`), beta builds (`2026-11-14-beta-builds-design.md`) and the makers' sales spec (draft pull request #106). It changes them only where this file says so.
+Date: 2026-11-14. Status: approved by the Owner on 2026-11-14 ("Approved"). Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`), the wishlist design (`2026-11-14-wishlist-before-launch-design.md`), beta builds (`2026-11-14-beta-builds-design.md`) and the makers' sales spec (draft pull request #106). It changes them only where this file says so.
 
 ## Why
 
