@@ -90,9 +90,17 @@ describe("closePeriod", () => {
 
     await db()
       .$executeRaw`UPDATE "LedgerPeriod" SET "state" = 'final', "finalAt" = now() WHERE "period" = '2026-04'`;
-    await expect(db().$transaction((tx) => postEntry(tx, carry("carry:2026-04:again")))).rejects.toThrow(
-      /2026-04 is final and takes no new entries/,
-    );
+    // Through the model client, Prisma words a trigger's refusal as a foreign-key error; the database's own words are
+    // in the driver's error.
+    await expect(
+      db().$transaction((tx) => postEntry(tx, carry("carry:2026-04:again"))),
+    ).rejects.toMatchObject({
+      meta: {
+        driverAdapterError: {
+          cause: { originalMessage: "period 2026-04 is final and takes no new entries" },
+        },
+      },
+    });
   });
 });
 
