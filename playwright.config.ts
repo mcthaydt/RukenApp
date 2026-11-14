@@ -22,6 +22,13 @@ export default defineConfig({
   use: { baseURL: "http://localhost:4173", trace: "off", actionTimeout: 5_000 },
   webServer: [
     {
+      // DIAGNOSTIC ONLY: what Postgres is doing, once a second (diag-sampler.ts).
+      command: "node tests/browser/support/diag-sampler.ts",
+      url: "http://127.0.0.1:12113/ready",
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    {
       // A stand-in for GitHub (tests/browser/support/fake-github-server.ts): the sign-in and installation pages, the
       // lists of a person's installations and repositories, and the app's own calls, so the journeys can connect a
       // maker's GitHub and pull a game with no network. It is ready when it answers /ready.
