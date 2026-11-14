@@ -28,7 +28,42 @@ export class NotAtStripeYet extends Error {
 /** The port on a real Stripe client. */
 export function bindMoneyStripe(stripe: Stripe): MoneyStripe {
   return {
-    paymentIds: (stripeInvoiceId) =>
-      Promise.reject(new Error(`not built yet: paymentIds ${typeof stripe} ${stripeInvoiceId}`)),
+    paymentIds: (stripeInvoiceId) => readPaymentIds(stripe, stripeInvoiceId),
   };
+}
+
+/**
+ * The same walk the membership makes to read a card fee (`invoiceCardFee`): the invoice with its payments, its paid
+ * payment's payment intent with the charge and the charge's balance transaction, or the charge alone for an invoice
+ * paid by a bare charge.
+ */
+async function readPaymentIds(stripe: Stripe, stripeInvoiceId: string): Promise<PaymentIds> {
+  const invoice = await stripe.invoices.retrieve(stripeInvoiceId, { expand: ["payments"] });
+  const payment = invoice.payments?.data.find((candidate) => candidate.status === "paid")?.payment;
+  const intent = payment?.payment_intent;
+  if (intent !== undefined) {
+    const paymentIntentId = typeof intent === "string" ? intent : intent.id;
+    const read = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["latest_charge.balance_transaction"],
+    });
+    const charge = read.latest_charge;
+    if (charge === null || typeof charge === "string") {
+      throw new NotAtStripeYet(`Payment ${paymentIntentId} has no charge yet`);
+    }
+    const balance = charge.balance_transaction;
+    if (balance === null || typeof balance === "string") {
+      throw new NotAtStripeYet(`Payment ${paymentIntentId} has no balance transaction yet`);
+    }
+    return { chargeId: charge.id, paymentIntentId, balanceTransactionId: balance.id };
+  }
+  const chargeRef = payment?.charge;
+  if (chargeRef === undefined) throw new NotAtStripeYet(`Invoice ${stripeInvoiceId} has no paid payment yet`);
+  const charge = await stripe.charges.retrieve(typeof chargeRef === "string" ? chargeRef : chargeRef.id, {
+    expand: ["balance_transaction"],
+  });
+  const balance = charge.balance_transaction;
+  if (balance === null || typeof balance === "string") {
+    throw new NotAtStripeYet(`Invoice ${stripeInvoiceId} has no balance transaction yet`);
+  }
+  return { chargeId: charge.id, paymentIntentId: null, balanceTransactionId: balance.id };
 }

@@ -5,7 +5,7 @@ import { postUnpostedPayments } from "../../../src/features/money/payments.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { fakeMoneyStripe } from "../../support/fake-money-stripe.ts";
-import { addMembershipPayment, balancesOf, expectBooksBalanced } from "../../support/ledger.ts";
+import { addMembershipPayment, expectBooksBalanced, movedBy } from "../../support/ledger.ts";
 import { TestClock } from "../../support/test-clock.ts";
 
 // Posting what members paid. Each test pays in a month of its own and reads how the books moved (a change, not a
@@ -36,25 +36,12 @@ function postingOf(invoice: string) {
 
 const MONTHLY = { gross: 1081n, tax: 82n, cardFee: 61n, plan: "monthly" } as const;
 
-/** How much each account moved while `action` ran. */
-async function movedBy(action: () => Promise<unknown>): Promise<Record<string, bigint>> {
-  const before = await balancesOf(db());
-  await action();
-  const after = await balancesOf(db());
-  const moved: Record<string, bigint> = {};
-  for (const [account, balance] of Object.entries(after)) {
-    const change = balance - (before[account] ?? 0n);
-    if (change !== 0n) moved[account] = change;
-  }
-  return moved;
-}
-
 describe("postUnpostedPayments", () => {
   it("posts a payment once, with the lines the rule gives", async () => {
     const clock = new TestClock("2026-11-03T12:00:00Z");
     const deps = { db: db(), clock, stripe };
     await addMembershipPayment(db(), stripe, { ...MONTHLY, invoice: "in_1" });
-    const moved = await movedBy(async () => {
+    const moved = await movedBy(db(), async () => {
       expect(await postUnpostedPayments(deps)).toEqual({ posted: 1 });
     });
     expect(moved).toEqual({
@@ -87,7 +74,7 @@ describe("postUnpostedPayments", () => {
     });
     // 10,810 − 820 − 330 = 9,660 is left; the makers' half, 4,830, is twelve parts of 402 with 6 cents over, which
     // go to the first six months, so the first month's part is 403 and eleven parts (4,427) wait.
-    const moved = await movedBy(() => postUnpostedPayments({ db: db(), clock, stripe }));
+    const moved = await movedBy(db(), () => postUnpostedPayments({ db: db(), clock, stripe }));
     expect(moved).toEqual({
       "platform:stripe_clearing": 10_480n,
       "platform:processor_fees": 330n,
@@ -133,7 +120,7 @@ describe("postUnpostedPayments", () => {
       paidAt: "2027-09-02T15:00:00Z",
       notAtStripe: true,
     });
-    const moved = await movedBy(async () => {
+    const moved = await movedBy(db(), async () => {
       expect(await postUnpostedPayments(deps)).toEqual({ posted: 0 });
     });
     expect(moved).toEqual({});
@@ -178,7 +165,7 @@ describe("postUnpostedPayments", () => {
       plan: "monthly",
       paidAt: "2028-01-02T15:00:00Z",
     });
-    const moved = await movedBy(() => postUnpostedPayments({ db: db(), clock, stripe }));
+    const moved = await movedBy(db(), () => postUnpostedPayments({ db: db(), clock, stripe }));
     expect(moved).toEqual({
       "platform:stripe_clearing": 50n,
       "platform:processor_fees": 450n,

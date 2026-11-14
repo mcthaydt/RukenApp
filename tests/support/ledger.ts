@@ -10,6 +10,22 @@ export async function balancesOf(prisma: PrismaClient): Promise<Record<string, b
   return Object.fromEntries(rows.map((row) => [row.account, row.balance]));
 }
 
+/** How much each account moved while `action` ran. An account that did not move is left out. */
+export async function movedBy(
+  prisma: PrismaClient,
+  action: () => Promise<unknown>,
+): Promise<Record<string, bigint>> {
+  const before = await balancesOf(prisma);
+  await action();
+  const after = await balancesOf(prisma);
+  const moved: Record<string, bigint> = {};
+  for (const [account, balance] of Object.entries(after)) {
+    const change = balance - (before[account] ?? 0n);
+    if (change !== 0n) moved[account] = change;
+  }
+  return moved;
+}
+
 /**
  * The books balance: every account adds up to something, and all of them together add up to nothing. The database
  * already refuses an entry that does not add up to zero, so this is the check a test makes at the end that nothing
