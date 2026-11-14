@@ -39,6 +39,8 @@ Behind those: makers submit a game on one form, as simply as on itch.io, and Ruk
 
 Comments, day passes, tips, the store, cloud saves, a game SDK, the desktop app, the boot image, translation, embeds, streams, collections, teams and contributor splits, search, notifications, a learned feed ranking. Each is a later spec if the Owner asks for it.
 
+Owner, 2026-11-14: "add google after launch". Sign in with Google comes after launch, as its own small spec: a "Continue with Google" button on sign up and sign in, one short date-of-birth screen for a new Google account (the age check still applies), and an existing email account with the same address treated as the same person. Apple and others are not planned.
+
 ### What would make it a failure even if it works
 
 - It grows past the sentence again. Anything not in section 2 needs the Owner's words before it starts.
