@@ -226,6 +226,8 @@ describe("screens wear the look and nothing of their own", () => {
     "panel",
     "choice",
     "apart",
+    "clip",
+    "frame",
   ];
   const ROUTES = "src/routes";
 
@@ -262,5 +264,42 @@ describe("screens wear the look and nothing of their own", () => {
     expect(screensUsing("pay")).toEqual([join(ROUTES, "join", "+page.svelte")]);
     const card = readFileSync(join(ROUTES, "join", "+page.svelte"), "utf8");
     expect(card.match(/class="pay"/g)).toHaveLength(1);
+  });
+});
+
+// A game's clips and its frame (design 5.8, Task 19). Each class has its rule here and its first use in the staff page
+// (Task 30); a game's own screens (Task 21) add a rule for `frame` inside the play screen.
+describe("a game's clips and its frame", () => {
+  /** The declarations of the rule whose whole selector is `.name`, with comments dropped so one cannot fake a rule. */
+  const ruleOf = (name: string): string => {
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    return new RegExp(`(?:^|\\})\\s*\\.${name}\\s*\\{([^}]*)\\}`).exec(withoutComments)?.[1] ?? "";
+  };
+
+  it("clip is as wide as its space, at most 60% of the window's height, with rounded corners and ink behind it", () => {
+    const clip = ruleOf("clip");
+    expect(clip).toMatch(/display:\s*block/);
+    expect(clip).toMatch(/width:\s*100%/);
+    expect(clip).toMatch(/max-height:\s*60dvh/);
+    expect(clip).toMatch(/border-radius:\s*var\(--radius-card\)/);
+    expect(clip).toMatch(/background:\s*var\(--ink\)/);
+    expect(clip).toMatch(/object-fit:\s*cover/);
+  });
+
+  it("frame is as wide as its space, 70% of the window's height, with no edge and felt-deep behind it", () => {
+    const frame = ruleOf("frame");
+    expect(frame).toMatch(/display:\s*block/);
+    expect(frame).toMatch(/width:\s*100%/);
+    expect(frame).toMatch(/height:\s*70dvh/);
+    expect(frame).toMatch(/border:\s*0/);
+    expect(frame).toMatch(/background:\s*var\(--felt-deep\)/);
+  });
+
+  it("uses only the look's tokens: no colour is written into either rule", () => {
+    for (const name of ["clip", "frame"])
+      expect(ruleOf(name), name).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(|hsl\(/i);
+    // An empty rule would pass that check, so each must exist.
+    expect(ruleOf("clip")).not.toBe("");
+    expect(ruleOf("frame")).not.toBe("");
   });
 });

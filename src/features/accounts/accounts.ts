@@ -22,5 +22,6 @@ export {
   requestDeletion,
   restoreOnSignIn,
   type DeletionDeps,
+  type PurgeDeps,
 } from "./deletion.ts";
 export { WELCOME_BACK_COOKIE } from "./cookies.ts";

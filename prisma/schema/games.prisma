@@ -73,6 +73,17 @@ model Game {
   playPasses   PlayPass[]
   playSessions PlaySession[]
 
+  // The launch feature's table points at a game; it is declared in launch.prisma.
+  wishlist Wishlist[]
+
+  // The money feature's journal entries can name a game; they are declared in money.prisma.
+  journalEntries JournalEntry[]
+  playDays       PlayDay[]
+
+  // The money feature's pool shares and statement lines can name a game; they are declared in money.prisma.
+  poolShares     PoolShare[]
+  statementLines StatementLine[]
+
   @@index([makerUserId])
 }
 

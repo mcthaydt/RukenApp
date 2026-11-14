@@ -48,6 +48,12 @@ function cookieJar() {
   };
 }
 
+describe("the Stripe client", () => {
+  it("is part of what the services answer, for features above the membership to use", () => {
+    expect(build().stripe).toBeInstanceOf(Stripe);
+  });
+});
+
 describe("the arrival cookie", () => {
   it("answers what remember set, with the clock's time", () => {
     const { arrival } = build();

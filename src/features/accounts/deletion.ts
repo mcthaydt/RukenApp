@@ -1,4 +1,5 @@
 import type { Clock } from "../../lib/clock.ts";
+import type { FileStore } from "../../lib/files/store.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 
 // "Delete my account".
@@ -16,6 +17,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export interface DeletionDeps {
   readonly prisma: PrismaClient;
   readonly clock: Clock;
+}
+
+/** What the daily job needs besides that: the bucket a person's files (their photo) are kept in. */
+export interface PurgeDeps extends DeletionDeps {
+  readonly files: FileStore;
 }
 
 /** Prisma's "unique constraint failed" error (P2002). */
@@ -94,8 +100,8 @@ export async function restoreOnSignIn(prisma: PrismaClient, clock: Clock, userId
  * account. The `User` row stays, as a tombstone with nothing of the person in it, so the payment rows that point
  * at it stay true. A later slice that stores more of a person adds its own removal here, with a test.
  */
-export async function purgeDueAccounts(deps: DeletionDeps): Promise<number> {
-  const { prisma, clock } = deps;
+export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
+  const { prisma, clock, files } = deps;
   const now = new Date(clock.epochMs());
   const due = await prisma.deletionRequest.findMany({
     where: { cancelledAt: null, purgedAt: null, purgeAfter: { lte: now } },
@@ -104,6 +110,13 @@ export async function purgeDueAccounts(deps: DeletionDeps): Promise<number> {
 
   let finished = 0;
   for (const { id, userId } of due) {
+    // A photo is served to anyone who has its address, so it goes before the page that points at it. It goes first
+    // and not after: if the bucket fails, the account is not yet marked done and tomorrow's run tries again, where a
+    // photo left behind once the page is gone would have nothing pointing at it to be found by. A missing file is
+    // not an error, so a run that comes back to an account an earlier run half finished is fine.
+    const page = await prisma.makerPage.findUnique({ where: { userId }, select: { photoKey: true } });
+    if (page !== null && page.photoKey !== null) await files.delete(page.photoKey);
+
     const done = await prisma.$transaction(async (tx) => {
       const claimed = await tx.deletionRequest.updateMany({
         where: { id, cancelledAt: null, purgedAt: null },
@@ -116,6 +129,9 @@ export async function purgeDueAccounts(deps: DeletionDeps): Promise<number> {
       await tx.account.deleteMany({ where: { userId } });
       // What GitHub said the person can reach is theirs; their repositories go with their installations.
       await tx.gitHubInstallation.deleteMany({ where: { userId } });
+      // The games a person wanted are theirs. The launch email's row (`WishlistMail`) is left: it holds only the
+      // tombstone's id and when a mail went, and is add-only, so the job still finds it and never mails twice.
+      await tx.wishlist.deleteMany({ where: { userId } });
       // The person's page, and its links with it, so the address is free for someone else. It stays up for the 14
       // days of the wait, and goes only here.
       await tx.makerPage.deleteMany({ where: { userId } });
