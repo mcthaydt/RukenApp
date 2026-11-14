@@ -31,6 +31,14 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
+      // A stand-in for Resend (tests/browser/support/fake-mail-server.ts): it keeps every mail the site sends, so a journey
+      // can read it and open its link. It is ready when it answers /ready.
+      command: "node tests/browser/support/fake-mail-server.ts",
+      url: "http://127.0.0.1:12113/ready",
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    {
       // A stand-in for Stripe's API and its hosted pages (tests/browser/support/fake-stripe-server.ts), so the
       // journeys can pay and cancel with no network. It is ready when it answers /ready.
       command: "node tests/browser/support/fake-stripe-server.ts",
@@ -54,9 +62,11 @@ export default defineConfig({
         // The hook now runs on every request, so the sign-in settings must exist. All plainly fake.
         BETTER_AUTH_SECRET: "test-only-secret-not-used-anywhere-real",
         BETTER_AUTH_URL: "http://localhost:4173",
-        // No journey uses this address, so the journeys send no mail and need no mail server.
+        // Mail goes to the stand-in Resend, which keeps it for the journeys to read, and to no one else. There is no
+        // allowlist: every journey's address is new, and nothing leaves this machine (the site refuses a mail address
+        // that is not on it).
         RESEND_API_KEY: "re_test_fake",
-        MAIL_ALLOWLIST: "nobody@ruken.test",
+        RESEND_API_BASE: "http://127.0.0.1:12113",
         MAIL_FROM: "Ruken <hello@ruken.test>",
         // The daily job's secret, so the journeys can knock on it. Plainly fake.
         JOBS_SECRET: "test-only-jobs-secret",
