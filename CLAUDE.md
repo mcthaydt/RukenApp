@@ -76,7 +76,7 @@ Before the owner sees any screens, they go through these steps in order, each it
 
 1. Plain-words check (Opus): could a drunk grandma understand every word?
 2. Design pass (Fable): every screen, device and orientation checked for layout, touch size and polish.
-3. End-to-end check: walk every real journey, from first open to playing your level, so nothing is missing or leads to a dead end.
+3. End-to-end check: walk every journey from first open to the main task (a player playing a game, a maker sending a game in) so nothing is missing or leads to a dead end (Owner, 2026-11-15: "Walk every journey from first open to opening the main task").
 4. Second visual look (Opus, xhigh): a fresh, harsh look at the screens after all those fixes.
 5. The owner's review.
 
