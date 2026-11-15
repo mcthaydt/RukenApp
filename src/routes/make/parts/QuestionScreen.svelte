@@ -4,7 +4,7 @@
   script, a press says it is saving and cannot be pressed twice, and a refusal puts the keyboard on the box it is about.
   The first time through the blue button says Next and the counter shows; changing an answer later says Save and shows
   neither (spec 3 and 4). A question whose answer takes a while (copying a game) says what it is doing while it waits,
-  and a question whose forward step is not a form post (connecting GitHub) brings its own blue button.
+  and a question whose forward step is not a form post (connecting GitHub, choosing a video) brings its own blue button.
 -->
 <script lang="ts">
   import { enhance } from "$app/forms";
@@ -20,6 +20,7 @@
     busyWords = "Saving…",
     busyLine,
     forward,
+    saving = $bindable(false),
     children,
   }: {
     heading: string;
@@ -37,11 +38,10 @@
     busyLine?: string;
     /** The blue button when it is not a submit: a link that goes elsewhere. */
     forward?: Snippet;
+    /** True from the press until the answer comes; a question that shows it itself (a video being added) binds it. */
+    saving?: boolean;
     children: Snippet;
   } = $props();
-
-  // True from the press until the answer comes. Without script the page simply waits.
-  let saving = $state(false);
 </script>
 
 <svelte:head>

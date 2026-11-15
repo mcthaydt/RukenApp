@@ -3,6 +3,7 @@
   stands with the one next step, in words. With none, what a maker needs ready. The one blue button is "Add a game".
 -->
 <script lang="ts">
+  import VideoTile from "./parts/VideoTile.svelte";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
@@ -26,8 +27,8 @@
   </div>
   {#each data.games as game (game.slug)}
     <a class="game" href={`/make/${game.slug}`}>
-      <!-- The game's picture comes with its videos; until then a plain block holds its place. -->
-      <i aria-hidden="true"></i>
+      <!-- The game's picture is its wide video's first frame; until it has one a plain block holds its place. -->
+      <VideoTile src={game.still} shape="wide" still />
       <span>
         <span class="statement">{game.name}</span>
         <span data-sent-back={game.words.startsWith("Sent back") ? "" : undefined}>{game.words}</span>

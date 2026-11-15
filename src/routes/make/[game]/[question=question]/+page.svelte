@@ -8,6 +8,7 @@
   import Picks from "../../parts/Picks.svelte";
   import QuestionScreen from "../../parts/QuestionScreen.svelte";
   import TextAnswer from "../../parts/TextAnswer.svelte";
+  import VideoQuestion from "../../parts/VideoQuestion.svelte";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
@@ -80,6 +81,15 @@
       problems={form?.problems}
       asked={form?.asked}
       refusedNow={form?.refusal}
+    />
+  {:else if (data.question === "upright" || data.question === "wide") && data.video !== null}
+    <VideoQuestion
+      shape={data.question}
+      video={data.video}
+      counter={data.counter}
+      back={data.back}
+      throwAway={data.throwAway}
+      {problem}
     />
   {:else if data.question === "plays-on"}
     <QuestionScreen

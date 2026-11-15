@@ -2,6 +2,7 @@ import { error, fail, redirect } from "@sveltejs/kit";
 import {
   ageProblem,
   answersOf,
+  CLIP_MAX_BYTES,
   counterOf,
   firstUnanswered,
   GameError,
@@ -14,6 +15,7 @@ import {
   questionsFor,
   type AgeRating,
   type Answer,
+  type ClipShape,
   type ContentMark,
   type GamePlaysOn,
   type MakerGame,
@@ -26,8 +28,21 @@ import type { Actions, PageServerLoad } from "./$types";
 // maker's own, so another maker's game is a 404 for every question (Review Focus 2).
 
 /** The questions that have a screen so far. The rest are a 404 until the task that builds them. */
-const BUILT = ["name", "line", "files", "plays-on", "age", "marks"] as const;
+const BUILT = ["name", "line", "files", "plays-on", "upright", "wide", "age", "marks"] as const;
 type BuiltQuestion = (typeof BUILT)[number];
+
+/** The two questions answered with a video: its word is the shape of the clip. */
+type VideoQuestion = Extract<BuiltQuestion, ClipShape>;
+
+function isVideoQuestion(question: BuiltQuestion): question is VideoQuestion {
+  return question === "upright" || question === "wide";
+}
+
+/**
+ * The most a clip's request may be before its body is read: a 30 MB clip and the form around it. One clip per request
+ * keeps the Worker well under its 128 MB (two clips in one form would be held in memory with their copies).
+ */
+const CLIP_REQUEST_MAX_BYTES = CLIP_MAX_BYTES + 1_000_000;
 
 function isBuilt(word: string): word is BuiltQuestion {
   const built: readonly string[] = BUILT;
@@ -80,6 +95,17 @@ async function filesScreen(url: URL, userId: string, game: MakerGame) {
   };
 }
 
+/** The video question's own part of the page: the video that is in (none until one is), and whether it is being changed. */
+function videoScreen(url: URL, game: MakerGame, shape: VideoQuestion) {
+  const clip = game.clips[shape];
+  return {
+    src: clip === null ? null : gamesServices().media(clip.key),
+    // Set by "Choose a different video": the picker is open and the video that is there stays in its frame.
+    replacing: clip !== null && url.searchParams.get("again") === "1",
+    replaceAddress: `/make/${game.slug}/${shape}?again=1`,
+  };
+}
+
 export const load: PageServerLoad = async (event) => {
   const { userId, game } = await ownGame(event);
   const question = askedQuestion(event.params.question, game);
@@ -107,6 +133,7 @@ export const load: PageServerLoad = async (event) => {
     back: !firstTime ? `/make/${game.slug}` : before === null ? "/make" : `/make/${game.slug}/${before}`,
     throwAway: `/make/${game.slug}/throw-away`,
     files: question === "files" ? await filesScreen(event.url, userId, game) : null,
+    video: isVideoQuestion(question) ? videoScreen(event.url, game, question) : null,
   };
 };
 
@@ -154,7 +181,10 @@ function contentMarksFrom(values: string[]): ContentMark[] {
 }
 
 /** The answer in this form, or the words for why there is none. What was typed is never believed. */
-function answerFrom(question: BuiltQuestion, form: FormData): { answer: Answer } | { problem: string } {
+function answerFrom(
+  question: Exclude<BuiltQuestion, VideoQuestion>,
+  form: FormData,
+): { answer: Answer } | { problem: string } {
   switch (question) {
     case "name":
       return { answer: { question, name: textOf(form, "name") } };
@@ -184,10 +214,29 @@ function answerFrom(question: BuiltQuestion, form: FormData): { answer: Answer }
   }
 }
 
+/** Where a saved answer goes on: back to the game when it is being changed, else the next question or the last step. */
+async function goOn(userId: string, saved: { slug: string }, question: BuiltQuestion, firstTime: boolean) {
+  if (!firstTime) redirect(303, `/make/${saved.slug}`);
+  // The next question this game is asked, or the last step when there is none (its rating may have changed which
+  // questions it is asked).
+  const fresh = await gamesServices().service.gameForMaker(saved.slug, userId);
+  if (fresh === null) error(404, "Not found");
+  const asked: QuestionId[] = questionsFor(answersOf(fresh));
+  redirect(303, `/make/${saved.slug}/${asked[asked.indexOf(question) + 1] ?? "check"}`);
+}
+
 export const actions: Actions = {
   default: async (event) => {
     const { userId, game } = await ownGame(event);
     const question = askedQuestion(event.params.question, game);
+    const firstTime = isFirstTime(game);
+
+    // A video is added the moment it is chosen (the `clip` action), so Next only moves on, and only with one in.
+    if (isVideoQuestion(question)) {
+      if (game.clips[question] === null) return fail(400, { problem: "Choose a video first.", value: "" });
+      return goOn(userId, game, question, firstTime);
+    }
+
     const form = await event.request.formData();
     // What was typed comes back with a refusal, so nobody types it twice.
     const typed =
@@ -195,11 +244,9 @@ export const actions: Actions = {
     const found = answerFrom(question, form);
     if ("problem" in found) return fail(400, { problem: found.problem, value: typed });
 
-    const { service } = gamesServices();
-    const firstTime = isFirstTime(game);
     let saved: { slug: string };
     try {
-      saved = await service.saveAnswer(game.id, userId, found.answer);
+      saved = await gamesServices().service.saveAnswer(game.id, userId, found.answer);
     } catch (problem) {
       if (!(problem instanceof GameError)) throw problem;
       if (question !== "files") return fail(400, { problem: problem.message, value: typed });
@@ -210,13 +257,31 @@ export const actions: Actions = {
         return fail(400, { value: typed, asked, refusal: refusalOf(problem.message) });
       return fail(400, { value: typed, asked, problems: filesProblemsOf(problem) });
     }
-    if (!firstTime) redirect(303, `/make/${saved.slug}`);
+    return goOn(userId, saved, question, firstTime);
+  },
 
-    // Going on: the next question this game is asked, or the last step when there is none (its rating may have
-    // changed which questions it is asked).
-    const fresh = await service.gameForMaker(saved.slug, userId);
-    if (fresh === null) error(404, "Not found");
-    const asked: QuestionId[] = questionsFor(answersOf(fresh));
-    redirect(303, `/make/${saved.slug}/${asked[asked.indexOf(question) + 1] ?? "check"}`);
+  // One video, one request. A refusal shows under the hint of the question that asked.
+  clip: async (event) => {
+    const { game } = await ownGame(event);
+    const shape = askedQuestion(event.params.question, game);
+    if (!isVideoQuestion(shape)) error(404, "Not found");
+    // Refused before the body is read, so a huge file is never held in the Worker.
+    if (Number(event.request.headers.get("content-length") ?? "0") > CLIP_REQUEST_MAX_BYTES) {
+      return fail(413, { problem: "A video can be up to 30 MB.", value: "" });
+    }
+    const file = (await event.request.formData()).get("clip");
+    if (!(file instanceof File) || file.size === 0) {
+      return fail(400, { problem: "Choose a video first.", value: "" });
+    }
+    try {
+      await gamesServices().service.saveClip(game.id, shape, {
+        contentType: file.type,
+        bytes: new Uint8Array(await file.arrayBuffer()),
+      });
+    } catch (problem) {
+      if (problem instanceof GameError) return fail(400, { problem: problem.message, value: "" });
+      throw problem;
+    }
+    redirect(303, `/make/${game.slug}/${shape}`);
   },
 };

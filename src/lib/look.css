@@ -984,6 +984,180 @@ details > .field {
   }
 }
 
+/* A video, in its place: as big as the frame or the card it sits in, cropped to fit, sage until it has a picture. */
+.tile {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  background: var(--sage);
+  object-fit: cover;
+}
+
+/* The frame of a video question: the biggest thing on the screen, there before a video is chosen, in the video's real
+   shape. An upright frame is a height and a wide frame a width (spec 5a note 1); the other side follows the shape.
+   Choosing the frame opens the picker. */
+.vframe {
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  border-radius: 12px;
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-statement);
+  text-align: center;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.vframe > a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.vframe[data-frame="upright"] {
+  --frame: 540px;
+  height: var(--frame);
+  width: calc(var(--frame) * 9 / 16);
+}
+
+.vframe[data-frame="wide"] {
+  width: 640px;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+/* An upright tablet. */
+@media (orientation: portrait) {
+  .vframe[data-frame="upright"] {
+    --frame: 500px;
+  }
+}
+
+/* A phone held sideways: the video's frame is beside the question, and a smaller one. */
+@media (max-height: 449px) {
+  .vframe[data-frame="upright"] {
+    --frame: 250px;
+  }
+
+  .vframe[data-frame="wide"] {
+    width: 380px;
+  }
+}
+
+/* A phone held upright. */
+@media (max-width: 499px) {
+  .vframe[data-frame="upright"] {
+    --frame: 340px;
+  }
+
+  .vframe[data-frame="wide"] {
+    width: 100%;
+  }
+}
+
+/* The question beside its upright frame, on a computer and on a tablet or phone held sideways; a wide frame is beside
+   it on a phone held sideways only, and everywhere else it is under it. */
+@media (min-width: 1200px) and (orientation: landscape) {
+  .screen:has([data-frame="upright"]) {
+    --column: 1000px;
+  }
+}
+
+@media (orientation: landscape) and (min-width: 700px) {
+  .screen main > form:has(> [data-frame="upright"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 3rem;
+    align-items: start;
+  }
+
+  .screen main > form:has(> [data-frame="upright"]) > * {
+    grid-column: 1;
+  }
+
+  .screen main > form:has(> [data-frame="upright"]) > .vframe {
+    grid-column: 2;
+    grid-row: 1 / span 8;
+  }
+}
+
+@media (max-height: 449px) {
+  .screen main > form:has(> [data-frame]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 1.5rem;
+    align-items: start;
+  }
+
+  .screen main > form:has(> [data-frame]) > * {
+    grid-column: 1;
+  }
+
+  .screen main > form:has(> [data-frame]) > .vframe {
+    grid-column: 2;
+    grid-row: 1 / span 8;
+  }
+}
+
+/* The picker as the question's one blue button, on the felt: the same size and look as the button it stands for. */
+.screen .acts > .file > span {
+  height: var(--button);
+  min-width: 168px;
+  background: var(--pay);
+  color: var(--chalk);
+}
+
+.screen .file:has(:focus-visible) > span {
+  outline: 3px solid var(--paper);
+  outline-offset: 3px;
+}
+
+/* The button without script is not drawn once the script is there; the look's own button rule would draw it anyway. */
+.acts > button[hidden] {
+  display: none;
+}
+
+@media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
+  .acts > .file {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .screen .acts > .file > span {
+    min-width: 0;
+  }
+}
+
+/* A video opened full size: the window's own, on black, with the browser's controls and a green Close at the top right. */
+dialog.viewer {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 0;
+  border: 0;
+  background: var(--felt-deep);
+  color: var(--chalk);
+}
+
+.viewer video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.viewer > button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
 /* The small link at the foot: throwing a game away, which has its own screen. */
 a.foot {
   align-self: flex-start;
@@ -1009,12 +1183,10 @@ a.game {
   transition: transform var(--press-time);
 }
 
-a.game > i {
+a.game > .tile {
   flex: none;
   width: 96px;
   height: 54px;
-  border-radius: 8px;
-  background: var(--sage);
 }
 
 a.game > span {
@@ -1043,7 +1215,7 @@ a.game:active {
 }
 
 @media (min-width: 500px) {
-  a.game > i {
+  a.game > .tile {
     width: 128px;
     height: 72px;
   }
