@@ -8,9 +8,12 @@ import {
 // The text the Owner approved (2026-11-14), kept word for word in library/maker-agreement-v1.txt.
 
 describe("the maker agreement", () => {
-  it("is version 1, and the text says so", () => {
+  // Owner, 2026-11-14: "A" - the date of the version is in the file's own title line, and nowhere else.
+  it("is version 1, and the text says so, with the date it was written", () => {
     expect(MAKER_AGREEMENT_VERSION).toBe("1");
-    expect(MAKER_AGREEMENT_TEXT.startsWith("Ruken maker agreement, version 1\n")).toBe(true);
+    expect(MAKER_AGREEMENT_TEXT.startsWith("Ruken maker agreement, version 1, 14 November 2026\n")).toBe(
+      true,
+    );
   });
 
   it("has seven numbered points and ends with one line break", () => {
@@ -69,6 +72,7 @@ describe("parseAgreement", () => {
   it("reads the real file: its version, and seven points numbered one to seven", () => {
     const read = parseAgreement(MAKER_AGREEMENT_TEXT);
     expect(read.version).toBe(MAKER_AGREEMENT_VERSION);
+    expect(read.updated).toBe("14 November 2026");
     expect(read.points.map((point) => point.number)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(read.points[0]).toMatchObject({ number: 1, title: "Your game stays yours." });
     expect(read.points[6]).toMatchObject({ number: 7, title: "Changes." });

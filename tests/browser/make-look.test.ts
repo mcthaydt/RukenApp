@@ -7,6 +7,7 @@ import {
   connectGitHubFromFiles,
   freshName,
   nextButton,
+  startAtCheck,
   startAtFiles,
   startAtVideo,
   startDraft,
@@ -273,4 +274,89 @@ test("the wide frame is this wide for this window, and wider than tall", async (
     expect(frame.width).toBe(640);
   }
   expect(frame.width).toBeGreaterThan(frame.height);
+});
+
+// ---- Check and send ----------------------------------------------------------------------------------------------
+
+/** How tall the two videos are laid out on Check and send, for each window (spec 5b). A phone sets its own sizes. */
+const TILE_HEIGHT: Record<Exclude<Layout, "phone">, number> = {
+  computer: 264,
+  "tablet-sideways": 264,
+  tablet: 300,
+  "phone-sideways": 180,
+};
+
+test("on Check and send the blue button is in the window without scrolling, and nothing scrolls sideways", async ({
+  page,
+}) => {
+  await startAtCheck(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const send = page.getByRole("button", { name: "Send for review" });
+  await expect(send).toBeVisible();
+
+  const viewport = page.viewportSize() ?? { width: 0, height: 0 };
+  const box = await boxOf(send);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test("the two videos are the same height, this tall for this window", async ({ page }) => {
+  await startAtCheck(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const upright = await boxOf(page.locator('.tiles [data-shape="upright"]').first());
+  const wide = await boxOf(page.locator('.tiles [data-shape="wide"]').first());
+  const layout = layoutOf(page);
+
+  if (layout === "phone") {
+    // The upright one is 150 by 267 with the wide one beside it, at its own shape.
+    expect(upright.width).toBe(150);
+    expect(upright.height).toBe(267);
+    expect(wide.y).toBeLessThan(upright.y + upright.height);
+    expect(wide.x).toBeGreaterThan(upright.x + upright.width - 1);
+    expect(wide.width).toBeGreaterThan(wide.height);
+    return;
+  }
+  expect(Math.abs(upright.height - wide.height)).toBeLessThanOrEqual(1);
+  expect(upright.height).toBeLessThanOrEqual(TILE_HEIGHT[layout]);
+  // Where the window has room for both videos at the planned height, that is the height; a narrower one shrinks them
+  // together, never to less than three quarters of it.
+  expect(upright.height).toBeGreaterThanOrEqual(TILE_HEIGHT[layout] * 0.75);
+  if (layout !== "tablet-sideways") expect(Math.round(upright.height)).toBe(TILE_HEIGHT[layout]);
+  expect(upright.width).toBeLessThan(upright.height);
+  expect(wide.width).toBeGreaterThan(wide.height);
+});
+
+test("the facts are quiet chips: Dusky Green, white words, 8px corners", async ({ page }) => {
+  await startAtCheck(page);
+  const chip = page.locator(".chip").first();
+
+  await expect(chip).toHaveCSS("background-color", rgb(token("--felt-raised")));
+  await expect(chip).toHaveCSS("color", rgb(token("--chalk")));
+  await expect(chip).toHaveCSS("border-top-left-radius", "8px");
+});
+
+test("the name is a title in the display face, and the line a tagline in sage", async ({ page }) => {
+  const { name } = await startAtCheck(page);
+
+  const title = page.getByRole("heading", { level: 2, name });
+  await expect(title).toHaveCSS("font-size", "32px");
+  await expect(page.locator(".tagline")).toHaveCSS("font-size", "24px");
+  await expect(page.locator(".tagline")).toHaveCSS("color", rgb(token("--sage")));
+});
+
+test("everything to press on Check and send is at least 44 by 44, and nothing is red", async ({ page }) => {
+  await startAtCheck(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  for (const target of await page.locator("a, button").all()) {
+    const box = await target.boundingBox();
+    if (box === null) continue;
+    const words =
+      (await target.innerText()).trim() || ((await target.getAttribute("aria-label")) ?? "a target");
+    expect(box.width, `${words}, width`).toBeGreaterThanOrEqual(44);
+    expect(box.height, `${words}, height`).toBeGreaterThanOrEqual(44);
+  }
+  expect(await pipRed(page)).toEqual([]);
 });

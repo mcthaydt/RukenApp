@@ -127,6 +127,11 @@ export function MAKER_ADDRESSES(slug: string): { path: string; form?: Record<str
     { path: `/make/${slug}/files`, form: { repo: TINY_GAME } },
     { path: `/make/${slug}/plays-on`, form: { playsOn: "computer_only" } },
     { path: `/make/${slug}/age`, form: { ageRating: "age_12" } },
+    { path: `/make/${slug}/websites`, form: { servers: "api.example.com" } },
+    { path: `/make/${slug}/agreement`, form: {} },
+    // The send is a named action; the stranger's GET and POST both meet the same 404 before it is looked for.
+    { path: `/make/${slug}/check` },
+    { path: `/make/${slug}/check?/send`, form: {} },
   ];
 }
 
@@ -192,4 +197,79 @@ export async function tooBigVideo(path: string): Promise<string> {
   buffer.write("ftyp", 4, "ascii");
   await writeFile(path, buffer);
   return path;
+}
+
+/** Adds a video to the question the browser is on, as a person does, and waits until it is in the frame. */
+export async function addVideo(page: Page, shape: "upright" | "wide"): Promise<void> {
+  // The address changes a moment before the screen does, and both video questions have the same file field, so the
+  // question's own heading is waited for before anything is chosen.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Add your ${shape} video`);
+  await chooseVideo(page, videoFile());
+  await expect(page.locator(`[data-frame="${shape}"] video`)).toBeAttached();
+}
+
+/**
+ * A new maker's first game, answered through the real screens from the first question to the last, with the stand-in
+ * GitHub and two small videos: the browser ends on the agreement (or on Check and send, for a maker who agreed before).
+ * An 18+ game is asked its marks too, and `marks` names the ones chosen.
+ */
+export async function answerEveryQuestion(
+  page: Page,
+  options: { rating?: "3+" | "7+" | "12+" | "16+" | "18+"; marks?: string[]; signedIn?: boolean } = {},
+): Promise<{ slug: string; name: string }> {
+  // A maker who is already signed in adds a game; a new one signs up first.
+  const { slug, name } = options.signedIn === true ? await addDraftAndLine(page) : await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+  await page.getByLabel(TINY_GAME).check();
+  await nextButton(page).click();
+  await expect(page).toHaveURL(`/make/${slug}/plays-on`);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Where does");
+  await answerPlaysOn(page, "both");
+  await expect(page).toHaveURL(`/make/${slug}/upright`);
+  await addVideo(page, "upright");
+  await nextButton(page).click();
+  await expect(page).toHaveURL(`/make/${slug}/wide`);
+  await addVideo(page, "wide");
+  await nextButton(page).click();
+  await expect(page).toHaveURL(`/make/${slug}/age`);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("for?");
+  await answerAge(page, options.rating ?? "12+");
+  if (options.rating === "18+") {
+    await expect(page).toHaveURL(`/make/${slug}/marks`);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("any of these?");
+    for (const mark of options.marks ?? ["Gore"]) await page.getByLabel(mark).check();
+    await nextButton(page).click();
+  }
+  await expect(page).toHaveURL(new RegExp(`/make/${slug}/(agreement|check)$`));
+  await pageHasSettled(page);
+  return { slug, name };
+}
+
+/** A game for a maker who is already signed in: question 1 and 2 answered, the browser on question 3. */
+async function addDraftAndLine(page: Page): Promise<{ slug: string; name: string }> {
+  const { slug, name } = await addDraft(page);
+  await answerLine(page);
+  await expect(page).toHaveURL(`/make/${slug}/files`);
+  await pageHasSettled(page);
+  return { slug, name };
+}
+
+/** Presses "I agree" on the agreement of a game and waits until Check and send is there. */
+export async function agreeToTheAgreement(page: Page, slug: string): Promise<void> {
+  await page.goto(`/make/${slug}/agreement`);
+  await pageHasSettled(page);
+  await page.getByRole("button", { name: "I agree" }).click();
+  await expect(page).toHaveURL(`/make/${slug}/check`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Check it, then send");
+}
+
+/**
+ * A new maker with a finished game written straight into the database (every answer, the files and both videos, rated
+ * 12+), who has agreed: the browser is on Check and send.
+ */
+export async function startAtCheck(page: Page): Promise<{ slug: string; name: string }> {
+  const { slug, name } = await startDraft(page);
+  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  await agreeToTheAgreement(page, slug);
+  return { slug, name };
 }

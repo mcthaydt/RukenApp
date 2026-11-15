@@ -1,6 +1,6 @@
 // The games feature's entry: what routes and other features may import. Anything not exported here is internal.
 export { CLIP_MAX_BYTES, isClipKey } from "./clips.ts";
-export type { AgeRating, ClipShape, ContentMark, GamePlaysOn } from "../../lib/server/db.ts";
+export type { AgeRating, ClipShape, ContentMark, GamePart, GamePlaysOn } from "../../lib/server/db.ts";
 export { connectHostsFrom, isMissingIndexHtml, megabytes } from "./files-check.ts";
 export {
   ageProblem,
@@ -11,6 +11,7 @@ export {
   type GameFieldProblems,
 } from "./fields.ts";
 export { GameError } from "./game-error.ts";
+export { playsOnWords, ratingWords, websitesWords } from "./laid-out.ts";
 export { beforeSendWords, nextStepWords, type MissingBeforeSend } from "./review.ts";
 export {
   answersOf,
@@ -19,6 +20,7 @@ export {
   isQuestionAddress,
   QUESTIONS,
   questionBefore,
+  questionOf,
   questionsFor,
   type QuestionId,
 } from "./questions.ts";

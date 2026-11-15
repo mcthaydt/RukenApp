@@ -320,6 +320,14 @@ describe("screens wear the look and nothing of their own", () => {
     "vframe",
     "tile",
     "viewer",
+    // A game laid out beside the words that ask for a decision about it (Check and send).
+    "halves",
+    "laid",
+    "tiles",
+    "title",
+    "tagline",
+    "chip",
+    "change",
   ];
   const ROUTES = "src/routes";
 
@@ -408,6 +416,13 @@ describe("the maker's screens", () => {
     "acts",
     "key",
     "foot",
+    "halves",
+    "laid",
+    "tiles",
+    "title",
+    "tagline",
+    "chip",
+    "change",
   ];
 
   it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {
