@@ -499,6 +499,19 @@ describe("sendBack", () => {
   });
 });
 
+describe("a part that is not one of a game's eight", () => {
+  it("is refused in words, and nothing changes", async () => {
+    const { game, staff } = await waitingGame();
+
+    await expect(
+      sendBackAsSeen(game, staff, [
+        { part: "password" as unknown as "name", reason: "something_else", note: "Because." },
+      ]),
+    ).rejects.toMatchObject({ code: "INVALID", message: "Pick a reason for each part you ticked." });
+    expect((await stateOf(game.id)).state).toBe("waiting");
+  });
+});
+
 describe("a live game's update that was sent back", () => {
   /** A live game whose update waited and was sent back, for the parts given. */
   async function liveGameSentBack(parts: Parameters<GamesService["sendBack"]>[2]) {

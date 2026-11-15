@@ -3,7 +3,7 @@ import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 import type { RateLimiter, RateLimitRule } from "../../lib/server/rate-limit.ts";
 import type { LiveGame } from "../games/games.ts";
-import { playBasis, type PlayViewer } from "./may-play.ts";
+import { playBasis, type PlayBasis, type PlayViewer } from "./may-play.ts";
 import { checkPass } from "./pass.ts";
 import { passFor } from "./passes.ts";
 import { BEAT_TOO_SOON_MS, countedMs, PLAY_SESSION_LIFE_MS } from "./time.ts";
@@ -57,12 +57,25 @@ export function createPlayService(deps: PlayServiceDeps) {
     );
     if (!limit.allowed) return { refused: "busy" };
 
-    const pass = await passFor(deps, {
+    return openSession({
       game,
       pull: { id: game.livePullId, connectHosts: game.connectHosts },
       userId: viewer?.userId ?? null,
+      basis,
     });
-    // The pass was just made by this service, so it reads back; the session names the row it was made from.
+  }
+
+  /**
+   * Makes the pass for one pull of a game, and the session a play of it is counted in. The pass is made by this service,
+   * so it reads back; the session names the row it was made from. The token is shown once and only its hash is kept.
+   */
+  async function openSession(input: {
+    game: { id: string; publicId: string };
+    pull: { id: string; connectHosts: string[] };
+    userId: string | null;
+    basis: PlayBasis;
+  }): Promise<{ frameUrl: string; session: { id: string; token: string } }> {
+    const pass = await passFor(deps, { game: input.game, pull: input.pull, userId: input.userId });
     const claims = checkPass(pass, deps.passSecret, deps.clock.epochMs());
     if (claims === null) throw new Error("a pass that was just made did not read back");
 
@@ -71,25 +84,40 @@ export function createPlayService(deps: PlayServiceDeps) {
     await deps.db.playSession.create({
       data: {
         id,
-        gameId: game.id,
-        pullId: game.livePullId,
+        gameId: input.game.id,
+        pullId: input.pull.id,
         passId: claims.id,
-        userId: viewer?.userId ?? null,
-        basis,
+        userId: input.userId,
+        basis: input.basis,
         tokenHash: sha256Hex(token),
         startedAt: new Date(deps.clock.epochMs()),
       },
     });
-    return { frameUrl: `${deps.address(`g-${game.publicId}`)}/${pass}/`, session: { id, token } };
+    return { frameUrl: `${deps.address(`g-${input.game.publicId}`)}/${pass}/`, session: { id, token } };
   }
 
-  /** Not built yet. */
-  function startReviewPlay(_input: {
+  /**
+   * Starts a play of files that are not live yet, for staff who check a game before they say yes. It is `startPlay` for a
+   * pull of the game's own that waits: the pass carries that pull's own servers, read from its row, and the session's basis
+   * is `staff`, so it never counts for pay. The caller has already checked that this is staff; a pull that is not this
+   * game's is refused before any pass is made.
+   */
+  async function startReviewPlay(input: {
     game: { id: string; publicId: string };
     pullId: string;
     staffUserId: string;
   }): Promise<{ frameUrl: string; session: { id: string; token: string } }> {
-    return Promise.reject(new Error("not built yet"));
+    const pull = await deps.db.gamePull.findFirst({
+      where: { id: input.pullId, gameId: input.game.id },
+      select: { id: true, connectHosts: true },
+    });
+    if (pull === null) throw new Error("that pull is not this game's");
+    return openSession({
+      game: input.game,
+      pull,
+      userId: input.staffUserId,
+      basis: "staff",
+    });
   }
 
   /**

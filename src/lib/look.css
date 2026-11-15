@@ -1463,6 +1463,66 @@ a.foot {
   }
 }
 
+/* Staff's check of a game (design 11.1, screen 2). A part is a block of the sheet: its title, its value in the maker's own
+   words (or its video), a box to say it is wrong and, once that is ticked, the reasons. Blocks are told apart by space and
+   not by a line: the look has no rule but a field's. */
+.part {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.part + .part {
+  margin-top: 1.75rem;
+}
+
+.part h2 {
+  margin: 0;
+  color: var(--ink-soft);
+  font: 600 0.875rem / 1.3 var(--font-text);
+}
+
+.part .say,
+.part .picks {
+  margin: 0;
+}
+
+/* Reasons and the line of one's own are for a part that is ticked. Hidden by the page's own rule, so the page is right
+   before script wakes and with none. */
+.part:not(:has(input[name="wrong"]:checked)) > [data-reasons] {
+  display: none;
+}
+
+.part [data-reasons] {
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* The marks of an 18+ game are asked only once 18+ is chosen. */
+.halves:not(:has(input[name="ageRating"][value="age_18"]:checked)) [data-marks] {
+  display: none;
+}
+
+/* One blue button with two wordings: Accept while nothing is ticked, Send back as soon as something is. The server
+   decides by what was ticked, never by these words. */
+.decide > [data-send-back] {
+  display: none;
+}
+
+.halves:has(input[name="wrong"]:checked) .decide > [data-accept] {
+  display: none;
+}
+
+.halves:has(input[name="wrong"]:checked) .decide > [data-send-back] {
+  display: inline;
+}
+
+/* The game's frame on the check page sits under its name, a step clear of the buttons above it. */
+.halves .frame {
+  margin-top: 1.5rem;
+  border-radius: var(--radius-card);
+}
+
 /* The agreement's points on a sheet: the number is the list's own, in the display face, and hangs in the left margin, so
    every title and every point starts on one line. */
 .sheet ol {

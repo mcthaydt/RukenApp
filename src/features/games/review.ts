@@ -121,3 +121,9 @@ export function nextStepWords(
       return null;
   }
 }
+
+/** What staff are told when a game changed between their looking and their decision (audit S-1). */
+export const GAME_CHANGED_WORDS = "This game changed while you were looking. Look again.";
+
+/** What staff are told when Accept is pressed on a game whose newest copy of its files was refused (audit S-6). */
+export const FILES_BEING_FIXED_WORDS = "Its maker is fixing its files. It comes back when they're fixed.";

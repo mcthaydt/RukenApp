@@ -4,6 +4,9 @@ import { seenOf } from "../../../src/features/games/seen.ts";
 // What staff looked at (audit S-1): a sign of the parts of a waiting game a person judges. It holds still while nothing
 // they judge changes, and moves when any of it does, so a decision made on a page that went stale is refused.
 
+const UPRIGHT = { shape: "upright" as const, key: "clips/a/upright-1.mp4" };
+const WIDE = { shape: "wide" as const, key: "clips/a/wide-1.mp4" };
+
 const GAME = {
   name: "Tiny game",
   oneLine: "A tiny game about tapping.",
@@ -12,10 +15,7 @@ const GAME = {
   contentMarks: ["gore", "drugs"] as ("gore" | "drugs" | "sex_or_nudity" | "none")[],
   connectHosts: ["api.example.com"],
   pendingPullId: "pull-1",
-  clips: [
-    { shape: "upright" as const, key: "clips/a/upright-1.mp4" },
-    { shape: "wide" as const, key: "clips/a/wide-1.mp4" },
-  ],
+  clips: [UPRIGHT, WIDE],
 };
 
 describe("seenOf", () => {
@@ -36,9 +36,9 @@ describe("seenOf", () => {
     ["marks", { contentMarks: ["gore"] as ("gore" | "drugs")[] }],
     ["websites", { connectHosts: [] }],
     ["files", { pendingPullId: "pull-2" }],
-    ["the upright video", { clips: [{ shape: "upright" as const, key: "clips/a/upright-2.mp4" }, GAME.clips[1]!] }],
-    ["the wide video", { clips: [GAME.clips[0]!, { shape: "wide" as const, key: "clips/a/wide-2.mp4" }] }],
-    ["a video gone", { clips: [GAME.clips[0]!] }],
+    ["the upright video", { clips: [{ ...UPRIGHT, key: "clips/a/upright-2.mp4" }, WIDE] }],
+    ["the wide video", { clips: [UPRIGHT, { ...WIDE, key: "clips/a/wide-2.mp4" }] }],
+    ["a video gone", { clips: [UPRIGHT] }],
   ])("moves when %s changes", (_what, change) => {
     expect(seenOf({ ...GAME, ...change })).not.toBe(seenOf(GAME));
   });
