@@ -60,7 +60,7 @@ Owner, 2026-11-15: "use JEV whenever we use AI here", and, asked what it is, the
 
 So Jev can decide, but cannot write a reply. What it decides here, whichever way Question 1 goes: which help topic a text is about; whether to hand over to a person (the list under "When a person takes over"); which language the person wrote in; and whether a reply says only what the help pages say. A reply it is not sure about is not sent: the chat says it is not sure and offers a person.
 
-Who writes the words is Question 1.
+Who writes the words (Question 1, answered): a second AI service, a writing one. For each text, Jev first decides the topic, the language and whether to hand over; the writing AI is given only the help pages for that topic, the chat so far and the voice in "How it talks", and writes a reply; Jev then checks that the reply says only what those pages say and never that it is a person. A reply that fails the check is thrown away, and the chat says it is not sure and offers a person. Which writing AI it is has not been chosen: the plan puts the choices to the Owner, with what each keeps of what it is sent.
 
 ### What it answers from
 
@@ -123,14 +123,14 @@ Staff with the support role see the chat in the admin's support list (slice 4's 
 ## Needs, and when
 
 - The Owner's yes to this design.
-- TypeSafe AI's Jev: a new outside service with a bill. The Owner named it; getting off its waitlist, the account and its key are the Owner's steps. A second AI service, if Question 1 is answered B, needs the Owner's yes like any other.
+- TypeSafe AI's Jev: a new outside service with a bill. The Owner named it; getting off its waitlist, the account and its key are the Owner's steps. A second AI service, the writing one (Question 1): the Owner said yes to having one; which one is their choice at the plan.
 - The help pages, written and public.
 - The texts plan's branch C on `main`, and slice 4's admin.
 - Then a plan, its audit and a build, like any slice.
 
 ## Questions for the Owner
 
-1. **Who writes the replies**, since Jev decides but cannot write ("The AI behind it"). A. Jev alone: every reply is one Ruken wrote ahead of time, in the chat's voice and in each language, and Jev picks the one that fits. Nothing can be invented; it cannot answer a question nobody wrote an answer for, and reads less like a free conversation. B. Jev and a writing AI: a second AI service writes each reply from the help pages, and Jev decides hand-overs and checks every reply against the help pages before it is sent. It reads like a real conversation; it needs a second outside service.
+1. **Who writes the replies**, since Jev decides but cannot write ("The AI behind it"). A. Jev alone: every reply is one Ruken wrote ahead of time, in the chat's voice and in each language, and Jev picks the one that fits. Nothing can be invented; it cannot answer a question nobody wrote an answer for, and reads less like a free conversation. B. Jev and a writing AI: a second AI service writes each reply from the help pages, and Jev decides hand-overs and checks every reply against the help pages before it is sent. It reads like a real conversation; it needs a second outside service. **Owner, 2026-11-15, on a card: B, "Jev plus a writing AI".**
 2. **Who the "person" is at launch.** A. The Owner alone, from the admin's support list. B. Someone else the Owner names. **Owner, 2026-11-15, on a card: A, "Me, for now".** The Owner holds the support role and answers from the list; someone else can be given the role later.
 3. **How long chats are kept.** A. 90 days. B. 30 days. C. Until the account is deleted. **Owner, 2026-11-15, on a card: A, "90 days".**
 4. **Saying it is an AI.** A. Once, lightly, in the first reply of a chat, and always when asked. B. Only when asked. **Owner, 2026-11-15, on a card: B, "Only when asked".** It never says it is a person.
