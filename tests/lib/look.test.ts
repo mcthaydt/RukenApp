@@ -298,6 +298,7 @@ describe("screens wear the look and nothing of their own", () => {
     "frame",
     "file",
     "game",
+    "games",
     // The maker's screens (spec 4): the felt is the window, and paper is what a person touches.
     "screen",
     "track",
