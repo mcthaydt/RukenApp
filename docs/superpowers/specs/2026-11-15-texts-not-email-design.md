@@ -140,6 +140,7 @@ Call: the apps spec's three push notifications (new DLC, a beta invite, a renewa
 ### Every country
 
 - Owner, answer 2: every text goes by text in every country, from the first day. There is no email in its place anywhere.
+- Owner, 2026-11-15, on a card about countries where people cannot text Ruken back: "Stay closed there until replies work". So Ruken opens only where a person can reply STOP, START and HELP: the United States and Canada on the first day, then any country where replies work once Ruken has a number there.
 - Some countries deliver a company's texts only after that company registers with them, and some take weeks. The plan lists, from Twilio's own pages, every country Twilio reaches, what each asks for and how long it takes. Registering in each is the Owner's step.
 - A country where Ruken's texts are not yet allowed is closed to sign-up, with one plain line: "Ruken isn't in your country yet." Nothing is stored. It opens by one entry in a list.
 - Launch waits for the countries on that list that the Owner marks as needed on the first day.
