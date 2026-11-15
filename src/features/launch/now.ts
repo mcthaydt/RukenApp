@@ -34,7 +34,11 @@ function isThisMachine(address: string | undefined): boolean {
  * other setting does.
  */
 export function createLaunchNow(
-  settings: { LAUNCH_TEST_SWITCH?: string | undefined; BETTER_AUTH_URL?: string | undefined },
+  settings: {
+    LAUNCH_TEST_SWITCH?: string | undefined;
+    BETTER_AUTH_URL?: string | undefined;
+    RUKEN_COPY?: string | undefined;
+  },
   clock: Clock,
 ): (cookies: { get(name: string): string | undefined }) => number {
   const flag = settings.LAUNCH_TEST_SWITCH;
