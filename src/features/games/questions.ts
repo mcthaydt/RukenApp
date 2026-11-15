@@ -95,6 +95,15 @@ export function questionOf(part: GamePart): QuestionId | ChangeOnlyId {
   return found;
 }
 
+/** Every word a question's address may end in: the eight questions, and the websites a maker changes from Check and send. */
+export const QUESTION_ADDRESSES: readonly (QuestionId | ChangeOnlyId)[] = [...QUESTIONS, "websites"];
+
+/** Whether `word` is the end of a question's address. A made-up word is not a page. */
+export function isQuestionAddress(word: string): word is QuestionId | ChangeOnlyId {
+  const known: readonly string[] = QUESTION_ADDRESSES;
+  return known.includes(word);
+}
+
 /** The rows of a game that tell which questions it has been answered: what the maker's page already holds. */
 export interface AnswerSource {
   oneLine: string | null;
@@ -108,5 +117,14 @@ export interface AnswerSource {
 
 /** What a game has been answered so far, read from its rows. */
 export function answersOf(game: AnswerSource): Answers {
-  throw new Error(`not built yet: answersOf ${JSON.stringify(game)}`);
+  return {
+    oneLine: game.oneLine,
+    // A refused pull can sit beside older passing ones, but the files are answered only while the last pull passed.
+    hasFiles: game.newestPull !== null && game.pullProblem === null,
+    playsOn: game.playsOn,
+    upright: game.clips.upright !== null,
+    wide: game.clips.wide !== null,
+    ageRating: game.ageRating,
+    contentMarks: game.contentMarks,
+  };
 }

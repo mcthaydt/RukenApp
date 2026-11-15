@@ -598,25 +598,489 @@ details > .field {
   margin-block: 0;
 }
 
-/* A game in the maker's list is one link as a whole: its name in the statement face, then where it stands and what to
-   do next in body, 1.5rem from the next game. */
-.card a.game {
+/* The maker's screens (spec 4). The felt is the whole window and asks one question; paper is only what a person
+   touches. A window is one of five layouts, told apart by its own size and not by what device it is: the computer is
+   the base, and each query after it changes only what it must. The sizes live in a few numbers on .screen, so a
+   layout is a handful of lines. Later queries win, so the phone is last. */
+.screen {
+  --heading: 4rem;
+  --column: 760px;
+  --box: 72px;
+  --button: 60px;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+/* A tablet held sideways: the heading steps down so a name stays on one line and the game stays in view. */
+@media (orientation: landscape) and (max-width: 1199px) {
+  .screen {
+    --heading: 3rem;
+  }
+}
+
+/* A tablet held upright. */
+@media (orientation: portrait) {
+  .screen {
+    --column: 640px;
+  }
+}
+
+/* A phone held sideways is the sideways tablet made smaller. */
+@media (max-height: 449px) {
+  .screen {
+    --heading: 2rem;
+    --column: 600px;
+    --box: 56px;
+    --button: 52px;
+  }
+}
+
+/* A phone held upright: the column is the screen with 20px at each side. */
+@media (max-width: 499px) {
+  .screen {
+    --heading: 2.25rem;
+    --column: 100%;
+    --box: 64px;
+    --button: 56px;
+  }
+}
+
+/* The bar across the top: the way home, and one more link. The track is above it, at the very top. */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 0;
+  view-transition-name: topbar;
+}
+
+@media (min-width: 1200px) and (orientation: landscape) {
+  .topbar {
+    padding: 1.5rem 2.5rem 0;
+  }
+}
+
+/* One piece for each question, 6px tall along the very top, chalk once answered. The newest piece grows from the left
+   as the step lands, so the maker sees the track move. */
+.track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  height: 6px;
+  view-transition-name: track;
+}
+
+.track > * {
+  background: var(--felt-raised);
+}
+
+.track > [data-on] {
+  background: var(--chalk);
+}
+
+.track > [data-newest] {
+  transform-origin: left;
+  animation: grow 250ms var(--ease) both;
+}
+
+/* The question's column, centred across. It is centred down too when the answer sits under the question; where the
+   buttons are in a bar the question starts under the top bar. */
+.screen main {
+  width: min(100% - 2.5rem, var(--column));
+  margin: 1.5rem auto 0;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
+  .screen main {
+    margin-block: auto;
+    padding-block: 2rem;
+  }
+}
+
+.screen h1 {
+  margin-top: 0.5rem;
+  font: 400 var(--heading) / 1.05 var(--font-display);
+  text-wrap: balance;
+}
+
+/* Words that are not the question: "Question 2 of 7" and, on a game's own screen, the game's name. */
+.count {
+  margin: 0;
+  color: var(--sage);
+}
+
+/* The answer: one paper slab, 24px type, 12px corners, no edge. The focus ring is the one the whole look has. A refused
+   one has a heavier edge from outside, so it is seen without colour. */
+.screen input.answer {
   display: block;
-  margin-block: 0;
-  text-decoration: none;
+  width: 100%;
+  height: var(--box);
+  margin: 1.5rem 0 0;
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1.5rem / 1.2 var(--font-text);
 }
 
-.card a.game > span {
-  display: block;
+.screen input.answer[aria-invalid="true"] {
+  padding: 0 1.25rem;
+  outline: 4px solid var(--chalk);
+  outline-offset: 3px;
 }
 
-.card a.game > .statement {
-  text-decoration: underline;
-}
-
-.card h1 + a.game,
-.card a.game + a.game {
+/* A choice is a paper card the whole card is the target of: its real radio button or checkbox lies over it, clear. The
+   edge is always there, paper while it is not picked, so picking one moves nothing. */
+.picks {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
   margin-top: 1.5rem;
+}
+
+.pick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  min-height: var(--size-target);
+  padding: 0.75rem 3.5rem 0.75rem 1rem;
+  border: 4px solid var(--paper);
+  border-radius: var(--radius-button);
+  background: var(--paper);
+  color: var(--ink);
+  transition: border-color 250ms var(--ease);
+  cursor: pointer;
+}
+
+.pick > input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.pick > b {
+  font: var(--text-statement);
+}
+
+.pick > span {
+  color: var(--ink-soft);
+  font: var(--text-small);
+}
+
+.pick:has(input:checked) {
+  border-color: var(--pay);
+}
+
+/* The mark in the corner: a plain blue check where one is chosen, and where several may be a square that fills blue. */
+.pick::after {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 8px;
+  color: var(--pay);
+  font: 600 1.25rem / 1 var(--font-text);
+}
+
+.pick:has(input:checked)::after {
+  content: "\2713";
+}
+
+.picks[data-several] .pick::after {
+  content: "";
+  border: 2px solid var(--ink-soft);
+}
+
+.picks[data-several] .pick:has(input:checked)::after {
+  content: "\2713";
+  border-color: var(--pay);
+  background: var(--pay);
+  color: var(--chalk);
+}
+
+.pick:has(:focus-visible) {
+  outline: 3px solid var(--chalk);
+  outline-offset: 3px;
+}
+
+/* A refused set of choices has a heavier edge round the whole set. */
+.picks:has(input[aria-invalid="true"]) {
+  outline: 4px solid var(--chalk);
+  outline-offset: 6px;
+  border-radius: var(--radius-button);
+}
+
+/* Two across from a phone held sideways up; stacked on a phone held upright. The five ratings sit in one row from a
+   tablet up, so they can be compared at a glance, and the corner mark is smaller so a rating's words keep their room. */
+@media (min-width: 500px) {
+  .picks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 500px) and (min-height: 450px) {
+  .picks[data-ratings] {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .picks[data-ratings] .pick {
+    padding-right: 0.75rem;
+    padding-top: 2.25rem;
+  }
+
+  .picks[data-ratings] .pick::after {
+    top: 0.375rem;
+    right: 0.375rem;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+/* The buttons. Under the answer, a step and a half from it, on a computer and a tablet held sideways, and in a bar
+   across the bottom of the window (clear of the home indicator) for a phone and a tablet held upright, so a thumb finds
+   them in the same place on every question. Back is on the left and the blue button fills the rest. */
+.screen .acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  view-transition-name: bar;
+}
+
+.acts > :is(a, button) {
+  height: var(--button);
+  padding-block: 0;
+}
+
+.acts > button,
+.acts > .button:not(.safe) {
+  min-width: 168px;
+}
+
+.key {
+  display: none;
+  color: var(--sage);
+  font: var(--text-small);
+  white-space: nowrap;
+}
+
+.key kbd {
+  margin-left: 0.25rem;
+  padding: 0.3125rem 0.5rem;
+  border-radius: 6px;
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: 600 0.875rem / 1 var(--font-text);
+}
+
+/* The Enter hint shows only where there is a mouse and a keyboard, on the computer layout. */
+@media (hover: hover) and (pointer: fine) and (min-width: 1200px) and (orientation: landscape) {
+  .key {
+    display: inline;
+  }
+}
+
+@media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
+  .screen {
+    padding-bottom: calc(var(--button) + 3.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .screen .acts {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    flex-wrap: nowrap;
+    gap: 0.625rem;
+    margin: 0;
+    padding: 0.75rem max(1rem, calc((100% - var(--column)) / 2))
+      calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    background: var(--felt-deep);
+  }
+
+  .acts > :is(a, button),
+  .acts > button,
+  .acts > .button:not(.safe) {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .acts > .safe {
+    flex: 0 0 auto;
+  }
+}
+
+/* The small link at the foot: throwing a game away, which has its own screen. */
+a.foot {
+  align-self: flex-start;
+  margin: 1.5rem 0 1rem 1.25rem;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
+/* A game in Your games: one paper card that is one link, with its picture, its name, and where it stands. Until a
+   game has its video, a plain block holds the picture's place. */
+a.game {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  min-height: 0;
+  margin: 1.5rem 0 0;
+  padding: 1rem;
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform var(--press-time);
+}
+
+a.game > i {
+  flex: none;
+  width: 96px;
+  height: 54px;
+  border-radius: 8px;
+  background: var(--sage);
+}
+
+a.game > span {
+  display: block;
+  min-width: 0;
+}
+
+a.game .statement {
+  display: block;
+  font: var(--text-card-title);
+}
+
+a.game > span > span:not(.statement) {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--ink-soft);
+}
+
+a.game [data-sent-back] {
+  color: var(--pay);
+  font-weight: 600;
+}
+
+a.game:active {
+  transform: scale(var(--press-scale));
+}
+
+@media (min-width: 500px) {
+  a.game > i {
+    width: 128px;
+    height: 72px;
+  }
+}
+
+/* What moves (spec 4.6). The question's lines rise 28px into place over 460ms on the house curve, each 40ms after the
+   one before, and going back they come down instead. Only transform and opacity change. The buttons are left out
+   so a fixed bar is never inside something that moves. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+
+@keyframes sink {
+  from {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+}
+
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes lift-away {
+  to {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes drop-away {
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.screen main > :not(form, .acts),
+.screen main > form > :not(.acts) {
+  animation: rise 460ms var(--ease) both;
+  animation-delay: calc(var(--line, 0) * 40ms);
+}
+
+html[data-step="back"] .screen main > :not(form, .acts),
+html[data-step="back"] .screen main > form > :not(.acts) {
+  animation-name: sink;
+}
+
+.screen main > :nth-child(2),
+.screen main > form > :nth-child(2) {
+  --line: 1;
+}
+
+.screen main > :nth-child(3),
+.screen main > form > :nth-child(3) {
+  --line: 2;
+}
+
+.screen main > :nth-child(4),
+.screen main > form > :nth-child(4) {
+  --line: 3;
+}
+
+.screen main > :nth-child(n + 5),
+.screen main > form > :nth-child(n + 5) {
+  --line: 4;
+}
+
+/* Where the browser can make a move a view transition, the old question lifts 12px and fades in 120ms, over the new
+   one whose lines are rising. The bar and the track stay where they are. */
+::view-transition-old(root) {
+  z-index: 1;
+  mix-blend-mode: normal;
+  animation: lift-away 120ms ease-in both;
+}
+
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation: none;
+}
+
+html[data-step="back"]::view-transition-old(root) {
+  animation-name: drop-away;
 }
 
 /* A numbered list of points (the maker agreement): the number is the list's own, in the display face and hung in the
@@ -653,6 +1117,14 @@ button:active,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* With reduced motion nothing moves: the next question is simply there, the track is drawn whole and a choice changes at
+     once. */
+  .screen,
+  .screen * {
+    animation: none !important;
+    transition: none !important;
+  }
+
   button,
   .button,
   .file > span {
@@ -661,7 +1133,8 @@ button:active,
 
   button:active,
   .button:active,
-  .file:active > span {
+  .file:active > span,
+  a.game:active {
     transform: none;
   }
 }
