@@ -119,6 +119,7 @@ Recorded by the coordinator (`session_01HNdX7JopLaJTd1JphMYiu7`), each quoted as
 
 - Makers' sales: "32. A" (a maker's revenue split covers everything the game earns: its share of the membership pool, its DLC and its battle passes).
 - Legal: the Owner's answers are in the legal drafts (see the legal pages' pull request); the working notes stay outside this public repository.
+- Legal pages, 2026-11-15: pull request #104 (`legal/pages`, last commit `bd3ac86`) closed on the Owner's word ("close them and rebuild later from their plans"); its drafts are kept in the private repository.
 - FloorFifty's environments check: `production` and `staging` have no protection rules; the collaborators are `mcthaydt` and `SNEKPRTY`, both the Owner's. So any FloorFifty workflow can use the Fly token, which is accepted while only the Owner can push.
 - Boards: "keep the numbers in order please".
 
@@ -640,6 +641,8 @@ Slice A, `docs/superpowers/plans/2026-11-14-apps-a-test-copy.md`. What it waits 
 | 1 `apps-a/copy` | 1 which copy this is · 2 the database's stamp · 3 the deploy claims the database · 4 a Worker pointed at the wrong database answers nothing · 5 the test copy is open whatever the date · 6 the test copy never takes live payments · 9 the test copy says what it is | not started |
 | 3 `apps-a/fake-content` | 10 the made-up content · 11 the test copy writes its own made-up content | not started; needs branch 1 |
 | 2 `apps-a/test-worker` | 7 the `test` environment · 8 the test copy, running | not started; needs T1 to T3 and branches 1 and 3 |
+
+Closed, 2026-11-15 (Owner: "We finish Slice 2: Games and play, everything after that is tagged for later work", then "close them and rebuild later from their plans"): pull request #111 (`apps-a/copy` work, branch `claude/project-thread-f4huda`, last commit `17e4c3f`, Tasks 1 to 5 built) is closed. Its branch goes with the hourly clean-up a day later. Branch 1 is rebuilt from this plan when the roadmap reaches it; the closed pull request can restore the branch.
 
 The other slices (H, R, S, F, Q, B, P, V, K on the website; 1, 2, 3, N, $, L for the apps) are not planned yet. Each gets its own plan when what it needs is on `main`.
 
