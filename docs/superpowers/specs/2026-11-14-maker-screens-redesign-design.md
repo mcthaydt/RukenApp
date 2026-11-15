@@ -468,11 +468,24 @@ Owner, 2026-11-15: "Here's my thoughts: cyberpunk 2077 is a max bar for sex, nud
 
 Owner, 2026-11-15, on Flathub and the Snap Store: "Stores (18+ content hidden)". So every store app hides games marked sex, nudity or gore: the App Store, Google Play, the Mac App Store, the Microsoft Store, Flathub and the Snap Store. Only the website and Ruken's own downloads show them, to adults who turned them on. Worth knowing, said once: Cyberpunk 2077 itself is sold on the Microsoft Store, so that store might allow such games; Apple's and Google's rules do not allow sex or nudity in apps. The Owner's rule stands.
 
+### 12.0a Each store shows its most; censored versions
+
+Owner, 2026-11-15: "Do the maximum the apps will allow, and give devs the option to create censored uploads for our censored platforms". This replaces "Stores (18+ content hidden)" above.
+
+- **Each store app shows the most that store's rules allow.** Violence, gore and drugs at the store's 17+ or 18+ rating; sex and nudity only where a store's rules allow them. Which store allows what is read from each store's own rules before the apps' plan and kept in one table there; until a store is confirmed, sex and nudity are hidden in its app. The website and Ruken's own downloads show everything up to the bar (12.0), to adults who turned it on.
+- **A maker can give a censored version** for the store apps. Ruken loads it in a store app whose rules would hide the full game, and the full one everywhere else. A game marked for content a store hides, with no censored version, is hidden in that store's app, as before.
+- **Pending (question 34)**: how the censored version reaches Ruken. Recommended: a second branch, like the beta branch.
+- **Extras** are the same extras in both versions: one id, one purchase, owned in both (sales 5.4). Each version has its own `ruken-extras/<id>/` folders; staff check an extra unlocks in both.
+- **Staff check both versions** (section 11): on checking a game, a switch "Full version / Store version" above the game; the parts list gains the store version's files, and the content marks are checked on each.
+- **The maker's screens**: the age question's 18+ follow-up (12) gains a last line when a mark is picked: "Some store apps hide this. You can give us a censored version for them." with a link to the Store version room. A live game's rooms gain "Store version" (its branch, its state in the usual words, "Pull for review"), shown only for a game with a content mark.
+
 ### 12.1 What this touches beyond these screens
 
 Flagged for the coordinator; none of these is decided here.
 
-- **The store apps.** The Mac App Store and the Microsoft Store are store apps, not "desktop downloads", so they hide these games like the phone apps. Flathub and the Snap Store count as stores too (Owner: "Stores (18+ content hidden)"). Each store's rules on mature content are checked again before the apps' plan.
+- **The apps spec** (merged): its age ratings gain the per-store table and the censored version (12.0a); "hides games rated above a player's age everywhere" stays. Each store's rules on mature content are read before its plan.
+- **The sales spec and plan** (merged): an extra is owned in both versions, and the gate serves the store version's files to a store app's play pass. The owned file and messages do not change.
+- **Slice 2's pull**: a game can have a release, a beta and a store version, each pulled and checked the same way.
 - **The image checks.** The apps spec flags nudity automatically and hides it until staff decide. Pictures and clips of a game marked "Sex or nudity" or "Gore" need the check to label instead of block, and player and maker page photos still refuse nudity.
 - **Stripe.** Stripe's rules on what a business may sell limit sexual content. Whether a game with sex or nudity can be sold through Ruken, or whether its presence puts Ruken's Stripe account at risk, is read from Stripe's own rules before this is built.
 - **The law.** Some US states require a check of age, beyond a typed birth date, for sites with sexual material. That goes to the lawyer with pull request #104.
