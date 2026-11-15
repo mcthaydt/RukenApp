@@ -125,8 +125,7 @@ header {
   margin: 0.5rem auto 0;
 }
 
-header + main,
-.topbar + main {
+header + main {
   margin-top: 1rem;
 }
 
@@ -135,8 +134,7 @@ header + main,
     margin-top: 3rem;
   }
 
-  header + main,
-  .topbar + main {
+  header + main {
     margin-top: 1.5rem;
   }
 }
@@ -1017,6 +1015,35 @@ form > * + button:not(.quiet) {
   }
 }
 
+/* A short window (an iPhone SE is 568 tall upright and 320 sideways; every phone held sideways is under 450): each choice is one
+   row, its name and its line side by side, in a smaller name, so the choices and the line under them are not cut by the bar. */
+@media (max-height: 599px) {
+  .picks {
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .pick {
+    flex-flow: row wrap;
+    align-items: baseline;
+    column-gap: 0.75rem;
+    row-gap: 0;
+    padding-block: 0.5rem;
+  }
+
+  .pick > b {
+    font: 400 1.25rem / 1.2 var(--font-display);
+  }
+}
+
+/* Held sideways the choices are one to a row, not two across: two across left a card too narrow for its name, which broke to a
+   second line and pushed its words under the bar. The ratings, which are five short names, keep two across. */
+@media (max-height: 449px) {
+  .picks:not([data-ratings]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* The buttons. Under the answer, a step and a half from it, on a computer and a tablet held sideways, and in a bar
    across the bottom of the window (clear of the home indicator) for a phone and a tablet held upright, so a thumb finds
    them in the same place on every question. Back is on the left and the blue button fills the rest. */
@@ -1561,9 +1588,10 @@ a.foot {
   }
 }
 
-/* On a phone held upright the name, the line and the facts come before the videos: with the videos first, the bar covered the
-   facts and a maker could send without seeing them. (Live keeps its one video first: that video is the picture of the screen.) */
-@media (max-width: 499px) {
+/* On a phone, held upright or sideways, the name, the line and the facts come before the videos: with the videos first, the bar
+   covered the facts and a maker could send without seeing them, and held sideways the first screen was the heading and two
+   videos with nothing about the game. (Live keeps its one video first: that video is the picture of the screen.) */
+@media (max-width: 499px), (max-height: 449px) {
   .screen:not(:has(.live)) .laid {
     display: flex;
     flex-direction: column;
@@ -1576,6 +1604,14 @@ a.foot {
 
   .screen:not(:has(.live)) .laid > .tiles {
     order: 1;
+  }
+}
+
+/* Held sideways there are 244px above the bar on the shortest phone, so the rows of the name, the line and the facts are
+   closer: the line is in view with the name, not half under the bar. */
+@media (max-height: 449px) {
+  .screen:not(:has(.live)) .laid {
+    gap: 0.5rem;
   }
 }
 

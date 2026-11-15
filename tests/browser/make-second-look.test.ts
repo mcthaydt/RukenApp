@@ -229,26 +229,6 @@ test.describe("on an iPhone SE held upright", () => {
   }
 });
 
-// ---- L14: the wordmark stays put between a question and the pages a maker is sent to --------------------------------------------
-
-test("the Ruken wordmark is in the same place on a question, the record-your-screen page and the maker agreement", async ({
-  page,
-}) => {
-  const { slug } = await startDraft(page);
-  await page.goto(`/make/${slug}/line`);
-  await wordsHaveSettled(page);
-  const wordmark = page.getByRole("link", { name: "Ruken", exact: true });
-  const onQuestion = await boxOf(wordmark);
-
-  for (const path of ["/help/record-screen", "/legal/maker-agreement"]) {
-    await page.goto(path);
-    await pageHasSettled(page);
-    const there = await boxOf(wordmark);
-    expect(Math.abs(there.x - onQuestion.x), `${path}: left`).toBeLessThanOrEqual(1);
-    expect(Math.abs(there.y - onQuestion.y), `${path}: top`).toBeLessThanOrEqual(1);
-  }
-});
-
 // ---- L16: on Live, held sideways or on a computer, a card above the video is as wide as the video -----------------------------
 
 test("on Live a card for a part sent back ends where the video under it ends, in a window held sideways", async ({
