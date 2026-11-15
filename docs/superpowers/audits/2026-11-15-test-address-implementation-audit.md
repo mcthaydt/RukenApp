@@ -6,7 +6,7 @@ What ran: no test, lint or typecheck (CLAUDE.md). Read: `git diff 09ec744 7730bb
 
 ## Verdict
 
-**Task 32 is complete and correct. Nothing blocks.** Every interface the plan names is built as written, the red failed for the right reason, green is green on `verify`, `postgres` and `browser`, and both modes run the same two serving functions, so every header is the same. Two small fixes are left for a fixes branch (I-1 in the plan, I-2 in a comment). The tracker's row is corrected in this audit's own commit (I-3).
+**Task 32 is complete and correct. Nothing blocks.** Every interface the plan names is built as written, the red failed for the right reason, green is green on `verify`, `postgres` and `browser`, and both modes run the same two serving functions, so every header is the same. Two small fixes (I-1 in the plan, I-2 in a comment) are made in this audit's own pull request, at the coordinator's request, since neither changes behaviour. The tracker's row is corrected in this audit's own commit (I-3).
 
 ## What was checked, and holds
 
@@ -48,6 +48,6 @@ The row said "built, in CI on a draft pull request (#125…)", and #125 is merge
 - **The plan's other planned undo** (launch list): when the games domain comes, `GAME_ADDRESS_PATTERN` goes back to the host form; `checkAddressPattern` will still take the path form. Nothing needs to remove it then: with `PATH_HOST` unset no host answers in path mode, and the site would only make path-form addresses if the setting said so.
 - **The plan audit's S-5** (a game can set a cookie for `ACCOUNT.workers.dev` that the site then receives, which matters for `rk_arrival` and `rk_welcome_back`) is unchanged by this build and stays on the launch list, as planned. The sign-up journey pins only that the site's own cookies have no `Domain`; it is not meant to cover S-5.
 
-## For the fixes thread
+## Fixed
 
-From `main`: I-1 in `docs/superpowers/plans/2026-11-15-slice-2-rest.md` (O-B, and Task 24 step 1); I-2 in the comment at the top of `src/features/play/gate.ts`. Neither changes behaviour, so no new test; the comment change runs through CI like any push.
+I-1 and I-2 are fixed in this audit's pull request: O-B gains step 7 and Task 24 step 1 names the same check, in `docs/superpowers/plans/2026-11-15-slice-2-rest.md`; the comment at the top of `src/features/play/gate.ts` is reworded. Neither changes behaviour, so no new test; the comment change runs through CI like any push.
