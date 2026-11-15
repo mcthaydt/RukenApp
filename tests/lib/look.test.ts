@@ -333,6 +333,7 @@ describe("screens wear the look and nothing of their own", () => {
     "accepted",
     "backdrop",
     "live",
+    "drift",
   ];
   const ROUTES = "src/routes";
 
@@ -433,6 +434,7 @@ describe("the maker's screens", () => {
     "accepted",
     "backdrop",
     "live",
+    "drift",
   ];
 
   it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {
@@ -446,8 +448,10 @@ describe("the maker's screens", () => {
   });
 
   // Owner, 2026-11-15: "we don't do super rounded anything here". The only round thing is a person's photo.
-  it("has no pill or circle shape", () => {
-    expect(withoutComments).not.toMatch(/border-radius:\s*(999|9999|50%|100%)/);
+  // Owner, 2026-11-15, on a card: the five drifting circles behind a live game are allowed, there and nowhere else.
+  it("has no pill or circle shape, except the drifting circles behind Live", () => {
+    const withoutDrift = withoutComments.replace(/\.drift\s*\{[^}]*\}/, "");
+    expect(withoutDrift).not.toMatch(/border-radius:\s*(999|9999|50%|100%)/);
   });
 
   // Spec 4.6: with reduced motion nothing moves, so the next question is simply there.

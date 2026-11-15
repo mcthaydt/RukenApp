@@ -26,17 +26,21 @@ interface ReportingNavigator {
   connection?: { saveData?: boolean };
 }
 
+/** Whether anything that only decorates may move on this device: the same answer a video is given. */
+export function mayMove(): boolean {
+  const reported = navigator as Navigator & ReportingNavigator;
+  return mayAutoplay({
+    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    saveData: reported.connection?.saveData === true,
+    deviceMemory: reported.deviceMemory,
+  });
+}
+
 /** A Svelte action: starts a muted, looping video only where mayAutoplay says so. Without script a video shows its first frame. */
 export function quietVideo(node: HTMLVideoElement): void {
   node.muted = true;
   node.loop = true;
   node.playsInline = true;
-  const reported = navigator as Navigator & ReportingNavigator;
-  const may = mayAutoplay({
-    reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
-    saveData: reported.connection?.saveData === true,
-    deviceMemory: reported.deviceMemory,
-  });
   // A refused play (the browser's own autoplay rules) leaves the first frame showing, which is the quiet answer.
-  if (may) node.play().catch(() => undefined);
+  if (mayMove()) node.play().catch(() => undefined);
 }

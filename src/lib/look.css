@@ -1698,6 +1698,67 @@ a.sheet.fix {
   transform: scale(1.1);
 }
 
+/* Five soft circles drift slowly between the video and the dark layer. Round shapes are allowed here and nowhere else
+   (Owner, 2026-11-15). They move only where the script says the video may move too. */
+.drift {
+  position: absolute;
+  width: 38vmin;
+  height: 38vmin;
+  border-radius: 50%;
+  background: var(--sage);
+  opacity: 0.12;
+}
+
+.drift:nth-of-type(1) {
+  top: 8%;
+  left: 6%;
+}
+
+.drift:nth-of-type(2) {
+  top: 55%;
+  left: 20%;
+  width: 28vmin;
+  height: 28vmin;
+}
+
+.drift:nth-of-type(3) {
+  top: 12%;
+  left: 55%;
+  width: 48vmin;
+  height: 48vmin;
+}
+
+.drift:nth-of-type(4) {
+  top: 60%;
+  left: 62%;
+  width: 24vmin;
+  height: 24vmin;
+}
+
+.drift:nth-of-type(5) {
+  top: 35%;
+  left: 38%;
+  width: 32vmin;
+  height: 32vmin;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-drifting] .drift {
+    animation: drift 48s ease-in-out infinite alternate;
+  }
+
+  [data-drifting] .drift:nth-of-type(even) {
+    animation-duration: 64s;
+    animation-direction: alternate-reverse;
+  }
+}
+
+@keyframes drift {
+  to {
+    transform: translate(12vw, -8vh);
+  }
+}
+
 .backdrop::after {
   content: "";
   position: absolute;

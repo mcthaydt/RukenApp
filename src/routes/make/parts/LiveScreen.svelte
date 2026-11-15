@@ -8,7 +8,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import { onMount } from "svelte";
-  import { quietVideo } from "../../../lib/quiet-video.ts";
+  import { mayMove, quietVideo } from "../../../lib/quiet-video.ts";
   import type { FixCardData, LaidOutGame } from "../laid-out.ts";
   import FixCard from "./FixCard.svelte";
   import GameLaidOut from "./GameLaidOut.svelte";
@@ -35,9 +35,12 @@
   let sending = $state(false);
   // The shape of this screen, known only in the browser; before then (and without script) the upright video stands in.
   let upright = $state(true);
+  // Whether the circles drift: only where the video moves too, so a slow phone or a person who asked for less motion sees both still.
+  let drifting = $state(false);
   const src = $derived(upright ? (backdrop.upright ?? backdrop.wide) : (backdrop.wide ?? backdrop.upright));
 
   onMount(() => {
+    drifting = mayMove();
     const wide = matchMedia("(orientation: landscape)");
     upright = !wide.matches;
     const follow = () => {
@@ -55,10 +58,14 @@
 </svelte:head>
 
 {#if src !== null}
-  <div class="backdrop" aria-hidden="true">
+  <div class="backdrop" aria-hidden="true" data-drifting={drifting ? "" : undefined}>
     {#key src}
       <video {src} preload="metadata" muted loop playsinline use:quietVideo></video>
     {/key}
+    <!-- Five soft circles between the video and the dark layer (Owner, 2026-11-15: circles are allowed here only). -->
+    {#each [1, 2, 3, 4, 5] as circle (circle)}
+      <i class="drift"></i>
+    {/each}
   </div>
 {/if}
 
