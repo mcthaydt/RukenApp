@@ -1,7 +1,8 @@
 /*
   The look of Ruken's own screens: the Card Table (design 5.8). The page is quiet green felt, and what a
-  person picks up or acts on is a paper card on it. Red is only the paywall card's one small pip mark, never a
-  button (Owner, 2026-11-14). No casino imagery, no chips, no gold.
+  person picks up or acts on is a paper card on it. A button is blue, green or red by what it does (Owner,
+  2026-11-13, "safe is green, not safe is red, rest is blue"): red only when it can't be undone. No casino
+  imagery, no chips, no gold.
   tests/lib/look.test.ts reads this file as text and pins every token, so a change here fails there first.
 */
 
@@ -31,6 +32,18 @@
   font-display: swap;
 }
 
+/* Spec 15.2: a heading's "1" must never read as an "I". Young Serif's digits look like capital I, so the digits
+   (and only they) come from the text face, which is the same file the text uses. A second declaration of a
+   file costs the browser no second download. */
+@font-face {
+  font-family: "Ruken Digits";
+  src: url("/fonts/schibsted-grotesk-latin-400-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+30-39;
+}
+
 :root {
   /* One theme, dark by choice. A card sets its own scheme to light. */
   color-scheme: dark;
@@ -47,13 +60,13 @@
   --paper: #ffffff; /* White: cards; the primary button on felt */
   --ink: #111314; /* Black: all text on paper (18.6:1) */
   --ink-soft: #34454c; /* Slate Color: notes on paper (10.0:1) */
-  /* Scarlet: the paywall card's one small pip mark, never a button or a field (Owner, 2026-11-14, "Keep it").
-     No rule uses it yet; the mark is not built. */
+  /* Scarlet: only a button that can't be undone (delete, pay out, refund), with white words (5.2:1). */
   --pip: #cb2f43;
-  --pay: #006eb8; /* Blue: the paid button ("Continue to payment"), with white words (5.4:1); never a field */
+  --pay: #006eb8; /* Blue: the main button, with white words (5.4:1); never a field */
 
   /* Type. A system font stands behind each face, so every word shows if a file does not arrive. */
-  --font-display: "Young Serif", Georgia, "Times New Roman", serif; /* headings, card titles */
+  --font-display:
+    "Ruken Digits", "Young Serif", Georgia, "Times New Roman", serif; /* headings, card titles */
   --font-text:
     "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; /* text, buttons */
 
@@ -410,8 +423,8 @@ textarea[aria-invalid="true"] {
 }
 
 /* A button, or a link that looks like one. Flex, because an inline link ignores a height and a transform:
-   without it a link-button would be neither 48px tall nor give when pressed. The main button is paper with an
-   ink label on felt, and ink with a paper label on a card. */
+   without it a link-button would be neither 48px tall nor give when pressed. The main forward action is Blue
+   with white words, on felt and on a card alike. */
 button,
 .button {
   display: inline-flex;
@@ -421,18 +434,35 @@ button,
   padding: 0.5rem 1.5rem;
   border: 0;
   border-radius: var(--radius-button);
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--pay);
+  color: var(--chalk);
   font: var(--text-button);
   text-decoration: none;
   transition: transform var(--press-time);
   cursor: pointer;
 }
 
-.card button,
-.card .button {
-  background: var(--ink);
-  color: var(--paper);
+/* The other three colours of a button. Green is "nothing changes" (Back, Keep it). Red is "can't be undone"
+   (Throw it away, Delete my account), the only place the pip is used. Outline is a second forward action that
+   must not compete with the blue one: no fill, a Blue edge on a card and a chalk edge on felt. The edge is a
+   border, so it takes room, and the box keeps its 48px. */
+.safe {
+  background: var(--felt-raised);
+}
+
+.danger {
+  background: var(--pip);
+  color: var(--chalk);
+}
+
+.outline {
+  border: 2px solid var(--chalk);
+  background: none;
+}
+
+.card .outline {
+  border-color: var(--pay);
+  color: var(--pay);
 }
 
 /* A second action that must not draw the eye: no fill, it looks like a link. No padding, so its words start
@@ -610,13 +640,6 @@ details > .field {
 
 .card li > p {
   margin-top: 0.25rem;
-}
-
-/* Used once in the whole site, on "Continue to payment": the one press that spends money. Blue with white
-   words (5.4:1), the card's one coloured button; the rest are ink (Owner, 2026-11-14, "go with D"). */
-.card .pay {
-  background: var(--pay);
-  color: var(--chalk);
 }
 
 button:active,

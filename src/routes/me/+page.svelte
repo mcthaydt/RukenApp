@@ -51,5 +51,6 @@
   <form method="POST" action="/sign-out">
     <button class="quiet">Sign out</button>
   </form>
-  <p class="note apart"><a href="/me/delete">Delete my account</a></p>
+  <p class="apart">Make games? <a href="/make">Add yours to Ruken.</a></p>
+  <p class="note"><a href="/me/delete">Delete my account</a></p>
 </main>
