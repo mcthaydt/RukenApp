@@ -4,8 +4,11 @@ import { pageHasSettled, signUp } from "./support/account.ts";
 import { fillAnswers, putGameWhereStaffLeaveIt, type SentBackPart } from "./support/database.ts";
 import {
   addVideo,
+  chooseVideo,
   connectGitHubFromFiles,
+  giveRealClips,
   nextButton,
+  pageNamedAsVideo,
   startAtCheck,
   startAtFiles,
   startAtVideo,
@@ -29,6 +32,8 @@ async function gameWhere(
   decision: Parameters<typeof putGameWhereStaffLeaveIt>[1],
 ): Promise<{ slug: string }> {
   const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  await giveRealClips(page, slug);
   await putGameWhereStaffLeaveIt(slug, decision);
   return { slug };
 }
@@ -72,6 +77,7 @@ test("Live draws the video behind it and the one laid out", async ({ page }) => 
 test("Your games draws the picture of each game", async ({ page }) => {
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  await giveRealClips(page, slug);
   await page.goto("/make");
 
   await expectFrame(page.locator("a.game video"));
@@ -233,8 +239,8 @@ test("'GitHub didn't connect' sits under the answer, as every other refusal does
   await page.goto(`/make/${slug}/files?github=failed`);
   await pageHasSettled(page);
 
-  const problem = await boxOf(page.getByText("GitHub didn't connect. Try again."));
-  const hint = await boxOf(page.getByText("Your game needs an index.html that runs in a browser."));
+  const problem = await boxOf(page.getByText(/^GitHub didn't connect\./));
+  const hint = await boxOf(page.getByText("Pick the one that is your game."));
   expect(problem.y).toBeGreaterThanOrEqual(hint.y + hint.height);
 });
 
@@ -250,4 +256,67 @@ test("on a computer 'Add a game' is on the heading's line", async ({ page }) => 
   const add = await boxOf(page.getByRole("link", { name: "Add a game" }));
   expect(add.y).toBeLessThan(heading.y + heading.height);
   expect(add.x).toBeGreaterThan(heading.x + heading.width);
+});
+
+// ---- What the walk through the tasks found -------------------------------------------------------------------------
+
+test("a video that is refused shows its words above the bar, where they can be read", async ({ page }) => {
+  await startAtVideo(page, "upright");
+  await chooseVideo(page, pageNamedAsVideo());
+
+  const problem = page.getByRole("alert").filter({ hasText: "doesn't look like a video" });
+  await expect(problem).toBeVisible();
+  const words = await boxOf(problem);
+  const viewport = page.viewportSize()?.height ?? 0;
+  const barTop = ["phone", "phone-sideways", "tablet"].includes(layoutOf(page))
+    ? (await boxOf(page.locator(".acts"))).y
+    : viewport;
+  await expect.poll(async () => (await boxOf(problem)).y + words.height).toBeLessThanOrEqual(barTop);
+});
+
+test("a refusal of the websites goes away once the box is changed", async ({ page }) => {
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true });
+  await page.goto(`/make/${slug}/websites`);
+  await pageHasSettled(page);
+
+  await page.getByLabel(/use other websites\?$/).fill("not a website");
+  await nextButton(page).click();
+  const refusal = page.locator("#problem");
+  await expect(refusal).toBeVisible();
+
+  await page.getByLabel(/use other websites\?$/).fill("api.example.com");
+  await expect(refusal).toHaveCount(0);
+});
+
+test("on the throw-away screen the green Keep it comes before the red Throw it away", async ({ page }) => {
+  const { slug } = await startDraft(page);
+  await page.goto(`/make/${slug}/throw-away`);
+
+  const keep = await boxOf(page.getByRole("link", { name: "Keep it" }));
+  const throwAway = await boxOf(page.getByRole("button", { name: "Throw it away" }));
+  expect(keep.y).toBeLessThan(throwAway.y);
+});
+
+test("on Live an update that was sent back has the fix as its blue button", async ({ page }) => {
+  const { slug } = await gameWhere(page, { state: "live", toFix: [{ part: "one_line", reason: "not_this_game" }] });
+  await page.goto(`/make/${slug}`);
+
+  const fix = page.getByRole("link", { name: /^Fix / });
+  await expect(fix).toHaveAttribute("href", /\/line/);
+  await expect(fix).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(page.getByRole("link", { name: "See it on Ruken" })).not.toHaveCSS(
+    "background-color",
+    rgb(token("--pay")),
+  );
+});
+
+test("the GitHub how-to has the way back at its foot as well as at its top", async ({ page }) => {
+  await page.goto("/help/github?from=%2Fmake");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+  const links = page.locator("main a");
+  await expect(links.first()).toHaveAttribute("href", "/make");
+  await expect(links.last()).toHaveAttribute("href", "/make");
+  await expect(links).toHaveCount(2);
 });

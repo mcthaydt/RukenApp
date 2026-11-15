@@ -42,7 +42,7 @@ describe("ratingWords", () => {
 
 describe("websitesWords", () => {
   it("says a game runs on its own when it names no website", () => {
-    expect(websitesWords([])).toBe("Runs on its own");
+    expect(websitesWords([])).toBe("Uses no other websites");
   });
 
   it("names every website the game uses", () => {

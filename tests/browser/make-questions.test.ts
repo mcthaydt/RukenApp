@@ -235,7 +235,7 @@ test("an 18+ game is asked one more question, and a 12+ game is not", async ({ p
   await expect(page).toHaveURL(`/make/${slug}/marks`);
   await expect(page.getByText("Question 8 of 8")).toBeVisible();
   await expect(
-    page.getByText("Only adults see it. Pornography and gambling are never allowed."),
+    page.getByText("Only adults will see this game. Pornography and gambling are never allowed."),
   ).toBeVisible();
   // "None of these" stands alone: choosing it unticks the others, and choosing another unticks it.
   await page.getByLabel("Gore").check();
@@ -364,7 +364,7 @@ test("she picks a repository from Ruken's own rows, and Next copies the game", a
 
   // Ruken's rows, never the browser's own list.
   await expect(page.locator("select")).toHaveCount(0);
-  await expect(page.getByText("Your game needs an index.html that runs in a browser.")).toBeVisible();
+  await expect(page.getByText("Pick the one that is your game.")).toBeVisible();
   await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
   await page.getByLabel(TINY_GAME).check();
   await nextButton(page).click();
@@ -420,7 +420,7 @@ test("a repository with no index.html says so in plain words on the question tha
   await expect(page.getByText("We couldn't start your game")).toBeVisible();
   await expect(
     page.getByText(
-      "Ruken starts your game from a file called index.html. We couldn't find one in that folder.",
+      "Ruken starts your game from a file called index.html. We couldn't find one in ruken-test/broken-game.",
     ),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Here's how to set up your game's folder" })).toHaveAttribute(
@@ -430,7 +430,7 @@ test("a repository with no index.html says so in plain words on the question tha
   await showTheOwner(page, testInfo, "question 3, no index.html");
 
   // The one blue button opens the boxes that fix it, with the folder ready to be typed in; her choice is still picked.
-  await page.getByRole("link", { name: "Pick another folder" }).click();
+  await page.getByRole("link", { name: "Pick another" }).click();
   await expect(page.getByLabel("Folder")).toBeFocused();
   await expect(page.getByLabel(BROKEN_GAME)).toBeChecked();
   await expect(page.getByLabel("Branch")).toBeVisible();

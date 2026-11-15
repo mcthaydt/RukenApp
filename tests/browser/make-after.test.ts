@@ -10,6 +10,7 @@ import {
   chooseVideo,
   freshName,
   holdAnswersTo,
+  giveRealClips,
   MAKER_ADDRESSES,
   nextButton,
   startDraft,
@@ -32,6 +33,7 @@ async function gameWhere(
 ): Promise<{ slug: string; name: string }> {
   const { slug, name } = await startDraft(page);
   await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  await giveRealClips(page, slug);
   if (options.agreed === true) await agreeToTheAgreement(page, slug);
   await putGameWhereStaffLeaveIt(slug, decision);
   return { slug, name };
@@ -111,7 +113,7 @@ test("fixing the one thing brings back Send it again, and sending makes it wait"
 
   await expect(page).toHaveURL(`/make/${slug}`);
   await expect(page.getByText("Fixed. Send it again when you're ready.")).toBeVisible();
-  await expect(page.getByText("All 8 ready to send")).toBeVisible();
+  await expect(page.getByText("All ready to send")).toBeVisible();
   await expect(page.locator("a.fix")).toHaveCount(0);
   await showTheOwner(page, testInfo, "Sent back, fixed");
   const held = await holdAnswersTo(page, /\?\/send/);

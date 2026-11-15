@@ -91,9 +91,9 @@ test("before GitHub is connected, the files question says what Ruken will see, w
 
   await expect(page.getByRole("heading", { name: "Where are your game's files?" })).toBeVisible();
   await expect(page.getByText("Question 3 of 7")).toBeVisible();
-  await expect(page.getByText("Your game lives on GitHub. Connect it, then pick the folder.")).toBeVisible();
+  await expect(page.getByText("Your game lives on GitHub. Connect it, then pick your game.")).toBeVisible();
   await expect(
-    page.getByText("You choose which repositories Ruken can see. It can't see anything else."),
+    page.getByText("You choose which games on GitHub Ruken can see. It can't see anything else."),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Here's how to put your game there" })).toHaveAttribute(
     "href",
@@ -142,7 +142,7 @@ test("a connection that failed says so on the question, above the way to try aga
   await expect(page).toHaveURL(`/make/${slug}/files?github=failed`);
   const failure = page.getByText("GitHub didn't connect. Try again.");
   await expect(failure).toBeVisible();
-  const sheet = page.getByText("Your game lives on GitHub. Connect it, then pick the folder.");
+  const sheet = page.getByText("Your game lives on GitHub. Connect it, then pick your game.");
   expect((await boxOf(failure)).y).toBeLessThan((await boxOf(sheet)).y);
   await expect(page.getByRole("link", { name: "Connect GitHub" })).toBeVisible();
   expect(await githubConnectionOf(maker.email)).toEqual([]);
@@ -163,11 +163,13 @@ test("a failed reconnect says so to a maker who is already connected, above her 
   );
 
   await expect(page).toHaveURL(`/make/${slug}/files?github=failed`);
-  const failure = page.getByText("GitHub didn't connect. Try again.");
+  // The list still works, and the line says so: with no Connect button on this screen, "Try again" would have nothing to press.
+  const failure = page.getByText("GitHub didn't connect. You can still pick a game from the list.");
   await expect(failure).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(2);
-  const rows = page.getByRole("radio").first();
-  expect((await boxOf(failure)).y).toBeLessThan((await boxOf(rows)).y);
+  // Under the hint, beneath the answer, where every other refusal is.
+  const hint = page.getByText("Pick the one that is your game.");
+  expect((await boxOf(failure)).y).toBeGreaterThan((await boxOf(hint)).y);
   expect(await githubConnectionOf(maker.email)).toMatchObject([{ installationId: 1n }]);
   await showTheOwner(page, testInfo, "question 3, connected, the reconnect failed");
 });

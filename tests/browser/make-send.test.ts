@@ -119,7 +119,7 @@ test("Check and send lays the game out: two videos, its name and line, and four 
     "ruken-test/tiny-game",
     "Plays on phones and computers",
     "12+",
-    "Runs on its own",
+    "Uses no other websites",
   ]);
   // Sizes and counts are not for a maker to weigh up here.
   await expect(page.getByText(/\d+ files?|\bKB\b|\bMB\b/)).toHaveCount(0);

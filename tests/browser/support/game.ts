@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./account.ts";
 import { fillAnswers } from "./database.ts";
@@ -178,6 +178,34 @@ export function videoFile(name = "clip.mp4"): UploadFile {
   buffer.writeUInt32BE(64, 0);
   buffer.write("ftyp", 4, "ascii");
   return { name, mimeType: "video/mp4", buffer };
+}
+
+/** Where the real clips are: two seconds of each shape, as WebM and as MP4. */
+const CLIPS = new URL("../../fixtures/clips/", import.meta.url);
+
+/**
+ * A real clip of this shape, which a browser can decode and draw a frame of. Safari's engine plays the MP4 and Chromium
+ * (which is built without the H.264 codec) the WebM, so each browser is given the one it can play.
+ */
+export async function realClip(page: Page, shape: "upright" | "wide"): Promise<UploadFile> {
+  const extension = page.context().browser()?.browserType().name() === "webkit" ? "mp4" : "webm";
+  const buffer = await readFile(new URL(`${shape}.${extension}`, CLIPS));
+  return { name: `${shape}.${extension}`, mimeType: `video/${extension}`, buffer };
+}
+
+/**
+ * Gives a draft game, signed in on `page`, real clips for both videos, sent through the same action a maker's own
+ * choice uses. A game made with `fillAnswers` has clip rows and no bytes behind them, so its videos show a blank block.
+ */
+export async function giveRealClips(page: Page, slug: string): Promise<void> {
+  const site = new URL(page.url()).origin;
+  for (const shape of ["upright", "wide"] as const) {
+    const sent = await page.request.post(`${site}/make/${slug}/${shape}?/clip`, {
+      multipart: { clip: await realClip(page, shape) },
+      headers: { origin: site },
+    });
+    expect(sent.ok(), `the ${shape} clip is taken`).toBe(true);
+  }
 }
 
 /** A web page that says it is a video, which Ruken must refuse. */
