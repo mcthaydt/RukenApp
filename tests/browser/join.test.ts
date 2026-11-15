@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
-import { fillBirthDate, freshEmail, JOURNEY_PASSWORD, signUp, yearsAgo } from "./support/account.ts";
+import { fillBirthDate, freshEmail, JOURNEY_PASSWORD, signUp, standInPayButton, yearsAgo } from "./support/account.ts";
 import { boxOf, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -117,7 +117,7 @@ test("Continue to payment opens the payment page", async ({ page }) => {
   await page.goto("/join");
   await page.getByRole("button", { name: "Continue to payment" }).click();
   // The stand-in Stripe's page: one button.
-  await expect(page.getByRole("button", { name: "Pay" })).toBeVisible();
+  await expect(standInPayButton(page)).toBeVisible();
 });
 
 test("next pointing off the site is ignored", async ({ page }) => {

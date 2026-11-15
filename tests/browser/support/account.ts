@@ -1,4 +1,4 @@
-import { expect, type Browser, type Page } from "@playwright/test";
+import { expect, type Browser, type Locator, type Page } from "@playwright/test";
 
 /** The password every journey's new account uses. */
 export const JOURNEY_PASSWORD = "a long enough password";
@@ -81,6 +81,13 @@ export async function signUpInItsOwnContext(browser: Browser): Promise<{ email: 
 }
 
 /**
+ * The stand-in Stripe's one "Pay" button. Every journey finds it here, so they all mean the same button.
+ */
+export function standInPayButton(page: Page): Locator {
+  return page.getByRole("button", { name: "Pay" });
+}
+
+/**
  * Signs a new person up, opens the card, pays on the stand-in Stripe, and waits for `/me`, where the card sends
  * them. `checkoutSessionId` is the stand-in's name for what was paid, read from its page's address, so a journey
  * can ask the stand-in what it thinks later.
@@ -89,9 +96,9 @@ export async function payAsNewMember(page: Page): Promise<{ email: string; check
   const { email } = await signUp(page);
   await page.goto("/join?next=/me");
   await page.getByRole("button", { name: "Continue to payment" }).click();
-  await expect(page.getByRole("button", { name: "Pay" })).toBeVisible();
+  await expect(standInPayButton(page)).toBeVisible();
   const checkoutSessionId = new URL(page.url()).pathname.split("/").pop() ?? "";
-  await page.getByRole("button", { name: "Pay" }).click();
+  await standInPayButton(page).click();
   await expect(page).toHaveURL("/me");
   await pageHasSettled(page);
   return { email, checkoutSessionId };
