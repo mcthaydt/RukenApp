@@ -497,24 +497,6 @@ form > * + button:not(.quiet) {
   }
 }
 
-/* A box with its label, its hint and, when it is refused, its refusal under the hint, a small step apart. A link under
-   the hint ("Don't see your game?") keeps its own 48px target without borrowing from the margins around it. */
-.field > * + * {
-  margin-top: 0.375rem;
-}
-
-.field > .problem {
-  display: block;
-}
-
-.field > a {
-  margin-block: 0;
-}
-
-details > .field {
-  margin-top: 1rem;
-}
-
 /* Ruken's own file picker (the browser's "Choose File" is not drawn by Ruken). The real file field stays in the page,
    hidden from sight only: one pixel, clipped and clear, never `display: none`, so the keyboard still reaches it, a
    reader still reads it and Enter or Space still opens the picker. The words over it are a button of the look: ink on
@@ -576,26 +558,6 @@ details > .field {
 .card .file:has(:focus-visible) > span {
   outline: 3px solid var(--ink);
   outline-offset: 3px;
-}
-
-/* A row of a checklist ("Game files", "Upright video"): a label, one line of where it stands and its one button, a
-   small step apart, with two rem between rows. A quiet button in a row has no negative margins: the step above it is
-   what spaces it. A group of rows ("the two videos") has a step and a half between its own. */
-.step {
-  margin-top: 2rem;
-}
-
-.step > * + *,
-.step form > * + * {
-  margin-top: 0.5rem;
-}
-
-.step > .step {
-  margin-top: 1.5rem;
-}
-
-.step .quiet {
-  margin-block: 0;
 }
 
 /* The maker's screens (spec 4). The felt is the whole window and asks one question; paper is only what a person
