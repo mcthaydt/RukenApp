@@ -47,7 +47,13 @@ beforeEach(async () => {
 /** One request to the gate. The host is a game's own name unless a test says otherwise. */
 function get(
   path: string,
-  options: { host?: string; nowMs?: number; method?: string; headers?: Record<string, string> } = {},
+  options: {
+    host?: string;
+    nowMs?: number;
+    method?: string;
+    headers?: Record<string, string>;
+    pathHost?: string;
+  } = {},
 ): Promise<Response> {
   const request = new Request(`http://${options.host ?? "g-aaaaaaaaaa.games.test"}${path}`, {
     method: options.method ?? "GET",
@@ -58,6 +64,7 @@ function get(
     passSecret: SECRET,
     siteOrigin: SITE,
     nowMs: options.nowMs ?? NOW,
+    ...(options.pathHost === undefined ? {} : { pathHost: options.pathHost }),
   });
 }
 
@@ -371,5 +378,106 @@ describe("the gate as a whole", () => {
       expect((await get(`/${pass}/index.html`, { host })).status).toBe(404);
     }
     expect(files.reads).toEqual([]);
+  });
+});
+
+// Until the games' domain exists every game shares one free address, and the game is the first part of the path:
+// `/g-<id>/<pass>/<path>`. Everything below runs on that one host, "games.test".
+describe("on the one free address", () => {
+  const FREE = "games.test";
+  const here = (path: string, options: Parameters<typeof get>[1] = {}) =>
+    get(path, { host: FREE, pathHost: FREE, ...options });
+  // A pass made for another game, whose files are in the bucket too: a climb that got through would find one.
+  const other = makePass({ ...claims, game: "bbbbbbbbbb" }, SECRET);
+  const otherPass = makePass({ ...claims, pull: "p9" }, SECRET);
+
+  beforeEach(async () => {
+    await files.put("files/bbbbbbbbbb/p1/index.html", new TextEncoder().encode("<html>other</html>"));
+    files.reads.length = 0;
+  });
+
+  it("serves a game's page and its files from the game's folder", async () => {
+    const page = await here(`/g-aaaaaaaaaa/${pass}/`);
+    expect(page.status).toBe(200);
+    expect(await page.text()).toBe(PAGE);
+    expect(await (await here(`/g-aaaaaaaaaa/${pass}/main.js`)).text()).toBe(MAIN);
+  });
+
+  it("sends /g-<id>/<pass> on to /g-<id>/<pass>/", async () => {
+    const response = await here(`/g-aaaaaaaaaa/${pass}`);
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe(`/g-aaaaaaaaaa/${pass}/`);
+  });
+
+  // Review Focus 1: a pass made for one game, used under another game's folder.
+  it("refuses a pass made for another game", async () => {
+    expect((await here(`/g-bbbbbbbbbb/${pass}/`)).status).toBe(403);
+    expect((await here(`/g-aaaaaaaaaa/${other}/`)).status).toBe(403);
+    expect(await (await here(`/g-bbbbbbbbbb/${pass}/`)).text()).toBe(RAN_OUT);
+    expect(files.reads).not.toContain("files/bbbbbbbbbb/p1/index.html");
+    // A pass for the same game but a pull that holds no such file is only a missing file, never another game's.
+    expect((await here(`/g-aaaaaaaaaa/${otherPass}/index.html`)).status).toBe(404);
+  });
+
+  // Review Focus 2: a path that climbs out of the game's folder into another's.
+  it("refuses a path that climbs into another game's folder", async () => {
+    const encoded = await here(`/g-aaaaaaaaaa/${pass}/..%2f..%2fbbbbbbbbbb/p1/index.html`);
+    expect(encoded.status).toBe(400);
+    expect(files.reads).toEqual([]);
+    // The address folds the dots before the gate sees it, so it arrives as a request for the other game, with no pass.
+    expect((await here(`/g-aaaaaaaaaa/${pass}/../../g-bbbbbbbbbb/p1/index.html`)).status).toBe(403);
+    expect(files.reads).toEqual([]);
+  });
+
+  it("loads nothing without a pass", async () => {
+    expect((await here("/g-aaaaaaaaaa/")).status).toBe(403);
+    expect((await here("/g-aaaaaaaaaa/index.html")).status).toBe(403);
+    expect(files.reads).toEqual([]);
+  });
+
+  it("sends a clip and a photo to anyone", async () => {
+    for (const key of [CLIP_KEY, PHOTO_KEY]) {
+      const response = await here(`/media/${key}`);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+    }
+  });
+
+  it("serves nothing else from /media", async () => {
+    expect((await here("/media/files/aaaaaaaaaa/p1/index.html")).status).toBe(404);
+  });
+
+  it("refuses to hand out a service worker", async () => {
+    const response = await here(`/g-aaaaaaaaaa/${pass}/main.js`, { headers: { "service-worker": "script" } });
+    expect(response.status).toBe(403);
+  });
+
+  it("is not found at the top or on a folder that is not a game", async () => {
+    expect((await here("/")).status).toBe(404);
+    expect((await here("/x/y")).status).toBe(404);
+  });
+
+  it("answers the health check and robots.txt as on any name", async () => {
+    expect((await here("/__ruken/health")).status).toBe(200);
+    expect((await here("/robots.txt")).status).toBe(200);
+  });
+
+  it("keeps the name's first label for every other host", async () => {
+    const response = await get(`/${pass}/`, { host: "g-aaaaaaaaaa.games.example", pathHost: FREE });
+    expect(response.status).toBe(200);
+  });
+
+  // Review Focus 3: a request that looks like the free address's, on any other name.
+  it("answers no path as a game on any other host", async () => {
+    expect((await get(`/g-aaaaaaaaaa/${pass}/`, { host: "other.test", pathHost: FREE })).status).toBe(404);
+    expect((await get(`/g-aaaaaaaaaa/${pass}/`, { host: FREE })).status).toBe(404);
+  });
+
+  it("gives the same headers as on a game's own name", async () => {
+    const own = await get(`/${pass}/`);
+    const shared = await here(`/g-aaaaaaaaaa/${pass}/`);
+    for (const name of ["content-security-policy", "cross-origin-resource-policy", "cache-control"]) {
+      expect(shared.headers.get(name)).toBe(own.headers.get(name));
+    }
   });
 });

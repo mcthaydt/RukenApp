@@ -13,3 +13,14 @@ test("a game's address gives nothing without a pass", async ({ page }) => {
   expect(response?.status()).toBe(403);
   await expect(page.getByText("This game's link has run out. Go back and press Play again.")).toBeVisible();
 });
+
+// On the one free address (PATH_HOST in the journeys' gate is `localhost:8788`) the game is in the path.
+test("the free address gives nothing without a pass", async ({ page }) => {
+  const response = await page.goto("http://localhost:8788/g-aaaaaaaaaa/index.html");
+  expect(response?.status()).toBe(403);
+  await expect(page.getByText("This game's link has run out. Go back and press Play again.")).toBeVisible();
+});
+
+test("the free address serves nothing it does not know", async ({ page }) => {
+  expect((await page.goto("http://localhost:8788/media/nothing"))?.status()).toBe(404);
+});

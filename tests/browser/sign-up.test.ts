@@ -54,3 +54,12 @@ test("next pointing off the site lands on the home page", async ({ page }) => {
   await fillSignUp(page, { email: freshEmail(), password: JOURNEY_PASSWORD, age: 30 });
   await expect(page).toHaveURL("/");
 });
+
+// The site's cookies stay on its own name. On the shared test address a cookie with a `Domain` would reach the games
+// that live beside the site, so none may carry one.
+test("no cookie the site sets is shared with other names", async ({ page }) => {
+  await signUp(page);
+  const cookies = await page.context().cookies();
+  expect(cookies.length).toBeGreaterThan(0);
+  for (const cookie of cookies) expect(cookie.domain.startsWith(".")).toBe(false);
+});
