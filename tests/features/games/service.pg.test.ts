@@ -1,8 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { Answer } from "../../../src/features/games/games.ts";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId, PUBLIC_ID } from "../../../src/features/games/ids.ts";
-import { createGamesService, type GamesService } from "../../../src/features/games/service.ts";
+import { createGamesService, type Answer, type GamesService } from "../../../src/features/games/service.ts";
 import { systemClock } from "../../../src/lib/clock.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
