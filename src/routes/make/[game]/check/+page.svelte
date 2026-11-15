@@ -42,9 +42,9 @@
       </button>
       <span class="key">press Enter <kbd>↵</kbd></span>
     </div>
-    {#if data.throwAway !== null}
-      <a class="foot" href={data.throwAway}>Throw this game away</a>
-    {/if}
   </form>
   <GameLaidOut game={data.game} />
 </main>
+{#if data.throwAway !== null}
+  <a class="foot" href={data.throwAway}>Throw this game away</a>
+{/if}

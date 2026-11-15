@@ -26,7 +26,17 @@
 
   const preview = previewOfPage();
 
+  // A refusal is about what was sent. Once the box is changed it is about nothing, so it goes, and a new answer sent
+  // back with its own refusal shows that one.
+  let edited = $state(false);
+  $effect.pre(() => {
+    void problem;
+    edited = false;
+  });
+  const shown = $derived(edited ? undefined : problem);
+
   function typed(event: Event): void {
+    edited = true;
     if (!(event.currentTarget instanceof HTMLInputElement)) return;
     if (previews === "name") preview?.typeName(event.currentTarget.value);
     if (previews === "line") preview?.typeLine(event.currentTarget.value);
@@ -42,8 +52,8 @@
     oninput={typed}
     autocomplete="off"
     aria-labelledby="question"
-    aria-describedby={problem === undefined ? "hint" : "hint problem"}
-    aria-invalid={problem === undefined ? undefined : "true"}
+    aria-describedby={shown === undefined ? "hint" : "hint problem"}
+    aria-invalid={shown === undefined ? undefined : "true"}
   />
 {:else}
   <textarea
@@ -51,12 +61,13 @@
     {name}
     {value}
     rows={lines}
+    oninput={typed}
     autocomplete="off"
     aria-labelledby="question"
-    aria-describedby={problem === undefined ? "hint" : "hint problem"}
-    aria-invalid={problem === undefined ? undefined : "true"}></textarea>
+    aria-describedby={shown === undefined ? "hint" : "hint problem"}
+    aria-invalid={shown === undefined ? undefined : "true"}></textarea>
 {/if}
 <p class="note" id="hint">{hint}</p>
-{#if problem !== undefined}
-  <p class="problem" id="problem" role="alert">{problem}</p>
+{#if shown !== undefined}
+  <p class="problem" id="problem" role="alert">{shown}</p>
 {/if}

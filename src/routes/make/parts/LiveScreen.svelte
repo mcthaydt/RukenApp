@@ -39,6 +39,8 @@
   let upright = $state(true);
   // Whether the circles drift: only where the video moves too, so a slow phone or a person who asked for less motion sees both still.
   let drifting = $state(false);
+  // The first thing sent back that a link can mend, which the blue button names (as on Sent back).
+  const first = $derived(fixes.find((fix) => fix.href !== null));
   const src = $derived(upright ? (backdrop.upright ?? backdrop.wide) : (backdrop.wide ?? backdrop.upright));
 
   onMount(() => {
@@ -79,9 +81,16 @@
     {#if problem !== undefined}
       <p class="problem" role="alert">{problem}</p>
     {/if}
-    <div class="acts">
-      <a class="button" href={seeAddress}>See it on Ruken</a>
-    </div>
+    {#if first?.href !== undefined && first.href !== null}
+      <div class="acts">
+        <a class="button" href={first.href}>{first.fixWords}</a>
+      </div>
+      <p><a href={seeAddress}>See it on Ruken</a></p>
+    {:else}
+      <div class="acts">
+        <a class="button" href={seeAddress}>See it on Ruken</a>
+      </div>
+    {/if}
     <form
       method="POST"
       action="?/newVersion"

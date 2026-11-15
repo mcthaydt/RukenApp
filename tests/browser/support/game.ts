@@ -239,7 +239,7 @@ export async function addVideo(page: Page, shape: "upright" | "wide"): Promise<v
   // The address changes a moment before the screen does, and both video questions have the same file field, so the
   // question's own heading is waited for before anything is chosen.
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Add your ${shape} video`);
-  await chooseVideo(page, videoFile());
+  await chooseVideo(page, await realClip(page, shape));
   await expect(page.locator(`[data-frame="${shape}"] video`)).toBeAttached();
 }
 
@@ -305,6 +305,7 @@ export async function agreeToTheAgreement(page: Page, slug: string): Promise<voi
 export async function startAtCheck(page: Page): Promise<{ slug: string; name: string }> {
   const { slug, name } = await startDraft(page);
   await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  await giveRealClips(page, slug);
   await agreeToTheAgreement(page, slug);
   return { slug, name };
 }

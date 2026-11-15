@@ -70,7 +70,6 @@
       </div>
     {/if}
     <a class="foot" href="/make">Back to your games</a>
-    <a class="foot" href={throwAway}>Throw this game away</a>
   </div>
   <div class="after">
     {#each fixes as fix (fix.part)}
@@ -78,9 +77,11 @@
     {/each}
     <details class="accepted" open={accepted.ready}>
       <summary>
-        <span>{accepted.ready ? "All 8 ready to send" : `${String(accepted.count)} accepted`}</span>
+        <span>{accepted.ready ? "All ready to send" : `${String(accepted.count)} accepted`}</span>
       </summary>
       <GameLaidOut {game} />
     </details>
   </div>
 </main>
+<!-- At the foot of the screen, "there to be found, not read", and never beside the safe way out. -->
+<a class="foot" href={throwAway}>Throw this game away</a>

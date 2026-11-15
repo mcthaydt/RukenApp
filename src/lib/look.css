@@ -299,6 +299,9 @@ form > * + * {
 /* A refusal is seen by its weight, not by a colour: red means money and nothing else. */
 .problem {
   font-weight: 600;
+  /* A refusal scrolled into view clears the pinned bar of a phone or an upright tablet (the bar is a button tall, plus
+     its padding). */
+  scroll-margin-bottom: calc(var(--button, 56px) + 5rem);
 }
 
 /* A group of fields follows the same rem as everything else; the browser's own margin, padding and legend
@@ -684,7 +687,7 @@ form > * + button:not(.quiet) {
 
 /* The answer: one paper slab, 24px type, 12px corners, no edge. The focus ring is the one the whole look has. A refused
    one has a heavier edge from outside, so it is seen without colour. */
-.screen input.answer {
+.screen :is(input, textarea).answer {
   display: block;
   width: 100%;
   height: var(--box);
@@ -697,7 +700,36 @@ form > * + button:not(.quiet) {
   font: 400 1.5rem / 1.2 var(--font-text);
 }
 
-.screen input.answer[aria-invalid="true"] {
+/* A box of several lines (the websites) is a slab of the same paper that grows with its lines, never less than a one-line
+   answer's height. */
+.screen textarea.answer {
+  height: auto;
+  min-height: var(--box);
+  padding-block: 1rem;
+  resize: vertical;
+}
+
+/* A phone held sideways has the least height, so the heading and the answer sit closer to the top, and the box is in
+   view above the bar before anything is scrolled. */
+@media (max-height: 449px) {
+  .topbar {
+    padding-top: 0.75rem;
+  }
+
+  .screen main {
+    margin-top: 0.5rem;
+  }
+
+  .screen h1 {
+    margin-top: 0.25rem;
+  }
+
+  .screen :is(input, textarea).answer {
+    margin-top: 1rem;
+  }
+}
+
+.screen :is(input, textarea).answer[aria-invalid="true"] {
   padding: 0 1.25rem;
   outline: 4px solid var(--chalk);
   outline-offset: 3px;
@@ -791,6 +823,12 @@ form > * + button:not(.quiet) {
 
 .pick > b {
   font: var(--text-statement);
+}
+
+/* A choice that is a name (a repository) is set in the text face, one line, and breaks only after a slash. */
+.picks[data-plain] .pick > b {
+  font: var(--text-button);
+  overflow-wrap: normal;
 }
 
 .pick > span {
@@ -1091,6 +1129,7 @@ form > * + button:not(.quiet) {
   }
 
   .screen .acts > .file > span {
+    width: 100%;
     min-width: 0;
   }
 }
@@ -1139,6 +1178,13 @@ a.foot {
 @media (orientation: portrait), (max-width: 499px), (max-height: 449px) {
   .screen:has(.halves) {
     --column: 100%;
+  }
+}
+
+/* An upright tablet's questions are a column of 640, so its rooms start at the same left edge. */
+@media (orientation: portrait) and (min-width: 500px) {
+  .screen:has(.halves) {
+    --column: 640px;
   }
 }
 
@@ -1259,7 +1305,8 @@ a.foot {
 
 .tiles figcaption {
   display: flex;
-  flex-wrap: wrap;
+  /* "On phones" and its Change are one line under a narrow tile, never two. */
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.25rem 0.5rem;
   margin-top: 0.5rem;
@@ -1297,12 +1344,51 @@ a.foot {
   }
 }
 
+/* A phone shows the upright video at the left and, beside it, the wide one with the name and the line under it, so the
+   space under the wide video is the text's and not an empty column. */
+@media (max-width: 499px) {
+  .laid:has(.tiles figure + figure) {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr auto;
+    column-gap: 1rem;
+  }
+
+  .laid:has(.tiles figure + figure) > * + * {
+    margin-top: 0;
+  }
+
+  .laid:has(.tiles figure + figure) .tiles {
+    display: contents;
+  }
+
+  .laid:has(.tiles figure + figure) .tiles figure:first-child {
+    grid-column: 1;
+    grid-row: 1 / 5;
+  }
+
+  .laid:has(.tiles figure + figure) .tiles figure:last-child {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .laid:has(.tiles figure + figure) > div:not(.tiles) {
+    grid-column: 2;
+    margin-top: 0.75rem;
+  }
+
+  .laid:has(.tiles figure + figure) > ul {
+    grid-column: 1 / -1;
+    grid-row: 5;
+  }
+}
+
 /* The name as the feed sets it: a title in the display face, and the line under it. Change sits at the end of each. */
 .laid > div:not(.tiles) {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  column-gap: 1rem;
+  gap: 0.25rem 1rem;
 }
 
 .title {
@@ -1321,7 +1407,8 @@ a.foot {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 1rem;
-  margin: 0;
+  /* The chips are under the line with the same space as every other part (a rule for `ul` would otherwise drop it). */
+  margin: 1.25rem 0 0;
   padding: 0;
   list-style: none;
 }
@@ -1345,6 +1432,8 @@ a.foot {
 
 /* A small Change beside a part. A link, not a button, and still a 44 by 44 target. */
 .change {
+  /* Beside or under a part's words, it keeps the space it is given: the pull a link takes on its margins is for a line of words. */
+  margin-block: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1353,6 +1442,31 @@ a.foot {
   color: var(--sage);
   font: var(--text-small);
   text-decoration: underline;
+}
+
+/* Your games on a computer: the heading and Add a game are one line, and the games are under them. */
+@media (min-width: 1200px) and (orientation: landscape) {
+  .screen main.games {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 1.5rem;
+    align-items: center;
+  }
+
+  .screen main.games > * {
+    grid-column: 1 / -1;
+  }
+
+  .screen main.games > h1 {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .screen main.games > .acts {
+    grid-column: 2;
+    grid-row: 1;
+    margin-top: 0;
+  }
 }
 
 /* A game in Your games: one paper card that is one link, with its picture, its name, and where it stands. Until a
@@ -1562,6 +1676,9 @@ button:active,
 /* A card for something sent back is one link: it keeps its paper and its words, and is not underlined. */
 a.sheet.fix {
   display: block;
+  /* A link takes back the height a target adds from its margins (above); a card is not a line of words, so it keeps
+     the space between it and what is next to it. */
+  margin-block: 0;
   color: var(--ink);
   text-decoration: none;
 }
@@ -1574,6 +1691,8 @@ a.sheet.fix {
   display: block;
   max-width: 100%;
   border-radius: 8px;
+  /* Sage until a frame is drawn, as every other video's tile is, so it is never white on white. */
+  background: var(--sage);
   object-fit: cover;
 }
 
@@ -1598,12 +1717,14 @@ a.sheet.fix {
    so they can be told from the card. */
 .accepted {
   padding: 0 1.5rem;
-  border-radius: var(--radius-card);
+  /* Folded it is one thing to press, so it keeps the button's small corners and not the card's near-round ones. */
+  border-radius: var(--radius-button);
   background: var(--felt-raised);
   color: var(--chalk);
 }
 
 .accepted > summary {
+  text-decoration: none;
   display: flex;
   align-items: center;
   justify-content: space-between;

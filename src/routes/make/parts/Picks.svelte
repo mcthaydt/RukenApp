@@ -19,6 +19,7 @@
     chosen,
     several = false,
     ratings = false,
+    plain = false,
     hint,
     problem,
   }: {
@@ -29,6 +30,8 @@
     several?: boolean;
     /** The five ratings sit in one row from a tablet up. */
     ratings?: boolean;
+    /** The choices are names (a repository), set in the text face and broken only after a slash. */
+    plain?: boolean;
     hint?: string;
     problem: string | undefined;
   } = $props();
@@ -60,6 +63,7 @@
   aria-describedby={describedBy}
   data-several={several ? "" : undefined}
   data-ratings={ratings ? "" : undefined}
+  data-plain={plain ? "" : undefined}
   onchange={keepNoneAlone}
 >
   {#each options as option, index (option.value)}
@@ -71,7 +75,14 @@
         checked={chosen.includes(option.value)}
         aria-invalid={problem !== undefined && index === 0 ? "true" : undefined}
       />
-      <b>{option.title}</b>
+      <b>
+        {#if plain}
+          <!-- A break may come after a slash and nowhere else, so "owner/name" is never cut in the middle of a word. -->
+          {#each option.title.split("/") as part, index (index)}{index > 0 ? "/" : ""}{#if index > 0}<wbr />{/if}{part}{/each}
+        {:else}
+          {option.title}
+        {/if}
+      </b>
       {#if option.line !== undefined}
         <span>{option.line}</span>
       {/if}

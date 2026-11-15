@@ -109,6 +109,7 @@
       throwAway={data.throwAway}
       busyWords="Copying your game…"
       busyLine="Copying your game can take a minute. Keep this page open."
+      enterHint={false}
     >
       <TextAnswer
         name="servers"
@@ -155,7 +156,7 @@
         options={MARKS}
         chosen={data.contentMarks}
         several
-        hint="Only adults see it. Pornography and gambling are never allowed."
+        hint="Only adults will see this game. Pornography and gambling are never allowed."
         {problem}
       />
     </QuestionScreen>

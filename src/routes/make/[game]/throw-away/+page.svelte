@@ -23,9 +23,10 @@
   <h1>Throw {data.name} away?</h1>
   <p>Its files and videos are deleted from Ruken. Nothing changes on GitHub.</p>
   <p>You can't undo this.</p>
+  <!-- The safe choice is first, so a thumb that lands on the first big button keeps the game. -->
+  <p><a class="button safe" href={`/make/${data.slug}`} bind:this={keep}>Keep it</a></p>
   <form method="POST" action="/make?/throwAway">
     <input type="hidden" name="game" value={data.slug} />
     <button class="danger">Throw it away</button>
   </form>
-  <p><a class="button safe" href={`/make/${data.slug}`} bind:this={keep}>Keep it</a></p>
 </main>

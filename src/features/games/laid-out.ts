@@ -35,7 +35,7 @@ export function ratingWords(ageRating: AgeRating | null, marks: readonly Content
   return named.length === 0 ? RATING_WORDS.age_18 : `${RATING_WORDS.age_18} · ${named.join(", ")}`;
 }
 
-/** The websites a game talks to: "Runs on its own", or "Uses" and every one of them. */
+/** The websites a game talks to: "Uses no other websites", or "Uses" and every one of them. */
 export function websitesWords(hosts: readonly string[]): string {
-  return hosts.length === 0 ? "Runs on its own" : `Uses ${hosts.join(", ")}`;
+  return hosts.length === 0 ? "Uses no other websites" : `Uses ${hosts.join(", ")}`;
 }

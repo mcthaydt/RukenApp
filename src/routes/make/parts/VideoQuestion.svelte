@@ -59,6 +59,13 @@
   const choosing = $derived(video.src === null || video.replacing);
   const shown = $derived(saving ? null : (refusedHere ?? problem ?? null));
 
+  // The refusal comes into view when it arrives: on a phone it would otherwise land under the pinned bar, and the maker
+  // would see the button light up and nothing else change.
+  let problemLine = $state<HTMLElement>();
+  $effect(() => {
+    if (shown !== null) problemLine?.scrollIntoView({ block: "nearest" });
+  });
+
   onMount(() => {
     woke = true;
     // A video chosen before the page's script had run is still in the field: take it now, since the "Add this video"
@@ -109,7 +116,7 @@
     <p class="note" role="status">Adding your video. Keep this page open.</p>
   {/if}
   {#if shown !== null}
-    <p class="problem" id="problem" role="alert">{shown}</p>
+    <p class="problem" id="problem" role="alert" bind:this={problemLine}>{shown}</p>
   {/if}
   {#if !choosing}
     <a href={video.replaceAddress}>Choose a different video</a>

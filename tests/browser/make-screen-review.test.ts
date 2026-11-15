@@ -159,7 +159,8 @@ test("on a phone the wide video has the name and the line under it, beside the u
   await startAtCheck(page);
 
   const upright = await boxOf(page.locator('.laid [data-shape="upright"]').first());
-  const wide = await boxOf(page.locator('.laid [data-shape="wide"]').first());
+  // The wide video's figure, with its caption: the name starts right under it.
+  const wide = await boxOf(page.locator(".laid figure").last());
   const title = await boxOf(page.locator(".laid .title"));
   const tagline = await boxOf(page.locator(".laid .tagline"));
   expect(title.x).toBeGreaterThanOrEqual(upright.x + upright.width);

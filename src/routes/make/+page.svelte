@@ -13,7 +13,7 @@
   <title>Your games · Ruken</title>
 </svelte:head>
 
-<main>
+<main class="games">
   <h1>Your games</h1>
   {#if data.thrown !== null}
     <p role="status">{data.thrown} was thrown away.</p>

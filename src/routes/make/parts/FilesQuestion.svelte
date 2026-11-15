@@ -66,7 +66,7 @@
       problems?.folder !== undefined,
   );
 
-  /** Which of the five screens this is. A refusal stands until "Pick another folder" opens the boxes. */
+  /** Which of the five screens this is. A refusal stands until "Pick another" opens the boxes. */
   const screen = $derived(
     !files.connected
       ? "connect"
@@ -92,13 +92,21 @@
   {/if}
 {/snippet}
 
+<!-- With a list to pick from there is no Connect button to try again with, so the line says what still works. It sits
+     under the hint, where every other refusal does. -->
+{#snippet connectionFailedUnderList()}
+  {#if files.connectionFailed}
+    <p class="problem" role="alert">GitHub didn't connect. You can still pick a game from the list.</p>
+  {/if}
+{/snippet}
+
 {#snippet refusalCard(shown: Refusal)}
   <div class="sheet fix">
     <b class="fixlabel">Needs fixing</b>
     <b class="statement">We couldn't start your game</b>
     <p>
       {shown.missingIndex
-        ? "Ruken starts your game from a file called index.html. We couldn't find one in that folder."
+        ? `Ruken starts your game from a file called index.html. We couldn't find one in ${chosen[0] ?? "that folder"}.`
         : shown.words}
     </p>
   </div>
@@ -114,7 +122,6 @@
     busyWords="Copying your game…"
     busyLine="Copying your game can take a minute. Keep this page open."
   >
-    {@render connectionFailedLine()}
     {#if refusal !== null}
       {@render refusalCard(refusal)}
     {/if}
@@ -122,9 +129,11 @@
       name="repo"
       options={repositories}
       {chosen}
-      hint="Your game needs an index.html that runs in a browser."
+      plain
+      hint="Pick the one that is your game."
       problem={problems?.repo}
     />
+    {@render connectionFailedUnderList()}
     <p class="note">
       <a href={files.connectAddress} data-sveltekit-reload>Don't see your game? Choose it on GitHub</a>
     </p>
@@ -148,7 +157,7 @@
       {/if}
       <label>
         Folder
-        <!-- Opened by "Pick another folder": the keyboard goes straight to the box that was wrong. -->
+        <!-- Opened by "Pick another": the keyboard goes straight to the box that was wrong. -->
         <!-- svelte-ignore a11y_autofocus -->
         <input
           class="answer"
@@ -171,7 +180,7 @@
   <QuestionScreen heading="Where are your game's files?" {counter} {back} {throwAway}>
     {@render refusalCard(refusal)}
     {#snippet forward()}
-      <a class="button" href={files.changeAddress}>Pick another folder</a>
+      <a class="button" href={files.changeAddress}>Pick another</a>
     {/snippet}
   </QuestionScreen>
 {:else if screen === "choose"}
@@ -188,8 +197,8 @@
   <QuestionScreen heading="Where are your game's files?" {counter} {back} {throwAway}>
     {@render connectionFailedLine()}
     <div class="sheet">
-      <p class="say">Your game lives on GitHub. Connect it, then pick the folder.</p>
-      <p class="note">You choose which repositories Ruken can see. It can't see anything else.</p>
+      <p class="say">Your game lives on GitHub. Connect it, then pick your game.</p>
+      <p class="note">You choose which games on GitHub Ruken can see. It can't see anything else.</p>
     </div>
     <p class="note">
       New to GitHub? <a href={files.howToAddress}>Here's how to put your game there</a>
