@@ -12,6 +12,12 @@
 #   never stand in for the required ones.
 # - A pull request that is ready for review, and every push to main, gets the full run under the required names
 #   `verify`, `postgres` and `browser`. Marking a draft ready starts it. Nothing merges without it.
+#
+# A pull request that changes only .md files has nothing to test (Owner, 2026-11-15: "when a PR only touches .md
+# files, skip the tests and allow the merge, in all repos."). The `changes` job spots it, and the required checks
+# `verify`, `postgres` and `browser` still run and still report success, but do no work. They are not left out of
+# the workflow with `paths-ignore`, because a required check that never starts stays pending and nothing merges.
+# One file that is not .md, or any doubt about what changed, runs everything as before. A push to main always does.
 name: CI
 
 on:
@@ -38,26 +44,70 @@ env:
   RUN_EVERYTHING_WHEN: '^(prisma|cloudflare|tests/fixtures)/|^(pnpm-lock\.yaml|package\.json|vite\.config\.ts|playwright\.config\.ts)$'
 
 jobs:
+  # Says whether the pull request changes only .md files. The jobs below read its answer and, when it is "true",
+  # skip their work. If this job fails or says nothing, they see "not true" and run everything: a doubt never
+  # skips a test.
+  changes:
+    name: what changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.look.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Look for anything that is not a .md file
+        id: look
+        run: |
+          docs_only=false
+          # Only a pull request can be docs-only; every push to main is tested in full.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # --no-renames lists both the old and the new name, so moving a code file to a .md name still counts.
+            files=$(git diff --name-only --no-renames origin/main...HEAD)
+            printf '%s\n' "$files"
+            # An empty list is not docs-only: with nothing to go on, run everything.
+            if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '\.md$'; then
+              docs_only=true
+            fi
+          fi
+          echo "Only .md files changed: $docs_only"
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+
   verify:
     name: ${{ github.event.pull_request.draft && 'verify (quick, draft)' || 'verify' }}
+    needs: changes
+    # Not `always()`: that would also run after a cancel. This runs even when `changes` failed, which then runs everything.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Only .md files changed, nothing to test
+        if: needs.changes.outputs.docs_only == 'true'
+        run: echo "Only .md files changed. Lint, typecheck, the tests and the build have nothing to check."
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           persist-credentials: false
           # The quick run compares with main, so it needs the history.
           fetch-depth: 0
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: needs.changes.outputs.docs_only != 'true'
       # `cache: pnpm` keeps the downloaded packages between runs.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        if: needs.changes.outputs.docs_only != 'true'
       - run: pnpm lint
+        if: needs.changes.outputs.docs_only != 'true'
       - run: pnpm typecheck
+        if: needs.changes.outputs.docs_only != 'true'
       - name: Unit tests
+        if: needs.changes.outputs.docs_only != 'true'
         run: |
           if [ "$CHANGED_ONLY" = "true" ] && ! git diff --name-only origin/main | grep -Eq "$RUN_EVERYTHING_WHEN"; then
             # The tests the change reaches, stopping at the first failure. The two below read files as text, so
@@ -68,9 +118,12 @@ jobs:
             pnpm test
           fi
       - run: pnpm build
+        if: needs.changes.outputs.docs_only != 'true'
 
   postgres:
     name: ${{ github.event.pull_request.draft && 'postgres (quick, draft)' || 'postgres' }}
+    needs: changes
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -89,17 +142,25 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
+      - name: Only .md files changed, nothing to test
+        if: needs.changes.outputs.docs_only == 'true'
+        run: echo "Only .md files changed. The database tests have nothing to check."
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           persist-credentials: false
           fetch-depth: 0
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: needs.changes.outputs.docs_only != 'true'
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        if: needs.changes.outputs.docs_only != 'true'
       - name: Database tests
+        if: needs.changes.outputs.docs_only != 'true'
         run: |
           if [ "$CHANGED_ONLY" = "true" ] && ! git diff --name-only origin/main | grep -Eq "$RUN_EVERYTHING_WHEN"; then
             pnpm test:pg --changed=origin/main --passWithNoTests --bail=1
@@ -112,6 +173,10 @@ jobs:
   # journeys the change reaches run, and the first failure stops every piece.
   browser-shard:
     name: browser shard ${{ matrix.shard }} of 6${{ github.event.pull_request.draft && ' (quick, draft)' || '' }}
+    needs: changes
+    # The pieces are not required checks, so a docs-only pull request skips them whole. The `browser` check below
+    # accepts that. As with `verify`, a failed `changes` job still runs them.
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -210,11 +275,12 @@ jobs:
           retention-days: 7
 
   # The one check the branch protection and the auto-merge workflow know by the name `browser`: it passes only when
-  # every piece above passed. A piece that was cancelled or skipped is not a pass. On a draft it is named differently,
+  # every piece above passed. A piece that was cancelled or skipped is not a pass, except when the pull request
+  # changes only .md files and every piece was skipped on purpose. On a draft it is named differently,
   # so a draft's quick run can never stand in for the required one.
   browser:
     name: ${{ github.event.pull_request.draft && 'browser (quick, draft)' || 'browser' }}
-    needs: browser-shard
+    needs: [changes, browser-shard]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -222,4 +288,11 @@ jobs:
       - name: Every piece of the browser journeys passed
         env:
           PIECES_RESULT: ${{ needs.browser-shard.result }}
-        run: test "$PIECES_RESULT" = "success"
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+        run: |
+          # A pull request that changes only .md files skips every piece on purpose, and that counts as a pass.
+          if [ "$DOCS_ONLY" = "true" ] && [ "$PIECES_RESULT" = "skipped" ]; then
+            echo "Only .md files changed, so no browser journeys were needed."
+            exit 0
+          fi
+          test "$PIECES_RESULT" = "success"
