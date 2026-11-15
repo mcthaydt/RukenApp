@@ -20,6 +20,8 @@ Work runs in stages. Each stage runs in its own fresh session, on its own branch
 
 Every stage reads the spec, the plan, the audits so far and the progress tracker (docs/superpowers/progress.md). It updates the tracker, with its progress percentage, as it works. Its last step is to commit and push.
 
+Default model (Owner, 2026-11-15): "If you ever don't know which model to use because I didn't explicitly say go with opus medium." Any session whose model and effort aren't named here or by the owner runs on Opus at medium effort.
+
 ## Stage prompts
 
 Execution and fixes run superpowers executing-plans and start with the implementation prompt, which sets how to develop:
@@ -87,11 +89,13 @@ Every time screens are about to be shown to the owner for a "how does this look?
 
 1. Plain-words check (Opus, medium): could a drunk grandma understand every word?
 2. Design pass (Fable, medium): every screen, device and orientation checked for layout, touch size and polish.
-3. End-to-end check: walk every journey these screens are part of, from first open to its main task, so nothing is missing or leads to a dead end.
+3. End-to-end check: walk every journey these screens are part of, from first open to its main task, so nothing is missing or leads to a dead end. The walk also runs the drunk-grandma test on the UX (Owner, 2026-11-15: "during the e2e review to see if the visual design is fully usable, we should also test drunk grandma for UX"): could a tired, distracted person get through each journey on the first try, always seeing the next step and a plain way back?
 4. Second visual look (Opus, xhigh): a fresh, harsh look at the screens after all those fixes.
 5. The owner's review.
 
 Review steps 1 to 4 only find problems (Owner, 2026-11-15: "review steps only FIND problems"). Each writes a report, commits and pushes it, and changes nothing else. Its fixes are made in a separate session on Sonnet at xhigh effort before the next review step starts. The reports and fixes all go in one pull request. A review session that has started fixing stops, pushes its report and hands the fixes off.
+
+Every fix round fixes every finding, the small ones included (Owner, 2026-11-15: "From now on every fix round fixes every finding, low ones included. The only exception is a fix that needs your choice, and I'll say which one."). A finding is left only when its fix needs the Owner's choice; the fixing session names that one, with options, and asks, and fixes all the rest meanwhile.
 
 ## Staying on the rails
 

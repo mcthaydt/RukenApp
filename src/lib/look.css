@@ -1,7 +1,8 @@
 /*
   The look of Ruken's own screens: the Card Table (design 5.8). The page is quiet green felt, and what a
-  person picks up or acts on is a paper card on it. Red is only the paywall card's one small pip mark, never a
-  button (Owner, 2026-11-14). No casino imagery, no chips, no gold.
+  person picks up or acts on is a paper card on it. A button is blue, green or red by what it does (Owner,
+  2026-11-13, "safe is green, not safe is red, rest is blue"): red only when it can't be undone. No casino
+  imagery, no chips, no gold.
   tests/lib/look.test.ts reads this file as text and pins every token, so a change here fails there first.
 */
 
@@ -31,6 +32,19 @@
   font-display: swap;
 }
 
+/* Spec 15.2: a heading's "1" must never read as an "I". Young Serif's digits look like capital I, so the digits
+   (and only they) come from the text face, in its heavier file (the one the buttons use) because Young Serif's letters
+   are heavy and the lighter file's numbers read as a third typeface beside them. A second declaration of a file costs the
+   browser no second download. */
+@font-face {
+  font-family: "Ruken Digits";
+  src: url("/fonts/schibsted-grotesk-latin-600-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+30-39;
+}
+
 :root {
   /* One theme, dark by choice. A card sets its own scheme to light. */
   color-scheme: dark;
@@ -47,13 +61,13 @@
   --paper: #ffffff; /* White: cards; the primary button on felt */
   --ink: #111314; /* Black: all text on paper (18.6:1) */
   --ink-soft: #34454c; /* Slate Color: notes on paper (10.0:1) */
-  /* Scarlet: the paywall card's one small pip mark, never a button or a field (Owner, 2026-11-14, "Keep it").
-     No rule uses it yet; the mark is not built. */
+  /* Scarlet: only a button that can't be undone (delete, pay out, refund), with white words (5.2:1). */
   --pip: #cb2f43;
-  --pay: #006eb8; /* Blue: the paid button ("Continue to payment"), with white words (5.4:1); never a field */
+  --pay: #006eb8; /* Blue: the main button, with white words (5.4:1); never a field */
 
   /* Type. A system font stands behind each face, so every word shows if a file does not arrive. */
-  --font-display: "Young Serif", Georgia, "Times New Roman", serif; /* headings, card titles */
+  --font-display:
+    "Ruken Digits", "Young Serif", Georgia, "Times New Roman", serif; /* headings, card titles */
   --font-text:
     "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; /* text, buttons */
 
@@ -209,6 +223,11 @@ a:not(.button, .wordmark),
   font: var(--text-statement);
 }
 
+/* Bold is the heavier face we load (600), not a face the browser makes by smearing the lighter one. */
+strong {
+  font-weight: 600;
+}
+
 /* The focus ring on felt. */
 :focus-visible {
   outline: 3px solid var(--paper);
@@ -239,6 +258,39 @@ a:not(.button, .wordmark),
   font: var(--text-card-title);
   /* A long title breaks into even lines, not a full line and a stray word. */
   text-wrap: balance;
+}
+
+/* An iPhone SE's card is about 240 wide inside its padding: a 36px heading with a game's name in it ("Throw Tiny game 3fa9c2d1 away?") was
+   four lines. At the statement's size it is two or three. (`.screen` is named so this wins over the screen's own heading.) */
+@media (max-width: 359px) {
+  .screen .card h1 {
+    font: var(--text-statement);
+  }
+}
+
+/* A card's second-level heading ("Game files" on a game's page) is in the display face too, so a card has one
+   heading face and not a bold sans-serif line under a serif title. */
+.card h2 {
+  margin: 1.5rem 0 0;
+  font: var(--text-statement);
+}
+
+/* A third-level heading names one kind of device in a how-to ("iPhone or iPad"): the body face at the buttons' weight. */
+.card h3 {
+  margin: 1.5rem 0 0;
+  font: var(--text-button);
+}
+
+/* A list of ways to go on a card, one to a line, with no bullets (the record-your-screen page's devices). */
+.card nav ul {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each device link is a target wide as well as tall: "Mac" is three letters and was 36 wide. */
+.card nav a {
+  min-width: var(--size-target);
 }
 
 /* A step and a half between the title and what it introduces. */
@@ -274,6 +326,9 @@ form > * + * {
 /* A refusal is seen by its weight, not by a colour: red means money and nothing else. */
 .problem {
   font-weight: 600;
+  /* A refusal scrolled into view clears the pinned bar of a phone or an upright tablet (the bar is a button tall, plus
+     its padding). */
+  scroll-margin-bottom: calc(var(--button, 56px) + 5rem);
 }
 
 /* A group of fields follows the same rem as everything else; the browser's own margin, padding and legend
@@ -293,7 +348,9 @@ label {
 }
 
 /* A field is the one place an edge is allowed, and it is ink so a field is not faint on paper. */
-input:not([type="radio"], [type="checkbox"]) {
+input:not([type="radio"], [type="checkbox"]),
+select,
+textarea {
   width: 100%;
   min-height: var(--size-target);
   margin-top: 0.25rem;
@@ -303,6 +360,35 @@ input:not([type="radio"], [type="checkbox"]) {
   background: none;
   color: inherit;
   font: inherit;
+}
+
+/* A fold-out ("My game uses other websites") is a line to press, as easy to hit as a button. It has an arrow where the
+   browser draws its own triangle: pointing right while it is shut, and down while it is open, the usual sign for "opens
+   here" (a plus read as "add"). */
+summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--size-target);
+  /* The height the target adds is taken back from the margins, as for a link, so one rem separates its words from the
+     line above and not two. */
+  margin-block: calc((var(--size-target) - 1lh) / -2);
+  list-style: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary::after {
+  content: "\203A";
+  text-decoration: none;
+}
+
+details[open] > summary::after {
+  content: "\2304";
 }
 
 input[type="radio"],
@@ -333,6 +419,20 @@ input[type="checkbox"] {
   border-width: 3px;
 }
 
+/* A refused box has the heavier edge a chosen row has, so it is seen without colour; the extra edge is taken from the
+   padding, so nothing moves when a box is refused. */
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  padding: calc(0.5rem - 2px) calc(0.75rem - 2px);
+  border-width: 3px;
+}
+
+.choice:has(input[aria-invalid="true"]) {
+  padding: calc(0.5rem - 2px) calc(0.75rem - 2px);
+  border-width: 3px;
+}
+
 .choice input {
   flex: none;
   width: 1.5rem;
@@ -353,8 +453,8 @@ input[type="checkbox"] {
 }
 
 /* A button, or a link that looks like one. Flex, because an inline link ignores a height and a transform:
-   without it a link-button would be neither 48px tall nor give when pressed. The main button is paper with an
-   ink label on felt, and ink with a paper label on a card. */
+   without it a link-button would be neither 48px tall nor give when pressed. The main forward action is Blue
+   with white words, on felt and on a card alike. */
 button,
 .button {
   display: inline-flex;
@@ -364,18 +464,35 @@ button,
   padding: 0.5rem 1.5rem;
   border: 0;
   border-radius: var(--radius-button);
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--pay);
+  color: var(--chalk);
   font: var(--text-button);
   text-decoration: none;
   transition: transform var(--press-time);
   cursor: pointer;
 }
 
-.card button,
-.card .button {
-  background: var(--ink);
-  color: var(--paper);
+/* The other three colours of a button. Green is "nothing changes" (Back, Keep it). Red is "can't be undone"
+   (Throw it away, Delete my account), the only place the pip is used. Outline is a second forward action that
+   must not compete with the blue one: no fill, a Blue edge on a card and a chalk edge on felt. The edge is a
+   border, so it takes room, and the box keeps its 48px. */
+.safe {
+  background: var(--felt-raised);
+}
+
+.danger {
+  background: var(--pip);
+  color: var(--chalk);
+}
+
+.outline {
+  border: 2px solid var(--chalk);
+  background: none;
+}
+
+.card .outline {
+  border-color: var(--pay);
+  color: var(--pay);
 }
 
 /* A second action that must not draw the eye: no fill, it looks like a link. No padding, so its words start
@@ -410,11 +527,1375 @@ form > * + button:not(.quiet) {
   }
 }
 
-/* Used once in the whole site, on "Continue to payment": the one press that spends money. Blue with white
-   words (5.4:1), the card's one coloured button; the rest are ink (Owner, 2026-11-14, "go with D"). */
-.card .pay {
+/* A screen that can't be undone has its two buttons the same distance apart wherever it is. Throw it away's form has a hidden
+   field before its button, so its button follows a sibling and gets the step and a half above; Take it off's form is only the
+   button, so it asks for the same step itself. From a tablet up the two buttons are one width: the least width is more than
+   the longest words need ("Take it off Ruken", with its padding), so neither button's own words set its width and a
+   difference in the words can't show as a difference in the buttons. */
+.card form > button.danger:first-child {
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 48rem) {
+  .card form > button.danger,
+  .card p > a.button.safe:only-child {
+    min-width: 16rem;
+  }
+}
+
+/* Ruken's own file picker (the browser's "Choose File" is not drawn by Ruken). The real file field stays in the page,
+   hidden from sight only: one pixel, clipped and clear, never `display: none`, so the keyboard still reaches it, a
+   reader still reads it and Enter or Space still opens the picker. The words over it are a button of the look: ink on
+   a card, the whole width on a phone and as wide as its words from 48rem. A quiet picker looks like a link. */
+.file {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.file > input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.file > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--size-target);
+  padding: 0.5rem 1.5rem;
+  border-radius: var(--radius-button);
+  background: var(--ink);
+  color: var(--paper);
+  font: var(--text-button);
+  transition: transform var(--press-time);
+}
+
+@media (min-width: 48rem) {
+  .file > span {
+    width: fit-content;
+  }
+}
+
+.file[data-quiet] > span {
+  width: auto;
+  padding: 0;
+  justify-content: flex-start;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+}
+
+.file:active > span {
+  transform: scale(var(--press-scale));
+}
+
+/* The focus ring, on the words a person sees, when the keyboard is on the hidden field. */
+.card .file:has(:focus-visible) > span {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* The maker's screens (spec 4). The felt is the whole window and asks one question; paper is only what a person
+   touches. A window is one of five layouts, told apart by its own size and not by what device it is: the computer is
+   the base, and each query after it changes only what it must. The sizes live in a few numbers on .screen, so a
+   layout is a handful of lines. Later queries win, so the phone is last. */
+.screen {
+  --heading: 4rem;
+  --column: 760px;
+  --box: 72px;
+  --button: 60px;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+/* A tablet held sideways: the heading steps down so a name stays on one line and the game stays in view. */
+@media (orientation: landscape) and (max-width: 1199px) {
+  .screen {
+    --heading: 3rem;
+  }
+}
+
+/* A tablet held upright: one column for every screen, the window less a gutter at each side. A question and the screens that lay
+   the game out (Check and send, Waiting, Live) start at one left edge and are as wide as each other (Owner, 2026-11-15, "3.b"):
+   two 300-tall videos need more than 640, so the questions take the wider column and not the other way round. */
+@media (orientation: portrait) {
+  .screen {
+    --column: 100%;
+  }
+}
+
+/* A phone held sideways is the sideways tablet made smaller. */
+@media (max-height: 449px) {
+  .screen {
+    --heading: 2rem;
+    --column: 600px;
+    --box: 56px;
+    --button: 52px;
+  }
+}
+
+/* A phone held upright: the column is the screen with 20px at each side. */
+@media (max-width: 499px) {
+  .screen {
+    --heading: 2.25rem;
+    --column: 100%;
+    --box: 64px;
+    --button: 56px;
+  }
+}
+
+/* The bar across the top: the way home, and one more link. The track is above it, at the very top. */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 0;
+  view-transition-name: topbar;
+  /* Above Live's backdrop, a fixed layer that is painted over anything not positioned: without this the way home is
+     under the blurred video, unseen and likely unpressable. */
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 1200px) and (orientation: landscape) {
+  .topbar {
+    padding: 1.5rem 2.5rem 0;
+  }
+}
+
+/* One piece for each question, 6px tall along the very top, chalk once answered. The newest piece grows from the left
+   as the step lands, so the maker sees the track move. */
+.track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  height: 6px;
+  view-transition-name: track;
+}
+
+.track > * {
+  background: var(--felt-raised);
+}
+
+.track > [data-on] {
+  background: var(--chalk);
+}
+
+.track > [data-newest] {
+  transform-origin: left;
+  animation: grow 250ms var(--ease) both;
+}
+
+/* The question's column, centred across. It is centred down too when the answer sits under the question; where the
+   buttons are in a bar the question starts under the top bar. */
+.screen main {
+  width: min(100% - 2.5rem, var(--column));
+  margin: 1.5rem auto 0;
+  /* `break-word`, not `anywhere`: a word moves down whole and is cut only when it alone is wider than the line. `anywhere`
+     also makes every letter a place to break when a column's width is worked out, which squeezed whole columns into strips. */
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
+  .screen main {
+    margin-block: auto;
+    padding-block: 2rem;
+  }
+}
+
+.screen h1 {
+  margin-top: 0.5rem;
+  font: 400 var(--heading) / 1.05 var(--font-display);
+  text-wrap: balance;
+}
+
+/* A heading with a long name in it (the page marks it, past about fifty letters) is set a quarter smaller, so a 60-letter name
+   is a few lines and not a wall that pushes the answer under the bar. */
+.screen h1[data-long] {
+  font-size: calc(var(--heading) * 0.7);
+}
+
+/* Words that are not the question: "Question 2 of 7" and, on a game's own screen, the game's name. */
+.count {
+  margin: 0;
+  color: var(--sage);
+}
+
+/* The answer: one paper slab, 24px type, 12px corners, no edge. The focus ring is the one the whole look has. A refused
+   one has a heavier edge from outside, so it is seen without colour. */
+/* A how-to or an other way, under a question's words: one look wherever it stands (the files question's notes and the video
+   questions' links), one to a line, each still a 44px target. The page's own links pull their margins in to keep the rhythm of
+   running words; these are lines of their own and keep the space between them. */
+.screen a.help {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 44px;
+  margin-block: 0;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
+.screen :is(input, textarea).answer {
+  display: block;
+  width: 100%;
+  height: var(--box);
+  margin: 1.5rem 0 0;
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1.5rem / 1.2 var(--font-text);
+  /* Brought into view, the box stops above the bar, never under it. */
+  scroll-margin-bottom: calc(var(--button, 56px) + 3rem);
+}
+
+/* A box of several lines (the websites) is a slab of the same paper that grows with its lines, never less than a one-line
+   answer's height. */
+.screen textarea.answer {
+  height: auto;
+  min-height: var(--box);
+  padding-block: 1rem;
+  resize: vertical;
+}
+
+/* The line about a game is a box that grows with its words, one line tall until it needs more, so a phone shows all of what
+   was typed and not its tail. Its words sit in the middle of a one-line box, as an input's do: 1.8rem is one line of the
+   answer's 1.5rem type at 1.2. */
+.screen textarea.answer[data-grows] {
+  field-sizing: content;
+  resize: none;
+  padding-block: calc((var(--box) - 1.8rem) / 2);
+}
+
+/* A phone held sideways has the least height, so the heading and the answer sit closer to the top, and the box is in
+   view above the bar before anything is scrolled. The stack is 12px shorter than it was so the box ends a clear 12px above
+   the bar: at an iPhone 15's 343px, with a two-line heading, it used to end within a tenth of a pixel of the bar's top, and
+   Safari's rounding of the heading's fractional height put it under the bar on some loads. */
+@media (max-height: 449px) {
+  .topbar {
+    padding-top: 0.5rem;
+  }
+
+  .screen main {
+    margin-top: 0.25rem;
+  }
+
+  .screen h1 {
+    margin-top: 0;
+  }
+
+  .screen :is(input, textarea).answer {
+    margin-top: 1rem;
+  }
+}
+
+/* A refused box keeps the size and padding it had: a box of several lines that lost its vertical padding when refused was a
+   quarter shorter and its words touched its top edge. */
+.screen :is(input, textarea).answer[aria-invalid="true"] {
+  outline: 4px solid var(--chalk);
+  outline-offset: 3px;
+}
+
+/* The hint under a refused box starts clear of its ring (4px, 3px out), which was 2px from it and ran over the hint's top. */
+.screen .answer[aria-invalid="true"] + .note {
+  margin-top: 1.25rem;
+}
+
+/* A sheet of paper on the felt, for words that are not an answer: what Ruken will see on GitHub, or what is wrong. Its
+   corners are the card's, as the board draws them. */
+.sheet {
+  padding: 1.5rem;
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  color: var(--ink);
+  color-scheme: light;
+}
+
+.sheet > * + * {
+  margin-top: 0.75rem;
+}
+
+.sheet .say {
+  font: var(--text-statement);
+}
+
+.sheet .note {
+  color: var(--ink-soft);
+}
+
+/* Something that needs fixing is not red: red is only for what can't be undone (Owner, 2026-11-15). It is a white sheet
+   with a blue edge on the left and a plain label, so it is seen by its shape and its words. The look test rules out
+   shadows, so the edge is the sheet's own border. */
+.sheet.fix {
+  border-left: 6px solid var(--pay);
+  padding-left: 1.5rem;
+}
+
+.fixlabel {
+  display: block;
+  color: var(--pay);
+  font: 600 0.875rem / 1.3 var(--font-text);
+}
+
+.fix .statement {
+  display: block;
+  font: var(--text-statement);
+}
+
+/* Staff's own line is the most specific thing a maker is told, so it is read as easily as the reason above it: body size, in ink. */
+.sheet.fix .note {
+  color: var(--ink);
+  font: var(--text-body);
+}
+
+/* The boxes behind "Change the branch or folder": the same paper slabs as an answer, each with its own words over it. */
+.screen details > label {
+  display: block;
+  margin-top: 1rem;
+}
+
+.screen details > label > input.answer {
+  margin-top: 0.5rem;
+}
+
+/* A choice is a paper card the whole card is the target of: its real radio button or checkbox lies over it, clear. The
+   edge is always there, paper while it is not picked, so picking one moves nothing. */
+.picks {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  margin-top: 1.5rem;
+}
+
+.pick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  min-height: var(--size-target);
+  padding: 0.75rem 3.5rem 0.75rem 1rem;
+  border: 4px solid var(--paper);
+  border-radius: var(--radius-button);
+  background: var(--paper);
+  color: var(--ink);
+  transition: border-color 250ms var(--ease);
+  cursor: pointer;
+}
+
+/* The real field lies over the card's whole box, the 4px edge as well: inside it, a card at its least height (48px, as a short window
+   makes them) would leave a field 40px tall, under the 44 a thing to press must be. */
+.pick > input {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.pick > b {
+  font: var(--text-statement);
+}
+
+/* A choice that is a name (a repository) is set in the text face, one line, and breaks only after a slash. */
+.picks[data-plain] .pick > b {
+  font: var(--text-button);
+  overflow-wrap: normal;
+}
+
+/* Names are long, so they are one to a row at every width: two across leaves a sideways phone's card too narrow for one. */
+.picks[data-plain] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Each part of a repository's name, either side of a slash, stays whole: "ruken-test/broken-game" may go to a second line
+   after the slash and never at a hyphen. */
+.pick .whole {
+  white-space: nowrap;
+}
+
+.pick > span {
+  color: var(--ink-soft);
+  font: var(--text-small);
+}
+
+.pick:has(input:checked) {
+  border-color: var(--pay);
+}
+
+/* The mark in the corner: a plain blue check where one is chosen, and where several may be a square that fills blue. */
+.pick::after {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 8px;
+  color: var(--pay);
+  font: 600 1.25rem / 1 var(--font-text);
+}
+
+.pick:has(input:checked)::after {
+  content: "\2713";
+}
+
+.picks[data-several] .pick::after {
+  content: "";
+  border: 2px solid var(--ink-soft);
+}
+
+.picks[data-several] .pick:has(input:checked)::after {
+  content: "\2713";
+  border-color: var(--pay);
   background: var(--pay);
   color: var(--chalk);
+}
+
+.pick:has(:focus-visible) {
+  outline: 3px solid var(--chalk);
+  outline-offset: 3px;
+}
+
+/* A refused set of choices has a heavier edge round the whole set. */
+.picks:has(input[aria-invalid="true"]) {
+  outline: 4px solid var(--chalk);
+  outline-offset: 6px;
+  border-radius: var(--radius-button);
+}
+
+/* The line under a refused set starts 12px clear of its ring, which stands 10px out from the set (4px wide, 6px off). */
+.picks:has(input[aria-invalid="true"]) + .note {
+  margin-top: 1.5rem;
+}
+
+/* Two across from a phone held sideways up; stacked on a phone held upright. The five ratings sit in one row from a
+   tablet up, so they can be compared at a glance, and the corner mark is smaller so a rating's words keep their room. */
+@media (min-width: 500px) {
+  .picks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 500px) and (min-height: 450px) {
+  .picks[data-ratings] {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .picks[data-ratings] .pick {
+    padding-right: 0.75rem;
+    padding-top: 2.25rem;
+  }
+
+  .picks[data-ratings] .pick::after {
+    top: 0.375rem;
+    right: 0.375rem;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+/* A short window (an iPhone SE is 568 tall upright and 320 sideways; every phone held sideways is under 450): each choice is one
+   row, its name and its line side by side, in a smaller name, so the choices and the line under them are not cut by the bar. */
+@media (max-height: 599px) {
+  .picks {
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .pick {
+    flex-flow: row wrap;
+    align-items: baseline;
+    column-gap: 0.75rem;
+    row-gap: 0;
+    padding-block: 0.5rem;
+  }
+
+  .pick > b {
+    font: 400 1.25rem / 1.2 var(--font-display);
+  }
+}
+
+/* Held sideways the choices are one to a row, not two across: two across left a card too narrow for its name, which broke to a
+   second line and pushed its words under the bar. The ratings, which are five short names, keep two across. */
+@media (max-height: 449px) {
+  .picks:not([data-ratings]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The buttons. Under the answer, a step and a half from it, on a computer and a tablet held sideways, and in a bar
+   across the bottom of the window (clear of the home indicator) for a phone and a tablet held upright, so a thumb finds
+   them in the same place on every question. Back is on the left and the blue button fills the rest. */
+.screen .acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  view-transition-name: bar;
+}
+
+.acts > :is(a, button) {
+  height: var(--button);
+  padding-block: 0;
+}
+
+.acts > button,
+.acts > .button:not(.safe) {
+  min-width: 168px;
+}
+
+.key {
+  display: none;
+  color: var(--sage);
+  font: var(--text-small);
+  white-space: nowrap;
+}
+
+.key kbd {
+  margin-left: 0.25rem;
+  padding: 0.3125rem 0.5rem;
+  border-radius: 6px;
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: 600 0.875rem / 1 var(--font-text);
+}
+
+/* The Enter hint shows only where there is a mouse and a keyboard, on the computer layout. */
+@media (hover: hover) and (pointer: fine) and (min-width: 1200px) and (orientation: landscape) {
+  .key {
+    display: inline;
+  }
+}
+
+@media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
+  .screen {
+    padding-bottom: calc(var(--button) + 3.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .screen .acts {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    flex-wrap: nowrap;
+    gap: 0.625rem;
+    margin: 0;
+    padding: 0.75rem max(1rem, calc((100% - var(--column)) / 2))
+      calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    background: var(--felt-deep);
+  }
+
+  .acts > :is(a, button),
+  .acts > button,
+  .acts > .button:not(.safe) {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .acts > .safe {
+    flex: 0 0 auto;
+  }
+}
+
+/* A video, in its place: as big as the frame or the card it sits in, cropped to fit, sage until it has a picture. */
+.tile {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  background: var(--sage);
+  object-fit: cover;
+}
+
+/* The frame of a video question: the biggest thing on the screen, there before a video is chosen, in the video's real
+   shape. An upright frame is a height and a wide frame a width (spec 5a note 1); the other side follows the shape.
+   Choosing the frame opens the picker. */
+.vframe {
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  border-radius: 12px;
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-statement);
+  text-align: center;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.vframe > a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.vframe[data-frame="upright"] {
+  --frame: 540px;
+  height: var(--frame);
+  width: calc(var(--frame) * 9 / 16);
+  /* Under the question it is in the middle of its row, not at the left with the rest of the row empty; beside the question
+     (the grids below) it has a column of its own and this does nothing. */
+  margin-inline: auto;
+}
+
+/* The words in an empty frame keep a little way off its edges, even in the narrowest frame (a phone held sideways). */
+label.vframe {
+  padding-inline: 0.75rem;
+}
+
+.vframe[data-frame="wide"] {
+  width: 640px;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+/* An upright tablet. */
+@media (orientation: portrait) {
+  .vframe[data-frame="upright"] {
+    --frame: 500px;
+  }
+}
+
+/* A phone held sideways: the video's frame is beside the question, and a smaller one. It is no taller than leaves it whole above
+   the bar (the window less 180px: the bar and the room above the frame, measured on a Pixel 7 held sideways, 128 and 44), so on the
+   shortest phone it gives way (Owner, 2026-11-15, "5.a":
+   shorter frames on small phones, so more fits on the screen). */
+@media (max-height: 449px) {
+  .vframe[data-frame="upright"] {
+    --frame: clamp(140px, calc(100dvh - 180px), 250px);
+  }
+
+  /* 240 wide, not 380: beside a 380-wide frame an iPhone SE held sideways left the heading about 125px, a word to a line. */
+  .vframe[data-frame="wide"] {
+    width: 240px;
+  }
+}
+
+/* A phone held upright. */
+@media (max-width: 499px) {
+  .vframe[data-frame="upright"] {
+    --frame: 340px;
+  }
+
+  .vframe[data-frame="wide"] {
+    width: 100%;
+  }
+}
+
+/* A short computer window (1280 by 720): the wide frame is only as tall as leaves room for the question's words and its buttons
+   on the first screen; where the window is taller the frame is its usual 640. */
+@media (min-width: 1200px) and (orientation: landscape) and (max-height: 799px) {
+  .vframe[data-frame="wide"] {
+    width: min(640px, 100%, calc((100dvh - 480px) * 16 / 9));
+  }
+}
+
+/* The question beside its upright frame, on a computer and on a tablet or phone held sideways; a wide frame is beside
+   it on a phone held sideways only, and everywhere else it is under it. */
+@media (min-width: 1200px) and (orientation: landscape) {
+  .screen:has([data-frame="upright"]) {
+    --column: 1000px;
+  }
+}
+
+@media (orientation: landscape) and (min-width: 700px) {
+  .screen main > form:has(> [data-frame="upright"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 3rem;
+    align-items: start;
+  }
+
+  .screen main > form:has(> [data-frame="upright"]) > * {
+    grid-column: 1;
+  }
+
+  .screen main > form:has(> [data-frame="upright"]) > .vframe {
+    grid-column: 2;
+    grid-row: 1 / span 8;
+  }
+}
+
+@media (max-height: 449px) {
+  .screen main > form:has(> [data-frame]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 1.5rem;
+    align-items: start;
+  }
+
+  .screen main > form:has(> [data-frame]) > * {
+    grid-column: 1;
+  }
+
+  .screen main > form:has(> [data-frame]) > .vframe {
+    grid-column: 2;
+    grid-row: 1 / span 8;
+  }
+}
+
+/* A short phone held upright (an iPhone SE is 568 tall, a large iPhone 739): the frame is as tall as the window, so the notes and the link that
+   says how to record were under the bar. They come first and the frame after them; the frame keeps its height. */
+@media (max-width: 499px) and (max-height: 799px) {
+  .screen main > form:has(> .vframe) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* No more than half the window, so a short phone shows more of the question and its frame together (Owner, 2026-11-15, "5.a"). */
+  .vframe[data-frame="upright"] {
+    --frame: min(340px, 50dvh);
+  }
+
+  .screen main > form:has(> .vframe) > .vframe {
+    order: 1;
+  }
+}
+
+/* The picker as the question's one blue button, on the felt: the same size and look as the button it stands for. */
+.screen .acts > .file > span {
+  height: var(--button);
+  min-width: 168px;
+  background: var(--pay);
+  color: var(--chalk);
+}
+
+.screen .file:has(:focus-visible) > span {
+  outline: 3px solid var(--paper);
+  outline-offset: 3px;
+}
+
+/* The button without script is not drawn once the script is there; the look's own button rule would draw it anyway. */
+.acts > button[hidden] {
+  display: none;
+}
+
+@media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
+  .acts > .file {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .screen .acts > .file > span {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* A video opened full size: the window's own, on black, with the browser's controls and a green Close at the top right. */
+dialog.viewer {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 0;
+  border: 0;
+  background: var(--felt-deep);
+  color: var(--chalk);
+}
+
+.viewer video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* The page behind an open video does not scroll, so no strip of it shows under the player. */
+html:has(dialog.viewer[open]) {
+  overflow: hidden;
+}
+
+.viewer > button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+/* The small link at the foot: throwing a game away, which has its own screen. */
+a.foot {
+  align-self: flex-start;
+  margin: 1.5rem 0 1rem 1.25rem;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
+/* On the maker's screens it stands in the column of words, at the left edge they start from, and at the foot of the page
+   (the screen's padding keeps it clear of a pinned bar). It had been at the window's edge, left of the wordmark on a
+   computer, and under the answer on a phone. */
+.screen > a.foot {
+  align-self: center;
+  width: min(100% - 2.5rem, var(--column));
+  margin: auto auto 1rem;
+}
+
+@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
+  .screen:has(.asks) > a.foot {
+    width: min(100% - 5rem, 1200px);
+  }
+}
+
+/* A screen with something to read or check is two halves (spec 15.2): the heading and the one blue button on the left,
+   480 wide (260 on a phone held sideways), and the thing itself on the right. A window that is wide enough and not tall
+   enough to stack them puts them side by side; the left half stays in view while the right one scrolls. Everywhere else
+   they are stacked, with the button in the bar. */
+.screen:has(.halves) {
+  --column: 1200px;
+}
+
+@media (orientation: portrait), (max-width: 499px), (max-height: 449px) {
+  .screen:has(.halves) {
+    --column: 100%;
+  }
+}
+
+.halves > * {
+  min-width: 0;
+}
+
+.halves > * + * {
+  margin-top: 2rem;
+}
+
+/* The left half is above the right one: its buttons are the bar, and the right half's sheets and cards have entrances that
+   would otherwise paint over it. */
+.halves > :first-child {
+  position: relative;
+  z-index: 1;
+}
+
+.halves a.foot {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 1rem 0 0;
+}
+
+/* A way back that is only for a wide window, where the buttons are far down the page; a bar has Back already. */
+@media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
+  .halves a.foot[data-wide] {
+    display: none;
+  }
+}
+
+/* On Live, "Back to your games" is a little larger than the link that takes the game off Ruken. That one is the quietest thing
+   on the screen: last, a size smaller and dimmer, and a step below the way back, so a thumb that aims for one does not land
+   on the other and it is never read as part of the blue button's note above. Each is on its own line. */
+.live a.foot {
+  display: flex;
+  width: fit-content;
+  font-size: 1rem;
+}
+
+.live a.foot[data-off] {
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  opacity: 0.75;
+}
+
+@media (orientation: landscape) and (min-width: 700px) {
+  .halves {
+    display: grid;
+    grid-template-columns: 480px minmax(0, 1fr);
+    column-gap: 3rem;
+    align-items: start;
+  }
+
+  .halves > * + * {
+    margin-top: 0;
+  }
+
+  /* The left half, whatever it is made of, stays where it is while the right one scrolls. */
+  .halves > :first-child {
+    position: sticky;
+    top: 1.5rem;
+  }
+}
+
+@media (max-height: 449px) and (min-width: 700px) {
+  .halves {
+    grid-template-columns: 260px minmax(0, 1fr);
+    column-gap: 1.5rem;
+  }
+}
+
+/* A game's plain state (taken off Ruken) starts where Live and Waiting start on a wide window: the column's left edge, under the
+   bar, and not in the middle of the window with nothing around it. */
+@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
+  .screen:has(> main[data-state]) {
+    --column: 1200px;
+  }
+
+  .screen main[data-state] {
+    margin-block: 0 auto;
+  }
+}
+
+/* The agreement's points on a sheet: the number is the list's own, in the display face, and hangs in the left margin, so
+   every title and every point starts on one line. */
+.sheet ol {
+  margin: 0;
+  padding-left: 2.5rem;
+}
+
+.sheet li::marker {
+  font: var(--text-statement);
+}
+
+/* An iPhone SE's card is 280 wide: a 40px gutter for the numbers left the words about 195px. */
+@media (max-width: 399px) {
+  .sheet ol {
+    padding-left: 1.75rem;
+  }
+}
+
+.sheet li + li {
+  margin-top: 1.75rem;
+}
+
+.sheet li > strong {
+  display: block;
+}
+
+.sheet li > p {
+  margin-top: 0.25rem;
+}
+
+/* A game laid out as members will see it (Check and send, and later the other screens that show a game). Its two videos
+   are the same height in their real shapes (264, or 300 on a tablet held upright, or 180 on a phone held sideways),
+   and a window too narrow for both at that height makes both smaller together: the width they have, less the gap
+   between them, divided by what the two shapes add up to (9/16 + 16/9, about 2.34). A phone's is that smaller row. */
+.laid {
+  container-type: inline-size;
+}
+
+.laid > * + * {
+  margin-top: 1.25rem;
+}
+
+.tiles {
+  --tile-height: min(264px, (100cqw - 1rem) * 0.4274);
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.tiles figure {
+  margin: 0;
+}
+
+.tiles figure > div {
+  height: var(--tile-height);
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.tiles figure > [data-shape="upright"] {
+  width: calc(var(--tile-height) * 9 / 16);
+}
+
+.tiles figure > [data-shape="wide"] {
+  width: calc(var(--tile-height) * 16 / 9);
+}
+
+.tiles figure > div > a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tiles figcaption > span {
+  white-space: nowrap;
+}
+
+.tiles figcaption {
+  display: flex;
+  /* "On phones" and its Change are one line under a narrow tile, never two. */
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin-top: 0.5rem;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
+@media (orientation: portrait) {
+  .tiles {
+    --tile-height: min(300px, (100cqw - 1rem) * 0.4274);
+  }
+}
+
+@media (max-height: 449px) {
+  .tiles {
+    --tile-height: min(180px, (100cqw - 1rem) * 0.4274);
+  }
+}
+
+/* On Live, held sideways or on a computer, the one video is the wide one, and a card above it (a part staff sent back) is as wide
+   as that video, so their right edges are on one line and not 200px apart. The card works the video's width out the same way the
+   row does: its height, the least of 264 (180 on a short window) and what the column allows, times 16 / 9. */
+.screen:has(.live) .after {
+  container-type: inline-size;
+}
+
+@media (orientation: landscape) {
+  .screen:has(.live) .after > .sheet.fix {
+    --tile-height: min(264px, (100cqw - 1rem) * 0.4274);
+    max-width: calc(var(--tile-height) * 16 / 9);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 449px) {
+  .screen:has(.live) .after > .sheet.fix {
+    --tile-height: min(180px, (100cqw - 1rem) * 0.4274);
+  }
+}
+
+/* A phone's two videos are the same row as everywhere else, smaller, and the name, the line and the facts have the whole
+   width under them: beside the tall video they had a strip of 115 to 225px. Each caption is its words with Change under
+   them, on both videos, so the two captions are one height and the caption never widens the row. */
+@media (max-width: 499px) {
+  .tiles figcaption {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+}
+
+/* On a phone, held upright or sideways, the name, the line and the facts come before the videos: with the videos first, the bar
+   covered the facts and a maker could send without seeing them, and held sideways the first screen was the heading and two
+   videos with nothing about the game. (Live keeps its one video first: that video is the picture of the screen.) */
+@media (max-width: 499px), (max-height: 449px) {
+  .screen:not(:has(.live)) .laid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .screen:not(:has(.live)) .laid > * {
+    margin: 0;
+  }
+
+  .screen:not(:has(.live)) .laid > .tiles {
+    order: 1;
+  }
+}
+
+/* Held sideways there are 244px above the bar on the shortest phone, so the rows of the name, the line and the facts are
+   closer: the line is in view with the name, not half under the bar. */
+@media (max-height: 449px) {
+  .screen:not(:has(.live)) .laid {
+    gap: 0.5rem;
+  }
+}
+
+/* The name as the feed sets it: a title in the display face, and the line under it. Change sits at the end of each. */
+.laid > div:not(.tiles) {
+  display: flex;
+  flex-wrap: wrap;
+  /* Centred, not on a baseline: a 44px Change beside a line of words is the row's height, and the words never hang below it. */
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+
+.title {
+  margin: 0;
+  font: var(--text-card-title);
+  overflow-wrap: break-word;
+}
+
+.tagline {
+  margin: 0;
+  color: var(--sage);
+  font: var(--text-statement);
+}
+
+.laid ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  /* The chips are under the line with the same space as every other part (a rule for `ul` would otherwise drop it). */
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.laid li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* A fact in a quiet chip: the same Dusky Green as a green button, white words, 8px corners (no pills). */
+.chip {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-small);
+  overflow-wrap: break-word;
+}
+
+/* A small Change beside a part. A link, not a button, and still a 44 by 44 target. */
+.laid .change {
+  /* Beside or under a part's words, it keeps the space it is given: the pull a link takes on its margins is for a line of words.
+     The `.laid` in front lets this win over the rule for every link, whatever order the two are read in. */
+  margin-block: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--sage);
+  font: var(--text-small);
+  text-decoration: underline;
+  /* One word, never cut: where there is no room beside the words it belongs to, it drops to the next line whole. */
+  white-space: nowrap;
+}
+
+/* Your games on a computer or a tablet held sideways: the heading and Add a game are one line, and the games are under them. */
+@media (min-width: 700px) and (min-height: 450px) and (orientation: landscape) {
+  .screen main.games {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 1.5rem;
+    align-items: center;
+  }
+
+  .screen main.games > * {
+    grid-column: 1 / -1;
+  }
+
+  .screen main.games > h1 {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .screen main.games > .acts {
+    grid-column: 2;
+    grid-row: 1;
+    margin-top: 0;
+  }
+}
+
+/* The agreement's link is a thing of its own, a line's room under whatever comes before it: the words, the button or the last game. */
+.screen main.games > .note {
+  margin-top: 1.5rem;
+}
+
+/* A game in Your games: one paper card that is one link, with its picture, its name, and where it stands. Until a
+   game has its video, a plain block holds the picture's place. */
+a.game {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  min-height: 0;
+  margin: 1.5rem 0 0;
+  padding: 1rem;
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform var(--press-time);
+}
+
+a.game > .tile {
+  flex: none;
+  width: 96px;
+  height: 54px;
+}
+
+a.game > span {
+  display: block;
+  min-width: 0;
+}
+
+a.game .statement {
+  display: block;
+  font: var(--text-card-title);
+}
+
+a.game > span > span:not(.statement) {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--ink-soft);
+}
+
+a.game > span > span[data-sent-back]:not(.statement) {
+  color: var(--pay);
+  font-weight: 600;
+}
+
+a.game:active {
+  transform: scale(var(--press-scale));
+}
+
+@media (min-width: 500px) {
+  a.game > .tile {
+    width: 128px;
+    height: 72px;
+  }
+}
+
+/* An iPhone SE's card is 248 wide inside its padding: with a 96px picture a name had 136px and "318346e0" was cut in two.
+   A phone from 360 wide has 40px or more beyond that, so it keeps the 96px picture (an iPhone 15 is 393 wide). */
+@media (max-width: 359px) {
+  a.game > .tile {
+    width: 64px;
+    height: 36px;
+  }
+}
+
+/* What moves (spec 4.6). The question's lines rise 28px into place over 460ms on the house curve, each 40ms after the
+   one before, and going back they come down instead. Only transform and opacity change. The buttons are left out
+   so a fixed bar is never inside something that moves. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+
+@keyframes sink {
+  from {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+}
+
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes lift-away {
+  to {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes drop-away {
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* The fill is `backwards` (the line waits where it starts), never `both`: a line that keeps a transform after it has
+   arrived becomes the place a fixed bar is measured from, and the bar of a screen whose left half is such a line
+   (Waiting, Sent back, Live) would sit in the middle of the page instead of the window's bottom. */
+.screen main > :not(form, .acts),
+.screen main > form > :not(.acts) {
+  animation: rise 460ms var(--ease) backwards;
+  animation-delay: calc(var(--line, 0) * 40ms);
+}
+
+html[data-step="back"] .screen main > :not(form, .acts),
+html[data-step="back"] .screen main > form > :not(.acts) {
+  animation-name: sink;
+}
+
+.screen main > :nth-child(2),
+.screen main > form > :nth-child(2) {
+  --line: 1;
+}
+
+.screen main > :nth-child(3),
+.screen main > form > :nth-child(3) {
+  --line: 2;
+}
+
+.screen main > :nth-child(4),
+.screen main > form > :nth-child(4) {
+  --line: 3;
+}
+
+.screen main > :nth-child(n + 5),
+.screen main > form > :nth-child(n + 5) {
+  --line: 4;
+}
+
+/* Where the browser can make a move a view transition, the old question lifts 12px and fades in 120ms, over the new
+   one whose lines are rising. The bar and the track stay where they are. */
+::view-transition-old(root) {
+  z-index: 1;
+  mix-blend-mode: normal;
+  animation: lift-away 120ms ease-in both;
+}
+
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation: none;
+}
+
+html[data-step="back"]::view-transition-old(root) {
+  animation-name: drop-away;
+}
+
+/* A numbered list of points (the maker agreement): the number is the list's own, in the display face and hung in the
+   left margin, so every title and every point starts on one line. 1.75rem between points makes each one a block. */
+.card ol {
+  margin: 1.5rem 0 0;
+  padding-left: 2.5rem;
+}
+
+/* The same narrow gutter as the sheet's, after this rule so that it wins. */
+@media (max-width: 399px) {
+  .card ol {
+    padding-left: 1.75rem;
+  }
+}
+
+.card li::marker {
+  font: var(--text-statement);
+}
+
+.card li + li {
+  margin-top: 1.75rem;
+}
+
+.card li > strong {
+  display: block;
+}
+
+.card li > p {
+  margin-top: 0.25rem;
 }
 
 button:active,
@@ -428,13 +1909,338 @@ button:active,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* With reduced motion nothing moves: the next question is simply there, the track is drawn whole and a choice changes at
+     once. */
+  .screen,
+  .screen * {
+    animation: none !important;
+    transition: none !important;
+  }
+
   button,
-  .button {
+  .button,
+  .file > span {
     transition: none;
   }
 
   button:active,
-  .button:active {
+  .button:active,
+  .file:active > span,
+  a.game:active {
     transform: none;
   }
+}
+
+/* The right half of a game that has been sent: cards one over the next, then the game laid out. */
+.after > * + * {
+  margin-top: 1rem;
+}
+
+/* A card for something sent back is one link: it keeps its paper and its words, and is not underlined. */
+a.sheet.fix {
+  display: block;
+  /* A link takes back the height a target adds from its margins (above); a card is not a line of words, so it keeps
+     the space between it and what is next to it. */
+  margin-block: 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.after > a.sheet.fix + * {
+  margin-top: 1rem;
+}
+
+.sheet.fix > span {
+  display: block;
+}
+
+.sheet.fix video {
+  display: block;
+  max-width: 100%;
+  border-radius: 8px;
+  /* Sage until a frame is drawn, as every other video's tile is, so it is never white on white. */
+  background: var(--sage);
+  object-fit: cover;
+}
+
+/* An upright video sits beside the card's words, at the right, and not under them with the rest of the card blank. */
+.sheet.fix:has(> video[data-shape="upright"]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 1.25rem;
+  align-items: start;
+}
+
+.sheet.fix:has(> video[data-shape="upright"]) > :not(video) {
+  grid-column: 1;
+}
+
+.sheet.fix video[data-shape="upright"] {
+  grid-column: 2;
+  grid-row: 1 / span 6;
+  width: 5rem;
+  height: auto;
+  margin: 0;
+  aspect-ratio: 9 / 16;
+}
+
+@media (min-width: 500px) {
+  .sheet.fix video[data-shape="upright"] {
+    width: 9rem;
+  }
+}
+
+/* An iPhone SE's card leaves about 215 wide for the words and the video: the video is thinner there so the words keep 130. */
+@media (max-width: 359px) {
+  .sheet.fix video[data-shape="upright"] {
+    width: 4.5rem;
+  }
+}
+
+.sheet.fix video[data-shape="wide"] {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+/* "Fix this": what the card is for, in the blue that means go on. */
+.fixgo {
+  color: var(--pay);
+  font: 600 1rem / 1.3 var(--font-text);
+  text-decoration: underline;
+}
+
+/* What passed, folded away in one green card; opened, it is the game laid out. Its chips sit one tone down, on the felt,
+   so they can be told from the card. */
+.accepted {
+  padding: 0 1.5rem;
+  /* Folded it is one thing to press, so it keeps the button's small corners and not the card's near-round ones. */
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+}
+
+.accepted > summary {
+  /* The card has no padding above its line, so a summary's pull on its margins (above) would draw the card up into the
+     one over it. */
+  margin-block: 0;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  cursor: pointer;
+  font: var(--text-statement);
+}
+
+.accepted > summary::after {
+  content: "Show";
+  flex: none;
+  font: var(--text-small);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.accepted[open] > summary::after {
+  content: "Hide";
+}
+
+.accepted[open] {
+  padding-bottom: 1.5rem;
+}
+
+.accepted .chip {
+  background: var(--felt);
+}
+
+/* A second way forward is a blue outline, never a second blue fill. It is under the blue button in the page, not in the bar. */
+.live form {
+  margin-top: 1.25rem;
+}
+
+.live form > .note {
+  margin-top: 0.5rem;
+}
+
+.live button.outline {
+  border: 2px solid var(--pay);
+  background: none;
+  color: var(--chalk);
+}
+
+/* The statement piece, only on Live (spec 5c): the game's own video fills the screen behind everything, blurred, dimmed and
+   under a black layer. Everything else sits above it. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  filter: blur(18px) brightness(0.55);
+}
+
+.backdrop video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.1);
+}
+
+/* Five soft circles drift slowly between the video and the dark layer. Round shapes are allowed here and nowhere else
+   (Owner, 2026-11-15). They move only where the script says the video may move too. */
+.drift {
+  position: absolute;
+  width: 38vmin;
+  height: 38vmin;
+  border-radius: 50%;
+  background: var(--sage);
+  opacity: 0.12;
+}
+
+.drift:nth-of-type(1) {
+  top: 8%;
+  left: 6%;
+}
+
+.drift:nth-of-type(2) {
+  top: 55%;
+  left: 20%;
+  width: 28vmin;
+  height: 28vmin;
+}
+
+.drift:nth-of-type(3) {
+  top: 12%;
+  left: 55%;
+  width: 48vmin;
+  height: 48vmin;
+}
+
+.drift:nth-of-type(4) {
+  top: 60%;
+  left: 62%;
+  width: 24vmin;
+  height: 24vmin;
+}
+
+.drift:nth-of-type(5) {
+  top: 35%;
+  left: 38%;
+  width: 32vmin;
+  height: 32vmin;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-drifting] .drift {
+    animation: drift 48s ease-in-out infinite alternate;
+  }
+
+  [data-drifting] .drift:nth-of-type(even) {
+    animation-duration: 64s;
+    animation-direction: alternate-reverse;
+  }
+}
+
+@keyframes drift {
+  to {
+    transform: translate(12vw, -8vh);
+  }
+}
+
+.backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--felt-deep);
+  opacity: 0.5;
+}
+
+.live {
+  position: relative;
+  z-index: 1;
+}
+
+/* What players will see, beside a question (spec 15.4): the question at the left edge and, in the right third, one paper
+   card of the game as a player meets it. A window that is not landscape, not 500 wide or not 450 tall has no room for
+   it, so it is not drawn and the question has the screen; until then `asks` takes no box of its own, so the question
+   is laid out exactly as it is without a card. */
+.asks {
+  display: contents;
+}
+
+.preview {
+  display: none;
+}
+
+@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
+  .screen .asks {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    column-gap: 3rem;
+    align-items: start;
+    width: min(100% - 5rem, 1200px);
+    margin: auto;
+    padding-block: 2rem;
+  }
+
+  .screen .asks > main {
+    width: auto;
+    max-width: var(--column);
+    margin: 0;
+    padding-block: 0;
+  }
+
+  .preview {
+    display: block;
+  }
+}
+
+/* A tablet held sideways has less to spare. */
+@media (min-width: 500px) and (max-width: 1199px) and (orientation: landscape) and (min-height: 450px) {
+  .screen .asks {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    column-gap: 2rem;
+  }
+}
+
+/* The label is a note on felt, in plain sentence case (the look never uses capitals for a label), and the card under it is the game: video, name, line, rating. */
+.preview > p {
+  margin: 0 0 0.75rem;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
+/* The game's two videos side by side, the upright one 9 parts of the row and the wide one 16, bottoms on one line: the
+   row is the card's whole width, and the wide video the maker has added is in it. */
+.preview .card > div {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.preview .card [data-shape] {
+  height: auto;
+  min-width: 0;
+}
+
+.preview .card [data-shape="upright"] {
+  flex: 9 1 0;
+  aspect-ratio: 9 / 16;
+}
+
+.preview .card [data-shape="wide"] {
+  flex: 16 1 0;
+  aspect-ratio: 16 / 9;
+}
+
+.preview .card h2 {
+  margin: 1rem 0 0;
+}
+
+.preview .card p {
+  margin: 0.25rem 0 0;
+}
+
+/* A part not answered yet is words in grey, so what is still to come is seen. */
+.preview [data-empty] {
+  color: var(--ink-soft);
 }

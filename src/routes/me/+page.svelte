@@ -51,5 +51,10 @@
   <form method="POST" action="/sign-out">
     <button class="quiet">Sign out</button>
   </form>
-  <p class="note apart"><a href="/me/delete">Delete my account</a></p>
+  {#if data.makesGames}
+    <p class="apart"><a href="/make">Your games</a></p>
+  {:else}
+    <p class="apart">Make games? <a href="/make">Add yours to Ruken.</a></p>
+  {/if}
+  <p class="note"><a href="/me/delete">Delete my account</a></p>
 </main>

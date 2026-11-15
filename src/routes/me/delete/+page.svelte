@@ -1,12 +1,19 @@
 <!--
   Delete my account: what happens now, what happens in 14 days, and how to undo it. A paying member is told first that
-  the membership ends now with no refund, and can cancel it without deleting. "Keep my account" is the way back. The
-  button spends no money, so it is the card's one plain button, never the green one that spends.
+  the membership ends now with no refund, and can cancel it without deleting. "Keep my account" is the way back: the
+  green, safe button, and the one that has focus, so a stray Enter keeps the account. "Delete my account" can't be
+  undone, so it is the red one. Nothing on the screen is blue.
 -->
 <script lang="ts">
+  import { onMount } from "svelte";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
+
+  let keep: HTMLAnchorElement | undefined = $state();
+  // Focus starts on the safe choice. It is done here rather than with the autofocus attribute, which the
+  // linter rules out; the page is readable and the buttons work before this runs.
+  onMount(() => keep?.focus());
 </script>
 
 <svelte:head>
@@ -35,8 +42,8 @@
       {#if form?.error}
         <p class="problem" role="alert">{form.error}</p>
       {/if}
-      <button>Delete my account</button>
+      <button class="danger">Delete my account</button>
     </form>
   {/if}
-  <p><a href="/me">Keep my account</a></p>
+  <p><a class="button safe" href="/me" bind:this={keep}>Keep my account</a></p>
 </main>

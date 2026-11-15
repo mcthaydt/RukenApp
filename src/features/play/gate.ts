@@ -41,7 +41,7 @@ const GAME_FOLDER = /^\/g-([a-z2-7]{10})\/(.*)$/;
 /** On the one free address a clip or a photo is `/media/<key>`. */
 const MEDIA_FOLDER = "/media/";
 /** Written out here, not imported: a clip's key, as the games feature makes it. Nothing else is served as a clip. */
-const CLIP_KEY = /^clips\/[a-z2-7]{10}\/(?:upright|wide)-[0-9a-f]{16}\.(?:mp4|webm)$/;
+const CLIP_KEY = /^clips\/[a-z2-7]{10}\/(?:upright|wide)-[0-9a-f]{16}\.(?:mp4|webm|mov)$/;
 /** Written out here, not imported: a photo's key, as the pages feature makes it. Nothing else is served as a photo. */
 const PHOTO_KEY = /^photos\/[0-9a-f]{16}\.(?:jpg|png|webp)$/;
 

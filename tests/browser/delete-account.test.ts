@@ -25,7 +25,7 @@ test("a person asks to be deleted, is signed out, and is told the date", async (
   await page.goto("/me");
   await page.getByRole("link", { name: "Delete my account" }).click();
   await expect(page.getByRole("heading", { name: "Delete your account?" })).toBeVisible();
-  await expectOneCard(page);
+  await expectOneCard(page, { red: ["Delete my account"] });
   await showTheOwner(page, testInfo, "delete your account");
   await page.getByRole("button", { name: "Delete my account" }).click();
   await expect(page.getByRole("heading", { name: "Your account will be deleted." })).toBeVisible();

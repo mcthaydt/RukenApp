@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId, PUBLIC_ID } from "../../../src/features/games/ids.ts";
-import { createGamesService, type GamesService } from "../../../src/features/games/service.ts";
+import { createGamesService, type Answer, type GamesService } from "../../../src/features/games/service.ts";
 import { systemClock } from "../../../src/lib/clock.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
@@ -69,6 +69,7 @@ async function newGame() {
       oneLine: "A game about a thing.",
       playsOn: "phone_and_computer",
       repoFullName: "acme/game",
+      ageRating: "age_12",
     },
   });
 }
@@ -91,6 +92,19 @@ describe("saveClip", () => {
     expect(clip.key).toMatch(new RegExp(`^clips/${game.publicId}/upright-[0-9a-f]{16}\\.mp4$`));
     expect(clip).toMatchObject({ contentType: "video/mp4", bytes: 32 });
     expect(files.keys()).toEqual([...before, clip.key]);
+  });
+
+  // A Mac's screen recording is QuickTime (Owner, 2026-11-15: "Yes, take .mov").
+  it("stores a QuickTime clip under a .mov key", async () => {
+    const game = await newGame();
+    const mov = new Uint8Array(32);
+    mov.set([0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x71, 0x74, 0x20, 0x20]);
+
+    await service.saveClip(game.id, "upright", { contentType: "video/quicktime", bytes: mov });
+
+    const clip = await db().gameClip.findFirstOrThrow({ where: { gameId: game.id, shape: "upright" } });
+    expect(clip.key).toMatch(new RegExp(`^clips/${game.publicId}/upright-[0-9a-f]{16}\\.mov$`));
+    expect(clip).toMatchObject({ contentType: "video/quicktime", bytes: 32 });
   });
 
   it("a new clip takes the old one's place and the old file goes", async () => {
@@ -131,7 +145,7 @@ describe("saveClip", () => {
       }),
     ).rejects.toMatchObject({
       code: "INVALID",
-      message: "That file doesn't look like a video. Export it as MP4 or WebM and try again.",
+      message: "That file doesn't look like a video. Save it as MP4, WebM or MOV and try again.",
     });
 
     expect(files.keys()).toEqual(before);
@@ -143,7 +157,7 @@ describe("saveClip", () => {
 
     await expect(
       service.saveClip(game.id, "upright", { contentType: "image/png", bytes: mp4Bytes() }),
-    ).rejects.toMatchObject({ code: "INVALID", message: "Clips are MP4 or WebM video." });
+    ).rejects.toMatchObject({ code: "INVALID", message: "Ruken takes MP4, WebM or MOV videos." });
   });
 
   it("says a game is not there when there is none, and stores nothing", async () => {
@@ -157,49 +171,70 @@ describe("saveClip", () => {
   });
 });
 
-/** What a maker's form says, made valid; a test changes the one thing it is about. */
-async function startGame(changes: Partial<Parameters<GamesService["createGame"]>[0]> = {}) {
-  const makerUserId = changes.makerUserId ?? (await createUser(db()));
-  const repo = changes.repo ?? { fullName: "acme/game", branch: null, folder: "" };
-  // The maker has connected GitHub and can reach the repository, as every maker who makes a game must.
-  await connectMaker(makerUserId, repo.fullName);
-  return service.createGame({
-    name: "Tower Run",
-    oneLine: "Climb fifty floors.",
-    playsOn: "phone_and_computer",
-    connectHosts: [],
-    ...changes,
-    makerUserId,
-    repo,
-  });
+const SHA = "0123456789abcdef0123456789abcdef01234567";
+
+/** A GitHub that holds one repository's files, so an answer about the files really pulls them. */
+function githubHolding(entries: { path: string; content: string }[]): GitHub {
+  return {
+    commitOf: () => Promise.resolve(SHA),
+    installationOf,
+    tarball: async () => new Blob([await tarGz(entries)]).stream(),
+  };
 }
 
-describe("createGame", () => {
-  it("makes a draft game, with an address and a public id of its own", async () => {
+const GOOD_FILES = [{ path: "top/index.html", content: "<html></html>" }];
+const NO_INDEX = [{ path: "top/readme.txt", content: "no game here" }];
+const NO_INDEX_WORDS = "Ruken starts your game from a file called index.html. We couldn't find one.";
+
+/** The service as it is when GitHub holds a game that starts, and when it holds one that cannot. */
+function serviceFor(entries: { path: string; content: string }[]): GamesService {
+  return createGamesService({ db: db(), clock: systemClock, files, github: githubHolding(entries) });
+}
+
+/** A maker who has connected GitHub, and the game they have just named. */
+let beginCount = 0;
+async function begin(name = `Tower Run ${String(++beginCount)}`) {
+  const makerUserId = await createUser(db());
+  await connectMaker(makerUserId, "acme/game");
+  const started = await service.startGame({ makerUserId, name });
+  return { makerUserId, ...started };
+}
+
+/** Moves a game to `state` with every answer in place, as the database requires of any game past draft. */
+async function setState(id: string, state: string): Promise<void> {
+  await db().$executeRawUnsafe(
+    `UPDATE "Game" SET "state" = '${state}', "oneLine" = COALESCE("oneLine", 'A line.'),
+       "playsOn" = COALESCE("playsOn", 'phone_and_computer'), "repoFullName" = COALESCE("repoFullName", 'acme/game'),
+       "ageRating" = COALESCE("ageRating", 'age_12') WHERE "id" = $1`,
+    id,
+  );
+}
+
+const FILES_ANSWER: Answer = {
+  question: "files",
+  repo: { fullName: "acme/game", branch: null, folder: "" },
+};
+
+describe("startGame", () => {
+  it("makes a draft with only its name, an address and a public id of its own", async () => {
     const maker = await createUser(db());
-    const made = await startGame({
-      makerUserId: maker,
-      name: "  Floor Fifty  ",
-      playsOn: "computer_only",
-      repo: { fullName: "acme/floor-fifty", branch: "release", folder: "web/build" },
-      connectHosts: ["api.example.com"],
-    });
+    const made = await service.startGame({ makerUserId: maker, name: "  Floor Fifty  " });
 
     expect(made.slug).toBe("floor-fifty");
-    expect(made.publicId).toMatch(PUBLIC_ID);
     expect(await db().game.findUniqueOrThrow({ where: { id: made.id } })).toMatchObject({
       makerUserId: maker,
       name: "Floor Fifty",
-      oneLine: "Climb fifty floors.",
-      playsOn: "computer_only",
+      oneLine: null,
+      playsOn: null,
+      repoFullName: null,
+      ageRating: null,
+      contentMarks: [],
+      toFix: [],
       state: "draft",
       freeToPlay: false,
-      repoFullName: "acme/floor-fifty",
-      repoBranch: "release",
-      repoFolder: "web/build",
-      connectHosts: ["api.example.com"],
       livePullId: null,
     });
+    expect((await db().game.findUniqueOrThrow({ where: { id: made.id } })).publicId).toMatch(PUBLIC_ID);
   });
 
   it.each([
@@ -209,68 +244,406 @@ describe("createGame", () => {
     ["!!", "Pick a name with at least three letters or numbers."],
     ["ab", "Pick a name with at least three letters or numbers."],
   ])("refuses the name %j", async (name, message) => {
-    await expect(startGame({ name })).rejects.toMatchObject({ name: "GameError", code: "INVALID", message });
-  });
-
-  it.each([
-    ["", "A game needs one line about it."],
-    ["  ", "A game needs one line about it."],
-    ["y".repeat(101), "The one line can be up to 100 characters."],
-  ])("refuses the one line %j", async (oneLine, message) => {
-    await expect(startGame({ oneLine })).rejects.toMatchObject({ code: "INVALID", message });
-  });
-
-  it("takes a name of 60 characters and a line of 100", async () => {
-    await expect(
-      startGame({ name: `Sixty ${"z".repeat(54)}`, oneLine: "y".repeat(100) }),
-    ).resolves.toBeDefined();
+    await expect(service.startGame({ makerUserId: await createUser(db()), name })).rejects.toMatchObject({
+      name: "GameError",
+      code: "INVALID",
+      message,
+      field: "name",
+    });
   });
 
   it("gives two games with one name addresses of their own", async () => {
-    const first = await startGame({ name: "Cloud Nine" });
-    const second = await startGame({ name: "Cloud Nine" });
+    const first = await service.startGame({ makerUserId: await createUser(db()), name: "Cloud Nine" });
+    const second = await service.startGame({ makerUserId: await createUser(db()), name: "Cloud Nine" });
     expect(first.slug).toBe("cloud-nine");
     expect(second.slug).toBe("cloud-nine-2");
   });
 
+  it("takes a name of 60 characters", async () => {
+    await expect(
+      service.startGame({ makerUserId: await createUser(db()), name: `Sixty ${"z".repeat(54)}` }),
+    ).resolves.toBeDefined();
+  });
+
   it("cuts a 40-character address to 38 before it adds a number", async () => {
     const name = "b".repeat(40);
-    expect((await startGame({ name })).slug).toBe(name);
-    expect((await startGame({ name })).slug).toBe(`${"b".repeat(38)}-2`);
+    const maker = await createUser(db());
+    expect((await service.startGame({ makerUserId: maker, name })).slug).toBe(name);
+    expect((await service.startGame({ makerUserId: maker, name })).slug).toBe(`${"b".repeat(38)}-2`);
   });
 
   it("drops a hyphen the cut leaves at the end", async () => {
     const name = `${"c".repeat(37)} dd`;
-    expect((await startGame({ name })).slug).toBe(`${"c".repeat(37)}-dd`);
-    expect((await startGame({ name })).slug).toBe(`${"c".repeat(37)}-2`);
+    const maker = await createUser(db());
+    expect((await service.startGame({ makerUserId: maker, name })).slug).toBe(`${"c".repeat(37)}-dd`);
+    expect((await service.startGame({ makerUserId: maker, name })).slug).toBe(`${"c".repeat(37)}-2`);
   });
 
   it("stops at -9 and says the name is taken", async () => {
+    const maker = await createUser(db());
     const slugs: string[] = [];
-    for (let i = 0; i < 9; i += 1) slugs.push((await startGame({ name: "Popular Game" })).slug);
+    for (let i = 0; i < 9; i += 1) {
+      slugs.push((await service.startGame({ makerUserId: maker, name: "Popular Game" })).slug);
+    }
     expect(slugs).toEqual([
       "popular-game",
       ...[2, 3, 4, 5, 6, 7, 8, 9].map((n) => `popular-game-${String(n)}`),
     ]);
-    await expect(startGame({ name: "Popular Game" })).rejects.toMatchObject({
+    await expect(service.startGame({ makerUserId: maker, name: "Popular Game" })).rejects.toMatchObject({
       code: "INVALID",
       message: "That name is taken. Pick another.",
+      field: "name",
+    });
+  });
+});
+
+describe("saveAnswer", () => {
+  it("keeps each answer on the game, one at a time", async () => {
+    const { makerUserId, id } = await begin();
+
+    await service.saveAnswer(id, makerUserId, { question: "line", oneLine: "  Climb fifty floors.  " });
+    await service.saveAnswer(id, makerUserId, { question: "plays-on", playsOn: "computer_only" });
+    await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_12" });
+
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      oneLine: "Climb fifty floors.",
+      playsOn: "computer_only",
+      ageRating: "age_12",
     });
   });
 
-  // Review Focus 17: what a person typed is checked before it is kept or put in an address.
-  it.each([
-    ["a repository with a slash too many", { fullName: "acme/game/extra", branch: null, folder: "" }],
-    ["a repository that climbs", { fullName: "../x", branch: null, folder: "" }],
-    ["a branch with a space", { fullName: "acme/game", branch: "a b", folder: "" }],
-    ["a folder that starts with a slash", { fullName: "acme/game", branch: null, folder: "/web" }],
-    ["a folder that ends with a slash", { fullName: "acme/game", branch: null, folder: "web/" }],
-    ["a folder that climbs", { fullName: "acme/game", branch: null, folder: "a/../b" }],
-    ["a folder of 201 characters", { fullName: "acme/game", branch: null, folder: "f".repeat(201) }],
-  ])("refuses %s, and makes no game", async (_why, repo) => {
-    const before = await db().game.count();
-    await expect(startGame({ repo })).rejects.toMatchObject({ code: "INVALID" });
-    expect(await db().game.count()).toBe(before);
+  it("refuses a bad answer in that answer's words, and keeps nothing", async () => {
+    const { makerUserId, id } = await begin();
+
+    await expect(
+      service.saveAnswer(id, makerUserId, { question: "line", oneLine: "  " }),
+    ).rejects.toMatchObject({
+      code: "INVALID",
+      message: "A game needs one line about it.",
+      field: "oneLine",
+    });
+    await expect(
+      service.saveAnswer(id, makerUserId, {
+        question: "files",
+        repo: { fullName: "acme/game", branch: "a b", folder: "" },
+      }),
+    ).rejects.toMatchObject({ code: "INVALID", message: "That doesn't look like a branch name." });
+    await expect(
+      service.saveAnswer(id, makerUserId, { question: "marks", contentMarks: [] }),
+    ).rejects.toMatchObject({ code: "INVALID", message: "Choose at least one, or None of these." });
+
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      oneLine: null,
+      repoFullName: null,
+    });
+  });
+
+  // The route checks the list as it was typed; the service checks it again, so a later caller cannot skip the check.
+  it("refuses websites that are not websites, and keeps nothing", async () => {
+    const { makerUserId, id } = await begin();
+
+    await expect(
+      service.saveAnswer(id, makerUserId, { question: "websites", connectHosts: ["not a website"] }),
+    ).rejects.toMatchObject({
+      code: "INVALID",
+      message: "Write each website like api.example.com, one per line. Five at most.",
+    });
+    await expect(
+      service.saveAnswer(id, makerUserId, {
+        question: "websites",
+        connectHosts: [
+          "a.example.com",
+          "b.example.com",
+          "c.example.com",
+          "d.example.com",
+          "e.example.com",
+          "f.example.com",
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "INVALID" });
+
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).connectHosts).toEqual([]);
+  });
+
+  it("keeps a list of websites in lower case, without blank lines", async () => {
+    const { makerUserId, id } = await begin();
+
+    await service.saveAnswer(id, makerUserId, {
+      question: "websites",
+      connectHosts: ["API.example.com", " ", "cdn.example.com"],
+    });
+
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).connectHosts).toEqual([
+      "api.example.com",
+      "cdn.example.com",
+    ]);
+  });
+
+  // The websites are part of a copy: staff review the list with the files, and a copy is never changed once it is
+  // made (GamePull is add-only, so the database refuses to rewrite one). A new list is therefore a new copy.
+  it("copies the game again when the websites are saved, so the newest copy carries the list", async () => {
+    const { makerUserId, id } = await begin();
+    await serviceFor(GOOD_FILES).saveAnswer(id, makerUserId, FILES_ANSWER);
+
+    await serviceFor(GOOD_FILES).saveAnswer(id, makerUserId, {
+      question: "websites",
+      connectHosts: ["New.example.com"],
+    });
+
+    const copies = await db().gamePull.findMany({ where: { gameId: id }, orderBy: { pulledAt: "asc" } });
+    expect(copies.map((copy) => copy.connectHosts)).toEqual([[], ["new.example.com"]]);
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).connectHosts).toEqual(["new.example.com"]);
+  });
+
+  // Review Focus 2: someone else's game is simply not there, at every answer.
+  it("says another maker's game is not there, for every answer", async () => {
+    const { id } = await begin();
+    const stranger = await createUser(db());
+    const answers: Answer[] = [
+      { question: "name", name: "Another" },
+      { question: "line", oneLine: "A line." },
+      FILES_ANSWER,
+      { question: "plays-on", playsOn: "computer_only" },
+      { question: "age", ageRating: "age_12" },
+      { question: "marks", contentMarks: ["gore"] },
+      { question: "websites", connectHosts: [] },
+    ];
+
+    for (const answer of answers) {
+      await expect(service.saveAnswer(id, stranger, answer), answer.question).rejects.toMatchObject({
+        code: "NOT_FOUND",
+        message: "We can't find that game.",
+      });
+    }
+  });
+
+  // Review Focus 3: before a game was ever live, its address follows its name.
+  it("moves a draft's address to its new name, and a name already taken gets a number", async () => {
+    const { makerUserId, id, slug } = await begin("Tower");
+    expect(slug).toBe("tower");
+
+    expect(await service.saveAnswer(id, makerUserId, { question: "name", name: "Summit" })).toEqual({
+      slug: "summit",
+    });
+    expect(await db().game.findUnique({ where: { slug: "tower" } })).toBeNull();
+
+    await begin("Summit");
+    expect(await service.saveAnswer(id, makerUserId, { question: "name", name: "Summit" })).toEqual({
+      slug: "summit",
+    });
+  });
+
+  it("keeps a game's address under a new name once staff have accepted it", async () => {
+    const { makerUserId, id } = await begin("Skyline");
+    await db().game.update({ where: { id }, data: { ageRating: "age_12" } });
+    await db().gameReview.create({
+      data: {
+        gameId: id,
+        pullId: await addPull(id),
+        staffUserId: await createUser(db()),
+        decision: "accepted",
+        decidedAt: new Date(),
+      },
+    });
+
+    const kept = await service.saveAnswer(id, makerUserId, { question: "name", name: "Skyline Two" });
+
+    expect(kept.slug).toBe("skyline");
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).name).toBe("Skyline Two");
+  });
+
+  it("copies the game for the files answer, and keeps what was chosen", async () => {
+    const { makerUserId, id } = await begin();
+    const pulling = serviceFor(GOOD_FILES);
+
+    await pulling.saveAnswer(id, makerUserId, FILES_ANSWER);
+
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      repoFullName: "acme/game",
+      pullProblem: null,
+    });
+    expect(await db().gamePull.count({ where: { gameId: id } })).toBe(1);
+  });
+
+  // The choice stays, so the screen that asked can show it beside the refusal.
+  it("refuses files that cannot start, keeping the repository that was chosen", async () => {
+    const { makerUserId, id } = await begin();
+    const refusing = serviceFor(NO_INDEX);
+
+    await expect(refusing.saveAnswer(id, makerUserId, FILES_ANSWER)).rejects.toMatchObject({
+      code: "FILES_REFUSED",
+    });
+
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      repoFullName: "acme/game",
+      pullProblem: expect.stringContaining("index.html") as string,
+    });
+    expect(NO_INDEX_WORDS).toContain("index.html");
+  });
+
+  // Review Focus 5: a 12+ game has no marks, and the counter goes back to seven.
+  it("clears an 18+ game's marks when it is made younger", async () => {
+    const { makerUserId, id } = await begin();
+    await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_18" });
+    await service.saveAnswer(id, makerUserId, { question: "marks", contentMarks: ["gore"] });
+
+    await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_12" });
+
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).contentMarks).toEqual([]);
+  });
+
+  it("refuses marks on a game that is not 18+", async () => {
+    const { makerUserId, id } = await begin();
+    await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_12" });
+
+    await expect(
+      service.saveAnswer(id, makerUserId, { question: "marks", contentMarks: ["gore"] }),
+    ).rejects.toMatchObject({ code: "NOT_READY" });
+  });
+
+  // The database holds an 18+ game that is past draft to having its marks, so the rating and the marks are one write:
+  // a rating alone would be refused by the database, and the maker would be told nothing.
+  it.each(["waiting", "sent_back"])(
+    "does not keep 18+ on a %s game without its marks, and the rating it had stays",
+    async (state) => {
+      const { makerUserId, id } = await begin();
+      await setState(id, state);
+
+      await expect(
+        service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_18" }),
+      ).rejects.toMatchObject({
+        name: "GameError",
+        code: "INVALID",
+        message: "Choose at least one, or None of these.",
+      });
+
+      expect((await db().game.findUniqueOrThrow({ where: { id } })).ageRating).toBe("age_12");
+    },
+  );
+
+  it.each(["waiting", "sent_back"])("keeps 18+ and its marks together on a %s game", async (state) => {
+    const { makerUserId, id } = await begin();
+    await setState(id, state);
+
+    // The age answer takes its marks beside it.
+    await service.saveAnswer(id, makerUserId, {
+      question: "age",
+      ageRating: "age_18",
+      contentMarks: ["gore"],
+    });
+
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      ageRating: "age_18",
+      contentMarks: ["gore"],
+    });
+  });
+
+  it("still takes 18+ on a draft without its marks, which the marks question asks for next", async () => {
+    const { makerUserId, id } = await begin();
+
+    await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_18" });
+
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).ageRating).toBe("age_18");
+  });
+
+  it("keeps only None of these when it is picked beside another mark", async () => {
+    const { makerUserId, id } = await begin();
+    await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_18" });
+
+    await service.saveAnswer(id, makerUserId, { question: "marks", contentMarks: ["gore", "none"] });
+
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).contentMarks).toEqual(["none"]);
+  });
+
+  it("lets a live game change its name, its line and where it plays, and nothing else", async () => {
+    const { makerUserId, id } = await begin();
+    const pulling = serviceFor(GOOD_FILES);
+    await pulling.saveAnswer(id, makerUserId, FILES_ANSWER);
+    await db().game.update({
+      where: { id },
+      data: { ageRating: "age_12", oneLine: "x", playsOn: "computer_only" },
+    });
+    await makeLive(id, (await db().gamePull.findFirstOrThrow({ where: { gameId: id } })).id);
+
+    await service.saveAnswer(id, makerUserId, { question: "line", oneLine: "A better line." });
+    await expect(
+      service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_16" }),
+    ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
+  });
+
+  it("takes every answer of a draft, a waiting game and a sent-back game alike", async () => {
+    const { makerUserId, id } = await begin();
+    for (const state of ["waiting", "sent_back"] as const) {
+      await setState(id, state);
+      await service.saveAnswer(id, makerUserId, { question: "plays-on", playsOn: "computer_only" });
+    }
+  });
+
+  it("refuses a game that is taken off or down", async () => {
+    const { makerUserId, id } = await begin();
+    await setState(id, "taken_off");
+
+    await expect(
+      service.saveAnswer(id, makerUserId, { question: "line", oneLine: "x" }),
+    ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
+  });
+});
+
+describe("throwAway", () => {
+  /** A sent-back game with files and two clips in the bucket. */
+  async function sentBackGame() {
+    const { makerUserId, id } = await begin("Doomed Game");
+    const pulling = serviceFor(GOOD_FILES);
+    await pulling.saveAnswer(id, makerUserId, FILES_ANSWER);
+    await service.saveClip(id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
+    await service.saveClip(id, "wide", { contentType: "video/mp4", bytes: mp4Bytes() });
+    await setState(id, "sent_back");
+    const game = await db().game.findUniqueOrThrow({ where: { id } });
+    return { makerUserId, id, publicId: game.publicId };
+  }
+
+  // Review Focus 8.
+  it("deletes the files and both videos, drops the game from every list and frees its name", async () => {
+    const { makerUserId, id, publicId } = await sentBackGame();
+    expect(files.keys().some((key) => key.includes(publicId))).toBe(true);
+
+    expect(await service.throwAway(id, makerUserId)).toEqual({ name: "Doomed Game" });
+
+    expect(files.keys().filter((key) => key.includes(publicId))).toEqual([]);
+    expect(await db().gameClip.count({ where: { gameId: id } })).toBe(0);
+    expect((await service.gamesOf(makerUserId)).map((row) => row.name)).not.toContain("Doomed Game");
+    expect(await service.gameForMaker("doomed-game", makerUserId)).toBeNull();
+    expect((await service.startGame({ makerUserId, name: "Doomed Game" })).slug).toBe("doomed-game");
+  });
+
+  it("throws a draft away too", async () => {
+    const { makerUserId, id } = await begin("Short Draft");
+    await expect(service.throwAway(id, makerUserId)).resolves.toEqual({ name: "Short Draft" });
+  });
+
+  it("refuses a waiting game and a live game, and changes nothing", async () => {
+    for (const state of ["waiting", "live"]) {
+      const { makerUserId, id } = await begin();
+      await db().$executeRawUnsafe(`UPDATE "Game" SET "state" = 'draft' WHERE "id" = $1`, id);
+      const pullId = await addPull(id);
+      await db().game.update({
+        where: { id },
+        data: { ageRating: "age_12", oneLine: "x", playsOn: "computer_only", repoFullName: "acme/game" },
+      });
+      if (state === "live") await makeLive(id, pullId);
+      else await db().game.update({ where: { id }, data: { state: "waiting", pendingPullId: pullId } });
+
+      await expect(service.throwAway(id, makerUserId), state).rejects.toMatchObject({
+        code: "NOT_READY",
+        message: "This game can't be thrown away.",
+      });
+      expect((await db().game.findUniqueOrThrow({ where: { id } })).state).toBe(state);
+    }
+  });
+
+  it("says another maker's game is not there", async () => {
+    const { id } = await begin();
+    await expect(service.throwAway(id, await createUser(db()))).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
 
@@ -295,54 +668,10 @@ async function addBothClips(gameId: string): Promise<void> {
   await service.saveClip(gameId, "wide", { contentType: "video/mp4", bytes: mp4Bytes() });
 }
 
-const NOT_READY = "A game needs its files, an upright clip and a wide clip before it can go live.";
-
-describe("goLive", () => {
-  it("refuses a game with no wide clip, and it stays a draft", async () => {
-    const game = await newGame();
-    const pullId = await addPull(game.id);
-    await service.saveClip(game.id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
-
-    await expect(service.goLive(game.id, pullId)).rejects.toMatchObject({
-      code: "NOT_READY",
-      message: NOT_READY,
-    });
-    expect(await db().game.findUniqueOrThrow({ where: { id: game.id } })).toMatchObject({
-      state: "draft",
-      livePullId: null,
-    });
-  });
-
-  it("refuses a pull that belongs to another game", async () => {
-    const game = await newGame();
-    await addBothClips(game.id);
-    const otherPull = await addPull((await newGame()).id);
-
-    await expect(service.goLive(game.id, otherPull)).rejects.toMatchObject({
-      code: "NOT_READY",
-      message: NOT_READY,
-    });
-    await expect(service.goLive(game.id, "no-such-pull")).rejects.toMatchObject({ code: "NOT_READY" });
-  });
-
-  it("makes the game live on that pull, and forgets why it was sent back", async () => {
-    const game = await newGame();
-    await addBothClips(game.id);
-    const pullId = await addPull(game.id);
-    await db().game.update({
-      where: { id: game.id },
-      data: { state: "sent_back", stateReason: "Fix the sound." },
-    });
-
-    await service.goLive(game.id, pullId);
-
-    expect(await db().game.findUniqueOrThrow({ where: { id: game.id } })).toMatchObject({
-      state: "live",
-      livePullId: pullId,
-      stateReason: null,
-    });
-  });
-});
+/** Puts a game live on a pull, as an accepted review leaves it (review.pg.test.ts proves the review itself). */
+async function makeLive(gameId: string, pullId: string): Promise<void> {
+  await db().game.update({ where: { id: gameId }, data: { state: "live", livePullId: pullId } });
+}
 
 describe("liveGameBySlug", () => {
   it("is null for a draft and for an address that is nobody's", async () => {
@@ -355,7 +684,7 @@ describe("liveGameBySlug", () => {
     const game = await newGame();
     await addBothClips(game.id);
     const pullId = await addPull(game.id, ["api.example.com"]);
-    await service.goLive(game.id, pullId);
+    await makeLive(game.id, pullId);
     const clips = await db().gameClip.findMany({ where: { gameId: game.id } });
     const keyOf = (shape: string) => clips.find((clip) => clip.shape === shape)?.key;
 
@@ -366,6 +695,8 @@ describe("liveGameBySlug", () => {
       name: "A game",
       oneLine: "A game about a thing.",
       playsOn: "phone_and_computer",
+      ageRating: "age_12",
+      contentMarks: [],
       freeToPlay: false,
       makerUserId: game.makerUserId,
       livePullId: pullId,

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { newPublicId } from "../../../src/features/games/ids.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 
@@ -38,6 +39,8 @@ interface GameValues {
   repoFolder?: string;
   state?: "draft" | "live";
   livePullId?: string | null;
+  /** Null makes a game that was never asked who it is for. The default is a game that was. */
+  ageRating?: "age_12" | null;
 }
 
 /** One game row, by plain SQL, so a test can offer the database values the application would never make. */
@@ -49,14 +52,15 @@ async function insertGame(makerUserId: string, values: GameValues = {}): Promise
   const repoFolder = values.repoFolder ?? "";
   const state = values.state ?? "draft";
   const livePullId = values.livePullId ?? null;
+  const ageRating = values.ageRating === undefined ? "age_12" : values.ageRating;
   await db().$executeRaw`
     INSERT INTO "Game"
       ("id", "publicId", "slug", "makerUserId", "name", "oneLine", "playsOn", "state", "repoFullName",
-       "repoFolder", "livePullId", "updatedAt")
+       "repoFolder", "livePullId", "ageRating", "updatedAt")
     VALUES
       (${id}, ${publicId}, ${slug}, ${makerUserId}, 'A game', 'A game about a thing.',
        'phone_and_computer'::"GamePlaysOn", ${state}::"GameState", 'acme/game', ${repoFolder}, ${livePullId},
-       now())`;
+       ${ageRating}::"AgeRating", now())`;
   return id;
 }
 
@@ -83,6 +87,19 @@ async function insertClip(gameId: string, shape: "upright" | "wide", key: string
   await db().$executeRaw`
     INSERT INTO "GameClip" ("id", "gameId", "shape", "key", "contentType", "bytes", "updatedAt")
     VALUES (${randomUUID()}, ${gameId}, ${shape}::"ClipShape", ${key}, 'video/mp4', 1000, now())`;
+}
+
+/**
+ * Gives a game a rating and marks, by plain SQL. The values are the test's own fixed words, never typed by a
+ * person, so they are written into the statement: Postgres will not take an array of enum labels as a parameter.
+ */
+async function setRatingAndMarks(gameId: string, ageRating: string | null, marks: string[]): Promise<void> {
+  const rating = ageRating === null ? "NULL" : `'${ageRating}'::"AgeRating"`;
+  const list = marks.map((mark) => `'${mark}'`).join(", ");
+  await db().$executeRawUnsafe(
+    `UPDATE "Game" SET "ageRating" = ${rating}, "contentMarks" = ARRAY[${list}]::"ContentMark"[] WHERE "id" = $1`,
+    gameId,
+  );
 }
 
 describe("the games tables", () => {
@@ -123,6 +140,38 @@ describe("the games tables", () => {
       await expect(insertGame(makerId, { state: "live", livePullId: null })).rejects.toThrow(
         /Game_live_check/,
       );
+    });
+
+    it("is new with no rating, no marks and nothing to fix", async () => {
+      const makerId = await newMaker();
+      const id = await insertGame(makerId, { publicId: "jjjjjjjjjj", ageRating: null });
+      const game = await db().game.findUniqueOrThrow({ where: { id } });
+      expect(game.ageRating).toBeNull();
+      expect(game.contentMarks).toEqual([]);
+      expect(game.toFix).toEqual([]);
+    });
+
+    it("is refused marks unless it is 18+", async () => {
+      const makerId = await newMaker();
+      const id = await insertGame(makerId, { publicId: "kkkkkkkkkk" });
+      for (const rating of ["age_3", "age_12", "age_16", null]) {
+        await expect(setRatingAndMarks(id, rating, ["gore"])).rejects.toThrow(/Game_marks_check/);
+      }
+    });
+
+    it("is refused None of these beside another mark", async () => {
+      const makerId = await newMaker();
+      const id = await insertGame(makerId, { publicId: "llllllllll" });
+      await expect(setRatingAndMarks(id, "age_18", ["gore", "none"])).rejects.toThrow(/Game_marks_check/);
+    });
+
+    it("keeps an 18+ game's marks, and None of these on its own", async () => {
+      const makerId = await newMaker();
+      const id = await insertGame(makerId, { publicId: "mmmmmmmmmm" });
+      await setRatingAndMarks(id, "age_18", ["gore", "drugs"]);
+      await setRatingAndMarks(id, "age_18", ["none"]);
+      const game = await db().game.findUniqueOrThrow({ where: { id } });
+      expect(game.contentMarks).toEqual(["none"]);
     });
 
     it("keeps its public id and its address to itself", async () => {
@@ -186,5 +235,113 @@ describe("the games tables", () => {
         insertClip(gameId, "upright", "clips/iiiiiiiiii/upright-0000000000000003.mp4"),
       ).rejects.toThrow(/GameClip_gameId_shape_key/);
     });
+  });
+});
+
+/** A game with nothing answered but its name: no line, no place to play, no repository, no rating. */
+async function insertBareGame(makerUserId: string, publicId: string, state = "draft"): Promise<string> {
+  counter += 1;
+  const id = randomUUID();
+  await db().$executeRawUnsafe(
+    `INSERT INTO "Game" ("id", "publicId", "slug", "makerUserId", "name", "state", "updatedAt")
+     VALUES ($1, $2, $3, $4, 'A game', '${state}'::"GameState", now())`,
+    id,
+    publicId,
+    `bare-${String(counter)}`,
+    makerUserId,
+  );
+  return id;
+}
+
+describe("a game that is answered one question at a time", () => {
+  it("is kept as a draft with no line, no place to play and no repository", async () => {
+    const makerId = await newMaker();
+    const id = await insertBareGame(makerId, "nnnnnnnnnn");
+    const game = await db().game.findUniqueOrThrow({ where: { id } });
+    expect(game).toMatchObject({ oneLine: null, playsOn: null, repoFullName: null, state: "draft" });
+  });
+
+  it("is refused as waiting while an answer is missing", async () => {
+    const makerId = await newMaker();
+    const id = await insertBareGame(makerId, "pppppppppp");
+    await expect(db().$executeRaw`UPDATE "Game" SET "state" = 'waiting' WHERE "id" = ${id}`).rejects.toThrow(
+      /Game_answered_check/,
+    );
+  });
+
+  it("is refused as waiting when it is 18+ and has no marks, and kept once it has them", async () => {
+    const makerId = await newMaker();
+    const id = await insertGame(makerId, { publicId: "qqqqqqqqqq" });
+    await setRatingAndMarks(id, "age_18", []);
+    await expect(db().$executeRaw`UPDATE "Game" SET "state" = 'waiting' WHERE "id" = ${id}`).rejects.toThrow(
+      /Game_answered_check/,
+    );
+
+    await setRatingAndMarks(id, "age_18", ["none"]);
+    await db().$executeRaw`UPDATE "Game" SET "state" = 'waiting' WHERE "id" = ${id}`;
+  });
+
+  it("can be thrown away", async () => {
+    const makerId = await newMaker();
+    const id = await insertBareGame(makerId, "rrrrrrrrrr");
+    await db().$executeRaw`UPDATE "Game" SET "state" = 'thrown_away' WHERE "id" = ${id}`;
+  });
+});
+
+describe("the parts of a review", () => {
+  /** A sent-back review of a game, by plain SQL, and the id to hang its parts on. */
+  async function insertReview(): Promise<string> {
+    const makerId = await newMaker();
+    const gameId = await insertGame(makerId, { publicId: newPublicId() });
+    const pullId = await insertPull({ gameId });
+    const reviewId = randomUUID();
+    await db().$executeRaw`
+      INSERT INTO "GameReview" ("id", "gameId", "pullId", "staffUserId", "decision", "decidedAt")
+      VALUES (${reviewId}, ${gameId}, ${pullId}, ${makerId}, 'sent_back'::"ReviewDecision", now())`;
+    return reviewId;
+  }
+
+  async function insertPart(reviewId: string, part: string, reason: string, note: string | null) {
+    await db().$executeRawUnsafe(
+      `INSERT INTO "GameReviewPart" ("id", "reviewId", "part", "reason", "note")
+       VALUES ($1, $2, '${part}'::"GamePart", $3, $4)`,
+      randomUUID(),
+      reviewId,
+      reason,
+      note,
+    );
+  }
+
+  it("is added and never changed or removed", async () => {
+    const reviewId = await insertReview();
+    await insertPart(reviewId, "name", "rude", null);
+
+    await expect(db().$executeRaw`UPDATE "GameReviewPart" SET "reason" = 'x'`).rejects.toThrow(
+      /GameReviewPart is append-only/,
+    );
+    await expect(db().$executeRaw`DELETE FROM "GameReviewPart"`).rejects.toThrow(
+      /GameReviewPart is append-only/,
+    );
+  });
+
+  it("holds a part once for a review", async () => {
+    const reviewId = await insertReview();
+    await insertPart(reviewId, "name", "rude", null);
+
+    await expect(insertPart(reviewId, "name", "not_this_game", null)).rejects.toThrow(
+      /GameReviewPart_reviewId_part_key/,
+    );
+  });
+
+  it("needs staff's own line for Something else, and keeps a line to 500 characters", async () => {
+    const reviewId = await insertReview();
+
+    await expect(insertPart(reviewId, "one_line", "something_else", null)).rejects.toThrow(
+      /GameReviewPart_note_check/,
+    );
+    await expect(insertPart(reviewId, "files", "breaks", "x".repeat(501))).rejects.toThrow(
+      /GameReviewPart_note_check/,
+    );
+    await insertPart(reviewId, "one_line", "something_else", "Say what the game is.");
   });
 });

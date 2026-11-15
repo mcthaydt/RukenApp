@@ -62,7 +62,7 @@ test("a paying member's delete screen says the no-refund line first, and offers 
 }, testInfo) => {
   await payAsNewMember(page);
   await page.goto("/me/delete");
-  await expectOneCard(page);
+  await expectOneCard(page, { red: ["Delete my account"] });
   const first = await boxOf(
     page.getByText("We'll sign you out everywhere now, and delete your account in 14 days."),
   );

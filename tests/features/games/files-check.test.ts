@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   checkGameFiles,
   connectHostsFrom,
+  isMissingIndexHtml,
   MAX_FILE_BYTES,
   MAX_GAME_BYTES,
   MAX_GAME_FILES,
@@ -29,7 +30,7 @@ describe("checkGameFiles", () => {
   it("refuses a folder with no files", () => {
     expect(checkGameFiles([], null)).toEqual({
       ok: false,
-      problem: "We couldn't find that folder in your repository. Check the folder's name and pull again.",
+      problem: "We couldn't find that folder on GitHub. Check the folder's name and try again.",
     });
   });
 
@@ -56,7 +57,7 @@ describe("checkGameFiles", () => {
     expect(checkGameFiles(files, INDEX)).toEqual({
       ok: false,
       problem:
-        "sound/theme.ogg is kept in Git LFS, and Ruken can't pull those yet. Add the real file to the repository.",
+        "sound/theme.ogg is stored with Git LFS, which Ruken can't copy yet. Upload the file itself to GitHub instead.",
     });
   });
 
@@ -78,7 +79,7 @@ describe("checkGameFiles", () => {
     (path) => {
       expect(checkGameFiles([...tiny, file(path)], INDEX)).toEqual({
         ok: false,
-        problem: `One of your files has a name Ruken can't serve: ${path}. Rename it and pull again.`,
+        problem: `One of your files has a name Ruken can't use: ${path}. Rename it and try again.`,
       });
     },
   );
@@ -125,7 +126,7 @@ describe("checkGameFiles", () => {
     expect(checkGameFiles(tiny, '<script src="/assets/main.js"></script>')).toEqual({
       ok: false,
       problem:
-        "index.html loads /assets/main.js from the top of the site. On Ruken a game lives in a folder, so write it without the first slash: assets/main.js.",
+        "index.html asks for /assets/main.js, with a slash at the start. Take that slash off so it reads assets/main.js. On Ruken your game sits in its own folder.",
     });
   });
 
@@ -134,13 +135,13 @@ describe("checkGameFiles", () => {
     expect(checkGameFiles(tiny, html)).toEqual({
       ok: false,
       problem:
-        "index.html loads /css/a.css from the top of the site. On Ruken a game lives in a folder, so write it without the first slash: css/a.css.",
+        "index.html asks for /css/a.css, with a slash at the start. Take that slash off so it reads css/a.css. On Ruken your game sits in its own folder.",
     });
   });
 });
 
 describe("connectHostsFrom", () => {
-  const PROBLEM = "Write each server as a name like api.example.com, one per line, five at most.";
+  const PROBLEM = "Write each website like api.example.com, one per line. Five at most.";
 
   it("lower-cases, drops blank lines and keeps a port", () => {
     expect(connectHostsFrom("API.Example.com\n\nrt.example.com:8443")).toEqual({
@@ -183,5 +184,16 @@ describe("connectHostsFrom", () => {
 
   it("refuses a repeated name, whatever its letter case", () => {
     expect(connectHostsFrom("a.example.com\nA.example.com")).toEqual({ problem: PROBLEM });
+  });
+});
+
+describe("isMissingIndexHtml", () => {
+  it("is true for the refusal about no index.html, and for no other refusal", () => {
+    const missing = checkGameFiles([file("main.js")], null);
+    const empty = checkGameFiles([], null);
+    expect(missing.ok).toBe(false);
+    expect(empty.ok).toBe(false);
+    expect(!missing.ok && isMissingIndexHtml(missing.problem)).toBe(true);
+    expect(!empty.ok && isMissingIndexHtml(empty.problem)).toBe(false);
   });
 });
