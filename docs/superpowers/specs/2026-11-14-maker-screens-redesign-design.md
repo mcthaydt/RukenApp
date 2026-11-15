@@ -668,3 +668,4 @@ A visual pass and a full task walk ran on version 16. Board version 17 fixes wha
 - **Players.** The page opens at the top on a computer and a sideways iPad, with the heading held in place. The first graph leads with one sentence ("Most people who leave go in the first 2 minutes. 38% leave at 1½ minutes."). Graph labels are at least 15px on a phone.
 - **Ages.** 7+ is "Cartoon fighting, or a little scary."; 12+ is "Real-looking fighting, or scary bits."
 - **Earner rankings** read "Top 12% for earnings this month".
+- **Earner rankings, only for the top half.** Owner's card answer: games in the top half see their rank ("Top 12% for earnings this month"); every other game sees "Not in the top half this month", with no number. This replaces the rank for every game in 16.2.
