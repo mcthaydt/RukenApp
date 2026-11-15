@@ -25,7 +25,7 @@
   <h2>On a phone or tablet</h2>
   <h3>iPhone or iPad</h3>
   <ol>
-    <li>Open Settings, then Control Centre. Add Screen Recording.</li>
+    <li>Open Settings, then Control Center. Add Screen Recording.</li>
     <li>
       Swipe down from the top right corner of the screen. On a phone with a Home button, swipe up from the
       bottom instead.
@@ -54,6 +54,6 @@
   <h3>Mac</h3>
   <p>Macs save a .mov file, which Ruken can't take yet. The easy way is to record on your phone instead.</p>
 
-  <p>Then come back to Ruken and choose Choose video.</p>
+  <p>Then come back to Ruken and press Choose video.</p>
   <p><a href={data.back.href}>{data.back.words}</a></p>
 </main>

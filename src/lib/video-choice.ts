@@ -32,8 +32,8 @@ export function videoChoiceProblem(file: ChosenFile): string | null {
   if (!VIDEO_TYPES.includes(file.type)) {
     const ending = endingOf(file.name);
     return ending === null
-      ? "That file isn't an MP4 or WebM video. Export it as MP4 and choose it again."
-      : `That's a ${ending} file. Ruken takes MP4 or WebM videos. Export it as MP4 and choose it again.`;
+      ? "That file isn't an MP4 or WebM video. Save it as MP4 and choose it again."
+      : `That's a ${ending} file. Ruken takes MP4 or WebM videos. Save it as MP4 and choose it again.`;
   }
   if (file.size > VIDEO_MAX_BYTES) {
     return `That video is ${wholeMegabytes(file.size)}. Videos can be up to ${wholeMegabytes(VIDEO_MAX_BYTES)}. Make it shorter or smaller, then choose it again.`;

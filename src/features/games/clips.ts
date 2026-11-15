@@ -63,12 +63,12 @@ function startsWith(bytes: Uint8Array, expected: readonly number[], offset: numb
  */
 export function clipProblem(upload: { contentType: string; bytes: Uint8Array }): string | null {
   const { contentType, bytes } = upload;
-  if (!isClipContentType(contentType)) return "Videos are MP4 or WebM.";
+  if (!isClipContentType(contentType)) return "Ruken takes MP4 or WebM videos.";
   if (bytes.length > CLIP_MAX_BYTES) {
     return `That video is ${wholeMegabytes(bytes.length)}. Videos can be up to ${wholeMegabytes(CLIP_MAX_BYTES)}. Make it shorter or smaller, then choose it again.`;
   }
   if (!looksLikeVideo(bytes, contentType)) {
-    return "That file doesn't look like a video. Export it as MP4 or WebM and try again.";
+    return "That file doesn't look like a video. Save it as MP4 or WebM and try again.";
   }
   return null;
 }

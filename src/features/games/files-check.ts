@@ -77,7 +77,7 @@ export function checkGameFiles(
   const refuse = (problem: string): { ok: false; problem: string } => ({ ok: false, problem });
 
   if (files.length === 0) {
-    return refuse("We couldn't find that folder in your repository. Check the folder's name and pull again.");
+    return refuse("We couldn't find that folder on GitHub. Check the folder's name and try again.");
   }
   if (indexHtml === null) {
     return refuse(NO_INDEX_HTML);
@@ -91,7 +91,7 @@ export function checkGameFiles(
   const lfs = files.find((entry) => entry.kind === "lfs");
   if (lfs !== undefined) {
     return refuse(
-      `${lfs.path} is kept in Git LFS, and Ruken can't pull those yet. Add the real file to the repository.`,
+      `${lfs.path} is stored with Git LFS, which Ruken can't copy yet. Upload the file itself to GitHub instead.`,
     );
   }
   // The gate decodes a request's path the same way, so a name it could not match is refused here, not found
@@ -101,7 +101,7 @@ export function checkGameFiles(
   );
   if (unservable !== undefined) {
     return refuse(
-      `One of your files has a name Ruken can't serve: ${unservable.path}. Rename it and pull again.`,
+      `One of your files has a name Ruken can't use: ${unservable.path}. Rename it and try again.`,
     );
   }
   if (files.length > MAX_GAME_FILES) {
@@ -124,7 +124,7 @@ export function checkGameFiles(
   const topOfSite = TOP_OF_SITE_ADDRESS.exec(indexHtml)?.[1];
   if (topOfSite !== undefined) {
     return refuse(
-      `index.html loads ${topOfSite} from the top of the site. On Ruken a game lives in a folder, so write it without the first slash: ${topOfSite.slice(1)}.`,
+      `index.html asks for ${topOfSite}, with a slash at the start. Take that slash off so it reads ${topOfSite.slice(1)}. On Ruken your game sits in its own folder.`,
     );
   }
   return { ok: true, fileCount: files.length, totalBytes };

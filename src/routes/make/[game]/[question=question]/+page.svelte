@@ -48,7 +48,7 @@
 
   const WEBSITES_HINT = "One per line, like api.example.com. Leave this empty if your game runs on its own.";
   const NAME_HINT = "The name players see. Like: Floor Fifty.";
-  const ADDRESS_STAYS = " Its address on Ruken stays the same, so links you've shared keep working.";
+  const ADDRESS_STAYS = " Its link on Ruken stays the same, so links you've shared keep working.";
 </script>
 
 {#key data.question}

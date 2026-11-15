@@ -170,7 +170,7 @@
           aria-invalid={problems?.folder === undefined ? undefined : "true"}
         />
       </label>
-      <p class="note" id="folder-hint">Leave empty if index.html is at the top.</p>
+      <p class="note" id="folder-hint">Leave empty if index.html isn't inside a folder.</p>
       {#if problems?.folder !== undefined}
         <p class="problem" id="folder-problem" role="alert">{problems.folder}</p>
       {/if}
@@ -187,10 +187,10 @@
   <QuestionScreen heading="Where are your game's files?" {counter} {back} {throwAway}>
     {@render connectionFailedLine()}
     <div class="sheet">
-      <p>Ruken can't see any of your repositories yet.</p>
+      <p>Ruken can't see any of your games on GitHub yet.</p>
     </div>
     {#snippet forward()}
-      {@render connectButton("Choose repositories on GitHub")}
+      {@render connectButton("Choose your games on GitHub")}
     {/snippet}
   </QuestionScreen>
 {:else}

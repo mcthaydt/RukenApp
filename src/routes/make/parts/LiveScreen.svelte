@@ -118,12 +118,12 @@
         </button>
         <p class="note">
           {#if send === "again"}
-            Sends your update for review again. Your game stays live meanwhile.
+            Sends your update for review again. Players can still play it while you wait.
           {:else if sending}
             Copying your game can take a minute. Keep this page open.
           {:else}
-            Copies the newest version of your game from GitHub and sends it for review. Your game stays live
-            meanwhile.
+            Copies the newest version of your game from GitHub and sends it for review. Players can still play
+            it while you wait.
           {/if}
         </p>
       </form>

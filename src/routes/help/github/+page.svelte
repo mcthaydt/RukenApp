@@ -19,7 +19,9 @@
   <p>GitHub is a free website that keeps your game's files. Ruken copies your game from there.</p>
   <ol>
     <li>Make a free account at github.com.</li>
-    <li>Make a new repository. Give it your game's name.</li>
+    <li>
+      Make a new repository. That's GitHub's word for a place that keeps one game. Give it your game's name.
+    </li>
     <li>
       Upload your game's files: everything in the folder that has index.html in it. GitHub takes up to 100
       files at a time. If you have more, upload them in a few goes.

@@ -26,8 +26,8 @@ export interface GitHubOptions {
 }
 
 /** What a person is told when Ruken cannot reach their repository, whatever the reason. */
-export const NOT_VISIBLE = "Ruken can't see that repository. Choose it on GitHub, then try again.";
-const NO_BRANCH = "We couldn't find that branch in your repository.";
+export const NOT_VISIBLE = "Ruken can't see that game on GitHub. Choose it on GitHub, then try again.";
+const NO_BRANCH = "We couldn't find that branch on GitHub.";
 const NOT_A_KEY = "GITHUB_APP_PRIVATE_KEY is not a private key in PEM form.";
 
 // ---- The private key -------------------------------------------------------------------------------------------
@@ -124,11 +124,11 @@ const REPO = /^[A-Za-z0-9_.-]{1,39}\/[A-Za-z0-9_.-]{1,100}$/;
 /** Throws unless `repo` is an `owner/name` that is safe to put in a GitHub address. */
 export function checkRepo(repo: string): void {
   // The form lists the maker's repositories and starts on none, so an empty one means "not chosen yet".
-  if (repo === "") throw new GameError("INVALID", "Choose the repository your game is in.");
+  if (repo === "") throw new GameError("INVALID", "Pick your game from the list.");
   const parts = repo.split("/");
   // `.` and `..` fit the pattern's letters but would climb out of the address.
   if (!REPO.test(repo) || parts.some((part) => /^\.+$/.test(part))) {
-    throw new GameError("INVALID", "That doesn't look like a GitHub repository. It should read owner/name.");
+    throw new GameError("INVALID", "Pick your game from the list.");
   }
 }
 

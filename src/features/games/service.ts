@@ -309,7 +309,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     if (game === null || game.state === "thrown_away")
       throw new GameError("NOT_FOUND", "We can't find that game.");
     const newest = game.pulls[0];
-    if (newest === undefined) throw new GameError("NOT_READY", "Pull your game's files first.");
+    if (newest === undefined) throw new GameError("NOT_READY", "Add your game's files first.");
     // A refused copy writes no pull, so the older pull is still the newest one: it is not what the maker now points at.
     if (game.pullProblem !== null) throw new GameError("NOT_READY", "Your game's files need fixing first.");
     if (!game.clips.some((clip) => clip.shape === "upright")) {
