@@ -29,6 +29,8 @@
   "include": [
     "src",
     "tests",
+    // The deploy command's own scripts, run by plain Node.
+    "scripts",
     // The game gate's Worker. Its folder only, not cloudflare/worker.js, which imports the built site.
     "cloudflare/games",
     "vite.config.ts",

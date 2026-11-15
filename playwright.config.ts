@@ -47,9 +47,10 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      // The app reads a database, so the migrations run before the build, as the deploy command does.
+      // The app reads a database, so the migrations run before the build, and the database is claimed for the live
+      // copy, as the deploy command does: without the stamp every page answers 503.
       command:
-        "pnpm exec prisma migrate deploy && pnpm build && pnpm exec wrangler dev cloudflare/worker.js --port 4173 --test-scheduled --persist-to .wrangler/state",
+        "pnpm exec prisma migrate deploy && node scripts/claim-copy.ts live && pnpm build && pnpm exec wrangler dev cloudflare/worker.js --port 4173 --test-scheduled --persist-to .wrangler/state",
       url: "http://localhost:4173",
       reuseExistingServer: false,
       timeout: 180_000,
