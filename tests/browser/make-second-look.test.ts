@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { pageHasSettled } from "./support/account.ts";
+import { pageHasSettled, signUp } from "./support/account.ts";
 import { fillAnswers } from "./support/database.ts";
 import {
   freshName,
@@ -247,6 +247,124 @@ test("the Ruken wordmark is in the same place on a question, the record-your-scr
     expect(Math.abs(there.x - onQuestion.x), `${path}: left`).toBeLessThanOrEqual(1);
     expect(Math.abs(there.y - onQuestion.y), `${path}: top`).toBeLessThanOrEqual(1);
   }
+});
+
+// ---- L16: on Live, held sideways or on a computer, a card above the video is as wide as the video -----------------------------
+
+test("on Live a card for a part sent back ends where the video under it ends, in a window held sideways", async ({
+  page,
+}) => {
+  test.skip(
+    !["computer", "tablet-sideways", "phone-sideways"].includes(layoutOf(page)),
+    "only a window held sideways shows the wide video",
+  );
+  const { slug } = await gameWhere(page, {
+    state: "live",
+    toFix: [{ part: "one_line", reason: "not_this_game" }],
+  });
+  await page.goto(`/make/${slug}`);
+  await wordsHaveSettled(page);
+
+  const card = await boxOf(page.locator("a.sheet.fix"));
+  const video = await boxOf(page.locator(".after .tiles figure > div"));
+  expect(Math.abs(card.x + card.width - (video.x + video.width)), "right edges").toBeLessThanOrEqual(2);
+  expect(Math.abs(card.x - video.x), "left edges").toBeLessThanOrEqual(1);
+});
+
+// ---- L24: Your games, empty ------------------------------------------------------------------------------------------------
+
+test("on a tablet held sideways, as on a computer, 'Add a game' is on the heading's line", async ({
+  page,
+}) => {
+  test.skip(layoutOf(page) !== "tablet-sideways", "the computer's journey is in make-screen-review");
+  await signUp(page);
+  await page.goto("/make");
+  await pageHasSettled(page);
+
+  const heading = await boxOf(page.getByRole("heading", { level: 1 }));
+  const add = await boxOf(page.getByRole("link", { name: "Add a game" }));
+  expect(add.y).toBeLessThan(heading.y + heading.height);
+  expect(add.x).toBeGreaterThan(heading.x + heading.width);
+});
+
+test("the Maker agreement link has a line's room above it", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/make");
+  await pageHasSettled(page);
+
+  const above = await page.locator("main.games").evaluate((main) => {
+    const note = main.querySelector(":scope > .note");
+    const sections = [...main.children].filter((child) => child !== note);
+    return Math.max(...sections.map((child) => child.getBoundingClientRect().bottom));
+  });
+  const link = await boxOf(page.getByRole("link", { name: "Maker agreement" }));
+  expect(link.y - above, "the link starts well under what is above it").toBeGreaterThanOrEqual(16);
+});
+
+// ---- L22: a refusal is read with the question it is about -----------------------------------------------------------------------
+
+const IPHONE_SE_SIDEWAYS = { width: 568, height: 320 };
+
+/** The question's heading is in the window, and the reason is above the bar: the maker reads both. */
+async function expectQuestionAndReason(page: Page): Promise<void> {
+  const heading = page.getByRole("heading", { level: 1 });
+  const reason = page.getByRole("alert");
+  await expect(reason).toBeVisible();
+  await expect
+    .poll(async () => {
+      const question = await boxOf(heading);
+      const why = await boxOf(reason);
+      return question.y >= 0 && why.y + why.height <= (await boxOf(page.locator(".acts"))).y;
+    })
+    .toBe(true);
+}
+
+test.describe("on an iPhone SE held upright, a refusal", () => {
+  test.use({ viewport: IPHONE_SE });
+
+  test("of where the game plays is read with its heading", async ({ page }) => {
+    test.skip(test.info().project.name !== "phone", "one Chromium project is enough for a window of its own");
+    const { slug } = await startDraft(page);
+    await fillAnswers(slug, { files: true, playsOn: false });
+    await page.goto(`/make/${slug}/plays-on`);
+    await wordsHaveSettled(page);
+    await nextButton(page).click();
+    await expectQuestionAndReason(page);
+  });
+});
+
+test.describe("on an iPhone SE held sideways, a refusal", () => {
+  test.use({ viewport: IPHONE_SE_SIDEWAYS });
+
+  test("of the first answer is read with its heading and its box", async ({ page }) => {
+    test.skip(test.info().project.name !== "phone", "one Chromium project is enough for a window of its own");
+    const { slug } = await startDraft(page);
+    await page.goto(`/make/${slug}/name`);
+    await wordsHaveSettled(page);
+    await page.getByLabel("What's your game called?").fill("");
+    await nextButton(page).click();
+    await expectQuestionAndReason(page);
+    expect((await boxOf(page.getByLabel("What's your game called?"))).y).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ---- L23: on the agreement, "I agree" comes after the last point ---------------------------------------------------------------
+
+test("on a wide window the agreement's buttons are after the last point, not beside the first", async ({
+  page,
+}) => {
+  test.skip(
+    !["computer", "tablet-sideways"].includes(layoutOf(page)),
+    "a narrow window has the buttons in its bar, under the points",
+  );
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  await page.goto(`/make/${slug}/agreement`);
+  await wordsHaveSettled(page);
+
+  const last = await boxOf(page.locator(".sheet li").last());
+  const agree = await boxOf(page.getByRole("button", { name: "I agree" }));
+  expect(agree.y, "I agree is under the last point").toBeGreaterThanOrEqual(last.y + last.height);
 });
 
 // ---- L17: Check and send's two captions sit at one height --------------------------------------------------------------------

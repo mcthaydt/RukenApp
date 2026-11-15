@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import { showTheRefusal } from "../../../lib/focus.ts";
   import { sizeWords } from "../../../lib/size-words.ts";
   import { videoChoiceProblem } from "../../../lib/video-choice.ts";
   import QuestionScreen from "./QuestionScreen.svelte";
@@ -72,9 +73,8 @@
 
   // The refusal comes into view when it arrives: on a phone it would otherwise land under the pinned bar, and the maker
   // would see the button light up and nothing else change.
-  let problemLine = $state<HTMLElement>();
   $effect(() => {
-    if (shown !== null) problemLine?.scrollIntoView({ block: "nearest" });
+    if (shown !== null) showTheRefusal();
   });
 
   onMount(() => {
@@ -136,7 +136,7 @@
     <p class="note" role="status">Adding your video. Keep this page open.</p>
   {/if}
   {#if shown !== null}
-    <p class="problem" id="problem" role="alert" bind:this={problemLine}>
+    <p class="problem" id="problem" role="alert">
       {shown}
       {#if tooBig}
         <a href={video.howToTooBig}>How to make it smaller</a>

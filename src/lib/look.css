@@ -1511,6 +1511,26 @@ a.foot {
   }
 }
 
+/* On Live, held sideways or on a computer, the one video is the wide one, and a card above it (a part staff sent back) is as wide
+   as that video, so their right edges are on one line and not 200px apart. The card works the video's width out the same way the
+   row does: its height, the least of 264 (180 on a short window) and what the column allows, times 16 / 9. */
+.screen:has(.live) .after {
+  container-type: inline-size;
+}
+
+@media (orientation: landscape) {
+  .screen:has(.live) .after > .sheet.fix {
+    --tile-height: min(264px, (100cqw - 1rem) * 0.4274);
+    max-width: calc(var(--tile-height) * 16 / 9);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 449px) {
+  .screen:has(.live) .after > .sheet.fix {
+    --tile-height: min(180px, (100cqw - 1rem) * 0.4274);
+  }
+}
+
 /* A phone's two videos are the same row as everywhere else, smaller, and the name, the line and the facts have the whole
    width under them: beside the tall video they had a strip of 115 to 225px. Each caption is its words with Change under
    them, on both videos, so the two captions are one height and the caption never widens the row. */
@@ -1605,8 +1625,8 @@ a.foot {
   white-space: nowrap;
 }
 
-/* Your games on a computer: the heading and Add a game are one line, and the games are under them. */
-@media (min-width: 1200px) and (orientation: landscape) {
+/* Your games on a computer or a tablet held sideways: the heading and Add a game are one line, and the games are under them. */
+@media (min-width: 700px) and (min-height: 450px) and (orientation: landscape) {
   .screen main.games {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1628,6 +1648,11 @@ a.foot {
     grid-row: 1;
     margin-top: 0;
   }
+}
+
+/* The agreement's link is a thing of its own, a line's room under whatever comes before it: the words, the button or the last game. */
+.screen main.games > .note {
+  margin-top: 1.5rem;
 }
 
 /* A game in Your games: one paper card that is one link, with its picture, its name, and where it stands. Until a
