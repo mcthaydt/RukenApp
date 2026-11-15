@@ -653,3 +653,18 @@ Owner, 2026-11-15, on the board, and four decision cards. Board version 16 shows
 
 - **A song.** Owner: "A song players tap to play", then "but we can select the 30 second region like on Instagram". A Spotify song on a maker's page, which never starts by itself; the maker picks the 30 seconds it plays, as on Instagram. How a picked section plays through Spotify's own player (and for listeners not signed in to Spotify) is read from Spotify's rules before that section's plan.
 
+
+### 16.4 Fixes from the two reviews of version 16
+
+A visual pass and a full task walk ran on version 16. Board version 17 fixes what they found. The song is left out of the board until Your page's own section (16.3).
+
+- **Shares move from your own.** + takes 1% from your share and gives it to that person; − gives it back. Your own row has no buttons and reads "You · whatever is left", so the total is always 100%. Each other person has Remove, which gives their share back to you. Equal shares get the same colour, and the pie has a legend of names and percentages under it.
+- **Who said yes.** While a change waits, each person shows "Said yes" or "Hasn't said yes yet · Remind them", which sends them a text. People are asked by text, never email, and a person who says no is told by text too.
+- **The statement adds up.** November lists Tiny Tower's $5.10 under Floor Fifty, for a total of $41.27.
+- **Download PDF** is a plain outlined button, never a pill. Taxes reads "We pay you everything you earn, with no tax taken out." and "If you earn enough in a year, you get a US tax form by 31 January."
+- **Reporting.** Every review has its own Report link. The reasons fit what is reported. A review: Rude or hateful; Spam or ads; Not about this game; Something else. A player: Cheating ("Like scores nobody could get."); Rude or hateful; Something else. A copying game gets its own two questions.
+- **Connecting a game takes five steps.** (1) Paste the line into your coding agent. (2) Ask it to connect the game. (3) Say yes on Ruken: "Let it add drafts to 'Floor Fifty'?" lists what the agent can and can't do (it can add drafts; it can't send for review, change prices or see your money). Connected agents show under Coding agents, with Disconnect. (4) Check the drafts: a drafted extra opens at its price and picture, and events are kept or thrown away with ticks. (5) Save it to GitHub, then Send a new version.
+- **Events** show their name as code under the plain words ("Finished floor 3", then level_3_done). The check asks "Which events do you want?", with "Throw these away" and "Keep these 2".
+- **Players.** The page opens at the top on a computer and a sideways iPad, with the heading held in place. The first graph leads with one sentence ("Most people who leave go in the first 2 minutes. 38% leave at 1½ minutes."). Graph labels are at least 15px on a phone.
+- **Ages.** 7+ is "Cartoon fighting, or a little scary."; 12+ is "Real-looking fighting, or scary bits."
+- **Earner rankings** read "Top 12% for earnings this month".
