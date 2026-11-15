@@ -1,0 +1,89 @@
+# Ruken roadmap
+
+The order we build Ruken in. One page, read top to bottom.
+
+## The rules
+
+1. **One thing at a time.** There is one **Now**. Nothing else is built until it is done.
+2. **Slices go in order.** A slice starts only when the one before it is merged and green.
+3. **New ideas wait.** A new idea goes in "Not yet placed" at the bottom. It moves up only when the owner says where it goes.
+4. **Designs can wait in line.** An approved design sits under its slice until that slice comes up. Approved is not the same as building.
+5. "Done" means merged to main and green there. Nothing else counts as done.
+
+How to read each list: **Done** is merged and green. **Now** is the one thing being built. **Next** is in line, in order. **Waiting** is approved, but its turn has not come.
+
+## Slice 0: Start
+
+1. Done: the design, the workflow, the app skeleton, the tests that run on every change.
+
+## Slice 1: Accounts
+
+1. Done: sign up, sign in, forgot password, your account page, delete my account.
+2. Done: membership: join, pay, cancel, join again.
+3. Done: the look, the colours and the buttons.
+4. Done: the site runs on its Cloudflare test address.
+5. Done: the audit and its fixes.
+6. Waiting: the check on the real site with real payments. It needs the real domain, so it happens at launch.
+
+## Slice 2: Games and play
+
+1. Done: games, their files, the play gate, connecting GitHub, the play rules (branches A to E and P).
+2. Done: the clip and frame look (branch S, part 1).
+3. **Now: the maker's submission screens, rebuilt to the approved design (branch M, pull request #63, Tasks 5 to 11).**
+4. Next: Accept and Send back, and a maker taking their own game off Ruken (branch S, the rest).
+5. Next: a game's page and playing it (branch F).
+6. Next: the GitHub App hookup, and FloorFifty sent, accepted and played on the test site (branch G). The real domain waits for launch.
+7. Next: the slice 2 audit, then its fixes.
+
+## Slice 3: The feed and the maker's page
+
+1. Done: the colour themes, the page rules, the maker's photo (branches A, B and G).
+2. Next: the feed order, the feed, its controls, the paywall over a clip (branches C to F).
+3. Next: the maker's page and editing it (branches H and I).
+4. Next: the check on the test site (branch J).
+5. Waiting: the feed algorithm (approved): a learned feed, play time first.
+6. In design: "Your page", one page builder for players, makers and studios. Waiting for the owner's "fine" on the board.
+
+## Slice 4: Submitting and the admin
+
+1. Done: the plan.
+2. Next: staff sign-in with an authenticator, staff roles, the admin portal.
+3. Next: changing a live game's clips, telling makers when a game is live or sent back, taking a game down, reports, suspended accounts, a new maker's first steps, editing a game.
+4. Waiting: AI reviews submissions (approved). The AI plays each game and accepts or sends it back. The owner sees only appeals.
+5. Waiting: the admin screens. Keep what exists; look again after submissions, pages and reels.
+
+## Slice 5: Money
+
+1. Done: the money rules, the ledger, the facts, the monthly statements, and their audit fixes (branches A to D).
+2. Next: makers' own sales: DLC and battle passes, members only, and revenue splits (approved; plan written).
+3. Next: connect your bank, what you're owed, payouts, the staff money screens, the public split page, questions about a line (branches E to K).
+
+## Before launch
+
+These are approved. Each is built after the slices above, in this order.
+
+1. The wishlist and a maker's numbers. Part 1 is done.
+2. Texts instead of email: sign up with a phone number, every notice by text (approved; plan written and audited). Launch waits for the phone carriers to approve Ruken.
+3. The help chat by text: Claude Haiku writes, Jev checks (approved). Needs texts and the slice 4 admin first.
+4. Beta builds.
+5. The apps: iPhone, Android, Windows, Mac and Linux, on Ruken's own download, the App Store and Google Play. Includes age ratings (3+, 7+, 12+, 16+, 18+) and the mature content rules. The test copy (part 1) is paused until its turn.
+6. The legal pages (pull request #104, held).
+7. The real domain, connected.
+
+## Launch
+
+The date is not set. Launch waits for the phone carriers and the app stores to say yes.
+
+## After launch
+
+1. Sign in with Google.
+2. The Mac App Store, the Microsoft Store and the Linux stores.
+3. Leaderboards.
+4. A/B experiments.
+
+## Not yet placed: needs the owner
+
+New wants with no design yet. Nothing here is built until the owner says where it goes.
+
+1. Six must-have languages: English, Spanish, Korean, Japanese, Chinese and Portuguese.
+2. Jev everywhere Ruken uses AI. The help chat and AI review already have it. Anything new with AI needs it too.

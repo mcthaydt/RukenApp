@@ -5,6 +5,8 @@ The one record of where the work stands. Every session updates it as it works; t
 Design: `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md`, approved by the Owner on 2026-11-13.
 Launch: Monday 30 November 2026, 11:00 CT.
 
+The order of the work, and the one thing being built now: `docs/superpowers/roadmap.md`.
+
 ## Overall: 56% (the mean of the six slices' progress below)
 
 | # | Slice | State | Progress |
