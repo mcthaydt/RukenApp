@@ -80,8 +80,9 @@ test("on a 1280 by 720 computer the wide video question's blue button is on the 
   const picker = await boxOf(page.locator(".acts .file > span"));
   expect(picker.y + picker.height, "Choose video ends inside the window").toBeLessThanOrEqual(window);
 
-  // A game with its wide video already in: the same question shows the video, with two more lines of links.
-  const { slug } = await startDraft(page);
+  // A game with its wide video already in: the same question shows the video, with two more lines of links. The same maker's
+  // second game: signing up again while signed in would find no sign-up form.
+  const { slug } = await addDraft(page);
   await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
   await giveRealClips(page, slug);
   await page.goto(`/make/${slug}/wide`);
