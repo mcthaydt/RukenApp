@@ -95,6 +95,8 @@ Every time screens are about to be shown to the owner for a "how does this look?
 
 Review steps 1 to 4 only find problems (Owner, 2026-11-15: "review steps only FIND problems"). Each writes a report, commits and pushes it, and changes nothing else. Its fixes are made in a separate session on Sonnet at xhigh effort before the next review step starts. The reports and fixes all go in one pull request. A review session that has started fixing stops, pushes its report and hands the fixes off.
 
+Only new work is reviewed (Owner, 2026-11-15: "we should only do the passes on the new stuff too, if it's been checked off/approved, we can skip it for the visual review and only do the stuff that has not been checked off/approved"). Every review step skips screens the owner already approved and covers only what they haven't.
+
 Every fix round fixes every finding, the small ones included (Owner, 2026-11-15: "From now on every fix round fixes every finding, low ones included. The only exception is a fix that needs your choice, and I'll say which one."). A finding is left only when its fix needs the Owner's choice; the fixing session names that one, with options, and asks, and fixes all the rest meanwhile.
 
 ## Staying on the rails
@@ -110,6 +112,7 @@ Every fix round fixes every finding, the small ones included (Owner, 2026-11-15:
 
 - A branch is small enough to review in one sitting, and merges or closes within two days. Never build on a branch that is not in main.
 - At most five pull requests open (Owner, 2026-11-14: "Yes" to raising the limit from three to five). (Owner, 2026-11-13: checks run on GitHub's runners, so the old "one in CI at a time" limit, which was for the owner's own machines, is dropped.)
+- At most five work threads at once, all in the current slice, and at most three of them writing code; the others only read and report (reviews, audits, plans) (Owner, 2026-11-15). It is a ceiling, not a target: a thread starts only when its work is ready. The owner board, advisor and merge threads don't count.
 - Stop and tell the owner when a task has taken twice what was expected, when the third fix for the same failure has not worked, or when a look has been through two rounds without their "fine". Do not start a fourth attempt.
 
 ### Truth
