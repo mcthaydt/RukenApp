@@ -2,20 +2,7 @@ import { GameError } from "./game-error.ts";
 import { checkBranch, checkRepo } from "./github.ts";
 import { slugOf } from "./ids.ts";
 
-// What is wrong with the fields of a new game, every one at once, so a maker fixes the whole form in one go and each
-// refusal sits under its own box. The games service throws the first of them, so its own guard stays.
-
-export type GameField = "name" | "oneLine" | "repo" | "branch" | "folder";
-
-/** The words for each field that is wrong; a field that is fine is not there. */
-export type GameFieldProblems = Partial<Record<GameField, string>>;
-
-/** What a maker typed for a new game. */
-export interface GameFieldsInput {
-  name: string;
-  oneLine: string;
-  repo: { fullName: string; branch: string | null; folder: string };
-}
+// The words for one answer that is wrong, each check kept to its own function so a question shows the refusal of its own box.
 
 export const NAME_MAX = 60;
 export const ONE_LINE_MAX = 100;
@@ -96,24 +83,4 @@ export function ageProblem(ageRating: string | null): string | undefined {
 /** The words for "does it have any of these", or undefined when at least one answer was chosen. */
 export function marksProblem(marks: readonly string[]): string | undefined {
   return marks.length === 0 ? "Choose at least one, or None of these." : undefined;
-}
-
-/**
- * Every field that is wrong, in the words a maker can act on, in the order a maker meets the boxes on the form's way
- * through the checks (name, line, repository, branch, folder). A field that is fine is not in the answer at all.
- */
-export function gameFieldProblems(input: GameFieldsInput): GameFieldProblems {
-  const { branch } = input.repo;
-  const checked: [GameField, string | undefined][] = [
-    ["name", nameProblem(input.name.trim())],
-    ["oneLine", oneLineProblem(input.oneLine.trim())],
-    ["repo", repoProblem(input.repo.fullName)],
-    ["branch", branch === null ? undefined : branchProblem(branch)],
-    ["folder", folderProblem(input.repo.folder)],
-  ];
-  const problems: GameFieldProblems = {};
-  for (const [field, words] of checked) {
-    if (words !== undefined) problems[field] = words;
-  }
-  return problems;
 }

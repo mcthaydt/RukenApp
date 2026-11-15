@@ -114,29 +114,3 @@ export function nextStepWords(
       return null;
   }
 }
-
-/** What is still missing before a game can be sent. */
-export interface MissingBeforeSend {
-  files: boolean;
-  upright: boolean;
-  wide: boolean;
-  agreement: boolean;
-}
-
-/**
- * One sentence naming everything still missing, in the order a maker works down the page, or null when nothing is.
- * Listing them all means a maker fixes everything in one go and is not refused three times for three things.
- */
-export function beforeSendWords(missing: MissingBeforeSend): string | null {
-  const parts = [
-    missing.files ? "copy your game from GitHub" : null,
-    missing.upright ? "add the upright video" : null,
-    missing.wide ? "add the wide video" : null,
-    missing.agreement ? "tick the box" : null,
-  ].filter((part) => part !== null);
-  const last = parts.pop();
-  if (last === undefined) return null;
-  if (parts.length === 0) return `Before you send it: ${last}.`;
-  if (parts.length === 1) return `Before you send it: ${parts.join("")} and ${last}.`;
-  return `Before you send it: ${parts.join(", ")}, and ${last}.`;
-}

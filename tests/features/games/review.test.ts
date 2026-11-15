@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  beforeSendWords,
   listWords,
   nextStepWords,
   stateParts,
@@ -195,33 +194,5 @@ describe("nextStepWords", () => {
   it("has no next step for a game that is off Ruken", () => {
     expect(nextStepWords({ ...base, state: "taken_off" })).toBeNull();
     expect(nextStepWords({ ...base, state: "taken_down", stateReason: "It broke a rule." })).toBeNull();
-  });
-});
-
-// A refused send names everything still missing in one sentence (review F6).
-describe("beforeSendWords", () => {
-  const none = { files: false, upright: false, wide: false, agreement: false };
-
-  it("says nothing when nothing is missing", () => {
-    expect(beforeSendWords(none)).toBeNull();
-  });
-
-  it("names one thing", () => {
-    expect(beforeSendWords({ ...none, agreement: true })).toBe("Before you send it: tick the box.");
-  });
-
-  it("names two things with an and", () => {
-    expect(beforeSendWords({ ...none, wide: true, agreement: true })).toBe(
-      "Before you send it: add the wide video and tick the box.",
-    );
-  });
-
-  it("names three or four in the order a maker works down the page", () => {
-    expect(beforeSendWords({ ...none, upright: true, wide: true, agreement: true })).toBe(
-      "Before you send it: add the upright video, add the wide video, and tick the box.",
-    );
-    expect(beforeSendWords({ files: true, upright: true, wide: true, agreement: true })).toBe(
-      "Before you send it: copy your game from GitHub, add the upright video, add the wide video, and tick the box.",
-    );
   });
 });
