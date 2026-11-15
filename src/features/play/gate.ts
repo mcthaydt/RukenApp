@@ -19,6 +19,11 @@ export interface GateDeps {
   /** Ruken's own address (`https://…`), the only one allowed to put a game in a frame. */
   siteOrigin: string;
   nowMs: number;
+  /**
+   * The one host (as `URL.host` writes it) on which the game is the first part of the path, not of the name. Until
+   * the games' domain exists every game shares one free address. Unset: no host answers that way.
+   */
+  pathHost?: string;
 }
 
 // The words a person may see, inside the game's frame under Ruken's bar. One line each, saying what to do.

@@ -39,8 +39,8 @@ describe("the gate's wrangler.jsonc", () => {
     expect(config().compatibility_flags).toContain("nodejs_compat");
   });
 
-  it("has no workers.dev address and no preview addresses", () => {
-    expect(config().workers_dev).toBe(false);
+  it("runs on its workers.dev address until the games domain exists, and has no preview addresses", () => {
+    expect(config().workers_dev).toBe(true);
     expect(config().preview_urls).toBe(false);
   });
 
@@ -66,5 +66,12 @@ describe("the gate's worker.ts", () => {
     const source = read("cloudflare/games/worker.ts");
     const imports = [...source.matchAll(/^import .* from "(.*)";$/gm)].map((match) => match[1]);
     expect(imports.sort()).toEqual(["../../src/features/play/gate.ts", "../../src/lib/files/r2-store.ts"]);
+  });
+
+  // On the one free address the game is in the path; the setting says which host that is.
+  it("reads PATH_HOST and hands it to the gate as pathHost", () => {
+    const source = read("cloudflare/games/worker.ts");
+    expect(source).toMatch(/PATH_HOST\??:\s*string/);
+    expect(source).toContain("pathHost");
   });
 });
