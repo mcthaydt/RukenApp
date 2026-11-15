@@ -179,11 +179,22 @@ function serviceFor(entries: { path: string; content: string }[]): GamesService 
 }
 
 /** A maker who has connected GitHub, and the game they have just named. */
-async function begin(name = "Tower Run") {
+let beginCount = 0;
+async function begin(name = `Tower Run ${String(++beginCount)}`) {
   const makerUserId = await createUser(db());
   await connectMaker(makerUserId, "acme/game");
   const started = await service.startGame({ makerUserId, name });
   return { makerUserId, ...started };
+}
+
+/** Moves a game to `state` with every answer in place, as the database requires of any game past draft. */
+async function setState(id: string, state: string): Promise<void> {
+  await db().$executeRawUnsafe(
+    `UPDATE "Game" SET "state" = '${state}', "oneLine" = COALESCE("oneLine", 'A line.'),
+       "playsOn" = COALESCE("playsOn", 'phone_and_computer'), "repoFullName" = COALESCE("repoFullName", 'acme/game'),
+       "ageRating" = COALESCE("ageRating", 'age_12') WHERE "id" = $1`,
+    id,
+  );
 }
 
 const FILES_ANSWER: Answer = {
@@ -448,14 +459,14 @@ describe("saveAnswer", () => {
   it("takes every answer of a draft, a waiting game and a sent-back game alike", async () => {
     const { makerUserId, id } = await begin();
     for (const state of ["waiting", "sent_back"] as const) {
-      await db().$executeRawUnsafe(`UPDATE "Game" SET "state" = '${state}' WHERE "id" = $1`, id);
+      await setState(id, state);
       await service.saveAnswer(id, makerUserId, { question: "plays-on", playsOn: "computer_only" });
     }
   });
 
   it("refuses a game that is taken off or down", async () => {
     const { makerUserId, id } = await begin();
-    await db().$executeRawUnsafe(`UPDATE "Game" SET "state" = 'taken_off' WHERE "id" = $1`, id);
+    await setState(id, "taken_off");
 
     await expect(
       service.saveAnswer(id, makerUserId, { question: "line", oneLine: "x" }),
@@ -471,7 +482,7 @@ describe("throwAway", () => {
     await pulling.saveAnswer(id, makerUserId, FILES_ANSWER);
     await service.saveClip(id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
     await service.saveClip(id, "wide", { contentType: "video/mp4", bytes: mp4Bytes() });
-    await db().$executeRawUnsafe(`UPDATE "Game" SET "state" = 'sent_back' WHERE "id" = $1`, id);
+    await setState(id, "sent_back");
     const game = await db().game.findUniqueOrThrow({ where: { id } });
     return { makerUserId, id, publicId: game.publicId };
   }
@@ -569,6 +580,8 @@ describe("liveGameBySlug", () => {
       name: "A game",
       oneLine: "A game about a thing.",
       playsOn: "phone_and_computer",
+      ageRating: "age_12",
+      contentMarks: [],
       freeToPlay: false,
       makerUserId: game.makerUserId,
       livePullId: pullId,

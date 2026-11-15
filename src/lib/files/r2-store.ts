@@ -36,7 +36,8 @@ export function r2FileStore(bucket: R2Bucket): FileStore {
       let cursor: string | undefined;
       // R2 lists a page at a time (at most 1000 keys) and deletes up to 1000 keys in one call, so a page is one delete.
       do {
-        const page = await bucket.list({ prefix, cursor });
+        // exactOptionalPropertyTypes: the first page has no cursor to pass, not an undefined one.
+        const page = await bucket.list(cursor === undefined ? { prefix } : { prefix, cursor });
         const keys = page.objects.map((object) => object.key);
         if (keys.length > 0) await bucket.delete(keys);
         gone += keys.length;

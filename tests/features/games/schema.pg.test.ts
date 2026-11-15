@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { newPublicId } from "../../../src/features/games/ids.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 
@@ -291,7 +292,7 @@ describe("the parts of a review", () => {
   /** A sent-back review of a game, by plain SQL, and the id to hang its parts on. */
   async function insertReview(): Promise<string> {
     const makerId = await newMaker();
-    const gameId = await insertGame(makerId, { publicId: "ssssssssss" });
+    const gameId = await insertGame(makerId, { publicId: newPublicId() });
     const pullId = await insertPull({ gameId });
     const reviewId = randomUUID();
     await db().$executeRaw`
