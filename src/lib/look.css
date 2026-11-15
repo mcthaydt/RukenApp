@@ -1765,8 +1765,9 @@ a.game:active {
   }
 }
 
-/* An iPhone SE's card is 248 wide inside its padding: with a 96px picture a name had 136px and "318346e0" was cut in two. */
-@media (max-width: 399px) {
+/* An iPhone SE's card is 248 wide inside its padding: with a 96px picture a name had 136px and "318346e0" was cut in two.
+   A phone from 360 wide has 40px or more beyond that, so it keeps the 96px picture (an iPhone 15 is 393 wide). */
+@media (max-width: 359px) {
   a.game > .tile {
     width: 64px;
     height: 36px;
