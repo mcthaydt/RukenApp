@@ -17,13 +17,25 @@ export function focusFirstRefused(): void {
 export function showTheRefusal(): void {
   const problem = document.querySelector<HTMLElement>(".problem");
   if (problem === null) return;
+  // A line rises 28px into place over 460ms, and a box measured on the way is 28px lower than where it ends up, so the page was
+  // scrolled 28px too far and the heading's place was misjudged. Every line is where it ends up at once, and then measured.
+  // (The drifting circles go on for ever and are left alone.)
+  for (const animation of document.getAnimations()) {
+    if (animation.effect?.getComputedTiming().iterations !== Infinity) animation.finish();
+  }
   problem.scrollIntoView({ block: "nearest" });
 
   const heading = document.querySelector("h1");
   if (heading === null) return;
   const hidden = 8 - heading.getBoundingClientRect().top;
   if (hidden <= 0) return;
-  const lowest = innerHeight - (parseFloat(getComputedStyle(problem).scrollMarginBottom) || 0);
-  const room = lowest - problem.getBoundingClientRect().bottom;
+  // The lowest the reason may sit is just above the bar where the bar is pinned to the window; the stylesheet's margin is more
+  // than that (it is generous so the reason is not tight against the bar), and on a window 320 tall would leave no room at all.
+  const bar = document.querySelector<HTMLElement>(".acts");
+  const barTop =
+    bar !== null && getComputedStyle(bar).position === "fixed"
+      ? bar.getBoundingClientRect().top
+      : innerHeight;
+  const room = barTop - 8 - problem.getBoundingClientRect().bottom;
   if (room > 0) scrollBy(0, -Math.min(hidden, room));
 }
