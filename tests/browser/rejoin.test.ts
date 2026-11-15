@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { letMembershipRunOut, payAsNewMember, subscriptionStatusAtStandIn } from "./support/account.ts";
+import {
+  continueToPayment,
+  letMembershipRunOut,
+  payAsNewMember,
+  standInPayButton,
+  subscriptionStatusAtStandIn,
+} from "./support/account.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -25,11 +31,9 @@ test("a member whose membership has ended is offered the card again, pays, and i
   // The price card is back, with its button, as for someone who never joined.
   await page.getByRole("link", { name: "Join Ruken" }).click();
   await expect(page.getByRole("heading", { name: "You're already a member." })).toHaveCount(0);
-  await page.getByRole("button", { name: "Continue to payment" }).click();
-  await expect(page.getByRole("button", { name: "Pay" })).toBeVisible();
-  const secondCheckout = new URL(page.url()).pathname.split("/").pop() ?? "";
+  const secondCheckout = await continueToPayment(page);
   expect(secondCheckout).not.toBe(first.checkoutSessionId);
-  await page.getByRole("button", { name: "Pay" }).click();
+  await standInPayButton(page).click();
 
   await expect(page).toHaveURL("/me");
   await expect(
