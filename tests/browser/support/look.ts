@@ -160,8 +160,10 @@ export async function expectOneCard(page: Page, options: { red?: string[] } = {}
  * at ("Screenshots on the board", Owner, 2026-11-13).
  */
 export async function showTheOwner(page: Page, testInfo: TestInfo, screen: string): Promise<void> {
+  // The screen as it rests: the fonts are in and every entrance has finished, so the picture is not a half-faded one.
   await page.evaluate(async () => {
     await document.fonts.ready;
+    await Promise.all(document.getAnimations().map((animation) => animation.finished));
   });
   await testInfo.attach(`look: ${screen}`, {
     body: await page.screenshot({ fullPage: true }),
