@@ -23,6 +23,13 @@ function textOf(form: FormData, name: string): string {
   return typeof value === "string" ? value : "";
 }
 
+/** What was typed for each ticked part, under `<prefix>-<part>`. Typed as pairs of strings so the record is not `any`. */
+function typedBy(form: FormData, parts: readonly string[], prefix: string): Record<string, string> {
+  const typed: Record<string, string> = {};
+  for (const part of parts) typed[part] = textOf(form, `${prefix}-${part}`);
+  return typed;
+}
+
 export const load: PageServerLoad = async ({ locals, params }) => {
   const { userId } = staffOnly(locals.caller);
   const games = gamesServices();
@@ -101,8 +108,8 @@ export const actions = {
           ticked,
           ageRating,
           marks,
-          reasons: Object.fromEntries(ticked.map((part) => [part, textOf(form, `reason-${part}`)])),
-          notes: Object.fromEntries(ticked.map((part) => [part, textOf(form, `note-${part}`)])),
+          reasons: typedBy(form, ticked, "reason"),
+          notes: typedBy(form, ticked, "note"),
         },
       });
     }
