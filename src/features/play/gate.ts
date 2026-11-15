@@ -10,8 +10,10 @@ import { checkPass } from "./pass.ts";
 // runs on Ruken's address, and it imports only plain helpers (no feature entry, no database, no SvelteKit): the Worker
 // has none of them.
 //
-// It never sets a cookie and never reads one: browsers block cookies in a frame from another site anyway, and a
-// game must not be able to tell a person from one.
+// It never sets a cookie and never reads one: a game must not be able to tell a person from one. On the games'
+// domain a browser also blocks cookies in a frame from another site; on the one free address it does not, because
+// `workers.dev` is a public suffix and the site and the games are one site there, so the gate's own rule is what
+// holds.
 
 export interface GateDeps {
   files: FileStore;
