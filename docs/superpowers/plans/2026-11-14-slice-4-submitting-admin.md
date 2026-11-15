@@ -1,5 +1,7 @@
 # Slice 4: Submitting and the Admin Portal Implementation Plan
 
+> **Rewritten for texts (2026-11-15).** The texts spec (`docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, approved by the Owner on 2026-11-15: "Text design approved") moves Ruken's messages from email to texts, and the texts plan (`2026-11-15-texts-not-email.md`) builds it. In this plan that changes the five mails to a maker (`src/features/admin/maker-mails.ts`: a game live, sent back, taken down; a page taken down; an account suspended). The texts spec's list of plans did not name this one; the texts plan found it. They are rewritten in "Rewritten for texts", the last section of this plan. Where that section and an earlier line differ, that section wins.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task (CLAUDE.md: no subagents). Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Staff have one portal where they accept games, take them down, read reports and act on them, with an authenticator code and a second owner behind the actions that need them; and a new maker is walked from a short address to a first game in three steps.
@@ -1402,3 +1404,25 @@ Look: `<main class="card">`; `choice` rows; Save is the one filled button. No ne
 - **The privacy text** (the Owner's, before live mode) should say that a report made while signed in is kept with the account that made it, that staff do not see who reported, and that an authenticator's key is kept encrypted.
 - Worth the Owner's eye before launch, left out on purpose: staff sign in as everyone does, with no code at sign-in and no shorter session (the Calls); taking something down and suspending ask for no code; there are no recovery codes, so two owners who both lose their phones need the database; the record of staff actions has no screen of its own yet, only the table; a report's reporter is never told what was decided; reports are limited by address, so many people behind one address share five an hour; a suspended member keeps paying and playing until they cancel; a suspended maker's games are hidden but a pass already given lasts up to a day; nothing tells a maker when a suspension is lifted; a deleted maker's live games stay as slice 2 left them; the nightly clean-up takes twenty pulls a night, so a long backlog takes several nights; clips that were replaced before this slice, if any object was ever left behind, are not looked for.
 - `head_curator` and `support` are in `StaffRole` and are offered nowhere. If nothing ever uses them, removing them is one migration; if the Owner wants a second level of staff, that is where it goes.
+
+## Rewritten for texts
+
+Texts spec, "Which message goes where": a maker's game accepted, sent back or taken down is a text; a suspension or take-down reason is a text with a link to the reason on Ruken. Everything not named here stands. The texts plan's branch C must be on `main` before Task 8 here.
+
+### Tasks 8, 9, 10, the page take-down and the suspension: `maker-mails.ts` becomes `maker-texts.ts`
+
+- Each function is pure and answers the text's words, built with `fitText` from `accounts.ts` (it cuts a long name, never the link). The reason is never in a text; the link opens the screen that shows it.
+
+| Function | `kind`, `key` | Words |
+|---|---|---|
+| `gameLiveText(game, site)` | `game_live`, the accepted pull's id | `fitText("Ruken: ", <name>, " is live. See it: <site>/g/<slug>")` |
+| `gameSentBackText(game, site)` | `game_sent_back`, the pull's id | `fitText("Ruken: ", <name>, " needs a change. See what to fix: <site>/make/<slug>")` |
+| `gameTakenDownText(game, site)` | `game_taken_down`, the game's id and the clock's day | `fitText("Ruken: we took ", <name>, " off Ruken. See why: <site>/make/<slug>")` |
+| `pageTakenDownText(site)` | `page_taken_down`, the page's id and the clock's day | `Ruken: we took your page off Ruken. See why, and fix it: <site>/make/page` |
+| `accountSuspendedText(site)` | `account_suspended`, the suspension's id | `Ruken: your Ruken account is suspended. See why: <site>/suspended` |
+
+- `tellMaker(deps: { tell; runInBackground; log }, what: string, input: { userId: string; kind: string; key: string; body: string } | null): void`: with `null` it does nothing; else it calls `tellByText` after the answer and logs a failure as `<what> not sent: <textFailureCode>`. It takes a person's id, never an address or a number. Where a task read the maker's email and passed `email === null ? null : …`, it passes the maker's id.
+- Each screen the links open already shows the reason (the maker's game screen for a game sent back or taken down, `/make/page`, `/suspended`); where a task's screen did not yet show it, that task adds the line, with its test.
+- Each task's Step 1: "one case a mail, asserting the subject and the whole text" becomes one case a text, asserting the whole text for a game named "Tiny game" at `https://ruken.test`, at most 160 characters; a reason holding `<script>alert(1)</script>` is on the screen as typed and in no text.
+- "What this plan relies on": `Mailer`, `MailMessage`, `mailFailureCode`, `createCaptureMailer` and "the account mails in `src/features/accounts/mails.ts`" go; `tellByText`, `fitText`, `textFailureCode` and `createCaptureTexter` come in. "Found while planning" 9's question about `authServices()` handing out its `Mailer` no longer matters.
+- `suspendedAccounts(db)` answers `{ userId; handle: string | null; reason; at }[]`: staff see a suspended person by their @name, never an email or a number.

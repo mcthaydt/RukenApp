@@ -95,3 +95,14 @@ On `/make/<game>`, under the game's state line, a few plain numbers, counted fro
 - Where the switch lives (a small `launch` feature low in the layers, imported by the feed, the maker's page, play and `/make`).
 - The exact words of the email body and of an empty wishlist count ("No wishlists yet").
 - The cron entry and the job's address, following the daily job's pattern (`/jobs/...` with `JOBS_SECRET`).
+
+## Changed on 2026-11-15: texts, not email
+
+`2026-11-15-texts-not-email-design.md` changes these lines (approved by the Owner, 2026-11-15: "Text design approved").
+
+- "Everyone who wishlisted a game gets one email at launch": everyone who wishlisted a game and ticked "Text me when my wishlisted games are out" gets one text at launch. The tick is offered the first time a person presses Wishlist, and is empty to start with.
+- The short sign-up is a phone number, a password and a date of birth.
+- The job sends one text a person, between 9:00 and 20:00 in their own time: "Ruken: [Game] is out. Play it now: [link]". With several games: "Ruken: your [n] wishlisted games are out. Play them now: [link]".
+- "Only to people whose email is confirmed" goes: every account's number is confirmed at sign-up. A person who texted STOP gets nothing.
+- `WishlistMail` is not built; the text is recorded as a `TextSent` row, which is how it is sent once.
+- The launch text needs Twilio and the carriers' approval of Ruken's number, not Resend's domain.
