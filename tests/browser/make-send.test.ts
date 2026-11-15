@@ -109,8 +109,8 @@ test("Check and send lays the game out: two videos, its name and line, and four 
 }, testInfo) => {
   const { name } = await startAtCheck(page);
 
-  await expect(page.getByText("On phones")).toBeVisible();
-  await expect(page.getByText("On computers")).toBeVisible();
+  await expect(page.getByText("On phones", { exact: true })).toBeVisible();
+  await expect(page.getByText("On computers", { exact: true })).toBeVisible();
   await expect(page.locator(".tiles video")).toHaveCount(2);
   await expect(page.getByRole("heading", { level: 2, name })).toBeVisible();
   await expect(page.locator(".tagline")).toHaveText("A tiny game about tapping.");
@@ -219,7 +219,8 @@ test("a send posted by hand before the agreement is refused", async ({ page, bas
   // The maker has not agreed, so the post is sent to the agreement and the game stays a draft.
   const posted = await page.request.post(`${site}/make/${slug}/check?/send`, {
     form: {},
-    headers: { origin: site },
+    // A form post, as a browser makes it: asked for as a page, the answer is the redirect itself.
+    headers: { origin: site, accept: "text/html" },
     maxRedirects: 0,
   });
   expect(posted.status()).toBe(303);

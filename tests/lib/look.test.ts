@@ -328,6 +328,11 @@ describe("screens wear the look and nothing of their own", () => {
     "tagline",
     "chip",
     "change",
+    "after",
+    "fixgo",
+    "accepted",
+    "backdrop",
+    "live",
   ];
   const ROUTES = "src/routes";
 
@@ -423,6 +428,11 @@ describe("the maker's screens", () => {
     "tagline",
     "chip",
     "change",
+    "after",
+    "fixgo",
+    "accepted",
+    "backdrop",
+    "live",
   ];
 
   it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {

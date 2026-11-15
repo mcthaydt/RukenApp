@@ -251,7 +251,8 @@ test("an 18+ game is asked one more question, and a 12+ game is not", async ({ p
   await page.getByRole("link", { name: "Back" }).click();
   await expect(page).toHaveURL(`/make/${slug}/age`);
   await answerAge(page, "12+");
-  await expect(page).toHaveURL(`/make/${slug}/check`);
+  // Seven questions are done, so the maker's first game is led on to the agreement (a maker who agreed goes to Check and send).
+  await expect(page).toHaveURL(new RegExp(`/make/${slug}/(agreement|check)$`));
   expect((await page.goto(`/make/${slug}/marks`))?.status()).toBe(404);
 });
 
@@ -304,7 +305,7 @@ test("a second press of Next while the first is out makes one game", async ({ pa
   await signUp(page);
   await page.goto("/make/new");
   await pageHasSettled(page);
-  const held = await holdAnswersTo(page, /\/make\/new$/);
+  const held = await holdAnswersTo(page, /\/make\/new\?\/answer$/);
   const box = boxFor(page, "What's your game called?");
   await box.fill(freshName());
 
@@ -386,7 +387,7 @@ test("Next with no repository chosen says so", async ({ page }) => {
 test("while the game is copied the button says so and cannot be pressed again", async ({ page }) => {
   const { slug } = await startAtFiles(page);
   await connectGitHubFromFiles(page, slug);
-  const held = await holdAnswersTo(page, new RegExp(`/make/${slug}/files$`));
+  const held = await holdAnswersTo(page, new RegExp(`/make/${slug}/files\\?/answer$`));
   await page.getByLabel(TINY_GAME).check();
 
   await nextButton(page).click();
@@ -512,7 +513,8 @@ test("a waiting game says so, and its one blue button goes back to Your games", 
   await page.goto(`/make/${slug}`);
 
   await expect(page.getByRole("heading", { name: "Waiting for review" })).toBeVisible();
-  await expect(page.getByText(name)).toBeVisible();
+  // The name is said above the heading, and again as the title of the game laid out beside it.
+  await expect(page.locator("p.count")).toHaveText(name);
   await expect(page.getByText("We're looking at it. Come back here to see when it's live.")).toBeVisible();
   const back = page.getByRole("link", { name: "Back to your games" });
   await expect(back).toHaveCSS("background-color", rgb(token("--pay")));
@@ -646,9 +648,11 @@ test("choosing the video opens it full size, and Close and Escape close it", asy
   await startAtVideo(page, "upright");
   await chooseVideo(page, videoFile());
   const frame = page.locator('[data-frame="upright"]');
-  await expect(frame.locator("video")).toBeAttached();
+  // The tile's own video, inside its link: the full-size one in the dialog is another video in the same frame.
+  const tile = frame.locator("a > video");
+  await expect(tile).toBeAttached();
 
-  await frame.locator("video").click();
+  await tile.click();
   const full = page.locator("dialog[open]");
   await expect(full).toBeVisible();
   await expect(full.locator("video")).toHaveAttribute("controls", "");
@@ -657,7 +661,7 @@ test("choosing the video opens it full size, and Close and Escape close it", asy
   await close.click();
   await expect(page.locator("dialog[open]")).toHaveCount(0);
 
-  await frame.locator("video").click();
+  await tile.click();
   await expect(page.locator("dialog[open]")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator("dialog[open]")).toHaveCount(0);
@@ -666,6 +670,8 @@ test("choosing the video opens it full size, and Close and Escape close it", asy
 test("with reduced motion a video does not start by itself", async ({ page }) => {
   await startAtVideo(page, "upright");
   await chooseVideo(page, videoFile());
+  // The video is added the moment it is chosen; a reload before it is in would lose it.
+  await expect(page.locator('[data-frame="upright"] video')).toBeAttached();
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.reload();
   await pageHasSettled(page);

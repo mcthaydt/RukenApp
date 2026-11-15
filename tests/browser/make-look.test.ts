@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled, signUp } from "./support/account.ts";
-import { fillAnswers } from "./support/database.ts";
+import { fillAnswers, putGameWhereStaffLeaveIt } from "./support/database.ts";
 import {
   BROKEN_GAME,
   connectGitHubFromFiles,
@@ -359,4 +359,55 @@ test("everything to press on Check and send is at least 44 by 44, and nothing is
     expect(box.height, `${words}, height`).toBeGreaterThanOrEqual(44);
   }
   expect(await pipRed(page)).toEqual([]);
+});
+
+// ---- Sent back and Live -------------------------------------------------------------------------------------------
+
+/** A new maker's finished game, left where staff's decision puts it, the browser on its page. */
+async function openGameWhere(
+  page: Page,
+  decision: Parameters<typeof putGameWhereStaffLeaveIt>[1],
+): Promise<void> {
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  await putGameWhereStaffLeaveIt(slug, decision);
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+}
+
+test("on Sent back the blue button is in the window without scrolling, and nothing is red", async ({
+  page,
+}) => {
+  await openGameWhere(page, {
+    state: "sent_back",
+    toFix: [{ part: "upright_video", reason: "sideways" }],
+  });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const fix = page.getByRole("link", { name: "Fix the upright video" });
+  await expect(fix).toBeVisible();
+
+  const viewport = page.viewportSize() ?? { width: 0, height: 0 };
+  const box = await boxOf(fix);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await pipRed(page)).toEqual([]);
+});
+
+test("on Live the game's own video fills the screen behind everything, blurred, and stays still when asked", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openGameWhere(page, { state: "live" });
+
+  const backdrop = page.locator(".backdrop video");
+  await expect(backdrop).toHaveCount(1);
+  // The piece is behind `main`, not beside it: the page itself is not the plain felt.
+  await expect(page.locator(".backdrop")).toHaveCSS("position", "fixed");
+  await expect(page.locator(".backdrop")).toHaveCSS("filter", /blur\(18px\)/);
+  await expect(backdrop).toHaveJSProperty("muted", true);
+  // Asked for stillness, the video stays on its first frame.
+  await expect(backdrop).toHaveJSProperty("paused", true);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCSS("color", rgb(token("--chalk")));
 });

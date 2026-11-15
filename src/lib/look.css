@@ -1188,9 +1188,18 @@ a.foot {
   margin-top: 2rem;
 }
 
+/* The left half is above the right one: its buttons are the bar, and the right half's sheets and cards have entrances that
+   would otherwise paint over it. */
+.halves > :first-child {
+  position: relative;
+  z-index: 1;
+}
+
 .halves a.foot {
-  display: inline-block;
-  margin: 1.5rem 0 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 1rem 0 0;
 }
 
 @media (orientation: landscape) and (min-width: 700px) {
@@ -1205,7 +1214,8 @@ a.foot {
     margin-top: 0;
   }
 
-  .halves > form {
+  /* The left half, whatever it is made of, stays where it is while the right one scrolls. */
+  .halves > :first-child {
     position: sticky;
     top: 1.5rem;
   }
@@ -1577,4 +1587,126 @@ button:active,
   a.game:active {
     transform: none;
   }
+}
+
+/* The right half of a game that has been sent: cards one over the next, then the game laid out. */
+.after > * + * {
+  margin-top: 1rem;
+}
+
+/* A card for something sent back is one link: it keeps its paper and its words, and is not underlined. */
+a.sheet.fix {
+  display: block;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.sheet.fix > span {
+  display: block;
+}
+
+.sheet.fix video {
+  display: block;
+  max-width: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.sheet.fix video[data-shape="upright"] {
+  height: 16rem;
+  aspect-ratio: 9 / 16;
+}
+
+.sheet.fix video[data-shape="wide"] {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+/* "Fix this": what the card is for, in the blue that means go on. */
+.fixgo {
+  color: var(--pay);
+  font: 600 1rem / 1.3 var(--font-text);
+  text-decoration: underline;
+}
+
+/* What passed, folded away in one green card; opened, it is the game laid out. Its chips sit one tone down, on the felt,
+   so they can be told from the card. */
+.accepted {
+  padding: 0 1.5rem;
+  border-radius: var(--radius-card);
+  background: var(--felt-raised);
+  color: var(--chalk);
+}
+
+.accepted > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  cursor: pointer;
+  font: var(--text-statement);
+}
+
+.accepted > summary::after {
+  content: "Show";
+  font: var(--text-small);
+  text-decoration: underline;
+}
+
+.accepted[open] > summary::after {
+  content: "Hide";
+}
+
+.accepted[open] {
+  padding-bottom: 1.5rem;
+}
+
+.accepted .chip {
+  background: var(--felt);
+}
+
+/* A second way forward is a blue outline, never a second blue fill. It is under the blue button in the page, not in the bar. */
+.live form {
+  margin-top: 1.25rem;
+}
+
+.live form > .note {
+  margin-top: 0.5rem;
+}
+
+.live button.outline {
+  border: 2px solid var(--pay);
+  background: none;
+  color: var(--chalk);
+}
+
+/* The statement piece, only on Live (spec 5c): the game's own video fills the screen behind everything, blurred, dimmed and
+   under a black layer. Everything else sits above it. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  filter: blur(18px) brightness(0.55);
+}
+
+.backdrop video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.1);
+}
+
+.backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--felt-deep);
+  opacity: 0.5;
+}
+
+.live {
+  position: relative;
+  z-index: 1;
 }

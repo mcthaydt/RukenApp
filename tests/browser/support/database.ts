@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { sealState } from "../../../src/features/games/github-connect.ts";
 import { ARRIVAL_COOKIE, sealArrival } from "../../../src/features/membership/arrival.ts";
-import type { AgeRating } from "../../../src/lib/server/db.ts";
+import type { AgeRating, GamePart } from "../../../src/lib/server/db.ts";
 import { PrismaClient, type MembershipStart } from "../../support/generated/prisma/client.ts";
 
 // The one place a journey reads the app's database. No screen shows who brought a member, so the journeys that check
@@ -200,27 +200,63 @@ export async function fillAnswers(
   }
 }
 
+/** A part staff sent back, with the reason they chose (a code from library/send-back-reasons.json) and their own line. */
+export interface SentBackPart {
+  part: GamePart;
+  reason: string;
+  note?: string;
+}
+
 /**
  * Puts a game where staff's decision would leave it: waiting for a yes, sent back, or live on its newest files. There
  * is no staff screen on this branch, so a journey cannot get there by clicking. A game past draft holds every answer, so
- * every answer, the files and both videos are written first.
+ * every answer, the files and both videos are written first. A game sent back (or a live one whose update was sent
+ * back) lists what staff ticked in `toFix`, each with its reason; a live game also has the yes that made it live, and
+ * `updateWaiting` leaves an update of it waiting for review.
  */
 export async function putGameWhereStaffLeaveIt(
   slug: string,
-  decision: { state: "waiting" | "sent_back" | "live" },
+  decision: { state: "waiting" | "sent_back" | "live"; toFix?: SentBackPart[]; updateWaiting?: boolean },
 ): Promise<void> {
   await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
   const game = await db().game.findUniqueOrThrow({
     where: { slug },
-    select: { id: true, pulls: { orderBy: { createdAt: "desc" }, take: 1, select: { id: true } } },
+    select: {
+      id: true,
+      makerUserId: true,
+      pulls: { orderBy: { createdAt: "desc" }, take: 1, select: { id: true } },
+    },
   });
   const newest = game.pulls[0];
   if (newest === undefined) throw new Error(`${slug} has no pull`);
+  const toFix = decision.toFix ?? [];
+  // The maker's own account stands in for staff: no screen shows who decided.
+  const review = (decision: "accepted" | "sent_back", parts: SentBackPart[]) =>
+    db().gameReview.create({
+      data: {
+        gameId: game.id,
+        pullId: newest.id,
+        staffUserId: game.makerUserId,
+        decision,
+        decidedAt: new Date(),
+        parts: {
+          create: parts.map((one) => ({ part: one.part, reason: one.reason, note: one.note ?? null })),
+        },
+      },
+    });
+  if (decision.state === "live") await review("accepted", []);
+  if (toFix.length > 0) await review("sent_back", toFix);
   await db().game.update({
     where: { id: game.id },
     data:
       decision.state === "live"
-        ? { state: "live", stateReason: null, pendingPullId: null, livePullId: newest.id }
-        : { state: decision.state },
+        ? {
+            state: "live",
+            stateReason: null,
+            pendingPullId: decision.updateWaiting === true ? newest.id : null,
+            livePullId: newest.id,
+            toFix: toFix.map((one) => one.part),
+          }
+        : { state: decision.state, toFix: toFix.map((one) => one.part) },
   });
 }
