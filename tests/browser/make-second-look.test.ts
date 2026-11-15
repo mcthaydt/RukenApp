@@ -10,7 +10,14 @@ import {
   startAtVideo,
   startDraft,
 } from "./support/game.ts";
-import { boxOf, brokenWords, layoutHasSettled, layoutOf, wordsHaveSettled } from "./support/look.ts";
+import {
+  boxOf,
+  brokenWords,
+  layoutHasSettled,
+  layoutOf,
+  lineCount,
+  wordsHaveSettled,
+} from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the second look at the submission screens found (docs/superpowers/audits/2026-11-15-submission-screens-second-look.md),
@@ -200,6 +207,48 @@ for (const screen of ["take-off", "throw-away"] as const) {
   });
 }
 
+// ---- L12: on an iPhone SE the two can't-be-undone headings are no more than three lines -------------------------------------
+
+test.describe("on an iPhone SE held upright", () => {
+  test.use({ viewport: IPHONE_SE });
+
+  for (const screen of ["take-off", "throw-away"] as const) {
+    test(`the ${screen} heading is at most three lines, with its words whole`, async ({ page }) => {
+      test.skip(
+        test.info().project.name !== "phone",
+        "one Chromium project is enough for a window of its own",
+      );
+      const slug = await aGameFor(page, screen);
+      await page.goto(`/make/${slug}/${screen}`);
+      await wordsHaveSettled(page);
+
+      const heading = page.getByRole("heading", { level: 1 });
+      expect(await lineCount(heading)).toBeLessThanOrEqual(3);
+      expect(await brokenWords(heading)).toEqual([]);
+    });
+  }
+});
+
+// ---- L14: the wordmark stays put between a question and the pages a maker is sent to --------------------------------------------
+
+test("the Ruken wordmark is in the same place on a question, the record-your-screen page and the maker agreement", async ({
+  page,
+}) => {
+  const { slug } = await startDraft(page);
+  await page.goto(`/make/${slug}/line`);
+  await wordsHaveSettled(page);
+  const wordmark = page.getByRole("link", { name: "Ruken", exact: true });
+  const onQuestion = await boxOf(wordmark);
+
+  for (const path of ["/help/record-screen", "/legal/maker-agreement"]) {
+    await page.goto(path);
+    await pageHasSettled(page);
+    const there = await boxOf(wordmark);
+    expect(Math.abs(there.x - onQuestion.x), `${path}: left`).toBeLessThanOrEqual(1);
+    expect(Math.abs(there.y - onQuestion.y), `${path}: top`).toBeLessThanOrEqual(1);
+  }
+});
+
 // ---- L17: Check and send's two captions sit at one height --------------------------------------------------------------------
 
 test("on a phone Check and send's two video captions are the same height", async ({ page }) => {
@@ -305,4 +354,84 @@ test.describe("on an iPhone SE held upright", () => {
       expect(howTo.y, "the link is above the frame").toBeLessThan(frame.y);
     });
   }
+});
+
+// ---- L9: the card of what players will see shows both videos, across its whole width -----------------------------------
+
+test("beside a question the card of what players will see shows the upright and the wide video, filling its width", async ({
+  page,
+}) => {
+  const layout = layoutOf(page);
+  test.skip(layout !== "computer" && layout !== "tablet-sideways", "only a wide window has the card");
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, videos: true });
+  await page.goto(`/make/${slug}/age`);
+  await wordsHaveSettled(page);
+
+  const row = await page.locator(".preview .card").evaluate((card) => {
+    const style = getComputedStyle(card);
+    const box = card.getBoundingClientRect();
+    const inner = box.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const tiles = [...card.querySelectorAll("[data-shape]")].map((tile) => ({
+      shape: tile.getAttribute("data-shape"),
+      box: tile.getBoundingClientRect(),
+    }));
+    const used =
+      Math.max(...tiles.map((tile) => tile.box.right)) - Math.min(...tiles.map((tile) => tile.box.left));
+    return { inner, used, shapes: tiles.map((tile) => tile.shape) };
+  });
+  expect(row.shapes).toEqual(["upright", "wide"]);
+  expect(row.used, "the two videos use the card's whole width").toBeGreaterThanOrEqual(row.inner - 2);
+});
+
+// ---- L10: a Needs fixing card's upright video is beside its words --------------------------------------------------------
+
+test("a Needs fixing card with an upright video has the video beside its words, at the card's right edge", async ({
+  page,
+}) => {
+  const { slug } = await gameWhere(page, {
+    state: "sent_back",
+    toFix: [{ part: "upright_video", reason: "sideways" }],
+  });
+  await page.goto(`/make/${slug}`);
+  await wordsHaveSettled(page);
+
+  const card = page.locator("a.sheet.fix");
+  const video = await boxOf(card.locator("video"));
+  const title = await boxOf(card.locator(".statement"));
+  const sheet = await card.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const box = element.getBoundingClientRect();
+    return { right: box.right - parseFloat(style.paddingRight) };
+  });
+  expect(video.x, "beside the words, not over them").toBeGreaterThanOrEqual(title.x + title.width - 1);
+  expect(video.y, "level with the top of the words, not below them").toBeLessThan(title.y + title.height);
+  expect(video.x + video.width, "at the card's right edge").toBeGreaterThanOrEqual(sheet.right - 2);
+});
+
+// ---- L11: the upright frame is in the middle of its row, and its words keep off its edges --------------------------------
+
+test("under the question the empty upright frame is in the middle of its row", async ({ page }) => {
+  const layout = layoutOf(page);
+  test.skip(
+    layout !== "phone" && layout !== "tablet",
+    "only a window that puts the frame under the question",
+  );
+  await startAtVideo(page, "upright");
+  await wordsHaveSettled(page);
+
+  const frame = await boxOf(page.locator(".vframe"));
+  const row = await boxOf(page.locator("form:has(> .vframe)"));
+  const away = frame.x + frame.width / 2 - (row.x + row.width / 2);
+  expect(Math.abs(away), "the frame's middle is the row's middle").toBeLessThanOrEqual(2);
+});
+
+test("the words in an empty video frame keep at least 8px off its edges", async ({ page }) => {
+  await startAtVideo(page, "upright");
+  await wordsHaveSettled(page);
+
+  const frame = await boxOf(page.locator("label.vframe"));
+  const words = await boxOf(page.locator("label.vframe > span"));
+  expect(words.x - frame.x, "left").toBeGreaterThanOrEqual(8);
+  expect(frame.x + frame.width - (words.x + words.width), "right").toBeGreaterThanOrEqual(8);
 });

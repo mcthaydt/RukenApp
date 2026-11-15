@@ -158,6 +158,7 @@ export const load: PageServerLoad = async (event) => {
       oneLine: game.oneLine ?? "",
       rating: ratingWords(game.ageRating, game.contentMarks),
       video: game.clips.upright === null ? null : gamesServices().media(game.clips.upright.key),
+      wideVideo: game.clips.wide === null ? null : gamesServices().media(game.clips.wide.key),
     },
     // One website to a line, as the game's list was typed.
     servers: game.connectHosts.join("\n"),

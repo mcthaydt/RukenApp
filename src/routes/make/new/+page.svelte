@@ -11,7 +11,7 @@
   let { form }: PageProps = $props();
 
   // Nothing is saved yet, so the card beside the question fills in as the name is typed.
-  providePreview(() => ({ name: "", oneLine: "", rating: null, video: null }));
+  providePreview(() => ({ name: "", oneLine: "", rating: null, video: null, wideVideo: null }));
 </script>
 
 <QuestionScreen heading="What's your game called?" counter={{ n: 1, of: 7 }} back="/make">

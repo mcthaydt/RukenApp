@@ -125,7 +125,8 @@ header {
   margin: 0.5rem auto 0;
 }
 
-header + main {
+header + main,
+.topbar + main {
   margin-top: 1rem;
 }
 
@@ -134,7 +135,8 @@ header + main {
     margin-top: 3rem;
   }
 
-  header + main {
+  header + main,
+  .topbar + main {
     margin-top: 1.5rem;
   }
 }
@@ -258,6 +260,14 @@ strong {
   font: var(--text-card-title);
   /* A long title breaks into even lines, not a full line and a stray word. */
   text-wrap: balance;
+}
+
+/* An iPhone SE's card is about 240 wide inside its padding: a 36px heading with a game's name in it ("Throw Tiny game 3fa9c2d1 away?") was
+   four lines. At the statement's size it is two or three. (`.screen` is named so this wins over the screen's own heading.) */
+@media (max-width: 359px) {
+  .screen .card h1 {
+    font: var(--text-statement);
+  }
 }
 
 /* A card's second-level heading ("Game files" on a game's page) is in the display face too, so a card has one
@@ -1122,6 +1132,14 @@ form > * + button:not(.quiet) {
   --frame: 540px;
   height: var(--frame);
   width: calc(var(--frame) * 9 / 16);
+  /* Under the question it is in the middle of its row, not at the left with the rest of the row empty; beside the question
+     (the grids below) it has a column of its own and this does nothing. */
+  margin-inline: auto;
+}
+
+/* The words in an empty frame keep a little way off its edges, even in the narrowest frame (a phone held sideways). */
+label.vframe {
+  padding-inline: 0.75rem;
 }
 
 .vframe[data-frame="wide"] {
@@ -1858,9 +1876,31 @@ a.sheet.fix {
   object-fit: cover;
 }
 
+/* An upright video sits beside the card's words, at the right, and not under them with the rest of the card blank. */
+.sheet.fix:has(> video[data-shape="upright"]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 1.25rem;
+  align-items: start;
+}
+
+.sheet.fix:has(> video[data-shape="upright"]) > :not(video) {
+  grid-column: 1;
+}
+
 .sheet.fix video[data-shape="upright"] {
-  height: 16rem;
+  grid-column: 2;
+  grid-row: 1 / span 6;
+  width: 6rem;
+  height: auto;
+  margin: 0;
   aspect-ratio: 9 / 16;
+}
+
+@media (min-width: 500px) {
+  .sheet.fix video[data-shape="upright"] {
+    width: 9rem;
+  }
 }
 
 .sheet.fix video[data-shape="wide"] {
@@ -2075,9 +2115,27 @@ a.sheet.fix {
   font: var(--text-small);
 }
 
+/* The game's two videos side by side, the upright one 9 parts of the row and the wide one 16, bottoms on one line: the
+   row is the card's whole width, and the wide video the maker has added is in it. */
 .preview .card > div {
-  width: calc(200px * 9 / 16);
-  height: 200px;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.preview .card [data-shape] {
+  height: auto;
+  min-width: 0;
+}
+
+.preview .card [data-shape="upright"] {
+  flex: 9 1 0;
+  aspect-ratio: 9 / 16;
+}
+
+.preview .card [data-shape="wide"] {
+  flex: 16 1 0;
+  aspect-ratio: 16 / 9;
 }
 
 .preview .card h2 {

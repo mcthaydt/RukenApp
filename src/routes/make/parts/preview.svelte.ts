@@ -11,6 +11,8 @@ export interface SavedPreview {
   rating: string | null;
   /** The upright video's address, or null before there is one. */
   video: string | null;
+  /** The wide video's address, or null before there is one. */
+  wideVideo: string | null;
 }
 
 const KEY = Symbol("preview");
@@ -42,6 +44,10 @@ export class Preview {
 
   get video(): string | null {
     return this.#saved().video;
+  }
+
+  get wideVideo(): string | null {
+    return this.#saved().wideVideo;
   }
 
   typeName(words: string): void {

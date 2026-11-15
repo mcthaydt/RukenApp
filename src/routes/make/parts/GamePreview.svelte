@@ -1,5 +1,5 @@
 <!--
-  What players will see, beside a question (spec 15.4): one paper card with the upright video, the game's name, its one
+  What players will see, beside a question (spec 15.4): one paper card with the game's two videos, its name, its one
   line and who it is for. A part not answered yet is words in grey, so the maker sees what is still to come. It follows
   what she types and picks; without script it shows what is saved. Only a window wide enough for it draws it: a phone,
   a phone held sideways and a tablet held upright give the question the whole screen. The maker's handle is not here:
@@ -18,6 +18,7 @@
     <div class="card">
       <div>
         <VideoTile src={preview.video} shape="upright" still />
+        <VideoTile src={preview.wideVideo} shape="wide" still />
       </div>
       <h2 data-empty={preview.name === "" ? "" : undefined}>
         {preview.name === "" ? "Its name" : preview.name}
