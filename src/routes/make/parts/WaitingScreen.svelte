@@ -1,0 +1,46 @@
+<!--
+  A game waiting for a person's yes: the heading, one line, the one blue button back to Your games, and a
+  small way to change something, which goes through Check and send. When the newest copy of its files from GitHub was
+  refused, the line says so and leads to the files question, so the refusal is not found only by changing something.
+  The game is laid out beside them as members will see it. Its name is said once, as that card's title, so a long name
+  is not read twice on one screen.
+-->
+<script lang="ts">
+  import type { LaidOutGame } from "../laid-out.ts";
+  import GameLaidOut from "./GameLaidOut.svelte";
+
+  let {
+    game,
+    changeAddress,
+    filesProblem,
+    filesAddress,
+  }: {
+    game: LaidOutGame;
+    /** Check and send, where a waiting game is changed and sent again. */
+    changeAddress: string;
+    /** What was wrong with the newest copy of the game's files from GitHub, or null when the copy passed. */
+    filesProblem: string | null;
+    /** The files question, where the game is chosen again. */
+    filesAddress: string;
+  } = $props();
+</script>
+
+<svelte:head>
+  <title>Waiting for review · Ruken</title>
+</svelte:head>
+
+<main class="halves">
+  <div>
+    <h1>Waiting for review</h1>
+    <p>We're looking at it. Come back here to see when it's live.</p>
+    {#if filesProblem !== null}
+      <p class="problem" role="alert">{filesProblem}</p>
+      <p><a href={filesAddress}>Fix your files</a></p>
+    {/if}
+    <div class="acts">
+      <a class="button" href="/make">Back to your games</a>
+    </div>
+    <a class="foot" href={changeAddress}>Change something</a>
+  </div>
+  <GameLaidOut {game} />
+</main>

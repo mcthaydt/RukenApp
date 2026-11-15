@@ -1,14 +1,15 @@
 import type { ClipShape } from "../../lib/server/db.ts";
-import { megabytes } from "./files-check.ts";
+import { VIDEO_MAX_BYTES, wholeMegabytes } from "../../lib/video-choice.ts";
 
 // The two clips every game has: one upright (for a phone held upright) and one wide, short videos that play without
 // sound. They are stored in the bucket under a key made here, and served to anyone from the media address.
 
-/** 30 MB: a short loop fits easily, and two of them are saved one request at a time. */
-export const CLIP_MAX_BYTES = 30_000_000;
+/** 30 MB: a short loop fits easily, and two of them are saved one request at a time. The browser checks the same. */
+export const CLIP_MAX_BYTES = VIDEO_MAX_BYTES;
 
 /** The video types a clip may have, and the file extension each gets in its key. */
-const EXTENSIONS = { "video/mp4": "mp4", "video/webm": "webm" } as const;
+// QuickTime is what a Mac saves when it records its screen (Owner, 2026-11-15: "Yes, take .mov").
+const EXTENSIONS = { "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov" } as const;
 export type ClipContentType = keyof typeof EXTENSIONS;
 
 export function isClipContentType(value: string): value is ClipContentType {
@@ -17,7 +18,7 @@ export function isClipContentType(value: string): value is ClipContentType {
 }
 
 /** `clips/<public id>/<shape>-<16 hex>.<ext>`: nothing else is a valid key, so no `..` or extra folder can get in. */
-const CLIP_KEY = /^clips\/[a-z2-7]{10}\/(?:upright|wide)-[0-9a-f]{16}\.(?:mp4|webm)$/;
+const CLIP_KEY = /^clips\/[a-z2-7]{10}\/(?:upright|wide)-[0-9a-f]{16}\.(?:mp4|webm|mov)$/;
 
 /**
  * Where a clip lives. The random part gives every upload its own address, so a browser that kept the old clip never
@@ -39,7 +40,7 @@ export function isClipKey(key: string): boolean {
 
 /** EBML's magic number, the first four bytes of every WebM (and Matroska) file. */
 const WEBM_MAGIC = [0x1a, 0x45, 0xdf, 0xa3];
-/** "ftyp": an MP4 opens with a box of this type. Bytes 0 to 3 are the box's length, which varies. */
+/** "ftyp": an MP4 opens with a box of this type, and so does a QuickTime file a Mac saves. Bytes 0 to 3 are the box's length, which varies. */
 const MP4_FTYP = [0x66, 0x74, 0x79, 0x70];
 
 /**
@@ -50,6 +51,7 @@ const MP4_FTYP = [0x66, 0x74, 0x79, 0x70];
  */
 export function looksLikeVideo(bytes: Uint8Array, contentType: ClipContentType): boolean {
   if (contentType === "video/webm") return startsWith(bytes, WEBM_MAGIC, 0);
+  // MP4 and QuickTime share the box that opens the file; a QuickTime file that opens with another box is refused.
   return startsWith(bytes, MP4_FTYP, 4);
 }
 
@@ -63,12 +65,12 @@ function startsWith(bytes: Uint8Array, expected: readonly number[], offset: numb
  */
 export function clipProblem(upload: { contentType: string; bytes: Uint8Array }): string | null {
   const { contentType, bytes } = upload;
-  if (!isClipContentType(contentType)) return "Clips are MP4 or WebM video.";
+  if (!isClipContentType(contentType)) return "Ruken takes MP4, WebM or MOV videos.";
   if (bytes.length > CLIP_MAX_BYTES) {
-    return `That clip is ${megabytes(bytes.length)}. A clip can be up to ${megabytes(CLIP_MAX_BYTES)}.`;
+    return `That video is ${wholeMegabytes(bytes.length)}. Videos can be up to ${wholeMegabytes(CLIP_MAX_BYTES)}. Make it shorter or smaller, then choose it again.`;
   }
   if (!looksLikeVideo(bytes, contentType)) {
-    return "That file doesn't look like a video. Export it as MP4 or WebM and try again.";
+    return "That file doesn't look like a video. Save it as MP4, WebM or MOV and try again.";
   }
   return null;
 }

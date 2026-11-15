@@ -1,0 +1,86 @@
+import { GameError } from "./game-error.ts";
+import { checkBranch, checkRepo } from "./github.ts";
+import { slugOf } from "./ids.ts";
+
+// The words for one answer that is wrong, each check kept to its own function so a question shows the refusal of its own box.
+
+export const NAME_MAX = 60;
+export const ONE_LINE_MAX = 100;
+
+/** The words of a check that throws a `GameError`, or undefined when it passes. Anything else is a bug and goes on. */
+function problemOf(check: () => void): string | undefined {
+  try {
+    check();
+  } catch (error) {
+    if (error instanceof GameError) return error.message;
+    throw error;
+  }
+  return undefined;
+}
+
+/** Throws unless `folder` is a folder inside a repository: "" for the top, no slash at either end, no `..` step. */
+export function checkFolder(folder: string): void {
+  if (
+    folder.length > 200 ||
+    folder.startsWith("/") ||
+    folder.endsWith("/") ||
+    folder.split("/").includes("..")
+  ) {
+    throw new GameError(
+      "INVALID",
+      "That doesn't look like a folder. Write it like web/build, with no slash at the start or end.",
+      "folder",
+    );
+  }
+}
+
+/** The words for the name, or undefined when it is fine. */
+export function nameProblem(name: string): string | undefined {
+  if (name === "") return "A game needs a name.";
+  if (name.length > NAME_MAX) return "A game's name can be up to 60 characters.";
+  if (slugOf(name) === null) return "Pick a name with at least three letters or numbers.";
+  return undefined;
+}
+
+/** The words for the one line, or undefined when it is fine. */
+export function oneLineProblem(oneLine: string): string | undefined {
+  if (oneLine === "") return "A game needs one line about it.";
+  if (oneLine.length > ONE_LINE_MAX) return "The one line can be up to 100 characters.";
+  return undefined;
+}
+
+/** The words for a repository, or undefined when it is fine. */
+export function repoProblem(fullName: string): string | undefined {
+  return problemOf(() => {
+    checkRepo(fullName);
+  });
+}
+
+/** The words for a branch, or undefined when it is fine. */
+export function branchProblem(branch: string): string | undefined {
+  return problemOf(() => {
+    checkBranch(branch);
+  });
+}
+
+/** The words for a folder, or undefined when it is fine. */
+export function folderProblem(folder: string): string | undefined {
+  return problemOf(() => {
+    checkFolder(folder);
+  });
+}
+
+/** The words for "where does it play", or undefined when a place was chosen. */
+export function playsOnProblem(playsOn: string | null): string | undefined {
+  return playsOn === null ? "Choose where your game plays." : undefined;
+}
+
+/** The words for "who is it for", or undefined when a rating was chosen. */
+export function ageProblem(ageRating: string | null): string | undefined {
+  return ageRating === null ? "Choose who your game is for." : undefined;
+}
+
+/** The words for "does it have any of these", or undefined when at least one answer was chosen. */
+export function marksProblem(marks: readonly string[]): string | undefined {
+  return marks.length === 0 ? "Choose at least one, or None of these." : undefined;
+}

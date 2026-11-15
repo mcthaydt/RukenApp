@@ -85,6 +85,8 @@ async function newGame(options: { repoFolder?: string; connectHosts?: string[] }
       oneLine: "A game about a thing.",
       playsOn: "phone_and_computer",
       repoFullName: "acme/game",
+      // A game that goes live must have been asked who it is for.
+      ageRating: "age_12",
       repoFolder: options.repoFolder ?? "",
       connectHosts: options.connectHosts ?? [],
     },
@@ -191,7 +193,7 @@ describe("pullGame", () => {
     await expect(pullGame(depsFor(github), game.id)).rejects.toMatchObject({
       code: "FILES_REFUSED",
       message:
-        "assets/big.bin is kept in Git LFS, and Ruken can't pull those yet. Add the real file to the repository.",
+        "assets/big.bin is stored with Git LFS, which Ruken can't copy yet. Upload the file itself to GitHub instead.",
     });
     expect(files.keys()).toEqual([]);
   });

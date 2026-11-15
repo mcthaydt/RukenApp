@@ -1,0 +1,92 @@
+[
+  {
+    "parts": ["name"],
+    "code": "rude",
+    "staff": "It's rude.",
+    "maker": "We can't show this name on Ruken. It's rude. Pick another."
+  },
+  {
+    "parts": ["name"],
+    "code": "not_this_game",
+    "staff": "It's not this game's.",
+    "maker": "This name belongs to a different game. Pick your own."
+  },
+  {
+    "parts": ["one_line"],
+    "code": "rude",
+    "staff": "It's rude.",
+    "maker": "We can't show this line on Ruken. It's rude. Write another."
+  },
+  {
+    "parts": ["one_line"],
+    "code": "not_this_game",
+    "staff": "It's not this game's.",
+    "maker": "This line isn't about your game. Say what {name} is."
+  },
+  {
+    "parts": ["files"],
+    "code": "wont_start",
+    "staff": "It doesn't start.",
+    "maker": "Your game didn't start for us. Fix it on GitHub, then send it again."
+  },
+  {
+    "parts": ["files"],
+    "code": "breaks",
+    "staff": "It stops working.",
+    "maker": "Your game stopped working while we played. Fix it on GitHub, then send it again."
+  },
+  {
+    "parts": ["files"],
+    "code": "past_limit",
+    "staff": "It goes past what we allow.",
+    "maker": "Your game has too much in it for Ruken. Take some files out on GitHub, then send it again."
+  },
+  {
+    "parts": ["files"],
+    "code": "pornography",
+    "staff": "It's pornography.",
+    "maker": "Ruken doesn't take pornography."
+  },
+  {
+    "parts": ["files"],
+    "code": "gambling",
+    "staff": "Gambling isn't allowed on Ruken.",
+    "maker": "Gambling isn't allowed on Ruken."
+  },
+  {
+    "parts": ["plays_on"],
+    "code": "needs_keyboard",
+    "staff": "It needs a keyboard.",
+    "maker": "Your game needs a keyboard, so it can't play on phones. Choose Computers only."
+  },
+  {
+    "parts": ["upright_video", "wide_video"],
+    "code": "sideways",
+    "staff": "It's sideways.",
+    "maker": "It's sideways. Turn it the right way up."
+  },
+  {
+    "parts": ["upright_video", "wide_video"],
+    "code": "not_this_game",
+    "staff": "It's not from this game.",
+    "maker": "It shows a different game. Add a video of {name}."
+  },
+  {
+    "parts": ["upright_video", "wide_video"],
+    "code": "too_dark",
+    "staff": "It's too dark to see.",
+    "maker": "It's too dark to see. Record it again, brighter."
+  },
+  {
+    "parts": ["age_rating"],
+    "code": "wrong_age",
+    "staff": "The age is wrong.",
+    "maker": "We think {name} is for older players. Choose again."
+  },
+  {
+    "parts": ["other_websites"],
+    "code": "not_listed",
+    "staff": "It uses a website it didn't list.",
+    "maker": "Your game uses a website that isn't on your list. Add it."
+  }
+]

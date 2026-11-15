@@ -174,7 +174,14 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     }
     // The commit and the files are read with the installation's token and never with another.
     if (token !== INSTALLATION_TOKEN) return sendJson(response, 403, { message: "Wrong kind of token" });
-    if (parts[3] === "commits") return send(response, 200, repository.commit, "text/plain");
+    if (parts[3] === "commits") {
+      // For a journey: a branch named for a failure answers with it, so a failure is asked for by a maker's own typing
+      // and no journey can meet another's.
+      const branch = decodeURIComponent(parts.slice(4).join("/"));
+      if (branch === "empty-branch") return sendJson(response, 409, { message: "Git Repository is empty." });
+      if (branch === "busy-branch") return sendJson(response, 503, { message: "Service Unavailable" });
+      return send(response, 200, repository.commit, "text/plain");
+    }
     if (parts[3] === "tarball") {
       const top = `${repository.fullName.replace("/", "-")}-${repository.commit.slice(0, 7)}`;
       const files = repository.files.map((file) => ({ path: `${top}/${file.path}`, content: file.content }));

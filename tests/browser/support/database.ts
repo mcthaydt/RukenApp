@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { sealState } from "../../../src/features/games/github-connect.ts";
 import { ARRIVAL_COOKIE, sealArrival } from "../../../src/features/membership/arrival.ts";
+import type { AgeRating, GamePart } from "../../../src/lib/server/db.ts";
 import { PrismaClient, type MembershipStart } from "../../support/generated/prisma/client.ts";
 
 // The one place a journey reads the app's database. No screen shows who brought a member, so the journeys that check
@@ -77,9 +78,12 @@ export async function githubConnectionOf(email: string) {
   }));
 }
 
-/** The state GitHub's sign-in sends back for an account, sealed with the app's own secret and the clock. */
-export function connectStateFor(userId: string): string {
-  return sealState(userId, Date.now(), APP_SECRET);
+/**
+ * The state GitHub's sign-in sends back for an account, sealed with the app's own secret and the clock, for the game
+ * whose address is `game` (none by default).
+ */
+export function connectStateFor(userId: string, game: string | null = null): string {
+  return sealState(userId, Date.now(), APP_SECRET, game);
 }
 
 export function membershipStartsOf(email: string): Promise<MembershipStart[]> {
@@ -116,4 +120,159 @@ export async function paymentPostingOf(email: string): Promise<{ stripeInvoiceId
 /** How many rows of Stripe's fee report of one kind (by Stripe's name for it, such as "billing") the site has kept. */
 export function feeRowsKept(product: string): Promise<number> {
   return db().stripeFeeRow.count({ where: { product } });
+}
+
+/**
+ * Leaves a maker connected to GitHub with no repository listed for them, as when they connected and chose none. The
+ * stand-in always lists two, so this is the only way to see that screen.
+ */
+export async function forgetTheirRepositories(email: string): Promise<void> {
+  await db().gitHubRepository.deleteMany({ where: { connection: { user: { email } } } });
+}
+
+/** Where a game's files are, and how many times they were copied, read from its rows. */
+export async function filesOf(slug: string): Promise<{ repo: string | null; pulls: number }> {
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { repoFullName: true, _count: { select: { pulls: true } } },
+  });
+  return { repo: game.repoFullName, pulls: game._count.pulls };
+}
+
+/** The commit a stand-in pull is made from: any 40 hex characters. */
+const STAND_IN_COMMIT = "a".repeat(40);
+
+/**
+ * Writes answers into a game straight into the database, so a journey about one screen does not have to walk all the
+ * ones before it. The name is the game's own, and `line` and `playsOn` are written unless set to false. `files` writes
+ * a repository and a pull that passed, `videos` the two clips (or `"upright"`, the upright one alone, so the wide
+ * question is the next one), and `age` a rating (an 18+ game has no marks yet).
+ */
+export async function fillAnswers(
+  slug: string,
+  answers: {
+    line?: boolean;
+    playsOn?: boolean | "computers";
+    files?: boolean;
+    videos?: boolean | "upright";
+    age?: AgeRating;
+  } = {},
+): Promise<void> {
+  const game = await db().game.findUniqueOrThrow({ where: { slug }, select: { id: true, publicId: true } });
+  await db().game.update({
+    where: { id: game.id },
+    data: {
+      ...(answers.line === false ? {} : { oneLine: "A tiny game about tapping." }),
+      ...(answers.playsOn === false
+        ? {}
+        : {
+            playsOn:
+              answers.playsOn === "computers" ? ("computer_only" as const) : ("phone_and_computer" as const),
+          }),
+      ...(answers.age === undefined ? {} : { ageRating: answers.age, contentMarks: [] }),
+      ...(answers.files === true ? { repoFullName: "ruken-test/tiny-game", pullProblem: null } : {}),
+    },
+  });
+  // Asking twice leaves the game as asking once did: a journey may fill a game and then put it where staff leave it.
+  if (answers.files === true && (await db().gamePull.count({ where: { gameId: game.id } })) === 0) {
+    await db().gamePull.create({
+      data: {
+        id: crypto.randomUUID(),
+        gameId: game.id,
+        commitSha: STAND_IN_COMMIT,
+        fileCount: 3,
+        totalBytes: 1000n,
+        connectHosts: [],
+        pulledAt: new Date(),
+      },
+    });
+  }
+  if (answers.videos === true || answers.videos === "upright") {
+    for (const shape of answers.videos === true ? (["upright", "wide"] as const) : (["upright"] as const)) {
+      const clip = {
+        gameId: game.id,
+        shape,
+        key: `clips/${game.publicId}/${shape}-${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}.mp4`,
+        contentType: "video/mp4",
+        bytes: 1000,
+      };
+      await db().gameClip.upsert({
+        where: { gameId_shape: { gameId: game.id, shape } },
+        create: clip,
+        update: {},
+      });
+    }
+  }
+}
+
+/** A part staff sent back, with the reason they chose (a code from library/send-back-reasons.json) and their own line. */
+export interface SentBackPart {
+  part: GamePart;
+  reason: string;
+  note?: string;
+}
+
+/**
+ * Puts a game where staff's decision would leave it: waiting for a yes, sent back, or live on its newest files. There
+ * is no staff screen on this branch, so a journey cannot get there by clicking. A game past draft holds every answer, so
+ * every answer, the files and both videos are written first. A game sent back (or a live one whose update was sent
+ * back) lists what staff ticked in `toFix`, each with its reason, and what the maker has fixed since in `fixed`; a live
+ * game also has the yes that made it live, and `updateWaiting` leaves an update of it waiting for review.
+ */
+export async function putGameWhereStaffLeaveIt(
+  slug: string,
+  decision: {
+    state: "waiting" | "sent_back" | "live";
+    toFix?: SentBackPart[];
+    /** Parts staff sent back that the maker has fixed since: in staff's newest review, and no longer in `toFix`. */
+    fixed?: SentBackPart[];
+    updateWaiting?: boolean;
+    /** The words a refused copy left on the game, as the newest copy of its files. */
+    pullProblem?: string;
+  },
+): Promise<void> {
+  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  if (decision.pullProblem !== undefined)
+    await db().game.update({ where: { slug }, data: { pullProblem: decision.pullProblem } });
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: {
+      id: true,
+      makerUserId: true,
+      pulls: { orderBy: { createdAt: "desc" }, take: 1, select: { id: true } },
+    },
+  });
+  const newest = game.pulls[0];
+  if (newest === undefined) throw new Error(`${slug} has no pull`);
+  const toFix = decision.toFix ?? [];
+  const sentBack = [...toFix, ...(decision.fixed ?? [])];
+  // The maker's own account stands in for staff: no screen shows who decided.
+  const review = (decision: "accepted" | "sent_back", parts: SentBackPart[]) =>
+    db().gameReview.create({
+      data: {
+        gameId: game.id,
+        pullId: newest.id,
+        staffUserId: game.makerUserId,
+        decision,
+        decidedAt: new Date(),
+        parts: {
+          create: parts.map((one) => ({ part: one.part, reason: one.reason, note: one.note ?? null })),
+        },
+      },
+    });
+  if (decision.state === "live") await review("accepted", []);
+  if (sentBack.length > 0) await review("sent_back", sentBack);
+  await db().game.update({
+    where: { id: game.id },
+    data:
+      decision.state === "live"
+        ? {
+            state: "live",
+            stateReason: null,
+            pendingPullId: decision.updateWaiting === true ? newest.id : null,
+            livePullId: newest.id,
+            toFix: toFix.map((one) => one.part),
+          }
+        : { state: decision.state, toFix: toFix.map((one) => one.part) },
+  });
 }

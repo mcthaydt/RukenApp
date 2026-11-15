@@ -1,0 +1,123 @@
+import type { GameState } from "../../lib/server/db.ts";
+import type { QuestionId } from "./questions.ts";
+
+// A game's state in the maker's plain words (design 5.4): short sentences, and when something went wrong, what to fix.
+// Every line a maker reads about where a game stands is made here, so the words are tested in one place.
+
+/** What a game's rows say about where it stands. */
+interface StateInput {
+  state: GameState;
+  stateReason: string | null;
+  hasPending: boolean;
+}
+
+/**
+ * A game's state as a headline, with staff's reason apart from it. A live game keeps its old files live while an
+ * update waits or is sent back, so its words say so; a new update waiting wins over an older reason. The reason is
+ * kept out of the headline so a screen can show it as a plain paragraph and not as a line of large type.
+ */
+export function stateParts(game: StateInput): { headline: string; reason: string | null } {
+  switch (game.state) {
+    case "draft":
+      return { headline: "Not sent yet", reason: null };
+    case "waiting":
+      return { headline: "Waiting for review", reason: null };
+    case "live":
+      if (game.hasPending) return { headline: "Live. Your update is waiting for review", reason: null };
+      return game.stateReason === null
+        ? { headline: "Live", reason: null }
+        : { headline: "Live. Your update was sent back", reason: game.stateReason };
+    case "sent_back":
+      return { headline: "Sent back", reason: game.stateReason };
+    case "taken_off":
+      return { headline: "Off Ruken. You took it off.", reason: null };
+    case "taken_down":
+      return { headline: "Taken down", reason: game.stateReason };
+    // Nothing shows a thrown-away game; its words are only here so every state has some.
+    case "thrown_away":
+      return { headline: "Thrown away", reason: null };
+  }
+}
+
+/** The state in one line, with the reason after a colon when there is one: "Sent back: Fix the sound." */
+export function stateWords(game: StateInput): string {
+  const { headline, reason } = stateParts(game);
+  return reason === null ? headline : `${headline}: ${reason}`;
+}
+
+/**
+ * The line under a game's name in the maker's list: where it stands and what to do next. Staff's reasons are not
+ * repeated here; the game's own page has them.
+ */
+export function listWords(game: {
+  state: GameState;
+  hasPending: boolean;
+  toFix: number;
+  firstUnanswered: QuestionId | null;
+  questionNumber: number | null;
+  /** Staff's newest word on the game was a send back (a live game's update, once it is mended, is sent again). */
+  sentBackLast?: boolean;
+}): string {
+  switch (game.state) {
+    case "draft":
+      return game.firstUnanswered === null || game.questionNumber === null
+        ? "Ready to send."
+        : `Not finished. Go on from question ${String(game.questionNumber)}.`;
+    case "waiting":
+      return "Waiting for review";
+    case "live":
+      if (game.hasPending) return "Live. Your update is waiting for review";
+      if (game.toFix > 0) return "Live. Your update was sent back. See what to fix.";
+      // Everything staff sent back is mended: sending it again is what is left to do.
+      return game.sentBackLast === true ? "Live. Your update is fixed. Send it again." : "Live";
+    case "sent_back":
+      return game.toFix === 0 ? "Fixed. Send it again." : "Sent back. See what to fix.";
+    case "taken_off":
+      return "Off Ruken. You took it off.";
+    case "taken_down":
+      return "Taken down. See why.";
+    // A game thrown away is in no list; the line is only for the compiler's sake.
+    case "thrown_away":
+      return "Thrown away.";
+  }
+}
+
+/** How many things to fix, as the Sent back screen says it; null when nothing is left. */
+export function toFixWords(count: number): string | null {
+  if (count <= 0) return null;
+  return `${count === 1 ? "One thing" : `${String(count)} things`} to fix. Then send it again.`;
+}
+
+/**
+ * The one next step, in a line under a game's state on its own page. Null when there is nothing to do (a game taken
+ * down or thrown away). What is wrong with the files comes first, since nothing else works until they are fixed.
+ */
+export function nextStepWords(
+  game: StateInput & { filesProblem: boolean; upright: boolean; wide: boolean },
+): string | null {
+  const canSend = game.state === "draft" || game.state === "sent_back";
+  if (canSend && game.filesProblem)
+    return "Fix your game's files on GitHub. Then choose Next on the files question to copy it again.";
+  switch (game.state) {
+    case "draft":
+      if (game.upright && game.wide) return "Everything's here. Send it for review.";
+      if (game.upright) return "Add your wide video, then send it for review.";
+      if (game.wide) return "Add your upright video, then send it for review.";
+      return "Add your two videos, then send it for review.";
+    case "sent_back":
+      return "Fix it, then send it again.";
+    case "waiting":
+      // No mail is sent yet, so the line must not promise one.
+      return "We're looking at it. Come back here to see when it's live.";
+    case "live":
+      return !game.hasPending && game.stateReason !== null
+        ? "Fix it, then send your newest version for review."
+        : "Players can find it on Ruken.";
+    case "taken_off":
+      // The maker did this themselves, so the screen says what it did and the one way back.
+      return "Players can't find it or play it any more. Nothing changed on GitHub. To put it back, add it again as a new game. We'll look at it first.";
+    case "taken_down":
+    case "thrown_away":
+      return null;
+  }
+}

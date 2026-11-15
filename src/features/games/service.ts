@@ -1,12 +1,34 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { FileStore } from "../../lib/files/store.ts";
-import type { ClipShape, GamePlaysOn, PrismaClient } from "../../lib/server/db.ts";
+import type {
+  AgeRating,
+  ClipShape,
+  ContentMark,
+  GamePart,
+  GamePlaysOn,
+  GameState,
+  PrismaClient,
+} from "../../lib/server/db.ts";
 import { clipKeyFor, clipProblem, type ClipContentType } from "./clips.ts";
+import { connectHostsFrom } from "./files-check.ts";
 import { GameError } from "./game-error.ts";
 import type { Connection } from "./github-connect.ts";
-import { checkBranch, checkRepo, NOT_VISIBLE, type GitHub } from "./github.ts";
+import {
+  ageProblem,
+  branchProblem,
+  folderProblem,
+  marksProblem,
+  nameProblem,
+  oneLineProblem,
+  playsOnProblem,
+  repoProblem,
+} from "./fields.ts";
+import { NOT_VISIBLE, type GitHub } from "./github.ts";
 import { newPublicId, slugOf } from "./ids.ts";
 import { pullGame, type Pull } from "./pull.ts";
+import { counterOf, firstUnanswered, type Answers } from "./questions.ts";
+import { listWords, stateParts, stateWords } from "./review.ts";
+import { isReasonFor, makerWords, partTitle } from "./send-back.ts";
 
 // What a game goes through, from its first clip to going live. It is built from what it needs (the database, the
 // clock, the bucket, GitHub) so a test hands it stand-ins and no test reaches for the real ones.
@@ -33,40 +55,114 @@ export interface LiveGame {
   livePullId: string;
   /** The servers the live pull's game may reach (the list as it stood at that pull). */
   connectHosts: string[];
+  /** Who the game is for, and what an 18+ game says it has: what the page shows players. */
+  ageRating: AgeRating;
+  contentMarks: ContentMark[];
   clips: { upright: string; wide: string };
 }
 
-/** What a maker types to start a game, after the form has read it. */
-export interface CreateGameInput {
-  makerUserId: string;
+/**
+ * One answer of a game, as a screen hands it over. Each question keeps only its own answer, so a maker can stop after
+ * any one and a game that is half answered is still a game.
+ */
+export type Answer =
+  | { question: "name"; name: string }
+  | { question: "line"; oneLine: string }
+  | { question: "files"; repo: { fullName: string; branch: string | null; folder: string } }
+  | { question: "plays-on"; playsOn: GamePlaysOn }
+  // A game past draft that is made 18+ brings its marks with the rating: the database holds an 18+ game that is past
+  // draft to having them, so the two are one write.
+  | { question: "age"; ageRating: AgeRating; contentMarks?: ContentMark[] }
+  | { question: "marks"; contentMarks: ContentMark[] }
+  | { question: "websites"; connectHosts: string[] };
+
+/** What the maker's list shows for a game: its name, the key of its wide video (for its still) and where it stands. */
+export interface MakerGameRow {
+  slug: string;
   name: string;
-  oneLine: string;
-  playsOn: GamePlaysOn;
-  repo: { fullName: string; branch: string | null; folder: string };
-  connectHosts: string[];
+  wideClipKey: string | null;
+  words: string;
 }
 
-const NAME_MAX = 60;
-const ONE_LINE_MAX = 100;
+/** A video a game holds, as the screens need it: where it is in the bucket and how big it was when saved. */
+export interface ClipFile {
+  key: string;
+  bytes: number;
+}
+
+/** A part staff sent back that the maker has not changed yet, in the words the maker reads. */
+export interface PartToFix {
+  part: GamePart;
+  title: string;
+  words: string;
+  /** Staff's own line, when they wrote one beside a reason from the list. */
+  note: string | null;
+}
+
+/** What a game's page in the maker's area shows. Sizes are measured from the pull; nobody types them. */
+export interface MakerGame {
+  id: string;
+  slug: string;
+  publicId: string;
+  name: string;
+  state: GameState;
+  /** The state in one line, with staff's reason after a colon when there is one. */
+  words: string;
+  /** The state alone, and staff's reason apart from it, so a screen sets the reason as a paragraph. */
+  headline: string;
+  reason: string | null;
+  /** True while an update waits for a person's yes. */
+  hasPending: boolean;
+  /** Null until the maker answers it. */
+  oneLine: string | null;
+  playsOn: GamePlaysOn | null;
+  ageRating: AgeRating | null;
+  contentMarks: ContentMark[];
+  /** True once staff have accepted the game at least once: its address never changes after that. */
+  everLive: boolean;
+  /** Null until the maker chooses where the game's files are. */
+  repoFullName: string | null;
+  repoBranch: string | null;
+  repoFolder: string;
+  connectHosts: string[];
+  /** The words of the last pull's refusal, or null. */
+  pullProblem: string | null;
+  newestPull: { id: string; fileCount: number; totalBytes: number } | null;
+  /** Each video that was added, with its size measured when it was saved, or null when it was not added. */
+  clips: { upright: ClipFile | null; wide: ClipFile | null };
+  /** What staff sent back that is still to fix, from their newest sent-back review. */
+  toFix: PartToFix[];
+  /**
+   * True while staff's newest word on this game is a send back: a live game's update that came back, mended or not. It is
+   * what lets the maker send the copy Ruken already holds again, without copying from GitHub.
+   */
+  sentBackLast: boolean;
+}
+
+/** What staff see of a game waiting for review: the maker's view, and the files that wait. */
+export interface ReviewGame extends MakerGame {
+  pending: { id: string; fileCount: number; totalBytes: number; connectHosts: string[] } | null;
+  clipKeys: { upright: string | null; wide: string | null };
+}
+
+/** Staff's own line beside a reason, at most this many characters (GameReviewPart_note_check). */
+const NOTE_MAX = 500;
+
+/** The values the answers may take, for answers that arrive from a form and are never believed. */
+const PLAYS_ON: GamePlaysOn[] = ["phone_and_computer", "computer_only"];
+const AGE_RATINGS: AgeRating[] = ["age_3", "age_7", "age_12", "age_16", "age_18"];
+const CONTENT_MARKS: ContentMark[] = ["sex_or_nudity", "gore", "drugs", "none"];
+
 /** The page's address may end in `-2` to `-9`, so a name that makes the same address nine times over is refused. */
 const MAX_SLUG_NUMBER = 9;
 /** 38 characters and `-9` is 40, the most the database takes for an address. */
 const SLUG_STEM_MAX = 38;
 
-/** Throws unless `folder` is a folder inside a repository: "" for the top, no slash at either end, no `..` step. */
-function checkFolder(folder: string): void {
-  if (
-    folder.length > 200 ||
-    folder.startsWith("/") ||
-    folder.endsWith("/") ||
-    folder.split("/").includes("..")
-  ) {
-    throw new GameError(
-      "INVALID",
-      "That doesn't look like a folder. Write it like web/build, with no slash at the start or end.",
-    );
-  }
-}
+/** A game's pulls, the newest first. A plain array, not `as const`, because Prisma takes only a mutable one. */
+const NEWEST_FIRST: ({ pulledAt: "desc" } | { createdAt: "desc" })[] = [
+  { pulledAt: "desc" },
+  { createdAt: "desc" },
+];
 
 /** 16 random hex characters: what gives each uploaded clip an address of its own (see `clipKeyFor`). */
 function randomHex16(): string {
@@ -91,8 +187,13 @@ export function createGamesService(deps: GamesServiceDeps) {
     // `clipProblem` returned null, so the type is one of the two a clip may have.
     const contentType = upload.contentType as ClipContentType;
 
-    const game = await deps.db.game.findUnique({ where: { id: gameId }, select: { publicId: true } });
+    const game = await deps.db.game.findUnique({
+      where: { id: gameId },
+      select: { publicId: true, state: true },
+    });
     if (game === null) throw new GameError("NOT_FOUND", "We can't find that game.");
+    // A new clip would go live without a person's yes. Changing a live game's clips through review comes in slice 4.
+    if (game.state === "live") throw new GameError("NOT_READY", "A live game's videos can't be changed yet.");
 
     const key = clipKeyFor(game.publicId, shape, randomHex16(), contentType);
     const replaced = await deps.db.gameClip.findUnique({ where: { gameId_shape: { gameId, shape } } });
@@ -103,7 +204,18 @@ export function createGamesService(deps: GamesServiceDeps) {
       create: { gameId, shape, key, contentType, bytes: upload.bytes.length },
       update: { key, contentType, bytes: upload.bytes.length },
     });
+    await takeOutOfToFix(gameId, shape === "upright" ? "upright_video" : "wide_video");
     if (replaced !== null) await deps.files.delete(replaced.key);
+  }
+
+  /** The maker changed a part that staff sent back: it is no longer to fix. */
+  async function takeOutOfToFix(gameId: string, part: GamePart): Promise<void> {
+    const game = await deps.db.game.findUnique({ where: { id: gameId }, select: { toFix: true } });
+    if (game === null || !game.toFix.includes(part)) return;
+    await deps.db.game.update({
+      where: { id: gameId },
+      data: { toFix: game.toFix.filter((one) => one !== part) },
+    });
   }
 
   /**
@@ -122,11 +234,14 @@ export function createGamesService(deps: GamesServiceDeps) {
       const holding = await deps.github.installationOf(repoFullName);
       if (holding !== null && listed.some((row) => row.connection.installationId === holding)) return;
     }
-    throw new GameError("NOT_CONNECTED", NOT_VISIBLE);
+    throw new GameError("NOT_CONNECTED", NOT_VISIBLE, "repo");
   }
 
-  /** An address for a name: the name's own, or with `-2` to `-9` when that is taken. Refuses when all nine are. */
-  async function freeSlug(base: string): Promise<string> {
+  /**
+   * An address for a name: the name's own, or with `-2` to `-9` when that is taken. Refuses when all nine are. A game
+   * being renamed does not count against itself, so a name it already has stays as it is.
+   */
+  async function freeSlug(base: string, exceptGameId?: string): Promise<string> {
     // Cut before the number goes on, so `<38 characters>-9` still fits the database's 40; a hyphen the cut leaves at
     // the end goes too.
     const stem = base.slice(0, SLUG_STEM_MAX).replace(/-+$/, "");
@@ -134,48 +249,17 @@ export function createGamesService(deps: GamesServiceDeps) {
       base,
       ...Array.from({ length: MAX_SLUG_NUMBER - 1 }, (_, i) => `${stem}-${String(i + 2)}`),
     ];
-    const rows = await deps.db.game.findMany({ where: { slug: { in: candidates } }, select: { slug: true } });
+    const rows = await deps.db.game.findMany({
+      where: {
+        slug: { in: candidates },
+        ...(exceptGameId === undefined ? {} : { id: { not: exceptGameId } }),
+      },
+      select: { slug: true },
+    });
     const taken = new Set(rows.map((row) => row.slug));
     const free = candidates.find((candidate) => !taken.has(candidate));
-    if (free === undefined) throw new GameError("INVALID", "That name is taken. Pick another.");
+    if (free === undefined) throw new GameError("INVALID", "That name is taken. Pick another.", "name");
     return free;
-  }
-
-  /**
-   * Starts a game as a draft. What the maker typed is checked before anything is kept: the name and the line, the
-   * repository, the branch and the folder, so nothing unchecked is ever put in a GitHub address later.
-   */
-  async function createGame(input: CreateGameInput): Promise<{ id: string; slug: string; publicId: string }> {
-    const name = input.name.trim();
-    if (name === "") throw new GameError("INVALID", "A game needs a name.");
-    if (name.length > NAME_MAX) throw new GameError("INVALID", "A game's name can be up to 60 characters.");
-    const oneLine = input.oneLine.trim();
-    if (oneLine === "") throw new GameError("INVALID", "A game needs one line about it.");
-    if (oneLine.length > ONE_LINE_MAX)
-      throw new GameError("INVALID", "The one line can be up to 100 characters.");
-    const base = slugOf(name);
-    if (base === null) throw new GameError("INVALID", "Pick a name with at least three letters or numbers.");
-
-    checkRepo(input.repo.fullName);
-    if (input.repo.branch !== null) checkBranch(input.repo.branch);
-    checkFolder(input.repo.folder);
-    await checkReachable(input.makerUserId, input.repo.fullName);
-
-    return deps.db.game.create({
-      data: {
-        publicId: newPublicId(),
-        slug: await freeSlug(base),
-        makerUserId: input.makerUserId,
-        name,
-        oneLine,
-        playsOn: input.playsOn,
-        repoFullName: input.repo.fullName,
-        repoBranch: input.repo.branch,
-        repoFolder: input.repo.folder,
-        connectHosts: input.connectHosts,
-      },
-      select: { id: true, slug: true, publicId: true },
-    });
   }
 
   /**
@@ -185,33 +269,625 @@ export function createGamesService(deps: GamesServiceDeps) {
   async function pullLatest(gameId: string): Promise<Pull> {
     const game = await deps.db.game.findUnique({
       where: { id: gameId },
-      select: { makerUserId: true, repoFullName: true },
+      select: { makerUserId: true, repoFullName: true, pendingPullId: true },
     });
     // A game that is not there is `pullGame`'s to refuse, in its own words.
-    if (game !== null) await checkReachable(game.makerUserId, game.repoFullName);
-    return pullGame(deps, gameId);
+    if (game?.repoFullName != null) await checkReachable(game.makerUserId, game.repoFullName);
+    // A refused copy throws here, so what follows happens only for a copy that passed.
+    const pull = await pullGame(deps, gameId);
+    // A passing copy is the fix for files staff sent back. A live game's maker has no files question to answer (it is a
+    // 404 for her): she mends the files on GitHub and presses "Send a new version", which comes through here.
+    await takeOutOfToFix(gameId, "files");
+    // Files are waiting for a person's yes: the new ones take their place, so staff always review the newest.
+    if (game?.pendingPullId != null) {
+      await deps.db.game.update({
+        where: { id: gameId },
+        data: { pendingPullId: pull.id, pendingSince: new Date(deps.clock.epochMs()) },
+      });
+    }
+    return pull;
   }
 
   /**
-   * Makes a game live on one of its pulls. Sending for review and accepting replace this; until they exist it is what
-   * puts a game on the site. The pull must be this game's, and both clips must be there.
+   * The maker sends a game's newest files for review. The game must be theirs, have its files and both clips, and the
+   * first thing missing is what they are told. A game that is not live becomes `waiting`; a live game stays live on its
+   * old files until the new ones are accepted (design 5.4).
    */
-  async function goLive(gameId: string, pullId: string): Promise<void> {
-    const [pull, clipCount] = await Promise.all([
-      deps.db.gamePull.findFirst({ where: { id: pullId, gameId }, select: { id: true } }),
-      // A game has at most one clip of each shape, so two clips are one of each.
-      deps.db.gameClip.count({ where: { gameId } }),
-    ]);
-    if (pull === null || clipCount < 2) {
-      throw new GameError(
-        "NOT_READY",
-        "A game needs its files, an upright clip and a wide clip before it can go live.",
-      );
+  async function sendForReview(gameId: string, makerUserId: string): Promise<void> {
+    const game = await deps.db.game.findFirst({
+      where: { id: gameId, makerUserId },
+      select: {
+        state: true,
+        toFix: true,
+        pullProblem: true,
+        oneLine: true,
+        playsOn: true,
+        ageRating: true,
+        contentMarks: true,
+        pulls: { orderBy: NEWEST_FIRST, take: 1, select: { id: true } },
+        clips: { select: { shape: true } },
+      },
+    });
+    if (game === null || game.state === "thrown_away")
+      throw new GameError("NOT_FOUND", "We can't find that game.");
+    const newest = game.pulls[0];
+    if (newest === undefined) throw new GameError("NOT_READY", "Add your game's files first.");
+    // A refused copy writes no pull, so the older pull is still the newest one: it is not what the maker now points at.
+    if (game.pullProblem !== null) throw new GameError("NOT_READY", "Your game's files need fixing first.");
+    if (!game.clips.some((clip) => clip.shape === "upright")) {
+      throw new GameError("NOT_READY", "Add an upright video.");
     }
+    if (!game.clips.some((clip) => clip.shape === "wide"))
+      throw new GameError("NOT_READY", "Add a wide video.");
+
+    // The files and videos are asked for above, in their own words. Every other question is checked here, so a game
+    // cannot go to staff with one open (the database's Game_answered_check holds the same line).
+    const answers: Answers = {
+      oneLine: game.oneLine,
+      hasFiles: true,
+      playsOn: game.playsOn,
+      upright: true,
+      wide: true,
+      ageRating: game.ageRating,
+      contentMarks: game.contentMarks,
+    };
+    if (firstUnanswered(answers) !== null) throw new GameError("NOT_READY", "Answer every question first.");
+    if (game.toFix.length > 0) throw new GameError("NOT_READY", "Fix what was sent back first.");
+
     await deps.db.game.update({
       where: { id: gameId },
-      data: { state: "live", livePullId: pullId, stateReason: null },
+      data: {
+        pendingPullId: newest.id,
+        pendingSince: new Date(deps.clock.epochMs()),
+        state: game.state === "live" ? "live" : "waiting",
+      },
     });
+  }
+
+  /** The game waiting for a person's yes and the files that wait, or a `NOT_READY` that says nothing waits. */
+  async function waitingOf(tx: Pick<PrismaClient, "game">, gameId: string) {
+    const game = await tx.game.findUnique({
+      where: { id: gameId },
+      select: { state: true, pendingPullId: true },
+    });
+    if (game?.pendingPullId == null) throw new GameError("NOT_READY", "Nothing is waiting for review.");
+    return { state: game.state, pullId: game.pendingPullId };
+  }
+
+  /**
+   * Staff's yes: the waiting files go live, and one review row records who said so and when. One transaction, so a
+   * game is never live without its record. The files the game was live on stay in the bucket.
+   */
+  async function accept(gameId: string, staffUserId: string): Promise<void> {
+    await deps.db.$transaction(async (tx) => {
+      const { pullId } = await waitingOf(tx, gameId);
+      const decidedAt = new Date(deps.clock.epochMs());
+      await tx.game.update({
+        where: { id: gameId },
+        data: {
+          state: "live",
+          livePullId: pullId,
+          pendingPullId: null,
+          pendingSince: null,
+          stateReason: null,
+          toFix: [],
+        },
+      });
+      await tx.gameReview.create({
+        data: { gameId, pullId, staffUserId, decision: "accepted", decidedAt },
+      });
+    });
+  }
+
+  /**
+   * The parts a live game's update may be sent back for: the ones its maker can fix (her name, line and where it plays,
+   * by the questions she may still answer) and the files (she mends them on GitHub and sends a new version). Its videos,
+   * rating and websites go through staff again only in slice 4, so an update sent back for one would be stuck for good.
+   */
+  const LIVE_MAY_BE_SENT_BACK: GamePart[] = ["name", "one_line", "plays_on", "files"];
+
+  /**
+   * Staff's no, part by part: each part with a reason from that part's list, and for "Something else" their own line
+   * (spec 11.2). A live game stays live on its old files, and the maker sees what to fix either way. One transaction,
+   * so the game and its record never disagree.
+   */
+  async function sendBack(
+    gameId: string,
+    staffUserId: string,
+    parts: { part: GamePart; reason: string; note?: string }[],
+  ): Promise<void> {
+    if (parts.length === 0) throw new GameError("INVALID", "Tick what's wrong first.");
+    const chosen = new Set<GamePart>();
+    const kept = parts.map((one) => {
+      // A part twice, or a reason that belongs to another part, is a screen that was not meant to be possible.
+      if (chosen.has(one.part) || !isReasonFor(one.part, one.reason))
+        throw new GameError("INVALID", "Pick a reason for each part you ticked.");
+      chosen.add(one.part);
+      const note = one.note?.trim() ?? "";
+      if (one.reason === "something_else" && note === "")
+        throw new GameError("INVALID", "Say what's wrong in your own words.");
+      if (note.length > NOTE_MAX) throw new GameError("INVALID", "Keep your own words to 500 characters.");
+      return { part: one.part, reason: one.reason, note: note === "" ? null : note };
+    });
+
+    await deps.db.$transaction(async (tx) => {
+      const { state, pullId } = await waitingOf(tx, gameId);
+      if (state === "live" && kept.some((one) => !LIVE_MAY_BE_SENT_BACK.includes(one.part))) {
+        throw new GameError(
+          "INVALID",
+          "A live game can only be sent back for its name, its line, where it plays or its files.",
+        );
+      }
+      const decidedAt = new Date(deps.clock.epochMs());
+      await tx.game.update({
+        where: { id: gameId },
+        data: {
+          state: state === "live" ? "live" : "sent_back",
+          pendingPullId: null,
+          pendingSince: null,
+          stateReason: null,
+          toFix: kept.map((one) => one.part),
+        },
+      });
+      await tx.gameReview.create({
+        data: {
+          gameId,
+          pullId,
+          staffUserId,
+          decision: "sent_back",
+          decidedAt,
+          parts: { create: kept },
+        },
+      });
+    });
+  }
+
+  /** Starts a game as a draft with only its name, its public id and its address. */
+  async function startGame(input: {
+    makerUserId: string;
+    name: string;
+  }): Promise<{ id: string; slug: string }> {
+    const name = input.name.trim();
+    const problem = nameProblem(name);
+    if (problem !== undefined) throw new GameError("INVALID", problem, "name");
+    const base = slugOf(name);
+    // `nameProblem` found at least three letters or numbers, so there is an address.
+    if (base === null)
+      throw new GameError("INVALID", "Pick a name with at least three letters or numbers.", "name");
+    return deps.db.game.create({
+      data: { publicId: newPublicId(), slug: await freeSlug(base), makerUserId: input.makerUserId, name },
+      select: { id: true, slug: true },
+    });
+  }
+
+  /** What a game's rows say about who may change what: which game, in what state, and whether staff ever said yes. */
+  async function ownGame(gameId: string, makerUserId: string) {
+    const game = await deps.db.game.findFirst({
+      where: { id: gameId, makerUserId, state: { not: "thrown_away" } },
+      select: {
+        slug: true,
+        state: true,
+        ageRating: true,
+        toFix: true,
+        publicId: true,
+        name: true,
+        repoFullName: true,
+        reviews: { where: { decision: "accepted" }, take: 1, select: { id: true } },
+      },
+    });
+    if (game === null) throw new GameError("NOT_FOUND", "We can't find that game.");
+    return game;
+  }
+
+  /** The answers a live game may still change by itself: the rest go through staff again (slice 4). */
+  const LIVE_MAY_CHANGE: Answer["question"][] = ["name", "line", "plays-on"];
+
+  /**
+   * Keeps one answer. A draft, a waiting game and a sent-back game take every answer; a live game takes only its name,
+   * its line and where it plays; anything else is not the maker's to change. Answers the game's address, which a new
+   * name may have changed.
+   */
+  async function saveAnswer(gameId: string, makerUserId: string, answer: Answer): Promise<{ slug: string }> {
+    const game = await ownGame(gameId, makerUserId);
+    const changeable =
+      game.state === "draft" ||
+      game.state === "waiting" ||
+      game.state === "sent_back" ||
+      (game.state === "live" && LIVE_MAY_CHANGE.includes(answer.question));
+    if (!changeable) throw new GameError("NOT_READY", "That can't be changed right now.");
+
+    const data: {
+      name?: string;
+      slug?: string;
+      oneLine?: string;
+      playsOn?: GamePlaysOn;
+      ageRating?: AgeRating;
+      contentMarks?: ContentMark[];
+      connectHosts?: string[];
+      repoFullName?: string;
+      repoBranch?: string | null;
+      repoFolder?: string;
+    } = {};
+    let part: GamePart;
+    let slug = game.slug;
+
+    switch (answer.question) {
+      case "name": {
+        const name = answer.name.trim();
+        const problem = nameProblem(name);
+        if (problem !== undefined) throw new GameError("INVALID", problem, "name");
+        data.name = name;
+        // Before staff have ever said yes the address follows the name; after that it never moves, so a link a maker
+        // shared keeps working.
+        const base = slugOf(name);
+        if (game.reviews.length === 0 && base !== null) slug = await freeSlug(base, gameId);
+        data.slug = slug;
+        part = "name";
+        break;
+      }
+      case "line": {
+        const oneLine = answer.oneLine.trim();
+        const problem = oneLineProblem(oneLine);
+        if (problem !== undefined) throw new GameError("INVALID", problem, "oneLine");
+        data.oneLine = oneLine;
+        part = "one_line";
+        break;
+      }
+      case "files": {
+        const { fullName, branch, folder } = answer.repo;
+        const checks: ["repo" | "branch" | "folder", string | undefined][] = [
+          ["repo", repoProblem(fullName)],
+          ["branch", branch === null ? undefined : branchProblem(branch)],
+          ["folder", folderProblem(folder)],
+        ];
+        const wrong = checks.find(([, words]) => words !== undefined);
+        if (wrong?.[1] !== undefined) throw new GameError("INVALID", wrong[1], wrong[0]);
+        await checkReachable(makerUserId, fullName);
+        data.repoFullName = fullName;
+        data.repoBranch = branch;
+        data.repoFolder = folder;
+        part = "files";
+        break;
+      }
+      case "plays-on": {
+        const problem = PLAYS_ON.includes(answer.playsOn) ? undefined : playsOnProblem(null);
+        if (problem !== undefined) throw new GameError("INVALID", problem);
+        data.playsOn = answer.playsOn;
+        part = "plays_on";
+        break;
+      }
+      case "age": {
+        const problem = AGE_RATINGS.includes(answer.ageRating) ? undefined : ageProblem(null);
+        if (problem !== undefined) throw new GameError("INVALID", problem);
+        data.ageRating = answer.ageRating;
+        // Marks belong to an 18+ game only: a game made younger has none (Game_marks_check).
+        if (answer.ageRating !== "age_18") {
+          data.contentMarks = [];
+        } else if (
+          answer.contentMarks !== undefined ||
+          (game.state !== "draft" && game.ageRating !== "age_18")
+        ) {
+          // A draft is asked its marks next, but a waiting or sent-back game made 18+ must have them now: the database
+          // refuses an 18+ game that is past draft without, and the maker would be told nothing.
+          const known = (answer.contentMarks ?? []).filter((mark) => CONTENT_MARKS.includes(mark));
+          const problem = marksProblem(known);
+          if (problem !== undefined) throw new GameError("INVALID", problem);
+          data.contentMarks = known.includes("none") ? ["none"] : [...new Set(known)];
+        }
+        part = "age_rating";
+        break;
+      }
+      case "marks": {
+        const known = answer.contentMarks.filter((mark) => CONTENT_MARKS.includes(mark));
+        const problem = marksProblem(known);
+        if (problem !== undefined) throw new GameError("INVALID", problem);
+        if (game.ageRating !== "age_18")
+          throw new GameError("NOT_READY", "This question is only for games that are 18+.");
+        // "None of these" stands alone.
+        data.contentMarks = known.includes("none") ? ["none"] : [...new Set(known)];
+        part = "age_rating";
+        break;
+      }
+      case "websites": {
+        // The route checks the text as it was typed; the list is checked again here so any other caller meets the same rules.
+        const checked = connectHostsFrom(answer.connectHosts.join("\n"));
+        if ("problem" in checked) throw new GameError("INVALID", checked.problem);
+        data.connectHosts = checked.hosts;
+        part = "other_websites";
+        break;
+      }
+    }
+
+    // The files are the one answer whose part comes off the list only when the pull passes, so it is not in this write.
+    await deps.db.game.update({
+      where: { id: gameId },
+      data: { ...data, ...(part === "files" ? {} : { toFix: game.toFix.filter((one) => one !== part) }) },
+    });
+
+    // The files are the answer that copies: a refused copy leaves the choice kept, and the screen that asked shows the
+    // refusal. A copy that passes takes the files off the list of what to fix (pullLatest).
+    if (answer.question === "files") {
+      await pullLatest(gameId);
+    } else if (answer.question === "websites" && game.repoFullName !== null) {
+      // The list is part of a copy: staff review it with the files, and the database never changes a copy once it is
+      // made (GamePull is add-only). So a new list is a new copy, and the websites question says it copies again.
+      await pullLatest(gameId);
+    }
+    return { slug };
+  }
+
+  /**
+   * Takes a live game off Ruken, which its maker cannot undo (the agreement's first point: the maker may remove a game
+   * at any time). The row stays with its address, so what the game earned and who played it are still there, and an
+   * update that was waiting for review is dropped with it. Only a live game is taken off: every other state has its own
+   * way out (a draft or a sent-back game is thrown away, a waiting one is with staff).
+   */
+  async function takeOff(gameId: string, makerUserId: string): Promise<{ name: string }> {
+    const game = await ownGame(gameId, makerUserId);
+    if (game.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
+    await deps.db.game.update({
+      where: { id: gameId },
+      data: { state: "taken_off", stateReason: null, pendingPullId: null, pendingSince: null, toFix: [] },
+    });
+    return { name: game.name };
+  }
+
+  /**
+   * Throws a draft or a sent-back game away. The database first, in one transaction, so a failure part way never
+   * leaves a game that is gone from its list but still holds its name; then its files and videos in the bucket. The
+   * row stays, with its address changed so the name is free again, because money and records may point at a game.
+   */
+  async function throwAway(gameId: string, makerUserId: string): Promise<{ name: string }> {
+    const game = await ownGame(gameId, makerUserId);
+    if (game.state !== "draft" && game.state !== "sent_back")
+      throw new GameError("NOT_READY", "This game can't be thrown away.");
+    await deps.db.$transaction([
+      deps.db.game.update({
+        where: { id: gameId },
+        data: {
+          state: "thrown_away",
+          slug: `x-${game.publicId}`,
+          pendingPullId: null,
+          pendingSince: null,
+          toFix: [],
+        },
+      }),
+      deps.db.gameClip.deleteMany({ where: { gameId } }),
+    ]);
+    await deps.files.deleteAll(`files/${game.publicId}/`);
+    await deps.files.deleteAll(`clips/${game.publicId}/`);
+    return { name: game.name };
+  }
+
+  /** Games with files waiting for a person's yes, the oldest first. */
+  async function waitingGames(): Promise<{ slug: string; name: string; makerEmail: string; sentAt: Date }[]> {
+    const rows = await deps.db.game.findMany({
+      where: { pendingPullId: { not: null } },
+      orderBy: { pendingSince: "asc" },
+      select: { slug: true, name: true, pendingSince: true, maker: { select: { email: true } } },
+    });
+    return rows.map((row) => ({
+      slug: row.slug,
+      name: row.name,
+      makerEmail: row.maker.email,
+      // `pendingSince` is set with `pendingPullId`, so a waiting game always has it.
+      sentAt: row.pendingSince ?? new Date(0),
+    }));
+  }
+
+  /** What a game's rows say, for the maker's screens and staff's. */
+  const gameSelect = {
+    id: true,
+    slug: true,
+    publicId: true,
+    name: true,
+    state: true,
+    stateReason: true,
+    repoFullName: true,
+    repoBranch: true,
+    repoFolder: true,
+    connectHosts: true,
+    pullProblem: true,
+    pendingPullId: true,
+    oneLine: true,
+    playsOn: true,
+    ageRating: true,
+    contentMarks: true,
+    toFix: true,
+    pulls: { orderBy: NEWEST_FIRST, take: 1, select: { id: true, fileCount: true, totalBytes: true } },
+    clips: { select: { shape: true, key: true, bytes: true } },
+    // Newest first: the first sent-back review is what the maker still has to fix, and any accepted one means the
+    // game has been live.
+    reviews: {
+      orderBy: { decidedAt: "desc" },
+      select: {
+        decision: true,
+        parts: { select: { part: true, reason: true, note: true } },
+      },
+    },
+  } as const;
+
+  /** The clip of one shape, with its size, or null when there is none. */
+  function clipFile(clips: { shape: ClipShape; key: string; bytes: number }[], shape: ClipShape) {
+    const found = clips.find((clip) => clip.shape === shape);
+    return found === undefined ? null : { key: found.key, bytes: found.bytes };
+  }
+
+  /** A game row as the maker sees it. */
+  function makerView(row: {
+    id: string;
+    slug: string;
+    publicId: string;
+    name: string;
+    state: GameState;
+    stateReason: string | null;
+    repoFullName: string | null;
+    repoBranch: string | null;
+    repoFolder: string;
+    connectHosts: string[];
+    pullProblem: string | null;
+    pendingPullId: string | null;
+    oneLine: string | null;
+    playsOn: GamePlaysOn | null;
+    ageRating: AgeRating | null;
+    contentMarks: ContentMark[];
+    toFix: GamePart[];
+    pulls: { id: string; fileCount: number; totalBytes: bigint }[];
+    clips: { shape: ClipShape; key: string; bytes: number }[];
+    reviews: {
+      decision: "accepted" | "sent_back";
+      parts: { part: GamePart; reason: string; note: string | null }[];
+    }[];
+  }): MakerGame {
+    const newest = row.pulls[0];
+    const state = { state: row.state, stateReason: row.stateReason, hasPending: row.pendingPullId !== null };
+    return {
+      id: row.id,
+      slug: row.slug,
+      publicId: row.publicId,
+      name: row.name,
+      state: row.state,
+      words: stateWords(state),
+      headline: stateParts(state).headline,
+      reason: stateParts(state).reason,
+      hasPending: state.hasPending,
+      oneLine: row.oneLine,
+      playsOn: row.playsOn,
+      ageRating: row.ageRating,
+      contentMarks: row.contentMarks,
+      everLive: row.reviews.some((review) => review.decision === "accepted"),
+      repoFullName: row.repoFullName,
+      repoBranch: row.repoBranch,
+      repoFolder: row.repoFolder,
+      connectHosts: row.connectHosts,
+      pullProblem: row.pullProblem,
+      newestPull:
+        newest === undefined
+          ? null
+          : { id: newest.id, fileCount: newest.fileCount, totalBytes: Number(newest.totalBytes) },
+      clips: {
+        upright: clipFile(row.clips, "upright"),
+        wide: clipFile(row.clips, "wide"),
+      },
+      toFix: partsToFix(row),
+      // Newest first (see `gameSelect`), so the first review is staff's latest word.
+      sentBackLast: row.reviews[0]?.decision === "sent_back",
+    };
+  }
+
+  /**
+   * What staff sent back that is still to fix, in the words the maker reads: the parts of the newest sent-back review
+   * that `Game.toFix` still holds, in the order staff ticked them. A part the maker has fixed is not in `toFix`.
+   */
+  function partsToFix(row: {
+    name: string;
+    toFix: GamePart[];
+    reviews: {
+      decision: "accepted" | "sent_back";
+      parts: { part: GamePart; reason: string; note: string | null }[];
+    }[];
+  }): PartToFix[] {
+    const newest = row.reviews.find((review) => review.decision === "sent_back");
+    return row.toFix.flatMap((part) => {
+      const found = newest?.parts.find((one) => one.part === part);
+      if (found === undefined) return [];
+      return [
+        {
+          part,
+          title: partTitle(part, row.name),
+          words: makerWords(part, found.reason, found.note, row.name),
+          // For "Something else" staff's line is the words already; as a note too it would show twice.
+          note: found.reason === "something_else" ? null : found.note,
+        },
+      ];
+    });
+  }
+
+  /** A maker's games for their list, newest first, with where each stands and what to do next, in words. */
+  async function gamesOf(makerUserId: string): Promise<MakerGameRow[]> {
+    const rows = await deps.db.game.findMany({
+      where: { makerUserId, state: { not: "thrown_away" } },
+      orderBy: { createdAt: "desc" },
+      select: {
+        slug: true,
+        name: true,
+        state: true,
+        stateReason: true,
+        pendingPullId: true,
+        pullProblem: true,
+        oneLine: true,
+        playsOn: true,
+        ageRating: true,
+        contentMarks: true,
+        toFix: true,
+        clips: { select: { shape: true, key: true } },
+        _count: { select: { pulls: true } },
+        reviews: { orderBy: { decidedAt: "desc" }, take: 1, select: { decision: true } },
+      },
+    });
+    return rows.map((row) => {
+      const answers: Answers = {
+        oneLine: row.oneLine,
+        hasFiles: row._count.pulls > 0 && row.pullProblem === null,
+        playsOn: row.playsOn,
+        upright: row.clips.some((clip) => clip.shape === "upright"),
+        wide: row.clips.some((clip) => clip.shape === "wide"),
+        ageRating: row.ageRating,
+        contentMarks: row.contentMarks,
+      };
+      const next = firstUnanswered(answers);
+      return {
+        slug: row.slug,
+        name: row.name,
+        wideClipKey: row.clips.find((clip) => clip.shape === "wide")?.key ?? null,
+        words: listWords({
+          state: row.state,
+          hasPending: row.pendingPullId !== null,
+          toFix: row.toFix.length,
+          firstUnanswered: next,
+          questionNumber: next === null ? null : counterOf(next, answers).n,
+          sentBackLast: row.reviews[0]?.decision === "sent_back",
+        }),
+      };
+    });
+  }
+
+  /** One of a maker's games for its page. Someone else's game, or none, is null. */
+  async function gameForMaker(slug: string, makerUserId: string): Promise<MakerGame | null> {
+    const row = await deps.db.game.findFirst({
+      where: { slug, makerUserId, state: { not: "thrown_away" } },
+      select: gameSelect,
+    });
+    return row === null ? null : makerView(row);
+  }
+
+  /** A game as staff see it: the maker's view, the files that wait and the two clips' keys. Null when there is none. */
+  async function gameForReview(slug: string): Promise<ReviewGame | null> {
+    const row = await deps.db.game.findUnique({
+      where: { slug },
+      select: {
+        ...gameSelect,
+        pendingPull: { select: { id: true, fileCount: true, totalBytes: true, connectHosts: true } },
+      },
+    });
+    if (row === null) return null;
+    const pending = row.pendingPull;
+    return {
+      ...makerView(row),
+      pending:
+        pending === null
+          ? null
+          : {
+              id: pending.id,
+              fileCount: pending.fileCount,
+              totalBytes: Number(pending.totalBytes),
+              connectHosts: pending.connectHosts,
+            },
+      clipKeys: {
+        upright: row.clips.find((clip) => clip.shape === "upright")?.key ?? null,
+        wide: row.clips.find((clip) => clip.shape === "wide")?.key ?? null,
+      },
+    };
   }
 
   /** The game at `/g/<slug>`, only while it is live. */
@@ -228,6 +904,8 @@ export function createGamesService(deps: GamesServiceDeps) {
         freeToPlay: true,
         makerUserId: true,
         state: true,
+        ageRating: true,
+        contentMarks: true,
         livePull: { select: { id: true, connectHosts: true } },
         clips: { select: { shape: true, key: true } },
       },
@@ -236,6 +914,8 @@ export function createGamesService(deps: GamesServiceDeps) {
     const upright = game.clips.find((clip) => clip.shape === "upright")?.key;
     const wide = game.clips.find((clip) => clip.shape === "wide")?.key;
     if (upright === undefined || wide === undefined) return null;
+    // A live game has every answer (Game_answered_check), so these are only absent in a row that cannot be live.
+    if (game.oneLine === null || game.playsOn === null || game.ageRating === null) return null;
     return {
       id: game.id,
       publicId: game.publicId,
@@ -247,6 +927,8 @@ export function createGamesService(deps: GamesServiceDeps) {
       makerUserId: game.makerUserId,
       livePullId: game.livePull.id,
       connectHosts: game.livePull.connectHosts,
+      ageRating: game.ageRating,
+      contentMarks: game.contentMarks,
       clips: { upright, wide },
     };
   }
@@ -290,14 +972,32 @@ export function createGamesService(deps: GamesServiceDeps) {
     );
   }
 
+  /**
+   * True once the maker has connected GitHub, even if they chose no repository there. The new-game screen tells "not
+   * connected" (one button to connect) from "connected, but Ruken can see nothing yet" (one button to choose some).
+   */
+  async function hasConnectedGitHub(userId: string): Promise<boolean> {
+    return (await deps.db.gitHubInstallation.count({ where: { userId } })) > 0;
+  }
+
   return {
     saveClip,
-    createGame,
+    startGame,
+    saveAnswer,
+    throwAway,
+    takeOff,
     pullLatest,
-    goLive,
+    sendForReview,
+    accept,
+    sendBack,
+    waitingGames,
+    gamesOf,
+    gameForMaker,
+    gameForReview,
     liveGameBySlug,
     rememberConnection,
     repositoriesFor,
+    hasConnectedGitHub,
   };
 }
 

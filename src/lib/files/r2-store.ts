@@ -1,5 +1,5 @@
 import type { ByteRange } from "./byte-range.ts";
-import type { FileStore, StoredFile } from "./store.ts";
+import { checkFolderPrefix, type FileStore, type StoredFile } from "./store.ts";
 
 // The file store on Cloudflare R2. `R2Bucket` is a global type that `wrangler types` writes, so this file imports
 // only the interface it fills and both Workers (the site and the game gate) can bundle it.
@@ -29,6 +29,21 @@ export function r2FileStore(bucket: R2Bucket): FileStore {
     },
     async delete(key) {
       await bucket.delete(key);
+    },
+    async deleteAll(prefix) {
+      checkFolderPrefix(prefix);
+      let gone = 0;
+      let cursor: string | undefined;
+      // R2 lists a page at a time (at most 1000 keys) and deletes up to 1000 keys in one call, so a page is one delete.
+      do {
+        // exactOptionalPropertyTypes: the first page has no cursor to pass, not an undefined one.
+        const page = await bucket.list(cursor === undefined ? { prefix } : { prefix, cursor });
+        const keys = page.objects.map((object) => object.key);
+        if (keys.length > 0) await bucket.delete(keys);
+        gone += keys.length;
+        cursor = page.truncated ? page.cursor : undefined;
+      } while (cursor !== undefined);
+      return gone;
     },
   };
 }

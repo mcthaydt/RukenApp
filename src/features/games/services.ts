@@ -25,8 +25,10 @@ export interface GitHubConnect {
   signInUrl(state: string): string;
   installUrl(state: string): string;
   connectionOf(code: string): Promise<Connection[]>;
-  sealState(userId: string): string;
-  openState(value: string | undefined, userId: string): boolean;
+  /** The state for a connection started by `userId`, for the game (its address) the maker is answering, or none. */
+  sealState(userId: string, game: string | null): string;
+  /** The game the state was sealed for, or undefined when it does not open for this account. */
+  openState(value: string | undefined, userId: string): { game: string | null } | undefined;
 }
 
 export interface GamesServices {
@@ -34,6 +36,8 @@ export interface GamesServices {
   connect: GitHubConnect;
   /** The address a game is played at, from its public id (`g-<id>`). */
   address(name: string): string;
+  /** The address of a clip, from its key in the bucket: the media address, a slash, the key. */
+  media(key: string): string;
 }
 
 /** The only place GitHub's addresses may be changed: a stand-in server on this machine, for the journeys. */
@@ -87,10 +91,15 @@ export function createGamesServices(
     signInUrl: (state) => signInUrl({ clientId, state, ...(webBase === undefined ? {} : { webBase }) }),
     installUrl: (state) => installUrl({ appSlug, state, ...(webBase === undefined ? {} : { webBase }) }),
     connectionOf: (code) => connectionOf({ code, clientId, clientSecret, ...addresses }),
-    sealState: (userId) => sealState(userId, parts.clock.epochMs(), stateSecret),
+    sealState: (userId, game) => sealState(userId, parts.clock.epochMs(), stateSecret, game),
     openState: (value, userId) => openState(value, userId, parts.clock.epochMs(), stateSecret),
   };
-  return { service, connect, address: (name) => gameAddress(pattern, name) };
+  return {
+    service,
+    connect,
+    address: (name) => gameAddress(pattern, name),
+    media: (key) => `${gameAddress(pattern, "media")}/${key}`,
+  };
 }
 
 // The bucket is looked up each time it is used, not once: on Cloudflare the binding belongs to the request that is
@@ -100,6 +109,7 @@ const currentFiles: FileStore = {
   get: (key, range) => fileStore().get(key, range),
   put: (key, bytes) => fileStore().put(key, bytes),
   delete: (key) => fileStore().delete(key),
+  deleteAll: (prefix) => fileStore().deleteAll(prefix),
 };
 
 let shared: GamesServices | undefined;

@@ -49,6 +49,7 @@ export const CONTENT_TYPES: Readonly<Record<string, string>> = {
   flac: "audio/flac",
   mp4: "video/mp4",
   webm: "video/webm",
+  mov: "video/quicktime",
   // Fonts
   woff2: "font/woff2",
   woff: "font/woff",

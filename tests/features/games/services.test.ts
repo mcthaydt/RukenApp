@@ -35,6 +35,11 @@ describe("createGamesServices", () => {
     expect(build().address("g-aaaaaaaaaa")).toBe("https://g-aaaaaaaaaa.games.test");
   });
 
+  // A clip is played from the media address, so a maker's page can show the videos they added.
+  it("gives a clip's address: the media address, a slash, then the key in the bucket", () => {
+    expect(build().media("clips/x/wide-1.mp4")).toBe("https://media.games.test/clips/x/wide-1.mp4");
+  });
+
   it.each([
     "GITHUB_APP_ID",
     "GITHUB_APP_PRIVATE_KEY",
@@ -89,9 +94,9 @@ describe("the connect addresses and state", () => {
   // The state is sealed with the app's own secret and the clock, and opens only for the account that made it.
   it("seals a state with the clock, and opens it for the same account and no other", () => {
     const { connect } = build();
-    const state = connect.sealState("user-1");
-    expect(connect.openState(state, "user-1")).toBe(true);
-    expect(connect.openState(state, "user-2")).toBe(false);
-    expect(connect.openState(undefined, "user-1")).toBe(false);
+    const state = connect.sealState("user-1", "floor-fifty");
+    expect(connect.openState(state, "user-1")).toEqual({ game: "floor-fifty" });
+    expect(connect.openState(state, "user-2")).toBeUndefined();
+    expect(connect.openState(undefined, "user-1")).toBeUndefined();
   });
 });

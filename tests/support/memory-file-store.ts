@@ -1,5 +1,5 @@
 import type { ByteRange } from "../../src/lib/files/byte-range.ts";
-import type { FileStore, StoredFile } from "../../src/lib/files/store.ts";
+import { checkFolderPrefix, type FileStore, type StoredFile } from "../../src/lib/files/store.ts";
 
 /**
  * A file store in memory, for tests. `tests/lib/files/store.test.ts` holds it to the same rules as the real one, so
@@ -44,6 +44,23 @@ export class MemoryFileStore implements FileStore {
   delete(key: string): Promise<void> {
     this.#files.delete(key);
     return Promise.resolve();
+  }
+
+  deleteAll(prefix: string): Promise<number> {
+    // A refusal comes back as a rejected promise, as the real bucket's async method gives it, never as a throw.
+    try {
+      checkFolderPrefix(prefix);
+    } catch (refusal) {
+      return Promise.reject(refusal instanceof Error ? refusal : new Error(String(refusal)));
+    }
+    let gone = 0;
+    for (const key of [...this.#files.keys()]) {
+      if (key.startsWith(prefix)) {
+        this.#files.delete(key);
+        gone += 1;
+      }
+    }
+    return Promise.resolve(gone);
   }
 
   /** Every key held, in the order they were first stored. For assertions only; the real store has no such call. */

@@ -66,6 +66,35 @@ describe("the memory file store", () => {
         expect(await store.get("a")).toBeNull();
       });
 
+      it("deletes every file under a prefix, and only those", async () => {
+        const store = make();
+        await store.put("files/a/x", bytesOf(1));
+        await store.put("files/a/y/z", bytesOf(2));
+        await store.put("files/ab/x", bytesOf(3));
+
+        const gone = await store.deleteAll("files/a/");
+
+        expect(gone).toBe(2);
+        expect(await store.head("files/a/x")).toBeNull();
+        expect(await store.head("files/a/y/z")).toBeNull();
+        expect(await store.head("files/ab/x")).not.toBeNull();
+      });
+
+      it("refuses a prefix that does not end in a slash, and deletes nothing", async () => {
+        const store = make();
+        await store.put("files/a/x", bytesOf(1));
+        await store.put("files/ab/x", bytesOf(3));
+
+        await expect(store.deleteAll("files/a")).rejects.toThrow("must end in a slash");
+
+        expect(await store.head("files/a/x")).not.toBeNull();
+        expect(await store.head("files/ab/x")).not.toBeNull();
+      });
+
+      it("answers 0 for a prefix with nothing under it", async () => {
+        expect(await make().deleteAll("nothing/")).toBe(0);
+      });
+
       it("answers the size and the tag from head, without a body", async () => {
         const store = make();
         await store.put("a", bytesOf(1, 2, 3));
@@ -104,6 +133,16 @@ describe("r2FileStore", () => {
         Promise.resolve((calls.push(["get", ...args]), args[0] === "here" ? object : null)),
       put: (...args: unknown[]) => Promise.resolve(calls.push(["put", ...args])),
       delete: (...args: unknown[]) => Promise.resolve(calls.push(["delete", ...args])),
+      // R2 lists a page at a time; this stand-in has two keys under `files/a/`, listed in two pages of one.
+      list: (...args: unknown[]) => {
+        calls.push(["list", ...args]);
+        const options = args[0] as { prefix: string; cursor?: string };
+        return Promise.resolve(
+          options.cursor === undefined
+            ? { objects: [{ key: "files/a/x" }], truncated: true, cursor: "next" }
+            : { objects: [{ key: "files/a/y" }], truncated: false },
+        );
+      },
     };
     return { store: r2FileStore(bucket as unknown as R2Bucket), calls, object };
   }
@@ -141,5 +180,26 @@ describe("r2FileStore", () => {
       ["put", "k", bytes],
       ["delete", "k"],
     ]);
+  });
+
+  it("lists a page at a time and deletes each page's keys in one call", async () => {
+    const { store, calls } = standIn();
+
+    expect(await store.deleteAll("files/a/")).toBe(2);
+
+    expect(calls).toEqual([
+      ["list", { prefix: "files/a/", cursor: undefined }],
+      ["delete", ["files/a/x"]],
+      ["list", { prefix: "files/a/", cursor: "next" }],
+      ["delete", ["files/a/y"]],
+    ]);
+  });
+
+  it("refuses a prefix that does not end in a slash before it asks R2 anything", async () => {
+    const { store, calls } = standIn();
+
+    await expect(store.deleteAll("files/a")).rejects.toThrow("must end in a slash");
+
+    expect(calls).toEqual([]);
   });
 });

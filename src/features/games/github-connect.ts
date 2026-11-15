@@ -44,8 +44,11 @@ export function installUrl(input: { appSlug: string; state: string; webBase?: st
 
 // ---- The state -------------------------------------------------------------------------------------------------
 
-/** How long a state stays good: the time a person takes to choose repositories on GitHub, with room to spare. */
-const STATE_LIFE_MS = 10 * 60 * 1000;
+/**
+ * How long a state stays good: the time a person takes on GitHub before she is back. A person with no GitHub account
+ * makes one there (a sign-up, an email code and the app's install), which takes longer than choosing repositories.
+ */
+const STATE_LIFE_MS = 60 * 60 * 1000;
 
 /** Keeps this use of the secret apart from every other use of it (the arrival cookie, the play pass). */
 const MAC_PREFIX = "ruken-github-state-v1:";
@@ -57,37 +60,48 @@ function macOf(payload: string, secret: string): string {
 }
 
 /**
- * `<payload>.<mac>`: the account's id and the time, then their keyed hash. It stops someone from finishing a
- * connection that another person started, since the state travels through GitHub and back in an address.
+ * `<payload>.<mac>`: the account's id, the game's address (or none) and the time, then their keyed hash. It stops
+ * someone from finishing a connection that another person started, since the state travels through GitHub and back
+ * in an address, and it keeps the game inside the sealed part so nobody can send a connection to a game of their
+ * choosing: the address is only what Ruken itself sealed.
  */
-export function sealState(userId: string, nowMs: number, secret: string): string {
-  const payload = Buffer.from(JSON.stringify({ u: userId, t: nowMs })).toString("base64url");
+export function sealState(userId: string, nowMs: number, secret: string, game: string | null): string {
+  const payload = Buffer.from(JSON.stringify({ u: userId, t: nowMs, g: game })).toString("base64url");
   return `${payload}.${macOf(payload, secret)}`;
 }
 
-/** True only for a state this secret sealed for this account, no more than ten minutes ago. It never throws. */
-export function openState(value: string | undefined, userId: string, nowMs: number, secret: string): boolean {
-  if (value === undefined) return false;
+/**
+ * The game a state was sealed for (null for none) when this secret sealed it for this account no more than an hour
+ * ago; otherwise undefined. It never throws.
+ */
+export function openState(
+  value: string | undefined,
+  userId: string,
+  nowMs: number,
+  secret: string,
+): { game: string | null } | undefined {
+  if (value === undefined) return undefined;
   const parts = value.split(".");
-  if (parts.length !== 2) return false;
+  if (parts.length !== 2) return undefined;
   const [payload = "", mac = ""] = parts;
 
   const expected = Buffer.from(macOf(payload, secret));
   const given = Buffer.from(mac);
   // timingSafeEqual refuses buffers of different lengths, so a wrong length is a plain "no".
-  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return false;
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return undefined;
 
   let sealed: unknown;
   try {
     sealed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
   } catch {
-    return false;
+    return undefined;
   }
-  if (typeof sealed !== "object" || sealed === null) return false;
-  const { u, t } = sealed as Record<string, unknown>;
-  if (u !== userId || typeof t !== "number") return false;
+  if (typeof sealed !== "object" || sealed === null) return undefined;
+  const { u, t, g } = sealed as Record<string, unknown>;
+  if (u !== userId || typeof t !== "number") return undefined;
+  if (g !== null && typeof g !== "string") return undefined;
   const age = nowMs - t;
-  return age >= 0 && age <= STATE_LIFE_MS;
+  return age >= 0 && age <= STATE_LIFE_MS ? { game: g } : undefined;
 }
 
 // ---- Asking GitHub, as the person ------------------------------------------------------------------------------

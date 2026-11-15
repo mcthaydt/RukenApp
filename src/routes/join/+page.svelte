@@ -1,7 +1,6 @@
 <!--
-  The paywall card: what it costs and what happens next, in two lines; two plans; one button. Signed out the
-  button leads to sign-up and is plain ink; signed in it is the Blue "Continue to payment", the one press in
-  the whole site that spends money, so the one coloured button. "Not now" is the way back. A member who opens the card is
+  The paywall card: what it costs and what happens next, in two lines; two plans; one button, the main blue one.
+  Signed out it leads to sign-up; signed in it is "Continue to payment". "Not now" is the way back. A member who opens the card is
   told so and sent on. Someone whose card failed more than seven days ago is told so, with one "Update card" button
   to Stripe's page, in place of the price (paywall.ts).
 -->
@@ -62,7 +61,7 @@
         <p class="problem" role="alert">{form.error}</p>
       {/if}
       {#if data.signedIn}
-        <button class="pay">Continue to payment</button>
+        <button>Continue to payment</button>
       {:else}
         <button>Continue</button>
       {/if}

@@ -32,7 +32,7 @@ function count(value: number): string {
   return value.toLocaleString("en-US");
 }
 
-const CONNECT_HOSTS_PROBLEM = "Write each server as a name like api.example.com, one per line, five at most.";
+const CONNECT_HOSTS_PROBLEM = "Write each website like api.example.com, one per line. Five at most.";
 
 // A name with at least one dot, in labels of letters, digits and inner hyphens, and an optional port. No scheme,
 // path or `*`: the gate puts each name in a `connect-src` as `https://<name> wss://<name>`.
@@ -57,6 +57,15 @@ export function connectHostsFrom(text: string): { hosts: string[] } | { problem:
 // At least one more character is needed, so the fix we suggest is never empty.
 const TOP_OF_SITE_ADDRESS = /\b(?:src|href)\s*=\s*["'](\/(?!\/)[^"'\s>]+)["']/i;
 
+/** The refusal for a folder with no index.html at its top. A screen sets it in plainer words, so it must know it. */
+const NO_INDEX_HTML =
+  "We couldn't find an index.html at the top of that folder. Ruken starts a game from index.html.";
+
+/** True for the refusal that says a folder has no index.html at its top, and for no other. */
+export function isMissingIndexHtml(problem: string): boolean {
+  return problem === NO_INDEX_HTML;
+}
+
 /**
  * Checks a pulled folder against the rules of design 5.4. The first failing rule wins, so a maker fixes one thing
  * at a time. `indexHtml` is the text of the top `index.html`, or null when there is none.
@@ -68,12 +77,10 @@ export function checkGameFiles(
   const refuse = (problem: string): { ok: false; problem: string } => ({ ok: false, problem });
 
   if (files.length === 0) {
-    return refuse("We couldn't find that folder in your repository. Check the folder's name and pull again.");
+    return refuse("We couldn't find that folder on GitHub. Check the folder's name and try again.");
   }
   if (indexHtml === null) {
-    return refuse(
-      "We couldn't find an index.html at the top of that folder. Ruken starts a game from index.html.",
-    );
+    return refuse(NO_INDEX_HTML);
   }
   const link = files.find((entry) => entry.kind === "link");
   if (link !== undefined) {
@@ -84,7 +91,7 @@ export function checkGameFiles(
   const lfs = files.find((entry) => entry.kind === "lfs");
   if (lfs !== undefined) {
     return refuse(
-      `${lfs.path} is kept in Git LFS, and Ruken can't pull those yet. Add the real file to the repository.`,
+      `${lfs.path} is stored with Git LFS, which Ruken can't copy yet. Upload the file itself to GitHub instead.`,
     );
   }
   // The gate decodes a request's path the same way, so a name it could not match is refused here, not found
@@ -94,7 +101,7 @@ export function checkGameFiles(
   );
   if (unservable !== undefined) {
     return refuse(
-      `One of your files has a name Ruken can't serve: ${unservable.path}. Rename it and pull again.`,
+      `One of your files has a name Ruken can't use: ${unservable.path}. Rename it and try again.`,
     );
   }
   if (files.length > MAX_GAME_FILES) {
@@ -117,7 +124,7 @@ export function checkGameFiles(
   const topOfSite = TOP_OF_SITE_ADDRESS.exec(indexHtml)?.[1];
   if (topOfSite !== undefined) {
     return refuse(
-      `index.html loads ${topOfSite} from the top of the site. On Ruken a game lives in a folder, so write it without the first slash: ${topOfSite.slice(1)}.`,
+      `index.html asks for ${topOfSite}, with a slash at the start. Take that slash off so it reads ${topOfSite.slice(1)}. On Ruken your game sits in its own folder.`,
     );
   }
   return { ok: true, fileCount: files.length, totalBytes };

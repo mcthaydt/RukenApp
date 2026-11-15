@@ -1,4 +1,5 @@
 import { error, fail, redirect } from "@sveltejs/kit";
+import { gamesServices } from "../../features/games/games.ts";
 import { authServices, resendVerification, signedInOnly } from "../../features/accounts/accounts.ts";
 import { membershipLine, membershipServices } from "../../features/membership/membership.ts";
 import type { Actions, PageServerLoad } from "./$types";
@@ -19,7 +20,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const account = await accountOf(userId);
   // The membership line and the one button under it, worked out by a pure function (membership/format.ts).
   const membership = membershipLine(await membershipServices().service.view(userId));
-  return { ...account, membership };
+  // Her door to the maker's area says what she can do there: open her games, or add the first.
+  const makesGames = (await gamesServices().service.gamesOf(userId)).length > 0;
+  return { ...account, membership, makesGames };
 };
 
 export const actions: Actions = {
