@@ -140,7 +140,7 @@ describe("the games tables", () => {
 
     it("is new with no rating, no marks and nothing to fix", async () => {
       const makerId = await newMaker();
-      const id = await insertGame(makerId, { publicId: "eeeeeeeeee" });
+      const id = await insertGame(makerId, { publicId: "tttttttttt" });
       const game = await db().game.findUniqueOrThrow({ where: { id } });
       expect(game.ageRating).toBeNull();
       expect(game.contentMarks).toEqual([]);
@@ -149,7 +149,7 @@ describe("the games tables", () => {
 
     it("is refused marks unless it is 18+", async () => {
       const makerId = await newMaker();
-      const id = await insertGame(makerId, { publicId: "ffffffffff" });
+      const id = await insertGame(makerId, { publicId: "uuuuuuuuuu" });
       for (const rating of ["age_3", "age_12", "age_16", null]) {
         await expect(setRatingAndMarks(id, rating, ["gore"])).rejects.toThrow(/Game_marks_check/);
       }
@@ -157,13 +157,13 @@ describe("the games tables", () => {
 
     it("is refused None of these beside another mark", async () => {
       const makerId = await newMaker();
-      const id = await insertGame(makerId, { publicId: "gggggggggg" });
+      const id = await insertGame(makerId, { publicId: "vvvvvvvvvv" });
       await expect(setRatingAndMarks(id, "age_18", ["gore", "none"])).rejects.toThrow(/Game_marks_check/);
     });
 
     it("keeps an 18+ game's marks, and None of these on its own", async () => {
       const makerId = await newMaker();
-      const id = await insertGame(makerId, { publicId: "hhhhhhhhhh" });
+      const id = await insertGame(makerId, { publicId: "wwwwwwwwww" });
       await setRatingAndMarks(id, "age_18", ["gore", "drugs"]);
       await setRatingAndMarks(id, "age_18", ["none"]);
       const game = await db().game.findUniqueOrThrow({ where: { id } });
