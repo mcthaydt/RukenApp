@@ -60,7 +60,7 @@ Owner, 2026-11-15: "use JEV whenever we use AI here", and, asked what it is, the
 
 So Jev can decide, but cannot write a reply. What it decides here, whichever way Question 1 goes: which help topic a text is about; whether to hand over to a person (the list under "When a person takes over"); which language the person wrote in; and whether a reply says only what the help pages say. A reply it is not sure about is not sent: the chat says it is not sure and offers a person.
 
-Who writes the words (Question 1, answered): a second AI service, a writing one. For each text, Jev first decides the topic, the language and whether to hand over; the writing AI is given only the help pages for that topic, the chat so far and the voice in "How it talks", and writes a reply; Jev then checks that the reply says only what those pages say and never that it is a person. A reply that fails the check is thrown away, and the chat says it is not sure and offers a person. Which writing AI it is has not been chosen: the plan puts the choices to the Owner, with what each keeps of what it is sent.
+Who writes the words (Question 1, answered): a second AI service, a writing one. For each text, Jev first decides the topic, the language and whether to hand over; the writing AI is given only the help pages for that topic, the chat so far and the voice in "How it talks", and writes a reply; Jev then checks that the reply says only what those pages say and never that it is a person. A reply that fails the check is thrown away, and the chat says it is not sure and offers a person. The writing AI is Anthropic's Claude Haiku (Owner, 2026-11-15: "JEV + Claude Haiku"). The plan names the exact model, and reads from Anthropic's own terms what is kept of what it is sent, for the privacy page.
 
 ### What it answers from
 
@@ -123,7 +123,7 @@ Staff with the support role see the chat in the admin's support list (slice 4's 
 ## Needs, and when
 
 - The Owner's yes to this design.
-- TypeSafe AI's Jev: a new outside service with a bill. The Owner named it; getting off its waitlist, the account and its key are the Owner's steps. A second AI service, the writing one (Question 1): the Owner said yes to having one; which one is their choice at the plan.
+- TypeSafe AI's Jev: a new outside service with a bill. The Owner named it; getting off its waitlist, the account and its key are the Owner's steps. A second AI service, the writing one (Question 1): Anthropic's Claude Haiku, named by the Owner. It is a new outside service with a bill; its account and key are the Owner's steps.
 - The help pages, written and public.
 - The texts plan's branch C on `main`, and slice 4's admin.
 - Then a plan, its audit and a build, like any slice.
