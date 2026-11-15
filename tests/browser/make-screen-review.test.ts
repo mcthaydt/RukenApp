@@ -204,7 +204,8 @@ test("on a sideways phone the answer box is in view above the bar, under a two-l
   await page.goto(`/make/${slug}/line`);
   await pageHasSettled(page);
 
-  const box = await boxOf(page.locator("input.answer"));
+  // The line's box is a growing box (a textarea), so it is found by its class alone.
+  const box = await boxOf(page.locator(".answer"));
   const bar = await boxOf(page.locator(".acts"));
   expect(box.y + box.height).toBeLessThanOrEqual(bar.y);
 });

@@ -82,6 +82,7 @@
       <TextAnswer
         name="oneLine"
         previews="line"
+        grows
         value={form?.value ?? data.oneLine}
         hint="Players see it under the name. Like: Climb. Fall. Climb again."
         {problem}

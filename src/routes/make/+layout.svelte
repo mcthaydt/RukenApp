@@ -15,6 +15,9 @@
     if (page.url.pathname === "/make") return { href: "/me", words: "Your account" };
     // A game that was sent already has nothing unfinished: what is changed is saved as it is changed.
     if (page.data.changing === true) return null;
+    // A question with no counter is an answer being changed (a live game's name, the websites): there is nothing
+    // unfinished to leave for later, and Back is the way out.
+    if (page.params.question !== undefined && page.data.counter === null) return null;
     // The last two steps (the agreement, Check and send) can be left for later too, as any question can.
     if (
       page.url.pathname === "/make/new" ||

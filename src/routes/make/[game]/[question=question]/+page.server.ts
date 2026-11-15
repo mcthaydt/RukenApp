@@ -223,13 +223,18 @@ function contentMarksFrom(values: string[]): ContentMark[] {
   );
 }
 
+/** The one line as typed: a new line (a paste, or a keyboard with no script) is a space, so a line stays one line. */
+function oneLineOf(form: FormData): string {
+  return textOf(form, "oneLine").replace(/\s*[\r\n]+\s*/g, " ");
+}
+
 /** What was typed in the question's one box, to come back with a refusal. */
 function typedFor(question: BuiltQuestion, form: FormData): string {
   switch (question) {
     case "name":
       return textOf(form, "name");
     case "line":
-      return textOf(form, "oneLine");
+      return oneLineOf(form);
     case "websites":
       return textOf(form, "servers");
     default:
@@ -252,7 +257,7 @@ function answerFrom(
     case "name":
       return { answer: { question, name: textOf(form, "name") } };
     case "line":
-      return { answer: { question, oneLine: textOf(form, "oneLine") } };
+      return { answer: { question, oneLine: oneLineOf(form) } };
     case "files": {
       const { repo, branch, folder } = filesTypedIn(form);
       return {

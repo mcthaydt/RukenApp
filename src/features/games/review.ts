@@ -89,8 +89,8 @@ export function toFixWords(count: number): string | null {
 }
 
 /**
- * The one next step, in a line under a game's state on its own page. Null when there is nothing to do (a game that
- * is off Ruken). What is wrong with the files comes first, since nothing else works until they are fixed.
+ * The one next step, in a line under a game's state on its own page. Null when there is nothing to do (a game taken
+ * down or thrown away). What is wrong with the files comes first, since nothing else works until they are fixed.
  */
 export function nextStepWords(
   game: StateInput & { filesProblem: boolean; upright: boolean; wide: boolean },
@@ -114,6 +114,8 @@ export function nextStepWords(
         ? "Fix it, then send your newest version for review."
         : "Players can find it on Ruken.";
     case "taken_off":
+      // The maker did this themselves, so the screen says what it did and the one way back.
+      return "Players can't find it or play it any more. Nothing changed on GitHub. To put it back, add it again as a new game. We'll look at it first.";
     case "taken_down":
     case "thrown_away":
       return null;

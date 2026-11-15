@@ -6,7 +6,7 @@
   a line or where it plays and it is mended, "Send it again", which sends the copy Ruken already holds, no copy from
   GitHub), or, while something that was sent back is to be fixed, the fix, with the send a quiet outline under it. While
   one of those is still to mend there is no send at all. There is no "See it on Ruken" until a game has a page of its
-  own for players. Under them a quiet link takes the game off Ruken (the agreement's first point). Beside them the game
+  own for players. At the foot, under the way back, the quietest link takes the game off Ruken (the agreement's first point). Beside them the game
   laid out sharp, with a Change on its name, its line and where it plays only: its rating, files and videos go through
   staff again. Only the video of this window's shape is laid out, with the name, the line and the two chips (where it
   plays, who it is for). An update that was sent back is a card.
@@ -149,8 +149,9 @@
       <!-- A send waiting on the maker is what to do next, so it is the blue button, as on Sent back. -->
       {@render sendForm(true)}
     {/if}
-    <p><a href={takeOffAddress}>Take it off Ruken</a></p>
     <a class="foot" href="/make">Back to your games</a>
+    <!-- Last, smaller and dimmer than Back, and clear of the blue button's note above, so it is never read as part of it. -->
+    <a class="foot" href={takeOffAddress} data-off>Take it off Ruken</a>
   </div>
   <div class="after">
     {#each fixes as fix (fix.part)}

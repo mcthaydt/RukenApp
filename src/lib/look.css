@@ -280,6 +280,11 @@ strong {
   list-style: none;
 }
 
+/* Each device link is a target wide as well as tall: "Mac" is three letters and was 36 wide. */
+.card nav a {
+  min-width: var(--size-target);
+}
+
 /* A step and a half between the title and what it introduces. */
 .card h1 + * {
   margin-top: 1.5rem;
@@ -511,6 +516,20 @@ form > * + button:not(.quiet) {
   .card form > button:not(.quiet),
   .card p > a.button:only-child {
     width: auto;
+  }
+}
+
+/* A screen that can't be undone has its two buttons the same distance apart wherever it is. Throw it away's form has a hidden
+   field before its button, so its button follows a sibling and gets the step and a half above; Take it off's form is only the
+   button, so it asks for the same step itself. From a tablet up the two buttons are one width (the words of one are shorter). */
+.card form > button.danger:first-child {
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 48rem) {
+  .card form > button.danger,
+  .card p > a.button.safe:only-child {
+    min-width: 12rem;
   }
 }
 
@@ -750,6 +769,15 @@ form > * + button:not(.quiet) {
   resize: vertical;
 }
 
+/* The line about a game is a box that grows with its words, one line tall until it needs more, so a phone shows all of what
+   was typed and not its tail. Its words sit in the middle of a one-line box, as an input's do: 1.8rem is one line of the
+   answer's 1.5rem type at 1.2. */
+.screen textarea.answer[data-grows] {
+  field-sizing: content;
+  resize: none;
+  padding-block: calc((var(--box) - 1.8rem) / 2);
+}
+
 /* A phone held sideways has the least height, so the heading and the answer sit closer to the top, and the box is in
    view above the bar before anything is scrolled. The stack is 12px shorter than it was so the box ends a clear 12px above
    the bar: at an iPhone 15's 343px, with a two-line heading, it used to end within a tenth of a pixel of the bar's top, and
@@ -823,6 +851,12 @@ form > * + button:not(.quiet) {
 .fix .statement {
   display: block;
   font: var(--text-statement);
+}
+
+/* Staff's own line is the most specific thing a maker is told, so it is read as easily as the reason above it: body size, in ink. */
+.sheet.fix .note {
+  color: var(--ink);
+  font: var(--text-body);
 }
 
 /* The boxes behind "Change the branch or folder": the same paper slabs as an answer, each with its own words over it. */
@@ -940,6 +974,11 @@ form > * + button:not(.quiet) {
   outline: 4px solid var(--chalk);
   outline-offset: 6px;
   border-radius: var(--radius-button);
+}
+
+/* The line under a refused set starts 12px clear of its ring, which stands 10px out from the set (4px wide, 6px off). */
+.picks:has(input[aria-invalid="true"]) + .note {
+  margin-top: 1.5rem;
 }
 
 /* Two across from a phone held sideways up; stacked on a phone held upright. The five ratings sit in one row from a
@@ -1121,6 +1160,14 @@ form > * + button:not(.quiet) {
   }
 }
 
+/* A short computer window (1280 by 720): the wide frame is only as tall as leaves room for the question's words and its buttons
+   on the first screen; where the window is taller the frame is its usual 640. */
+@media (min-width: 1200px) and (orientation: landscape) and (max-height: 799px) {
+  .vframe[data-frame="wide"] {
+    width: min(640px, 100%, calc((100dvh - 480px) * 16 / 9));
+  }
+}
+
 /* The question beside its upright frame, on a computer and on a tablet or phone held sideways; a wide frame is beside
    it on a phone held sideways only, and everywhere else it is under it. */
 @media (min-width: 1200px) and (orientation: landscape) {
@@ -1292,6 +1339,21 @@ a.foot {
   margin: 1rem 0 0;
 }
 
+/* On Live, "Back to your games" is a little larger than the link that takes the game off Ruken. That one is the quietest thing
+   on the screen: last, a size smaller and dimmer, and a step below the way back, so a thumb that aims for one does not land
+   on the other and it is never read as part of the blue button's note above. Each is on its own line. */
+.live a.foot {
+  display: flex;
+  width: fit-content;
+  font-size: 1rem;
+}
+
+.live a.foot[data-off] {
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  opacity: 0.75;
+}
+
 @media (orientation: landscape) and (min-width: 700px) {
   .halves {
     display: grid;
@@ -1419,11 +1481,13 @@ a.foot {
 }
 
 /* A phone's two videos are the same row as everywhere else, smaller, and the name, the line and the facts have the whole
-   width under them: beside the tall video they had a strip of 115 to 225px. A narrow tile's caption lets its Change drop to
-   a line of its own, so the caption never widens the row. */
+   width under them: beside the tall video they had a strip of 115 to 225px. Each caption is its words with Change under
+   them, on both videos, so the two captions are one height and the caption never widens the row. */
 @media (max-width: 499px) {
   .tiles figcaption {
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
   }
 }
 
@@ -1569,6 +1633,14 @@ a.game:active {
   a.game > .tile {
     width: 128px;
     height: 72px;
+  }
+}
+
+/* An iPhone SE's card is 248 wide inside its padding: with a 96px picture a name had 136px and "318346e0" was cut in two. */
+@media (max-width: 399px) {
+  a.game > .tile {
+    width: 64px;
+    height: 36px;
   }
 }
 
