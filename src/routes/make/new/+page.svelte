@@ -4,15 +4,20 @@
 -->
 <script lang="ts">
   import QuestionScreen from "../parts/QuestionScreen.svelte";
+  import { providePreview } from "../parts/preview.svelte.ts";
   import TextAnswer from "../parts/TextAnswer.svelte";
   import type { PageProps } from "./$types";
 
   let { form }: PageProps = $props();
+
+  // Nothing is saved yet, so the card beside the question fills in as the name is typed.
+  providePreview(() => ({ name: "", oneLine: "", rating: null, video: null }));
 </script>
 
 <QuestionScreen heading="What's your game called?" counter={{ n: 1, of: 7 }} back="/make">
   <TextAnswer
     name="name"
+    previews="name"
     value={form?.value ?? ""}
     hint="The name players see. Like: Floor Fifty."
     problem={form?.problem}

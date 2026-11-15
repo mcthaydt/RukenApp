@@ -1771,3 +1771,72 @@ a.sheet.fix {
   position: relative;
   z-index: 1;
 }
+
+/* What players will see, beside a question (spec 15.4): the question at the left edge and, in the right third, one paper
+   card of the game as a player meets it. A window that is not landscape, not 500 wide or not 450 tall has no room for
+   it, so it is not drawn and the question has the screen; until then `asks` takes no box of its own, so the question
+   is laid out exactly as it is without a card. */
+.asks {
+  display: contents;
+}
+
+.preview {
+  display: none;
+}
+
+@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
+  .screen .asks {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    column-gap: 3rem;
+    align-items: start;
+    width: min(100% - 5rem, 1200px);
+    margin: auto;
+    padding-block: 2rem;
+  }
+
+  .screen .asks > main {
+    width: auto;
+    max-width: var(--column);
+    margin: 0;
+    padding-block: 0;
+  }
+
+  .preview {
+    display: block;
+  }
+}
+
+/* A tablet held sideways has less to spare. */
+@media (min-width: 500px) and (max-width: 1199px) and (orientation: landscape) and (min-height: 450px) {
+  .screen .asks {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    column-gap: 2rem;
+  }
+}
+
+/* The label is a note on felt, in plain lower case, and the card under it is the game: video, name, line, rating. */
+.preview > p {
+  margin: 0 0 0.75rem;
+  color: var(--sage);
+  font: var(--text-small);
+  text-transform: none;
+}
+
+.preview .card > div {
+  width: calc(200px * 9 / 16);
+  height: 200px;
+}
+
+.preview .card h2 {
+  margin: 1rem 0 0;
+}
+
+.preview .card p {
+  margin: 0.25rem 0 0;
+}
+
+/* A part not answered yet is words in grey, so what is still to come is seen. */
+.preview [data-empty] {
+  color: var(--ink-soft);
+}

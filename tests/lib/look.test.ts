@@ -334,6 +334,8 @@ describe("screens wear the look and nothing of their own", () => {
     "backdrop",
     "live",
     "drift",
+    "asks",
+    "preview",
   ];
   const ROUTES = "src/routes";
 
@@ -435,6 +437,8 @@ describe("the maker's screens", () => {
     "backdrop",
     "live",
     "drift",
+    "asks",
+    "preview",
   ];
 
   it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {

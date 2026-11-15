@@ -8,12 +8,19 @@
   import Picks from "../../parts/Picks.svelte";
   import QuestionScreen from "../../parts/QuestionScreen.svelte";
   import TextAnswer from "../../parts/TextAnswer.svelte";
+  import { providePreview } from "../../parts/preview.svelte.ts";
   import VideoQuestion from "../../parts/VideoQuestion.svelte";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
 
   const problem = $derived(form?.problem);
+
+  // The card beside the question follows what is typed; the next question starts again from what is saved.
+  const preview = providePreview(() => data.preview);
+  $effect.pre(() => {
+    preview.follow(data.question);
+  });
 
   const PLAYS_ON = [
     { value: "phone_and_computer", title: "Phones and computers" },
@@ -54,6 +61,7 @@
     >
       <TextAnswer
         name="name"
+        previews="name"
         value={form?.value ?? data.name}
         hint={data.addressStays ? NAME_HINT + ADDRESS_STAYS : NAME_HINT}
         {problem}
@@ -68,6 +76,7 @@
     >
       <TextAnswer
         name="oneLine"
+        previews="line"
         value={form?.value ?? data.oneLine}
         hint="Players see it under the name. Like: Climb. Fall. Climb again."
         {problem}

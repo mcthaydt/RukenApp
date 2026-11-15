@@ -14,6 +14,7 @@ import {
   playsOnProblem,
   questionBefore,
   questionsFor,
+  ratingWords,
   type AgeRating,
   type Answer,
   type ClipShape,
@@ -133,6 +134,13 @@ export const load: PageServerLoad = async (event) => {
   return {
     question,
     name: game.name,
+    // What the card beside the question shows of the game as it is saved.
+    preview: {
+      name: game.name,
+      oneLine: game.oneLine ?? "",
+      rating: ratingWords(game.ageRating, game.contentMarks),
+      video: game.clips.upright === null ? null : gamesServices().media(game.clips.upright.key),
+    },
     // One website to a line, as the game's list was typed.
     servers: game.connectHosts.join("\n"),
     oneLine: game.oneLine ?? "",

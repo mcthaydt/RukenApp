@@ -4,12 +4,15 @@
   keeps what was typed. An answer of several lines (the websites, one to a line) is a taller box of the same kind.
 -->
 <script lang="ts">
+  import { previewOfPage } from "./preview.svelte.ts";
+
   let {
     name,
     value,
     hint,
     problem,
     lines,
+    previews,
   }: {
     name: string;
     value: string;
@@ -17,7 +20,17 @@
     problem: string | undefined;
     /** How many lines tall the box is, for an answer of several lines; a one-line answer leaves it out. */
     lines?: number | undefined;
+    /** The part of the card beside the question that this box fills in as it is typed: the name, or the one line. */
+    previews?: "name" | "line" | undefined;
   } = $props();
+
+  const preview = previewOfPage();
+
+  function typed(event: Event): void {
+    if (!(event.currentTarget instanceof HTMLInputElement)) return;
+    if (previews === "name") preview?.typeName(event.currentTarget.value);
+    if (previews === "line") preview?.typeLine(event.currentTarget.value);
+  }
 </script>
 
 {#if lines === undefined}
@@ -26,6 +39,7 @@
     type="text"
     {name}
     {value}
+    oninput={typed}
     autocomplete="off"
     aria-labelledby="question"
     aria-describedby={problem === undefined ? "hint" : "hint problem"}

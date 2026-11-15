@@ -475,5 +475,5 @@ test("the preview's label is not in capitals", async ({ page }) => {
   await page.goto("/make/new");
   await pageHasSettled(page);
 
-  await expect(page.locator(".preview .label")).toHaveCSS("text-transform", "none");
+  await expect(page.locator(".preview > p")).toHaveCSS("text-transform", "none");
 });

@@ -5,6 +5,8 @@
   maker without script).
 -->
 <script lang="ts">
+  import { previewOfPage } from "./preview.svelte.ts";
+
   interface Option {
     value: string;
     title: string;
@@ -36,8 +38,15 @@
     [hint === undefined ? "" : "hint", problem === undefined ? "" : "problem"].join(" ").trim() || undefined,
   );
 
+  const preview = previewOfPage();
+
   function keepNoneAlone(event: Event): void {
     const picked = event.target;
+    // The card beside the question shows the rating as it is chosen (its words are the choice's title).
+    if (ratings && picked instanceof HTMLInputElement && picked.checked) {
+      const words = options.find((option) => option.value === picked.value)?.title;
+      if (words !== undefined) preview?.pickRating(words);
+    }
     if (!several || !(picked instanceof HTMLInputElement) || !picked.checked) return;
     for (const box of picked.form?.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`) ?? []) {
       if (box !== picked && (picked.value === "none" || box.value === "none")) box.checked = false;

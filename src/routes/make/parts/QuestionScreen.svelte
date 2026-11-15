@@ -10,6 +10,7 @@
   import { enhance } from "$app/forms";
   import { tick, type Snippet } from "svelte";
   import { focusFirstRefused } from "../../../lib/focus.ts";
+  import GamePreview from "./GamePreview.svelte";
 
   let {
     heading,
@@ -59,45 +60,48 @@
   </div>
 {/if}
 
-<main>
-  <form
-    method="POST"
-    action="?/answer"
-    use:enhance={({ cancel }) => {
-      // A second press while the first is out would save twice, and for a new game make two.
-      if (saving) cancel();
-      saving = true;
-      return async ({ update }) => {
-        await update();
-        saving = false;
-        await tick();
-        focusFirstRefused();
-      };
-    }}
-  >
-    {#if counter !== null}
-      <p class="count">Question {counter.n} of {counter.of}</p>
-    {/if}
-    <h1 id="question">{heading}</h1>
-    {@render children()}
-    {#if saving && busyLine !== undefined}
-      <p class="note" role="status">{busyLine}</p>
-    {/if}
-    <div class="acts">
-      <a class="button safe" href={back}>Back</a>
-      {#if forward !== undefined}
-        {@render forward()}
-      {:else}
-        <button disabled={saving} aria-busy={saving ? "true" : undefined}>
-          {saving ? busyWords : counter === null ? "Save" : "Next"}
-        </button>
+<div class="asks">
+  <main>
+    <form
+      method="POST"
+      action="?/answer"
+      use:enhance={({ cancel }) => {
+        // A second press while the first is out would save twice, and for a new game make two.
+        if (saving) cancel();
+        saving = true;
+        return async ({ update }) => {
+          await update();
+          saving = false;
+          await tick();
+          focusFirstRefused();
+        };
+      }}
+    >
+      {#if counter !== null}
+        <p class="count">Question {counter.n} of {counter.of}</p>
       {/if}
-      {#if enterHint && forward === undefined}
-        <span class="key">press Enter <kbd>↵</kbd></span>
+      <h1 id="question">{heading}</h1>
+      {@render children()}
+      {#if saving && busyLine !== undefined}
+        <p class="note" role="status">{busyLine}</p>
       {/if}
-    </div>
-  </form>
-</main>
+      <div class="acts">
+        <a class="button safe" href={back}>Back</a>
+        {#if forward !== undefined}
+          {@render forward()}
+        {:else}
+          <button disabled={saving} aria-busy={saving ? "true" : undefined}>
+            {saving ? busyWords : counter === null ? "Save" : "Next"}
+          </button>
+        {/if}
+        {#if enterHint && forward === undefined}
+          <span class="key">press Enter <kbd>↵</kbd></span>
+        {/if}
+      </div>
+    </form>
+  </main>
+  <GamePreview />
+</div>
 
 {#if throwAway !== undefined}
   <a class="foot" href={throwAway}>Throw this game away</a>
