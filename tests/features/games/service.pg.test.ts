@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { Answer } from "../../../src/features/games/games.ts";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId, PUBLIC_ID } from "../../../src/features/games/ids.ts";
 import { createGamesService, type GamesService } from "../../../src/features/games/service.ts";
@@ -186,10 +187,10 @@ async function begin(name = "Tower Run") {
   return { makerUserId, ...started };
 }
 
-const FILES_ANSWER = {
+const FILES_ANSWER: Answer = {
   question: "files",
   repo: { fullName: "acme/game", branch: null, folder: "" },
-} as const;
+};
 
 describe("startGame", () => {
   it("makes a draft with only its name, an address and a public id of its own", async () => {
@@ -318,7 +319,7 @@ describe("saveAnswer", () => {
   it("says another maker's game is not there, for every answer", async () => {
     const { id } = await begin();
     const stranger = await createUser(db());
-    const answers = [
+    const answers: Answer[] = [
       { question: "name", name: "Another" },
       { question: "line", oneLine: "A line." },
       FILES_ANSWER,
@@ -326,7 +327,7 @@ describe("saveAnswer", () => {
       { question: "age", ageRating: "age_12" },
       { question: "marks", contentMarks: ["gore"] },
       { question: "websites", connectHosts: [] },
-    ] as const;
+    ];
 
     for (const answer of answers) {
       await expect(service.saveAnswer(id, stranger, answer), answer.question).rejects.toMatchObject({
