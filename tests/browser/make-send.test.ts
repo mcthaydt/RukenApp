@@ -63,7 +63,7 @@ test("the agreement is shown whole, with its version and date, and one button", 
   await expect(page).toHaveURL(`/make/${slug}/agreement`);
   await pageHasSettled(page);
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("The maker agreement");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Maker agreement");
   await expect(page.getByText(AGREEMENT_VERSION_LINE)).toBeVisible();
   await expect(page.locator(".sheet li")).toHaveCount(7);
   await expect(page.locator(".sheet li").first()).toContainText("Your game stays yours.");

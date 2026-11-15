@@ -205,9 +205,13 @@ test("a live game: See it on Ruken is the blue button, and a new version goes fo
   await expect(see).toHaveAttribute("href", `/g/${slug}`);
   await expect(see).toHaveCSS("background-color", rgb(token("--pay")));
   const again = page.getByRole("button", { name: "Send a new version" });
-  // A second forward action is a quiet blue outline, never a second blue button.
-  await expect(again).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-  await expect(again).toHaveCSS("border-top-color", rgb(token("--pay")));
+  // A send waiting on the maker is what to do next, so it is the blue button, as on Sent back; "See it on Ruken" is a link
+  // (the design pass, S8).
+  await expect(again).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(page.getByRole("link", { name: "See it on Ruken" })).not.toHaveCSS(
+    "background-color",
+    rgb(token("--pay")),
+  );
   // The rating chip is the rating staff set, and it has no Change.
   await expect(page.locator(".chip", { hasText: "12+" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Change who it's for" })).toHaveCount(0);

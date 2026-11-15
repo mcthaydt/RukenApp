@@ -257,7 +257,8 @@ test("the wide frame is this wide for this window, and wider than tall", async (
     expect(frame.width).toBeGreaterThanOrEqual(window - 40);
     expect(frame.width).toBeLessThanOrEqual(window);
   } else if (layout === "phone-sideways") {
-    expect(frame.width).toBe(380);
+    // 240, not 380: beside a wider frame an iPhone SE held sideways left the heading a word to a line (the design pass, M5).
+    expect(frame.width).toBe(240);
   } else {
     expect(frame.width).toBe(640);
   }
@@ -298,11 +299,12 @@ test("the two videos are the same height, this tall for this window", async ({ p
   const layout = layoutOf(page);
 
   if (layout === "phone") {
-    // The upright one is 150 by 267 with the wide one beside it, at its own shape.
-    expect(upright.width).toBe(150);
-    expect(upright.height).toBe(267);
-    expect(wide.y).toBeLessThan(upright.y + upright.height);
+    // A phone's two videos are the same row as every other window's, smaller: side by side at one height and inside the
+    // column, with the name and the line under them across the whole width (the design pass, M2).
+    expect(Math.abs(upright.height - wide.height)).toBeLessThanOrEqual(1);
     expect(wide.x).toBeGreaterThan(upright.x + upright.width - 1);
+    expect(wide.x + wide.width).toBeLessThanOrEqual((page.viewportSize()?.width ?? 0) - 20 + 1);
+    expect(upright.width).toBeLessThan(upright.height);
     expect(wide.width).toBeGreaterThan(wide.height);
     return;
   }

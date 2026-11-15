@@ -152,15 +152,15 @@ export function lineCount(thing: Locator): Promise<number> {
 
 /**
  * The words of a thing that a line break cuts in the middle: a word whose pieces sit on more than one line. A word that
- * moves down whole is fine; "Chang" over "e" is the fault. A thing's own hyphens and slashes are where a word may break, so
- * a journey that means to allow them looks only at names that have none.
+ * moves down whole is fine; "Chang" over "e" is the fault. A word is whatever lies between spaces; a journey that lets a
+ * word break at a slash (a repository's name) names the characters that bound a word, `"\\s/"`.
  */
-export function brokenWords(thing: Locator): Promise<string[]> {
-  return thing.evaluate((element) => {
+export function brokenWords(thing: Locator, boundedBy = "\\s"): Promise<string[]> {
+  return thing.evaluate((element, bounds) => {
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
     const broken: string[] = [];
     for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-      for (const word of (node.textContent ?? "").matchAll(/\S+/g)) {
+      for (const word of (node.textContent ?? "").matchAll(new RegExp(`[^${bounds}]+`, "g"))) {
         const range = document.createRange();
         range.setStart(node, word.index);
         range.setEnd(node, word.index + word[0].length);
@@ -169,7 +169,7 @@ export function brokenWords(thing: Locator): Promise<string[]> {
       }
     }
     return broken;
-  });
+  }, boundedBy);
 }
 
 /**

@@ -1,12 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
+import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled } from "./support/account.ts";
 import { fillAnswers, putGameWhereStaffLeaveIt, type SentBackPart } from "./support/database.ts";
 import {
   agreeToTheAgreement,
   answerLine,
+  connectGitHubFromFiles,
   freshName,
   giveRealClips,
   nextButton,
+  startAtCheck,
+  startAtFiles,
   startAtVideo,
   startDraft,
 } from "./support/game.ts";
@@ -317,4 +321,158 @@ test("while an update waits, Send a new version is still there and says it takes
   await expect(page.getByText("Your update is waiting for review.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Send a new version" })).toBeVisible();
   await expect(page.getByText(/It takes the place of the one that is waiting\./)).toBeVisible();
+});
+
+// ---- S2 and S10: a refused box ------------------------------------------------------------------------------------
+
+test("the hint under a refused box starts clear of the box's ring", async ({ page }) => {
+  const { slug } = await startDraft(page);
+  await page.goto(`/make/${slug}/name`);
+  await pageHasSettled(page);
+  await page.getByLabel("What's your game called?").fill("");
+  await nextButton(page).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+
+  const box = await boxOf(page.locator("input.answer"));
+  const hint = await boxOf(page.locator("#hint"));
+  // The ring is 4px thick and stands 3px out from the box: 12px of air beyond it.
+  expect(hint.y - (box.y + box.height)).toBeGreaterThanOrEqual(19);
+});
+
+test("the other websites box is the same height refused as before, with room above its words", async ({
+  page,
+}) => {
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true });
+  await page.goto(`/make/${slug}/websites`);
+  await pageHasSettled(page);
+  const box = page.locator("textarea.answer");
+  const before = await boxOf(box);
+  await expect(box).toHaveCSS("padding-top", "16px");
+
+  await page.getByLabel(/use other websites\?$/).fill("not a website");
+  await nextButton(page).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+
+  await expect(box).toHaveCSS("padding-top", "16px");
+  expect((await boxOf(box)).height).toBeCloseTo(before.height, 0);
+});
+
+// ---- S5: the links under a video -----------------------------------------------------------------------------------
+
+test("the two links under a chosen video are one look, a line each, with the action first", async ({
+  page,
+}) => {
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, videos: true });
+  await giveRealClips(page, slug);
+  await page.goto(`/make/${slug}/upright`);
+  await pageHasSettled(page);
+
+  const change = page.getByRole("link", { name: "Choose a different video" });
+  const howTo = page.getByRole("link", { name: "How do I record my screen?" });
+  for (const link of [change, howTo]) {
+    await expect(link).toHaveCSS("font-size", "14px");
+    await expect(link).toHaveCSS("color", rgb(token("--sage")));
+  }
+  const first = await boxOf(change);
+  const second = await boxOf(howTo);
+  expect(first.y).toBeLessThan(second.y);
+  expect(second.y).toBeGreaterThanOrEqual(first.y + first.height);
+});
+
+// ---- S6: Throw this game away starts where the words start -----------------------------------------------------------
+
+test("Throw this game away starts at the left edge of the question's words", async ({ page }) => {
+  await startDraft(page);
+  await layoutHasSettled(page);
+
+  const heading = await boxOf(page.getByRole("heading", { level: 1 }));
+  const foot = await boxOf(page.getByRole("link", { name: "Throw this game away" }));
+  expect(foot.x).toBeCloseTo(heading.x, 0);
+});
+
+test("Throw this game away starts at the left edge of Check and send's words", async ({ page }) => {
+  await startAtCheck(page);
+  await layoutHasSettled(page);
+
+  const heading = await boxOf(page.getByRole("heading", { level: 1 }));
+  const foot = await boxOf(page.getByRole("link", { name: "Throw this game away" }));
+  expect(foot.x).toBeCloseTo(heading.x, 0);
+});
+
+// ---- S9: the full-size video --------------------------------------------------------------------------------------
+
+test("while a video is open full size the page behind it does not scroll", async ({ page }) => {
+  await startAtCheck(page);
+  await page.getByRole("link", { name: "Watch the upright video full size" }).click();
+
+  await expect(page.locator("dialog.viewer[open]")).toBeVisible();
+  await expect(page.locator("html")).toHaveCSS("overflow", "hidden");
+});
+
+// ---- S11: the agreement is a press, not a key ------------------------------------------------------------------------
+
+test("the agreement does not hint that Enter agrees", async ({ page }) => {
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  await page.goto(`/make/${slug}/agreement`);
+  await pageHasSettled(page);
+
+  await expect(page.getByRole("button", { name: "I agree" })).toBeVisible();
+  await expect(page.getByText("press Enter")).toHaveCount(0);
+});
+
+test.describe("on an iPhone SE held upright, more", () => {
+  test.use({ viewport: IPHONE_SE });
+
+  // ---- S12: the agreement's numbers -------------------------------------------------------------------------------
+
+  test("the agreement's clause numbers hang in a narrow gutter", async ({ page }) => {
+    onlyIn("phone");
+    const { slug } = await startDraft(page);
+    await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+    await page.goto(`/make/${slug}/agreement`);
+    await pageHasSettled(page);
+
+    await expect(page.locator(".sheet ol")).toHaveCSS("padding-left", "28px");
+  });
+
+  // ---- S13: a repository's name is not cut at a hyphen --------------------------------------------------------------
+
+  test("a repository's name goes to a second line only after its slash", async ({ page }) => {
+    onlyIn("phone");
+    const { slug } = await startAtFiles(page);
+    await connectGitHubFromFiles(page, slug);
+
+    for (const name of await page.locator(".pick > b").all()) {
+      expect(await brokenWords(name, "\\s/")).toEqual([]);
+    }
+  });
+});
+
+// ---- S14: the record-your-screen page opens with a way to each device ----------------------------------------------------
+
+test("the record-your-screen page opens with a link to each device's steps", async ({ page }) => {
+  await page.goto("/help/record-screen");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+  for (const device of ["iPhone or iPad", "Android phone", "Windows computer", "Mac"]) {
+    const jump = page.getByRole("link", { name: device, exact: true });
+    await expect(jump).toHaveCount(1);
+    const target = await jump.getAttribute("href");
+    expect(target).toMatch(/^#[a-z-]+$/);
+    await expect(page.locator(target ?? "#none")).toHaveText(device);
+  }
+});
+
+// ---- P1: both ways a game plays are explained -----------------------------------------------------------------------
+
+test("both choices of where the game plays have a line under them", async ({ page }) => {
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, playsOn: false });
+  await page.goto(`/make/${slug}/plays-on`);
+  await pageHasSettled(page);
+
+  await expect(page.locator(".pick > span")).toHaveCount(2);
 });

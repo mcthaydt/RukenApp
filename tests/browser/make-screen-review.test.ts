@@ -164,25 +164,6 @@ test("on Live an update that was sent back has room above the game", async ({ pa
   expect((await boxOf(page.locator(".laid"))).y - (card.y + card.height)).toBeGreaterThanOrEqual(16);
 });
 
-test("on a phone the wide video has the name and the line under it, beside the upright one", async ({
-  page,
-}) => {
-  test.skip(layoutOf(page) !== "phone", "the phone's own arrangement");
-  await startAtCheck(page);
-  await layoutHasSettled(page);
-
-  const upright = await boxOf(page.locator('.laid [data-shape="upright"]').first());
-  // The wide video's figure, with its caption: the name starts right under it.
-  const wide = await boxOf(page.locator(".laid figure").last());
-  const title = await boxOf(page.locator(".laid .title"));
-  const tagline = await boxOf(page.locator(".laid .tagline"));
-  expect(title.x).toBeGreaterThanOrEqual(upright.x + upright.width);
-  expect(tagline.x).toBeGreaterThanOrEqual(upright.x + upright.width);
-  expect(title.y).toBeGreaterThanOrEqual(wide.y + wide.height);
-  // Right under the wide video, not under whatever is tallest.
-  expect(title.y - (wide.y + wide.height)).toBeLessThanOrEqual(40);
-});
-
 test("a video's caption is one line: 'On phones' and its Change stay together", async ({ page }) => {
   test.skip(layoutOf(page) === "phone", "a phone's captions are drawn by the phone's own arrangement");
   await startAtCheck(page);
