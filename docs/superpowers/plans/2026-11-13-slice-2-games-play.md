@@ -850,6 +850,8 @@ test("signed out, connecting asks for sign-in first", async ({ page }) => { /* /
 
 # Branch M: `slice-2/submit`
 
+> **Rebuilt.** The Owner approved the maker screens redesign on 2026-11-15 (`docs/superpowers/specs/2026-11-14-maker-screens-redesign-design.md`). Tasks 26 to 28 are built as written below; `docs/superpowers/plans/2026-11-15-maker-screens-rebuild.md` rebuilds their screens on the same branch and amends Tasks 30 and 31. Where the two plans differ, that one wins.
+
 ### Task 26: Sending a game for review: the rules and the tables
 
 **Files:**
