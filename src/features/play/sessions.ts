@@ -83,6 +83,15 @@ export function createPlayService(deps: PlayServiceDeps) {
     return { frameUrl: `${deps.address(`g-${game.publicId}`)}/${pass}/`, session: { id, token } };
   }
 
+  /** Not built yet. */
+  function startReviewPlay(_input: {
+    game: { id: string; publicId: string };
+    pullId: string;
+    staffUserId: string;
+  }): Promise<{ frameUrl: string; session: { id: string; token: string } }> {
+    return Promise.reject(new Error("not built yet"));
+  }
+
   /**
    * One "still here" from a page. It must carry the session's own token (the id alone is not enough, since the id is in
    * the page). A session takes beats for a day, and a beat that comes too soon after the last is dropped, so a page
@@ -141,7 +150,7 @@ export function createPlayService(deps: PlayServiceDeps) {
     return { sessions: sessions.length, beats, countedSeconds: Math.floor(counted / 1000) };
   }
 
-  return { startPlay, recordBeat, playSummary };
+  return { startPlay, startReviewPlay, recordBeat, playSummary };
 }
 
 export type PlayService = ReturnType<typeof createPlayService>;

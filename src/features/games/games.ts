@@ -6,7 +6,7 @@ export { ageProblem, marksProblem, playsOnProblem } from "./fields.ts";
 export { GameError } from "./game-error.ts";
 export { playsOnWords, ratingWords, websitesWords } from "./laid-out.ts";
 export { nextStepWords, toFixWords } from "./review.ts";
-export { partNoun } from "./send-back.ts";
+export { isReasonFor, LIVE_MAY_BE_SENT_BACK, partNoun, partTitle, reasonsFor } from "./send-back.ts";
 export {
   answersOf,
   counterOf,
@@ -18,5 +18,5 @@ export {
   questionsFor,
   type QuestionId,
 } from "./questions.ts";
-export type { Answer, LiveGame, MakerGame } from "./service.ts";
+export type { Answer, LiveGame, MakerGame, ReviewDecision, ReviewGame, WaitingGame } from "./service.ts";
 export { gamesServices } from "./services.ts";

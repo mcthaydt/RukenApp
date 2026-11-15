@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { sealState } from "../../../src/features/games/github-connect.ts";
 import { ARRIVAL_COOKIE, sealArrival } from "../../../src/features/membership/arrival.ts";
-import type { AgeRating, GamePart } from "../../../src/lib/server/db.ts";
+import type { AgeRating, GamePart, GameState, StaffRole } from "../../../src/lib/server/db.ts";
 import { PrismaClient, type MembershipStart } from "../../support/generated/prisma/client.ts";
 
 // The one place a journey reads the app's database. No screen shows who brought a member, so the journeys that check
@@ -270,9 +270,47 @@ export async function putGameWhereStaffLeaveIt(
             state: "live",
             stateReason: null,
             pendingPullId: decision.updateWaiting === true ? newest.id : null,
+            pendingSince: decision.updateWaiting === true ? new Date() : null,
             livePullId: newest.id,
             toFix: toFix.map((one) => one.part),
           }
-        : { state: decision.state, toFix: toFix.map((one) => one.part) },
+        : {
+            state: decision.state,
+            toFix: toFix.map((one) => one.part),
+            // A game that waits holds its files in staff's queue, with the time they were sent.
+            ...(decision.state === "waiting" ? { pendingPullId: newest.id, pendingSince: new Date() } : {}),
+          },
   });
+}
+
+/** Makes the account with this address staff, in `role`. Nothing on a screen grants a role yet (the admin portal will). */
+export async function grantStaffRole(email: string, role: StaffRole): Promise<void> {
+  await db().staffAssignment.create({ data: { userId: await userIdOf(email), role } });
+}
+
+/** A game's own id, its public id and its maker, read from its rows. */
+export async function makerOf(
+  slug: string,
+): Promise<{ id: string; publicId: string; makerUserId: string; makerEmail: string }> {
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { id: true, publicId: true, makerUserId: true, maker: { select: { email: true } } },
+  });
+  return { id: game.id, publicId: game.publicId, makerUserId: game.makerUserId, makerEmail: game.maker.email };
+}
+
+/** Where a game stands, read from its row. */
+export async function stateOf(slug: string): Promise<GameState> {
+  return (await db().game.findUniqueOrThrow({ where: { slug }, select: { state: true } })).state;
+}
+
+/**
+ * Changes a game's answers straight in the database, as its maker would on another screen while staff are looking at
+ * the game. The maker's own screens would do the same; this is quicker and cannot fail halfway.
+ */
+export async function changeGame(
+  slug: string,
+  changes: { oneLine?: string; playsOn?: "phone_and_computer" | "computer_only" },
+): Promise<void> {
+  await db().game.update({ where: { slug }, data: changes });
 }

@@ -388,3 +388,62 @@ describe("playSummary", () => {
     expect(await service.playSummary(one.game.id)).toEqual({ sessions: 1, beats: 1, countedSeconds: 15 });
   });
 });
+
+describe("startReviewPlay", () => {
+  /** A game with a pull that is not live yet, as staff meet it: waiting for a first yes. */
+  async function waitingGame(connectHosts: string[]) {
+    const game = await newGame();
+    const pull = await db().gamePull.create({
+      data: {
+        id: crypto.randomUUID(),
+        gameId: game.id,
+        commitSha: "b".repeat(40),
+        fileCount: 3,
+        totalBytes: 1000n,
+        connectHosts,
+        pulledAt: new Date(clock.epochMs()),
+      },
+    });
+    return { game, pullId: pull.id };
+  }
+
+  it("gives staff the waiting files under a pass for that pull, with that pull's own servers", async () => {
+    const { game, pullId } = await waitingGame(["api.example.com"]);
+    const staffUserId = await createUser(db());
+
+    const started = await service.startReviewPlay({ game, pullId, staffUserId });
+
+    const url = new URL(started.frameUrl);
+    expect(url.origin).toBe(`https://g-${game.publicId}.games.test`);
+    expect(checkPass(url.pathname.split("/")[1] ?? "", SECRET, clock.epochMs())).toMatchObject({
+      game: game.publicId,
+      pull: pullId,
+      connect: ["api.example.com"],
+    });
+  });
+
+  it("records a staff play, which never counts for pay, and a token to match", async () => {
+    const { game, pullId } = await waitingGame([]);
+    const staffUserId = await createUser(db());
+
+    const started = await service.startReviewPlay({ game, pullId, staffUserId });
+
+    expect(await db().playSession.findMany({ where: { gameId: game.id } })).toMatchObject([
+      { id: started.session.id, userId: staffUserId, pullId, basis: "staff" },
+    ]);
+    expect(
+      await service.recordBeat({ sessionId: started.session.id, token: started.session.token, attentive: true }),
+    ).toBe("recorded");
+  });
+
+  it("will not hand out a pass for a pull that belongs to another game", async () => {
+    const { game } = await waitingGame([]);
+    const other = await waitingGame([]);
+
+    await expect(
+      service.startReviewPlay({ game, pullId: other.pullId, staffUserId: await createUser(db()) }),
+    ).rejects.toThrow();
+    expect(await db().playSession.count({ where: { gameId: game.id } })).toBe(0);
+    expect(await db().playPass.count({ where: { gameId: game.id } })).toBe(0);
+  });
+});

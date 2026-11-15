@@ -340,6 +340,9 @@ describe("screens wear the look and nothing of their own", () => {
     "drift",
     "asks",
     "preview",
+    // Staff's check of a game: a part to tick, and a button whose words follow the ticks.
+    "part",
+    "decide",
   ];
   const ROUTES = "src/routes";
 
@@ -446,6 +449,8 @@ describe("the maker's screens", () => {
     "drift",
     "asks",
     "preview",
+    "part",
+    "decide",
   ];
 
   it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {
@@ -470,5 +475,30 @@ describe("the maker's screens", () => {
     // The text from the start of each reduced-motion block on, which holds the rule that stops a screen.
     const reduced = withoutComments.split("@media (prefers-reduced-motion: reduce)").slice(1).join("");
     expect(reduced).toMatch(/\.screen[^{]*\{[^}]*animation:\s*none/);
+  });
+});
+
+// Staff's check of a game (Task 30): a part is a row in a sheet with a tick, and the one blue button says Accept or Send
+// back by what is ticked, with no script, so the page is right before script wakes and without it.
+describe("staff's check of a game", () => {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const ruleBodies = (name: string): string[] =>
+    [...withoutComments.matchAll(new RegExp(`[^{}]*\\.${name}(?![\\w-])[^{}]*\\{([^}]*)\\}`, "g"))].map(
+      (match) => match[1] ?? "",
+    );
+
+  it("has a rule for part and for decide", () => {
+    expect(ruleBodies("part").length).toBeGreaterThan(0);
+    expect(ruleBodies("decide").length).toBeGreaterThan(0);
+  });
+
+  it("shows the wording that follows the ticks, by :has() and not by script", () => {
+    const selectors = [...withoutComments.matchAll(/([^{}]*\.decide[^{}]*)\{/g)].map((match) => match[1] ?? "");
+    expect(selectors.some((selector) => selector.includes(":has("))).toBe(true);
+    expect(selectors.some((selector) => selector.includes('input[name="wrong"]:checked'))).toBe(true);
+  });
+
+  it("hides a part's reasons until it is ticked, by :has() and not by script", () => {
+    expect(withoutComments).toMatch(/\.part:not\(:has\(input\[name="wrong"\]:checked\)\)/);
   });
 });

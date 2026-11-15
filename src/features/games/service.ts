@@ -28,7 +28,7 @@ import { newPublicId, slugOf } from "./ids.ts";
 import { pullGame, type Pull } from "./pull.ts";
 import { counterOf, firstUnanswered, type Answers } from "./questions.ts";
 import { listWords, stateParts, stateWords } from "./review.ts";
-import { isReasonFor, makerWords, partTitle } from "./send-back.ts";
+import { isReasonFor, LIVE_MAY_BE_SENT_BACK, makerWords, partTitle } from "./send-back.ts";
 
 // What a game goes through, from its first clip to going live. It is built from what it needs (the database, the
 // clock, the bucket, GitHub) so a test hands it stand-ins and no test reaches for the real ones.
@@ -141,8 +141,31 @@ export interface MakerGame {
 
 /** What staff see of a game waiting for review: the maker's view, and the files that wait. */
 export interface ReviewGame extends MakerGame {
+  /** The maker's email: a maker has no handle until slice 3, so staff see this. */
+  makerEmail: string;
+  /** When the waiting files were sent, or null when none wait. */
+  sentAt: Date | null;
+  /** A sign of what staff are looking at: the decision carries it back, and a game that changed since is not decided. */
+  seen: string;
   pending: { id: string; fileCount: number; totalBytes: number; connectHosts: string[] } | null;
   clipKeys: { upright: string | null; wide: string | null };
+}
+
+/** A game waiting for a person's yes, as staff's list shows it. */
+export interface WaitingGame {
+  slug: string;
+  name: string;
+  makerEmail: string;
+  sentAt: Date;
+  /** A first send, or the new files of a game that is live already. */
+  kind: "game" | "update";
+}
+
+/** What staff decided to put with a yes: who it is for, and what was seen when they decided. */
+export interface ReviewDecision {
+  ageRating: AgeRating;
+  contentMarks: ContentMark[];
+  seen: string;
 }
 
 /** Staff's own line beside a reason, at most this many characters (GameReviewPart_note_check). */
@@ -358,7 +381,7 @@ export function createGamesService(deps: GamesServiceDeps) {
    * Staff's yes: the waiting files go live, and one review row records who said so and when. One transaction, so a
    * game is never live without its record. The files the game was live on stay in the bucket.
    */
-  async function accept(gameId: string, staffUserId: string): Promise<void> {
+  async function accept(gameId: string, staffUserId: string, _decision: ReviewDecision): Promise<void> {
     await deps.db.$transaction(async (tx) => {
       const { pullId } = await waitingOf(tx, gameId);
       const decidedAt = new Date(deps.clock.epochMs());
@@ -380,13 +403,6 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /**
-   * The parts a live game's update may be sent back for: the ones its maker can fix (her name, line and where it plays,
-   * by the questions she may still answer) and the files (she mends them on GitHub and sends a new version). Its videos,
-   * rating and websites go through staff again only in slice 4, so an update sent back for one would be stuck for good.
-   */
-  const LIVE_MAY_BE_SENT_BACK: GamePart[] = ["name", "one_line", "plays_on", "files"];
-
-  /**
    * Staff's no, part by part: each part with a reason from that part's list, and for "Something else" their own line
    * (spec 11.2). A live game stays live on its old files, and the maker sees what to fix either way. One transaction,
    * so the game and its record never disagree.
@@ -395,6 +411,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     gameId: string,
     staffUserId: string,
     parts: { part: GamePart; reason: string; note?: string }[],
+    _seen: string,
   ): Promise<void> {
     if (parts.length === 0) throw new GameError("INVALID", "Tick what's wrong first.");
     const chosen = new Set<GamePart>();
@@ -660,7 +677,7 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /** Games with files waiting for a person's yes, the oldest first. */
-  async function waitingGames(): Promise<{ slug: string; name: string; makerEmail: string; sentAt: Date }[]> {
+  async function waitingGames(): Promise<WaitingGame[]> {
     const rows = await deps.db.game.findMany({
       where: { pendingPullId: { not: null } },
       orderBy: { pendingSince: "asc" },
@@ -672,6 +689,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       makerEmail: row.maker.email,
       // `pendingSince` is set with `pendingPullId`, so a waiting game always has it.
       sentAt: row.pendingSince ?? new Date(0),
+      kind: "game" as const,
     }));
   }
 
@@ -874,6 +892,9 @@ export function createGamesService(deps: GamesServiceDeps) {
     const pending = row.pendingPull;
     return {
       ...makerView(row),
+      makerEmail: "",
+      sentAt: null,
+      seen: "",
       pending:
         pending === null
           ? null

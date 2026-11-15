@@ -4,6 +4,13 @@ import reasons from "./library/send-back-reasons.json" with { type: "json" };
 // Staff send a game back part by part, each with a reason from a short list (spec 11.2). The words staff choose from and
 // the words the maker reads are written once, in library/send-back-reasons.json, so the two stay a pair.
 
+/**
+ * The parts a live game's update may be sent back for: the ones its maker can fix (her name, line and where it plays, by
+ * the questions she may still answer) and the files (she mends them on GitHub and sends a new version). Its videos,
+ * rating and websites go through staff again only in slice 4, so an update sent back for one would be stuck for good.
+ */
+export const LIVE_MAY_BE_SENT_BACK: readonly GamePart[] = ["name", "one_line", "plays_on", "files"];
+
 /** The code of the one reason every part has: staff write their own line, and the maker reads that line. */
 const SOMETHING_ELSE = "something_else";
 
