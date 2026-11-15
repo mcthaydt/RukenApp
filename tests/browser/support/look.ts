@@ -201,5 +201,7 @@ export function layoutOf(page: Page): Layout {
  * A video that is a few bytes of the right first letters shows a blank block and never passes this.
  */
 export async function expectFrame(video: Locator): Promise<void> {
-  await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.videoWidth)).toBeGreaterThan(0);
+  await expect
+    .poll(() => video.evaluate((element: HTMLVideoElement) => element.videoWidth))
+    .toBeGreaterThan(0);
 }

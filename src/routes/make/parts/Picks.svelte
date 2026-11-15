@@ -78,7 +78,8 @@
       <b>
         {#if plain}
           <!-- A break may come after a slash and nowhere else, so "owner/name" is never cut in the middle of a word. -->
-          {#each option.title.split("/") as part, index (index)}{index > 0 ? "/" : ""}{#if index > 0}<wbr />{/if}{part}{/each}
+          {#each option.title.split("/") as part, index (index)}{index > 0 ? "/" : ""}{#if index > 0}<wbr
+              />{/if}{part}{/each}
         {:else}
           {option.title}
         {/if}

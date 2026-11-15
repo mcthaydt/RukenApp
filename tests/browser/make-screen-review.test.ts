@@ -85,7 +85,9 @@ test("Your games draws the picture of each game", async ({ page }) => {
 
 // ---- The other websites question ----------------------------------------------------------------------------------
 
-test("the other websites question has a paper box, a gap under the heading and no Enter hint", async ({ page }) => {
+test("the other websites question has a paper box, a gap under the heading and no Enter hint", async ({
+  page,
+}) => {
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { files: true });
   await page.goto(`/make/${slug}/websites`);
@@ -101,7 +103,9 @@ test("the other websites question has a paper box, a gap under the heading and n
 
 // ---- Sent back ----------------------------------------------------------------------------------------------------
 
-test("the folded 'accepted' card has small corners, is not underlined, and keeps its distance", async ({ page }) => {
+test("the folded 'accepted' card has small corners, is not underlined, and keeps its distance", async ({
+  page,
+}) => {
   const { slug } = await gameWhere(page, { state: "sent_back", toFix: [SIDEWAYS] });
   await page.goto(`/make/${slug}`);
 
@@ -147,14 +151,19 @@ test("the game laid out keeps its parts apart: the line from the chips, and a Ch
 });
 
 test("on Live an update that was sent back has room above the game", async ({ page }) => {
-  const { slug } = await gameWhere(page, { state: "live", toFix: [{ part: "one_line", reason: "not_this_game" }] });
+  const { slug } = await gameWhere(page, {
+    state: "live",
+    toFix: [{ part: "one_line", reason: "not_this_game" }],
+  });
   await page.goto(`/make/${slug}`);
 
   const card = await boxOf(page.locator("a.sheet.fix"));
   expect((await boxOf(page.locator(".laid"))).y - (card.y + card.height)).toBeGreaterThanOrEqual(16);
 });
 
-test("on a phone the wide video has the name and the line under it, beside the upright one", async ({ page }) => {
+test("on a phone the wide video has the name and the line under it, beside the upright one", async ({
+  page,
+}) => {
   test.skip(layoutOf(page) !== "phone", "the phone's own arrangement");
   await startAtCheck(page);
 
@@ -181,7 +190,9 @@ test("a video's caption is one line: 'On phones' and its Change stay together", 
 
 // ---- Where things start and what fills the bar --------------------------------------------------------------------
 
-test("on an upright tablet the question and the room screens start at the same left edge", async ({ page }) => {
+test("on an upright tablet the question and the room screens start at the same left edge", async ({
+  page,
+}) => {
   test.skip(layoutOf(page) !== "tablet", "only an upright tablet has a column narrower than the window");
   const { slug } = await startDraft(page);
   await page.goto(`/make/${slug}/line`);
@@ -201,7 +212,10 @@ test("on an upright tablet the question and the room screens start at the same l
 });
 
 test("the Choose video button fills the bar wherever the buttons are in a bar", async ({ page }) => {
-  test.skip(!["phone", "phone-sideways", "tablet"].includes(layoutOf(page)), "the buttons are not in a bar here");
+  test.skip(
+    !["phone", "phone-sideways", "tablet"].includes(layoutOf(page)),
+    "the buttons are not in a bar here",
+  );
   await startAtVideo(page, "upright");
 
   const choose = await boxOf(page.locator(".file > span"));
@@ -210,7 +224,9 @@ test("the Choose video button fills the bar wherever the buttons are in a bar", 
   expect(choose.x + choose.width).toBeGreaterThanOrEqual(width - 24);
 });
 
-test("on a sideways phone the answer box is in view above the bar, under a two-line heading", async ({ page }) => {
+test("on a sideways phone the answer box is in view above the bar, under a two-line heading", async ({
+  page,
+}) => {
   test.skip(layoutOf(page) !== "phone-sideways", "only a sideways phone is this short");
   const { slug } = await startDraft(page);
   await page.goto(`/make/${slug}/line`);
@@ -300,7 +316,10 @@ test("on the throw-away screen the green Keep it comes before the red Throw it a
 });
 
 test("on Live an update that was sent back has the fix as its blue button", async ({ page }) => {
-  const { slug } = await gameWhere(page, { state: "live", toFix: [{ part: "one_line", reason: "not_this_game" }] });
+  const { slug } = await gameWhere(page, {
+    state: "live",
+    toFix: [{ part: "one_line", reason: "not_this_game" }],
+  });
   await page.goto(`/make/${slug}`);
 
   const fix = page.getByRole("link", { name: /^Fix / });
