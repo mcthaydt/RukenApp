@@ -1815,12 +1815,11 @@ a.sheet.fix {
   }
 }
 
-/* The label is a note on felt, in plain lower case, and the card under it is the game: video, name, line, rating. */
+/* The label is a note on felt, in plain sentence case (the look never uses capitals for a label), and the card under it is the game: video, name, line, rating. */
 .preview > p {
   margin: 0 0 0.75rem;
   color: var(--sage);
   font: var(--text-small);
-  text-transform: none;
 }
 
 .preview .card > div {
