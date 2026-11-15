@@ -1,7 +1,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
-import { fillAnswers } from "./support/database.ts";
+import { fillAnswers, putGameWhereStaffLeaveIt } from "./support/database.ts";
 import {
+  addDraft,
   freshName,
   gameWhere,
   giveRealClips,
@@ -396,7 +397,11 @@ test("on a wide window the screen after taking a game off starts at the top left
   await wordsHaveSettled(page);
   const whereWaitingStarts = await boxOf(page.locator("main .count").first());
 
-  const live = await gameWhere(page, { state: "live" });
+  // The same maker's second game: signing up again while signed in would find no sign-up form.
+  const live = await addDraft(page);
+  await fillAnswers(live.slug, { files: true, videos: true, age: "age_12" });
+  await giveRealClips(page, live.slug);
+  await putGameWhereStaffLeaveIt(live.slug, { state: "live" });
   await page.goto(`/make/${live.slug}/take-off`);
   await page.getByRole("button", { name: "Take it off Ruken" }).click();
   await expect(page).toHaveURL(`/make/${live.slug}`);
