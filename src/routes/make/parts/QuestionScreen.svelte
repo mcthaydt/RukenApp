@@ -37,7 +37,7 @@
     /** A line shown under the answer while it waits, for an answer that can take a minute. */
     busyLine?: string;
     /** The blue button when it is not a submit: a link that goes elsewhere. */
-    forward?: Snippet;
+    forward?: Snippet | undefined;
     /** True from the press until the answer comes; a question that shows it itself (a video being added) binds it. */
     saving?: boolean;
     children: Snippet;
