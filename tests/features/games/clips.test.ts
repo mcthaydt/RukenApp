@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   CLIP_MAX_BYTES,
+  CLIP_REQUEST_MAX_BYTES,
   clipKeyFor,
   clipProblem,
+  clipRequestTooBig,
   isClipContentType,
   isClipKey,
   looksLikeVideo,
@@ -21,6 +23,29 @@ describe("the clip limit", () => {
   it("is 30 MB", () => {
     expect(CLIP_MAX_BYTES).toBe(30_000_000);
   });
+});
+
+describe("clipRequestTooBig", () => {
+  // The request is judged by its Content-Length before its body is read, so a huge video is never held in the Worker.
+  it("is 31 MB: a 30 MB clip and the form around it", () => {
+    expect(CLIP_REQUEST_MAX_BYTES).toBe(CLIP_MAX_BYTES + 1_000_000);
+  });
+
+  it.each(["0", "1", String(CLIP_REQUEST_MAX_BYTES)])("lets a request of %s bytes in", (length) => {
+    expect(clipRequestTooBig(length)).toBe(false);
+  });
+
+  it("turns away a request one byte over", () => {
+    expect(clipRequestTooBig(String(CLIP_REQUEST_MAX_BYTES + 1))).toBe(true);
+  });
+
+  // A request sent in chunks has no length to judge, and `formData()` would read all of it before a clip was refused.
+  it.each([null, "", " ", "abc", "-1", "1.5", "1e9", "0x10"])(
+    "turns away a request whose length is %j, as too big",
+    (length) => {
+      expect(clipRequestTooBig(length)).toBe(true);
+    },
+  );
 });
 
 describe("isClipContentType", () => {

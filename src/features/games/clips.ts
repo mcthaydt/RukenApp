@@ -12,6 +12,20 @@ export const CLIP_MAX_BYTES = VIDEO_MAX_BYTES;
 const EXTENSIONS = { "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov" } as const;
 export type ClipContentType = keyof typeof EXTENSIONS;
 
+/** Every type a clip may have. The gate's test makes a key for each, so a type added here is held against the gate. */
+export const CLIP_CONTENT_TYPES = Object.keys(EXTENSIONS) as readonly ClipContentType[];
+
+/**
+ * The most a clip's request may be before its body is read: a 30 MB clip and the form around it. One clip per request
+ * keeps the Worker well under its 128 MB (two clips in one form would be held in memory with their copies).
+ */
+export const CLIP_REQUEST_MAX_BYTES = CLIP_MAX_BYTES + 1_000_000;
+
+/** Not built yet. */
+export function clipRequestTooBig(contentLength: string | null): boolean {
+  throw new Error(`not built yet: ${String(contentLength)}`);
+}
+
 export function isClipContentType(value: string): value is ClipContentType {
   // `Object.hasOwn`, not `value in`: a plain object also "has" what every object inherits (`constructor`).
   return Object.hasOwn(EXTENSIONS, value);

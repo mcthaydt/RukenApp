@@ -17,7 +17,8 @@ import { checkPass } from "./pass.ts";
 
 export interface GateDeps {
   files: FileStore;
-  passSecret: string;
+  /** The secret the site signs passes with. A Worker deployed before it is set has none, and answers "not ready". */
+  passSecret: string | undefined;
   /** Ruken's own address (`https://…`), the only one allowed to put a game in a frame. */
   siteOrigin: string;
   nowMs: number;
@@ -148,7 +149,7 @@ function serveGameFile(
   // `/<pass>/<path>`: the pass is the first folder, so every file a game asks for by a relative address carries it.
   const slash = path.indexOf("/");
   const given = slash === -1 ? path : path.slice(0, slash);
-  const claims = checkPass(given, deps.passSecret, deps.nowMs);
+  const claims = checkPass(given, deps.passSecret ?? "", deps.nowMs);
   if (claims === null || claims.game !== game) return plain(403, RUN_OUT, deps);
 
   if (slash === -1) return plain(308, "", deps, { location: `${folder}/${given}/` });
