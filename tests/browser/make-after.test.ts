@@ -333,6 +333,8 @@ test("a thrown-away game's name can be used again, with the plain address", asyn
   await page.goto(`/make/${first.slug}/throw-away`);
   await page.getByRole("button", { name: "Throw it away" }).click();
   await expect(page).toHaveURL("/make");
+  // The page is waited for, so the next address is not asked for while the redirect is still being taken in.
+  await pageHasSettled(page);
 
   await page.goto("/make/new");
   await pageHasSettled(page);
