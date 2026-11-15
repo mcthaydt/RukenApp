@@ -454,8 +454,8 @@ Owner, 2026-11-15, asked "When should we add the admin view for the maker?" and 
 **Amended: everything the app stores allow is allowed at launch.** Owner, 2026-11-15: "Gore and drugs is 18+", "Yes, at launch, rated 18+", then "Everything the app stores allow is allowed at launch". This replaces "After launch" above for anything a launch store allows. At launch:
 
 - The age question has four choices, All Ages, 13+, 16+ and 18+, and the 18+ follow-up offers all four of its choices.
-- Sex, nudity, gore and drugs are allowed up to what the launch app stores (App Store, Google Play) allow at their highest rating, and Ruken rates such a game 18+ (never 17+). Each store app shows it up to that store's own limit; a game past one store's limit is hidden in that store's app.
-- A game is sent back only for content no launch store allows ("Ruken doesn't take games like this yet.").
+- Sex, nudity, gore and drugs are allowed up to the stricter launch store's limit, Google Play's, and Ruken rates such a game 18+ (never 17+). Owner, 2026-11-15: "The stricter store (Google)", to "Apple and Google allow different amounts. Which limit should the website and own download use at launch?". So every surface, the website, own downloads, the App Store and Google Play, shows the same at launch.
+- A game is sent back for content past Google Play's limit ("Ruken doesn't take games like this yet."), until after launch.
 - What waits until after launch is only what goes past the stores' limits: the browser and own-download-only content up to the Cyberpunk 2077 bar, with its Settings switch and content warning, and the censored Store version.
 - Which store allows what is read from each store's own rules before the apps' plan (12.0a).
 
@@ -578,7 +578,7 @@ Two reviews read the board on 2026-11-15: a plain-words review (`/mnt/project-fi
 
 - "Pull for testing", "Pull for review" and "Fix it and pull again" are now "Send the beta for review", "Send it for review" and "Fix it and send it again".
 - A live game's rooms end with red "Take Floor Fifty off Ruken" (M1), and its main button is "Send a new version".
-- The 18+ hint is one short line (section 12). Anything the app stores allow comes at launch, rated 18+ on Ruken, up to each store's limit; a game past one store's limit is hidden in that store's app (12.0, 12.0a).
+- The 18+ hint is one short line (section 12). Anything the app stores allow comes at launch, rated 18+ on Ruken, up to Google Play's limit, the stricter launch store, on every surface (section 12).
 - Asking about a line shows the answer-by date, not "two working days" (M10).
 - "Your share: 40% of what Floor Fifty earns". Your money reads "From members playing it", "Floor Fifty total" and "Past months".
 - Names inside a sentence are in quotes: Keep "The top" hidden…; Add an icon for "Halfway"; For "Best floor", which wins?
