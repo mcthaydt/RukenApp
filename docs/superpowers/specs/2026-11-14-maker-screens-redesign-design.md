@@ -375,7 +375,7 @@ The board for section 10 to 12, round 7, every new screen in all five sizes: htt
 
 | # | Screen | From | What is on it |
 |---|---|---|---|
-| 1 | Age rating, a question when sending a game | apps spec, "Age ratings" | "Who is Floor Fifty for?": four choices, All Ages, 13+, 16+, 18+, each with a plain line under it. Staff can change it; Sent back and Live show the rating staff set. |
+| 1 | Age rating, a question when sending a game | apps spec, "Age ratings" | "Who is Floor Fifty for?": five choices, 3+, 7+, 12+, 16+, 18+, each with a plain line under it ("Fine for anyone.", "A little scary, or cartoon fighting.", "Some fighting or scary bits.", "More violence or strong words.", "Only for adults."). Owner, 2026-11-15: "Let's use the 3, 7, 12... split", the split Google Play shows outside the US. These label the game; accounts are still 13 and over. The apps spec (#107) says All Ages, 13+, 16+, 18+ and needs the same change at its plan step. Staff can change it; Sent back and Live show the rating staff set. |
 | 2 | The game's extras | sales 5.5 | Each extra with its picture, price and where it stands; "Add an extra". |
 | 3 | Add an extra | sales 5.5 | Kind, name, one line, picture, price from the fixed list, and a season pass's first and last day; then Check and send. |
 | 4 | One extra | sales 5.5 | Where it stands, the id to copy into the game, Change, Take off sale. |
@@ -453,7 +453,7 @@ Owner, 2026-11-15, asked "When should we add the admin view for the maker?" and 
 
 **Amended: everything the app stores allow is allowed at launch.** Owner, 2026-11-15: "Gore and drugs is 18+", "Yes, at launch, rated 18+", then "Everything the app stores allow is allowed at launch". This replaces "After launch" above for anything a launch store allows. At launch:
 
-- The age question has four choices, All Ages, 13+, 16+ and 18+, and the 18+ follow-up offers all four of its choices.
+- The age question has five choices, 3+, 7+, 12+, 16+ and 18+ (section 10, row 1), and the 18+ follow-up offers all four of its choices.
 - Sex, nudity, gore and drugs are allowed up to the stricter launch store's limit, Google Play's, and Ruken rates such a game 18+ (never 17+). Owner, 2026-11-15: "The stricter store (Google)", to "Apple and Google allow different amounts. Which limit should the website and own download use at launch?". So every surface, the website, own downloads, the App Store and Google Play, shows the same at launch.
 - A game is sent back for content past Google Play's limit ("Ruken doesn't take games like this yet."), until after launch.
 - What waits until after launch is only what goes past the stores' limits: the browser and own-download-only content up to the Cyberpunk 2077 bar, with its Settings switch and content warning, and the censored Store version.
