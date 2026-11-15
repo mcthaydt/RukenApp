@@ -70,6 +70,16 @@ Every session reports to the coordinator with send_message, short and factual; p
 - Coordinators of related workstreams: the owner's decisions, changes that touch this work, blockers, and what they push.
 - The coordinator relays to the owner what needs them, and tells the merge session the final commit to merge.
 
+## Visual review
+
+Before the owner sees any screens, they go through these steps in order, each its own session (Owner, 2026-11-15: "Our new visual review process"):
+
+1. Plain-words check (Opus): could a drunk grandma understand every word?
+2. Design pass (Fable): every screen, device and orientation checked for layout, touch size and polish.
+3. End-to-end check: walk every real journey, from first open to playing your level, so nothing is missing or leads to a dead end.
+4. Second visual look (Opus, xhigh): a fresh, harsh look at the screens after all those fixes.
+5. The owner's review.
+
 ## Staying on the rails
 
 ### Scope
