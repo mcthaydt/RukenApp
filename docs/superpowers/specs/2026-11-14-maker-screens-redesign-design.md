@@ -1,6 +1,6 @@
 # The maker's screens, redesigned: one question at a time
 
-Date: 2026-11-14. Status: stopped by the Owner on 2026-11-14, to resume after the makers' sales spec; resumed on 2026-11-15 (Owner: "A", to "Resume the maker screens redesign now, adding all of that?"), with the new screens in section 10. Nothing here is built.
+Date: 2026-11-14. Status: approved by the Owner on 2026-11-15 ("Yes", to "that's the last thing for this slice right?", given on board version 26). Earlier: stopped on 2026-11-14, resumed on 2026-11-15 (Owner: "A"). Nothing here is built.
 
 ## Where it stopped
 
