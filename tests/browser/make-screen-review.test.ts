@@ -15,7 +15,7 @@ import {
   startDraft,
   TINY_GAME,
 } from "./support/game.ts";
-import { boxOf, entrancesHaveFinished, expectFrame, layoutOf, lineCount } from "./support/look.ts";
+import { boxOf, expectFrame, layoutHasSettled, layoutOf, lineCount } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the screen review of the rebuilt maker screens found (docs/superpowers/audits/2026-11-15-maker-screens-rebuild-
@@ -108,7 +108,7 @@ test("the folded 'accepted' card has small corners, is not underlined, and keeps
 }) => {
   const { slug } = await gameWhere(page, { state: "sent_back", toFix: [SIDEWAYS] });
   await page.goto(`/make/${slug}`);
-  await entrancesHaveFinished(page);
+  await layoutHasSettled(page);
 
   const accepted = page.locator("details.accepted");
   await expect(accepted).toHaveCSS("border-top-left-radius", "12px");
@@ -140,6 +140,7 @@ test("the game laid out keeps its parts apart: the line from the chips, and a Ch
   page,
 }) => {
   await startAtCheck(page);
+  await layoutHasSettled(page);
 
   const tagline = await boxOf(page.locator(".laid .tagline"));
   const chips = await boxOf(page.locator(".laid ul"));
@@ -157,7 +158,7 @@ test("on Live an update that was sent back has room above the game", async ({ pa
     toFix: [{ part: "one_line", reason: "not_this_game" }],
   });
   await page.goto(`/make/${slug}`);
-  await entrancesHaveFinished(page);
+  await layoutHasSettled(page);
 
   const card = await boxOf(page.locator("a.sheet.fix"));
   expect((await boxOf(page.locator(".laid"))).y - (card.y + card.height)).toBeGreaterThanOrEqual(16);
@@ -168,6 +169,7 @@ test("on a phone the wide video has the name and the line under it, beside the u
 }) => {
   test.skip(layoutOf(page) !== "phone", "the phone's own arrangement");
   await startAtCheck(page);
+  await layoutHasSettled(page);
 
   const upright = await boxOf(page.locator('.laid [data-shape="upright"]').first());
   // The wide video's figure, with its caption: the name starts right under it.
@@ -184,6 +186,7 @@ test("on a phone the wide video has the name and the line under it, beside the u
 test("a video's caption is one line: 'On phones' and its Change stay together", async ({ page }) => {
   test.skip(layoutOf(page) === "phone", "a phone's captions are drawn by the phone's own arrangement");
   await startAtCheck(page);
+  await layoutHasSettled(page);
 
   for (const caption of await page.locator(".laid figcaption").all()) {
     expect((await boxOf(caption)).height).toBeLessThan(60);

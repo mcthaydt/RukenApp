@@ -90,19 +90,35 @@ export const CARD_SCREENS: { name: string; open(page: Page): Promise<void> }[] =
 ];
 
 /**
- * Waits until every entrance on the page has finished. A line rises 28px into place over 460ms, so two boxes measured one
- * after the other during it are off by a different amount each. Endless animations (the drifting circles) never finish and
- * are left out. It waits on the animations themselves, not on a time.
+ * Waits until the page has stopped moving by itself, so two boxes measured one after the other are measured in the same
+ * layout: every entrance has finished (a line rises 28px into place over 460ms), the fonts are in (words in the display face
+ * change height when it arrives) and every video has its size (a tile without one is another height). Endless animations
+ * (the drifting circles) never finish and are left out. It waits on these events and never on a time.
  */
-export async function entrancesHaveFinished(page: Page): Promise<void> {
-  await page.evaluate(() =>
-    Promise.all(
+export async function layoutHasSettled(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    await Promise.all(
       document
         .getAnimations()
         .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
         .map((animation) => animation.finished),
-    ),
-  );
+    );
+    await document.fonts.ready;
+    await Promise.all(
+      [...document.querySelectorAll("video[src]")].map((video) =>
+        video.readyState >= 1
+          ? undefined
+          : new Promise<void>((done) => {
+              video.addEventListener("loadedmetadata", () => {
+                done();
+              });
+              video.addEventListener("error", () => {
+                done();
+              });
+            }),
+      ),
+    );
+  });
 }
 
 export type Box = { x: number; y: number; width: number; height: number };
