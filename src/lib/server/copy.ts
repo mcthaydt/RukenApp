@@ -13,3 +13,16 @@ export function readCopy(source: Readonly<Record<string, string | undefined>> = 
   if (value === "test" || value === "live") return value;
   throw new Error('RUKEN_COPY must be "test" or "live". wrangler.jsonc sets it.');
 }
+
+/** One SQL statement with its values, answering its rows. */
+export type RunSql = (sql: string, values: readonly string[]) => Promise<readonly Record<string, unknown>[]>;
+
+/** The copy the database says it belongs to, or null when nothing has claimed it yet. */
+export function stampedCopy(run: RunSql): Promise<Copy | null> {
+  return Promise.reject(new Error(`not built yet (${typeof run})`));
+}
+
+/** Stamps an unstamped database as `copy`'s. */
+export function claimCopy(run: RunSql, copy: Copy): Promise<void> {
+  return Promise.reject(new Error(`not built yet (${typeof run}, ${copy})`));
+}
