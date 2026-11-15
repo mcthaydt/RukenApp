@@ -20,7 +20,9 @@ Launch: Monday 30 November 2026, 11:00 CT.
 
 | Session | Stage | Branch | State |
 |---|---|---|---|
-| coordinator (`session_01HNdX7KRXRooxa8mKcJNjV6`) | all | — | running, from 2026-11-14 (handed over from `session_01HNdX7JxetgLxE6xxZ7sCnn`) |
+| coordinator (`session_01HNdX7JopLaJTd1JphMYiu7`) | all | — | running, from 2026-11-14 18:15 UTC (handed over from `session_01HNdX7K6zwn1pnXaJVafHnN` at the 500k limit) |
+| coordinator before it (`session_01HNdX7K6zwn1pnXaJVafHnN`) | all | — | handed over 2026-11-14 18:15 UTC |
+| coordinator before it (`session_01HNdX7KRXRooxa8mKcJNjV6`) | all | — | handed over 2026-11-14 |
 | coordinator before it (`session_01HNdX7JxetgLxE6xxZ7sCnn`) | all | — | handed over 2026-11-14 |
 | coordinator before it (`session_01HNdX7KQVAfWMSYYHFoo8iZ`) | all | — | handed over 2026-11-14; archived once the sessions it started are done |
 | merge (`session_01HNdX7LyTaPth3m82ZhbsXY`) | merges | — | idle, holding for the coordinator's next pull request |
@@ -51,6 +53,8 @@ Launch: Monday 30 November 2026, 11:00 CT.
 | coordinator, fourth (`session_01HNdX7JKYUteXqFnZHx6dez`) | 1 Spec, coordination | `spec/opening-page` | running (took over 2026-11-14 09:20 UTC at the 500k limit) |
 | spec, the landing page | 1 Spec | none | parked (Owner, 2026-11-14: "We'll address the landing page when they can upload a game"); players first, then developers (Owner: "Appeal to players first, then developers"); `/` stays as it is until then |
 | spec, games before launch: the wishlist and a maker's numbers | 1 Spec | `spec/wishlist` | approved (Owner, 2026-11-14: "approved"); `docs/superpowers/specs/2026-11-14-wishlist-before-launch-design.md`; plan next |
+| spec, apps on every store and player features (`session_01QYLU1hRNP3UyNS6WiJtdtM`) | 1 Spec | `claude/project-thread-c705pv` | approved (Owner, 2026-11-14: "Approved"); `docs/superpowers/specs/2026-11-14-apps-and-player-features-design.md`; plan next, starting with the test copy. Launch waits for the last store to approve (Owner, 2026-11-14: "3. B") |
+| plan, makers' sales (extras and splits) | 2 Plan | `claude/project-thread-300r65` | plan written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-makers-sales.md`: 33 tasks in 14 branches, and slice 5's branches E to K re-planned); not merged; no test ran and no code was written; Q1 (how long a sale Apple never answers about is held) answered by the Owner, 2026-11-14: "Until Apple answers, or 97 days"; plan audit done 2026-11-14 (3 blocking, 10 should-fix; all but one open fact fixed in the plan), on the same branch; execution next |
 | execution, slice 3, branch A (`session_01HNdX7Lu88QTewJX8NtAg8u`) | 4 Execution | `slice-3/themes` | running (needs slice 1 only) |
 | audit, every screen on every device (`session_01HNdX7Jq3Fq3e1xoLMm642Z`) | audit | `audit/screens` | done: 39 states of `main` at `6ad0214`, 390 screenshots on 10 views each (live test-mode site, 7 states on a local copy), every one looked at; `docs/superpowers/audits/2026-11-14-screens-audit.md`: 2 block launch, 13 should fix, 14 notes; findings reported, not fixed. No test ran |
 | audit, FloorFifty for production (`session_01HNdX7HXjg2huySfHRH521r`, in SNEKPRTY/FloorFifty) | audit | FloorFifty's own branch | running (Owner, 2026-11-14: "audit the game for production excluding known gaps like deployment") |
@@ -91,6 +95,52 @@ Recorded by the coordinator (`session_01HNdX7K6zwn1pnXaJVafHnN`), each quoted as
 - Devices: "we need to add tablet view to our artifacts; tablet is first class supported, and mobile landscape". Every board for the Owner shows phone portrait and landscape, tablet portrait and landscape, and the whole computer window.
 - The screens audit (#71) runs again once the maker screens are rebuilt; its fixes wait until then.
 
+## The Owner's answers, 2026-11-14 (night)
+
+Recorded by the coordinator (`session_01HNdX7JopLaJTd1JphMYiu7`, which took over from `session_01HNdX7K6zwn1pnXaJVafHnN` at about 18:15 UTC), each quoted as given:
+
+- Makers' own sales. The Owner: "developers can have paid DLC/subscriptions ala Xbox Game Pass-like; this should actually be how they primarily make their money". Then "24. B" (a maker's DLC and subscriptions come before launch, so launch moves past 30 November), "25. A" (the membership pool stays; a maker's own sales come on top), "26. 30%" (Ruken's cut of a maker's own sales), "27. A" (only members can buy a maker's DLC or subscriptions). This needs its own spec with the Owner, then a plan, an audit and the build. It touches the launch date, Stripe Connect, the maker agreement, the legal drafts (no refunds on games) and slice 5. The new launch date is set once that plan is sized.
+- FloorFifty's screens: "Nah dude, the floor fifty UI is fucked; be willing to do a complete overhaul to give MAXIMUM UX/UI experience, it's completely unacceptable many places, especially on mobile"; "Why is the floor fifty thing no longer centered?" (the splash on an iPhone SE held sideways: the title and the SNEKPRTY wordmark sit off centre); "Audit the layout for aesthetics too"; "we have a new SNEKPRTY logo"; "Why are a lot of them saying 'not reached' reach it".
+- Visual audits: "Do not begin the visual screen audit until we have EVERY view we need". Every screen is captured on every view (phone upright and sideways on a small and a large iPhone and a Pixel, iPad both ways, both computer windows, standalone and inside the Ruken frame, with results, replays, 20- and 50-player races, the tutorial, errors and the turn-upright cover) on a machine with a GPU before anyone judges it. This holds for every visual audit from now on.
+- The maker screens, where to finish them: "28. b) Keep refining the mockup board in the cloud until it's 'fine', then build."
+- FloorFifty's screens walk: "We need to do the screenboard when something isn't running on my mac, the fan is running hard so something is running, and why can't those be trigged remotely like how we do our tests?" Then "29. A" to "make FloorFifty's screenshot walk a job we can start remotely (workflow_dispatch on the Mac runner, uploads screenshots as an artifact), run only when nothing else is using the Mac, then the board is built from the full set". The FloorFifty shepherd (`session_01HNdX7MkCdmezDw4jymder6`) adds the workflow.
+- Later the same night: "31. B, when I say subscriptions, I mean like battle passes" (a maker's one-off DLC and battle passes both come at launch); "Huge feature that I forgot to mention; I want revenue splitting for developers. They should be able to select members and decide how money in will be split" (this reopens design section 2's "teams and contributor splits" and 5.3's "No teams" for the makers' sales spec); "28. B, but I think we're good for now, don't proceed because we're missing some stuff (like the subcriptions, DLC, Revenue Splitting ect;)" (the maker screens redesign stops until the makers' sales spec is done); "19. Ask as many questions as we need to"; "23. A" (the browser tests also run in WebKit, Safari's engine, on tablet and phone); "29. A" (FloorFifty: capture every screen on the Mac, then a Fable overhaul spec, then build on the Mac with the Owner steering).
+- Consent: "no data at all until approval". Nothing is stored, not even a session, before the person agrees to cookies.
+- Legal: the Owner's answers are in the legal drafts; the working notes stay outside this public repository.
+
+## The Owner's answers, 2026-11-14 (late night)
+
+Recorded by the coordinator (`session_01HNdX7JopLaJTd1JphMYiu7`), each quoted as given:
+
+- Makers' sales: "32. A" (a maker's revenue split covers everything the game earns: its share of the membership pool, its DLC and its battle passes).
+- Legal: the Owner's answers are in the legal drafts (see the legal pages' pull request); the working notes stay outside this public repository.
+- FloorFifty's environments check: `production` and `staging` have no protection rules; the collaborators are `mcthaydt` and `SNEKPRTY`, both the Owner's. So any FloorFifty workflow can use the Fly token, which is accepted while only the Owner can push.
+- Boards: "keep the numbers in order please".
+
+## Makers' sales: extras and splits
+
+Design: `docs/superpowers/specs/2026-11-14-makers-sales-design.md`, approved by the Owner on 2026-11-14 ("Approved", with the apps' spec #107), on pull request #106. It is not one of the six slices, so the overall percentage above does not count it. Progress: 15% (the spec approved; the plan written and audited, not merged; nothing built).
+
+The Owner's answers in the spec conversation, 2026-11-14, each quoted as given: "B, what's the best UX/UI for that?" (buy from Ruken's Extras button and when the game asks); "By the back arrow? we also need a store inside of ruken itself, like on the game page"; "2. A" (a season pass has a start and end date, sold only in its season); "3. A" (only the game's maker changes a split, from that moment on, with an email to everyone in it); "a) Yes, check it like a game, including playing to see it unlocks"; "5. A" (a game taken down refunds its extras bought in the 14 days before, from the game's earnings). From the Owner board: "2. A" (card fees off the top, then 70/30; lowest price $0.99).
+
+Stages:
+
+- [x] Spec: approved (Owner, 2026-11-14: "Approved"). No test ran; no code was written.
+- [ ] Plan: written, 2026-11-14 (`docs/superpowers/plans/2026-11-14-makers-sales.md`: 33 tasks in 14 branches), on a branch, not merged. It is ticked when it is on main. Build progress: 0 of 33 tasks.
+  - What ran: nothing. No test, lint or typecheck, and no code. The plan is a document.
+  - What was not checked, and is behind a stop in the plan: the names of the Stripe calls in `stripe` 22.6.2 (the package was not installed in the session); where a membership keeps its card; Stripe's fees on a one-off invoice; the wrangler line for the bucket's expiry rule; Apple's refund window; the stores' price lists and whether their notifications state the store's cut. The session could search the web but not open a page.
+  - The three things the spec left to the plan: the gate learns what a pass's player owns from a small object in the games bucket named by the pass's id, so the address never changes; a store's price is the smallest price that store offers at or above the website price plus 10%, worked out by one function, built with the stores; how long a sale Apple never answers about is held is Q1, with the Owner.
+  - Slice 5's branches E to K are re-planned in the plan's own section: E at any time, F to J after this plan's branch F (`sales/ledger`), K with this plan's last branch.
+  - Agreed with the apps' plan: the stores, handles (in `accounts`), blocking (in `people`), ratings and notifications are its; sales, ownership, the buy card, the split function, the hooks' script and the game's page are this plan's.
+  - Q1 answered by the Owner, 2026-11-14: "Until Apple answers, or 97 days". Open: the maker agreement's version 2 text; the maker screens redesign (#96) with these screens in it.
+- [ ] Plan audit: done 2026-11-14 (`docs/superpowers/audits/2026-11-14-makers-sales-plan-audit.md`), on the plan's branch, not merged.
+  - What ran: nothing. No test. The Stripe calls were read in `stripe` 22.6.2's own types and the R2 expiry line in `wrangler` 4.156.0's source (both packed into a scratch folder, not installed); all are right as named.
+  - Fixed in the plan: the script tag a game adds was refused at pull; an extra's invoice item would have been charged again on the next membership renewal; a second press or an old Stripe page could cancel a payment that then went through; plus ten smaller ones (the audit lists them).
+  - Still open: Stripe's fee on an invoice Ruken makes (M-S2 stays); Apple's 90 days (not read from Apple's page); a support address for two mails (a stop in Tasks 14 and 28).
+- [ ] Execution.
+- [ ] Implementation audit.
+- [ ] Fixes.
+
 ## Defect: the Worker ran out of memory (2026-11-14)
 
 Fifth execution session of slice 2 (coordinator `session_01HNdX7JKYUteXqFnZHx6dez`), branch `fix/worker-memory` (pull request #68). "Received signal #6: Aborted" in the browser job, seen four times (runs 43578583711, 43579220096 twice, 43580392279), was workerd running out of memory. The cause was production code: `src/lib/server/db.ts` made a new Prisma client for every request, and each client that starts leaves memory behind in the Worker that `$disconnect()` does not give back. Cloudflare's limit is 128 MB per Worker, so the live site would have met this far sooner than a test run did.
@@ -130,6 +180,23 @@ The Owner, 2026-11-14: "tablet is first class supported, and mobile landscape". 
 - The first run (job 132536390284): 652 passed, 4 failed, 4 skipped. No journey failed. Two look tests did, on the new windows only, and the coordinator agreed to the fixes (2026-11-14): `look.test.ts:16` decided the home heading's size by `isMobile`, where the site decides by width (64px from 48rem), so it now decides by width, with the same two sizes; `look.test.ts:170`'s helper pressed a spot in the window without scrolling the button into it, which at 360px tall missed it, so it scrolls first. No expectation was loosened and no golden moved.
 - Green: job 132538160733, 656 passed and 4 skipped (the memory journey on the four projects that are not the computer, on purpose).
 - CI time, from the jobs: before, job 2m27s (132535387238), `pnpm test:browser` 95 s, 263 passed and 1 skipped on two projects; after, job 3m30s (132538160733), `pnpm test:browser` 2m42s, 656 passed and 4 skipped on five projects. The job limit is 15 minutes. (The first run, before the look fixes, took 4m59s and 3m59s on the same runner pool: runs differ by a minute or more.)
+
+## Journeys in WebKit on a phone and a tablet (branch `tests/webkit`, pull request #103, a draft)
+
+The Owner, 2026-11-14: "23. A" to "Also run the browser tests in Safari's engine (WebKit) on tablet and phone". Four WebKit projects are added to `playwright.config.ts`: `phone-webkit` (iPhone 15), `phone-landscape-webkit` (iPhone 15 landscape), `tablet-webkit` (iPad gen 7) and `tablet-landscape-webkit` (iPad gen 7 landscape). The Chromium projects and the computer are as they were. `ci.yml` changes in one place: the browser job installs `webkit` as well as `chromium`.
+
+- [x] 1. The four projects, and the WebKit install in `ci.yml` (commit quotes the Owner).
+- [ ] 2. A green browser job on the last commit. Run 43627991306 (job 132548097379) was green, 1180 passed, 8 skipped (the memory journey on every project but the computer). Later runs on the same code each had one WebKit-only failure (below), so this is not done until the last run is green. The first run (43626711198, job 132544081430) had 37 failures, all on the WebKit projects and none on Chromium; nothing was loosened, skipped or moved, and the coordinator agreed to the two fixes below.
+  - 36 failures (nine tests on each of the four WebKit projects): `look.test.ts:16`, `look.test.ts:38` and the seven `look-layout.test.ts:168` wordmark tests expected `font-family` to match `/^"Young Serif"/`; WebKit returns the value without quotes (`Young Serif, Georgia, Times New Roman, serif`). The fonts load; Safari spells the value differently. Fixed in 45098ca: one helper, `startsWithFamily` in `tests/browser/support/look.ts`, accepts the family with or without quotes; the first family must still be exactly Young Serif or Schibsted Grotesk, so the check is as strong as before.
+  - 1 failure: `delete-account.test.ts:54` on `phone-webkit` only: `page.goto("/me/delete")` "is interrupted by another navigation to /" right after sign-up. It passed on the other three WebKit projects in the same run. One sighting (run 43626711198), a defect and not a flake. Reasoning, from the log and the code (not reproduced): the sign-up form is a plain POST and the server answers with one redirect to `/`, so the app navigates once. `signUp` returned when `toHaveURL("/")` passed, which is at the commit of that redirect and before the page has finished loading; the next `goto` collided with the load in flight, in WebKit. Fixed in acebe32: `signUp` also waits for `#svelte-announcer`, the page's own sign that it has come alive, as `join.test.ts` does; no pause. It has not shown again (run 43627991306 is green). If it shows again, stop and report.
+  - More WebKit-only failures, each a different test and each seen once (the coordinator, 2026-11-14: defects, not flakes):
+    - `pay.test.ts:44` "when Stripe's news is late" on `phone-landscape-webkit` (run 43628922261, job 132550945725): "Finishing up…" not found in 5 s. The journey raced the stand-in's fixed 3 s timer. Fixed in two commits: the journey first asks the stand-in to release the held news (`POST /test/release/<checkout>`, helper `releaseLateNews`), seen red on all nine projects with "the stand-in would not release its news: 404" (run 43629699636, f5fd347); then `fake-stripe-server.ts` holds `?events=later` events until released, no timer (f2a2094). Green on all nine projects in run 43630529979 (job 132555901632). Same expectations, no timing. No trace was kept (traces are off), so the cause is from the code.
+    - `membership.test.ts:132` on `phone-webkit` (run 43629699636): `goto` interrupted by the navigation to `/me` right after `payAsNewMember`. Same collision as after sign-up. `pageHasSettled` (the `#svelte-announcer` wait, one helper in `support/account.ts`, used by `signUp` and `payAsNewMember`) added in f2a2094; green in run 43630529979.
+    - `delete-account.test.ts:38` on `phone-landscape-webkit` (run 43630529979, job 132555901632): `goto` interrupted by the navigation to `/goodbye` right after `askToBeDeleted`. The same wait added in c4bfdc5.
+  - The pattern: a helper returns when a URL or heading shows, and the next `goto` collides with the load still finishing, in WebKit only. Three helpers now wait for `pageHasSettled`. Any other helper that returns on a URL and is followed by a `goto` could show it too; one more sighting should be fixed before other work (CLAUDE.md).
+- Where it stands (wind-down, 2026-11-14): the last code commit is `c4bfdc5`; the commit after it changes only this file, so the browser job on the pull request's head is the one to read. Pull request #103 is a draft until that run is green, then it is marked ready and auto-merge takes it. Left to do if it is not green: read the failing test, treat it as above (a defect, a fix with a red first), and do not loosen, skip or re-record anything.
+- CI time, from the jobs: before, the browser job 3m30s (132538160733, five projects, 656 passed and 4 skipped). First WebKit run 11m04s (132544081430, with its 37 failures, each waiting out its 5 s). Green once: 9m18s (132548097379, nine projects, 1188 tests, 2 workers): `playwright install` 52 s, `pnpm test:browser` 7m42s. Each project's tests take about 40 s on Chromium and about 60 s on WebKit (first to last test in the log). The job limit is 15 minutes.
+- Sharding, if the time needs to come down: a matrix of shards on the browser job (`--shard=1/2`), a ci.yml change that needs the Owner's words. Each shard has its own Postgres service and database already, so journeys do not share state. It would also need `pnpm test:browser` to pass the shard flag, a report name per shard (the artifact name must differ), and the required check `browser` renamed to `browser (1/2)` and `browser (2/2)` wherever auto-merge or branch protection names it.
 
 ## Slice 0: Start
 
@@ -543,3 +610,30 @@ Branches and tasks:
 | C `beta/play` | 8 playing a beta (`/g/<game>/play?beta=1`) · 9 "Play the beta", under the game's own button | not started; needs slice 2's branch F, slice 3's branches D and H, and the wishlist's branches B, E and F |
 | D `beta/numbers` | 10 the beta's own line in a maker's numbers | not started; needs the wishlist's branch C |
 | E `beta/old-files` | 11 the sweep and a beta's files | not started; needs slice 4's branch L |
+
+## Apps and player features
+
+Spec: `docs/superpowers/specs/2026-11-14-apps-and-player-features-design.md` (approved by the Owner, 2026-11-14: "Approved"; pull request #107). The slices and their order: `docs/superpowers/plans/2026-11-14-apps-slices.md`. Progress: 0% (no code yet).
+
+- [ ] Plan, the slices and slice A (the test copy and the live copy): written on `claude/project-thread-g6mes3`, not merged. Planned against `main` at `31cc54b`. No test ran in the plan session, and no code was written. Read outside the repository: Cloudflare's pages on Wrangler environments, Workers Builds and `hyperdrive create`, Neon's pages on `projects create` and `connection-string`, and the npm registry for `neonctl` (9.5.0).
+- [x] Plan audit of the same: `docs/superpowers/audits/2026-11-14-apps-a-plan-audit.md` (2026-11-14), on the same branch. One blocker (the live build's Deploy command skips the claim; fixed with a new Owner step, T0), five should-fix, all written into the plans; one fact left open for the sales plan (a store sale's fee). No test ran.
+- [x] Second audit pass, on Tasks 9 to 11 and "Signing the apps" (`293e1c9`): in the same audit file. Nothing blocks; three should-fix and three notes written into the plans. No test ran.
+- [x] The seams with the makers' sales plan: agreed between the two plan threads, 2026-11-14, and written in the slice map ("What is shared with the makers' sales plan").
+
+Slice A, `docs/superpowers/plans/2026-11-14-apps-a-test-copy.md`. What it waits for, and what is the Owner's:
+
+- [x] Q1, where the test copy's games run. Owner, 2026-11-14: "1.A": a second domain used only for the test copy's games (step T8).
+- [x] Q2, whether the test copy says that it is the test copy. Owner, 2026-11-14: "2. Just use a banner on the top of pages" (Task 9).
+- [x] Q3, an empty database instead of the spec's "database branch". Owner, 2026-11-14: "3. I'd prefer a mock database so we can see everything actually in the app without being blocked by content": a database of its own, filled with made-up content (Tasks 10 and 11).
+- [ ] T0 (the live Worker's Deploy command becomes `pnpm run deploy`), before branch 1 is marked ready.
+- [ ] T1 to T3 (the test copy's database, its Hyperdrive, the bucket), before branch 2.
+- [ ] T4 to T10 (the test Worker, its settings, a Stripe sandbox, the build connection, the test games domain and gate, the check, the look), after branch 2 is merged.
+- Apple signing (Owner, 2026-11-14: "What about apple certificate signing?"): what each app needs and the Owner's steps A1 to A7 are in the slice map, "Signing the apps". They come after the Apple account, with slices 1, 3 and N.
+
+| Branch | Tasks | State |
+|---|---|---|
+| 1 `apps-a/copy` | 1 which copy this is · 2 the database's stamp · 3 the deploy claims the database · 4 a Worker pointed at the wrong database answers nothing · 5 the test copy is open whatever the date · 6 the test copy never takes live payments · 9 the test copy says what it is | not started |
+| 3 `apps-a/fake-content` | 10 the made-up content · 11 the test copy writes its own made-up content | not started; needs branch 1 |
+| 2 `apps-a/test-worker` | 7 the `test` environment · 8 the test copy, running | not started; needs T1 to T3 and branches 1 and 3 |
+
+The other slices (H, R, S, F, Q, B, P, V, K on the website; 1, 2, 3, N, $, L for the apps) are not planned yet. Each gets its own plan when what it needs is on `main`.
