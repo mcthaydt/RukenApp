@@ -2,13 +2,13 @@
   A game laid out as members will see it (spec 5b): its two videos side by side in their real shapes, its name as a
   title and its line as a tagline, and the facts as quiet chips. A small Change sits beside each part that may be
   changed here; it opens that one question, which comes straight back. File sizes and counts are not shown: they are
-  not for a maker to weigh up here.
+  not for a maker to weigh up here. Live draws one of the two videos (`only`), the shape of the window it is seen on.
 -->
 <script lang="ts">
   import type { ChangePart, LaidOutGame } from "../laid-out.ts";
   import VideoTile from "./VideoTile.svelte";
 
-  let { game }: { game: LaidOutGame } = $props();
+  let { game, only }: { game: LaidOutGame; only?: "upright" | "wide" } = $props();
 
   /** What each Change says to a reader that hears it out of its place. It always starts with the visible word. */
   const CHANGE_WORDS: Record<ChangePart, string> = {
@@ -22,10 +22,11 @@
     other_websites: "Change the other websites",
   };
 
-  const CLIPS = [
+  const ALL_CLIPS = [
     { shape: "upright", words: "On phones", part: "upright_video" },
     { shape: "wide", words: "On computers", part: "wide_video" },
   ] as const;
+  const clips = $derived(only === undefined ? ALL_CLIPS : ALL_CLIPS.filter((clip) => clip.shape === only));
 </script>
 
 {#snippet change(part: ChangePart)}
@@ -36,12 +37,14 @@
 
 <div class="laid">
   <div class="tiles">
-    {#each CLIPS as clip (clip.shape)}
+    {#each clips as clip (clip.shape)}
       <figure>
         <div data-shape={clip.shape}>
           <VideoTile src={clip.shape === "upright" ? game.upright : game.wide} shape={clip.shape} />
         </div>
-        <figcaption><span>{clip.words}</span> {@render change(clip.part)}</figcaption>
+        {#if only === undefined}
+          <figcaption><span>{clip.words}</span> {@render change(clip.part)}</figcaption>
+        {/if}
       </figure>
     {/each}
   </div>

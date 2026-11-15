@@ -64,7 +64,7 @@
           </button>
         </div>
       </form>
-    {:else}
+    {:else if first.href !== null}
       <div class="acts">
         <a class="button" href={first.href}>{first.fixWords}</a>
       </div>

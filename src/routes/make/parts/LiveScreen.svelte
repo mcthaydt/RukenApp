@@ -3,7 +3,9 @@
   an upright screen and the wide one on a wide screen; it moves only where a video may move by itself (quietVideo). In
   front: the line, the blue "See it on Ruken", a quiet outline "Send a new version" that copies the newest files and sends
   them for review in the one press, and the way back. Beside them the game laid out sharp, with a Change on its name, its
-  line and where it plays only: its rating, files and videos go through staff again. An update that was sent back is a card.
+  line and where it plays only: its rating, files and videos go through staff again. Only the video of this window's shape
+  is laid out, with the name, the line and the two chips (where it plays, who it is for). An update that was sent back is
+  a card.
 -->
 <script lang="ts">
   import { enhance } from "$app/forms";
@@ -107,6 +109,7 @@
     {#each fixes as fix (fix.part)}
       <FixCard {fix} />
     {/each}
-    <GameLaidOut {game} />
+    <!-- One video: the shape this window is, as the backdrop (spec 5c). -->
+    <GameLaidOut {game} only={upright ? "upright" : "wide"} />
   </div>
 </main>

@@ -8,6 +8,7 @@ import {
   partNoun,
   questionOf,
   toFixWords,
+  type GamePart,
   type MakerGame,
 } from "../../../features/games/games.ts";
 import { ownGame } from "../own-game.server.ts";
@@ -23,9 +24,18 @@ import type { Actions, PageServerLoad } from "./$types";
 const PARTS = ALL_PARTS.length;
 
 /** The answers a live game's maker may still change by herself (the rest go through staff again): the same three the service allows. */
-const LIVE_CHANGEABLE = ["name", "one_line", "plays_on"] as const;
+const LIVE_CHANGEABLE: readonly GamePart[] = ["name", "one_line", "plays_on"];
 
-/** One thing sent back, as its card shows it: where it is fixed and, for a video, the video itself. */
+/**
+ * The facts Live draws beside the game: where it plays and who it is for (spec 5c, and the plan's rating chip). Its files
+ * and websites are not for a player-facing screen, and a maker cannot change either from here.
+ */
+const LIVE_CHIPS: readonly string[] = ["plays_on", "age_rating"];
+
+/**
+ * One thing sent back, as its card shows it: where it is fixed and, for a video, the video itself. A live game's card for
+ * a part its maker cannot answer (its files, mended on GitHub and sent as a new version) has no link: its question is a 404.
+ */
 function fixCards(game: MakerGame): FixCardData[] {
   // Not taken apart: a detached method loses its owner (the lint rule unbound-method).
   const services = gamesServices();
@@ -35,7 +45,10 @@ function fixCards(game: MakerGame): FixCardData[] {
     words: one.words,
     note: one.note,
     // A video that was sent back opens its picker at once: the old video stays in its frame, and nothing is pressed first.
-    href: `/make/${game.slug}/${questionOf(one.part)}${one.part === "upright_video" || one.part === "wide_video" ? "?again=1" : ""}`,
+    href:
+      game.state === "live" && !LIVE_CHANGEABLE.includes(one.part)
+        ? null
+        : `/make/${game.slug}/${questionOf(one.part)}${one.part === "upright_video" || one.part === "wide_video" ? "?again=1" : ""}`,
     video:
       one.part === "upright_video" && game.clips.upright !== null
         ? { src: services.media(game.clips.upright.key), shape: "upright" as const }
@@ -45,6 +58,12 @@ function fixCards(game: MakerGame): FixCardData[] {
     // What the button above the cards says when this is the first thing to fix.
     fixWords: `Fix ${partNoun(one.part)}`,
   }));
+}
+
+/** The game as Live lays it out: its name, line and the two chips, with a Change on the three it may still change. */
+function liveLaidOut(game: MakerGame) {
+  const laid = laidOut(game, LIVE_CHANGEABLE);
+  return { ...laid, chips: laid.chips.filter((chip) => LIVE_CHIPS.includes(chip.part)) };
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -94,7 +113,7 @@ export const load: PageServerLoad = async (event) => {
         upright: game.clips.upright === null ? null : gamesServices().media(game.clips.upright.key),
         wide: game.clips.wide === null ? null : gamesServices().media(game.clips.wide.key),
       },
-      game: laidOut(game, LIVE_CHANGEABLE),
+      game: liveLaidOut(game),
     };
   }
 

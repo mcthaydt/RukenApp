@@ -27,8 +27,8 @@ export interface FixCardData {
   words: string;
   /** Staff's own line beside a reason from the list, or null. */
   note: string | null;
-  /** The question that fixes it. */
-  href: string;
+  /** The question that fixes it, or null when it is fixed somewhere else (a live game's files, mended on GitHub). */
+  href: string | null;
   video: { src: string; shape: "upright" | "wide" } | null;
   /** What the blue button says when this is the first thing to fix: "Fix the upright video". */
   fixWords: string;

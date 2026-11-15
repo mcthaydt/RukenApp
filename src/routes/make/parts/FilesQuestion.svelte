@@ -3,7 +3,8 @@
   by what Ruken knows about the maker: GitHub not connected (one sheet and Connect GitHub), connected with nothing
   chosen on GitHub (one way to choose some), connected (Ruken's own rows to choose from, and Next copies the game), and
   a copy that was refused (a "Needs fixing" card, and the one blue button opens the boxes that fix it). The rows are
-  drawn by Ruken, never the browser's list, and nothing is chosen for the maker.
+  drawn by Ruken, never the browser's list, and nothing is chosen for the maker. A connection that failed says so on the
+  three screens she can come back to after "Choose it on GitHub": not connected, nothing chosen, and the rows.
 -->
 <script lang="ts">
   import Picks from "./Picks.svelte";
@@ -85,6 +86,12 @@
   <a class="button" href={files.connectAddress} data-sveltekit-reload>{words}</a>
 {/snippet}
 
+{#snippet connectionFailedLine()}
+  {#if files.connectionFailed}
+    <p class="problem" role="alert">GitHub didn't connect. Try again.</p>
+  {/if}
+{/snippet}
+
 {#snippet refusalCard(shown: Refusal)}
   <div class="sheet fix">
     <b class="fixlabel">Needs fixing</b>
@@ -107,6 +114,7 @@
     busyWords="Copying your game…"
     busyLine="Copying your game can take a minute. Keep this page open."
   >
+    {@render connectionFailedLine()}
     {#if refusal !== null}
       {@render refusalCard(refusal)}
     {/if}
@@ -168,6 +176,7 @@
   </QuestionScreen>
 {:else if screen === "choose"}
   <QuestionScreen heading="Where are your game's files?" {counter} {back} {throwAway}>
+    {@render connectionFailedLine()}
     <div class="sheet">
       <p>Ruken can't see any of your repositories yet.</p>
     </div>
@@ -177,9 +186,7 @@
   </QuestionScreen>
 {:else}
   <QuestionScreen heading="Where are your game's files?" {counter} {back} {throwAway}>
-    {#if files.connectionFailed}
-      <p class="problem" role="alert">GitHub didn't connect. Try again.</p>
-    {/if}
+    {@render connectionFailedLine()}
     <div class="sheet">
       <p class="say">Your game lives on GitHub. Connect it, then pick the folder.</p>
       <p class="note">You choose which repositories Ruken can see. It can't see anything else.</p>

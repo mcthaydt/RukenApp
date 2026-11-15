@@ -10,6 +10,7 @@ import type {
   PrismaClient,
 } from "../../lib/server/db.ts";
 import { clipKeyFor, clipProblem, type ClipContentType } from "./clips.ts";
+import { connectHostsFrom } from "./files-check.ts";
 import { GameError } from "./game-error.ts";
 import type { Connection } from "./github-connect.ts";
 import {
@@ -265,7 +266,11 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
     // A game that is not there is `pullGame`'s to refuse, in its own words.
     if (game?.repoFullName != null) await checkReachable(game.makerUserId, game.repoFullName);
+    // A refused copy throws here, so what follows happens only for a copy that passed.
     const pull = await pullGame(deps, gameId);
+    // A passing copy is the fix for files staff sent back. A live game's maker has no files question to answer (it is a
+    // 404 for her): she mends the files on GitHub and presses "Send a new version", which comes through here.
+    await takeOutOfToFix(gameId, "files");
     // Files are waiting for a person's yes: the new ones take their place, so staff always review the newest.
     if (game?.pendingPullId != null) {
       await deps.db.game.update({
@@ -287,6 +292,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       select: {
         state: true,
         toFix: true,
+        pullProblem: true,
         oneLine: true,
         playsOn: true,
         ageRating: true,
@@ -299,6 +305,8 @@ export function createGamesService(deps: GamesServiceDeps) {
       throw new GameError("NOT_FOUND", "We can't find that game.");
     const newest = game.pulls[0];
     if (newest === undefined) throw new GameError("NOT_READY", "Pull your game's files first.");
+    // A refused copy writes no pull, so the older pull is still the newest one: it is not what the maker now points at.
+    if (game.pullProblem !== null) throw new GameError("NOT_READY", "Your game's files need fixing first.");
     if (!game.clips.some((clip) => clip.shape === "upright")) {
       throw new GameError("NOT_READY", "Add an upright video.");
     }
@@ -365,6 +373,13 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /**
+   * The parts a live game's update may be sent back for: the ones its maker can fix (her name, line and where it plays,
+   * by the questions she may still answer) and the files (she mends them on GitHub and sends a new version). Its videos,
+   * rating and websites go through staff again only in slice 4, so an update sent back for one would be stuck for good.
+   */
+  const LIVE_MAY_BE_SENT_BACK: GamePart[] = ["name", "one_line", "plays_on", "files"];
+
+  /**
    * Staff's no, part by part: each part with a reason from that part's list, and for "Something else" their own line
    * (spec 11.2). A live game stays live on its old files, and the maker sees what to fix either way. One transaction,
    * so the game and its record never disagree.
@@ -390,6 +405,12 @@ export function createGamesService(deps: GamesServiceDeps) {
 
     await deps.db.$transaction(async (tx) => {
       const { state, pullId } = await waitingOf(tx, gameId);
+      if (state === "live" && kept.some((one) => !LIVE_MAY_BE_SENT_BACK.includes(one.part))) {
+        throw new GameError(
+          "INVALID",
+          "A live game can only be sent back for its name, its line, where it plays or its files.",
+        );
+      }
       const decidedAt = new Date(deps.clock.epochMs());
       await tx.game.update({
         where: { id: gameId },
@@ -549,7 +570,10 @@ export function createGamesService(deps: GamesServiceDeps) {
         break;
       }
       case "websites": {
-        data.connectHosts = answer.connectHosts;
+        // The route checks the text as it was typed; the list is checked again here so any other caller meets the same rules.
+        const checked = connectHostsFrom(answer.connectHosts.join("\n"));
+        if ("problem" in checked) throw new GameError("INVALID", checked.problem);
+        data.connectHosts = checked.hosts;
         part = "other_websites";
         break;
       }
@@ -563,9 +587,9 @@ export function createGamesService(deps: GamesServiceDeps) {
 
     // The pull records the website list staff will review, and the files are the answer: a refused pull leaves the
     // choice kept, and the screen that asked shows the refusal.
+    // A copy that passes takes the files off the list of what to fix (pullLatest).
     if (answer.question === "files") {
       await pullLatest(gameId);
-      await takeOutOfToFix(gameId, "files");
     } else if (answer.question === "websites" && game.repoFullName !== null) {
       await pullLatest(gameId);
     }
@@ -734,7 +758,8 @@ export function createGamesService(deps: GamesServiceDeps) {
           part,
           title: partTitle(part, row.name),
           words: makerWords(part, found.reason, found.note, row.name),
-          note: found.note,
+          // For "Something else" staff's line is the words already; as a note too it would show twice.
+          note: found.reason === "something_else" ? null : found.note,
         },
       ];
     });
