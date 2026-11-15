@@ -1,5 +1,7 @@
 # Games Before Launch: the Wishlist and a Maker's Numbers Implementation Plan
 
+> **Changed by the texts spec (2026-11-15), not yet written into this plan.** `docs/superpowers/specs/2026-11-15-texts-not-email-design.md` moves Ruken's messages from email to texts. In this plan that changes: branch D (Tasks 9 to 11: the launch mail, `WishlistMail`, the job), the sign-up fields, and every helper that finds an account by its email. A plan session rewrites those tasks once the Owner approves that spec. Until then, do not build them as written here.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task (CLAUDE.md: no subagents). Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A game the Owner accepts before 30 November is in the feed at once with "Wishlist" where Play would be; at 11:00 Chicago time on the 30th every one opens by the clock, everyone who wishlisted gets one email, and a maker sees how many people wishlisted each game and, after launch, how much it was played.

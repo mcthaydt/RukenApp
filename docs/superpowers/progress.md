@@ -637,3 +637,19 @@ Slice A, `docs/superpowers/plans/2026-11-14-apps-a-test-copy.md`. What it waits 
 | 2 `apps-a/test-worker` | 7 the `test` environment · 8 the test copy, running | not started; needs T1 to T3 and branches 1 and 3 |
 
 The other slices (H, R, S, F, Q, B, P, V, K on the website; 1, 2, 3, N, $, L for the apps) are not planned yet. Each gets its own plan when what it needs is on `main`.
+
+## Texts, not email
+
+Spec: `docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, a draft, waiting on the Owner's "approved". Progress: 0% (no plan, no code).
+
+Owner, 2026-11-15: "Reconsider the AI chat, I almost never want to use email here; text only almost exclusively" and "The text is for more than just support, everything other companies do with email, we do via. text unless it's something paper trail related for legal". "Text" is a text to the person's phone number (the Owner's "2").
+
+- [x] The Owner's three answers, 2026-11-15, picked on question cards: sign-up is a phone number and a password with email only at paying (1. A); every text in every country from the first day (2. B); Twilio (3. A).
+- [x] The spec written, with a "Changed on 2026-11-15" section at the end of the design, the wishlist design, beta builds, the makers' sales spec and the apps spec.
+- [x] A note at the top of each plan it changes: slice 1, the wishlist, beta builds, makers' sales, the apps slices and the apps' test copy. Their tasks are not rewritten yet.
+- [ ] The Owner's "approved".
+- [ ] The AI help chat's own short design (in for launch; no spec has it yet).
+- [ ] A plan, its audit and the build. The plan session also rewrites the tasks named in those notes.
+- The Owner's, after the LLC: the Twilio account and keys, registering Ruken's name and number with the US carriers, then each other country that asks for it.
+
+No test ran in this session, and no code was written. Read outside the repository, 2026-11-15: Twilio's pages on US registration (what a company must give, and what its privacy and terms pages must say) and on prices.

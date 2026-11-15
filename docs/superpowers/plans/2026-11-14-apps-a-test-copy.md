@@ -1,5 +1,7 @@
 # Test Copy and Live Copy Implementation Plan
 
+> **Changed by the texts spec (2026-11-15), not yet written into this plan.** `docs/superpowers/specs/2026-11-15-texts-not-email-design.md` moves Ruken's messages from email to texts. In this plan that changes: the made-up accounts also get made-up phone numbers that are never texted (`TEXT_ALLOWLIST`), and the test copy needs its own Twilio keys. A plan session rewrites those tasks once the Owner approves that spec. Until then, do not build them as written here.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task (CLAUDE.md: no subagents). Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A second, separate copy of Ruken, the test copy, runs beside the live one with its own Worker, database, bucket and games address, and neither copy can be pointed at the other's data by mistake. The test copy says that it is the test copy on every page, and it is filled with made-up makers, players and games, so every screen can be seen there before real content exists.

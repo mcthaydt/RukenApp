@@ -390,3 +390,12 @@ These are credentials, money and approvals, which are the Owner's.
 - **Tests only in CI.** Every red-then-green round is two pushes and two waits. Plans keep tasks small so a round stays short.
 - **The colour data.** The data set is MIT-licensed, and Wada's book dates from 1933 to 1934. The status of the book's plates themselves has not been checked by a lawyer.
 
+## Changed on 2026-11-15: texts, not email
+
+`2026-11-15-texts-not-email-design.md` changes these lines, once the Owner approves it. Owner, 2026-11-15: "everything other companies do with email, we do via. text unless it's something paper trail related for legal".
+
+- 5.6, "sign-in is by email and password": sign-in is by phone number and password.
+- 5.7, "one short sign-up (email, password, date of birth)": a phone number, a password and a date of birth, confirmed by a code sent by text.
+- 5.7, "We'll email you when it's live, usually within a day.": "We'll text you when it's live, usually within a day."
+- 7.1, "Ruken sends few emails": Ruken texts. It emails only a legal paper: a change to the terms or privacy, the EU and UK notice, and Apple's refund link. Stripe still emails receipts.
+- 9, "Mail": Resend stays for those emails. Texts go through Twilio, called with plain `fetch`.

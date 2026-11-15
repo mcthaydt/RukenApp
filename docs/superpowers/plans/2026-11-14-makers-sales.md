@@ -1,5 +1,7 @@
 # Makers' Sales (Extras and Splits) Implementation Plan
 
+> **Changed by the texts spec (2026-11-15), not yet written into this plan.** `docs/superpowers/specs/2026-11-15-texts-not-email-design.md` moves Ruken's messages from email to texts. In this plan that changes: `extras/mails.ts` (accepted, sent back, taken off sale become texts; the EU and UK confirming email stays) and `proposeSplit`'s `mailer` (the invitation and the change become texts). A plan session rewrites those tasks once the Owner approves that spec. Until then, do not build them as written here.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task (CLAUDE.md: no subagents). Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A member buys a game's extra (a DLC or a season pass) in one tap and the game unlocks it; a maker adds extras and names who shares a game's money; every person in a split is paid their share of everything the game earns, on a statement of their own.

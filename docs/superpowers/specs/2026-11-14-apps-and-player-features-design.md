@@ -237,3 +237,12 @@ Names are left to the plan.
 - The exact words on every new screen, and how each one passes the drunk-grandma test.
 - How each store's price points are read, and how "10% higher" rounds.
 - The hooks script's messages, limits and checks.
+
+## Changed on 2026-11-15: texts, not email
+
+`2026-11-15-texts-not-email-design.md` changes these lines, once the Owner approves it.
+
+- "Signing in works as on the web: email and password": phone number and password.
+- "Launch itself: everyone on a wishlist gets an email": everyone on a wishlist who said yes to the text gets a text. Anyone who turned on notifications also gets one. The same for the day live payments open.
+- The three notifications stay push notifications. They do not also go by text.
+- Deleting an account also deletes its phone number and its text settings.
