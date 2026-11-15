@@ -198,7 +198,8 @@ test("a live game: See it on Ruken is the blue button, and a new version goes fo
 
   await again.click();
 
-  await expect(page.getByText("Your update is waiting for review.")).toBeVisible();
+  // The press copies the game's newest files before it sends them, which takes a few seconds in Safari's engine.
+  await expect(page.getByText("Your update is waiting for review.")).toBeVisible({ timeout: 20_000 });
 });
 
 test("a live game's name changes and its address stays", async ({ page }) => {
