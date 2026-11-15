@@ -419,3 +419,28 @@ Owner, 2026-11-15: "On Ruken, one at a time", to "30. Where does a maker list a 
 - **The Reviews room** shows the summary, then each review with "Played 3 hours", thumbs and words, newest first, and Report on each. There is no Delete or Reply.
 - **Money is not a room of one game**: statements are one per person (sales 5.7). It is a link on Your games, "Your money", and for a person in a split with no game, the only thing in the maker's area.
 - **The rooms show from the game's first send**, so achievements and the split can be set while it waits. Extras can be added then too, and go on sale only once the game is live (sales plan, Task 24).
+
+## 11. The staff screens
+
+Owner, 2026-11-15, asked "When should we add the admin view for the maker?" and offered the maker's own dashboard (B) or Ruken staff's screens (A): "Well, B, but A is important". The maker's dashboard is section 10. This section is the staff side that every send from it needs, since a game, a beta, an extra and an achievement are each checked by a person before players see them. What staff may do is the main design's 5.5 and the specs of section 10; this says how it looks. Staff screens follow the same look and colours as the maker's (sections 1 and 4); they are used on a computer first, and work on a tablet.
+
+### 11.1 The screens
+
+| # | Screen | What is on it |
+|---|---|---|
+| 1 | The queue | Everything waiting, oldest first, one list: each row says what it is in one word (Game, Update, Beta, Extra, Achievement, Score), the game's name, its maker's handle and how long it has waited. |
+| 2 | Checking a game, an update or a beta | Two halves: on the left the game playing in its frame, with "Play with every extra" and "Play with none" (sales plan, "Who owns what while testing"); on the right the list of its parts (name, line, files, where it plays, age rating, each video, other websites), each with a tick for "This is wrong". Under the list: Blue "Accept" while nothing is ticked; once something is ticked, the Blue button reads "Send back". |
+| 3 | Checking an extra | The same two halves: the game playing with that extra unlocked on the left; its picture, name, line, price and days on the right, each with its tick. |
+| 4 | Checking an achievement or a score | Its icon, name, line and hidden or not, each with its tick. |
+| 5 | The age rating | On screen 2, the rating the maker picked, as four choices; staff can pick another before Accept. The maker sees the rating staff set. |
+| 6 | Reports | Reports, oldest first: what was reported (a clip, a page, a review, a leaderboard entry, a friend request), the reason picked, how many people reported it. Staff can take down a game, a page or a review, or suspend an account, each with a reason that is recorded and sent. |
+| 7 | Pictures held back | Photos, banners, icons and extra pictures the automatic check flagged, each beside "Show it" (green) and "Keep it hidden" (red, with a reason). |
+| 8 | Money | The month, with the Extras block (sales plan, Task 32), refunds and disputes. A staff refund needs a second person and a fresh code (main design 5.5): the first person asks, and it waits on this screen until a second one says yes. Apple holds (sales 5.8) are a list: the sale, the day it was bought, "Held until Apple answers, or <day>". |
+| 9 | What staff did | Every staff action, who and when, newest first, read-only. |
+
+### 11.2 Calls
+
+- **One queue for everything**, so nothing is missed in a second list.
+- **Accept and Send back are one Blue button that changes**: with nothing ticked it accepts; with a tick it sends back. Staff cannot accept something with a part marked wrong.
+- **Take down, suspend and "Keep it hidden" are red**, each with a short screen first, like "Throw Floor Fifty away?". Show it, Keep it and Back are green.
+- **Pending (question 31)**: how staff say what is wrong on each ticked part. Recommended: pick a plain reason from a short list, and add a line of their own if they want.
