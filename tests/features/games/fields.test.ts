@@ -26,7 +26,7 @@ describe("one checker for each answer", () => {
 
   it("repository, branch and folder", () => {
     expect(repoProblem("acme/game")).toBeUndefined();
-    expect(repoProblem("")).toBe("Choose the repository your game is in.");
+    expect(repoProblem("")).toBe("Pick your game from the list.");
     expect(branchProblem("main")).toBeUndefined();
     expect(branchProblem("a b")).toBe("That doesn't look like a branch name.");
     expect(folderProblem("web/build")).toBeUndefined();

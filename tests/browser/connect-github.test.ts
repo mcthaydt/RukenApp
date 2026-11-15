@@ -181,7 +181,7 @@ test("a failed reconnect says so to a maker whose connection holds no repositori
 
   await page.goto(`/make/${slug}/files?github=failed`);
 
-  await expect(page.getByText("Ruken can't see any of your repositories yet.")).toBeVisible();
+  await expect(page.getByText("Ruken can't see any of your games on GitHub yet.")).toBeVisible();
   await expect(page.getByText("GitHub didn't connect. Try again.")).toBeVisible();
 });
 
@@ -229,9 +229,9 @@ test("connected with nothing chosen, she is told, with one way to choose some", 
   await page.goto(`/make/${slug}/files`);
   await pageHasSettled(page);
 
-  await expect(page.getByText("Ruken can't see any of your repositories yet.")).toBeVisible();
+  await expect(page.getByText("Ruken can't see any of your games on GitHub yet.")).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(0);
-  const choose = page.getByRole("link", { name: "Choose repositories on GitHub" });
+  const choose = page.getByRole("link", { name: "Choose your games on GitHub" });
   await expect(choose).toHaveCSS("background-color", rgb(token("--pay")));
   await expect(choose).toHaveAttribute("href", `/make/github?choose=1&game=${slug}`);
   await showTheOwner(page, testInfo, "question 3, connected, nothing chosen on GitHub");
@@ -261,6 +261,12 @@ test("the how-to page needs no account", async ({ page }) => {
 
   await expect(page).toHaveURL("/help/github");
   await expect(page.getByRole("heading", { name: "Put your game on GitHub" })).toBeVisible();
+  // "Repository" is GitHub's own word, so the how-to says what it means where a maker first meets it.
+  await expect(
+    page.getByText(
+      "Make a new repository. That's GitHub's word for a place that keeps one game. Give it your game's name.",
+    ),
+  ).toBeVisible();
   // The way back is at the top and again at the foot.
   await expect(page.getByRole("link", { name: "Back to Ruken" })).toHaveCount(2);
   for (const back of await page.getByRole("link", { name: "Back to Ruken" }).all()) {

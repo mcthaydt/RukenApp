@@ -381,7 +381,7 @@ test("Next with no repository chosen says so", async ({ page }) => {
 
   await nextButton(page).click();
 
-  await expect(page.getByText("Choose the repository your game is in.")).toBeVisible();
+  await expect(page.getByText("Pick your game from the list.")).toBeVisible();
   await expect(page).toHaveURL(`/make/${slug}/files`);
   expect(await filesOf(slug)).toEqual({ repo: null, pulls: 0 });
 });
@@ -447,7 +447,7 @@ test("a folder that cannot be right is refused beside its box", async ({ page })
   await page.getByLabel(TINY_GAME).check();
   await page.getByText("Change the branch or folder").click();
   await expect(page.getByText("Leave empty for your main branch.")).toBeVisible();
-  await expect(page.getByText("Leave empty if index.html is at the top.")).toBeVisible();
+  await expect(page.getByText("Leave empty if index.html isn't inside a folder.")).toBeVisible();
   const folder = page.getByLabel("Folder");
   await folder.fill("/web");
 
@@ -477,7 +477,7 @@ test("a repository GitHub never listed for her is refused", async ({ page }) => 
   await nextButton(page).click();
 
   await expect(
-    page.getByText("Ruken can't see that repository. Choose it on GitHub, then try again."),
+    page.getByText("Ruken can't see that game on GitHub. Choose it on GitHub, then try again."),
   ).toBeVisible();
   await expect(page).toHaveURL(`/make/${slug}/files`);
   expect(await filesOf(slug)).toEqual({ repo: null, pulls: 0 });
@@ -638,6 +638,9 @@ test("the record-your-screen page has steps for a phone and for a computer, and 
   }
   // A Mac saves a kind of video Ruken does not take, and the page says so before she records one.
   await expect(page.getByText("Macs save a .mov file, which Ruken can't take yet.")).toBeVisible();
+  // The steps use the words the phone and Ruken show: an iPhone in the US says Control Center, and the button is pressed.
+  await expect(page.getByText("Open Settings, then Control Center. Add Screen Recording.")).toBeVisible();
+  await expect(page.getByText("Then come back to Ruken and press Choose video.")).toBeVisible();
   // The way back is at the top and again at the foot.
   const back = page.getByRole("link", { name: "Back to Ruken" });
   await expect(back).toHaveCount(2);
@@ -665,9 +668,7 @@ test("a video of the wrong kind or size is refused in plain words before anythin
 
   await chooseVideo(page, quickTimeFile());
   await expect(
-    page.getByText(
-      "That's a .mov file. Ruken takes MP4 or WebM videos. Export it as MP4 and choose it again.",
-    ),
+    page.getByText("That's a .mov file. Ruken takes MP4 or WebM videos. Save it as MP4 and choose it again."),
   ).toBeVisible();
   // The maker can see which file was refused.
   await expect(page.getByText("holiday.mov · 1 KB")).toBeVisible();
@@ -693,7 +694,7 @@ test("a web page named as a video is refused by the server, under the hint", asy
   await chooseVideo(page, pageNamedAsVideo());
 
   await expect(
-    page.getByText("That file doesn't look like a video. Export it as MP4 or WebM and try again."),
+    page.getByText("That file doesn't look like a video. Save it as MP4 or WebM and try again."),
   ).toBeVisible();
   await expect(page.locator('[data-frame="upright"] video')).toHaveCount(0);
   await expect(pickerButton(page)).toHaveText("Choose video");

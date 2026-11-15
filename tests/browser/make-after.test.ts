@@ -269,7 +269,7 @@ test("a live game's name changes and its address stays", async ({ page }, testIn
   await page.getByRole("link", { name: "Change the name" }).click();
   await expect(page).toHaveURL(`/make/${slug}/name`);
   await pageHasSettled(page);
-  await expect(page.getByText("Its address on Ruken stays the same")).toBeVisible();
+  await expect(page.getByText("Its link on Ruken stays the same")).toBeVisible();
   await showTheOwner(page, testInfo, "question 1, a live game's name being changed (Save)");
   const renamed = freshName("Floor Fifty");
   await page.getByLabel("What's your game called?").fill(renamed);
@@ -339,7 +339,7 @@ test("a live game's update that was sent back and mended is sent again from the 
   await expect(again).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(again).toHaveCSS("border-top-color", rgb(token("--pay")));
   await expect(
-    page.getByText("Sends your update for review again. Your game stays live meanwhile."),
+    page.getByText("Sends your update for review again. Players can still play it while you wait."),
   ).toBeVisible();
   await showTheOwner(page, testInfo, "Live, an update mended, Send it again");
 

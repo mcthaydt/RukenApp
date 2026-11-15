@@ -18,13 +18,13 @@ describe("videoChoiceProblem", () => {
 
   it("names the kind of file that was chosen when it is not an MP4 or a WebM", () => {
     expect(videoChoiceProblem({ name: "holiday.MOV", type: "video/quicktime", size: 1000 })).toBe(
-      "That's a .mov file. Ruken takes MP4 or WebM videos. Export it as MP4 and choose it again.",
+      "That's a .mov file. Ruken takes MP4 or WebM videos. Save it as MP4 and choose it again.",
     );
   });
 
   it("does not name a kind when the file has none", () => {
     expect(videoChoiceProblem({ name: "holiday", type: "", size: 1000 })).toBe(
-      "That file isn't an MP4 or WebM video. Export it as MP4 and choose it again.",
+      "That file isn't an MP4 or WebM video. Save it as MP4 and choose it again.",
     );
   });
 

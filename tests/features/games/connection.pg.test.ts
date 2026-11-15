@@ -188,7 +188,7 @@ describe("repositoriesFor", () => {
 // organisation). So a game is made or pulled only from a repository GitHub listed for that maker, and only while
 // GitHub still says the same installation holds it.
 describe("a maker can only use what GitHub listed for them", () => {
-  const NOT_VISIBLE = "Ruken can't see that repository. Choose it on GitHub, then try again.";
+  const NOT_VISIBLE = "Ruken can't see that game on GitHub. Choose it on GitHub, then try again.";
 
   /**
    * A maker starts a game and answers where its files are, as the questions do one at a time. Rejects with the

@@ -30,7 +30,7 @@ describe("checkGameFiles", () => {
   it("refuses a folder with no files", () => {
     expect(checkGameFiles([], null)).toEqual({
       ok: false,
-      problem: "We couldn't find that folder in your repository. Check the folder's name and pull again.",
+      problem: "We couldn't find that folder on GitHub. Check the folder's name and try again.",
     });
   });
 
@@ -57,7 +57,7 @@ describe("checkGameFiles", () => {
     expect(checkGameFiles(files, INDEX)).toEqual({
       ok: false,
       problem:
-        "sound/theme.ogg is kept in Git LFS, and Ruken can't pull those yet. Add the real file to the repository.",
+        "sound/theme.ogg is stored with Git LFS, which Ruken can't copy yet. Upload the file itself to GitHub instead.",
     });
   });
 
@@ -79,7 +79,7 @@ describe("checkGameFiles", () => {
     (path) => {
       expect(checkGameFiles([...tiny, file(path)], INDEX)).toEqual({
         ok: false,
-        problem: `One of your files has a name Ruken can't serve: ${path}. Rename it and pull again.`,
+        problem: `One of your files has a name Ruken can't use: ${path}. Rename it and try again.`,
       });
     },
   );
@@ -126,7 +126,7 @@ describe("checkGameFiles", () => {
     expect(checkGameFiles(tiny, '<script src="/assets/main.js"></script>')).toEqual({
       ok: false,
       problem:
-        "index.html loads /assets/main.js from the top of the site. On Ruken a game lives in a folder, so write it without the first slash: assets/main.js.",
+        "index.html asks for /assets/main.js, with a slash at the start. Take that slash off so it reads assets/main.js. On Ruken your game sits in its own folder.",
     });
   });
 
@@ -135,7 +135,7 @@ describe("checkGameFiles", () => {
     expect(checkGameFiles(tiny, html)).toEqual({
       ok: false,
       problem:
-        "index.html loads /css/a.css from the top of the site. On Ruken a game lives in a folder, so write it without the first slash: css/a.css.",
+        "index.html asks for /css/a.css, with a slash at the start. Take that slash off so it reads css/a.css. On Ruken your game sits in its own folder.",
     });
   });
 });

@@ -132,7 +132,7 @@ describe("saveClip", () => {
       }),
     ).rejects.toMatchObject({
       code: "INVALID",
-      message: "That file doesn't look like a video. Export it as MP4 or WebM and try again.",
+      message: "That file doesn't look like a video. Save it as MP4 or WebM and try again.",
     });
 
     expect(files.keys()).toEqual(before);
@@ -144,7 +144,7 @@ describe("saveClip", () => {
 
     await expect(
       service.saveClip(game.id, "upright", { contentType: "image/png", bytes: mp4Bytes() }),
-    ).rejects.toMatchObject({ code: "INVALID", message: "Videos are MP4 or WebM." });
+    ).rejects.toMatchObject({ code: "INVALID", message: "Ruken takes MP4 or WebM videos." });
   });
 
   it("says a game is not there when there is none, and stores nothing", async () => {

@@ -150,7 +150,7 @@ describe("commitOf", () => {
     await expect(github.commitOf("acme/game", null)).rejects.toMatchObject({
       name: "GameError",
       code: "NOT_CONNECTED",
-      message: "Ruken can't see that repository. Choose it on GitHub, then try again.",
+      message: "Ruken can't see that game on GitHub. Choose it on GitHub, then try again.",
     });
     expect(calls).toHaveLength(1);
   });
@@ -159,7 +159,7 @@ describe("commitOf", () => {
     const { github } = gitHubWith([...tokenAnswers(), json({ message: "No commit found" }, status)]);
     await expect(github.commitOf("acme/game", "nope")).rejects.toMatchObject({
       code: "INVALID",
-      message: "We couldn't find that branch in your repository.",
+      message: "We couldn't find that branch on GitHub.",
     });
   });
 

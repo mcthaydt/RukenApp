@@ -126,7 +126,7 @@ async function stateOf(gameId: string) {
 
 describe("sendForReview", () => {
   it.each([
-    ["no files", false, true, true, "Pull your game's files first."],
+    ["no files", false, true, true, "Add your game's files first."],
     ["no upright video", true, false, true, "Add an upright video."],
     ["no wide video", true, true, false, "Add a wide video."],
   ])(
