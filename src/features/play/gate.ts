@@ -34,6 +34,10 @@ const NOT_ALLOWED = "Not allowed.";
 
 /** A game's own name: `g-` and its ten-character public id. */
 const GAME_HOST = /^g-([a-z2-7]{10})$/;
+/** On the one free address a game is the first folder: `/g-<id>/`, and what follows is the game's own path. */
+const GAME_FOLDER = /^\/g-([a-z2-7]{10})\/(.*)$/;
+/** On the one free address a clip or a photo is `/media/<key>`. */
+const MEDIA_FOLDER = "/media/";
 /** Written out here, not imported: a clip's key, as the games feature makes it. Nothing else is served as a clip. */
 const CLIP_KEY = /^clips\/[a-z2-7]{10}\/(?:upright|wide)-[0-9a-f]{16}\.(?:mp4|webm)$/;
 /** Written out here, not imported: a photo's key, as the pages feature makes it. Nothing else is served as a photo. */
@@ -113,8 +117,7 @@ async function serveFile(request: Request, deps: GateDeps, key: string, headers:
  * A clip or a photo: shown on pages before anyone plays, so anyone may have it, and a browser keeps it for a year.
  * The key must be exactly the shape of one or the other, so nothing else in the bucket is ever served from here.
  */
-function serveMedia(request: Request, url: URL, deps: GateDeps): Promise<Response> | Response {
-  const key = url.pathname.slice(1);
+function serveMedia(request: Request, key: string, deps: GateDeps): Promise<Response> | Response {
   if (!CLIP_KEY.test(key) && !PHOTO_KEY.test(key)) return plain(404, NOT_FOUND, deps);
   const headers = commonHeaders();
   headers.set("content-security-policy", `frame-ancestors ${deps.siteOrigin}`);
@@ -124,11 +127,16 @@ function serveMedia(request: Request, url: URL, deps: GateDeps): Promise<Respons
   return serveFile(request, deps, key, headers);
 }
 
-/** A game's file, only under a pass that was made for this game and has not run out. */
+/**
+ * A game's file, only under a pass that was made for this game and has not run out. `path` is everything after the
+ * game (`<pass>/<file>`), and `folder` is what an address that sends the browser on must put back in front of it:
+ * nothing on a game's own name, `/g-<id>` on the one free address.
+ */
 function serveGameFile(
   request: Request,
-  url: URL,
+  path: string,
   game: string,
+  folder: string,
   deps: GateDeps,
 ): Promise<Response> | Response {
   // A browser sends this when a page asks to install a service worker. The gate refuses: a service worker could go on
@@ -136,13 +144,12 @@ function serveGameFile(
   if (request.headers.get("service-worker") === "script") return plain(403, RUN_OUT, deps);
 
   // `/<pass>/<path>`: the pass is the first folder, so every file a game asks for by a relative address carries it.
-  const path = url.pathname.slice(1);
   const slash = path.indexOf("/");
   const given = slash === -1 ? path : path.slice(0, slash);
   const claims = checkPass(given, deps.passSecret, deps.nowMs);
   if (claims === null || claims.game !== game) return plain(403, RUN_OUT, deps);
 
-  if (slash === -1) return plain(308, "", deps, { location: `/${given}/` });
+  if (slash === -1) return plain(308, "", deps, { location: `${folder}/${given}/` });
   const rest = path.slice(slash + 1);
   const name = rest === "" ? "index.html" : normalizePath(rest);
   if (name === null) return plain(400, UNREADABLE, deps);
@@ -164,7 +171,21 @@ function serveGameFile(
   return serveFile(request, deps, `files/${claims.game}/${claims.pull}/${name}`, headers);
 }
 
-/** Answers one request. The first label of the host decides what it is: `media`, a game's own name, or nothing. */
+/** The one free address: the game, or `media`, is the first folder of the path and the host says nothing. */
+function handlePathRequest(request: Request, url: URL, deps: GateDeps): Promise<Response> | Response {
+  if (url.pathname.startsWith(MEDIA_FOLDER)) {
+    return serveMedia(request, url.pathname.slice(MEDIA_FOLDER.length), deps);
+  }
+  const match = GAME_FOLDER.exec(url.pathname);
+  const game = match?.[1];
+  if (game === undefined) return plain(404, NOT_FOUND, deps);
+  return serveGameFile(request, match?.[2] ?? "", game, `/g-${game}`, deps);
+}
+
+/**
+ * Answers one request. On `pathHost` the first folder of the path decides what it is; on any other host the first
+ * label of the name does: `media`, a game's own name, or nothing.
+ */
 export async function handleGameRequest(request: Request, deps: GateDeps): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return plain(405, NOT_ALLOWED, deps, { allow: "GET, HEAD" });
@@ -173,9 +194,11 @@ export async function handleGameRequest(request: Request, deps: GateDeps): Promi
   if (url.pathname === "/__ruken/health") return plain(200, "ok", deps);
   if (url.pathname === "/robots.txt") return plain(200, "User-agent: *\nDisallow: /\n", deps);
 
+  if (deps.pathHost !== undefined && url.host === deps.pathHost) return handlePathRequest(request, url, deps);
+
   const label = url.hostname.split(".")[0] ?? "";
-  if (label === "media") return serveMedia(request, url, deps);
+  if (label === "media") return serveMedia(request, url.pathname.slice(1), deps);
   const game = GAME_HOST.exec(label)?.[1];
   if (game === undefined) return plain(404, NOT_FOUND, deps);
-  return serveGameFile(request, url, game, deps);
+  return serveGameFile(request, url.pathname.slice(1), game, "", deps);
 }

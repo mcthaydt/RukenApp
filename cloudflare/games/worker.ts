@@ -13,14 +13,22 @@ interface Env {
   PLAY_PASS_SECRET: string;
   /** Ruken's own address, the only one allowed to put a game in a frame. */
   SITE_ORIGIN: string;
+  /**
+   * Until the games' domain exists: the one host (like `ruken-games.example.workers.dev`) on which the game is in the
+   * path. Unset once every game has a name of its own.
+   */
+  PATH_HOST?: string;
 }
 
 export default {
   fetch(request: Request, env: Env): Promise<Response> {
+    // Trimmed and in lower case, so a value pasted with a space or a capital still matches the request's host.
+    const pathHost = env.PATH_HOST?.trim().toLowerCase();
     return handleGameRequest(request, {
       files: r2FileStore(env.GAME_FILES),
       passSecret: env.PLAY_PASS_SECRET,
       siteOrigin: env.SITE_ORIGIN,
+      ...(pathHost === undefined || pathHost === "" ? {} : { pathHost }),
       // The one place besides the site's `systemClock` where the real clock is read: the edge, where time comes in.
       nowMs: Date.now(),
     });
