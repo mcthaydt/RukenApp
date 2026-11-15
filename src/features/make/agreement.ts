@@ -6,12 +6,18 @@ import agreementText from "./library/maker-agreement-v2.txt?raw";
 // as plain paragraphs. A new version is a new file and a new number; a maker is asked to agree again before the next
 // game goes up (the agreement's own last point).
 
+/** The file's first line: its title and version, and the date of the version when the file carries one. */
+const TITLE_LINE = /^Ruken maker agreement, version (\d+)(?:, (\d{1,2} [A-Z][a-z]+ \d{4}))?$/;
+
+/** A numbered point starts with its own number and short title ("1. Your game stays yours."), then the point itself. */
+const NUMBERED_POINT = /^(\d+)\. ([^.]+\.)\s+(.+)$/;
+
 /** The text, as it is in the file. */
 export const MAKER_AGREEMENT_TEXT: string = agreementText;
 
 /**
  * The version of that text, read from the file's own title line so a new file cannot be recorded as the old version.
- * (`parseAgreement` is a function declaration below, so it is ready here.)
+ * (`parseAgreement` is a function declaration below, so it is ready here; the two patterns it reads with are above.)
  */
 export const MAKER_AGREEMENT_VERSION: string = parseAgreement(MAKER_AGREEMENT_TEXT).version;
 
@@ -45,12 +51,6 @@ export interface ParsedAgreement {
   updated: string | null;
   points: AgreementPoint[];
 }
-
-/** The file's first line: its title and version, and the date of the version when the file carries one. */
-const TITLE_LINE = /^Ruken maker agreement, version (\d+)(?:, (\d{1,2} [A-Z][a-z]+ \d{4}))?$/;
-
-/** A numbered point starts with its own number and short title ("1. Your game stays yours."), then the point itself. */
-const NUMBERED_POINT = /^(\d+)\. ([^.]+\.)\s+(.+)$/;
 
 /**
  * Reads the agreement's file. The words are the file's, untouched: only where they sit is worked out here. The date is
