@@ -1,4 +1,5 @@
-import { expect, type Browser, type Page } from "@playwright/test";
+import { expect, type Browser, type Locator, type Page } from "@playwright/test";
+import { checkoutIdOfPaymentUrl, STAND_IN_URL } from "./stand-in-payment.ts";
 
 /** The password every journey's new account uses. */
 export const JOURNEY_PASSWORD = "a long enough password";
@@ -64,8 +65,6 @@ export async function signUp(
 
 /** Where `wrangler dev` serves the site, for a browser context made by hand (such a context has no config of its own). */
 const SITE_URL = "http://localhost:4173";
-/** The stand-in Stripe (tests/browser/support/fake-stripe-server.ts). */
-const STAND_IN_URL = "http://127.0.0.1:12111";
 
 /**
  * Makes an account in a browser of its own and closes it, for a journey that needs a second person (a maker, standing
@@ -81,6 +80,28 @@ export async function signUpInItsOwnContext(browser: Browser): Promise<{ email: 
 }
 
 /**
+ * The stand-in Stripe's one "Pay" button. A name alone matches as a part of the words, so "Pay" would also be the
+ * card's own "Continue to payment"; the whole name is asked for, and only the stand-in's page has it.
+ */
+export function standInPayButton(page: Page): Locator {
+  return page.getByRole("button", { name: "Pay", exact: true });
+}
+
+/**
+ * Presses "Continue to payment" and waits until the browser is on the stand-in's payment page, then answers the
+ * checkout's id from its address. The press can come back while the browser still shows the card (seen in WebKit:
+ * runs 43657290538, 43658030234 and 43659012481), so the address is read only once it is the payment page's.
+ */
+export async function continueToPayment(page: Page): Promise<string> {
+  await page.getByRole("button", { name: "Continue to payment" }).click();
+  await page.waitForURL((url) => checkoutIdOfPaymentUrl(url.href) !== undefined, { waitUntil: "commit" });
+  await expect(standInPayButton(page)).toBeVisible();
+  const checkoutSessionId = checkoutIdOfPaymentUrl(page.url());
+  if (checkoutSessionId === undefined) throw new Error(`not the stand-in's payment page: ${page.url()}`);
+  return checkoutSessionId;
+}
+
+/**
  * Signs a new person up, opens the card, pays on the stand-in Stripe, and waits for `/me`, where the card sends
  * them. `checkoutSessionId` is the stand-in's name for what was paid, read from its page's address, so a journey
  * can ask the stand-in what it thinks later.
@@ -88,10 +109,8 @@ export async function signUpInItsOwnContext(browser: Browser): Promise<{ email: 
 export async function payAsNewMember(page: Page): Promise<{ email: string; checkoutSessionId: string }> {
   const { email } = await signUp(page);
   await page.goto("/join?next=/me");
-  await page.getByRole("button", { name: "Continue to payment" }).click();
-  await expect(page.getByRole("button", { name: "Pay" })).toBeVisible();
-  const checkoutSessionId = new URL(page.url()).pathname.split("/").pop() ?? "";
-  await page.getByRole("button", { name: "Pay" }).click();
+  const checkoutSessionId = await continueToPayment(page);
+  await standInPayButton(page).click();
   await expect(page).toHaveURL("/me");
   await pageHasSettled(page);
   return { email, checkoutSessionId };
