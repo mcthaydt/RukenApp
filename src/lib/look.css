@@ -529,7 +529,9 @@ form > * + button:not(.quiet) {
 
 /* A screen that can't be undone has its two buttons the same distance apart wherever it is. Throw it away's form has a hidden
    field before its button, so its button follows a sibling and gets the step and a half above; Take it off's form is only the
-   button, so it asks for the same step itself. From a tablet up the two buttons are one width (the words of one are shorter). */
+   button, so it asks for the same step itself. From a tablet up the two buttons are one width: the least width is more than
+   the longest words need ("Take it off Ruken", with its padding), so neither button's own words set its width and a
+   difference in the words can't show as a difference in the buttons. */
 .card form > button.danger:first-child {
   margin-top: 1.5rem;
 }
@@ -537,7 +539,7 @@ form > * + button:not(.quiet) {
 @media (min-width: 48rem) {
   .card form > button.danger,
   .card p > a.button.safe:only-child {
-    min-width: 12rem;
+    min-width: 16rem;
   }
 }
 
