@@ -1187,11 +1187,12 @@ label.vframe {
 }
 
 /* A phone held sideways: the video's frame is beside the question, and a smaller one. It is no taller than leaves it whole above
-   the bar (the window less the bar and the room above the frame), so on the shortest phone it gives way (Owner, 2026-11-15, "5.a":
+   the bar (the window less 180px: the bar and the room above the frame, measured on a Pixel 7 held sideways, 128 and 44), so on the
+   shortest phone it gives way (Owner, 2026-11-15, "5.a":
    shorter frames on small phones, so more fits on the screen). */
 @media (max-height: 449px) {
   .vframe[data-frame="upright"] {
-    --frame: clamp(140px, calc(100dvh - 150px), 250px);
+    --frame: clamp(140px, calc(100dvh - 180px), 250px);
   }
 
   /* 240 wide, not 380: beside a 380-wide frame an iPhone SE held sideways left the heading about 125px, a word to a line. */
