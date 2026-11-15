@@ -623,3 +623,7 @@ Two more reviews read version 10 on 2026-11-15: a visual review (`/mnt/project-f
 ### 15.4 The second visual pass
 
 On a phone held sideways, the staff check screens' headings are 32px like every other screen, and Staff home stacks its two cards so each row stays on one line. Question screens on a computer and a sideways iPad use the right side. Owner, 2026-11-15: "Use the right side". The question sits at the left edge, as every screen does, and the right third shows "What players will see": a live preview that changes as the maker answers. For a game's questions it is the game's page (clip, name, line, maker, rating chip); for an extra, its buy card (picture, kind and days, name, line, Buy with the price); for an achievement, how it shows (or "Hidden achievement"); for a score, the leaderboard. A part not answered yet shows in grey ("Its name"). On a phone, a sideways phone and an upright iPad there is no preview; the question has the screen.
+
+Every one-question screen does the same, each preview labelled for who sees it: add a link shows "What players will see on your page"; a new event shows "Who sees it: Players never see events"; asking about a line shows "What Ruken staff will see".
+
+Leaderboards are after launch (Owner, 2026-11-15). Scores exist only for leaderboards, so Add a score, the Scores part of the Achievements room, the leaderboard preview and taking a score off a leaderboard (S17) are marked "after launch" on the board. At launch the room is Achievements only.
