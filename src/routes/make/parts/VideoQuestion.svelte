@@ -25,7 +25,7 @@
     video: { src: string | null; replacing: boolean; replaceAddress: string };
     counter: { n: number; of: number } | null;
     back: string;
-    throwAway: string;
+    throwAway: string | undefined;
     /** The server's refusal of the video that was sent, if any. */
     problem: string | undefined;
   } = $props();

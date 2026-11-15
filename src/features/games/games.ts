@@ -12,7 +12,8 @@ export {
 } from "./fields.ts";
 export { GameError } from "./game-error.ts";
 export { playsOnWords, ratingWords, websitesWords } from "./laid-out.ts";
-export { beforeSendWords, nextStepWords, type MissingBeforeSend } from "./review.ts";
+export { beforeSendWords, nextStepWords, toFixWords, type MissingBeforeSend } from "./review.ts";
+export { partNoun } from "./send-back.ts";
 export {
   answersOf,
   counterOf,

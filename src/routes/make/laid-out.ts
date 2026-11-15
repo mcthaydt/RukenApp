@@ -1,5 +1,6 @@
 // What a game laid out for its maker is made of. Types only, so a screen in the browser can name them without loading
 // the server code that fills them in (laid-out.server.ts).
+import type { GamePart } from "../../features/games/games.ts";
 
 /** A part of a game that has something to say about it on the laid-out game: the four facts shown as chips. */
 export type ChipPart = "files" | "plays_on" | "age_rating" | "other_websites";
@@ -17,4 +18,18 @@ export interface LaidOutGame {
   chips: { part: ChipPart; words: string }[];
   /** The address of the question that changes each part named here; a part not named has no Change. */
   changes: Partial<Record<ChangePart, string>>;
+}
+
+/** One thing staff sent back, as a card shows it: what is wrong, where it is fixed and, for a video, the video itself. */
+export interface FixCardData {
+  part: GamePart;
+  title: string;
+  words: string;
+  /** Staff's own line beside a reason from the list, or null. */
+  note: string | null;
+  /** The question that fixes it. */
+  href: string;
+  video: { src: string; shape: "upright" | "wide" } | null;
+  /** What the blue button says when this is the first thing to fix: "Fix the upright video". */
+  fixWords: string;
 }

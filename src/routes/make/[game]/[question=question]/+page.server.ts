@@ -49,10 +49,17 @@ function isBuilt(word: string): word is BuiltQuestion {
   return built.includes(word);
 }
 
-/** The question this address asks of this game, or a 404: a word with no screen, or marks for a game that is not 18+. */
+/** The questions a live game's maker may still answer by herself; the rest go through staff again (slice 4). */
+const LIVE_MAY_ANSWER: readonly BuiltQuestion[] = ["name", "line", "plays-on"];
+
+/**
+ * The question this address asks of this game, or a 404: a word with no screen, marks for a game that is not 18+, or a
+ * question a live game is not asked (its videos, files, rating and websites are not changed under the players).
+ */
 function askedQuestion(word: string, game: MakerGame): BuiltQuestion {
   if (!isQuestionAddress(word) || !isBuilt(word)) error(404, "Not found");
   if (word === "marks" && game.ageRating !== "age_18") error(404, "Not found");
+  if (game.state === "live" && !LIVE_MAY_ANSWER.includes(word)) error(404, "Not found");
   return word;
 }
 
@@ -136,7 +143,9 @@ export const load: PageServerLoad = async (event) => {
     addressStays: game.everLive,
     counter: firstTime && question !== "websites" ? counterOf(question, answers) : null,
     back: !firstTime ? `/make/${game.slug}` : before === null ? "/make" : `/make/${game.slug}/${before}`,
-    throwAway: `/make/${game.slug}/throw-away`,
+    // Only a draft and a game sent back can be thrown away; a waiting or live game has no such link.
+    throwAway:
+      game.state === "draft" || game.state === "sent_back" ? `/make/${game.slug}/throw-away` : undefined,
     files: question === "files" ? await filesScreen(event.url, userId, game) : null,
     video: isVideoQuestion(question) ? videoScreen(event.url, game, question) : null,
   };

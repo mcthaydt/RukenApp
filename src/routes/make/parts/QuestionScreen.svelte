@@ -29,7 +29,7 @@
     /** Where Back goes: the question before, or the game, or Your games. */
     back: string;
     /** The address that throws the game away; none before a game exists. */
-    throwAway?: string;
+    throwAway?: string | undefined;
     /** Enter presses the blue button, except where the blue button opens a file picker. */
     enterHint?: boolean;
     /** What the blue button says from the press until the answer comes. */

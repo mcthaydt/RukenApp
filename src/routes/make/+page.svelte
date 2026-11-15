@@ -15,6 +15,9 @@
 
 <main>
   <h1>Your games</h1>
+  {#if data.thrown !== null}
+    <p role="status">{data.thrown} was thrown away.</p>
+  {/if}
   {#if data.githubFailed}
     <p class="problem" role="alert">GitHub didn't connect. Try again.</p>
   {/if}

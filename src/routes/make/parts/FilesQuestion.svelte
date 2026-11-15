@@ -40,7 +40,7 @@
     };
     counter: { n: number; of: number } | null;
     back: string;
-    throwAway: string;
+    throwAway: string | undefined;
     /** The words for each box that was refused, from the answer just sent. */
     problems: Partial<Record<Box, string>> | undefined;
     /** What was typed in the answer just sent, which comes back with a refusal. */
