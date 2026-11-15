@@ -1,0 +1,14 @@
+// Which copy of Ruken a database belongs to (src/lib/server/copy.ts). The deploy command writes it once; the site
+// refuses to answer when it and the Worker's RUKEN_COPY disagree.
+//
+// Prisma cannot express the CHECKs or the add-only trigger, so they are written by hand at the end of the migration
+// and covered by tests/lib/server/copy.pg.test.ts.
+
+/// Which copy of Ruken this database belongs to. One row, added by the first deploy and never changed.
+/// It is the one table whose id is not a cuid, because it has exactly one row, always id 1.
+/// CHECKs: CopyStamp_one_row, CopyStamp_copy_check. Trigger: CopyStamp_append_only.
+model CopyStamp {
+  id        Int      @id @default(1)
+  copy      String
+  createdAt DateTime @default(now()) @db.Timestamptz
+}
