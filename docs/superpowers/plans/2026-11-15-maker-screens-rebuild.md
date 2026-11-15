@@ -35,7 +35,9 @@ The differences that matter here, already settled by rule 1:
 | 5: Live's green button "Send my newest version for review" | 14.2 and the board: a quiet blue outline, "Send a new version" |
 | 3: the game's questions are "of 6" | 10.5: "of 7" with the age rating, "of 8" for an 18+ game |
 
-One place the spec's words beat the board (rule 2): the board draws "Needs fixing" and "What players will see" in capitals; section 4.7 keeps 5.8's "no uppercase labels". They are built in sentence case.
+One place the spec's words beat the board (rule 2): the board draws "Needs fixing" and "What players will see" in capitals; section 4.7 keeps 5.8's "no uppercase labels". They are built in sentence case. Another (rule 2): on a sideways phone section 4.5 says the box is 56 tall with the 24px type of 4.1; the board's stylesheet draws 52 with 20px type. 56 and 24px are built.
+
+One place the board wins over an earlier spec line (rule 1, read with section 12's amendment): section 12 gives the 18+ question a hint that changes with the picks ("Players see it only if they turn it on…"). The amendment beneath it moves the Settings switch to after launch, so that line would not be true at launch, and the approved board (version 26) draws one fixed line instead: "Only adults see it. Pornography and gambling are never allowed." The board's line is built. 12.0a's "Some store apps hide this…" line links to the Store version room, which is after launch, so it is not built.
 
 ## What is in this plan, and what waits
 
@@ -76,6 +78,8 @@ Checked live on 2026-11-15: open pull requests are #63 (this branch), #96 (the s
 2. **S**, Tasks 30 and 31, on a new branch from `main` once M is merged. The coordinator's brief named M, F, G; S sits between M and F because F's journeys get their live game through Task 30's Accept. Both tasks are amended at the end of this plan.
 3. **F**, Tasks 20 to 23, as the slice 2 plan has them.
 4. **G**, Task 24, cut down. The Owner moved the real domain to launch (relayed by the coordinator, 2026-11-15, from the Owner's decision card), so slice 2 keeps only the GitHub App hookup (G2): a maker connects GitHub and sends a game on the test site, with the real GitHub. Nothing in slice 2 waits for a domain or a date. The games domain and the gate's route (G3), and with them playing a game at its real address, move to launch. The test site is a test site: no plan, tracker or message calls this step live.
+   - **What G2 alone gives, read in the code (plan audit, 2026-11-15).** `createGamesServices` (`src/features/games/services.ts`) will not start without `GAME_ADDRESS_PATTERN`, and every maker screen calls it, so G also sets that one setting on the test site's Worker. With no games domain it has no real value: G sets `https://{name}.games.invalid` (`.invalid` is a name that never answers, RFC 2606), which `checkAddressPattern` takes. So on the test site a maker can connect GitHub, answer every question, upload both videos and send the game, and staff can open it; the videos do not play on the test site (they are served from `media.<games domain>`), and nothing can be played there. In CI every video plays, through the stand-in address. That is the Owner's decision as it stands; G's step list says it in those words, once, and does not ask again.
+   - G2's GitHub App is made with the test site's address (`https://ruken.<account>.workers.dev`) as its home page and callback. When the real domain arrives at launch, both are changed on the app's settings page on GitHub (a website step: GitHub has no command for it). Launch's checklist carries that line.
 5. The slice 2 implementation audit, then its fixes.
 
 **Pull request #63 is kept.** The spec says the redesign "is built on branch `slice-2/submit` and lands as part of pull request #63", and the Owner's hold is on that pull request. Its service, tables and tests carry over, so closing it would only make a second branch with the same history. It is larger than one sitting's review (CLAUDE.md, Pace); the implementation audit reads it task by task, each a red commit and a green one.
@@ -87,9 +91,11 @@ Checked live on 2026-11-15: open pull requests are #63 (this branch), #96 (the s
 - Nine browser projects run every journey (five Chromium, four WebKit). A journey waits on readiness, never on a sleep; after a form post it waits with `pageHasSettled` (`tests/browser/support/account.ts`).
 - `.github/workflows/ci.yml` does not change.
 - No new dependency. No new colour: every colour in `look.css` is one of the ten tokens. No `<style>` block, `style=` attribute or colour under `src/routes/`.
-- Colours: blue (`--pay`) is the one main button on a screen; green (`--felt-raised`) is "nothing changes" (Back, Keep it); red (`--pip`) is only "can't be undone" (Throw it away, Delete my account); a second forward action is a quiet blue outline. No shape is rounder than 12px except a person's photo.
+- Colours: blue (`--pay`) is the one main button on a screen; green (`--felt-raised`) is "nothing changes" (Back, Keep it); red (`--pip`) is only "can't be undone" (Throw it away, Delete my account); a second forward action is a quiet blue outline. No pill shapes (Owner, 2026-11-15: "we don't do super rounded anything here"): chips, reasons and ticks 8px, buttons and boxes 12px; paper sheets and cards keep `--radius-card` (20px), as the approved board draws them; only a person's photo is round.
 - Words: the words in this plan and the spec are the words to ship. "Choose", never "Tap". "Change", never "Edit". A change to any of them is a deviation to report.
 - Every text link, tick, choice and button is at least 44 by 44 CSS pixels.
+- A screen carries no style of its own: no `style:` directive either. The step's 40ms stagger comes from `:nth-child` rules in `look.css`, not a number set on each line.
+- Every journey that saves a game names it with `freshName()` (`tests/browser/support/game.ts`). A name makes the same address nine times at most (`-2` to `-9`, `MAX_SLUG_NUMBER`), and nine projects share one database, so "Floor Fifty" is typed only where nothing is saved (the preview in Task 10). Headings and addresses in a journey are matched against the fresh name.
 - Nobody types a fact: sizes, counts and dates are measured or read from a file.
 - Comments say why, never which plan or finding asked.
 - This repository is public: nothing private goes in.
@@ -111,13 +117,14 @@ What a person will meet that the spec does not spell out. Each has its test in t
 ## File map
 
 ```
-prisma/schema/games.prisma                      Task 2: answers that may be empty, the rating, the marks, parts sent back
-prisma/migrations/20261115100000_questions/     Task 2
+prisma/schema/games.prisma                      Task 2: the rating, the marks, parts to fix; Task 3: answers that may be empty, thrown away, parts sent back
+prisma/migrations/20261115100000_questions/     Task 2 (only adds)
+prisma/migrations/20261115110000_one_answer_at_a_time/  Task 3
 src/features/games/
   questions.ts                                  Task 2: the order of the questions, the counter, what is next
   send-back.ts                                  Task 2: the reasons a part can be sent back for, and the maker's words
   library/send-back-reasons.json                Task 2
-  review.ts                                     Task 2: the words of a game's state (changed)
+  review.ts                                     Task 3: the words of a game's state (changed)
   fields.ts                                     Task 3: one checker per answer (changed)
   service.ts                                    Task 3
   services.ts                                   Task 3: media(key); Task 5: the state names a game
@@ -146,8 +153,9 @@ src/routes/make/
   github/, github/callback/                     Task 5
 src/routes/help/github/                         Task 5
 tests/features/games/questions.test.ts, send-back.test.ts            Task 2
-tests/features/games/schema.pg.test.ts, review.test.ts               Task 2 (changed)
-tests/features/games/service.pg.test.ts, review.pg.test.ts           Task 3 (changed)
+tests/features/games/schema.pg.test.ts                               Tasks 2, 3 (changed)
+tests/features/games/review.test.ts, service.pg.test.ts, review.pg.test.ts  Task 3 (changed)
+tests/features/games/connection.pg.test.ts, pull.pg.test.ts          Task 3 (changed: createGame is gone; a game past draft has a rating)
 tests/lib/files/store.test.ts                                        Task 3
 tests/lib/look.test.ts                                               Tasks 1, 4
 tests/browser/buttons.test.ts                                        Task 1
@@ -219,21 +227,26 @@ test("Your account has a door to the maker's area", async ({ page }) => {
 
 **Files:**
 - Create: `prisma/migrations/20261115100000_questions/migration.sql`, `src/features/games/questions.ts`, `src/features/games/send-back.ts`, `src/features/games/library/send-back-reasons.json`
-- Modify: `prisma/schema/games.prisma`, `src/features/games/review.ts`
-- Test: `tests/features/games/questions.test.ts`, `tests/features/games/send-back.test.ts`, `tests/features/games/review.test.ts`, `tests/features/games/schema.pg.test.ts`
+- Modify: `prisma/schema/games.prisma`
+- Test: `tests/features/games/questions.test.ts`, `tests/features/games/send-back.test.ts`, `tests/features/games/schema.pg.test.ts`
 
-**The tables.** Where a half-answered game is kept (spec section 8): in its own `Game` row, a `draft`, from the first Next.
+**Why this task only adds.** Every change here is new: new enums, new columns with defaults, one new check, two new files of pure rules. Nothing that compiles today stops compiling, so the green can pass everywhere. What changes an existing type (answers that may be empty, the new state, dropping a review's reason) or an existing function (`listWords`) goes in Task 3, beside the service that is its caller; done here, `service.ts` and the old routes would fail typecheck at this task's green.
 
-- `Game.oneLine`, `Game.playsOn`, `Game.repoFullName` become nullable.
+**The tables, this task.**
+
 - New enums: `AgeRating { age_3 age_7 age_12 age_16 age_18 }`; `ContentMark { sex_or_nudity gore drugs none }` (`none` is the answer "None of these", so an empty list means not answered); `GamePart { name one_line files plays_on upright_video wide_video age_rating other_websites }`.
 - `Game.ageRating AgeRating?`; `Game.contentMarks ContentMark[] @default([])`; `Game.toFix GamePart[] @default([])` (the parts staff sent back that the maker has not changed yet).
+- Hand-written, at the end of the migration: `Game_marks_check`: marks only on an 18+ game, and `none` stands alone. `(cardinality("contentMarks") = 0 OR "ageRating" = 'age_18') AND (NOT ('none' = ANY("contentMarks")) OR cardinality("contentMarks") = 1)`.
+
+**The tables, Task 3** (written here so the two read as one design; built there, in `20261115110000_one_answer_at_a_time`). Where a half-answered game is kept (spec section 8): in its own `Game` row, a `draft`, from the first Next.
+
+- `Game.oneLine`, `Game.playsOn`, `Game.repoFullName` become nullable.
 - `GameState` gains `thrown_away`.
-- `GameReview.reason` and `GameReview_reason_check` are dropped. New `GameReviewPart { id, reviewId, part GamePart, reason String, note String?, createdAt }`, unique on `(reviewId, part)`, added and never changed (`reject_append_only_change('GameReviewPart')`). `Game.stateReason` stays for slice 4's "Taken down"; nothing writes it in this slice, and its comment says so.
-- Hand-written rules at the end of the migration:
+- `GameReview.reason` and `GameReview_reason_check` are dropped (the table exists only on this branch, so no recorded decision is lost). New `GameReviewPart { id, reviewId, part GamePart, reason String, note String?, createdAt }`, unique on `(reviewId, part)`, added and never changed (`reject_append_only_change('GameReviewPart')`). `Game.stateReason` stays for slice 4's "Taken down"; nothing writes it in this slice, and its comment says so.
+- Hand-written rules at the end of that migration:
   - `Game_answered_check`: a game past `draft` has every answer. `"state" NOT IN ('waiting','live','sent_back','taken_off','taken_down') OR ("oneLine" IS NOT NULL AND "playsOn" IS NOT NULL AND "repoFullName" IS NOT NULL AND "ageRating" IS NOT NULL AND ("ageRating" <> 'age_18' OR cardinality("contentMarks") > 0))`. It is written with the old state names on purpose: Postgres refuses to use an enum value in the transaction that adds it.
-  - `Game_marks_check`: marks only on an 18+ game, and `none` stands alone. `(cardinality("contentMarks") = 0 OR "ageRating" = 'age_18') AND (NOT ('none' = ANY("contentMarks")) OR cardinality("contentMarks") = 1)`.
   - `GameReviewPart_note_check`: `("note" IS NULL OR char_length("note") BETWEEN 1 AND 500) AND ("reason" <> 'something_else' OR "note" IS NOT NULL)`.
-- If CI shows Postgres refusing the migration over the new enum values, put `ALTER TYPE "GameState" ADD VALUE` in a migration of its own just before this one, and report the deviation.
+- If CI shows Postgres refusing that migration over the new enum value, put `ALTER TYPE "GameState" ADD VALUE` in a migration of its own just before it, and report the deviation.
 
 **Interfaces, produced.**
 
@@ -294,7 +307,7 @@ The reasons (spec 11.2: "The plan writes the full lists"). Every part also has `
 
 Call, to be checked at the audit: the spec puts "It goes past what we allow." on the age rating row; here the three reasons about what is in the game sit on the game's files, because the only fix is to change the game on GitHub and that is where "Fix this" must lead. `partTitle`: "Name: {name}", "One line", "Game files", "Where it plays", "Upright video", "Wide video", "Who it's for", "Other websites". `partNoun`: "the name", "the line", "your game's files", "where it plays", "the upright video", "the wide video", "who it's for", "the websites".
 
-`review.ts`, changed:
+`review.ts`, changed in Task 3 (its caller, `service.ts`, changes there):
 
 ```ts
 /** The line on a game's card in Your games. */
@@ -303,7 +316,7 @@ export function listWords(game: { state: GameState; hasPending: boolean; toFix: 
 export function toFixWords(count: number): string | null;   // "One thing to fix. Then send it again." / "2 things to fix. Then send it again."
 ```
 
-`listWords`: a draft with a question left, "Not finished. Go on from question 3."; a draft with none left, "Ready to send."; "Waiting for review"; "Sent back. See what to fix."; "Live"; "Live. Your update is waiting for review"; "Live. Your update was sent back. See what to fix."; "Off Ruken. You took it off."; "Taken down. See why.". `stateParts` keeps its headlines without the reason; `beforeSendWords`, `MissingBeforeSend` and `stateWords` are removed with their tests (nothing is refused in a list any more). `nextStepWords` keeps only the lines the new screens show: "We're looking at it. Come back here to see when it's live.", "Players can find it on Ruken.", "Your update is waiting for review.".
+`listWords`: a draft with a question left, "Not finished. Go on from question 3."; a draft with none left, "Ready to send."; "Waiting for review"; "Sent back. See what to fix."; "Live"; "Live. Your update is waiting for review"; "Live. Your update was sent back. See what to fix."; "Off Ruken. You took it off."; "Taken down. See why.". `stateParts` keeps its headlines without the reason. `beforeSendWords`, `MissingBeforeSend` and `stateWords` stay until the last screen that uses them is replaced (`/make/[game]` in Task 4), then Task 11 removes them with their tests (nothing is refused in a list any more). `nextStepWords` keeps only the lines the new screens show: "We're looking at it. Come back here to see when it's live.", "Players can find it on Ruken.", "Your update is waiting for review.".
 
 - [ ] **Step 1 (red):** `questions.test.ts`:
 
@@ -333,16 +346,19 @@ it("every part opens a question, and that question names the part", () => {
 });
 ```
 
-  `send-back.test.ts`: every part's list ends with `something_else`; every code in the table above is in its part's list with those exact words; `isReasonFor("name", "sideways")` is false; `makerWords("upright_video", "not_this_game", null, "Floor Fifty")` is "It shows a different game. Add a video of Floor Fifty."; `makerWords("name", "something_else", "Too close to another game's name.", "x")` is the note; no maker's words are longer than 90 characters. `review.test.ts`: one case for each line of `listWords` and both of `toFixWords`. `schema.pg.test.ts`: a draft with no line, no place to play and no repository is kept; the same row as `waiting` is refused by `Game_answered_check`; an 18+ `waiting` game with no marks is refused; marks on a 12+ game and `none` beside `gore` are refused by `Game_marks_check`; a `GameReviewPart` cannot be updated or deleted; `something_else` with no note is refused. Stubs for the new exports. Push. Expected: `verify` fails in the three unit files only; `postgres` fails in `schema.pg.test.ts` and in the migrations drift check.
-- [ ] **Step 2 (green):** the schema, the migration, the three files. Push. Expected: all pass. `service.pg.test.ts` and `review.pg.test.ts` still pass or fail only on what Task 3 changes; if they fail here, fold Task 3's Step 1 into this push and report it.
+  `send-back.test.ts`: every part's list ends with `something_else`; every code in the table above is in its part's list with those exact words; `isReasonFor("name", "sideways")` is false; `makerWords("upright_video", "not_this_game", null, "Floor Fifty")` is "It shows a different game. Add a video of Floor Fifty."; `makerWords("name", "something_else", "Too close to another game's name.", "x")` is the note; no maker's words are longer than 90 characters. `schema.pg.test.ts`: marks on a 12+ game and `none` beside `gore` are refused by `Game_marks_check`; an 18+ game with `gore` is kept; a new game has no rating, no marks and nothing to fix. Stubs for the new exports. Push. Expected: `verify` fails in the two unit files only; `postgres` fails in `schema.pg.test.ts` and in the migrations drift check; `browser` passes.
+- [ ] **Step 2 (green):** the schema, the migration, the three files. Push. Expected: all pass.
 
 ### Task 3: The games service, one answer at a time
 
 **Files:**
-- Modify: `src/features/games/service.ts`, `fields.ts`, `services.ts`, `games.ts`, `src/lib/files/store.ts`, `src/lib/files/r2-store.ts`, `tests/support/memory-file-store.ts`
-- Test: `tests/features/games/service.pg.test.ts`, `tests/features/games/review.pg.test.ts`, `tests/features/games/fields.test.ts`, `tests/lib/files/store.test.ts`
+- Create: `prisma/migrations/20261115110000_one_answer_at_a_time/migration.sql` (Task 2's "The tables, Task 3")
+- Modify: `prisma/schema/games.prisma`, `src/features/games/service.ts`, `fields.ts`, `services.ts`, `review.ts`, `games.ts`, `src/lib/files/store.ts`, `src/lib/files/r2-store.ts`, `tests/support/memory-file-store.ts`, `src/routes/make/new/+page.server.ts` and `src/routes/make/[game]/+page.server.ts` (only so they compile: see Step 1)
+- Test: `tests/features/games/service.pg.test.ts`, `review.pg.test.ts`, `connection.pg.test.ts`, `pull.pg.test.ts`, `schema.pg.test.ts`, `review.test.ts`, `fields.test.ts`, `tests/lib/files/store.test.ts`
 
-**Interfaces, consumed:** Task 2's `questions.ts`, `send-back.ts`, `review.ts`.
+**Interfaces, consumed:** Task 2's `questions.ts`, `send-back.ts`; `review.ts` as Task 2 describes it.
+
+**Fixtures.** A test that puts a game past `draft` without the service (`pull.pg.test.ts` line 155, `service.pg.test.ts` line 319, `review.pg.test.ts`, `schema.pg.test.ts` lines 123 and 171, as on the branch at audit) gives it `ageRating: "age_12"`, since `Game_answered_check` now asks for one. `connection.pg.test.ts` calls `createGame` five times: each becomes `startGame` then `saveAnswer` for the files, with the same refusals expected. This is the data the rule needs, not a looser test.
 
 **Interfaces, produced** (on the games service unless said):
 
@@ -367,7 +383,7 @@ deleteAll(prefix: string): Promise<number>;
 media(key: string): string;      // the address of a clip: address("media") + "/" + key
 ```
 
-- `fields.ts` exports one checker per answer (`nameProblem`, `oneLineProblem`, and the repository, branch and folder checks it has), each answering the refusal's words or undefined; `gameFieldProblems` is removed. New refusals: "Choose where your game plays.", "Choose who your game is for.", "Choose at least one, or None of these.". The rest are today's words.
+- `fields.ts` exports one checker per answer (`nameProblem`, `oneLineProblem`, and the repository, branch and folder checks it has), each answering the refusal's words or undefined; `gameFieldProblems` is kept, built from them, until Task 4 replaces the old form, and Task 11 removes it. New refusals: "Choose where your game plays.", "Choose who your game is for.", "Choose at least one, or None of these.". The rest are today's words.
 - `startGame` checks the name and makes a `draft` with only its name, id and address.
 - `saveAnswer` finds the game among the maker's own (else `NOT_FOUND`, "We can't find that game."). By state: `draft`, `waiting` and `sent_back` take every answer; `live` takes `name`, `line` and `plays-on`; anything else is `NOT_READY`, "That can't be changed right now.".
   - `name`: while no review of the game was ever `accepted`, the address is made again from the new name (`freeSlug`); after that it never changes.
@@ -396,8 +412,11 @@ media(key: string): string;      // the address of a clip: address("media") + "/
   - After that, `saveAnswer(name)` leaves one thing to fix and `sendForReview` is refused, "Fix what was sent back first."; `saveClip(upright)` empties `toFix` and the send goes through (Review Focus 4).
   - `throwAway` of a sent-back game with a pull and two clips: no key is left under `files/<publicId>/` or `clips/<publicId>/`, `gamesOf` no longer lists it, `gameForMaker` is null, `startGame` with the same name gets the plain address again; `throwAway` of a waiting game and of a live game is refused (Review Focus 8).
   
-  Stubs. Push. Expected: `verify` fails in `store.test.ts` and `fields.test.ts`; `postgres` in the two pg files; `browser` fails wherever the old form calls `createGame`. That last red is expected and is cleared in Task 4; to keep the routes compiling, the old `/make/new` action calls `startGame` then `saveAnswer` for each field until Task 4 replaces it.
-- [ ] **Step 2 (green):** the code. Push. Expected: `verify` and `postgres` pass. `browser`: the old journeys pass through the bridged form; if any fail only because a draft now lacks an age rating at send, go straight on to Task 4 and say so in the task's line to the coordinator.
+  - `schema.pg.test.ts` (moved from Task 2): a draft with no line, no place to play and no repository is kept; the same row as `waiting` is refused by `Game_answered_check`; an 18+ `waiting` game with no marks is refused; a `GameReviewPart` cannot be updated or deleted; `something_else` with no note is refused.
+  - `review.test.ts`: one case for each line of `listWords` and both of `toFixWords`.
+
+  Stubs only: `createGame` and the old screens are untouched in this push. Push. Expected: `verify` fails in `store.test.ts`, `fields.test.ts` and `review.test.ts`; `postgres` in the pg files above and the migrations drift check; `browser` passes.
+- [ ] **Step 2 (green):** the migration and the code. `createGame` goes; to keep the old routes compiling until Task 4 replaces them, the old `/make/new` action calls `startGame` then `saveAnswer` for each field, and the old pages read an answer that may now be empty with `?? ""`. Push. Expected: `verify` and `postgres` pass. `browser`: the old journeys in `make.test.ts` that send a game now fail, refused with "Answer every question first.", because the old form has no age question. That is the one expected failure, and no other: send the coordinator the list of failing journeys in one message and go straight on to Task 4, whose red push deletes that file and carries each journey ("The old journeys"). Any failure outside `make.test.ts` is a stop.
 
 ### Task 4: The question screen, the easy questions, and Your games
 
@@ -422,7 +441,7 @@ Spec sections 3, 4, 10.1 row 1, 12, 15.2.
 
 **How a question behaves.**
 
-- First time through (an answer is still missing): the blue button is "Next"; it saves and goes to the next question, then to `agreement` or `check` (Task 7). "Back" is a green link to the question before; on `/make/new` it goes to Your games.
+- First time through (an answer is still missing): the blue button is "Next"; it saves and goes to the next question, then to `agreement` or `check` (Task 7). Until Task 7 builds those two, the last Next and `/make/<game>` for a draft with nothing left lead to an address that is a 404; no journey of Tasks 4 to 6 goes past the last question, and Task 7's red is the first to. "Back" is a green link to the question before; on `/make/new` it goes to Your games.
 - Changing (every answer is in, or the game is waiting, sent back or live): the blue button is "Save"; it saves and goes to `/make/<game>`. "Back" goes there too. The counter and the track are not shown.
 - The top bar: "Ruken" on the left; on the right "Finish later", a link to `/make`.
 - Every action finds the game among the signed-in maker's own (Review Focus 2).
@@ -441,7 +460,7 @@ Spec sections 3, 4, 10.1 row 1, 12, 15.2.
 
 Nothing is picked for her on any choice. On `marks`, choosing "None of these" unticks the others, and choosing another unticks it; without script the server does the same.
 
-**Your games.** The heading and a blue "Add a game" (a link to `/make/new`); top right, a link "Your account". Each game is one paper card and the whole card is a link: a still on the left (96 by 54 on a phone, 128 by 72 otherwise; a plain sage block until Task 6 gives it the video), the name in Young Serif at 32px, and its `listWords` line. With no game: "You haven't added a game yet." and "You'll need your game on GitHub, ready to run in a browser, and two short videos of it."
+**Your games.** The heading and a blue "Add a game" (a link to `/make/new`); top right, a link "Your account". Each game is one paper card and the whole card is a link: a still on the left (96 by 54 on a phone, 128 by 72 otherwise; a plain sage block until Task 6 gives it the video), the name in Young Serif at 32px, and its `listWords` line; a line that says "Sent back" is set in `--pay` (15.1: "Sent back" in a list is blue text). With no game: "You haven't added a game yet." and "You'll need your game on GitHub, ready to run in a browser, and two short videos of it."
 
 **`/make/<game>` for a game that is not a draft**: `StateScreen.svelte`: the name, the state's headline as the heading, its `nextStepWords` line, and a link "Back to your games". For a waiting game that link is the blue button (spec section 1) and the screen is final here; Task 8 fills in Sent back and Live.
 
@@ -452,7 +471,7 @@ Nothing is picked for her on any choice. On `marks`, choosing "None of these" un
 | Media query | `max-width: 499px` | `max-height: 449px` | `min-width: 500px` and portrait | landscape, `min-height: 450px`, `max-width: 1199px` | everything else |
 | Heading | 36px | 32px | 64px | 48px | 64px |
 | Column | the screen, 20px sides | 600px | 640px | 760px | 760px |
-| Answer box | 64px tall | 52px | 72px | 72px | 72px, 24px type, 12px corners, no outline |
+| Answer box | 64px tall | 56px | 72px | 72px | 72px, 24px type, 12px corners, no outline |
 | Buttons | 56px, in the bar | 52px, in the bar | 60px, in the bar | 60px, under the answer | 60px tall, the blue one at least 168px wide, under the answer |
 | Choices | stacked | two across | two across (ratings in one row) | two across (ratings in one row) | two across (ratings in one row) |
 
@@ -460,13 +479,14 @@ Nothing is picked for her on any choice. On `marks`, choosing "None of these" un
 - The column is centred across; on a tablet sideways and a computer it is centred down too, and on the others the question starts under the top bar.
 - The counter: "Question 2 of 7", body size, sage, over the heading. The track: along the very top, one piece per question, 6px tall, answered pieces chalk on `--felt-raised`.
 - A picked choice: white like the rest, a 4px inset edge in `--pay`, and a tick; pick-one shows a plain blue check, pick-several a square box that fills blue.
+- The newest piece of the track grows from the left as the step lands; a picked choice and a video's frame change tone over 250ms (4.6). Both stop under reduced motion.
 - "press Enter ↵", the key drawn, shows only `@media (hover: hover) and (pointer: fine)` on the computer layout, and not beside a button that opens a file picker.
 - "Throw this game away" (`foot`, 14px, sage) is at the bottom left; its link is built in Task 9.
 - A long word wraps (`overflow-wrap: anywhere`) (Review Focus 6).
 
 **What moves** (spec 4.6). `src/routes/make/+layout.svelte` wraps a move between two questions in `document.startViewTransition` where the browser has it, and sets `data-step="on"` or `"back"` on the page from the two questions' places in `QUESTIONS`. In `look.css`: the old question lifts 12px and fades in 120ms; the new one's lines rise 28px over 460ms, each 40ms after the one before (`animation-delay` from a `--line` number set on each child), with `cubic-bezier(0.32, 0.72, 0, 1)`; going back, the same downward. Only `transform` and `opacity` change. Under `prefers-reduced-motion: reduce` there is no animation at all.
 
-**The journeys' helpers** (`tests/browser/support/game.ts`, rewritten): `answerName(page, name?)`, `answerLine(page)`, `answerPlaysOn(page, "computers" | "both")`, `answerAge(page, "12+")`, `nextButton(page)`, `startDraft(page): Promise<{ slug; name }>` (sign up, `/make/new`, the name). `tests/browser/support/database.ts` gains `fillAnswers(slug, { files?: boolean; videos?: boolean; age?: AgeRating })`, which writes the pull, clip and rating rows straight into the database so a journey about one screen does not have to walk all the others, and keeps `putGameWhereStaffLeaveIt`, now taking `{ state, toFix?: { part; reason; note? }[] }`.
+**The journeys' helpers** (`tests/browser/support/game.ts`, rewritten): `answerName(page, name?)`, `answerLine(page)`, `answerPlaysOn(page, "computers" | "both")`, `answerAge(page, "12+")`, `nextButton(page)`, `startDraft(page): Promise<{ slug; name }>` (sign up, `/make/new`, a `freshName()`). `tests/browser/support/database.ts` gains `fillAnswers(slug, { line?: boolean; playsOn?: boolean; files?: boolean; videos?: boolean; age?: AgeRating })`, `line` and `playsOn` true unless set false, which writes the line, the place it plays, the pull, clip and rating rows straight into the database so a journey about one screen does not have to walk all the others, and keeps `putGameWhereStaffLeaveIt`, now taking `{ state, toFix?: { part; reason; note? }[] }`.
 
 **The old journeys.** `tests/browser/make.test.ts` is deleted in this task's red push. Nothing is dropped silently: each old journey's intent is carried as below, and the tracker records the table when the last one lands.
 
@@ -487,10 +507,11 @@ test("Your games, with none, says what a maker needs and has one blue button", a
 test("a maker answers the name and is asked the next question, with her name in it", async ({ page }) => {
   await signUp(page); await page.goto("/make/new");
   await expect(page.getByText("Question 1 of 7")).toBeVisible();
-  await page.getByLabel("What's your game called?").fill("Floor Fifty");
+  const name = freshName("Floor Fifty");                 // e.g. "Floor Fifty 3f9a1c2e": see Global Constraints
+  await page.getByLabel("What's your game called?").fill(name);
   await nextButton(page).click();
-  await expect(page).toHaveURL(/\/make\/floor-fifty(-\d)?\/line$/);
-  await expect(page.getByRole("heading", { name: "What's Floor Fifty about, in one line?" })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/make/${slugOf(name) ?? ""}/line$`)); // slugOf: the name's address, ids.ts
+  await expect(page.getByRole("heading", { name: `What's ${name} about, in one line?` })).toBeVisible();
   await expect(page.getByText("Question 2 of 7")).toBeVisible();
 });
 test("every Next saves: after Finish later the game is in Your games, and goes on where she left", async ({ page }) => {
@@ -525,7 +546,7 @@ test("a waiting game says so, and its one blue button goes back to Your games", 
 
 ```ts
 test("a question: the heading's size, the box and the buttons for this window", async ({ page }) => {
-  /* heading font-size is 36, 32, 48 or 64 by the table; the box is 64, 52 or 72 tall with 24px type and 12px corners and no border;
+  /* heading font-size is 36, 32, 48 or 64 by the table; the box is 64, 56 or 72 tall with 24px type and 12px corners and no border;
      on a window under 500 wide, under 450 tall, or upright from 500 wide: the buttons sit in a bar whose bottom is the window's bottom;
      otherwise the blue button is at least 168 by 60 and under the box */ });
 test("press Enter shows only where there is a mouse", async ({ page, isMobile }) => { /* visible on the computer project only */ });
@@ -588,7 +609,7 @@ New look class `fix`: a white card with a 6px inset left edge in `--pay`, and it
 >
 > 1. Make a free account at github.com.
 > 2. Make a new repository. Give it your game's name.
-> 3. Upload your game's files: everything in the folder that has index.html in it.
+> 3. Upload your game's files: everything in the folder that has index.html in it. GitHub takes up to 100 files at a time. If you have more, upload them in a few goes.
 > 4. Save it. GitHub calls this "Commit changes".
 > 5. Come back to Ruken and choose Connect GitHub.
 >
@@ -602,7 +623,7 @@ New look class `fix`: a white card with a 6px inset left edge in `--pay`, and it
 >
 > If index.html sits inside another folder, tell Ruken which one. Choose "Change the branch or folder" and write the folder's name, like web/build.
 
-The audit checks each GitHub step against GitHub's own help pages, since no session opened GitHub to write them.
+Checked at the plan audit against GitHub's help page "Adding a file to a repository" (docs.github.com/en/repositories/working-with-files/managing-files/adding-a-file-to-a-repository): files are added on the repository's page with "Add file", then "Upload files", and saved with "Commit changes"; a browser upload takes at most 100 files at a time and 25 MiB a file. Step 3's second sentence was added for the 100. A game file over 25 MiB cannot go up through the browser at all; the page does not try to teach the command line, and such a maker meets it on GitHub's own page. Not checked: GitHub's button labels on a phone.
 
 - [ ] **Step 1 (red):** `github-connect.test.ts`: a state sealed with `"floor-fifty"` opens to `{ game: "floor-fifty" }`; sealed with null opens to `{ game: null }`; a changed payload, another account, and a state older than ten minutes are `undefined`. `connect-github.test.ts` and `make-questions.test.ts`:
 
@@ -737,12 +758,12 @@ All three are two halves: the name, the heading, one line and the buttons on one
 - **Waiting.** Heading "Waiting for review"; "We're looking at it. Come back here to see when it's live."; blue "Back to your games"; a link "Change something", which opens `check`. Nothing else.
 - **Sent back.** Heading "Sent back".
   - While something is in `toFix`: the line from `toFixWords`. One "Needs fixing" card (`fix`) for each thing: its `title` in Young Serif, its `words`, staff's own line under them when there is one, the video itself playing when it is a video, and "Fix this". The whole card is one link to that part's question. The blue button names the first one: "Fix the upright video" (`partNoun`). "Send it again" is not on the screen.
-  - What passed is folded away in one green card (`--felt-raised`, white words): "6 accepted" with "Show" (a `details`). Opened, it is the game laid out (`GameLaidOut`) with "Change" on every part.
+  - What passed is folded away in one green card (`--felt-raised`, white words): "{n} accepted", where n is the eight parts less the things to fix ("7 accepted" for one), with "Show" (a `details`). Opened, it is the game laid out (`GameLaidOut`) with "Change" on every part.
   - Once `toFix` is empty: the line reads "Fixed. Send it again when you're ready.", the green card is open and reads "All 8 ready to send", and the blue button is "Send it again", then "Sending your game…".
   - A link "Back to your games"; the small "Throw this game away".
   - The count is of the eight parts: name, one line, game files, where it plays, the two videos, who it's for, other websites.
 - **Live.** Heading "Live"; "Players can find it on Ruken."; blue "See it on Ruken" (a link to `/g/<game>`; branch F builds that page, so until F merges the link leads nowhere and no live game exists outside a test); a quiet blue outline "Send a new version", with today's note under it and "Copying your game…" while it runs (it copies the newest files and sends them for review in one press, as today's `pull` action does); a link "Back to your games".
-  - Beside them, sharp: the game laid out with one video (the upright one on an upright screen, the wide one on a wide screen), its name and line, and where it plays, with "Change" on the name, the line and where it plays only.
+  - Beside them, sharp: the game laid out with one video (the upright one on an upright screen, the wide one on a wide screen), its name and line, where it plays, and its rating chip with any marks ("18+ · Gore", spec 12: the rating staff set), with "Change" on the name, the line and where it plays only. The rating chip has no Change.
   - While an update waits: the line reads "Your update is waiting for review." An update that was sent back: one "Needs fixing" card with its words above the laid-out game, and the line "Fix it, then send a new version."
   - **The statement piece** (5c). Only here, the game's own video fills the screen behind everything: the upright one on an upright screen, the wide one on a wide screen, muted, looping, through `quietVideo`; blurred 18px, at 55% brightness, under a layer of `--felt-deep` at 50%. Five soft circles of `--sage` at 12% drift slowly between the video and the dark layer. Where `mayAutoplay` is false (Task 6) the video stays on its first frame and the circles do not move: that is the answer to the spec's open question about slow phones, and it is not measured on a real phone. New look class `live`.
 - A game that is `taken_off` or `taken_down` shows its headline and "Back to your games" only; Task 31 and slice 4 build those screens.
@@ -761,14 +782,14 @@ test("sent back for two things, one fixed: still no Send it again, and a send po
 test("a rude name is fixed on the name question", async ({ page }) => { /* "Name: …"; "Fix the name"; a new name moves the game's address and the screen follows it (Review Focus 3) */ });
 test("a waiting game can still be changed, through Check and send", async ({ page }) => { /* Change something → /check */ });
 test("a live game: See it on Ruken is the blue button, and a new version goes for review on one press", async ({ page }, testInfo) => {
-  /* the href is /g/<slug>; Send a new version is an outline; after it, "Your update is waiting for review." */ });
+  /* the href is /g/<slug>; Send a new version is an outline; the "12+" chip shows with no Change; after it, "Your update is waiting for review." */ });
 test("a live game's name changes and its address stays", async ({ page }) => { /* Change → the hint about links → Save → same slug, new name */ });
 test("a live game offers no Change on its videos or its files", async ({ page }) => { /* and /upright posted by hand is refused */ });
 test("a live game's update that was sent back says what to fix", async ({ page }) => { /* one Needs fixing card; "Fix it, then send a new version." */ });
 test("another maker cannot open any of these", async ({ page, browser, baseURL }) => { /* MAKER_ADDRESSES, now with agreement, check and the three states */ });
 ```
 
-  `make-look.test.ts`: on Live the page's background is not the felt (a video element sits behind `main`, with `filter` holding `blur(18px)`); with reduced motion that video is paused; white words on Live are still `--chalk`; on Sent back nothing is `--pip`; the blue button is in the window without scrolling on every project. Push. Expected: `browser` fails in the new cases only.
+  `make-look.test.ts`: on Live the page's background is not the felt (a video element sits behind `main`, with `filter` holding `blur(18px)`); with reduced motion that video is paused; white words on Live are still `--chalk`; on Sent back nothing is `--pip`; in Your games a sent-back game's line is `--pay`; the blue button is in the window without scrolling on every project. Push. Expected: `browser` fails in the new cases only.
 - [ ] **Step 2 (green):** Push. Expected: all pass.
 
 ### Task 9: Throwing a draft away
