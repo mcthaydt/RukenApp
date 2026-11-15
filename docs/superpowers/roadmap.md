@@ -8,13 +8,13 @@ Approved by the owner, 2026-11-15: "Roadmap is fine".
 
 **We finish slice 2, and only slice 2.** The owner, 2026-11-15: "We finish Slice 2: Games and play, everything after that is tagged for later work". Everything below slice 2 is marked **Later**. Nothing marked Later starts until slice 2 is done and the owner says go.
 
-1. **One thing at a time.** There is one **Now**. Nothing else is built until it is done.
+1. **One slice at a time.** The owner, 2026-11-15: "One slice at a time is more what I meant by that". Work inside the slice being built may run side by side; nothing from a later slice starts. **Now** marks what is being built.
 2. **Slices go in order.** A slice starts only when the one before it is merged and green.
 3. **New ideas wait.** A new idea goes in "Not yet placed" at the bottom. It moves up only when the owner says where it goes.
 4. **Designs can wait in line.** An approved design sits under its slice until that slice comes up. Approved is not the same as building.
 5. "Done" means merged to main and green there. Nothing else counts as done.
 
-How to read each list: **Done** is merged and green. **Now** is the one thing being built. **Next** is in line, in order. **Waiting** is approved, but its turn has not come. **Later** is after slice 2: not worked on now.
+How to read each list: **Done** is merged and green. **Now** is what is being built. **Next** is in line, in order. **Waiting** is approved, but its turn has not come. **Later** is after slice 2: not worked on now.
 
 ## Slice 0: Start
 
@@ -34,10 +34,11 @@ How to read each list: **Done** is merged and green. **Now** is the one thing be
 1. Done: games, their files, the play gate, connecting GitHub, the play rules (branches A to E and P).
 2. Done: the clip and frame look (branch S, part 1).
 3. **Now: the maker's submission screens, rebuilt to the approved design (branch M, pull request #63, Tasks 5 to 11).**
-4. Next: Accept and Send back, and a maker taking their own game off Ruken (branch S, the rest).
-5. Next: a game's page and playing it (branch F).
-6. Next: the GitHub App hookup, and FloorFifty sent, accepted and played on the test site (branch G). The real domain waits for launch.
-7. Next: the slice 2 audit, then its fixes.
+4. Next, beside the submission screens: games on one free test address until launch (branch T). Plan: `plans/2026-11-15-slice-2-rest.md`, which also brings the three steps below up to date.
+5. Next: Accept and Send back, and a maker taking their own game off Ruken (branch S, the rest). Waits for the submission screens to merge.
+6. Next: a game's page and playing it (branch F). Waits for branch S.
+7. Next: the GitHub App hookup, and a real game sent, accepted and played on the test site (branch G). The real domain waits for launch.
+8. Next: the slice 2 audit, then its fixes.
 
 ---
 
