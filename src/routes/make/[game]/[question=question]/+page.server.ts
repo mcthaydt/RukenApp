@@ -250,8 +250,10 @@ async function goOn(userId: string, saved: { slug: string }, question: BuiltQues
   redirect(303, `/make/${saved.slug}/${asked[asked.indexOf(question) + 1] ?? "check"}`);
 }
 
+// Every action is named: SvelteKit refuses a page that has a default action beside a named one, and the video is sent
+// by its own action (`clip`) while the answer to a question is sent by `answer`.
 export const actions: Actions = {
-  default: async (event) => {
+  answer: async (event) => {
     const { userId, game } = await ownGame(event);
     const question = askedQuestion(event.params.question, game);
     const firstTime = isFirstTime(game, question);

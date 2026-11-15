@@ -11,6 +11,13 @@
 
   let { data }: PageProps = $props();
 
+  // One string, because a space written beside a block in the markup is dropped where the block starts.
+  const versionWords = $derived(
+    data.updated === null
+      ? `Version ${data.version}`
+      : `Version ${data.version} · Last updated ${data.updated}`,
+  );
+
   // True from the press until the answer comes: a second press while the first is out would record twice.
   let saving = $state(false);
 </script>
@@ -33,10 +40,7 @@
   >
     <p class="count">Almost done</p>
     <h1>The maker agreement</h1>
-    <p class="note">
-      Version {data.version}{#if data.updated !== null}
-        · Last updated {data.updated}{/if}
-    </p>
+    <p class="note">{versionWords}</p>
     <div class="acts">
       <a class="button safe" href={data.back}>Back</a>
       <button disabled={saving} aria-busy={saving ? "true" : undefined}>

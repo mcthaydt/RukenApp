@@ -8,6 +8,13 @@
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
+
+  // One string, because a space written beside a block in the markup is dropped where the block starts.
+  const versionWords = $derived(
+    data.updated === null
+      ? `Version ${data.version}`
+      : `Version ${data.version} · Last updated ${data.updated}`,
+  );
 </script>
 
 <svelte:head>
@@ -16,10 +23,7 @@
 
 <main class="card">
   <h1>Maker agreement</h1>
-  <p class="note">
-    Version {data.version}{#if data.updated !== null}
-      · Last updated {data.updated}{/if}
-  </p>
+  <p class="note">{versionWords}</p>
   <p>You agree to this once, when you send your first game.</p>
   <p><a href={data.back.href}>{data.back.words}</a></p>
   <Points points={data.points} />

@@ -12,7 +12,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 };
 
 export const actions: Actions = {
-  default: async ({ locals, request, url }) => {
+  answer: async ({ locals, request, url }) => {
     const { userId } = signedInOnly(locals.caller, url);
     const typed = (await request.formData()).get("name");
     const name = typeof typed === "string" ? typed : "";

@@ -62,6 +62,7 @@
 <main>
   <form
     method="POST"
+    action="?/answer"
     use:enhance={({ cancel }) => {
       // A second press while the first is out would save twice, and for a new game make two.
       if (saving) cancel();

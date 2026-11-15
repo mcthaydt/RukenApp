@@ -122,12 +122,12 @@ export async function chooseVideo(page: Page, file: UploadFile | string): Promis
 export function MAKER_ADDRESSES(slug: string): { path: string; form?: Record<string, string> }[] {
   return [
     { path: `/make/${slug}` },
-    { path: `/make/${slug}/name`, form: { name: "Somebody else's game" } },
-    { path: `/make/${slug}/line`, form: { oneLine: "Somebody else's line." } },
-    { path: `/make/${slug}/files`, form: { repo: TINY_GAME } },
-    { path: `/make/${slug}/plays-on`, form: { playsOn: "computer_only" } },
-    { path: `/make/${slug}/age`, form: { ageRating: "age_12" } },
-    { path: `/make/${slug}/websites`, form: { servers: "api.example.com" } },
+    { path: `/make/${slug}/name?/answer`, form: { name: "Somebody else's game" } },
+    { path: `/make/${slug}/line?/answer`, form: { oneLine: "Somebody else's line." } },
+    { path: `/make/${slug}/files?/answer`, form: { repo: TINY_GAME } },
+    { path: `/make/${slug}/plays-on?/answer`, form: { playsOn: "computer_only" } },
+    { path: `/make/${slug}/age?/answer`, form: { ageRating: "age_12" } },
+    { path: `/make/${slug}/websites?/answer`, form: { servers: "api.example.com" } },
     { path: `/make/${slug}/agreement`, form: {} },
     // The send is a named action; the stranger's GET and POST both meet the same 404 before it is looked for.
     { path: `/make/${slug}/check` },
