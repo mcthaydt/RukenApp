@@ -12,6 +12,11 @@ export interface StoredFile {
   etag: string;
 }
 
+/** Throws unless the prefix ends in a slash: both stores ask this first, so `files/abc` can never also take `files/abcd`. */
+export function checkFolderPrefix(prefix: string): void {
+  if (!prefix.endsWith("/")) throw new Error(`A folder prefix must end in a slash: ${prefix}`);
+}
+
 export interface FileStore {
   /** The file's size and tag, or null when no file has that key. Reads no bytes. */
   head(key: string): Promise<StoredFile | null>;

@@ -5,6 +5,7 @@ import {
   GameError,
   gameFieldProblems,
   gamesServices,
+  type Answer,
   type GameField,
   type GamePlaysOn,
 } from "../../../features/games/games.ts";
@@ -37,6 +38,12 @@ function fieldOf(form: FormData, name: string): string {
 /** Where the game runs: an unknown value is never trusted. */
 function playsOnOf(value: string): GamePlaysOn {
   return value === "computer_only" ? "computer_only" : "phone_and_computer";
+}
+
+/** A refusal the service made in words is a value to answer with; anything else is a bug and goes on. */
+function asRefusal(error: unknown): GameError {
+  if (error instanceof GameError) return error;
+  throw error;
 }
 
 export const actions: Actions = {
@@ -72,33 +79,32 @@ export const actions: Actions = {
     if ("problem" in servers) problems.servers = servers.problem;
     if ("problem" in servers || Object.keys(problems).length > 0) return refuse(problems);
 
-    const made = await service
-      .createGame({
-        makerUserId: userId,
-        name: typed.name,
-        oneLine: typed.oneLine,
-        playsOn: typed.playsOn,
-        repo: {
-          fullName: typed.repo,
-          branch: typed.branch === "" ? null : typed.branch,
-          folder: typed.folder,
-        },
-        connectHosts: servers.hosts,
-      })
-      .catch((error: unknown) => {
-        if (error instanceof GameError) return error;
-        throw error;
-      });
-    if (made instanceof GameError) {
-      // What only the service can know (the repository is not one GitHub listed, the name is taken) shows under its box.
-      if (made.field === undefined) return refuse({}, made.message);
-      return refuse({ [made.field]: made.message });
+    // The old form asks every question at once; the service keeps one answer at a time. The game starts with its
+    // name, takes each answer in turn (the website list before the files, so the pull records it), and is thrown
+    // away again if one is refused, so a refused form leaves nothing behind.
+    const branch = typed.branch === "" ? null : typed.branch;
+    const started = await service.startGame({ makerUserId: userId, name: typed.name }).catch(asRefusal);
+    if (started instanceof GameError) return refuse({ [started.field ?? "name"]: started.message });
+    const answers: Answer[] = [
+      { question: "line", oneLine: typed.oneLine },
+      { question: "plays-on", playsOn: typed.playsOn },
+      { question: "websites", connectHosts: servers.hosts },
+      { question: "files", repo: { fullName: typed.repo, branch, folder: typed.folder } },
+    ];
+    let slug = started.slug;
+    for (const answer of answers) {
+      const kept = await service.saveAnswer(started.id, userId, answer).catch(asRefusal);
+      if (!(kept instanceof GameError)) {
+        slug = kept.slug;
+        continue;
+      }
+      // A refused pull is not a failed form: the game is made, and its page says what to fix.
+      if (kept.code === "FILES_REFUSED") continue;
+      // What only the service can know (the repository is not one GitHub listed) shows under its box.
+      await service.throwAway(started.id, userId);
+      if (kept.field === undefined) return refuse({}, kept.message);
+      return refuse({ [kept.field]: kept.message });
     }
-
-    // A refused pull is not a failed form: the game is made, and its page says what to fix.
-    await service.pullLatest(made.id).catch((error: unknown) => {
-      if (!(error instanceof GameError)) throw error;
-    });
-    redirect(303, `/make/${made.slug}`);
+    redirect(303, `/make/${slug}`);
   },
 };

@@ -121,11 +121,14 @@ export async function pullGame(deps: PullDeps, gameId: string): Promise<Pull> {
     select: { publicId: true, repoFullName: true, repoBranch: true, repoFolder: true, connectHosts: true },
   });
   if (game === null) throw new GameError("NOT_FOUND", "We can't find that game.");
+  // A game is answered one question at a time, so the files may not have been chosen yet.
+  if (game.repoFullName === null) throw new GameError("NOT_READY", "Choose your game's files first.");
+  const target: Target = { ...game, repoFullName: game.repoFullName };
 
   // One commit, resolved once: both reads below are of the same files even if the branch moves in between.
-  const commitSha = await deps.github.commitOf(game.repoFullName, game.repoBranch);
+  const commitSha = await deps.github.commitOf(target.repoFullName, target.repoBranch);
 
-  const scan = await scanFolder(deps.github, game, commitSha);
+  const scan = await scanFolder(deps.github, target, commitSha);
   const verdict = checkGameFiles(scan.files, scan.indexHtml);
   if (!verdict.ok) {
     await deps.db.game.update({ where: { id: gameId }, data: { pullProblem: verdict.problem } });
@@ -134,7 +137,7 @@ export async function pullGame(deps: PullDeps, gameId: string): Promise<Pull> {
 
   // The folder is named before its row exists, so a file's address never depends on the row.
   const pullId = crypto.randomUUID();
-  for await (const { path, entry } of folderEntries(deps.github, game, commitSha)) {
+  for await (const { path, entry } of folderEntries(deps.github, target, commitSha)) {
     // The name the gate will look for: the check refused every path `normalizePath` would not answer.
     const name = normalizePath(path);
     if (entry.kind !== "file" || name === null) continue;

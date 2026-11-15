@@ -39,7 +39,9 @@ enum GamePart {
   other_websites
 }
 
-/// Where a game stands. `taken_off` is the maker's own doing; `taken_down` is staff's (a later slice).
+/// Where a game stands. `taken_off` is the maker's own doing; `taken_down` is staff's (a later slice). `thrown_away` is
+/// a draft or sent-back game its maker threw away: the row stays (the money and the record may point at a game), but it
+/// is in no list and its files are gone.
 enum GameState {
   draft
   waiting
@@ -47,6 +49,7 @@ enum GameState {
   sent_back
   taken_off
   taken_down
+  thrown_away
 }
 
 /// The two clips a game needs: one for a phone held upright and one for a wide screen.
@@ -58,51 +61,55 @@ enum ClipShape {
 /// A game as its maker described it, and where it stands. `publicId` never changes (it names the game's own
 /// address and its files, so a renamed game keeps its saves); `slug` is the page's address and may be made
 /// again from a new name.
-/// CHECKs: Game_publicId_check, Game_slug_check, Game_repoFolder_check, Game_live_check, Game_marks_check.
+/// A game is answered one question at a time, so each answer is null until the maker gives it; Game_answered_check
+/// holds every game past `draft` to having them all.
+/// CHECKs: Game_publicId_check, Game_slug_check, Game_repoFolder_check, Game_live_check, Game_marks_check,
+/// Game_answered_check.
 model Game {
-  id           String      @id @default(cuid(2))
-  publicId     String      @unique
-  slug         String      @unique
-  makerUserId  String
-  name         String
-  oneLine      String
-  playsOn      GamePlaysOn
-  state        GameState   @default(draft)
-  /// Why it was sent back, in a person's words. Null in every other state.
-  stateReason  String?
+  id            String        @id @default(cuid(2))
+  publicId      String        @unique
+  slug          String        @unique
+  makerUserId   String
+  name          String
+  oneLine       String?
+  playsOn       GamePlaysOn?
+  state         GameState     @default(draft)
+  /// Why staff took a game down, in their words (slice 4). Nothing writes it in slice 2: a game sent back says why
+  /// in its `GameReviewPart` rows. Null in every other state.
+  stateReason   String?
   /// Set by staff for a game that is free to everyone. False for every game until slice 4.
-  freeToPlay   Boolean     @default(false)
+  freeToPlay    Boolean       @default(false)
   /// `owner/name` on GitHub.
-  repoFullName String
+  repoFullName  String?
   /// Null: the repository's own default branch.
-  repoBranch   String?
+  repoBranch    String?
   /// The folder inside the repository that holds the built game; "" is the top.
-  repoFolder   String      @default("")
+  repoFolder    String        @default("")
   /// The servers the game talks to, as the maker listed them (`api.example.com`, five at most).
-  connectHosts String[]    @default([])
+  connectHosts  String[]      @default([])
   /// Who the game is for. Null until the maker answers; a game past `draft` always has one.
-  ageRating    AgeRating?
+  ageRating     AgeRating?
   /// What an 18+ game contains. Empty for any other rating, and until the maker answers.
-  contentMarks ContentMark[] @default([])
+  contentMarks  ContentMark[] @default([])
   /// The parts staff sent back that the maker has not changed yet. Empty when nothing is waiting to be fixed.
-  toFix        GamePart[]  @default([])
+  toFix         GamePart[]    @default([])
   /// The pull the game is live on. Set only while `state` is live.
-  livePullId   String?     @unique
+  livePullId    String?       @unique
   /// The words of the last pull's refusal, for the game's page; null once a pull passes.
-  pullProblem  String?
+  pullProblem   String?
   /// The files waiting for a person's yes. A live game stays live on its old files until it is accepted.
-  pendingPullId String?   @unique
+  pendingPullId String?       @unique
   /// When those files were sent: the review queue's order, and its "sent 2 hours ago".
-  pendingSince  DateTime? @db.Timestamptz
-  createdAt    DateTime    @default(now()) @db.Timestamptz
-  updatedAt    DateTime    @updatedAt @db.Timestamptz
+  pendingSince  DateTime?     @db.Timestamptz
+  createdAt     DateTime      @default(now()) @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @db.Timestamptz
 
-  maker    User       @relation(fields: [makerUserId], references: [id], onDelete: Restrict)
-  livePull GamePull?  @relation("GameLivePull", fields: [livePullId], references: [id], onDelete: Restrict)
-  pendingPull GamePull? @relation("GamePendingPull", fields: [pendingPullId], references: [id], onDelete: Restrict)
-  pulls    GamePull[] @relation("GamePulls")
-  clips    GameClip[]
-  reviews  GameReview[]
+  maker       User         @relation(fields: [makerUserId], references: [id], onDelete: Restrict)
+  livePull    GamePull?    @relation("GameLivePull", fields: [livePullId], references: [id], onDelete: Restrict)
+  pendingPull GamePull?    @relation("GamePendingPull", fields: [pendingPullId], references: [id], onDelete: Restrict)
+  pulls       GamePull[]   @relation("GamePulls")
+  clips       GameClip[]
+  reviews     GameReview[]
 
   // The play feature's tables point at a game; they are declared in play.prisma.
   playPasses   PlayPass[]
@@ -138,10 +145,10 @@ model GamePull {
   pulledAt     DateTime @db.Timestamptz
   createdAt    DateTime @default(now()) @db.Timestamptz
 
-  game    Game  @relation("GamePulls", fields: [gameId], references: [id], onDelete: Restrict)
-  liveFor Game? @relation("GameLivePull")
-  pendingFor Game? @relation("GamePendingPull")
-  reviews GameReview[]
+  game       Game         @relation("GamePulls", fields: [gameId], references: [id], onDelete: Restrict)
+  liveFor    Game?        @relation("GameLivePull")
+  pendingFor Game?        @relation("GamePendingPull")
+  reviews    GameReview[]
 
   playPasses   PlayPass[]
   playSessions PlaySession[]
@@ -208,22 +215,38 @@ enum ReviewDecision {
 }
 
 /// The record design 5.5 asks of every staff action: who, what, when. Added and never changed (the add-only trigger is
-/// in the migration).
-/// CHECKs: GameReview_reason_check.
+/// in the migration). A decision to send a game back says why in its `GameReviewPart` rows.
 model GameReview {
   id          String         @id @default(cuid(2))
   gameId      String
   pullId      String
   staffUserId String
   decision    ReviewDecision
-  /// What the maker should fix: 1 to 500 characters for `sent_back`, null for `accepted`.
-  reason      String?
   decidedAt   DateTime       @db.Timestamptz
   createdAt   DateTime       @default(now()) @db.Timestamptz
 
-  game  Game     @relation(fields: [gameId], references: [id], onDelete: Restrict)
-  pull  GamePull @relation(fields: [pullId], references: [id], onDelete: Restrict)
-  staff User     @relation("GameReviewStaff", fields: [staffUserId], references: [id], onDelete: Restrict)
+  game  Game             @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  pull  GamePull         @relation(fields: [pullId], references: [id], onDelete: Restrict)
+  staff User             @relation("GameReviewStaff", fields: [staffUserId], references: [id], onDelete: Restrict)
+  parts GameReviewPart[]
 
   @@index([gameId])
+}
+
+/// One part of a game that staff sent back, and the reason they chose from that part's list (library/send-back-reasons.json).
+/// Added and never changed (the add-only trigger is in the migration).
+/// CHECKs: GameReviewPart_note_check.
+model GameReviewPart {
+  id        String   @id @default(cuid(2))
+  reviewId  String
+  part      GamePart
+  /// The code of the reason, from that part's list; `something_else` stands for staff's own line in `note`.
+  reason    String
+  /// Staff's own line: required for `something_else`, optional beside any other reason; 1 to 500 characters.
+  note      String?
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  review GameReview @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+
+  @@unique([reviewId, part])
 }

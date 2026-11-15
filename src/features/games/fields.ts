@@ -85,17 +85,17 @@ export function folderProblem(folder: string): string | undefined {
 
 /** The words for "where does it play", or undefined when a place was chosen. */
 export function playsOnProblem(playsOn: string | null): string | undefined {
-  throw new Error(`not built yet: playsOnProblem ${String(playsOn)}`);
+  return playsOn === null ? "Choose where your game plays." : undefined;
 }
 
 /** The words for "who is it for", or undefined when a rating was chosen. */
 export function ageProblem(ageRating: string | null): string | undefined {
-  throw new Error(`not built yet: ageProblem ${String(ageRating)}`);
+  return ageRating === null ? "Choose who your game is for." : undefined;
 }
 
 /** The words for "does it have any of these", or undefined when at least one answer was chosen. */
 export function marksProblem(marks: readonly string[]): string | undefined {
-  throw new Error(`not built yet: marksProblem ${marks.join(",")}`);
+  return marks.length === 0 ? "Choose at least one, or None of these." : undefined;
 }
 
 /**

@@ -33,6 +33,9 @@ export function stateParts(game: StateInput): { headline: string; reason: string
       return { headline: "Off Ruken. You took it off.", reason: null };
     case "taken_down":
       return { headline: "Taken down", reason: game.stateReason };
+    // Nothing shows a thrown-away game; its words are only here so every state has some.
+    case "thrown_away":
+      return { headline: "Thrown away", reason: null };
   }
 }
 
@@ -53,14 +56,32 @@ export function listWords(game: {
   firstUnanswered: QuestionId | null;
   questionNumber: number | null;
 }): string {
-  // Not built yet: the stub answers the state's own name, so the pages that list games still load and only the tests
-  // that name the words fail.
-  return game.state;
+  switch (game.state) {
+    case "draft":
+      return game.firstUnanswered === null || game.questionNumber === null
+        ? "Ready to send."
+        : `Not finished. Go on from question ${String(game.questionNumber)}.`;
+    case "waiting":
+      return "Waiting for review";
+    case "live":
+      if (game.hasPending) return "Live. Your update is waiting for review";
+      return game.toFix > 0 ? "Live. Your update was sent back. See what to fix." : "Live";
+    case "sent_back":
+      return "Sent back. See what to fix.";
+    case "taken_off":
+      return "Off Ruken. You took it off.";
+    case "taken_down":
+      return "Taken down. See why.";
+    // A game thrown away is in no list; the line is only for the compiler's sake.
+    case "thrown_away":
+      return "Thrown away.";
+  }
 }
 
 /** How many things to fix, as the Sent back screen says it; null when nothing is left. */
 export function toFixWords(count: number): string | null {
-  throw new Error(`not built yet: toFixWords ${String(count)}`);
+  if (count <= 0) return null;
+  return `${count === 1 ? "One thing" : `${String(count)} things`} to fix. Then send it again.`;
 }
 
 /**
@@ -89,6 +110,7 @@ export function nextStepWords(
         : "Players can find it on Ruken.";
     case "taken_off":
     case "taken_down":
+    case "thrown_away":
       return null;
   }
 }
