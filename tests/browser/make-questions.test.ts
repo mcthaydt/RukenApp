@@ -7,6 +7,7 @@ import {
   answerAge,
   answerLine,
   answerPlaysOn,
+  aviFile,
   BROKEN_GAME,
   chooseVideo,
   connectGitHubFromFiles,
@@ -551,7 +552,7 @@ test("the upright question shows its frame before anything is chosen, in the rig
       "Record your screen while you play for 10 to 30 seconds. Players see it in the feed before they play.",
     ),
   ).toBeVisible();
-  await expect(page.getByText("For phones: taller than wide. MP4 or WebM, up to 30 MB.")).toBeVisible();
+  await expect(page.getByText("For phones: taller than wide. MP4, WebM or MOV, up to 30 MB.")).toBeVisible();
   await expect(pickerButton(page)).toHaveText("Choose video");
   await expect(pickerButton(page)).toHaveCSS("background-color", rgb(token("--pay")));
   // The blue button opens a picker, not a form post, so Enter does not press it.
@@ -594,7 +595,9 @@ test("the wide question follows, and after it the age question", async ({ page }
   await expect(frame).toContainText("Wider than tall");
   const shape = await boxOf(frame);
   expect(shape.width).toBeGreaterThan(shape.height);
-  await expect(page.getByText("For computers: wider than tall. MP4 or WebM, up to 30 MB.")).toBeVisible();
+  await expect(
+    page.getByText("For computers: wider than tall. MP4, WebM or MOV, up to 30 MB."),
+  ).toBeVisible();
   await showTheOwner(page, testInfo, "Question 6, the wide video");
 
   await chooseVideo(page, videoFile());
@@ -636,8 +639,9 @@ test("the record-your-screen page has steps for a phone and for a computer, and 
   for (const kind of ["iPhone or iPad", "Android phone", "Windows computer", "Mac"]) {
     await expect(page.getByRole("heading", { level: 3, name: kind })).toBeVisible();
   }
-  // A Mac saves a kind of video Ruken does not take, and the page says so before she records one.
-  await expect(page.getByText("Macs save a .mov file, which Ruken can't take yet.")).toBeVisible();
+  // A Mac saves a .mov file, which Ruken takes (Owner, 2026-11-15: "Yes, take .mov"), so a Mac maker records and sends it.
+  await expect(page.getByText("Press Shift, Command and 5 together.")).toBeVisible();
+  await expect(page.getByText("Your video is on your Desktop. Ruken takes this kind of file.")).toBeVisible();
   // The steps use the words the phone and Ruken show: an iPhone in the US says Control Center, and the button is pressed.
   await expect(page.getByText("Open Settings, then Control Center. Add Screen Recording.")).toBeVisible();
   await expect(page.getByText("Then come back to Ruken and press Choose video.")).toBeVisible();
@@ -666,12 +670,14 @@ test("a video of the wrong kind or size is refused in plain words before anythin
     await route.continue();
   });
 
-  await chooseVideo(page, quickTimeFile());
+  await chooseVideo(page, aviFile());
   await expect(
-    page.getByText("That's a .mov file. Ruken takes MP4 or WebM videos. Save it as MP4 and choose it again."),
+    page.getByText(
+      "That's a .avi file. Ruken takes MP4, WebM or MOV videos. Save it as MP4 and choose it again.",
+    ),
   ).toBeVisible();
   // The maker can see which file was refused.
-  await expect(page.getByText("holiday.mov · 1 KB")).toBeVisible();
+  await expect(page.getByText("holiday.avi · 1 KB")).toBeVisible();
 
   await chooseVideo(page, await tooBigVideo(testInfo.outputPath("too-big.mp4")));
   await expect(
@@ -685,7 +691,18 @@ test("a video of the wrong kind or size is refused in plain words before anythin
   // A good video chosen next is added, and the refusal goes.
   await chooseVideo(page, videoFile());
   await expect(page.locator('[data-frame="upright"] video')).toBeAttached();
-  await expect(page.getByText(/Ruken takes MP4 or WebM|Videos can be up to/)).toHaveCount(0);
+  await expect(page.getByText(/Ruken takes MP4, WebM or MOV|Videos can be up to/)).toHaveCount(0);
+});
+
+// A Mac's screen recording is a .mov (Owner, 2026-11-15: "Yes, take .mov"), so it is added like any other video.
+test("a QuickTime video, as a Mac saves a screen recording, is added", async ({ page }) => {
+  await startAtVideo(page, "upright");
+
+  await chooseVideo(page, quickTimeFile());
+
+  await expect(page.locator('[data-frame="upright"] video')).toBeAttached();
+  await expect(nextButton(page)).toBeVisible();
+  await expect(page.getByText(/Ruken takes MP4, WebM or MOV/)).toHaveCount(0);
 });
 
 test("a web page named as a video is refused by the server, under the hint", async ({ page }, testInfo) => {

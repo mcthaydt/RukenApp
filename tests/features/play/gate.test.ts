@@ -23,6 +23,7 @@ const RAN_OUT = "This game's link has run out. Go back and press Play again.";
 const PAGE = "<html>page</html>";
 const MAIN = "console.log(1);";
 const CLIP_KEY = "clips/aaaaaaaaaa/upright-0123456789abcdef.mp4";
+const MOV_CLIP_KEY = "clips/aaaaaaaaaa/wide-0123456789abcdef.mov";
 const PHOTO_KEY = "photos/0123456789abcdef.png";
 // The first bytes of a PNG: the gate takes the type from the key's name and never looks inside.
 const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -40,6 +41,7 @@ beforeEach(async () => {
   await put("files/aaaaaaaaaa/p1/LICENSE", "no extension");
   await put("files/aaaaaaaaaa/p1/big.js.br", new Uint8Array([1, 2, 3, 4]));
   await put(CLIP_KEY, new Uint8Array([0, 0, 0, 32, 0x66, 0x74, 0x79, 0x70]));
+  await put(MOV_CLIP_KEY, new Uint8Array([0, 0, 0, 20, 0x66, 0x74, 0x79, 0x70, 0x71, 0x74, 0x20, 0x20]));
   await put(PHOTO_KEY, PNG_BYTES);
   files.reads.length = 0;
 });
@@ -244,6 +246,13 @@ describe("a game's clips", () => {
     expect(response.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
     expect(response.headers.get("accept-ranges")).toBe("bytes");
+  });
+
+  // A Mac saves its screen recordings as QuickTime, and the Owner said Ruken takes them.
+  it("sends a QuickTime clip as video/quicktime", async () => {
+    const response = await get(`/${MOV_CLIP_KEY}`, { host: "media.games.test" });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("video/quicktime");
   });
 
   it("answers a byte range of a clip, so a video can be skipped through", async () => {

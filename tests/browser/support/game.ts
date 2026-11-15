@@ -217,9 +217,17 @@ export function pageNamedAsVideo(): UploadFile {
   };
 }
 
-/** A QuickTime file: a video, but not one Ruken takes. */
+/** A QuickTime file as a Mac saves a screen recording: four length bytes, `ftyp`, the brand "qt  ", then zeros. */
 export function quickTimeFile(): UploadFile {
-  return { name: "holiday.mov", mimeType: "video/quicktime", buffer: Buffer.alloc(64) };
+  const buffer = Buffer.alloc(64);
+  buffer.writeUInt32BE(64, 0);
+  buffer.write("ftypqt  ", 4, "ascii");
+  return { name: "Screen Recording.mov", mimeType: "video/quicktime", buffer };
+}
+
+/** A video of a kind Ruken does not take. */
+export function aviFile(): UploadFile {
+  return { name: "holiday.avi", mimeType: "video/x-msvideo", buffer: Buffer.alloc(64) };
 }
 
 /**

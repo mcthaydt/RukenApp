@@ -19,6 +19,7 @@ describe("servedTypeFor", () => {
     ["game.pck", "application/octet-stream"],
     ["music.ogg", "audio/ogg"],
     ["intro.mp4", "video/mp4"],
+    ["recording.mov", "video/quicktime"],
     ["font.woff2", "font/woff2"],
     ["IMAGE.PNG", "image/png"],
   ])("serves %s as %s", (path, contentType) => {
@@ -76,7 +77,7 @@ describe("servedTypeFor", () => {
         ],
         ...["png", "jpg", "jpeg", "webp", "avif", "gif", "ico", "svg", "ktx2", "glb", "gltf"],
         ...["bin", "basis", "data", "pck", "unityweb"],
-        ...["mp3", "ogg", "oga", "opus", "wav", "m4a", "aac", "flac", "mp4", "webm"],
+        ...["mp3", "ogg", "oga", "opus", "wav", "m4a", "aac", "flac", "mp4", "webm", "mov"],
         ...["woff2", "woff", "ttf", "otf"],
       ].sort(),
     );

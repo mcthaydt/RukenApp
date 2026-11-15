@@ -94,6 +94,19 @@ describe("saveClip", () => {
     expect(files.keys()).toEqual([...before, clip.key]);
   });
 
+  // A Mac's screen recording is QuickTime (Owner, 2026-11-15: "Yes, take .mov").
+  it("stores a QuickTime clip under a .mov key", async () => {
+    const game = await newGame();
+    const mov = new Uint8Array(32);
+    mov.set([0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x71, 0x74, 0x20, 0x20]);
+
+    await service.saveClip(game.id, "upright", { contentType: "video/quicktime", bytes: mov });
+
+    const clip = await db().gameClip.findFirstOrThrow({ where: { gameId: game.id, shape: "upright" } });
+    expect(clip.key).toMatch(new RegExp(`^clips/${game.publicId}/upright-[0-9a-f]{16}\\.mov$`));
+    expect(clip).toMatchObject({ contentType: "video/quicktime", bytes: 32 });
+  });
+
   it("a new clip takes the old one's place and the old file goes", async () => {
     const game = await newGame();
     await service.saveClip(game.id, "wide", { contentType: "video/mp4", bytes: mp4Bytes() });
@@ -144,7 +157,7 @@ describe("saveClip", () => {
 
     await expect(
       service.saveClip(game.id, "upright", { contentType: "image/png", bytes: mp4Bytes() }),
-    ).rejects.toMatchObject({ code: "INVALID", message: "Ruken takes MP4 or WebM videos." });
+    ).rejects.toMatchObject({ code: "INVALID", message: "Ruken takes MP4, WebM or MOV videos." });
   });
 
   it("says a game is not there when there is none, and stores nothing", async () => {
