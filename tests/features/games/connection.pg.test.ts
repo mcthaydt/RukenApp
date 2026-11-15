@@ -190,15 +190,18 @@ describe("repositoriesFor", () => {
 describe("a maker can only use what GitHub listed for them", () => {
   const NOT_VISIBLE = "Ruken can't see that repository. Choose it on GitHub, then try again.";
 
-  /** What a maker's form says, for one repository. */
-  const formFor = (makerUserId: string, fullName: string) => ({
-    makerUserId,
-    name: "Tower Run",
-    oneLine: "Climb fifty floors.",
-    playsOn: "phone_and_computer" as const,
-    repo: { fullName, branch: null, folder: "" },
-    connectHosts: [],
-  });
+  /**
+   * A maker starts a game and answers where its files are, as the questions do one at a time. Rejects with the
+   * refusal of the files answer, so a test reads it like the old single form's refusal.
+   */
+  const answerFiles = async (makerUserId: string, fullName: string) => {
+    const started = await service.startGame({ makerUserId, name: "Tower Run" });
+    await service.saveAnswer(started.id, makerUserId, {
+      question: "files",
+      repo: { fullName, branch: null, folder: "" },
+    });
+    return started;
+  };
 
   /** A draft game on a repository, as if it had been made before the maker's list changed. */
   async function gameOn(makerUserId: string, fullName: string, publicId: string) {
@@ -211,6 +214,7 @@ describe("a maker can only use what GitHub listed for them", () => {
         oneLine: "A game about a thing.",
         playsOn: "phone_and_computer",
         repoFullName: fullName,
+        ageRating: "age_12",
       },
     });
   }
@@ -220,7 +224,7 @@ describe("a maker can only use what GitHub listed for them", () => {
     await service.rememberConnection(maker, [installation(11n, "acme", [repo("acme/game")])]);
     holding.set("acme/game", 11n);
 
-    const made = await service.createGame(formFor(maker, "acme/game"));
+    const made = await answerFiles(maker, "acme/game");
 
     expect(made.slug).toBe("tower-run");
   });
@@ -243,10 +247,9 @@ describe("a maker can only use what GitHub listed for them", () => {
     await service.rememberConnection(maker, [installation(11n, "acme", [repo("acme/game")])]);
     // GitHub's app can read `acme/private-other` through the maker's own installation, but never listed it for them.
     holding.set("acme/private-other", 11n);
-    const before = await db().game.count();
     const game = await gameOn(maker, "acme/private-other", "bbbbbbbbbb");
 
-    await expect(service.createGame(formFor(maker, "acme/private-other"))).rejects.toMatchObject({
+    await expect(answerFiles(maker, "acme/private-other")).rejects.toMatchObject({
       name: "GameError",
       code: "NOT_CONNECTED",
       message: NOT_VISIBLE,
@@ -256,7 +259,8 @@ describe("a maker can only use what GitHub listed for them", () => {
       message: NOT_VISIBLE,
     });
 
-    expect(await db().game.count()).toBe(before + 1); // only the one made by hand above
+    // Only the one made by hand holds the repository: the refused answer kept nothing.
+    expect(await db().game.count({ where: { repoFullName: "acme/private-other" } })).toBe(1);
     expect(seen.tarballs).toBe(0);
     expect(seen.commits).toBe(0);
   });
@@ -269,7 +273,7 @@ describe("a maker can only use what GitHub listed for them", () => {
     holding.set("bob/secret", 21n);
     const game = await gameOn(maker, "bob/secret", "cccccccccc");
 
-    await expect(service.createGame(formFor(maker, "bob/secret"))).rejects.toMatchObject({
+    await expect(answerFiles(maker, "bob/secret")).rejects.toMatchObject({
       code: "NOT_CONNECTED",
       message: NOT_VISIBLE,
     });
@@ -287,7 +291,7 @@ describe("a maker can only use what GitHub listed for them", () => {
     holding.set("acme/game", 12n);
     const game = await gameOn(maker, "acme/game", "dddddddddd");
 
-    await expect(service.createGame(formFor(maker, "acme/game"))).rejects.toMatchObject({
+    await expect(answerFiles(maker, "acme/game")).rejects.toMatchObject({
       code: "NOT_CONNECTED",
     });
     await expect(service.pullLatest(game.id)).rejects.toMatchObject({ code: "NOT_CONNECTED" });
@@ -300,7 +304,7 @@ describe("a maker can only use what GitHub listed for them", () => {
     // GitHub answers null: the app was uninstalled since the list was stored.
     const game = await gameOn(maker, "acme/game", "eeeeeeeeee");
 
-    await expect(service.createGame(formFor(maker, "acme/game"))).rejects.toMatchObject({
+    await expect(answerFiles(maker, "acme/game")).rejects.toMatchObject({
       code: "NOT_CONNECTED",
     });
     await expect(service.pullLatest(game.id)).rejects.toMatchObject({ code: "NOT_CONNECTED" });

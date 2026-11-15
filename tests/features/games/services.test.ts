@@ -35,6 +35,11 @@ describe("createGamesServices", () => {
     expect(build().address("g-aaaaaaaaaa")).toBe("https://g-aaaaaaaaaa.games.test");
   });
 
+  // A clip is played from the media address, so a maker's page can show the videos they added.
+  it("gives a clip's address: the media address, a slash, then the key in the bucket", () => {
+    expect(build().media("clips/x/wide-1.mp4")).toBe("https://media.games.test/clips/x/wide-1.mp4");
+  });
+
   it.each([
     "GITHUB_APP_ID",
     "GITHUB_APP_PRIVATE_KEY",

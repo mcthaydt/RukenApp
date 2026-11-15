@@ -1,4 +1,5 @@
 import type { GameState } from "../../lib/server/db.ts";
+import type { QuestionId } from "./questions.ts";
 
 // A game's state in the maker's plain words (design 5.4): short sentences, and when something went wrong, what to fix.
 // Every line a maker reads about where a game stands is made here, so the words are tested in one place.
@@ -42,25 +43,24 @@ export function stateWords(game: StateInput): string {
 }
 
 /**
- * The line under a game's name in the maker's list: where it stands and what to do next. Staff's whole reason is
- * not repeated here; the game's own page has it.
+ * The line under a game's name in the maker's list: where it stands and what to do next. Staff's reasons are not
+ * repeated here; the game's own page has them.
  */
-export function listWords(game: StateInput & { filesProblem: boolean; bothVideos: boolean }): string {
-  const { headline, reason } = stateParts(game);
-  switch (game.state) {
-    case "draft":
-      if (game.filesProblem) return `${headline}. Fix your game's files.`;
-      return game.bothVideos ? `${headline}. Send it for review.` : `${headline}. Add your videos.`;
-    case "sent_back":
-      return `${headline}. See what to fix.`;
-    case "live":
-      return reason === null ? headline : `${headline}. See what to fix.`;
-    case "taken_down":
-      return `${headline}. See why.`;
-    case "waiting":
-    case "taken_off":
-      return headline;
-  }
+export function listWords(game: {
+  state: GameState;
+  hasPending: boolean;
+  toFix: number;
+  firstUnanswered: QuestionId | null;
+  questionNumber: number | null;
+}): string {
+  // Not built yet: the stub answers the state's own name, so the pages that list games still load and only the tests
+  // that name the words fail.
+  return game.state;
+}
+
+/** How many things to fix, as the Sent back screen says it; null when nothing is left. */
+export function toFixWords(count: number): string | null {
+  throw new Error(`not built yet: toFixWords ${String(count)}`);
 }
 
 /**

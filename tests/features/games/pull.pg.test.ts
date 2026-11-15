@@ -85,6 +85,8 @@ async function newGame(options: { repoFolder?: string; connectHosts?: string[] }
       oneLine: "A game about a thing.",
       playsOn: "phone_and_computer",
       repoFullName: "acme/game",
+      // A game that goes live must have been asked who it is for.
+      ageRating: "age_12",
       repoFolder: options.repoFolder ?? "",
       connectHosts: options.connectHosts ?? [],
     },

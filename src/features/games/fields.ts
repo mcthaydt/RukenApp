@@ -48,7 +48,7 @@ export function checkFolder(folder: string): void {
 }
 
 /** The words for the name, or undefined when it is fine. */
-function nameProblem(name: string): string | undefined {
+export function nameProblem(name: string): string | undefined {
   if (name === "") return "A game needs a name.";
   if (name.length > NAME_MAX) return "A game's name can be up to 60 characters.";
   if (slugOf(name) === null) return "Pick a name with at least three letters or numbers.";
@@ -56,10 +56,46 @@ function nameProblem(name: string): string | undefined {
 }
 
 /** The words for the one line, or undefined when it is fine. */
-function oneLineProblem(oneLine: string): string | undefined {
+export function oneLineProblem(oneLine: string): string | undefined {
   if (oneLine === "") return "A game needs one line about it.";
   if (oneLine.length > ONE_LINE_MAX) return "The one line can be up to 100 characters.";
   return undefined;
+}
+
+/** The words for a repository, or undefined when it is fine. */
+export function repoProblem(fullName: string): string | undefined {
+  return problemOf(() => {
+    checkRepo(fullName);
+  });
+}
+
+/** The words for a branch, or undefined when it is fine. */
+export function branchProblem(branch: string): string | undefined {
+  return problemOf(() => {
+    checkBranch(branch);
+  });
+}
+
+/** The words for a folder, or undefined when it is fine. */
+export function folderProblem(folder: string): string | undefined {
+  return problemOf(() => {
+    checkFolder(folder);
+  });
+}
+
+/** The words for "where does it play", or undefined when a place was chosen. */
+export function playsOnProblem(playsOn: string | null): string | undefined {
+  throw new Error(`not built yet: playsOnProblem ${String(playsOn)}`);
+}
+
+/** The words for "who is it for", or undefined when a rating was chosen. */
+export function ageProblem(ageRating: string | null): string | undefined {
+  throw new Error(`not built yet: ageProblem ${String(ageRating)}`);
+}
+
+/** The words for "does it have any of these", or undefined when at least one answer was chosen. */
+export function marksProblem(marks: readonly string[]): string | undefined {
+  throw new Error(`not built yet: marksProblem ${marks.join(",")}`);
 }
 
 /**
@@ -71,26 +107,9 @@ export function gameFieldProblems(input: GameFieldsInput): GameFieldProblems {
   const checked: [GameField, string | undefined][] = [
     ["name", nameProblem(input.name.trim())],
     ["oneLine", oneLineProblem(input.oneLine.trim())],
-    [
-      "repo",
-      problemOf(() => {
-        checkRepo(input.repo.fullName);
-      }),
-    ],
-    [
-      "branch",
-      branch === null
-        ? undefined
-        : problemOf(() => {
-            checkBranch(branch);
-          }),
-    ],
-    [
-      "folder",
-      problemOf(() => {
-        checkFolder(input.repo.folder);
-      }),
-    ],
+    ["repo", repoProblem(input.repo.fullName)],
+    ["branch", branch === null ? undefined : branchProblem(branch)],
+    ["folder", folderProblem(input.repo.folder)],
   ];
   const problems: GameFieldProblems = {};
   for (const [field, words] of checked) {

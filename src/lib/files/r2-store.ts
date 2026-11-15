@@ -30,5 +30,8 @@ export function r2FileStore(bucket: R2Bucket): FileStore {
     async delete(key) {
       await bucket.delete(key);
     },
+    deleteAll(prefix) {
+      return Promise.reject(new Error(`not built yet: deleteAll ${prefix}`));
+    },
   };
 }

@@ -1,6 +1,14 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { FileStore } from "../../lib/files/store.ts";
-import type { ClipShape, GamePlaysOn, GameState, PrismaClient } from "../../lib/server/db.ts";
+import type {
+  AgeRating,
+  ClipShape,
+  ContentMark,
+  GamePart,
+  GamePlaysOn,
+  GameState,
+  PrismaClient,
+} from "../../lib/server/db.ts";
 import { clipKeyFor, clipProblem, type ClipContentType } from "./clips.ts";
 import { GameError } from "./game-error.ts";
 import type { Connection } from "./github-connect.ts";
@@ -8,6 +16,7 @@ import { gameFieldProblems, type GameField } from "./fields.ts";
 import { NOT_VISIBLE, type GitHub } from "./github.ts";
 import { newPublicId, slugOf } from "./ids.ts";
 import { pullGame, type Pull } from "./pull.ts";
+import { counterOf, firstUnanswered, type Answers } from "./questions.ts";
 import { listWords, stateParts, stateWords } from "./review.ts";
 
 // What a game goes through, from its first clip to going live. It is built from what it needs (the database, the
@@ -48,11 +57,40 @@ export interface CreateGameInput {
   connectHosts: string[];
 }
 
-/** What the maker's list shows for a game: its name and where it stands, in words. */
+/**
+ * One answer of a game, as a screen hands it over. Each question keeps only its own answer, so a maker can stop after
+ * any one and a game that is half answered is still a game.
+ */
+export type Answer =
+  | { question: "name"; name: string }
+  | { question: "line"; oneLine: string }
+  | { question: "files"; repo: { fullName: string; branch: string | null; folder: string } }
+  | { question: "plays-on"; playsOn: GamePlaysOn }
+  | { question: "age"; ageRating: AgeRating }
+  | { question: "marks"; contentMarks: ContentMark[] }
+  | { question: "websites"; connectHosts: string[] };
+
+/** What the maker's list shows for a game: its name, the key of its wide video (for its still) and where it stands. */
 export interface MakerGameRow {
   slug: string;
   name: string;
+  wideClipKey: string | null;
   words: string;
+}
+
+/** A video a game holds, as the screens need it: where it is in the bucket and how big it was when saved. */
+export interface ClipFile {
+  key: string;
+  bytes: number;
+}
+
+/** A part staff sent back that the maker has not changed yet, in the words the maker reads. */
+export interface PartToFix {
+  part: GamePart;
+  title: string;
+  words: string;
+  /** Staff's own line, when they wrote one beside a reason from the list. */
+  note: string | null;
 }
 
 /** What a game's page in the maker's area shows. Sizes are measured from the pull; nobody types them. */
@@ -69,6 +107,13 @@ export interface MakerGame {
   reason: string | null;
   /** True while an update waits for a person's yes. */
   hasPending: boolean;
+  /** Null until the maker answers it. */
+  oneLine: string | null;
+  playsOn: GamePlaysOn | null;
+  ageRating: AgeRating | null;
+  contentMarks: ContentMark[];
+  /** True once staff have accepted the game at least once: its address never changes after that. */
+  everLive: boolean;
   repoFullName: string;
   repoBranch: string | null;
   repoFolder: string;
@@ -76,8 +121,10 @@ export interface MakerGame {
   /** The words of the last pull's refusal, or null. */
   pullProblem: string | null;
   newestPull: { id: string; fileCount: number; totalBytes: number } | null;
-  /** The size of each video that was added, measured when it was saved, or null when it was not added. */
-  clips: { upright: number | null; wide: number | null };
+  /** Each video that was added, with its size measured when it was saved, or null when it was not added. */
+  clips: { upright: ClipFile | null; wide: ClipFile | null };
+  /** What staff sent back that is still to fix, from their newest sent-back review. */
+  toFix: PartToFix[];
 }
 
 /** What staff see of a game waiting for review: the maker's view, and the files that wait. */
@@ -86,8 +133,6 @@ export interface ReviewGame extends MakerGame {
   clipKeys: { upright: string | null; wide: string | null };
 }
 
-/** The most a reason for sending a game back may say. */
-const REASON_MAX = 500;
 /** The page's address may end in `-2` to `-9`, so a name that makes the same address nine times over is refused. */
 const MAX_SLUG_NUMBER = 9;
 /** 38 characters and `-9` is 40, the most the database takes for an address. */
@@ -301,29 +346,31 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /**
-   * Staff's no, with what the maker should fix (1 to 500 characters). The waiting files are dropped. A game that was not
-   * live becomes `sent_back`; a live game stays live on its old files and keeps the reason to show.
+   * Staff's no, part by part: each part with a reason from that part's list (spec 11.2). Not built yet.
    */
-  async function sendBack(gameId: string, staffUserId: string, reason: string): Promise<void> {
-    const why = reason.trim();
-    if (why === "" || why.length > REASON_MAX)
-      throw new GameError("INVALID", "Say what the maker should fix.");
-    await deps.db.$transaction(async (tx) => {
-      const { state, pullId } = await waitingOf(tx, gameId);
-      const decidedAt = new Date(deps.clock.epochMs());
-      await tx.game.update({
-        where: { id: gameId },
-        data: {
-          state: state === "live" ? "live" : "sent_back",
-          pendingPullId: null,
-          pendingSince: null,
-          stateReason: why,
-        },
-      });
-      await tx.gameReview.create({
-        data: { gameId, pullId, staffUserId, decision: "sent_back", reason: why, decidedAt },
-      });
-    });
+  function sendBack(
+    gameId: string,
+    staffUserId: string,
+    parts: { part: GamePart; reason: string; note?: string }[],
+  ): Promise<void> {
+    return Promise.reject(
+      new Error(`not built yet: sendBack ${gameId} ${staffUserId} ${String(parts.length)}`),
+    );
+  }
+
+  /** Starts a game as a draft with only its name, id and address. Not built yet. */
+  function startGame(input: { makerUserId: string; name: string }): Promise<{ id: string; slug: string }> {
+    return Promise.reject(new Error(`not built yet: startGame ${input.name}`));
+  }
+
+  /** Keeps one answer, and answers the game's address, which a new name may have changed. Not built yet. */
+  function saveAnswer(gameId: string, makerUserId: string, answer: Answer): Promise<{ slug: string }> {
+    return Promise.reject(new Error(`not built yet: saveAnswer ${gameId} ${makerUserId} ${answer.question}`));
+  }
+
+  /** Throws a draft or sent-back game away, with its files and videos. Not built yet. */
+  function throwAway(gameId: string, makerUserId: string): Promise<{ name: string }> {
+    return Promise.reject(new Error(`not built yet: throwAway ${gameId} ${makerUserId}`));
   }
 
   /** Games with files waiting for a person's yes, the oldest first. */
@@ -356,9 +403,19 @@ export function createGamesService(deps: GamesServiceDeps) {
     connectHosts: true,
     pullProblem: true,
     pendingPullId: true,
+    oneLine: true,
+    playsOn: true,
+    ageRating: true,
+    contentMarks: true,
     pulls: { orderBy: NEWEST_FIRST, take: 1, select: { id: true, fileCount: true, totalBytes: true } },
     clips: { select: { shape: true, key: true, bytes: true } },
   } as const;
+
+  /** The clip of one shape, with its size, or null when there is none. */
+  function clipFile(clips: { shape: ClipShape; key: string; bytes: number }[], shape: ClipShape) {
+    const found = clips.find((clip) => clip.shape === shape);
+    return found === undefined ? null : { key: found.key, bytes: found.bytes };
+  }
 
   /** A game row as the maker sees it. */
   function makerView(row: {
@@ -374,6 +431,10 @@ export function createGamesService(deps: GamesServiceDeps) {
     connectHosts: string[];
     pullProblem: string | null;
     pendingPullId: string | null;
+    oneLine: string;
+    playsOn: GamePlaysOn;
+    ageRating: AgeRating | null;
+    contentMarks: ContentMark[];
     pulls: { id: string; fileCount: number; totalBytes: bigint }[];
     clips: { shape: ClipShape; key: string; bytes: number }[];
   }): MakerGame {
@@ -389,6 +450,12 @@ export function createGamesService(deps: GamesServiceDeps) {
       headline: stateParts(state).headline,
       reason: stateParts(state).reason,
       hasPending: state.hasPending,
+      oneLine: row.oneLine,
+      playsOn: row.playsOn,
+      ageRating: row.ageRating,
+      contentMarks: row.contentMarks,
+      // Not built yet: the stubs keep the red run's failures to the tests that name them.
+      everLive: false,
       repoFullName: row.repoFullName,
       repoBranch: row.repoBranch,
       repoFolder: row.repoFolder,
@@ -399,9 +466,10 @@ export function createGamesService(deps: GamesServiceDeps) {
           ? null
           : { id: newest.id, fileCount: newest.fileCount, totalBytes: Number(newest.totalBytes) },
       clips: {
-        upright: row.clips.find((clip) => clip.shape === "upright")?.bytes ?? null,
-        wide: row.clips.find((clip) => clip.shape === "wide")?.bytes ?? null,
+        upright: clipFile(row.clips, "upright"),
+        wide: clipFile(row.clips, "wide"),
       },
+      toFix: [],
     };
   }
 
@@ -417,20 +485,39 @@ export function createGamesService(deps: GamesServiceDeps) {
         stateReason: true,
         pendingPullId: true,
         pullProblem: true,
-        clips: { select: { shape: true } },
+        oneLine: true,
+        playsOn: true,
+        ageRating: true,
+        contentMarks: true,
+        toFix: true,
+        clips: { select: { shape: true, key: true } },
+        _count: { select: { pulls: true } },
       },
     });
-    return rows.map((row) => ({
-      slug: row.slug,
-      name: row.name,
-      words: listWords({
-        state: row.state,
-        stateReason: row.stateReason,
-        hasPending: row.pendingPullId !== null,
-        filesProblem: row.pullProblem !== null,
-        bothVideos: row.clips.length === 2,
-      }),
-    }));
+    return rows.map((row) => {
+      const answers: Answers = {
+        oneLine: row.oneLine,
+        hasFiles: row._count.pulls > 0 && row.pullProblem === null,
+        playsOn: row.playsOn,
+        upright: row.clips.some((clip) => clip.shape === "upright"),
+        wide: row.clips.some((clip) => clip.shape === "wide"),
+        ageRating: row.ageRating,
+        contentMarks: row.contentMarks,
+      };
+      const next = firstUnanswered(answers);
+      return {
+        slug: row.slug,
+        name: row.name,
+        wideClipKey: row.clips.find((clip) => clip.shape === "wide")?.key ?? null,
+        words: listWords({
+          state: row.state,
+          hasPending: row.pendingPullId !== null,
+          toFix: row.toFix.length,
+          firstUnanswered: next,
+          questionNumber: next === null ? null : counterOf(next, answers).n,
+        }),
+      };
+    });
   }
 
   /** One of a maker's games for its page. Someone else's game, or none, is null. */
@@ -555,6 +642,9 @@ export function createGamesService(deps: GamesServiceDeps) {
   return {
     saveClip,
     createGame,
+    startGame,
+    saveAnswer,
+    throwAway,
     pullLatest,
     sendForReview,
     accept,

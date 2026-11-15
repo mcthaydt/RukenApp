@@ -34,6 +34,8 @@ export interface GamesServices {
   connect: GitHubConnect;
   /** The address a game is played at, from its public id (`g-<id>`). */
   address(name: string): string;
+  /** The address of a clip, from its key in the bucket: the media address, a slash, the key. */
+  media(key: string): string;
 }
 
 /** The only place GitHub's addresses may be changed: a stand-in server on this machine, for the journeys. */
@@ -90,7 +92,12 @@ export function createGamesServices(
     sealState: (userId) => sealState(userId, parts.clock.epochMs(), stateSecret),
     openState: (value, userId) => openState(value, userId, parts.clock.epochMs(), stateSecret),
   };
-  return { service, connect, address: (name) => gameAddress(pattern, name) };
+  return {
+    service,
+    connect,
+    address: (name) => gameAddress(pattern, name),
+    media: () => "",
+  };
 }
 
 // The bucket is looked up each time it is used, not once: on Cloudflare the binding belongs to the request that is
@@ -100,6 +107,7 @@ const currentFiles: FileStore = {
   get: (key, range) => fileStore().get(key, range),
   put: (key, bytes) => fileStore().put(key, bytes),
   delete: (key) => fileStore().delete(key),
+  deleteAll: (prefix) => fileStore().deleteAll(prefix),
 };
 
 let shared: GamesServices | undefined;

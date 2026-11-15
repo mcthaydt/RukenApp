@@ -5,6 +5,7 @@ import {
   nextStepWords,
   stateParts,
   stateWords,
+  toFixWords,
 } from "../../../src/features/games/review.ts";
 
 // A game's state in the maker's plain words (design 5.4): one case per line.
@@ -102,23 +103,24 @@ describe("stateParts", () => {
 
 // The second line of each game in Your games: where it stands and what to do, never staff's whole reason (review F11).
 describe("listWords", () => {
-  const base = { stateReason: null, hasPending: false, filesProblem: false, bothVideos: false };
+  const base = { hasPending: false, toFix: 0, firstUnanswered: null, questionNumber: null } as const;
 
-  it("tells a draft its next step", () => {
-    expect(listWords({ ...base, state: "draft" })).toBe("Not sent yet. Add your videos.");
-    expect(listWords({ ...base, state: "draft", filesProblem: true })).toBe(
-      "Not sent yet. Fix your game's files.",
+  it("tells a draft where to go on from", () => {
+    expect(listWords({ ...base, state: "draft", firstUnanswered: "files", questionNumber: 3 })).toBe(
+      "Not finished. Go on from question 3.",
     );
-    expect(listWords({ ...base, state: "draft", bothVideos: true })).toBe(
-      "Not sent yet. Send it for review.",
+    expect(listWords({ ...base, state: "draft", firstUnanswered: "line", questionNumber: 2 })).toBe(
+      "Not finished. Go on from question 2.",
     );
   });
 
-  it("points a game that was sent back at its page, without the reason", () => {
-    expect(listWords({ ...base, state: "sent_back", stateReason: "A long reason from staff." })).toBe(
-      "Sent back. See what to fix.",
-    );
-    expect(listWords({ ...base, state: "live", stateReason: "A long reason from staff." })).toBe(
+  it("tells a draft with every answer in that it is ready", () => {
+    expect(listWords({ ...base, state: "draft" })).toBe("Ready to send.");
+  });
+
+  it("points a game that was sent back at its page, without the reasons", () => {
+    expect(listWords({ ...base, state: "sent_back", toFix: 2 })).toBe("Sent back. See what to fix.");
+    expect(listWords({ ...base, state: "live", toFix: 1 })).toBe(
       "Live. Your update was sent back. See what to fix.",
     );
   });
@@ -130,9 +132,20 @@ describe("listWords", () => {
       "Live. Your update is waiting for review",
     );
     expect(listWords({ ...base, state: "taken_off" })).toBe("Off Ruken. You took it off.");
-    expect(listWords({ ...base, state: "taken_down", stateReason: "It broke a rule." })).toBe(
-      "Taken down. See why.",
-    );
+    expect(listWords({ ...base, state: "taken_down" })).toBe("Taken down. See why.");
+  });
+});
+
+// The line over the things to fix on the Sent back screen.
+describe("toFixWords", () => {
+  it("says one thing, and counts more", () => {
+    expect(toFixWords(1)).toBe("One thing to fix. Then send it again.");
+    expect(toFixWords(2)).toBe("2 things to fix. Then send it again.");
+    expect(toFixWords(8)).toBe("8 things to fix. Then send it again.");
+  });
+
+  it("says nothing when nothing is left", () => {
+    expect(toFixWords(0)).toBeNull();
   });
 });
 

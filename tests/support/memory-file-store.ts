@@ -46,6 +46,10 @@ export class MemoryFileStore implements FileStore {
     return Promise.resolve();
   }
 
+  deleteAll(prefix: string): Promise<number> {
+    return Promise.reject(new Error(`not built yet: deleteAll ${prefix}`));
+  }
+
   /** Every key held, in the order they were first stored. For assertions only; the real store has no such call. */
   keys(): string[] {
     return [...this.#files.keys()];

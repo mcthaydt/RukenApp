@@ -125,7 +125,7 @@
       shape="upright"
       title="Upright video"
       hint="For phones: taller than wide. MP4 or WebM, up to 30 MB."
-      bytes={game.clips.upright}
+      bytes={game.clips.upright?.bytes ?? null}
       canChange={working}
       live={game.state === "live"}
       quiet={filled !== "upright"}
@@ -136,7 +136,7 @@
       shape="wide"
       title="Wide video"
       hint="For computers: wider than tall. MP4 or WebM, up to 30 MB."
-      bytes={game.clips.wide}
+      bytes={game.clips.wide?.bytes ?? null}
       canChange={working}
       live={game.state === "live"}
       quiet={filled !== "wide"}

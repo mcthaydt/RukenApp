@@ -24,4 +24,9 @@ export interface FileStore {
   put(key: string, bytes: Uint8Array): Promise<void>;
   /** Removes the file. A key with no file is not an error. */
   delete(key: string): Promise<void>;
+  /**
+   * Removes every file whose key starts with `prefix` and answers how many went. The prefix must end in `/`, so
+   * `files/abc/` never also takes `files/abcd/`; one that does not throws.
+   */
+  deleteAll(prefix: string): Promise<number>;
 }
