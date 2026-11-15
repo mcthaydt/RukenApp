@@ -30,6 +30,23 @@ function typedBy(form: FormData, parts: readonly string[], prefix: string): Reco
   return typed;
 }
 
+/** What was ticked and typed before a refusal, so the page can come back as it was left. */
+type Kept = {
+  ticked: string[];
+  ageRating: string;
+  marks: string[];
+  reasons: Record<string, string>;
+  notes: Record<string, string>;
+};
+
+/**
+ * A refusal always has the same shape. Two differently shaped failures would be folded by the compiler into the one
+ * with fewer fields, and the page would lose `kept` from its `form`.
+ */
+function refused(problem: string, kept?: Kept) {
+  return fail(400, { problem, kept });
+}
+
 export const load: PageServerLoad = async ({ locals, params }) => {
   const { userId } = staffOnly(locals.caller);
   const games = gamesServices();
@@ -100,17 +117,14 @@ export const actions = {
     } catch (problem) {
       if (!(problem instanceof GameError)) throw problem;
       // A game that changed is looked at again from the top: what was ticked was ticked for what staff saw before.
-      if (problem.message === GAME_CHANGED_WORDS) return fail(400, { problem: problem.message });
+      if (problem.message === GAME_CHANGED_WORDS) return refused(problem.message);
       // The page is shown again with what was ticked and typed kept, so nothing has to be done twice.
-      return fail(400, {
-        problem: problem.message,
-        kept: {
-          ticked,
-          ageRating,
-          marks,
-          reasons: typedBy(form, ticked, "reason"),
-          notes: typedBy(form, ticked, "note"),
-        },
+      return refused(problem.message, {
+        ticked,
+        ageRating,
+        marks,
+        reasons: typedBy(form, ticked, "reason"),
+        notes: typedBy(form, ticked, "note"),
       });
     }
     redirect(303, "/admin/games");
