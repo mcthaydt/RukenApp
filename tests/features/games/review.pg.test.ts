@@ -890,9 +890,13 @@ describe("a game that changed after staff looked (audit S-1)", () => {
 
   it("is accepted once staff look again", async () => {
     const { game, staff } = await waitingGame();
-    await service.saveAnswer(game.id, game.makerUserId, { question: "name", name: "A changed name" });
+    // A new name is a new address, so staff look at the game where it is now.
+    const renamed = await service.saveAnswer(game.id, game.makerUserId, {
+      question: "name",
+      name: "A changed name",
+    });
 
-    await acceptAsSeen(game, staff);
+    await acceptAsSeen({ id: game.id, slug: renamed.slug }, staff);
 
     expect(await stateOf(game.id)).toMatchObject({ state: "live", name: "A changed name" });
   });
