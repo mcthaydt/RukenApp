@@ -3,6 +3,5 @@ export type Copy = "test" | "live";
 
 /** The copy this Worker is, from RUKEN_COPY. */
 export function readCopy(source: Readonly<Record<string, string | undefined>> = process.env): Copy {
-  void source;
-  throw new Error("not built yet");
+  throw new Error(`not built yet (RUKEN_COPY is ${String(source.RUKEN_COPY)})`);
 }
