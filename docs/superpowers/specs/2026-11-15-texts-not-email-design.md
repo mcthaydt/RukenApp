@@ -68,7 +68,7 @@ The Owner's four answers, 2026-11-15, each picked on a question card:
 | A suspension or take-down reason to the maker | email | text, with a link to the reason on Ruken |
 | A split: the invitation, and what changed | email | text, with a link to the split on Ruken |
 | A wishlisted game is out (launch) | email to every wishlister | text to wishlisters who said yes |
-| Help | none in any spec | text Ruken's number; the help chat answers |
+| Help | none in any spec | text Ruken's account number; the help chat answers |
 | Receipts | Stripe's email | Stripe's email (unchanged) |
 | Terms or privacy changed | email | email; a text with the link for accounts that have no email |
 | EU and UK: "you gave up your 14 days" | email | email (the law asks for a lasting copy) |
@@ -122,7 +122,7 @@ Call: the apps spec's three push notifications (new DLC, a beta invite, a renewa
 - **Account texts** (codes, password and sign-in notices, a maker's notices, a split). The line under the phone number at sign-up says they will come. A person gets them because they have an account.
 - **Optional texts** (today, only "a wishlisted game is out"). Sent only to a person who ticked a box that is empty to start with, shown the first time they press Wishlist: "Text me when my wishlisted games are out. About one text. Message and data rates may apply. Reply STOP to stop." The tick, its exact words and its moment are recorded, added and never changed. `/me` has the same switch.
 - Saying yes to optional texts is never needed to join, to pay or to play.
-- **Two numbers, so STOP on one does not silence the other.** Owner, 2026-11-15: "How does stop work here because we're text first, saying stop might make them not see important things". Account texts come from one number ("Ruken account") and optional texts from another ("Ruken news"). STOP sent to the news number ends only the optional texts; codes and account notices keep coming.
+- **Two numbers, so STOP on one does not silence the other.** Owner, 2026-11-15: "How does stop work here because we're text first, saying stop might make them not see important things". Owner, 2026-11-15: "Sign in codes, account messages, and support is 1 number, everything else is another; that works". So sign-in codes, account texts and help share one number ("Ruken account"), and every other text comes from a second ("Ruken news"). STOP sent to the news number ends only the optional texts; codes and account notices keep coming.
 - **STOP.** A person who texts STOP to a number gets no more texts from that number; the phone carriers enforce this, and Ruken never works around it. Ruken hears of it from Twilio and records it, added and never changed.
 - **The one reply to STOP.** It says plainly what stopped and how to undo it, and sells nothing. To the news number: "Ruken: no more news texts. You'll still get texts about your account. Reply START to get news again." To the account number: "Ruken: no more texts from us, so you won't hear about your account or password here. Reply START to turn them back on."
 - **After STOP on the account number.** Only the person can undo it, by texting START; no button on Ruken can. Until they do:
@@ -132,7 +132,7 @@ Call: the apps spec's three push notifications (new DLC, a beta invite, a renewa
   - A fourth notification, "About my account", is offered there and in Settings, off until they turn it on like the apps spec's three. With it on, a waiting notice also arrives as a notification.
   - Legal papers still go by email, as before.
 - **HELP.** Texting HELP gets one fixed reply with Ruken's name, where help is, and how to stop.
-- **Any other text to Ruken's number** goes to the help chat, once its own design is built. Until then it gets the HELP reply.
+- **Any other text to the account number** goes to the help chat, once its own design is built. Until then it gets the HELP reply.
 - **Quiet hours.** Optional texts go out only between 9:00 and 20:00 in the person's own time, read from their device when they said yes. Account texts go when they happen.
 - **Under 18.** Optional texts are not offered to an account under 18.
 - Ruken's public privacy and terms pages say what texts are sent, how often, that rates may apply, how to stop, and that phone numbers are never shared or sold. The carriers check these pages before they approve Ruken's number.
