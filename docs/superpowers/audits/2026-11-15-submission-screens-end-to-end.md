@@ -1,6 +1,6 @@
 # Submission screens: the end-to-end walk (visual review, step 3)
 
-2026-11-15, branch `slice-2/submit` (pull request #63), read at `75b4af0`. This walk only finds. Nothing but this report was changed.
+2026-11-15, branch `slice-2/submit` (pull request #63), read at `75b4af0` and checked again at `59a69eb` (the design-pass fixes), which changes none of the findings. This walk only finds. Nothing but this report was changed.
 
 It walks every journey the maker's submission screens are part of, from first opening Ruken to a game sent for review and then live, with every way it can go wrong: a refused answer, GitHub trouble, sent back, Send it again, a new version while one waits, the agreement and the record-your-screen how-to. It looks for a step with no way on or back, a missing piece, or a next step that would confuse. Looks belong to the design pass (`2026-11-15-submission-screens-design-pass.md`), and nothing here repeats it or the task walk (`2026-11-15-maker-screens-rebuild-task-walk.md`, W1 to W17) or the screen review (F1 to F21).
 
@@ -11,7 +11,7 @@ It walks every journey the maker's submission screens are part of, from first op
 - **Read:** every route under `src/routes/make/`, the two how-tos, `/legal/maker-agreement`, sign-in, sign-up, password reset, `/me`, home and the error page; the games service (`service.ts`, `pull.ts`, `github.ts`, `questions.ts`, `review.ts`, `clips.ts`), the agreement feature and the database checks in `prisma/migrations/20261115110000_one_answer_at_a_time`. Each journey below was followed press by press through the code.
 - **Not run.** No test, lint or typecheck, and the app was not started (the design pass ran it and took the pictures). So every finding is read from the code, and says where it would show. Where a finding depends on what GitHub answers, it says so.
 - **Not walkable on this branch.** Staff's yes and no (branch S) and a game's page for players, `/g/<game>` (branch F), are not built. Sent back and Live are reached only by tests writing the state in. Those parts of the journeys are judged from the maker's side only.
-- The other session's design-pass fixes were being pushed while this ran; anything they change after `75b4af0` was not seen.
+- The design-pass fixes (`59a69eb`) were read for what they change in these journeys: the Live screen's note, the how-to's device links and the video links. None of them touches a finding.
 
 ## The journeys walked
 
