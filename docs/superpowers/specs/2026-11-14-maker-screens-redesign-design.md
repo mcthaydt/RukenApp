@@ -342,7 +342,7 @@ Answered: the agreement's date line, "A" (section 5). The delete button, "delete
 
 ## 8. Left to the plan
 
-- How staff mark which parts of a game failed when they send it back, and why, item by item, so that Sent back can say "Accepted" or "Sent back." with its reason on each row (section 5a, note 6).
+- The full list of reasons for each part a staff member can tick (section 11.2).
 - Where a game's thumbnail comes from (a still from the wide video) and when it is made.
 - How a video plays full size on each kind of device.
 
@@ -422,7 +422,7 @@ Owner, 2026-11-15: "On Ruken, one at a time", to "30. Where does a maker list a 
 
 ## 11. The staff screens
 
-Owner, 2026-11-15, asked "When should we add the admin view for the maker?" and offered the maker's own dashboard (B) or Ruken staff's screens (A): "Well, B, but A is important". The maker's dashboard is section 10. This section is the staff side that every send from it needs, since a game, a beta, an extra and an achievement are each checked by a person before players see them. What staff may do is the main design's 5.5 and the specs of section 10; this says how it looks. Staff screens follow the same look and colours as the maker's (sections 1 and 4); they are used on a computer first, and work on a tablet.
+Owner, 2026-11-15, asked "When should we add the admin view for the maker?" and offered the maker's own dashboard (B) or Ruken staff's screens (A): "Well, B, but A is important". The maker's dashboard is section 10. This section is the staff side that every send from it needs, since a game, a beta, an extra and an achievement are each checked by a person before players see them. What staff may do is the main design's 5.5 and the specs of section 10; this says how it looks. Staff screens follow the same look and colours as the maker's (sections 1 and 4). **Everything staff do works fully on an iPad**, upright and sideways: Owner, 2026-11-15, "Don't make me have to go to my computer for something like this, I should be able to do it on my ipad". No staff step needs a computer, including playing a game to check it, a refund's second person and its code, and taking something down. Sideways, the two halves sit side by side; upright, the game plays at the top and the list of parts is under it, with the Blue button fixed in view. Call: the phone works too, stacked, for a quick look or a report.
 
 ### 11.1 The screens
 
@@ -443,4 +443,4 @@ Owner, 2026-11-15, asked "When should we add the admin view for the maker?" and 
 - **One queue for everything**, so nothing is missed in a second list.
 - **Accept and Send back are one Blue button that changes**: with nothing ticked it accepts; with a tick it sends back. Staff cannot accept something with a part marked wrong.
 - **Take down, suspend and "Keep it hidden" are red**, each with a short screen first, like "Throw Floor Fifty away?". Show it, Keep it and Back are green.
-- **Pending (question 31)**: how staff say what is wrong on each ticked part. Recommended: pick a plain reason from a short list, and add a line of their own if they want.
+- **Sending back, part by part.** Owner, 2026-11-15: "Tick it, pick a reason", to "31. How do staff say what's wrong when they send something back?", whose words were: "Staff tick each part that failed and pick a plain reason from a short list, like \"It's sideways\". They can add a line of their own. The maker sees a red card for each part." Each ticked part opens its own short list of reasons, written for that part (a video: "It's sideways.", "It's not from this game.", "It's too dark to see."; a name or line: "It's rude.", "It's not this game's."; files: "It doesn't start."; an extra: "It doesn't unlock."), plus "Something else", which needs the line of their own. The plan writes the full lists, each reason passing the drunk-grandma test. The maker's red card (section 5b) shows the reason and the staff line under it.
