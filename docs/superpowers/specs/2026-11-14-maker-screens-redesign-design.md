@@ -584,3 +584,39 @@ Two reviews read the board on 2026-11-15: a plain-words review (`/mnt/project-fi
 - Names inside a sentence are in quotes: Keep "The top" hidden…; Add an icon for "Halfway"; For "Best floor", which wins?
 - The beta refusal is "We can't add that person. Only members can test games." everywhere (13.3).
 - Smaller ones: "about 10% more" in the phone and store apps; days end at "midnight, US Central time"; the link on One extra is "How a game uses Ruken"; "Their @name" for the split's box; "@pixelpete (left Ruken)"; "Accepted" on the Store version; "We close it on 10 December. Paid on 15 December."; "We ignore any name you haven't added here."; "A child bought it without asking"; "like Google Authenticator"; a page link asks its kind first, then its words; "Finish later" is the one way to leave a question.
+
+## 15. The visual review and the drunk-grandma walk, folded in
+
+Two more reviews read version 10 on 2026-11-15: a visual review (`/mnt/project-files/maker-screens/2026-11-15-maker-screens-visual-review.md`) and a drunk-grandma walk (`2026-11-15-maker-screens-drunk-grandma-walk.md`, same folder). Every fix is on the board, version 11, which now has 62 screens.
+
+### 15.1 The Owner's two rulings
+
+- **Red means "can't be undone".** Owner, 2026-11-15, on a decision card. Red is only for acts that can't be taken back: paying out ("Yes, pay them"), refunding ("Yes, refund it"), taking a game off Ruken with its refunds ("Take it off"), and deleting (Remove on an achievement). Blue is the main forward action; a second forward action is a quiet blue outline (Add a score, Send a new version, Copy, Add, Earlier and Later, Turn on and Turn off, Make it free, Take off sale, staff's Take it down). Green stays for "nothing changes": Back, Keep, Cancel this change, Stop this run, Keep it hidden, Don't refund. "Not now" is a link on both money screens. A ticked "This is wrong" and its reason are blue, with a tick mark. Red cards for "Sent back" and "Taken down" are unchanged: they say what happened, they are not buttons.
+- **GitHub only, with help.** Owner, 2026-11-15: "GitHub only, with help". Question 3, "Where are your game's files?", keeps Connect GitHub as the only way in, with the link "New to GitHub? Here's how to put your game there", which opens a plain step-by-step page. The missing index.html error reads "We couldn't start your game. Ruken starts your game from a file called index.html. We couldn't find one in that folder." with "Here's how to set up your game's folder" and "Pick another folder". Both are drawn on the board.
+
+### 15.2 How it looks
+
+- **Numbers** are lining everywhere: the heading font's digits come from the text font, so "1" never reads as "I" and the ratings sit level. Money is drawn one way, in the text font, black, at the label's size; no gaps in totals.
+- **A picked choice** is a white card with a blue edge and a round tick; every unpicked card is white too. Pick-several (the 18+ question) has square ticks.
+- **The five ratings** sit in one row on tablets and computers, and as a short list on a phone.
+- **Buttons are pinned to the bottom** on an iPad held upright and on a phone held sideways, as on a phone, so the button never comes before the work.
+- **No card scrolls inside itself**; the page scrolls.
+- **Staff home**: the waiting list sits under "Waiting for you"; the other doors are their own card, "Everything else".
+- **Tap targets**: ticks, Change links, calendar days and every link are at least 44 points.
+- **Smaller**: stand-in pictures are a neutral tile with a picture mark, never a button's colour, and every row in a list has one; the play switch's three parts fill its bar ("Every extra", "No extras", "Full size"); a sideways iPad steps the heading down; question and room screens start at the same left edge; "Finish later" stays top right; Switches show On or Off as a chip; How a game uses Ruken shows each line of code above its Copy; the live game's blurred background has no smudge; Players' tiles read "players", "hours", "wishlists".
+
+### 15.3 The words
+
+- **Extras and achievements need code**, said up front: the first extra question's hint is "Your game has to unlock it. Here's how", the Achievements room's is "Your game unlocks these. Here's how", and Check and send shows the id the game calls, with Copy, before Send.
+- **Videos** (questions 5 and 6, not on this board): each gets the hint "Record your screen while you play for 10 to 30 seconds."
+- **A season pass**: "Bought once. On sale only between two days you pick. Buyers keep it after." (sales spec, Owner "2. A"). Its days: "Both days count, in US Central time."
+- **The price** says "You get about $3.20 of each sale, before sharing." The figure comes from the split function for the picked price, never typed; the plan says how "about" is rounded.
+- **Shares**: with two people, the common splits are cards (50 / 50 to 90 / 10), and "Another split" opens the list.
+- **Waiting for a yes**: "If they don't answer in 14 days, we cancel this change." (14 is an example; the plan picks it). "Change the shares so their part goes to someone" shows only once nothing is waiting.
+- **Saying yes**: the share is one large number, "40%", with "is your share of what it earns." under it.
+- **Taking a game off**: "You and @drummer pay it, 60% and 40%, from what Floor Fifty earns." Open for the plan: what happens if the game hasn't earned enough yet.
+- **Your bank**: "Stripe is the company that sends your money. It asks for your bank and who you are, and may ask for your Social Security number, for tax." Checked against Stripe's own sign-up before the plan.
+- **Branch** has the hint "The GitHub branch with your test version." (censored version on Store version). Beta's button is "Send a new beta".
+- **Taken down for the game's files**: "Fix it in your game on GitHub first. Then send it again."
+- **Smaller**: "Change" everywhere, not "Edit"; no Enter hint beside "Choose picture"; the refund reason is "Charged by mistake", one of the three; taking something down offers "It's pornography"; "Back to your games" and "Back to Floor Fifty" wherever a screen goes back; Your games lists Your page and Your money as rows.
+
