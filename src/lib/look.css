@@ -698,6 +698,8 @@ form > * + button:not(.quiet) {
   background: var(--paper);
   color: var(--ink);
   font: 400 1.5rem / 1.2 var(--font-text);
+  /* Brought into view, the box stops above the bar, never under it. */
+  scroll-margin-bottom: calc(var(--button, 56px) + 3rem);
 }
 
 /* A box of several lines (the websites) is a slab of the same paper that grows with its lines, never less than a one-line
