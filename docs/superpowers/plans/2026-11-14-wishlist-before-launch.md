@@ -1,6 +1,6 @@
 # Games Before Launch: the Wishlist and a Maker's Numbers Implementation Plan
 
-> **Changed by the texts spec (2026-11-15), not yet written into this plan.** `docs/superpowers/specs/2026-11-15-texts-not-email-design.md` moves Ruken's messages from email to texts. In this plan that changes: branch D (Tasks 9 to 11: the launch mail, `WishlistMail`, the job), the sign-up fields, and every helper that finds an account by its email. The Owner approved that spec on 2026-11-15; a plan session rewrites those tasks. Until then, do not build them as written here.
+> **Rewritten for texts (2026-11-15).** The texts spec (`docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, approved by the Owner on 2026-11-15: "Text design approved") moves Ruken's messages from email to texts, and the texts plan (`2026-11-15-texts-not-email.md`) builds it. In this plan that changes branch D (Tasks 9 to 11: the launch mail, `WishlistMail`, the job), the sign-up fields, and every helper that finds an account by its email. They are rewritten in "Rewritten for texts", the last section of this plan. Where that section and an earlier line differ, that section wins.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task (CLAUDE.md: no subagents). Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -913,3 +913,113 @@ test("from 11:00 a maker's page shows Play", async ({ page, browser }) => { /* n
 - **Deep analytics** (Owner: "Deep Later"): `playNumbers` is one query over a week of one game's beats on every open of `/make/<game>`. If the Worker's numbers ever show it slow, a sum kept per day is the first thing to try, the same answer slice 3's notes give for the feed's order.
 - **The privacy text** (the Owner's, before live mode) should say that Ruken keeps which games a person wishlisted until they take them off or delete their account, and sends one email about them at launch.
 - Worth the Owner's eye, left out on purpose: there is no limit on how fast one account can press Wishlist (each press changes at most one row of its own); a person who wishlists and never confirms their address gets no email, and nothing on the game's screen tells them so (`/me` does); an account that signs up before the mail domain exists must use "Confirm your email" on `/me` after 18 November; the count on `/make/<game>` includes accounts waiting their 14 days to be deleted; a maker can see how many people wishlisted, never who.
+
+## Rewritten for texts
+
+Wishlist design, "Changed on 2026-11-15": everyone who wishlisted a game **and ticked "Text me when my wishlisted games are out"** gets one text at launch. Everything in this plan that is not named here stands.
+
+### Everywhere in this plan
+
+- The short sign-up is a phone number, a password and a date of birth (the texts plan, Task 4). Nothing here builds it.
+- A person is found by their phone number, never by an email. In the journeys' helpers: `signInAs(page, number)`, `addWishlistRow(number, slug)`, `wishlistOf(number)`, and `addGame` answers `makerNumber` where it answered `makerEmail`.
+- "A confirmed address" goes. Every account's number is confirmed at sign-up. "Found while planning" 5 and 6 (no journey can read a sent mail; a person who signs up before the mail domain exists) no longer apply: the journeys read texts from the stand-in (`tests/browser/support/texts.ts`).
+- `MailMessage` gains no `idempotencyKey` (Task 9 as first written). Nothing in this plan touches `src/lib/server/mail.ts`.
+
+### `WishlistMail` goes (Task 3 built it; it is on `main`)
+
+Nothing ever wrote a row to it. Task 10 below drops the table and its trigger in its migration, removes `User.wishlistMail` from `accounts.prisma`, and changes the purge's comment in `deletion.ts`: the launch text's record is a `TextSent` row, which holds an id and no number and stays. Task 4's test line about a kept `WishlistMail` row becomes the same line about a kept `TextSent` row.
+
+### Branch D is now `wishlist/launch-text`
+
+Needs branch A, slice 3's branch C (`liveGames`), and the texts plan's branch D (`tellByNews`) on `main`. It must be deployed days before the 30th. Launch also needs the carriers' approval of Ruken's number (the texts plan, X5), not Resend's domain.
+
+#### Task 9: The text's words
+
+**Files:**
+- Create: `src/features/launch/text.ts`
+- Test: `tests/features/launch/text.test.ts`
+
+- Produces, pure: `launchText(input: { games: readonly { name: string; slug: string }[]; site: string }): string`.
+  - One game: `fitText("Ruken: ", name, " is out. Play it now: <site>/g/<slug>")` (`fitText` from `accounts.ts`; it cuts a long name, never the link).
+  - Several: `Ruken: your <n> wishlisted games are out. Play them now: <site>` (the feed, where each now shows Play).
+  - No games: throws; the caller never asks.
+
+- [ ] **Step 1 (red):** one game named "Tiny game" at `https://ruken.test` gives exactly `Ruken: Tiny game is out. Play it now: https://ruken.test/g/tiny-game`; three games give exactly `Ruken: your 3 wishlisted games are out. Play them now: https://ruken.test`; a name holding `<b>bold</b>` is in the text as typed (Review Focus 15); a name of 200 "W" gives a text of exactly 160 characters that ends with the whole link. Stub. Push. Expected: `verify` fails.
+- [ ] **Step 2 (green):** the code. Push. Expected: all pass.
+
+#### Task 10: One text a person, once, in their daytime
+
+**Files:**
+- Create: `src/features/launch/send.ts`, `prisma/migrations/<timestamp>_drop_wishlist_mail/migration.sql`
+- Modify: `src/features/launch/launch.ts`, `prisma/schema/launch.prisma`, `prisma/schema/accounts.prisma`, `src/features/accounts/deletion.ts` (the comment)
+- Test: `tests/features/launch/send.pg.test.ts`, `tests/features/launch/schema.pg.test.ts` (the `WishlistMail` cases go)
+
+**Interfaces:**
+- Consumes: `isOpen`, `LAUNCH_MS`, `launchText`; from `accounts.ts`: `tellByNews`, `yesOf`, `inQuietHours`.
+- Produces:
+  - `LAUNCH_TEXTS_A_RUN = 500`, `LAUNCH_TEXT_FOR_MS = 7 * 24 * 60 * 60 * 1000`, `LAUNCH_TEXT = { kind: "wishlist_out", key: "launch" }`.
+  - `sendLaunchTexts(deps: { db: PrismaClient; clock: Clock; tell: (input: { userId: string; kind: string; key: string; body: string }) => ReturnType<typeof tellByNews>; liveGames(): Promise<readonly { id: string; slug: string; name: string }[]>; site: string; log(line: string): void; max?: number }, launchNowMs: number): Promise<"not_open" | "over" | { sent: number; quiet: number; heldBack: number; failed: number; left: number }>`.
+- What it does, in this order:
+  1. `isOpen(launchNowMs)` false: `"not_open"`. At or past `LAUNCH_MS + LAUNCH_TEXT_FOR_MS`: `"over"`. Either way nothing is read and nothing is sent.
+  2. The live games, read once.
+  3. The people due: `User` rows that are `active`, whose newest `TextYesEvent` is a yes, with at least one `Wishlist` row for a live game and no `TextSent` row of `LAUNCH_TEXT`, by their earliest `addedAt`.
+  4. For each, until `max` texts have been tried in this run: read their `Wishlist` rows, oldest first, keep the live games; with none, go on. Then `deps.tell({ userId, ...LAUNCH_TEXT, body: launchText(…) })` and count its answer: `sent`; `quiet` (their own time is before 9:00 or after 20:00: nothing is recorded, a later run sends, and it does not count toward `max`); `held_back` (the allowlist or a made-up number); `stopped`, `no_yes`, `no_number` and `already` count as nothing. A throw: `failed` rises and one line is logged, `launch text not sent: <textFailureCode(error)>`, never the error's own text. `left` is how many due people were not reached because `max` was.
+- `tellByNews` is what sends once: it writes the `TextSent` row first and sends inside one transaction, so two runs at the same moment send one text. A comment here says so, and that this file therefore keeps no table of its own.
+
+- [ ] **Step 1 (red):** with a `TestClock`, a capture texter behind the real `tellByNews`, and `liveGames` as a plain function; `AT = LAUNCH_MS` (11:00 in Chicago):
+
+```ts
+it("sends nothing a millisecond before 11:00, and sends at 11:00", async () => {});               // Review Focus 1
+it("texts only a person who ticked the box", async () => { /* wishlisted, no yes: nothing; the text names nobody else */ });
+it("sends one text for one game, and one text that counts several", async () => {});
+it("sends nothing new on a second run, and one text each when two runs start together", async () => {});   // Review Focus 5
+it("leaves out a game that was removed or is no longer live, and texts nobody with none left", async () => {});   // Review Focus 6
+it("waits for a person's own morning", async () => {
+  /* yes said with timeZone "Asia/Tokyo": at AT (02:00 there) the answer counts quiet: 1 and no row is written;
+     with the clock at 09:00 Tokyo time the next run sends 1 */ });
+it("texts nobody who sent STOP to the news number, and nobody waiting to be deleted", async () => {});       // Review Focus 14
+it("does not record a text the allowlist held back", async () => {});                              // Review Focus 8
+it("goes on past a person Twilio refuses, and tries only them next time", async () => {
+  /* the log is ["launch text not sent: TWILIO 400 30006"] and holds no "+" */ });                 // Review Focus 8
+it("stops at its limit, not counting the quiet, and says how many are left", async () => {});
+it("sends nothing more than seven days after launch", async () => {});                             // Review Focus 7
+```
+
+  Review Focus 7's "an address not confirmed at 11:00" becomes "a person who ticks the box that evening": nothing at 11:00, one text on the next run inside their daytime. Stub. Push. Expected: `postgres` fails in `send.pg.test.ts` with "not built yet".
+- [ ] **Step 2 (green):** the code and the migration. Push. Expected: all pass.
+
+#### Task 11: The job's address and its cron
+
+As first written, with these changes:
+
+- The address is `POST /jobs/launch-text`; `launchServices()` gains `sendTexts(launchNowMs)`, built with `tellByNews` bound to `authServices().texter`. `"over"` answers 410 `{ "problem": "The launch text is over." }`. The 200 answer holds the five numbers.
+- The cron is `*/30 * 30,1 11,12 *`: every half hour on 30 November and 1 December, so each person's text goes out in their own daytime wherever they are. (The expression also matches 1 November and 30 December; the job answers "not open" and "over" then, and the after-launch clean-up removes it.) `LAUNCH_CRON` in `cloudflare/worker.js` is that text.
+- The scheduled handler throws unless the answer is 200 with `failed` 0. `quiet` and `left` above 0 are not a failure: the next run carries on.
+- The journeys: the same five, with the new address and cron, and `["sent", "quiet", "heldBack", "failed", "left"]` each a whole number.
+
+Branch D is ready to merge. Tell the coordinator the day it was deployed.
+
+### Branch E: the tick, the first time a person presses Wishlist (added to Task 13)
+
+- After a signed-in adult's first Wishlist press, when they have no `TextYesEvent` at all, the screen they land back on shows one small card under the button, once:
+
+```
+[ ] Text me when my wishlisted games are out.
+    About one text. Message and data rates may apply. Reply STOP to stop.
+[ Save ]   blue          [ No thanks ]   green
+```
+
+- The box is empty to start with. "Save" with the box ticked calls `sayYes` with the device's time zone (a hidden field a script fills; empty without one); "Save" with it empty, and "No thanks", call `sayNo`. Either way the card does not come back; `/me` has the same switch (the texts plan, Task 9).
+- An account under 18, or of unknown age, never sees the card. Wishlisting never needs the tick.
+- The words come from `NEWS_YES_WORDS` (`accounts.ts`), so the record holds exactly what was shown.
+- Step 1 gains: the card shows after the first press and not the second; ticking and saving leaves a yes with the words; "No thanks" leaves a no and no card; an under-18 account gets no card; the wishlist row is there in every case. `showTheOwner` for the card, every view.
+
+### Task 15, steps 3 and 4
+
+Where a step reads "email", it is the text: before launch a tester on `TEXT_ALLOWLIST` wishlists a game and ticks the box; at 11:00 Chicago time on 30 November that phone gets one text, and a second run sends nothing.
+
+### Notes for the plans that follow
+
+- The privacy text says Ruken keeps which games a person wishlisted, and, only with their yes, sends one text about them at launch.
+- The last note's worry about a person who "never confirms their address" is gone. A person who wishlists and never ticks the box gets no text; that is their choice.
+- The after-launch clean-up list: `launch/send.ts`, `launch/text.ts`, the launch cron and `/jobs/launch-text`.
