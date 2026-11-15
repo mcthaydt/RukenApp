@@ -1,6 +1,6 @@
 # Beta Builds Implementation Plan
 
-> **Changed by the texts spec (2026-11-15), not yet written into this plan.** `docs/superpowers/specs/2026-11-15-texts-not-email-design.md` moves Ruken's messages from email to texts. In this plan that changes: the tester lookup (`testerFrom`'s `byEmail`, "Member's email or @name"): by handle only. A plan session rewrites those tasks once the Owner approves that spec. Until then, do not build them as written here.
+> **Changed by the texts spec (2026-11-15), not yet written into this plan.** `docs/superpowers/specs/2026-11-15-texts-not-email-design.md` moves Ruken's messages from email to texts. In this plan that changes: the tester lookup (`testerFrom`'s `byEmail`, "Member's email or @name"): by handle only. The Owner approved that spec on 2026-11-15; a plan session rewrites those tasks. Until then, do not build them as written here.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task (CLAUDE.md: no subagents). Steps use checkbox (`- [ ]`) syntax for tracking.
 

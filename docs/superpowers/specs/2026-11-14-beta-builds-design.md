@@ -100,6 +100,6 @@ ana@example.com          Remove
 
 ## Changed on 2026-11-15: texts, not email
 
-`2026-11-15-texts-not-email-design.md` changes one line, once the Owner approves it.
+`2026-11-15-texts-not-email-design.md` changes one line (approved by the Owner, 2026-11-15: "Text design approved").
 
 - "Testers": the maker adds a member by their handle only. An account may have no email, and a phone number is never typed into a maker's form.

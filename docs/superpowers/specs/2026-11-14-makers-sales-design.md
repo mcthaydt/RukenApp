@@ -269,7 +269,7 @@ What this spec's own work needs, for that date: this spec approved; the maker sc
 
 ## Changed on 2026-11-15: texts, not email
 
-`2026-11-15-texts-not-email-design.md` changes these lines, once the Owner approves it.
+`2026-11-15-texts-not-email-design.md` changes these lines (approved by the Owner, 2026-11-15: "Text design approved").
 
 - 5.6, the split's invitation ("They get an email with the game, their share and one button"): they get a text with a link to the split on Ruken, where the game, their share and the one button are.
 - 5.6 and the Owner's "3. A", "Everyone in the old and new split gets one email saying what changed": one text each, with a link to the split.

@@ -643,7 +643,7 @@ The other slices (H, R, S, F, Q, B, P, V, K on the website; 1, 2, 3, N, $, L for
 
 ## Texts, not email
 
-Spec: `docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, a draft, waiting on the Owner's "approved". Progress: 0% (no plan, no code).
+Spec: `docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, approved by the Owner on 2026-11-15 ("Text design approved"). Progress: 0% (no plan, no code).
 
 Owner, 2026-11-15: "Reconsider the AI chat, I almost never want to use email here; text only almost exclusively" and "The text is for more than just support, everything other companies do with email, we do via. text unless it's something paper trail related for legal". "Text" is a text to the person's phone number (the Owner's "2").
 
@@ -652,7 +652,7 @@ Owner, 2026-11-15: "Reconsider the AI chat, I almost never want to use email her
 - [x] The spec written, with a "Changed on 2026-11-15" section at the end of the design, the wishlist design, beta builds, the makers' sales spec and the apps spec.
 - [x] A note at the top of each plan it changes: slice 1, the wishlist, beta builds, makers' sales, the apps slices and the apps' test copy. Their tasks are not rewritten yet.
 - [x] STOP, after the Owner's question of 2026-11-15: two numbers (account, news), the one reply to STOP, and what a person sees while their texts are off.
-- [ ] The Owner's "approved".
+- [x] The Owner's approval, 2026-11-15: "Text design approved".
 - [ ] The AI help chat's own short design (in for launch; no spec has it yet).
 - [ ] A plan, its audit and the build. The plan session also rewrites the tasks named in those notes.
 - The Owner's, after the LLC: the Twilio account and keys, registering Ruken's name and number with the US carriers, then each other country that asks for it.

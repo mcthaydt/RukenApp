@@ -240,7 +240,7 @@ Names are left to the plan.
 
 ## Changed on 2026-11-15: texts, not email
 
-`2026-11-15-texts-not-email-design.md` changes these lines, once the Owner approves it.
+`2026-11-15-texts-not-email-design.md` changes these lines (approved by the Owner, 2026-11-15: "Text design approved").
 
 - "Signing in works as on the web: email and password": phone number and password.
 - "Launch itself: everyone on a wishlist gets an email": everyone on a wishlist who said yes to the text gets a text. Anyone who turned on notifications also gets one. The same for the day live payments open.

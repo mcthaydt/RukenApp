@@ -1,6 +1,6 @@
 # Texts, not email
 
-Date: 2026-11-15. Status: **draft, waiting on the Owner's "approved"**. The Owner's four answers of 2026-11-15 are written in. Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`), the wishlist design, beta builds, the makers' sales spec and the apps spec, and changes them only where this file and the "Changed on 2026-11-15" section at the end of each of them say so.
+Date: 2026-11-15. Status: approved by the Owner on 2026-11-15 ("Text design approved"). The Owner's four answers of 2026-11-15 are written in. Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`), the wishlist design, beta builds, the makers' sales spec and the apps spec, and changes them only where this file and the "Changed on 2026-11-15" section at the end of each of them say so.
 
 Principles served: the drunk-grandma test (a text is where a tired person already looks), privacy by default (a phone number is asked for with its reason beside it, never shown to anyone, and never texted without a yes), and "don't overengineer" (one port, one provider, plain `fetch`).
 
@@ -177,7 +177,6 @@ Call: the apps spec's three push notifications (new DLC, a beta invite, a renewa
 
 ## Needs, and when
 
-- The Owner's "approved" on this file.
 - The Owner: the Twilio account and its keys; after the LLC, registering Ruken's name and number with the US carriers; then each other country that asks for it.
 - The privacy and terms pages with the lines above, public before registering.
 - Then a plan, its audit and a build, like any slice.

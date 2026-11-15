@@ -98,7 +98,7 @@ On `/make/<game>`, under the game's state line, a few plain numbers, counted fro
 
 ## Changed on 2026-11-15: texts, not email
 
-`2026-11-15-texts-not-email-design.md` changes these lines, once the Owner approves it.
+`2026-11-15-texts-not-email-design.md` changes these lines (approved by the Owner, 2026-11-15: "Text design approved").
 
 - "Everyone who wishlisted a game gets one email at launch": everyone who wishlisted a game and ticked "Text me when my wishlisted games are out" gets one text at launch. The tick is offered the first time a person presses Wishlist, and is empty to start with.
 - The short sign-up is a phone number, a password and a date of birth.

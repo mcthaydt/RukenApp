@@ -392,7 +392,7 @@ These are credentials, money and approvals, which are the Owner's.
 
 ## Changed on 2026-11-15: texts, not email
 
-`2026-11-15-texts-not-email-design.md` changes these lines, once the Owner approves it. Owner, 2026-11-15: "everything other companies do with email, we do via. text unless it's something paper trail related for legal".
+`2026-11-15-texts-not-email-design.md` changes these lines (approved by the Owner, 2026-11-15: "Text design approved"). Owner, 2026-11-15: "everything other companies do with email, we do via. text unless it's something paper trail related for legal".
 
 - 5.6, "sign-in is by email and password": sign-in is by phone number and password.
 - 5.7, "one short sign-up (email, password, date of birth)": a phone number, a password and a date of birth, confirmed by a code sent by text.

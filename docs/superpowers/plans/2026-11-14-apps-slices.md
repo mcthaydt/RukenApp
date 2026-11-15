@@ -1,6 +1,6 @@
 # Apps and player features: the slices and their order
 
-> **Changed by the texts spec (2026-11-15), not yet written into this plan.** `docs/superpowers/specs/2026-11-15-texts-not-email-design.md` moves Ruken's messages from email to texts. In this plan that changes: slice L's launch email (a text to wishlisters who said yes) and signing in (phone number and password). A plan session rewrites those tasks once the Owner approves that spec. Until then, do not build them as written here.
+> **Changed by the texts spec (2026-11-15), not yet written into this plan.** `docs/superpowers/specs/2026-11-15-texts-not-email-design.md` moves Ruken's messages from email to texts. In this plan that changes: slice L's launch email (a text to wishlisters who said yes) and signing in (phone number and password). The Owner approved that spec on 2026-11-15; a plan session rewrites those tasks. Until then, do not build them as written here.
 
 **Spec:** `docs/superpowers/specs/2026-11-14-apps-and-player-features-design.md` (approved by the Owner, 2026-11-14: "Approved"; pull request #107). Read it with `CLAUDE.md`, `AGENTS.md`, the makers' sales spec (`2026-11-14-makers-sales-design.md`, pull request #106) and `docs/superpowers/progress.md`.
 
