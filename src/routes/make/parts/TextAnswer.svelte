@@ -26,17 +26,14 @@
 
   const preview = previewOfPage();
 
-  // A refusal is about what was sent. Once the box is changed it is about nothing, so it goes, and a new answer sent
-  // back with its own refusal shows that one.
-  let edited = $state(false);
-  $effect.pre(() => {
-    void problem;
-    edited = false;
-  });
-  const shown = $derived(edited ? undefined : problem);
+  // A refusal is about what was sent. Once the box is changed it is about nothing, so it goes; the answer that comes
+  // back next (different words, or a different refusal) is a new thing and shows.
+  const sent = $derived(`${value}\n${problem ?? ""}`);
+  let editedFrom = $state<string | undefined>(undefined);
+  const shown = $derived(editedFrom === sent ? undefined : problem);
 
   function typed(event: Event): void {
-    edited = true;
+    editedFrom = sent;
     if (!(event.currentTarget instanceof HTMLInputElement)) return;
     if (previews === "name") preview?.typeName(event.currentTarget.value);
     if (previews === "line") preview?.typeLine(event.currentTarget.value);
