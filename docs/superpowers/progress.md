@@ -5,6 +5,8 @@ The one record of where the work stands. Every session updates it as it works; t
 Design: `docs/superpowers/specs/2026-11-13-ruken-reels-linktree-design.md`, approved by the Owner on 2026-11-13.
 Launch: Monday 30 November 2026, 11:00 CT.
 
+The order of the work, and the one thing being built now: `docs/superpowers/roadmap.md`.
+
 ## Overall: 56% (the mean of the six slices' progress below)
 
 | # | Slice | State | Progress |
@@ -118,6 +120,7 @@ Recorded by the coordinator (`session_01HNdX7JopLaJTd1JphMYiu7`), each quoted as
 
 - Makers' sales: "32. A" (a maker's revenue split covers everything the game earns: its share of the membership pool, its DLC and its battle passes).
 - Legal: the Owner's answers are in the legal drafts (see the legal pages' pull request); the working notes stay outside this public repository.
+- Legal pages, 2026-11-15: pull request #104 (`legal/pages`, last commit `bd3ac86`) closed on the Owner's word ("close them and rebuild later from their plans"); its drafts are kept in the private repository.
 - FloorFifty's environments check: `production` and `staging` have no protection rules; the collaborators are `mcthaydt` and `SNEKPRTY`, both the Owner's. So any FloorFifty workflow can use the Fly token, which is accepted while only the Owner can push.
 - Boards: "keep the numbers in order please".
 
@@ -721,4 +724,33 @@ Slice A, `docs/superpowers/plans/2026-11-14-apps-a-test-copy.md`. What it waits 
 | 3 `apps-a/fake-content` | 10 the made-up content · 11 the test copy writes its own made-up content | not started; needs branch 1 |
 | 2 `apps-a/test-worker` | 7 the `test` environment · 8 the test copy, running | not started; needs T1 to T3 and branches 1 and 3 |
 
+Closed, 2026-11-15 (Owner: "We finish Slice 2: Games and play, everything after that is tagged for later work", then "close them and rebuild later from their plans"): pull request #111 (`apps-a/copy` work, branch `claude/project-thread-f4huda`, last commit `17e4c3f`, Tasks 1 to 5 built) is closed. Its branch goes with the hourly clean-up a day later. Branch 1 is rebuilt from this plan when the roadmap reaches it; the closed pull request can restore the branch.
+
 The other slices (H, R, S, F, Q, B, P, V, K on the website; 1, 2, 3, N, $, L for the apps) are not planned yet. Each gets its own plan when what it needs is on `main`.
+
+## Texts, not email
+
+Spec: `docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, approved by the Owner on 2026-11-15 ("Text design approved"). Plan: `docs/superpowers/plans/2026-11-15-texts-not-email.md`, with the country table `2026-11-15-texts-countries.md`, merged (#115); audited on a branch (`claude/project-thread-4iw95x`), not merged. Progress: 0% of the build (11 tasks on 5 branches, none started; no code). The build waits for its place in the slice order.
+
+Owner, 2026-11-15: "Reconsider the AI chat, I almost never want to use email here; text only almost exclusively" and "The text is for more than just support, everything other companies do with email, we do via. text unless it's something paper trail related for legal". "Text" is a text to the person's phone number (the Owner's "2").
+
+- [x] The Owner's three answers, 2026-11-15, picked on question cards: sign-up is a phone number and a password with email only at paying (1. A); every text in every country from the first day (2. B); Twilio (3. A).
+- [x] The Owner, 2026-11-15, on a fourth card: "Launch waits for the carriers". No email sign-up as a stand-in; launch moves if the carriers' approval comes after 30 November.
+- [x] The spec written, with a "Changed on 2026-11-15" section at the end of the design, the wishlist design, beta builds, the makers' sales spec and the apps spec.
+- [x] A note at the top of each plan it changes: slice 1, the wishlist, beta builds, makers' sales, the apps slices and the apps' test copy. Their tasks are not rewritten yet.
+- [x] STOP, after the Owner's question of 2026-11-15: two numbers (account, news), the one reply to STOP, and what a person sees while their texts are off.
+- [x] The Owner's approval, 2026-11-15: "Text design approved".
+- [x] The plan, written on 2026-11-15 from the spec, the code on `main` at `286bfdf`, better-auth 1.7.7's own phone-number plugin and Twilio's pages. Five branches: A the `Texter` and the number rules (Tasks 0 to 2), B the tables, sign-up, sign-in and forgot password, with email sign-up removed (3 to 5), C notices, STOP and START, and changing the number (6 to 8), D the yes to news texts, quiet hours and the legal email (9, 10), E which countries are open (11).
+- [x] The country table, copied by a script from Twilio's page for each of 222 countries on 2026-11-15. A person can text Ruken back in 43 of them; in 179 they cannot, so STOP by reply and help by text do not exist there.
+- [x] The tasks named in the six notes, rewritten in a last section, "Rewritten for texts", of each plan: slice 1, the wishlist (branch D is now the launch text), beta builds (testers by @name only), makers' sales (the split's and an extra's texts; the confirming email through the address Stripe holds), the apps' test copy and the apps' slices. A seventh, found while planning: slice 4's five mails to a maker, rewritten the same way.
+- [x] The AI help chat's own short design, written: `docs/superpowers/specs/2026-11-15-help-chat-design.md`. Approved by the Owner, 2026-11-15, on a card ("Yes, approved"), with all its questions answered; no plan yet, not built. Jev (TypeSafe AI's model, named by the Owner with a link on 2026-11-15) decides but does not write text, so a second, writing AI writes the replies and Jev checks them (Owner, 2026-11-15, on a card: "Jev plus a writing AI"); the writing AI is Claude Haiku (Owner, 2026-11-15: "JEV + Claude Haiku"); chats are kept 90 days (Owner, 2026-11-15, on a card: "90 days"); the person who takes over is the Owner (Owner, 2026-11-15, on a card: "Me, for now"); the fourth is answered (Owner, 2026-11-15, on a card: it says it is an AI "Only when asked"). Updated 2026-11-15 with the Owner's words ("text back and forth like it's an AI chatbot, but it should feel like a real prson"): a section "How it talks" (a real conversation, a warm human voice, and it always says it is an AI when asked).
+- [x] The plan's audit (Opus, medium), 2026-11-15: `docs/superpowers/audits/2026-11-15-texts-not-email-plan-audit.md`, on a branch (`claude/project-thread-4iw95x`), not merged. 22 findings; the fixes are written into the plan (and one into the makers' sales plan's rewritten Task 14). Five would have stopped or broken the build: SvelteKit 3.0.0 cannot let Twilio's post through on one route, so `worker.js` relabels it; Twilio does not resend a webhook after a 500 unless the address asks; a send refused because the person texted STOP lost the notice; the purge left STOP records; `hasMoney` could not cross the layer rule. Also fixed: the sign-up form could show which numbers have accounts; changing the number now asks for the password; texts are measured in one-text encoding, not letters; sign-in gets the Country list. Left for the Owner: the lockout that "ten wrong codes" allows (audit 9). Changes the open Question 1: with two US numbers, nobody outside the US and Canada can text back, not only the 179 countries (audit 11). No test ran and no code was written; read outside the repository: better-auth 1.7.7's and @sveltejs/kit 3.0.0's published packages, and three Twilio pages.
+- [ ] The build.
+- [x] The Owner's answer, 2026-11-15, on a card, about countries where people cannot text Ruken back: "Stay closed there until replies work". Ruken opens only where a person can text back: the United States and Canada on the first day, then any of the 43 two-way countries once Ruken has a number there. Written into the plan (Calls, Question 1, X7, Task 11) and the design's "Every country"; on a branch, not merged.
+- Not confirmed from a page, and proved first in the build (Task 0) with the Owner's two real numbers: that STOP to one of Ruken's two numbers leaves the other one's texts flowing.
+- Found while planning: the changed-hands check works for US numbers only and needs its own approval from Twilio; the two US numbers must be ordinary local numbers, not toll-free, or the Owner's STOP words never show; SvelteKit's cross-site check has to let Twilio's form post through on one route (Task 7, Step 0).
+- The Owner's, after the LLC: the Twilio account and keys, registering Ruken's name and number with the US carriers, then each other country that asks for it.
+
+No test ran in this session, and no code was written. Read outside the repository, 2026-11-15: Twilio's pages on US registration (what a company must give, and what its privacy and terms pages must say) and on prices.
+
+The plan session, 2026-11-15: no test, lint or typecheck ran, and no code was written. Read outside the repository: better-auth 1.7.7's published package (its phone-number plugin), and Twilio's pages on sending a message, the webhook's fields and signature, Advanced Opt-Out, the reassigned-number lookup, and the SMS guidelines for 222 countries. Not read (the page would not load without a browser): Twilio's help article on STOP filtering. The `twilio` commands in the plan's Owner steps were not run.

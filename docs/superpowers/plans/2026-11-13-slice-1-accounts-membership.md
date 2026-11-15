@@ -1,5 +1,7 @@
 # Slice 1: Accounts and Membership Implementation Plan
 
+> **Rewritten for texts (2026-11-15).** The texts spec (`docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, approved by the Owner on 2026-11-15: "Text design approved") moves Ruken's messages from email to texts, and the texts plan (`2026-11-15-texts-not-email.md`) builds it. In this plan that changes sign-up, sign-in, confirming an address, the password reset and the four mails, all built and on `main`. They are rewritten in "Rewritten for texts", the last section of this plan. Where that section and an earlier line differ, that section wins.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task (CLAUDE.md: no subagents). Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A stranger can sign up, pay and cancel, on a real address.
@@ -2313,3 +2315,24 @@ No code unless a check fails. Nothing here is typed into the repository.
   - `pnpm dev` runs the app in Node, and the app's Prisma client is generated for Workers. The first slice that needs a local session to look at screens (slice 3) checks whether `pnpm dev` can read the database, and if not uses `pnpm build && wrangler dev`, or asks.
   - Game files and clips (slice 2) get their own Worker and R2 bucket, as the design always had it; they do not share this Worker.
   - Resend's free plan has a daily cap on mails. The Owner decides before launch whether to pay for more or move to Cloudflare's Email Sending when it leaves beta; the change is one file, `src/lib/server/mail.ts`.
+
+## Rewritten for texts
+
+This plan is built and on `main`, and nothing in it is built again from here. The texts plan (`2026-11-15-texts-not-email.md`) changes, on `main`, what these parts of it built:
+
+| What this plan built | What the texts plan does with it | Its task |
+|---|---|---|
+| Sign-up with an email, a password and a date of birth (`signUpWithPassword`, `/sign-up`) | A phone number, a password and a date of birth, then a code by text | 4 |
+| Sign-in with an email and a password (`/sign-in`, `/sign-in/email`) | A phone number and a password | 4 |
+| Confirming an address (the confirmation mail, "Confirm your email" on `/me`, `resendVerification`) | Removed. The number is confirmed by the code at sign-up | 4 |
+| The password reset by a mailed link (`/forgot-password`, `/reset-password`) | A code by text, with the rule for a number that changed hands | 5 |
+| The four mails (`src/features/accounts/mails.ts`) | Deleted. Three become texts; the confirmation mail has no successor | 2, 4, 6 |
+| The limits and the pause that count per email address (`auth-limits-plugin.ts`, `sign-in-guard.ts`, `sign-in-guards.ts`, `sign-in-pause-plugin.ts`, `SignInGuard.emailHash`) | Counted per phone number, under a keyed hash of it | 3, 4 |
+| The first-owner command, which names the account by its email | Names it by its phone number (the Owner's step X8) | 4 |
+| `createCustomer`, which hands Stripe the account's email | Hands Stripe no email; Stripe asks for it at paying, and Ruken reads it back as the address for legal papers | 4, 10 |
+| The purge's tombstone (`deleted-<id>@deleted.invalid`) | Also clears the number, the address for legal papers and the text settings | 4, 6, 7, 9 |
+| The journeys' helpers that take an email (`signUp`, `freshEmail`, `userIdOf` and the rest) | Take a phone number | 4 |
+
+Everything else this plan built stays as it is: the age check, deleting an account, staff roles, the cookies, the request hook, the look, and the membership.
+
+`Mailer` and `createResendMailer` stay, for the few legal emails. Slice 1's rule that a log holds no address now also covers phone numbers and codes.

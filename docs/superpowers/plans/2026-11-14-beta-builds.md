@@ -1,5 +1,7 @@
 # Beta Builds Implementation Plan
 
+> **Rewritten for texts (2026-11-15).** The texts spec (`docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, approved by the Owner on 2026-11-15: "Text design approved") moves Ruken's messages from email to texts, and the texts plan (`2026-11-15-texts-not-email.md`) builds it. In this plan that changes the tester lookup (`testerFrom`'s `byEmail`, "Member's email or @name"): a maker adds a tester by their @name only. They are rewritten in "Rewritten for texts", the last section of this plan. Where that section and an earlier line differ, that section wins.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task (CLAUDE.md: no subagents). Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A maker pulls a beta branch of a live game, staff accept it like a release, and only the members the maker picked can play it, before and after launch, without that play ever counting toward pay.
@@ -734,3 +736,33 @@ it("still keeps the release's newest pull when a beta pull is newer", async () =
   - Nothing tells a tester they were picked; the maker does (design).
   - Staff's "Played so far" on the release's review page (slice 2, `playSummary`) counts every session of the game, beta ones included. It is a staff check, not a number a maker or the pool sees.
   - A beta's tester list has no limit (design: "Added later if it is ever needed").
+
+## Rewritten for texts
+
+Beta builds design, "Changed on 2026-11-15": the maker adds a member by their handle only. An account may have no email, and a phone number is never typed into a maker's form or shown to a maker. Everything not named here stands.
+
+### Global Constraints
+
+"The only things a maker types are a branch name and a person's email or handle" becomes "a branch name and a person's @name".
+
+### Task 4
+
+- `testerFrom(lookups: { byHandle(handle: string): Promise<string | null> }, typed: string): Promise<string | null>`. Trimmed and lower-cased, one leading `@` removed, then asked of `byHandle`. Empty: `GameError("INVALID", "Type their @name.")`. There is no `byEmail`. Anything that is not somebody's handle (an email address, a phone number, a name nobody has) is null, which `addTester` answers with the one line, `ONLY_MEMBERS`, and nothing is stored.
+- `forMaker(gameId)`'s testers are `{ userId: string; addedAt: Date }[]`. No email, and no number.
+- Step 1's lookups: `{ byHandle: async (h) => (h === "kofi" ? "u-kofi" : null) }`. `@Kofi`, `kofi` and `  @KOFI ` find `u-kofi`; `ana@example.com` and `+13125550142` find nobody; empty throws "Type their @name."
+
+### Task 6
+
+- The field's label is "Member's @name", with the placeholder `@name`.
+- Each tester is shown by their page's `@name` (`handlesOf`). One whose page has since gone is shown as "A member", with their "Remove" button. No email and no number is ever on this screen.
+- The action is `testerFrom({ byHandle }, typed)`; `byHandle` is `pageByHandle(handle)?.makerUserId`, as before.
+- The journey "a maker adds a member by email and by @name, and removes one" becomes "a maker adds two members by @name, and removes one": the first typed as `@Name` in capitals, the second without the `@`; "Testers (2)"; then one more case: typing a member's phone number or an email gets "Only members can test games. Ask them to join first.", the count stays, and the page's text holds no `+` followed by digits and no `@` followed by a dot-name.
+- `addBeta(browser, game: { slug: string; makerNumber: string }, options?: { testers?: string[] })` takes testers' handles; a journey's member who is to be a tester first makes a page (slice 3's `makePage`).
+
+### Found while planning, 8, and the last note
+
+"Adding a tester by email tells the maker whether that email is a paying member" now reads: adding a tester by @name tells the maker whether that @name is a paying member. A handle is public and chosen; an email was neither. The one refusal line and the limit of 100 tries an hour stay as they are.
+
+### Review Focus 5
+
+Becomes: `@Kofi` in capitals or with spaces around it finds the person; the handle of someone who is not a member, an email address, a phone number and a name nobody has all get the one refusal, and nothing is stored.

@@ -97,3 +97,9 @@ ana@example.com          Remove
 - The exact words of each beta state and refusal.
 - Whether the beta's state lines reuse slice 2's `stateWords` or a sibling.
 - The play basis name for beta play, and where the gate checks the tester list.
+
+## Changed on 2026-11-15: texts, not email
+
+`2026-11-15-texts-not-email-design.md` changes one line (approved by the Owner, 2026-11-15: "Text design approved").
+
+- "Testers": the maker adds a member by their handle only. An account may have no email, and a phone number is never typed into a maker's form.

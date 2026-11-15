@@ -1,5 +1,7 @@
 # Apps and player features: the slices and their order
 
+> **Rewritten for texts (2026-11-15).** The texts spec (`docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, approved by the Owner on 2026-11-15: "Text design approved") moves Ruken's messages from email to texts, and the texts plan (`2026-11-15-texts-not-email.md`) builds it. In this plan that changes slice L's launch email (a text to wishlisters who said yes) and signing in (a phone number and a password). They are rewritten in "Rewritten for texts", the last section of this plan. Where that section and an earlier line differ, that section wins.
+
 **Spec:** `docs/superpowers/specs/2026-11-14-apps-and-player-features-design.md` (approved by the Owner, 2026-11-14: "Approved"; pull request #107). Read it with `CLAUDE.md`, `AGENTS.md`, the makers' sales spec (`2026-11-14-makers-sales-design.md`, pull request #106) and `docs/superpowers/progress.md`.
 
 **What this file is.** The spec leaves to the plan "how the work splits into slices, and their order". This file is that answer, and nothing else. It holds no tasks. Each slice below gets its own plan, plan audit, execution, implementation audit and fixes, as `CLAUDE.md` says. The first slice's plan is beside this file: `2026-11-14-apps-a-test-copy.md`.
@@ -152,3 +154,14 @@ Each is a fact from `main` or from a service's own pages, with the slice that de
 ## Not in any slice
 
 As the spec's "Not in this": Steam, accounts for under-13s, games downloaded for offline play, chat, comments, direct messages, notifications nobody asked for, a game SDK beyond the hooks, and Sign in with Apple or Google. A/B tests come after launch, as their own small spec.
+
+## Rewritten for texts
+
+Apps spec, "Changed on 2026-11-15". This plan has no tasks of its own; these lines change what the slices' own plans are handed.
+
+- **Signing in, in every shell (slices 1 and 3):** a phone number and a password, as on the web (the texts plan, Task 4). The code field keeps `autocomplete="one-time-code"` and `inputmode="numeric"`, so a phone offers the code from the text. No shell reads a person's texts itself.
+- **Slice N, Notifications:** four, not three. The fourth is "About my account", off until turned on like the others. With it on, a notice that is waiting on `/me` because the person texted STOP (the texts plan's `WaitingNotice`) also arrives as a notification. The other three stay push notifications and do not also go by text.
+- **Slice L, Launch:** "the launch email and notification" becomes "the launch text and notification". The text is the wishlist plan's branch D as rewritten (`/jobs/launch-text`): one text to each person who wishlisted a game and ticked the box, in their own daytime. Anyone who turned on notifications also gets one. The same holds for the day live payments open.
+- **Slice L, "Accounts and the stores' other rules":** deleting an account in the app also deletes its phone number and its text settings; the texts plan's purge does it, so the app's deletion needs nothing more. The stores' privacy forms list a phone number as collected, for the account and for texts the person agreed to.
+- **What the Owner holds, added:** the carriers' approval of Ruken's number (the texts plan, X5) is on the path to launch beside the store accounts.
+- **Found while planning, 7 ("the longest wait is not code")** now has a second wait of the same kind: the carriers' approval needs the company and its tax number too.

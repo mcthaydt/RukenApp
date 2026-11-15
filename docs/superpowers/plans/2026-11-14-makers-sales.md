@@ -1,5 +1,7 @@
 # Makers' Sales (Extras and Splits) Implementation Plan
 
+> **Rewritten for texts (2026-11-15).** The texts spec (`docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, approved by the Owner on 2026-11-15: "Text design approved") moves Ruken's messages from email to texts, and the texts plan (`2026-11-15-texts-not-email.md`) builds it. In this plan that changes `extras/mails.ts` (accepted, sent back and taken off sale become texts; the EU and UK confirming email stays) and `proposeSplit`'s `mailer` (the invitation and the change become texts). They are rewritten in "Rewritten for texts", the last section of this plan. Where that section and an earlier line differ, that section wins.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task (CLAUDE.md: no subagents). Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A member buys a game's extra (a DLC or a season pass) in one tap and the game unlocks it; a maker adds extras and names who shares a game's money; every person in a split is paid their share of everything the game earns, on a statement of their own.
@@ -1224,3 +1226,63 @@ The apps' plan builds the stores. These are decided here so both plans agree; no
 - **Spec coverage.** 5.1: Tasks 20, 21. 5.2: Tasks 13, 14, 21; the stores' sheets are the apps' plan's. 5.3: Task 22. 5.4: Tasks 9 to 11, 23, 25. 5.5: Tasks 1 to 3, 24, 28; store prices are settled above and built with the stores. 5.6: Tasks 7, 8, 26, 27; blocking is the apps' plan's; the bank is slice 5's E, re-planned. 5.7: Tasks 4 to 6, 15 to 19. 5.8: Tasks 29, 30, 31; Apple's hold is Q1. 5.9: Tasks 28, 29, 32. 5.10: Tasks 8, 14, 28. Section 6: Task 33. Section 8: the Calls.
 - **Not covered here, and where it is:** every store's purchase, price list and notification (the apps' plan); the look of the maker's screens (#96); the agreement's and the refunds page's words (#104).
 - **Names.** `Share`, `splitSale`, `shareAmong`, `postSale*`, `splitInForce`, `splitsOver`, `ExtrasStripe`, `settleOrder`, `revokePurchase`, `restorePurchase`, `refreshOwned` and `extrasOf` are used in later tasks as their first task defines them.
+
+## Rewritten for texts
+
+Makers' sales spec, "Changed on 2026-11-15". Everything not named here stands. Every text goes through `tellByText` from `accounts.ts` (the texts plan, Task 6), which sends once, respects STOP and keeps the record; the words are built with `fitText`, which cuts a long name and never the link. The texts plan's branch C must be on `main` before branch C here.
+
+### File map
+
+- `src/features/money/split-mails.ts` becomes `split-texts.ts`: the invitation, the change, the no.
+- `src/features/extras/mails.ts` keeps only the confirming email. `src/features/extras/texts.ts` is new: accepted, sent back, taken off sale.
+- "What this plan relies on": slice 1's `Mailer` is used only by the confirming email, through `sendPaper`; add `tellByText`, `fitText` and `sendPaper` from the texts plan.
+
+### Task 8: the split's texts
+
+- `proposeSplit` and `answerSplit` take `deps: { db; clock; tell; siteOrigin }`, where `tell` is `tellByText` bound to the site's `Texter`. There is no `mailer`.
+- `split-texts.ts`, pure, each answering the text's words (`<site>` is `siteOrigin`):
+
+| When | To | `kind`, `key` | Words |
+|---|---|---|---|
+| A person is asked to join | each person who must say yes | `split_invite`, the split's id | `fitText("Ruken: <maker's name> wants to share what ", <game>, " earns with you. Say yes or no: <site>/me/splits/<split id>")` |
+| The split starts | everyone in the old and the new split | `split_changed`, the split's id | `fitText("Ruken: the shares for ", <game>, " changed. See them: <site>/me/splits/<id>")`, where `<id>` is the new split for someone in it, and the old one for someone who was removed |
+| Someone says no | the maker | `split_declined`, the split's id | `fitText("Ruken: <name> said no to sharing ", <game>, ". The shares stay as they were: <site>/make/<game>/split")` |
+
+- A name is the person's handle with `@` when they have one, else "Someone on Ruken", passed in by the caller as before.
+- What the invitation email said beyond this (the share, "Nothing changes until everyone on the list has said yes", the bank line) is on the page the link opens, where Task 27 already puts it.
+- Step 1: "the mails' exact words" becomes each text's exact words for a game named "Floor Fifty" at `https://ruken.test`, each at most 160 characters, and a game name of 200 "W" still ends with the whole link; a removed person "still gets the change text", with the old split's link; a text asked for twice is sent once. Files: `tests/features/money/split-texts.test.ts`.
+
+### Task 27: one more state on `/me/splits/<split>`
+
+A split that has ended, opened by someone who was in it and is not in the one that replaced it: "The shares for Floor Fifty changed on `<long date>`. You no longer share what it earns. Money already earned is not changed." That is where the change text's link lands for a removed person. Step 1 gains that case; "the mail's text" in `showTheOwner` becomes the text's.
+
+### Task 26
+
+"It calls `proposeSplit` with each person's handle for the mails" becomes "for the texts".
+
+### Task 14: the confirming email stays, and goes to the address Stripe holds
+
+- `createOrders(deps: { db; clock; stripe; files; noteKey; paper; rateLimiter })`, where `paper` is `sendPaper` bound (the texts plan, Task 10). There is no `mailer`.
+- `confirmingMessage(input: { name: string; total: string; boughtOn: string; site: string }): { subject: string; text: string }` takes no address. Its last paragraph, "If something is wrong with it, write to us: `<support address>`", becomes "If something is wrong with it, get help here: `<site>`/help". `sendPaper` adds "We email this one so you have a copy to keep."
+- The extras checkout's handler also calls `setPaperEmail` with the address Stripe collected (`customer_details.email`), as the membership checkout does. A member who joined through Apple never went through that one, and would otherwise have no address here (the texts plan's audit, 19).
+- `settleOrder`, for a buyer in `WAIVER_COUNTRIES`: `paper({ userId, kind: "waiver", key: <order id>, ...confirmingMessage(…) })`. `sent` and `already` are fine. `no_address` should not happen for someone who has just paid (Stripe collected it, and the membership's checkout stored it); if it does, it is thrown with the order's id for the job's "Needs a person", because the law asks for a lasting copy and a text is not one.
+- The stop rule about a support address ("If none is on `main` when this task starts, stop and ask") is gone from this task and from Task 28: no message here names an address to write to.
+- Step 1: "mails the confirmation to a buyer in the EU or the UK, once, and to nobody else" stands, read through `PaperMail` and the capture mailer; add: the mail goes to the address Stripe holds, never to the account's stand-in address.
+
+### Task 28: the maker's three notices are texts
+
+In `src/features/extras/texts.ts`, pure; sent with `tellByText` after the decision is stored:
+
+| When | `kind`, `key` | Words |
+|---|---|---|
+| Accepted | `extra_accepted`, the version's id | `fitText("Ruken: ", <name>, " is on sale. See it: <site>/make/<game>/extras/<id>")` |
+| A change accepted | `extra_accepted`, the version's id | `fitText("Ruken: your change to ", <name>, " is live. See it: <site>/make/<game>/extras/<id>")` |
+| Sent back | `extra_sent_back`, the version's id | `fitText("Ruken: we sent ", <name>, " back. See what to fix: <site>/make/<game>/extras/<id>")` |
+| Taken off sale by staff | `extra_taken_off`, the extra's id and the clock's day | `fitText("Ruken: we took ", <name>, " off sale. See why: <site>/make/<game>/extras/<id>")` |
+
+- The reason is never in a text. The maker's screen for that extra (Task 24) shows it: "Sent back: `<reason>`", or "Taken off sale: `<reason>`. People who bought it keep it." with "Get help" to `/help`. Task 24's screen gains the second line, with its test.
+- Step 1: "the three mails' exact words" becomes the four texts' exact words, each at most 160 characters.
+
+### Settled for the apps' plan: Apple and a game that left
+
+The email to each such buyer stays, sent with `sendPaper` to the address Stripe or Apple gave, and the same link also goes by `tellByText` (`kind` `apple_refund`, `key` the purchase's id): `fitText("Ruken: ", <game>, " left Ruken. Ask Apple for your money back here: <Apple's refund page>")`.
