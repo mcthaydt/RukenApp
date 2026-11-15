@@ -390,7 +390,7 @@ Blocking (apps spec, "Friends") has no screen of its own here: a blocked person 
 ### 10.2 Calls
 
 - **Adding an extra is one question per screen**, as a game's questions are, ending on its own Check and send. The sales plan's Task 24 says "one form"; the Owner's rule is "extended forms should be typeform-coded" (section 1's notes), and an extra has five or six answers. Its questions: what is it (two choices, "Something to keep" and "A season pass"), its name, its one line, its picture, its price, and for a season pass its first and last day.
-- **The price is a choice of cards**, the eleven prices of sales 5.5, never a box to type in. Each card shows what the maker gets from a sale at that price as well as the price.
+- **The price is a choice of cards**, the eleven prices of sales 5.5, never a box to type in.
 - **A season's days are picked on a calendar** drawn by Ruken, in Chicago days.
 - **A share is picked, not typed**: each person's share is a choice of whole percents.
 - **Take off sale** is red, then one short screen like "Throw Floor Fifty away?": green "Keep it on sale", red "Take it off sale".
