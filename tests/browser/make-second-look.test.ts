@@ -496,7 +496,7 @@ async function expectChoicesAboveTheBar(page: Page, count: number): Promise<void
   const picks = page.locator(".pick");
   for (let which = 0; which < count; which += 1) {
     const box = await boxOf(picks.nth(which));
-    expect(box.y + box.height, `choice ${which + 1} ends above the bar`).toBeLessThanOrEqual(bar.y);
+    expect(box.y + box.height, `choice ${String(which + 1)} ends above the bar`).toBeLessThanOrEqual(bar.y);
   }
 }
 

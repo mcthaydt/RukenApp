@@ -91,7 +91,7 @@ test("on Live the Ruken wordmark is above the blurred video, so it can be seen a
 
 // ---- M2: Check and send, with room for the words --------------------------------------------------------------------
 
-test("on a phone Check and send has the name, the line and the facts across the whole width, under both videos", async ({
+test("on a phone Check and send has the name, the line and the facts across the whole width, before both videos", async ({
   page,
 }) => {
   test.skip(layoutOf(page) !== "phone", "a phone held upright's own arrangement");
@@ -102,8 +102,10 @@ test("on a phone Check and send has the name, the line and the facts across the 
   const tiles = await boxOf(page.locator(".tiles"));
   const title = await boxOf(page.locator(".laid .title"));
   const tagline = await boxOf(page.locator(".laid .tagline"));
-  // Both videos sit in one row, and the words start under them at the left edge, where the videos start.
-  expect(title.y).toBeGreaterThanOrEqual(tiles.y + tiles.height);
+  // The words come first, at the left edge where the videos start, and both videos sit in one row under them (the second look's
+  // L5: with the videos first the bar covered the facts). Nothing is beside the videos, so the words have the whole width.
+  expect(tiles.y).toBeGreaterThanOrEqual(tagline.y + tagline.height);
+  expect(title.y).toBeLessThan(tiles.y);
   expect(title.x).toBeCloseTo(laid.x, 0);
   expect(tagline.x).toBeCloseTo(laid.x, 0);
   expect(await lineCount(page.locator(".laid .tagline"))).toBeLessThanOrEqual(5);
