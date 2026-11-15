@@ -67,16 +67,16 @@ Read on 2026-11-15. The build session reads each again before Task 1 (Step 0) an
 - **A number that has an account gets `alreadyText` from inside the plugin's `sendOTP`**, not from a separate path in the form. Both cases then call `/phone-number/send-otp`, so they count against the same limits, write the same row and take the same time. (audit 6)
 - **Codes are not `TextSent` rows.** `TextSent` is for notices to an account, and a sign-up code has no account yet. Codes are limited by the limiter.
 - **Any text that is not STOP, START or HELP**, to either number, gets the HELP reply until the help chat is built, at most once an hour per number.
-- **Where a reply cannot reach Ruken** (179 of 222 countries can never reply; and with only Ruken's two US numbers, no country but the US and Canada can, audit 11), STOP by reply does not exist. Built unless the Owner says otherwise (Question 1): those countries see "Turn these off on your account page" in place of "Reply STOP", and help is on the site.
+- **Where a reply cannot reach Ruken** (179 of 222 countries can never reply; and with only Ruken's two US numbers, no country but the US and Canada can, audit 11), STOP by reply does not exist. The Owner, 2026-11-15, on a card: "Stay closed there until replies work". So a country is open only where a person can text Ruken back, every open country can reply STOP, START and HELP, and no other way to stop is built. This narrows the spec's "every country, from the first day" to "every country where replies work"; the spec's "Every country" carries a dated line saying so.
 - **A made-up number can never be texted.** North American numbers of the form `+1 ··· 555 01··` are kept for fiction. The seeded accounts get those, and the `Texter` refuses them whatever the allowlist says.
 - **The fourth notification, "About my account"**, is a push notification. It joins the apps' slice N with the other three. Nothing is built for it here; `/me` shows the waiting notices without it.
 - **The legal emails' own senders stay in their own plans** (terms changed: the legal pages; the EU and UK email: the sales plan's Task 14; Apple's refund link: the apps' plan). This plan builds what they all use: `paperEmail`, `sendPaper` and its record.
 
 ## Questions for the Owner
 
-Asked on a card in the thread; the build goes on the recommended answer until the Owner picks another.
+Asked on a card in the thread, and answered.
 
-1. **In countries where people can't text Ruken back** (most of the world outside the 43 in the table): A. They turn news texts off on their account page, and get help on the site (recommended; no extra cost or wait). B. Buy a local number in each country where that makes replies work. C. Stay closed there until replies work.
+1. **In countries where people can't text Ruken back** (most of the world outside the 43 in the table): A. They turn news texts off on their account page, and get help on the site. B. Buy a local number in each country where that makes replies work. C. Stay closed there until replies work. **Owner, 2026-11-15: C, "Stay closed there until replies work".** Ruken opens only where people can text back: on the first day the United States and Canada, and later, one at a time, any of the 43 two-way countries the Owner gets a number in (X7).
 
 ## Where execution stops and waits for the Owner
 
@@ -90,7 +90,7 @@ The `twilio` commands below were written from the plan session's knowledge of Tw
 - **X4. The Worker's settings**, each with `npx -y wrangler@4.156.0 secret put NAME --name ruken`: `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY`, `TWILIO_API_SECRET` (`twilio api:core:keys:create --friendly-name ruken` prints both), `TWILIO_AUTH_TOKEN`, `TWILIO_ACCOUNT_SERVICE`, `TWILIO_NEWS_SERVICE`, and `TEXT_ALLOWLIST` with the Owner's and the testers' own numbers. The test copy gets its own set (the apps' test-copy plan, amended).
 - **X5. After the LLC and its tax number:** registering Ruken's name and both numbers with the US carriers (a website: Twilio's Console walks through it). Launch waits for this (Owner: "Launch waits for the carriers"). The privacy and terms pages must be public first, with the lines in "Notes for the plans that follow", and so must `/help`, which the HELP reply names (audit 20).
 - **X6. After X5:** ask Twilio to turn on the changed-hands check (a website). Until then Task 5 treats every number as "cannot say".
-- **X7. Each country the Owner wants open on the first day:** turn it on in Twilio's SMS Geo Permissions (a website), add the sender it accepts (`sender` in `countries.json`: the name "Ruken", registered where the table says so, or a number of that country) to both Messaging Services, and register the name where it is required. Some of these cost money. (audits 10, 12)
+- **X7. Each country the Owner wants open on the first day:** it must be one of the 43 where two-way is "Yes" (the Owner's answer to Question 1). Turn it on in Twilio's SMS Geo Permissions (a website), buy two numbers of that country that can take replies and add one to each Messaging Service, and register where the table says so. Some of these cost money. (audits 10, 12)
 - **X8. Once branch B is on the real site:** the Owner signs up again with their phone, then the first-owner command with their number in place of the email. The accounts made by email cannot be signed in to any more; no real person has one.
 
 ## How a task runs
@@ -107,7 +107,7 @@ Each is small enough to review in one sitting, merges before the next starts, an
 | B `texts/sign-in` | 3, 4, 5 | A | the tables; sign-up, sign-in, forgot password; email sign-up removed |
 | C `texts/notices` | 6, 7, 8 | B | one text a notice, once; texts in, STOP and START; what a person sees while texts are off; changing the number |
 | D `texts/yes` | 9, 10 | C | the yes to news texts, quiet hours, the legal email |
-| E `texts/countries` | 11 | B; the Owner's answer to Question 1 | which countries are open, and their words |
+| E `texts/countries` | 11 | B | which countries are open, and their words |
 
 ## File map
 
@@ -464,7 +464,7 @@ test("Twilio failing does not break the code screen", async ({ page }) => {});  
 - Test: `tests/features/accounts/text-yes.test.ts`, `text-yes.pg.test.ts`, `tests/browser/me.test.ts` (add cases)
 
 - `TextYesEvent`: `id`, `userId`, `yes Boolean`, `words String` (the exact line shown), `timeZone String?`, `at`, `createdAt`. Rows are added, never updated (the same `UPDATE`-only trigger); deleted with the account. The newest row is the state.
-- `newsYesWords(country: Country | null): string`: `"Text me when my wishlisted games are out. About one text. Message and data rates may apply. Reply STOP to stop."`, with the ending Task 11 sets for a country where replies cannot reach Ruken. The record keeps exactly the words shown. (audit 16; wherever this plan or another says `NEWS_YES_WORDS`, it is this)
+- `newsYesWords(country: Country | null): string`: `"Text me when my wishlisted games are out. About one text. Message and data rates may apply. Reply STOP to stop."`, the same in every open country, since a country opens only where replies reach Ruken (Question 1). The record keeps exactly the words shown. (audit 16; wherever this plan or another says `NEWS_YES_WORDS`, it is this)
 - `sayYes(deps, input: { userId; timeZone: string | null })` (refused for an account whose `adultOn` is after today or null: optional texts are not offered under 18), `sayNo(deps, userId)`, `yesOf(db, userId): Promise<{ yes: boolean; timeZone: string | null }>`.
 - `inQuietHours(nowMs: number, timeZone: string): boolean`, pure, with Temporal: true before 9:00 and from 20:00 in that zone. `timeZone` is the one the device gave when the person said yes (`Intl.DateTimeFormat().resolvedOptions().timeZone`, in a hidden field filled by a script); with none, the text goes only when it is between 9:00 and 20:00 in every zone of the number's country (`timeZones` in Task 11's list; until then the US's, from Honolulu to New York), so nobody is woken at night (audit 17). An unknown zone name counts as quiet, so a bad value never sends at night.
 - `tellByNews(deps, input: { userId; kind; key; body }): Promise<"sent" | "quiet" | "no_yes" | "stopped" | "already" | "held_back" | "no_number">`: as `tellByText`, on the news line, with `no_yes` when the newest event is not a yes, `stopped` when the news line is off or Twilio refuses the send with 21610 (which records the stop, audit 3), and `quiet` (nothing recorded, so a later run sends) inside quiet hours. No `WaitingNotice`: an optional text that cannot go is not owed.
@@ -494,7 +494,7 @@ test("Twilio failing does not break the code screen", async ({ page }) => {});  
 
 ### Task 11: Which countries are open
 
-Needs the Owner's answer to Question 1.
+The Owner's answer to Question 1 (C, "Stay closed there until replies work") is built here: a country is open only where a person can text Ruken back.
 
 **Files:**
 - Create: `src/features/accounts/countries.ts`, `src/features/accounts/library/countries.json`, `library/README.md`
@@ -502,12 +502,12 @@ Needs the Owner's answer to Question 1.
 - Test: `tests/features/accounts/countries.test.ts`, `tests/browser/sign-up.test.ts` (add cases)
 
 - [ ] **Step 0:** read Twilio's page for every country again (the method in `2026-11-15-texts-countries.md`; Sweden and the nineteen listed there by hand) and write `countries.json` from the pages: for each, `iso`, `name`, `dialingCode`, `twoWay`, `needsRegistration`, `sender` (what the country accepts from Ruken: `us_number`, `name` or `local_number`, from the table's last three columns, audit 12), `replyHere` (true only where Ruken has a number of that country on both lines: at first the US and Canada, audit 11), `timeZones` (every IANA zone of the country, from the zone table shipped with Node, audit 17), and `open`. The US and Canada split takes Canada's area codes from the North American Numbering Plan administrator's published list (audit 21). `README.md` records the day each was read and the command that made it. (The table's row for Brunei lost its name and code when it was copied; read it from its page.) Facts come from the pages; none is typed from memory.
-- `open` is true only for a country where a text can go out today with nothing more from the Owner: on the first day that is the United States and Canada once X5 is done. Every other country starts `false` and is opened by one line in `countries.json`, only after the Owner's X7 for it: its Geo Permission on in Twilio, its sender in both services, and its registration where one is asked. `open` and Twilio's Geo Permissions must match (audits 10, 12). Launch waits for the ones the Owner marks.
+- `open` is true only for a country where a text can go out and a reply can come back today, with nothing more from the Owner: on the first day that is the United States and Canada once X5 is done. Every other country starts `false` and is opened by one line in `countries.json`, only after the Owner's X7 for it: its Geo Permission on in Twilio, a number of that country on both lines, and its registration where one is asked. `open` is never true where `replyHere` is false, so a country whose `twoWay` is false cannot open at all. Puerto Rico shares `+1` and Twilio's page says a US number reaches it, but that a reply from it reaches Ruken's US numbers is not proven: it starts closed, and opens when Task 0's kind of proof (a real STOP from a Puerto Rico number, recorded) is on the pull request. `open` and Twilio's Geo Permissions must match (audits 10, 12). Launch waits for the ones the Owner marks.
 - `openCountries(): readonly Country[]` (by name), `countryOf(number: string): Country | null` (the longest dialing code that fits; `+1` is told apart by area code only between the United States and Canada, and anything else under `+1` is its own entry).
 - Sign-up's `<select>` lists `openCountries()`, starting on the one the browser's `Accept-Language` region names when it is open, else the first. A closed country cannot be chosen; a number typed with `+` whose country is closed gets "Ruken isn't in your country yet." and nothing is stored or sent.
-- With the Owner's answer A to Question 1: for a country whose `replyHere` is false (not `twoWay`: audit 11), sign-up's note ends "Turn these off any time on your account page." in place of "Reply STOP to stop, HELP for help.", `NEWS_YES_WORDS` ends the same way, and news texts to it end "Stop: `<site>`/me". B or C: the session stops and reports, since each changes what is built.
+- Every open country can reply, so the words are the same everywhere: sign-up's note ends "Reply STOP to stop, HELP for help." and `newsYesWords` has one ending. No "turn these off on your account page" wording is built.
 
-- [ ] **Step 1 (red):** every entry has the nine fields, a dialing code of `+` and 1 to 4 digits and a zone name Temporal accepts; no two entries share a dialing code but the `+1` ones; `countryOf` for a US, a Canadian, a UK and an unknown number; the journey: a closed country's number is refused with the one line, with no text and no row; the list offers only open countries. Push. Expected: `verify` and `browser` fail.
+- [ ] **Step 1 (red):** no entry is `open` with `replyHere` false; every entry has the nine fields, a dialing code of `+` and 1 to 4 digits and a zone name Temporal accepts; no two entries share a dialing code but the `+1` ones; `countryOf` for a US, a Canadian, a UK and an unknown number; the journey: a closed country's number is refused with the one line, with no text and no row; the list offers only open countries. Push. Expected: `verify` and `browser` fail.
 - [ ] **Step 2 (green):** the list and the code. Push. Expected: all pass. Branch E is ready to merge. Tell the coordinator which countries are open and which wait on X7.
 
 ---
@@ -527,4 +527,4 @@ Needs the Owner's answer to Question 1.
 - **Spec coverage.** "Which message goes where": codes and account notices, Tasks 4 to 6; the maker's, split's, extra's and wishlist's texts, the other plans' amended tasks through Task 6 and 9; help, the help chat's design; the three emails, Task 10 and their own plans. "Signing up and signing in": Tasks 2, 4, 5, 8. "The email that stays": Task 10. "Saying yes, and STOP": Tasks 7 and 9. "Every country": Task 11 and the country table. "Twilio": Task 1. "Before the carriers say yes": X5, `TEXT_ALLOWLIST` (Task 1), and Task 4 removes email sign-up. "Stored": Tasks 3, 6, 7, 9. "Left to the plan": Twilio's calls ("What Twilio's pages say"), the words ("The words of every text"), how email sign-up is removed (Task 4), the countries (the table, Task 11), the stand-in (Task 1).
 - **Not covered here, and said so:** the fourth notification (the apps' slice N); the help chat; the legal pages' lines; the three legal emails' own senders.
 - **Names.** `Texter`, `TextMessage`, `TextLine`, `tellByText`, `tellByNews`, `textStateOf`, `hashNumber`, `toE164`, `resetChannel`, `sendPaper` and `setPaperEmail` are spelled one way throughout.
-- **Open before the build:** Question 1 (Task 11 only); Task 0's proof of the two numbers; Task 7's Step 0 on the cross-site check.
+- **Open before the build:** Task 0's proof of the two numbers; Task 7's Step 0 on the cross-site check.

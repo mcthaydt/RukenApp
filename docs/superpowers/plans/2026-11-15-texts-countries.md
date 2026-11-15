@@ -14,6 +14,7 @@ Belongs to `2026-11-15-texts-not-email.md` (the texts plan). The texts spec asks
 **Counted from the table.**
 
 - Two-way "Yes": 43. Two-way "No": 179.
+- The Owner, 2026-11-15: "Stay closed there until replies work". Only the 43 can open, each once Ruken has a number of that country; the 179 stay closed. Of the 43, Argentina, Bolivia, Colombia, Ireland and Japan show a local number as "Not Supported" for sending, and New Zealand shows "N/A": Task 11 reads those six by hand before any of them is counted on.
 - A registered name is "Required" before any text arrives, for all or some of the country's networks: Austria, Bangladesh, Finland, Ireland, Kazakhstan, Liberia, Romania, Singapore, Spain, Thailand, Venezuela, Zimbabwe. The United Kingdom asks it only for protected names.
 - The United States asks for registration of a local number ("Requires registration" on Twilio's page): that is the carriers' approval the spec's launch waits for.
 - Neither an unregistered name nor an ordinary number is marked plainly "Supported" for: Burundi, Cuba, Ethiopia, Iran, Iraq, Kenya, Kuwait, Norfolk Island, Qatar, Russia, Saudi Arabia, Sri Lanka, Swaziland, Syria, Tanzania, Timor-Leste, Tuvalu, United Arab Emirates, Uzbekistan. In some of them a registered name works, on all or some networks (their rows say which); in the rest no text can be sent. Task 11 reads each by hand, and each starts closed.
