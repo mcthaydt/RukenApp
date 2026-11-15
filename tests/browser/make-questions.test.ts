@@ -605,10 +605,11 @@ test("the wide question follows, and after it the age question", async ({ page }
 
 // ---- Recording the screen -----------------------------------------------------------------------------------------
 
-test("both video questions have a link to how to record a screen, which leads back to the question", async ({
-  page,
-}) => {
-  for (const shape of ["upright", "wide"] as const) {
+// One journey for each question: each makes its own maker and game, so a second sign-up is never made in a signed-in browser.
+for (const shape of ["upright", "wide"] as const) {
+  test(`the ${shape} video question has a link to how to record a screen, which leads back to the question`, async ({
+    page,
+  }) => {
     const { slug } = await startAtVideo(page, shape);
     const how = page.getByRole("link", { name: "How do I record my screen?" });
     await expect(how).toHaveAttribute(
@@ -621,8 +622,8 @@ test("both video questions have a link to how to record a screen, which leads ba
     await expect(page.getByRole("heading", { level: 1, name: "Record your screen" })).toBeVisible();
     await page.getByRole("link", { name: "Back to your game" }).first().click();
     await expect(page).toHaveURL(`/make/${slug}/${shape}`);
-  }
-});
+  });
+}
 
 test("the record-your-screen page has steps for a phone and for a computer, and needs no account", async ({
   page,
