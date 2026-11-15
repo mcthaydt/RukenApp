@@ -26,7 +26,7 @@
   ];
 
   /** What was ticked and typed before a refusal, so the page comes back as it was left. */
-  const kept = $derived(form !== null && form !== undefined && "kept" in form ? form.kept : undefined);
+  const kept = $derived(form?.kept);
   const chosenRating = $derived(kept !== undefined && kept.ageRating !== "" ? kept.ageRating : data.ageRating);
   const chosenMarks: readonly string[] = $derived(kept?.marks ?? data.contentMarks);
 
@@ -79,7 +79,6 @@
         <section class="part" aria-labelledby={`part-${part.part}`}>
           <h2 id={`part-${part.part}`}>{part.title}</h2>
           {#if part.video !== null}
-            <!-- svelte-ignore a11y_media_has_caption -->
             <video class="clip" src={part.video.src} controls muted playsinline preload="metadata"></video>
           {:else}
             <p class="say">{part.value ?? "Not answered"}</p>

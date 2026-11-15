@@ -56,7 +56,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
   };
 };
 
-export const actions: Actions = {
+// `satisfies`, not an annotation: the page's `form` takes its type from what the action really returns.
+export const actions = {
   decide: async ({ locals, params, request }) => {
     const { userId } = staffOnly(locals.caller);
     const service = gamesServices().service;
@@ -107,4 +108,4 @@ export const actions: Actions = {
     }
     redirect(303, "/admin/games");
   },
-};
+} satisfies Actions;
