@@ -280,7 +280,7 @@ test.describe("a 56-letter name in a question's heading", () => {
       const heading = page.getByRole("heading", { level: 1 });
       expect(await lineCount(heading)).toBeLessThanOrEqual(5);
       expect(await brokenWords(heading)).toEqual([]);
-      const box = await boxOf(page.locator("input.answer"));
+      const box = await boxOf(page.locator(".answer"));
       expect(box.y + box.height).toBeLessThanOrEqual(await barTop(page));
     });
   });
@@ -293,7 +293,7 @@ test.describe("a 56-letter name in a question's heading", () => {
       await draftWithLongName(page);
       await pageHasSettled(page);
 
-      const box = await boxOf(page.locator("input.answer"));
+      const box = await boxOf(page.locator(".answer"));
       expect(box.y + box.height).toBeLessThanOrEqual(await barTop(page));
     });
   });
