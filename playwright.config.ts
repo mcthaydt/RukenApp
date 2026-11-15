@@ -105,6 +105,8 @@ export default defineConfig({
       env: {
         PLAY_PASS_SECRET: "test-only-play-pass-secret",
         SITE_ORIGIN: "http://localhost:4173",
+        // The one host on which a game is in the path, as on the test site's free address.
+        PATH_HOST: "localhost:8788",
         // So `wrangler dev` gives the gate the settings above (there is no .dev.vars file).
         CLOUDFLARE_INCLUDE_PROCESS_ENV: "true",
       },
