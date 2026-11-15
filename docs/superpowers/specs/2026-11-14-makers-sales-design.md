@@ -266,3 +266,13 @@ What this spec's own work needs, for that date: this spec approved; the maker sc
 - **Apple refunds after a take-down.** Apple decides, not Ruken. A held sale that Apple never refunds and never answers about needs a rule for how long it is held; the plan proposes one to the Owner.
 - **The stores' rules move.** Apple's fee on links to buy on the web, and Google's fees, are changing through the courts in 2026. The rules are checked again before the plan.
 - **A game that does not unlock.** Staff check each extra by playing (5.5), but a later game update could break an unlock. Reports and the staff refund (5.8) are the way back.
+
+## Changed on 2026-11-15: texts, not email
+
+`2026-11-15-texts-not-email-design.md` changes these lines (approved by the Owner, 2026-11-15: "Text design approved").
+
+- 5.6, the split's invitation ("They get an email with the game, their share and one button"): they get a text with a link to the split on Ruken, where the game, their share and the one button are.
+- 5.6 and the Owner's "3. A", "Everyone in the old and new split gets one email saying what changed": one text each, with a link to the split.
+- 5.10, "Emails": an extra accepted, sent back or taken off sale is a text. The EU and UK confirming email (5.2) stays an email, to the address Stripe holds for the buyer.
+- 5.8, Apple buyers of a game that left: the email stays, as the Owner said, and the same link also goes by text.
+- "The exact wording of every screen and email": and of every text.
