@@ -451,16 +451,26 @@ Owner, 2026-11-15, to "32. What can an 18+ game have that staff still accept?": 
 
 This amends the main design's 5.5 ("Adult games are not accepted") and the apps spec's age ratings. What it means on the screens of this file:
 
-- **The maker says so.** After "Who is Floor Fifty for?", a game rated 18+ gets one more question: "Does Floor Fifty have any of these?" with three choices, any or none: "Sex or nudity", "Gore", "None of these". Hint: "Players only see it if they turn it on. Pornography is never allowed." Call: a question only for 18+ games, so a first game is still 11 questions unless it is 18+.
+- **The maker says so.** After "Who is Floor Fifty for?", a game rated 18+ gets one more question: "Does Floor Fifty have any of these?" with four choices, any or none: "Sex or nudity", "Gore", "Drugs", "None of these" (12.0). Hint: "Players only see it if they turn it on. Pornography is never allowed." Call: a question only for 18+ games, so a first game is still 11 questions unless it is 18+.
 - **Staff check it.** On checking a game (section 11.1, screen 2) the age rating row also shows these two marks, and staff can add or remove either before Accept. "It's pornography." is a reason on the list (section 11.2), and a game sent back for it cannot be sent again as it is.
 - **The maker sees it.** Check and send, Sent back and Live show the marks as a chip beside the rating ("18+ · Sex or nudity").
 - **Who sees such a game** (not a maker screen, for the apps' plan): only an account 18 or over, only on the website and Ruken's own downloads, only after turning it on in Settings, and only after a content warning before its clip or page. Everywhere else, and for everyone else, the game does not exist: the feed, search, maker pages, links, extras, leaderboards.
+
+### 12.0 The bar, and gambling
+
+Owner, 2026-11-15: "Here's my thoughts: cyberpunk 2077 is a max bar for sex, nudity, violence, and drugs, no gambling".
+
+- **The most an 18+ game may have is Cyberpunk 2077's level** of sex, nudity, violence and drugs. Staff measure against that: more than it is refused, and pornography is always refused. "It goes past what we allow." is a reason on staff's list for the age rating row.
+- **Drugs** join the marks: the 18+ question's choices are "Sex or nudity", "Gore", "Drugs", "None of these". Call: drugs alone do not hide a game from the store apps, because the stores' own 17+ and 18+ ratings allow drug use; sex, nudity and gore do.
+- **No gambling, at any rating.** Staff refuse a game that does it, with the reason "Gambling isn't allowed on Ruken.". An extra is a fixed thing: staff refuse one whose contents are random. Pending: whether play-money casino games and random rewards bought inside a game count (question 33).
+
+Owner, 2026-11-15, on Flathub and the Snap Store: "Stores (18+ content hidden)". So every store app hides games marked sex, nudity or gore: the App Store, Google Play, the Mac App Store, the Microsoft Store, Flathub and the Snap Store. Only the website and Ruken's own downloads show them, to adults who turned them on. Worth knowing, said once: Cyberpunk 2077 itself is sold on the Microsoft Store, so that store might allow such games; Apple's and Google's rules do not allow sex or nudity in apps. The Owner's rule stands.
 
 ### 12.1 What this touches beyond these screens
 
 Flagged for the coordinator; none of these is decided here.
 
-- **The store apps.** The Mac App Store and the Microsoft Store are store apps, not "desktop downloads", so they hide these games like the phone apps. Call, for the Owner to confirm: Flathub and the Snap Store count as stores too. Each store's rules on mature content are checked again before the apps' plan.
+- **The store apps.** The Mac App Store and the Microsoft Store are store apps, not "desktop downloads", so they hide these games like the phone apps. Flathub and the Snap Store count as stores too (Owner: "Stores (18+ content hidden)"). Each store's rules on mature content are checked again before the apps' plan.
 - **The image checks.** The apps spec flags nudity automatically and hides it until staff decide. Pictures and clips of a game marked "Sex or nudity" or "Gore" need the check to label instead of block, and player and maker page photos still refuse nudity.
 - **Stripe.** Stripe's rules on what a business may sell limit sexual content. Whether a game with sex or nudity can be sold through Ruken, or whether its presence puts Ruken's Stripe account at risk, is read from Stripe's own rules before this is built.
 - **The law.** Some US states require a check of age, beyond a typed birth date, for sites with sexual material. That goes to the lawyer with pull request #104.
