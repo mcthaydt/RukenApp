@@ -627,3 +627,29 @@ On a phone held sideways, the staff check screens' headings are 32px like every 
 Every one-question screen does the same, each preview labelled for who sees it: add a link shows "What players will see on your page"; a new event shows "Who sees it: Players never see events"; asking about a line shows "What Ruken staff will see".
 
 Leaderboards are after launch (Owner, 2026-11-15). Scores exist only for leaderboards, so Add a score, the Scores part of the Achievements room, the leaderboard preview and taking a score off a leaderboard (S17) are marked "after launch" on the board. At launch the room is Achievements only.
+
+## 16. The Owner's notes on version 15
+
+Owner, 2026-11-15, on the board, and four decision cards. Board version 16 shows only the screens that changed: "only show screens that have changed, if I didn't talk about it, it's good and we don't have to show it there anymore". Every other screen is approved as drawn and stays in the board's source and in this file.
+
+### 16.1 Order, and what is pinned
+
+- **The order**: game submission is approved first; then **Your page** as its own section, one question at a time like submission, with a range of layout options; then the reels. Owner: "Your page should be fairly similar in the typeform type of way as we do game submission, handle this after we approve the game submission, but before we handle the reels; this needs it's own section because we should have a variety of different layout options".
+- **Staff screens are pinned**: kept as drawn, and revisited after submissions, pages and reels, "just so we have a concrete idea of what exactly an admin needs to do".
+
+### 16.2 Drawn on the board
+
+- **Sharing with many people.** Owner: "what if we have multiple people, like 10 different people". Who shares the money takes any number of people, up to 20. Each person is a row with a coloured share badge, darkest for the most and lightest for the least ("use colors for the percentage to make it easy to know who gets most/least"), and − and + to change it by 1%, never typed. A pie chart in the same colours sits beside the list ("it needs a pie chart"). "Split evenly" gives everyone the same share, with any leftover 1% to the maker. The common-split cards of section 15 are gone: they only worked for two people.
+- **PDF for accounting.** Your money and a month's statement each have Download PDF: the statement with Ruken's name, the maker's, the month and every line.
+- **Taxes.** Owner: "A Taxes page, no advice". Reached from Your money: what they earned on Ruken this year, "Ruken doesn't take tax out. Put some aside for your taxes.", "If you earn enough in a year, Stripe sends you a US tax form by 31 January. We'll text you when it's ready.", their tax details given to Stripe with Change, a year summary PDF, and "Questions about your own taxes? Ask a tax adviser." Ruken never says what someone owes. Which form, and from what amount, is read from Stripe's and the IRS's rules before the plan.
+- **Player graphs.** Owner: "Three essential ones now". The Players room leads with three graphs: when players stop playing (of everyone who started, how many are still playing after each minute, with the cliff marked, like Instagram's watch time), players each day for the last 7 days, and where they stop (the last floor or level each player reached, from the game's events). Totals and the player list follow.
+- **Who said a review.** Owner: "Clicking on a review should provide information on who said it so developers can find patterns and trends". Each review shows the player's made-up name in this game, their device and how long they played; tapping it opens One player, with their review and what they did. Never who they really are (apps spec).
+- **Reporting.** Owner: "I'm also not seeing any reporting features at all". A maker can report a review, a player, or a game that copies theirs, with one question ("What's wrong with it?") and four reasons. Your reports, on Your games, lists each report and what happened in plain words ("We're looking at it", "We took it down", "Nothing wrong, it stays"). Nobody is told who reported them.
+- **Connecting a game.** Owner: "MCP plus a developer page". A Ruken MCP server: the maker pastes one line into their coding agent, which adds what the game needs and drafts the extras, achievements and events. The maker checks drafts on Ruken ("Keep these 3 events?"), and nobody types an id. The full how-to moves to a developer page on Ruken's website; every "Here's how" in the maker area opens it. The MCP server is a new tool, approved by this answer; its address and commands are the plan's.
+- **Earner rankings, opt-in.** Owner: "an opt in field for your games where you can see their earner rankings like on onlyfans". Off until the maker turns it on, on Your games. Then each live game shows where it ranks by earnings this month ("Top 12% of games this month"). Only the maker sees it.
+- **No super-rounded pills.** Owner: "we don't do super rounded anything here". Chips, reasons and ticks use the same small corners as everything else (8 to 10px). People's photos and charts stay round.
+
+### 16.3 For Your page's own section
+
+- **A song.** Owner: "A song players tap to play", then "but we can select the 30 second region like on Instagram". A Spotify song on a maker's page, which never starts by itself; the maker picks the 30 seconds it plays, as on Instagram. How a picked section plays through Spotify's own player (and for listeners not signed in to Spotify) is read from Spotify's rules before that section's plan.
+
