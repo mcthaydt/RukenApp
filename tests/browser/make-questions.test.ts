@@ -304,6 +304,8 @@ test("the questions work with script off", async ({ page, browser, baseURL }) =>
   const context = await browser.newContext({
     baseURL: baseURL ?? "http://localhost:4173",
     javaScriptEnabled: false,
+    // Nothing here is about motion, and an entrance still moving is not a thing a person presses.
+    reducedMotion: "reduce",
     storageState: await page.context().storageState(),
   });
   try {

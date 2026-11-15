@@ -40,6 +40,8 @@ async function gameAskingAbout(page: Page, question: "plays-on" | "age"): Promis
     slug,
     question === "plays-on" ? { playsOn: false, files: true } : { files: true, videos: true },
   );
+  // The layout is what is measured, not the entrance, so the cards are measured at rest.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(`/make/${slug}/${question}`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   return slug;

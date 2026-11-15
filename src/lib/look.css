@@ -982,7 +982,7 @@ a.game > span > span:not(.statement) {
   color: var(--ink-soft);
 }
 
-a.game [data-sent-back] {
+a.game > span > span[data-sent-back]:not(.statement) {
   color: var(--pay);
   font-weight: 600;
 }

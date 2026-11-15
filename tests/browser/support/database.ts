@@ -149,7 +149,8 @@ export async function fillAnswers(
       ...(answers.files === true ? { repoFullName: "ruken-test/tiny-game", pullProblem: null } : {}),
     },
   });
-  if (answers.files === true) {
+  // Asking twice leaves the game as asking once did: a journey may fill a game and then put it where staff leave it.
+  if (answers.files === true && (await db().gamePull.count({ where: { gameId: game.id } })) === 0) {
     await db().gamePull.create({
       data: {
         id: crypto.randomUUID(),
@@ -164,14 +165,17 @@ export async function fillAnswers(
   }
   if (answers.videos === true) {
     for (const shape of ["upright", "wide"] as const) {
-      await db().gameClip.create({
-        data: {
-          gameId: game.id,
-          shape,
-          key: `clips/${game.publicId}/${shape}-${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}.mp4`,
-          contentType: "video/mp4",
-          bytes: 1000,
-        },
+      const clip = {
+        gameId: game.id,
+        shape,
+        key: `clips/${game.publicId}/${shape}-${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}.mp4`,
+        contentType: "video/mp4",
+        bytes: 1000,
+      };
+      await db().gameClip.upsert({
+        where: { gameId_shape: { gameId: game.id, shape } },
+        create: clip,
+        update: {},
       });
     }
   }

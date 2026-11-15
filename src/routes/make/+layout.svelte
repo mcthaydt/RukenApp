@@ -6,10 +6,9 @@
 <script lang="ts">
   import { onNavigate } from "$app/navigation";
   import { page } from "$app/state";
-  import { QUESTIONS } from "../../features/games/questions.ts";
   import type { LayoutProps } from "./$types";
 
-  let { children }: LayoutProps = $props();
+  let { data, children }: LayoutProps = $props();
 
   /** The one more link in the bar: where the maker goes to stop for now, or to their account. */
   const more = $derived.by(() => {
@@ -20,7 +19,7 @@
     return null;
   });
 
-  const asked: readonly string[] = QUESTIONS;
+  const asked: readonly string[] = $derived(data.questions);
 
   /** The question's place among the questions, or -1 for a screen that is not one (a new game's name is before all). */
   function placeOf(question: string | undefined): number {

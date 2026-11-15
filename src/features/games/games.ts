@@ -17,6 +17,7 @@ export {
   counterOf,
   firstUnanswered,
   isQuestionAddress,
+  QUESTIONS,
   questionBefore,
   questionsFor,
   type QuestionId,
