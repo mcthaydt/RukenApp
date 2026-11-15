@@ -23,7 +23,11 @@
   });
 
   const PLAYS_ON = [
-    { value: "phone_and_computer", title: "Phones and computers" },
+    {
+      value: "phone_and_computer",
+      title: "Phones and computers",
+      line: "Choose this if it also works with a finger on a phone.",
+    },
     {
       value: "computer_only",
       title: "Computers only",

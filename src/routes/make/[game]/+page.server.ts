@@ -126,6 +126,8 @@ export const load: PageServerLoad = async (event) => {
       view: "live" as const,
       line: liveLine(game, send),
       send,
+      // An update waiting for review is replaced by the one sent now, which the note under the button says.
+      updateWaiting: game.hasPending,
       fixes,
       seeAddress: `/g/${game.slug}`,
       // The statement piece: the game's own video behind everything, in the shape of the screen it is seen on.

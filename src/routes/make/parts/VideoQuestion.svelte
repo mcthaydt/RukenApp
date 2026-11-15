@@ -109,7 +109,11 @@
     Record your screen while you play for 10 to 30 seconds. Players see it in the feed before they play.
   </p>
   <p class="note" id="note">{words.note}</p>
-  <a href={video.howToRecord}>How do I record my screen?</a>
+  <!-- The action first (choosing another video), then the how-to: one look, one to a line. -->
+  {#if !choosing}
+    <a class="help" href={video.replaceAddress}>Choose a different video</a>
+  {/if}
+  <a class="help" href={video.howToRecord}>How do I record my screen?</a>
   {#if chosen !== null && choosing}
     <p>{chosen.name} · {sizeWords(chosen.size)}</p>
   {/if}
@@ -118,9 +122,6 @@
   {/if}
   {#if shown !== null}
     <p class="problem" id="problem" role="alert" bind:this={problemLine}>{shown}</p>
-  {/if}
-  {#if !choosing}
-    <a href={video.replaceAddress}>Choose a different video</a>
   {/if}
 </QuestionScreen>
 

@@ -29,6 +29,7 @@
     name={data.name}
     line={data.line}
     send={data.send}
+    updateWaiting={data.updateWaiting}
     fixes={data.fixes}
     seeAddress={data.seeAddress}
     backdrop={data.backdrop}

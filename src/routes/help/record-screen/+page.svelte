@@ -22,8 +22,18 @@
     30 MB, so a short one is best.
   </p>
 
+  <!-- The steps for four devices are a long page on a phone: a maker goes straight to their own. -->
+  <nav aria-label="Pick your device">
+    <ul>
+      <li><a href="#iphone">iPhone or iPad</a></li>
+      <li><a href="#android">Android phone</a></li>
+      <li><a href="#windows">Windows computer</a></li>
+      <li><a href="#mac">Mac</a></li>
+    </ul>
+  </nav>
+
   <h2>On a phone or tablet</h2>
-  <h3>iPhone or iPad</h3>
+  <h3 id="iphone">iPhone or iPad</h3>
   <ol>
     <li>Open Settings, then Control Center. Add Screen Recording.</li>
     <li>
@@ -34,7 +44,7 @@
     <li>Open your game and play it.</li>
     <li>Swipe down again and press the record button to stop. Your video is in Photos.</li>
   </ol>
-  <h3>Android phone</h3>
+  <h3 id="android">Android phone</h3>
   <ol>
     <li>Swipe down from the top of the screen. Swipe down again if you need to.</li>
     <li>Choose Screen record. Some phones call it Screen recorder.</li>
@@ -44,14 +54,14 @@
   </ol>
 
   <h2>On a computer</h2>
-  <h3>Windows computer</h3>
+  <h3 id="windows">Windows computer</h3>
   <ol>
     <li>Open your game in your browser.</li>
     <li>Press the Windows key and the letter G together. The Game Bar opens.</li>
     <li>Choose Capture, then the round record button.</li>
     <li>Play your game, then choose the stop button. Your video is in your Videos folder, in Captures.</li>
   </ol>
-  <h3>Mac</h3>
+  <h3 id="mac">Mac</h3>
   <ol>
     <li>Open your game in your browser.</li>
     <li>Press Shift, Command and 5 together.</li>

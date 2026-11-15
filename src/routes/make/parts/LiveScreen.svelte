@@ -1,7 +1,8 @@
 <!--
   A game that is live (spec 5c). Its own video fills the screen behind everything, blurred and dimmed, the upright one on
   an upright screen and the wide one on a wide screen; it moves only where a video may move by itself (quietVideo). In
-  front: the line, the blue "See it on Ruken", a quiet outline send, and the way back. The send is "Send a new version"
+  front: the line, the blue "See it on Ruken", a quiet outline send, and the way back (or, when a send is what the maker
+  is to do next, that send is the blue button and "See it on Ruken" a link). The send is "Send a new version"
   (copies the newest files and sends them for review in the one press), or, once staff sent back a name, a line or where
   it plays and it is mended, "Send it again" (sends the copy Ruken already holds, no copy from GitHub); while one of those
   is still to mend there is no send at all. Beside them the game laid out sharp, with a Change on its name, its
@@ -21,6 +22,7 @@
     name,
     line,
     send,
+    updateWaiting,
     fixes,
     seeAddress,
     backdrop,
@@ -31,6 +33,8 @@
     line: string;
     /** Which send is offered: a new version from GitHub, the held copy again, or none until what was sent back is mended. */
     send: "new_version" | "again" | "none";
+    /** True while an update waits for review: a new version sent now takes its place, and the note says so. */
+    updateWaiting: boolean;
     fixes: FixCardData[];
     seeAddress: string;
     backdrop: { upright: string | null; wide: string | null };
@@ -78,6 +82,52 @@
   </div>
 {/if}
 
+<!-- The send: the blue button in the bar when it is what to do next, otherwise a quiet outline under the main button. -->
+{#snippet sendForm(main: boolean)}
+  <form
+    method="POST"
+    action={send === "again" ? "?/sendAgain" : "?/newVersion"}
+    use:enhance={({ cancel }) => {
+      if (sending) cancel();
+      sending = true;
+      return async ({ update }) => {
+        await update();
+        sending = false;
+      };
+    }}
+  >
+    {#snippet label()}
+      {#if send === "again"}
+        {sending ? "Sending your update…" : "Send it again"}
+      {:else}
+        {sending ? "Copying your game…" : "Send a new version"}
+      {/if}
+    {/snippet}
+    {#if main}
+      <div class="acts">
+        <button disabled={sending} aria-busy={sending ? "true" : undefined}>{@render label()}</button>
+      </div>
+    {:else}
+      <button class="outline" disabled={sending} aria-busy={sending ? "true" : undefined}>
+        {@render label()}
+      </button>
+    {/if}
+    <p class="note">
+      {#if send === "again"}
+        Sends your update for review again. Players can still play it while you wait.
+      {:else if sending}
+        Copying your game can take a minute. Keep this page open.
+      {:else}
+        Copies the newest version of your game from GitHub and sends it for review.
+        {#if updateWaiting}
+          It takes the place of the one that is waiting.
+        {/if}
+        Players can still play it while you wait.
+      {/if}
+    </p>
+  </form>
+{/snippet}
+
 <main class="halves live">
   <div>
     <p class="count">{name}</p>
@@ -91,42 +141,17 @@
         <a class="button" href={first.href}>{first.fixWords}</a>
       </div>
       <p><a href={seeAddress}>See it on Ruken</a></p>
+    {:else if send === "again"}
+      <!-- A send waiting on the maker is what to do next, so it is the blue button, as on Sent back. -->
+      {@render sendForm(true)}
+      <p><a href={seeAddress}>See it on Ruken</a></p>
     {:else}
       <div class="acts">
         <a class="button" href={seeAddress}>See it on Ruken</a>
       </div>
     {/if}
-    {#if send !== "none"}
-      <form
-        method="POST"
-        action={send === "again" ? "?/sendAgain" : "?/newVersion"}
-        use:enhance={({ cancel }) => {
-          if (sending) cancel();
-          sending = true;
-          return async ({ update }) => {
-            await update();
-            sending = false;
-          };
-        }}
-      >
-        <button class="outline" disabled={sending} aria-busy={sending ? "true" : undefined}>
-          {#if send === "again"}
-            {sending ? "Sending your update…" : "Send it again"}
-          {:else}
-            {sending ? "Copying your game…" : "Send a new version"}
-          {/if}
-        </button>
-        <p class="note">
-          {#if send === "again"}
-            Sends your update for review again. Players can still play it while you wait.
-          {:else if sending}
-            Copying your game can take a minute. Keep this page open.
-          {:else}
-            Copies the newest version of your game from GitHub and sends it for review. Players can still play
-            it while you wait.
-          {/if}
-        </p>
-      </form>
+    {#if send === "new_version"}
+      {@render sendForm(false)}
     {/if}
     <a class="foot" href="/make">Back to your games</a>
   </div>

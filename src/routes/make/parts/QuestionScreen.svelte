@@ -9,8 +9,11 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import { tick, type Snippet } from "svelte";
-  import { focusFirstRefused } from "../../../lib/focus.ts";
+  import { focusFirstRefused, showTheRefusal } from "../../../lib/focus.ts";
   import GamePreview from "./GamePreview.svelte";
+
+  /** A heading longer than this has a long name in it, and is set smaller (the stylesheet's `h1[data-long]`). */
+  const LONG_HEADING = 50;
 
   let {
     heading,
@@ -74,13 +77,14 @@
           saving = false;
           await tick();
           focusFirstRefused();
+          showTheRefusal();
         };
       }}
     >
       {#if counter !== null}
         <p class="count">Question {counter.n} of {counter.of}</p>
       {/if}
-      <h1 id="question">{heading}</h1>
+      <h1 id="question" data-long={heading.length > LONG_HEADING ? "" : undefined}>{heading}</h1>
       {@render children()}
       {#if saving && busyLine !== undefined}
         <p class="note" role="status">{busyLine}</p>

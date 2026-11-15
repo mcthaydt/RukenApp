@@ -33,11 +33,12 @@
 }
 
 /* Spec 15.2: a heading's "1" must never read as an "I". Young Serif's digits look like capital I, so the digits
-   (and only they) come from the text face, which is the same file the text uses. A second declaration of a
-   file costs the browser no second download. */
+   (and only they) come from the text face, in its heavier file (the one the buttons use) because Young Serif's letters
+   are heavy and the lighter file's numbers read as a third typeface beside them. A second declaration of a file costs the
+   browser no second download. */
 @font-face {
   font-family: "Ruken Digits";
-  src: url("/fonts/schibsted-grotesk-latin-400-normal.woff2") format("woff2");
+  src: url("/fonts/schibsted-grotesk-latin-600-normal.woff2") format("woff2");
   font-style: normal;
   font-weight: 400;
   font-display: swap;
@@ -270,6 +271,13 @@ strong {
 .card h3 {
   margin: 1.5rem 0 0;
   font: var(--text-button);
+}
+
+/* A list of ways to go on a card, one to a line, with no bullets (the record-your-screen page's devices). */
+.card nav ul {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* A step and a half between the title and what it introduces. */
@@ -628,6 +636,10 @@ form > * + button:not(.quiet) {
   gap: 1rem;
   padding: 1.25rem 1.25rem 0;
   view-transition-name: topbar;
+  /* Above Live's backdrop, a fixed layer that is painted over anything not positioned: without this the way home is
+     under the blurred video, unseen and likely unpressable. */
+  position: relative;
+  z-index: 1;
 }
 
 @media (min-width: 1200px) and (orientation: landscape) {
@@ -669,7 +681,9 @@ form > * + button:not(.quiet) {
 .screen main {
   width: min(100% - 2.5rem, var(--column));
   margin: 1.5rem auto 0;
-  overflow-wrap: anywhere;
+  /* `break-word`, not `anywhere`: a word moves down whole and is cut only when it alone is wider than the line. `anywhere`
+     also makes every letter a place to break when a column's width is worked out, which squeezed whole columns into strips. */
+  overflow-wrap: break-word;
 }
 
 @media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
@@ -685,6 +699,12 @@ form > * + button:not(.quiet) {
   text-wrap: balance;
 }
 
+/* A heading with a long name in it (the page marks it, past about fifty letters) is set a quarter smaller, so a 60-letter name
+   is a few lines and not a wall that pushes the answer under the bar. */
+.screen h1[data-long] {
+  font-size: calc(var(--heading) * 0.7);
+}
+
 /* Words that are not the question: "Question 2 of 7" and, on a game's own screen, the game's name. */
 .count {
   margin: 0;
@@ -693,6 +713,19 @@ form > * + button:not(.quiet) {
 
 /* The answer: one paper slab, 24px type, 12px corners, no edge. The focus ring is the one the whole look has. A refused
    one has a heavier edge from outside, so it is seen without colour. */
+/* A how-to or an other way, under a question's words: one look wherever it stands (the files question's notes and the video
+   questions' links), one to a line, each still a 44px target. The page's own links pull their margins in to keep the rhythm of
+   running words; these are lines of their own and keep the space between them. */
+.screen a.help {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 44px;
+  margin-block: 0;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
 .screen :is(input, textarea).answer {
   display: block;
   width: 100%;
@@ -739,10 +772,16 @@ form > * + button:not(.quiet) {
   }
 }
 
+/* A refused box keeps the size and padding it had: a box of several lines that lost its vertical padding when refused was a
+   quarter shorter and its words touched its top edge. */
 .screen :is(input, textarea).answer[aria-invalid="true"] {
-  padding: 0 1.25rem;
   outline: 4px solid var(--chalk);
   outline-offset: 3px;
+}
+
+/* The hint under a refused box starts clear of its ring (4px, 3px out), which was 2px from it and ran over the hint's top. */
+.screen .answer[aria-invalid="true"] + .note {
+  margin-top: 1.25rem;
 }
 
 /* A sheet of paper on the felt, for words that are not an answer: what Ruken will see on GitHub, or what is wrong. Its
@@ -844,6 +883,12 @@ form > * + button:not(.quiet) {
 /* Names are long, so they are one to a row at every width: two across leaves a sideways phone's card too narrow for one. */
 .picks[data-plain] {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* Each part of a repository's name, either side of a slash, stays whole: "ruken-test/broken-game" may go to a second line
+   after the slash and never at a hyphen. */
+.pick .whole {
+  white-space: nowrap;
 }
 
 .pick > span {
@@ -1059,8 +1104,9 @@ form > * + button:not(.quiet) {
     --frame: 250px;
   }
 
+  /* 240 wide, not 380: beside a 380-wide frame an iPhone SE held sideways left the heading about 125px, a word to a line. */
   .vframe[data-frame="wide"] {
-    width: 380px;
+    width: 240px;
   }
 }
 
@@ -1168,6 +1214,11 @@ dialog.viewer {
   object-fit: contain;
 }
 
+/* The page behind an open video does not scroll, so no strip of it shows under the player. */
+html:has(dialog.viewer[open]) {
+  overflow: hidden;
+}
+
 .viewer > button {
   position: absolute;
   top: 1rem;
@@ -1180,6 +1231,21 @@ a.foot {
   margin: 1.5rem 0 1rem 1.25rem;
   color: var(--sage);
   font: var(--text-small);
+}
+
+/* On the maker's screens it stands in the column of words, at the left edge they start from, and at the foot of the page
+   (the screen's padding keeps it clear of a pinned bar). It had been at the window's edge, left of the wordmark on a
+   computer, and under the answer on a phone. */
+.screen > a.foot {
+  align-self: center;
+  width: min(100% - 2.5rem, var(--column));
+  margin: auto auto 1rem;
+}
+
+@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
+  .screen:has(.asks) > a.foot {
+    width: min(100% - 5rem, 1200px);
+  }
 }
 
 /* A screen with something to read or check is two halves (spec 15.2): the heading and the one blue button on the left,
@@ -1263,6 +1329,13 @@ a.foot {
   font: var(--text-statement);
 }
 
+/* An iPhone SE's card is 280 wide: a 40px gutter for the numbers left the words about 195px. */
+@media (max-width: 399px) {
+  .sheet ol {
+    padding-left: 1.75rem;
+  }
+}
+
 .sheet li + li {
   margin-top: 1.75rem;
 }
@@ -1278,8 +1351,7 @@ a.foot {
 /* A game laid out as members will see it (Check and send, and later the other screens that show a game). Its two videos
    are the same height in their real shapes (264, or 300 on a tablet held upright, or 180 on a phone held sideways),
    and a window too narrow for both at that height makes both smaller together: the width they have, less the gap
-   between them, divided by what the two shapes add up to (9/16 + 16/9, about 2.34). A phone shows the upright one at
-   150 by 267 with the wide one beside it. */
+   between them, divided by what the two shapes add up to (9/16 + 16/9, about 2.34). A phone's is that smaller row. */
 .laid {
   container-type: inline-size;
 }
@@ -1346,60 +1418,12 @@ a.foot {
   }
 }
 
+/* A phone's two videos are the same row as everywhere else, smaller, and the name, the line and the facts have the whole
+   width under them: beside the tall video they had a strip of 115 to 225px. A narrow tile's caption lets its Change drop to
+   a line of its own, so the caption never widens the row. */
 @media (max-width: 499px) {
-  .tiles figure:last-child {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .tiles figure > [data-shape="upright"] {
-    width: 150px;
-    height: 267px;
-  }
-
-  .tiles figure > [data-shape="wide"] {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 16 / 9;
-  }
-}
-
-/* A phone shows the upright video at the left and, beside it, the wide one with the name and the line under it, so the
-   space under the wide video is the text's and not an empty column. */
-@media (max-width: 499px) {
-  .laid:has(.tiles figure + figure) {
-    display: grid;
-    grid-template-columns: 150px minmax(0, 1fr);
-    grid-template-rows: auto auto auto 1fr auto;
-    column-gap: 1rem;
-  }
-
-  .laid:has(.tiles figure + figure) > * + * {
-    margin-top: 0;
-  }
-
-  .laid:has(.tiles figure + figure) .tiles {
-    display: contents;
-  }
-
-  .laid:has(.tiles figure + figure) .tiles figure:first-child {
-    grid-column: 1;
-    grid-row: 1 / 5;
-  }
-
-  .laid:has(.tiles figure + figure) .tiles figure:last-child {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .laid:has(.tiles figure + figure) > div:not(.tiles) {
-    grid-column: 2;
-    margin-top: 0.75rem;
-  }
-
-  .laid:has(.tiles figure + figure) > ul {
-    grid-column: 1 / -1;
-    grid-row: 5;
+  .tiles figcaption {
+    flex-wrap: wrap;
   }
 }
 
@@ -1415,7 +1439,7 @@ a.foot {
 .title {
   margin: 0;
   font: var(--text-card-title);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .tagline {
@@ -1448,7 +1472,7 @@ a.foot {
   background: var(--felt-raised);
   color: var(--chalk);
   font: var(--text-small);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 /* A small Change beside a part. A link, not a button, and still a 44 by 44 target. */
@@ -1464,6 +1488,8 @@ a.foot {
   color: var(--sage);
   font: var(--text-small);
   text-decoration: underline;
+  /* One word, never cut: where there is no room beside the words it belongs to, it drops to the next line whole. */
+  white-space: nowrap;
 }
 
 /* Your games on a computer: the heading and Add a game are one line, and the games are under them. */
@@ -1641,6 +1667,13 @@ html[data-step="back"]::view-transition-old(root) {
   padding-left: 2.5rem;
 }
 
+/* The same narrow gutter as the sheet's, after this rule so that it wins. */
+@media (max-width: 399px) {
+  .card ol {
+    padding-left: 1.75rem;
+  }
+}
+
 .card li::marker {
   font: var(--text-statement);
 }
@@ -1705,6 +1738,10 @@ a.sheet.fix {
   text-decoration: none;
 }
 
+.after > a.sheet.fix + * {
+  margin-top: 1rem;
+}
+
 .sheet.fix > span {
   display: block;
 }
@@ -1760,8 +1797,10 @@ a.sheet.fix {
 
 .accepted > summary::after {
   content: "Show";
+  flex: none;
   font: var(--text-small);
   text-decoration: underline;
+  white-space: nowrap;
 }
 
 .accepted[open] > summary::after {
