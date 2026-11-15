@@ -117,3 +117,8 @@ export async function paymentPostingOf(email: string): Promise<{ stripeInvoiceId
 export function feeRowsKept(product: string): Promise<number> {
   return db().stripeFeeRow.count({ where: { product } });
 }
+
+/** Which copy of Ruken the journeys' database is stamped as, or null when it has no stamp. */
+export async function copyStamp(): Promise<string | null> {
+  return (await db().copyStamp.findUnique({ where: { id: 1 }, select: { copy: true } }))?.copy ?? null;
+}

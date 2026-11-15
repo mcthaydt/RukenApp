@@ -160,6 +160,28 @@ describe("deploying", () => {
     expect(gateDeploy).toBe("wrangler deploy --config cloudflare/games/wrangler.jsonc");
   });
 
+  // Migrate, then claim, then deploy: the claim needs the table a migration makes, and no code goes out to a
+  // database that belongs to the other copy.
+  it("the deploy command claims the database for the live copy, after migrating and before deploying", () => {
+    const deploy = scripts().deploy ?? "";
+    const claim = "node scripts/claim-copy.ts live";
+    expect(deploy).toContain(claim);
+    expect(deploy.indexOf("prisma migrate deploy")).toBeLessThan(deploy.indexOf(claim));
+    expect(deploy.indexOf(claim)).toBeLessThan(deploy.indexOf("wrangler deploy"));
+  });
+
+  it("the journeys' site claims its database the same way, before it starts", () => {
+    const config = read("playwright.config.ts");
+    const claim = "node scripts/claim-copy.ts live";
+    expect(config).toContain(claim);
+    expect(config.indexOf("prisma migrate deploy")).toBeLessThan(config.indexOf(claim));
+    expect(config.indexOf(claim)).toBeLessThan(config.indexOf("wrangler dev cloudflare/worker.js"));
+  });
+
+  it("typechecking sees scripts/", () => {
+    expect((JSON.parse(jsoncText("tsconfig.json")) as { include: string[] }).include).toContain("scripts");
+  });
+
   it("the build never migrates", () => {
     expect(scripts().build).not.toContain("migrate");
   });
