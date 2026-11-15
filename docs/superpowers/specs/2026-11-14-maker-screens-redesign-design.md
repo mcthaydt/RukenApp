@@ -336,7 +336,7 @@ Owner, 2026-11-14: "13. A". 5.7 gave a new maker three steps with a "Step 1 of 3
 
 1. Answered. The other button on the two deleting screens is green: Owner, 2026-11-14, "safe is green, not safe is red, rest is blue" (section 1).
 2. Answered. Paper only for what she touches, and steps that move: Owner, 2026-11-14, "18. A, change the design rule" (section 4).
-3. **A first game's count.** A (recommended): 10 questions, the photo, the line about her and the colours each on their own screen. B: 8, with the page's three parts on one screen.
+3. Answered by "19. Ask as many questions as we need to": one per screen, now 11 with the age rating (section 10.5).
 
 Answered: the agreement's date line, "A" (section 5). The delete button, "delete account should be red obviously" (section 1). The address and page steps, "13. A" (section 6).
 
@@ -403,6 +403,19 @@ Owner, 2026-11-15: "A list of rooms", to "29. How should a live game's screen le
 - On a computer and a sideways tablet the list stays on the left and the room opens on the right. On a phone and an upright tablet a room is its own screen, with Back to the list.
 - Call: a room with nothing in it yet still shows, with what it is for ("No extras yet").
 
-### 10.4 Pending
+### 10.4 Achievements and scores are added on Ruken
 
-- **Question 30: where a maker writes the game's achievements and scores.**
+Owner, 2026-11-15: "On Ruken, one at a time", to "30. Where does a maker list a game's achievements and scores?", whose words were: "In the Achievements room, Add an achievement asks its name, line, icon and whether it's hidden, one question per screen, like Steam. Each one is checked before players see it."
+
+- **Add an achievement**: four questions, one per screen: its name, its one line, its icon (a picture, checked automatically as photos are, apps spec "Player pages"), and "Keep it hidden until someone earns it?" (two choices). Then Check and send. The id the game reports is made from the name and shown to copy, as an extra's is.
+- **Add a score**: its name, and "Which wins?" with two choices, "Higher wins" and "Lower wins".
+- **Checked before players see it**: a new or changed achievement or score waits for staff, as an extra does, in the same plain words ("Waiting for review", "Ready", "Sent back: <reason>").
+- The room lists them, each with its icon, name and where it stands, and "How rare": "12% of players have this", once players have it.
+
+### 10.5 Calls on the rest
+
+- **A first game is 11 questions**, one per screen: the page's four, then the game's seven (the six of section 3, then "Who is Floor Fifty for?"). The Owner's "19. Ask as many questions as we need to" settles section 7's question 3 as A; the age rating adds one. A maker's second game is "Question 1 of 7".
+- **The Players room** leads with three totals for the last 7 days (players, minutes played, wishlists), then beta plays as their own line (beta builds, "Money and numbers"), then the list of players under their anonymous names, newest first; tapping one shows their events in order and their device. Country and age band are a small table of totals under the list, each row only where 10 or more players share it.
+- **The Reviews room** shows the summary, then each review with "Played 3 hours", thumbs and words, newest first, and Report on each. There is no Delete or Reply.
+- **Money is not a room of one game**: statements are one per person (sales 5.7). It is a link on Your games, "Your money", and for a person in a split with no game, the only thing in the maker's area.
+- **The rooms show from the game's first send**, so achievements and the split can be set while it waits. Extras can be added then too, and go on sale only once the game is live (sales plan, Task 24).
