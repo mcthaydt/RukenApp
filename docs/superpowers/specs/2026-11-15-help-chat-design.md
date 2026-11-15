@@ -1,6 +1,6 @@
 # The help chat
 
-Date: 2026-11-15. Status: **written for the Owner; not yet approved.** Nothing here is built or planned until the Owner says so. It was asked for by the texts design (`2026-11-15-texts-not-email-design.md`, "Not in this": "The AI help chat itself: what it can answer, when a person takes over, and what it may see. It needs its own short design.") and builds on it.
+Date: 2026-11-15. Status: **approved by the Owner, 2026-11-15, on a card ("Yes, approved").** Not built; its plan and build wait for their turn in the slice order. It was asked for by the texts design (`2026-11-15-texts-not-email-design.md`, "Not in this": "The AI help chat itself: what it can answer, when a person takes over, and what it may see. It needs its own short design.") and builds on it.
 
 Principles served: the drunk-grandma test (help is one text away, in plain words, with one link), privacy by default (the chat sees as little as it can, and a text alone never opens an account), and "don't overengineer" (one bot that answers and points; a person does everything else).
 
@@ -122,7 +122,7 @@ Staff with the support role see the chat in the admin's support list (slice 4's 
 
 ## Needs, and when
 
-- The Owner's yes to this design.
+- The Owner's yes to this design: given, 2026-11-15.
 - TypeSafe AI's Jev: a new outside service with a bill. The Owner named it; getting off its waitlist, the account and its key are the Owner's steps. A second AI service, the writing one (Question 1): Anthropic's Claude Haiku, named by the Owner. It is a new outside service with a bill; its account and key are the Owner's steps.
 - The help pages, written and public.
 - The texts plan's branch C on `main`, and slice 4's admin.
