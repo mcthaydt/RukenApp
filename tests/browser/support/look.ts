@@ -151,6 +151,28 @@ export function lineCount(thing: Locator): Promise<number> {
 }
 
 /**
+ * The words of a thing that a line break cuts in the middle: a word whose pieces sit on more than one line. A word that
+ * moves down whole is fine; "Chang" over "e" is the fault. A thing's own hyphens and slashes are where a word may break, so
+ * a journey that means to allow them looks only at names that have none.
+ */
+export function brokenWords(thing: Locator): Promise<string[]> {
+  return thing.evaluate((element) => {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const broken: string[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      for (const word of (node.textContent ?? "").matchAll(/\S+/g)) {
+        const range = document.createRange();
+        range.setStart(node, word.index);
+        range.setEnd(node, word.index + word[0].length);
+        const lines = new Set([...range.getClientRects()].map((piece) => Math.round(piece.top)));
+        if (lines.size > 1) broken.push(word[0]);
+      }
+    }
+    return broken;
+  });
+}
+
+/**
  * Where each line of a thing's words starts, left to right, one number per line. A bounding box cannot show this: a
  * button's box starts at the card's edge even when its wrapped words are centred inside it, so the words are measured.
  */

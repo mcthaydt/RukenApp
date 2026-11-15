@@ -169,10 +169,12 @@ describe("the fonts", () => {
       { bytes: number; sha256: string; integrity: string; tarball: string }
     >;
 
-  it("are three faces, each from a file on Ruken's own address, and the text face again for the digits", () => {
+  // The digits are the heavier file: next to Young Serif's heavy letters, the lighter one's numbers in a name or a count
+  // ("Glass Harbor 09ec", "12+") read as a third typeface (the design pass, S1).
+  it("are three faces, each from a file on Ruken's own address, and the heavier text face again for the digits", () => {
     const urls = [...css.matchAll(/src:\s*url\("(.*?)"\)/g)].map((match) => match[1]);
     expect(urls).toEqual(
-      [...WOFF2, "schibsted-grotesk-latin-400-normal.woff2"].map((name) => `/fonts/${name}`),
+      [...WOFF2, "schibsted-grotesk-latin-600-normal.woff2"].map((name) => `/fonts/${name}`),
     );
     const digits = /@font-face\s*\{[^}]*font-family:\s*"Ruken Digits"[^}]*\}/.exec(css)?.[0] ?? "";
     expect(digits).toMatch(/\/fonts\//);

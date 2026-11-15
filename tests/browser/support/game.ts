@@ -59,19 +59,25 @@ export function slugOfPage(page: Page): string {
 }
 
 /** Makes a game as the signed-in maker: question 1 answered, the browser on question 2. */
-export async function addDraft(page: Page): Promise<{ slug: string; name: string }> {
+export async function addDraft(
+  page: Page,
+  gameName: string = freshName(),
+): Promise<{ slug: string; name: string }> {
   await page.goto("/make/new");
   await pageHasSettled(page);
-  const name = await answerName(page);
+  const name = await answerName(page, gameName);
   await expect(page).toHaveURL(/\/make\/[a-z0-9-]+\/line$/);
   await pageHasSettled(page);
   return { slug: slugOfPage(page), name };
 }
 
 /** A new maker with a game: signs up, then answers question 1. */
-export async function startDraft(page: Page): Promise<{ slug: string; name: string }> {
+export async function startDraft(
+  page: Page,
+  gameName: string = freshName(),
+): Promise<{ slug: string; name: string }> {
   await signUp(page);
-  return addDraft(page);
+  return addDraft(page, gameName);
 }
 
 /** A new maker with a game, answered up to the question of where its files are: signs up, then answers 1 and 2. */
