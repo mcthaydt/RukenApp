@@ -88,3 +88,10 @@ She can send a first game. The places she stops are question 3 (W1 to W5, mostly
 | Must fix | W2 "Try again" with nothing to press; W8 video refusal under the bar; W15 "All 8"; W16 the live-game fix button; W17 red on top | fixes thread (W2 and W16 words are the plan's) |
 | Should fix | W1 one word for the repository; W3 rows that don't look like choices; W4 index.html and branch lines; W5 name the repository; W6 way back at the foot of the how-to; W10 "Only adults see it"; W11 stale refusal; W12 "12+" and "Runs on its own" | fixes thread |
 | Owner | W7 a how-to for recording the screen (new words); W9 "Sex or nudity" with F6; W13 Enter sends; W14 does Ruken tell her when it's live | Owner, through the coordinator |
+
+## The Owner's answers (2026-11-15, decision cards)
+
+- **W7.** "Yes, a short how-to". Questions 5 and 6 get a "How do I record my screen?" link to a short how-to for phones and computers, like the GitHub how-to.
+- **W9.** "Keep it, add one line". The "Sex or nudity" tick stays on question 8. One plain line under it says what is allowed and what isn't, in words that match the Owner's answer on F6.
+- **W13.** "No, the button only". On Check and send only "Send for review" sends; Enter does not, and the "press Enter" hint is not shown there. It stays on the questions.
+- **W14.** "Leave it for now". Waiting for review keeps "Come back here to see when it's live." Telling the maker comes with the texts work, later.

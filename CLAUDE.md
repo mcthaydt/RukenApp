@@ -70,6 +70,28 @@ Every session reports to the coordinator with send_message, short and factual; p
 - Coordinators of related workstreams: the owner's decisions, changes that touch this work, blockers, and what they push.
 - The coordinator relays to the owner what needs them, and tells the merge session the final commit to merge.
 
+## Fast CI
+
+Checks run at two speeds (Owner, 2026-11-15: "Yes" to running only the affected tests while a branch is being worked on, the full suite before merge, and six browser pieces; then "Cache installs and browsers", "Skip the slow picture checks on drafts", "Cancel stale runs" and "Stop at the first failure while working").
+
+- A draft pull request gets the quick run. Its checks end in "(quick, draft)". Lint, typecheck and the build run in full; tests run only where the change reaches them, a new or changed test always runs, and the first failure stops the run. Screenshots are taken only when something visual changed, or when the pull request has the `screenshots` label (add it, then push).
+- A pull request marked ready for review, and every push to main, gets the full run, under the names `verify`, `postgres` and `browser`. Only the full run gates a merge. Green on a draft is not "done"; marking ready is what starts the check that counts.
+- A change to the database, the Workers, a fixture, the lockfile or the build or test config makes even a draft run everything.
+- The browser tests run in six pieces. A newer push cancels the older run, and the browsers are cached between runs.
+- Red-then-green still works: push the failing test as a draft, read the quick run, then push the fix.
+
+## Visual review
+
+Every time screens are about to be shown to the owner for a "how does this look?", whatever the screens are, they first go through these steps in order, each its own session (Owner, 2026-11-15: "Our new visual review process"; "basically I want you to do this whenever you show me a screenshot of screens for a 'how does this look?'"):
+
+1. Plain-words check (Opus, medium): could a drunk grandma understand every word?
+2. Design pass (Fable, medium): every screen, device and orientation checked for layout, touch size and polish.
+3. End-to-end check: walk every journey these screens are part of, from first open to its main task, so nothing is missing or leads to a dead end.
+4. Second visual look (Opus, xhigh): a fresh, harsh look at the screens after all those fixes.
+5. The owner's review.
+
+Review steps 1 to 4 only find problems (Owner, 2026-11-15: "review steps only FIND problems"). Each writes a report, commits and pushes it, and changes nothing else. Its fixes are made in a separate session on Sonnet at xhigh effort before the next review step starts. The reports and fixes all go in one pull request. A review session that has started fixing stops, pushes its report and hands the fixes off.
+
 ## Staying on the rails
 
 ### Scope

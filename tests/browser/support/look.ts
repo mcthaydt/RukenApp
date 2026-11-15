@@ -256,6 +256,9 @@ export async function expectOneCard(page: Page, options: { red?: string[] } = {}
  * at ("Screenshots on the board", Owner, 2026-11-13).
  */
 export async function showTheOwner(page: Page, testInfo: TestInfo, screen: string): Promise<void> {
+  // A draft's quick CI run turns the pictures off (LOOK_SHOTS=off) unless something visual changed: a full-page
+  // picture on nine devices is slow, and nobody is looking at it yet. No journey checks the pictures.
+  if (process.env.LOOK_SHOTS === "off") return;
   // The screen as it rests: the fonts are in and every entrance has finished, so the picture is not a half-faded one.
   await page.evaluate(async () => {
     await document.fonts.ready;
