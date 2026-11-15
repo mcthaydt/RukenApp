@@ -21,9 +21,14 @@ export const CLIP_CONTENT_TYPES = Object.keys(EXTENSIONS) as readonly ClipConten
  */
 export const CLIP_REQUEST_MAX_BYTES = CLIP_MAX_BYTES + 1_000_000;
 
-/** Not built yet. */
+/**
+ * Whether a clip's request is to be refused before its body is read, judged by its `Content-Length` header. A request
+ * with no length, or one that is not a plain count of bytes, is too big too: it would be read whole before the clip's
+ * own size could be checked. Browsers always send a length for a form with a file, so only a hand-made request is turned away.
+ */
 export function clipRequestTooBig(contentLength: string | null): boolean {
-  throw new Error(`not built yet: ${String(contentLength)}`);
+  if (contentLength === null || !/^\d+$/.test(contentLength)) return true;
+  return Number(contentLength) > CLIP_REQUEST_MAX_BYTES;
 }
 
 export function isClipContentType(value: string): value is ClipContentType {

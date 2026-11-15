@@ -2,7 +2,7 @@ import { error, fail, redirect } from "@sveltejs/kit";
 import {
   ageProblem,
   answersOf,
-  CLIP_MAX_BYTES,
+  clipRequestTooBig,
   connectHostsFrom,
   counterOf,
   firstUnanswered,
@@ -38,12 +38,6 @@ type VideoQuestion = Extract<BuiltQuestion, ClipShape>;
 function isVideoQuestion(question: BuiltQuestion): question is VideoQuestion {
   return question === "upright" || question === "wide";
 }
-
-/**
- * The most a clip's request may be before its body is read: a 30 MB clip and the form around it. One clip per request
- * keeps the Worker well under its 128 MB (two clips in one form would be held in memory with their copies).
- */
-const CLIP_REQUEST_MAX_BYTES = CLIP_MAX_BYTES + 1_000_000;
 
 function isBuilt(word: string): word is BuiltQuestion {
   const built: readonly string[] = BUILT;
@@ -359,8 +353,9 @@ export const actions: Actions = {
     const { game } = await ownGame(event);
     const shape = askedQuestion(event.params.question, game, false);
     if (!isVideoQuestion(shape)) error(404, "Not found");
-    // Refused before the body is read, so a huge file is never held in the Worker.
-    if (Number(event.request.headers.get("content-length") ?? "0") > CLIP_REQUEST_MAX_BYTES) {
+    // Refused before the body is read, so a huge file is never held in the Worker. A request that says no length (sent
+    // in chunks) is refused too: only a hand-made one does, and its body could not be measured before it was read.
+    if (clipRequestTooBig(event.request.headers.get("content-length"))) {
       return fail(413, { problem: "A video can be up to 30 MB.", value: "" });
     }
     const file = (await event.request.formData()).get("clip");
