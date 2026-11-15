@@ -33,6 +33,9 @@
     <p class="count">Almost done</p>
     <h1>Maker agreement</h1>
     <p class="note">{versionWords}</p>
+    <!-- On a wide window the buttons are under the last point, a long way down; a way back is up here too. A narrow window has
+         Back in its bar. -->
+    <a class="foot" href={data.back} data-wide>Back to the last question</a>
   </div>
   <!-- The buttons are after the last point, so the agreeing comes after the reading: on a wide window the points are on the right
        and the buttons are under them, not at the top left beside point 1. -->

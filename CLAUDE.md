@@ -86,7 +86,7 @@ Every time screens are about to be shown to the owner for a "how does this look?
 
 1. Plain-words check (Opus, medium): could a drunk grandma understand every word?
 2. Design pass (Fable, medium): every screen, device and orientation checked for layout, touch size and polish.
-3. End-to-end check: walk every journey these screens are part of, from first open to its main task, so nothing is missing or leads to a dead end.
+3. End-to-end check: walk every journey these screens are part of, from first open to its main task, so nothing is missing or leads to a dead end. The walk also runs the drunk-grandma test on the UX (Owner, 2026-11-15: "during the e2e review to see if the visual design is fully usable, we should also test drunk grandma for UX"): could a tired, distracted person get through each journey on the first try, always seeing the next step and a plain way back?
 4. Second visual look (Opus, xhigh): a fresh, harsh look at the screens after all those fixes.
 5. The owner's review.
 

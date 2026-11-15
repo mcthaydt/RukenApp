@@ -1370,6 +1370,13 @@ a.foot {
   margin: 1rem 0 0;
 }
 
+/* A way back that is only for a wide window, where the buttons are far down the page; a bar has Back already. */
+@media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
+  .halves a.foot[data-wide] {
+    display: none;
+  }
+}
+
 /* On Live, "Back to your games" is a little larger than the link that takes the game off Ruken. That one is the quietest thing
    on the screen: last, a size smaller and dimmer, and a step below the way back, so a thumb that aims for one does not land
    on the other and it is never read as part of the blue button's note above. Each is on its own line. */
@@ -1408,6 +1415,18 @@ a.foot {
   .halves {
     grid-template-columns: 260px minmax(0, 1fr);
     column-gap: 1.5rem;
+  }
+}
+
+/* A game's plain state (taken off Ruken) starts where Live and Waiting start on a wide window: the column's left edge, under the
+   bar, and not in the middle of the window with nothing around it. */
+@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
+  .screen:has(> main[data-state]) {
+    --column: 1200px;
+  }
+
+  .screen main[data-state] {
+    margin-block: 0 auto;
   }
 }
 
@@ -1916,7 +1935,7 @@ a.sheet.fix {
 .sheet.fix video[data-shape="upright"] {
   grid-column: 2;
   grid-row: 1 / span 6;
-  width: 6rem;
+  width: 5rem;
   height: auto;
   margin: 0;
   aspect-ratio: 9 / 16;
@@ -1925,6 +1944,13 @@ a.sheet.fix {
 @media (min-width: 500px) {
   .sheet.fix video[data-shape="upright"] {
     width: 9rem;
+  }
+}
+
+/* An iPhone SE's card leaves about 215 wide for the words and the video: the video is thinner there so the words keep 130. */
+@media (max-width: 359px) {
+  .sheet.fix video[data-shape="upright"] {
+    width: 4.5rem;
   }
 }
 

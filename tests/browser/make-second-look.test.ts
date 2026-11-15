@@ -365,6 +365,11 @@ test("on a wide window the agreement's buttons are after the last point, not bes
   const last = await boxOf(page.locator(".sheet li").last());
   const agree = await boxOf(page.getByRole("button", { name: "I agree" }));
   expect(agree.y, "I agree is under the last point").toBeGreaterThanOrEqual(last.y + last.height);
+  // A way back that does not wait at the foot of seven points.
+  const way = await boxOf(page.getByRole("link", { name: "Back to the last question" }));
+  expect(way.y + way.height, "a way back on the first screen").toBeLessThanOrEqual(
+    page.viewportSize()?.height ?? 0,
+  );
 });
 
 // ---- L17: Check and send's two captions sit at one height --------------------------------------------------------------------
@@ -392,6 +397,27 @@ test("after a game is taken off Ruken, the screen says players can't find it and
   await expect(page.getByText("Players can't find it or play it any more.")).toBeVisible();
   await expect(page.getByText("Nothing changed on GitHub.")).toBeVisible();
   await expect(page.getByText("To put it back, add it again as a new game.")).toBeVisible();
+});
+
+test("on a wide window the screen after taking a game off starts at the top left, where Waiting starts, not in the middle", async ({
+  page,
+}) => {
+  test.skip(!["computer", "tablet-sideways"].includes(layoutOf(page)), "a window held sideways, with room");
+  const waiting = await gameWhere(page, { state: "waiting" });
+  await page.goto(`/make/${waiting.slug}`);
+  await wordsHaveSettled(page);
+  const whereWaitingStarts = await boxOf(page.locator("main .count").first());
+
+  const live = await gameWhere(page, { state: "live" });
+  await page.goto(`/make/${live.slug}/take-off`);
+  await page.getByRole("button", { name: "Take it off Ruken" }).click();
+  await expect(page).toHaveURL(`/make/${live.slug}`);
+  await wordsHaveSettled(page);
+  const whereThisStarts = await boxOf(page.locator("main .count").first());
+
+  expect(Math.abs(whereThisStarts.x - whereWaitingStarts.x), "left").toBeLessThanOrEqual(1);
+  // Under the bar, at the top: the screen's own padding is 32px under the bar (about 70px tall), nowhere near the middle.
+  expect(whereThisStarts.y, "top").toBeLessThan(150);
 });
 
 // ---- L20: changing a live game's name has nothing to finish ------------------------------------------------------------------------
