@@ -211,12 +211,18 @@ export interface SentBackPart {
  * Puts a game where staff's decision would leave it: waiting for a yes, sent back, or live on its newest files. There
  * is no staff screen on this branch, so a journey cannot get there by clicking. A game past draft holds every answer, so
  * every answer, the files and both videos are written first. A game sent back (or a live one whose update was sent
- * back) lists what staff ticked in `toFix`, each with its reason; a live game also has the yes that made it live, and
- * `updateWaiting` leaves an update of it waiting for review.
+ * back) lists what staff ticked in `toFix`, each with its reason, and what the maker has fixed since in `fixed`; a live
+ * game also has the yes that made it live, and `updateWaiting` leaves an update of it waiting for review.
  */
 export async function putGameWhereStaffLeaveIt(
   slug: string,
-  decision: { state: "waiting" | "sent_back" | "live"; toFix?: SentBackPart[]; updateWaiting?: boolean },
+  decision: {
+    state: "waiting" | "sent_back" | "live";
+    toFix?: SentBackPart[];
+    /** Parts staff sent back that the maker has fixed since: in staff's newest review, and no longer in `toFix`. */
+    fixed?: SentBackPart[];
+    updateWaiting?: boolean;
+  },
 ): Promise<void> {
   await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
   const game = await db().game.findUniqueOrThrow({
@@ -230,6 +236,7 @@ export async function putGameWhereStaffLeaveIt(
   const newest = game.pulls[0];
   if (newest === undefined) throw new Error(`${slug} has no pull`);
   const toFix = decision.toFix ?? [];
+  const sentBack = [...toFix, ...(decision.fixed ?? [])];
   // The maker's own account stands in for staff: no screen shows who decided.
   const review = (decision: "accepted" | "sent_back", parts: SentBackPart[]) =>
     db().gameReview.create({
@@ -245,7 +252,7 @@ export async function putGameWhereStaffLeaveIt(
       },
     });
   if (decision.state === "live") await review("accepted", []);
-  if (toFix.length > 0) await review("sent_back", toFix);
+  if (sentBack.length > 0) await review("sent_back", sentBack);
   await db().game.update({
     where: { id: game.id },
     data:

@@ -513,6 +513,32 @@ describe("a live game's update that was sent back", () => {
     expect((await stateOf(game.id)).toFix).toEqual(["files"]);
   });
 
+  // The maker's Send it again is offered only when staff's newest word on the game was a send back.
+  it("says whether staff's newest word on a game was a send back", async () => {
+    const game = await readyGame();
+    const sentBackLast = async () => (await service.gameForMaker(game.slug, game.makerUserId))?.sentBackLast;
+    await service.sendForReview(game.id, game.makerUserId);
+    expect(await sentBackLast()).toBe(false);
+    await service.accept(game.id, await createUser(db()));
+    expect(await sentBackLast()).toBe(false);
+
+    await addPull(game.id);
+    await service.sendForReview(game.id, game.makerUserId);
+    await service.sendBack(game.id, await createUser(db()), [
+      { part: "one_line", reason: "something_else", note: "Say more." },
+    ]);
+    expect(await sentBackLast()).toBe(true);
+
+    // Mended and sent again: staff have not said anything new yet, so it still reads as sent back until they do.
+    await db().game.update({ where: { id: game.id }, data: { toFix: [] } });
+    await service.sendForReview(game.id, game.makerUserId);
+    expect(await sentBackLast()).toBe(true);
+    // Reviews are told apart by when they were decided, so staff's yes comes a moment after their no.
+    clock.advance(1_000);
+    await service.accept(game.id, await createUser(db()));
+    expect(await sentBackLast()).toBe(false);
+  });
+
   it("takes a copy for another part off nothing else", async () => {
     const game = await liveGameSentBack([{ part: "one_line", reason: "something_else", note: "Say more." }]);
 

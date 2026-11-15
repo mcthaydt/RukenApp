@@ -865,6 +865,31 @@ No test cycle of its own; nothing here changes what a screen does.
 
 ---
 
+## Added after the screen review and the task walk (Owner's cards, 2026-11-15)
+
+Five answers from the Owner's cards (the screen review `docs/superpowers/audits/2026-11-15-maker-screens-rebuild-screen-review.md`, F6, and the task walk `docs/superpowers/audits/2026-11-15-maker-screens-rebuild-task-walk.md`, W7, W9, W13, W16) are built on this branch, after Task 11, each test first. W14 is decided: Waiting stays as it is. F8 (the upright iPad's left edge on Check and send, Waiting and Live) is left for the Owner's look.
+
+**Task 12, the agreement says what an 18+ game is (F6, and W9 with it).**
+
+- Point 3 of the agreement stops saying "so no adult games". The file becomes `maker-agreement-v2.txt` (the v1 file goes), its title line "Ruken maker agreement, version 2, 15 November 2026", and `MAKER_AGREEMENT_VERSION` is read from that title line, not typed a second time. The Owner saw the words on a decision card and chose "Use my wording" (2026-11-15): "Ruken is for people 13 and up. Games marked 18+ are for adults only. No game may have pornography or gambling." It replaces "Ruken is for people 13 and up, so no adult games."
+- Question 8's line under the ticks (it already says "Only adults will see this game. Pornography and gambling are never allowed.") now reads "Only adults will see this game. Sex or nudity is fine here. No game may have pornography or gambling.", the agreement's own words, so "Sex or nudity" next to "never allowed" is no longer a riddle (the Owner's W9: "Keep it, add one line").
+- Not built: asking a maker who agreed to version 1 to agree again. `MakerAgreement` holds one row per maker, and "Our maker agreement changed" (spec 13.1 M11) comes with the sales plan.
+
+**Task 13, "How do I record my screen?" (W7).** A link under the hint on both video questions opens `/help/record-screen`, a short paper sheet in the style of `/help/github`: steps for an iPhone or iPad, an Android phone, a Windows computer and a Mac, the way back at the top and the foot, no account needed, and `?from=` believed only when it is a page of Ruken's own. The Owner's card: "Yes, a short how-to". A Mac saves a `.mov`, which Ruken does not take (MP4 or WebM only); the page says so plainly and points to a phone or a Windows computer, and the Owner is asked whether Ruken should take `.mov` (a separate decision, not built here).
+
+**Task 14, Enter on Check and send (W13).** Only a press on "Send for review" sends. The "press Enter" hint leaves Check and send; it stays on the questions.
+
+**Task 15, "Send it again" on Live (W16).** A live game's update that staff sent back, and that its maker has fixed, is sent again with the copy Ruken already holds, without copying from GitHub. `MakerGame` says whether staff's newest word on the game was a send back (`sentBackLast`). On Live, with no update waiting:
+
+| What staff sent back | The line | The one button |
+|---|---|---|
+| nothing | "Players can find it on Ruken." | Send a new version (as now) |
+| the files, not yet fixed | "Fix it, then send a new version." | Send a new version (as now) |
+| a name, line or where it plays, not yet fixed | "Fix it, then send it again." | none; the card's "Fix this" is the way on |
+| everything fixed | "Fixed. Send it again when you're ready." | Send it again |
+
+The button's line: "Sends your update for review again. Your game stays live meanwhile." The action is `?/sendAgain`: refused unless the game is live, nothing waits, and staff's newest word was a send back.
+
 ## Branch S after M: Tasks 30 and 31, amended
 
 Branch S is not built from this section alone: read it with Tasks 30 and 31 in the slice 2 plan. It starts from `main` after #63 merges. Only what the redesign changes is here.

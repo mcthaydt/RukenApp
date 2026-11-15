@@ -235,7 +235,9 @@ test("an 18+ game is asked one more question, and a 12+ game is not", async ({ p
   await expect(page).toHaveURL(`/make/${slug}/marks`);
   await expect(page.getByText("Question 8 of 8")).toBeVisible();
   await expect(
-    page.getByText("Only adults will see this game. Pornography and gambling are never allowed."),
+    page.getByText(
+      "Only adults will see this game. Sex or nudity is fine here. No game may have pornography or gambling.",
+    ),
   ).toBeVisible();
   // "None of these" stands alone: choosing it unticks the others, and choosing another unticks it.
   await page.getByLabel("Gore").check();
@@ -599,6 +601,55 @@ test("the wide question follows, and after it the age question", async ({ page }
   await expect(page.locator('[data-frame="wide"] video')).toBeAttached();
   await nextButton(page).click();
   await expect(page).toHaveURL(`/make/${slug}/age`);
+});
+
+// ---- Recording the screen -----------------------------------------------------------------------------------------
+
+test("both video questions have a link to how to record a screen, which leads back to the question", async ({
+  page,
+}) => {
+  for (const shape of ["upright", "wide"] as const) {
+    const { slug } = await startAtVideo(page, shape);
+    const how = page.getByRole("link", { name: "How do I record my screen?" });
+    await expect(how).toHaveAttribute(
+      "href",
+      `/help/record-screen?from=${encodeURIComponent(`/make/${slug}/${shape}`)}`,
+    );
+
+    await how.click();
+
+    await expect(page.getByRole("heading", { level: 1, name: "Record your screen" })).toBeVisible();
+    await page.getByRole("link", { name: "Back to your game" }).first().click();
+    await expect(page).toHaveURL(`/make/${slug}/${shape}`);
+  }
+});
+
+test("the record-your-screen page has steps for a phone and for a computer, and needs no account", async ({
+  page,
+}) => {
+  await page.goto("/help/record-screen");
+
+  await expect(page.getByRole("heading", { level: 1, name: "Record your screen" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "On a phone or tablet" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "On a computer" })).toBeVisible();
+  for (const kind of ["iPhone or iPad", "Android phone", "Windows computer", "Mac"]) {
+    await expect(page.getByRole("heading", { level: 3, name: kind })).toBeVisible();
+  }
+  // A Mac saves a kind of video Ruken does not take, and the page says so before she records one.
+  await expect(page.getByText("Macs save a .mov file, which Ruken can't take yet.")).toBeVisible();
+  // The way back is at the top and again at the foot.
+  const back = page.getByRole("link", { name: "Back to Ruken" });
+  await expect(back).toHaveCount(2);
+  for (const link of await back.all()) await expect(link).toHaveAttribute("href", "/");
+});
+
+test("the record-your-screen page will not send anyone to another site", async ({ page }) => {
+  for (const from of ["https://example.com", "//example.com", "/\\example.com"]) {
+    await page.goto(`/help/record-screen?from=${encodeURIComponent(from)}`);
+    for (const link of await page.getByRole("link", { name: "Back to Ruken" }).all()) {
+      await expect(link).toHaveAttribute("href", "/");
+    }
+  }
 });
 
 test("a video of the wrong kind or size is refused in plain words before anything is sent", async ({

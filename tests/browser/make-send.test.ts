@@ -20,7 +20,7 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
 
-const AGREEMENT_VERSION_LINE = "Version 1 · Last updated 14 November 2026";
+const AGREEMENT_VERSION_LINE = "Version 2 · Last updated 15 November 2026";
 
 test("a first game: seven questions, the agreement, Check and send, then Waiting for review", async ({
   page,
@@ -214,6 +214,25 @@ test("while a game is sent the button says so and cannot be pressed again", asyn
   held.release();
   await expect(page).toHaveURL(`/make/${slug}`);
   expect(held.requestsSoFar()).toBe(1);
+});
+
+// Sending is the one step a maker cannot take back for herself, so only a press on the button does it: the page does not
+// ask her to press Enter, and Enter with nothing in reach does nothing.
+test("on Check and send only a press on the button sends: no Enter hint, and Enter alone does nothing", async ({
+  page,
+}) => {
+  const { slug } = await startAtCheck(page);
+  await page.goto(`/make/${slug}/check`);
+  await pageHasSettled(page);
+  const held = await holdAnswersTo(page, /\?\/send/);
+
+  await expect(page.getByText("press Enter")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await page.getByRole("heading", { level: 1 }).click();
+  await page.keyboard.press("Enter");
+
+  expect(held.requestsSoFar()).toBe(0);
+  await expect(page.getByRole("button", { name: "Send for review" })).toBeVisible();
 });
 
 test("a send posted by hand before the agreement is refused", async ({ page, baseURL }) => {

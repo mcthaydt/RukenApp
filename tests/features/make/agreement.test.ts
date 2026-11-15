@@ -5,15 +5,28 @@ import {
   parseAgreement,
 } from "../../../src/features/make/make.ts";
 
-// The text the Owner approved (2026-11-14), kept word for word in library/maker-agreement-v1.txt.
+// The text the Owner approved (2026-11-14), kept word for word in library/maker-agreement-v2.txt.
 
 describe("the maker agreement", () => {
   // Owner, 2026-11-14: "A" - the date of the version is in the file's own title line, and nowhere else.
-  it("is version 1, and the text says so, with the date it was written", () => {
-    expect(MAKER_AGREEMENT_VERSION).toBe("1");
-    expect(MAKER_AGREEMENT_TEXT.startsWith("Ruken maker agreement, version 1, 14 November 2026\n")).toBe(
+  it("is version 2, and the text says so, with the date it was written", () => {
+    expect(MAKER_AGREEMENT_VERSION).toBe("2");
+    expect(MAKER_AGREEMENT_TEXT.startsWith("Ruken maker agreement, version 2, 15 November 2026\n")).toBe(
       true,
     );
+  });
+
+  // The version a maker's agreement is recorded under is the file's own, so a new file cannot be recorded as the old one.
+  it("takes its version number from the file's title line", () => {
+    expect(MAKER_AGREEMENT_VERSION).toBe(parseAgreement(MAKER_AGREEMENT_TEXT).version);
+  });
+
+  // Owner, 2026-11-15: "Use my wording". Question 7 offers 18+, so the agreement cannot say there are no adult games.
+  it("says an 18+ game is for adults only, and that no game may have pornography or gambling", () => {
+    expect(MAKER_AGREEMENT_TEXT).toContain(
+      "Ruken is for people 13 and up. Games marked 18+ are for adults only. No game may have pornography or gambling.",
+    );
+    expect(MAKER_AGREEMENT_TEXT).not.toContain("no adult games");
   });
 
   it("has seven numbered points and ends with one line break", () => {
@@ -72,7 +85,7 @@ describe("parseAgreement", () => {
   it("reads the real file: its version, and seven points numbered one to seven", () => {
     const read = parseAgreement(MAKER_AGREEMENT_TEXT);
     expect(read.version).toBe(MAKER_AGREEMENT_VERSION);
-    expect(read.updated).toBe("14 November 2026");
+    expect(read.updated).toBe("15 November 2026");
     expect(read.points.map((point) => point.number)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(read.points[0]).toMatchObject({ number: 1, title: "Your game stays yours." });
     expect(read.points[6]).toMatchObject({ number: 7, title: "Changes." });

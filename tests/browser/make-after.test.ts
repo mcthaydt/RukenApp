@@ -309,10 +309,66 @@ test("a live game's update that was sent back says what to fix", async ({ page }
   await page.goto(`/make/${slug}`);
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Live");
-  await expect(page.getByText("Fix it, then send a new version.")).toBeVisible();
+  // The line is not a file, so nothing is copied from GitHub: it is mended, then sent again as it is.
+  await expect(page.getByText("Fix it, then send it again.")).toBeVisible();
   await expect(page.locator("a.fix")).toHaveCount(1);
   await expect(page.locator("a.fix")).toContainText("This line isn't about your game.");
+  // Nothing can be sent until it is mended, and a copy from GitHub would not mend a line.
+  await expect(page.getByRole("button", { name: "Send a new version" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Send it again" })).toHaveCount(0);
   await showTheOwner(page, testInfo, "Live, an update sent back");
+});
+
+// Its GitHub is not connected (the game is not made through the real screens), so a copy of its files would fail: the
+// press can only work if it sends the copy Ruken already holds.
+test("a live game's update that was sent back and mended is sent again from the copy Ruken holds", async ({
+  page,
+}, testInfo) => {
+  const { slug } = await gameWhere(page, {
+    state: "live",
+    fixed: [{ part: "one_line", reason: "not_this_game" }],
+  });
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+
+  await expect(page.getByText("Fixed. Send it again when you're ready.")).toBeVisible();
+  await expect(page.locator(".fix")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Send a new version" })).toHaveCount(0);
+  const again = page.getByRole("button", { name: "Send it again" });
+  // A second forward action is a quiet blue outline, never a second blue button.
+  await expect(again).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(again).toHaveCSS("border-top-color", rgb(token("--pay")));
+  await expect(
+    page.getByText("Sends your update for review again. Your game stays live meanwhile."),
+  ).toBeVisible();
+  await showTheOwner(page, testInfo, "Live, an update mended, Send it again");
+
+  await again.click();
+
+  await expect(page.getByText("Your update is waiting for review.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send it again" })).toHaveCount(0);
+  await showTheOwner(page, testInfo, "Live, an update sent again");
+});
+
+test("Send it again is not on a live game that was never sent back, and posting it by hand is refused", async ({
+  page,
+  baseURL,
+}) => {
+  const { slug } = await gameWhere(page, { state: "live" });
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+  await expect(page.getByRole("button", { name: "Send a new version" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send it again" })).toHaveCount(0);
+
+  const site = baseURL ?? "http://localhost:4173";
+  const posted = await page.request.post(`${site}/make/${slug}?/sendAgain`, {
+    form: {},
+    headers: { origin: site },
+  });
+
+  expect(posted.status()).toBe(400);
+  await page.reload();
+  await expect(page.getByText("Players can find it on Ruken.")).toBeVisible();
 });
 
 // ---- Everyone else ------------------------------------------------------------------------------------------------
