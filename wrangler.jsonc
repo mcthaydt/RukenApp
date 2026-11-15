@@ -16,6 +16,9 @@
   "workers_dev": true,
   "preview_urls": false,
   "observability": { "enabled": true },
+  // Which copy of Ruken this Worker is: "live" here, and the test copy's environment sets its own. It is not a
+  // secret, and written here it cannot be typed wrong on one Worker. src/lib/server/copy.ts reads it.
+  "vars": { "RUKEN_COPY": "live" },
   // Once a day, at 09:17 UTC, early morning in Chicago. The handler is in cloudflare/worker.js.
   "triggers": { "crons": ["17 9 * * *"] },
   // Cloudflare's connection pool in front of Neon. The id names a setting in the Owner's account; it is not a
