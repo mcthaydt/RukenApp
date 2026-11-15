@@ -1,6 +1,6 @@
 # Texts, not email
 
-Date: 2026-11-15. Status: **draft, waiting on the Owner's "approved"**. The Owner's three answers of 2026-11-15 are written in. Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`), the wishlist design, beta builds, the makers' sales spec and the apps spec, and changes them only where this file and the "Changed on 2026-11-15" section at the end of each of them say so.
+Date: 2026-11-15. Status: **draft, waiting on the Owner's "approved"**. The Owner's four answers of 2026-11-15 are written in. Builds on the design (`2026-11-13-ruken-reels-linktree-design.md`), the wishlist design, beta builds, the makers' sales spec and the apps spec, and changes them only where this file and the "Changed on 2026-11-15" section at the end of each of them say so.
 
 Principles served: the drunk-grandma test (a text is where a tired person already looks), privacy by default (a phone number is asked for with its reason beside it, never shown to anyone, and never texted without a yes), and "don't overengineer" (one port, one provider, plain `fetch`).
 
@@ -18,11 +18,12 @@ Asked whether "text" means messages inside the app, texts to a phone number, or 
 - Email stays only for a legal paper trail.
 - Help is by text too, and the AI help chat is in for launch.
 
-The Owner's three answers, 2026-11-15, each picked on a question card:
+The Owner's four answers, 2026-11-15, each picked on a question card:
 
 1. **What people sign up with:** A. A phone number and a password, confirmed by a text code. Email is asked only at paying, for the receipt. (Not chosen: phone, password and email at sign-up; phone only with a code at every sign-in.)
 2. **Outside the US and Canada:** B. Every text goes by text in every country from the first day, accepting the higher cost and the wait on each country's registration. (Not chosen: email elsewhere until each country is added; the US and Canada only.)
 3. **The texting company:** A. Twilio.
+4. **If the carriers have not approved Ruken's number by launch:** "Launch waits for the carriers". (Not chosen: keep email sign-up until approved.)
 
 ## Goals
 
@@ -147,7 +148,9 @@ Call: the apps spec's three push notifications (new DLC, a beta invite, a renewa
 ### Before the carriers say yes
 
 - US phone carriers deliver a company's texts only after that company registers its name and its number with them, which needs the company and its tax number. Ruken App LLC is not formed yet. Registering is the Owner's step after the LLC, and takes days to weeks.
-- Call: until Ruken's number is approved, texts reach only the numbers in `TEXT_ALLOWLIST`, and the email sign-up that is built today stays switched on for everyone else. When the number is approved, one switch turns sign-up to phone numbers, and the email sign-up is removed.
+- Owner, 2026-11-15, asked what sign-up does if the carriers have not approved Ruken's number by launch: "Launch waits for the carriers". Nobody ever joins by email. If the LLC and the carriers' approval come after 30 November, launch moves to the day they are in.
+- Until the number is approved, texts reach only the numbers in `TEXT_ALLOWLIST`, so the Owner and testers can use the site.
+- The email sign-up that is built today is removed by this work, not kept beside it.
 
 ### Stored
 
@@ -175,6 +178,6 @@ Call: the apps spec's three push notifications (new DLC, a beta invite, a renewa
 
 - Twilio's exact calls, read from its own pages: sending, codes, the webhook's signature, the changed-hands check, and whether STOP also stops codes.
 - The exact words of every text, each under 160 characters, each passing the drunk-grandma test, each starting "Ruken:".
-- How the built email sign-up is switched off and removed.
+- How the built email sign-up is removed.
 - The list of countries, what each asks for, and which wait on a registration.
 - The test stand-in for Twilio, as `fake-mail-server.ts` is for mail.
