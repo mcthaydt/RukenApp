@@ -98,12 +98,13 @@ export const CARD_SCREENS: { name: string; open(page: Page): Promise<void> }[] =
 ];
 
 /**
- * Waits until the page has stopped moving by itself, so two boxes measured one after the other are measured in the same
- * layout: every entrance has finished (a line rises 28px into place over 460ms), the fonts are in (words in the display face
- * change height when it arrives) and every video has its size (a tile without one is another height). Endless animations
- * (the drifting circles) never finish and are left out. It waits on these events and never on a time.
+ * Waits until the words have stopped moving by themselves: every entrance has finished (a line rises 28px into place
+ * over 460ms, each a little after the one before) and the fonts are in (words in the display face change height when it
+ * arrives). Endless animations (the drifting circles) never finish and are left out. It waits on these events and never
+ * on a time. A journey that measures only words, and sits on a screen whose videos are stand-ins that never load, waits
+ * for this alone.
  */
-export async function layoutHasSettled(page: Page): Promise<void> {
+export async function wordsHaveSettled(page: Page): Promise<void> {
   await page.evaluate(async () => {
     await Promise.all(
       document
@@ -112,6 +113,17 @@ export async function layoutHasSettled(page: Page): Promise<void> {
         .map((animation) => animation.finished),
     );
     await document.fonts.ready;
+  });
+}
+
+/**
+ * Waits until the page has stopped moving by itself, so two boxes measured one after the other are measured in the same
+ * layout: the words have settled (`wordsHaveSettled`) and every video has its size (a tile without one is another
+ * height). It waits on these events and never on a time.
+ */
+export async function layoutHasSettled(page: Page): Promise<void> {
+  await wordsHaveSettled(page);
+  await page.evaluate(async () => {
     await Promise.all(
       [...document.querySelectorAll<HTMLVideoElement>("video[src]")].map((video) =>
         video.readyState >= 1

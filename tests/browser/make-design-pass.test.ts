@@ -15,7 +15,14 @@ import {
   startAtVideo,
   startDraft,
 } from "./support/game.ts";
-import { boxOf, brokenWords, layoutHasSettled, layoutOf, lineCount } from "./support/look.ts";
+import {
+  boxOf,
+  brokenWords,
+  layoutHasSettled,
+  layoutOf,
+  lineCount,
+  wordsHaveSettled,
+} from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the design pass of the submission screens found (docs/superpowers/audits/2026-11-15-submission-screens-design-pass.md),
@@ -224,7 +231,8 @@ test.describe("on an iPhone SE held sideways", () => {
   test("the wide video question's heading is not crushed beside its frame", async ({ page }) => {
     onlyIn("phone-landscape");
     await startAtVideo(page, "wide");
-    await layoutHasSettled(page);
+    // Only the words are measured, and the upright video this game has is a stand-in that never loads.
+    await wordsHaveSettled(page);
 
     const heading = page.getByRole("heading", { level: 1 });
     expect(await lineCount(heading)).toBeLessThanOrEqual(2);
@@ -357,6 +365,8 @@ test("the two links under a chosen video are one look, a line each, with the act
   await giveRealClips(page, slug);
   await page.goto(`/make/${slug}/upright`);
   await pageHasSettled(page);
+  // The lines rise into place one after another; measured before they have, one is a fraction of a pixel off the next.
+  await layoutHasSettled(page);
 
   const change = page.getByRole("link", { name: "Choose a different video" });
   const howTo = page.getByRole("link", { name: "How do I record my screen?" });

@@ -331,9 +331,8 @@ test("a live game's update that was sent back and mended is sent again from the 
   await expect(page.locator(".fix")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Send a new version" })).toHaveCount(0);
   const again = page.getByRole("button", { name: "Send it again" });
-  // A second forward action is a quiet blue outline, never a second blue button.
-  await expect(again).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-  await expect(again).toHaveCSS("border-top-color", rgb(token("--pay")));
+  // It is the one forward action there is (Live has no "See it on Ruken" until a game has a page), so it is the blue button.
+  await expect(again).toHaveCSS("background-color", rgb(token("--pay")));
   await expect(
     page.getByText("Sends your update for review again. Players can still play it while you wait."),
   ).toBeVisible();
