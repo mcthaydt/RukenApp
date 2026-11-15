@@ -89,6 +89,22 @@ export const CARD_SCREENS: { name: string; open(page: Page): Promise<void> }[] =
   },
 ];
 
+/**
+ * Waits until every entrance on the page has finished. A line rises 28px into place over 460ms, so two boxes measured one
+ * after the other during it are off by a different amount each. Endless animations (the drifting circles) never finish and
+ * are left out. It waits on the animations themselves, not on a time.
+ */
+export async function entrancesHaveFinished(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+        .map((animation) => animation.finished),
+    ),
+  );
+}
+
 export type Box = { x: number; y: number; width: number; height: number };
 
 /** Where a thing is on the page. Throws, saying so, when it is not there to measure. */
@@ -96,6 +112,18 @@ export async function boxOf(thing: Locator): Promise<Box> {
   const box = await thing.boundingBox();
   if (box === null) throw new Error("there is nothing on the page to measure");
   return box;
+}
+
+/**
+ * How many lines a thing's words take. A thing made of several pieces of text (a name with a break allowed after each
+ * slash) has a box for each piece, so the boxes are counted by where they sit up and down: pieces on one line share it.
+ */
+export function lineCount(thing: Locator): Promise<number> {
+  return thing.evaluate((element) => {
+    const words = document.createRange();
+    words.selectNodeContents(element);
+    return new Set([...words.getClientRects()].map((line) => Math.round(line.top))).size;
+  });
 }
 
 /**

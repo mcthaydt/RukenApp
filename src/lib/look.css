@@ -1181,9 +1181,10 @@ a.foot {
   }
 }
 
-/* An upright tablet's questions are a column of 640, so its rooms start at the same left edge. */
+/* An upright tablet's questions are a column of 640, so the agreement starts at the same left edge. A screen that lays the
+   game out keeps the whole window: its two videos are 300 tall there, which needs more than 640. */
 @media (orientation: portrait) and (min-width: 500px) {
-  .screen:has(.halves) {
+  .screen:has(.halves):not(:has(.laid)) {
     --column: 640px;
   }
 }
@@ -1724,6 +1725,9 @@ a.sheet.fix {
 }
 
 .accepted > summary {
+  /* The card has no padding above its line, so a summary's pull on its margins (above) would draw the card up into the
+     one over it. */
+  margin-block: 0;
   text-decoration: none;
   display: flex;
   align-items: center;

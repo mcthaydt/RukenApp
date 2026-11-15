@@ -1,7 +1,7 @@
 <!--
   Putting a game on GitHub, in plain steps for someone who has never used it, and what Ruken needs of the folder. It is
-  one paper sheet on the felt, with the way back at the top so it is never a long scroll away on a phone. Nothing on it
-  is a button.
+  one paper sheet on the felt, with the way back at the top so it is never a long scroll away on a phone, and again at the
+  foot, where a person who has read to the end looks for it. Nothing on it is a button.
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
@@ -38,4 +38,5 @@
     If index.html sits inside another folder, tell Ruken which one. Choose "Change the branch or folder" and
     write the folder's name, like web/build.
   </p>
+  <p><a href={data.back.href}>{data.back.words}</a></p>
 </main>

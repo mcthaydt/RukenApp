@@ -15,7 +15,7 @@ import {
   startDraft,
   TINY_GAME,
 } from "./support/game.ts";
-import { boxOf, expectFrame, layoutOf, lineStarts } from "./support/look.ts";
+import { boxOf, entrancesHaveFinished, expectFrame, layoutOf, lineCount } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the screen review of the rebuilt maker screens found (docs/superpowers/audits/2026-11-15-maker-screens-rebuild-
@@ -108,6 +108,7 @@ test("the folded 'accepted' card has small corners, is not underlined, and keeps
 }) => {
   const { slug } = await gameWhere(page, { state: "sent_back", toFix: [SIDEWAYS] });
   await page.goto(`/make/${slug}`);
+  await entrancesHaveFinished(page);
 
   const accepted = page.locator("details.accepted");
   await expect(accepted).toHaveCSS("border-top-left-radius", "12px");
@@ -156,6 +157,7 @@ test("on Live an update that was sent back has room above the game", async ({ pa
     toFix: [{ part: "one_line", reason: "not_this_game" }],
   });
   await page.goto(`/make/${slug}`);
+  await entrancesHaveFinished(page);
 
   const card = await boxOf(page.locator("a.sheet.fix"));
   expect((await boxOf(page.locator(".laid"))).y - (card.y + card.height)).toBeGreaterThanOrEqual(16);
@@ -190,9 +192,7 @@ test("a video's caption is one line: 'On phones' and its Change stay together", 
 
 // ---- Where things start and what fills the bar --------------------------------------------------------------------
 
-test("on an upright tablet the question and the room screens start at the same left edge", async ({
-  page,
-}) => {
+test("on an upright tablet the agreement starts at the same left edge as the questions", async ({ page }) => {
   test.skip(layoutOf(page) !== "tablet", "only an upright tablet has a column narrower than the window");
   const { slug } = await startDraft(page);
   await page.goto(`/make/${slug}/line`);
@@ -203,12 +203,8 @@ test("on an upright tablet the question and the room screens start at the same l
   await page.goto(`/make/${slug}/agreement`);
   await pageHasSettled(page);
   const agreement = await boxOf(page.getByRole("heading", { level: 1 }));
-  await page.getByRole("button", { name: "I agree" }).click();
-  await expect(page).toHaveURL(`/make/${slug}/check`);
-  const check = await boxOf(page.getByRole("heading", { level: 1 }));
 
   expect(agreement.x).toBeCloseTo(question.x, 0);
-  expect(check.x).toBeCloseTo(question.x, 0);
 });
 
 test("the Choose video button fills the bar wherever the buttons are in a bar", async ({ page }) => {
@@ -219,9 +215,12 @@ test("the Choose video button fills the bar wherever the buttons are in a bar", 
   await startAtVideo(page, "upright");
 
   const choose = await boxOf(page.locator(".file > span"));
-  const width = page.viewportSize()?.width ?? 0;
-  // The bar ends where the window does, less its padding of at most 24px.
-  expect(choose.x + choose.width).toBeGreaterThanOrEqual(width - 24);
+  const bar = await boxOf(page.locator(".acts"));
+  const padding = await page
+    .locator(".acts")
+    .evaluate((element) => Number.parseFloat(getComputedStyle(element).paddingRight));
+  // The bar's words end where its padding starts; the button is there too, as the Next that follows is.
+  expect(choose.x + choose.width).toBeGreaterThanOrEqual(bar.x + bar.width - padding - 1);
 });
 
 test("on a sideways phone the answer box is in view above the bar, under a two-line heading", async ({
@@ -244,7 +243,7 @@ test("a repository's name is set in the text face and stays on one line", async 
   await connectGitHubFromFiles(page, slug);
 
   for (const name of await page.locator(".pick > b").all()) {
-    expect(await lineStarts(name)).toHaveLength(1);
+    expect(await lineCount(name)).toBe(1);
     await expect(name).not.toHaveCSS("font-family", /Young Serif/);
   }
   await expect(page.getByLabel(TINY_GAME)).toBeAttached();
