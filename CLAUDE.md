@@ -72,11 +72,11 @@ Every session reports to the coordinator with send_message, short and factual; p
 
 ## Visual review
 
-Before the owner sees any screens, they go through these steps in order, each its own session (Owner, 2026-11-15: "Our new visual review process"):
+Every time screens are about to be shown to the owner for a "how does this look?", whatever the screens are, they first go through these steps in order, each its own session (Owner, 2026-11-15: "Our new visual review process"; "basically I want you to do this whenever you show me a screenshot of screens for a 'how does this look?'"):
 
 1. Plain-words check (Opus): could a drunk grandma understand every word?
 2. Design pass (Fable): every screen, device and orientation checked for layout, touch size and polish.
-3. End-to-end check: walk every journey from first open to the main task (a player playing a game, a maker sending a game in) so nothing is missing or leads to a dead end (Owner, 2026-11-15: "Walk every journey from first open to opening the main task").
+3. End-to-end check: walk every journey these screens are part of, from first open to its main task, so nothing is missing or leads to a dead end.
 4. Second visual look (Opus, xhigh): a fresh, harsh look at the screens after all those fixes.
 5. The owner's review.
 
