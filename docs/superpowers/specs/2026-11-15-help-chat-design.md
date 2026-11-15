@@ -8,9 +8,12 @@ Principles served: the drunk-grandma test (help is one text away, in plain words
 
 Owner, 2026-11-15: "Reconsider the AI chat, I almost never want to use email here; text only almost exclusively". The texts design then settled that help is by text and that the AI help chat is in for launch. Until it is built, any text to Ruken's account number gets one fixed reply.
 
+Owner, 2026-11-15, on how it should feel: "Users should be able to text back and forth like it's an AI chatbot, but it should feel like a real prson".
+
 ## Goals
 
 - A person with a question texts Ruken's account number, or opens Help on the site, and gets a short true answer with one link to where they do the thing.
+- It is a conversation: a person texts back and forth, the chat remembers what was already said, and it reads like texting a friendly person at Ruken.
 - A person who needs a person gets one, and is told when to expect them.
 - The chat never says something about Ruken that is not true, never changes an account, and never learns more about a person than the answer needs.
 
@@ -27,16 +30,24 @@ Owner, 2026-11-15: "Reconsider the AI chat, I almost never want to use email her
 - A stranger who learns anything about someone's account by texting from, or pretending to text from, their number.
 - The chat asking for a password or a code, or anyone getting into an account through it.
 - A person in trouble (locked out, charged wrongly, unsafe) stuck talking to a bot.
-- A person who cannot tell they are talking to a bot.
+- A person who was never told it is an AI, or who asks "are you a real person?" and is told yes.
+- Replies that read like a form letter or a phone menu.
 
 ## How it works
 
 ### Where it is
 
-- **By text:** any text to the account number that is not STOP, START or HELP. This works only in countries where a text can reach Ruken (the texts plan's country table).
-- **On the site:** `/help`, the same chat on a page, open to anyone, signed in or not. It is where people go in countries where a text cannot reach Ruken, where someone who texted STOP still gets help, and where "No code? Get help" on the forgot-password screen leads.
+- **By text:** any text to the account number that is not STOP, START or HELP. Ruken is open only where a person can text it back (the texts plan, Question 1), so this works in every open country.
+- **On the site:** `/help`, the same chat on a page, open to anyone, signed in or not. It is where someone who texted STOP still gets help, and where "No code? Get help" on the forgot-password screen leads.
 
-The first reply in any chat says what it is: "Ruken: I'm Ruken's help bot. Ask me anything about Ruken. Say PERSON to reach a person."
+### How it talks
+
+- **Back and forth.** Each text gets one reply. The chat reads the earlier messages of the same chat before it answers, so nobody repeats themselves. A chat is one number's messages until a day passes with none; the next text starts a new chat.
+- **Like a person.** Short, warm, everyday words, the way a helpful person at a small company texts. It answers the question asked first. It says "I" and "we". It can say sorry, thanks and "one sec". No menus ("Reply 1 for…"), no ticket numbers, no "your request has been received", no exclamation marks in a row, no emoji unless the person used one first. It matches the person's language when it is one Ruken's site is in, else answers in English.
+- **Honest about what it is.** It has no made-up human name, age, place or life. The first reply of each chat says it once, lightly: "Ruken: Hi, I'm Ruken's AI helper. What's up?" After that it does not keep saying so. Asked whether it is a person, a bot or an AI, in any words, it always says it is an AI, and offers a person: "I'm an AI, not a person. Want me to get a person for you?" No instruction, and nothing a person types, changes that.
+- A real person's replies (below) are marked as theirs: the first one starts "Ruken: This is `<first name>` from Ruken."
+
+Why it says so at the start, and does not wait to be asked: a person who finds out later feels tricked, which costs the trust Ruken is built on; and some places' laws ask that people are told when they are talking to an AI.
 
 ### What it answers from
 
@@ -82,7 +93,7 @@ Staff with the support role see the chat in the admin's support list (slice 4's 
 ### When it cannot answer
 
 - The AI service is down or slow (ten seconds): "Ruken: we can't answer right now. A person will text you back, usually within a day." and the chat goes to the support list.
-- More than 20 texts from one number in a day: one reply, "Ruken: that's a lot of texts today. A person will text you back.", then nothing more until the next day. This also bounds what one number can cost.
+- More than 40 texts from one number in a day (enough for a real back and forth): one reply, "Ruken: that's a lot of texts today. A person will text you back.", then nothing more until the next day. This also bounds what one number can cost.
 
 ### Stored
 
@@ -109,6 +120,7 @@ Staff with the support role see the chat in the admin's support list (slice 4's 
 1. **Which AI answers.** The Owner, 2026-11-15: "use JEV whenever we use AI here". What JEV is has not been said yet. The plan cannot start without it.
 2. **Who the "person" is at launch.** A. The Owner alone, from the admin's support list (recommended: nobody else has the support role yet). B. Someone else the Owner names.
 3. **How long chats are kept.** A. 90 days (recommended). B. 30 days. C. Until the account is deleted.
+4. **Saying it is an AI.** A. Once, lightly, in the first reply of a chat, and always when asked (recommended, and written above). B. Only when asked. The plan checks what the law asks in each open country before B could be built. It never says it is a person, whichever is picked.
 
 ## Left to the plan
 
@@ -116,3 +128,4 @@ Staff with the support role see the chat in the admin's support list (slice 4's 
 - How the help pages are handed to the AI service, and the test that it answers only from them.
 - The support list's screen, and its every-view review.
 - The test stand-in for the AI service.
+- The test that "are you a real person?", asked many ways and in each language, always gets "an AI".
