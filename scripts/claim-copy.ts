@@ -13,7 +13,10 @@ async function main(): Promise<void> {
   if (address === undefined || address === "") throw new Error("DIRECT_DATABASE_URL is not set.");
   const pool = new pg.Pool({ connectionString: address, max: 1 });
   try {
-    await claimCopy((sql, values) => pool.query(sql, [...values]).then((result) => result.rows), copy);
+    await claimCopy(
+      (sql, values) => pool.query<Record<string, unknown>>(sql, [...values]).then((result) => result.rows),
+      copy,
+    );
   } finally {
     await pool.end();
   }
