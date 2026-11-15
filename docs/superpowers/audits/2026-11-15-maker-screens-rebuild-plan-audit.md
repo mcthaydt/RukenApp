@@ -18,7 +18,9 @@ The 18+ hint: the plan's line is the board's ("Only adults see it. Pornography a
 
 ### 3. G is only the GitHub App hookup on the test site
 
-The intent holds, but G2 alone does not work, and the plan now says what does. Read in `src/features/games/services.ts`: the games services will not start without `GAME_ADDRESS_PATTERN`, and every maker screen calls them. With G3 gone, the test site's maker area would answer "Something went wrong". Fixed: G also sets that one setting to `https://{name}.games.invalid` (a name that never answers; `checkAddressPattern` takes it). Said plainly, once: on the test site a maker can connect GitHub, answer every question, upload both videos and send. The videos do not play there, and nothing can be played, until the games domain comes at launch. In CI everything plays. Also added: the GitHub App is made with the test site's address, so at launch its home page and callback are changed on GitHub (a website step).
+The intent holds, but G2 alone does not work. Read in `src/features/games/services.ts`: the games services will not start without `GAME_ADDRESS_PATTERN`, and every maker screen calls them, so with G3 gone the test site's maker area would answer "Something went wrong". Videos and play also need an address for the gate.
+
+The first fix set a placeholder, which left videos and play broken on the test site. The coordinator relayed the Owner's goal for this slice: games must be playable and testable before launch. So G now runs the gate on its own free `workers.dev` address, with the game in the path instead of the host, because no free Cloudflare address has names under it. It stays apart from the site, so a game never sees Ruken's sign-in. Until launch, test games share one address, so one game could read another game's saves in the same browser. That trade-off is put to the Owner on a decision card. The real domain replaces it at launch by changing one setting. This needs a small branch of its own, tested first, before G's steps. Also added: the GitHub App is made with the test site's address, so at launch its home page and callback are changed on GitHub (a website step).
 
 ### 4. Ordered and testable for a Sonnet build
 
@@ -52,4 +54,4 @@ The plan asked the audit to check its GitHub steps. Against GitHub's "Adding a f
 
 ## Open, for nobody to answer now
 
-- Nothing needs the Owner. The test site's videos not playing follows from the Owner's decision to move the domain to launch. It is said once, in the plan and in this audit, and not asked again.
+- With the Owner: whether test games may share one free address until launch (decision card, 2026-11-15). Recommended: yes, since the test site holds only test games.
