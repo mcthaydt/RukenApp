@@ -114,6 +114,8 @@ function videoScreen(url: URL, game: MakerGame, shape: VideoQuestion) {
     // Set by "Choose a different video": the picker is open and the video that is there stays in its frame.
     replacing: clip !== null && url.searchParams.get("again") === "1",
     replaceAddress: `/make/${game.slug}/${shape}?again=1`,
+    // The how-to's way back is this question.
+    howToRecord: `/help/record-screen?from=${encodeURIComponent(`/make/${game.slug}/${shape}`)}`,
   };
 }
 

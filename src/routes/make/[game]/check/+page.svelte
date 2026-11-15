@@ -2,6 +2,7 @@
   Check and send, the last step: "Last step" over the heading, the one blue button, and beside them the game laid out as
   members will see it, with a Change on each part. With script, a press says it is sending and cannot be pressed twice.
   Two halves on a wide window, stacked on a narrow one with the button in the bar (spec 15.2).
+  Sending cannot be taken back by the maker herself, so only a press on the button sends: there is no "press Enter" hint here.
 -->
 <script lang="ts">
   import { enhance } from "$app/forms";
@@ -40,7 +41,6 @@
       <button disabled={sending} aria-busy={sending ? "true" : undefined}>
         {sending ? "Sending your game…" : "Send for review"}
       </button>
-      <span class="key">press Enter <kbd>↵</kbd></span>
     </div>
   </form>
   <GameLaidOut game={data.game} />

@@ -22,7 +22,7 @@
   }: {
     shape: "upright" | "wide";
     /** Where the video stands: its address (none until one is in), and whether a different one is being chosen. */
-    video: { src: string | null; replacing: boolean; replaceAddress: string };
+    video: { src: string | null; replacing: boolean; replaceAddress: string; howToRecord: string };
     counter: { n: number; of: number } | null;
     back: string;
     throwAway: string | undefined;
@@ -109,6 +109,7 @@
     Record your screen while you play for 10 to 30 seconds. Players see it in the feed before they play.
   </p>
   <p class="note" id="note">{words.note}</p>
+  <a href={video.howToRecord}>How do I record my screen?</a>
   {#if chosen !== null && choosing}
     <p>{chosen.name} · {sizeWords(chosen.size)}</p>
   {/if}

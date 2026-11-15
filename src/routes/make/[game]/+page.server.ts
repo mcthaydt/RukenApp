@@ -66,6 +66,28 @@ function liveLaidOut(game: MakerGame) {
   return { ...laid, chips: laid.chips.filter((chip) => LIVE_CHIPS.includes(chip.part)) };
 }
 
+/**
+ * Which send a live game offers (spec 5c, and the Owner's "Send it again"). While an update waits, or nothing was sent
+ * back, it is a new version, copied from GitHub. When staff sent files back it is still a new version: the files are
+ * mended on GitHub and copied again. When they sent back a name, a line or where it plays, nothing on GitHub changes, so
+ * there is nothing to send until it is mended, and then the copy Ruken already holds is sent again.
+ */
+type LiveSend = "new_version" | "again" | "none";
+
+function liveSend(game: MakerGame): LiveSend {
+  if (game.hasPending || !game.sentBackLast) return "new_version";
+  if (game.toFix.some((one) => one.part === "files")) return "new_version";
+  return game.toFix.length === 0 ? "again" : "none";
+}
+
+/** The line under "Live": what is wrong, or what to do next. */
+function liveLine(game: MakerGame, send: LiveSend): string {
+  if (game.hasPending) return "Your update is waiting for review.";
+  if (send === "again") return "Fixed. Send it again when you're ready.";
+  if (game.toFix.length === 0) return "Players can find it on Ruken.";
+  return send === "none" ? "Fix it, then send it again." : "Fix it, then send a new version.";
+}
+
 export const load: PageServerLoad = async (event) => {
   const { game } = await ownGame(event);
   if (game.state === "draft") {
@@ -98,14 +120,12 @@ export const load: PageServerLoad = async (event) => {
   }
 
   if (game.state === "live") {
+    const send = liveSend(game);
     return {
       ...base,
       view: "live" as const,
-      line: game.hasPending
-        ? "Your update is waiting for review."
-        : fixes.length > 0
-          ? "Fix it, then send a new version."
-          : "Players can find it on Ruken.",
+      line: liveLine(game, send),
+      send,
       fixes,
       seeAddress: `/g/${game.slug}`,
       // The statement piece: the game's own video behind everything, in the shape of the screen it is seen on.
@@ -144,6 +164,20 @@ export const actions: Actions = {
   send: async (event) => {
     const { userId, game } = await ownGame(event);
     if (game.state !== "sent_back") return fail(400, { problem: "That game can't be sent right now." });
+    try {
+      await gamesServices().service.sendForReview(game.id, userId);
+    } catch (problem) {
+      return fail(400, refusal(problem));
+    }
+    redirect(303, `/make/${game.slug}`);
+  },
+
+  // A live game's update that staff sent back and its maker mended is sent again as it is: the copy Ruken already holds,
+  // with no copy from GitHub, which would change nothing about a line she has just fixed.
+  sendAgain: async (event) => {
+    const { userId, game } = await ownGame(event);
+    if (game.state !== "live") error(404, "Not found");
+    if (liveSend(game) !== "again") return fail(400, { problem: "That game can't be sent again right now." });
     try {
       await gamesServices().service.sendForReview(game.id, userId);
     } catch (problem) {

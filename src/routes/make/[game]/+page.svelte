@@ -28,6 +28,7 @@
   <LiveScreen
     name={data.name}
     line={data.line}
+    send={data.send}
     fixes={data.fixes}
     seeAddress={data.seeAddress}
     backdrop={data.backdrop}

@@ -1,16 +1,19 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
-import agreementText from "./library/maker-agreement-v1.txt?raw";
+import agreementText from "./library/maker-agreement-v2.txt?raw";
 
-// What a maker has agreed to. The text is the Owner's, kept word for word in library/maker-agreement-v1.txt and shown
+// What a maker has agreed to. The text is the Owner's, kept word for word in library/maker-agreement-v2.txt and shown
 // as plain paragraphs. A new version is a new file and a new number; a maker is asked to agree again before the next
 // game goes up (the agreement's own last point).
 
-/** The version of the text in `library/maker-agreement-v1.txt`. */
-export const MAKER_AGREEMENT_VERSION = "1";
-
 /** The text, as it is in the file. */
 export const MAKER_AGREEMENT_TEXT: string = agreementText;
+
+/**
+ * The version of that text, read from the file's own title line so a new file cannot be recorded as the old version.
+ * (`parseAgreement` is a function declaration below, so it is ready here.)
+ */
+export const MAKER_AGREEMENT_VERSION: string = parseAgreement(MAKER_AGREEMENT_TEXT).version;
 
 /** True once this maker has agreed. */
 export async function hasAgreed(db: PrismaClient, userId: string): Promise<boolean> {

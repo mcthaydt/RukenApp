@@ -130,6 +130,11 @@ export interface MakerGame {
   clips: { upright: ClipFile | null; wide: ClipFile | null };
   /** What staff sent back that is still to fix, from their newest sent-back review. */
   toFix: PartToFix[];
+  /**
+   * True while staff's newest word on this game is a send back: a live game's update that came back, mended or not. It is
+   * what lets the maker send the copy Ruken already holds again, without copying from GitHub.
+   */
+  sentBackLast: boolean;
 }
 
 /** What staff see of a game waiting for review: the maker's view, and the files that wait. */
@@ -734,6 +739,8 @@ export function createGamesService(deps: GamesServiceDeps) {
         wide: clipFile(row.clips, "wide"),
       },
       toFix: partsToFix(row),
+      // Newest first (see `gameSelect`), so the first review is staff's latest word.
+      sentBackLast: row.reviews[0]?.decision === "sent_back",
     };
   }
 
