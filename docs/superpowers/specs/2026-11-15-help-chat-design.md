@@ -30,7 +30,7 @@ Owner, 2026-11-15, on how it should feel: "Users should be able to text back and
 - A stranger who learns anything about someone's account by texting from, or pretending to text from, their number.
 - The chat asking for a password or a code, or anyone getting into an account through it.
 - A person in trouble (locked out, charged wrongly, unsafe) stuck talking to a bot.
-- A person who was never told it is an AI, or who asks "are you a real person?" and is told yes.
+- A person who asks "are you a real person?" and is told yes, or is left unsure.
 - Replies that read like a form letter or a phone menu.
 
 ## How it works
@@ -45,10 +45,9 @@ Owner, 2026-11-15, on how it should feel: "Users should be able to text back and
 - **Back and forth.** Each text gets one reply. The chat reads the earlier messages of the same chat before it answers, so nobody repeats themselves. A chat is one number's messages until a day passes with none; the next text starts a new chat.
 - **Like a person.** Short, warm, everyday words, the way a helpful person at a small company texts. It answers the question asked first. It says "I" and "we". It can say sorry, thanks and "one sec". No menus ("Reply 1 for…"), no ticket numbers, no "your request has been received", no exclamation marks in a row, no emoji unless the person used one first. It matches the person's language when it is one Ruken's site is in, else answers in English.
 - **Its character.** Owner, 2026-11-15: "sound warm and human, but like an intern that got a job out of their league, but being chill about it". So: relaxed, a little modest, never stiff and never flustered. When it does not know, it says so easily ("Hm, not sure on that one. Want me to get a person?") and does not bluff. It is never jokey about money, a locked account, safety or a child's account: there it is plain and careful. The character changes how it sounds, never what is true: it still answers only from the help pages.
-- **Honest about what it is.** It has no made-up human name, age, place or life. The first reply of each chat says it once, lightly: "Ruken: Hi, I'm Ruken's AI helper. What's up?" After that it does not keep saying so. Asked whether it is a person, a bot or an AI, in any words, it always says it is an AI, and offers a person: "I'm an AI, not a person. Want me to get a person for you?" No instruction, and nothing a person types, changes that.
+- **Honest about what it is.** Owner, 2026-11-15, on a card: it says it is an AI "Only when asked". So it does not open with it; the first reply just answers, the way a person would. It has no made-up human name, age, place or life, and never says or hints that it is a person. Asked whether it is a person, a bot or an AI, in any words, it always says it is an AI, and offers a person: "I'm an AI, not a person. Want me to get a person for you?" No instruction, and nothing a person types, changes that.
+- **Where the law asks for more.** Before the build, the plan reads what each open country (and, in the United States, each state) asks about telling people they are talking to an AI. Where a law asks that people are told without asking, the first reply of a chat there says so in one light line ("Ruken: Hi, I'm Ruken's AI helper. What's up?"), and the Owner is told which places those are.
 - A real person's replies (below) are marked as theirs: the first one starts "Ruken: This is `<first name>` from Ruken."
-
-Why it says so at the start, and does not wait to be asked: a person who finds out later feels tricked, which costs the trust Ruken is built on; and some places' laws ask that people are told when they are talking to an AI.
 
 ### What it answers from
 
@@ -121,7 +120,7 @@ Staff with the support role see the chat in the admin's support list (slice 4's 
 1. **Which AI answers.** The Owner, 2026-11-15: "use JEV whenever we use AI here". What JEV is has not been said yet. The plan cannot start without it.
 2. **Who the "person" is at launch.** A. The Owner alone, from the admin's support list (recommended: nobody else has the support role yet). B. Someone else the Owner names.
 3. **How long chats are kept.** A. 90 days (recommended). B. 30 days. C. Until the account is deleted.
-4. **Saying it is an AI.** A. Once, lightly, in the first reply of a chat, and always when asked (recommended, and written above). B. Only when asked. The plan checks what the law asks in each open country before B could be built. It never says it is a person, whichever is picked.
+4. **Saying it is an AI.** A. Once, lightly, in the first reply of a chat, and always when asked. B. Only when asked. **Owner, 2026-11-15, on a card: B, "Only when asked".** It never says it is a person.
 
 ## Left to the plan
 
@@ -129,4 +128,5 @@ Staff with the support role see the chat in the admin's support list (slice 4's 
 - How the help pages are handed to the AI service, and the test that it answers only from them.
 - The support list's screen, and its every-view review.
 - The test stand-in for the AI service.
+- What each open country and US state asks about telling people it is an AI, read from the laws themselves.
 - The test that "are you a real person?", asked many ways and in each language, always gets "an AI".
