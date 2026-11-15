@@ -395,6 +395,14 @@ Blocking (apps spec, "Friends") has no screen of its own here: a blocked person 
 - **A share is picked, not typed**: each person's share is a choice of whole percents.
 - **Take off sale** is red, then one short screen like "Throw Floor Fifty away?": green "Keep it on sale", red "Take it off sale".
 
-### 10.3 Pending
+### 10.3 A live game's home: a list of rooms
 
-- **Question 29: how a live game's screen leads to its parts.** A (recommended): a list of rooms, each a row with where it stands, opening its own screen; on a computer the list stays on the left and the room opens on the right. B: tabs along the top. C: one long page.
+Owner, 2026-11-15: "A list of rooms", to "29. How should a live game's screen lead to its parts?"
+
+- The Live screen (section 5c) is the game's home. Under its headline and buttons sits the list of rooms: Extras, Who shares the money, Beta testers, Achievements and scores, Players, Reviews. Each room is one paper row with its name and where it stands in a few words ("2 on sale", "You, 100%", "3 people", "5", "212 this week", "Mostly liked 84%"). Tapping a row opens that room on its own screen.
+- On a computer and a sideways tablet the list stays on the left and the room opens on the right. On a phone and an upright tablet a room is its own screen, with Back to the list.
+- Call: a room with nothing in it yet still shows, with what it is for ("No extras yet").
+
+### 10.4 Pending
+
+- **Question 30: where a maker writes the game's achievements and scores.**
