@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { fillAnswers } from "./support/database.ts";
 import {
@@ -498,6 +498,74 @@ test.describe("on an iPhone SE held upright", () => {
       expect(howTo.y, "the link is above the frame").toBeLessThan(frame.y);
     });
   }
+
+  test("the choices of where the game plays are both above the bar", async ({ page }) => {
+    onlyInPhone();
+    await expectChoicesAboveTheBar(page, 2);
+  });
+});
+
+/** Goes to the question of where the game plays and checks that the first `count` choices end above the bar, their words with them. */
+async function expectChoicesAboveTheBar(page: Page, count: number): Promise<void> {
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, playsOn: false });
+  await page.goto(`/make/${slug}/plays-on`);
+  await wordsHaveSettled(page);
+
+  const bar = await boxOf(page.locator(".acts"));
+  const picks = page.locator(".pick");
+  for (let which = 0; which < count; which += 1) {
+    const box = await boxOf(picks.nth(which));
+    expect(box.y + box.height, `choice ${which + 1} ends above the bar`).toBeLessThanOrEqual(bar.y);
+  }
+}
+
+/** Goes to Check and send and checks that the name and the line end above the bar, and that the videos come after them. */
+async function expectFactsBeforeTheVideos(page: Page, facts: Locator[]): Promise<void> {
+  await startAtCheck(page);
+  await layoutHasSettled(page);
+
+  const bar = await boxOf(page.locator(".acts"));
+  const tiles = await boxOf(page.locator(".tiles"));
+  for (const fact of facts) {
+    const box = await boxOf(fact);
+    expect(box.y + box.height, "ends above the bar").toBeLessThanOrEqual(bar.y);
+    expect(tiles.y, "the videos come after it").toBeGreaterThan(box.y);
+  }
+}
+
+test.describe("on a phone held sideways", () => {
+  test.use({ viewport: { width: 915, height: 412 } });
+
+  test("the choices of where the game plays are both above the bar", async ({ page }) => {
+    onlyInPhone();
+    await expectChoicesAboveTheBar(page, 2);
+  });
+
+  test("Check and send shows the name, the line and every fact above the bar, and the videos after them", async ({
+    page,
+  }) => {
+    onlyInPhone();
+    await expectFactsBeforeTheVideos(page, [
+      page.locator(".laid .title"),
+      page.locator(".laid .tagline"),
+      page.locator(".laid .chip").last(),
+    ]);
+  });
+});
+
+test.describe("on an iPhone SE held sideways", () => {
+  test.use({ viewport: IPHONE_SE_SIDEWAYS });
+
+  test("the first choice of where the game plays is above the bar, whole", async ({ page }) => {
+    onlyInPhone();
+    await expectChoicesAboveTheBar(page, 1);
+  });
+
+  test("Check and send shows the name and the line above the bar, and the videos after them", async ({ page }) => {
+    onlyInPhone();
+    await expectFactsBeforeTheVideos(page, [page.locator(".laid .title"), page.locator(".laid .tagline")]);
+  });
 });
 
 // ---- L9: the card of what players will see shows both videos, across its whole width -----------------------------------
