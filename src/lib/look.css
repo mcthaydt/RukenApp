@@ -1397,7 +1397,8 @@ a.foot {
 .laid > div:not(.tiles) {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  /* Centred, not on a baseline: a 44px Change beside a line of words is the row's height, and the words never hang below it. */
+  align-items: center;
   gap: 0.25rem 1rem;
 }
 
