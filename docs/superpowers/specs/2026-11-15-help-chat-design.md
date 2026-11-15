@@ -118,7 +118,7 @@ Staff with the support role see the chat in the admin's support list (slice 4's 
 ## Questions for the Owner
 
 1. **Which AI answers.** The Owner, 2026-11-15: "use JEV whenever we use AI here". What JEV is has not been said yet. The plan cannot start without it.
-2. **Who the "person" is at launch.** A. The Owner alone, from the admin's support list (recommended: nobody else has the support role yet). B. Someone else the Owner names.
+2. **Who the "person" is at launch.** A. The Owner alone, from the admin's support list. B. Someone else the Owner names. **Owner, 2026-11-15, on a card: A, "Me, for now".** The Owner holds the support role and answers from the list; someone else can be given the role later.
 3. **How long chats are kept.** A. 90 days (recommended). B. 30 days. C. Until the account is deleted.
 4. **Saying it is an AI.** A. Once, lightly, in the first reply of a chat, and always when asked. B. Only when asked. **Owner, 2026-11-15, on a card: B, "Only when asked".** It never says it is a person.
 
