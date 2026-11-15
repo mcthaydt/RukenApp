@@ -648,6 +648,7 @@ Owner, 2026-11-15: "Reconsider the AI chat, I almost never want to use email her
 - [x] The Owner, 2026-11-15, on a fourth card: "Launch waits for the carriers". No email sign-up as a stand-in; launch moves if the carriers' approval comes after 30 November.
 - [x] The spec written, with a "Changed on 2026-11-15" section at the end of the design, the wishlist design, beta builds, the makers' sales spec and the apps spec.
 - [x] A note at the top of each plan it changes: slice 1, the wishlist, beta builds, makers' sales, the apps slices and the apps' test copy. Their tasks are not rewritten yet.
+- [x] STOP, after the Owner's question of 2026-11-15: two numbers (account, news), the one reply to STOP, and what a person sees while their texts are off.
 - [ ] The Owner's "approved".
 - [ ] The AI help chat's own short design (in for launch; no spec has it yet).
 - [ ] A plan, its audit and the build. The plan session also rewrites the tasks named in those notes.

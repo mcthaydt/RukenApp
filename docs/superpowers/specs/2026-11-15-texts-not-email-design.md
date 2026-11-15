@@ -122,7 +122,15 @@ Call: the apps spec's three push notifications (new DLC, a beta invite, a renewa
 - **Account texts** (codes, password and sign-in notices, a maker's notices, a split). The line under the phone number at sign-up says they will come. A person gets them because they have an account.
 - **Optional texts** (today, only "a wishlisted game is out"). Sent only to a person who ticked a box that is empty to start with, shown the first time they press Wishlist: "Text me when my wishlisted games are out. About one text. Message and data rates may apply. Reply STOP to stop." The tick, its exact words and its moment are recorded, added and never changed. `/me` has the same switch.
 - Saying yes to optional texts is never needed to join, to pay or to play.
-- **STOP.** A person who texts STOP to Ruken's number gets no more texts from it; the phone carriers enforce this. Ruken hears of it from Twilio, records it, turns off the optional switch, and shows on `/me` and on the sign-in code screen: "You stopped our texts. Text START to [number] to turn them back on." Until then, a notice that would have been a text waits on `/me`.
+- **Two numbers, so STOP on one does not silence the other.** Owner, 2026-11-15: "How does stop work here because we're text first, saying stop might make them not see important things". Account texts come from one number ("Ruken account") and optional texts from another ("Ruken news"). STOP sent to the news number ends only the optional texts; codes and account notices keep coming.
+- **STOP.** A person who texts STOP to a number gets no more texts from that number; the phone carriers enforce this, and Ruken never works around it. Ruken hears of it from Twilio and records it, added and never changed.
+- **The one reply to STOP.** It says plainly what stopped and how to undo it, and sells nothing. To the news number: "Ruken: no more news texts. You'll still get texts about your account. Reply START to get news again." To the account number: "Ruken: no more texts from us, so you won't hear about your account or password here. Reply START to turn them back on."
+- **After STOP on the account number.** Only the person can undo it, by texting START; no button on Ruken can. Until they do:
+  - Every screen shows one line at the top while they are signed in: "Your texts are off, so you could miss news about your account." with "How to turn them back on", which shows the number and the word START.
+  - Each notice that would have been a text waits on `/me`, newest first, and the line at the top says how many are unread.
+  - The code screens say the same thing in place of "Text it again", since a code cannot reach them either.
+  - A fourth notification, "About my account", is offered there and in Settings, off until they turn it on like the apps spec's three. With it on, a waiting notice also arrives as a notification.
+  - Legal papers still go by email, as before.
 - **HELP.** Texting HELP gets one fixed reply with Ruken's name, where help is, and how to stop.
 - **Any other text to Ruken's number** goes to the help chat, once its own design is built. Until then it gets the HELP reply.
 - **Quiet hours.** Optional texts go out only between 9:00 and 20:00 in the person's own time, read from their device when they said yes. Account texts go when they happen.
