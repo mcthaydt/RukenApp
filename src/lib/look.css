@@ -1309,6 +1309,10 @@ a.foot {
   height: 100%;
 }
 
+.tiles figcaption > span {
+  white-space: nowrap;
+}
+
 .tiles figcaption {
   display: flex;
   /* "On phones" and its Change are one line under a narrow tile, never two. */
@@ -1437,8 +1441,9 @@ a.foot {
 }
 
 /* A small Change beside a part. A link, not a button, and still a 44 by 44 target. */
-.change {
-  /* Beside or under a part's words, it keeps the space it is given: the pull a link takes on its margins is for a line of words. */
+.laid .change {
+  /* Beside or under a part's words, it keeps the space it is given: the pull a link takes on its margins is for a line of words.
+     The `.laid` in front lets this win over the rule for every link, whatever order the two are read in. */
   margin-block: 0;
   display: inline-flex;
   align-items: center;
