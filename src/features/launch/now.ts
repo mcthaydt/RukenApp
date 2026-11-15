@@ -29,9 +29,12 @@ function isThisMachine(address: string | undefined): boolean {
  * LAUNCH_TEST_SWITCH=on, and is open whatever the date: every journey of the earlier slices presses Play and must not
  * change with the day it runs. One cookie, `rk_test_launch=before`, makes a browser see the day before launch.
  *
- * Any other value of the switch, or the switch on a site whose own address is not this machine, throws, so a real site
- * that has it set by mistake fails its pages instead of opening early. An empty value counts as not set, as every
- * other setting does.
+ * The test copy (RUKEN_COPY=test) may set the switch too: it takes test payments before the live copy opens, and its
+ * one cookie still shows a browser the day before.
+ *
+ * Any other value of the switch, or the switch on a site that is neither this machine nor the test copy, throws, so the
+ * live site that has it set by mistake fails its pages instead of opening early. An empty value counts as not set, as
+ * every other setting does.
  */
 export function createLaunchNow(
   settings: {
@@ -44,7 +47,7 @@ export function createLaunchNow(
   const flag = settings.LAUNCH_TEST_SWITCH;
   if (flag === undefined || flag === "") return () => clock.epochMs();
 
-  if (flag !== "on" || !isThisMachine(settings.BETTER_AUTH_URL)) {
+  if (flag !== "on" || !(isThisMachine(settings.BETTER_AUTH_URL) || settings.RUKEN_COPY === "test")) {
     throw new Error("LAUNCH_TEST_SWITCH is for tests on this machine. Remove it from this site's settings.");
   }
   return (cookies) =>
