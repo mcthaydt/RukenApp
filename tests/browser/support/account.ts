@@ -42,6 +42,14 @@ export async function fillBirthDate(
  */
 export async function pageHasSettled(page: Page): Promise<void> {
   await expect(page.locator("#svelte-announcer")).toBeAttached();
+  // A step between two of the maker's screens is a view transition, and while one runs the browser sends a press to the
+  // page itself, not to the button under the finger: a journey that pressed Next in that half second saw nothing happen
+  // (runs 43686164126 on `tablet` and `tablet-landscape`, and the earlier "stays on the same question" sightings). So
+  // the page is settled once its entrance has finished. An animation that was cancelled when the next screen came is
+  // over, not waited for.
+  await page.evaluate(async () => {
+    await Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined)));
+  });
 }
 
 /**
