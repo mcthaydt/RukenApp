@@ -259,6 +259,10 @@ test("the wide frame is this wide for this window, and wider than tall", async (
   } else if (layout === "phone-sideways") {
     // 240, not 380: beside a wider frame an iPhone SE held sideways left the heading a word to a line (the design pass, M5).
     expect(frame.width).toBe(240);
+  } else if (layout === "computer" && (page.viewportSize()?.height ?? 0) < 800) {
+    // A short computer window (1280 by 720) keeps the question's words and buttons on its first screen: the frame is as tall as
+    // is left after 480px, in the wide shape (look.css, "A short computer window").
+    expect(frame.width).toBeCloseTo((((page.viewportSize()?.height ?? 0) - 480) * 16) / 9, 0);
   } else {
     expect(frame.width).toBe(640);
   }
