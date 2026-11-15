@@ -29,9 +29,14 @@ export async function answerName(page: Page, name: string = freshName()): Promis
   return name;
 }
 
-/** Types the one line about the game and presses Next. The heading holds the game's name, so any name is found. */
+/**
+ * Types the one line about the game and presses Next. The box is found by the question it answers, whatever the game's
+ * name: the address changes to /line a moment before the screen does, so a box found by its kind alone can be the
+ * name's box, still there, and the line typed into it is gone when the question comes (run 43687697464: Next pressed
+ * on an empty line, and the page stayed on it saying so).
+ */
 export async function answerLine(page: Page, line = "Climb. Fall. Climb again."): Promise<void> {
-  await page.getByRole("textbox").fill(line);
+  await page.getByLabel(/about, in one line\?$/).fill(line);
   await nextButton(page).click();
 }
 
