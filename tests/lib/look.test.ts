@@ -309,6 +309,9 @@ describe("screens wear the look and nothing of their own", () => {
     "answer",
     "picks",
     "pick",
+    // A repository's name stays in whole parts, and the quiet link under a video question.
+    "whole",
+    "help",
     "acts",
     "key",
     "foot",
@@ -422,6 +425,9 @@ describe("the maker's screens", () => {
     "answer",
     "picks",
     "pick",
+    // A repository's name stays in whole parts, and the quiet link under a video question.
+    "whole",
+    "help",
     "acts",
     "key",
     "foot",
