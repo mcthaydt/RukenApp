@@ -382,7 +382,7 @@ The board for section 10 to 12, round 7, every new screen in all five sizes: htt
 | 5 | Who shares the money | sales 5.6 | People by handle, a share beside each, "Shares must add up to 100%."; waiting for a yes. |
 | 6 | Saying yes or no | sales 5.6 | Seen by the invited person: the game, the share, yes (blue) or no (green). |
 | 7 | Money and statements | sales 5.7 | What a person is owed, from which games, each month's statement; also for a person in a split with no game. |
-| 8 | Beta | beta builds | The beta branch, its state, "Pull for testing", the testers. |
+| 8 | Beta | beta builds | The beta branch, its state, "Send the beta for review", the testers. |
 | 9 | Achievements and scores | apps spec, "Ruken hooks" | The game's achievements (name, line, icon, hidden until earned) and stats (name, higher or lower wins). |
 | 10 | Players | apps spec, "Analytics" | Each player under an anonymous name with their events and device; country and age band only as totals of 10 or more. |
 | 11 | Reviews | apps spec, "Reviews" | "Mostly liked (84% of 212)" and the reviews; the maker can read and report, not delete or answer. |
@@ -402,7 +402,7 @@ Blocking (apps spec, "Friends") has no screen of its own here: a blocked person 
 Owner, 2026-11-15: "A list of rooms", to "29. How should a live game's screen lead to its parts?"
 
 - The Live screen (section 5c) is the game's home. Under its headline and buttons sits the list of rooms: Extras, Who shares the money, Beta testers, Achievements and scores, Players, Reviews. Each room is one paper row with its name and where it stands in a few words ("2 on sale", "You, 100%", "3 people", "5", "212 this week", "Mostly liked 84%"). Tapping a row opens that room on its own screen.
-- On a computer and a sideways tablet the list stays on the left and the room opens on the right. On a phone and an upright tablet a room is its own screen, with Back to the list.
+- A room opens as its own screen on every device, with "Back to Floor Fifty" at the top (section 14). On a computer and a sideways tablet the room's own parts sit side by side.
 - Call: a room with nothing in it yet still shows, with what it is for ("No extras yet").
 
 ### 10.4 Achievements and scores are added on Ruken
@@ -455,8 +455,8 @@ Owner, 2026-11-15, to "32. What can an 18+ game have that staff still accept?": 
 
 This amends the main design's 5.5 ("Adult games are not accepted") and the apps spec's age ratings. What it means on the screens of this file:
 
-- **The maker says so.** After "Who is Floor Fifty for?", a game rated 18+ gets one more question: "Does Floor Fifty have any of these?" with four choices, any or none: "Sex or nudity", "Gore", "Drugs", "None of these" (12.0). Hint, which changes with what is picked: with Sex or nudity or Gore, "Players only see it if they turn it on. Some store apps hide it; you can give us a censored version for them."; with Drugs only, "It shows to adults everywhere, with a warning."; always, "Pornography and gambling are never allowed." Call: a question only for 18+ games, so a first game is still 11 questions unless it is 18+.
-- **Staff check it.** On checking a game (section 11.1, screen 2) the age rating row also shows these three marks (Sex or nudity, Gore, Drugs), and staff can add or remove either before Accept. "It's pornography." is a reason on the list (section 11.2), and a game sent back for it cannot be sent again as it is.
+- **The maker says so.** After "Who is Floor Fifty for?", a game rated 18+ gets one more question: "Does Floor Fifty have any of these?" with four choices, any or none: "Sex or nudity", "Gore", "Drugs", "None of these" (12.0). Hint, one short line that changes with what is picked: with Sex or nudity, "Players see it only if they turn it on. Some store apps hide it."; with Gore or Drugs only, "Players see it only if they turn it on."; then always, "Pornography and gambling are never allowed." Picking "None of these" clears the others. Call: a question only for 18+ games, so a first game is still 11 questions unless it is 18+.
+- **Staff check it.** On checking a game (section 11.1, screen 2) the age rating row also shows these three marks (Sex or nudity, Gore, Drugs), and staff can add or remove any of them before Accept. "It's pornography." is a reason on the list (section 11.2), and a game sent back for it cannot be sent again as it is.
 - **The maker sees it.** Check and send, Sent back and Live show the marks as a chip beside the rating ("18+ · Sex or nudity").
 - **Who sees such a game** (not a maker screen, for the apps' plan): only an account 18 or over, only on the website and Ruken's own downloads, only after turning it on in Settings, and only after a content warning before its clip or page. Everywhere else, and for everyone else, the game does not exist: the feed, search, maker pages, links, extras, leaderboards.
 
@@ -465,10 +465,10 @@ This amends the main design's 5.5 ("Adult games are not accepted") and the apps 
 Owner, 2026-11-15: "Here's my thoughts: cyberpunk 2077 is a max bar for sex, nudity, violence, and drugs, no gambling".
 
 - **The most an 18+ game may have is Cyberpunk 2077's level** of sex, nudity, violence and drugs. Staff measure against that: more than it is refused, and pornography is always refused. "It goes past what we allow." is a reason on staff's list for the age rating row.
-- **Drugs** join the marks: the 18+ question's choices are "Sex or nudity", "Gore", "Drugs", "None of these". Call: drugs alone do not hide a game from the store apps, because the stores' own 17+ and 18+ ratings allow drug use; sex, nudity and gore do.
+- **Drugs** join the marks: the 18+ question's choices are "Sex or nudity", "Gore", "Drugs", "None of these". Call: gore and drugs do not hide a game from the store apps, because the stores' own 17+ and 18+ ratings allow them (12.0a); only sex and nudity can.
 - **No gambling, at any rating.** Staff refuse a game that does it, with the reason "Gambling isn't allowed on Ruken.". An extra is a fixed thing: staff refuse one whose contents are random. Owner, 2026-11-15: "Anything with real money", to "33. Which of these count as the gambling Ruken refuses?", whose words were: "Betting real money, and random rewards bought with real money (loot boxes), are refused. Casino games played only for fun with fake chips are fine at 18+."
 
-Owner, 2026-11-15, on Flathub and the Snap Store: "Stores (18+ content hidden)". So every store app hides games marked sex, nudity or gore: the App Store, Google Play, the Mac App Store, the Microsoft Store, Flathub and the Snap Store. Only the website and Ruken's own downloads show them, to adults who turned them on. Worth knowing, said once: Cyberpunk 2077 itself is sold on the Microsoft Store, so that store might allow such games; Apple's and Google's rules do not allow sex or nudity in apps. The Owner's rule stands.
+Owner, 2026-11-15, on Flathub and the Snap Store: "Stores (18+ content hidden)". So every store app hides games marked sex, nudity or gore (replaced by 12.0a, where only sex and nudity can hide a game): the App Store, Google Play, the Mac App Store, the Microsoft Store, Flathub and the Snap Store. Only the website and Ruken's own downloads show them, to adults who turned them on. Worth knowing, said once: Cyberpunk 2077 itself is sold on the Microsoft Store, so that store might allow such games; Apple's and Google's rules do not allow sex or nudity in apps. The Owner's rule stands.
 
 ### 12.0a Each store shows its most; censored versions
 
@@ -476,10 +476,10 @@ Owner, 2026-11-15: "Do the maximum the apps will allow, and give devs the option
 
 - **Each store app shows the most that store's rules allow.** Violence, gore and drugs at the store's 17+ or 18+ rating; sex and nudity only where a store's rules allow them. Which store allows what is read from each store's own rules before the apps' plan and kept in one table there; until a store is confirmed, sex and nudity are hidden in its app. The website and Ruken's own downloads show everything up to the bar (12.0), to adults who turned it on.
 - **A maker can give a censored version** for the store apps. Ruken loads it in a store app whose rules would hide the full game, and the full one everywhere else. A game marked for content a store hides, with no censored version, is hidden in that store's app, as before.
-- **A second branch.** Owner, 2026-11-15: "A second branch", to "34. How does a maker give us the censored version of their game?", whose words were: "The maker names a branch (like their beta branch) for the store version. It's pulled and checked with the full one. Store apps only ever load its files." Call: once a store version is accepted, each new release pull asks for the store version too ("Pull both for review"), so the two never drift apart for long; until the new store version is accepted, store apps keep the last accepted one.
+- **A second branch.** Owner, 2026-11-15: "A second branch", to "34. How does a maker give us the censored version of their game?", whose words were: "The maker names a branch (like their beta branch) for the store version. It's pulled and checked with the full one. Store apps only ever load its files." Call: once a store version is accepted, each new release pull asks for the store version too ("Send both for review"), so the two never drift apart for long; until the new store version is accepted, store apps keep the last accepted one.
 - **Extras** are the same extras in both versions: one id, one purchase, owned in both (sales 5.4). Each version has its own `ruken-extras/<id>/` folders; staff check an extra unlocks in both.
 - **Staff check both versions** (section 11): on checking a game, a switch "Full version / Store version" above the game; the parts list gains the store version's files, and the content marks are checked on each.
-- **The maker's screens**: the age question's 18+ follow-up (12) gains a last line when a mark is picked: "Some store apps hide this. You can give us a censored version for them." with a link to the Store version room. A live game's rooms gain "Store version" (its branch, its state in the usual words, "Pull for review"), shown only for a game marked sex, nudity or gore (drugs alone do not hide a game from the store apps, 12.0).
+- **The maker's screens**: the age question's 18+ follow-up (12) gains a last line when a mark is picked: "Some store apps hide this. You can give us a censored version for them." with a link to the Store version room. A live game's rooms gain "Store version" (its branch, its state in the usual words, "Send it for review"), shown only for a game marked sex or nudity (gore and drugs do not hide a game from the store apps, 12.0).
 
 ### 12.1 What this touches beyond these screens
 
@@ -506,7 +506,7 @@ The audit (`docs/superpowers/audits/2026-11-15-maker-screens-coverage-audit.md`,
 - **M7 Your page was taken down.** On Your games, a red card: "Your page is hidden. <reason>" with Blue "I've fixed it. Look again."
 - **M8 Suspended.** Your games shows only: "Your account is paused.", staff's reason, "Your games are hidden and nothing new can be sent. Your money keeps going to you." and a link "Ask us about this". Nothing else can be pressed.
 - **M9 Connect your bank.** A screen of its own: "Connect your bank to be paid", "Stripe asks for your bank and who you are. It takes about five minutes.", Blue "Connect with Stripe". After: "Your bank is connected. Ending 6789." with "Change bank". Until then, Your money says "Your money is waiting for you. Connect your bank to be paid." in a Blue card. The same screen follows "Yes, share it".
-- **M10 A statement, and asking about a line.** Tapping a month on Your money opens it: each game's lines with their words (sales plan Task 32) and "Ask about this line" under each. Asking is one question: "What's wrong with this line?", with a box and Blue "Send". The answer shows under the line, and an email says it came.
+- **M10 A statement, and asking about a line.** Tapping a month on Your money opens it: each game's lines with their words (sales plan Task 32) and "Ask about this line" under each. Asking is one question: "What's your question about this line?", with a box, the line "We'll answer by 22 December." (the answer-by date from the sales plan, not a made-up promise) and Blue "Send". The answer shows under the line, and a text says it came.
 - **M11 The agreement changed.** Before a maker's next send, one screen: "Our maker agreement changed", "What's new: selling extras, and sharing money with others.", the whole text as a sheet, Blue "I agree". Until then they can look but not send.
 - **M12 Adding an extra, all of it.** Name ("What's it called?"), line ("Say what they get, in one line."), picture ("Add a picture of it", Blue "Choose picture"), then its own Check and send, the extra laid out as the buy card shows it, with Edit on each part and Blue "Send for review". Change: the same screens, and "A change is waiting for review. Players keep buying it as it is now." Remove a draft never on sale: red "Remove", one short screen, green "Keep it", red "Remove it".
 - **M13 A split waiting.** The list shows "Waiting for @drummer to say yes. Until then the shares stay as they were." and red "Cancel this change". Shares that don't add up read "These add up to 90%. Shares must add up to 100%." in red, and "Ask them" stays but is refused with that line. Someone who left: "(left Ruken)" and "Change the shares so their part goes to someone." Under the list: "Each person connects their own bank to be paid." On Your account, the invited person sees a line: "@snekprty asked you to share what Floor Fifty earns." with "Have a look".
@@ -515,7 +515,7 @@ The audit (`docs/superpowers/audits/2026-11-15-maker-screens-coverage-audit.md`,
 - **M16 Adding an achievement and a score, all of it.** Name, line, icon ("Add a square picture", refused in words when the check flags it: "We can't use this picture. Pick another."), hidden. A score: "What's the score called?", then "Which wins?" (Higher wins, Lower wins).
 - **M17 One player.** Tapping a player opens their made-up name, device, and their events in order, newest first, with when.
 - **M18 Empty and early.** A room with nothing yet says what it is for and offers its Blue button ("No extras yet. An extra is something players can buy in your game."). Reviews under 10: "Not enough reviews yet. Reviews show once 10 players have left one." Before launch, Players shows wishlists only: "Ruken opens soon. Until then you see wishlists."
-- **M19 Store version sent back**, and pulling both. The Store version room shows a red card with its reason and Blue "Fix it and pull again". Once a store version exists, Live's green button reads "Send my newest versions for review" with the line "We'll pull your full and store versions together."
+- **M19 Store version sent back**, and pulling both. The Store version room shows a red card with its reason and Blue "Fix it and send it again". Once a store version exists, Live's green button reads "Send my newest versions for review" with the line "We'll pull your full and store versions together."
 - **M20 An extra a store can't sell.** Staff are told on the extra's check ("Not sold in Microsoft Store: no price high enough."); the maker is not, as the apps' slice map says.
 
 ### 13.2 Staff
@@ -544,3 +544,35 @@ All of it works on an iPad, either way up (section 11).
 
 - **Beta testers by email** (audit 3.7). Call: the beta spec's "email or handle" stays, and every refusal reads the same, "We can't add that person. Only members can test games.", for an unknown email, a non-member and a blocked person alike, so it never tells a maker whether an account exists.
 - **Keyboard-only games on an iPad** (audit 3.8). Owner, 2026-11-15: "iPad with a keyboard", to "35. How do staff check a keyboard-only game from an iPad?", whose words were: "Staff clip a keyboard onto the iPad for those games. Ruken passes the keys to the game, so it works with no computer." On checking a computer-only game, one line above the game: "This game needs a keyboard. Connect one to your iPad."
+
+## 14. The plain-words and get-stuck reviews, folded in
+
+Two reviews read the board on 2026-11-15: a plain-words review (`/mnt/project-files/maker-screens/2026-11-15-maker-screens-plain-words-review.md`) and a get-stuck review (`2026-11-15-maker-screens-stuck-review.md`, same folder). Every fix below is on the board, version 6, which now has 60 screens.
+
+### 14.1 Nobody gets stuck
+
+- **Staff home has a door to every staff screen.** "Waiting for you" lists the queue, then Reports, Pictures held back, Live games, Money (months, refunds, payouts, questions), Find a purchase, What staff did, Switches, Who is staff and Your staff code.
+- **Every staff screen has a way back** at the top right, "Back to staff home" or to the screen it came from ("Back to Money", "Back to Reports").
+- **A report can be cleared.** A new screen, One report: the thing reported, how many people reported it and why, then green "Nothing wrong here" and red "Take it down".
+- **A refund can be refused.** A refund's second yes has green "Don't refund", red "Yes, refund it" (money goes out, so it is red), and a "Not now" link.
+- **A payout run can be stopped.** The payout run reads "Pay November's money", asks for a fresh code, and has red "Stop this run" beside Blue "Yes, pay them".
+- **The staff code** can be typed as a key instead of scanned, and says what to do with a wrong code or a lost phone.
+- **Who is staff** shows no Remove on the last two people who can do everything. Their role reads "Can do everything".
+- **Switches** and **Live games** use buttons that say what they do ("Turn on", "Turn off"; "Free to play: On / Off").
+- **Your games** is drawn as the maker's home, with doors to each game, Your page and Your money.
+- **A paused account** can still reach Your money, and its Blue button is "Ask us about this".
+- **The bank not finished, refused, or outside the US** each gets a screen saying the money is safe and waiting, and the one thing to do next.
+- **One achievement** is a new screen: its name, how rare it is, and its id with Copy, so a maker can find the id again. Change it and Remove are there.
+- **Every text link is at least 44 points tall**, as are ticks, reasons and choice pills, so a thumb hits them.
+- **A room opens as its own screen** on every device, with Back (10.3).
+
+### 14.2 Plain words
+
+- "Pull for testing", "Pull for review" and "Fix it and pull again" are now "Send the beta for review", "Send it for review" and "Fix it and send it again".
+- A live game's rooms end with red "Take Floor Fifty off Ruken" (M1), and its main button is "Send a new version".
+- The 18+ hint is one short line that changes with the picks (section 12). Gore and drugs show in store apps at their 17+ or 18+; only sex and nudity can hide a game there (12.0, 12.0a).
+- Asking about a line shows the answer-by date, not "two working days" (M10).
+- "Your share: 40% of what Floor Fifty earns". Your money reads "From members playing it", "Floor Fifty total" and "Past months".
+- Names inside a sentence are in quotes: Keep "The top" hidden…; Add an icon for "Halfway"; For "Best floor", which wins?
+- The beta refusal is "We can't add that person. Only members can test games." everywhere (13.3).
+- Smaller ones: "about 10% more" in the phone and store apps; days end at "midnight, US Central time"; the link on One extra is "How a game uses Ruken"; "Their @name" for the split's box; "@pixelpete (left Ruken)"; "Accepted" on the Store version; "We close it on 10 December. Paid on 15 December."; "We ignore any name you haven't added here."; "A child bought it without asking"; "like Google Authenticator"; a page link asks its kind first, then its words; "Finish later" is the one way to leave a question.
