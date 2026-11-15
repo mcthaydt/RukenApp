@@ -1166,6 +1166,223 @@ a.foot {
   font: var(--text-small);
 }
 
+/* A screen with something to read or check is two halves (spec 15.2): the heading and the one blue button on the left,
+   480 wide (260 on a phone held sideways), and the thing itself on the right. A window that is wide enough and not tall
+   enough to stack them puts them side by side; the left half stays in view while the right one scrolls. Everywhere else
+   they are stacked, with the button in the bar. */
+.screen:has(.halves) {
+  --column: 1200px;
+}
+
+@media (orientation: portrait), (max-width: 499px), (max-height: 449px) {
+  .screen:has(.halves) {
+    --column: 100%;
+  }
+}
+
+.halves > * {
+  min-width: 0;
+}
+
+.halves > * + * {
+  margin-top: 2rem;
+}
+
+.halves a.foot {
+  display: inline-block;
+  margin: 1.5rem 0 0;
+}
+
+@media (orientation: landscape) and (min-width: 700px) {
+  .halves {
+    display: grid;
+    grid-template-columns: 480px minmax(0, 1fr);
+    column-gap: 3rem;
+    align-items: start;
+  }
+
+  .halves > * + * {
+    margin-top: 0;
+  }
+
+  .halves > form {
+    position: sticky;
+    top: 1.5rem;
+  }
+}
+
+@media (max-height: 449px) and (min-width: 700px) {
+  .halves {
+    grid-template-columns: 260px minmax(0, 1fr);
+    column-gap: 1.5rem;
+  }
+}
+
+/* The agreement's points on a sheet: the number is the list's own, in the display face, and hangs in the left margin, so
+   every title and every point starts on one line. */
+.sheet ol {
+  margin: 0;
+  padding-left: 2.5rem;
+}
+
+.sheet li::marker {
+  font: var(--text-statement);
+}
+
+.sheet li + li {
+  margin-top: 1.75rem;
+}
+
+.sheet li > strong {
+  display: block;
+}
+
+.sheet li > p {
+  margin-top: 0.25rem;
+}
+
+/* A game laid out as members will see it (Check and send, and later the other screens that show a game). Its two videos
+   are the same height in their real shapes (264, or 300 on a tablet held upright, or 180 on a phone held sideways),
+   and a window too narrow for both at that height makes both smaller together: the width they have, less the gap
+   between them, divided by what the two shapes add up to (9/16 + 16/9, about 2.34). A phone shows the upright one at
+   150 by 267 with the wide one beside it. */
+.laid {
+  container-type: inline-size;
+}
+
+.laid > * + * {
+  margin-top: 1.25rem;
+}
+
+.tiles {
+  --tile-height: min(264px, (100cqw - 1rem) * 0.4274);
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.tiles figure {
+  margin: 0;
+}
+
+.tiles figure > div {
+  height: var(--tile-height);
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.tiles figure > [data-shape="upright"] {
+  width: calc(var(--tile-height) * 9 / 16);
+}
+
+.tiles figure > [data-shape="wide"] {
+  width: calc(var(--tile-height) * 16 / 9);
+}
+
+.tiles figure > div > a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tiles figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin-top: 0.5rem;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
+@media (orientation: portrait) {
+  .tiles {
+    --tile-height: min(300px, (100cqw - 1rem) * 0.4274);
+  }
+}
+
+@media (max-height: 449px) {
+  .tiles {
+    --tile-height: min(180px, (100cqw - 1rem) * 0.4274);
+  }
+}
+
+@media (max-width: 499px) {
+  .tiles figure:last-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tiles figure > [data-shape="upright"] {
+    width: 150px;
+    height: 267px;
+  }
+
+  .tiles figure > [data-shape="wide"] {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* The name as the feed sets it: a title in the display face, and the line under it. Change sits at the end of each. */
+.laid > div:not(.tiles) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 1rem;
+}
+
+.title {
+  margin: 0;
+  font: var(--text-card-title);
+  overflow-wrap: anywhere;
+}
+
+.tagline {
+  margin: 0;
+  color: var(--sage);
+  font: var(--text-statement);
+}
+
+.laid ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.laid li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* A fact in a quiet chip: the same Dusky Green as a green button, white words, 8px corners (no pills). */
+.chip {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-small);
+  overflow-wrap: anywhere;
+}
+
+/* A small Change beside a part. A link, not a button, and still a 44 by 44 target. */
+.change {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--sage);
+  font: var(--text-small);
+  text-decoration: underline;
+}
+
 /* A game in Your games: one paper card that is one link, with its picture, its name, and where it stands. Until a
    game has its video, a plain block holds the picture's place. */
 a.game {

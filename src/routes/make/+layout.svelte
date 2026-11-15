@@ -13,7 +13,12 @@
   /** The one more link in the bar: where the maker goes to stop for now, or to their account. */
   const more = $derived.by(() => {
     if (page.url.pathname === "/make") return { href: "/me", words: "Your account" };
-    if (page.url.pathname === "/make/new" || page.params.question !== undefined) {
+    // The last two steps (the agreement, Check and send) can be left for later too, as any question can.
+    if (
+      page.url.pathname === "/make/new" ||
+      page.params.question !== undefined ||
+      /\/(agreement|check)$/.test(page.url.pathname)
+    ) {
       return { href: "/make", words: "Finish later" };
     }
     return null;

@@ -39,6 +39,7 @@
     { value: "none", title: "None of these" },
   ];
 
+  const WEBSITES_HINT = "One per line, like api.example.com. Leave this empty if your game runs on its own.";
   const NAME_HINT = "The name players see. Like: Floor Fifty.";
   const ADDRESS_STAYS = " Its address on Ruken stays the same, so links you've shared keep working.";
 </script>
@@ -91,6 +92,23 @@
       throwAway={data.throwAway}
       {problem}
     />
+  {:else if data.question === "websites"}
+    <QuestionScreen
+      heading={`Does ${data.name} use other websites?`}
+      counter={data.counter}
+      back={data.back}
+      throwAway={data.throwAway}
+      busyWords="Copying your game…"
+      busyLine="Copying your game can take a minute. Keep this page open."
+    >
+      <TextAnswer
+        name="servers"
+        value={form?.value ?? data.servers}
+        hint={WEBSITES_HINT}
+        lines={3}
+        {problem}
+      />
+    </QuestionScreen>
   {:else if data.question === "plays-on"}
     <QuestionScreen
       heading={`Where does ${data.name} play?`}

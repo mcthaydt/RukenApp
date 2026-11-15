@@ -3,6 +3,7 @@ import {
   ageProblem,
   answersOf,
   CLIP_MAX_BYTES,
+  connectHostsFrom,
   counterOf,
   firstUnanswered,
   GameError,
@@ -19,7 +20,6 @@ import {
   type ContentMark,
   type GamePlaysOn,
   type MakerGame,
-  type QuestionId,
 } from "../../../../features/games/games.ts";
 import { ownGame } from "../../own-game.server.ts";
 import type { Actions, PageServerLoad } from "./$types";
@@ -27,8 +27,8 @@ import type { Actions, PageServerLoad } from "./$types";
 // One question of a game: its page, and the form that answers it. Each action finds the game among the signed-in
 // maker's own, so another maker's game is a 404 for every question (Review Focus 2).
 
-/** The questions that have a screen so far. The rest are a 404 until the task that builds them. */
-const BUILT = ["name", "line", "files", "plays-on", "upright", "wide", "age", "marks"] as const;
+/** The questions that have a screen. "websites" is reached only from Check and send, so it is never in the count. */
+const BUILT = ["name", "line", "files", "plays-on", "upright", "wide", "age", "marks", "websites"] as const;
 type BuiltQuestion = (typeof BUILT)[number];
 
 /** The two questions answered with a video: its word is the shape of the clip. */
@@ -56,9 +56,12 @@ function askedQuestion(word: string, game: MakerGame): BuiltQuestion {
   return word;
 }
 
-/** True while a draft still has a question not answered: the first time through, with the counter and Next. */
-function isFirstTime(game: MakerGame): boolean {
-  return game.state === "draft" && firstUnanswered(answersOf(game)) !== null;
+/**
+ * True while a draft still has a question not answered: the first time through, with the counter and Next. The websites
+ * are never the first time through: a game is asked them only when its maker chooses to change them.
+ */
+function isFirstTime(game: MakerGame, question: BuiltQuestion): boolean {
+  return question !== "websites" && game.state === "draft" && firstUnanswered(answersOf(game)) !== null;
 }
 
 /** What a refused copy says: plain words for the file every game needs, and the copy's own words for the rest. */
@@ -110,26 +113,28 @@ export const load: PageServerLoad = async (event) => {
   const { userId, game } = await ownGame(event);
   const question = askedQuestion(event.params.question, game);
   const answers = answersOf(game);
-  const firstTime = isFirstTime(game);
+  const firstTime = isFirstTime(game, question);
 
   // A question after the first one not answered (a bookmark, a second tab) leads back to that one.
   const first = firstUnanswered(answers);
   if (firstTime && first !== null) {
-    const asked = questionsFor(answers);
+    const asked: readonly string[] = questionsFor(answers);
     if (asked.indexOf(question) > asked.indexOf(first)) redirect(303, `/make/${game.slug}/${first}`);
   }
 
-  const before = questionBefore(question, answers);
+  const before = question === "websites" ? null : questionBefore(question, answers);
   return {
     question,
     name: game.name,
+    // One website to a line, as the game's list was typed.
+    servers: game.connectHosts.join("\n"),
     oneLine: game.oneLine ?? "",
     playsOn: game.playsOn === null ? [] : [game.playsOn],
     ageRating: game.ageRating === null ? [] : [game.ageRating],
     contentMarks: game.contentMarks,
     // The address of a live game's page never changes, and the name's hint says so.
     addressStays: game.everLive,
-    counter: firstTime ? counterOf(question, answers) : null,
+    counter: firstTime && question !== "websites" ? counterOf(question, answers) : null,
     back: !firstTime ? `/make/${game.slug}` : before === null ? "/make" : `/make/${game.slug}/${before}`,
     throwAway: `/make/${game.slug}/throw-away`,
     files: question === "files" ? await filesScreen(event.url, userId, game) : null,
@@ -180,12 +185,32 @@ function contentMarksFrom(values: string[]): ContentMark[] {
   );
 }
 
+/** What was typed in the question's one box, to come back with a refusal. */
+function typedFor(question: BuiltQuestion, form: FormData): string {
+  switch (question) {
+    case "name":
+      return textOf(form, "name");
+    case "line":
+      return textOf(form, "oneLine");
+    case "websites":
+      return textOf(form, "servers");
+    default:
+      return "";
+  }
+}
+
 /** The answer in this form, or the words for why there is none. What was typed is never believed. */
 function answerFrom(
   question: Exclude<BuiltQuestion, VideoQuestion>,
   form: FormData,
 ): { answer: Answer } | { problem: string } {
   switch (question) {
+    case "websites": {
+      const servers = connectHostsFrom(textOf(form, "servers"));
+      return "problem" in servers
+        ? { problem: servers.problem }
+        : { answer: { question, connectHosts: servers.hosts } };
+    }
     case "name":
       return { answer: { question, name: textOf(form, "name") } };
     case "line":
@@ -216,12 +241,12 @@ function answerFrom(
 
 /** Where a saved answer goes on: back to the game when it is being changed, else the next question or the last step. */
 async function goOn(userId: string, saved: { slug: string }, question: BuiltQuestion, firstTime: boolean) {
-  if (!firstTime) redirect(303, `/make/${saved.slug}`);
+  if (!firstTime || question === "websites") redirect(303, `/make/${saved.slug}`);
   // The next question this game is asked, or the last step when there is none (its rating may have changed which
   // questions it is asked).
   const fresh = await gamesServices().service.gameForMaker(saved.slug, userId);
   if (fresh === null) error(404, "Not found");
-  const asked: QuestionId[] = questionsFor(answersOf(fresh));
+  const asked: readonly string[] = questionsFor(answersOf(fresh));
   redirect(303, `/make/${saved.slug}/${asked[asked.indexOf(question) + 1] ?? "check"}`);
 }
 
@@ -229,7 +254,7 @@ export const actions: Actions = {
   default: async (event) => {
     const { userId, game } = await ownGame(event);
     const question = askedQuestion(event.params.question, game);
-    const firstTime = isFirstTime(game);
+    const firstTime = isFirstTime(game, question);
 
     // A video is added the moment it is chosen (the `clip` action), so Next only moves on, and only with one in.
     if (isVideoQuestion(question)) {
@@ -239,8 +264,7 @@ export const actions: Actions = {
 
     const form = await event.request.formData();
     // What was typed comes back with a refusal, so nobody types it twice.
-    const typed =
-      question === "name" ? textOf(form, "name") : question === "line" ? textOf(form, "oneLine") : "";
+    const typed = typedFor(question, form);
     const found = answerFrom(question, form);
     if ("problem" in found) return fail(400, { problem: found.problem, value: typed });
 
