@@ -62,18 +62,47 @@ describe("the tokens (design 5.8)", () => {
     expect(css).toContain(name);
   });
 
-  it("names Young Serif and Schibsted Grotesk first, each with a system font behind it", () => {
-    expect(token("--font-display")).toMatch(/^"Young Serif", .*serif$/);
+  // Spec 15.2: a heading's "1" must never read as an "I", so the digits come from the text face and the letters from
+  // Young Serif. The first family only has the digits (unicode-range), so everything else falls to the second.
+  it("names Ruken Digits, Young Serif and Schibsted Grotesk first, each with a system font behind it", () => {
+    expect(token("--font-display")).toMatch(/^"Ruken Digits", "Young Serif", .*serif$/);
     expect(token("--font-text")).toMatch(/^"Schibsted Grotesk", .*system-ui.*sans-serif$/);
   });
 
-  // The Owner, 2026-11-14, "I want it to stand out, but red seems bad", then "go with D": the paid button is Blue with
-  // white words, and no rule paints the pip red (it is the paywall card's one small mark, not built yet).
-  it("paints the paid button Blue with white words, and no rule uses the pip red", () => {
-    const pay = /\.card \.pay\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
-    expect(pay).toMatch(/background:\s*var\(--pay\);/);
-    expect(pay).toMatch(/color:\s*var\(--chalk\);/);
-    expect(css).not.toMatch(/var\(--pip\)/);
+  // Owner, 2026-11-15 (spec 1, 15.1): "safe is green, not safe is red, rest is blue". The main button is Blue with
+  // white words on felt and on a card alike; green is "nothing changes"; red is only "can't be undone".
+  describe("the buttons", () => {
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    /** The declarations of the rule whose selector list holds `selector`, or "" when no rule does. */
+    const declarationsOf = (selector: string) => {
+      for (const rule of withoutComments.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+        const selectors = (rule[1] ?? "").split(",").map((one) => one.trim());
+        if (selectors.includes(selector)) return rule[2] ?? "";
+      }
+      return "";
+    };
+
+    it("the main button is Blue with white words, on felt and on a card alike", () => {
+      const main = declarationsOf("button");
+      expect(main).toMatch(/background:\s*var\(--pay\);/);
+      expect(main).toMatch(/color:\s*var\(--chalk\);/);
+      expect(declarationsOf(".card button")).toBe("");
+      expect(declarationsOf(".card .button")).toBe("");
+    });
+
+    it("safe is green, danger is red, and outline is a quiet blue edge", () => {
+      expect(declarationsOf(".safe")).toMatch(/background:\s*var\(--felt-raised\);/);
+      expect(declarationsOf(".danger")).toMatch(/background:\s*var\(--pip\);/);
+      expect(declarationsOf(".danger")).toMatch(/color:\s*var\(--chalk\);/);
+      const outline = declarationsOf(".outline");
+      expect(outline).toMatch(/background:\s*none;/);
+      expect(outline).toMatch(/border:\s*2px solid/);
+      expect(declarationsOf(".card .outline")).toMatch(/var\(--pay\)/);
+    });
+
+    it("red is only the danger button: no other rule uses the pip", () => {
+      expect(withoutComments.match(/var\(--pip\)/g)).toHaveLength(1);
+    });
   });
 
   it("is one dark theme, with none of what the design rules out", () => {
@@ -140,9 +169,14 @@ describe("the fonts", () => {
       { bytes: number; sha256: string; integrity: string; tarball: string }
     >;
 
-  it("are three faces, each from a file on Ruken's own address", () => {
+  it("are three faces, each from a file on Ruken's own address, and the text face again for the digits", () => {
     const urls = [...css.matchAll(/src:\s*url\("(.*?)"\)/g)].map((match) => match[1]);
-    expect(urls).toEqual(WOFF2.map((name) => `/fonts/${name}`));
+    expect(urls).toEqual(
+      [...WOFF2, "schibsted-grotesk-latin-400-normal.woff2"].map((name) => `/fonts/${name}`),
+    );
+    const digits = /@font-face\s*\{[^}]*font-family:\s*"Ruken Digits"[^}]*\}/.exec(css)?.[0] ?? "";
+    expect(digits).toMatch(/\/fonts\//);
+    expect(digits).toMatch(/unicode-range:\s*U\+30-39;/);
     for (const name of WOFF2) expect(fontFile(name).subarray(0, 4).toString("latin1")).toBe("wOF2");
   });
 
@@ -252,7 +286,9 @@ describe("screens wear the look and nothing of their own", () => {
     "row",
     "button",
     "quiet",
-    "pay",
+    "safe",
+    "danger",
+    "outline",
     "problem",
     "wordmark",
     "panel",
@@ -295,11 +331,8 @@ describe("screens wear the look and nothing of their own", () => {
     }
   });
 
-  it("the paid button is used once, on the paywall card", () => {
-    // It is the one press that spends money, so it is the one button with this class on the whole site.
-    expect(screensUsing("pay")).toEqual([join(ROUTES, "join", "+page.svelte")]);
-    const card = readFileSync(join(ROUTES, "join", "+page.svelte"), "utf8");
-    expect(card.match(/class="pay"/g)).toHaveLength(1);
+  it("no screen uses the class pay: the main button is blue by itself", () => {
+    expect(screensUsing("pay")).toEqual([]);
   });
 });
 

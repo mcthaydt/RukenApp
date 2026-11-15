@@ -226,12 +226,12 @@ test.describe("a link that looks like a button", () => {
 });
 
 test.describe("home", () => {
-  test("a Sign in button under the line, the paper button on felt", async ({ page }) => {
+  test("a Sign in button under the line, the blue button on felt", async ({ page }) => {
     await page.goto("/");
     const button = page.getByRole("link", { name: "Sign in", exact: true });
     await expect(button).toHaveAttribute("href", "/sign-in");
-    await expect(button).toHaveCSS("background-color", rgb(token("--paper")));
-    await expect(button).toHaveCSS("color", rgb(token("--ink")));
+    await expect(button).toHaveCSS("background-color", rgb(token("--pay")));
+    await expect(button).toHaveCSS("color", rgb(token("--chalk")));
     const box = await boxOf(button);
     expect(box.height).toBeGreaterThanOrEqual(48);
     const line = await boxOf(page.getByText("Games, one swipe at a time. Coming soon."));

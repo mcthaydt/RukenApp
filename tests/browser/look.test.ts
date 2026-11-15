@@ -98,15 +98,15 @@ test("the home page sits on the felt, with no card and no red", async ({ page },
   await showTheOwner(page, testInfo, "home");
 });
 
-test("the main button on a card is ink, 12px corners, a paper label in Schibsted Grotesk 600", async ({
+test("the main button on a card is blue, 12px corners, a white label in Schibsted Grotesk 600", async ({
   page,
 }) => {
   const asked: string[] = [];
   page.on("request", (request) => asked.push(new URL(request.url()).pathname));
   await page.goto("/sign-up");
   const button = page.getByRole("button", { name: "Create account" });
-  await expect(button).toHaveCSS("background-color", rgb(token("--ink")));
-  await expect(button).toHaveCSS("color", rgb(token("--paper")));
+  await expect(button).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(button).toHaveCSS("color", rgb(token("--chalk")));
   await expect(button).toHaveCSS("border-top-left-radius", "12px");
   await expect(button).toHaveCSS("border-top-width", "0px");
   await expect(button).toHaveCSS("font-weight", "600");
@@ -154,7 +154,7 @@ test("your account: one card, and a quiet button looks like a link", async ({ pa
 test("a link that looks like a button is as easy to hit, and gives when pressed", async ({ page }) => {
   await page.goto("/no-such-page");
   const back = page.getByRole("link", { name: "Back to Ruken" });
-  await expect(back).toHaveCSS("background-color", rgb(token("--ink")));
+  await expect(back).toHaveCSS("background-color", rgb(token("--pay")));
   expect((await back.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(48);
   await whilePressed(page, back, () => expect(back).toHaveCSS("transform", "matrix(0.97, 0, 0, 0.97, 0, 0)"));
 });

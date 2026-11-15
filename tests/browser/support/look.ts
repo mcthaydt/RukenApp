@@ -10,7 +10,8 @@ import { rgb, token } from "../../support/look-tokens.ts";
  * optional; the name and its place at the front of the list are as strict as before.
  */
 export function startsWithFamily(family: string): RegExp {
-  return new RegExp(`^"?${family}"?(,|$)`);
+  // "Ruken Digits" may lead the display face: it draws only the digits 0 to 9, so no "1" reads as an "I" (spec 15.2).
+  return new RegExp(`^("?Ruken Digits"?, )?"?${family}"?(,|$)`);
 }
 
 /**
@@ -122,20 +123,22 @@ export function pipRed(page: Page): Promise<string[]> {
   }, pip);
 }
 
-/** The filled buttons on a card: every button or link-button that is not the quiet kind, and a file picker's words
- * when the picker is not the quiet one. */
+/** The main buttons on a card: every button or link-button that is not the quiet, green, red or outline kind, and a
+ * file picker's words when the picker is not the quiet one. */
 export function filledButtons(page: Page): Locator {
+  const notMain = ":not(.quiet):not(.safe):not(.danger):not(.outline)";
   return page.locator(
-    ".card button:not(.quiet), .card a.button:not(.quiet), .card .file:not([data-quiet]) > span",
+    `.card button${notMain}, .card a.button${notMain}, .card .file:not([data-quiet]) > span`,
   );
 }
 
 /**
- * The checks every card screen passes: one paper card, at most one filled button, no red, and nothing that
+ * The checks every card screen passes: one paper card, at most one main button, no red, and nothing that
  * scrolls sideways. A journey that has already made an account checks its screens with this instead of
- * making another account per screen.
+ * making another account per screen. Red is for what can't be undone (spec 15.1): a screen that has such a button
+ * names its words in `red`, and nothing else on it may be red.
  */
-export async function expectOneCard(page: Page): Promise<void> {
+export async function expectOneCard(page: Page, options: { red?: string[] } = {}): Promise<void> {
   const card = page.locator("main.card");
   await expect(card).toHaveCount(1);
   await expect(card).toHaveCSS("background-color", rgb(token("--paper")));
@@ -145,7 +148,7 @@ export async function expectOneCard(page: Page): Promise<void> {
   await expect(card).toHaveCSS("box-shadow", "none");
   await expect(card.getByRole("heading", { level: 1 })).toHaveCSS("font-size", "32px");
   expect(await filledButtons(page).count()).toBeLessThanOrEqual(1);
-  expect(await pipRed(page)).toEqual([]);
+  expect(await pipRed(page)).toEqual(options.red ?? []);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
   ).toBe(true);
