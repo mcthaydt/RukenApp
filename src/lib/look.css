@@ -718,18 +718,20 @@ form > * + button:not(.quiet) {
 }
 
 /* A phone held sideways has the least height, so the heading and the answer sit closer to the top, and the box is in
-   view above the bar before anything is scrolled. */
+   view above the bar before anything is scrolled. The stack is 12px shorter than it was so the box ends a clear 12px above
+   the bar: at an iPhone 15's 343px, with a two-line heading, it used to end within a tenth of a pixel of the bar's top, and
+   Safari's rounding of the heading's fractional height put it under the bar on some loads. */
 @media (max-height: 449px) {
   .topbar {
-    padding-top: 0.75rem;
+    padding-top: 0.5rem;
   }
 
   .screen main {
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
   }
 
   .screen h1 {
-    margin-top: 0.25rem;
+    margin-top: 0;
   }
 
   .screen :is(input, textarea).answer {
