@@ -3,6 +3,8 @@ import { pageHasSettled, signUp } from "./support/account.ts";
 import { fillAnswers, putGameWhereStaffLeaveIt } from "./support/database.ts";
 import {
   addDraft,
+  addVideo,
+  agreeToTheAgreement,
   freshName,
   gameWhere,
   giveRealClips,
@@ -561,6 +563,147 @@ test.describe("on an iPhone SE held sideways", () => {
     onlyInPhone();
     await expectFactsBeforeTheVideos(page, [page.locator(".laid .title"), page.locator(".laid .tagline")]);
   });
+});
+
+// ---- L4, the rest: a short phone's video frame leaves the notes and links above the bar -------------------------------------------
+
+const LARGE_IPHONE = { width: 430, height: 739 };
+
+/**
+ * Opens a video question (with its video in, when `added`) and checks what it tells the maker ends above the bar: the formats,
+ * how to record and, once a video is in, the link to choose a different one. A frame as tall as the window pushes them under it.
+ */
+async function expectVideoQuestionAboveTheBar(
+  page: Page,
+  shape: "upright" | "wide",
+  added: boolean,
+): Promise<void> {
+  await startAtVideo(page, shape);
+  if (added) await addVideo(page, shape);
+  await wordsHaveSettled(page);
+
+  const bar = await boxOf(page.locator(".acts"));
+  const things: [string, Locator][] = [
+    ["the formats", page.locator("#note")],
+    ["how to record", page.getByRole("link", { name: "How do I record my screen?" })],
+  ];
+  if (added)
+    things.push(["choose a different video", page.getByRole("link", { name: "Choose a different video" })]);
+  for (const [words, thing] of things) {
+    const box = await boxOf(thing);
+    expect(box.y + box.height, `${words} ends above the bar`).toBeLessThanOrEqual(bar.y);
+  }
+}
+
+for (const [name, viewport] of [
+  ["an iPhone SE held upright", IPHONE_SE],
+  ["an iPhone SE held sideways", IPHONE_SE_SIDEWAYS],
+  ["a large iPhone held upright", LARGE_IPHONE],
+] as const) {
+  test.describe(`on ${name}, a video question`, () => {
+    test.use({ viewport });
+
+    test("with no video yet has its notes and links above the bar (upright)", async ({ page }) => {
+      onlyInPhone();
+      await expectVideoQuestionAboveTheBar(page, "upright", false);
+    });
+
+    test("with its video in has its notes and links above the bar (upright)", async ({ page }) => {
+      onlyInPhone();
+      await expectVideoQuestionAboveTheBar(page, "upright", true);
+    });
+
+    test("with no video yet has its notes and links above the bar (wide)", async ({ page }) => {
+      onlyInPhone();
+      await expectVideoQuestionAboveTheBar(page, "wide", false);
+    });
+  });
+}
+
+// ---- L13: Waiting and Live show the game's name once -------------------------------------------------------------------------------
+
+test("Waiting and Live show the game's name once, as the title of the game laid out", async ({ page }) => {
+  const waiting = await gameWhere(page, { state: "waiting" });
+  await page.goto(`/make/${waiting.slug}`);
+  await pageHasSettled(page);
+  await expect(page.getByText(waiting.name, { exact: true }), "on Waiting").toHaveCount(1);
+  await expect(
+    page.getByRole("heading", { level: 2, name: waiting.name }),
+    "as the card's title",
+  ).toHaveCount(1);
+
+  // The same maker's second game: signing up again while signed in would find no sign-up form.
+  const live = await addDraft(page);
+  await fillAnswers(live.slug, { files: true, videos: true, age: "age_12" });
+  await giveRealClips(page, live.slug);
+  await putGameWhereStaffLeaveIt(live.slug, { state: "live" });
+  await page.goto(`/make/${live.slug}`);
+  await pageHasSettled(page);
+  await expect(page.getByText(live.name, { exact: true }), "on Live").toHaveCount(1);
+  await expect(page.getByRole("heading", { level: 2, name: live.name }), "as the card's title").toHaveCount(
+    1,
+  );
+});
+
+// ---- L15: on an upright iPad every screen has one column --------------------------------------------------------------------
+
+test("on an upright tablet a question, Check and send, Waiting and Live all start at one left edge and are as wide", async ({
+  page,
+}) => {
+  test.skip(layoutOf(page) !== "tablet", "only an upright tablet has a column narrower than the window");
+  const first = await startDraft(page);
+  await page.goto(`/make/${first.slug}/line`);
+  await pageHasSettled(page);
+  const question = await boxOf(page.locator("main"));
+
+  await fillAnswers(first.slug, { files: true, videos: true, age: "age_12" });
+  await giveRealClips(page, first.slug);
+  await agreeToTheAgreement(page, first.slug);
+  await layoutHasSettled(page);
+  const check = await boxOf(page.locator("main"));
+
+  await putGameWhereStaffLeaveIt(first.slug, { state: "waiting" });
+  await page.goto(`/make/${first.slug}`);
+  await layoutHasSettled(page);
+  const waiting = await boxOf(page.locator("main"));
+
+  const live = await addDraft(page);
+  await fillAnswers(live.slug, { files: true, videos: true, age: "age_12" });
+  await giveRealClips(page, live.slug);
+  await putGameWhereStaffLeaveIt(live.slug, { state: "live" });
+  await page.goto(`/make/${live.slug}`);
+  await layoutHasSettled(page);
+  const liveBox = await boxOf(page.locator("main"));
+
+  for (const [words, box] of [
+    ["Check and send", check],
+    ["Waiting", waiting],
+    ["Live", liveBox],
+  ] as const) {
+    expect(Math.abs(box.x - question.x), `${words} starts where a question starts`).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.width - question.width), `${words} is as wide as a question`).toBeLessThanOrEqual(1);
+  }
+});
+
+// ---- L25: the age question says the count it will have -------------------------------------------------------------------------
+
+test("picking 18+ on the age question says Question 7 of 8 at once, and picking 12+ says 7 of 7 again", async ({
+  page,
+}) => {
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, videos: true });
+  await page.goto(`/make/${slug}/age`);
+  await pageHasSettled(page);
+  await expect(page.getByText("Question 7 of 7")).toBeVisible();
+  await expect(page.locator(".track i")).toHaveCount(7);
+
+  await page.getByRole("radio", { name: /^18\+/ }).check();
+  await expect(page.getByText("Question 7 of 8")).toBeVisible();
+  await expect(page.locator(".track i")).toHaveCount(8);
+
+  await page.getByRole("radio", { name: /^12\+/ }).check();
+  await expect(page.getByText("Question 7 of 7")).toBeVisible();
+  await expect(page.locator(".track i")).toHaveCount(7);
 });
 
 // ---- L9: the card of what players will see shows both videos, across its whole width -----------------------------------
