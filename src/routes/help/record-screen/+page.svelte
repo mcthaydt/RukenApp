@@ -81,16 +81,16 @@
 
   <h2 id="too-big">Too big?</h2>
   <p>Ruken takes videos up to 30 MB. To make yours smaller, cut a few seconds off the ends.</p>
-  <h3>iPhone, iPad or Android</h3>
+  <h3>A phone or tablet</h3>
   <ol>
     <li>Open your video in Photos.</li>
     <li>Choose Edit.</li>
     <li>Drag the two ends of the strip at the bottom in, so only the part you want is left.</li>
     <li>Choose Done. It is saved.</li>
   </ol>
-  <h3>Mac</h3>
+  <h3>QuickTime Player</h3>
   <ol>
-    <li>Open your video in QuickTime Player.</li>
+    <li>Open your video in QuickTime Player. It comes with every Mac.</li>
     <li>Choose Edit, then Trim.</li>
     <li>Drag the two yellow ends in, then choose Trim.</li>
     <li>Choose File, then Save.</li>

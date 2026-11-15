@@ -66,7 +66,11 @@ test("Your games shows each game as one link with where it stands, and Sent back
   await signUp(page);
   const draft = await addDraft(page);
   const sentBack = await addDraft(page);
-  await putGameWhereStaffLeaveIt(sentBack.slug, { state: "sent_back" });
+  // Something is still to fix: a game sent back with nothing left to fix says "Fixed. Send it again." instead.
+  await putGameWhereStaffLeaveIt(sentBack.slug, {
+    state: "sent_back",
+    toFix: [{ part: "one_line", reason: "not_this_game" }],
+  });
 
   await page.goto("/make");
 

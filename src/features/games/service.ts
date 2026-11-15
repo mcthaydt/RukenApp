@@ -608,20 +608,10 @@ export function createGamesService(deps: GamesServiceDeps) {
     // refusal. A copy that passes takes the files off the list of what to fix (pullLatest).
     if (answer.question === "files") {
       await pullLatest(gameId);
-    } else if (answer.question === "websites" && data.connectHosts !== undefined) {
-      // Staff review the list with the copy they have. It is written on that copy and nothing is copied again, so a
-      // game waiting for review does not quietly swap its files for whatever is on GitHub today.
-      const newest = await deps.db.gamePull.findFirst({
-        where: { gameId },
-        orderBy: NEWEST_FIRST,
-        select: { id: true },
-      });
-      if (newest !== null) {
-        await deps.db.gamePull.update({
-          where: { id: newest.id },
-          data: { connectHosts: data.connectHosts },
-        });
-      }
+    } else if (answer.question === "websites" && game.repoFullName !== null) {
+      // The list is part of a copy: staff review it with the files, and the database never changes a copy once it is
+      // made (GamePull is add-only). So a new list is a new copy, and the websites question says it copies again.
+      await pullLatest(gameId);
     }
     return { slug };
   }

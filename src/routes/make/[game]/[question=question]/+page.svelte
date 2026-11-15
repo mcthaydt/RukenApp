@@ -50,7 +50,8 @@
     { value: "none", title: "None of these" },
   ];
 
-  const WEBSITES_HINT = "One per line, like api.example.com. Leave this empty if your game runs on its own.";
+  const WEBSITES_HINT =
+    "One per line, like api.example.com. Leave this empty if your game runs on its own. Saving copies your game from GitHub again.";
   const NAME_HINT = "The name players see. Like: Floor Fifty.";
   const ADDRESS_STAYS = " Its link on Ruken stays the same, so links you've shared keep working.";
 </script>

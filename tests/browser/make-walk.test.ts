@@ -68,6 +68,9 @@ for (const [branch, words] of [
 
     await expect(page.getByText(words)).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`/make/${slug}/files`));
+    // An empty repository is a refused copy, which has its own screen; "Pick another" opens the list, and the choice is
+    // still there. GitHub being busy is nobody's mistake, so the list stays on the screen.
+    if (branch === "empty-branch") await page.getByRole("link", { name: "Pick another" }).click();
     await expect(page.getByLabel(TINY_GAME)).toBeChecked();
     await expect(page.getByText(WENT_WRONG)).toHaveCount(0);
   });
