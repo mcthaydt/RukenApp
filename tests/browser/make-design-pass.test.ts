@@ -1,12 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled } from "./support/account.ts";
-import { fillAnswers, putGameWhereStaffLeaveIt, type SentBackPart } from "./support/database.ts";
+import { fillAnswers, type SentBackPart } from "./support/database.ts";
 import {
   agreeToTheAgreement,
   answerLine,
   connectGitHubFromFiles,
   freshName,
+  gameWhere,
   giveRealClips,
   nextButton,
   startAtCheck,
@@ -35,18 +36,6 @@ const LONG_LINE =
 /** Runs a journey in one project only: the window it sets for itself is the same whichever project is asked. */
 function onlyIn(project: "phone" | "phone-landscape"): void {
   test.skip(test.info().project.name !== project, `one Chromium project is enough for a window of its own`);
-}
-
-/** A new maker whose finished game staff have left as `decision` says. */
-async function gameWhere(
-  page: Page,
-  decision: Parameters<typeof putGameWhereStaffLeaveIt>[1],
-): Promise<{ slug: string }> {
-  const { slug } = await startDraft(page);
-  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
-  await giveRealClips(page, slug);
-  await putGameWhereStaffLeaveIt(slug, decision);
-  return { slug };
 }
 
 /** A new maker's game with the longest name and line, at Check and send. */

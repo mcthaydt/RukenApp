@@ -1,11 +1,12 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled, signUp } from "./support/account.ts";
-import { fillAnswers, putGameWhereStaffLeaveIt, type SentBackPart } from "./support/database.ts";
+import { fillAnswers, type SentBackPart } from "./support/database.ts";
 import {
   addVideo,
   chooseVideo,
   connectGitHubFromFiles,
+  gameWhere,
   giveRealClips,
   nextButton,
   pageNamedAsVideo,
@@ -25,18 +26,6 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 test.beforeEach(forgetRateLimits);
 
 const SIDEWAYS: SentBackPart = { part: "upright_video", reason: "sideways" };
-
-/** A new maker whose finished game staff have left as `decision` says. */
-async function gameWhere(
-  page: Page,
-  decision: Parameters<typeof putGameWhereStaffLeaveIt>[1],
-): Promise<{ slug: string }> {
-  const { slug } = await startDraft(page);
-  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
-  await giveRealClips(page, slug);
-  await putGameWhereStaffLeaveIt(slug, decision);
-  return { slug };
-}
 
 // ---- The videos are real ------------------------------------------------------------------------------------------
 
@@ -308,10 +297,6 @@ test("on Live an update that was sent back has the fix as its blue button", asyn
   const fix = page.getByRole("link", { name: /^Fix / });
   await expect(fix).toHaveAttribute("href", /\/line/);
   await expect(fix).toHaveCSS("background-color", rgb(token("--pay")));
-  await expect(page.getByRole("link", { name: "See it on Ruken" })).not.toHaveCSS(
-    "background-color",
-    rgb(token("--pay")),
-  );
 });
 
 test("the GitHub how-to has the way back at its foot as well as at its top", async ({ page }) => {

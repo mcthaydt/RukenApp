@@ -124,7 +124,7 @@ describe("clipProblem", () => {
 
   it("refuses bytes that do not start like a video", () => {
     expect(clipProblem({ contentType: "video/mp4", bytes: new TextEncoder().encode("<html>") })).toBe(
-      "That file doesn't look like a video. Save it as MP4 or WebM and try again.",
+      "That file doesn't look like a video. Save it as MP4, WebM or MOV and try again.",
     );
   });
 });

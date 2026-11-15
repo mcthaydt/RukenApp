@@ -163,13 +163,33 @@ describe("commitOf", () => {
     });
   });
 
-  it("names the status and the path when GitHub fails, and not the token", async () => {
-    const { github } = gitHubWith([...tokenAnswers(), new Response("busy", { status: 503 })]);
+  // GitHub answers 409 for a repository with no commit at all. It is the maker's to fix, so it is a refusal in words.
+  it("says in words that the repository is empty, which is for the maker to fix", async () => {
+    const { github } = gitHubWith([...tokenAnswers(), json({ message: "Git Repository is empty." }, 409)]);
+    await expect(github.commitOf("acme/game", null)).rejects.toMatchObject({
+      name: "GameError",
+      code: "FILES_REFUSED",
+      message: "Your game on GitHub is empty. Upload your game's files, then try again.",
+    });
+  });
+
+  // GitHub being busy, or limiting how often it is asked, is nobody's mistake: the words say to wait.
+  it.each([403, 429, 500, 502, 503])("says GitHub is not answering when it answers %i", async (status) => {
+    const { github } = gitHubWith([...tokenAnswers(), new Response("busy", { status })]);
+    await expect(github.commitOf("acme/game", null)).rejects.toMatchObject({
+      name: "GameError",
+      code: "NOT_READY",
+      message: "GitHub isn't answering right now. Try again in a minute.",
+    });
+  });
+
+  it("names the status and the path when GitHub fails in a way nobody expected, and not the token", async () => {
+    const { github } = gitHubWith([...tokenAnswers(), new Response("who are you", { status: 401 })]);
     const failure = await github.commitOf("acme/game", null).catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(Error);
     expect(failure).not.toBeInstanceOf(GameError);
     const message = (failure as Error).message;
-    expect(message).toContain("503");
+    expect(message).toContain("401");
     expect(message).toContain("/repos/acme/game/commits/HEAD");
     expect(message).not.toContain("ghs_");
   });

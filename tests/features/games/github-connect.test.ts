@@ -10,7 +10,7 @@ import {
 
 const SECRET = "test-only-state-secret";
 const NOW_MS = 1_800_000_000_000;
-const TEN_MINUTES_MS = 10 * 60 * 1000;
+const ONE_HOUR_MS = 60 * 60 * 1000;
 
 describe("the two addresses", () => {
   it("sends a person to GitHub's sign-in, with the app's id and the state", () => {
@@ -43,10 +43,10 @@ describe("the two addresses", () => {
 });
 
 describe("the state", () => {
-  it("opens for the account that made it, within ten minutes, and gives back the game it was made for", () => {
+  it("opens for the account that made it, within an hour, and gives back the game it was made for", () => {
     const state = sealState("user-1", NOW_MS, SECRET, "floor-fifty");
     expect(openState(state, "user-1", NOW_MS, SECRET)).toEqual({ game: "floor-fifty" });
-    expect(openState(state, "user-1", NOW_MS + TEN_MINUTES_MS, SECRET)).toEqual({ game: "floor-fifty" });
+    expect(openState(state, "user-1", NOW_MS + ONE_HOUR_MS, SECRET)).toEqual({ game: "floor-fifty" });
   });
 
   it("opens to no game when it was made for none", () => {
@@ -54,9 +54,10 @@ describe("the state", () => {
     expect(openState(state, "user-1", NOW_MS, SECRET)).toEqual({ game: null });
   });
 
-  it("does not open after ten minutes and one millisecond", () => {
+  // Making a GitHub account is a sign-up, an email code and an app install: it takes longer than a few minutes.
+  it("does not open after an hour and one millisecond", () => {
     const state = sealState("user-1", NOW_MS, SECRET, null);
-    expect(openState(state, "user-1", NOW_MS + TEN_MINUTES_MS + 1, SECRET)).toBeUndefined();
+    expect(openState(state, "user-1", NOW_MS + ONE_HOUR_MS + 1, SECRET)).toBeUndefined();
   });
 
   it("does not open before it was made", () => {

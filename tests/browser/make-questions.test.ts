@@ -711,7 +711,7 @@ test("a web page named as a video is refused by the server, under the hint", asy
   await chooseVideo(page, pageNamedAsVideo());
 
   await expect(
-    page.getByText("That file doesn't look like a video. Save it as MP4 or WebM and try again."),
+    page.getByText("That file doesn't look like a video. Save it as MP4, WebM or MOV and try again."),
   ).toBeVisible();
   await expect(page.locator('[data-frame="upright"] video')).toHaveCount(0);
   await expect(pickerButton(page)).toHaveText("Choose video");

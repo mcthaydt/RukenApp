@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./account.ts";
-import { fillAnswers } from "./database.ts";
+import { fillAnswers, putGameWhereStaffLeaveIt } from "./database.ts";
 
 // The steps every maker journey shares: a maker with a game, the answers a screen asks for, and the videos. GitHub is
 // the stand-in on this machine (support/fake-github-server.ts), which lists `ruken-test/tiny-game` and
@@ -322,4 +322,16 @@ export async function startAtCheck(page: Page): Promise<{ slug: string; name: st
   await giveRealClips(page, slug);
   await agreeToTheAgreement(page, slug);
   return { slug, name };
+}
+
+/** A new maker whose finished game staff have left as `decision` says (waiting, sent back or live). */
+export async function gameWhere(
+  page: Page,
+  decision: Parameters<typeof putGameWhereStaffLeaveIt>[1],
+): Promise<{ slug: string }> {
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  await giveRealClips(page, slug);
+  await putGameWhereStaffLeaveIt(slug, decision);
+  return { slug };
 }

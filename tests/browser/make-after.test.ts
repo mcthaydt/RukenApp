@@ -190,7 +190,7 @@ test("a waiting game can still be changed, through Check and send", async ({ pag
 
 // ---- Live ---------------------------------------------------------------------------------------------------------
 
-test("a live game: See it on Ruken is the blue button, and a new version goes for review on one press", async ({
+test("a live game: Send a new version is the blue button, and a new version goes for review on one press", async ({
   page,
 }, testInfo) => {
   // The game is made through the real screens, so its GitHub is the stand-in's and a new version can be copied.
@@ -201,17 +201,9 @@ test("a live game: See it on Ruken is the blue button, and a new version goes fo
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Live");
   await expect(page.getByText("Players can find it on Ruken.")).toBeVisible();
-  const see = page.getByRole("link", { name: "See it on Ruken" });
-  await expect(see).toHaveAttribute("href", `/g/${slug}`);
-  await expect(see).toHaveCSS("background-color", rgb(token("--pay")));
   const again = page.getByRole("button", { name: "Send a new version" });
-  // A send waiting on the maker is what to do next, so it is the blue button, as on Sent back; "See it on Ruken" is a link
-  // (the design pass, S8).
+  // A send waiting on the maker is what to do next, so it is the blue button, as on Sent back (the design pass, S8).
   await expect(again).toHaveCSS("background-color", rgb(token("--pay")));
-  await expect(page.getByRole("link", { name: "See it on Ruken" })).not.toHaveCSS(
-    "background-color",
-    rgb(token("--pay")),
-  );
   // The rating chip is the rating staff set, and it has no Change.
   await expect(page.locator(".chip", { hasText: "12+" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Change who it's for" })).toHaveCount(0);

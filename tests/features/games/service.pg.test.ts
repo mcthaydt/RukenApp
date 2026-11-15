@@ -145,7 +145,7 @@ describe("saveClip", () => {
       }),
     ).rejects.toMatchObject({
       code: "INVALID",
-      message: "That file doesn't look like a video. Save it as MP4 or WebM and try again.",
+      message: "That file doesn't look like a video. Save it as MP4, WebM or MOV and try again.",
     });
 
     expect(files.keys()).toEqual(before);
@@ -379,6 +379,48 @@ describe("saveAnswer", () => {
     ]);
   });
 
+  // The websites are part of what staff review, and a game that waits for review waits with the copy it was sent
+  // with: saving the list must not quietly take whatever is on GitHub today. `service` fails the test if it reaches
+  // GitHub.
+  it("keeps the websites on the newest copy staff have, without copying from GitHub again", async () => {
+    const { makerUserId, id } = await begin();
+    await setState(id, "waiting");
+    const pull = (pulledAt: string, connectHosts: string[]) =>
+      db().gamePull.create({
+        data: {
+          id: crypto.randomUUID(),
+          gameId: id,
+          commitSha: "b".repeat(40),
+          fileCount: 3,
+          totalBytes: 1000n,
+          connectHosts,
+          pulledAt: new Date(pulledAt),
+        },
+      });
+    const older = await pull("2026-11-01T10:00:00Z", ["old.example.com"]);
+    const newer = await pull("2026-11-02T10:00:00Z", ["old.example.com"]);
+
+    await service.saveAnswer(id, makerUserId, { question: "websites", connectHosts: ["New.example.com"] });
+
+    expect((await db().gamePull.findUniqueOrThrow({ where: { id: newer.id } })).connectHosts).toEqual([
+      "new.example.com",
+    ]);
+    expect((await db().gamePull.findUniqueOrThrow({ where: { id: older.id } })).connectHosts).toEqual([
+      "old.example.com",
+    ]);
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).connectHosts).toEqual(["new.example.com"]);
+    expect(await db().gamePull.count({ where: { gameId: id } })).toBe(2);
+  });
+
+  it("keeps the websites on a game that has no copy yet, without reaching GitHub", async () => {
+    const { makerUserId, id } = await begin();
+    await db().game.update({ where: { id }, data: { repoFullName: "acme/game" } });
+
+    await service.saveAnswer(id, makerUserId, { question: "websites", connectHosts: ["api.example.com"] });
+
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).connectHosts).toEqual(["api.example.com"]);
+  });
+
   // Review Focus 2: someone else's game is simply not there, at every answer.
   it("says another maker's game is not there, for every answer", async () => {
     const { id } = await begin();
@@ -483,6 +525,51 @@ describe("saveAnswer", () => {
     await expect(
       service.saveAnswer(id, makerUserId, { question: "marks", contentMarks: ["gore"] }),
     ).rejects.toMatchObject({ code: "NOT_READY" });
+  });
+
+  // The database holds an 18+ game that is past draft to having its marks, so the rating and the marks are one write:
+  // a rating alone would be refused by the database, and the maker would be told nothing.
+  it.each(["waiting", "sent_back"])(
+    "does not keep 18+ on a %s game without its marks, and the rating it had stays",
+    async (state) => {
+      const { makerUserId, id } = await begin();
+      await setState(id, state);
+
+      await expect(
+        service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_18" }),
+      ).rejects.toMatchObject({
+        name: "GameError",
+        code: "INVALID",
+        message: "Choose at least one, or None of these.",
+      });
+
+      expect((await db().game.findUniqueOrThrow({ where: { id } })).ageRating).toBe("age_12");
+    },
+  );
+
+  it.each(["waiting", "sent_back"])("keeps 18+ and its marks together on a %s game", async (state) => {
+    const { makerUserId, id } = await begin();
+    await setState(id, state);
+
+    // The age answer takes its marks beside it. The cast lets this compile before the answer has the field.
+    await service.saveAnswer(id, makerUserId, {
+      question: "age",
+      ageRating: "age_18",
+      contentMarks: ["gore"],
+    } as Answer);
+
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      ageRating: "age_18",
+      contentMarks: ["gore"],
+    });
+  });
+
+  it("still takes 18+ on a draft without its marks, which the marks question asks for next", async () => {
+    const { makerUserId, id } = await begin();
+
+    await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_18" });
+
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).ageRating).toBe("age_18");
   });
 
   it("keeps only None of these when it is picked beside another mark", async () => {

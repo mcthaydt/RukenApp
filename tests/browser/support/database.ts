@@ -152,7 +152,7 @@ export async function fillAnswers(
   slug: string,
   answers: {
     line?: boolean;
-    playsOn?: boolean;
+    playsOn?: boolean | "computers";
     files?: boolean;
     videos?: boolean | "upright";
     age?: AgeRating;
@@ -163,7 +163,12 @@ export async function fillAnswers(
     where: { id: game.id },
     data: {
       ...(answers.line === false ? {} : { oneLine: "A tiny game about tapping." }),
-      ...(answers.playsOn === false ? {} : { playsOn: "phone_and_computer" as const }),
+      ...(answers.playsOn === false
+        ? {}
+        : {
+            playsOn:
+              answers.playsOn === "computers" ? ("computer_only" as const) : ("phone_and_computer" as const),
+          }),
       ...(answers.age === undefined ? {} : { ageRating: answers.age, contentMarks: [] }),
       ...(answers.files === true ? { repoFullName: "ruken-test/tiny-game", pullProblem: null } : {}),
     },
@@ -222,9 +227,13 @@ export async function putGameWhereStaffLeaveIt(
     /** Parts staff sent back that the maker has fixed since: in staff's newest review, and no longer in `toFix`. */
     fixed?: SentBackPart[];
     updateWaiting?: boolean;
+    /** The words a refused copy left on the game, as the newest copy of its files. */
+    pullProblem?: string;
   },
 ): Promise<void> {
   await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  if (decision.pullProblem !== undefined)
+    await db().game.update({ where: { slug }, data: { pullProblem: decision.pullProblem } });
   const game = await db().game.findUniqueOrThrow({
     where: { slug },
     select: {
