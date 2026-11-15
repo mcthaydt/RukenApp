@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { signUp } from "./support/account.ts";
-import { CARD_SCREENS, expectOneCard, pipRed, showTheOwner } from "./support/look.ts";
+import { CARD_SCREENS, expectOneCard, pipRed, showTheOwner, startsWithFamily } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Every journey starts as a new visitor (branch D's helper): the site's limits stay as they are, only the
@@ -13,15 +13,18 @@ const FONT_FILES = [
   "/fonts/young-serif-latin-400-normal.woff2",
 ];
 
-test("the page is felt, with chalk words in Young Serif", async ({ page, isMobile }) => {
+test("the page is felt, with chalk words in Young Serif", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("body")).toHaveCSS("background-color", rgb(token("--felt")));
   const heading = page.getByRole("heading", { name: "Ruken" });
   await expect(heading).toHaveCSS("color", rgb(token("--chalk")));
-  await expect(heading).toHaveCSS("font-family", /^"Young Serif"/);
-  await expect(heading).toHaveCSS("font-size", isMobile ? "36px" : "64px");
+  await expect(heading).toHaveCSS("font-family", startsWithFamily("Young Serif"));
+  // The heading grows at the computer's width (design 5.8: 48rem), whatever the device: a tablet, or a phone held
+  // sideways, is as wide as a small computer and gets the computer's size.
+  const wide = (page.viewportSize()?.width ?? 0) >= 768;
+  await expect(heading).toHaveCSS("font-size", wide ? "64px" : "36px");
   const line = page.getByText("Games, one swipe at a time. Coming soon.");
-  await expect(line).toHaveCSS("font-family", /^"Young Serif"/);
+  await expect(line).toHaveCSS("font-family", startsWithFamily("Young Serif"));
   await expect(line).toHaveCSS("font-size", "24px");
   // The face is really loaded, not only named. (fonts.check() answers true for a family that has no face at
   // all, so it proves nothing; load() answers the faces themselves, and their status.)
@@ -35,7 +38,7 @@ test("the page is felt, with chalk words in Young Serif", async ({ page, isMobil
 test("running text is Schibsted Grotesk, 18px at 1.55", async ({ page }) => {
   await page.goto("/sign-up");
   const label = page.getByText("Email", { exact: true });
-  await expect(label).toHaveCSS("font-family", /^"Schibsted Grotesk"/);
+  await expect(label).toHaveCSS("font-family", startsWithFamily("Schibsted Grotesk"));
   await expect(label).toHaveCSS("font-size", "18px");
   await expect(label).toHaveCSS("line-height", "27.9px");
 });
@@ -158,6 +161,8 @@ test("a link that looks like a button is as easy to hit, and gives when pressed"
 
 // Holds the pointer down on the button, then lets go away from it, so the form is never sent.
 async function whilePressed(page: Page, button: Locator, check: () => Promise<void>): Promise<void> {
+  // The mouse presses a spot in the window, so the button must be in it: on a phone held sideways the window is 360px tall.
+  await button.scrollIntoViewIfNeeded();
   const box = await button.boundingBox();
   if (box === null) throw new Error("the button has no box to press");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

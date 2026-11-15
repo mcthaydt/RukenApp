@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
-import { fillBirthDate, freshEmail, JOURNEY_PASSWORD, signUp, yearsAgo } from "./support/account.ts";
+import {
+  continueToPayment,
+  fillBirthDate,
+  freshEmail,
+  JOURNEY_PASSWORD,
+  signUp,
+  yearsAgo,
+} from "./support/account.ts";
 import { boxOf, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -84,8 +91,9 @@ test("a plan picked before the page has come alive is kept when it does", async 
   await page.goto("/join?next=/me", { waitUntil: "commit" });
   await page.getByRole("radio", { name: "$99 a year" }).check();
   release();
-  // Every script has arrived and run once the network has been quiet.
-  await page.waitForLoadState("networkidle");
+  // SvelteKit adds its screen-reader announcer to the page once the app has started and the page has come alive
+  // (hydrated), so its arrival says the scripts have run. It is the page's own sign, not a quiet network or a pause.
+  await expect(page.locator("#svelte-announcer")).toBeAttached();
   await expect(page.getByRole("radio", { name: "$99 a year" })).toBeChecked();
   await expect(page.getByRole("radio", { name: "$9.99 a month" })).not.toBeChecked();
   await page.getByRole("button", { name: "Continue" }).click();
@@ -114,9 +122,8 @@ test("a signed-out person is asked to sign up only after pressing Continue, and 
 test("Continue to payment opens the payment page", async ({ page }) => {
   await signUp(page);
   await page.goto("/join");
-  await page.getByRole("button", { name: "Continue to payment" }).click();
-  // The stand-in Stripe's page: one button.
-  await expect(page.getByRole("button", { name: "Pay" })).toBeVisible();
+  // The stand-in Stripe's page, with its one button.
+  await continueToPayment(page);
 });
 
 test("next pointing off the site is ignored", async ({ page }) => {

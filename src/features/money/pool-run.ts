@@ -5,9 +5,9 @@ import { canonicalJson } from "./canonical-json.ts";
 import { accountBalance, lockLedger, postEntry, type MoneyTx } from "./journal.ts";
 import { centsRoundedUp } from "./major-units.ts";
 import { allocateMakersPool, type MemberMonth, type PoolOutcome } from "./makers-pool.ts";
-import { addMonths, parsePeriod, type Period } from "./period.ts";
+import { addMonths, parsePeriod, periodOf, type Period } from "./period.ts";
 import { postPoolCarry, postPoolShares } from "./pool-posting.ts";
-import { poolContributions, SERVICE_MONTHS } from "./pool-share.ts";
+import { keptWeight, poolContributions, SERVICE_MONTHS } from "./pool-share.ts";
 
 /**
  * A month's pool: who paid into it, what they played, and how it is shared. `poolFor` works it out and writes nothing,
@@ -19,7 +19,14 @@ import { poolContributions, SERVICE_MONTHS } from "./pool-share.ts";
 export type PoolTx = MoneyTx &
   Pick<
     PrismaClient,
-    "paymentPosting" | "feePosting" | "playDay" | "membershipStart" | "poolRun" | "poolShare" | "game"
+    | "paymentPosting"
+    | "feePosting"
+    | "stripeReversal"
+    | "playDay"
+    | "membershipStart"
+    | "poolRun"
+    | "poolShare"
+    | "game"
   >;
 
 /** The longest plan pays for 12 months, so only a payment whose first month is within 11 of `period` can cover it. */
@@ -30,9 +37,12 @@ const LONGEST_PLAN_MONTHS_BACK = 11;
  * so far taken off, refunds not: they lower the pool instead, and so every share in proportion), who gets the bringing
  * bonus for them, and what they played in the month, by game.
  *
- * A refunded member keeps their weight (carried rule, design 6: refunds and chargebacks follow the carried rules). The
- * alternative, taking their contribution to nothing, would make the pool pay for money it was already refunded twice:
- * once in the lower pool and again in the lower weights.
+ * `contribution` is the member's weight, not only what they paid in: each payment's part counts in proportion to what
+ * was not handed back (Owner, 2026-11-14: "a refunded member's play stops counting toward developer pay"). A refund,
+ * and a dispute that is open or was lost, hand money back; a dispute that was won puts it back. Each counts from the
+ * month it happens (Owner, 2026-11-14: "a refund counts in the month it happens"), never in a month before. The refund
+ * also lowers the pool itself, so a refunded member's money leaves twice over: the money in the pool, and the share of
+ * it they can draw by playing. The pool is shared among the members whose payments were not handed back.
  */
 export async function membersOf(tx: PoolTx, period: Period): Promise<MemberMonth[]> {
   const postings = await tx.paymentPosting.findMany({
@@ -49,6 +59,12 @@ export async function membersOf(tx: PoolTx, period: Period): Promise<MemberMonth
   });
   const microCentsOf = new Map(taken.map((row) => [row.stripeInvoiceId, row._sum.microCents ?? 0n]));
 
+  const handedBack = await handedBackBy(
+    tx,
+    covering.map((posting) => posting.stripeInvoiceId),
+    period,
+  );
+
   const contributions = new Map<string, bigint>();
   for (const posting of covering) {
     const { payment } = posting;
@@ -60,11 +76,17 @@ export async function membersOf(tx: PoolTx, period: Period): Promise<MemberMonth
       fees: payment.cardFeeCents + centsRoundedUp(microCentsOf.get(posting.stripeInvoiceId) ?? 0n),
     });
     const part = parts.find((candidate) => candidate.period === period)?.amount ?? 0n;
-    contributions.set(payment.userId, (contributions.get(payment.userId) ?? 0n) + part);
+    const weight = keptWeight(part, payment.grossCents, handedBack.get(posting.stripeInvoiceId) ?? 0n);
+    contributions.set(payment.userId, (contributions.get(payment.userId) ?? 0n) + weight);
   }
   const userIds = [...contributions.keys()].sort();
 
-  const starts = await tx.membershipStart.findMany({ where: { userId: { in: userIds } } });
+  // By id, so that two joins at the same moment are always told apart in the same way (`bringerOf` gives a tie to the
+  // one given first).
+  const starts = await tx.membershipStart.findMany({
+    where: { userId: { in: userIds } },
+    orderBy: { id: "asc" },
+  });
   const joinsOf = new Map<string, Join[]>();
   for (const start of starts) {
     const joins = joinsOf.get(start.userId) ?? [];
@@ -94,6 +116,34 @@ export async function membersOf(tx: PoolTx, period: Period): Promise<MemberMonth
       .filter((day) => day.userId === userId)
       .map((day) => ({ gameId: day.gameId, seconds: day._sum.seconds ?? 0 })),
   }));
+}
+
+/**
+ * How much of each payment was handed back by the end of `period`, in cents. A payment with nothing handed back is
+ * absent. A refund counts in the Chicago month it happens (Owner, 2026-11-14: "a refund counts in the month it
+ * happens"): its money leaves that month's pool, so it lowers that month's weight and every later one, and never a
+ * month before it, which was reckoned without it. A dispute counts from the month it opens, unless it was won by the
+ * end of `period` (the money came back by then); a dispute that was lost is already counted from its opening.
+ */
+async function handedBackBy(
+  tx: PoolTx,
+  invoiceIds: readonly string[],
+  period: Period,
+): Promise<Map<string, bigint>> {
+  const rows = await tx.stripeReversal.findMany({
+    where: { stripeInvoiceId: { in: [...invoiceIds] } },
+    select: { id: true, kind: true, stripeInvoiceId: true, amountCents: true, at: true },
+  });
+  // Periods are `YYYY-MM`, which sort in time order as plain strings.
+  const happened = rows.filter((row) => periodOf(row.at.getTime()) <= period);
+  const wonIds = new Set(happened.filter((row) => row.kind === "chargeback_won").map((row) => row.id));
+  const handedBack = new Map<string, bigint>();
+  for (const row of happened) {
+    const wasWon = row.kind === "chargeback_opened" && wonIds.has(row.id.replace(/:opened$/, ":won"));
+    if ((row.kind !== "refund" && row.kind !== "chargeback_opened") || wasWon) continue;
+    handedBack.set(row.stripeInvoiceId, (handedBack.get(row.stripeInvoiceId) ?? 0n) + row.amountCents);
+  }
+  return handedBack;
 }
 
 /**

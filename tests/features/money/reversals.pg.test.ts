@@ -217,6 +217,42 @@ describe("reversals", () => {
     expect(await db().stripeReversal.count({ where: { id: { contains: "elsewhere" } } })).toBe(0);
   });
 
+  it("takes a late fee on a fully refunded yearly payment from the open pool, never from deferred money it no longer has", async () => {
+    // Review B1. The refund cancels all 4,427 set aside, and only then does Stripe's Billing fee arrive.
+    await pay("b1", "2044-01-02T15:00:00Z", YEARLY);
+    stripe.addRefund(refund("b1", "2044-01-10T15:00:00Z", 10_810n));
+    await reverse("2044-01-11T12:00:00Z");
+    await storedFeeRows(
+      db(),
+      [{ incurredBy: "in_b1", amountText: "0.70", incurredAt: "2044-01-05 10:00:00" }],
+      "2044-01-12T11:00:00Z",
+    );
+    const moved = await movedBy(db(), async () => {
+      expect(await postFeeRows({ db: db(), clock: new TestClock("2044-01-13T12:00:00Z") })).toMatchObject({
+        payment: 1,
+      });
+    });
+    // The makers' half goes from 4,830 to 4,795, so 35 of the 70 cents are the makers'. Nothing waits in deferred
+    // any more, so all 35 come out of the open month's pool; Ruken's half gives up the other 35.
+    expect(moved).toEqual({
+      "platform:stripe_clearing": -70n,
+      "pool:premium:2044-01": 35n,
+      "platform:revenue:premium": 35n,
+    });
+    const deferred = await db().journalLine.aggregate({
+      where: { account: "premium:deferred", entry: { stripeInvoiceId: "in_b1" } },
+      _sum: { amount: true },
+    });
+    expect(deferred._sum.amount).toBe(0n);
+  });
+
+  it("releases nothing, and does not fail, for a yearly payment that was refunded before its late fee", async () => {
+    // The same payment a month later: the months were all cancelled, and the fee changes the parts, not the sum.
+    expect(await releaseDueMonths({ db: db(), clock: new TestClock("2044-03-02T12:00:00Z") })).toEqual({
+      released: 0,
+    });
+  });
+
   it("keeps the books balanced after each", async () => {
     await expectBooksBalanced(db());
   });

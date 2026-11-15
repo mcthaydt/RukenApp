@@ -17,6 +17,9 @@ import { requireNonNegative, withoutZeroLines, type PostingLine } from "./postin
  * - `pool:premium:<period>`: the makers' half for a month, until it is shared out.
  */
 
+/** The account the months of a yearly payment wait in. */
+const DEFERRED_ACCOUNT = "premium:deferred";
+
 /** One month's part of a payment's makers' half. */
 export type Release = PoolContribution;
 
@@ -99,17 +102,41 @@ export function feeParts(payment: Payment, fee: bigint): FeeParts {
 }
 
 /**
+ * Where the makers' part of a later fee cannot come from `premium:deferred`: it holds only what is still set aside for
+ * the payment, which a refund or chargeback may have cancelled before the fee arrived.
+ */
+export interface DeferredLimit {
+  /** What `premium:deferred` still holds for this payment. */
+  readonly left: bigint;
+  /** The pool that gives up what the deferred money cannot: the open month's. */
+  readonly otherwise: string;
+}
+
+/**
  * The entry for a later fee: Stripe's cash goes down by the whole fee, each month's pool gives up its part, and
  * Ruken's half gives up the rest. `accountFor` says where a month's part comes from: `premium:deferred` for a month
  * not yet released, and that month's pool otherwise. Two months with the same account make one line.
+ *
+ * `premium:deferred` is shared by every payment, so nothing stops a line from taking more than this payment has set
+ * aside there. `limit` does: what it cannot cover is taken from `limit.otherwise` instead, so the makers' side still
+ * gives up exactly what `feeParts` says and no other payment's deferred money is used.
  */
-export function postPaymentFee(parts: FeeParts, accountFor: (period: Period) => string): PostingLine[] {
+export function postPaymentFee(
+  parts: FeeParts,
+  accountFor: (period: Period) => string,
+  limit?: DeferredLimit,
+): PostingLine[] {
   const fromAccounts = new Map<string, bigint>();
   for (const month of parts.months) {
     const account = accountFor(month.period);
     fromAccounts.set(account, (fromAccounts.get(account) ?? 0n) + month.amount);
   }
   const fee = parts.months.reduce((total, month) => total + month.amount, parts.ruken);
+  const wanted = fromAccounts.get(DEFERRED_ACCOUNT) ?? 0n;
+  if (limit !== undefined && wanted > limit.left) {
+    fromAccounts.set(DEFERRED_ACCOUNT, limit.left);
+    fromAccounts.set(limit.otherwise, (fromAccounts.get(limit.otherwise) ?? 0n) + wanted - limit.left);
+  }
   return withoutZeroLines([
     { account: "platform:stripe_clearing", amount: -fee },
     ...[...fromAccounts].map(([account, amount]) => ({ account, amount })),

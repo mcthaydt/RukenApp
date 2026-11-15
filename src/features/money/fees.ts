@@ -202,17 +202,33 @@ async function postFeeEntry(
   }
   const at = reportTimeMs(row.incurredAt);
   if (at === null) throw new Error(`Fee row ${row.id} has a time that cannot be read`);
+  const period = await postingPeriod(tx, at, nowMs);
   await postEntry(tx, {
     key: `fee:${row.id}`,
-    period: await postingPeriod(tx, at, nowMs),
+    period,
     kind: "payment_fee",
     stripeInvoiceId,
-    lines: postPaymentFee(parts, (period) => {
-      const account = accounts.get(period);
-      if (account === undefined) throw new Error(`No account was chosen for ${period}`);
-      return account;
-    }),
+    lines: postPaymentFee(
+      parts,
+      (month) => {
+        const account = accounts.get(month);
+        if (account === undefined) throw new Error(`No account was chosen for ${month}`);
+        return account;
+      },
+      // A refund or chargeback may have cancelled the months set aside before this fee arrived: take no more from
+      // deferred than this payment still has there, and the rest from the pool the entry itself is posted into.
+      { left: await deferredLeft(tx, stripeInvoiceId), otherwise: `pool:premium:${period}` },
+    ),
   });
+}
+
+/** What still waits in `premium:deferred` for a payment: what it put there, less every fee, release and reversal since. */
+async function deferredLeft(tx: FeeTx, stripeInvoiceId: string): Promise<bigint> {
+  const { _sum } = await tx.journalLine.aggregate({
+    where: { account: "premium:deferred", entry: { stripeInvoiceId } },
+    _sum: { amount: true },
+  });
+  return -(_sum.amount ?? 0n);
 }
 
 /** Whether any part of a month has been released from `premium:deferred` into its pool. */

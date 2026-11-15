@@ -6,7 +6,7 @@ import { finalizeDuePeriods } from "./finalize.ts";
 import { postUnpostedPayments } from "./payments.ts";
 import { closeDuePeriods } from "./periods.ts";
 import { rollUpPlayDays } from "./play-rollup.ts";
-import { releaseDueMonths } from "./releases.ts";
+import { releaseDueMonths, type ReleaseFailure } from "./releases.ts";
 import { postReversals, readReversals } from "./reversals.ts";
 import type { MoneyStripe } from "./stripe-port.ts";
 
@@ -51,16 +51,21 @@ export interface Step {
   readonly name: string;
   /** True for a step the rest must not run without: a month must not become final on facts that are not all in. */
   readonly blocksTheRest?: boolean;
+  /** True for a step that must not run in a run where any step before it failed. */
+  readonly onlyIfAllWentWell?: boolean;
   run(): Promise<void>;
 }
 
 /**
  * Runs the steps in order, each in its own `try`. A step that throws is named with its message, and the steps after it
- * still run, unless it blocks the rest.
+ * still run, unless it blocks the rest. A step marked `onlyIfAllWentWell` is left out of a run where any step before it
+ * threw.
  */
 export async function runSteps(steps: readonly Step[]): Promise<{ step: string; message: string }[]> {
   const problems: { step: string; message: string }[] = [];
   for (const step of steps) {
+    // What went wrong before it is already named in the problems, and the next run that goes well makes the month final.
+    if (step.onlyIfAllWentWell === true && problems.length > 0) continue;
     try {
       await step.run();
     } catch (error) {
@@ -69,6 +74,12 @@ export async function runSteps(steps: readonly Step[]): Promise<{ step: string; 
     }
   }
   return problems;
+}
+
+/** The words for payments that could not be released: each by its invoice, with the reason in the error's words. */
+function describeReleaseFailures(failed: readonly ReleaseFailure[]): string {
+  const list = failed.map((failure) => `${failure.stripeInvoiceId} (${failure.message})`).join("; ");
+  return `${String(failed.length)} yearly payment${failed.length === 1 ? "" : "s"} could not be released: ${list}`;
 }
 
 export async function runMoneyJob(deps: MoneyJobDeps): Promise<MoneyJobReport> {
@@ -130,7 +141,10 @@ export async function runMoneyJob(deps: MoneyJobDeps): Promise<MoneyJobReport> {
     {
       name: "releasing yearly payments' months",
       run: async () => {
-        released = (await releaseDueMonths({ db, clock })).released;
+        const result = await releaseDueMonths({ db, clock });
+        released = result.released;
+        // The others were released; the step still fails, so the report names what a person must look at.
+        if (result.failed !== undefined) throw new Error(describeReleaseFailures(result.failed));
       },
     },
     {
@@ -148,6 +162,8 @@ export async function runMoneyJob(deps: MoneyJobDeps): Promise<MoneyJobReport> {
     },
     {
       name: "making the month final",
+      // A month is shared and its statements written once, and never changed: not on facts that are not all in.
+      onlyIfAllWentWell: true,
       run: async () => {
         final = await finalizeDuePeriods({ db, clock });
       },

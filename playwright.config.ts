@@ -31,6 +31,14 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
+      // A stand-in for Resend (tests/browser/support/fake-mail-server.ts): it keeps every mail the site sends, so a journey
+      // can read it and open its link. It is ready when it answers /ready.
+      command: "node tests/browser/support/fake-mail-server.ts",
+      url: "http://127.0.0.1:12113/ready",
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    {
       // A stand-in for Stripe's API and its hosted pages (tests/browser/support/fake-stripe-server.ts), so the
       // journeys can pay and cancel with no network. It is ready when it answers /ready.
       command: "node tests/browser/support/fake-stripe-server.ts",
@@ -54,9 +62,11 @@ export default defineConfig({
         // The hook now runs on every request, so the sign-in settings must exist. All plainly fake.
         BETTER_AUTH_SECRET: "test-only-secret-not-used-anywhere-real",
         BETTER_AUTH_URL: "http://localhost:4173",
-        // No journey uses this address, so the journeys send no mail and need no mail server.
+        // Mail goes to the stand-in Resend, which keeps it for the journeys to read, and to no one else. There is no
+        // allowlist: every journey's address is new, and nothing leaves this machine (the site refuses a mail address
+        // that is not on it).
         RESEND_API_KEY: "re_test_fake",
-        MAIL_ALLOWLIST: "nobody@ruken.test",
+        RESEND_API_BASE: "http://127.0.0.1:12113",
         MAIL_FROM: "Ruken <hello@ruken.test>",
         // The daily job's secret, so the journeys can knock on it. Plainly fake.
         JOBS_SECRET: "test-only-jobs-secret",
@@ -100,8 +110,23 @@ export default defineConfig({
       },
     },
   ],
+  // Every journey runs on each of these (the Owner, 2026-11-14: "tablet is first class supported, and mobile landscape";
+  // 2026-11-14: "23. A" to "Also run the browser tests in Safari's engine (WebKit) on tablet and phone").
+  // The Chromium projects keep the Android phone's and the iPad's windows. The "-webkit" projects run the same journeys
+  // in Safari's engine, the one an iPhone or iPad really uses, with the iPhone's and iPad's own windows, pixel density
+  // and touch. The computer stays on Chromium.
   projects: [
     { name: "phone", use: { ...devices["Pixel 7"] } },
+    { name: "phone-landscape", use: { ...devices["Pixel 7 landscape"] } },
+    { name: "tablet", use: { ...devices["iPad (gen 7)"], defaultBrowserType: "chromium" } },
+    {
+      name: "tablet-landscape",
+      use: { ...devices["iPad (gen 7) landscape"], defaultBrowserType: "chromium" },
+    },
+    { name: "phone-webkit", use: { ...devices["iPhone 15"] } },
+    { name: "phone-landscape-webkit", use: { ...devices["iPhone 15 landscape"] } },
+    { name: "tablet-webkit", use: { ...devices["iPad (gen 7)"] } },
+    { name: "tablet-landscape-webkit", use: { ...devices["iPad (gen 7) landscape"] } },
     { name: "computer", use: { ...devices["Desktop Chrome"] } },
   ],
 });

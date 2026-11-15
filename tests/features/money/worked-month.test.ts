@@ -51,9 +51,14 @@
 //   Stripe keeps is the card fee and the later fee, 73, shared 37 to makers (36.5 rounded up) and 36 to Ruken.
 //   Pool 1323 - 463 - 37 = 823. Fees 463 - 61 + 36 = 438. Tax -981 + 82 = -899. Revenue -6146 + 524 = -5622. Clearing
 //   12346 - 1081 = 11265.
-//   The pool is shared again from 823, with the same weights. Exact shares: game 1 260.59, game 2 418.40, X's bonus
-//   144.01. The floors 260 + 418 + 144 = 822 leave one cent, and the largest remainder (.59, game 1) takes it: game 1
-//   261, game 2 418, X's bonus 144. X is owed 144 + 261 = 405; Y 418.
+//   The pool is shared again from 823. A was refunded in full, so A weighs nothing (Owner, 2026-11-14: a refunded
+//   member's play stops counting toward developer pay): 463 x (1081 - 1081) / 1081 = 0. A is left out of the sharing
+//   altogether, so X has no bonus and game 1 has no play. B's whole 397e9 goes to game 2. C's 463e9 follows the play
+//   that is left, which is B's 1800 s on game 2 alone, so it goes to game 2 too: 860e9 in all, and game 2 takes the
+//   whole 823. X is owed nothing; Y 823.
+//   Before that decision A kept full weight and the shares were game 1 261, game 2 418, X's bonus 144 (X owed 405,
+//   Y 418). The 823 cents did not change; the 405 that were X's moved to Y, because A's play and A's bringing no
+//   longer count.
 //   Ruken's half 5622 - 438 = 5184; the makers' half 823 + 4359 = 5182.
 
 import { describe, expect, it } from "vitest";
@@ -117,7 +122,7 @@ function postPaymentsAndLaterFees(books: Books): PostingLine[] {
 }
 
 /** The three members as the pool reads them, with who brought each worked out by the bringing rule. */
-function membersOfNovember(): MemberMonth[] {
+function membersOfNovember(aWeight = 463n): MemberMonth[] {
   const joinedOn = Date.parse("2026-11-10T18:00:00Z");
   const joins = (userId: string, broughtByUserId: string | null): Join[] => [
     { userId, startedAtMs: joinedOn, broughtByUserId },
@@ -125,7 +130,7 @@ function membersOfNovember(): MemberMonth[] {
   return [
     {
       userId: "member-a",
-      contribution: 463n,
+      contribution: aWeight,
       broughtBy: bringerOf(joins("member-a", "maker-x"), NOVEMBER),
       plays: [
         { gameId: "game-1", seconds: 7200 },
@@ -148,9 +153,9 @@ function membersOfNovember(): MemberMonth[] {
 }
 
 /** Shares what the pool holds, as the month's close does, and posts the entries. */
-function shareThePool(books: Books) {
+function shareThePool(books: Books, aWeight = 463n) {
   const pool = -books.of(POOL);
-  const outcome = allocateMakersPool(pool, membersOfNovember());
+  const outcome = allocateMakersPool(pool, membersOfNovember(aWeight));
   if (outcome.kind !== "shared") throw new Error("this month's pool is always shared");
   const makerOf = new Map([
     ["game-1", "maker-x"],
@@ -211,7 +216,7 @@ describe("one whole month, worked through", () => {
     expect(books.total()).toBe(0n);
   });
 
-  it("shares the same month again from the lower pool when A's payment is refunded first", () => {
+  it("shares the same month again from the lower pool, without A's play, when A's payment is refunded first", () => {
     const books = newBooks();
     const aLines = postPaymentsAndLaterFees(books);
 
@@ -233,15 +238,13 @@ describe("one whole month, worked through", () => {
     expect(books.of("platform:revenue:premium")).toBe(-5_622n);
     expect(books.total()).toBe(0n);
 
-    const { pool, outcome } = shareThePool(books);
+    // A's weight is nothing, as the hand-worked sum in the file's first comment says.
+    const { pool, outcome } = shareThePool(books, 0n);
     expect(pool).toBe(823n);
-    expect(outcome.bringers).toMatchObject([{ makerUserId: "maker-x", amount: 144n }]);
-    expect(outcome.games).toMatchObject([
-      { gameId: "game-1", amount: 261n },
-      { gameId: "game-2", amount: 418n },
-    ]);
-    expect(books.of("maker:maker-x:payable")).toBe(-405n); // 144 + 261
-    expect(books.of("maker:maker-y:payable")).toBe(-418n);
+    expect(outcome.bringers).toEqual([]);
+    expect(outcome.games).toMatchObject([{ gameId: "game-2", amount: 823n }]);
+    expect(books.of("maker:maker-x:payable")).toBe(0n);
+    expect(books.of("maker:maker-y:payable")).toBe(-823n);
     expect(books.of(POOL)).toBe(0n);
 
     // The same checks hold: no side gave more than it had, and Ruken's half is not the smaller one.

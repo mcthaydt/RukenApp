@@ -4,6 +4,7 @@ import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { fakeMoneyStripe } from "../../support/fake-money-stripe.ts";
 import { addGame, addSession } from "../../support/play.ts";
+import { postEntry, postingPeriod } from "../../../src/features/money/journal.ts";
 import { closeDuePeriods } from "../../../src/features/money/periods.ts";
 import {
   addMembershipPayment,
@@ -132,6 +133,33 @@ describe("runMoneyJob", () => {
     expect(untouched.reportStarts).toEqual([]);
   });
 
+  it("names a yearly payment it cannot release, and still releases the others", async () => {
+    // Review B1. The first payment's second release was already posted with other lines, which needs a person to
+    // look. The job says so by the payment's name, and the payment after it is released all the same.
+    const yearly = { ...PAYMENT, plan: "annual", gross: 10_810n, tax: 820n, cardFee: 330n } as const;
+    await addMembershipPayment(db(), stripe, { ...yearly, invoice: "in_y1", paidAt: "2026-11-05T15:00:00Z" });
+    await addMembershipPayment(db(), stripe, { ...yearly, invoice: "in_y2", paidAt: "2026-11-06T15:00:00Z" });
+    const clock = new TestClock("2026-12-02T12:00:00Z");
+    await db().$transaction(async (tx) => {
+      const period = await postingPeriod(tx, clock.epochMs(), clock.epochMs());
+      await postEntry(tx, {
+        key: "release:in_y1:2026-12:2",
+        period,
+        kind: "release",
+        stripeInvoiceId: "in_y1",
+        lines: [
+          { account: "platform:processor_fees", amount: 1n },
+          { account: "platform:stripe_clearing", amount: -1n },
+        ],
+      });
+    });
+    const report = await runMoneyJob({ db: db(), clock, stripe });
+    expect(report.released).toBe(1);
+    expect(report.problems).toEqual([
+      { step: "releasing yearly payments' months", message: expect.stringContaining("in_y1") as string },
+    ]);
+  });
+
   it("keeps the books balanced", async () => {
     await expectBooksBalanced(db());
   });
@@ -151,6 +179,24 @@ describe("the steps", () => {
     const problems = await runSteps([step("one"), step("two", true), step("three")]);
     expect(ran).toEqual(["one", "two", "three"]);
     expect(problems).toEqual([{ step: "two", message: "two broke" }]);
+  });
+
+  it("skips a step that runs only when every step before it went well, if one did not", async () => {
+    const ran: string[] = [];
+    const step = (name: string, fails = false, onlyIfAllWentWell = false): Step => ({
+      name,
+      onlyIfAllWentWell,
+      run: () => {
+        ran.push(name);
+        return fails ? Promise.reject(new Error(`${name} broke`)) : Promise.resolve();
+      },
+    });
+    expect(await runSteps([step("one"), step("last", false, true)])).toEqual([]);
+    expect(ran).toEqual(["one", "last"]);
+    ran.length = 0;
+    const problems = await runSteps([step("one", true), step("two"), step("last", false, true)]);
+    expect(ran).toEqual(["one", "two"]);
+    expect(problems).toEqual([{ step: "one", message: "one broke" }]);
   });
 
   it("closes nothing when closing fails, and runs nothing after it", async () => {
@@ -255,6 +301,44 @@ describe("the 10th", () => {
       expect(await closeDuePeriods({ db: own.prisma, clock: new TestClock("2026-12-10T07:00:00Z") })).toEqual(
         [],
       );
+    } finally {
+      await own.stop();
+    }
+  });
+
+  it("leaves the month closed in a run where any step failed, and makes it final in the next run that went well", async () => {
+    // Review S1. Stripe is down on the 10th, so the refunds are not all in, and the month's pool would be shared on
+    // what is there.
+    const own = await startTestDatabase();
+    try {
+      const down = quietStripe();
+      down.refundsSince = () => Promise.reject(new Error("Stripe is down"));
+      await addMembershipPayment(own.prisma, down, {
+        ...PAYMENT,
+        invoice: "in_t3",
+        paidAt: "2026-11-02T15:00:00Z",
+      });
+      const first = await runMoneyJob({
+        db: own.prisma,
+        clock: new TestClock("2026-12-10T06:30:00Z"),
+        stripe: down,
+      });
+      expect(first.closed).toEqual(["2026-11"]);
+      expect(first.final).toEqual([]);
+      expect(first.problems).toEqual([
+        { step: "reading refunds and chargebacks from Stripe", message: "Stripe is down" },
+      ]);
+      expect((await own.prisma.ledgerPeriod.findUniqueOrThrow({ where: { period: "2026-11" } })).state).toBe(
+        "closed",
+      );
+
+      const second = await runMoneyJob({
+        db: own.prisma,
+        clock: new TestClock("2026-12-11T06:30:00Z"),
+        stripe: quietStripe(),
+      });
+      expect(second.problems).toEqual([]);
+      expect(second.final).toEqual(["2026-11"]);
     } finally {
       await own.stop();
     }

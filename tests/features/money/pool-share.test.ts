@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parsePeriod, type Period } from "../../../src/features/money/period.ts";
-import { poolContributions } from "../../../src/features/money/pool-share.ts";
+import { keptWeight, poolContributions } from "../../../src/features/money/pool-share.ts";
 
 const november = parsePeriod("2026-11");
 
@@ -121,5 +121,26 @@ describe("poolContributions (how a payment feeds the makers' pool)", () => {
         }
       }
     }
+  });
+});
+
+describe("keptWeight (what a refund leaves of a member's weight)", () => {
+  // A monthly payment of $10.81 puts 469 cents in the month's pool.
+  it("keeps the whole part when nothing was handed back", () => {
+    expect(keptWeight(469n, 1081n, 0n)).toBe(469n);
+  });
+
+  it("keeps the share of the payment that was not handed back, rounded down", () => {
+    // 541 of 1081 is kept: 469 × 541 / 1081 = 234.72, so 234.
+    expect(keptWeight(469n, 1081n, 540n)).toBe(234n);
+  });
+
+  it("keeps nothing when all of the payment, or more, was handed back", () => {
+    expect(keptWeight(469n, 1081n, 1081n)).toBe(0n);
+    expect(keptWeight(469n, 1081n, 2000n)).toBe(0n);
+  });
+
+  it("keeps nothing of a payment of nothing", () => {
+    expect(keptWeight(0n, 0n, 0n)).toBe(0n);
   });
 });

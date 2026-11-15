@@ -5,8 +5,9 @@ import { POOL_WEIGHT_SCALE } from "./rules.ts";
 export interface MemberMonth {
   readonly userId: string;
   /**
-   * The cents this member's payments put into this month's pool: the sum of the month's parts of their payments, with
-   * every fee known so far. Refunds are not taken off here; they shrink the pool instead (see `allocateMakersPool`).
+   * The member's weight: the sum of the month's parts of their payments (every fee known so far taken off), each in
+   * proportion to what was not refunded or disputed. A member who was handed everything back weighs nothing. The
+   * refund also shrinks the pool itself (see `allocateMakersPool`).
    */
   readonly contribution: bigint;
   /** The maker who gets the bringing bonus for this member this month, or null. */

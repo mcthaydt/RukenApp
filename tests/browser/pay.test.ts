@@ -1,10 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
+  continueToPayment,
   fillBirthDate,
   freshEmail,
   JOURNEY_PASSWORD,
   payAsNewMember,
+  releaseLateNews,
   signUpInItsOwnContext,
+  standInPayButton,
   yearsAgo,
 } from "./support/account.ts";
 import { arrivalCookie, membershipStartsOf, userIdOf } from "./support/database.ts";
@@ -29,7 +32,7 @@ async function signUpFromTheCard(page: Page): Promise<string> {
 test("a stranger signs up, pays, and lands where they were going as a member", async ({ page }) => {
   await signUpFromTheCard(page);
   await page.getByRole("button", { name: "Continue to payment" }).click();
-  await page.getByRole("button", { name: "Pay" }).click();
+  await standInPayButton(page).click();
   await expect(page).toHaveURL("/me");
 });
 
@@ -43,14 +46,16 @@ test("someone else's checkout ref goes back to the card", async ({ page }) => {
 
 test("when Stripe's news is late, the page says so and goes on by itself", async ({ page }) => {
   await signUpFromTheCard(page);
-  await page.getByRole("button", { name: "Continue to payment" }).click();
-  // The stand-in's own page, asked to send its news three seconds after it sends the browser back.
+  const checkoutSessionId = await continueToPayment(page);
+  // The stand-in's own page, asked to hold its news back until this journey lets it go.
   await page.goto(`${page.url()}?events=later`);
-  await page.getByRole("button", { name: "Pay" }).click();
+  await standInPayButton(page).click();
   await expect(page.getByRole("heading", { name: "Finishing up…" })).toBeVisible();
-  // Looked at right away, and with values only: the page moves on to /me by itself (design 5.8). Both wait.
+  // Looked at while the news is still held, and with values only: the page moves on to /me by itself once it
+  // arrives (design 5.8).
   await expect(page.locator("main.card")).toHaveCSS("background-color", rgb(token("--paper")));
   await expect(page.getByRole("heading", { level: 1 })).toHaveCSS("font-size", "32px");
+  await releaseLateNews(checkoutSessionId);
   await expect(page).toHaveURL("/me"); // waits on the page, not a sleep
 });
 
