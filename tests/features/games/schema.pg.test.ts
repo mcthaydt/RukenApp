@@ -85,6 +85,19 @@ async function insertClip(gameId: string, shape: "upright" | "wide", key: string
     VALUES (${randomUUID()}, ${gameId}, ${shape}::"ClipShape", ${key}, 'video/mp4', 1000, now())`;
 }
 
+/**
+ * Gives a game a rating and marks, by plain SQL. The values are the test's own fixed words, never typed by a
+ * person, so they are written into the statement: Postgres will not take an array of enum labels as a parameter.
+ */
+async function setRatingAndMarks(gameId: string, ageRating: string | null, marks: string[]): Promise<void> {
+  const rating = ageRating === null ? "NULL" : `'${ageRating}'::"AgeRating"`;
+  const list = marks.map((mark) => `'${mark}'`).join(", ");
+  await db().$executeRawUnsafe(
+    `UPDATE "Game" SET "ageRating" = ${rating}, "contentMarks" = ARRAY[${list}]::"ContentMark"[] WHERE "id" = $1`,
+    gameId,
+  );
+}
+
 describe("the games tables", () => {
   it("are made by the migrations", async () => {
     const rows = await db().$queryRaw<{ table_name: string }[]>`
@@ -123,6 +136,38 @@ describe("the games tables", () => {
       await expect(insertGame(makerId, { state: "live", livePullId: null })).rejects.toThrow(
         /Game_live_check/,
       );
+    });
+
+    it("is new with no rating, no marks and nothing to fix", async () => {
+      const makerId = await newMaker();
+      const id = await insertGame(makerId, { publicId: "eeeeeeeeee" });
+      const game = await db().game.findUniqueOrThrow({ where: { id } });
+      expect(game.ageRating).toBeNull();
+      expect(game.contentMarks).toEqual([]);
+      expect(game.toFix).toEqual([]);
+    });
+
+    it("is refused marks unless it is 18+", async () => {
+      const makerId = await newMaker();
+      const id = await insertGame(makerId, { publicId: "ffffffffff" });
+      for (const rating of ["age_3", "age_12", "age_16", null]) {
+        await expect(setRatingAndMarks(id, rating, ["gore"])).rejects.toThrow(/Game_marks_check/);
+      }
+    });
+
+    it("is refused None of these beside another mark", async () => {
+      const makerId = await newMaker();
+      const id = await insertGame(makerId, { publicId: "gggggggggg" });
+      await expect(setRatingAndMarks(id, "age_18", ["gore", "none"])).rejects.toThrow(/Game_marks_check/);
+    });
+
+    it("keeps an 18+ game's marks, and None of these on its own", async () => {
+      const makerId = await newMaker();
+      const id = await insertGame(makerId, { publicId: "hhhhhhhhhh" });
+      await setRatingAndMarks(id, "age_18", ["gore", "drugs"]);
+      await setRatingAndMarks(id, "age_18", ["none"]);
+      const game = await db().game.findUniqueOrThrow({ where: { id } });
+      expect(game.contentMarks).toEqual(["none"]);
     });
 
     it("keeps its public id and its address to itself", async () => {
