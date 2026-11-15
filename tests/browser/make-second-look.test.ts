@@ -274,7 +274,10 @@ test("the Maker agreement link has a line's room above it", async ({ page }) => 
 
   const above = await page.locator("main.games").evaluate((main) => {
     const note = main.querySelector(":scope > .note");
-    const sections = [...main.children].filter((child) => child !== note);
+    // The bar of buttons is fixed to the window's bottom on a phone, so it is not something the link sits under.
+    const sections = [...main.children].filter(
+      (child) => child !== note && getComputedStyle(child).position !== "fixed",
+    );
     return Math.max(...sections.map((child) => child.getBoundingClientRect().bottom));
   });
   const link = await boxOf(page.getByRole("link", { name: "Maker agreement" }));
@@ -542,7 +545,9 @@ test.describe("on an iPhone SE held sideways", () => {
     await expectChoicesAboveTheBar(page, 1);
   });
 
-  test("Check and send shows the name and the line above the bar, and the videos after them", async ({ page }) => {
+  test("Check and send shows the name and the line above the bar, and the videos after them", async ({
+    page,
+  }) => {
     onlyInPhone();
     await expectFactsBeforeTheVideos(page, [page.locator(".laid .title"), page.locator(".laid .tagline")]);
   });
