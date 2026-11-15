@@ -248,6 +248,66 @@ test("Your games says Fixed, send it again for a game sent back with nothing lef
   await expect(page.getByText("Sent back. See what to fix.")).toHaveCount(0);
 });
 
+// ---- E12: the websites question says it copies again --------------------------------------------------------------------------------
+
+test("the websites question says that saving copies the game from GitHub again", async ({ page }) => {
+  const { slug } = await gameWhere(page, { state: "waiting" });
+  await page.goto(`/make/${slug}/websites`);
+  await pageHasSettled(page);
+
+  await expect(page.getByText("Saving copies your game from GitHub again.")).toBeVisible();
+});
+
+// ---- E13: a waiting game's files question says Next copies again --------------------------------------------------------------
+
+test("a waiting game's files question says that Next copies the game from GitHub again", async ({ page }) => {
+  const { slug } = await gameWhere(page, { state: "waiting" });
+  await page.goto(`/make/${slug}/files`);
+  await pageHasSettled(page);
+  await connectGitHubFromFiles(page, slug);
+
+  await expect(page.getByText("Next copies your game from GitHub again.")).toBeVisible();
+});
+
+test("a draft's files question does not say that: it has not been copied yet", async ({ page }) => {
+  const { slug } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+
+  await expect(page.getByText("Next copies your game from GitHub again.")).toHaveCount(0);
+});
+
+// ---- E15: the agreement can be found again ---------------------------------------------------------------------------------------
+
+test("Your games has a link to the maker agreement", async ({ page }) => {
+  await startDraft(page);
+  await page.goto("/make");
+  await pageHasSettled(page);
+
+  await expect(page.getByRole("link", { name: "Maker agreement", exact: true })).toHaveAttribute(
+    "href",
+    "/legal/maker-agreement",
+  );
+});
+
+// ---- E16: Your account's door to the maker's area ---------------------------------------------------------------------------------
+
+test("Your account leads a maker who has games to Your games", async ({ page }) => {
+  await startDraft(page);
+  await page.goto("/me");
+  await pageHasSettled(page);
+
+  await expect(page.getByRole("link", { name: "Your games", exact: true })).toHaveAttribute("href", "/make");
+  await expect(page.getByRole("link", { name: "Add yours to Ruken." })).toHaveCount(0);
+});
+
+test("Your account invites a person with no games to add theirs", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/me");
+  await pageHasSettled(page);
+
+  await expect(page.getByRole("link", { name: "Add yours to Ruken." })).toHaveAttribute("href", "/make");
+});
+
 // ---- Taking a live game off Ruken (the agreement's first point, the Owner's choice) -------------------------------------------
 
 test("a live game can be taken off Ruken, after a question whose safe answer has the focus", async ({

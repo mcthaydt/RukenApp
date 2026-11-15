@@ -29,7 +29,7 @@ describe("what a maker agreed to", () => {
     await agree(db(), clock, maker);
 
     expect(await hasAgreed(db(), maker)).toBe(true);
-    expect(await db().makerAgreement.findUniqueOrThrow({ where: { userId: maker } })).toMatchObject({
+    expect(await db().makerAgreement.findFirstOrThrow({ where: { userId: maker } })).toMatchObject({
       version: MAKER_AGREEMENT_VERSION,
       acceptedAt: new Date(clock.epochMs()),
     });
@@ -43,6 +43,21 @@ describe("what a maker agreed to", () => {
     await agree(db(), clock, maker);
 
     expect(await db().makerAgreement.count({ where: { userId: maker } })).toBe(1);
+  });
+
+  // The agreement's last point: when it changes, a maker is asked again. An older version does not count.
+  it("is not agreed to by a maker who agreed to an older version, until they agree to this one", async () => {
+    const maker = await createUser(db());
+    await db().makerAgreement.create({
+      data: { userId: maker, version: "1", acceptedAt: new Date(clock.epochMs()) },
+    });
+    expect(await hasAgreed(db(), maker)).toBe(false);
+
+    await agree(db(), clock, maker);
+
+    expect(await hasAgreed(db(), maker)).toBe(true);
+    // The old row stays: it is the record of what they agreed to then.
+    expect(await db().makerAgreement.count({ where: { userId: maker } })).toBe(2);
   });
 
   it("is another maker's own: one maker agreeing does not agree for another", async () => {

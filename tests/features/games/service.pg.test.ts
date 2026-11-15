@@ -379,46 +379,20 @@ describe("saveAnswer", () => {
     ]);
   });
 
-  // The websites are part of what staff review, and a game that waits for review waits with the copy it was sent
-  // with: saving the list must not quietly take whatever is on GitHub today. `service` fails the test if it reaches
-  // GitHub.
-  it("keeps the websites on the newest copy staff have, without copying from GitHub again", async () => {
+  // The websites are part of a copy: staff review the list with the files, and a copy is never changed once it is
+  // made (GamePull is add-only, so the database refuses to rewrite one). A new list is therefore a new copy.
+  it("copies the game again when the websites are saved, so the newest copy carries the list", async () => {
     const { makerUserId, id } = await begin();
-    await setState(id, "waiting");
-    const pull = (pulledAt: string, connectHosts: string[]) =>
-      db().gamePull.create({
-        data: {
-          id: crypto.randomUUID(),
-          gameId: id,
-          commitSha: "b".repeat(40),
-          fileCount: 3,
-          totalBytes: 1000n,
-          connectHosts,
-          pulledAt: new Date(pulledAt),
-        },
-      });
-    const older = await pull("2026-11-01T10:00:00Z", ["old.example.com"]);
-    const newer = await pull("2026-11-02T10:00:00Z", ["old.example.com"]);
+    await serviceFor(GOOD_FILES).saveAnswer(id, makerUserId, FILES_ANSWER);
 
-    await service.saveAnswer(id, makerUserId, { question: "websites", connectHosts: ["New.example.com"] });
+    await serviceFor(GOOD_FILES).saveAnswer(id, makerUserId, {
+      question: "websites",
+      connectHosts: ["New.example.com"],
+    });
 
-    expect((await db().gamePull.findUniqueOrThrow({ where: { id: newer.id } })).connectHosts).toEqual([
-      "new.example.com",
-    ]);
-    expect((await db().gamePull.findUniqueOrThrow({ where: { id: older.id } })).connectHosts).toEqual([
-      "old.example.com",
-    ]);
+    const copies = await db().gamePull.findMany({ where: { gameId: id }, orderBy: { pulledAt: "asc" } });
+    expect(copies.map((copy) => copy.connectHosts)).toEqual([[], ["new.example.com"]]);
     expect((await db().game.findUniqueOrThrow({ where: { id } })).connectHosts).toEqual(["new.example.com"]);
-    expect(await db().gamePull.count({ where: { gameId: id } })).toBe(2);
-  });
-
-  it("keeps the websites on a game that has no copy yet, without reaching GitHub", async () => {
-    const { makerUserId, id } = await begin();
-    await db().game.update({ where: { id }, data: { repoFullName: "acme/game" } });
-
-    await service.saveAnswer(id, makerUserId, { question: "websites", connectHosts: ["api.example.com"] });
-
-    expect((await db().game.findUniqueOrThrow({ where: { id } })).connectHosts).toEqual(["api.example.com"]);
   });
 
   // Review Focus 2: someone else's game is simply not there, at every answer.
