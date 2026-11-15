@@ -31,7 +31,7 @@ export function quietVideo(node: HTMLVideoElement): void {
   node.muted = true;
   node.loop = true;
   node.playsInline = true;
-  const reported: ReportingNavigator = navigator;
+  const reported = navigator as Navigator & ReportingNavigator;
   const may = mayAutoplay({
     reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
     saveData: reported.connection?.saveData === true,

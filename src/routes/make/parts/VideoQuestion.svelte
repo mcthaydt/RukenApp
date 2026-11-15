@@ -25,12 +25,12 @@
     video: { src: string | null; replacing: boolean; replaceAddress: string };
     counter: { n: number; of: number } | null;
     back: string;
-    throwAway?: string;
+    throwAway: string;
     /** The server's refusal of the video that was sent, if any. */
     problem: string | undefined;
   } = $props();
 
-  const words =
+  const words = $derived(
     shape === "upright"
       ? {
           heading: "Add your upright video",
@@ -41,7 +41,8 @@
           heading: "Add your wide video",
           frame: "Wider than tall",
           note: "For computers: wider than tall. MP4 or WebM, up to 30 MB.",
-        };
+        },
+  );
 
   // True from the choice until the answer comes: a second send while one is out would add the video twice.
   let saving = $state(false);
