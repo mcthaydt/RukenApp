@@ -643,7 +643,7 @@ The other slices (H, R, S, F, Q, B, P, V, K on the website; 1, 2, 3, N, $, L for
 
 ## Texts, not email
 
-Spec: `docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, approved by the Owner on 2026-11-15 ("Text design approved"). Progress: 0% (no plan, no code).
+Spec: `docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, approved by the Owner on 2026-11-15 ("Text design approved"). Plan: `docs/superpowers/plans/2026-11-15-texts-not-email.md`, with the country table `2026-11-15-texts-countries.md`, on a branch (`claude/project-thread-s38gjd`), not merged and not yet audited. Progress: 0% of the build (11 tasks on 5 branches, none started; no code). The build waits for its place in the slice order.
 
 Owner, 2026-11-15: "Reconsider the AI chat, I almost never want to use email here; text only almost exclusively" and "The text is for more than just support, everything other companies do with email, we do via. text unless it's something paper trail related for legal". "Text" is a text to the person's phone number (the Owner's "2").
 
@@ -653,8 +653,17 @@ Owner, 2026-11-15: "Reconsider the AI chat, I almost never want to use email her
 - [x] A note at the top of each plan it changes: slice 1, the wishlist, beta builds, makers' sales, the apps slices and the apps' test copy. Their tasks are not rewritten yet.
 - [x] STOP, after the Owner's question of 2026-11-15: two numbers (account, news), the one reply to STOP, and what a person sees while their texts are off.
 - [x] The Owner's approval, 2026-11-15: "Text design approved".
-- [ ] The AI help chat's own short design (in for launch; no spec has it yet).
-- [ ] A plan, its audit and the build. The plan session also rewrites the tasks named in those notes.
+- [x] The plan, written on 2026-11-15 from the spec, the code on `main` at `286bfdf`, better-auth 1.7.7's own phone-number plugin and Twilio's pages. Five branches: A the `Texter` and the number rules (Tasks 0 to 2), B the tables, sign-up, sign-in and forgot password, with email sign-up removed (3 to 5), C notices, STOP and START, and changing the number (6 to 8), D the yes to news texts, quiet hours and the legal email (9, 10), E which countries are open (11).
+- [x] The country table, copied by a script from Twilio's page for each of 222 countries on 2026-11-15. A person can text Ruken back in 43 of them; in 179 they cannot, so STOP by reply and help by text do not exist there.
+- [x] The tasks named in the six notes, rewritten in a last section, "Rewritten for texts", of each plan: slice 1, the wishlist (branch D is now the launch text), beta builds (testers by @name only), makers' sales (the split's and an extra's texts; the confirming email through the address Stripe holds), the apps' test copy and the apps' slices. A seventh, found while planning: slice 4's five mails to a maker, rewritten the same way.
+- [x] The AI help chat's own short design, written: `docs/superpowers/specs/2026-11-15-help-chat-design.md`. Not yet approved by the Owner; it has three questions for them, the first being what "JEV" is.
+- [ ] The plan's audit (Opus, medium), before any build.
+- [ ] The build.
+- Open with the Owner, asked on a card: in countries where people cannot text Ruken back, how they stop news texts and get help. The plan builds "on their account page, and help on the site" unless they pick another.
+- Not confirmed from a page, and proved first in the build (Task 0) with the Owner's two real numbers: that STOP to one of Ruken's two numbers leaves the other one's texts flowing.
+- Found while planning: the changed-hands check works for US numbers only and needs its own approval from Twilio; the two US numbers must be ordinary local numbers, not toll-free, or the Owner's STOP words never show; SvelteKit's cross-site check has to let Twilio's form post through on one route (Task 7, Step 0).
 - The Owner's, after the LLC: the Twilio account and keys, registering Ruken's name and number with the US carriers, then each other country that asks for it.
 
 No test ran in this session, and no code was written. Read outside the repository, 2026-11-15: Twilio's pages on US registration (what a company must give, and what its privacy and terms pages must say) and on prices.
+
+The plan session, 2026-11-15: no test, lint or typecheck ran, and no code was written. Read outside the repository: better-auth 1.7.7's published package (its phone-number plugin), and Twilio's pages on sending a message, the webhook's fields and signature, Advanced Opt-Out, the reassigned-number lookup, and the SMS guidelines for 222 countries. Not read (the page would not load without a browser): Twilio's help article on STOP filtering. The `twilio` commands in the plan's Owner steps were not run.

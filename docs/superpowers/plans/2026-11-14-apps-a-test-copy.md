@@ -1,6 +1,6 @@
 # Test Copy and Live Copy Implementation Plan
 
-> **Changed by the texts spec (2026-11-15), not yet written into this plan.** `docs/superpowers/specs/2026-11-15-texts-not-email-design.md` moves Ruken's messages from email to texts. In this plan that changes: the made-up accounts also get made-up phone numbers that are never texted (`TEXT_ALLOWLIST`), and the test copy needs its own Twilio keys. The Owner approved that spec on 2026-11-15; a plan session rewrites those tasks. Until then, do not build them as written here.
+> **Rewritten for texts (2026-11-15).** The texts spec (`docs/superpowers/specs/2026-11-15-texts-not-email-design.md`, approved by the Owner on 2026-11-15: "Text design approved") moves Ruken's messages from email to texts, and the texts plan (`2026-11-15-texts-not-email.md`) builds it. In this plan that changes the made-up accounts (each also gets a made-up phone number that can never be texted) and the test copy's settings (its own Twilio keys, and an allowlist it cannot run without). They are rewritten in "Rewritten for texts", the last section of this plan. Where that section and an earlier line differ, that section wins.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task (CLAUDE.md: no subagents). Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -592,3 +592,42 @@ No code unless a check fails. Nothing here is typed into the repository.
   - The made-up games all run one tiny game and show flat-colour clips (Call 12).
   - The test copy's `workers.dev` address is public to anyone who has it. It has no password in front of it.
   - Cloudflare builds both Workers on every merge, so a merge now starts two builds.
+
+## Rewritten for texts
+
+Texts spec: "The made-up accounts of the test copy get made-up numbers that can never be texted", and "`TEXT_ALLOWLIST` works as `MAIL_ALLOWLIST` does … The test copy and every test use it". Everything not named here stands. The texts plan's branch B must be on `main` before branch 3 here.
+
+### The Calls: 8, amended
+
+The test copy still sends real mail. It sends real **texts only to the numbers in `TEXT_ALLOWLIST`**, which is always set on it: the Owner's and the testers' own phones. A stranger who signs up on the test copy's address gets the code screen and no text, so the test copy can never run up texts or reach someone who did not ask.
+
+### Task 6a (new, branch 1, after Task 6): the test copy never texts a stranger
+
+**Files:**
+- Modify: `src/features/accounts/services.ts`
+- Test: `tests/features/accounts/services.test.ts` (add cases)
+
+- `createAuthServices`: when the copy (Task 1) is `test` and `TEXT_ALLOWLIST` is missing or empty, it throws `"The test copy needs TEXT_ALLOWLIST: it may only text the people testing it."` before anything is connected. The live copy starts with or without one.
+- [ ] **Step 1 (red):** the test copy with no allowlist throws those words; with one it starts; the live copy starts either way. Push. Expected: `verify` fails.
+- [ ] **Step 2 (green):** the code. Push. Expected: all pass.
+
+### Where execution stops: T5's table gains
+
+| NAME | Its value |
+|---|---|
+| `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY`, `TWILIO_API_SECRET`, `TWILIO_AUTH_TOKEN` | the Owner's Twilio account, with an API key made for the test copy (the texts plan, X4) |
+| `TWILIO_ACCOUNT_SERVICE`, `TWILIO_NEWS_SERVICE`, `TEXT_ACCOUNT_NUMBER` | a second pair of Messaging Services, "Ruken test account" and "Ruken test news", each with its own number and its incoming address set to `TEST-ADDRESS/webhooks/twilio` (the texts plan, X2 and X3, done again) |
+| `TEXT_ALLOWLIST` | the Owner's and the testers' own numbers, comma-separated, each written like `+13125550142` |
+
+T10 ("Look at it") gains: sign up on the test copy with a phone on the list and get the code; a phone not on the list gets none.
+
+### Task 10: the made-up accounts' numbers
+
+- Each made-up account keeps its `<handle or player-n>@seed.ruken.test` address in `User.email` (it is the stand-in there, and how the seed knows its own rows) and also gets a made-up phone number: `+1`, an area code, `55501` and two digits. Numbers of that form are kept for fiction, and the `Texter` refuses them whatever the allowlist says (the texts plan, Task 1, `isMadeUpNumber`). `content.json` gives each account its own.
+- No made-up account has a yes to news texts, a `TextSent` row or a `WaitingNotice` row.
+- The test list for `content.test.ts` gains: every account has a number; every number passes `isMadeUpNumber`; no two share one. For `seed.pg.test.ts`: a capture texter given to the test saw no text.
+- The `.test` rule in `src/lib/server/mail.ts` stays as this task has it. The texts plan's Task 10 adds `.invalid` beside it; whichever lands second joins the first's rule and test.
+
+### Review Focus 7
+
+Becomes: a made-up account is signed in to, mailed or texted. Expected: none can happen. It has no password and no sign-in row; its address ends in `.test`, which the mailer never sends to; its number is one the `Texter` never sends to.
