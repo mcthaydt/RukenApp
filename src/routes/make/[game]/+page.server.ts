@@ -34,7 +34,8 @@ function fixCards(game: MakerGame): FixCardData[] {
     title: one.title,
     words: one.words,
     note: one.note,
-    href: `/make/${game.slug}/${questionOf(one.part)}`,
+    // A video that was sent back opens its picker at once: the old video stays in its frame, and nothing is pressed first.
+    href: `/make/${game.slug}/${questionOf(one.part)}${one.part === "upright_video" || one.part === "wide_video" ? "?again=1" : ""}`,
     video:
       one.part === "upright_video" && game.clips.upright !== null
         ? { src: services.media(game.clips.upright.key), shape: "upright" as const }

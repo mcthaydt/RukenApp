@@ -171,7 +171,11 @@ export async function showTheOwner(page: Page, testInfo: TestInfo, screen: strin
   // The screen as it rests: the fonts are in and every entrance has finished, so the picture is not a half-faded one.
   await page.evaluate(async () => {
     await document.fonts.ready;
-    await Promise.all(document.getAnimations().map((animation) => animation.finished));
+    // An animation that repeats for ever (the circles behind Live) never finishes, and is the screen at rest as it is.
+    const ends = document
+      .getAnimations()
+      .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity);
+    await Promise.all(ends.map((animation) => animation.finished));
   });
   await testInfo.attach(`look: ${screen}`, {
     body: await page.screenshot({ fullPage: true }),

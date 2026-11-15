@@ -52,7 +52,7 @@ test("sent back for one thing: the screen leads with it, the blue button names i
   await expect(page.getByText("One thing to fix. Then send it again.")).toBeVisible();
   const card = page.locator("a.fix");
   await expect(card).toHaveCount(1);
-  await expect(card).toHaveAttribute("href", `/make/${slug}/upright`);
+  await expect(card).toHaveAttribute("href", `/make/${slug}/upright?again=1`);
   await expect(card).toContainText("Needs fixing");
   await expect(card).toContainText("Upright video");
   await expect(card).toContainText("It's sideways. Turn it the right way up.");
@@ -88,7 +88,7 @@ test("fixing the one thing brings back Send it again, and sending makes it wait"
   await pageHasSettled(page);
 
   await page.locator("a.fix").click();
-  await expect(page).toHaveURL(`/make/${slug}/upright`);
+  await expect(page).toHaveURL(`/make/${slug}/upright?again=1`);
   await pageHasSettled(page);
   await chooseVideo(page, videoFile("fixed.mp4"));
   await expect(page.locator('[data-frame="upright"] video')).toBeAttached();
@@ -116,7 +116,7 @@ test("sent back for two things, one fixed: still no Send it again, and a send po
   });
   await page.goto(`/make/${slug}`);
   await expect(page.getByText("2 things to fix. Then send it again.")).toBeVisible();
-  await page.goto(`/make/${slug}/upright`);
+  await page.goto(`/make/${slug}/upright?again=1`);
   await pageHasSettled(page);
   await chooseVideo(page, videoFile("fixed.mp4"));
   await expect(page.locator('[data-frame="upright"] video')).toBeAttached();

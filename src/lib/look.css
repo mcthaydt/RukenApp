@@ -1485,9 +1485,12 @@ a.game:active {
   }
 }
 
+/* The fill is `backwards` (the line waits where it starts), never `both`: a line that keeps a transform after it has
+   arrived becomes the place a fixed bar is measured from, and the bar of a screen whose left half is such a line
+   (Waiting, Sent back, Live) would sit in the middle of the page instead of the window's bottom. */
 .screen main > :not(form, .acts),
 .screen main > form > :not(.acts) {
-  animation: rise 460ms var(--ease) both;
+  animation: rise 460ms var(--ease) backwards;
   animation-delay: calc(var(--line, 0) * 40ms);
 }
 
