@@ -30,8 +30,9 @@ test("while the payment page is on its way, the card's own button is not the sta
     },
   );
 
-  // Not awaited: a press that starts a page change may wait for the page to arrive, and it is held.
-  const pressed = page.getByRole("button", { name: "Continue to payment" }).click();
+  // The press does not wait for the page change it starts: that page is held, and a press that waited for it
+  // would time out before this journey has looked.
+  const pressed = page.getByRole("button", { name: "Continue to payment" }).click({ noWaitAfter: true });
   try {
     await reached;
     await expect(page.getByRole("button", { name: "Continue to payment" })).toBeVisible();
