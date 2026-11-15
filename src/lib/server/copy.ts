@@ -33,7 +33,7 @@ export async function stampedCopy(run: RunSql): Promise<Copy | null> {
   if (copy === undefined) return null;
   if (copy === "test" || copy === "live") return copy;
   // The table's CHECK allows nothing else, so this is a database someone changed by hand.
-  throw new Error(`The database's stamp says ${String(copy)}, which is not a copy of Ruken.`);
+  throw new Error(`The database's stamp says ${JSON.stringify(copy)}, which is not a copy of Ruken.`);
 }
 
 /**
