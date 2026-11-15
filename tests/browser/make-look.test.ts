@@ -242,11 +242,16 @@ test("the upright frame is this tall for this window, and nothing scrolls sidewa
   const frame = page.locator('[data-frame="upright"]');
 
   // A phone held sideways has the frame the window leaves room for, up to 250 (the Owner, 2026-11-15, "5.a": shorter frames
-  // on small phones): the window less 180px, and never under 140.
+  // on small phones): the window less 180px, and never under 140. A phone held upright has its 340, or half its window where
+  // the window is under 800 tall (an iPhone 15 in Safari is 393 by 659: 329.5), so the question shows with its frame.
+  const height = page.viewportSize()?.height ?? 0;
+  const layout = layoutOf(page);
   const planned =
-    layoutOf(page) === "phone-sideways"
-      ? Math.min(250, Math.max(140, (page.viewportSize()?.height ?? 0) - 180))
-      : UPRIGHT_HEIGHT[layoutOf(page)];
+    layout === "phone-sideways"
+      ? Math.min(250, Math.max(140, height - 180))
+      : layout === "phone" && height < 800
+        ? Math.min(UPRIGHT_HEIGHT.phone, height / 2)
+        : UPRIGHT_HEIGHT[layout];
   expect((await boxOf(frame)).height).toBeCloseTo(planned, 0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
