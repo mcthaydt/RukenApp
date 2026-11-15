@@ -369,7 +369,7 @@ Answered: the agreement's date line, "A" (section 5). The delete button, "delete
 
 Owner, 2026-11-15: "A", to "Resume the maker screens redesign now, adding all of that? A) Yes, update #96 with the new screens, then you review it." The specs this section draws its screens from, each approved by the Owner: `2026-11-14-makers-sales-design.md` (5.5 to 5.10), `2026-11-14-apps-and-player-features-design.md` (age ratings, reviews, blocking, Ruken hooks) and `2026-11-14-beta-builds-design.md` (the maker's side). What each screen does is theirs; this section says how it looks and reads. The sales plan's branches I, J and M wait for the Owner's "fine" on this.
 
-The board for section 10 to 12, round 7, every new screen in all five sizes: https://claude.ai/artifact/Wjg2oKxKVSWAXj8sKtDgXL (private to the Owner). Looked at once in a test browser on three screens (the rooms, checking a game, the price); no script errors. Not yet looked at screen by screen in every size.
+The board for section 10 to 12, round 7, every new screen in all five sizes: https://claude.ai/artifact/Wjg2oKxKVSWAXj8sKtDgXL (private to the Owner). All 20 screens looked at in all five sizes in a test browser (Chromium), with no script errors. Fixed after that look: the season's days lacked the question track; on a sideways phone "Finish later" sat over the calendar; on a phone and an upright tablet the staff queue came after the other rooms, and a second button (Take off sale, Add a score, Send my newest version) came before the sheet instead of after it; money figures had a gap before full stops. Not looked at: WebKit, and the moving step between questions.
 
 ### 10.1 The screens
 
