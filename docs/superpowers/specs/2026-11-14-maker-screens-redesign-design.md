@@ -444,3 +444,24 @@ Owner, 2026-11-15, asked "When should we add the admin view for the maker?" and 
 - **Accept and Send back are one Blue button that changes**: with nothing ticked it accepts; with a tick it sends back. Staff cannot accept something with a part marked wrong.
 - **Take down, suspend and "Keep it hidden" are red**, each with a short screen first, like "Throw Floor Fifty away?". Show it, Keep it and Back are green.
 - **Sending back, part by part.** Owner, 2026-11-15: "Tick it, pick a reason", to "31. How do staff say what's wrong when they send something back?", whose words were: "Staff tick each part that failed and pick a plain reason from a short list, like \"It's sideways\". They can add a line of their own. The maker sees a red card for each part." Each ticked part opens its own short list of reasons, written for that part (a video: "It's sideways.", "It's not from this game.", "It's too dark to see."; a name or line: "It's rude.", "It's not this game's."; files: "It doesn't start."; an extra: "It doesn't unlock."), plus "Something else", which needs the line of their own. The plan writes the full lists, each reason passing the drunk-grandma test. The maker's red card (section 5b) shows the reason and the staff line under it.
+
+## 12. 18+ games: sex, nudity and gore
+
+Owner, 2026-11-15, to "32. What can an 18+ game have that staff still accept?": "Sex and nudity too, but only for 18+ accounts in browser and desktop downloads, they shouldn't appear unless the user opts in settings, and they have a content warning beforehand, absolutely no pornography; same with gore".
+
+This amends the main design's 5.5 ("Adult games are not accepted") and the apps spec's age ratings. What it means on the screens of this file:
+
+- **The maker says so.** After "Who is Floor Fifty for?", a game rated 18+ gets one more question: "Does Floor Fifty have any of these?" with three choices, any or none: "Sex or nudity", "Gore", "None of these". Hint: "Players only see it if they turn it on. Pornography is never allowed." Call: a question only for 18+ games, so a first game is still 11 questions unless it is 18+.
+- **Staff check it.** On checking a game (section 11.1, screen 2) the age rating row also shows these two marks, and staff can add or remove either before Accept. "It's pornography." is a reason on the list (section 11.2), and a game sent back for it cannot be sent again as it is.
+- **The maker sees it.** Check and send, Sent back and Live show the marks as a chip beside the rating ("18+ · Sex or nudity").
+- **Who sees such a game** (not a maker screen, for the apps' plan): only an account 18 or over, only on the website and Ruken's own downloads, only after turning it on in Settings, and only after a content warning before its clip or page. Everywhere else, and for everyone else, the game does not exist: the feed, search, maker pages, links, extras, leaderboards.
+
+### 12.1 What this touches beyond these screens
+
+Flagged for the coordinator; none of these is decided here.
+
+- **The store apps.** The Mac App Store and the Microsoft Store are store apps, not "desktop downloads", so they hide these games like the phone apps. Call, for the Owner to confirm: Flathub and the Snap Store count as stores too. Each store's rules on mature content are checked again before the apps' plan.
+- **The image checks.** The apps spec flags nudity automatically and hides it until staff decide. Pictures and clips of a game marked "Sex or nudity" or "Gore" need the check to label instead of block, and player and maker page photos still refuse nudity.
+- **Stripe.** Stripe's rules on what a business may sell limit sexual content. Whether a game with sex or nudity can be sold through Ruken, or whether its presence puts Ruken's Stripe account at risk, is read from Stripe's own rules before this is built.
+- **The law.** Some US states require a check of age, beyond a typed birth date, for sites with sexual material. That goes to the lawyer with pull request #104.
+- **The apps spec** gains the Settings switch, the content warning and the hiding rule above.
