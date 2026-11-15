@@ -19,7 +19,7 @@ export interface SendBackReason {
 /** The reasons a part can be sent back for, in the order staff see them, always ending with Something else. */
 export function reasonsFor(part: GamePart): SendBackReason[] {
   const own = reasons
-    .filter((reason) => (reason.parts as string[]).includes(part))
+    .filter((reason) => reason.parts.includes(part))
     .map((reason) => ({ part, code: reason.code, staff: reason.staff, maker: reason.maker }));
   return [...own, { part, code: SOMETHING_ELSE, staff: "Something else", maker: "" }];
 }
