@@ -449,6 +449,8 @@ Owner, 2026-11-15, asked "When should we add the admin view for the maker?" and 
 
 ## 12. 18+ games: sex, nudity and gore
 
+**After launch.** Owner, 2026-11-15: "We can move 18+ for when we validate and prove this isn't an app MEANT for that for negotiation leverage", and "I'm fine with moving some things to post launch". Everything in section 12 stays written and decided, and none of it is in the launch build: the 18+ rating, the Sex or nudity, Gore and Drugs question, the marks and their reasons on staff's check, the per-store table, and the Store version (its branch, its room, its queue kind and its check). At launch the age question has three choices, All Ages, 13+ and 16+, and a game that is only for adults is sent back ("It's only for adults. Ruken doesn't take those yet."). No gambling with real money (12.0) holds at launch, at every rating.
+
 Owner, 2026-11-15, to "32. What can an 18+ game have that staff still accept?": "Sex and nudity too, but only for 18+ accounts in browser and desktop downloads, they shouldn't appear unless the user opts in settings, and they have a content warning beforehand, absolutely no pornography; same with gore".
 
 This amends the main design's 5.5 ("Adult games are not accepted") and the apps spec's age ratings. What it means on the screens of this file:
