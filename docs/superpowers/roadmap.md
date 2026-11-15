@@ -2,6 +2,8 @@
 
 The order we build Ruken in. One page, read top to bottom.
 
+Approved by the owner, 2026-11-15: "Roadmap is fine".
+
 ## The rules
 
 **We finish slice 2, and only slice 2.** The owner, 2026-11-15: "We finish Slice 2: Games and play, everything after that is tagged for later work". Everything below slice 2 is marked **Later**. Nothing marked Later starts until slice 2 is done and the owner says go.
