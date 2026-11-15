@@ -325,6 +325,47 @@ describe("saveAnswer", () => {
     });
   });
 
+  // The route checks the list as it was typed; the service checks it again, so a later caller cannot skip the check.
+  it("refuses websites that are not websites, and keeps nothing", async () => {
+    const { makerUserId, id } = await begin();
+
+    await expect(
+      service.saveAnswer(id, makerUserId, { question: "websites", connectHosts: ["not a website"] }),
+    ).rejects.toMatchObject({
+      code: "INVALID",
+      message: "Write each website like api.example.com, one per line. Five at most.",
+    });
+    await expect(
+      service.saveAnswer(id, makerUserId, {
+        question: "websites",
+        connectHosts: [
+          "a.example.com",
+          "b.example.com",
+          "c.example.com",
+          "d.example.com",
+          "e.example.com",
+          "f.example.com",
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "INVALID" });
+
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).connectHosts).toEqual([]);
+  });
+
+  it("keeps a list of websites in lower case, without blank lines", async () => {
+    const { makerUserId, id } = await begin();
+
+    await service.saveAnswer(id, makerUserId, {
+      question: "websites",
+      connectHosts: ["API.example.com", " ", "cdn.example.com"],
+    });
+
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).connectHosts).toEqual([
+      "api.example.com",
+      "cdn.example.com",
+    ]);
+  });
+
   // Review Focus 2: someone else's game is simply not there, at every answer.
   it("says another maker's game is not there, for every answer", async () => {
     const { id } = await begin();

@@ -384,7 +384,9 @@ test("Next with no repository chosen says so", async ({ page }) => {
   expect(await filesOf(slug)).toEqual({ repo: null, pulls: 0 });
 });
 
-test("while the game is copied the button says so and cannot be pressed again", async ({ page }) => {
+test("while the game is copied the button says so and cannot be pressed again", async ({
+  page,
+}, testInfo) => {
   const { slug } = await startAtFiles(page);
   await connectGitHubFromFiles(page, slug);
   const held = await holdAnswersTo(page, new RegExp(`/make/${slug}/files\\?/answer$`));
@@ -397,6 +399,7 @@ test("while the game is copied the button says so and cannot be pressed again", 
   await expect(busy).toHaveAttribute("aria-busy", "true");
   await expect(page.getByText("Copying your game can take a minute. Keep this page open.")).toBeVisible();
   expect(held.requestsSoFar()).toBe(1);
+  await showTheOwner(page, testInfo, "question 3, copying your game");
 
   held.release();
   await expect(page).toHaveURL(`/make/${slug}/plays-on`);
@@ -576,7 +579,7 @@ test("a video is added the moment it is chosen, then Next is the blue button", a
   await expect(page).toHaveURL(`/make/${slug}/wide`);
 });
 
-test("the wide question follows, and after it the age question", async ({ page }) => {
+test("the wide question follows, and after it the age question", async ({ page }, testInfo) => {
   const { slug } = await startAtVideo(page, "upright");
   await chooseVideo(page, videoFile());
   await expect(page.locator('[data-frame="upright"] video')).toBeAttached();
@@ -590,6 +593,7 @@ test("the wide question follows, and after it the age question", async ({ page }
   const shape = await boxOf(frame);
   expect(shape.width).toBeGreaterThan(shape.height);
   await expect(page.getByText("For computers: wider than tall. MP4 or WebM, up to 30 MB.")).toBeVisible();
+  await showTheOwner(page, testInfo, "Question 6, the wide video");
 
   await chooseVideo(page, videoFile());
   await expect(page.locator('[data-frame="wide"] video')).toBeAttached();

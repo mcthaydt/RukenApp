@@ -181,6 +181,21 @@ describe("sendForReview", () => {
     });
   });
 
+  // A copy that was refused writes no pull, so the older passing pull is still the newest: it must not be sent.
+  it("refuses a game whose last copy was refused, and sends nothing", async () => {
+    const game = await readyGame();
+    await db().game.update({
+      where: { id: game.id },
+      data: { state: "sent_back", pullProblem: "We couldn't find an index.html." },
+    });
+
+    await expect(service.sendForReview(game.id, game.makerUserId)).rejects.toMatchObject({
+      code: "NOT_READY",
+      message: "Your game's files need fixing first.",
+    });
+    expect(await stateOf(game.id)).toMatchObject({ state: "sent_back", pendingPullId: null });
+  });
+
   it("makes a draft wait on its newest files, and notes when they were sent", async () => {
     const game = await readyGame();
     const newer = await addPull(game.id);
@@ -350,8 +365,23 @@ describe("sendBack", () => {
     expect(await partRows(game.id)).toEqual([
       { part: "one_line", reason: "something_else", note: "Say what the game is." },
     ]);
+    // The line is the card's words already; as a note too it would be printed twice.
     expect((await service.gameForMaker(game.slug, game.makerUserId))?.toFix[0]).toMatchObject({
       words: "Say what the game is.",
+      note: null,
+    });
+  });
+
+  it("shows staff's own line beside a reason from the list, as a note under the words", async () => {
+    const { game, staff } = await waitingGame();
+
+    await service.sendBack(game.id, staff, [
+      { part: "upright_video", reason: "too_dark", note: "The second level is hard to see." },
+    ]);
+
+    expect((await service.gameForMaker(game.slug, game.makerUserId))?.toFix[0]).toMatchObject({
+      words: "It's too dark to see. Record it again, brighter.",
+      note: "The second level is hard to see.",
     });
   });
 
@@ -434,6 +464,96 @@ describe("sendBack", () => {
     expect((await stateOf(game.id)).toFix).toEqual([]);
     await service.sendForReview(game.id, game.makerUserId);
     expect(await stateOf(game.id)).toMatchObject({ state: "waiting" });
+  });
+});
+
+describe("a live game's update that was sent back", () => {
+  /** A live game whose update waited and was sent back, for the parts given. */
+  async function liveGameSentBack(parts: Parameters<GamesService["sendBack"]>[2]) {
+    const game = await readyGame();
+    await connect(game.makerUserId);
+    await service.sendForReview(game.id, game.makerUserId);
+    await service.accept(game.id, await createUser(db()));
+    await addPull(game.id);
+    await service.sendForReview(game.id, game.makerUserId);
+    await service.sendBack(game.id, await createUser(db()), parts);
+    return game;
+  }
+
+  // The files are the update, and a live game's maker fixes them on GitHub: a copy that passes is the fix.
+  it("takes the files off what was sent back when a copy passes", async () => {
+    const game = await liveGameSentBack([{ part: "files", reason: "breaks" }]);
+    expect((await stateOf(game.id)).toFix).toEqual(["files"]);
+
+    await service.pullLatest(game.id);
+
+    expect((await stateOf(game.id)).toFix).toEqual([]);
+  });
+
+  it("can send a new version after the files are copied again", async () => {
+    const game = await liveGameSentBack([{ part: "files", reason: "breaks" }]);
+
+    await service.pullLatest(game.id);
+    await service.sendForReview(game.id, game.makerUserId);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "live", toFix: [] });
+    expect((await stateOf(game.id)).pendingPullId).not.toBeNull();
+  });
+
+  it("keeps the files to fix when the copy is refused", async () => {
+    const game = await liveGameSentBack([{ part: "files", reason: "breaks" }]);
+    const noIndexHtml: GitHub = {
+      ...github,
+      tarball: async () => new Blob([await tarGz([{ path: "top/readme.txt", content: "hello" }])]).stream(),
+    };
+    const refusing = createGamesService({ db: db(), clock, files, github: noIndexHtml });
+
+    await expect(refusing.pullLatest(game.id)).rejects.toMatchObject({ code: "FILES_REFUSED" });
+
+    expect((await stateOf(game.id)).toFix).toEqual(["files"]);
+  });
+
+  it("takes a copy for another part off nothing else", async () => {
+    const game = await liveGameSentBack([{ part: "one_line", reason: "something_else", note: "Say more." }]);
+
+    await service.pullLatest(game.id);
+
+    expect((await stateOf(game.id)).toFix).toEqual(["one_line"]);
+  });
+
+  // These four a live game's maker cannot change by herself (slice 4), so sending its update back for one would leave
+  // it stuck for good.
+  it.each(["upright_video", "wide_video", "age_rating", "other_websites"] as const)(
+    "refuses to send an update back for %s, and changes nothing",
+    async (part) => {
+      const game = await readyGame();
+      await service.sendForReview(game.id, game.makerUserId);
+      await service.accept(game.id, await createUser(db()));
+      await addPull(game.id);
+      await service.sendForReview(game.id, game.makerUserId);
+
+      await expect(
+        service.sendBack(game.id, await createUser(db()), [{ part, reason: "something_else", note: "No." }]),
+      ).rejects.toMatchObject({
+        code: "INVALID",
+        message: "A live game can only be sent back for its name, its line, where it plays or its files.",
+      });
+
+      expect((await stateOf(game.id)).pendingPullId).not.toBeNull();
+      expect(await stateOf(game.id)).toMatchObject({ state: "live", toFix: [] });
+      expect(await db().gameReview.count({ where: { gameId: game.id, decision: "sent_back" } })).toBe(0);
+    },
+  );
+
+  it("still sends a game that is not live back for any part", async () => {
+    const game = await readyGame();
+    await service.sendForReview(game.id, game.makerUserId);
+
+    await service.sendBack(game.id, await createUser(db()), [
+      { part: "wide_video", reason: "something_else", note: "Again." },
+    ]);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "sent_back", toFix: ["wide_video"] });
   });
 });
 

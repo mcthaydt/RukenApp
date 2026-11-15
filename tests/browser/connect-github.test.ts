@@ -149,6 +149,40 @@ test("a connection that failed says so on the question, above the way to try aga
   await showTheOwner(page, testInfo, "question 3, the connection failed");
 });
 
+// She is connected and pressed "Don't see your game? Choose it on GitHub": GitHub came back with a refused code, and the
+// rows she already had are still there. Saying nothing would leave her wondering whether the game was added.
+test("a failed reconnect says so to a maker who is already connected, above her rows", async ({
+  page,
+}, testInfo) => {
+  const { slug, maker } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+  const userId = await userIdOf(maker.email);
+
+  await page.goto(
+    `/make/github/callback?code=refused&state=${encodeURIComponent(connectStateFor(userId, slug))}`,
+  );
+
+  await expect(page).toHaveURL(`/make/${slug}/files?github=failed`);
+  const failure = page.getByText("GitHub didn't connect. Try again.");
+  await expect(failure).toBeVisible();
+  await expect(page.getByRole("radio")).toHaveCount(2);
+  const rows = page.getByRole("radio").first();
+  expect((await boxOf(failure)).y).toBeLessThan((await boxOf(rows)).y);
+  expect(await githubConnectionOf(maker.email)).toMatchObject([{ installationId: 1n }]);
+  await showTheOwner(page, testInfo, "question 3, connected, the reconnect failed");
+});
+
+test("a failed reconnect says so to a maker whose connection holds no repositories", async ({ page }) => {
+  const { slug, maker } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+  await forgetTheirRepositories(maker.email);
+
+  await page.goto(`/make/${slug}/files?github=failed`);
+
+  await expect(page.getByText("Ruken can't see any of your repositories yet.")).toBeVisible();
+  await expect(page.getByText("GitHub didn't connect. Try again.")).toBeVisible();
+});
+
 // Review Focus 7: the state travels through GitHub in an address.
 test("a state that someone changed lands on Your games, and says GitHub didn't connect", async ({ page }) => {
   await startDraft(page);
@@ -183,7 +217,9 @@ test("a state for another maker's game lands on a 404, never on her question", a
   }
 });
 
-test("connected with nothing chosen, she is told, with one way to choose some", async ({ page }) => {
+test("connected with nothing chosen, she is told, with one way to choose some", async ({
+  page,
+}, testInfo) => {
   const { slug, maker } = await startAtFiles(page);
   await connectGitHubFromFiles(page, slug);
   await forgetTheirRepositories(maker.email);
@@ -196,6 +232,7 @@ test("connected with nothing chosen, she is told, with one way to choose some", 
   const choose = page.getByRole("link", { name: "Choose repositories on GitHub" });
   await expect(choose).toHaveCSS("background-color", rgb(token("--pay")));
   await expect(choose).toHaveAttribute("href", `/make/github?choose=1&game=${slug}`);
+  await showTheOwner(page, testInfo, "question 3, connected, nothing chosen on GitHub");
 });
 
 // ---- The how-to page ---------------------------------------------------------------------------------------------

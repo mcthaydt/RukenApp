@@ -141,7 +141,9 @@ test("an 18+ game's chip names its marks", async ({ page }) => {
   await expect(page.locator(".chip", { hasText: "18+" })).toHaveText("18+ · Gore");
 });
 
-test("Change opens that one question, which says Save and comes straight back", async ({ page }) => {
+test("Change opens that one question, which says Save and comes straight back", async ({
+  page,
+}, testInfo) => {
   const { slug } = await startAtCheck(page);
 
   await page.getByRole("link", { name: "Change the line" }).click();
@@ -150,6 +152,7 @@ test("Change opens that one question, which says Save and comes straight back", 
   // A game being changed has no counter and no Next.
   await expect(page.getByText(/^Question \d of/)).toHaveCount(0);
   await expect(nextButton(page)).toHaveText("Save");
+  await showTheOwner(page, testInfo, "question 2, being changed (Save)");
   const line = page.getByLabel(/about, in one line\?$/);
   await line.fill("Tap. Tap. Tap again.");
   await nextButton(page).click();
@@ -172,6 +175,7 @@ test("the websites chip opens the websites question, and a name that is not a we
     page.getByText("One per line, like api.example.com. Leave this empty if your game runs on its own."),
   ).toBeVisible();
   const box = page.getByLabel(`Does ${name} use other websites?`);
+  await showTheOwner(page, testInfo, "the websites question, nothing typed");
   await box.fill("not a website");
   await nextButton(page).click();
   await expect(
@@ -181,6 +185,7 @@ test("the websites chip opens the websites question, and a name that is not a we
   await showTheOwner(page, testInfo, "the websites question, refused");
 
   await box.fill("API.example.com");
+  await showTheOwner(page, testInfo, "the websites question, a website typed");
   await nextButton(page).click();
   await expect(page).toHaveURL(`/make/${slug}/check`);
   await expect(page.locator(".chip", { hasText: "api.example.com" })).toHaveText("Uses api.example.com");

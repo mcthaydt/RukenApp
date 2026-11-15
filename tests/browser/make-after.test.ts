@@ -67,7 +67,7 @@ test("sent back for one thing: the screen leads with it, the blue button names i
   await showTheOwner(page, testInfo, "Sent back, for one thing");
 });
 
-test("staff's own line shows under the reason", async ({ page }) => {
+test("staff's own line shows under the reason", async ({ page }, testInfo) => {
   const { slug } = await gameWhere(page, {
     state: "sent_back",
     toFix: [{ part: "upright_video", reason: "too_dark", note: "The second level is hard to see." }],
@@ -78,6 +78,21 @@ test("staff's own line shows under the reason", async ({ page }) => {
   const card = page.locator("a.fix");
   await expect(card).toContainText("It's too dark to see. Record it again, brighter.");
   await expect(card).toContainText("The second level is hard to see.");
+  // Staff's line is once on the card, under the reason, and not again as the words.
+  await expect(card.getByText("The second level is hard to see.")).toHaveCount(1);
+  await showTheOwner(page, testInfo, "Sent back, with staff's own line");
+});
+
+// Staff's own line for "Something else" is the words of the card; it is not printed a second time under them.
+test("staff's line for Something else shows once", async ({ page }) => {
+  const { slug } = await gameWhere(page, {
+    state: "sent_back",
+    toFix: [{ part: "one_line", reason: "something_else", note: "Say what the game is." }],
+  });
+
+  await page.goto(`/make/${slug}`);
+
+  await expect(page.locator("a.fix").getByText("Say what the game is.")).toHaveCount(1);
 });
 
 test("fixing the one thing brings back Send it again, and sending makes it wait", async ({
@@ -200,9 +215,52 @@ test("a live game: See it on Ruken is the blue button, and a new version goes fo
 
   // The press copies the game's newest files before it sends them, which takes a few seconds in Safari's engine.
   await expect(page.getByText("Your update is waiting for review.")).toBeVisible({ timeout: 20_000 });
+  await showTheOwner(page, testInfo, "Live, an update waiting for review");
 });
 
-test("a live game's name changes and its address stays", async ({ page }) => {
+// Spec 5c: beside the headline sit the game's one video (the shape of this window), its name and line, and where it plays;
+// the plan adds the rating. The files and the websites are not drawn on Live, and neither is the other video.
+test("Live shows the one video for this window, the name, the line and two chips", async ({ page }) => {
+  const { slug, name } = await gameWhere(page, { state: "live" });
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+
+  const viewport = page.viewportSize() ?? { width: 0, height: 0 };
+  const laid = page.locator(".laid");
+  await expect(laid.locator("video")).toHaveCount(1);
+  await expect(laid.locator("video")).toHaveAttribute(
+    "data-shape",
+    viewport.width > viewport.height ? "wide" : "upright",
+  );
+  await expect(laid.getByRole("heading", { level: 2 })).toHaveText(name);
+  await expect(laid.locator(".tagline")).toHaveText("A tiny game about tapping.");
+  await expect(laid.locator(".chip")).toHaveText(["Plays on phones and computers", "12+"]);
+});
+
+// A live game's maker mends the files on GitHub, and a new version copies them. Its files question is a 404 for her, so
+// the card that says what is wrong is words only, and the copy that passes is what clears it.
+test("a live game's update sent back for its files: the card is not a link, and a new version clears it", async ({
+  page,
+}) => {
+  const { slug } = await answerEveryQuestion(page);
+  await putGameWhereStaffLeaveIt(slug, { state: "live", toFix: [{ part: "files", reason: "breaks" }] });
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+
+  await expect(page.getByText("Fix it, then send a new version.")).toBeVisible();
+  const card = page.locator(".fix");
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("Game files");
+  await expect(page.locator("a.fix")).toHaveCount(0);
+  await expect(card.getByText("Fix this")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Send a new version" }).click();
+
+  await expect(page.getByText("Your update is waiting for review.")).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".fix")).toHaveCount(0);
+});
+
+test("a live game's name changes and its address stays", async ({ page }, testInfo) => {
   const { slug } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}`);
 
@@ -210,6 +268,7 @@ test("a live game's name changes and its address stays", async ({ page }) => {
   await expect(page).toHaveURL(`/make/${slug}/name`);
   await pageHasSettled(page);
   await expect(page.getByText("Its address on Ruken stays the same")).toBeVisible();
+  await showTheOwner(page, testInfo, "question 1, a live game's name being changed (Save)");
   const renamed = freshName("Floor Fifty");
   await page.getByLabel("What's your game called?").fill(renamed);
   await page.getByRole("button", { name: "Save" }).click();
@@ -239,7 +298,7 @@ test("a live game offers no Change on its videos or its files, and posting one b
   expect(posted.status()).toBe(404);
 });
 
-test("a live game's update that was sent back says what to fix", async ({ page }) => {
+test("a live game's update that was sent back says what to fix", async ({ page }, testInfo) => {
   // A live game's videos and files are not changed by its maker (slice 4), so what is sent back here is a line.
   const { slug } = await gameWhere(page, {
     state: "live",
@@ -251,6 +310,7 @@ test("a live game's update that was sent back says what to fix", async ({ page }
   await expect(page.getByText("Fix it, then send a new version.")).toBeVisible();
   await expect(page.locator("a.fix")).toHaveCount(1);
   await expect(page.locator("a.fix")).toContainText("This line isn't about your game.");
+  await showTheOwner(page, testInfo, "Live, an update sent back");
 });
 
 // ---- Everyone else ------------------------------------------------------------------------------------------------
@@ -275,6 +335,14 @@ test("another maker cannot open any of these", async ({ page, browser, baseURL }
       headers: { origin: site },
     });
     expect(sent.status(), "POST the send of a game's page").toBe(404);
+    // Throwing away answers every post with Your games (a reload, a game already gone), so it is not a 404: what is
+    // proved is that the game, which is the kind that may be thrown away, is still its maker's afterwards.
+    await stranger.request.post(`${site}/make?/throwAway`, {
+      form: { game: slug },
+      headers: { origin: site },
+    });
+    await page.goto(`/make/${slug}`);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sent back");
   } finally {
     await stranger.close();
   }

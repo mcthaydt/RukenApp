@@ -128,6 +128,13 @@ export function MAKER_ADDRESSES(slug: string): { path: string; form?: Record<str
     { path: `/make/${slug}/plays-on?/answer`, form: { playsOn: "computer_only" } },
     { path: `/make/${slug}/age?/answer`, form: { ageRating: "age_12" } },
     { path: `/make/${slug}/websites?/answer`, form: { servers: "api.example.com" } },
+    { path: `/make/${slug}/marks?/answer`, form: { contentMarks: "gore" } },
+    // A video is sent by its own action, one request to a video.
+    { path: `/make/${slug}/upright?/clip`, form: {} },
+    { path: `/make/${slug}/wide?/clip`, form: {} },
+    { path: `/make/${slug}/throw-away` },
+    // Sending a live game's newest files for review.
+    { path: `/make/${slug}?/newVersion`, form: {} },
     { path: `/make/${slug}/agreement`, form: {} },
     // The send is a named action; the stranger's GET and POST both meet the same 404 before it is looked for.
     { path: `/make/${slug}/check` },
