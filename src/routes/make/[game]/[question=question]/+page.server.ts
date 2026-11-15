@@ -112,6 +112,8 @@ async function filesScreen(url: URL, userId: string, game: MakerGame) {
     howToAddress: howTo,
     folderHowToAddress: `${howTo}#folder`,
     changeAddress: `${folder}?change=1`,
+    // A waiting game has been copied already: Next copies it again, and staff go on with the newest copy.
+    copiesAgain: game.state === "waiting",
   };
 }
 

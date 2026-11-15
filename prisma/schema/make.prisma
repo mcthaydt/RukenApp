@@ -3,15 +3,17 @@
 // Prisma cannot express the add-only trigger, so it is written by hand at the end of the migration and covered by
 // tests/features/make/agreement.pg.test.ts.
 
-/// The record of what a maker agreed to: which version of the maker agreement, and when. One row per maker. Added and
-/// never changed. It is kept when an account is purged, because it is the record of what a maker agreed to.
+/// The record of what a maker agreed to: which version of the maker agreement, and when. One row per maker and
+/// version, so a new version is asked for again and the older rows stay. Added and never changed. It is kept when an account is purged, because it is the record of what a maker agreed to.
 model MakerAgreement {
   id         String   @id @default(cuid(2))
-  userId     String   @unique
+  userId     String
   /// The version of the text that was accepted (`library/maker-agreement-v<n>.txt`).
   version    String
   acceptedAt DateTime @db.Timestamptz
   createdAt  DateTime @default(now()) @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, version])
 }

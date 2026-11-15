@@ -38,6 +38,7 @@
       howToAddress: string;
       folderHowToAddress: string;
       changeAddress: string;
+      copiesAgain: boolean;
     };
     counter: { n: number; of: number } | null;
     back: string;
@@ -133,6 +134,9 @@
       hint="Pick the one that is your game."
       problem={problems?.repo}
     />
+    {#if files.copiesAgain}
+      <p class="note">Next copies your game from GitHub again.</p>
+    {/if}
     {@render connectionFailedUnderList()}
     <p class="note">
       <a href={files.connectAddress} data-sveltekit-reload>Don't see your game? Choose it on GitHub</a>

@@ -21,13 +21,16 @@ export const MAKER_AGREEMENT_TEXT: string = agreementText;
  */
 export const MAKER_AGREEMENT_VERSION: string = parseAgreement(MAKER_AGREEMENT_TEXT).version;
 
-/** True once this maker has agreed. */
+/**
+ * True once this maker has agreed to this version of the text. An older version does not count: when the agreement
+ * changes, every maker is asked again (the agreement's last point), and their old row stays as the record.
+ */
 export async function hasAgreed(db: PrismaClient, userId: string): Promise<boolean> {
-  return (await db.makerAgreement.count({ where: { userId } })) > 0;
+  return (await db.makerAgreement.count({ where: { userId, version: MAKER_AGREEMENT_VERSION } })) > 0;
 }
 
 /**
- * Records that this maker agreed to this version, once: a second call adds nothing. A row is only ever added, so it is
+ * Records that this maker agreed to this version, once: a second call for the same version adds nothing. A row is only ever added, so it is
  * written with "do nothing if it is there", not an update.
  */
 export async function agree(db: PrismaClient, clock: Clock, userId: string): Promise<void> {

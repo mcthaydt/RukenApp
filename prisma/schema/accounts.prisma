@@ -60,7 +60,7 @@ model User {
 
   // Staff decisions about games (games.prisma) and what a maker agreed to (make.prisma).
   gameReviews    GameReview[]   @relation("GameReviewStaff")
-  makerAgreement MakerAgreement?
+  makerAgreements MakerAgreement[]
 
   // The pages feature's table points at a person; it is declared in pages.prisma.
   makerPage MakerPage?

@@ -28,6 +28,8 @@ export interface GitHubOptions {
 /** What a person is told when Ruken cannot reach their repository, whatever the reason. */
 export const NOT_VISIBLE = "Ruken can't see that game on GitHub. Choose it on GitHub, then try again.";
 const NO_BRANCH = "We couldn't find that branch on GitHub.";
+// With no branch typed there is no branch to blame: the repository (or its main branch) is gone since it was chosen.
+const NO_GAME = "We can't find that game on GitHub any more. Choose it on GitHub again.";
 const EMPTY_REPOSITORY = "Your game on GitHub is empty. Upload your game's files, then try again.";
 const GITHUB_BUSY = "GitHub isn't answering right now. Try again in a minute.";
 const NOT_A_KEY = "GITHUB_APP_PRIVATE_KEY is not a private key in PEM form.";
@@ -243,7 +245,9 @@ export function createGitHub(options: GitHubOptions): GitHub {
       const ref = branch === null ? "HEAD" : branch.split("/").map(encodeURIComponent).join("/");
       const path = `/repos/${repo}/commits/${ref}`;
       const response = await request(path, { token, accept: "application/vnd.github.sha" });
-      if (response.status === 404 || response.status === 422) throw new GameError("INVALID", NO_BRANCH);
+      if (response.status === 404 || response.status === 422) {
+        throw new GameError("INVALID", branch === null ? NO_GAME : NO_BRANCH);
+      }
       // GitHub answers 409 for a repository that holds no commit at all: the maker's to fix, so in words.
       if (response.status === 409) throw new GameError("FILES_REFUSED", EMPTY_REPOSITORY);
       // Busy, or limiting how often it is asked: nobody's mistake, so the maker is told to wait and keeps her choice.
