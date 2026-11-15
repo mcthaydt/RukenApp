@@ -280,8 +280,13 @@ test("the Maker agreement link has a line's room above it", async ({ page }) => 
     );
     return Math.max(...sections.map((child) => child.getBoundingClientRect().bottom));
   });
-  const link = await boxOf(page.getByRole("link", { name: "Maker agreement" }));
-  expect(link.y - above, "the link starts well under what is above it").toBeGreaterThanOrEqual(16);
+  // Its words, not its box: a link's 44px box reaches 14px above its line into the air round it, by design.
+  const wordsTop = await page.getByRole("link", { name: "Maker agreement" }).evaluate((link) => {
+    const range = document.createRange();
+    range.selectNodeContents(link);
+    return range.getBoundingClientRect().y;
+  });
+  expect(wordsTop - above, "the link's words start well under what is above them").toBeGreaterThanOrEqual(16);
 });
 
 // ---- L22: a refusal is read with the question it is about -----------------------------------------------------------------------

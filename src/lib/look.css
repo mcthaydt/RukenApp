@@ -1705,11 +1705,9 @@ a.foot {
   }
 }
 
-/* The agreement's link is a thing of its own, a line's room under whatever comes before it: the words, the button or the last game.
-   A flex row, so its 44px box starts at the line's top and not 14px above it, where a box on a line's baseline hangs. */
+/* The agreement's link is a thing of its own, a line's room under whatever comes before it: the words, the button or the last game. */
 .screen main.games > .note {
-  display: flex;
-  margin-top: 1.25rem;
+  margin-top: 1.5rem;
 }
 
 /* A game in Your games: one paper card that is one link, with its picture, its name, and where it stands. Until a
