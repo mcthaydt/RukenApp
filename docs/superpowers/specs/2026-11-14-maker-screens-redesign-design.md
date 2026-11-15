@@ -541,4 +541,4 @@ All of it works on an iPad, either way up (section 11).
 ### 13.3 Two decided here
 
 - **Beta testers by email** (audit 3.7). Call: the beta spec's "email or handle" stays, and every refusal reads the same, "We can't add that person. Only members can test games.", for an unknown email, a non-member and a blocked person alike, so it never tells a maker whether an account exists.
-- **Keyboard-only games on an iPad** (audit 3.8): question 35 to the Owner.
+- **Keyboard-only games on an iPad** (audit 3.8). Owner, 2026-11-15: "iPad with a keyboard", to "35. How do staff check a keyboard-only game from an iPad?", whose words were: "Staff clip a keyboard onto the iPad for those games. Ruken passes the keys to the game, so it works with no computer." On checking a computer-only game, one line above the game: "This game needs a keyboard. Connect one to your iPad."
