@@ -105,7 +105,7 @@ export async function layoutHasSettled(page: Page): Promise<void> {
     );
     await document.fonts.ready;
     await Promise.all(
-      [...document.querySelectorAll("video[src]")].map((video) =>
+      [...document.querySelectorAll<HTMLVideoElement>("video[src]")].map((video) =>
         video.readyState >= 1
           ? Promise.resolve()
           : new Promise<void>((done) => {
