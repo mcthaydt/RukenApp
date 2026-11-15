@@ -75,7 +75,7 @@ Checked live on 2026-11-15: open pull requests are #63 (this branch), #96 (the s
 1. **M**, this plan, on #63. Then its implementation audit, the screen review, and the Owner's "fine".
 2. **S**, Tasks 30 and 31, on a new branch from `main` once M is merged. The coordinator's brief named M, F, G; S sits between M and F because F's journeys get their live game through Task 30's Accept. Both tasks are amended at the end of this plan.
 3. **F**, Tasks 20 to 23, as the slice 2 plan has them.
-4. **G**, Task 24, on the real site. It needs the games domain (the Owner's, due Wednesday 18 November), the Ruken GitHub App (G2) and the gate's route (G3).
+4. **G**, Task 24, cut down. The Owner moved the real domain to launch (relayed by the coordinator, 2026-11-15, from the Owner's decision card), so slice 2 keeps only the GitHub App hookup (G2): a maker connects GitHub and sends a game on the test site, with the real GitHub. Nothing in slice 2 waits for a domain or a date. The games domain and the gate's route (G3), and with them playing a game at its real address, move to launch. The test site is a test site: no plan, tracker or message calls this step live.
 5. The slice 2 implementation audit, then its fixes.
 
 **Pull request #63 is kept.** The spec says the redesign "is built on branch `slice-2/submit` and lands as part of pull request #63", and the Owner's hold is on that pull request. Its service, tables and tests carry over, so closing it would only make a second branch with the same history. It is larger than one sitting's review (CLAUDE.md, Pace); the implementation audit reads it task by task, each a red commit and a green one.
