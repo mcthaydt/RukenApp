@@ -917,7 +917,6 @@ export function createGamesService(deps: GamesServiceDeps) {
 
   return {
     saveClip,
-    createGame,
     startGame,
     saveAnswer,
     throwAway,
