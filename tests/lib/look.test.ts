@@ -300,6 +300,17 @@ describe("screens wear the look and nothing of their own", () => {
     "step",
     "game",
     "field",
+    // The maker's screens (spec 4): the felt is the window, and paper is what a person touches.
+    "screen",
+    "track",
+    "topbar",
+    "count",
+    "answer",
+    "picks",
+    "pick",
+    "acts",
+    "key",
+    "foot",
   ];
   const ROUTES = "src/routes";
 
@@ -370,5 +381,45 @@ describe("a game's clips and its frame", () => {
     // An empty rule would pass that check, so each must exist.
     expect(ruleOf("clip")).not.toBe("");
     expect(ruleOf("frame")).not.toBe("");
+  });
+});
+
+// The maker's screens (spec 4): the felt is the whole window and asks one question; paper is only what a person
+// touches. They add classes to the look, and no colour, shape or motion of their own to a screen.
+describe("the maker's screens", () => {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const MAKER_CLASSES = [
+    "screen",
+    "track",
+    "topbar",
+    "count",
+    "answer",
+    "picks",
+    "pick",
+    "acts",
+    "key",
+    "foot",
+  ];
+
+  it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {
+    expect(withoutComments).toMatch(new RegExp(`\\.${name}(?![\\w-])`));
+  });
+
+  // Owner, 2026-11-15: no new colour. The ten tokens in :root are the only place a colour is written.
+  it("writes no colour outside the tokens", () => {
+    const outsideRoot = withoutComments.replace(/:root\s*\{[^}]*\}/, "");
+    expect(outsideRoot).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(|hsl\(/i);
+  });
+
+  // Owner, 2026-11-15: "we don't do super rounded anything here". The only round thing is a person's photo.
+  it("has no pill or circle shape", () => {
+    expect(withoutComments).not.toMatch(/border-radius:\s*(999|9999|50%|100%)/);
+  });
+
+  // Spec 4.6: with reduced motion nothing moves, so the next question is simply there.
+  it("stops every animation on a screen under reduced motion", () => {
+    // The text from the start of each reduced-motion block on, which holds the rule that stops a screen.
+    const reduced = withoutComments.split("@media (prefers-reduced-motion: reduce)").slice(1).join("");
+    expect(reduced).toMatch(/\.screen[^{]*\{[^}]*animation:\s*none/);
   });
 });

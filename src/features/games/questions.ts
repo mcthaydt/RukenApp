@@ -94,3 +94,19 @@ export function questionOf(part: GamePart): QuestionId | ChangeOnlyId {
   if (found === undefined) throw new Error(`no question fixes the part ${part}`);
   return found;
 }
+
+/** The rows of a game that tell which questions it has been answered: what the maker's page already holds. */
+export interface AnswerSource {
+  oneLine: string | null;
+  playsOn: GamePlaysOn | null;
+  ageRating: AgeRating | null;
+  contentMarks: ContentMark[];
+  pullProblem: string | null;
+  newestPull: object | null;
+  clips: { upright: object | null; wide: object | null };
+}
+
+/** What a game has been answered so far, read from its rows. */
+export function answersOf(game: AnswerSource): Answers {
+  throw new Error(`not built yet: answersOf ${JSON.stringify(game)}`);
+}

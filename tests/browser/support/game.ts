@@ -1,39 +1,107 @@
 import { writeFile } from "node:fs/promises";
 import { expect, type Locator, type Page } from "@playwright/test";
-import { signUp } from "./account.ts";
+import { pageHasSettled, signUp } from "./account.ts";
 
-// The steps every maker journey shares: a maker with a game, and its videos. GitHub is the stand-in on this machine
-// (support/fake-github-server.ts), which lists `ruken-test/tiny-game` and `ruken-test/broken-game` for the person.
+// The steps every maker journey shares: a maker with a game, the answers a screen asks for, and the videos. GitHub is
+// the stand-in on this machine (support/fake-github-server.ts), which lists `ruken-test/tiny-game` and
+// `ruken-test/broken-game` for the person.
 
 /** The stand-in's game that pulls cleanly, and the one with no index.html that the pull refuses. */
 export const TINY_GAME = "ruken-test/tiny-game";
 export const BROKEN_GAME = "ruken-test/broken-game";
 
-/** A name no other journey has used, so its page address is its own. */
+/**
+ * A name no other journey has used, so its page address is its own. A name makes the same address nine times at most
+ * (`-2` to `-9`) and the nine projects share one database, so a journey that saves a game never types a plain name.
+ */
 export const freshName = (stem = "Tiny game") => `${stem} ${crypto.randomUUID().slice(0, 8)}`;
 
-/** Connects GitHub through the stand-in, which sends the maker to the new-game form. */
-export async function connectGitHub(page: Page): Promise<void> {
-  await page.goto("/make/github");
-  await expect(page).toHaveURL("/make/new");
+/** The one blue button of a question: "Next" the first time through, "Save" when an answer is being changed. */
+export const nextButton = (page: Page): Locator => page.getByRole("button", { name: /^(Next|Save)$/ });
+
+/** The heading's own words are the box's label, so a journey finds the box by the question it answers. */
+const questionBox = (page: Page, question: string): Locator => page.getByLabel(question);
+
+/** Types the game's name into question 1 and presses Next. Returns the name. */
+export async function answerName(page: Page, name: string = freshName()): Promise<string> {
+  await questionBox(page, "What's your game called?").fill(name);
+  await nextButton(page).click();
+  return name;
 }
 
-/** Fills the new-game form for a repository and sends it, then waits for the game's page. Returns its address's end. */
-export async function makeGame(page: Page, repository = TINY_GAME): Promise<string> {
-  await page.getByLabel("Name").fill(freshName(repository === TINY_GAME ? "Tiny game" : "Broken game"));
-  await page.getByLabel("One line about your game").fill("A tiny game about tapping.");
-  await page.getByLabel("Game files").selectOption(repository);
-  await page.getByRole("button", { name: "Save and add videos" }).click();
-  // A game's address has a hyphen in it; `/make/new` and `/make/github` do not.
-  await expect(page).toHaveURL(/\/make\/[a-z0-9]+(-[a-z0-9]+)+$/);
-  return new URL(page.url()).pathname.split("/").pop() ?? "";
+/** Types the one line about the game and presses Next. The heading holds the game's name, so any name is found. */
+export async function answerLine(page: Page, line = "Climb. Fall. Climb again."): Promise<void> {
+  await page.getByRole("textbox").fill(line);
+  await nextButton(page).click();
 }
 
-/** A new maker with a game made from `repository`: signs up, connects GitHub, fills the form. Returns the page's slug. */
-export async function startGame(page: Page, repository = TINY_GAME): Promise<string> {
+/** Chooses where the game plays and presses Next. */
+export async function answerPlaysOn(page: Page, where: "computers" | "both"): Promise<void> {
+  await page.getByLabel(where === "both" ? "Phones and computers" : "Computers only").check();
+  await nextButton(page).click();
+}
+
+/** Chooses who the game is for ("3+", "7+", "12+", "16+" or "18+") and presses Next. */
+export async function answerAge(page: Page, rating: "3+" | "7+" | "12+" | "16+" | "18+"): Promise<void> {
+  await page.getByRole("radio", { name: new RegExp(`^${rating.replace("+", "\\+")}`) }).check();
+  await nextButton(page).click();
+}
+
+/** The part of a game's address that follows `/make/`: its slug, read from the address the browser is on. */
+export function slugOfPage(page: Page): string {
+  return new URL(page.url()).pathname.split("/")[2] ?? "";
+}
+
+/** Makes a game as the signed-in maker: question 1 answered, the browser on question 2. */
+export async function addDraft(page: Page): Promise<{ slug: string; name: string }> {
+  await page.goto("/make/new");
+  const name = await answerName(page);
+  await expect(page).toHaveURL(/\/make\/[a-z0-9-]+\/line$/);
+  await pageHasSettled(page);
+  return { slug: slugOfPage(page), name };
+}
+
+/** A new maker with a game: signs up, then answers question 1. */
+export async function startDraft(page: Page): Promise<{ slug: string; name: string }> {
   await signUp(page);
-  await connectGitHub(page);
-  return makeGame(page, repository);
+  return addDraft(page);
+}
+
+/**
+ * Every address a maker's game has, for the journey that proves another maker is told nothing. `form` is a valid
+ * answer to post there, so a refusal can only be the game not being theirs.
+ */
+export function MAKER_ADDRESSES(slug: string): { path: string; form?: Record<string, string> }[] {
+  return [
+    { path: `/make/${slug}` },
+    { path: `/make/${slug}/name`, form: { name: "Somebody else's game" } },
+    { path: `/make/${slug}/line`, form: { oneLine: "Somebody else's line." } },
+    { path: `/make/${slug}/plays-on`, form: { playsOn: "computer_only" } },
+    { path: `/make/${slug}/age`, form: { ageRating: "age_12" } },
+  ];
+}
+
+/**
+ * Holds the answer to every request for an address until `release()` is called, and counts the requests. A press
+ * is seen as taken only while its answer is out, so a journey that looks at that state holds the answer back.
+ */
+export async function holdAnswersTo(page: Page, address: RegExp) {
+  let requests = 0;
+  let release = () => {};
+  const mayFinish = new Promise<void>((done) => {
+    release = done;
+  });
+  await page.route(address, async (route) => {
+    requests += 1;
+    await mayFinish;
+    await route.continue();
+  });
+  return {
+    release: () => {
+      release();
+    },
+    requestsSoFar: () => requests,
+  };
 }
 
 /** A file as Playwright takes it. */
@@ -76,28 +144,3 @@ export async function tooBigVideo(path: string): Promise<string> {
   await writeFile(path, buffer);
   return path;
 }
-
-/** One video's place on a game's page, by its title: "Upright video", "Wide video" or "Game files". */
-export function stepOf(page: Page, title: string): Locator {
-  return page.getByRole("region", { name: title });
-}
-
-/** The file field inside a video's place, which Ruken's own picker holds. */
-export function fileFieldOf(page: Page, title: string): Locator {
-  return stepOf(page, title).locator('input[type="file"]');
-}
-
-/** Chooses a file for one video. With script on, choosing is all it takes: the video is added at once. */
-export async function chooseVideo(page: Page, title: string, file: UploadFile | string): Promise<void> {
-  await fileFieldOf(page, title).setInputFiles(file);
-}
-
-/** Adds a good video for one place ("Upright video" or "Wide video") and waits until it says it is added. */
-export async function uploadVideo(page: Page, title: string): Promise<void> {
-  await chooseVideo(page, title, videoFile());
-  await expect(stepOf(page, title).getByText(/^Added/)).toBeVisible();
-}
-
-/** The press that sends a game for review: "Send for review", or "Send it again" for a game that was sent back. */
-export const sendButton = (page: Page): Locator =>
-  page.getByRole("button", { name: /^(Send for review|Send it again)$/ });

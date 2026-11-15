@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  answersOf,
   counterOf,
   firstUnanswered,
   isAnswered,
@@ -7,6 +8,7 @@ import {
   questionBefore,
   questionOf,
   questionsFor,
+  type AnswerSource,
   type Answers,
 } from "../../../src/features/games/questions.ts";
 import type { GamePart } from "../../../src/lib/server/db.ts";
@@ -101,5 +103,52 @@ describe("a question and the part it answers", () => {
   it("the websites are changed from Check and send only", () => {
     expect(partOf("websites")).toBe("other_websites");
     expect(questionOf("other_websites")).toBe("websites");
+  });
+});
+
+describe("what a game holds, read as answers", () => {
+  const bare: AnswerSource = {
+    oneLine: null,
+    playsOn: null,
+    ageRating: null,
+    contentMarks: [],
+    pullProblem: null,
+    newestPull: null,
+    clips: { upright: null, wide: null },
+  };
+
+  it("a game with nothing yet holds no answer", () => {
+    expect(answersOf(bare)).toEqual(none);
+  });
+
+  it("holds the line, the place it plays, the rating and the marks as they are", () => {
+    expect(
+      answersOf({
+        ...bare,
+        oneLine: "Climb.",
+        playsOn: "computer_only",
+        ageRating: "age_18",
+        contentMarks: ["gore"],
+      }),
+    ).toEqual({
+      ...none,
+      oneLine: "Climb.",
+      playsOn: "computer_only",
+      ageRating: "age_18",
+      contentMarks: ["gore"],
+    });
+  });
+
+  it("counts the files only once a pull passed, and not when the last pull was refused", () => {
+    const pulled = { id: "a-pull" };
+    expect(answersOf({ ...bare, newestPull: pulled }).hasFiles).toBe(true);
+    expect(answersOf({ ...bare, newestPull: pulled, pullProblem: "No index.html." }).hasFiles).toBe(false);
+    expect(answersOf({ ...bare, pullProblem: "No index.html." }).hasFiles).toBe(false);
+  });
+
+  it("counts each video once it was added", () => {
+    const answers = answersOf({ ...bare, clips: { upright: { key: "x" }, wide: null } });
+    expect(answers.upright).toBe(true);
+    expect(answers.wide).toBe(false);
   });
 });

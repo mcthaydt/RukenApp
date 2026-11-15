@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { sealState } from "../../../src/features/games/github-connect.ts";
 import { ARRIVAL_COOKIE, sealArrival } from "../../../src/features/membership/arrival.ts";
+import type { AgeRating } from "../../../src/lib/server/db.ts";
 import { PrismaClient, type MembershipStart } from "../../support/generated/prisma/client.ts";
 
 // The one place a journey reads the app's database. No screen shows who brought a member, so the journeys that check
@@ -126,29 +127,77 @@ export async function forgetTheirRepositories(email: string): Promise<void> {
   await db().gitHubRepository.deleteMany({ where: { connection: { user: { email } } } });
 }
 
+/** The commit a stand-in pull is made from: any 40 hex characters. */
+const STAND_IN_COMMIT = "a".repeat(40);
+
 /**
- * Puts a game where staff's decision would: sent back with a reason, or live on its newest files. There is no staff
- * screen on this branch, so a journey cannot get there by clicking; the row is set as `sendBack` and `accept` set it.
+ * Writes answers into a game straight into the database, so a journey about one screen does not have to walk all the
+ * ones before it. The name is the game's own, and `line` and `playsOn` are written unless set to false. `files` writes
+ * a repository and a pull that passed, `videos` the two clips, and `age` a rating (an 18+ game has no marks yet).
+ */
+export async function fillAnswers(
+  slug: string,
+  answers: { line?: boolean; playsOn?: boolean; files?: boolean; videos?: boolean; age?: AgeRating } = {},
+): Promise<void> {
+  const game = await db().game.findUniqueOrThrow({ where: { slug }, select: { id: true, publicId: true } });
+  await db().game.update({
+    where: { id: game.id },
+    data: {
+      ...(answers.line === false ? {} : { oneLine: "A tiny game about tapping." }),
+      ...(answers.playsOn === false ? {} : { playsOn: "phone_and_computer" as const }),
+      ...(answers.age === undefined ? {} : { ageRating: answers.age, contentMarks: [] }),
+      ...(answers.files === true ? { repoFullName: "ruken-test/tiny-game", pullProblem: null } : {}),
+    },
+  });
+  if (answers.files === true) {
+    await db().gamePull.create({
+      data: {
+        id: crypto.randomUUID(),
+        gameId: game.id,
+        commitSha: STAND_IN_COMMIT,
+        fileCount: 3,
+        totalBytes: 1000n,
+        connectHosts: [],
+        pulledAt: new Date(),
+      },
+    });
+  }
+  if (answers.videos === true) {
+    for (const shape of ["upright", "wide"] as const) {
+      await db().gameClip.create({
+        data: {
+          gameId: game.id,
+          shape,
+          key: `clips/${game.publicId}/${shape}-${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}.mp4`,
+          contentType: "video/mp4",
+          bytes: 1000,
+        },
+      });
+    }
+  }
+}
+
+/**
+ * Puts a game where staff's decision would leave it: waiting for a yes, sent back, or live on its newest files. There
+ * is no staff screen on this branch, so a journey cannot get there by clicking. A game past draft holds every answer, so
+ * every answer, the files and both videos are written first.
  */
 export async function putGameWhereStaffLeaveIt(
   slug: string,
-  decision: { sentBack: string } | "live",
+  decision: { state: "waiting" | "sent_back" | "live" },
 ): Promise<void> {
+  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
   const game = await db().game.findUniqueOrThrow({
     where: { slug },
     select: { id: true, pulls: { orderBy: { createdAt: "desc" }, take: 1, select: { id: true } } },
   });
   const newest = game.pulls[0];
-  if (decision === "live") {
-    if (newest === undefined) throw new Error(`${slug} has no pull to make live`);
-    await db().game.update({
-      where: { id: game.id },
-      data: { state: "live", stateReason: null, pendingPullId: null, livePullId: newest.id },
-    });
-    return;
-  }
+  if (newest === undefined) throw new Error(`${slug} has no pull`);
   await db().game.update({
     where: { id: game.id },
-    data: { state: "sent_back", stateReason: decision.sentBack, pendingPullId: null },
+    data:
+      decision.state === "live"
+        ? { state: "live", stateReason: null, pendingPullId: null, livePullId: newest.id }
+        : { state: decision.state },
   });
 }
