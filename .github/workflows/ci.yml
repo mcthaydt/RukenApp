@@ -69,10 +69,18 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:pg
 
-  browser:
-    name: browser
+  # The journeys are split across three runners, side by side, each with its own database and its own site, so a run
+  # stays short as the journeys grow. Owner, 2026-11-15: "Do A and B", to raising the browser job's limit from 25 to
+  # 45 minutes and to splitting the job in parallel pieces. Playwright deals the test files out among the pieces.
+  browser-shard:
+    name: browser shard ${{ matrix.shard }} of 3
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
+    strategy:
+      # A failing piece must not hide the others: every piece's result is wanted.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     services:
       postgres:
         image: postgres:16
@@ -99,13 +107,27 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium webkit
-      - run: pnpm test:browser
+      - run: pnpm test:browser --shard=${{ matrix.shard }}/3
       # The report also carries the look's screenshots, which a person looks at (Owner, 2026-11-13: "Screenshots
       # on the board"), so it is kept when every journey passes too.
       - name: Keep the browser report, with the look's screenshots
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 7
+
+  # The one check the branch protection and the auto-merge workflow know by the name `browser`: it passes only when
+  # every piece above passed. A piece that was cancelled or skipped is not a pass.
+  browser:
+    name: browser
+    needs: browser-shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every piece of the browser journeys passed
+        env:
+          PIECES_RESULT: ${{ needs.browser-shard.result }}
+        run: test "$PIECES_RESULT" = "success"
