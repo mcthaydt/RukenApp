@@ -107,7 +107,7 @@ export async function layoutHasSettled(page: Page): Promise<void> {
     await Promise.all(
       [...document.querySelectorAll("video[src]")].map((video) =>
         video.readyState >= 1
-          ? undefined
+          ? Promise.resolve()
           : new Promise<void>((done) => {
               video.addEventListener("loadedmetadata", () => {
                 done();
