@@ -451,6 +451,8 @@ Owner, 2026-11-15, asked "When should we add the admin view for the maker?" and 
 
 **After launch.** Owner, 2026-11-15: "We can move 18+ for when we validate and prove this isn't an app MEANT for that for negotiation leverage", and "I'm fine with moving some things to post launch". Everything in section 12 stays written and decided, and none of it is in the launch build: the 18+ rating, the Sex or nudity, Gore and Drugs question, the marks and their reasons on staff's check, the per-store table, and the Store version (its branch, its room, its queue kind and its check). At launch the age question has three choices, All Ages, 13+ and 16+, and a game that is only for adults is sent back ("It's only for adults. Ruken doesn't take those yet."). No gambling with real money (12.0) holds at launch, at every rating.
 
+**Amended: gore and drugs come at launch, rated 18+.** Owner, 2026-11-15: "Gore and drugs is 18+", then "Yes, at launch, rated 18+". A game with gore or drugs is accepted at launch and rated 18+ on Ruken (never 17+), and each store app shows it up to that store's own limit. Sex and nudity stay after launch, with the rest of this section that is only about them (the Settings switch for sex or nudity, the censored Store version, the label-not-block image check). So at launch the age question has four choices, All Ages, 13+, 16+ and 18+, and the 18+ follow-up offers "Gore", "Drugs" and "None of these"; "Sex or nudity" joins it after launch. A game with sex or nudity is sent back at launch ("Ruken doesn't take games with sex or nudity yet.").
+
 Owner, 2026-11-15, to "32. What can an 18+ game have that staff still accept?": "Sex and nudity too, but only for 18+ accounts in browser and desktop downloads, they shouldn't appear unless the user opts in settings, and they have a content warning beforehand, absolutely no pornography; same with gore".
 
 This amends the main design's 5.5 ("Adult games are not accepted") and the apps spec's age ratings. What it means on the screens of this file:
@@ -474,7 +476,7 @@ Owner, 2026-11-15, on Flathub and the Snap Store: "Stores (18+ content hidden)".
 
 Owner, 2026-11-15: "Do the maximum the apps will allow, and give devs the option to create censored uploads for our censored platforms". This replaces "Stores (18+ content hidden)" above.
 
-- **Each store app shows the most that store's rules allow.** Violence, gore and drugs at the store's 17+ or 18+ rating; sex and nudity only where a store's rules allow them. Which store allows what is read from each store's own rules before the apps' plan and kept in one table there; until a store is confirmed, sex and nudity are hidden in its app. The website and Ruken's own downloads show everything up to the bar (12.0), to adults who turned it on.
+- **Each store app shows the most that store's rules allow.** Violence, gore and drugs rated 18+ on Ruken, up to the store's own limit; sex and nudity only where a store's rules allow them. Which store allows what is read from each store's own rules before the apps' plan and kept in one table there; until a store is confirmed, sex and nudity are hidden in its app. The website and Ruken's own downloads show everything up to the bar (12.0), to adults who turned it on.
 - **A maker can give a censored version** for the store apps. Ruken loads it in a store app whose rules would hide the full game, and the full one everywhere else. A game marked for content a store hides, with no censored version, is hidden in that store's app, as before.
 - **A second branch.** Owner, 2026-11-15: "A second branch", to "34. How does a maker give us the censored version of their game?", whose words were: "The maker names a branch (like their beta branch) for the store version. It's pulled and checked with the full one. Store apps only ever load its files." Call: once a store version is accepted, each new release pull asks for the store version too ("Send both for review"), so the two never drift apart for long; until the new store version is accepted, store apps keep the last accepted one.
 - **Extras** are the same extras in both versions: one id, one purchase, owned in both (sales 5.4). Each version has its own `ruken-extras/<id>/` folders; staff check an extra unlocks in both.
@@ -570,7 +572,7 @@ Two reviews read the board on 2026-11-15: a plain-words review (`/mnt/project-fi
 
 - "Pull for testing", "Pull for review" and "Fix it and pull again" are now "Send the beta for review", "Send it for review" and "Fix it and send it again".
 - A live game's rooms end with red "Take Floor Fifty off Ruken" (M1), and its main button is "Send a new version".
-- The 18+ hint is one short line that changes with the picks (section 12). Gore and drugs show in store apps at their 17+ or 18+; only sex and nudity can hide a game there (12.0, 12.0a).
+- The 18+ hint is one short line that changes with the picks (section 12). Gore and drugs come at launch, rated 18+ on Ruken, up to each store's limit; only sex and nudity can hide a game there (12.0, 12.0a).
 - Asking about a line shows the answer-by date, not "two working days" (M10).
 - "Your share: 40% of what Floor Fifty earns". Your money reads "From members playing it", "Floor Fifty total" and "Past months".
 - Names inside a sentence are in quotes: Keep "The top" hidden…; Add an icon for "Halfway"; For "Best floor", which wins?
