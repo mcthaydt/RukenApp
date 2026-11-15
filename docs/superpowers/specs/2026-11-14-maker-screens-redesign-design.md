@@ -451,7 +451,13 @@ Owner, 2026-11-15, asked "When should we add the admin view for the maker?" and 
 
 **After launch.** Owner, 2026-11-15: "We can move 18+ for when we validate and prove this isn't an app MEANT for that for negotiation leverage", and "I'm fine with moving some things to post launch". Everything in section 12 stays written and decided, and none of it is in the launch build: the 18+ rating, the Sex or nudity, Gore and Drugs question, the marks and their reasons on staff's check, the per-store table, and the Store version (its branch, its room, its queue kind and its check). At launch the age question has three choices, All Ages, 13+ and 16+, and a game that is only for adults is sent back ("It's only for adults. Ruken doesn't take those yet."). No gambling with real money (12.0) holds at launch, at every rating.
 
-**Amended: gore and drugs come at launch, rated 18+.** Owner, 2026-11-15: "Gore and drugs is 18+", then "Yes, at launch, rated 18+". A game with gore or drugs is accepted at launch and rated 18+ on Ruken (never 17+), and each store app shows it up to that store's own limit. Sex and nudity stay after launch, with the rest of this section that is only about them (the Settings switch for sex or nudity, the censored Store version, the label-not-block image check). So at launch the age question has four choices, All Ages, 13+, 16+ and 18+, and the 18+ follow-up offers "Gore", "Drugs" and "None of these"; "Sex or nudity" joins it after launch. A game with sex or nudity is sent back at launch ("Ruken doesn't take games with sex or nudity yet.").
+**Amended: everything the app stores allow is allowed at launch.** Owner, 2026-11-15: "Gore and drugs is 18+", "Yes, at launch, rated 18+", then "Everything the app stores allow is allowed at launch". This replaces "After launch" above for anything a launch store allows. At launch:
+
+- The age question has four choices, All Ages, 13+, 16+ and 18+, and the 18+ follow-up offers all four of its choices.
+- Sex, nudity, gore and drugs are allowed up to what the launch app stores (App Store, Google Play) allow at their highest rating, and Ruken rates such a game 18+ (never 17+). Each store app shows it up to that store's own limit; a game past one store's limit is hidden in that store's app.
+- A game is sent back only for content no launch store allows ("Ruken doesn't take games like this yet.").
+- What waits until after launch is only what goes past the stores' limits: the browser and own-download-only content up to the Cyberpunk 2077 bar, with its Settings switch and content warning, and the censored Store version.
+- Which store allows what is read from each store's own rules before the apps' plan (12.0a).
 
 Owner, 2026-11-15, to "32. What can an 18+ game have that staff still accept?": "Sex and nudity too, but only for 18+ accounts in browser and desktop downloads, they shouldn't appear unless the user opts in settings, and they have a content warning beforehand, absolutely no pornography; same with gore".
 
@@ -572,7 +578,7 @@ Two reviews read the board on 2026-11-15: a plain-words review (`/mnt/project-fi
 
 - "Pull for testing", "Pull for review" and "Fix it and pull again" are now "Send the beta for review", "Send it for review" and "Fix it and send it again".
 - A live game's rooms end with red "Take Floor Fifty off Ruken" (M1), and its main button is "Send a new version".
-- The 18+ hint is one short line that changes with the picks (section 12). Gore and drugs come at launch, rated 18+ on Ruken, up to each store's limit; only sex and nudity can hide a game there (12.0, 12.0a).
+- The 18+ hint is one short line (section 12). Anything the app stores allow comes at launch, rated 18+ on Ruken, up to each store's limit; a game past one store's limit is hidden in that store's app (12.0, 12.0a).
 - Asking about a line shows the answer-by date, not "two working days" (M10).
 - "Your share: 40% of what Floor Fifty earns". Your money reads "From members playing it", "Floor Fifty total" and "Past months".
 - Names inside a sentence are in quotes: Keep "The top" hidden…; Add an icon for "Halfway"; For "Best floor", which wins?
