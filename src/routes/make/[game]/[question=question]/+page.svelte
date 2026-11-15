@@ -22,6 +22,14 @@
     preview.follow(data.question);
   });
 
+  // The age question's counter: what is saved until a rating is picked, then what that rating makes of the count (an 18+ game
+  // is asked its marks too). A page without script keeps the saved count.
+  const ageCounter = $derived.by(() => {
+    const picked = preview.rating;
+    if (data.ageCounters === null || picked === null) return data.counter;
+    return picked.startsWith("18+") ? data.ageCounters.eighteen : data.ageCounters.younger;
+  });
+
   const PLAYS_ON = [
     {
       value: "phone_and_computer",
@@ -135,7 +143,7 @@
   {:else if data.question === "age"}
     <QuestionScreen
       heading={`Who is ${data.name} for?`}
-      counter={data.counter}
+      counter={ageCounter}
       back={data.back}
       throwAway={data.throwAway}
     >

@@ -20,7 +20,6 @@
   import GameLaidOut from "./GameLaidOut.svelte";
 
   let {
-    name,
     line,
     send,
     updateWaiting,
@@ -30,7 +29,6 @@
     game,
     problem,
   }: {
-    name: string;
     line: string;
     /** Which send is offered: a new version from GitHub, the held copy again, or none until what was sent back is mended. */
     send: "new_version" | "again" | "none";
@@ -132,7 +130,6 @@
 
 <main class="halves live">
   <div>
-    <p class="count">{name}</p>
     <h1>Live</h1>
     <p>{line}</p>
     {#if problem !== undefined}

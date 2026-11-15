@@ -523,8 +523,9 @@ test("a waiting game says so, and its one blue button goes back to Your games", 
   await page.goto(`/make/${slug}`);
 
   await expect(page.getByRole("heading", { name: "Waiting for review" })).toBeVisible();
-  // The name is said above the heading, and again as the title of the game laid out beside it.
-  await expect(page.locator("p.count")).toHaveText(name);
+  // The name is said once, as the title of the game laid out (the Owner, 2026-11-15, "2.b"): not above the heading too.
+  await expect(page.locator("p.count")).toHaveCount(0);
+  await expect(page.locator(".laid .title")).toHaveText(name);
   await expect(page.getByText("We're looking at it. Come back here to see when it's live.")).toBeVisible();
   const back = page.getByRole("link", { name: "Back to your games" });
   await expect(back).toHaveCSS("background-color", rgb(token("--pay")));

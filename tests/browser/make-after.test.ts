@@ -257,7 +257,8 @@ test("a live game's name changes and its address stays", async ({ page }, testIn
   await page.getByRole("button", { name: "Save" }).click();
 
   await expect(page).toHaveURL(`/make/${slug}`);
-  await expect(page.locator("p.count")).toHaveText(renamed);
+  // Live says the name once, as the title of the game laid out.
+  await expect(page.locator(".laid .title")).toHaveText(renamed);
 });
 
 test("a live game offers no Change on its videos or its files, and posting one by hand is refused", async ({

@@ -397,7 +397,7 @@ test("on a wide window the screen after taking a game off starts at the top left
   const waiting = await gameWhere(page, { state: "waiting" });
   await page.goto(`/make/${waiting.slug}`);
   await wordsHaveSettled(page);
-  const whereWaitingStarts = await boxOf(page.locator("main .count").first());
+  const whereWaitingStarts = await boxOf(page.locator("main :is(.count, h1)").first());
 
   // The same maker's second game: signing up again while signed in would find no sign-up form.
   const live = await addDraft(page);
@@ -408,7 +408,7 @@ test("on a wide window the screen after taking a game off starts at the top left
   await page.getByRole("button", { name: "Take it off Ruken" }).click();
   await expect(page).toHaveURL(`/make/${live.slug}`);
   await wordsHaveSettled(page);
-  const whereThisStarts = await boxOf(page.locator("main .count").first());
+  const whereThisStarts = await boxOf(page.locator("main :is(.count, h1)").first());
 
   expect(Math.abs(whereThisStarts.x - whereWaitingStarts.x), "left").toBeLessThanOrEqual(1);
   // Under the bar, at the top: the screen's own padding is 32px under the bar (about 70px tall), nowhere near the middle.
@@ -597,7 +597,6 @@ async function expectVideoQuestionAboveTheBar(
 
 for (const [name, viewport] of [
   ["an iPhone SE held upright", IPHONE_SE],
-  ["an iPhone SE held sideways", IPHONE_SE_SIDEWAYS],
   ["a large iPhone held upright", LARGE_IPHONE],
 ] as const) {
   test.describe(`on ${name}, a video question`, () => {
@@ -619,6 +618,43 @@ for (const [name, viewport] of [
     });
   });
 }
+
+// "Shorter video frames on small phones, so more fits on the screen" (the Owner, 2026-11-15, "5.a"). A short phone held upright
+// has its frame no taller than half the window; held sideways the frame is beside the question and is whole above the bar.
+test.describe("on an iPhone SE held upright", () => {
+  test.use({ viewport: IPHONE_SE });
+
+  test("the upright video's frame is no taller than half the window", async ({ page }) => {
+    onlyInPhone();
+    await startAtVideo(page, "upright");
+    await wordsHaveSettled(page);
+    const frame = await boxOf(page.locator('[data-frame="upright"]'));
+    expect(frame.height).toBeLessThanOrEqual(IPHONE_SE.height / 2);
+  });
+});
+
+/** The upright video question of a phone held sideways: its frame is whole above the bar, beside the question. */
+async function expectFrameWholeAboveTheBar(page: Page): Promise<void> {
+  await startAtVideo(page, "upright");
+  await wordsHaveSettled(page);
+  const bar = await boxOf(page.locator(".acts"));
+  const frame = await boxOf(page.locator('[data-frame="upright"]'));
+  expect(frame.y + frame.height, "the frame ends above the bar").toBeLessThanOrEqual(bar.y);
+}
+
+test.describe("on an iPhone SE held sideways", () => {
+  test.use({ viewport: IPHONE_SE_SIDEWAYS });
+
+  test("the upright video's frame is whole above the bar", async ({ page }) => {
+    onlyInPhone();
+    await expectFrameWholeAboveTheBar(page);
+  });
+});
+
+test("on a phone held sideways the upright video's frame is whole above the bar", async ({ page }) => {
+  test.skip(layoutOf(page) !== "phone-sideways", "a phone held sideways, in the projects that have one");
+  await expectFrameWholeAboveTheBar(page);
+});
 
 // ---- L13: Waiting and Live show the game's name once -------------------------------------------------------------------------------
 

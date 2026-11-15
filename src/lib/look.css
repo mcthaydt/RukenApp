@@ -630,10 +630,12 @@ form > * + button:not(.quiet) {
   }
 }
 
-/* A tablet held upright. */
+/* A tablet held upright: one column for every screen, the window less a gutter at each side. A question and the screens that lay
+   the game out (Check and send, Waiting, Live) start at one left edge and are as wide as each other (Owner, 2026-11-15, "3.b"):
+   two 300-tall videos need more than 640, so the questions take the wider column and not the other way round. */
 @media (orientation: portrait) {
   .screen {
-    --column: 640px;
+    --column: 100%;
   }
 }
 
@@ -1184,10 +1186,12 @@ label.vframe {
   }
 }
 
-/* A phone held sideways: the video's frame is beside the question, and a smaller one. */
+/* A phone held sideways: the video's frame is beside the question, and a smaller one. It is no taller than leaves it whole above
+   the bar (the window less the bar and the room above the frame), so on the shortest phone it gives way (Owner, 2026-11-15, "5.a":
+   shorter frames on small phones, so more fits on the screen). */
 @media (max-height: 449px) {
   .vframe[data-frame="upright"] {
-    --frame: 250px;
+    --frame: clamp(140px, calc(100dvh - 150px), 250px);
   }
 
   /* 240 wide, not 380: beside a 380-wide frame an iPhone SE held sideways left the heading about 125px, a word to a line. */
@@ -1265,6 +1269,11 @@ label.vframe {
   .screen main > form:has(> .vframe) {
     display: flex;
     flex-direction: column;
+  }
+
+  /* No more than half the window, so a short phone shows more of the question and its frame together (Owner, 2026-11-15, "5.a"). */
+  .vframe[data-frame="upright"] {
+    --frame: min(340px, 50dvh);
   }
 
   .screen main > form:has(> .vframe) > .vframe {
@@ -1366,14 +1375,6 @@ a.foot {
 @media (orientation: portrait), (max-width: 499px), (max-height: 449px) {
   .screen:has(.halves) {
     --column: 100%;
-  }
-}
-
-/* An upright tablet's questions are a column of 640, so the agreement starts at the same left edge. A screen that lays the
-   game out keeps the whole window: its two videos are 300 tall there, which needs more than 640. */
-@media (orientation: portrait) and (min-width: 500px) {
-  .screen:has(.halves):not(:has(.laid)) {
-    --column: 640px;
   }
 }
 

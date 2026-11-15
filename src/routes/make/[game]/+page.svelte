@@ -14,7 +14,6 @@
 
 {#if data.view === "waiting"}
   <WaitingScreen
-    name={data.name}
     game={data.game}
     changeAddress={data.changeAddress}
     filesProblem={data.filesProblem}
@@ -32,7 +31,6 @@
   />
 {:else if data.view === "live"}
   <LiveScreen
-    name={data.name}
     line={data.line}
     send={data.send}
     updateWaiting={data.updateWaiting}

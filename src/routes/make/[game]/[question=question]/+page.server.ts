@@ -172,6 +172,15 @@ export const load: PageServerLoad = async (event) => {
     // The address of a live game's page never changes, and the name's hint says so.
     addressStays: game.everLive,
     counter: firstTime && question !== "websites" ? counterOf(question, answers) : null,
+    // The age question's count follows the rating being picked: an 18+ game is asked one question more (its marks), so a maker
+    // who picks 18+ is told there are 8 at once, not after pressing Next.
+    ageCounters:
+      firstTime && question === "age"
+        ? {
+            eighteen: counterOf(question, { ...answers, ageRating: "age_18" }),
+            younger: counterOf(question, { ...answers, ageRating: "age_12" }),
+          }
+        : null,
     back: !firstTime ? `/make/${game.slug}` : before === null ? "/make" : `/make/${game.slug}/${before}`,
     // Only a draft and a game sent back can be thrown away; a waiting or live game has no such link.
     throwAway:

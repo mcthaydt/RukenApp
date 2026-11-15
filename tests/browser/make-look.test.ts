@@ -241,7 +241,13 @@ test("the upright frame is this tall for this window, and nothing scrolls sidewa
   await page.emulateMedia({ reducedMotion: "reduce" });
   const frame = page.locator('[data-frame="upright"]');
 
-  expect((await boxOf(frame)).height).toBe(UPRIGHT_HEIGHT[layoutOf(page)]);
+  // A phone held sideways has the frame the window leaves room for, up to 250 (the Owner, 2026-11-15, "5.a": shorter frames
+  // on small phones): the window less 150px, and never under 140.
+  const planned =
+    layoutOf(page) === "phone-sideways"
+      ? Math.min(250, Math.max(140, (page.viewportSize()?.height ?? 0) - 150))
+      : UPRIGHT_HEIGHT[layoutOf(page)];
+  expect((await boxOf(frame)).height).toBeCloseTo(planned, 0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
