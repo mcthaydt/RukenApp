@@ -1,6 +1,6 @@
 # The maker's screens, redesigned: one question at a time
 
-Date: 2026-11-14. Status: stopped by the Owner on 2026-11-14, to resume after the makers' sales spec. Nothing here is built.
+Date: 2026-11-14. Status: stopped by the Owner on 2026-11-14, to resume after the makers' sales spec; resumed on 2026-11-15 (Owner: "A", to "Resume the maker screens redesign now, adding all of that?"), with the new screens in section 10. Nothing here is built.
 
 ## Where it stopped
 
@@ -364,3 +364,37 @@ Answered: the agreement's date line, "A" (section 5). The delete button, "delete
 - Measured, first round: the two button contrasts and Blue on felt, from the colour values in 5.8.
 - The first board was clicked through in a browser, start to "Check it, then send", then a change on a live game and a draft thrown away, with no script errors and nothing sideways on a phone. It shows the phone and the whole computer window side by side.
 - Not run: no tests, no app. No app code changed.
+
+## 10. Resumed: the screens the sales and apps specs add
+
+Owner, 2026-11-15: "A", to "Resume the maker screens redesign now, adding all of that? A) Yes, update #96 with the new screens, then you review it." The specs this section draws its screens from, each approved by the Owner: `2026-11-14-makers-sales-design.md` (5.5 to 5.10), `2026-11-14-apps-and-player-features-design.md` (age ratings, reviews, blocking, Ruken hooks) and `2026-11-14-beta-builds-design.md` (the maker's side). What each screen does is theirs; this section says how it looks and reads. The sales plan's branches I, J and M wait for the Owner's "fine" on this.
+
+### 10.1 The screens
+
+| # | Screen | From | What is on it |
+|---|---|---|---|
+| 1 | Age rating, a question when sending a game | apps spec, "Age ratings" | "Who is Floor Fifty for?": four choices, All Ages, 13+, 16+, 18+, each with a plain line under it. Staff can change it; Sent back and Live show the rating staff set. |
+| 2 | The game's extras | sales 5.5 | Each extra with its picture, price and where it stands; "Add an extra". |
+| 3 | Add an extra | sales 5.5 | Kind, name, one line, picture, price from the fixed list, and a season pass's first and last day; then Check and send. |
+| 4 | One extra | sales 5.5 | Where it stands, the id to copy into the game, Change, Take off sale. |
+| 5 | Who shares the money | sales 5.6 | People by handle, a share beside each, "Shares must add up to 100%."; waiting for a yes. |
+| 6 | Saying yes or no | sales 5.6 | Seen by the invited person: the game, the share, yes (blue) or no (green). |
+| 7 | Money and statements | sales 5.7 | What a person is owed, from which games, each month's statement; also for a person in a split with no game. |
+| 8 | Beta | beta builds | The beta branch, its state, "Pull for testing", the testers. |
+| 9 | Achievements and scores | apps spec, "Ruken hooks" | The game's achievements (name, line, icon, hidden until earned) and stats (name, higher or lower wins). |
+| 10 | Players | apps spec, "Analytics" | Each player under an anonymous name with their events and device; country and age band only as totals of 10 or more. |
+| 11 | Reviews | apps spec, "Reviews" | "Mostly liked (84% of 212)" and the reviews; the maker can read and report, not delete or answer. |
+
+Blocking (apps spec, "Friends") has no screen of its own here: a blocked person added to a split or as a tester reads the same refusal as anyone who cannot be added ("We can't add that person."), so they are never told.
+
+### 10.2 Calls
+
+- **Adding an extra is one question per screen**, as a game's questions are, ending on its own Check and send. The sales plan's Task 24 says "one form"; the Owner's rule is "extended forms should be typeform-coded" (section 1's notes), and an extra has five or six answers. Its questions: what is it (two choices, "Something to keep" and "A season pass"), its name, its one line, its picture, its price, and for a season pass its first and last day.
+- **The price is a choice of cards**, the eleven prices of sales 5.5, never a box to type in. Each card shows what the maker gets from a sale at that price as well as the price.
+- **A season's days are picked on a calendar** drawn by Ruken, in Chicago days.
+- **A share is picked, not typed**: each person's share is a choice of whole percents.
+- **Take off sale** is red, then one short screen like "Throw Floor Fifty away?": green "Keep it on sale", red "Take it off sale".
+
+### 10.3 Pending
+
+- **Question 29: how a live game's screen leads to its parts.** A (recommended): a list of rooms, each a row with where it stands, opening its own screen; on a computer the list stays on the left and the room opens on the right. B: tabs along the top. C: one long page.
