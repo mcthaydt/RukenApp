@@ -143,7 +143,7 @@ Short screens stay short. The long form becomes one run of questions.
 | | Throw a draft away | Throw Floor Fifty away? | none | Keep it, green · Throw it away, red |
 | | Your games | Your games | Add a game | each game is one link |
 
-The table counts the game's questions as "of 6", as a maker's second game does. On a first game they are 5 to 10 of 10 (section 6).
+The table counts the game's questions as "of 6"; section 10.5 adds the age rating as the 7th (and the 18+ marks as the 8th for an 18+ game), so a second game is "of 7" and a first game "of 11". Section 10.5 wins where they differ.
 
 "Floor Fifty" stands for the name she typed: from question 2 on, the question uses it, so she sees her answer was kept.
 
@@ -228,8 +228,8 @@ Drawn at 852 × 393. Owner, 2026-11-14: "we have wayyyy too much empty space on 
 - **Check and send.** New. Every answer in one list, each with Change, which opens that one question (its button reads "Save") and comes straight back. She reaches it only with every answer in, so Send is not refused (stall 12). The rare question, "Does Floor Fifty use other websites?", lives here as a row that reads "None", so nobody else is asked it.
 - **Waiting.** Where it stands, today's line ("We're looking at it. Come back here to see when it's live."), one button. The files and videos move behind one link, "Change something", which opens Check and send (stall 13).
 - **Sent back.** "What to fix" and staff's words first, as today; under them the same list as Check and send; the button stays "Send it again".
-- **Live.** The Blue button is "See it on Ruken" (stall 14). "Send my newest version for review" becomes a green button with today's note. Taking a game off Ruken (main design 5.4) is not on this branch and is not designed here.
-- **Changing a name or a line** (the review's N1; Owner, 2026-11-14: "B", before launch). Before a game is live, Change on Check and send does it. On a live game, the Live screen lists the name, the line and where it plays, each with Change; Change opens that one question, its button reads "Save", and it comes straight back. Under the name box there: "Its address on Ruken stays the same, so links you've shared keep working." A game that was taken down cannot be changed.
+- **Live.** The Blue button is "See it on Ruken" (stall 14). "Send my newest version for review" becomes a green button with today's note. Taking a game off Ruken is section 13, M1 and M2.
+- **Changing a name or a line** (the review's N1; Owner, 2026-11-14: "B", before launch). Before a game is live, Change on Check and send does it. On a live game, the Live screen lists the name, the line and where it plays, each with Change; Change opens that one question, its button reads "Save", and it comes straight back. Under the name box there: "Its address on Ruken stays the same, so links you've shared keep working." A game staff took down can be fixed and sent again (section 13, M3).
 - **Throwing a draft away** (the review's N2; Owner, 2026-11-14: "B", before launch). A game that was never sent, or was sent back, has a small link, "Throw this game away", at the foot of every question and of Check and send, the size of "Delete my account" on Your account. It opens one short screen: "Throw Floor Fifty away?", "Its files and videos are deleted from Ruken. Nothing changes on GitHub.", "You can't undo this." Green is "Keep it"; red is "Throw it away" (section 1). Afterwards Your games says "Floor Fifty was thrown away." once. Call: a game that is waiting, live or taken down has no such link; a live game leaves by the maker's own take-down (main design 5.4). This screen and "Delete your account?" are the same screen with different words.
 - **Your games.** Each game is a paper card (section 4.2), with the new state words, "Not finished. Go on from question 3."
 - **Every other screen of Ruken's own.** Only the main button's colour changes (section 1).
@@ -453,8 +453,8 @@ Owner, 2026-11-15, to "32. What can an 18+ game have that staff still accept?": 
 
 This amends the main design's 5.5 ("Adult games are not accepted") and the apps spec's age ratings. What it means on the screens of this file:
 
-- **The maker says so.** After "Who is Floor Fifty for?", a game rated 18+ gets one more question: "Does Floor Fifty have any of these?" with four choices, any or none: "Sex or nudity", "Gore", "Drugs", "None of these" (12.0). Hint: "Players only see it if they turn it on. Pornography is never allowed." Call: a question only for 18+ games, so a first game is still 11 questions unless it is 18+.
-- **Staff check it.** On checking a game (section 11.1, screen 2) the age rating row also shows these two marks, and staff can add or remove either before Accept. "It's pornography." is a reason on the list (section 11.2), and a game sent back for it cannot be sent again as it is.
+- **The maker says so.** After "Who is Floor Fifty for?", a game rated 18+ gets one more question: "Does Floor Fifty have any of these?" with four choices, any or none: "Sex or nudity", "Gore", "Drugs", "None of these" (12.0). Hint, which changes with what is picked: with Sex or nudity or Gore, "Players only see it if they turn it on. Some store apps hide it; you can give us a censored version for them."; with Drugs only, "It shows to adults everywhere, with a warning."; always, "Pornography and gambling are never allowed." Call: a question only for 18+ games, so a first game is still 11 questions unless it is 18+.
+- **Staff check it.** On checking a game (section 11.1, screen 2) the age rating row also shows these three marks (Sex or nudity, Gore, Drugs), and staff can add or remove either before Accept. "It's pornography." is a reason on the list (section 11.2), and a game sent back for it cannot be sent again as it is.
 - **The maker sees it.** Check and send, Sent back and Live show the marks as a chip beside the rating ("18+ · Sex or nudity").
 - **Who sees such a game** (not a maker screen, for the apps' plan): only an account 18 or over, only on the website and Ruken's own downloads, only after turning it on in Settings, and only after a content warning before its clip or page. Everywhere else, and for everyone else, the game does not exist: the feed, search, maker pages, links, extras, leaderboards.
 
@@ -477,7 +477,7 @@ Owner, 2026-11-15: "Do the maximum the apps will allow, and give devs the option
 - **A second branch.** Owner, 2026-11-15: "A second branch", to "34. How does a maker give us the censored version of their game?", whose words were: "The maker names a branch (like their beta branch) for the store version. It's pulled and checked with the full one. Store apps only ever load its files." Call: once a store version is accepted, each new release pull asks for the store version too ("Pull both for review"), so the two never drift apart for long; until the new store version is accepted, store apps keep the last accepted one.
 - **Extras** are the same extras in both versions: one id, one purchase, owned in both (sales 5.4). Each version has its own `ruken-extras/<id>/` folders; staff check an extra unlocks in both.
 - **Staff check both versions** (section 11): on checking a game, a switch "Full version / Store version" above the game; the parts list gains the store version's files, and the content marks are checked on each.
-- **The maker's screens**: the age question's 18+ follow-up (12) gains a last line when a mark is picked: "Some store apps hide this. You can give us a censored version for them." with a link to the Store version room. A live game's rooms gain "Store version" (its branch, its state in the usual words, "Pull for review"), shown only for a game with a content mark.
+- **The maker's screens**: the age question's 18+ follow-up (12) gains a last line when a mark is picked: "Some store apps hide this. You can give us a censored version for them." with a link to the Store version room. A live game's rooms gain "Store version" (its branch, its state in the usual words, "Pull for review"), shown only for a game marked sex, nudity or gore (drugs alone do not hide a game from the store apps, 12.0).
 
 ### 12.1 What this touches beyond these screens
 
@@ -490,3 +490,55 @@ Flagged for the coordinator; none of these is decided here.
 - **Stripe.** Stripe's rules on what a business may sell limit sexual content. Whether a game with sex or nudity can be sold through Ruken, or whether its presence puts Ruken's Stripe account at risk, is read from Stripe's own rules before this is built.
 - **The law.** Some US states require a check of age, beyond a typed birth date, for sites with sexual material. That goes to the lawyer with pull request #104.
 - **The apps spec** gains the Settings switch, the content warning and the hiding rule above.
+
+## 13. What the coverage audit found, and the answers
+
+The audit (`docs/superpowers/audits/2026-11-15-maker-screens-coverage-audit.md`, 2026-11-15) found 20 maker pieces and 17 staff pieces missing, and 8 contradictions. Contradictions 1, 2, 3, 5 and 6 are fixed in the sections above; 4 is the board's summary, redone; 7 and 8 are below. Every piece here is drawn on the round 7 board. Words are Calls unless marked Owner.
+
+### 13.1 The maker
+
+- **M1 Take my game off Ruken.** A red button at the foot of a live game's rooms, "Take Floor Fifty off Ruken". Its screen: "Take Floor Fifty off Ruken?", "Players can't find it or play it.", "Anyone who bought an extra in the last 14 days gets their money back, from what Floor Fifty earns.", "If they bought it in the Apple app, we send them Apple's refund page." Green "Keep it on Ruken", red "Take it off".
+- **M2 Put it back.** The game's screen reads "Taken off Ruken" with Blue "Put it back on Ruken", which sends the newest version for review. Refunds already made stay made.
+- **M3 Taken down by staff.** "Taken down", staff's reason as a red card, Blue "Fix it and send it again", which opens Check and send. This follows slice 4's Task 11.
+- **M4 to M6 Your page.** "Your page" is a link on Your games, and opens a list of rooms like a game's: Address, Photo and banner, About you, Colours, Links, Social icons, What's on your page (the sections, each with Show or Hide and Move up), and "Your page's numbers" (page views and link taps, last 7 days). Each room is one question, as in the first run, with Save. Adding a link is two questions: its words, then its address; "A game somewhere else" is a choice on the first.
+- **M7 Your page was taken down.** On Your games, a red card: "Your page is hidden. <reason>" with Blue "I've fixed it. Look again."
+- **M8 Suspended.** Your games shows only: "Your account is paused.", staff's reason, "Your games are hidden and nothing new can be sent. Your money keeps going to you." and a link "Ask us about this". Nothing else can be pressed.
+- **M9 Connect your bank.** A screen of its own: "Connect your bank to be paid", "Stripe asks for your bank and who you are. It takes about five minutes.", Blue "Connect with Stripe". After: "Your bank is connected. Ending 6789." with "Change bank". Until then, Your money says "Your money is waiting for you. Connect your bank to be paid." in a Blue card. The same screen follows "Yes, share it".
+- **M10 A statement, and asking about a line.** Tapping a month on Your money opens it: each game's lines with their words (sales plan Task 32) and "Ask about this line" under each. Asking is one question: "What's wrong with this line?", with a box and Blue "Send". The answer shows under the line, and an email says it came.
+- **M11 The agreement changed.** Before a maker's next send, one screen: "Our maker agreement changed", "What's new: selling extras, and sharing money with others.", the whole text as a sheet, Blue "I agree". Until then they can look but not send.
+- **M12 Adding an extra, all of it.** Name ("What's it called?"), line ("Say what they get, in one line."), picture ("Add a picture of it", Blue "Choose picture"), then its own Check and send, the extra laid out as the buy card shows it, with Edit on each part and Blue "Send for review". Change: the same screens, and "A change is waiting for review. Players keep buying it as it is now." Remove a draft never on sale: red "Remove", one short screen, green "Keep it", red "Remove it".
+- **M13 A split waiting.** The list shows "Waiting for @drummer to say yes. Until then the shares stay as they were." and red "Cancel this change". Shares that don't add up read "These add up to 90%. Shares must add up to 100%." in red, and "Ask them" stays but is refused with that line. Someone who left: "(left Ruken)" and "Change the shares so their part goes to someone." Under the list: "Each person connects their own bank to be paid." On Your account, the invited person sees a line: "@snekprty asked you to share what Floor Fifty earns." with "Have a look".
+- **M14 How a game uses Ruken** (`/help/hooks`): one plain page with the lines to copy, in parts: add the script; extras (owned, buy, changes, protected folders); achievements; scores; events. Each part a sheet with Copy.
+- **M15 Events.** The Achievements and scores room gains "Events": each event's name ("level_3_done") and how many sent it in 7 days, and "Add an event", one question: "What's the event called?" with the hint "Your game sends this name. Others are ignored." Events need no staff check: they are never shown to players.
+- **M16 Adding an achievement and a score, all of it.** Name, line, icon ("Add a square picture", refused in words when the check flags it: "We can't use this picture. Pick another."), hidden. A score: "What's the score called?", then "Which wins?" (Higher wins, Lower wins).
+- **M17 One player.** Tapping a player opens their made-up name, device, and their events in order, newest first, with when.
+- **M18 Empty and early.** A room with nothing yet says what it is for and offers its Blue button ("No extras yet. An extra is something players can buy in your game."). Reviews under 10: "Not enough reviews yet. Reviews show once 10 players have left one." Before launch, Players shows wishlists only: "Ruken opens soon. Until then you see wishlists."
+- **M19 Store version sent back**, and pulling both. The Store version room shows a red card with its reason and Blue "Fix it and pull again". Once a store version exists, Live's green button reads "Send my newest versions for review" with the line "We'll pull your full and store versions together."
+- **M20 An extra a store can't sell.** Staff are told on the extra's check ("Not sold in Microsoft Store: no price high enough."); the maker is not, as the apps' slice map says.
+
+### 13.2 Staff
+
+All of it works on an iPad, either way up (section 11).
+
+- **S1 Checking an extra**: the game playing with "Play with it" and "Play without it"; for a change, the live version beside the new one; ticks and reasons, including "It's random." and "It doesn't unlock."; a store that can't sell it named in a line (M20).
+- **S2 Checking an achievement or a score**: its icon, name, line, hidden, each with a tick.
+- **S3 Reports**: each report and Blue "Look at it". Taking down or suspending is a short screen: what, a reason picked from a list, red "Take it down" or "Pause the account", green "Back".
+- **S4 Pictures held back**: each picture large, why it was held, green "Show it", red "Keep it hidden".
+- **S5 The money month**: the pool, Extras (Sold, Paid by buyers, Tax, Fees, To games, To Ruken, Refunded, Disputed), Apple holds, refunds waiting.
+- **S6 Find a purchase**: one box, "The number on their receipt", then the purchase and three reasons to pick ("Charged by mistake", "A parent undid it", "The law says so"), Blue "Ask for a refund", which waits for a second person.
+- **S7 What staff did**: a list, newest first: who, what, when.
+- **S8 Your staff code**: first sign-in shows a code picture to scan with an authenticator app and one box for the code it shows. Every money action asks for a fresh code.
+- **S9 Who is staff**: each person with their role (Checks games, Money, Everything); Blue "Add someone", red "Remove" on each; "There must always be two people who can do everything." and Remove is refused for the last two.
+- **S10 Switches**: each new screen with On or Off, and who changed it last.
+- **S11 Live games**: search by name; each game with red "Take it down" and "Free to play" On or Off.
+- **S12 Take an extra off sale**: on the extra's page for staff, red, with a reason the maker sees.
+- **S13 The payout run**: the month's payouts, their total, "Checked by" with two people's names; Blue "Pay them" only after the second person said yes, with a fresh code.
+- **S14 Makers' money questions**: each question with the line it is about, a box and Blue "Send answer".
+- **S15 Marks and the bar**: on checking a game, the three marks staff can add or remove; reasons "It's pornography.", "It goes past what we allow." and "Gambling isn't allowed on Ruken."
+- **S16 Store version**: a kind of its own in the queue, "Store version"; on its check the parts list is the store version's files and its marks.
+- **S17 A report on a score or a friend request**: staff can remove the score ("This score was taken off the leaderboard.") or suspend the account. A friend request is ended by blocking, which the player does; staff can suspend.
+
+### 13.3 Two decided here
+
+- **Beta testers by email** (audit 3.7). Call: the beta spec's "email or handle" stays, and every refusal reads the same, "We can't add that person. Only members can test games.", for an unknown email, a non-member and a blocked person alike, so it never tells a maker whether an account exists.
+- **Keyboard-only games on an iPad** (audit 3.8): question 35 to the Owner.
