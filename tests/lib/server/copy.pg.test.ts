@@ -13,7 +13,7 @@ function db(): PrismaClient {
   return database.prisma;
 }
 
-const run: RunSql = (sql, values) => db().$queryRawUnsafe(sql, ...values);
+const run: RunSql = (sql, values) => db().$queryRawUnsafe<Record<string, unknown>[]>(sql, ...values);
 
 async function stampRows(): Promise<number> {
   const rows = await db().$queryRaw<{ count: bigint }[]>`SELECT count(*) AS count FROM "CopyStamp"`;
