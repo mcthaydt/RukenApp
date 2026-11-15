@@ -191,8 +191,14 @@ describe("nextStepWords", () => {
     );
   });
 
-  it("has no next step for a game that is off Ruken", () => {
-    expect(nextStepWords({ ...base, state: "taken_off" })).toBeNull();
+  it("tells a maker whose game is off Ruken what changed and how to put it back", () => {
+    expect(nextStepWords({ ...base, state: "taken_off" })).toBe(
+      "Players can't find it or play it any more. Nothing changed on GitHub. To put it back, add it again as a new game. We'll look at it first.",
+    );
+  });
+
+  it("has no next step for a game that was taken down or thrown away", () => {
     expect(nextStepWords({ ...base, state: "taken_down", stateReason: "It broke a rule." })).toBeNull();
+    expect(nextStepWords({ ...base, state: "thrown_away" })).toBeNull();
   });
 });
