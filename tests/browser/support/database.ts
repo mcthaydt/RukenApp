@@ -145,11 +145,18 @@ const STAND_IN_COMMIT = "a".repeat(40);
 /**
  * Writes answers into a game straight into the database, so a journey about one screen does not have to walk all the
  * ones before it. The name is the game's own, and `line` and `playsOn` are written unless set to false. `files` writes
- * a repository and a pull that passed, `videos` the two clips, and `age` a rating (an 18+ game has no marks yet).
+ * a repository and a pull that passed, `videos` the two clips (or `"upright"`, the upright one alone, so the wide
+ * question is the next one), and `age` a rating (an 18+ game has no marks yet).
  */
 export async function fillAnswers(
   slug: string,
-  answers: { line?: boolean; playsOn?: boolean; files?: boolean; videos?: boolean; age?: AgeRating } = {},
+  answers: {
+    line?: boolean;
+    playsOn?: boolean;
+    files?: boolean;
+    videos?: boolean | "upright";
+    age?: AgeRating;
+  } = {},
 ): Promise<void> {
   const game = await db().game.findUniqueOrThrow({ where: { slug }, select: { id: true, publicId: true } });
   await db().game.update({
@@ -175,8 +182,8 @@ export async function fillAnswers(
       },
     });
   }
-  if (answers.videos === true) {
-    for (const shape of ["upright", "wide"] as const) {
+  if (answers.videos === true || answers.videos === "upright") {
+    for (const shape of answers.videos === true ? (["upright", "wide"] as const) : (["upright"] as const)) {
       const clip = {
         gameId: game.id,
         shape,

@@ -316,6 +316,10 @@ describe("screens wear the look and nothing of their own", () => {
     "say",
     "fix",
     "fixlabel",
+    // A video and the frame it is chosen in.
+    "vframe",
+    "tile",
+    "viewer",
   ];
   const ROUTES = "src/routes";
 

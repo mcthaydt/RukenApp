@@ -8,17 +8,24 @@ import {
   answerLine,
   answerPlaysOn,
   BROKEN_GAME,
+  chooseVideo,
   connectGitHubFromFiles,
   freshName,
   holdAnswersTo,
   MAKER_ADDRESSES,
   nextButton,
+  pageNamedAsVideo,
+  quickTimeFile,
   slugOfPage,
   startAtFiles,
+  startAtVideo,
   startDraft,
   TINY_GAME,
+  tooBigVideo,
+  videoField,
+  videoFile,
 } from "./support/game.ts";
-import { showTheOwner } from "./support/look.ts";
+import { boxOf, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The maker's questions, one to a screen, and Your games (spec 3, 4, 10.1 and 15.2). A game is asked its name first on
@@ -513,4 +520,188 @@ test("a waiting game says so, and its one blue button goes back to Your games", 
 
   await back.click();
   await expect(page).toHaveURL("/make");
+});
+
+// ---- The two videos --------------------------------------------------------------------------------------------
+
+/** The words of the one blue button that opens the picker; it is the real file field's label. */
+const pickerButton = (page: Page) => page.locator("label.file > span");
+
+test("the upright question shows its frame before anything is chosen, in the right shape", async ({
+  page,
+}, testInfo) => {
+  await startAtVideo(page, "upright");
+
+  await expect(page.getByText("Question 5 of 7")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Add your upright video");
+  const frame = page.locator('[data-frame="upright"]');
+  await expect(frame).toContainText("Taller than wide");
+  const shape = await boxOf(frame);
+  expect(shape.height).toBeGreaterThan(shape.width);
+  await expect(frame).toHaveCSS("background-color", rgb(token("--felt-raised")));
+  await expect(
+    page.getByText(
+      "Record your screen while you play for 10 to 30 seconds. Players see it in the feed before they play.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("For phones: taller than wide. MP4 or WebM, up to 30 MB.")).toBeVisible();
+  await expect(pickerButton(page)).toHaveText("Choose video");
+  await expect(pickerButton(page)).toHaveCSS("background-color", rgb(token("--pay")));
+  // The blue button opens a picker, not a form post, so Enter does not press it.
+  await expect(page.getByText("press Enter")).toHaveCount(0);
+  await showTheOwner(page, testInfo, "Question 5, the upright video");
+});
+
+test("a video is added the moment it is chosen, then Next is the blue button", async ({ page }, testInfo) => {
+  const { slug } = await startAtVideo(page, "upright");
+  const held = await holdAnswersTo(page, /\?\/clip/);
+
+  await chooseVideo(page, videoFile("my-game-upright.mp4"));
+  await expect(pickerButton(page)).toHaveText("Adding your video…");
+  await expect(videoField(page)).toBeDisabled();
+  await showTheOwner(page, testInfo, "Question 5, a video being added");
+  held.release();
+
+  const video = page.locator('[data-frame="upright"] video');
+  await expect(video).toHaveAttribute("src", /\/clips\//);
+  expect(held.requestsSoFar()).toBe(1);
+  await expect(nextButton(page)).toHaveText("Next");
+  await expect(nextButton(page)).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(page.getByRole("link", { name: "Choose a different video" })).toBeVisible();
+  await showTheOwner(page, testInfo, "Question 5, the video is in");
+
+  await nextButton(page).click();
+  await expect(page).toHaveURL(`/make/${slug}/wide`);
+});
+
+test("the wide question follows, and after it the age question", async ({ page }) => {
+  const { slug } = await startAtVideo(page, "upright");
+  await chooseVideo(page, videoFile());
+  await expect(page.locator('[data-frame="upright"] video')).toBeAttached();
+  await nextButton(page).click();
+
+  await expect(page).toHaveURL(`/make/${slug}/wide`);
+  await expect(page.getByText("Question 6 of 7")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Add your wide video");
+  const frame = page.locator('[data-frame="wide"]');
+  await expect(frame).toContainText("Wider than tall");
+  const shape = await boxOf(frame);
+  expect(shape.width).toBeGreaterThan(shape.height);
+  await expect(page.getByText("For computers: wider than tall. MP4 or WebM, up to 30 MB.")).toBeVisible();
+
+  await chooseVideo(page, videoFile());
+  await expect(page.locator('[data-frame="wide"] video')).toBeAttached();
+  await nextButton(page).click();
+  await expect(page).toHaveURL(`/make/${slug}/age`);
+});
+
+test("a video of the wrong kind or size is refused in plain words before anything is sent", async ({
+  page,
+}, testInfo) => {
+  await startAtVideo(page, "upright");
+  let sent = 0;
+  await page.route(/\?\/clip/, async (route) => {
+    sent += 1;
+    await route.continue();
+  });
+
+  await chooseVideo(page, quickTimeFile());
+  await expect(
+    page.getByText(
+      "That's a .mov file. Ruken takes MP4 or WebM videos. Export it as MP4 and choose it again.",
+    ),
+  ).toBeVisible();
+  // The maker can see which file was refused.
+  await expect(page.getByText("holiday.mov · 1 KB")).toBeVisible();
+
+  await chooseVideo(page, await tooBigVideo(testInfo.outputPath("too-big.mp4")));
+  await expect(
+    page.getByText(
+      "That video is 31 MB. Videos can be up to 30 MB. Make it shorter or smaller, then choose it again.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("too-big.mp4 · 31 MB")).toBeVisible();
+  expect(sent).toBe(0);
+
+  // A good video chosen next is added, and the refusal goes.
+  await chooseVideo(page, videoFile());
+  await expect(page.locator('[data-frame="upright"] video')).toBeAttached();
+  await expect(page.getByText(/Ruken takes MP4 or WebM|Videos can be up to/)).toHaveCount(0);
+});
+
+test("a web page named as a video is refused by the server, under the hint", async ({ page }, testInfo) => {
+  await startAtVideo(page, "upright");
+
+  await chooseVideo(page, pageNamedAsVideo());
+
+  await expect(
+    page.getByText("That file doesn't look like a video. Export it as MP4 or WebM and try again."),
+  ).toBeVisible();
+  await expect(page.locator('[data-frame="upright"] video')).toHaveCount(0);
+  await expect(pickerButton(page)).toHaveText("Choose video");
+  await showTheOwner(page, testInfo, "Question 5, a video the server refused");
+});
+
+test("choosing the video opens it full size, and Close and Escape close it", async ({ page }) => {
+  await startAtVideo(page, "upright");
+  await chooseVideo(page, videoFile());
+  const frame = page.locator('[data-frame="upright"]');
+  await expect(frame.locator("video")).toBeAttached();
+
+  await frame.locator("video").click();
+  const full = page.locator("dialog[open]");
+  await expect(full).toBeVisible();
+  await expect(full.locator("video")).toHaveAttribute("controls", "");
+  const close = full.getByRole("button", { name: "Close" });
+  await expect(close).toHaveCSS("background-color", rgb(token("--felt-raised")));
+  await close.click();
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+
+  await frame.locator("video").click();
+  await expect(page.locator("dialog[open]")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+});
+
+test("with reduced motion a video does not start by itself", async ({ page }) => {
+  await startAtVideo(page, "upright");
+  await chooseVideo(page, videoFile());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await pageHasSettled(page);
+
+  const video = page.locator('[data-frame="upright"] video');
+  await expect(video).toBeAttached();
+  expect(await video.evaluate((element: HTMLVideoElement) => element.paused)).toBe(true);
+});
+
+test("the picker is reached and opened from the keyboard", async ({ page }) => {
+  await startAtVideo(page, "upright");
+  const field = videoField(page);
+
+  for (let presses = 0; presses < 40; presses += 1) {
+    await page.keyboard.press("Tab");
+    if (await field.evaluate((element) => element === document.activeElement)) break;
+  }
+  await expect(field).toBeFocused();
+  expect(await pickerButton(page).evaluate((span) => getComputedStyle(span).outlineWidth)).toBe("3px");
+
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.keyboard.press("Space")]);
+  await chooser.setFiles(videoFile());
+  await expect(page.locator('[data-frame="upright"] video')).toBeAttached();
+});
+
+test("a game's card in Your games shows a still from its wide video", async ({ page }) => {
+  const { slug } = await startAtVideo(page, "upright");
+  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  await page.goto("/make");
+  await pageHasSettled(page);
+
+  const still = page.locator("video").first();
+  await expect(still).toHaveAttribute("preload", "metadata");
+  // A still never plays, and nothing is added to the video to make it start.
+  await expect(still).not.toHaveAttribute("autoplay", /.*/);
+  const small = await boxOf(still);
+  expect([96, 128]).toContain(Math.round(small.width));
+  expect(Math.round(small.height)).toBe(Math.round((small.width * 9) / 16));
 });

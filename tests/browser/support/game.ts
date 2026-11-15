@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./account.ts";
+import { fillAnswers } from "./database.ts";
 
 // The steps every maker journey shares: a maker with a game, the answers a screen asks for, and the videos. GitHub is
 // the stand-in on this machine (support/fake-github-server.ts), which lists `ruken-test/tiny-game` and
@@ -91,6 +92,27 @@ export async function connectGitHubFromFiles(page: Page, slug: string): Promise<
   await expect(page).toHaveURL(`/make/${slug}/files`);
   await pageHasSettled(page);
   await expect(page.getByRole("radio")).toHaveCount(2);
+}
+
+/**
+ * A new maker with a game whose answers up to the video are written straight into the database, the browser on that
+ * video's question. The wide question has the upright video already in.
+ */
+export async function startAtVideo(page: Page, question: "upright" | "wide"): Promise<{ slug: string }> {
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, ...(question === "wide" ? { videos: "upright" as const } : {}) });
+  await page.goto(`/make/${slug}/${question}`);
+  await pageHasSettled(page);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  return { slug };
+}
+
+/** The real file field of a video question: hidden from sight only, so the keyboard reaches it. */
+export const videoField = (page: Page): Locator => page.locator('input[type="file"]');
+
+/** Chooses a video as a person does, a file or the path of one. Choosing adds it at once. */
+export async function chooseVideo(page: Page, file: UploadFile | string): Promise<void> {
+  await videoField(page).setInputFiles(file);
 }
 
 /**

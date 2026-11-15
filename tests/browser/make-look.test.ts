@@ -8,6 +8,7 @@ import {
   freshName,
   nextButton,
   startAtFiles,
+  startAtVideo,
   startDraft,
 } from "./support/game.ts";
 import { boxOf, pipRed } from "./support/look.ts";
@@ -234,4 +235,42 @@ test("the Needs fixing card is paper with a blue left edge, a plain label, and n
   await expect(label).toHaveCSS("font-size", "14px");
   await expect(label).toHaveCSS("font-weight", "600");
   expect(await pipRed(page)).toEqual([]);
+});
+
+// The frame a video question draws is the biggest thing on the screen, in its real shape. Its size is read per layout
+// from the plan: an upright frame is a height, a wide frame a width.
+const UPRIGHT_HEIGHT: Record<Layout, number> = {
+  computer: 540,
+  "tablet-sideways": 540,
+  tablet: 500,
+  phone: 340,
+  "phone-sideways": 250,
+};
+
+test("the upright frame is this tall for this window, and nothing scrolls sideways", async ({ page }) => {
+  await startAtVideo(page, "upright");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const frame = page.locator('[data-frame="upright"]');
+
+  expect((await boxOf(frame)).height).toBe(UPRIGHT_HEIGHT[layoutOf(page)]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test("the wide frame is this wide for this window, and wider than tall", async ({ page }) => {
+  await startAtVideo(page, "wide");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const layout = layoutOf(page);
+  const frame = await boxOf(page.locator('[data-frame="wide"]'));
+  const window = page.viewportSize()?.width ?? 0;
+
+  if (layout === "phone") {
+    // The full width of the column: the window less a gutter on each side.
+    expect(frame.width).toBeGreaterThanOrEqual(window - 40);
+    expect(frame.width).toBeLessThanOrEqual(window);
+  } else if (layout === "phone-sideways") {
+    expect(frame.width).toBe(380);
+  } else {
+    expect(frame.width).toBe(640);
+  }
+  expect(frame.width).toBeGreaterThan(frame.height);
 });
