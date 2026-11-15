@@ -432,7 +432,11 @@ describe("startReviewPlay", () => {
       { id: started.session.id, userId: staffUserId, pullId, basis: "staff" },
     ]);
     expect(
-      await service.recordBeat({ sessionId: started.session.id, token: started.session.token, attentive: true }),
+      await service.recordBeat({
+        sessionId: started.session.id,
+        token: started.session.token,
+        attentive: true,
+      }),
     ).toBe("recorded");
   });
 

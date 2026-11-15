@@ -82,11 +82,7 @@ function valueOf(game: GameToCheck, part: GamePart): string | null {
 }
 
 /** The video a part shows, with its address from `media`, or null for a part that is not a video or has none. */
-function videoOf(
-  game: GameToCheck,
-  part: GamePart,
-  media: (key: string) => string,
-): CheckPart["video"] {
+function videoOf(game: GameToCheck, part: GamePart, media: (key: string) => string): CheckPart["video"] {
   if (part === "upright_video" && game.clipKeys.upright !== null)
     return { src: media(game.clipKeys.upright), shape: "upright" };
   if (part === "wide_video" && game.clipKeys.wide !== null)

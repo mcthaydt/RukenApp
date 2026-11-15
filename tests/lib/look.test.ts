@@ -493,7 +493,9 @@ describe("staff's check of a game", () => {
   });
 
   it("shows the wording that follows the ticks, by :has() and not by script", () => {
-    const selectors = [...withoutComments.matchAll(/([^{}]*\.decide[^{}]*)\{/g)].map((match) => match[1] ?? "");
+    const selectors = [...withoutComments.matchAll(/([^{}]*\.decide[^{}]*)\{/g)].map(
+      (match) => match[1] ?? "",
+    );
     expect(selectors.some((selector) => selector.includes(":has("))).toBe(true);
     expect(selectors.some((selector) => selector.includes('input[name="wrong"]:checked'))).toBe(true);
   });

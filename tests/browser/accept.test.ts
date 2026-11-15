@@ -14,8 +14,7 @@ test.beforeEach(forgetRateLimits);
 /** The part's own box on the check page, found by its title. */
 const partNamed = (page: Page, title: string) => page.getByRole("region", { name: title });
 /** The tick on a part. */
-const tickOn = (page: Page, title: string) =>
-  page.getByRole("checkbox", { name: `This is wrong: ${title}` });
+const tickOn = (page: Page, title: string) => page.getByRole("checkbox", { name: `This is wrong: ${title}` });
 
 /** Staff open the check page of a game, signed in as a curator. */
 async function checkingAGame(page: Page, slug: string): Promise<void> {
@@ -142,9 +141,7 @@ test("Something else needs a line of your own, and keeps what was typed", async 
     await expect(page.getByRole("alert")).toHaveText("Say what's wrong in your own words.");
     await expect(partNamed(page, "One line").getByRole("radio", { name: "Something else" })).toBeChecked();
 
-    await partNamed(page, "One line")
-      .getByRole("textbox")
-      .fill("Say what the game is, not what it is like.");
+    await partNamed(page, "One line").getByRole("textbox").fill("Say what the game is, not what it is like.");
     await page.getByRole("button", { name: "Send back" }).click();
 
     await expect(page).toHaveURL("/admin/games");
@@ -172,10 +169,7 @@ test("staff can change who it is for before Accept", async ({ page, browser }) =
   }
 });
 
-test("making a game 18+ asks for its marks, and Accept without one is refused", async ({
-  page,
-  browser,
-}) => {
+test("making a game 18+ asks for its marks, and Accept without one is refused", async ({ page, browser }) => {
   // Review Focus 5
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
@@ -239,9 +233,7 @@ test("a game that changed while staff looked is not accepted, and staff are told
     await changeGame(maker.slug, { oneLine: "Something the staff did not read." });
     await page.getByRole("button", { name: "Accept" }).click();
 
-    await expect(page.getByRole("alert")).toHaveText(
-      "This game changed while you were looking. Look again.",
-    );
+    await expect(page.getByRole("alert")).toHaveText("This game changed while you were looking. Look again.");
     expect(await stateOf(maker.slug)).toBe("waiting");
 
     // Looking again shows the new line, and Accept then works.
@@ -258,7 +250,10 @@ test("a game that changed while staff looked is not accepted, and staff are told
 test("a game whose new files were refused is not accepted on its older ones", async ({ page, browser }) => {
   // Audit S-6
   const words = "Its maker is fixing its files. It comes back when they're fixed.";
-  const maker = await makerWithGameWhere(browser, { state: "waiting", pullProblem: "index.html is missing." });
+  const maker = await makerWithGameWhere(browser, {
+    state: "waiting",
+    pullProblem: "index.html is missing.",
+  });
   try {
     await checkingAGame(page, maker.slug);
     await expect(page.getByText(words)).toBeVisible();

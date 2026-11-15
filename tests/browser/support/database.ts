@@ -296,7 +296,12 @@ export async function makerOf(
     where: { slug },
     select: { id: true, publicId: true, makerUserId: true, maker: { select: { email: true } } },
   });
-  return { id: game.id, publicId: game.publicId, makerUserId: game.makerUserId, makerEmail: game.maker.email };
+  return {
+    id: game.id,
+    publicId: game.publicId,
+    makerUserId: game.makerUserId,
+    makerEmail: game.maker.email,
+  };
 }
 
 /** Where a game stands, read from its row. */

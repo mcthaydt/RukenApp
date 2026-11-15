@@ -838,16 +838,23 @@ describe("accept, with the rating staff choose", () => {
       ["none", "gore"] as ContentMark[],
       "Choose None of these on its own, or choose the marks that are in it.",
     ],
-  ])("refuses %s, in words, and the game still waits (Review Focus 5)", async (_what, contentMarks, words) => {
-    const { game, staff } = await waitingGame();
+  ])(
+    "refuses %s, in words, and the game still waits (Review Focus 5)",
+    async (_what, contentMarks, words) => {
+      const { game, staff } = await waitingGame();
 
-    await expect(acceptAsSeen(game, staff, { ageRating: "age_18", contentMarks })).rejects.toMatchObject({
-      code: "INVALID",
-      message: words,
-    });
-    expect(await stateOf(game.id)).toMatchObject({ state: "waiting", ageRating: "age_12", contentMarks: [] });
-    expect(await db().gameReview.count({ where: { gameId: game.id } })).toBe(0);
-  });
+      await expect(acceptAsSeen(game, staff, { ageRating: "age_18", contentMarks })).rejects.toMatchObject({
+        code: "INVALID",
+        message: words,
+      });
+      expect(await stateOf(game.id)).toMatchObject({
+        state: "waiting",
+        ageRating: "age_12",
+        contentMarks: [],
+      });
+      expect(await db().gameReview.count({ where: { gameId: game.id } })).toBe(0);
+    },
+  );
 
   it("refuses a rating that is not one of the five, and nothing changes", async () => {
     const { game, staff } = await waitingGame();

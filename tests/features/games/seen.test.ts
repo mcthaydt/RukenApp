@@ -20,7 +20,11 @@ const GAME = {
 
 describe("seenOf", () => {
   it("is the same for the same game, however its marks and clips are listed", () => {
-    const again = { ...GAME, contentMarks: [...GAME.contentMarks].reverse(), clips: [...GAME.clips].reverse() };
+    const again = {
+      ...GAME,
+      contentMarks: [...GAME.contentMarks].reverse(),
+      clips: [...GAME.clips].reverse(),
+    };
     expect(seenOf(again)).toBe(seenOf(GAME));
   });
 
@@ -45,6 +49,8 @@ describe("seenOf", () => {
 
   it("does not run two different games together by their joins", () => {
     // The name and the line could only be told apart by where one ends: "ab" + "c" is not "a" + "bc".
-    expect(seenOf({ ...GAME, name: "ab", oneLine: "c" })).not.toBe(seenOf({ ...GAME, name: "a", oneLine: "bc" }));
+    expect(seenOf({ ...GAME, name: "ab", oneLine: "c" })).not.toBe(
+      seenOf({ ...GAME, name: "a", oneLine: "bc" }),
+    );
   });
 });

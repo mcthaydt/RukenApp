@@ -444,7 +444,10 @@ export function createGamesService(deps: GamesServiceDeps) {
     if (problem !== undefined) throw new GameError("INVALID", problem);
     if (known.includes("none")) {
       if (known.length > 1)
-        throw new GameError("INVALID", "Choose None of these on its own, or choose the marks that are in it.");
+        throw new GameError(
+          "INVALID",
+          "Choose None of these on its own, or choose the marks that are in it.",
+        );
       return ["none"];
     }
     return [...new Set(known)];

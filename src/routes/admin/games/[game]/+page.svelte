@@ -27,7 +27,9 @@
 
   /** What was ticked and typed before a refusal, so the page comes back as it was left. */
   const kept = $derived(form?.kept);
-  const chosenRating = $derived(kept !== undefined && kept.ageRating !== "" ? kept.ageRating : data.ageRating);
+  const chosenRating = $derived(
+    kept !== undefined && kept.ageRating !== "" ? kept.ageRating : data.ageRating,
+  );
   const chosenMarks: readonly string[] = $derived(kept?.marks ?? data.contentMarks);
 
   let frame = $state<HTMLIFrameElement>();
@@ -118,8 +120,7 @@
                   maxlength="500"
                   rows="2"
                   aria-label={`Add a line of your own, if you want (${part.title})`}
-                  value={kept?.notes[part.part] ?? ""}
-                ></textarea>
+                  value={kept?.notes[part.part] ?? ""}></textarea>
               </label>
             </div>
           {/if}
@@ -143,7 +144,12 @@
         <div class="picks" data-several data-marks>
           {#each MARKS as mark (mark.value)}
             <label class="pick">
-              <input type="checkbox" name="mark" value={mark.value} checked={chosenMarks.includes(mark.value)} />
+              <input
+                type="checkbox"
+                name="mark"
+                value={mark.value}
+                checked={chosenMarks.includes(mark.value)}
+              />
               <b>{mark.words}</b>
             </label>
           {/each}
