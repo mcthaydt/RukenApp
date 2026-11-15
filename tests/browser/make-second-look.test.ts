@@ -97,7 +97,10 @@ test("the one-line box grows to show every letter of a long line, and Enter stil
   page,
 }) => {
   await startDraft(page);
-  const box = page.getByRole("textbox");
+  // Found by its question, as `answerLine` does: the address reads /line a moment before the screen does, and a box found
+  // by its kind alone can be the name's box still there, so the line is typed into it and is gone when the question comes
+  // (run 43767161072: Enter sent an empty line, and the page stayed on it).
+  const box = page.getByLabel(/about, in one line\?$/);
   await box.fill(LONG_LINE);
   await layoutHasSettled(page);
 
