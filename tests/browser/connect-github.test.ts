@@ -261,12 +261,18 @@ test("the how-to page needs no account", async ({ page }) => {
 
   await expect(page).toHaveURL("/help/github");
   await expect(page.getByRole("heading", { name: "Put your game on GitHub" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Back to Ruken" })).toHaveAttribute("href", "/");
+  // The way back is at the top and again at the foot.
+  await expect(page.getByRole("link", { name: "Back to Ruken" })).toHaveCount(2);
+  for (const back of await page.getByRole("link", { name: "Back to Ruken" }).all()) {
+    await expect(back).toHaveAttribute("href", "/");
+  }
 });
 
 test("the how-to page will not send anyone to another site", async ({ page }) => {
   for (const from of ["https://example.com", "//example.com", "/\\example.com"]) {
     await page.goto(`/help/github?from=${encodeURIComponent(from)}`);
-    await expect(page.getByRole("link", { name: "Back to Ruken" })).toHaveAttribute("href", "/");
+    for (const back of await page.getByRole("link", { name: "Back to Ruken" }).all()) {
+      await expect(back).toHaveAttribute("href", "/");
+    }
   }
 });

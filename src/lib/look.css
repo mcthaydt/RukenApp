@@ -831,6 +831,11 @@ form > * + button:not(.quiet) {
   overflow-wrap: normal;
 }
 
+/* Names are long, so they are one to a row at every width: two across leaves a sideways phone's card too narrow for one. */
+.picks[data-plain] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .pick > span {
   color: var(--ink-soft);
   font: var(--text-small);
