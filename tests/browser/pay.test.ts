@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
+  continueToPayment,
   fillBirthDate,
   freshEmail,
   JOURNEY_PASSWORD,
@@ -45,11 +46,9 @@ test("someone else's checkout ref goes back to the card", async ({ page }) => {
 
 test("when Stripe's news is late, the page says so and goes on by itself", async ({ page }) => {
   await signUpFromTheCard(page);
-  await page.getByRole("button", { name: "Continue to payment" }).click();
-  // The stand-in's own page, asked to hold its news back until this journey lets it go. The payment page's address
-  // ends in the checkout's id, which is what the release is asked for.
+  const checkoutSessionId = await continueToPayment(page);
+  // The stand-in's own page, asked to hold its news back until this journey lets it go.
   await page.goto(`${page.url()}?events=later`);
-  const checkoutSessionId = new URL(page.url()).pathname.split("/").pop() ?? "";
   await standInPayButton(page).click();
   await expect(page.getByRole("heading", { name: "Finishing up…" })).toBeVisible();
   // Looked at while the news is still held, and with values only: the page moves on to /me by itself once it

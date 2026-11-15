@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  continueToPayment,
   letMembershipRunOut,
   payAsNewMember,
   standInPayButton,
@@ -30,9 +31,7 @@ test("a member whose membership has ended is offered the card again, pays, and i
   // The price card is back, with its button, as for someone who never joined.
   await page.getByRole("link", { name: "Join Ruken" }).click();
   await expect(page.getByRole("heading", { name: "You're already a member." })).toHaveCount(0);
-  await page.getByRole("button", { name: "Continue to payment" }).click();
-  await expect(standInPayButton(page)).toBeVisible();
-  const secondCheckout = new URL(page.url()).pathname.split("/").pop() ?? "";
+  const secondCheckout = await continueToPayment(page);
   expect(secondCheckout).not.toBe(first.checkoutSessionId);
   await standInPayButton(page).click();
 
