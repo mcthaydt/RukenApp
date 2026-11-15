@@ -20,6 +20,8 @@ Work runs in stages. Each stage runs in its own fresh session, on its own branch
 
 Every stage reads the spec, the plan, the audits so far and the progress tracker (docs/superpowers/progress.md). It updates the tracker, with its progress percentage, as it works. Its last step is to commit and push.
 
+Default model (Owner, 2026-11-15): "If you ever don't know which model to use because I didn't explicitly say go with opus medium." Any session whose model and effort aren't named here or by the owner runs on Opus at medium effort.
+
 ## Stage prompts
 
 Execution and fixes run superpowers executing-plans and start with the implementation prompt, which sets how to develop:
