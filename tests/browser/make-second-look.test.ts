@@ -10,7 +10,7 @@ import {
   startAtVideo,
   startDraft,
 } from "./support/game.ts";
-import { boxOf, brokenWords, layoutHasSettled, layoutOf } from "./support/look.ts";
+import { boxOf, brokenWords, layoutHasSettled, layoutOf, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the second look at the submission screens found (docs/superpowers/audits/2026-11-15-submission-screens-second-look.md),
@@ -65,7 +65,8 @@ test("on a 1280 by 720 computer the wide video question's blue button is on the 
   const window = page.viewportSize()?.height ?? 0;
 
   await startAtVideo(page, "wide");
-  await layoutHasSettled(page);
+  // Words only: the upright video this game has is a stand-in that never loads.
+  await wordsHaveSettled(page);
   const picker = await boxOf(page.locator(".acts .file > span"));
   expect(picker.y + picker.height, "Choose video ends inside the window").toBeLessThanOrEqual(window);
 
@@ -135,7 +136,8 @@ test("on an iPhone SE a game's name in Your games breaks only between words, bes
 
 /** The gap between the heavier edge round a refused set of choices and the line under it, in pixels. */
 async function airUnderTheRing(page: Page): Promise<number> {
-  await layoutHasSettled(page);
+  // Words only: the game's videos here are stand-ins that never load, so a wait for them would never end.
+  await wordsHaveSettled(page);
   const picks = await boxOf(page.locator(".picks"));
   const line = await boxOf(page.locator(".picks + .note"));
   // The ring is 4px wide and stands 6px out from the set.
@@ -255,4 +257,52 @@ test("staff's own line on a Sent back card is at least 18px", async ({ page }) =
     .getByText("Please say what the game is, not how it feels.")
     .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
   expect(size).toBeGreaterThanOrEqual(18);
+});
+
+// ---- L4 and L5: on a short phone the words come first and the videos after ------------------------------------------------------
+
+/** Runs a journey in one project only: the window it sets for itself is the same whichever project is asked. */
+function onlyInPhone(): void {
+  test.skip(test.info().project.name !== "phone", "one Chromium project is enough for a window of its own");
+}
+
+test("on a phone Check and send shows the name, the line and every fact above the bar, and the videos after them", async ({
+  page,
+}) => {
+  test.skip(layoutOf(page) !== "phone", "a phone held upright's own arrangement");
+  await startAtCheck(page);
+  await layoutHasSettled(page);
+
+  const bar = await boxOf(page.locator(".acts"));
+  const tiles = await boxOf(page.locator(".tiles"));
+  for (const part of [
+    page.locator(".laid .title"),
+    page.locator(".laid .tagline"),
+    page.locator(".laid .chip").last(),
+  ]) {
+    const box = await boxOf(part);
+    expect(box.y + box.height, "ends above the bar").toBeLessThanOrEqual(bar.y);
+    expect(tiles.y, "the videos come after it").toBeGreaterThan(box.y);
+  }
+});
+
+test.describe("on an iPhone SE held upright", () => {
+  test.use({ viewport: IPHONE_SE });
+
+  for (const shape of ["upright", "wide"] as const) {
+    test(`the ${shape} video question shows how to record above the bar, and above its frame`, async ({
+      page,
+    }) => {
+      onlyInPhone();
+      await startAtVideo(page, shape);
+      // Words only: the wide question's game has an upright video that is a stand-in and never loads.
+      await wordsHaveSettled(page);
+
+      const bar = await boxOf(page.locator(".acts"));
+      const frame = await boxOf(page.locator(".vframe"));
+      const howTo = await boxOf(page.getByRole("link", { name: "How do I record my screen?" }));
+      expect(howTo.y + howTo.height, "the how-to link ends above the bar").toBeLessThanOrEqual(bar.y);
+      expect(howTo.y, "the link is above the frame").toBeLessThan(frame.y);
+    });
+  }
 });
