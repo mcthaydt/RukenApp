@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
-import { signUp } from "./support/account.ts";
+import { pageHasSettled, signUp } from "./support/account.ts";
 import { fillAnswers } from "./support/database.ts";
 import { freshName, nextButton, startDraft } from "./support/game.ts";
 import { boxOf } from "./support/look.ts";
@@ -43,6 +43,7 @@ async function gameAskingAbout(page: Page, question: "plays-on" | "age"): Promis
   // The layout is what is measured, not the entrance, so the cards are measured at rest.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(`/make/${slug}/${question}`);
+  await pageHasSettled(page);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   return slug;
 }
@@ -86,6 +87,7 @@ test("press Enter shows only where there is a mouse", async ({ page }, testInfo)
 test("Enter presses the blue button", async ({ page }) => {
   await signUp(page);
   await page.goto("/make/new");
+  await pageHasSettled(page);
 
   await page.getByLabel("What's your game called?").fill(freshName());
   await page.getByLabel("What's your game called?").press("Enter");
@@ -150,6 +152,7 @@ test("everything to press is at least 44 by 44", async ({ page }) => {
 test("a 60-letter name with no space wraps, and nothing scrolls sideways", async ({ page }) => {
   await signUp(page);
   await page.goto("/make/new");
+  await pageHasSettled(page);
   const name = `${"x".repeat(52)}${crypto.randomUUID().slice(0, 8)}`;
   await page.getByLabel("What's your game called?").fill(name);
   await nextButton(page).click();
@@ -171,6 +174,7 @@ test("a 60-letter name with no space wraps, and nothing scrolls sideways", async
 test("a step: the new question rises over 460ms on the house curve", async ({ page }) => {
   await signUp(page);
   await page.goto("/make/new");
+  await pageHasSettled(page);
   await page.getByLabel("What's your game called?").fill(freshName());
   await nextButton(page).click();
   await expect(page).toHaveURL(/\/line$/);
@@ -184,6 +188,7 @@ test("with reduced motion nothing moves", async ({ page }) => {
   await signUp(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/make/new");
+  await pageHasSettled(page);
   await page.getByLabel("What's your game called?").fill(freshName());
   await nextButton(page).click();
   await expect(page).toHaveURL(/\/line$/);

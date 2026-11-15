@@ -86,6 +86,7 @@ test("a maker answers the name and is asked the next question, with her name in 
 }, testInfo) => {
   await signUp(page);
   await page.goto("/make/new");
+  await pageHasSettled(page);
   await expect(page.getByText("Question 1 of 7")).toBeVisible();
   await showTheOwner(page, testInfo, "question 1, the name");
 
@@ -118,6 +119,7 @@ test("a name with fewer than three letters is refused under the box, and what sh
 }, testInfo) => {
   await signUp(page);
   await page.goto("/make/new");
+  await pageHasSettled(page);
   const box = boxFor(page, "What's your game called?");
 
   await box.fill("ab");
@@ -146,6 +148,7 @@ test("where it plays has nothing picked, and Next without a choice says so", asy
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { playsOn: false, files: true });
   await page.goto(`/make/${slug}/plays-on`);
+  await pageHasSettled(page);
 
   await expect(page.getByRole("radio")).toHaveCount(2);
   await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
@@ -174,11 +177,13 @@ test("a choice of where it plays is kept, and comes back chosen", async ({ page 
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { playsOn: false, files: true });
   await page.goto(`/make/${slug}/plays-on`);
+  await pageHasSettled(page);
 
   await answerPlaysOn(page, "computers");
 
   await expect(page).toHaveURL(`/make/${slug}/upright`);
   await page.goto(`/make/${slug}/plays-on`);
+  await pageHasSettled(page);
   await expect(page.getByLabel("Computers only")).toBeChecked();
   await expect(page.getByLabel("Phones and computers")).not.toBeChecked();
 });
@@ -187,6 +192,7 @@ test("the age question offers five choices with nothing picked", async ({ page }
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { files: true, videos: true });
   await page.goto(`/make/${slug}/age`);
+  await pageHasSettled(page);
 
   await expect(page.getByText("Question 7 of 7")).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(5);
@@ -211,6 +217,7 @@ test("an 18+ game is asked one more question, and a 12+ game is not", async ({ p
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { files: true, videos: true });
   await page.goto(`/make/${slug}/age`);
+  await pageHasSettled(page);
 
   await answerAge(page, "18+");
 
@@ -242,6 +249,8 @@ test("a later question opened too early leads back to the first one not answered
 
   await page.goto(`/make/${slug}/age`);
 
+  await pageHasSettled(page);
+
   await expect(page).toHaveURL(`/make/${slug}/line`);
 });
 
@@ -257,6 +266,7 @@ test("Back goes to the question before, with its answer in place", async ({ page
 test("the first Back leads to Your games", async ({ page }) => {
   await signUp(page);
   await page.goto("/make/new");
+  await pageHasSettled(page);
 
   await page.getByRole("link", { name: "Back" }).click();
 
@@ -269,6 +279,8 @@ test("changing an answer says Save and goes back to the game, with no counter", 
   await putGameWhereStaffLeaveIt(slug, { state: "waiting" });
 
   await page.goto(`/make/${slug}/line`);
+
+  await pageHasSettled(page);
 
   await expect(page.getByText(/^Question \d of \d$/)).toHaveCount(0);
   await page.getByRole("textbox").fill("A new line about it.");
@@ -306,6 +318,8 @@ test("the questions work with script off", async ({ page, browser, baseURL }) =>
     javaScriptEnabled: false,
     // Nothing here is about motion, and an entrance still moving is not a thing a person presses.
     reducedMotion: "reduce",
+    // A computer's window whatever the project is, as this journey is about script and not about the window.
+    viewport: { width: 1280, height: 720 },
     storageState: await page.context().storageState(),
   });
   try {

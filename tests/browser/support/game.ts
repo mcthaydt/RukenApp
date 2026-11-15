@@ -55,6 +55,7 @@ export function slugOfPage(page: Page): string {
 /** Makes a game as the signed-in maker: question 1 answered, the browser on question 2. */
 export async function addDraft(page: Page): Promise<{ slug: string; name: string }> {
   await page.goto("/make/new");
+  await pageHasSettled(page);
   const name = await answerName(page);
   await expect(page).toHaveURL(/\/make\/[a-z0-9-]+\/line$/);
   await pageHasSettled(page);
