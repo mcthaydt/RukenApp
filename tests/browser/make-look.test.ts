@@ -323,7 +323,10 @@ test("the two videos are the same height, this tall for this window", async ({ p
   // Where the window has room for both videos at the planned height, that is the height; a narrower one shrinks them
   // together, never to less than three quarters of it.
   expect(upright.height).toBeGreaterThanOrEqual(TILE_HEIGHT[layout] * 0.75);
-  if (layout !== "tablet-sideways") expect(Math.round(upright.height)).toBe(TILE_HEIGHT[layout]);
+  // A sideways tablet or phone has a narrow column beside the left half, so it may shrink them (Owner, 2026-11-15, on a
+  // card: "Yes, same as a sideways tablet"); the three-quarters floor above still holds.
+  if (layout !== "tablet-sideways" && layout !== "phone-sideways")
+    expect(Math.round(upright.height)).toBe(TILE_HEIGHT[layout]);
   expect(upright.width).toBeLessThan(upright.height);
   expect(wide.width).toBeGreaterThan(wide.height);
 });

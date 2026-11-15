@@ -78,7 +78,7 @@
     {/each}
     <details class="accepted" open={accepted.ready}>
       <summary>
-        <span>{accepted.ready ? "All 8 ready to send" : `${accepted.count} accepted`}</span>
+        <span>{accepted.ready ? "All 8 ready to send" : `${String(accepted.count)} accepted`}</span>
         <span class="when-closed">Show</span><span class="when-open">Hide</span>
       </summary>
       <GameLaidOut {game} />
