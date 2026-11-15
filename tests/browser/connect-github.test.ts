@@ -103,7 +103,7 @@ test("before GitHub is connected, the files question says what Ruken will see, w
   await expect(connect).toHaveCSS("background-color", rgb(token("--pay")));
   await expect(connect).toHaveAttribute("href", `/make/github?choose=1&game=${slug}`);
   // One blue button: the link, and nothing that submits.
-  await expect(page.getByRole("button")).toHaveCount(0);
+  await expect(page.locator("main button")).toHaveCount(0);
   await showTheOwner(page, testInfo, "question 3, GitHub not connected");
 });
 

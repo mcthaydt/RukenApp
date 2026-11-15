@@ -3,7 +3,8 @@
   boxes or choices), and the buttons. Each question is a plain page and form that works before its script wakes; with
   script, a press says it is saving and cannot be pressed twice, and a refusal puts the keyboard on the box it is about.
   The first time through the blue button says Next and the counter shows; changing an answer later says Save and shows
-  neither (spec 3 and 4).
+  neither (spec 3 and 4). A question whose answer takes a while (copying a game) says what it is doing while it waits,
+  and a question whose forward step is not a form post (connecting GitHub) brings its own blue button.
 -->
 <script lang="ts">
   import { enhance } from "$app/forms";
@@ -16,6 +17,9 @@
     back,
     throwAway,
     enterHint = true,
+    busyWords = "Saving…",
+    busyLine,
+    forward,
     children,
   }: {
     heading: string;
@@ -27,6 +31,12 @@
     throwAway?: string;
     /** Enter presses the blue button, except where the blue button opens a file picker. */
     enterHint?: boolean;
+    /** What the blue button says from the press until the answer comes. */
+    busyWords?: string;
+    /** A line shown under the answer while it waits, for an answer that can take a minute. */
+    busyLine?: string;
+    /** The blue button when it is not a submit: a link that goes elsewhere. */
+    forward?: Snippet;
     children: Snippet;
   } = $props();
 
@@ -69,12 +79,19 @@
     {/if}
     <h1 id="question">{heading}</h1>
     {@render children()}
+    {#if saving && busyLine !== undefined}
+      <p class="note" role="status">{busyLine}</p>
+    {/if}
     <div class="acts">
       <a class="button safe" href={back}>Back</a>
-      <button disabled={saving} aria-busy={saving ? "true" : undefined}>
-        {saving ? "Saving…" : counter === null ? "Save" : "Next"}
-      </button>
-      {#if enterHint}
+      {#if forward !== undefined}
+        {@render forward()}
+      {:else}
+        <button disabled={saving} aria-busy={saving ? "true" : undefined}>
+          {saving ? busyWords : counter === null ? "Save" : "Next"}
+        </button>
+      {/if}
+      {#if enterHint && forward === undefined}
         <span class="key">press Enter <kbd>↵</kbd></span>
       {/if}
     </div>

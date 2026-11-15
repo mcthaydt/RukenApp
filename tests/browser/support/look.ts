@@ -73,6 +73,14 @@ export const CARD_SCREENS: { name: string; open(page: Page): Promise<void> }[] =
     },
   },
   {
+    // Needs no account: a maker reads it before they have a GitHub.
+    name: "the GitHub how-to",
+    open: async (page) => {
+      await page.goto("/help/github");
+      await expect(page.getByRole("heading", { name: "Put your game on GitHub" })).toBeVisible();
+    },
+  },
+  {
     name: "a missing page",
     open: async (page) => {
       await page.goto("/no-such-page");

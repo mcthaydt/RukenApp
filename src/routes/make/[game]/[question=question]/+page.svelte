@@ -4,6 +4,7 @@
   place; going on or back is the layout's (src/routes/make/+layout.svelte).
 -->
 <script lang="ts">
+  import FilesQuestion from "../../parts/FilesQuestion.svelte";
   import Picks from "../../parts/Picks.svelte";
   import QuestionScreen from "../../parts/QuestionScreen.svelte";
   import TextAnswer from "../../parts/TextAnswer.svelte";
@@ -70,6 +71,16 @@
         {problem}
       />
     </QuestionScreen>
+  {:else if data.question === "files" && data.files !== null}
+    <FilesQuestion
+      files={data.files}
+      counter={data.counter}
+      back={data.back}
+      throwAway={data.throwAway}
+      problems={form?.problems}
+      asked={form?.asked}
+      refusedNow={form?.refusal}
+    />
   {:else if data.question === "plays-on"}
     <QuestionScreen
       heading={`Where does ${data.name} play?`}

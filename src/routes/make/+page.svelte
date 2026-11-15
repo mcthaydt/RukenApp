@@ -14,6 +14,9 @@
 
 <main>
   <h1>Your games</h1>
+  {#if data.githubFailed}
+    <p class="problem" role="alert">GitHub didn't connect. Try again.</p>
+  {/if}
   {#if data.games.length === 0}
     <p>You haven't added a game yet.</p>
     <p>You'll need your game on GitHub, ready to run in a browser, and two short videos of it.</p>

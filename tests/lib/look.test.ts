@@ -311,6 +311,11 @@ describe("screens wear the look and nothing of their own", () => {
     "acts",
     "key",
     "foot",
+    // Words on paper that are not an answer, and the sheet for what needs fixing.
+    "sheet",
+    "say",
+    "fix",
+    "fixlabel",
   ];
   const ROUTES = "src/routes";
 

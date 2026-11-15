@@ -57,10 +57,13 @@ export function connectHostsFrom(text: string): { hosts: string[] } | { problem:
 // At least one more character is needed, so the fix we suggest is never empty.
 const TOP_OF_SITE_ADDRESS = /\b(?:src|href)\s*=\s*["'](\/(?!\/)[^"'\s>]+)["']/i;
 
+/** The refusal for a folder with no index.html at its top. A screen sets it in plainer words, so it must know it. */
+const NO_INDEX_HTML =
+  "We couldn't find an index.html at the top of that folder. Ruken starts a game from index.html.";
+
 /** True for the refusal that says a folder has no index.html at its top, and for no other. */
 export function isMissingIndexHtml(problem: string): boolean {
-  void problem;
-  throw new Error("not built yet");
+  return problem === NO_INDEX_HTML;
 }
 
 /**
@@ -77,9 +80,7 @@ export function checkGameFiles(
     return refuse("We couldn't find that folder in your repository. Check the folder's name and pull again.");
   }
   if (indexHtml === null) {
-    return refuse(
-      "We couldn't find an index.html at the top of that folder. Ruken starts a game from index.html.",
-    );
+    return refuse(NO_INDEX_HTML);
   }
   const link = files.find((entry) => entry.kind === "link");
   if (link !== undefined) {
