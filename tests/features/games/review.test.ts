@@ -167,7 +167,7 @@ describe("nextStepWords", () => {
 
   it("puts the files first when they were refused", () => {
     expect(nextStepWords({ ...base, state: "draft", filesProblem: true, upright: true, wide: true })).toBe(
-      "Fix your game's files on GitHub, then copy it again.",
+      "Fix your game's files on GitHub. Then choose Next on the files question to copy it again.",
     );
   });
 

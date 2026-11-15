@@ -45,7 +45,12 @@ const REASONS: [GamePart, string, string, string][] = [
     "It stops working.",
     "Your game stopped working while we played. Fix it on GitHub, then send it again.",
   ],
-  ["files", "past_limit", "It goes past what we allow.", "Ruken doesn't take games like this yet."],
+  [
+    "files",
+    "past_limit",
+    "It goes past what we allow.",
+    "Your game has too much in it for Ruken. Take some files out on GitHub, then send it again.",
+  ],
   ["files", "pornography", "It's pornography.", "Ruken doesn't take pornography."],
   ["files", "gambling", "Gambling isn't allowed on Ruken.", "Gambling isn't allowed on Ruken."],
   [

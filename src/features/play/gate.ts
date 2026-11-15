@@ -30,7 +30,7 @@ const NOT_ALLOWED = "Not allowed.";
 /** A game's own name: `g-` and its ten-character public id. */
 const GAME_HOST = /^g-([a-z2-7]{10})$/;
 /** Written out here, not imported: a clip's key, as the games feature makes it. Nothing else is served as a clip. */
-const CLIP_KEY = /^clips\/[a-z2-7]{10}\/(?:upright|wide)-[0-9a-f]{16}\.(?:mp4|webm)$/;
+const CLIP_KEY = /^clips\/[a-z2-7]{10}\/(?:upright|wide)-[0-9a-f]{16}\.(?:mp4|webm|mov)$/;
 /** Written out here, not imported: a photo's key, as the pages feature makes it. Nothing else is served as a photo. */
 const PHOTO_KEY = /^photos\/[0-9a-f]{16}\.(?:jpg|png|webp)$/;
 

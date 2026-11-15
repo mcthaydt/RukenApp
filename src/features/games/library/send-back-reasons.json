@@ -39,7 +39,7 @@
     "parts": ["files"],
     "code": "past_limit",
     "staff": "It goes past what we allow.",
-    "maker": "Ruken doesn't take games like this yet."
+    "maker": "Your game has too much in it for Ruken. Take some files out on GitHub, then send it again."
   },
   {
     "parts": ["files"],

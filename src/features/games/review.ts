@@ -92,7 +92,8 @@ export function nextStepWords(
   game: StateInput & { filesProblem: boolean; upright: boolean; wide: boolean },
 ): string | null {
   const canSend = game.state === "draft" || game.state === "sent_back";
-  if (canSend && game.filesProblem) return "Fix your game's files on GitHub, then copy it again.";
+  if (canSend && game.filesProblem)
+    return "Fix your game's files on GitHub. Then choose Next on the files question to copy it again.";
   switch (game.state) {
     case "draft":
       if (game.upright && game.wide) return "Everything's here. Send it for review.";

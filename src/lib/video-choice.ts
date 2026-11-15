@@ -14,7 +14,7 @@ export interface ChosenFile {
 }
 
 /** The video types a maker may add. */
-export const VIDEO_TYPES: readonly string[] = ["video/mp4", "video/webm"];
+export const VIDEO_TYPES: readonly string[] = ["video/mp4", "video/webm", "video/quicktime"];
 
 /** Whole megabytes, rounded up, so a video that is over the limit never reads as exactly the limit: "31 MB". */
 export function wholeMegabytes(bytes: number): string {
@@ -32,8 +32,8 @@ export function videoChoiceProblem(file: ChosenFile): string | null {
   if (!VIDEO_TYPES.includes(file.type)) {
     const ending = endingOf(file.name);
     return ending === null
-      ? "That file isn't an MP4 or WebM video. Save it as MP4 and choose it again."
-      : `That's a ${ending} file. Ruken takes MP4 or WebM videos. Save it as MP4 and choose it again.`;
+      ? "That file isn't an MP4, WebM or MOV video. Save it as MP4 and choose it again."
+      : `That's a ${ending} file. Ruken takes MP4, WebM or MOV videos. Save it as MP4 and choose it again.`;
   }
   if (file.size > VIDEO_MAX_BYTES) {
     return `That video is ${wholeMegabytes(file.size)}. Videos can be up to ${wholeMegabytes(VIDEO_MAX_BYTES)}. Make it shorter or smaller, then choose it again.`;

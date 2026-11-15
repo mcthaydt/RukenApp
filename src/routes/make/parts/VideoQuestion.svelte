@@ -35,12 +35,12 @@
       ? {
           heading: "Add your upright video",
           frame: "Taller than wide",
-          note: "For phones: taller than wide. MP4 or WebM, up to 30 MB.",
+          note: "For phones: taller than wide. MP4, WebM or MOV, up to 30 MB.",
         }
       : {
           heading: "Add your wide video",
           frame: "Wider than tall",
-          note: "For computers: wider than tall. MP4 or WebM, up to 30 MB.",
+          note: "For computers: wider than tall. MP4, WebM or MOV, up to 30 MB.",
         },
   );
 
@@ -130,7 +130,7 @@
       type="file"
       name="clip"
       id="clip-file"
-      accept="video/mp4,video/webm"
+      accept="video/mp4,video/webm,video/quicktime"
       disabled={saving}
       aria-busy={saving}
       aria-labelledby="clip-words"

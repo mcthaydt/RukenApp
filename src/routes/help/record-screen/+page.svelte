@@ -1,8 +1,8 @@
 <!--
   Recording the screen, in plain steps for someone who has never done it: a phone or tablet, then a computer. It is one
   paper sheet on the felt like the GitHub how-to, with the way back at the top and again at the foot. Nothing on it is a
-  button. A Mac saves a kind of video Ruken does not take (MP4 or WebM only), and the page says so rather than leaving
-  her to find out when her video is refused.
+  button. A Mac saves its recording as a .mov, which Ruken takes (Owner, 2026-11-15: "Yes, take .mov"), so a Mac maker
+  records and sends it like anyone else.
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
@@ -52,7 +52,13 @@
     <li>Play your game, then choose the stop button. Your video is in your Videos folder, in Captures.</li>
   </ol>
   <h3>Mac</h3>
-  <p>Macs save a .mov file, which Ruken can't take yet. The easy way is to record on your phone instead.</p>
+  <ol>
+    <li>Open your game in your browser.</li>
+    <li>Press Shift, Command and 5 together.</li>
+    <li>Choose Record Entire Screen, then Record.</li>
+    <li>Play your game, then press the stop button at the top of the screen.</li>
+    <li>Your video is on your Desktop. Ruken takes this kind of file.</li>
+  </ol>
 
   <p>Then come back to Ruken and press Choose video.</p>
   <p><a href={data.back.href}>{data.back.words}</a></p>
