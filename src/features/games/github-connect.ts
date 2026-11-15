@@ -60,13 +60,23 @@ function macOf(payload: string, secret: string): string {
  * `<payload>.<mac>`: the account's id and the time, then their keyed hash. It stops someone from finishing a
  * connection that another person started, since the state travels through GitHub and back in an address.
  */
-export function sealState(userId: string, nowMs: number, secret: string): string {
+export function sealState(userId: string, nowMs: number, secret: string, game: string | null): string {
+  void game;
   const payload = Buffer.from(JSON.stringify({ u: userId, t: nowMs })).toString("base64url");
   return `${payload}.${macOf(payload, secret)}`;
 }
 
 /** True only for a state this secret sealed for this account, no more than ten minutes ago. It never throws. */
-export function openState(value: string | undefined, userId: string, nowMs: number, secret: string): boolean {
+export function openState(
+  value: string | undefined,
+  userId: string,
+  nowMs: number,
+  secret: string,
+): { game: string | null } | undefined {
+  return openedBefore(value, userId, nowMs, secret) ? { game: null } : undefined;
+}
+
+function openedBefore(value: string | undefined, userId: string, nowMs: number, secret: string): boolean {
   if (value === undefined) return false;
   const parts = value.split(".");
   if (parts.length !== 2) return false;

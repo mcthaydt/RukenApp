@@ -2,8 +2,15 @@ import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { fillAnswers } from "./support/database.ts";
-import { freshName, nextButton, startDraft } from "./support/game.ts";
-import { boxOf } from "./support/look.ts";
+import {
+  BROKEN_GAME,
+  connectGitHubFromFiles,
+  freshName,
+  nextButton,
+  startAtFiles,
+  startDraft,
+} from "./support/game.ts";
+import { boxOf, pipRed } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // How the maker's screens are laid out (spec 4, and the plan's table of sizes). A window is one of five layouts, and
@@ -205,4 +212,27 @@ test("the track has one piece per question, and the answered ones are chalk", as
   await expect(pieces.nth(0)).toHaveCSS("background-color", rgb(token("--chalk")));
   await expect(pieces.nth(1)).toHaveCSS("background-color", rgb(token("--felt-raised")));
   await expect(pieces.nth(0)).toHaveCSS("height", "6px");
+});
+
+// Red is only for what can't be undone (Owner, 2026-11-15): a message that something needs fixing is a white card with
+// a blue edge and a label, never red.
+test("the Needs fixing card is paper with a blue left edge, a plain label, and no red", async ({ page }) => {
+  const { slug } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+  await page.getByLabel(BROKEN_GAME).check();
+  await nextButton(page).click();
+  const card = page.locator(".fix");
+  await expect(card).toBeVisible();
+
+  await expect(card).toHaveCSS("background-color", rgb(token("--paper")));
+  const edge = await card.evaluate((element) => getComputedStyle(element).boxShadow);
+  expect(edge).toContain(rgb(token("--pay")));
+  expect(edge).toContain("inset");
+  expect(edge).toContain("6px");
+  const label = page.getByText("Needs fixing");
+  await expect(label).toHaveCSS("color", rgb(token("--pay")));
+  await expect(label).toHaveCSS("text-transform", "none");
+  await expect(label).toHaveCSS("font-size", "14px");
+  await expect(label).toHaveCSS("font-weight", "600");
+  expect(await pipRed(page)).toEqual([]);
 });

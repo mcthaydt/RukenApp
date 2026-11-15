@@ -1,18 +1,22 @@
 import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled, signUp } from "./support/account.ts";
-import { fillAnswers, putGameWhereStaffLeaveIt } from "./support/database.ts";
+import { filesOf, fillAnswers, putGameWhereStaffLeaveIt } from "./support/database.ts";
 import {
   addDraft,
   answerAge,
   answerLine,
   answerPlaysOn,
+  BROKEN_GAME,
+  connectGitHubFromFiles,
   freshName,
   holdAnswersTo,
   MAKER_ADDRESSES,
   nextButton,
   slugOfPage,
+  startAtFiles,
   startDraft,
+  TINY_GAME,
 } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -342,6 +346,128 @@ test("the questions work with script off", async ({ page, browser, baseURL }) =>
   } finally {
     await context.close();
   }
+});
+
+// ---- Where the game's files are ----------------------------------------------------------------------------------
+
+test("she picks a repository from Ruken's own rows, and Next copies the game", async ({ page }) => {
+  const { slug } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+
+  // Ruken's rows, never the browser's own list.
+  await expect(page.locator("select")).toHaveCount(0);
+  await expect(page.getByText("Your game needs an index.html that runs in a browser.")).toBeVisible();
+  await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
+  await page.getByLabel(TINY_GAME).check();
+  await nextButton(page).click();
+
+  await expect(page).toHaveURL(`/make/${slug}/plays-on`);
+  expect(await filesOf(slug)).toEqual({ repo: TINY_GAME, pulls: 1 });
+});
+
+test("Next with no repository chosen says so", async ({ page }) => {
+  const { slug } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+
+  await nextButton(page).click();
+
+  await expect(page.getByText("Choose the repository your game is in.")).toBeVisible();
+  await expect(page).toHaveURL(`/make/${slug}/files`);
+  expect(await filesOf(slug)).toEqual({ repo: null, pulls: 0 });
+});
+
+test("while the game is copied the button says so and cannot be pressed again", async ({ page }) => {
+  const { slug } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+  const held = await holdAnswersTo(page, new RegExp(`/make/${slug}/files$`));
+  await page.getByLabel(TINY_GAME).check();
+
+  await nextButton(page).click();
+
+  const busy = page.getByRole("button", { name: "Copying your game…" });
+  await expect(busy).toBeDisabled();
+  await expect(busy).toHaveAttribute("aria-busy", "true");
+  await expect(page.getByText("Copying your game can take a minute. Keep this page open.")).toBeVisible();
+  expect(held.requestsSoFar()).toBe(1);
+
+  held.release();
+  await expect(page).toHaveURL(`/make/${slug}/plays-on`);
+  expect(held.requestsSoFar()).toBe(1);
+});
+
+test("a repository with no index.html says so in plain words on the question that asked", async ({
+  page,
+}, testInfo) => {
+  const { slug } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+  await page.getByLabel(BROKEN_GAME).check();
+
+  await nextButton(page).click();
+
+  await expect(page).toHaveURL(`/make/${slug}/files`);
+  await expect(page.getByText("Needs fixing")).toBeVisible();
+  await expect(page.getByText("We couldn't start your game")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Ruken starts your game from a file called index.html. We couldn't find one in that folder.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Here's how to set up your game's folder" })).toHaveAttribute(
+    "href",
+    `/help/github?from=${encodeURIComponent(`/make/${slug}/files`)}#folder`,
+  );
+  await showTheOwner(page, testInfo, "question 3, no index.html");
+
+  // The one blue button opens the boxes that fix it, with the folder ready to be typed in; her choice is still picked.
+  await page.getByRole("link", { name: "Pick another folder" }).click();
+  await expect(page.getByLabel("Folder")).toBeFocused();
+  await expect(page.getByLabel(BROKEN_GAME)).toBeChecked();
+  await expect(page.getByLabel("Branch")).toBeVisible();
+  // The refusal came back with the game, so it is there on a fresh visit too.
+  await page.goto(`/make/${slug}/files`);
+  await expect(page.getByText("We couldn't start your game")).toBeVisible();
+});
+
+test("a folder that cannot be right is refused beside its box", async ({ page }) => {
+  const { slug } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+  await page.getByLabel(TINY_GAME).check();
+  await page.getByText("Change the branch or folder").click();
+  await expect(page.getByText("Leave empty for your main branch.")).toBeVisible();
+  await expect(page.getByText("Leave empty if index.html is at the top.")).toBeVisible();
+  const folder = page.getByLabel("Folder");
+  await folder.fill("/web");
+
+  await nextButton(page).click();
+
+  await expect(
+    page.getByText(
+      "That doesn't look like a folder. Write it like web/build, with no slash at the start or end.",
+    ),
+  ).toBeVisible();
+  await expect(folder).toHaveAttribute("aria-invalid", "true");
+  await expect(folder).toBeFocused();
+  await expect(folder).toHaveValue("/web");
+  await expect(page.getByLabel(TINY_GAME)).toBeChecked();
+  expect(await filesOf(slug)).toEqual({ repo: null, pulls: 0 });
+});
+
+test("a repository GitHub never listed for her is refused", async ({ page }) => {
+  const { slug } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+  // A form changed by hand: the row says one thing and the post says another.
+  await page.getByLabel(TINY_GAME).evaluate((row) => {
+    if (row instanceof HTMLInputElement) row.value = "ruken-test/not-yours";
+  });
+  await page.getByLabel(TINY_GAME).check();
+
+  await nextButton(page).click();
+
+  await expect(
+    page.getByText("Ruken can't see that repository. Choose it on GitHub, then try again."),
+  ).toBeVisible();
+  await expect(page).toHaveURL(`/make/${slug}/files`);
+  expect(await filesOf(slug)).toEqual({ repo: null, pulls: 0 });
 });
 
 // ---- Whose game it is ------------------------------------------------------------------------------------------

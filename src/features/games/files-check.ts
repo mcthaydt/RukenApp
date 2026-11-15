@@ -57,6 +57,12 @@ export function connectHostsFrom(text: string): { hosts: string[] } | { problem:
 // At least one more character is needed, so the fix we suggest is never empty.
 const TOP_OF_SITE_ADDRESS = /\b(?:src|href)\s*=\s*["'](\/(?!\/)[^"'\s>]+)["']/i;
 
+/** True for the refusal that says a folder has no index.html at its top, and for no other. */
+export function isMissingIndexHtml(problem: string): boolean {
+  void problem;
+  throw new Error("not built yet");
+}
+
 /**
  * Checks a pulled folder against the rules of design 5.4. The first failing rule wins, so a maker fixes one thing
  * at a time. `indexHtml` is the text of the top `index.html`, or null when there is none.

@@ -9,7 +9,7 @@ import type { RequestHandler } from "./$types";
 export const GET: RequestHandler = ({ locals, url }) => {
   const { userId } = signedInOnly(locals.caller, url);
   const { connect } = gamesServices();
-  const state = connect.sealState(userId);
+  const state = connect.sealState(userId, null);
   const target =
     url.searchParams.get("choose") === "1" ? connect.installUrl(state) : connect.signInUrl(state);
   // SvelteKit refuses a redirect to another site unless it is told which one. Only GitHub's own address, the one just

@@ -43,35 +43,41 @@ describe("the two addresses", () => {
 });
 
 describe("the state", () => {
-  it("opens for the account that made it, within ten minutes", () => {
-    const state = sealState("user-1", NOW_MS, SECRET);
-    expect(openState(state, "user-1", NOW_MS, SECRET)).toBe(true);
-    expect(openState(state, "user-1", NOW_MS + TEN_MINUTES_MS, SECRET)).toBe(true);
+  it("opens for the account that made it, within ten minutes, and gives back the game it was made for", () => {
+    const state = sealState("user-1", NOW_MS, SECRET, "floor-fifty");
+    expect(openState(state, "user-1", NOW_MS, SECRET)).toEqual({ game: "floor-fifty" });
+    expect(openState(state, "user-1", NOW_MS + TEN_MINUTES_MS, SECRET)).toEqual({ game: "floor-fifty" });
+  });
+
+  it("opens to no game when it was made for none", () => {
+    const state = sealState("user-1", NOW_MS, SECRET, null);
+    expect(openState(state, "user-1", NOW_MS, SECRET)).toEqual({ game: null });
   });
 
   it("does not open after ten minutes and one millisecond", () => {
-    const state = sealState("user-1", NOW_MS, SECRET);
-    expect(openState(state, "user-1", NOW_MS + TEN_MINUTES_MS + 1, SECRET)).toBe(false);
+    const state = sealState("user-1", NOW_MS, SECRET, null);
+    expect(openState(state, "user-1", NOW_MS + TEN_MINUTES_MS + 1, SECRET)).toBeUndefined();
   });
 
   it("does not open before it was made", () => {
-    const state = sealState("user-1", NOW_MS, SECRET);
-    expect(openState(state, "user-1", NOW_MS - 1, SECRET)).toBe(false);
+    const state = sealState("user-1", NOW_MS, SECRET, null);
+    expect(openState(state, "user-1", NOW_MS - 1, SECRET)).toBeUndefined();
   });
 
   // It is what stops someone from finishing a connection that another person started.
   it("does not open for another account", () => {
-    const state = sealState("user-1", NOW_MS, SECRET);
-    expect(openState(state, "user-2", NOW_MS, SECRET)).toBe(false);
+    const state = sealState("user-1", NOW_MS, SECRET, "floor-fifty");
+    expect(openState(state, "user-2", NOW_MS, SECRET)).toBeUndefined();
   });
 
   it("does not open when the secret is not the one it was made with", () => {
-    const state = sealState("user-1", NOW_MS, SECRET);
-    expect(openState(state, "user-1", NOW_MS, "another-secret")).toBe(false);
+    const state = sealState("user-1", NOW_MS, SECRET, null);
+    expect(openState(state, "user-1", NOW_MS, "another-secret")).toBeUndefined();
   });
 
+  // The game is inside the sealed part, so nobody can point a connection at a game of their choosing.
   it("does not open when any part has been changed, or is not there", () => {
-    const state = sealState("user-1", NOW_MS, SECRET);
+    const state = sealState("user-1", NOW_MS, SECRET, "floor-fifty");
     const [payload = "", mac = ""] = state.split(".");
     const flipped = (text: string) => `${text.slice(0, -1)}${text.endsWith("A") ? "B" : "A"}`;
     for (const changed of [
@@ -82,14 +88,19 @@ describe("the state", () => {
       "",
       "made-up",
     ]) {
-      expect(openState(changed, "user-1", NOW_MS, SECRET)).toBe(false);
+      expect(openState(changed, "user-1", NOW_MS, SECRET)).toBeUndefined();
     }
-    expect(openState(undefined, "user-1", NOW_MS, SECRET)).toBe(false);
+    expect(openState(undefined, "user-1", NOW_MS, SECRET)).toBeUndefined();
   });
 
-  it("is made the same way for the same account, time and secret", () => {
-    expect(sealState("user-1", NOW_MS, SECRET)).toBe(sealState("user-1", NOW_MS, SECRET));
-    expect(sealState("user-1", NOW_MS, SECRET)).not.toBe(sealState("user-2", NOW_MS, SECRET));
+  it("is made the same way for the same account, game, time and secret", () => {
+    expect(sealState("user-1", NOW_MS, SECRET, "floor-fifty")).toBe(
+      sealState("user-1", NOW_MS, SECRET, "floor-fifty"),
+    );
+    expect(sealState("user-1", NOW_MS, SECRET, null)).not.toBe(sealState("user-2", NOW_MS, SECRET, null));
+    expect(sealState("user-1", NOW_MS, SECRET, "floor-fifty")).not.toBe(
+      sealState("user-1", NOW_MS, SECRET, null),
+    );
   });
 });
 

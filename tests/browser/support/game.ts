@@ -68,6 +68,26 @@ export async function startDraft(page: Page): Promise<{ slug: string; name: stri
   return addDraft(page);
 }
 
+/** A new maker with a game, answered up to the question of where its files are: signs up, then answers 1 and 2. */
+export async function startAtFiles(
+  page: Page,
+): Promise<{ slug: string; name: string; maker: { email: string; password: string } }> {
+  const maker = await signUp(page);
+  const { slug, name } = await addDraft(page);
+  await answerLine(page);
+  await expect(page).toHaveURL(`/make/${slug}/files`);
+  await pageHasSettled(page);
+  return { slug, name, maker };
+}
+
+/** Presses "Connect GitHub" on the files question and waits until the stand-in has sent her back to it. */
+export async function connectGitHubFromFiles(page: Page, slug: string): Promise<void> {
+  await page.getByRole("link", { name: "Connect GitHub" }).click();
+  await expect(page).toHaveURL(`/make/${slug}/files`);
+  await pageHasSettled(page);
+  await expect(page.getByRole("radio")).toHaveCount(2);
+}
+
 /**
  * Every address a maker's game has, for the journey that proves another maker is told nothing. `form` is a valid
  * answer to post there, so a refusal can only be the game not being theirs.
@@ -77,6 +97,7 @@ export function MAKER_ADDRESSES(slug: string): { path: string; form?: Record<str
     { path: `/make/${slug}` },
     { path: `/make/${slug}/name`, form: { name: "Somebody else's game" } },
     { path: `/make/${slug}/line`, form: { oneLine: "Somebody else's line." } },
+    { path: `/make/${slug}/files`, form: { repo: TINY_GAME } },
     { path: `/make/${slug}/plays-on`, form: { playsOn: "computer_only" } },
     { path: `/make/${slug}/age`, form: { ageRating: "age_12" } },
   ];

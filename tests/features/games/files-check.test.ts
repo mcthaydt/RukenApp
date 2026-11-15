@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   checkGameFiles,
   connectHostsFrom,
+  isMissingIndexHtml,
   MAX_FILE_BYTES,
   MAX_GAME_BYTES,
   MAX_GAME_FILES,
@@ -183,5 +184,16 @@ describe("connectHostsFrom", () => {
 
   it("refuses a repeated name, whatever its letter case", () => {
     expect(connectHostsFrom("a.example.com\nA.example.com")).toEqual({ problem: PROBLEM });
+  });
+});
+
+describe("isMissingIndexHtml", () => {
+  it("is true for the refusal about no index.html, and for no other refusal", () => {
+    const missing = checkGameFiles([file("main.js")], null);
+    const empty = checkGameFiles([], null);
+    expect(missing.ok).toBe(false);
+    expect(empty.ok).toBe(false);
+    expect(!missing.ok && isMissingIndexHtml(missing.problem)).toBe(true);
+    expect(!empty.ok && isMissingIndexHtml(empty.problem)).toBe(false);
   });
 });

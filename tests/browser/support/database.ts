@@ -78,9 +78,12 @@ export async function githubConnectionOf(email: string) {
   }));
 }
 
-/** The state GitHub's sign-in sends back for an account, sealed with the app's own secret and the clock. */
-export function connectStateFor(userId: string): string {
-  return sealState(userId, Date.now(), APP_SECRET);
+/**
+ * The state GitHub's sign-in sends back for an account, sealed with the app's own secret and the clock, for the game
+ * whose address is `game` (none by default).
+ */
+export function connectStateFor(userId: string, game: string | null = null): string {
+  return sealState(userId, Date.now(), APP_SECRET, game);
 }
 
 export function membershipStartsOf(email: string): Promise<MembershipStart[]> {
@@ -125,6 +128,15 @@ export function feeRowsKept(product: string): Promise<number> {
  */
 export async function forgetTheirRepositories(email: string): Promise<void> {
   await db().gitHubRepository.deleteMany({ where: { connection: { user: { email } } } });
+}
+
+/** Where a game's files are, and how many times they were copied, read from its rows. */
+export async function filesOf(slug: string): Promise<{ repo: string | null; pulls: number }> {
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { repoFullName: true, _count: { select: { pulls: true } } },
+  });
+  return { repo: game.repoFullName, pulls: game._count.pulls };
 }
 
 /** The commit a stand-in pull is made from: any 40 hex characters. */

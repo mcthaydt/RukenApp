@@ -25,8 +25,10 @@ export interface GitHubConnect {
   signInUrl(state: string): string;
   installUrl(state: string): string;
   connectionOf(code: string): Promise<Connection[]>;
-  sealState(userId: string): string;
-  openState(value: string | undefined, userId: string): boolean;
+  /** The state for a connection started by `userId`, for the game (its address) the maker is answering, or none. */
+  sealState(userId: string, game: string | null): string;
+  /** The game the state was sealed for, or undefined when it does not open for this account. */
+  openState(value: string | undefined, userId: string): { game: string | null } | undefined;
 }
 
 export interface GamesServices {
@@ -89,7 +91,7 @@ export function createGamesServices(
     signInUrl: (state) => signInUrl({ clientId, state, ...(webBase === undefined ? {} : { webBase }) }),
     installUrl: (state) => installUrl({ appSlug, state, ...(webBase === undefined ? {} : { webBase }) }),
     connectionOf: (code) => connectionOf({ code, clientId, clientSecret, ...addresses }),
-    sealState: (userId) => sealState(userId, parts.clock.epochMs(), stateSecret),
+    sealState: (userId, game) => sealState(userId, parts.clock.epochMs(), stateSecret, game),
     openState: (value, userId) => openState(value, userId, parts.clock.epochMs(), stateSecret),
   };
   return {
