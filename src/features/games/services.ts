@@ -96,7 +96,7 @@ export function createGamesServices(
     service,
     connect,
     address: (name) => gameAddress(pattern, name),
-    media: () => "",
+    media: (key) => `${gameAddress(pattern, "media")}/${key}`,
   };
 }
 

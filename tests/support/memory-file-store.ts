@@ -47,7 +47,12 @@ export class MemoryFileStore implements FileStore {
   }
 
   deleteAll(prefix: string): Promise<number> {
-    checkFolderPrefix(prefix);
+    // A refusal comes back as a rejected promise, as the real bucket's async method gives it, never as a throw.
+    try {
+      checkFolderPrefix(prefix);
+    } catch (refusal) {
+      return Promise.reject(refusal instanceof Error ? refusal : new Error(String(refusal)));
+    }
     let gone = 0;
     for (const key of [...this.#files.keys()]) {
       if (key.startsWith(prefix)) {
