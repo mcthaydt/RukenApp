@@ -12,7 +12,7 @@ import {
   startAtVideo,
   startDraft,
 } from "./support/game.ts";
-import { boxOf, pipRed, showTheOwner } from "./support/look.ts";
+import { boxOf, layoutOf, pipRed, showTheOwner, type Layout } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // How the maker's screens are laid out (spec 4, and the plan's table of sizes). A window is one of five layouts, and
@@ -20,18 +20,6 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 // different layouts, a phone held sideways is the sideways tablet made smaller.
 
 test.beforeEach(forgetRateLimits);
-
-type Layout = "phone" | "phone-sideways" | "tablet" | "tablet-sideways" | "computer";
-
-/** Which of the five layouts this window gets. The same order as the stylesheet's queries. */
-function layoutOf(page: Page): Layout {
-  const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
-  if (width < 500) return "phone";
-  if (height < 450) return "phone-sideways";
-  if (height > width) return "tablet";
-  if (width < 1200) return "tablet-sideways";
-  return "computer";
-}
 
 /** What each layout draws a question with: the heading, the answer box and the buttons, in px. */
 const SIZES: Record<Layout, { heading: number; box: number; button: number; inBar: boolean }> = {

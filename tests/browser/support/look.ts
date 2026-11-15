@@ -182,3 +182,24 @@ export async function showTheOwner(page: Page, testInfo: TestInfo, screen: strin
     contentType: "image/png",
   });
 }
+
+/** The five layouts the maker's screens are drawn in (spec 4). */
+export type Layout = "phone" | "phone-sideways" | "tablet" | "tablet-sideways" | "computer";
+
+/** Which of the five layouts this window gets. The same order as the stylesheet's queries. */
+export function layoutOf(page: Page): Layout {
+  const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+  if (width < 500) return "phone";
+  if (height < 450) return "phone-sideways";
+  if (height > width) return "tablet";
+  if (width < 1200) return "tablet-sideways";
+  return "computer";
+}
+
+/**
+ * Waits until a video has drawn a frame: the browser has read its size, which it can only do from a file it can decode.
+ * A video that is a few bytes of the right first letters shows a blank block and never passes this.
+ */
+export async function expectFrame(video: Locator): Promise<void> {
+  await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.videoWidth)).toBeGreaterThan(0);
+}
