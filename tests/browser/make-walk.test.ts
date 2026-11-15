@@ -135,7 +135,7 @@ test("Your games says what to do after GitHub did not connect", async ({ page })
 // ---- E7: Change something on a waiting game --------------------------------------------------------------------------------
 
 test("a waiting game's Change something has nothing to send: it is saved already", async ({ page }) => {
-  const { slug } = await gameWhere(page, { state: "waiting" });
+  const { slug } = await gameWhere(page, { state: "waiting" }, { agreed: true });
   await page.goto(`/make/${slug}/check`);
   await pageHasSettled(page);
 

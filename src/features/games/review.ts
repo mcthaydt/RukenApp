@@ -55,6 +55,8 @@ export function listWords(game: {
   toFix: number;
   firstUnanswered: QuestionId | null;
   questionNumber: number | null;
+  /** Staff's newest word on the game was a send back (a live game's update, once it is mended, is sent again). */
+  sentBackLast?: boolean;
 }): string {
   switch (game.state) {
     case "draft":
@@ -65,9 +67,11 @@ export function listWords(game: {
       return "Waiting for review";
     case "live":
       if (game.hasPending) return "Live. Your update is waiting for review";
-      return game.toFix > 0 ? "Live. Your update was sent back. See what to fix." : "Live";
+      if (game.toFix > 0) return "Live. Your update was sent back. See what to fix.";
+      // Everything staff sent back is mended: sending it again is what is left to do.
+      return game.sentBackLast === true ? "Live. Your update is fixed. Send it again." : "Live";
     case "sent_back":
-      return "Sent back. See what to fix.";
+      return game.toFix === 0 ? "Fixed. Send it again." : "Sent back. See what to fix.";
     case "taken_off":
       return "Off Ruken. You took it off.";
     case "taken_down":

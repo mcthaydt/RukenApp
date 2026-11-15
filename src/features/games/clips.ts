@@ -70,7 +70,7 @@ export function clipProblem(upload: { contentType: string; bytes: Uint8Array }):
     return `That video is ${wholeMegabytes(bytes.length)}. Videos can be up to ${wholeMegabytes(CLIP_MAX_BYTES)}. Make it shorter or smaller, then choose it again.`;
   }
   if (!looksLikeVideo(bytes, contentType)) {
-    return "That file doesn't look like a video. Save it as MP4 or WebM and try again.";
+    return "That file doesn't look like a video. Save it as MP4, WebM or MOV and try again.";
   }
   return null;
 }

@@ -551,12 +551,12 @@ describe("saveAnswer", () => {
     const { makerUserId, id } = await begin();
     await setState(id, state);
 
-    // The age answer takes its marks beside it. The cast lets this compile before the answer has the field.
+    // The age answer takes its marks beside it.
     await service.saveAnswer(id, makerUserId, {
       question: "age",
       ageRating: "age_18",
       contentMarks: ["gore"],
-    } as Answer);
+    });
 
     expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
       ageRating: "age_18",

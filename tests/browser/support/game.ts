@@ -324,14 +324,19 @@ export async function startAtCheck(page: Page): Promise<{ slug: string; name: st
   return { slug, name };
 }
 
-/** A new maker whose finished game staff have left as `decision` says (waiting, sent back or live). */
+/**
+ * A new maker whose finished game staff have left as `decision` says (waiting, sent back or live). A game that has been
+ * sent has had its maker's agreement, so a journey that opens Check and send for it passes `agreed`.
+ */
 export async function gameWhere(
   page: Page,
   decision: Parameters<typeof putGameWhereStaffLeaveIt>[1],
-): Promise<{ slug: string }> {
-  const { slug } = await startDraft(page);
+  options: { agreed?: boolean } = {},
+): Promise<{ slug: string; name: string }> {
+  const { slug, name } = await startDraft(page);
   await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
   await giveRealClips(page, slug);
+  if (options.agreed === true) await agreeToTheAgreement(page, slug);
   await putGameWhereStaffLeaveIt(slug, decision);
-  return { slug };
+  return { slug, name };
 }

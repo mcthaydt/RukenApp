@@ -13,7 +13,13 @@
 </script>
 
 {#if data.view === "waiting"}
-  <WaitingScreen name={data.name} game={data.game} changeAddress={data.changeAddress} />
+  <WaitingScreen
+    name={data.name}
+    game={data.game}
+    changeAddress={data.changeAddress}
+    filesProblem={data.filesProblem}
+    filesAddress={data.filesAddress}
+  />
 {:else if data.view === "sent_back"}
   <SentBackScreen
     name={data.name}
@@ -31,7 +37,7 @@
     send={data.send}
     updateWaiting={data.updateWaiting}
     fixes={data.fixes}
-    seeAddress={data.seeAddress}
+    takeOffAddress={data.takeOffAddress}
     backdrop={data.backdrop}
     game={data.game}
     problem={form?.problem}

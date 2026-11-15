@@ -20,6 +20,9 @@
   {/if}
   {#if data.githubFailed}
     <p class="problem" role="alert">GitHub didn't connect. Try again.</p>
+    {#if data.games.length > 0}
+      <p>Open your game to try again.</p>
+    {/if}
   {/if}
   {#if data.games.length === 0}
     <p>You haven't added a game yet.</p>

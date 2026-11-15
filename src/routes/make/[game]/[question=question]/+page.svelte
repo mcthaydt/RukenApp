@@ -111,8 +111,6 @@
       counter={data.counter}
       back={data.back}
       throwAway={data.throwAway}
-      busyWords="Copying your game…"
-      busyLine="Copying your game can take a minute. Keep this page open."
       enterHint={false}
     >
       <TextAnswer
@@ -155,6 +153,10 @@
       back={data.back}
       throwAway={data.throwAway}
     >
+      {#if data.madeEighteen}
+        <!-- The game is being made 18+: the rating is kept with its marks, in one answer. -->
+        <input type="hidden" name="age" value="18" />
+      {/if}
       <Picks
         name="contentMarks"
         options={MARKS}

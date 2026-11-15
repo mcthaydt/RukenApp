@@ -22,7 +22,16 @@
   }: {
     shape: "upright" | "wide";
     /** Where the video stands: its address (none until one is in), and whether a different one is being chosen. */
-    video: { src: string | null; replacing: boolean; replaceAddress: string; howToRecord: string };
+    video: {
+      src: string | null;
+      replacing: boolean;
+      replaceAddress: string;
+      howToRecord: string;
+      /** The how-to's part for a video that is over the limit. */
+      howToTooBig: string;
+      /** True for a game that plays on computers only, which still needs an upright video for phones' feeds. */
+      computersOnly: boolean;
+    };
     counter: { n: number; of: number } | null;
     back: string;
     throwAway: string | undefined;
@@ -58,6 +67,8 @@
   /** True while the blue button is the picker: no video yet, or a different one is being chosen. */
   const choosing = $derived(video.src === null || video.replacing);
   const shown = $derived(saving ? null : (refusedHere ?? problem ?? null));
+  // A refusal that names the size (every one of them says "up to 30 MB") leads to how to make a video smaller.
+  const tooBig = $derived(shown !== null && /\d+ MB/.test(shown));
 
   // The refusal comes into view when it arrives: on a phone it would otherwise land under the pinned bar, and the maker
   // would see the button light up and nothing else change.
@@ -109,6 +120,10 @@
     Record your screen while you play for 10 to 30 seconds. Players see it in the feed before they play.
   </p>
   <p class="note" id="note">{words.note}</p>
+  {#if shape === "upright" && video.computersOnly}
+    <!-- A game for computers is still seen in the feed, which is upright, so it needs this video too. -->
+    <p class="note">Phone players see this in the feed, even if your game is for computers.</p>
+  {/if}
   <!-- The action first (choosing another video), then the how-to: one look, one to a line. -->
   {#if !choosing}
     <a class="help" href={video.replaceAddress}>Choose a different video</a>
@@ -121,7 +136,12 @@
     <p class="note" role="status">Adding your video. Keep this page open.</p>
   {/if}
   {#if shown !== null}
-    <p class="problem" id="problem" role="alert" bind:this={problemLine}>{shown}</p>
+    <p class="problem" id="problem" role="alert" bind:this={problemLine}>
+      {shown}
+      {#if tooBig}
+        <a href={video.howToTooBig}>How to make it smaller</a>
+      {/if}
+    </p>
   {/if}
 </QuestionScreen>
 

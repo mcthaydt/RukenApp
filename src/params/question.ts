@@ -1,5 +1,5 @@
-// The end of `/make/<game>/<question>`: only the nine words a question is asked by. `check`, `agreement` and
-// `throw-away` are routes of their own, and any other word is a page that does not exist.
+// The end of `/make/<game>/<question>`: only the nine words a question is asked by. `check`, `agreement`,
+// `throw-away` and `take-off` are routes of their own, and any other word is a page that does not exist.
 //
 // The words are written out here, not read from the games feature: a matcher runs in the browser too, and the
 // feature's entry carries server code the browser must not load. tests/params/question.test.ts holds this list to the

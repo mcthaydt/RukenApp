@@ -110,7 +110,9 @@ export async function wordsHaveSettled(page: Page): Promise<void> {
       document
         .getAnimations()
         .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
-        .map((animation) => animation.finished),
+        // An animation that is cancelled (its element left the page, or its style changed) rejects `finished` with an
+        // AbortError; a cancelled entrance has stopped moving as much as a finished one, so that is also "settled".
+        .map((animation) => animation.finished.catch(() => undefined)),
     );
     await document.fonts.ready;
   });

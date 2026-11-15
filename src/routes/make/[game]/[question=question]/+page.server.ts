@@ -57,11 +57,20 @@ const LIVE_MAY_ANSWER: readonly BuiltQuestion[] = ["name", "line", "plays-on"];
  * The question this address asks of this game, or a 404: a word with no screen, marks for a game that is not 18+, or a
  * question a live game is not asked (its videos, files, rating and websites are not changed under the players).
  */
-function askedQuestion(word: string, game: MakerGame): BuiltQuestion {
+function askedQuestion(word: string, game: MakerGame, madeEighteen: boolean): BuiltQuestion {
   if (!isQuestionAddress(word) || !isBuilt(word)) error(404, "Not found");
-  if (word === "marks" && game.ageRating !== "age_18") error(404, "Not found");
+  if (word === "marks" && game.ageRating !== "age_18" && !madeEighteen) error(404, "Not found");
   if (game.state === "live" && !LIVE_MAY_ANSWER.includes(word)) error(404, "Not found");
   return word;
+}
+
+/**
+ * True when a waiting or sent-back game that is not 18+ is being made 18+: its marks are asked before the rating is kept,
+ * because the database holds an 18+ game that is past draft to having them. A draft is asked its marks next, as always.
+ * `said` is the maker's own word that this is what she is doing (the address's `age=18`, or the form's hidden `age`).
+ */
+function isBeingMadeEighteen(game: MakerGame, said: boolean): boolean {
+  return said && (game.state === "waiting" || game.state === "sent_back") && game.ageRating !== "age_18";
 }
 
 /**
@@ -109,19 +118,24 @@ async function filesScreen(url: URL, userId: string, game: MakerGame) {
 /** The video question's own part of the page: the video that is in (none until one is), and whether it is being changed. */
 function videoScreen(url: URL, game: MakerGame, shape: VideoQuestion) {
   const clip = game.clips[shape];
+  const howToRecord = `/help/record-screen?from=${encodeURIComponent(`/make/${game.slug}/${shape}`)}`;
   return {
     src: clip === null ? null : gamesServices().media(clip.key),
     // Set by "Choose a different video": the picker is open and the video that is there stays in its frame.
     replacing: clip !== null && url.searchParams.get("again") === "1",
     replaceAddress: `/make/${game.slug}/${shape}?again=1`,
     // The how-to's way back is this question.
-    howToRecord: `/help/record-screen?from=${encodeURIComponent(`/make/${game.slug}/${shape}`)}`,
+    howToRecord,
+    // The same how-to, at its part for a video that is too big.
+    howToTooBig: `${howToRecord}#too-big`,
+    computersOnly: game.playsOn === "computer_only",
   };
 }
 
 export const load: PageServerLoad = async (event) => {
   const { userId, game } = await ownGame(event);
-  const question = askedQuestion(event.params.question, game);
+  const madeEighteen = isBeingMadeEighteen(game, event.url.searchParams.get("age") === "18");
+  const question = askedQuestion(event.params.question, game, madeEighteen);
   const answers = answersOf(game);
   const firstTime = isFirstTime(game, question);
 
@@ -149,6 +163,9 @@ export const load: PageServerLoad = async (event) => {
     playsOn: game.playsOn === null ? [] : [game.playsOn],
     ageRating: game.ageRating === null ? [] : [game.ageRating],
     contentMarks: game.contentMarks,
+    // Set while a waiting or sent-back game is being made 18+: the marks form says so, so the rating and the marks are
+    // kept together.
+    madeEighteen,
     // The address of a live game's page never changes, and the name's hint says so.
     addressStays: game.everLive,
     counter: firstTime && question !== "websites" ? counterOf(question, answers) : null,
@@ -274,7 +291,9 @@ async function goOn(userId: string, saved: { slug: string }, question: BuiltQues
 export const actions: Actions = {
   answer: async (event) => {
     const { userId, game } = await ownGame(event);
-    const question = askedQuestion(event.params.question, game);
+    const form = await event.request.formData();
+    const madeEighteen = isBeingMadeEighteen(game, textOf(form, "age") === "18");
+    const question = askedQuestion(event.params.question, game, madeEighteen);
     const firstTime = isFirstTime(game, question);
 
     // A video is added the moment it is chosen (the `clip` action), so Next only moves on, and only with one in.
@@ -283,15 +302,28 @@ export const actions: Actions = {
       return goOn(userId, game, question, firstTime);
     }
 
-    const form = await event.request.formData();
     // What was typed comes back with a refusal, so nobody types it twice.
     const typed = typedFor(question, form);
     const found = answerFrom(question, form);
     if ("problem" in found) return fail(400, { problem: found.problem, value: typed });
 
+    // A waiting or sent-back game made 18+ is asked its marks first, and nothing is kept until they are answered.
+    if (
+      found.answer.question === "age" &&
+      found.answer.ageRating === "age_18" &&
+      isBeingMadeEighteen(game, true)
+    ) {
+      redirect(303, `/make/${game.slug}/marks?age=18`);
+    }
+    // The marks of that game come with the rating, in one answer.
+    const answer: Answer =
+      found.answer.question === "marks" && madeEighteen
+        ? { question: "age", ageRating: "age_18", contentMarks: found.answer.contentMarks }
+        : found.answer;
+
     let saved: { slug: string };
     try {
-      saved = await gamesServices().service.saveAnswer(game.id, userId, found.answer);
+      saved = await gamesServices().service.saveAnswer(game.id, userId, answer);
     } catch (problem) {
       if (!(problem instanceof GameError)) throw problem;
       if (question !== "files") return fail(400, { problem: problem.message, value: typed });
@@ -308,7 +340,7 @@ export const actions: Actions = {
   // One video, one request. A refusal shows under the hint of the question that asked.
   clip: async (event) => {
     const { game } = await ownGame(event);
-    const shape = askedQuestion(event.params.question, game);
+    const shape = askedQuestion(event.params.question, game, false);
     if (!isVideoQuestion(shape)) error(404, "Not found");
     // Refused before the body is read, so a huge file is never held in the Worker.
     if (Number(event.request.headers.get("content-length") ?? "0") > CLIP_REQUEST_MAX_BYTES) {

@@ -75,7 +75,9 @@ function liveLaidOut(game: MakerGame) {
 type LiveSend = "new_version" | "again" | "none";
 
 function liveSend(game: MakerGame): LiveSend {
-  if (game.hasPending || !game.sentBackLast) return "new_version";
+  // A copy GitHub refused leaves no new copy to send again, so the way on is a new copy: "Send it again" would be
+  // refused with nothing to fix it (spec E4).
+  if (game.hasPending || !game.sentBackLast || game.pullProblem !== null) return "new_version";
   if (game.toFix.some((one) => one.part === "files")) return "new_version";
   return game.toFix.length === 0 ? "again" : "none";
 }
@@ -83,6 +85,9 @@ function liveSend(game: MakerGame): LiveSend {
 /** The line under "Live": what is wrong, or what to do next. */
 function liveLine(game: MakerGame, send: LiveSend): string {
   if (game.hasPending) return "Your update is waiting for review.";
+  if (game.pullProblem !== null) {
+    return "Your last copy from GitHub didn't work. Fix it there, then send a new version.";
+  }
   if (send === "again") return "Fixed. Send it again when you're ready.";
   if (game.toFix.length === 0) return "Players can find it on Ruken.";
   return send === "none" ? "Fix it, then send it again." : "Fix it, then send a new version.";
@@ -103,6 +108,9 @@ export const load: PageServerLoad = async (event) => {
       view: "waiting" as const,
       game: laidOut(game, []),
       changeAddress: `/make/${game.slug}/check`,
+      // A refused newest copy leaves the older one waiting, so the screen says so and leads to where it is mended.
+      filesProblem: game.pullProblem,
+      filesAddress: `/make/${game.slug}/files`,
     };
   }
 
@@ -129,7 +137,8 @@ export const load: PageServerLoad = async (event) => {
       // An update waiting for review is replaced by the one sent now, which the note under the button says.
       updateWaiting: game.hasPending,
       fixes,
-      seeAddress: `/g/${game.slug}`,
+      // Asked on a screen of its own, because it cannot be undone.
+      takeOffAddress: `/make/${game.slug}/take-off`,
       // The statement piece: the game's own video behind everything, in the shape of the screen it is seen on.
       backdrop: {
         upright: game.clips.upright === null ? null : gamesServices().media(game.clips.upright.key),

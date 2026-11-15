@@ -31,7 +31,12 @@ export const load: PageServerLoad = async (event) => {
   const elsewhere = await whereItIsNotReady(userId, game);
   if (elsewhere !== null) redirect(303, elsewhere);
   return {
+    name: game.name,
     game: laidOut(game, ALL_PARTS),
+    // A waiting game was sent already, and a change to it is saved at once, so there is nothing to send here: pressing
+    // "Send for review" again would only put it at the back of staff's queue.
+    changing: game.state === "waiting",
+    doneAddress: `/make/${game.slug}`,
     // A waiting game cannot be thrown away (it is with staff); a draft can.
     throwAway: game.state === "draft" ? `/make/${game.slug}/throw-away` : null,
   };
@@ -40,6 +45,8 @@ export const load: PageServerLoad = async (event) => {
 export const actions: Actions = {
   send: async (event) => {
     const { userId, game } = await ownGame(event);
+    // A game that was sent already is not sent again from here: its changes are saved.
+    if (game.state === "waiting") redirect(303, `/make/${game.slug}`);
     // A send posted by hand gets the same lead as the page: nothing goes to staff that was not checked.
     const elsewhere = await whereItIsNotReady(userId, game);
     if (elsewhere !== null) redirect(303, elsewhere);

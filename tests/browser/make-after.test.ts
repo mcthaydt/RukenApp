@@ -1,16 +1,15 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { fillAnswers, putGameWhereStaffLeaveIt, type SentBackPart } from "./support/database.ts";
 import {
   addDraft,
-  agreeToTheAgreement,
   answerEveryQuestion,
   answerName,
   chooseVideo,
   freshName,
+  gameWhere,
   holdAnswersTo,
-  giveRealClips,
   MAKER_ADDRESSES,
   nextButton,
   startDraft,
@@ -24,20 +23,6 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 // make-look.test.ts; these journeys are the words, the links and what each button does.
 
 test.beforeEach(forgetRateLimits);
-
-/** A new maker whose finished game staff have left as `decision` says. */
-async function gameWhere(
-  page: Page,
-  decision: Parameters<typeof putGameWhereStaffLeaveIt>[1],
-  options: { agreed?: boolean } = {},
-): Promise<{ slug: string; name: string }> {
-  const { slug, name } = await startDraft(page);
-  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
-  await giveRealClips(page, slug);
-  if (options.agreed === true) await agreeToTheAgreement(page, slug);
-  await putGameWhereStaffLeaveIt(slug, decision);
-  return { slug, name };
-}
 
 const SIDEWAYS: SentBackPart = { part: "upright_video", reason: "sideways" };
 

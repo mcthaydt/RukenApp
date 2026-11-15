@@ -1,14 +1,15 @@
 <!--
   A game that is live (spec 5c). Its own video fills the screen behind everything, blurred and dimmed, the upright one on
   an upright screen and the wide one on a wide screen; it moves only where a video may move by itself (quietVideo). In
-  front: the line, the blue "See it on Ruken", a quiet outline send, and the way back (or, when a send is what the maker
-  is to do next, that send is the blue button and "See it on Ruken" a link). The send is "Send a new version"
-  (copies the newest files and sends them for review in the one press), or, once staff sent back a name, a line or where
-  it plays and it is mended, "Send it again" (sends the copy Ruken already holds, no copy from GitHub); while one of those
-  is still to mend there is no send at all. Beside them the game laid out sharp, with a Change on its name, its
-  line and where it plays only: its rating, files and videos go through staff again. Only the video of this window's shape
-  is laid out, with the name, the line and the two chips (where it plays, who it is for). An update that was sent back is
-  a card.
+  front: the line, the blue button for what to do next, and the way back. What to do next is the send ("Send a new
+  version", which copies the newest files and sends them for review in the one press, or, once staff sent back a name,
+  a line or where it plays and it is mended, "Send it again", which sends the copy Ruken already holds, no copy from
+  GitHub), or, while something that was sent back is to be fixed, the fix, with the send a quiet outline under it. While
+  one of those is still to mend there is no send at all. There is no "See it on Ruken" until a game has a page of its
+  own for players. Under them a quiet link takes the game off Ruken (the agreement's first point). Beside them the game
+  laid out sharp, with a Change on its name, its line and where it plays only: its rating, files and videos go through
+  staff again. Only the video of this window's shape is laid out, with the name, the line and the two chips (where it
+  plays, who it is for). An update that was sent back is a card.
 -->
 <script lang="ts">
   import { enhance } from "$app/forms";
@@ -24,7 +25,7 @@
     send,
     updateWaiting,
     fixes,
-    seeAddress,
+    takeOffAddress,
     backdrop,
     game,
     problem,
@@ -36,7 +37,8 @@
     /** True while an update waits for review: a new version sent now takes its place, and the note says so. */
     updateWaiting: boolean;
     fixes: FixCardData[];
-    seeAddress: string;
+    /** Where a maker is asked whether to take the game off Ruken. */
+    takeOffAddress: string;
     backdrop: { upright: string | null; wide: string | null };
     game: LaidOutGame;
     problem: string | undefined;
@@ -140,19 +142,14 @@
       <div class="acts">
         <a class="button" href={first.href}>{first.fixWords}</a>
       </div>
-      <p><a href={seeAddress}>See it on Ruken</a></p>
-    {:else if send === "again"}
+      {#if send === "new_version"}
+        {@render sendForm(false)}
+      {/if}
+    {:else if send !== "none"}
       <!-- A send waiting on the maker is what to do next, so it is the blue button, as on Sent back. -->
       {@render sendForm(true)}
-      <p><a href={seeAddress}>See it on Ruken</a></p>
-    {:else}
-      <div class="acts">
-        <a class="button" href={seeAddress}>See it on Ruken</a>
-      </div>
     {/if}
-    {#if send === "new_version"}
-      {@render sendForm(false)}
-    {/if}
+    <p><a href={takeOffAddress}>Take it off Ruken</a></p>
     <a class="foot" href="/make">Back to your games</a>
   </div>
   <div class="after">

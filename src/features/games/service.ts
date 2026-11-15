@@ -70,7 +70,9 @@ export type Answer =
   | { question: "line"; oneLine: string }
   | { question: "files"; repo: { fullName: string; branch: string | null; folder: string } }
   | { question: "plays-on"; playsOn: GamePlaysOn }
-  | { question: "age"; ageRating: AgeRating }
+  // A game past draft that is made 18+ brings its marks with the rating: the database holds an 18+ game that is past
+  // draft to having them, so the two are one write.
+  | { question: "age"; ageRating: AgeRating; contentMarks?: ContentMark[] }
   | { question: "marks"; contentMarks: ContentMark[] }
   | { question: "websites"; connectHosts: string[] };
 
@@ -559,7 +561,19 @@ export function createGamesService(deps: GamesServiceDeps) {
         if (problem !== undefined) throw new GameError("INVALID", problem);
         data.ageRating = answer.ageRating;
         // Marks belong to an 18+ game only: a game made younger has none (Game_marks_check).
-        if (answer.ageRating !== "age_18") data.contentMarks = [];
+        if (answer.ageRating !== "age_18") {
+          data.contentMarks = [];
+        } else if (
+          answer.contentMarks !== undefined ||
+          (game.state !== "draft" && game.ageRating !== "age_18")
+        ) {
+          // A draft is asked its marks next, but a waiting or sent-back game made 18+ must have them now: the database
+          // refuses an 18+ game that is past draft without, and the maker would be told nothing.
+          const known = (answer.contentMarks ?? []).filter((mark) => CONTENT_MARKS.includes(mark));
+          const problem = marksProblem(known);
+          if (problem !== undefined) throw new GameError("INVALID", problem);
+          data.contentMarks = known.includes("none") ? ["none"] : [...new Set(known)];
+        }
         part = "age_rating";
         break;
       }
@@ -590,15 +604,42 @@ export function createGamesService(deps: GamesServiceDeps) {
       data: { ...data, ...(part === "files" ? {} : { toFix: game.toFix.filter((one) => one !== part) }) },
     });
 
-    // The pull records the website list staff will review, and the files are the answer: a refused pull leaves the
-    // choice kept, and the screen that asked shows the refusal.
-    // A copy that passes takes the files off the list of what to fix (pullLatest).
+    // The files are the answer that copies: a refused copy leaves the choice kept, and the screen that asked shows the
+    // refusal. A copy that passes takes the files off the list of what to fix (pullLatest).
     if (answer.question === "files") {
       await pullLatest(gameId);
-    } else if (answer.question === "websites" && game.repoFullName !== null) {
-      await pullLatest(gameId);
+    } else if (answer.question === "websites" && data.connectHosts !== undefined) {
+      // Staff review the list with the copy they have. It is written on that copy and nothing is copied again, so a
+      // game waiting for review does not quietly swap its files for whatever is on GitHub today.
+      const newest = await deps.db.gamePull.findFirst({
+        where: { gameId },
+        orderBy: NEWEST_FIRST,
+        select: { id: true },
+      });
+      if (newest !== null) {
+        await deps.db.gamePull.update({
+          where: { id: newest.id },
+          data: { connectHosts: data.connectHosts },
+        });
+      }
     }
     return { slug };
+  }
+
+  /**
+   * Takes a live game off Ruken, which its maker cannot undo (the agreement's first point: the maker may remove a game
+   * at any time). The row stays with its address, so what the game earned and who played it are still there, and an
+   * update that was waiting for review is dropped with it. Only a live game is taken off: every other state has its own
+   * way out (a draft or a sent-back game is thrown away, a waiting one is with staff).
+   */
+  async function takeOff(gameId: string, makerUserId: string): Promise<{ name: string }> {
+    const game = await ownGame(gameId, makerUserId);
+    if (game.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
+    await deps.db.game.update({
+      where: { id: gameId },
+      data: { state: "taken_off", stateReason: null, pendingPullId: null, pendingSince: null, toFix: [] },
+    });
+    return { name: game.name };
   }
 
   /**
@@ -791,6 +832,7 @@ export function createGamesService(deps: GamesServiceDeps) {
         toFix: true,
         clips: { select: { shape: true, key: true } },
         _count: { select: { pulls: true } },
+        reviews: { orderBy: { decidedAt: "desc" }, take: 1, select: { decision: true } },
       },
     });
     return rows.map((row) => {
@@ -814,6 +856,7 @@ export function createGamesService(deps: GamesServiceDeps) {
           toFix: row.toFix.length,
           firstUnanswered: next,
           questionNumber: next === null ? null : counterOf(next, answers).n,
+          sentBackLast: row.reviews[0]?.decision === "sent_back",
         }),
       };
     });
@@ -952,6 +995,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     startGame,
     saveAnswer,
     throwAway,
+    takeOff,
     pullLatest,
     sendForReview,
     accept,

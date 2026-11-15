@@ -44,8 +44,11 @@ export function installUrl(input: { appSlug: string; state: string; webBase?: st
 
 // ---- The state -------------------------------------------------------------------------------------------------
 
-/** How long a state stays good: the time a person takes to choose repositories on GitHub, with room to spare. */
-const STATE_LIFE_MS = 10 * 60 * 1000;
+/**
+ * How long a state stays good: the time a person takes on GitHub before she is back. A person with no GitHub account
+ * makes one there (a sign-up, an email code and the app's install), which takes longer than choosing repositories.
+ */
+const STATE_LIFE_MS = 60 * 60 * 1000;
 
 /** Keeps this use of the secret apart from every other use of it (the arrival cookie, the play pass). */
 const MAC_PREFIX = "ruken-github-state-v1:";
@@ -68,8 +71,8 @@ export function sealState(userId: string, nowMs: number, secret: string, game: s
 }
 
 /**
- * The game a state was sealed for (null for none) when this secret sealed it for this account no more than ten
- * minutes ago; otherwise undefined. It never throws.
+ * The game a state was sealed for (null for none) when this secret sealed it for this account no more than an hour
+ * ago; otherwise undefined. It never throws.
  */
 export function openState(
   value: string | undefined,

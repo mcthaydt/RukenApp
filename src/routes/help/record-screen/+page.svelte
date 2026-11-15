@@ -29,6 +29,7 @@
       <li><a href="#android">Android phone</a></li>
       <li><a href="#windows">Windows computer</a></li>
       <li><a href="#mac">Mac</a></li>
+      <li><a href="#too-big">Video too big?</a></li>
     </ul>
   </nav>
 
@@ -58,6 +59,10 @@
   <ol>
     <li>Open your game in your browser.</li>
     <li>Press the Windows key and the letter G together. The Game Bar opens.</li>
+    <li>
+      For the upright video, make your browser window taller than wide first, like a phone's screen. For the
+      wide video, make it wider than tall.
+    </li>
     <li>Choose Capture, then the round record button.</li>
     <li>Play your game, then choose the stop button. Your video is in your Videos folder, in Captures.</li>
   </ol>
@@ -65,9 +70,30 @@
   <ol>
     <li>Open your game in your browser.</li>
     <li>Press Shift, Command and 5 together.</li>
-    <li>Choose Record Entire Screen, then Record.</li>
+    <li>For the wide video, choose Record Entire Screen, then Record.</li>
+    <li>
+      For the upright video, choose Record Selected Portion instead. Drag the box until it is taller than
+      wide, like a phone's screen, then choose Record.
+    </li>
     <li>Play your game, then press the stop button at the top of the screen.</li>
     <li>Your video is on your Desktop. Ruken takes this kind of file.</li>
+  </ol>
+
+  <h2 id="too-big">Too big?</h2>
+  <p>Ruken takes videos up to 30 MB. To make yours smaller, cut a few seconds off the ends.</p>
+  <h3>iPhone, iPad or Android</h3>
+  <ol>
+    <li>Open your video in Photos.</li>
+    <li>Choose Edit.</li>
+    <li>Drag the two ends of the strip at the bottom in, so only the part you want is left.</li>
+    <li>Choose Done. It is saved.</li>
+  </ol>
+  <h3>Mac</h3>
+  <ol>
+    <li>Open your video in QuickTime Player.</li>
+    <li>Choose Edit, then Trim.</li>
+    <li>Drag the two yellow ends in, then choose Trim.</li>
+    <li>Choose File, then Save.</li>
   </ol>
 
   <p>Then come back to Ruken and press Choose video.</p>
