@@ -12,7 +12,7 @@ import {
   startAtVideo,
   startDraft,
 } from "./support/game.ts";
-import { boxOf, pipRed } from "./support/look.ts";
+import { boxOf, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // How the maker's screens are laid out (spec 4, and the plan's table of sizes). A window is one of five layouts, and
@@ -410,4 +410,70 @@ test("on Live the game's own video fills the screen behind everything, blurred, 
   // Asked for stillness, the video stays on its first frame.
   await expect(backdrop).toHaveJSProperty("paused", true);
   await expect(page.getByRole("heading", { level: 1 })).toHaveCSS("color", rgb(token("--chalk")));
+});
+
+// ---- What players will see ---------------------------------------------------------------------------------------
+
+/** The label over the card that shows a game as players will see it. */
+const PREVIEW_LABEL = "What players will see";
+
+/** A window that is landscape, at least 500 wide and 450 tall: the only ones with room for the card beside a question. */
+const hasRoomForPreview = (layout: Layout): boolean => layout === "computer" || layout === "tablet-sideways";
+
+test("beside a question on a wide screen, a card shows what players will see, and follows what she types", async ({
+  page,
+}, testInfo) => {
+  const layout = layoutOf(page);
+  test.skip(
+    !hasRoomForPreview(layout),
+    "Only a wide window has the card; the next journey shows the rest have none.",
+  );
+  await signUp(page);
+  await page.goto("/make/new");
+  await pageHasSettled(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  const preview = page.locator(".preview");
+  await expect(preview.getByText(PREVIEW_LABEL)).toBeVisible();
+  // 340 wide, or 260 on a tablet held sideways.
+  expect((await boxOf(preview)).width).toBe(layout === "computer" ? 340 : 260);
+  // A part not answered yet is words in grey, not an empty gap.
+  const emptyName = preview.getByText("Its name", { exact: true });
+  await expect(emptyName).toBeVisible();
+  await expect(emptyName).toHaveCSS("color", rgb(token("--ink-soft")));
+  await expect(preview.getByText("Its one line", { exact: true })).toBeVisible();
+
+  // It follows the typing, before Next is pressed.
+  await page.getByLabel("What's your game called?").fill("Floor Fifty");
+  await expect(preview.getByText("Floor Fifty", { exact: true })).toBeVisible();
+  await expect(emptyName).toBeHidden();
+  await showTheOwner(page, testInfo, "question 1 with the card of what players will see");
+});
+
+test("on the age question, choosing 12+ puts a 12+ chip on the card", async ({ page }) => {
+  test.skip(!hasRoomForPreview(layoutOf(page)), "Only a wide window has the card.");
+  await gameAskingAbout(page, "age");
+
+  const preview = page.locator(".preview");
+  await expect(preview.locator(".chip")).toHaveCount(0);
+  await page.getByRole("radio", { name: /^12\+/ }).check();
+  await expect(preview.locator(".chip")).toHaveText("12+");
+});
+
+test("on a phone, a sideways phone and an upright tablet there is no preview", async ({ page }) => {
+  test.skip(hasRoomForPreview(layoutOf(page)), "A wide window has the card; the other journeys show it.");
+  await signUp(page);
+  await page.goto("/make/new");
+  await pageHasSettled(page);
+
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByText(PREVIEW_LABEL)).toBeHidden();
+});
+
+test("the preview's label is not in capitals", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/make/new");
+  await pageHasSettled(page);
+
+  await expect(page.locator(".preview .label")).toHaveCSS("text-transform", "none");
 });
