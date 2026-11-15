@@ -18,7 +18,8 @@ describe("staffOnly", () => {
     expect(() => staffOnly({ kind: "none" })).toThrow(expect.objectContaining({ status: 404 }) as Error);
   });
 
-  it.each<StaffRole[]>([[], ["finance"], ["moderator"], ["support"]])(
+  // Each case is one argument that is itself a list, so each list is wrapped once more.
+  it.each<[StaffRole[]]>([[[]], [["finance"]], [["moderator"]], [["support"]]])(
     "is a missing page for staff roles %j, which do not check games",
     (roles) => {
       expect(() => staffOnly(userWith(roles))).toThrow(expect.objectContaining({ status: 404 }) as Error);
