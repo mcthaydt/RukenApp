@@ -90,7 +90,7 @@ test("on the white sheet a choice, a box to type in and a reason's mark can be s
     expect(box.width, "the box to type in has an edge").toBeGreaterThan(0);
     expect(box.colour, "that is not the sheet's own colour").not.toBe(box.sheet);
 
-    // A reason that is not picked has an empty round mark, as a tick box that is not ticked has an empty square.
+    // A reason that is not picked has an empty mark, as a tick box that is not ticked has an empty square.
     const mark = await cardOf(video.getByRole("radio", { name: "It's too dark to see." })).evaluate(
       (card) => getComputedStyle(card, "::after").content,
     );

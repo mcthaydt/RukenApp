@@ -1491,8 +1491,8 @@ a.foot {
 }
 
 /* A choice is paper on paper here, so it has an edge that shows before it is picked (the sheet's ink, as a box has on paper),
-   and the blue edge of a picked one stays as it is. A reason that is not picked has an empty round mark, as a tick box has
-   an empty square. */
+   and the blue edge of a picked one stays as it is. A reason that is not picked has an empty mark, as a tick box has an
+   empty square: the same corners as the square, because the look has no circle (Owner, 2026-11-15). */
 .part .pick {
   border-color: var(--ink-soft);
 }
@@ -1504,7 +1504,6 @@ a.foot {
 .part .picks:not([data-several]) .pick::after {
   content: "";
   border: 2px solid var(--ink-soft);
-  border-radius: 50%;
 }
 
 .part .picks:not([data-several]) .pick:has(input:checked)::after {

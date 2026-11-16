@@ -343,6 +343,10 @@ describe("screens wear the look and nothing of their own", () => {
     // Staff's check of a game: a part to tick, and a button whose words follow the ticks.
     "part",
     "decide",
+    // The same page's line above the name (pieces that are never cut) and its one instruction.
+    "nobreak",
+    "email",
+    "instruction",
   ];
   const ROUTES = "src/routes";
 
@@ -451,6 +455,9 @@ describe("the maker's screens", () => {
     "preview",
     "part",
     "decide",
+    "nobreak",
+    "email",
+    "instruction",
   ];
 
   it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {
