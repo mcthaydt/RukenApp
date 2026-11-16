@@ -79,6 +79,25 @@ test("putting it back sends it for review", async ({ page }) => {
   expect(await stateOf(slug)).toBe("waiting");
 });
 
+test("a refused copy is told at once, with the game still off Ruken", async ({ page }) => {
+  // Made from rows, so the maker is not connected to GitHub and Ruken cannot see the game's repository.
+  const { slug } = await gameWhere(page, { state: "live" });
+  await page.goto(`/make/${slug}/take-off`);
+  await pageHasSettled(page);
+  await page.getByRole("button", { name: "Take it off" }).click();
+  await expect(page.getByRole("heading", { name: "Taken off Ruken" })).toBeVisible();
+  await pageHasSettled(page);
+
+  await page.getByRole("button", { name: "Put it back on Ruken" }).click();
+
+  // Ruken's refusal is on the screen she lands on, with the one step to fix it, and it says the game is still off.
+  await expect(page.getByText("Needs fixing")).toBeVisible();
+  await expect(page.getByText(/Ruken can't see that game on GitHub/)).toBeVisible();
+  await expect(page.getByText("It stays off Ruken until this is fixed.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Connect GitHub" })).toBeVisible();
+  expect(await stateOf(slug)).toBe("draft");
+});
+
 test("only a live game has the question", async ({ page }) => {
   const draft = await startDraft(page);
   expect((await page.request.get(`/make/${draft.slug}/take-off`)).status()).toBe(404);

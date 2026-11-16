@@ -148,6 +148,11 @@ export interface MakerGame {
   /** When its maker last took it off Ruken, for a game that is off now; null for every other game, or with no record. */
   takenOffAt: Date | null;
   /**
+   * True for a draft that its maker took off Ruken and put back: its files are not on Ruken until a copy passes, so its
+   * screens say the game is still off. A game that was only ever a draft is false.
+   */
+  putBack: boolean;
+  /**
    * True when a game that is off Ruken still has files in the bucket: deleting them stopped halfway, and a member who
    * had it open could still load them until they go. Asked of the bucket only for a game that is off; false otherwise.
    */
@@ -962,6 +967,8 @@ export function createGamesService(deps: GamesServiceDeps) {
       // Newest first (see `gameSelect`), so the first review is staff's latest word.
       sentBackLast: row.reviews[0]?.decision === "sent_back",
       takenOffAt: row.state === "taken_off" ? (row.makerActions[0]?.at ?? null) : null,
+      // A draft only comes from a live game by being taken off and put back, and the taken-off record stays.
+      putBack: row.state === "draft" && row.makerActions.length > 0,
       filesLeft,
     };
   }

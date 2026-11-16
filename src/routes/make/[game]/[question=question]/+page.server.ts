@@ -101,6 +101,8 @@ async function filesScreen(url: URL, userId: string, game: MakerGame) {
     branch: game.repoBranch ?? "",
     folder: game.repoFolder,
     refusal: game.pullProblem === null ? null : refusalOf(game.pullProblem),
+    // A game put back after being taken off is not on Ruken until its copy passes, and the refusal says so.
+    putBack: game.putBack,
     // `data-sveltekit-reload` links: a server redirect to GitHub, not a page of the app.
     connectAddress: `/make/github?choose=1&game=${game.slug}`,
     howToAddress: howTo,
