@@ -57,7 +57,8 @@ jobs:
           # ISO 8601 times in UTC compare correctly as plain strings.
           export CUTOFF=$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ)
           open_refs=$(gh api "repos/$REPO/pulls?state=open&per_page=100" --jq '.[].head.ref')
-          gh api "repos/$REPO/pulls?state=closed&per_page=50" \
+          # Newest closes first: sorted by creation, an old pull request that merged late fell outside the page.
+          gh api "repos/$REPO/pulls?state=closed&sort=updated&direction=desc&per_page=50" \
             --jq '.[] | select(.head.repo.full_name == env.REPO)
                   | select(.merged_at != null or .closed_at < env.CUTOFF)
                   | "\(.head.ref) \(.head.sha)"' |

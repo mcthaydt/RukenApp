@@ -4,6 +4,7 @@ import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
 import { pullGame, type PullDeps } from "../../../src/features/games/pull.ts";
 import { systemClock } from "../../../src/lib/clock.ts";
+import type { FileStore } from "../../../src/lib/files/store.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
@@ -30,13 +31,13 @@ const GOOD: Entry[] = [
 ];
 const GOOD_BYTES = INDEX.length + MAIN.length + DOT.length;
 
-/** A stand-in GitHub that answers one commit and, for it, a tarball of `entries` under the top folder. */
-function fakeGitHub(entries: readonly Entry[]) {
+/** A stand-in GitHub that answers one commit (`commit`, unless a test says another) and, for it, a tarball of `entries` under the top folder. */
+function fakeGitHub(entries: readonly Entry[], commit = SHA) {
   const seen = { commits: 0, tarballs: [] as string[] };
   const github: GitHub = {
     commitOf: () => {
       seen.commits += 1;
-      return Promise.resolve(SHA);
+      return Promise.resolve(commit);
     },
     // Pulling never asks which installation holds a repository; the games service checks that before it pulls.
     installationOf: () => Promise.resolve(null),
@@ -240,6 +241,55 @@ describe("pullGame", () => {
     expect(keys).toHaveLength(6);
     expect(keys.filter((key) => key.startsWith(`files/${game.publicId}/${first.id}/`))).toHaveLength(3);
     expect(keys.filter((key) => key.startsWith(`files/${game.publicId}/${second.id}/`))).toHaveLength(3);
+  });
+
+  // A copy that stops halfway must not leave files in the bucket that no row names: nothing would ever remove them.
+  describe("when the copy fails after some files are stored", () => {
+    /** A bucket that takes `goodPuts` files and then refuses the next one, as R2 does when it has a bad moment. */
+    function bucketFailingAfter(goodPuts: number): FileStore {
+      let puts = 0;
+      return {
+        head: (key) => files.head(key),
+        get: (key, range) => files.get(key, range),
+        delete: (key) => files.delete(key),
+        deleteAll: (prefix) => files.deleteAll(prefix),
+        put: (key, bytes) => {
+          puts += 1;
+          return puts > goodPuts ? Promise.reject(new Error("R2 refused the put")) : files.put(key, bytes);
+        },
+      };
+    }
+
+    it("removes the files it stored, writes no row, and passes the failure on", async () => {
+      const game = await newGame();
+      const deps = { ...depsFor(fakeGitHub(GOOD).github), files: bucketFailingAfter(2) };
+
+      await expect(pullGame(deps, game.id)).rejects.toThrow("R2 refused the put");
+
+      expect(files.keys()).toEqual([]);
+      expect(await db().gamePull.count({ where: { gameId: game.id } })).toBe(0);
+    });
+
+    it("leaves the files of an earlier pull alone", async () => {
+      const game = await newGame();
+      await pullGame(depsFor(fakeGitHub(GOOD).github), game.id);
+      const keysOfFirstPull = files.keys();
+      const deps = { ...depsFor(fakeGitHub(GOOD).github), files: bucketFailingAfter(2) };
+
+      await expect(pullGame(deps, game.id)).rejects.toThrow("R2 refused the put");
+
+      expect(files.keys()).toEqual(keysOfFirstPull);
+    });
+
+    // The database refuses a commit id that is not 40 hex characters, but only when the row is written, last of all.
+    it("removes the files when the pull's row is refused", async () => {
+      const game = await newGame();
+
+      await expect(pullGame(depsFor(fakeGitHub(GOOD, "main").github), game.id)).rejects.toThrow();
+
+      expect(files.keys()).toEqual([]);
+      expect(await db().gamePull.count({ where: { gameId: game.id } })).toBe(0);
+    });
   });
 
   it("says so when the game is not there", async () => {

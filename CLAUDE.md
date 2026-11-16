@@ -89,17 +89,20 @@ Checks run at two speeds (Owner, 2026-11-15: "Yes" to running only the affected 
 
 ## Visual review
 
-Every time screens are about to be shown to the owner for a "how does this look?", whatever the screens are, they first go through these steps in order (Owner, 2026-11-15: "Our new visual review process"; "basically I want you to do this whenever you show me a screenshot of screens for a 'how does this look?'"; trimmed to save usage, Owner, 2026-11-15: "1-3 yes"):
+Every time screens are about to be shown to the owner for a "how does this look?", whatever the screens are, they first go through these steps (Owner, 2026-11-15: "Our new visual review process"; trimmed, "1-3 yes"; reshaped, Owner, 2026-11-16: "A" to "Turn the screen rules into automatic tests, run the reviews side by side with one fix after, and show you only the finished screens"):
 
 0. Rough look first: before any polishing, the owner glances at rough mockups for five minutes, so new direction lands before the reviews, not after.
-1. Words and design check (Opus, medium), on every device and orientation: could a drunk grandma understand every word, and is every screen right for layout, touch size and polish?
-2. End-to-end check, on three views (a small phone, an iPad and a computer): walk every journey these screens are part of, from first open to its main task, so nothing is missing or leads to a dead end. The walk also runs the drunk-grandma test on the UX (Owner, 2026-11-15: "during the e2e review to see if the visual design is fully usable, we should also test drunk grandma for UX"): could a tired, distracted person get through each journey on the first try, always seeing the next step and a plain way back?
-3. Harsh last look (Opus, xhigh), once, at the end, on every device and orientation.
-4. The owner's review.
+1. Automatic screen checks are the gate. Rules that a program can judge, such as overflow, clipping, touch targets under 44x44 and dead-end links, are tests that run in CI and fail by themselves. Screens go on only when they pass.
+2. Two reviews run side by side, each in its own session and its own context, neither reading the other's report:
+   - Words and design check (Opus, medium), on every device and orientation: could a drunk grandma understand every word, and is every screen right for layout and polish?
+   - End-to-end walk (Opus, medium), on three views (a small phone, an iPad and a computer): walk every journey these screens are part of, from first open to its main task, so nothing is missing or leads to a dead end, and run the drunk-grandma test on the UX (Owner, 2026-11-15): could a tired, distracted person get through each journey on the first try, always seeing the next step and a plain way back?
+3. One fix session (Sonnet, high) takes both reports. Each finding is fixed on its own: that finding only, its files only, at most three tries. A finding still failing after three tries is reported to the coordinator, not tried again.
+4. Harsh last look (Opus, high), once, on every device and orientation, then one more fix session for its findings.
+5. The owner approves only the finished screens. The steps before this do not ask the owner.
 
-Steps 1 to 3 each run in their own session. They only find problems (Owner, 2026-11-15: "review steps only FIND problems"). Each writes a report, commits and pushes it, and changes nothing else. Its fixes are made in a separate session on Sonnet at high effort before the next review step starts. The reports and fixes all go in one pull request. A review session that has started fixing stops, pushes its report and hands the fixes off.
+Review steps only find problems (Owner, 2026-11-15: "review steps only FIND problems"). Each writes a report, commits and pushes it, and changes nothing else. A review session that has started fixing stops, pushes its report and hands the fixes off. The reports and fixes all go in one pull request.
 
-Only new work is reviewed (Owner, 2026-11-15: "we should only do the passes on the new stuff too, if it's been checked off/approved, we can skip it for the visual review and only do the stuff that has not been checked off/approved"). Every review step skips screens the owner already approved and covers only what they haven't. The full review runs once per set of screens; any later round is one combined check of only the screens that changed, then one fix.
+Only new work is reviewed (Owner, 2026-11-15: "we should only do the passes on the new stuff too, if it's been checked off/approved, we can skip it for the visual review and only do the stuff that has not been checked off/approved"). Every step skips screens the owner already approved. The full review runs once per set of screens; any later round is one combined check of only the screens that changed, then one fix.
 
 Every fix round fixes every finding, the small ones included (Owner, 2026-11-15: "From now on every fix round fixes every finding, low ones included. The only exception is a fix that needs your choice, and I'll say which one."). A finding is left only when its fix needs the Owner's choice; the fixing session names that one, with options, and asks, and fixes all the rest meanwhile.
 
@@ -144,6 +147,10 @@ Our copy and UX always pass the drunk-grandma test: a drunk grandma can understa
 No subagents unless the owner says so.
 
 Refresh a session after 90 minutes.
+
+No session runs at xhigh effort (Owner, 2026-11-16: "lets drop sonnet xhigh and drop to high, this is all taking far too long"). High is the most any session uses.
+
+Caveman (Owner, 2026-11-16: "enable caveman"): every session turns on the caveman:caveman skill when it starts. Only its working notes and its reports to the coordinator are caveman. Code, docs, commit and pull request text, and all app and game wording stay in plain sentences.
 
 Branches: main plus branches with active CI only, five at most.
 
