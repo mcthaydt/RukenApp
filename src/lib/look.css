@@ -1547,7 +1547,7 @@ main[data-state] .sheet.fix {
 
 /* More space between two parts than inside one, and a title a step larger than a note, so a long run of parts is read as
    parts. */
-/* A refusal about a part's reasons is brought to the top of the window (showTheRefusal), a step clear of its edge. */
+/* A part with a refusal is brought to the top of the window (showTheRefusal), a step clear of its edge. */
 [data-refusal-from-top] {
   scroll-margin-top: 1rem;
 }

@@ -271,32 +271,36 @@ test("the game fits above the pinned bar, on first view where the window is big 
   }
 });
 
-test("a refusal about a part sits with its reasons, both in view above the bar", async ({
+test("a refusal about a part is in view at the top with what it asks for, above the bar", async ({
   page,
   browser,
 }) => {
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
     await checkingAGame(page, maker.slug);
+    // A video part: its video stands between its title and its reasons (a part of words is the test above).
     await tickOn(page, "Upright video").check();
     await toTheDecision(page);
     await decideButton(page, "Send back").click();
 
+    // Its refusal and its reasons are in view together, clear of a pinned bar.
     const alert = page.getByRole("alert");
     await expect(alert).toHaveText("Pick a reason for Upright video.");
-    const reasons = partBox(page, "Upright video").getByRole("radio");
-    await expect(alert).toBeInViewport();
-    await expect(reasons.first()).toBeInViewport();
+    const part = partBox(page, "Upright video");
     await expect
       .poll(async () => {
         const refusal = await boxOf(alert);
-        const first = await boxOf(reasons.first());
-        const bar = await boxOf(page.locator(".acts"));
-        // The refusal is above its reasons, and the first reason is clear of a bar pinned over the foot of the window.
+        const first = await boxOf(part.getByRole("radio").first());
         const pinned = await page
           .locator(".acts")
           .evaluate((one) => getComputedStyle(one).position === "fixed");
-        return refusal.y < first.y && (!pinned || first.y + first.height <= bar.y);
+        const bar = await boxOf(page.locator(".acts"));
+        const height = page.viewportSize()?.height ?? 0;
+        return (
+          refusal.y >= 0 &&
+          refusal.y < first.y &&
+          (pinned ? first.y + first.height <= bar.y : first.y < height)
+        );
       })
       .toBe(true);
   } finally {
