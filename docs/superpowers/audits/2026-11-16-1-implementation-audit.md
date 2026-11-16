@@ -75,3 +75,18 @@ FIX: use `gh api -X POST repos/mcthaydt/RukenApp/branches/main/protection/requir
 Three red findings, all one-line additions to the risk paths in `CLAUDE.md`, and two notes. The kit text, the other
 placeholders and the setup-check record are correct. Not ready to mark ready until the three reds are fixed and
 checked.
+
+## Fix check
+
+Checked at `e140283` on 2026-11-16 18:13 UTC (from `date`), by the audit session.
+
+- **Lane 3 misses `src/features/membership/`:** pass. Named in lane 3 after `src/features/money/`.
+- **Lane 3 misses the sign-in code:** pass. `src/features/accounts/` and `src/routes/api/auth/` are named in lane 3.
+- **Lane 2 misses `tests/browser/support/`:** pass. Named after `tests/support/`.
+- **Identity line not rewrapped (note):** pass. Lines 105 to 108 now wrap within 120 columns.
+- **Owner gate command body (note):** pass. It now uses `-f 'contexts[]=gate'`, which `gh` sends as
+  `{"contexts": ["gate"]}`.
+
+A word-by-word diff of `CLAUDE.md` between `75b2991` and `e140283` shows only the four added paths; every other change
+is rewrapping. The skills are unchanged. All four new paths exist. The commit is by McThayDT with no AI credit lines.
+No finding remains open.
