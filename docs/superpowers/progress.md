@@ -20,6 +20,17 @@ Finished work, the old session list and the Owner's recorded answers of 2026-11-
 | 4 | Submitting and the admin portal | plan written on `plan/slice-4` (pull request #58; Owner, 2026-11-14: "Start slice 4 plan now"), not merged; no code yet. The Owner's four answers of 2026-11-14 are written in | 0% |
 | 5 | Money (after launch, before 10 December) | plan merged (#55), started alongside slice 2's build (Owner, 2026-11-14: "Slice 5 plan"). Its three questions are answered and written in: the cost of sending a payout is held back and fixed later, bank accounts in the United States only for now (the Owner), and the second person and the code come from slice 4 (the coordinator). Branches A to D are merged (the rules #80, the ledger #82, the facts #83, the statements #84): 23 of 37 tasks. Their implementation audit is merged (#87); its fixes B1 (#88), S1 (#90), S3 (#89) and S2 (#91) are merged, and the refund weight (Q6) is merged (#86); Q7 (a refund counts in the month it happens) and N4 are on pull request #95. Branches E to K are not started | 62% |
 
+## Screen rules as automatic tests
+
+Owner, 2026-11-16: "A" to "Turn the screen rules into automatic tests, run the reviews side by side with one fix after, and show you only the finished screens". This is the first part: the rules a program can judge now fail by themselves in CI, so a model's look is no longer the only gate (CLAUDE.md, "Visual review", step 1). Progress: 60% (written, on a draft pull request, CI not read yet).
+
+- [x] The rules and how each is measured: `tests/browser/support/screen-rules.ts`. Nothing scrolls sideways or has its words cut off; every press is at least 44 by 44; every link and button leads somewhere real; every screen but the front page has a way back.
+- [x] The walk: `tests/browser/screen-rules.test.ts` signs a maker up, makes a game in each state, and opens every screen in the eleven windows (iPhone SE, large iPhone, Pixel, iPad, each upright and sideways, and 1440x900 and 1280x720). It lists every finding in one run.
+- [x] The proof that each rule can fail: `tests/browser/screen-rules-detect.test.ts`.
+- [ ] CI result on the draft: which real screens fail a rule on main (listed in the pull request; the pages are not fixed in it).
+- [ ] The fixes for those screens, in a separate change; this one merges only when the walk is green.
+- Not in this part: running the two reviews side by side and showing the Owner only the finished screens. Those are the workflow's, not the tests'.
+
 ## Makers' sales: extras and splits
 
 Design: `docs/superpowers/specs/2026-11-14-makers-sales-design.md`, approved by the Owner on 2026-11-14 ("Approved", with the apps' spec #107), on pull request #106. It is not one of the six slices, so the overall percentage above does not count it. Progress: 15% (the spec approved; the plan written and audited, not merged; nothing built).
