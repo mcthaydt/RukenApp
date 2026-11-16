@@ -343,9 +343,10 @@ describe("screens wear the look and nothing of their own", () => {
     // Staff's check of a game: a part to tick, and a button whose words follow the ticks.
     "part",
     "decide",
-    // The same page's line above the name (pieces that are never cut) and its one instruction.
+    // The same page's line above the name (pieces that are never cut, in a note's size) and its one instruction.
     "nobreak",
     "email",
+    "facts",
     "instruction",
   ];
   const ROUTES = "src/routes";
@@ -457,6 +458,7 @@ describe("the maker's screens", () => {
     "decide",
     "nobreak",
     "email",
+    "facts",
     "instruction",
   ];
 
