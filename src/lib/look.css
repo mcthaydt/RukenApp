@@ -1513,6 +1513,25 @@ main[data-state] .sheet.fix {
   margin-top: 1.5rem;
 }
 
+/* On Taken off the blue button stays in the column, under the line and above its note, on every window. Pinned to the
+   foot of a phone or an upright tablet it sat a screen away from the note that says what it does. */
+.screen main[data-state] form .acts {
+  position: static;
+  flex-wrap: wrap;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  background: none;
+}
+
+.screen main[data-state] form .acts > button {
+  flex: none;
+  min-width: 168px;
+}
+
+.screen main[data-state] form > .note {
+  margin-top: 0.5rem;
+}
+
 /* Staff's check of a game (design 11.1, screen 2). A part is a block of the sheet: its title, its value in the maker's own
    words (or its video), a box to say it is wrong and, once that is ticked, the reasons. Blocks are told apart by space and
    not by a line: the look has no rule but a field's. */

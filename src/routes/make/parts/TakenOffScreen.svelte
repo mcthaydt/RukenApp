@@ -59,13 +59,15 @@
       {#if copying}
         Copying your game can take a minute. Keep this page open.
       {:else}
-        Copies the newest version of your game from GitHub and sends it for review.
+        Putting it back copies the newest version of your game from GitHub and sends it for review.
       {/if}
     </p>
   </form>
   {#if filesLeft}
     <div class="sheet fix">
-      <p class="say">Some of its files are still on Ruken.</p>
+      <p class="say">
+        Taking it off didn't finish. Some of its files are still on Ruken. Delete them to finish. This can't be undone.
+      </p>
       <form
         method="POST"
         action="?/deleteLeft"

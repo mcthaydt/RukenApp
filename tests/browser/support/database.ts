@@ -304,6 +304,14 @@ export async function makerOf(
   };
 }
 
+/**
+ * Takes a game off Ruken from its row alone, so its files stay in the bucket: the state a game is left in when deleting
+ * its files stops halfway.
+ */
+export async function takeGameOffLeavingItsFiles(slug: string): Promise<void> {
+  await db().game.update({ where: { slug }, data: { state: "taken_off" } });
+}
+
 /** Where a game stands, read from its row. */
 export async function stateOf(slug: string): Promise<GameState> {
   return (await db().game.findUniqueOrThrow({ where: { slug }, select: { state: true } })).state;
