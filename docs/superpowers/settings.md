@@ -25,7 +25,7 @@ The operating choices behind `CLAUDE.md`: numbers and picks tuned from experienc
 
 - A session is refreshed after 90 minutes, with a handoff: the last commit, where to resume, what is left.
 - The coordinator hands over to a fresh coordinator once its context passes 500k tokens, with a written handoff (Owner, 2026-11-14); `get_session` shows context usage.
-- The merge thread watches open pull requests and reports one that fails a check or does not merge.
+- The merge thread watches open pull requests and reports to the coordinator when: a required check fails; a pull request is ready, green and up to date but has not merged within an hour; a merge conflict needs a choice between two changes; a golden moved without the pull request naming it; or more than 5 branches are open. It does not hold a ready, green pull request for any other reason.
 - Every session turns on the caveman:caveman skill for its working notes and its reports to the coordinator; code, docs, commits, pull requests and app wording stay plain (Owner, 2026-11-16).
 - Sessions use Graphify (workspace mcthaydt-s-workspace, repository mcthaydt/RukenApp) to find code and check what a change affects: graphify_find, query_graph, graphify_callers, graphify_impact, graphify_tests_for (Owner, 2026-11-15). Compare a result's commitSha to HEAD; read the current file for anything changed since. Text search for literal strings and config.
 
@@ -39,7 +39,7 @@ The operating choices behind `CLAUDE.md`: numbers and picks tuned from experienc
 
 Short and factual, with `send_message`; progress.md stays the full record.
 
-- At once: a stop (a cap hit, a failing test caused elsewhere, an access refusal, a missing tool), with the numbers; each deviation from the brief or plan, with the reason; any question only the owner can answer, with options.
+- At once: a stop (a blocker unresolved after its tries, a cap hit, a red required check caused elsewhere, an access refusal, a missing tool), with the numbers; each deviation from the brief or plan, with the reason; any question only the owner can answer, with options.
 - At the end: a summary of what ran, what did not, and what is open.
 
 ## Documents
@@ -78,7 +78,7 @@ Two speeds (Owner, 2026-11-15 and 2026-11-16).
 - A pull request marked ready, and every push to main, gets the full run: `verify`, `postgres` and `browser`. Only the full run gates a merge.
 - A change to the database, the Workers, a fixture, the lockfile or the build or test config makes even a draft run everything.
 - Browser tests run in 12 pieces (Owner, 2026-11-16: "Use 12"). Drafts run Chromium only; WebKit runs in the full run. A newer push cancels the older run; installs and browsers are cached.
-- A pull request that changes only `.md` files skips the tests and still merges: `verify`, `postgres` and `browser` report success without the work (Owner, 2026-11-15). One file that is not `.md` runs everything.
+- A pull request that changes only `.md` files skips the test work: `verify`, `postgres` and `browser` still run as required checks and pass without running the suites (Owner, 2026-11-15). One file that is not `.md` runs everything. Skipping tests does not change the lane: an `.md` change to approval or merge rules is still lane 3.
 
 ## Visual review
 
@@ -87,7 +87,7 @@ For a new set of screens (Owner, 2026-11-15 and 2026-11-16):
 1. Rough look: the owner glances at rough mockups, taken from a game made through the real screens, before any polishing.
 2. Automatic screen checks (overflow, clipping, touch targets under 44x44, dead-end links) run in CI and gate the rest.
 3. Two reviews side by side, each in its own session, neither reading the other: words and design on every device and orientation; and an end-to-end walk on a small phone, an iPad and a computer, through every journey the screens are part of. Reviews only find problems and write a report.
-4. One fix session takes both reports and fixes every finding, small ones included, each on its own, within the tries cap. A finding that needs the owner's choice is asked with options; the rest are fixed meanwhile (Owner, 2026-11-15).
+4. If the reports found anything, one fix session takes both and fixes every finding, small ones included, each on its own, within the tries cap. No findings means no fix round. A finding that needs the owner's choice is asked with options; the rest are fixed meanwhile (Owner, 2026-11-15).
 5. The owner sees the finished screens, with no further review round. After the owner's notes, the changed screens get one fix and go back to the owner.
 
 The design loop runs once per feature, after the owner has seen all of its screens (Owner, 2026-11-16).

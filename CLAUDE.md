@@ -14,13 +14,15 @@ The default is to keep working until there is something finished to approve.
 4. Present it: one pull request with the result, the evidence (what ran and what it showed), and what is still open.
 5. It merges by the rules under "Merging".
 
+A small change (a typo, a wording fix, one function) is done end to end by one session: fix it, look at it, run its checks, open the pull request and see it merge. No other session or planning document is needed.
+
 ## The full staged path (the exception)
 
 Use it only for big or risky work: a new slice or feature that spans many files, money, payouts, security, a data migration, or anything in lane 3. The coordinator says which path a piece of work takes in its brief.
 
 Stages: spec (the coordinator with the owner) → plan → plan audit → build → implementation audit → fixes → the owner sees the finished result. An audit is added by risk and size, not by a task count. The model and effort of each stage are in `settings.md`.
 
-- The spec, plan, audits and code of one piece of work may share one branch and one pull request. A docs-only stage that does land on its own is lane 1 and merges on green. Nothing waits for an owner merge before the next stage starts; the owner approves the finished result.
+- The spec, plan, build, audits, reviews and fixes of one piece of work share one branch and one pull request. Each stage hands off by committing to that branch; nothing is merged between stages. A lane 2 review reviews that branch before it is marked ready. The owner approves the finished result.
 - Each stage reads the spec, the plan, the audits so far and progress.md, updates progress.md as it works, and ends by committing and pushing.
 - Build and fix sessions start with the implementation prompt, audits with the audit prompt (both in `settings.md`).
 
@@ -45,7 +47,8 @@ Stages: spec (the coordinator with the owner) → plan → plan audit → build 
 
 # Limits
 
-- Retries and parallel work stay within the caps in `settings.md`. When a cap is hit, or the same failure survives its tries, stop and report it with the numbers; do not loop.
+- A test that fails as expected (the red step of test first) and ordinary debugging are part of the work, not a reason to stop.
+- Retries and parallel work stay within the caps in `settings.md`. Stop only for a blocker still unresolved after its tries, or a cap hit: report it with the numbers and step back to look again at the approach; do not loop.
 - Stop and tell the owner when a task has taken twice what was expected.
 
 # Tests and failures
@@ -53,6 +56,7 @@ Stages: spec (the coordinator with the owner) → plan → plan audit → build 
 - Write the failing test first and confirm it fails for the right reason, locally or in CI. Start with the smallest test, then widen.
 - Run quick targeted tests locally when useful. GitHub's full run is the merge gate; a local pass is not "done".
 - A failure blocks only the work that touches it. A failure the change caused is fixed in the change. An unrelated failure, on main or elsewhere, is reported to the coordinator, who gives it its own thread; it is not fixed in scope.
+- The required checks (`verify`, `postgres`, `browser`) must still pass for any merge. If one is red for a reason outside the change, the pull request waits for the fix in that other thread, unless the owner grants a written exception for that pull request.
 - A test that fails once and passes on retry is a defect: report it the same day with its text, and fix it on its second sighting.
 - Never loosen, skip or re-record a test or an expected image to hide a defect. Updating an expectation for an approved behaviour change is fine: the pull request names the change and shows the expected, actual and diff images or values.
 - Use injected clocks and fixed seeds. Browser tests wait on readiness, never on a sleep.
@@ -71,11 +75,11 @@ A lesson from a fix becomes a test, a screen check or a code fix first. Only a l
 
 # Merging
 
-Every pull request opens as a draft and names its lane, set by how hard a mistake would be to undo. A change in two lanes takes the higher one.
+Every pull request opens as a draft and names its lane, set by how hard a mistake would be to undo. The session that made the change picks the lane from the diff and what the change does; no tool is needed. A change in two lanes takes the higher one.
 
-- Lane 1, easy to undo and contained (wording, tests, docs, one function its tests cover): marked ready when done, merges by itself on a green full run.
+- Lane 1, easy to undo and contained (wording, tests, ordinary docs, one function its tests cover): marked ready when done, merges by itself on a green full run.
 - Lane 2, easy to undo but wide (shared helpers, added tables or columns, anything many callers use): marked ready once a review by a session that did not write it passes.
-- Lane 3, hard to undo (a migration that drops or changes data, deletes, money, payouts, secrets, production data, domains, releases): stays a draft until the owner's written OK is in the thread.
+- Lane 3, hard to undo or changing who approves what (a migration that drops or changes data, deletes, money, payouts, secrets, production data, domains, releases; and changes to the approval, lane or merge rules in this file, `settings.md`, the project instructions or the CI workflows, even when only `.md` files change): stays a draft until the owner's written OK is in the thread.
 
 Auto-merge (`.github/workflows/auto-merge.yml`) merges a ready pull request with a merge commit, never a squash, once the full run passes on a branch up to date with main. A branch behind main is brought up to date by merging main into it. The session that opened the pull request watches it to the merge.
 
@@ -100,7 +104,8 @@ Auto-merge (`.github/workflows/auto-merge.yml`) merges a ready pull request with
 
 - The drunk-grandma test (Owner, 2026-11-13): someone tired and distracted understands every word and gets through every journey on the first try, always seeing the next step and a plain way back.
 - Every form uses the maker screens' one-question-at-a-time pattern and shared components (Owner, 2026-11-16).
-- A new set of screens gets a rough look from the owner first, passes the automatic screen checks in CI, gets one review (words and design, plus an end-to-end walk) and one fix, and then the owner sees the finished screens. Screens the owner already approved are skipped. Details are in `settings.md`.
+- A new set of screens gets a rough look from the owner first, passes the automatic screen checks in CI, gets one review (words and design, plus an end-to-end walk), a fix only if the review found something, and then the owner sees the finished screens. Screens the owner already approved are skipped. Details are in `settings.md`.
+- A small visual change to existing screens is looked at, fixed and checked again by the session that made it; it needs no separate review or fix session.
 - Look at the real expected, actual and diff images before accepting a visual change, and explain each change.
 - Comments say why. They do not say which plan asked for the code.
 - If something can be done with a command line, it is done with one (Owner, 2026-11-13). Steps for the owner are commands they paste, one line each; a step goes to a website only when no command can do it, and says so.
