@@ -245,7 +245,9 @@ test("the edge tab can be moved to the other edge, and stays there next time", a
 test("while the game loads, a cover says so and has a way back", async ({ page }) => {
   // Hold the game's own page back, so the cover is seen.
   await page.route(/g-[^.]+\.localhost:8788/, () => undefined);
-  await page.goto(`/g/${free.slug}/play`);
+  // The page's script puts the frame in once it runs. When that is before the page's load event, the held frame
+  // holds the load event too, so waiting for it would wait forever: wait only for the page itself.
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: `Getting ${free.name} ready.` })).toBeVisible();
   await expect(page.getByRole("progressbar", { name: "Loading the game" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Go back" })).toHaveAttribute("href", `/g/${free.slug}`);
