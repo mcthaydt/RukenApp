@@ -510,13 +510,15 @@ button,
 
 /* The main button of a form is a step and a half under the last field. On a phone it spans the card, so a
    thumb finds it anywhere along the bottom; a quiet button stays as wide as its words. A link that looks like
-   a button, alone in its line ("Back to Ruken"), is the same button and spans the card the same way. */
+   a button, alone in its line ("Back to Ruken"), is the same button and spans the card the same way, and so does a
+   button alone in its line that is not in a form ("Share the link"). */
 form > * + button:not(.quiet) {
   margin-top: 1.5rem;
 }
 
 .card form > button:not(.quiet),
-.card p > a.button:only-child {
+.card p > a.button:only-child,
+.card p > button:not(.quiet):only-child {
   width: 100%;
   /* Long words on a narrow card break into even lines, not a full line and a stray word. */
   text-wrap: balance;
@@ -524,7 +526,8 @@ form > * + button:not(.quiet) {
 
 @media (min-width: 48rem) {
   .card form > button:not(.quiet),
-  .card p > a.button:only-child {
+  .card p > a.button:only-child,
+  .card p > button:not(.quiet):only-child {
     width: auto;
   }
 }
