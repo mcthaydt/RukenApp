@@ -51,6 +51,7 @@
     <p><button type="button" onclick={share}>Share the link</button></p>
     <p aria-live="polite">{shared}</p>
   {:else}
-    <p><a class="button" href={`/g/${data.slug}/play`}>Play</a></p>
+    <!-- No preload: opening the play address starts a play (a session and a pass), which only a press may do. -->
+    <p><a class="button" href={`/g/${data.slug}/play`} data-sveltekit-preload-data="off">Play</a></p>
   {/if}
 </main>
