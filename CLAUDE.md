@@ -12,7 +12,7 @@ Work runs in stages. Each stage runs in its own fresh session, on its own branch
 |---|---|---|---|
 | 1 | Spec | The coordinator, with the owner (superpowers brainstorming) | docs/superpowers/specs/&lt;date&gt;-&lt;topic&gt;-design.md |
 | 2 | Plan | A plan session: Fable 5.2, medium (superpowers writing-plans) | docs/superpowers/plans/&lt;date&gt;-&lt;topic&gt;.md |
-| 3 | Plan audit | Opus, medium, with the audit prompt | docs/superpowers/audits/&lt;date&gt;-&lt;cycle&gt;-plan-audit.md |
+| 3 | Plan audit | Opus, medium, with the audit prompt; skipped for plans under 5 tasks | docs/superpowers/audits/&lt;date&gt;-&lt;cycle&gt;-plan-audit.md |
 | 4 | Execution | Sonnet, high (superpowers executing-plans), with the implementation prompt | the code |
 | 5 | Implementation audit | Opus, medium, with the audit prompt | docs/superpowers/audits/&lt;date&gt;-&lt;cycle&gt;-implementation-audit.md |
 | 6 | Fixes | Sonnet, high (superpowers executing-plans), with the implementation prompt | the code |
@@ -89,19 +89,29 @@ Checks run at two speeds (Owner, 2026-11-15: "Yes" to running only the affected 
 
 ## Visual review
 
-Every time screens are about to be shown to the owner for a "how does this look?", whatever the screens are, they first go through these steps in order, each its own session (Owner, 2026-11-15: "Our new visual review process"; "basically I want you to do this whenever you show me a screenshot of screens for a 'how does this look?'"):
+Every time screens are about to be shown to the owner for a "how does this look?", whatever the screens are, they first go through these steps in order (Owner, 2026-11-15: "Our new visual review process"; "basically I want you to do this whenever you show me a screenshot of screens for a 'how does this look?'"; trimmed to save usage, Owner, 2026-11-15: "1-3 yes"):
 
-1. Plain-words check (Opus, medium): could a drunk grandma understand every word?
-2. Design pass (Fable, medium): every screen, device and orientation checked for layout, touch size and polish.
-3. End-to-end check: walk every journey these screens are part of, from first open to its main task, so nothing is missing or leads to a dead end. The walk also runs the drunk-grandma test on the UX (Owner, 2026-11-15: "during the e2e review to see if the visual design is fully usable, we should also test drunk grandma for UX"): could a tired, distracted person get through each journey on the first try, always seeing the next step and a plain way back?
-4. Second visual look (Opus, xhigh): a fresh, harsh look at the screens after all those fixes.
-5. The owner's review.
+0. Rough look first: before any polishing, the owner glances at rough mockups for five minutes, so new direction lands before the reviews, not after.
+1. Words and design check (Opus, medium), on every device and orientation: could a drunk grandma understand every word, and is every screen right for layout, touch size and polish?
+2. End-to-end check, on three views (a small phone, an iPad and a computer): walk every journey these screens are part of, from first open to its main task, so nothing is missing or leads to a dead end. The walk also runs the drunk-grandma test on the UX (Owner, 2026-11-15: "during the e2e review to see if the visual design is fully usable, we should also test drunk grandma for UX"): could a tired, distracted person get through each journey on the first try, always seeing the next step and a plain way back?
+3. Harsh last look (Opus, xhigh), once, at the end, on every device and orientation.
+4. The owner's review.
 
-Review steps 1 to 4 only find problems (Owner, 2026-11-15: "review steps only FIND problems"). Each writes a report, commits and pushes it, and changes nothing else. Its fixes are made in a separate session on Sonnet at xhigh effort before the next review step starts. The reports and fixes all go in one pull request. A review session that has started fixing stops, pushes its report and hands the fixes off.
+Steps 1 to 3 each run in their own session. They only find problems (Owner, 2026-11-15: "review steps only FIND problems"). Each writes a report, commits and pushes it, and changes nothing else. Its fixes are made in a separate session on Sonnet at high effort before the next review step starts. The reports and fixes all go in one pull request. A review session that has started fixing stops, pushes its report and hands the fixes off.
 
-Only new work is reviewed (Owner, 2026-11-15: "we should only do the passes on the new stuff too, if it's been checked off/approved, we can skip it for the visual review and only do the stuff that has not been checked off/approved"). Every review step skips screens the owner already approved and covers only what they haven't.
+Only new work is reviewed (Owner, 2026-11-15: "we should only do the passes on the new stuff too, if it's been checked off/approved, we can skip it for the visual review and only do the stuff that has not been checked off/approved"). Every review step skips screens the owner already approved and covers only what they haven't. The full review runs once per set of screens; any later round is one combined check of only the screens that changed, then one fix.
 
 Every fix round fixes every finding, the small ones included (Owner, 2026-11-15: "From now on every fix round fixes every finding, low ones included. The only exception is a fix that needs your choice, and I'll say which one."). A finding is left only when its fix needs the Owner's choice; the fixing session names that one, with options, and asks, and fixes all the rest meanwhile.
+
+## Saving usage
+
+Sessions read less (Owner, 2026-11-15: "1-3 yes" and "A").
+
+- docs/superpowers/progress.md holds only open work. Finished work moves, word for word, to docs/superpowers/history.md.
+- Each brief names the exact files and sections a session must read, and a session reads those, not every document.
+- A thread loads only the repositories it needs.
+- Rule edits to CLAUDE.md and the project instructions are batched into one thread a day, not one thread each.
+- Sessions wait for CI results (`gh run watch`, or polling the run's status) instead of reading logs as they stream. A log is read only when a check fails.
 
 ## Staying on the rails
 
