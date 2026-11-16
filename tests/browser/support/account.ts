@@ -139,3 +139,12 @@ export async function releaseLateNews(checkoutSessionId: string): Promise<void> 
   const answer = await fetch(`${STAND_IN_URL}/test/release/${checkoutSessionId}`, { method: "POST" });
   if (!answer.ok) throw new Error(`the stand-in would not release its news: ${String(answer.status)}`);
 }
+
+/** Signs in as someone who already has an account, on the real screen. Every journey's account has JOURNEY_PASSWORD. */
+export async function signInAs(page: Page, email: string): Promise<void> {
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL("/");
+}

@@ -30,6 +30,22 @@ test("a member's play time is recorded against that game", async ({ page, browse
   ]);
 });
 
+test("opening the Ruken menu and going back to the game does not count as touching the game", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(90_000);
+  const game = await addGame(browser, { free: true });
+  await page.clock.install();
+  await page.goto(`/g/${game.slug}/play`);
+  await expectTheGameLoaded(page);
+  await page.getByRole("button", { name: "Ruken menu" }).click();
+  await page.getByRole("button", { name: "Back to game" }).click();
+  await page.clock.runFor(BEAT_MS + 1_000);
+  await expect.poll(async () => (await beatsOf(game.slug)).length).toBe(1);
+  expect((await beatsOf(game.slug)).at(-1)?.attentive).toBe(false);
+});
+
 test("leaving with Exit game sends the last stretch of play", async ({ page, browser }) => {
   test.setTimeout(90_000);
   const game = await addGame(browser, { free: true });

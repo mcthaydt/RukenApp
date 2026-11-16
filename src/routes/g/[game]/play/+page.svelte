@@ -173,14 +173,15 @@
     menuOpen = true;
   }
 
-  /** Back to game: the menu closes and the keyboard is the game's again. */
+  /** Back to game: the menu closes, and the game is one tap away. */
   function closeMenu(): void {
     menu?.close();
   }
 
+  // Closing the menu does not put the game in focus: play time starts only when the person touches the game, and
+  // the browser hands the focus back to the tab, where it was before the menu opened.
   function menuClosed(): void {
     menuOpen = false;
-    frame?.focus();
   }
 
   // A press on the dim strip of game beside the menu closes it; the press does not reach the game.

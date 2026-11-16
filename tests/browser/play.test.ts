@@ -9,7 +9,7 @@ import {
   yearsAgo,
 } from "./support/account.ts";
 import { endMembershipOf, sessionsOf, userIdOf } from "./support/database.ts";
-import { addGame, expectTheGameLoaded, TINY_GAME } from "./support/game.ts";
+import { addGame, expectTheGameLoaded, takeOffAsItsMaker, TINY_GAME } from "./support/game.ts";
 import { pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -71,6 +71,33 @@ test("2048 can be played: the arrow keys move its tiles", async ({ page }) => {
   await game.locator(".game-container").click();
   for (const key of ["ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown"]) await page.keyboard.press(key);
   await expect.poll(() => tiles.innerHTML()).not.toBe(before);
+});
+
+test("a game taken off Ruken is not at its address, and a member's game stops loading", async ({
+  page,
+  browser,
+}) => {
+  // Its own game, since it is taken off.
+  test.setTimeout(120_000);
+  const game = await addGame(browser);
+  await payAsNewMember(page);
+  await page.goto(`/g/${game.slug}/play`);
+  await expectTheGameLoaded(page);
+  const frameUrl = (await page.locator("iframe.frame").getAttribute("src")) ?? "";
+
+  await takeOffAsItsMaker(browser, game);
+
+  // The pass the member already holds opens nothing now, and neither address is there.
+  // Asked from a browser of its own: only a browser knows that *.localhost is this machine, and a new one has nothing
+  // kept from the frame's first load.
+  const fresh = await browser.newContext();
+  try {
+    expect((await (await fresh.newPage()).goto(`${frameUrl}index.html`))?.status()).toBe(404);
+  } finally {
+    await fresh.close();
+  }
+  expect((await page.request.get(`/g/${game.slug}/play`)).status()).toBe(404);
+  expect((await page.request.get(`/g/${game.slug}`)).status()).toBe(404);
 });
 
 test("pointing at Play starts nothing: a play starts only when Play is pressed", async ({

@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { expect, type Browser, type Locator, type Page } from "@playwright/test";
-import { pageHasSettled, signUp, SITE_URL } from "./account.ts";
+import { pageHasSettled, signInAs, signUp, SITE_URL } from "./account.ts";
 import { changeGame, fillAnswers, grantStaffRole, makerOf, putGameWhereStaffLeaveIt } from "./database.ts";
 
 // The steps every maker journey shares: a maker with a game, the answers a screen asks for, and the videos. GitHub is
@@ -432,6 +432,23 @@ export async function addGame(
     ...(options.playsOn === undefined ? {} : { playsOn: options.playsOn }),
   });
   return { slug, name, ...(await makerOf(slug)) };
+}
+
+/** The game's maker, in a browser of their own, signs in and takes the game off Ruken on the real screens. */
+export async function takeOffAsItsMaker(
+  browser: Browser,
+  game: { slug: string; name: string; makerEmail: string },
+): Promise<void> {
+  const context = await browser.newContext({ baseURL: SITE_URL });
+  try {
+    const page = await context.newPage();
+    await signInAs(page, game.makerEmail);
+    await page.goto(`/make/${game.slug}/take-off`);
+    await page.getByRole("button", { name: "Take it off" }).click();
+    await expect(page.getByRole("heading", { name: "Taken off Ruken" })).toBeVisible();
+  } finally {
+    await context.close();
+  }
 }
 
 /**
