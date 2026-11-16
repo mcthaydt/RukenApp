@@ -314,7 +314,9 @@ test("18+ with no mark on a game nobody played is refused before it is asked abo
     await page.getByRole("checkbox", { name: "Gore" }).check();
     await toTheDecision(page);
     await decideButton(page, "Accept").click();
-    await expect(page.getByRole("alert")).toHaveText(`You haven't played ${maker.name}. Accept it anyway?`);
+    await expect(page.getByRole("alert")).toHaveText(
+      `You haven't played ${maker.name} yet. Press Back to play it, or press Accept it anyway.`,
+    );
   } finally {
     await maker.close();
   }
@@ -372,12 +374,15 @@ test("a game that changed while staff looked is not accepted, and staff are told
     await toTheDecision(page);
     await decideButton(page, "Accept").click();
 
-    await expect(page.getByRole("alert")).toHaveText("This game changed while you were looking. Look again.");
+    // The refusal opens the first screen, at the top, and names what changed, so the decision is not pressed again unseen.
+    await expect(page.getByRole("alert")).toHaveText(
+      "The maker changed One line while you were looking. Look at it again.",
+    );
+    await expect(heading(page)).toHaveText(`Check ${maker.name}`);
     expect(await stateOf(maker.slug)).toBe("waiting");
 
     // The refusal brings the new answers onto this same page, so there is nothing to reload by hand: the new line is on the
     // list, and Accept then works (a page that kept the old look was refused again on every press).
-    await page.getByRole("button", { name: "Back", exact: true }).click();
     await expect(page.getByText("Something the staff did not read.")).toBeVisible();
     await toTheDecision(page);
     await decideButton(page, "Accept").click();
@@ -461,7 +466,11 @@ test("Accept on a game nobody played asks once, and then accepts", async ({ page
 
     await decideButton(page, "Accept").click();
 
-    await expect(page.getByRole("alert")).toHaveText(`You haven't played ${maker.name}. Accept it anyway?`);
+    await expect(page.getByRole("alert")).toHaveText(
+      `You haven't played ${maker.name} yet. Press Back to play it, or press Accept it anyway.`,
+    );
+    // One line only: the line that said nothing is wrong and to press Accept would say the opposite of the button.
+    await expect(page.getByText("Nothing is wrong. Press Accept")).toHaveCount(0);
     await expect(decideButton(page, "Accept it anyway")).toBeVisible();
     expect(await stateOf(maker.slug)).toBe("waiting");
 

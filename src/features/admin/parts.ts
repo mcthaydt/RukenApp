@@ -37,6 +37,8 @@ export interface CheckPart {
   video: { src: string; shape: "upright" | "wide" } | null;
   /** False for a part an update cannot be sent back for: it is shown with no box. */
   canTick: boolean;
+  /** What to look for when the value alone does not say what would be wrong, under the value; null when it does. */
+  hint: string | null;
   /** The reasons staff choose from, ending with "Something else"; none when there is no box. */
   reasons: { code: string; words: string }[];
 }
@@ -62,6 +64,9 @@ function filesWords(pending: GameToCheck["pending"]): string | null {
   const noun = pending.fileCount === 1 ? "file" : "files";
   return `${String(pending.fileCount)} ${noun}, ${megabytes(pending.totalBytes)}`;
 }
+
+/** A file count says nothing about what is wrong with it, so the files say what to look for. */
+const FILES_HINT = "Wrong if the game didn't load or parts were missing.";
 
 /** What each part says, as words. A video that is there says nothing: it is drawn. One that is not there says so. */
 function valueOf(game: GameToCheck, part: GamePart): string | null {
@@ -105,6 +110,7 @@ export function partsToCheck(game: GameToCheck, media: (key: string) => string):
       value: valueOf(game, part),
       video: videoOf(game, part, media),
       canTick,
+      hint: part === "files" ? FILES_HINT : null,
       reasons: canTick ? reasonsFor(part).map((reason) => ({ code: reason.code, words: reason.staff })) : [],
     };
   });

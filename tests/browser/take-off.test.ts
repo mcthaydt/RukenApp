@@ -50,7 +50,9 @@ test("a maker takes a live game off Ruken", async ({ page }, testInfo) => {
   await expect(page.getByRole("button", { name: "Put it back on Ruken" })).toBeVisible();
   // The note names what the button does, so it reads on its own wherever the screen puts it.
   await expect(
-    page.getByText("Putting it back copies the newest version of your game from GitHub and sends it for review."),
+    page.getByText(
+      "Putting it back copies the newest version of your game from GitHub and sends it for review.",
+    ),
   ).toBeVisible();
   // The button and its note read as one: the button is in the page, not pinned to the foot of the window, and the note
   // is the next thing under it.

@@ -180,6 +180,26 @@ test("a refusal inside a part wears the needs-fixing edge, and the page opens wi
   }
 });
 
+test("the box for who it's for says what it sends back, and the decision's heading names the step", async ({
+  page,
+  browser,
+}) => {
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    // The files say what to look for, so staff are not asked to judge a file count.
+    await expect(
+      partBox(page, "Game files").getByText("Wrong if the game didn't load or parts were missing."),
+    ).toBeVisible();
+    await toTheDecision(page);
+    await expect(heading(page)).toHaveText(`Decide on ${maker.name}`);
+    await expect(tickOn(page, "Who it's for")).toBeVisible();
+    await expect(partBox(page, "Who it's for").getByText("This is wrong")).toHaveCount(0);
+  } finally {
+    await maker.close();
+  }
+});
+
 test("'This is wrong' for who it's for comes after the marks, beside the line that explains it", async ({
   page,
   browser,

@@ -110,6 +110,16 @@ describe("partsToCheck", () => {
     );
   });
 
+  it("tells staff what to look for on the files, and says nothing like it on the other parts", () => {
+    const parts = partsToCheck(FIRST_SEND, media);
+    expect(parts.find((part) => part.part === "files")?.hint).toBe(
+      "Wrong if the game didn't load or parts were missing.",
+    );
+    expect(parts.filter((part) => part.part !== "files").map((part) => part.hint)).toEqual(
+      Array.from({ length: 7 }, () => null),
+    );
+  });
+
   it("says 1 file, not 1 files", () => {
     const one: GameToCheck = { ...FIRST_SEND, pending: { fileCount: 1, totalBytes: 10, connectHosts: [] } };
     expect(partsToCheck(one, media).find((part) => part.part === "files")?.value).toBe("1 file, 1 MB");
