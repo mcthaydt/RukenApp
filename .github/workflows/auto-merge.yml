@@ -1,6 +1,6 @@
 # Turns on GitHub's auto-merge for every finished pull request, so GitHub merges it by itself once the
-# required checks (verify, postgres, browser, and gate once required) pass on a branch up to date with main. Sessions may not merge, and the
-# Owner should not have to merge each one by hand.
+# required checks (verify, postgres, browser, and gate once required) pass on a branch up to date with main.
+# Sessions may not merge, and the Owner should not have to merge each one by hand.
 # Owner, 2026-11-13: "bro what do we need to do to make it where I'm not constantly doing this", then
 # "Yes, add it" to this workflow. This file changes only on the Owner's words, quoted in the commit (CLAUDE.md).
 #
