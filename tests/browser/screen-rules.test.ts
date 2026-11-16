@@ -23,25 +23,19 @@ import {
 
 test.beforeEach(forgetRateLimits);
 
-/** A screen a journey can open, and what it is called in the list of findings. */
-interface Screen {
+/**
+ * A screen a journey can open, and what it is called in the list of findings. It is either an address, or a way a journey
+ * already has of reaching it (`CARD_SCREENS`).
+ */
+type Screen = {
   name: string;
-  open(page: Page): Promise<void>;
   /** The front page needs no way back: it is where the others go back to. */
   isFrontPage?: boolean;
-}
+} & ({ path: string } | { open(page: Page): Promise<void> });
 
 /** A screen that is an address. An address that answers an error is a finding of its own. */
 function address(name: string, path: string, options: { isFrontPage?: boolean } = {}): Screen {
-  return {
-    name,
-    ...options,
-    open: async (page) => {
-      const response = await page.goto(path);
-      const status = response?.status() ?? 0;
-      expect(status, `${path} opens`).toBeLessThan(400);
-    },
-  };
+  return { name, path, ...options };
 }
 
 /** A new game of the signed-in maker, finished and with real clips, and where staff would leave it. */
@@ -56,8 +50,8 @@ async function gameWhere(
   return slug;
 }
 
-/** The questions a finished game can be opened at. */
-const QUESTIONS = ["name", "line", "files", "plays-on", "age", "websites", "marks", "upright", "wide"];
+/** The questions a finished game that is not 18+ can be opened at: marks are asked only of an 18+ game. */
+const QUESTIONS = ["name", "line", "files", "plays-on", "age", "websites", "upright", "wide"];
 
 test("every screen follows the screen rules", async ({ page, browser, baseURL, playwright }, testInfo) => {
   test.skip(
@@ -76,6 +70,9 @@ test("every screen follows the screen rules", async ({ page, browser, baseURL, p
   await fillAnswers(unsent, { files: true, videos: true, age: "age_12" });
   await giveRealClips(page, unsent);
   await agreeToTheAgreement(page, unsent);
+  // An 18+ game is asked its content marks, which no other game is.
+  const eighteen = (await addDraft(page)).slug;
+  await fillAnswers(eighteen, { files: true, videos: true, age: "age_18" });
   const waiting = await gameWhere(page, { state: "waiting" });
   const sentBack = await gameWhere(page, {
     state: "sent_back",
@@ -102,6 +99,7 @@ test("every screen follows the screen rules", async ({ page, browser, baseURL, p
     address("a new game", "/make/new"),
     address("a finished game", `/make/${unsent}`),
     ...QUESTIONS.map((question) => address(`question: ${question}`, `/make/${unsent}/${question}`)),
+    address("question: marks", `/make/${eighteen}/marks`),
     address("the maker agreement to sign", `/make/${unsent}/agreement`),
     address("check and send", `/make/${unsent}/check`),
     address("throw a game away", `/make/${unsent}/throw-away`),
@@ -153,7 +151,20 @@ test("every screen follows the screen rules", async ({ page, browser, baseURL, p
       const walker = await context.newPage();
       walker.setDefaultTimeout(15_000);
       for (const screen of screens) {
-        await screen.open(walker);
+        if ("path" in screen) {
+          const status = (await walker.goto(screen.path))?.status() ?? 0;
+          if (status >= 400)
+            note(
+              {
+                rule: "dead link",
+                screen: screen.name,
+                what: `its own address ${screen.path} answers ${String(status)}`,
+              },
+              view.name,
+            );
+        } else {
+          await screen.open(walker);
+        }
         await pageHasSettled(walker);
         await layoutHasSettled(walker);
         const measured = await measureScreen(walker);
