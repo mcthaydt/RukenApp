@@ -28,7 +28,14 @@ import { newPublicId, slugOf } from "./ids.ts";
 import { seenOf } from "./seen.ts";
 import { pullGame, type Pull } from "./pull.ts";
 import { counterOf, firstUnanswered, type Answers } from "./questions.ts";
-import { FILES_BEING_FIXED_WORDS, GAME_CHANGED_WORDS, listWords, stateParts, stateWords } from "./review.ts";
+import {
+  FILES_BEING_FIXED_WORDS,
+  GAME_CHANGED_WORDS,
+  listWords,
+  STAFF_NO_AGE_WORDS,
+  stateParts,
+  stateWords,
+} from "./review.ts";
 import { isReasonFor, LIVE_MAY_BE_SENT_BACK, makerWords, partTitle } from "./send-back.ts";
 
 // What a game goes through, from its first clip to going live. It is built from what it needs (the database, the
@@ -437,17 +444,14 @@ export function createGamesService(deps: GamesServiceDeps) {
    * ticked is still posted. An 18+ game has at least one, and "None of these" stands alone.
    */
   function ratingMarks(choice: { ageRating: AgeRating; contentMarks: ContentMark[] }): ContentMark[] {
-    if (!AGE_RATINGS.includes(choice.ageRating)) throw new GameError("INVALID", ageProblem(null) ?? "");
+    if (!AGE_RATINGS.includes(choice.ageRating)) throw new GameError("INVALID", STAFF_NO_AGE_WORDS);
     if (choice.ageRating !== "age_18") return [];
     const known = choice.contentMarks.filter((mark) => CONTENT_MARKS.includes(mark));
     const problem = marksProblem(known);
     if (problem !== undefined) throw new GameError("INVALID", problem);
     if (known.includes("none")) {
       if (known.length > 1)
-        throw new GameError(
-          "INVALID",
-          "Choose None of these on its own, or choose the marks that are in it.",
-        );
+        throw new GameError("INVALID", "Pick None of these on its own, or pick what's in it.");
       return ["none"];
     }
     return [...new Set(known)];

@@ -1483,7 +1483,8 @@ a.foot {
 }
 
 .part .say,
-.part .picks {
+.part .picks,
+.part .note {
   margin: 0;
 }
 
@@ -1493,12 +1494,13 @@ a.foot {
   display: none;
 }
 
-.part [data-reasons] {
+.part [data-reasons],
+.part [data-marks] {
   display: grid;
   gap: 0.75rem;
 }
 
-/* The marks of an 18+ game are asked only once 18+ is chosen. */
+/* The marks of an 18+ game, with their question, are asked only once 18+ is chosen. */
 .halves:not(:has(input[name="ageRating"][value="age_18"]:checked)) [data-marks] {
   display: none;
 }

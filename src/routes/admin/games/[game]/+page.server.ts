@@ -60,7 +60,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     pullId: game.pending.id,
     staffUserId: userId,
   });
-  const summary = await play.playSummary(game.id);
+  // Only this staff member's play of these waiting files: "you've played it" is not players' time on the live files.
+  const summary = await play.playSummary(game.id, { pullId: game.pending.id, userId });
 
   return {
     slug: game.slug,

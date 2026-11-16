@@ -32,7 +32,7 @@ export interface GameToCheck {
 export interface CheckPart {
   part: GamePart;
   title: string;
-  /** The part's value in words; null for a video, which shows itself. */
+  /** The part's value in words; null for a video that is there, which shows itself. */
   value: string | null;
   video: { src: string; shape: "upright" | "wide" } | null;
   /** False for a part an update cannot be sent back for: it is shown with no box. */
@@ -53,6 +53,9 @@ const PARTS: readonly GamePart[] = [
   "other_websites",
 ];
 
+/** What a video's place says when its maker has not added one. */
+const NO_VIDEO_WORDS = "No video yet";
+
 /** "3 files, 1 MB" for the files that wait. */
 function filesWords(pending: GameToCheck["pending"]): string | null {
   if (pending === null) return null;
@@ -60,7 +63,7 @@ function filesWords(pending: GameToCheck["pending"]): string | null {
   return `${String(pending.fileCount)} ${noun}, ${megabytes(pending.totalBytes)}`;
 }
 
-/** What each part says, as words. A video says nothing: it is drawn. */
+/** What each part says, as words. A video that is there says nothing: it is drawn. One that is not there says so. */
 function valueOf(game: GameToCheck, part: GamePart): string | null {
   switch (part) {
     case "name":
@@ -76,8 +79,9 @@ function valueOf(game: GameToCheck, part: GamePart): string | null {
     case "other_websites":
       return game.pending === null ? null : websitesWords(game.pending.connectHosts);
     case "upright_video":
+      return game.clipKeys.upright === null ? NO_VIDEO_WORDS : null;
     case "wide_video":
-      return null;
+      return game.clipKeys.wide === null ? NO_VIDEO_WORDS : null;
   }
 }
 

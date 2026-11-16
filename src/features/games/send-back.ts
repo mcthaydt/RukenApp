@@ -1,4 +1,5 @@
 import type { GamePart } from "../../lib/server/db.ts";
+import { MAX_GAME_BYTES, megabytes } from "./files-check.ts";
 import reasons from "./library/send-back-reasons.json" with { type: "json" };
 
 // Staff send a game back part by part, each with a reason from a short list (spec 11.2). The words staff choose from and
@@ -19,7 +20,10 @@ export interface SendBackReason {
   code: string;
   /** What staff read and choose. */
   staff: string;
-  /** What the maker reads; {name} stands for the game's name. For something_else it is empty: the maker reads staff's line. */
+  /**
+   * What the maker reads; {name} stands for the game's name and {limit} for the most a game's files may add up to. For
+   * something_else it is empty: the maker reads staff's line.
+   */
   maker: string;
 }
 
@@ -36,11 +40,17 @@ export function isReasonFor(part: GamePart, code: string): boolean {
   return reasonsFor(part).some((reason) => reason.code === code);
 }
 
-/** What the maker reads on the card: the reason's own words with {name} filled in; for Something else, staff's line. */
+/**
+ * What the maker reads on the card: the reason's own words with {name} and {limit} filled in; for Something else,
+ * staff's line. The limit is read from the files check that refuses a game that is too big, so the two never disagree.
+ */
 export function makerWords(part: GamePart, code: string, note: string | null, gameName: string): string {
   if (code === SOMETHING_ELSE) return note ?? "";
   const reason = reasonsFor(part).find((one) => one.code === code);
-  return (reason?.maker ?? "").replaceAll("{name}", gameName);
+  // The limit goes first, so a game named "{limit}" is shown as typed.
+  return (reason?.maker ?? "")
+    .replaceAll("{limit}", megabytes(MAX_GAME_BYTES))
+    .replaceAll("{name}", gameName);
 }
 
 /** The heading of a card for a part sent back: "Name: Floor Fifty", "Upright video". */
