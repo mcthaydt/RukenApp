@@ -281,7 +281,8 @@ so staff's and the maker's own play are not counted (pg case: one member, one st
 of the game by its address and their attentive beats, and cannot write. Step 3 now names both.
 NOTE (not blocking, lane 1, for #180's implementer if wanted): the walk says to take the address from "the test
 Worker's build secret `DIRECT_DATABASE_URL`", but a Cloudflare secret cannot be read back once set; the Owner gets it
-from Neon (for example `neonctl connection-string --pooled false`) or wherever they kept it. The command also puts the
+from Neon (its `neonctl connection-string` command; the flag for a direct, unpooled address was not checked here) or
+wherever they kept it. The command also puts the
 address, password included, on the command line, so it lands in the shell's history; `read -s` into a variable, as
 Step 2 does for `JOBS_SECRET`, would keep it out.
 
