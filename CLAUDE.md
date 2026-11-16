@@ -1,4 +1,4 @@
-This is the Owner's workflow as pasted on 2026-11-13, with the one change the Owner asked for: "Only change below is we don't run local tests, we do it all in gh cloud runners." That change touches three places, each marked "(Owner, 2026-11-13)": the last bullet of "Where sessions run", which replaces three bullets about tests on other machines and in a session's own container; the "one in CI at a time" limit under Pace, which was for the Owner's own machines and is dropped; and the first rule about failing tests, which now says where the failure is seen.
+This is the Owner's workflow as pasted on 2026-11-13, with the changes the Owner has made since, each marked with its date. On 2026-11-16 the Owner turned local tests back on (card "Let sessions run tests on their own machine before pushing?": "Yes, and skip review rounds"): sessions run the tests their change touches before pushing, and GitHub's full run still alone gates a merge.
 
 Owner, 2026-11-13: "This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it."
 
@@ -56,7 +56,7 @@ Audit all of your work for completeness, consistency, cohesion, and harmony, bot
 
 - On the owner's computer (a local session): work that is judged by looking or playing, such as UI, layout, input and rendering, and anything that needs a real browser, a GPU or a device. The owner is steering, and the dev server answers in seconds.
 - In the cloud: work that is specified and checked without a browser, such as logic, tooling, unit tests and docs, and long work nobody is steering minute by minute. Cloud sessions run side by side. The coordinator, the merge session, plans and audits run here.
-- No session runs tests itself (Owner, 2026-11-13: "we don't run local tests, we do it all in gh cloud runners"). Lint, typecheck and every test run on GitHub's hosted runners, through the pull request. A session pushes and reads the result.
+- Sessions run the relevant tests themselves before pushing: the unit tests, plus the browser tests their change touches (Owner, 2026-11-16: "Yes, and skip review rounds"). GitHub's full run through the pull request still alone gates every merge; a local pass is not "done".
 
 ## Risk lanes
 
@@ -117,12 +117,11 @@ Every time screens are about to be shown to the owner for a "how does this look?
    - Words and design check (Opus, medium), on every device and orientation: could a drunk grandma understand every word, and is every screen right for layout and polish?
    - End-to-end walk (Opus, medium), on three views (a small phone, an iPad and a computer): walk every journey these screens are part of, from first open to its main task, so nothing is missing or leads to a dead end, and run the drunk-grandma test on the UX (Owner, 2026-11-15): could a tired, distracted person get through each journey on the first try, always seeing the next step and a plain way back?
 3. One fix session (Sonnet, high) takes both reports. Each finding is fixed on its own: that finding only, its files only, at most three tries. A finding still failing after three tries is reported to the coordinator, not tried again.
-4. Harsh last look (Opus, high), once, on every device and orientation, then one more fix session for its findings.
-5. The owner approves only the finished screens. The steps before this do not ask the owner.
+4. The screens then go straight to the owner's board, with no further review round (Owner, 2026-11-16: "Yes, and skip review rounds"). The owner approves only these finished screens; the steps before this do not ask the owner.
 
 Review steps only find problems (Owner, 2026-11-15: "review steps only FIND problems"). Each writes a report, commits and pushes it, and changes nothing else. A review session that has started fixing stops, pushes its report and hands the fixes off. The reports and fixes all go in one pull request.
 
-Only new work is reviewed (Owner, 2026-11-15: "we should only do the passes on the new stuff too, if it's been checked off/approved, we can skip it for the visual review and only do the stuff that has not been checked off/approved"). Every step skips screens the owner already approved. The full review runs once per set of screens; any later round is one combined check of only the screens that changed, then one fix.
+Only new work is reviewed (Owner, 2026-11-15: "we should only do the passes on the new stuff too, if it's been checked off/approved, we can skip it for the visual review and only do the stuff that has not been checked off/approved"). Every step skips screens the owner already approved. The full review runs once per set of screens; after the owner's notes, the changed screens get one fix and go back to the board, with no new review round.
 
 Every fix round fixes every finding, the small ones included (Owner, 2026-11-15: "From now on every fix round fixes every finding, low ones included. The only exception is a fix that needs your choice, and I'll say which one."). A finding is left only when its fix needs the Owner's choice; the fixing session names that one, with options, and asks, and fixes all the rest meanwhile.
 
@@ -174,7 +173,7 @@ Caveman (Owner, 2026-11-16: "enable caveman"): every session turns on the cavema
 
 Branches: main plus branches with active CI only, five at most.
 
-Write the failing test first; confirm it fails for the right reason, in CI on the branch (Owner, 2026-11-13: no local tests). Start with the smallest test, then widen.
+Write the failing test first; confirm it fails for the right reason, locally or in CI on the branch. Start with the smallest test, then widen.
 
 Use injected clocks and fixed seeds. Browser tests wait on readiness, never on a sleep.
 

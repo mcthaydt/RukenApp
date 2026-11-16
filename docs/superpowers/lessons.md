@@ -14,3 +14,4 @@ One line per lesson, added by the fix session when its fix is accepted (see "Les
 - Two pages of one area share one rule for their bar, so it starts at the same edge as the page under it (HL9). (2026-11-16, #138)
 - A page that is drawn outside its area's layout gets what that layout would have given, such as the wordmark, from the page that hides it (HL10). (2026-11-16, #138)
 - A link that staff use every day is never the line right above "Delete my account"; the way to delete keeps a clear step (HL11). (2026-11-16, #138)
+- Check CI results yourself (`gh run watch` or poll the run's status); never wait for a notice. A session sat an hour on an already-green run. (2026-11-16)
