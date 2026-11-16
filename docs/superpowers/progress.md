@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-11-16 17:44 UTC (from `date`).
+Last updated: 2026-11-16 17:50 UTC (from `date`).
 
 Written by the rules setup session on the coordinator's behalf, because the coordinator cannot write to the repo
 (CLAUDE.md, "Writing"). Taken from the owner's handoff of 2026-11-16.
@@ -56,6 +56,15 @@ Built and merged except two pieces: the slice 2 audit with its design review loo
 - Open owner questions: does the phone number replace email at sign-up, and does sign-in use the phone number.
 - Twilio keys are typed by the owner into Cloudflare.
 - G needs the owner's walk (above).
+- Setup check, open owner decisions (each needs a workflow change, so the owner's quoted words):
+  - No aggregate gate job: `ci.yml` requires `verify`, `postgres` and `browser` separately, with no final job that
+    passes only when every applicable check ran and passed. Once one exists, branch protection adds it with
+    `gh api -X PATCH repos/mcthaydt/RukenApp/branches/main/protection/required_status_checks -F strict=true
+    -f 'contexts[]=verify' -f 'contexts[]=postgres' -f 'contexts[]=browser' -f 'contexts[]=gate'`.
+  - `--passWithNoTests` in the draft quick run (`ci.yml:122`, `ci.yml:173`), against CLAUDE.md "Tests": "No
+    `--pass-with-no-tests` or similar flag that lets an empty suite pass in CI".
+  - `auto-merge.yml` turns on auto-merge for every non-draft PR, so marking a PR ready merges it once its checks pass,
+    lane 3 included, with no owner approval in between. Whether to keep it as is, limit it, or remove it.
 
 ### Tests to watch
 
@@ -76,6 +85,9 @@ Built and merged except two pieces: the slice 2 audit with its design review loo
   owner board https://claude.ai/artifact/BLoxXKRPxtxxm7otBUGdWV.
 
 ### Material decisions
+
+- Agent-selected, until the owner decides on `auto-merge.yml`: marking a PR ready merges it, so lane 2 and lane 3 PRs
+  stay drafts until their review (lane 2) or the owner's approval or a standing permission (lane 3).
 
 - Owner instruction: remove the old workflow rules once the slice's work there was done, and re-add rules from the
   owner's new text as the fresh project's first step.
