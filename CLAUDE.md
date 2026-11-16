@@ -262,8 +262,7 @@ The least every brief's acceptance criteria cover, where they apply:
 - **End-of-slice retro.** When a slice closes, a fresh session reads that slice's audits, the flaky tests it reported
   and the findings that needed fixing more than once. It turns each lesson into a test where a test can catch it (for
   example, a check that a pull request body ends with "Requested by **McThayDT**"), and proposes the rest as one
-  rule-change pull request for the owner to approve. The next slice starts after that pull request is merged or
-  declined.
+  rule-change pull request for the owner to approve.
 - **Handoff.** Every stage reads the files its prompt names, normally the spec, the audits so far and `progress.md`; the
   plan also reads Lessons in `history.md`. It reports its progress to the coordinator, which keeps `progress.md`, and
   its last step is to commit and push. `progress.md` holds the active milestone, including completed outcomes needed
