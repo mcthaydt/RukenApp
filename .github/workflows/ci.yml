@@ -33,6 +33,14 @@
 # `verify`, `postgres` and `browser` still run and still report success, but do no work. They are not left out of
 # the workflow with `paths-ignore`, because a required check that never starts stays pending and nothing merges.
 # One file that is not .md, or any doubt about what changed, runs everything as before. A push to main always does.
+#
+# One gate, main tested after each merge, no empty pass (Owner, 2026-11-16: "yes to 1–3, keep 12", to: 1. add a final
+# `gate` job and require it; 2. let main run CI after a merge; 3. remove `--passWithNoTests` from the draft run):
+# - `gate` passes only when `verify`, `postgres` and `browser` all passed (each still marks a docs-only change as
+#   nothing to do). The owner then makes branch protection require it beside the three.
+# - A merge made by auto-merge starts no run on main, so auto-merge.yml starts this workflow on main by hand
+#   (`workflow_dispatch`) when main's newest commit has no run yet.
+# - A draft whose change reaches no tests runs the whole suite instead of passing an empty one.
 name: CI
 
 on:
@@ -41,6 +49,8 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
+  # auto-merge.yml uses this to test main after a merge; GitHub lets the workflow's own token start this event.
+  workflow_dispatch:
 
 # A newer push to the same branch makes the older run pointless, so it is cancelled and nobody waits on it.
 concurrency:
@@ -127,7 +137,12 @@ jobs:
           if [ "$CHANGED_ONLY" = "true" ] && ! git diff --name-only origin/main | grep -Eq "$RUN_EVERYTHING_WHEN"; then
             # The tests the change reaches, stopping at the first failure. The two below read files as text, so
             # the import graph cannot tell when they are affected: they always run.
-            pnpm test --changed=origin/main --passWithNoTests --bail=1
+            # A change that reaches no test runs them all: an empty run would pass without checking anything.
+            if [ -n "$(pnpm exec vitest list --project unit --changed=origin/main --filesOnly)" ]; then
+              pnpm test --changed=origin/main --bail=1
+            else
+              pnpm test --bail=1
+            fi
             pnpm test --bail=1 tests/architecture.test.ts tests/wrangler.test.ts
           else
             pnpm test
@@ -178,7 +193,13 @@ jobs:
         if: needs.changes.outputs.docs_only != 'true'
         run: |
           if [ "$CHANGED_ONLY" = "true" ] && ! git diff --name-only origin/main | grep -Eq "$RUN_EVERYTHING_WHEN"; then
-            pnpm test:pg --changed=origin/main --passWithNoTests --bail=1
+            # As in verify: a change that reaches no database test runs them all, never an empty run.
+            pnpm generate
+            if [ -n "$(pnpm exec vitest list --project postgres --changed=origin/main --filesOnly)" ]; then
+              pnpm exec vitest run --project postgres --changed=origin/main --bail=1
+            else
+              pnpm exec vitest run --project postgres --bail=1
+            fi
           else
             pnpm test:pg
           fi
@@ -311,3 +332,22 @@ jobs:
             exit 0
           fi
           test "$PIECES_RESULT" = "success"
+
+  # The one check that says the whole run passed. It passes only when verify, postgres and browser each passed; each of
+  # those already reports success on a docs-only change after deciding there was nothing to test. On a draft it is
+  # named differently, so a quick run never stands in for the required one.
+  gate:
+    name: ${{ github.event.pull_request.draft && 'gate (quick, draft)' || 'gate' }}
+    needs: [verify, postgres, browser]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every check passed
+        env:
+          VERIFY: ${{ needs.verify.result }}
+          POSTGRES: ${{ needs.postgres.result }}
+          BROWSER: ${{ needs.browser.result }}
+        run: |
+          echo "verify: $VERIFY, postgres: $POSTGRES, browser: $BROWSER"
+          test "$VERIFY" = "success" && test "$POSTGRES" = "success" && test "$BROWSER" = "success"
