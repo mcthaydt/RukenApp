@@ -112,7 +112,7 @@ test("ticking a part turns Accept into Send back, and the maker reads why", asyn
 
     await onPart(page, "Upright video");
     await tickOn(page, "Upright video").check();
-    await page.getByRole("radio", { name: "It's on its side." }).check();
+    await page.getByRole("radio", { name: "It's on its side" }).check();
     await showTheOwner(page, testInfo, "sending a game back");
     await toTheDecision(page);
     await expect(decideButton(page, "Send back")).toBeVisible();
@@ -138,7 +138,7 @@ test("a part's reasons are hidden until it is ticked, and hidden again when it i
   try {
     await checkingAGame(page, maker.slug);
     await onPart(page, "Name");
-    const reason = page.getByRole("radio", { name: "It's rude." });
+    const reason = page.getByRole("radio", { name: "It's rude" });
 
     await expect(reason).toBeHidden();
     await tickOn(page, "Name").check();
@@ -242,8 +242,8 @@ test("who it is for is one place: the maker's pick, staff's own pick, and sendin
 
     // Sent back, the maker is told which way (not always "older").
     await tickOn(page, "Who it's for").check();
-    await expect(page.getByRole("radio", { name: "It's for older players." })).toBeVisible();
-    await page.getByRole("radio", { name: "It's for younger players." }).check();
+    await expect(page.getByRole("radio", { name: "It's for older players" })).toBeVisible();
+    await page.getByRole("radio", { name: "It's for younger players" }).check();
     await toTheDecision(page);
     await decideButton(page, "Send back").click();
 

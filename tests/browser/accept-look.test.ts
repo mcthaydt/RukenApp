@@ -45,7 +45,7 @@ test("each choice is one to a row, as wide as its part", async ({ page, browser 
 
     for (const card of [
       cardOf(tickOn(page, "Name")),
-      cardOf(name.getByRole("radio", { name: "It's rude." })),
+      cardOf(name.getByRole("radio", { name: "It's rude" })),
       cardOf(name.getByRole("radio", { name: "Something else" })),
     ]) {
       expect((await boxOf(card)).width).toBeGreaterThanOrEqual(part.width - 2);

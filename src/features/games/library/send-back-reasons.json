@@ -2,103 +2,103 @@
   {
     "parts": ["name"],
     "code": "rude",
-    "staff": "It's rude.",
+    "staff": "It's rude",
     "maker": "We can't show this name on Ruken. It's rude. Pick another."
   },
   {
     "parts": ["name"],
     "code": "not_this_game",
-    "staff": "It belongs to another game.",
+    "staff": "It belongs to another game",
     "maker": "This name belongs to a different game. Pick your own."
   },
   {
     "parts": ["one_line"],
     "code": "rude",
-    "staff": "It's rude.",
+    "staff": "It's rude",
     "maker": "We can't show this line on Ruken. It's rude. Write another."
   },
   {
     "parts": ["one_line"],
     "code": "not_this_game",
-    "staff": "It's not about this game.",
+    "staff": "It's not about this game",
     "maker": "This line isn't about your game. Say what {name} is."
   },
   {
     "parts": ["files"],
     "code": "wont_start",
-    "staff": "It doesn't start.",
+    "staff": "It doesn't start",
     "maker": "Your game didn't start for us. Fix it on GitHub, then send it again."
   },
   {
     "parts": ["files"],
     "code": "breaks",
-    "staff": "It stops working.",
+    "staff": "It stops working",
     "maker": "Your game stopped working while we played. Fix it on GitHub, then send it again."
   },
   {
     "parts": ["files"],
     "code": "past_limit",
-    "staff": "It's too big.",
+    "staff": "It's too big",
     "maker": "Your game is over Ruken's {limit} limit. Take files out on GitHub, then send it again."
   },
   {
     "parts": ["files"],
     "code": "pornography",
-    "staff": "It's pornography.",
+    "staff": "It's pornography",
     "maker": "Ruken doesn't take pornography. Take it out, then send it again."
   },
   {
     "parts": ["files"],
     "code": "gambling",
-    "staff": "It has gambling.",
+    "staff": "It has gambling",
     "maker": "Gambling isn't allowed on Ruken. Take it out, then send it again."
   },
   {
     "parts": ["plays_on"],
     "code": "needs_keyboard",
-    "staff": "It needs a keyboard.",
+    "staff": "It needs a keyboard",
     "maker": "Your game needs a keyboard, so it can't play on phones. Choose Computers only."
   },
   {
     "parts": ["upright_video"],
     "code": "sideways",
-    "staff": "It's on its side.",
+    "staff": "It's on its side",
     "maker": "It's on its side. Record it with your phone upright."
   },
   {
     "parts": ["wide_video"],
     "code": "sideways",
-    "staff": "It's upright, not wide.",
+    "staff": "It's upright, not wide",
     "maker": "It's upright. Record it with your phone held sideways."
   },
   {
     "parts": ["upright_video", "wide_video"],
     "code": "not_this_game",
-    "staff": "It's not from this game.",
+    "staff": "It's not from this game",
     "maker": "It shows a different game. Add a video of {name}."
   },
   {
     "parts": ["upright_video", "wide_video"],
     "code": "too_dark",
-    "staff": "It's too dark to see.",
+    "staff": "It's too dark to see",
     "maker": "It's too dark to see. Record it again, brighter."
   },
   {
     "parts": ["age_rating"],
     "code": "older",
-    "staff": "It's for older players.",
+    "staff": "It's for older players",
     "maker": "We think {name} is for older players. Choose again."
   },
   {
     "parts": ["age_rating"],
     "code": "younger",
-    "staff": "It's for younger players.",
+    "staff": "It's for younger players",
     "maker": "We think {name} is for younger players. Choose again."
   },
   {
     "parts": ["other_websites"],
     "code": "not_listed",
-    "staff": "It uses a website it didn't list.",
+    "staff": "It uses a website it didn't list",
     "maker": "Your game uses a website that isn't on your list. Add it."
   }
 ]

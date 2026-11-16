@@ -92,8 +92,8 @@ describe("partsToCheck", () => {
   it("asks which way the age is wrong, and says it in staff's own words", () => {
     const age = partsToCheck(FIRST_SEND, media).find((one) => one.part === "age_rating");
     expect(age?.reasons.map((reason) => reason.words)).toEqual([
-      "It's for older players.",
-      "It's for younger players.",
+      "It's for older players",
+      "It's for younger players",
       "Something else",
     ]);
   });
