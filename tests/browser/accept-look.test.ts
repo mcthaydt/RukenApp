@@ -212,8 +212,9 @@ test("the line above the name keeps 'Waiting' whole and the email in one piece",
 // The windows below are set by the test, so one browser tells the five layouts apart.
 test.describe("the windows", () => {
   // The sizes are set by each test, so one project runs them and the others would only repeat it.
-  const onlyOnComputer = (projectName: string) =>
+  const onlyOnComputer = (projectName: string) => {
     test.skip(projectName !== "computer", "the sizes are set here, so one project runs them");
+  };
 
   const WINDOWS = [
     { name: "computer 1440x900", width: 1440, height: 900 },
@@ -233,17 +234,19 @@ test.describe("the windows", () => {
     const maker = await makerWithGameWhere(browser, { state: "waiting" });
     try {
       await signInAsStaff(page);
-      for (const window of WINDOWS) {
-        await page.setViewportSize({ width: window.width, height: window.height });
+      for (const size of WINDOWS) {
+        await page.setViewportSize({ width: size.width, height: size.height });
         await page.goto(`/admin/games/${maker.slug}`);
         await pageHasSettled(page);
         await page.emulateMedia({ reducedMotion: "reduce" });
         await tickOn(page, "Name").check();
-        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+        await page.evaluate(() => {
+          window.scrollTo(0, document.documentElement.scrollHeight);
+        });
 
         const button = await boxOf(page.getByRole("button", { name: "Send back" }));
-        expect(button.y, window.name).toBeGreaterThanOrEqual(0);
-        expect(button.y + button.height, window.name).toBeLessThanOrEqual(window.height);
+        expect(button.y, size.name).toBeGreaterThanOrEqual(0);
+        expect(button.y + button.height, size.name).toBeLessThanOrEqual(size.height);
       }
     } finally {
       await maker.close();
@@ -258,16 +261,16 @@ test.describe("the windows", () => {
     const maker = await makerWithGameWhere(browser, { state: "waiting" });
     try {
       await signInAsStaff(page);
-      for (const window of WINDOWS.filter(
+      for (const size of WINDOWS.filter(
         (one) => one.width >= 700 && one.height >= 450 && one.width > one.height,
       )) {
-        await page.setViewportSize({ width: window.width, height: window.height });
+        await page.setViewportSize({ width: size.width, height: size.height });
         await page.goto(`/admin/games/${maker.slug}`);
         await pageHasSettled(page);
         const left = await boxOf(page.locator("form.halves > :first-child"));
-        expect(left.height, window.name).toBeLessThanOrEqual(window.height);
+        expect(left.height, size.name).toBeLessThanOrEqual(size.height);
         // And it is a game that can be played there, not a sliver.
-        expect((await boxOf(page.locator("iframe.frame"))).height, window.name).toBeGreaterThanOrEqual(190);
+        expect((await boxOf(page.locator("iframe.frame"))).height, size.name).toBeGreaterThanOrEqual(190);
       }
     } finally {
       await maker.close();
@@ -299,13 +302,13 @@ test.describe("the windows", () => {
     const maker = await makerWithGameWhere(browser, { state: "waiting" });
     try {
       await signInAsStaff(page);
-      for (const window of WINDOWS.slice(0, 2)) {
-        await page.setViewportSize({ width: window.width, height: window.height });
+      for (const size of WINDOWS.slice(0, 2)) {
+        await page.setViewportSize({ width: size.width, height: size.height });
         await page.goto(`/admin/games/${maker.slug}`);
         await pageHasSettled(page);
         const mark = await boxOf(page.getByRole("link", { name: "Ruken", exact: true }));
         const name = await boxOf(page.getByRole("heading", { level: 1 }));
-        expect(Math.abs(mark.x - name.x), window.name).toBeLessThanOrEqual(1);
+        expect(Math.abs(mark.x - name.x), size.name).toBeLessThanOrEqual(1);
       }
     } finally {
       await maker.close();
