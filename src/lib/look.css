@@ -1029,9 +1029,13 @@ form > * + button:not(.quiet) {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
+  /* The number sits in the middle of the tile's height, and the tick in the corner takes no room from it, so the tile
+     does not look half empty with its number low. */
   .picks[data-ratings] .pick {
+    justify-content: center;
+    min-height: 4.5rem;
+    padding-block: 0.75rem;
     padding-right: 0.75rem;
-    padding-top: 2.25rem;
   }
 
   .picks[data-ratings] .pick::after {
@@ -1543,6 +1547,11 @@ main[data-state] .sheet.fix {
 
 /* More space between two parts than inside one, and a title a step larger than a note, so a long run of parts is read as
    parts. */
+/* A refusal about a part's reasons is brought to the top of the window (showTheRefusal), a step clear of its edge. */
+[data-refusal-from-top] {
+  scroll-margin-top: 1rem;
+}
+
 .part + .part {
   margin-top: 2.5rem;
 }
@@ -1680,9 +1689,25 @@ main[data-state] .sheet.fix {
   margin-top: 1.5rem;
 }
 
+/* A window that is wide and tall enough for the check to hold its bar and the game together: the game is as tall as what is left
+   under the heading and above the bar, so staff can play it on first view with no scroll. A heading is the one place the
+   work screens spend less than a statement does, so it does not push the game down. */
+@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
+  .screen[data-staff] .asks h1 {
+    font: var(--text-section);
+  }
+
+  .asks .frame {
+    height: clamp(16rem, calc(100dvh - 26rem), 70dvh);
+  }
+}
+
+/* A short window (a phone held sideways): the game is no taller than what is left above the pinned bar once it is scrolled
+   to the top of the window, so no part of it is ever under the bar. */
 @media (max-height: 449px) {
   .asks .frame {
-    height: 80dvh;
+    height: max(10rem, calc(100dvh - 6.5rem));
+    scroll-margin-top: 0.5rem;
   }
 }
 

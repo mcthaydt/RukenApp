@@ -66,7 +66,8 @@
   {#if filesLeft}
     <div class="sheet fix">
       <p class="say">
-        Taking it off didn't finish. Some of its files are still on Ruken. Delete them to finish. This can't be undone.
+        Taking it off didn't finish. Some of its files are still on Ruken. Delete them to finish. This can't
+        be undone.
       </p>
       <form
         method="POST"

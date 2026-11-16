@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled } from "./support/account.ts";
 import { makerWithGameWhere, signInAsStaff } from "./support/game.ts";
 import { decideButton, heading, nextButton, partBox, tickOn, toTheDecision } from "./support/check.ts";
-import { boxOf } from "./support/look.ts";
+import { boxOf, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The design check of the staff screens (docs/superpowers/audits/2026-11-16-staff-review-screens-design.md). CI checks
@@ -216,6 +216,86 @@ test("'This is wrong' for who it's for comes after the marks, beside the line th
     const box = await boxOf(cardOf(tickOn(page, "Who it's for")));
     expect(explains.y).toBeGreaterThan(none.y);
     expect(box.y).toBeGreaterThan(explains.y);
+  } finally {
+    await maker.close();
+  }
+});
+
+test("a rating's number is in the middle of its tile's height", async ({ page, browser }) => {
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    await toTheDecision(page);
+    const size = page.viewportSize();
+    // The five ratings sit in one row of tiles only from a tablet up; below that each is a row of its own.
+    test.skip((size?.width ?? 0) < 500 || (size?.height ?? 0) < 450, "the ratings are rows here");
+    await expect
+      .poll(async () => {
+        const tile = await boxOf(page.locator(".picks[data-ratings] .pick").first());
+        const number = await boxOf(page.locator(".picks[data-ratings] .pick > b").first());
+        return Math.abs(tile.y + tile.height / 2 - (number.y + number.height / 2));
+      })
+      .toBeLessThan(4);
+  } finally {
+    await maker.close();
+  }
+});
+
+test("the game fits above the pinned bar, on first view where the window is big enough", async ({
+  page,
+  browser,
+}) => {
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    await wordsHaveSettled(page);
+    const size = page.viewportSize();
+    const wideEnough =
+      (size?.width ?? 0) >= 500 && (size?.height ?? 0) >= 450 && (size?.width ?? 0) > (size?.height ?? 0);
+    const short = (size?.height ?? 0) < 450;
+    test.skip(!wideEnough && !short, "an upright window scrolls to the game");
+    // A short window shows the game once it is scrolled to; a big one shows it as the page opens.
+    if (short) await page.locator("iframe.frame").evaluate((one) => one.scrollIntoView({ block: "start" }));
+    await expect
+      .poll(async () => {
+        const frame = await boxOf(page.locator("iframe.frame"));
+        const bar = await boxOf(page.locator(".acts"));
+        return frame.y >= 0 && frame.y + frame.height <= bar.y && frame.height >= 160;
+      })
+      .toBe(true);
+  } finally {
+    await maker.close();
+  }
+});
+
+test("a refusal about a part sits with its reasons, both in view above the bar", async ({
+  page,
+  browser,
+}) => {
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    await tickOn(page, "Upright video").check();
+    await toTheDecision(page);
+    await decideButton(page, "Send back").click();
+
+    const alert = page.getByRole("alert");
+    await expect(alert).toHaveText("Pick a reason for Upright video.");
+    const reasons = partBox(page, "Upright video").getByRole("radio");
+    await expect(alert).toBeInViewport();
+    await expect(reasons.first()).toBeInViewport();
+    await expect
+      .poll(async () => {
+        const refusal = await boxOf(alert);
+        const first = await boxOf(reasons.first());
+        const bar = await boxOf(page.locator(".acts"));
+        // The refusal is above its reasons, and the first reason is clear of a bar pinned over the foot of the window.
+        const pinned = await page
+          .locator(".acts")
+          .evaluate((one) => getComputedStyle(one).position === "fixed");
+        return refusal.y < first.y && (!pinned || first.y + first.height <= bar.y);
+      })
+      .toBe(true);
   } finally {
     await maker.close();
   }

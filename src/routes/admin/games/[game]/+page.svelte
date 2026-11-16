@@ -191,7 +191,11 @@
       chosen={ticked}
       problem={undefined}
     />
-    <div data-reasons>
+    <!-- A refusal about this part sits with the reasons it asks for, so the page brings both into view together. -->
+    <div data-reasons data-refusal-from-top>
+      {#if form?.at === part.part && part.part !== "age_rating"}
+        <p class="problem" role="alert">{form.problem}</p>
+      {/if}
       <p class="note" id={`why-${part.part}`}>Pick one.</p>
       <Picks
         name={`reason-${part.part}`}
@@ -264,9 +268,6 @@
     {#each otherParts as part (part.part)}
       <div class="part" id={`part-${part.part}`}>
         <h2 id={`title-${part.part}`}>{part.title}</h2>
-        {#if form?.at === part.part}
-          <p class="problem" role="alert">{form.problem}</p>
-        {/if}
         {#if part.video !== null}
           <video
             class="clip"

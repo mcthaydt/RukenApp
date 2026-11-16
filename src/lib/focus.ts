@@ -20,6 +20,14 @@ export function showTheRefusal(): void {
     (one) => one.getClientRects().length > 0,
   );
   if (problem === undefined) return;
+  // A refusal inside a block that asks to be read from its title (staff's parts, each a list of reasons) brings the whole
+  // block to the top: its title, the refusal and the reasons it asks for are then in view together, and nothing is left
+  // under the bar.
+  const block = problem.closest<HTMLElement>("[data-refusal-from-top]");
+  if (block !== null) {
+    block.scrollIntoView({ block: "start" });
+    return;
+  }
   // A line rises 28px into place over 460ms, and a box measured on the way is 28px lower than where it ends up, so the page was
   // scrolled 28px too far and the heading's place was misjudged. Every line is where it ends up at once, and then measured.
   // (The drifting circles go on for ever and are left alone.)
