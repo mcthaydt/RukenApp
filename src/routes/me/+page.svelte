@@ -59,5 +59,6 @@
   {#if data.staff}
     <p><a href="/admin/games">Games to check</a></p>
   {/if}
-  <p class="note"><a href="/me/delete">Delete my account</a></p>
+  <!-- A step clear of what staff use every day, so the way to delete is never read as part of that group. -->
+  <p class="note apart"><a href="/me/delete">Delete my account</a></p>
 </main>

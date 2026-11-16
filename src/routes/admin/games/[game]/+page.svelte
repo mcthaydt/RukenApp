@@ -13,8 +13,10 @@
   so staff do not look for a box that is not there.
 
   A refusal that is about one part (no reason picked, Something else with no line, an 18+ game with no marks) names the part,
-  says so again inside it, and the page opens at it, so nobody scrolls a long page looking for what they ticked. Accept on a
-  game nobody has played asks "Accept it anyway?" first, and the blue button then says so. The line about how long staff have
+  says so again inside it, and the page opens at it, so nobody scrolls a long page looking for what they ticked. Inside the
+  part the refusal wears the look's "needs fixing" edge, so it is not read as the part's own words; for the marks it is
+  under their question, right above the four boxes it is about. Everything that can refuse an Accept refuses it before
+  "Accept it anyway?" is asked, which comes first only when the press would otherwise go through, and the blue button then says so. The line about how long staff have
   played is read again while they play (and when they come back to the page), so it never says "yet" after they have.
 -->
 <script lang="ts">
@@ -66,13 +68,27 @@
     }
   }
 
+  /**
+   * Opens the page at what a refusal is about: the marks' question, or the part's name. The lines of the page rise into
+   * place as it opens, and a line that is still moving is measured where it is, not where it will be, so the page is
+   * brought to the place once more when the rising is done.
+   */
+  function openAtRefusal(): void {
+    const refusal = form;
+    if (refusal?.at === undefined) return;
+    const id = refusal.atMarks ? "marks-question" : `part-${refusal.at}`;
+    const target = () => document.getElementById(id)?.scrollIntoView();
+    target();
+    void Promise.allSettled(document.getAnimations().map((one) => one.finished)).then(target);
+  }
+
   let frame = $state<HTMLIFrameElement>();
   // Drawn by script, so with none it is not there: only a browser that can show a frame full screen offers it.
   let canFullScreen = $state(false);
   onMount(() => {
     canFullScreen = document.fullscreenEnabled && frame?.requestFullscreen !== undefined;
     // A refusal about one part opens the page at it; without script the link beside the words does the same.
-    if (form?.at !== undefined) document.getElementById(`part-${form.at}`)?.scrollIntoView();
+    openAtRefusal();
     const timer = setInterval(() => void rereadPlayed(), REREAD_PLAYED_EVERY_MS);
     // Coming back to the tab after playing in another window or app: the line is right at once, not at the next beat.
     const comeBack = () => void rereadPlayed();
@@ -96,10 +112,11 @@
       {#if kept?.anyway === true}
         <input type="hidden" name="acceptAnyway" value="1" />
       {/if}
-      <!-- "Waiting 3 hours" is never cut, and an email that does not fit moves down whole instead of breaking at a hyphen. -->
-      <p class="count">
-        <span class="nobreak">{data.kind === "update" ? "Update to a live game" : "Game"}</span> ·
-        <span class="email">{data.makerEmail}</span> · <span class="nobreak">{data.waited}</span>
+      <!-- "Waiting 3 hours" is never cut, a dot stays with the words after it, and an email that does not fit moves down
+           whole instead of breaking at a hyphen. -->
+      <p class="count facts">
+        <span class="nobreak">{data.kind === "update" ? "Update to a live game" : "Game"}</span>
+        <span class="email">·&nbsp;{data.makerEmail}</span> ·&nbsp;<span class="nobreak">{data.waited}</span>
       </p>
       <h1>{data.name}</h1>
       <!-- What stops Accept is read before the button is pressed, so it is drawn as a refusal is, and not as a quiet note. -->
@@ -146,7 +163,7 @@
       {#each data.parts as part (part.part)}
         <section class="part" aria-labelledby={`part-${part.part}`}>
           <h2 id={`part-${part.part}`}>{part.title}</h2>
-          {#if form?.at === part.part}
+          {#if form?.at === part.part && !form.atMarks}
             <p class="problem">{form.problem}</p>
           {/if}
           {#if part.video !== null}
@@ -181,11 +198,11 @@
                 </label>
               {/each}
             </div>
-            {#if part.canTick}
-              <p class="note">Or send it back, and the maker will choose again.</p>
-            {/if}
             <div data-marks>
               <p class="say" id="marks-question">Does {data.name} have any of these?</p>
+              {#if form?.at === part.part && form.atMarks}
+                <p class="problem">{form.problem}</p>
+              {/if}
               <div class="picks" data-several role="group" aria-labelledby="marks-question">
                 {#each MARKS as mark (mark.value)}
                   <label class="pick">
@@ -204,6 +221,10 @@
           {#if !part.canTick}
             <p class="note">This game is already live, so you can't send it back for this part.</p>
           {:else}
+            {#if part.part === "age_rating"}
+              <!-- Next to its box, so the box is read as this and not as one more mark above it. -->
+              <p class="note">Or send it back, and the maker will choose again.</p>
+            {/if}
             <div class="picks" data-several>
               <label class="pick">
                 <input

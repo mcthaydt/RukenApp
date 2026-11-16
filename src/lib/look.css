@@ -518,6 +518,8 @@ form > * + button:not(.quiet) {
 .card form > button:not(.quiet),
 .card p > a.button:only-child {
   width: 100%;
+  /* Long words on a narrow card break into even lines, not a full line and a stray word. */
+  text-wrap: balance;
 }
 
 @media (min-width: 48rem) {
@@ -678,6 +680,19 @@ form > * + button:not(.quiet) {
 @media (min-width: 1200px) and (orientation: landscape) {
   .topbar {
     padding: 1.5rem 2.5rem 0;
+  }
+}
+
+/* A bar of three links (staff's) on the narrowest phone: the links are a size smaller and closer, so the three share one line
+   instead of the last dropping alone under the wordmark. At 320 wide they take about 250 of the 288 there is. */
+@media (max-width: 359px) {
+  .topbar:has(> :nth-child(3)) {
+    gap: 0.75rem;
+    padding-inline: 1rem;
+  }
+
+  .topbar:has(> :nth-child(3)) > a:not(.wordmark) {
+    font: var(--text-small);
   }
 }
 
@@ -1495,6 +1510,8 @@ a.foot {
 
 .part h2 {
   margin: 0;
+  /* A page opened at a refusal puts the part's name in view, with a little of what is above it. */
+  scroll-margin-top: 1rem;
   color: var(--ink-soft);
   font: 600 1rem / 1.3 var(--font-text);
 }
@@ -1503,6 +1520,14 @@ a.foot {
 .part .picks,
 .part .note {
   margin: 0;
+}
+
+/* A refusal inside a part is seen as one: the look's own "needs fixing" edge (as `.sheet.fix` has), so it is not read as the
+   part's words, whose value is the next line. */
+.part .problem {
+  margin: 0;
+  padding-left: 1rem;
+  border-left: 6px solid var(--pay);
 }
 
 /* A choice is paper on paper here, so it has an edge that shows before it is picked (the sheet's ink, as a box has on paper),
@@ -1610,15 +1635,22 @@ a.foot {
   overflow-wrap: anywhere;
 }
 
+/* The line of facts about a game ("Game · maker@example.com · Waiting 3 hours") is a note's size, so a whole email fits a
+   phone's line. Each dot is written with the words after it, so a line never starts with a dot or ends with one. */
+.facts {
+  font: var(--text-small);
+}
+
 /* The page's one instruction is read at body size, in chalk, and not as a note under the name. */
 .halves .instruction {
   color: var(--chalk);
   font: var(--text-body);
 }
 
-/* On a computer the bar and the page start at one left edge: the bar is as wide as the page and centred with it. */
+/* On a computer the bar and the page start at one left edge: the bar is as wide as the page and centred with it. This is
+   staff's both pages (the list and the check page), so the wordmark does not jump between them more than the pages differ. */
 @media (min-width: 1200px) and (orientation: landscape) {
-  .screen:has(.halves[data-check]) .topbar {
+  .screen[data-staff] .topbar {
     width: min(100% - 2.5rem, var(--column));
     margin-inline: auto;
     padding-inline: 0;
@@ -1633,7 +1665,9 @@ a.foot {
   .halves[data-check] > :first-child {
     display: flex;
     flex-direction: column;
-    max-height: calc(100dvh - 3rem);
+    /* The bar above it (68px, 72px on a computer) and the page's own space above and below the half (2rem and 1.5rem) are
+       the window's too, so what it adds up to is in view as the page opens, with the way back under the game. */
+    max-height: calc(100dvh - 8rem);
   }
 
   .halves[data-check] > :first-child > * {
@@ -1671,6 +1705,11 @@ a.foot {
 .halves .frame {
   margin-top: 1.5rem;
   border-radius: var(--radius-card);
+}
+
+/* "Full size" is a button under the game and not a caption on it: the same step under the frame as above it. */
+.halves .frame + .quiet {
+  margin-top: 1.5rem;
 }
 
 /* The agreement's points on a sheet: the number is the list's own, in the display face, and hangs in the left margin, so

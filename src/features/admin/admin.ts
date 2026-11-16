@@ -1,4 +1,5 @@
 // The admin feature's entry: what routes may import. Anything not exported here is internal.
+export { acceptProblem } from "./accept-problem.ts";
 export { partsToCheck, type CheckPart, type GameToCheck } from "./parts.ts";
 export { acceptAnywayWords, mustAskBeforeAccepting, playedWords } from "./played.ts";
 export { CHECKED_NOTE, decisionWords, type Decision } from "./said.ts";

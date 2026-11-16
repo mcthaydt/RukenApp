@@ -203,10 +203,150 @@ test("the line above the name keeps 'Waiting' whole and the email in one piece",
     await checkingAGame(page, maker.slug);
     const line = page.locator("p.count");
     await expect(line.getByText(/^Waiting /)).toHaveCSS("white-space", "nowrap");
+    // A dot goes with the words after it (HL6), so it is never left at the end of a line.
+    const email = await line.getByText(maker.makerEmail).evaluate((one) => one.textContent);
+    expect(email).toBe(`\u00b7\u00a0${maker.makerEmail}`);
     await expect(line.getByText(maker.makerEmail)).toHaveCSS("display", "inline-block");
   } finally {
     await maker.close();
   }
+});
+
+// The harsh last look (docs/superpowers/audits/2026-11-16-staff-review-screens-harsh-look.md).
+
+test("a refusal inside a part wears the needs-fixing edge, and the page opens with the part's name in view", async ({
+  page,
+  browser,
+}) => {
+  // HL3
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    await tickOn(page, "One line").check();
+    await page.getByRole("button", { name: "Send back" }).click();
+
+    const refusal = partNamed(page, "One line").getByText("Pick a reason for One line.");
+    await expect(refusal).toBeVisible();
+    const edge = await refusal.evaluate((words) => getComputedStyle(words).borderLeftWidth);
+    expect(Number.parseFloat(edge), "the edge").toBeGreaterThanOrEqual(4);
+
+    // The lines of the page rise into place as it opens, so the place is settled a moment after.
+    await expect(async () => {
+      const name = await boxOf(partNamed(page, "One line").getByRole("heading", { name: "One line" }));
+      const size = page.viewportSize();
+      expect(name.y).toBeGreaterThanOrEqual(0);
+      expect(name.y + name.height).toBeLessThanOrEqual(size?.height ?? 0);
+    }).toPass();
+  } finally {
+    await maker.close();
+  }
+});
+
+test("'This is wrong' for who it's for comes after the marks, beside the line that explains it", async ({
+  page,
+  browser,
+}) => {
+  // HL2
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    await page.getByRole("radio", { name: "18+" }).check();
+    const age = partNamed(page, "Who it's for");
+    const none = await boxOf(cardOf(age.getByRole("checkbox", { name: "None of these" })));
+    const explains = await boxOf(age.getByText("Or send it back, and the maker will choose again."));
+    const box = await boxOf(cardOf(tickOn(page, "Who it's for")));
+    expect(explains.y).toBeGreaterThan(none.y);
+    expect(box.y).toBeGreaterThan(explains.y);
+  } finally {
+    await maker.close();
+  }
+});
+
+test("'Full size' is a step under the game's frame, not touching it", async ({ page, browser }) => {
+  // HL8
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    const fullSize = page.getByRole("button", { name: "Full size" });
+    // Only a browser that can show a frame full screen offers it.
+    test.skip((await fullSize.count()) === 0, "this browser has no full screen");
+    const frame = await boxOf(page.locator("iframe.frame"));
+    const button = await boxOf(fullSize);
+    expect(button.y - (frame.y + frame.height)).toBeGreaterThanOrEqual(16);
+  } finally {
+    await maker.close();
+  }
+});
+
+test("the staff's three links share one line on the narrowest phone", async ({ page }, testInfo) => {
+  // HL5
+  test.skip(testInfo.project.name !== "computer", "the size is set here, so one project runs it");
+  await signInAsStaff(page);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/admin/games");
+  await pageHasSettled(page);
+  const tops = [];
+  for (const name of ["Ruken", "Games to check", "Your account"])
+    tops.push(Math.round((await boxOf(page.getByRole("link", { name, exact: true }).first())).y));
+  expect(new Set(tops).size, `top of each link: ${tops.join(", ")}`).toBe(1);
+});
+
+test("on a computer the list's bar starts where the list does, and the way back is in view as the check page opens", async ({
+  page,
+  browser,
+}, testInfo) => {
+  // HL9 and HL7
+  test.skip(testInfo.project.name !== "computer", "the sizes are set here, so one project runs them");
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await signInAsStaff(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/admin/games");
+    await pageHasSettled(page);
+    const mark = await boxOf(page.getByRole("link", { name: "Ruken", exact: true }));
+    const heading = await boxOf(page.getByRole("heading", { level: 1 }));
+    expect(Math.abs(mark.x - heading.x)).toBeLessThanOrEqual(1);
+
+    for (const size of [
+      { width: 1440, height: 900 },
+      { width: 1080, height: 810 },
+    ]) {
+      await page.setViewportSize(size);
+      await page.goto(`/admin/games/${maker.slug}`);
+      await pageHasSettled(page);
+      const way = await boxOf(page.getByRole("link", { name: "Back to games to check" }).first());
+      expect(way.y + way.height, `${String(size.width)}x${String(size.height)}`).toBeLessThanOrEqual(
+        size.height,
+      );
+    }
+  } finally {
+    await maker.close();
+  }
+});
+
+test("the error page inside the staff's area has the wordmark, for staff and for anyone else", async ({
+  page,
+}) => {
+  // HL10
+  await page.goto("/admin/games/no-such-game");
+  await expect(page.getByRole("heading", { name: "We can't find that page." })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ruken", exact: true })).toHaveCount(1);
+
+  await signInAsStaff(page);
+  await page.goto("/admin/games/no-such-game");
+  await expect(page.getByRole("heading", { name: "We can't find that page." })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ruken", exact: true })).toHaveCount(1);
+});
+
+test("on Your account the door to games to check is not on top of Delete my account", async ({ page }) => {
+  // HL11
+  await signInAsStaff(page);
+  await page.goto("/me");
+  await pageHasSettled(page);
+  const own = await boxOf(page.getByRole("link", { name: "Add yours to Ruken." }));
+  const door = await boxOf(page.getByRole("link", { name: "Games to check" }));
+  const remove = await boxOf(page.getByRole("link", { name: "Delete my account" }));
+  expect(remove.y - door.y, "the step before Delete my account").toBeGreaterThan(door.y - own.y + 16);
 });
 
 // The windows below are set by the test, so one browser tells the five layouts apart.

@@ -258,17 +258,44 @@ test("making a game 18+ asks for its marks, and Accept without one is refused", 
     await expect(gore).toBeVisible();
     await expect(question).toBeVisible();
     await page.getByRole("button", { name: "Accept" }).click();
-    await expect(page.getByRole("alert")).toHaveText("Choose at least one, or None of these.");
-    // The same words are inside the part they are about.
-    await expect(
-      partNamed(page, "Who it's for").getByText("Choose at least one, or None of these."),
-    ).toBeVisible();
+    const refusal = `Pick what ${maker.name} has, or None of these.`;
+    await expect(page.getByRole("alert")).toHaveText(refusal);
+    // The same words are inside the part they are about, under the marks' question and above the four boxes (HL1).
+    const inPart = partNamed(page, "Who it's for").getByText(refusal);
+    await expect(inPart).toBeVisible();
+    const words = await boxOf(inPart);
+    expect(words.y).toBeGreaterThan((await boxOf(question)).y);
+    expect(words.y + words.height).toBeLessThanOrEqual((await boxOf(gore)).y);
     expect(await stateOf(maker.slug)).toBe("waiting");
 
     await page.getByRole("checkbox", { name: "Gore" }).check();
     await page.getByRole("button", { name: "Accept" }).click();
     await expect(page).toHaveURL("/admin/games");
     expect(await stateOf(maker.slug)).toBe("live");
+  } finally {
+    await maker.close();
+  }
+});
+
+test("18+ with no mark on a game nobody played is refused before it is asked about", async ({
+  page,
+  browser,
+}) => {
+  // Harsh look HL4: staff are not made to say yes to a question and then refused for what was wrong before it.
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    await page.getByRole("radio", { name: "18+" }).check();
+    await page.getByRole("button", { name: "Accept" }).click();
+
+    await expect(page.getByRole("alert")).toHaveText(`Pick what ${maker.name} has, or None of these.`);
+    await expect(page.getByRole("button", { name: "Accept it anyway" })).toHaveCount(0);
+    expect(await stateOf(maker.slug)).toBe("waiting");
+
+    // With a mark picked the press would go through, so now it asks.
+    await page.getByRole("checkbox", { name: "Gore" }).check();
+    await page.getByRole("button", { name: "Accept" }).click();
+    await expect(page.getByRole("alert")).toHaveText(`You haven't played ${maker.name}. Accept it anyway?`);
   } finally {
     await maker.close();
   }

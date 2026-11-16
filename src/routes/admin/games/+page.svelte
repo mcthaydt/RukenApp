@@ -26,10 +26,12 @@
     <a class="game" href={`/admin/games/${game.slug}`}>
       <span>
         <span class="statement">{game.name}</span>
-        <!-- "Waiting 3 hours" is never cut, and an email that does not fit moves down whole instead of breaking at a hyphen. -->
-        <span>
-          <span class="nobreak">{game.kind === "update" ? "Update" : "Game"}</span> ·
-          <span class="email">{game.makerEmail}</span> · <span class="nobreak">{game.waited}</span>
+        <!-- "Waiting 3 hours" is never cut, a dot stays with the words after it, and an email that does not fit moves down
+             whole instead of breaking at a hyphen. -->
+        <span class="facts">
+          <span class="nobreak">{game.kind === "update" ? "Update" : "Game"}</span>
+          <span class="email">·&nbsp;{game.makerEmail}</span> ·&nbsp;<span class="nobreak">{game.waited}</span
+          >
         </span>
       </span>
     </a>

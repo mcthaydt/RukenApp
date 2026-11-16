@@ -1,6 +1,7 @@
 import { error, fail, redirect, type Cookies } from "@sveltejs/kit";
 import {
   acceptAnywayWords,
+  acceptProblem,
   CHECKED_NOTE,
   decisionWords,
   mustAskBeforeAccepting,
@@ -55,13 +56,28 @@ type Kept = {
   anyway: boolean;
 };
 
+/** What a refusal is about, besides its words: the part it belongs to, and whether it is a question. */
+type RefusalAbout = {
+  /** The part the words are about, so the page can show them there. */
+  at?: GamePart;
+  /** The refusal is about the marks inside "Who it's for", so the page shows it under their question. */
+  atMarks?: boolean;
+  /** The one refusal that is a question, "Accept it anyway?". */
+  asking?: boolean;
+};
+
 /**
  * A refusal always has the same shape. Two differently shaped failures would be folded by the compiler into the one
- * with fewer fields, and the page would lose `kept` from its `form`. `at` is the part the words are about, so the page
- * can show them there; `asking` is the one refusal that is a question, "Accept it anyway?".
+ * with fewer fields, and the page would lose `kept` from its `form`.
  */
-function refused(problem: string, kept?: Kept, at?: GamePart, asking = false) {
-  return fail(400, { problem, kept, at, asking });
+function refused(problem: string, kept?: Kept, about: RefusalAbout = {}) {
+  return fail(400, {
+    problem,
+    kept,
+    at: about.at,
+    atMarks: about.atMarks === true,
+    asking: about.asking === true,
+  });
 }
 
 /** Leaves the line the list says once: what this decision did. It is read and deleted by the next look at the list. */
@@ -150,18 +166,22 @@ export const actions = {
         })),
         (part) => titles.get(part) ?? part,
       );
-      if (missing !== null) return refused(missing.words, kept, missing.part);
+      if (missing !== null) return refused(missing.words, kept, { at: missing.part });
     } else if (game.pullProblem !== null) {
       // The page offers only Send back for this game, so an empty press is an old page or a post by hand.
       return refused(TICK_FIRST_WORDS, kept);
     } else {
+      // Refused before it is asked about, so staff are never asked "Accept it anyway?" for a press that would be refused.
+      const unfinished = acceptProblem({ ageRating, marks }, game.name);
+      if (unfinished !== null)
+        return refused(unfinished.words, kept, { at: unfinished.part, atMarks: unfinished.atMarks });
       // Read now and not from the page's line, so a game played since the page was drawn is not asked about.
       const played = await playServices().service.playSummary(game.id, {
         pullId: game.pending.id,
         userId,
       });
       if (mustAskBeforeAccepting(played.countedSeconds, confirmed))
-        return refused(acceptAnywayWords(game.name), { ...kept, anyway: true }, undefined, true);
+        return refused(acceptAnywayWords(game.name), { ...kept, anyway: true }, { asking: true });
     }
 
     try {
@@ -192,7 +212,7 @@ export const actions = {
       if (problem.message === GAME_CHANGED_WORDS) return refused(problem.message);
       // An Accept the service refuses for its words is about who it is for: the rating and its marks are all it reads.
       const at = ticked.length === 0 && problem.code === "INVALID" ? "age_rating" : undefined;
-      return refused(problem.message, kept, at);
+      return refused(problem.message, kept, { at });
     }
     redirect(303, "/admin/games");
   },

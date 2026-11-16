@@ -5,7 +5,13 @@ export { connectHostsFrom, isMissingIndexHtml, megabytes } from "./files-check.t
 export { ageProblem, marksProblem, playsOnProblem } from "./fields.ts";
 export { GameError } from "./game-error.ts";
 export { playsOnWords, ratingWords, websitesWords } from "./laid-out.ts";
-export { FILES_BEING_FIXED_WORDS, GAME_CHANGED_WORDS, nextStepWords, toFixWords } from "./review.ts";
+export {
+  FILES_BEING_FIXED_WORDS,
+  GAME_CHANGED_WORDS,
+  nextStepWords,
+  STAFF_NO_AGE_WORDS,
+  toFixWords,
+} from "./review.ts";
 export {
   isReasonFor,
   LIVE_MAY_BE_SENT_BACK,
