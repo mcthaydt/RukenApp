@@ -58,6 +58,26 @@ Audit all of your work for completeness, consistency, cohesion, and harmony, bot
 - In the cloud: work that is specified and checked without a browser, such as logic, tooling, unit tests and docs, and long work nobody is steering minute by minute. Cloud sessions run side by side. The coordinator, the merge session, plans and audits run here.
 - No session runs tests itself (Owner, 2026-11-13: "we don't run local tests, we do it all in gh cloud runners"). Lint, typecheck and every test run on GitHub's hosted runners, through the pull request. A session pushes and reads the result.
 
+## Risk lanes
+
+Every pull request is in one lane, set by how hard a mistake would be to undo, not by how sure the session is (Owner, 2026-11-16: "A"). The stage session names its lane in the pull request description, and a change in two lanes takes the higher one.
+
+- Lane 1, easy to undo and contained (wording, tests, docs, one function its tests cover): marked ready when done, and merges by itself once the full run is green.
+- Lane 2, easy to undo but wide (shared helpers, added tables or columns, anything many callers use): stays a draft until an Opus medium review of it passes, then is marked ready.
+- Lane 3, hard to undo (a migration that drops or changes data, deletes, money, payouts, secrets, production data, domains, releases): stays a draft until the owner's written OK is in the thread, whatever the checks or reviews say.
+
+## Lessons
+
+When a fix is accepted, the fix session adds the lesson as one line to docs/superpowers/lessons.md, written as a rule for how later work is split or briefed. The coordinator reads lessons.md before writing a brief. A lesson that keeps coming back moves into this file in the daily rules batch, and leaves lessons.md.
+
+## Ordering and gates
+
+Owner, 2026-11-16, picked these three:
+
+- Real dependency: two steps wait for each other only if the second reads the first one's output. If you can't name what passes between them, run them side by side. The coordinator applies this when ordering threads.
+- Plain code for fixed steps: a step with one right answer (merge, rank, dedupe, compare before and after) is a script or a test, not a model asked to judge.
+- Gate first: before building any repeated job, write the one check that can fail it. A job with no gate is a faster way to make unchecked work.
+
 ## Graphify
 
 Graphify (Owner 2026-11-15): RukenApp is indexed in Graphify (workspace mcthaydt-s-workspace, repository mcthaydt/RukenApp). Every build, audit and fix session uses the Graphify tools to find code and check what a change affects: graphify_find for where something is defined, query_graph for how something works, graphify_callers for who calls it, graphify_impact before changing it, graphify_tests_for for its tests. Compare a result's commitSha to the checkout's HEAD; read the current file for anything changed since. Use text search for literal strings, config and unindexed files.
