@@ -103,8 +103,7 @@ export function measureScreen(page: Page): Promise<Measured> {
       const wayBack = new RegExp(wayBackWords, "i");
 
       // How a person would name a thing: its label, or else its words.
-      const words = (element: Element) =>
-        (element.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 40);
+      const words = (element: Element) => element.textContent.trim().replace(/\s+/g, " ").slice(0, 40);
       const nameOf = (element: Element) => element.getAttribute("aria-label") ?? words(element);
       const describe = (element: Element) => {
         const classes = element.getAttribute("class")?.trim().split(/\s+/).join(".");
@@ -215,7 +214,7 @@ export function measureScreen(page: Page): Promise<Measured> {
       );
 
       // Where every link and every form goes, for the checks that need the network.
-      const links = [...document.body.querySelectorAll("a[href]")].map((anchor) => {
+      const links = [...document.body.querySelectorAll<HTMLAnchorElement>("a[href]")].map((anchor) => {
         const raw = anchor.getAttribute("href");
         const id = raw?.startsWith("#") === true ? decodeURIComponent(raw.slice(1)) : "";
         return {
