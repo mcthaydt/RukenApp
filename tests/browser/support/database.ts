@@ -364,3 +364,23 @@ export async function endMembershipOf(email: string): Promise<void> {
   const user = await db().user.findUniqueOrThrow({ where: { email }, select: { id: true } });
   await db().premiumMembership.update({ where: { userId: user.id }, data: { state: "ended" } });
 }
+
+/** The play sessions of a game, oldest first: who played (null for nobody signed in) and on what basis. */
+export async function sessionsOf(
+  slug: string,
+): Promise<{ gameId: string; userId: string | null; basis: string }[]> {
+  return db().playSession.findMany({
+    where: { game: { slug } },
+    orderBy: { startedAt: "asc" },
+    select: { gameId: true, userId: true, basis: true },
+  });
+}
+
+/** Every beat a game's sessions took, oldest first. */
+export async function beatsOf(slug: string): Promise<{ attentive: boolean; receivedAt: Date }[]> {
+  return db().playBeat.findMany({
+    where: { session: { game: { slug } } },
+    orderBy: { receivedAt: "asc" },
+    select: { attentive: true, receivedAt: true },
+  });
+}
