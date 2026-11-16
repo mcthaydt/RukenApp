@@ -137,27 +137,35 @@ export async function pullGame(deps: PullDeps, gameId: string): Promise<Pull> {
 
   // The folder is named before its row exists, so a file's address never depends on the row.
   const pullId = crypto.randomUUID();
-  for await (const { path, entry } of folderEntries(deps.github, target, commitSha)) {
-    // The name the gate will look for: the check refused every path `normalizePath` would not answer.
-    const name = normalizePath(path);
-    if (entry.kind !== "file" || name === null) continue;
-    // One file at a time: R2 needs a file's length before it takes it, so each is held in memory just long enough.
-    await deps.files.put(`files/${game.publicId}/${pullId}/${name}`, await entry.bytes(MAX_FILE_BYTES));
-  }
+  const folder = `files/${game.publicId}/${pullId}/`;
+  try {
+    for await (const { path, entry } of folderEntries(deps.github, target, commitSha)) {
+      // The name the gate will look for: the check refused every path `normalizePath` would not answer.
+      const name = normalizePath(path);
+      if (entry.kind !== "file" || name === null) continue;
+      // One file at a time: R2 needs a file's length before it takes it, so each is held in memory just long enough.
+      await deps.files.put(`${folder}${name}`, await entry.bytes(MAX_FILE_BYTES));
+    }
 
-  await deps.db.$transaction([
-    deps.db.gamePull.create({
-      data: {
-        id: pullId,
-        gameId,
-        commitSha,
-        fileCount: verdict.fileCount,
-        totalBytes: BigInt(verdict.totalBytes),
-        connectHosts: game.connectHosts,
-        pulledAt: new Date(deps.clock.epochMs()),
-      },
-    }),
-    deps.db.game.update({ where: { id: gameId }, data: { pullProblem: null } }),
-  ]);
+    await deps.db.$transaction([
+      deps.db.gamePull.create({
+        data: {
+          id: pullId,
+          gameId,
+          commitSha,
+          fileCount: verdict.fileCount,
+          totalBytes: BigInt(verdict.totalBytes),
+          connectHosts: game.connectHosts,
+          pulledAt: new Date(deps.clock.epochMs()),
+        },
+      }),
+      deps.db.game.update({ where: { id: gameId }, data: { pullProblem: null } }),
+    ]);
+  } catch (failure) {
+    // No row will ever name this folder, so nothing else would remove what was stored in it. If the bucket cannot
+    // even do that, the failure that matters is the one that stopped the copy, so that one is the one passed on.
+    await deps.files.deleteAll(folder).catch(() => 0);
+    throw failure;
+  }
   return { id: pullId, commitSha, fileCount: verdict.fileCount, totalBytes: verdict.totalBytes };
 }
