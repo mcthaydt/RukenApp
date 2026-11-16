@@ -29,7 +29,7 @@
 # One gate, main tested after each merge, no empty pass (Owner, 2026-11-16: "yes to 1–3, keep 12", to: 1. add a final
 # `gate` job and require it; 2. let main run CI after a merge; 3. remove `--passWithNoTests` from the draft run):
 # - `gate` passes only when `verify`, `postgres` and `browser` all passed (each still marks a docs-only change as
-#   nothing to do). Branch protection requires it beside the three.
+#   nothing to do). The owner then makes branch protection require it beside the three.
 # - A merge made by auto-merge starts no run on main, so auto-merge.yml starts this workflow on main by hand
 #   (`workflow_dispatch`) when main's newest commit has no run yet.
 # - A draft whose change reaches no tests runs the whole suite instead of passing an empty one.
