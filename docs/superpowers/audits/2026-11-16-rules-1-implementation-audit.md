@@ -52,8 +52,8 @@ UNIT: `CLAUDE.md`, line 106 (Identity)
 VERDICT: note
 REQUIREMENT: none (formatting)
 REASON: The filled line runs to about 160 characters while the rest of the file wraps at 120.
-EVIDENCE: `awk 'length > 120' CLAUDE.md` prints line 106; the owner's text also has two long lines (Three different
-yeses, Limits), so this is not a deviation from the owner's text style, and `*.md` is in `.prettierignore`.
+EVIDENCE: `awk 'length > 120' CLAUDE.md` prints lines 57, 106, 140, 228, 235, 236 and 238; all but 106 are long in the
+owner's own text, so this is not a deviation from the owner's style, and `*.md` is in `.prettierignore`.
 EXPECTED: Optional rewrap of that one line only.
 FIX: Not required. Rewrapping would touch only `CLAUDE.md` line 106 and 107.
 
