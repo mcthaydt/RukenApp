@@ -1595,15 +1595,14 @@ a.foot {
 }
 
 /* A phone held sideways that is 700 to 799 wide (a large iPhone is 739) lays the game out beside its heading, and the column that
-   is left is under 437px: the two videos are made smaller to fit it exactly, but a tile 96px wide is narrower than "On phones" with
-   its Change beside it (about 128px), so the caption made the tile wider and the row stuck out past the window's edge (751px in a 739px window).
-   Stacked, as on a phone held upright, the caption is as wide as its longest word and the row is the width the formula gave it.
-   Above 799 the column has room for the wider caption, and below 700 the halves are stacked and have the whole window. */
+   is left is under 437px. The two videos are made smaller to fit it exactly, but the small tile (96px) is narrower than its caption,
+   "On phones" with its Change beside it (128px, which stays one line), so the caption made the tile wider and the row stuck out
+   past the window's edge (751px in a 739px window). Here the row is worked out with the caption's room in it: the upright video's
+   place is the caption's width (136px, a little more than it needs), so the two videos are the height that leaves. Above 799 the
+   column has room for the caption, and below 700 the halves are stacked and have the whole window. */
 @media (min-width: 700px) and (max-width: 799px) and (max-height: 449px) {
-  .tiles figcaption {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0;
+  .tiles {
+    --tile-height: min(180px, (100cqw - 1rem - 136px) * 9 / 16);
   }
 }
 
