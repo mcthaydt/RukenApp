@@ -252,6 +252,7 @@ describe("pullGame", () => {
         head: (key) => files.head(key),
         get: (key, range) => files.get(key, range),
         delete: (key) => files.delete(key),
+        hasAny: (prefix) => files.hasAny(prefix),
         deleteAll: (prefix) => files.deleteAll(prefix),
         put: (key, bytes) => {
           puts += 1;

@@ -26,3 +26,14 @@ export function longDate(at: Date): string {
   if (words === null) throw new Error(`not a day: ${at.toISOString()}`);
   return words;
 }
+
+/**
+ * The Chicago day an instant falls on as day then month, "12 December": the short form a game's screens use, where the
+ * year and the weekday say nothing a maker needs.
+ */
+export function dayAndMonth(at: Date): string {
+  return Temporal.PlainDate.from(chicagoDayOf(at.getTime())).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "long",
+  });
+}

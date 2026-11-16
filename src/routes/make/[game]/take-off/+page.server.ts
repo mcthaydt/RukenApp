@@ -3,9 +3,10 @@ import { GameError, gamesServices } from "../../../../features/games/games.ts";
 import { ownGame } from "../../own-game.server.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
-// The last question before a live game is taken off Ruken, which its maker cannot undo (the agreement's first point).
-// Only a live game can be: a draft, a waiting game, a sent-back game and a game already off are a 404, as is anyone
-// else's, so the question is never asked twice.
+// The last question before a live game is taken off Ruken (the agreement's first point). Its files go, so the question
+// is asked first; the game itself can be put back from its own page. Only a live game can be taken off: a draft, a
+// waiting game, a sent-back game and a game already off are a 404, as is anyone else's, so the question is never asked
+// twice.
 export const load: PageServerLoad = async (event) => {
   const { game } = await ownGame(event);
   if (game.state !== "live") error(404, "Not found");
