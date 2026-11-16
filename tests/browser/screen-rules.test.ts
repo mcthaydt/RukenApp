@@ -128,6 +128,9 @@ test("every screen follows the screen rules", async ({ page, browser, baseURL, p
   };
 
   for (const [index, view] of VIEWS.entries()) {
+    // "Check your email" asks the site to send a link, and the site limits that for one address. Every window asks once, as
+    // a new visitor would, so the counters start again each time.
+    await forgetRateLimits();
     const windowOf = {
       viewport: { width: view.width, height: view.height },
       isMobile: view.touch,
