@@ -185,6 +185,55 @@ header + main {
   background: var(--felt-deep);
 }
 
+/* The play screen: the window is the game. No gutter and no width limit, on the darkest felt, a column of the strip
+   with the way back and then the frame, which takes all the room the strip leaves. Nothing moves. */
+.stage {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  margin: 0;
+  background: var(--felt-deep);
+}
+
+.stage .frame {
+  flex: 1;
+  height: auto;
+}
+
+/* The strip above a game: a button tall, so the way back is as easy to hit as any button. Its line is a note beside
+   a control, not running text, so it is small (white on the darkest felt is 13.1:1). */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  /* A little room round the way back, so it does not touch the window's edge or the game. */
+  padding: 0.25rem 0.5rem;
+  background: var(--felt-deep);
+  color: var(--chalk);
+  font: var(--text-small);
+}
+
+.bar p {
+  margin: 0;
+}
+
+/* The way back out of a game: green, because nothing changes; 48 by 48; 12px corners, never a pill. */
+.back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 12px;
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-statement);
+  text-decoration: none;
+}
+
 h1 {
   margin: 0;
   font: var(--text-section);
