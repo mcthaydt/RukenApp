@@ -204,6 +204,12 @@ const GAME_PARTS: GamePart[] = [
 /** What a maker is told when they take off a game that is not on Ruken: a draft, a waiting game, a sent-back one. */
 const NOT_ON_RUKEN = "This game isn't on Ruken.";
 
+/** A game put back while its copy from GitHub is still running, or was cut off: the files question asks again. */
+const COPY_NOT_FINISHED = "Copying your game from GitHub didn't finish. Choose Next to copy it again.";
+
+/** A copy from GitHub that failed for a reason that is not one of Ruken's own refusals. */
+const COPY_FAILED = "We couldn't copy your game from GitHub. Try again.";
+
 /** The page's address may end in `-2` to `-9`, so a name that makes the same address nine times over is refused. */
 const MAX_SLUG_NUMBER = 9;
 /** 38 characters and `-9` is 40, the most the database takes for an address. */
@@ -361,6 +367,10 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
     if (game === null || game.state === "thrown_away")
       throw new GameError("NOT_FOUND", "We can't find that game.");
+    // A game off Ruken goes back only through Put it back, which makes it a draft first: a copy that was still running
+    // when it was taken off must not send it to staff.
+    if (game.state === "taken_off" || game.state === "taken_down")
+      throw new GameError("NOT_READY", NOT_ON_RUKEN);
     const newest = game.pulls[0];
     if (newest === undefined) throw new GameError("NOT_READY", "Add your game's files first.");
     // A refused copy writes no pull, so the older pull is still the newest one: it is not what the maker now points at.
@@ -724,9 +734,11 @@ export function createGamesService(deps: GamesServiceDeps) {
   async function takeOff(gameId: string, makerUserId: string): Promise<{ name: string }> {
     const game = await ownGame(gameId, makerUserId);
     if (game.state !== "live") throw new GameError("NOT_READY", NOT_ON_RUKEN);
-    await deps.db.$transaction([
-      deps.db.game.update({
-        where: { id: gameId },
+    await deps.db.$transaction(async (tx) => {
+      // Only while it is still live: a second press, from another tab or device, finds nothing to change and writes no
+      // second record.
+      const changed = await tx.game.updateMany({
+        where: { id: gameId, state: "live" },
         data: {
           state: "taken_off",
           livePullId: null,
@@ -735,11 +747,12 @@ export function createGamesService(deps: GamesServiceDeps) {
           stateReason: null,
           toFix: [],
         },
-      }),
-      deps.db.makerAction.create({
+      });
+      if (changed.count === 0) throw new GameError("NOT_READY", NOT_ON_RUKEN);
+      await tx.makerAction.create({
         data: { gameId, userId: makerUserId, action: "taken_off", at: new Date(deps.clock.epochMs()) },
-      }),
-    ]);
+      });
+    });
     await deps.files.deleteAll(`files/${game.publicId}/`);
     return { name: game.name };
   }
@@ -754,27 +767,33 @@ export function createGamesService(deps: GamesServiceDeps) {
   /**
    * Puts a taken-off game back: it becomes a draft again, its newest files are copied from GitHub and sent for review,
    * so it waits for a person's yes like a new game and is never live without one. Its old files were deleted when it
-   * was taken off, so a copy that is refused leaves it a draft whose files question says what to fix: the refusal is
-   * kept as its files' problem, so the old copy can never be sent again in its place.
+   * was taken off, so the old copy must never count as its files: the draft is made with a problem on its files in the
+   * same write, which only a copy that passes clears. A request cut off mid-copy leaves a draft whose files question
+   * asks again, and a refused copy puts its own words in that problem's place.
    */
   async function putBack(gameId: string, makerUserId: string): Promise<void> {
     const game = await ownGame(gameId, makerUserId);
     if (game.state !== "taken_off") throw new GameError("NOT_READY", "This game is on Ruken.");
-    await deps.db.$transaction([
-      deps.db.game.update({ where: { id: gameId }, data: { state: "draft" } }),
-      deps.db.makerAction.create({
+    await deps.db.$transaction(async (tx) => {
+      // Only while it is still off: a second press finds nothing to change, writes no second record and copies nothing.
+      const changed = await tx.game.updateMany({
+        where: { id: gameId, state: "taken_off" },
+        data: { state: "draft", pullProblem: COPY_NOT_FINISHED },
+      });
+      if (changed.count === 0) throw new GameError("NOT_READY", "This game is on Ruken.");
+      await tx.makerAction.create({
         data: { gameId, userId: makerUserId, action: "put_back", at: new Date(deps.clock.epochMs()) },
-      }),
-    ]);
+      });
+    });
     try {
       await pullLatest(gameId);
     } catch (refusal) {
       // A refused check of the files writes its own words already, but a refusal before the copy (GitHub, the
-      // connection) does not, so this one's words are written here for every refusal alike.
-      const words =
-        refusal instanceof GameError ? refusal.message : "We couldn't copy your game from GitHub. Try again.";
+      // connection) does not, so this one's words are written here for every refusal alike. A failure that is not
+      // Ruken's own refusal is told in plain words too, because the draft and its problem are already kept.
+      const words = refusal instanceof GameError ? refusal.message : COPY_FAILED;
       await deps.db.game.update({ where: { id: gameId }, data: { pullProblem: words } });
-      throw refusal;
+      throw refusal instanceof GameError ? refusal : new GameError("NOT_READY", words);
     }
     await sendForReview(gameId, makerUserId);
   }

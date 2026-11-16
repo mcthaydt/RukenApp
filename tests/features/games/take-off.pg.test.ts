@@ -147,6 +147,31 @@ describe("takeOff", () => {
     expect((await rowOf(game.id)).pendingPullId).toBeNull();
   });
 
+  it("writes one record however many presses arrive at once", async () => {
+    const game = await liveGame();
+
+    const presses = await Promise.allSettled([
+      service.takeOff(game.id, game.makerUserId),
+      service.takeOff(game.id, game.makerUserId),
+    ]);
+
+    expect(presses.filter((press) => press.status === "fulfilled")).toHaveLength(1);
+    expect(await db().makerAction.count({ where: { gameId: game.id } })).toBe(1);
+  });
+
+  it("stays off when a new version that was being copied is sent after it was taken off", async () => {
+    const game = await liveGame();
+    await service.pullLatest(game.id);
+    await service.takeOff(game.id, game.makerUserId);
+
+    // The send that was waiting for its copy, from another device, arrives now.
+    await expect(service.sendForReview(game.id, game.makerUserId)).rejects.toMatchObject({
+      code: "NOT_READY",
+      message: "This game isn't on Ruken.",
+    });
+    expect(await rowOf(game.id)).toMatchObject({ state: "taken_off", pendingPullId: null });
+  });
+
   it("is another maker's game: not found, and nothing changes", async () => {
     const game = await liveGame();
 
@@ -270,6 +295,66 @@ describe("putBack", () => {
       code: "NOT_READY",
     });
     expect(await service.liveGameBySlug(game.slug)).toBeNull();
+  });
+
+  it("keeps the old copy from counting while the new one is being made", async () => {
+    const game = await liveGame();
+    await service.takeOff(game.id, game.makerUserId);
+    // GitHub is asked for the commit once the draft is made: what the row says then is what a request cut off here leaves.
+    let seen: { state: string; pullProblem: string | null } | undefined;
+    const watching = createGamesService({
+      db: db(),
+      clock,
+      files,
+      github: {
+        ...github,
+        commitOf: async (...args) => {
+          seen = await rowOf(game.id);
+          return github.commitOf(...args);
+        },
+      },
+    });
+
+    await watching.putBack(game.id, game.makerUserId);
+
+    expect(seen).toMatchObject({ state: "draft" });
+    expect(seen?.pullProblem).not.toBeNull();
+    expect(await rowOf(game.id)).toMatchObject({ state: "waiting", pullProblem: null });
+  });
+
+  it("says a failure that is not Ruken's own refusal in plain words, and keeps them", async () => {
+    const game = await liveGame();
+    await service.takeOff(game.id, game.makerUserId);
+    const broken = createGamesService({
+      db: db(),
+      clock,
+      files,
+      github: { ...github, commitOf: () => Promise.reject(new Error("GitHub answered 502")) },
+    });
+
+    await expect(broken.putBack(game.id, game.makerUserId)).rejects.toMatchObject({
+      code: "NOT_READY",
+      message: "We couldn't copy your game from GitHub. Try again.",
+    });
+    expect(await rowOf(game.id)).toMatchObject({
+      state: "draft",
+      pullProblem: "We couldn't copy your game from GitHub. Try again.",
+    });
+  });
+
+  it("writes one record and makes one copy however many presses arrive at once", async () => {
+    const game = await liveGame();
+    await service.takeOff(game.id, game.makerUserId);
+    const pullsBefore = await db().gamePull.count({ where: { gameId: game.id } });
+
+    const presses = await Promise.allSettled([
+      service.putBack(game.id, game.makerUserId),
+      service.putBack(game.id, game.makerUserId),
+    ]);
+
+    expect(presses.filter((press) => press.status === "fulfilled")).toHaveLength(1);
+    expect(await db().makerAction.count({ where: { gameId: game.id, action: "put_back" } })).toBe(1);
+    expect(await db().gamePull.count({ where: { gameId: game.id } })).toBe(pullsBefore + 1);
   });
 
   it("puts back only the maker's own game that is off Ruken", async () => {
