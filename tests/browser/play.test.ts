@@ -21,6 +21,8 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
 
+const BEAT_MS = 15_000;
+
 type Game = Awaited<ReturnType<typeof addGame>>;
 let paid: Game;
 let free: Game;
@@ -81,11 +83,20 @@ test("a game taken off Ruken is not at its address, and a member's game stops lo
   test.setTimeout(120_000);
   const game = await addGame(browser);
   await payAsNewMember(page);
+  // The page's timers move with Playwright's clock, so its first beat comes when asked for; nothing sleeps.
+  await page.clock.install();
   await page.goto(`/g/${game.slug}/play`);
   await expectTheGameLoaded(page);
   const frameUrl = (await page.locator("iframe.frame").getAttribute("src")) ?? "";
+  const beatAt = `/g/${game.slug}/play/beat`;
+  const firstBeat = page.waitForRequest((request) => new URL(request.url()).pathname === beatAt);
+  await page.clock.runFor(BEAT_MS + 1_000);
+  const beat = (await firstBeat).postData() ?? "";
 
   await takeOffAsItsMaker(browser, game);
+
+  // The member's tab, still open, counts no more play time for a game that left Ruken.
+  expect((await page.request.post(beatAt, { data: beat })).status()).toBe(410);
 
   // The pass the member already holds opens nothing now, and neither address is there.
   // Asked from a browser of its own: only a browser knows that *.localhost is this machine, and a new one has nothing

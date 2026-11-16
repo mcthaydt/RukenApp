@@ -36,6 +36,18 @@ function newToken(): string {
   return Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url");
 }
 
+/** Whether a play's game, or for staff the files they check, is still there to be played. */
+function stillOn(session: {
+  basis: PlayBasis;
+  pullId: string;
+  game: { state: string; livePullId: string | null; pendingPullId: string | null };
+}): boolean {
+  const { game } = session;
+  if (session.basis === "staff")
+    return session.pullId === game.pendingPullId || session.pullId === game.livePullId;
+  return game.state === "live";
+}
+
 export function createPlayService(deps: PlayServiceDeps) {
   /**
    * Starts a play: the address of the game's files under a pass made for this person, and a session whose token the
@@ -125,6 +137,8 @@ export function createPlayService(deps: PlayServiceDeps) {
    * the page). A session takes beats for a day, and a beat that comes too soon after the last is dropped, so a page
    * cannot make time pass faster than the clock. The first beat is never too soon: measured from the start it would
    * refuse a first beat whose page clock runs ahead of the server's, and it adds no time the clock did not see.
+   * A play ends once its game is no longer on Ruken, so a tab left open on a game that was taken off counts nothing.
+   * Staff check files that are not live yet, so theirs ends only once those files are neither waiting nor live.
    */
   async function recordBeat(input: {
     sessionId: string;
@@ -133,7 +147,13 @@ export function createPlayService(deps: PlayServiceDeps) {
   }): Promise<BeatResult> {
     const session = await deps.db.playSession.findUnique({
       where: { id: input.sessionId },
-      select: { tokenHash: true, startedAt: true },
+      select: {
+        tokenHash: true,
+        startedAt: true,
+        basis: true,
+        pullId: true,
+        game: { select: { state: true, livePullId: true, pendingPullId: true } },
+      },
     });
     if (session === null) return "unknown";
     // Compared in constant time, and of equal length (both are 64 hex characters of a SHA-256).
@@ -143,6 +163,7 @@ export function createPlayService(deps: PlayServiceDeps) {
 
     const nowMs = deps.clock.epochMs();
     if (nowMs > session.startedAt.getTime() + PLAY_SESSION_LIFE_MS) return "over";
+    if (!stillOn(session)) return "over";
 
     const last = await deps.db.playBeat.findFirst({
       where: { sessionId: input.sessionId },

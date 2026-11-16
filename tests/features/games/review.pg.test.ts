@@ -4,7 +4,7 @@ import { newPublicId } from "../../../src/features/games/ids.ts";
 import { createGamesService, type GamesService } from "../../../src/features/games/service.ts";
 import type { AgeRating, ContentMark, PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
-import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
+import { someoneWaitsForALock, startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
 import { tarGz } from "../../support/tar.ts";
 import { TestClock } from "../../support/test-clock.ts";
@@ -984,6 +984,35 @@ describe("two decisions at the same moment", () => {
 
     expect(results.filter((one) => one.status === "fulfilled")).toHaveLength(1);
     expect(await db().gameReview.count({ where: { gameId: game.id } })).toBe(1);
+  });
+});
+
+describe("a video changed while a decision is being made (audit R-2)", () => {
+  it("waits for the decision, and is refused once the game went live", async () => {
+    const { game } = await waitingGame();
+    const before = await db().gameClip.findUniqueOrThrow({
+      where: { gameId_shape: { gameId: game.id, shape: "upright" } },
+    });
+    let saving: Promise<void> | undefined;
+
+    // What `accept` does: hold the game's row, and put the files that wait live, while the maker saves a new video.
+    await db().$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Game" WHERE "id" = ${game.id} FOR UPDATE`;
+      saving = service.saveClip(game.id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
+      saving.catch(() => undefined);
+      await someoneWaitsForALock(database?.url ?? "");
+      await tx.game.update({
+        where: { id: game.id },
+        data: { state: "live", livePullId: game.pullId, pendingPullId: null, pendingSince: null },
+      });
+    });
+
+    await expect(saving).rejects.toMatchObject({ code: "NOT_READY" });
+    expect(
+      await db().gameClip.findUniqueOrThrow({
+        where: { gameId_shape: { gameId: game.id, shape: "upright" } },
+      }),
+    ).toMatchObject({ key: before.key });
   });
 });
 
