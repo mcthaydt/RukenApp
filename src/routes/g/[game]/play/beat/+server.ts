@@ -27,6 +27,10 @@ function beatOf(text: string): { sessionId: string; token: string; attentive: bo
 }
 
 export const POST: RequestHandler = async ({ request }) => {
+  // A body that says it is too long is refused before it is read at all; the length is checked again once read,
+  // because a body need not say how long it is.
+  if (Number(request.headers.get("content-length") ?? 0) > LONGEST_BEAT_BYTES)
+    return new Response(null, { status: 400 });
   const beat = beatOf(await request.text());
   if (beat === null) return new Response(null, { status: 400 });
   const result = await playServices().service.recordBeat(beat);

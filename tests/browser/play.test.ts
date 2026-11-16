@@ -8,15 +8,16 @@ import {
   standInPayButton,
   yearsAgo,
 } from "./support/account.ts";
-import { endMembershipOf, userIdOf } from "./support/database.ts";
-import { addGame } from "./support/game.ts";
+import { endMembershipOf, sessionsOf, userIdOf } from "./support/database.ts";
+import { addGame, expectTheGameLoaded, TINY_GAME } from "./support/game.ts";
 import { pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Playing a game, `/g/<game>/play` (design 5.2, 5.7, 8): the game fills the window in its own frame, on its own address,
 // with one strip above it holding the way back. Someone who may not play gets the price card instead. The games here
 // are sent the way a maker sends one, so their files are really in the bucket; each project makes them once and its
-// journeys share them, since none of these journeys changes a game.
+// journeys share them, since none of these journeys changes a game. They are 2048, a real game; the tiny game, which
+// writes down what it can see of the page around it, is only the one that checks the game learns nothing.
 
 test.beforeEach(forgetRateLimits);
 
@@ -24,18 +25,15 @@ type Game = Awaited<ReturnType<typeof addGame>>;
 let paid: Game;
 let free: Game;
 let computerOnly: Game;
+let probe: Game;
 
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(120_000);
   paid = await addGame(browser);
   free = await addGame(browser, { free: true });
   computerOnly = await addGame(browser, { free: true, playsOn: "computer_only" });
+  probe = await addGame(browser, { repo: TINY_GAME });
 });
-
-/** The game's own page has run its script: a second file loaded under the pass, so the pass reaches every file. */
-async function expectTheGameLoaded(page: Page): Promise<void> {
-  await expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");
-}
 
 /** True when the browser itself says it is a phone, as the site reads it. Playwright's iPads say so too. */
 async function browserSaysPhone(page: Page): Promise<boolean> {
@@ -62,10 +60,39 @@ test("a member presses Play and the game loads, in a frame on another address", 
   await showTheOwner(page, testInfo, "a game being played");
 });
 
+test("2048 can be played: the arrow keys move its tiles", async ({ page }) => {
+  await page.goto(`/g/${free.slug}/play`);
+  await expectTheGameLoaded(page);
+  const game = page.frameLocator("iframe.frame");
+  const tiles = game.locator(".tile-container");
+  await expect(game.locator(".tile")).not.toHaveCount(0);
+  const before = await tiles.innerHTML();
+  // Pressing the board puts the game in focus, as a person's first tap does; then each key is the game's.
+  await game.locator(".game-container").click();
+  for (const key of ["ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown"]) await page.keyboard.press(key);
+  await expect.poll(() => tiles.innerHTML()).not.toBe(before);
+});
+
+test("pointing at Play starts nothing: a play starts only when Play is pressed", async ({
+  page,
+  browser,
+}) => {
+  // Its own game, so no other journey's plays are counted with it.
+  test.setTimeout(90_000);
+  const game = await addGame(browser, { free: true });
+  await page.goto(`/g/${game.slug}`);
+  const play = page.getByRole("link", { name: "Play" });
+  await play.hover();
+  await play.dispatchEvent("touchstart");
+  // Give a preload every chance to have been sent and answered before the count is read.
+  await page.waitForLoadState("networkidle");
+  expect(await sessionsOf(game.slug)).toEqual([]);
+});
+
 test("the game sees nothing about the player", async ({ page }) => {
   const member = await payAsNewMember(page);
-  await page.goto(`/g/${paid.slug}/play`);
-  await expectTheGameLoaded(page);
+  await page.goto(`/g/${probe.slug}/play`);
+  await expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");
   const seen = JSON.parse(
     (await page.frameLocator("iframe.frame").locator("#seen").textContent()) ?? "{}",
   ) as Record<string, string>;
@@ -122,24 +149,79 @@ test("a member whose membership has ended gets the price card on reload", async 
   await expect(page).toHaveURL(`/join?next=%2Fg%2F${paid.slug}%2Fplay`);
 });
 
-test("the way back is one link, and its line shows once", async ({ page }) => {
-  await page.clock.install();
+test("the Ruken menu: the tab on the edge opens it, Back to game closes it, Exit game asks first", async ({
+  page,
+}, testInfo) => {
   await page.goto(`/g/${free.slug}/play`);
-  const line = page.getByText("Tap ← to go back to the feed");
-  await expect(line).toBeVisible();
-  await page.clock.runFor(5_000);
-  await expect(line).toHaveCount(0);
-  await page.reload();
   await expectTheGameLoaded(page);
-  await expect(line).toHaveCount(0);
-  const back = page.getByRole("link", { name: "Back to the feed" });
-  await expect(back).toHaveAttribute("href", `/g/${free.slug}`);
-  const box = await back.boundingBox();
-  expect(box?.width).toBeGreaterThanOrEqual(48);
-  expect(box?.height).toBeGreaterThanOrEqual(48);
-  await back.click();
+  // The cover has gone once the game loaded.
+  await expect(page.getByRole("heading", { name: `Getting ${free.name} ready.` })).toHaveCount(0);
+  const tab = page.getByRole("button", { name: "Ruken menu" });
+  await expect(tab).toHaveAttribute("aria-expanded", "false");
+  const box = await tab.boundingBox();
+  const width = page.viewportSize()?.width ?? 0;
+  // On the right edge, 48 by 56, its middle halfway down.
+  expect(box?.width).toBe(48);
+  expect(box?.height).toBe(56);
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBe(width);
+  await showTheOwner(page, testInfo, "the play screen, the edge tab at rest");
+
+  await tab.click();
+  const menu = page.getByRole("dialog", { name: "Ruken menu" });
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("heading", { name: free.name })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Back to game" })).toBeFocused();
+  await expect(menu.getByText("Connected")).toBeVisible();
+  await showTheOwner(page, testInfo, "the play screen, the Ruken menu open");
+  await menu.getByRole("button", { name: "Back to game" }).click();
+  await expect(menu).toBeHidden();
+
+  // Escape is Back to game too.
+  await tab.click();
+  await expect(menu).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+
+  await tab.click();
+  await menu.getByRole("button", { name: "Exit game" }).click();
+  const question = page.getByRole("dialog", { name: `Exit ${free.name}?` });
+  await expect(question).toBeVisible();
+  await expect(question.getByText("You'll go back to the game page.")).toBeVisible();
+  await showTheOwner(page, testInfo, "the play screen, the exit question");
+  await question.getByRole("button", { name: "Stay in game" }).click();
+  await expect(question).toBeHidden();
+  await expect(menu).toBeHidden();
+  await expect(page.locator("iframe.frame")).toHaveCount(1);
+
+  await tab.click();
+  await menu.getByRole("button", { name: "Exit game" }).click();
+  await question.getByRole("link", { name: "Exit game" }).click();
   await expect(page).toHaveURL(`/g/${free.slug}`);
   await expect(page.locator("iframe")).toHaveCount(0);
+});
+
+test("the edge tab can be moved to the other edge, and stays there next time", async ({ page }) => {
+  await page.goto(`/g/${free.slug}/play`);
+  await expectTheGameLoaded(page);
+  const tab = page.getByRole("button", { name: "Ruken menu" });
+  await tab.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(tab).toHaveAttribute("data-edge", "left");
+  expect((await tab.boundingBox())?.x).toBe(0);
+  await page.reload();
+  await expectTheGameLoaded(page);
+  await expect(page.getByRole("button", { name: "Ruken menu" })).toHaveAttribute("data-edge", "left");
+  // Moving it never opens the menu.
+  await expect(page.getByRole("dialog", { name: "Ruken menu" })).toBeHidden();
+});
+
+test("while the game loads, a cover says so and has a way back", async ({ page }) => {
+  // Hold the game's own page back, so the cover is seen.
+  await page.route(/g-[^.]+\.localhost:8788/, () => undefined);
+  await page.goto(`/g/${free.slug}/play`);
+  await expect(page.getByRole("heading", { name: `Getting ${free.name} ready.` })).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Loading the game" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Go back" })).toHaveAttribute("href", `/g/${free.slug}`);
 });
 
 test("a phone that opens a computer-only game's play address is sent to its page", async ({ page }) => {

@@ -16,6 +16,8 @@ export default defineConfig(
     "**/tests/support/generated/",
     "**/playwright-report/",
     "**/test-results/",
+    // 2048, a game by someone else kept byte for byte (tests/fixtures/2048/CREDIT.md).
+    "**/tests/fixtures/2048/",
   ]),
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,

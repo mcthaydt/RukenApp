@@ -10,6 +10,8 @@ import { changeGame, fillAnswers, grantStaffRole, makerOf, putGameWhereStaffLeav
 /** The stand-in's game that pulls cleanly, and the one with no index.html that the pull refuses. */
 export const TINY_GAME = "ruken-test/tiny-game";
 export const BROKEN_GAME = "ruken-test/broken-game";
+/** 2048 (tests/fixtures/2048/CREDIT.md): a real game, for the journeys that play one and the play screen's pictures. */
+export const TWENTY_48 = "ruken-test/2048";
 
 /**
  * A name no other journey has used, so its page address is its own. A name makes the same address nine times at most
@@ -97,7 +99,7 @@ export async function connectGitHubFromFiles(page: Page, slug: string): Promise<
   await page.getByRole("link", { name: "Connect GitHub" }).click();
   await expect(page).toHaveURL(`/make/${slug}/files`);
   await pageHasSettled(page);
-  await expect(page.getByRole("radio")).toHaveCount(2);
+  await expect(page.getByRole("radio")).toHaveCount(3);
 }
 
 /**
@@ -264,12 +266,18 @@ export async function addVideo(page: Page, shape: "upright" | "wide"): Promise<v
  */
 export async function answerEveryQuestion(
   page: Page,
-  options: { rating?: "3+" | "7+" | "12+" | "16+" | "18+"; marks?: string[]; signedIn?: boolean } = {},
+  options: {
+    rating?: "3+" | "7+" | "12+" | "16+" | "18+";
+    marks?: string[];
+    signedIn?: boolean;
+    /** The repository the game's files come from; the tiny game unless a journey plays a real one. */
+    repo?: string;
+  } = {},
 ): Promise<{ slug: string; name: string }> {
   // A maker who is already signed in adds a game; a new one signs up first.
   const { slug, name } = options.signedIn === true ? await addDraftAndLine(page) : await startAtFiles(page);
   await connectGitHubFromFiles(page, slug);
-  await page.getByLabel(TINY_GAME).check();
+  await page.getByLabel(options.repo ?? TINY_GAME).check();
   await nextButton(page).click();
   await expect(page).toHaveURL(`/make/${slug}/plays-on`);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Where does");
@@ -349,11 +357,12 @@ export async function gameWhere(
  */
 export async function submitGame(
   browser: Browser,
+  repo?: string,
 ): Promise<{ slug: string; name: string; makerEmail: string }> {
   const context = await browser.newContext({ baseURL: SITE_URL });
   try {
     const page = await context.newPage();
-    const { slug, name } = await answerEveryQuestion(page);
+    const { slug, name } = await answerEveryQuestion(page, repo === undefined ? {} : { repo });
     await agreeToTheAgreement(page, slug);
     await page.getByRole("button", { name: "Send for review" }).click();
     await expect(page).toHaveURL(`/make/${slug}`);
@@ -392,7 +401,12 @@ export async function makerWithGameWhere(
  */
 export async function addGame(
   browser: Browser,
-  options: { free?: boolean; playsOn?: "phone_and_computer" | "computer_only" } = {},
+  options: {
+    free?: boolean;
+    playsOn?: "phone_and_computer" | "computer_only";
+    /** Where its files come from: 2048, a real game, unless a journey needs the tiny game's look at the page around it. */
+    repo?: string;
+  } = {},
 ): Promise<{
   slug: string;
   name: string;
@@ -401,13 +415,30 @@ export async function addGame(
   makerUserId: string;
   makerEmail: string;
 }> {
-  const { slug, name } = await submitGame(browser);
+  const repo = options.repo ?? TWENTY_48;
+  const submitted = await submitGame(browser, repo);
+  const slug = submitted.slug;
+  // A game that is 2048 is called 2048, so its pictures and its menu read true.
+  const name = repo === TWENTY_48 ? freshName("2048") : submitted.name;
   await putGameWhereStaffLeaveIt(slug, { state: "live" });
   await changeGame(slug, {
+    name,
     ...(options.free === true ? { freeToPlay: true } : {}),
     ...(options.playsOn === undefined ? {} : { playsOn: options.playsOn }),
   });
   return { slug, name, ...(await makerOf(slug)) };
+}
+
+/**
+ * 2048 has loaded in the play screen's frame: its board has the colour its own stylesheet gives it, so a second file
+ * loaded under the pass, and the pass reaches every file. It reads a style, not a tile, because a tile is drawn on
+ * the next animation frame, which a journey that holds the clock never lets come.
+ */
+export async function expectTheGameLoaded(page: Page): Promise<void> {
+  await expect(page.frameLocator("iframe.frame").locator(".game-container")).toHaveCSS(
+    "background-color",
+    "rgb(187, 173, 160)",
+  );
 }
 
 /** Signs a new person up and makes them a curator, who checks games. Staff roles are read fresh on every request. */

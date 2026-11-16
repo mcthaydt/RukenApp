@@ -10,3 +10,5 @@ test-results/
 # The design and the workflow are kept word for word as the Owner approved them.
 *.md
 src/features/pages/library/colours.json
+# 2048, a game by someone else kept byte for byte (tests/fixtures/2048/CREDIT.md).
+tests/fixtures/2048/

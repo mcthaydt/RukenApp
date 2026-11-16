@@ -298,7 +298,12 @@ export async function stateOf(slug: string): Promise<GameState> {
  */
 export async function changeGame(
   slug: string,
-  changes: { oneLine?: string; playsOn?: "phone_and_computer" | "computer_only"; freeToPlay?: boolean },
+  changes: {
+    name?: string;
+    oneLine?: string;
+    playsOn?: "phone_and_computer" | "computer_only";
+    freeToPlay?: boolean;
+  },
 ): Promise<void> {
   await db().game.update({ where: { slug }, data: changes });
 }

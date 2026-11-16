@@ -298,10 +298,15 @@ describe("screens wear the look and nothing of their own", () => {
     "apart",
     "clip",
     "frame",
-    // The play screen: the window is the game, with one strip above it holding the way back.
+    // The play screen (Ruken's first version's): the window is the game, with the edge tab, the Ruken menu, the exit
+    // question and the cover over it.
     "stage",
-    "bar",
-    "back",
+    "tab",
+    "chevron",
+    "drawer",
+    "exit",
+    "cover",
+    "meter",
     "file",
     "game",
     "games",
@@ -416,44 +421,33 @@ describe("a game's clips and its frame", () => {
     expect(frame).toMatch(/background:\s*var\(--felt-deep\)/);
   });
 
-  it("stage fills the window with the darkest felt, a column of the bar then the frame, with no gutter", () => {
+  it("stage fills the window with the darkest felt, with no gutter, and the frame fills the stage", () => {
     const stage = ruleOf("stage");
-    expect(stage).toMatch(/display:\s*flex/);
-    expect(stage).toMatch(/flex-direction:\s*column/);
     expect(stage).toMatch(/width:\s*100%/);
     expect(stage).toMatch(/height:\s*100dvh/);
     expect(stage).toMatch(/margin:\s*0/);
     expect(stage).toMatch(/background:\s*var\(--felt-deep\)/);
-    // Inside the stage the frame takes all the room the bar leaves, not 70% of the window.
     const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
     const inStage = /\.stage \.frame\s*\{([^}]*)\}/.exec(withoutComments)?.[1] ?? "";
-    expect(inStage).toMatch(/flex:\s*1/);
-    expect(inStage).toMatch(/height:\s*auto/);
+    expect(inStage).toMatch(/height:\s*100%/);
   });
 
-  it("bar is a 48px strip of the darkest felt with white words at the small size, in a row", () => {
-    const bar = ruleOf("bar");
-    expect(bar).toMatch(/display:\s*flex/);
-    expect(bar).toMatch(/align-items:\s*center/);
-    expect(bar).toMatch(/gap:\s*0\.5rem/);
-    expect(bar).toMatch(/min-height:\s*3rem/);
-    expect(bar).toMatch(/background:\s*var\(--felt-deep\)/);
-    expect(bar).toMatch(/color:\s*var\(--chalk\)/);
-    expect(bar).toMatch(/font:\s*var\(--text-small\)/);
-  });
-
-  it("back is a 48 by 48 green way back, white arrow, 12px corners (no pills)", () => {
-    const back = ruleOf("back");
-    expect(back).toMatch(/width:\s*3rem/);
-    expect(back).toMatch(/height:\s*3rem/);
-    expect(back).toMatch(/background:\s*var\(--felt-raised\)/);
-    expect(back).toMatch(/color:\s*var\(--chalk\)/);
-    expect(back).toMatch(/border-radius:\s*12px/);
-    expect(contrast(token("--chalk"), token("--felt-raised"))).toBeGreaterThanOrEqual(4.5);
+  it("tab is a 48 by 56 felt-deep tab on the window's edge, white R, 12px corners facing the game, faded at rest", () => {
+    const tab = ruleOf("tab");
+    expect(tab).toMatch(/position:\s*fixed/);
+    expect(tab).toMatch(/right:\s*0/);
+    expect(tab).toMatch(/width:\s*48px/);
+    expect(tab).toMatch(/height:\s*56px/);
+    expect(tab).toMatch(/background:\s*var\(--felt-deep\)/);
+    expect(tab).toMatch(/color:\s*var\(--chalk\)/);
+    expect(tab).toMatch(/border-radius:\s*var\(--radius-button\) 0 0 var\(--radius-button\)/);
+    expect(tab).toMatch(/touch-action:\s*none/);
+    expect(css).toMatch(/\.tab\[data-resting\]\s*\{\s*opacity:\s*0\.4;/);
+    expect(contrast(token("--chalk"), token("--felt-deep"))).toBeGreaterThanOrEqual(4.5);
   });
 
   it("uses only the look's tokens: no colour is written into either rule", () => {
-    for (const name of ["clip", "frame", "stage", "bar", "back"])
+    for (const name of ["clip", "frame", "stage", "tab", "cover", "meter"])
       expect(ruleOf(name), name).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(|hsl\(/i);
     // An empty rule would pass that check, so each must exist.
     expect(ruleOf("clip")).not.toBe("");
