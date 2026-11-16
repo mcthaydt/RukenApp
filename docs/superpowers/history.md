@@ -54,6 +54,10 @@ Other gaps found by the check, and what the owner decided ("yes to 1–3, keep 1
 
 - Setup check: the owner's request of 2026-11-16 ("These rules govern you and every session you start from the first
   message"), with the kit as the rules. Covers the setup check and adding the rules files as given (lane 2).
+- Texts, not email, branch A (pull request #175, plan `2026-11-15-texts-not-email.md`, Tasks 0 Step 0, 1 and 2; lane 3):
+  the owner's words of 2026-11-16 20:49 UTC, "yes, merge on Green we established this". Covers merging #175 once every
+  required check is green on its head, after its audit's fix check passes. Does not cover branch B or later, and lifts
+  none of the checks.
 
 ## Approved screens
 
