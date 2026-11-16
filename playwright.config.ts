@@ -1,3 +1,4 @@
+// Temporary: makes this draft run every Chromium journey, to try the new CI container. Removed in the next commit.
 import { generateKeyPairSync } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
 import { journeyClientHeaders } from "./tests/browser/support/rate-limits.ts";
