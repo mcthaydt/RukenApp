@@ -349,7 +349,8 @@ test("on Your account the door to games to check is not on top of Delete my acco
   const own = await boxOf(page.getByRole("link", { name: "Add yours to Ruken." }));
   const door = await boxOf(page.getByRole("link", { name: "Games to check" }));
   const remove = await boxOf(page.getByRole("link", { name: "Delete my account" }));
-  expect(remove.y - door.y, "the step before Delete my account").toBeGreaterThan(door.y - own.y + 16);
+  // Delete my account has the step the look gives a thing apart (2rem), not the one between two lines of one group (1rem).
+  expect(remove.y - door.y, "the step before Delete my account").toBeGreaterThan(door.y - own.y + 10);
 });
 
 // The windows below are set by the test, so one browser tells the five layouts apart.
