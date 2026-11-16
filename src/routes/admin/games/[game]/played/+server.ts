@@ -1,4 +1,4 @@
-import { error, json } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import { playedWords, staffOnly } from "../../../../../features/admin/admin.ts";
 import { gamesServices } from "../../../../../features/games/games.ts";
 import { playServices } from "../../../../../features/play/play.ts";
@@ -12,5 +12,8 @@ export const GET: RequestHandler = async ({ locals, params }) => {
   const game = await gamesServices().service.gameForReview(params.game);
   if (game === null || game.pending === null) error(404, "Not found");
   const summary = await playServices().service.playSummary(game.id, { pullId: game.pending.id, userId });
-  return json({ played: playedWords(summary.countedSeconds) }, { headers: { "cache-control": "no-store" } });
+  return Response.json(
+    { played: playedWords(summary.countedSeconds) },
+    { headers: { "cache-control": "no-store" } },
+  );
 };
