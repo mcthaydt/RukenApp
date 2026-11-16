@@ -313,7 +313,7 @@ Change a number or a model here and nowhere else.
 - Session refresh: when the context degrades (it repeats itself, loses earlier decisions or nears full) or at a natural
   boundary (a merge, a finished stage), with a handoff: the last commit, where to resume, what is left. The coordinator
   writes where things stand to `progress.md` first.
-- Browser test pieces in CI: 6. Device matrix: small phone, tablet, computer, as browser profiles (emulation evidence);
+- Browser test pieces in CI: 12. Device matrix: small phone, tablet, computer, as browser profiles (emulation evidence);
   a brief may change it. Progress: the coordinator keeps each stage's row in `progress.md` up to date, with a percentage
   from the plan's ticked steps, as supporting information. Rule edits: batched into one session a day.
 - Audits by lane: lane 1 none; lane 2 one fresh review of the change, after the build; lane 3 a plan audit and an

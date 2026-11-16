@@ -16,11 +16,11 @@ Setup check from `release`, run 2026-11-16 18:07 UTC on `main` at `8dca316`. Eac
   in CI); the last CI push run on `main` (`3da364c`, #112, 2026-11-15) passed them.
 - **CI triggers, with `ready_for_review`:** present (`ci.yml`, `pull_request` types include it; push to `main`).
 - **The job that decides which checks apply:** present (`changes`, "what changed": docs-only or not).
-- **The final aggregate gate job:** missing. Each required check (`verify`, `postgres`, `browser`) reports success on
-  its own for a docs-only change; there is no single gate job. Adding one is a CI workflow change: owner's quoted
-  words needed.
-- **The gate is required by branch protection on `main`:** missing, since there is no gate job. Required today:
-  `verify`, `browser`, `postgres`, strict (up to date with `main`), force-push off.
+- **The final aggregate gate job:** added in #162 (`gate` in `ci.yml`), on the owner's words of 2026-11-16: "yes to
+  1–3, keep 12".
+- **The gate is required by branch protection on `main`:** missing until the owner runs the command under "Owner
+  steps" in `progress.md`. Required today: `verify`, `browser`, `postgres`, strict (up to date with `main`),
+  force-push off.
 - **Session tools for the staged path:** messaging present (`send_message`, thread messages); archiving present
   (`archive_session`); model choice present (`switch_model`); starting sessions belongs to the coordinator and was not
   checked from this thread.
@@ -37,18 +37,18 @@ Where Superpowers 7.0.2 disagrees with these rules (these rules win):
 - `finishing-a-development-branch` offers merging locally into `main`. Here every merge is a pull request with a merge
   commit, on green.
 
-Other gaps found by the check (not fixed; owner decisions):
+Other gaps found by the check, and what the owner decided ("yes to 1–3, keep 12", 2026-11-16):
 
 - **No CI run on `main` since #112 (2026-11-15).** `auto-merge.yml` merges with the workflow's own token, which starts
-  no workflow on the push to `main`, and `ci.yml` has no `workflow_dispatch`, so `main` cannot be run by hand either.
-- **`--passWithNoTests` in the draft quick run** (`ci.yml` lines 122 and 173) conflicts with CLAUDE.md "Tests" ("No
-  `--pass-with-no-tests` or similar flag that lets an empty suite pass in CI"). It only runs on drafts, which never
-  stand in for the required checks, but the rule names it.
+  no workflow on the push to `main`. Fixed in #162: `ci.yml` takes `workflow_dispatch`, and `auto-merge.yml`'s
+  `test-main` job starts it on `main` when `main`'s newest commit has no run (on every event there, and hourly).
+- **`--passWithNoTests` in the draft quick run** conflicted with CLAUDE.md "Tests". Removed in #162: a draft whose
+  change reaches no tests now runs the whole suite.
 - **Rules changes merge by themselves.** `auto-merge.yml` merges any ready pull request on green, and `changes` treats
   CLAUDE.md and the skills as docs-only. Rules changes are lane 3, so a rules pull request must stay a draft until the
   owner says yes.
-- **Browser pieces:** CLAUDE.md Settings says 6; `ci.yml` runs 12 on the owner's word of 2026-11-16 ("Use 12"). The
-  rules text is kept as the owner gave it; the owner decides which number stands.
+- **Browser pieces:** the kit said 6; `ci.yml` runs 12. The owner kept 12 ("keep 12"), so CLAUDE.md Settings says
+  12.
 
 ## Standing permissions
 

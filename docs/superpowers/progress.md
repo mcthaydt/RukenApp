@@ -34,22 +34,19 @@ Owner instruction (2026-11-15, roadmap): finish slice 2 only; everything after i
 
 ### Blockers and risks
 
-- `main` has had no CI run of its own since #112 (2026-11-15); see Setup in `history.md`.
+- `main` has had no CI run of its own since #112 (2026-11-15); #162 fixes that (see Setup in `history.md`).
 - Flaky tests seen once each on 2026-11-16: `tests/browser/make-after.test.ts:206` (phone-landscape-webkit),
   `tests/browser/make-design-pass.test.ts:293` (phone-landscape), `tests/browser/make-second-look.test.ts:501` (phone,
   second sighting: fix it).
 
-### Decisions waiting on the owner
+### Decisions made by the owner
 
-- Add one final `gate` job to `ci.yml` and require it (the setup check's missing item).
-- Let `main` run CI after a merge (a `workflow_dispatch` trigger, or auto-merge using a token that starts workflows).
-- Remove `--passWithNoTests` from the draft quick run.
-- Browser test pieces: 6 (CLAUDE.md) or 12 (`ci.yml` today).
+- 2026-11-16, "yes to 1–3, keep 12": add a `gate` job and require it; let `main` run CI after a merge; remove
+  `--passWithNoTests`; keep 12 browser test pieces. All in #162.
 
 ## Owner steps
 
-Every step only the owner can run, as one batch. The first needs the owner's quoted words in this thread, because CI
-workflow files change only on them; the command runs after the gate job is on `main`.
+Every step only the owner can run, as one batch. Run it after #162 is merged, so the `gate` job exists on `main`.
 
 ```sh
 # After a "gate" job lands in ci.yml: require it alongside the existing checks (verify, browser, postgres stay).
