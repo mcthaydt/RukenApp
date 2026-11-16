@@ -219,6 +219,11 @@ header + main {
   margin: 0;
 }
 
+/* The way back is a box of its own, not a link in a line of words, so it keeps no pull on the lines around it. */
+.bar .back {
+  margin: 0;
+}
+
 /* The way back out of a game: green, because nothing changes; 48 by 48; 12px corners, never a pill. */
 .back {
   display: flex;
