@@ -952,7 +952,7 @@ describe("a game that changed after staff looked (audit S-1)", () => {
 
 describe("a waiting game whose new files were refused (audit S-6)", () => {
   const FIXING =
-    "The maker is fixing this game's files, so you can't accept it yet. Come back when they're done. You can still send it back.";
+    "The maker is fixing this game's files, so you can't accept it yet. It stays on your list until they're done. You can still send it back.";
 
   it("is not accepted on its older files, and stays in the queue", async () => {
     const { game, staff } = await waitingGame();

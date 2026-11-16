@@ -86,8 +86,8 @@ const REASONS: [GamePart, string, string, string][] = [
   [
     "wide_video",
     "sideways",
-    "It's on its side.",
-    "It's on its side. Record it with your phone held sideways.",
+    "It's upright, not wide.",
+    "It's upright. Record it with your phone held sideways.",
   ],
   [
     "wide_video",

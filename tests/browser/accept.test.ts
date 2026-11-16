@@ -14,7 +14,7 @@ test.beforeEach(forgetRateLimits);
 /** What the page tells staff to do before anything is pressed (plain-words M1). */
 const WHAT_TO_DO = "Play it and look at each part. Tick anything that's wrong, then press the blue button.";
 /** What a part with no box says on a live game's update (plain-words M7). */
-const LIVE_NO_BOX = "This game is already live, so this can't be sent back.";
+const LIVE_NO_BOX = "This game is already live, so you can't send it back for this part.";
 
 /** The part's own box on the check page, found by its title. */
 const partNamed = (page: Page, title: string) => page.getByRole("region", { name: title });
@@ -196,7 +196,7 @@ test("who it is for is one place: the maker's pick, staff's own pick, and sendin
 
     // Both ways to act on the age are under the one name, each saying what it does, and there is no second "Age rating".
     await expect(page.getByRole("region", { name: "Age rating" })).toHaveCount(0);
-    await expect(age.getByText("Pick who it's for. You can change what the maker picked.")).toBeVisible();
+    await expect(age.getByText("The maker picked 12+. Pick who it's for.")).toBeVisible();
     await expect(age.getByRole("radio", { name: "12+" })).toBeChecked();
     await expect(age.getByText("Or send it back, and the maker will choose again.")).toBeVisible();
 
@@ -309,7 +309,7 @@ test("a game that changed while staff looked is not accepted, and staff are told
 test("a game whose new files were refused is not accepted on its older ones", async ({ page, browser }) => {
   // Audit S-6
   const words =
-    "The maker is fixing this game's files, so you can't accept it yet. Come back when they're done. You can still send it back.";
+    "The maker is fixing this game's files, so you can't accept it yet. It stays on your list until they're done. You can still send it back.";
   const maker = await makerWithGameWhere(browser, {
     state: "waiting",
     pullProblem: "index.html is missing.",
@@ -317,6 +317,8 @@ test("a game whose new files were refused is not accepted on its older ones", as
   try {
     await checkingAGame(page, maker.slug);
     await expect(page.getByText(words)).toBeVisible();
+    // It is read before the blue button is pressed, so it is drawn as a refusal is, and not as a quiet note.
+    await expect(page.locator("p.problem", { hasText: words })).toBeVisible();
 
     await page.getByRole("button", { name: "Accept" }).click();
 
