@@ -68,8 +68,8 @@
   {
     "parts": ["wide_video"],
     "code": "sideways",
-    "staff": "It's on its side.",
-    "maker": "It's on its side. Record it with your phone held sideways."
+    "staff": "It's upright, not wide.",
+    "maker": "It's upright. Record it with your phone held sideways."
   },
   {
     "parts": ["upright_video", "wide_video"],

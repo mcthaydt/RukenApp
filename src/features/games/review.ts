@@ -130,7 +130,7 @@ export const STAFF_NO_AGE_WORDS = "Pick who this game is for.";
 
 /**
  * What staff are told when Accept is pressed on a game whose newest copy of its files was refused (audit S-6). The game
- * stays on their list, so "come back" is true; and they may still send it back, so the line says so.
+ * stays on their list, so the line tells staff it waits for them; and they may still send it back, so the line says so.
  */
 export const FILES_BEING_FIXED_WORDS =
-  "The maker is fixing this game's files, so you can't accept it yet. Come back when they're done. You can still send it back.";
+  "The maker is fixing this game's files, so you can't accept it yet. It stays on your list until they're done. You can still send it back.";

@@ -1472,20 +1472,76 @@ a.foot {
   min-width: 0;
 }
 
+/* More space between two parts than inside one, and a title a step larger than a note, so a long run of parts is read as
+   parts. */
 .part + .part {
-  margin-top: 1.75rem;
+  margin-top: 2.5rem;
 }
 
 .part h2 {
   margin: 0;
   color: var(--ink-soft);
-  font: 600 0.875rem / 1.3 var(--font-text);
+  font: 600 1rem / 1.3 var(--font-text);
 }
 
 .part .say,
 .part .picks,
 .part .note {
   margin: 0;
+}
+
+/* A choice is paper on paper here, so it has an edge that shows before it is picked (the sheet's ink, as a box has on paper),
+   and the blue edge of a picked one stays as it is. A reason that is not picked has an empty round mark, as a tick box has
+   an empty square. */
+.part .pick {
+  border-color: var(--ink-soft);
+}
+
+.part .pick:has(input:checked) {
+  border-color: var(--pay);
+}
+
+.part .picks:not([data-several]) .pick::after {
+  content: "";
+  border: 2px solid var(--ink-soft);
+  border-radius: 50%;
+}
+
+.part .picks:not([data-several]) .pick:has(input:checked)::after {
+  content: "\2713";
+  border-color: transparent;
+}
+
+/* The box to type in is paper on paper too: it gets the same edge, and sits a small step under the words that ask for it. */
+.screen .part textarea.answer {
+  margin-top: 0.5rem;
+  border: 2px solid var(--ink-soft);
+}
+
+/* One choice to a row, as wide as its part: two across squeezed "This is wrong" and the reasons into half the sheet, and
+   broke their words. The ages are five short names and stay in their row. */
+.part .picks:not([data-ratings]) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* A game's clip, drawn in its own shape and whole, as tall as fits and no taller than 60% of the window: the upright one
+   upright (9 by 16), the wide one wide (16 by 9), never cropped to a box that is neither. The width does the sizing, so the
+   shape holds whatever the window. */
+.part video.clip {
+  height: auto;
+  max-height: none;
+  margin-inline: auto;
+  object-fit: contain;
+}
+
+.part video.clip[data-shape="upright"] {
+  width: min(100%, calc(min(32rem, 60dvh) * 9 / 16));
+  aspect-ratio: 9 / 16;
+}
+
+.part video.clip[data-shape="wide"] {
+  width: min(100%, calc(60dvh * 16 / 9));
+  aspect-ratio: 16 / 9;
 }
 
 /* Reasons and the line of one's own are for a part that is ticked. Hidden by the page's own rule, so the page is right
@@ -1517,6 +1573,75 @@ a.foot {
 
 .halves:has(input[name="wrong"]:checked) .decide > [data-send-back] {
   display: inline;
+}
+
+/* The line above the name: "Waiting 3 hours" is never cut, and an email that does not fit moves down whole instead of breaking
+   at a hyphen, where it looked like two things. */
+.nobreak {
+  white-space: nowrap;
+}
+
+.email {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* The page's one instruction is read at body size, in chalk, and not as a note under the name. */
+.halves .instruction {
+  color: var(--chalk);
+  font: var(--text-body);
+}
+
+/* On a computer the bar and the page start at one left edge: the bar is as wide as the page and centred with it. */
+@media (min-width: 1200px) and (orientation: landscape) {
+  .screen:has(.halves[data-check]) .topbar {
+    width: min(100% - 2.5rem, var(--column));
+    margin-inline: auto;
+    padding-inline: 0;
+  }
+}
+
+/* Where the game stands beside the sheet and the window is tall enough, the whole left half fits the window, so the blue button,
+   the game, "Full size" and the way back are all in view while the sheet scrolls. The game's frame is what gives room: it
+   is 70% of the window, down to the least it can be played in. A shorter window cannot hold the whole half, so the half is
+   not kept in view there; it scrolls with the sheet, and the game is as large as the window allows. */
+@media (orientation: landscape) and (min-width: 700px) and (min-height: 600px) {
+  .halves[data-check] > :first-child {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 3rem);
+  }
+
+  .halves[data-check] > :first-child > * {
+    flex: none;
+  }
+
+  .halves[data-check] > :first-child > .frame {
+    flex: 1 1 auto;
+    min-height: 12rem;
+  }
+
+  .halves[data-check] > :first-child > :is(.quiet, a.foot) {
+    align-self: flex-start;
+  }
+}
+
+@media (orientation: landscape) and (min-width: 700px) and (max-height: 599px) {
+  .halves[data-check] > :first-child {
+    position: static;
+  }
+}
+
+/* A phone held sideways: a wider left half, so the game is large enough to play. */
+@media (max-height: 449px) and (min-width: 700px) {
+  .halves[data-check] {
+    grid-template-columns: 380px minmax(0, 1fr);
+  }
+
+  .halves[data-check] .frame {
+    height: 80dvh;
+  }
 }
 
 /* The game's frame on the check page sits under its name, a step clear of the buttons above it. */

@@ -5,6 +5,9 @@
   and not by script, so the page is right before script wakes and with none. Ticking a part opens its reasons; the
   server decides by what was ticked and never by the button's words. A game that needs a keyboard says so above its frame.
 
+  The hidden "seen" field sits inside the left half, so the left half is the form's first child: the look keeps that child
+  in view while the sheet scrolls, and the blue button stays in the window.
+
   Who it's for is one part, whose section holds both things staff can do about it: pick the age themselves, or tick it
   and send it back so the maker chooses again. Each says which it is. A part an update cannot be sent back for says why,
   so staff do not look for a box that is not there.
@@ -49,22 +52,24 @@
 </svelte:head>
 
 <main>
-  <form method="POST" action="?/decide" class="halves">
-    <input type="hidden" name="seen" value={data.seen} />
+  <form method="POST" action="?/decide" class="halves" data-check>
     <div>
+      <input type="hidden" name="seen" value={data.seen} />
+      <!-- "Waiting 3 hours" is never cut, and an email that does not fit moves down whole instead of breaking at a hyphen. -->
       <p class="count">
-        {data.kind === "update" ? "Update to a live game" : "Game"} · {data.makerEmail} · {data.waited}
+        <span class="nobreak">{data.kind === "update" ? "Update to a live game" : "Game"}</span> ·
+        <span class="email">{data.makerEmail}</span> · <span class="nobreak">{data.waited}</span>
       </p>
       <h1>{data.name}</h1>
-      <p class="note">
-        Play it and look at each part. Tick anything that's wrong, then press the blue button.
-      </p>
+      <!-- What stops Accept is read before the button is pressed, so it is drawn as a refusal is, and not as a quiet note. -->
       {#if form?.problem !== undefined}
         <p class="problem" role="alert">{form.problem}</p>
+      {:else if data.filesBeingFixed !== null}
+        <p class="problem">{data.filesBeingFixed}</p>
       {/if}
-      {#if data.filesBeingFixed !== null && form?.problem === undefined}
-        <p class="note">{data.filesBeingFixed}</p>
-      {/if}
+      <p class="note instruction">
+        Play it and look at each part. Tick anything that's wrong, then press the blue button.
+      </p>
       <div class="acts">
         <button class="decide"><span data-accept>Accept</span><span data-send-back>Send back</span></button>
       </div>
@@ -90,12 +95,24 @@
         <section class="part" aria-labelledby={`part-${part.part}`}>
           <h2 id={`part-${part.part}`}>{part.title}</h2>
           {#if part.video !== null}
-            <video class="clip" src={part.video.src} controls muted playsinline preload="metadata"></video>
-          {:else}
+            <video
+              class="clip"
+              data-shape={part.video.shape}
+              src={part.video.src}
+              controls
+              muted
+              playsinline
+              preload="metadata"
+            ></video>
+          {:else if part.part !== "age_rating"}
             <p class="say">{part.value ?? "Not answered"}</p>
           {/if}
           {#if part.part === "age_rating"}
-            <p class="say" id="age-pick">Pick who it's for. You can change what the maker picked.</p>
+            <!-- The maker's pick is said once, here: it is also the age that starts out picked below. -->
+            <p class="note" id="age-pick">
+              {part.value === null ? "The maker hasn't picked one." : `The maker picked ${part.value}.`} Pick who
+              it's for.
+            </p>
             <div class="picks" data-ratings role="radiogroup" aria-labelledby="age-pick">
               {#each RATINGS as rating (rating.value)}
                 <label class="pick">
@@ -109,6 +126,9 @@
                 </label>
               {/each}
             </div>
+            {#if part.canTick}
+              <p class="note">Or send it back, and the maker will choose again.</p>
+            {/if}
             <div data-marks>
               <p class="say" id="marks-question">Does {data.name} have any of these?</p>
               <div class="picks" data-several role="group" aria-labelledby="marks-question">
@@ -127,11 +147,8 @@
             </div>
           {/if}
           {#if !part.canTick}
-            <p class="note">This game is already live, so this can't be sent back.</p>
+            <p class="note">This game is already live, so you can't send it back for this part.</p>
           {:else}
-            {#if part.part === "age_rating"}
-              <p class="note">Or send it back, and the maker will choose again.</p>
-            {/if}
             <div class="picks" data-several>
               <label class="pick">
                 <input
@@ -158,7 +175,7 @@
                   </label>
                 {/each}
               </div>
-              <label class="say">
+              <label class="note">
                 Add a line of your own. You need one if you picked Something else.
                 <textarea
                   class="answer"
