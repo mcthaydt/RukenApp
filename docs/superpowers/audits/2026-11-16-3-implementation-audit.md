@@ -60,3 +60,10 @@ FIX: None.
 
 `23dd74e`: one red (the added slice hold), one note. The record edits in `progress.md` and `history.md` are accurate.
 #168 stays a draft until the red is fixed and checked.
+
+## Fix check
+
+Checked 2026-11-16 20:02 UTC (from `date`) on `affe9e3`, by this audit session. Red finding 1: **passed**. `git diff 7ae2886
+affe9e3` changes only `CLAUDE.md`, removing "The next slice starts after that pull request is merged or declined" and
+nothing else; `grep` finds no trace of it at `affe9e3`, and `prettier --check` passes. The commit is authored by
+McThayDT with no AI lines. No findings remain open.
