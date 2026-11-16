@@ -56,5 +56,8 @@
   {:else}
     <p class="apart">Make games? <a href="/make">Add yours to Ruken.</a></p>
   {/if}
+  {#if data.staff}
+    <p><a href="/admin/games">Games to check</a></p>
+  {/if}
   <p class="note"><a href="/me/delete">Delete my account</a></p>
 </main>

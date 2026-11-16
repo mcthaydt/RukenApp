@@ -662,6 +662,8 @@ form > * + button:not(.quiet) {
 /* The bar across the top: the way home, and one more link. The track is above it, at the very top. */
 .topbar {
   display: flex;
+  /* Staff's bar has three links. A narrow phone has no room for three in a row, so the last one moves down whole. */
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -1410,6 +1412,19 @@ a.foot {
   }
 }
 
+/* The same way back at the foot of the sheet, for where the left half does not stay in view: a phone, an upright tablet, and a
+   window too short to keep it. A long sheet ends here, and the way back used to be the other end of it. On the paper it is ink,
+   because the sage the link wears on felt is for felt only. */
+@media (orientation: landscape) and (min-width: 700px) and (min-height: 600px) {
+  .halves a.foot[data-end] {
+    display: none;
+  }
+}
+
+.sheet a.foot {
+  color: var(--ink);
+}
+
 /* On Live, "Back to your games" is a little larger than the link that takes the game off Ruken. That one is the quietest thing
    on the screen: last, a size smaller and dimmer, and a step below the way back, so a thumb that aims for one does not land
    on the other and it is never read as part of the blue button's note above. Each is on its own line. */
@@ -1568,6 +1583,15 @@ a.foot {
 
 .halves:has(input[name="wrong"]:checked) .decide > [data-accept] {
   display: none;
+}
+
+/* A game that cannot be accepted (its newest files were refused) offers only Send back, ticked or not. */
+.decide[data-sends-only] > [data-accept] {
+  display: none;
+}
+
+.decide[data-sends-only] > [data-send-back] {
+  display: inline;
 }
 
 .halves:has(input[name="wrong"]:checked) .decide > [data-send-back] {

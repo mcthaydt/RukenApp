@@ -319,3 +319,24 @@ export async function changeGame(
 ): Promise<void> {
   await db().game.update({ where: { slug }, data: changes });
 }
+
+/**
+ * Counts `seconds` of play (at most 45, the longest one beat counts) for a person on a game's waiting files, as the game's
+ * "still here" messages would. The check page's frame shows a stand-in game that sends none, so a journey cannot play; the
+ * server counts from these rows, so this is what a played game looks like to it. The person must have opened the check
+ * page first: opening it is what starts the session the beat belongs to.
+ */
+export async function countPlay(slug: string, email: string, seconds: number): Promise<void> {
+  const session = await db().playSession.findFirstOrThrow({
+    where: { game: { slug }, user: { email } },
+    orderBy: { startedAt: "desc" },
+    select: { id: true, startedAt: true },
+  });
+  await db().playBeat.create({
+    data: {
+      sessionId: session.id,
+      receivedAt: new Date(session.startedAt.getTime() + seconds * 1000),
+      attentive: true,
+    },
+  });
+}

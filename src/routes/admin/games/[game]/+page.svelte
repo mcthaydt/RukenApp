@@ -11,6 +11,11 @@
   Who it's for is one part, whose section holds both things staff can do about it: pick the age themselves, or tick it
   and send it back so the maker chooses again. Each says which it is. A part an update cannot be sent back for says why,
   so staff do not look for a box that is not there.
+
+  A refusal that is about one part (no reason picked, Something else with no line, an 18+ game with no marks) names the part,
+  says so again inside it, and the page opens at it, so nobody scrolls a long page looking for what they ticked. Accept on a
+  game nobody has played asks "Accept it anyway?" first, and the blue button then says so. The line about how long staff have
+  played is read again while they play (and when they come back to the page), so it never says "yet" after they have.
 -->
 <script lang="ts">
   import { onMount } from "svelte";
@@ -39,11 +44,43 @@
   );
   const chosenMarks: readonly string[] = $derived(kept?.marks ?? data.contentMarks);
 
+  /** The part a refusal is about, with the words to find it by. */
+  const refusedPart = $derived(data.parts.find((part) => part.part === form?.at));
+
+  // How long staff have played, as the server counted it when the page was drawn, and as it counts it since. The frame's
+  // heartbeats reach the server by themselves, so the page asks again, as often as the frame beats.
+  let playedSince = $state<string | null>(null);
+  const played = $derived(playedSince ?? data.played);
+  const REREAD_PLAYED_EVERY_MS = 15_000;
+
+  async function rereadPlayed(): Promise<void> {
+    if (document.visibilityState !== "visible") return;
+    try {
+      const response = await fetch(`/admin/games/${data.slug}/played`);
+      if (!response.ok) return;
+      const body: unknown = await response.json();
+      if (typeof body === "object" && body !== null && "played" in body && typeof body.played === "string")
+        playedSince = body.played;
+    } catch {
+      // Offline for a moment: the line stays as it was and is read again at the next beat.
+    }
+  }
+
   let frame = $state<HTMLIFrameElement>();
   // Drawn by script, so with none it is not there: only a browser that can show a frame full screen offers it.
   let canFullScreen = $state(false);
   onMount(() => {
     canFullScreen = document.fullscreenEnabled && frame?.requestFullscreen !== undefined;
+    // A refusal about one part opens the page at it; without script the link beside the words does the same.
+    if (form?.at !== undefined) document.getElementById(`part-${form.at}`)?.scrollIntoView();
+    const timer = setInterval(() => void rereadPlayed(), REREAD_PLAYED_EVERY_MS);
+    // Coming back to the tab after playing in another window or app: the line is right at once, not at the next beat.
+    const comeBack = () => void rereadPlayed();
+    document.addEventListener("visibilitychange", comeBack);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", comeBack);
+    };
   });
 </script>
 
@@ -55,6 +92,10 @@
   <form method="POST" action="?/decide" class="halves" data-check>
     <div>
       <input type="hidden" name="seen" value={data.seen} />
+      <!-- Said once: after "Accept it anyway?" the next press does not ask again. -->
+      {#if kept?.anyway === true}
+        <input type="hidden" name="acceptAnyway" value="1" />
+      {/if}
       <!-- "Waiting 3 hours" is never cut, and an email that does not fit moves down whole instead of breaking at a hyphen. -->
       <p class="count">
         <span class="nobreak">{data.kind === "update" ? "Update to a live game" : "Game"}</span> ·
@@ -64,14 +105,25 @@
       <!-- What stops Accept is read before the button is pressed, so it is drawn as a refusal is, and not as a quiet note. -->
       {#if form?.problem !== undefined}
         <p class="problem" role="alert">{form.problem}</p>
-      {:else if data.filesBeingFixed !== null}
-        <p class="problem">{data.filesBeingFixed}</p>
+        {#if refusedPart !== undefined}
+          <p><a class="quiet" href={`#part-${refusedPart.part}`}>Go to {refusedPart.title}</a></p>
+        {/if}
       {/if}
-      <p class="note instruction">
-        Play it and look at each part. Tick anything that's wrong, then press the blue button.
-      </p>
+      {#if data.filesBeingFixed !== null}
+        <p class="problem">{data.filesBeingFixed}</p>
+        <p class="note instruction">Look at each part. Tick what's wrong, then press Send back.</p>
+      {:else}
+        <p class="note instruction">
+          Play it and look at each part. Tick anything that's wrong, then press the blue button.
+        </p>
+      {/if}
       <div class="acts">
-        <button class="decide"><span data-accept>Accept</span><span data-send-back>Send back</span></button>
+        <!-- A game whose files are being fixed cannot be accepted, so its button only ever says Send back. -->
+        <button class="decide" data-sends-only={data.filesBeingFixed === null ? undefined : ""}>
+          <span data-accept>{form?.asking === true ? "Accept it anyway" : "Accept"}</span><span data-send-back
+            >Send back</span
+          >
+        </button>
       </div>
       {#if data.computerOnly}
         <p class="note">This game needs a keyboard. If you're on an iPad or phone, connect one.</p>
@@ -87,13 +139,16 @@
       {#if canFullScreen}
         <button type="button" class="quiet" onclick={() => frame?.requestFullscreen()}>Full size</button>
       {/if}
-      <p class="note">{data.played}</p>
+      <p class="note">{played}</p>
       <a class="foot" href="/admin/games">Back to games to check</a>
     </div>
     <div class="sheet">
       {#each data.parts as part (part.part)}
         <section class="part" aria-labelledby={`part-${part.part}`}>
           <h2 id={`part-${part.part}`}>{part.title}</h2>
+          {#if form?.at === part.part}
+            <p class="problem">{form.problem}</p>
+          {/if}
           {#if part.video !== null}
             <video
               class="clip"
@@ -162,6 +217,7 @@
               </label>
             </div>
             <div data-reasons>
+              <p class="note">Pick one.</p>
               <div class="picks">
                 {#each part.reasons as reason (reason.code)}
                   <label class="pick">
@@ -189,6 +245,8 @@
           {/if}
         </section>
       {/each}
+      <!-- Where staff finish reading on a phone or an upright tablet: the way back from the foot of a long page. -->
+      <a class="foot" data-end href="/admin/games">Back to games to check</a>
     </div>
   </form>
 </main>

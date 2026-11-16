@@ -13,7 +13,7 @@ import reasons from "./library/send-back-reasons.json" with { type: "json" };
 export const LIVE_MAY_BE_SENT_BACK: readonly GamePart[] = ["name", "one_line", "plays_on", "files"];
 
 /** The code of the one reason every part has: staff write their own line, and the maker reads that line. */
-const SOMETHING_ELSE = "something_else";
+export const SOMETHING_ELSE = "something_else";
 
 export interface SendBackReason {
   part: GamePart;

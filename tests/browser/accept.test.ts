@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
-import { changeGame, stateOf } from "./support/database.ts";
+import { changeGame, countPlay, putGameWhereStaffLeaveIt, stateOf } from "./support/database.ts";
 import { makerWithGameWhere, signInAsStaff, submitGame } from "./support/game.ts";
 import { boxOf, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -21,19 +21,29 @@ const partNamed = (page: Page, title: string) => page.getByRole("region", { name
 /** The tick on a part. */
 const tickOn = (page: Page, title: string) => page.getByRole("checkbox", { name: `This is wrong: ${title}` });
 
-/** Staff open the check page of a game, signed in as a curator. */
-async function checkingAGame(page: Page, slug: string): Promise<void> {
-  await signInAsStaff(page);
+/** Staff open the check page of a game, signed in as a curator. Says who they are, for a journey that plays the game. */
+async function checkingAGame(page: Page, slug: string): Promise<{ email: string }> {
+  const staff = await signInAsStaff(page);
   await page.goto(`/admin/games/${slug}`);
   await pageHasSettled(page);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  return staff;
+}
+
+/**
+ * Staff open the check page and play the game for a few seconds, so that Accept goes straight through: Accept on a game
+ * nobody played asks "Accept it anyway?" first (walk W6), and the journeys about something else are not about that.
+ */
+async function checkingAPlayedGame(page: Page, slug: string): Promise<void> {
+  const { email } = await checkingAGame(page, slug);
+  await countPlay(slug, email, 30);
 }
 
 test("staff accept a waiting game, and its maker sees it Live", async ({ page, browser }, testInfo) => {
   // design 8
   test.setTimeout(90_000);
   const waiting = await submitGame(browser);
-  await signInAsStaff(page);
+  const staff = await signInAsStaff(page);
   await page.goto("/admin/games");
   await pageHasSettled(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Games to check");
@@ -46,11 +56,16 @@ test("staff accept a waiting game, and its maker sees it Live", async ({ page, b
   await expect(page.frameLocator("iframe.frame").getByRole("heading", { name: "Tiny game" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Accept" })).toBeVisible();
   await showTheOwner(page, testInfo, "checking a game");
+  await countPlay(waiting.slug, staff.email, 30);
 
   await page.getByRole("button", { name: "Accept" }).click();
 
   await expect(page).toHaveURL("/admin/games");
   expect(await stateOf(waiting.slug)).toBe("live");
+  // Said once, so staff can tell it went through (walk W3), and not again on a reload.
+  await expect(page.getByRole("status")).toHaveText(`${waiting.name} is live.`);
+  await page.reload();
+  await expect(page.getByRole("status")).toHaveCount(0);
 });
 
 test("the list says what is waiting, the oldest first, and is empty when nothing is", async ({
@@ -91,6 +106,7 @@ test("ticking a part turns Accept into Send back, and the maker reads why", asyn
     await page.getByRole("button", { name: "Send back" }).click();
 
     await expect(page).toHaveURL("/admin/games");
+    await expect(page.getByRole("status")).toHaveText(`${maker.name} was sent back. Its maker can see why.`);
     expect(await stateOf(maker.slug)).toBe("sent_back");
     await maker.page.goto(`/make/${maker.slug}`);
     await expect(maker.page.getByText("It's on its side. Record it with your phone upright.")).toBeVisible();
@@ -111,6 +127,8 @@ test("a part's reasons are hidden until it is ticked, and hidden again when it i
     await expect(reason).toBeHidden();
     await tickOn(page, "Name").check();
     await expect(reason).toBeVisible();
+    // The reasons are pick-one, though they sit under a tick box (walk W8).
+    await expect(partNamed(page, "Name").getByText("Pick one.")).toBeVisible();
     await tickOn(page, "Name").uncheck();
     await expect(reason).toBeHidden();
   } finally {
@@ -127,7 +145,13 @@ test("a tick with no reason is refused, and the tick is kept", async ({ page, br
 
     await page.getByRole("button", { name: "Send back" }).click();
 
-    await expect(page.getByRole("alert")).toHaveText("Pick a reason for each part you ticked.");
+    // It names the part, says so again inside it, and points at it (walk W4).
+    await expect(page.getByRole("alert")).toHaveText("Pick a reason for Wide video.");
+    await expect(partNamed(page, "Wide video").getByText("Pick a reason for Wide video.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Go to Wide video" })).toHaveAttribute(
+      "href",
+      "#part-wide_video",
+    );
     await expect(tickOn(page, "Wide video")).toBeChecked();
     expect(await stateOf(maker.slug)).toBe("waiting");
   } finally {
@@ -150,7 +174,10 @@ test("Something else needs a line of your own, and keeps what was typed", async 
     await partNamed(page, "One line").getByRole("radio", { name: "Something else" }).check();
 
     await page.getByRole("button", { name: "Send back" }).click();
-    await expect(page.getByRole("alert")).toHaveText("Say what's wrong in your own words.");
+    await expect(page.getByRole("alert")).toHaveText("Say what's wrong with One line, in your own words.");
+    await expect(
+      partNamed(page, "One line").getByText("Say what's wrong with One line, in your own words."),
+    ).toBeVisible();
     await expect(partNamed(page, "One line").getByRole("radio", { name: "Something else" })).toBeChecked();
     // The refused page is a new page, so it is waited for before anything is typed into it (in WebKit on a phone the
     // second Send back stayed on the refused page once, run 43779234742).
@@ -170,7 +197,7 @@ test("Something else needs a line of your own, and keeps what was typed", async 
 test("staff can change who it is for before Accept", async ({ page, browser }) => {
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
-    await checkingAGame(page, maker.slug);
+    await checkingAPlayedGame(page, maker.slug);
     await expect(page.getByRole("radio", { name: "12+" })).toBeChecked();
 
     await page.getByRole("radio", { name: "16+" }).check();
@@ -220,7 +247,7 @@ test("making a game 18+ asks for its marks, and Accept without one is refused", 
   // Review Focus 5
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
-    await checkingAGame(page, maker.slug);
+    await checkingAPlayedGame(page, maker.slug);
     const gore = page.getByRole("checkbox", { name: "Gore" });
     // The marks come with their own question, in the words the maker was asked (plain-words M6).
     const question = page.getByText(`Does ${maker.name} have any of these?`);
@@ -232,6 +259,10 @@ test("making a game 18+ asks for its marks, and Accept without one is refused", 
     await expect(question).toBeVisible();
     await page.getByRole("button", { name: "Accept" }).click();
     await expect(page.getByRole("alert")).toHaveText("Choose at least one, or None of these.");
+    // The same words are inside the part they are about.
+    await expect(
+      partNamed(page, "Who it's for").getByText("Choose at least one, or None of these."),
+    ).toBeVisible();
     expect(await stateOf(maker.slug)).toBe("waiting");
 
     await page.getByRole("checkbox", { name: "Gore" }).check();
@@ -287,7 +318,7 @@ test("a game that changed while staff looked is not accepted, and staff are told
   // Audit S-1
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
-    await checkingAGame(page, maker.slug);
+    await checkingAPlayedGame(page, maker.slug);
 
     await changeGame(maker.slug, { oneLine: "Something the staff did not read." });
     await page.getByRole("button", { name: "Accept" }).click();
@@ -306,8 +337,11 @@ test("a game that changed while staff looked is not accepted, and staff are told
   }
 });
 
-test("a game whose new files were refused is not accepted on its older ones", async ({ page, browser }) => {
-  // Audit S-6
+test("a game whose new files were refused can only be sent back, and says to tick first", async ({
+  page,
+  browser,
+}) => {
+  // Audit S-6, and walk W7: the button no longer offers an Accept that can only refuse.
   const words =
     "The maker is fixing this game's files, so you can't accept it yet. It stays on your list until they're done. You can still send it back.";
   const maker = await makerWithGameWhere(browser, {
@@ -319,10 +353,15 @@ test("a game whose new files were refused is not accepted on its older ones", as
     await expect(page.getByText(words)).toBeVisible();
     // It is read before the blue button is pressed, so it is drawn as a refusal is, and not as a quiet note.
     await expect(page.locator("p.problem", { hasText: words })).toBeVisible();
+    // There is no Accept to press: the one blue button says Send back from the start.
+    await expect(page.getByRole("button", { name: "Accept" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Send back" })).toBeVisible();
 
-    await page.getByRole("button", { name: "Accept" }).click();
+    await page.getByRole("button", { name: "Send back" }).click();
 
-    await expect(page.getByRole("alert")).toHaveText(words);
+    await expect(page.getByRole("alert")).toHaveText("Tick what's wrong first, then press Send back.");
+    // The words about the files are still there after the press.
+    await expect(page.getByText(words)).toBeVisible();
     expect(await stateOf(maker.slug)).toBe("waiting");
   } finally {
     await maker.close();
@@ -335,6 +374,150 @@ test("the page says how long you have played the game, and nothing yet", async (
     await checkingAGame(page, maker.slug);
 
     await expect(page.getByText("You haven't played it yet.")).toBeVisible();
+  } finally {
+    await maker.close();
+  }
+});
+
+test("the line about play moves while staff play, without a new page", async ({ page, browser }) => {
+  // Walk W5: the line was drawn once, so it said "yet" after minutes of play.
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    const { email } = await checkingAGame(page, maker.slug);
+    await expect(page.getByText("You haven't played it yet.")).toBeVisible();
+
+    await countPlay(maker.slug, email, 30);
+
+    // Coming back to the page asks again at once; the page also asks every 15 seconds, which no journey waits for. The
+    // press is repeated until it lands, because it is lost if it comes before the page is listening.
+    await expect(async () => {
+      await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+      await expect(page.getByText("You've played it for less than a minute.")).toBeVisible({ timeout: 1000 });
+    }).toPass();
+  } finally {
+    await maker.close();
+  }
+});
+
+test("Accept on a game nobody played asks once, and then accepts", async ({ page, browser }) => {
+  // Walk W6, the Owner's choice b.
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+
+    await page.getByRole("button", { name: "Accept" }).click();
+
+    await expect(page.getByRole("alert")).toHaveText(`You haven't played ${maker.name}. Accept it anyway?`);
+    await expect(page.getByRole("button", { name: "Accept it anyway" })).toBeVisible();
+    expect(await stateOf(maker.slug)).toBe("waiting");
+
+    await pageHasSettled(page);
+    await page.getByRole("button", { name: "Accept it anyway" }).click();
+
+    await expect(page).toHaveURL("/admin/games");
+    await expect(page.getByRole("status")).toHaveText(`${maker.name} is live.`);
+    expect(await stateOf(maker.slug)).toBe("live");
+  } finally {
+    await maker.close();
+  }
+});
+
+test("a game played since the page was drawn is accepted without asking", async ({ page, browser }) => {
+  // The server reads the play at the press, not the line the page was drawn with.
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    const { email } = await checkingAGame(page, maker.slug);
+    await expect(page.getByText("You haven't played it yet.")).toBeVisible();
+    await countPlay(maker.slug, email, 30);
+
+    await page.getByRole("button", { name: "Accept" }).click();
+
+    await expect(page).toHaveURL("/admin/games");
+    expect(await stateOf(maker.slug)).toBe("live");
+  } finally {
+    await maker.close();
+  }
+});
+
+test("a game someone else decided first sends staff back to the list with a word", async ({
+  page,
+  browser,
+}) => {
+  // Walk W2: it was "We can't find that page." with a button that went nowhere useful.
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    // A colleague accepts it while this page is open.
+    await putGameWhereStaffLeaveIt(maker.slug, { state: "live" });
+
+    await page.getByRole("button", { name: "Accept" }).click();
+
+    await expect(page).toHaveURL("/admin/games");
+    await expect(page.getByRole("status")).toHaveText(`${maker.name} isn't waiting for a check any more.`);
+
+    // An old list, or the browser's Back after deciding, opens the same way.
+    await page.goto(`/admin/games/${maker.slug}`);
+    await expect(page).toHaveURL("/admin/games");
+    await expect(page.getByRole("status")).toHaveText(`${maker.name} isn't waiting for a check any more.`);
+    // A game that is not there at all is still a missing page, and staff's page offers the way back to the list.
+    expect((await page.goto("/admin/games/no-such-game-at-all"))?.status()).toBe(404);
+    await expect(page.getByRole("link", { name: "Back to games to check" })).toHaveAttribute(
+      "href",
+      "/admin/games",
+    );
+  } finally {
+    await maker.close();
+  }
+});
+
+test("staff find the list from home, from Your account and from the bar of every staff page", async ({
+  page,
+  browser,
+}) => {
+  // Walk W1: nothing linked to /admin, so staff had to type its address.
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await signInAsStaff(page);
+    for (const address of ["/", "/me"]) {
+      await page.goto(address);
+      await pageHasSettled(page);
+      await page.getByRole("link", { name: "Games to check" }).click();
+      await expect(page).toHaveURL("/admin/games");
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText("Games to check");
+    }
+    await page.getByRole("link", { name: new RegExp(maker.name) }).click();
+    await expect(page).toHaveURL(`/admin/games/${maker.slug}`);
+    // The bar's own link is the way to the list from a game, as it is from the list.
+    await page.getByRole("link", { name: "Games to check", exact: true }).click();
+    await expect(page).toHaveURL("/admin/games");
+  } finally {
+    await maker.close();
+  }
+});
+
+test("the way back to the list is also at the foot of the sheet where the left half is not kept in view", async ({
+  page,
+  browser,
+}) => {
+  // Walk W9.
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    const leftHalfStays = await page.evaluate(
+      () => matchMedia("(orientation: landscape) and (min-width: 700px) and (min-height: 600px)").matches,
+    );
+
+    await expect(page.getByRole("link", { name: "Back to games to check" })).toHaveCount(
+      leftHalfStays ? 1 : 2,
+    );
+    if (!leftHalfStays) {
+      const foot = page.getByRole("link", { name: "Back to games to check" }).last();
+      await foot.scrollIntoViewIfNeeded();
+      const sheet = await boxOf(page.locator(".sheet"));
+      const link = await boxOf(foot);
+      // It is the last thing on the sheet.
+      expect(link.y).toBeGreaterThanOrEqual(sheet.y + sheet.height - link.height - 64);
+    }
   } finally {
     await maker.close();
   }
@@ -354,6 +537,13 @@ test("the staff pages are not there for anyone else", async ({ page, browser }) 
     await signUp(page);
     expect((await page.goto("/admin/games"))?.status()).toBe(404);
     expect((await page.goto(address))?.status()).toBe(404);
+    // Nothing on the error page, home or Your account says there is a staff area behind it.
+    await expect(page.getByRole("link", { name: "Back to Ruken" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /games to check/i })).toHaveCount(0);
+    for (const open of ["/", "/me"]) {
+      await page.goto(open);
+      await expect(page.getByRole("link", { name: /games to check/i })).toHaveCount(0);
+    }
 
     // A decision posted by hand is the same missing page, and changes nothing.
     const site = new URL(page.url()).origin;

@@ -510,4 +510,21 @@ describe("staff's check of a game", () => {
   it("hides a part's reasons until it is ticked, by :has() and not by script", () => {
     expect(withoutComments).toMatch(/\.part:not\(:has\(input\[name="wrong"\]:checked\)\)/);
   });
+
+  // A game whose files are being fixed cannot be accepted: its button says Send back whether or not anything is ticked.
+  it("shows only Send back on a button that can only send back", () => {
+    expect(withoutComments).toMatch(
+      /\.decide\[data-sends-only\]\s*>\s*\[data-accept\]\s*\{\s*display:\s*none/,
+    );
+    expect(withoutComments).toMatch(
+      /\.decide\[data-sends-only\]\s*>\s*\[data-send-back\]\s*\{\s*display:\s*inline/,
+    );
+  });
+
+  // The way back at the foot of the sheet is only for where the left half is not kept in view.
+  it("hides the way back at the foot of the sheet where the left half stays in view", () => {
+    expect(withoutComments).toMatch(
+      /@media \(orientation: landscape\) and \(min-width: 700px\) and \(min-height: 600px\)\s*\{\s*\.halves a\.foot\[data-end\]\s*\{\s*display:\s*none/,
+    );
+  });
 });
