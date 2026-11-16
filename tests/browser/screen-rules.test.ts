@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { fillAnswers, putGameWhereStaffLeaveIt } from "./support/database.ts";
 import { addDraft, agreeToTheAgreement, giveRealClips } from "./support/game.ts";
-import { CARD_SCREENS, layoutHasSettled } from "./support/look.ts";
+import { CARD_SCREENS, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import {
   linkFindings,
@@ -166,7 +166,9 @@ test("every screen follows the screen rules", async ({ page, browser, baseURL, p
           await screen.open(walker);
         }
         await pageHasSettled(walker);
-        await layoutHasSettled(walker);
+        // The words, not the videos: a game made straight in the database has clips with no bytes behind them, whose
+        // videos never report a size, so waiting for every video to load would wait for ever on those screens.
+        await wordsHaveSettled(walker);
         const measured = await measureScreen(walker);
         for (const finding of viewFindings(screen.name, measured, screen.isFrontPage === true))
           note(finding, view.name);
@@ -176,6 +178,7 @@ test("every screen follows the screen rules", async ({ page, browser, baseURL, p
             note(finding, view.name);
       }
       await context.close();
+      console.log(`screen rules: ${view.name}, ${String(screens.length)} screens walked`);
     }
   }
   await asksOut.dispose();
