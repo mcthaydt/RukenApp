@@ -254,20 +254,38 @@ export function createGamesService(deps: GamesServiceDeps) {
       select: { publicId: true, state: true },
     });
     if (game === null) throw new GameError("NOT_FOUND", "We can't find that game.");
-    // A new clip would go live without a person's yes. Changing a live game's clips through review comes in slice 4.
-    if (game.state === "live") throw new GameError("NOT_READY", "A live game's videos can't be changed yet.");
+    refuseLiveClip(game.state);
 
     const key = clipKeyFor(game.publicId, shape, randomHex16(), contentType);
-    const replaced = await deps.db.gameClip.findUnique({ where: { gameId_shape: { gameId, shape } } });
-
     await deps.files.put(key, upload.bytes);
-    await deps.db.gameClip.upsert({
-      where: { gameId_shape: { gameId, shape } },
-      create: { gameId, shape, key, contentType, bytes: upload.bytes.length },
-      update: { key, contentType, bytes: upload.bytes.length },
-    });
+
+    // Under the game's row lock (see `lockGame`), so a decision being made either sees this clip or finishes first, and
+    // a game it put live meanwhile is refused here rather than given a video nobody looked at.
+    let replaced: { key: string } | null;
+    try {
+      replaced = await deps.db.$transaction(async (tx) => {
+        await lockGame(tx, gameId);
+        const now = await tx.game.findUniqueOrThrow({ where: { id: gameId }, select: { state: true } });
+        refuseLiveClip(now.state);
+        const old = await tx.gameClip.findUnique({ where: { gameId_shape: { gameId, shape } } });
+        await tx.gameClip.upsert({
+          where: { gameId_shape: { gameId, shape } },
+          create: { gameId, shape, key, contentType, bytes: upload.bytes.length },
+          update: { key, contentType, bytes: upload.bytes.length },
+        });
+        return old;
+      });
+    } catch (error) {
+      await deps.files.delete(key);
+      throw error;
+    }
     await takeOutOfToFix(gameId, shape === "upright" ? "upright_video" : "wide_video");
     if (replaced !== null) await deps.files.delete(replaced.key);
+  }
+
+  /** A new clip would go live without a person's yes. Changing a live game's clips through review comes in slice 4. */
+  function refuseLiveClip(state: GameState): void {
+    if (state === "live") throw new GameError("NOT_READY", "A live game's videos can't be changed yet.");
   }
 
   /** The maker changed a part that staff sent back: it is no longer to fix. */
