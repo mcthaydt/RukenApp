@@ -271,6 +271,31 @@ test("the game fits above the pinned bar, on first view where the window is big 
   }
 });
 
+test("on a phone held sideways the game shows on first view, and the bar is not over it", async ({
+  page,
+  browser,
+}) => {
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    await wordsHaveSettled(page);
+    test.skip((page.viewportSize()?.height ?? 0) >= 450, "only a short window has this");
+    // The first screen's bar is part of the page, not pinned over the window, so it never covers the game.
+    expect(await page.locator(".acts").evaluate((one) => getComputedStyle(one).position)).toBe("static");
+    // More than 120px of the game are in view as the page opens (before, 44px with the bar over it).
+    const frame = await boxOf(page.locator("iframe.frame"));
+    const height = page.viewportSize()?.height ?? 0;
+    expect(Math.min(frame.y + frame.height, height) - frame.y).toBeGreaterThanOrEqual(120);
+    // The decision's bar is pinned again: the one blue button stays in reach where nothing is being played.
+    await toTheDecision(page);
+    await expect
+      .poll(async () => page.locator(".acts").evaluate((one) => getComputedStyle(one).position))
+      .toBe("fixed");
+  } finally {
+    await maker.close();
+  }
+});
+
 test("a refusal about a part is in view at the top with what it asks for, above the bar", async ({
   page,
   browser,

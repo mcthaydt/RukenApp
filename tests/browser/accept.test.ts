@@ -650,9 +650,13 @@ test("the button is in view and nothing scrolls sideways", async ({ page, browse
 
     const viewport = page.viewportSize() ?? { width: 0, height: 0 };
     // On every question the blue button is in view: Next, and Accept or Send back on the last.
-    const button = await boxOf(nextButton(page));
-    expect(button.y).toBeGreaterThanOrEqual(0);
-    expect(button.y + button.height).toBeLessThanOrEqual(viewport.height);
+    // On a phone held sideways the first screen's bar is at the foot of the page, so the game is not under it (the
+    // Owner's choice, 2026-11-16); the button is reached by scrolling there, and is in view on every other window.
+    if (viewport.height >= 450) {
+      const button = await boxOf(nextButton(page));
+      expect(button.y).toBeGreaterThanOrEqual(0);
+      expect(button.y + button.height).toBeLessThanOrEqual(viewport.height);
+    }
     const widths = await page.evaluate(() => ({
       scroll: document.documentElement.scrollWidth,
       client: document.documentElement.clientWidth,

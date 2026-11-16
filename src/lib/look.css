@@ -1705,12 +1705,20 @@ main[data-state] .sheet.fix {
   }
 }
 
-/* A short window (a phone held sideways): the game is no taller than what is left above the pinned bar once it is scrolled
-   to the top of the window, so no part of it is ever under the bar. */
+/* A short window (a phone held sideways): on the first screen the bar is part of the page, at its foot, and not pinned over the
+   window. A pinned bar is a quarter of a window this short and covers the game, which is what staff are there to play. The
+   decision's bar stays pinned, where nothing is being played. */
 @media (max-height: 449px) {
   .asks .frame {
-    height: max(10rem, calc(100dvh - 6.5rem));
+    height: 80dvh;
     scroll-margin-top: 0.5rem;
+  }
+
+  .screen .asks[data-alone]:has(section[data-step="check"]:not([hidden])) .acts {
+    position: static;
+    margin-top: 2rem;
+    padding: 0;
+    background: none;
   }
 }
 
