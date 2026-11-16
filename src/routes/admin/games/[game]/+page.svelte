@@ -120,7 +120,9 @@
     const wanted = part === undefined || part === "age_rating" ? "decide" : "check";
     here = STEPS.indexOf(wanted);
     if (part !== undefined && part !== "age_rating")
-      void tick().then(() => document.getElementById(`part-${part}`)?.scrollIntoView());
+      void tick().then(() =>
+        document.querySelector(`#part-${part} [data-refusal-from-top]`)?.scrollIntoView({ block: "start" }),
+      );
   });
 
   // A game that changed while staff looked is read again where they are: a refused action does not run the page's load, so

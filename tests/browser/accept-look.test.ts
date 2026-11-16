@@ -255,7 +255,10 @@ test("the game fits above the pinned bar, on first view where the window is big 
     const short = (size?.height ?? 0) < 450;
     test.skip(!wideEnough && !short, "an upright window scrolls to the game");
     // A short window shows the game once it is scrolled to; a big one shows it as the page opens.
-    if (short) await page.locator("iframe.frame").evaluate((one) => one.scrollIntoView({ block: "start" }));
+    if (short)
+      await page.locator("iframe.frame").evaluate((one) => {
+        one.scrollIntoView({ block: "start" });
+      });
     await expect
       .poll(async () => {
         const frame = await boxOf(page.locator("iframe.frame"));

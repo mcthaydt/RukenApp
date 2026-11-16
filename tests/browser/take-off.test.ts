@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { putGameWhereStaffLeaveIt, stateOf, takeGameOffLeavingItsFiles } from "./support/database.ts";
 import { addDraft, answerEveryQuestion, gameWhere, MAKER_ADDRESSES, startDraft } from "./support/game.ts";
-import { filledButtons, layoutHasSettled, pipRed, showTheOwner } from "./support/look.ts";
+import { boxOf, filledButtons, layoutHasSettled, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // A maker takes their own live game off Ruken, and puts it back (spec 13.1 M1 and M2). The journeys that look at the
@@ -59,9 +59,12 @@ test("a maker takes a live game off Ruken", async ({ page }, testInfo) => {
   const button = page.getByRole("button", { name: "Put it back on Ruken" });
   const note = page.getByText("Putting it back copies the newest version");
   await layoutHasSettled(page);
-  const [buttonBox, noteBox] = [await button.boundingBox(), await note.boundingBox()];
-  expect(noteBox!.y - (buttonBox!.y + buttonBox!.height)).toBeLessThan(24);
-  expect(await button.evaluate((one) => getComputedStyle(one.closest(".acts")!).position)).toBe("static");
+  const buttonBox = await boxOf(button);
+  const noteBox = await boxOf(note);
+  expect(noteBox.y - (buttonBox.y + buttonBox.height)).toBeLessThan(24);
+  expect(await button.evaluate((one) => getComputedStyle(one.closest(".acts") ?? one).position)).toBe(
+    "static",
+  );
   // Its files were all deleted, so there is nothing left to offer to delete.
   await expect(page.getByRole("button", { name: "Delete them" })).toHaveCount(0);
   await showTheOwner(page, testInfo, "a game taken off Ruken");
