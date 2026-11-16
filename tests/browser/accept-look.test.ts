@@ -459,9 +459,13 @@ test.describe("the windows", () => {
         await tickOn(page, "Name").check();
 
         // On the first screen, which is long, the button is in view wherever staff are on it; on the decision too.
-        const first = await boxOf(nextButton(page));
-        expect(first.y, `${size.name}, check`).toBeGreaterThanOrEqual(0);
-        expect(first.y + first.height, `${size.name}, check`).toBeLessThanOrEqual(size.height);
+        // On a phone held sideways the first screen's bar is at the foot of the page, so it never covers the game (the
+        // Owner's choice, 2026-11-16, "Fine, and fix the sideways phone"): there the button is reached by scrolling.
+        if (size.height >= 450) {
+          const first = await boxOf(nextButton(page));
+          expect(first.y, `${size.name}, check`).toBeGreaterThanOrEqual(0);
+          expect(first.y + first.height, `${size.name}, check`).toBeLessThanOrEqual(size.height);
+        }
         await nextButton(page).click();
         const last = await boxOf(decideButton(page, "Send back"));
         expect(last.y, `${size.name}, decision`).toBeGreaterThanOrEqual(0);
