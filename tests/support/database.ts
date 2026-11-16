@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
+import { expect } from "vitest";
 import type { PrismaClient } from "../../src/lib/server/db.ts";
 import { PrismaClient as NodePrismaClient } from "./generated/prisma/client.ts";
 
@@ -73,4 +74,29 @@ export async function startTestDatabase(): Promise<TestDatabase> {
       }
     },
   };
+}
+
+/**
+ * Waits until some connection to this database waits for a lock: how a test knows a write is held up by another
+ * transaction, rather than sleeping. It asks on a connection of its own, since a test's pooled ones may all be busy.
+ */
+export async function someoneWaitsForALock(databaseUrl: string): Promise<void> {
+  const watcher = new pg.Client({ connectionString: databaseUrl });
+  await watcher.connect();
+  try {
+    await expect
+      .poll(
+        async () =>
+          (
+            await watcher.query<{ waiting: number }>(
+              `SELECT count(*)::int AS waiting FROM pg_stat_activity
+               WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+            )
+          ).rows[0]?.waiting,
+        { timeout: 2_000 },
+      )
+      .toBeGreaterThan(0);
+  } finally {
+    await watcher.end();
+  }
 }

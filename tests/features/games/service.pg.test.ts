@@ -5,7 +5,7 @@ import { createGamesService, type Answer, type GamesService } from "../../../src
 import { systemClock } from "../../../src/lib/clock.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
-import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
+import { someoneWaitsForALock, startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
 import { tarGz } from "../../support/tar.ts";
 
@@ -259,6 +259,24 @@ describe("startGame", () => {
     expect(second.slug).toBe("cloud-nine-2");
   });
 
+  // Audit R-4 (early audit L-3).
+  it("gives the next free address to a game named the same at the same moment", async () => {
+    const maker = await createUser(db());
+    let starting: Promise<{ id: string; slug: string }> | undefined;
+
+    // The other game's row is written but not yet kept when this one looks for a free address, so both pick the same.
+    await db().$transaction(async (tx) => {
+      await tx.game.create({
+        data: { publicId: newPublicId(), slug: "same-moment", makerUserId: maker, name: "Same Moment" },
+      });
+      starting = service.startGame({ makerUserId: maker, name: "Same Moment" });
+      starting.catch(() => undefined);
+      await someoneWaitsForALock(database?.url ?? "");
+    });
+
+    expect((await starting)?.slug).toBe("same-moment-2");
+  });
+
   it("takes a name of 60 characters", async () => {
     await expect(
       service.startGame({ makerUserId: await createUser(db()), name: `Sixty ${"z".repeat(54)}` }),
@@ -298,6 +316,27 @@ describe("startGame", () => {
 });
 
 describe("saveAnswer", () => {
+  // Audit R-4 (early audit L-3).
+  it("gives a renamed game the next free address when another takes its new name at the same moment", async () => {
+    const { makerUserId, id } = await begin();
+    let renaming: Promise<{ slug: string }> | undefined;
+
+    await db().$transaction(async (tx) => {
+      await tx.game.create({
+        data: { publicId: newPublicId(), slug: "renamed-together", makerUserId, name: "Renamed Together" },
+      });
+      renaming = service.saveAnswer(id, makerUserId, { question: "name", name: "Renamed Together" });
+      renaming.catch(() => undefined);
+      await someoneWaitsForALock(database?.url ?? "");
+    });
+
+    expect((await renaming)?.slug).toBe("renamed-together-2");
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      name: "Renamed Together",
+      slug: "renamed-together-2",
+    });
+  });
+
   it("keeps each answer on the game, one at a time", async () => {
     const { makerUserId, id } = await begin();
 

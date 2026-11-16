@@ -226,6 +226,15 @@ const NEWEST_FIRST: ({ pulledAt: "desc" } | { createdAt: "desc" })[] = [
   { createdAt: "desc" },
 ];
 
+/** Whether Prisma's "unique constraint failed" error (P2002) was about a game's address. */
+function brokeUniqueSlug(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error) || error.code !== "P2002")
+    return false;
+  // Where Prisma names the constraint depends on whether the driver adapter or the engine raised it, so the whole
+  // description is searched. `Game_slug_key` is the only unique constraint on a game that names `slug`.
+  return JSON.stringify("meta" in error ? (error.meta ?? null) : null).includes("slug");
+}
+
 /** 16 random hex characters: what gives each uploaded clip an address of its own (see `clipKeyFor`). */
 function randomHex16(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(8)), (byte) =>
@@ -340,6 +349,23 @@ export function createGamesService(deps: GamesServiceDeps) {
     const free = candidates.find((candidate) => !taken.has(candidate));
     if (free === undefined) throw new GameError("INVALID", "That name is taken. Pick another.", "name");
     return free;
+  }
+
+  /**
+   * Writes a game under a free address. Another game named the same at the same moment can take the address between
+   * the look and the write; the database refuses the second, so it looks once more and takes the next one.
+   */
+  async function onFreeSlug<T>(
+    base: string,
+    exceptGameId: string | undefined,
+    write: (slug: string) => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await write(await freeSlug(base, exceptGameId));
+    } catch (error) {
+      if (!brokeUniqueSlug(error)) throw error;
+      return write(await freeSlug(base, exceptGameId));
+    }
   }
 
   /**
@@ -584,10 +610,12 @@ export function createGamesService(deps: GamesServiceDeps) {
     // `nameProblem` found at least three letters or numbers, so there is an address.
     if (base === null)
       throw new GameError("INVALID", "Pick a name with at least three letters or numbers.", "name");
-    return deps.db.game.create({
-      data: { publicId: newPublicId(), slug: await freeSlug(base), makerUserId: input.makerUserId, name },
-      select: { id: true, slug: true },
-    });
+    return onFreeSlug(base, undefined, (slug) =>
+      deps.db.game.create({
+        data: { publicId: newPublicId(), slug, makerUserId: input.makerUserId, name },
+        select: { id: true, slug: true },
+      }),
+    );
   }
 
   /** What a game's rows say about who may change what: which game, in what state, and whether staff ever said yes. */
@@ -628,7 +656,6 @@ export function createGamesService(deps: GamesServiceDeps) {
 
     const data: {
       name?: string;
-      slug?: string;
       oneLine?: string;
       playsOn?: GamePlaysOn;
       ageRating?: AgeRating;
@@ -640,6 +667,8 @@ export function createGamesService(deps: GamesServiceDeps) {
     } = {};
     let part: GamePart;
     let slug = game.slug;
+    /** The address a new name asks for, before it is checked to be free; null when the address stays. */
+    let renameTo: string | null = null;
 
     switch (answer.question) {
       case "name": {
@@ -650,8 +679,7 @@ export function createGamesService(deps: GamesServiceDeps) {
         // Before staff have ever said yes the address follows the name; after that it never moves, so a link a maker
         // shared keeps working.
         const base = slugOf(name);
-        if (game.reviews.length === 0 && base !== null) slug = await freeSlug(base, gameId);
-        data.slug = slug;
+        if (game.reviews.length === 0 && base !== null) renameTo = base;
         part = "name";
         break;
       }
@@ -729,10 +757,17 @@ export function createGamesService(deps: GamesServiceDeps) {
     }
 
     // The files are the one answer whose part comes off the list only when the pull passes, so it is not in this write.
-    await deps.db.game.update({
-      where: { id: gameId },
-      data: { ...data, ...(part === "files" ? {} : { toFix: game.toFix.filter((one) => one !== part) }) },
-    });
+    const keep = (newSlug?: string) =>
+      deps.db.game.update({
+        where: { id: gameId },
+        data: {
+          ...data,
+          ...(newSlug === undefined ? {} : { slug: newSlug }),
+          ...(part === "files" ? {} : { toFix: game.toFix.filter((one) => one !== part) }),
+        },
+      });
+    if (renameTo === null) await keep();
+    else slug = (await onFreeSlug(renameTo, gameId, keep)).slug;
 
     // The files are the answer that copies: a refused copy leaves the choice kept, and the screen that asked shows the
     // refusal. A copy that passes takes the files off the list of what to fix (pullLatest).

@@ -1,11 +1,10 @@
-import pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
 import { createGamesService, type GamesService } from "../../../src/features/games/service.ts";
 import type { AgeRating, ContentMark, PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
-import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
+import { someoneWaitsForALock, startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
 import { tarGz } from "../../support/tar.ts";
 import { TestClock } from "../../support/test-clock.ts";
@@ -989,31 +988,6 @@ describe("two decisions at the same moment", () => {
 });
 
 describe("a video changed while a decision is being made (audit R-2)", () => {
-  /**
-   * Waits until another connection waits for a row lock, which is how a save waits for a decision. It asks on a
-   * connection of its own: the test's two pooled ones are the decision's and the save's.
-   */
-  async function someoneWaitsForTheRow(): Promise<void> {
-    const watcher = new pg.Client({ connectionString: database?.url });
-    await watcher.connect();
-    try {
-      await expect
-        .poll(
-          async () =>
-            (
-              await watcher.query<{ waiting: number }>(
-                `SELECT count(*)::int AS waiting FROM pg_stat_activity
-                 WHERE datname = current_database() AND wait_event_type = 'Lock'`,
-              )
-            ).rows[0]?.waiting,
-          { timeout: 2_000 },
-        )
-        .toBeGreaterThan(0);
-    } finally {
-      await watcher.end();
-    }
-  }
-
   it("waits for the decision, and is refused once the game went live", async () => {
     const { game } = await waitingGame();
     const before = await db().gameClip.findUniqueOrThrow({
@@ -1026,7 +1000,7 @@ describe("a video changed while a decision is being made (audit R-2)", () => {
       await tx.$queryRaw`SELECT "id" FROM "Game" WHERE "id" = ${game.id} FOR UPDATE`;
       saving = service.saveClip(game.id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
       saving.catch(() => undefined);
-      await someoneWaitsForTheRow();
+      await someoneWaitsForALock(database?.url ?? "");
       await tx.game.update({
         where: { id: game.id },
         data: { state: "live", livePullId: game.pullId, pendingPullId: null, pendingSince: null },
