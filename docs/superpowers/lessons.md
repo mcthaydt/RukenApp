@@ -1,6 +1,6 @@
 # Lessons
 
-One line per lesson, added by the fix session when its fix is accepted (see "Lessons" in CLAUDE.md). Each line is a rule for how later work is split or briefed, with the date and the pull request it came from. The coordinator reads this file before writing a brief. A lesson that keeps coming back moves into CLAUDE.md in the daily rules batch and is removed here.
+Lessons that no test, screen check or code fix can hold, one line each, with the date and the pull request it came from (see "Lessons" in CLAUDE.md). A lesson becomes a test first; only what a test cannot hold is written here. The coordinator reads this file before writing a brief and removes a line once a test covers it.
 
 - A refusal that can happen on a press is checked before any "are you sure?" question on that press, so a person is never asked to confirm something that is then refused (harsh look HL4). (2026-11-16, #138)
 - A refusal belongs right above the thing it is about, and its words name that thing; a part's heading is not enough when a part holds two questions (HL1). (2026-11-16, #138)
