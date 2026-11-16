@@ -305,6 +305,9 @@ export async function linkFindings(
       dead(`${name} runs script instead of going anywhere`);
     } else if (link.fragmentMissing) {
       dead(`${name} points at ${link.raw}, which is not on the page`);
+    } else if (link.raw.trim().startsWith("#")) {
+      // A part of this very page, found above: there is no other address to ask.
+      continue;
     } else {
       const url = new URL(link.href);
       if (!["http:", "https:"].includes(url.protocol) || url.origin !== siteOrigin) continue;
