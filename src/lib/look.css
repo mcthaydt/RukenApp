@@ -1599,9 +1599,10 @@ a.foot {
    "On phones" with its Change beside it (128px, which stays one line), so the caption made the tile wider and the row stuck out
    past the window's edge (751px in a 739px window). Here the row is worked out with the caption's room in it: the upright video's
    place is the caption's width (136px, a little more than it needs), so the two videos are the height that leaves. Above 799 the
-   column has room for the caption, and below 700 the halves are stacked and have the whole window. */
+   column has room for the caption, and below 700 the halves are stacked and have the whole window. Live is left out: it draws one
+   video and no caption, and its card above the video works out the video's height with the rule above. */
 @media (min-width: 700px) and (max-width: 799px) and (max-height: 449px) {
-  .tiles {
+  .screen:not(:has(.live)) .tiles {
     --tile-height: min(180px, (100cqw - 1rem - 136px) * 9 / 16);
   }
 }
