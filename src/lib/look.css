@@ -1497,6 +1497,22 @@ a.foot {
   }
 }
 
+/* On Taken off, the way back is a link under the blue button's note, at the column's left edge where the words start, with a
+   thumb's height, as Live's is. The card that offers to delete files left behind has a step above it, and no more width than its line needs on a wide
+   window. */
+main[data-state] a.foot {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 44px;
+  margin: 1rem 0 0;
+}
+
+main[data-state] .sheet.fix {
+  max-width: 40rem;
+  margin-top: 1.5rem;
+}
+
 /* Staff's check of a game (design 11.1, screen 2). A part is a block of the sheet: its title, its value in the maker's own
    words (or its video), a box to say it is wrong and, once that is ticked, the reasons. Blocks are told apart by space and
    not by a line: the look has no rule but a field's. */
