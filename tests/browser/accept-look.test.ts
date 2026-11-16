@@ -155,7 +155,9 @@ test("who it is for says it once, in small words, with the way to send it back r
     // The line that explains the box is the line right over it (HL2), not over the ages with the marks between.
     const overItsBox = await age
       .getByText("Or send it back, and the maker will choose again.")
-      .evaluate((note) => note.nextElementSibling?.querySelector('input[name="wrong"]') != null);
+      .evaluate(
+        (note) => note.nextElementSibling?.querySelector('input[name="wrong"]') instanceof HTMLInputElement,
+      );
     expect(overItsBox).toBe(true);
   } finally {
     await maker.close();
