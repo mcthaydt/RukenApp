@@ -103,7 +103,7 @@ Checks run at two speeds (Owner, 2026-11-15: "Yes" to running only the affected 
 - A draft pull request gets the quick run. Its checks end in "(quick, draft)". Lint, typecheck and the build run in full; tests run only where the change reaches them, a new or changed test always runs, and the first failure stops the run. Screenshots are taken only when something visual changed, or when the pull request has the `screenshots` label (add it, then push).
 - A pull request marked ready for review, and every push to main, gets the full run, under the names `verify`, `postgres` and `browser`. Only the full run gates a merge. Green on a draft is not "done"; marking ready is what starts the check that counts.
 - A change to the database, the Workers, a fixture, the lockfile or the build or test config makes even a draft run everything.
-- The browser tests run in six pieces. A newer push cancels the older run, and the browsers are cached between runs.
+- The browser tests run in eighteen pieces (Owner, 2026-11-16: "All three" on "Make CI faster by changing the CI files?", then "Do 18"). A draft runs them in Chromium only; Safari's engine (WebKit) runs only in the full run. A newer push cancels the older run, and the browsers are cached between runs.
 - A pull request that changes only `.md` files skips the tests and still merges (Owner, 2026-11-15: "when a PR only touches .md files, skip the tests and allow the merge, in all repos."). `verify`, `postgres` and `browser` still run and report success without doing the work, so auto-merge is not left waiting. One file that is not `.md` runs everything, and a push to main always does.
 - Red-then-green still works: push the failing test as a draft, read the quick run, then push the fix.
 

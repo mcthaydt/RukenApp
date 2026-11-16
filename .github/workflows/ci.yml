@@ -17,8 +17,9 @@
 # - The browser journeys run in eighteen pieces, not six, so each piece has fewer journeys to wait through.
 # - A draft runs the journeys in Chromium only (the phone, tablet and computer windows). Safari's engine (the
 #   "-webkit" projects) runs only in the full run, which is the one that gates a merge.
-# - A draft walks only the screens the change touches in the screen-rule walk (tests/browser/screen-rules.test.ts),
-#   when that walk exists; the full run walks every screen.
+# - A draft that changes anything a screen is made of also runs the screen-rule walk (tests/browser/screen-rules.test.ts),
+#   once that walk exists, and names the changed files in CHANGED_FILES_LIST so the walk can open only the screens the
+#   change reaches. The full run sets no list and walks every screen.
 #
 # A pull request that changes only .md files has nothing to test (Owner, 2026-11-15: "when a PR only touches .md
 # files, skip the tests and allow the merge, in all repos."). The `changes` job spots it, and the required checks
@@ -240,7 +241,7 @@ jobs:
               echo "CHANGED_FILES_LIST=$RUNNER_TEMP/changed-files.txt" >> "$GITHUB_ENV"
               if [ -f tests/browser/screen-rules.test.ts ] \
                 && ! grep -qx tests/browser/screen-rules.test.ts "$RUNNER_TEMP/changed-files.txt" \
-                && grep -Eq '\.(svelte|css)$|^static/|^src/routes/|^tests/browser/support/' "$RUNNER_TEMP/changed-files.txt"; then
+                && grep -Eq '^src/|^static/|^tests/browser/support/' "$RUNNER_TEMP/changed-files.txt"; then
                 walk=true
               fi
             fi
@@ -294,6 +295,9 @@ jobs:
           path: ~/.cache/ms-playwright
           # A draft keeps only Chromium, so it must not share a cache with the full run, which also needs WebKit.
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ github.event.pull_request.draft == true && 'chromium' || 'chromium-webkit' }}
+          # Main only saves the Chromium-and-WebKit cache, and a draft's first run has no cache of its own yet, so
+          # it starts from main's, which holds Chromium too.
+          restore-keys: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-
       - if: steps.pick.outputs.run == 'true'
         run: pnpm exec playwright install --with-deps ${{ github.event.pull_request.draft == true && 'chromium' || 'chromium webkit' }}
       - if: steps.pick.outputs.run_main == 'true'
