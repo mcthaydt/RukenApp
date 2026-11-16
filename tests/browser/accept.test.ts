@@ -347,6 +347,26 @@ test("an update has a box only on what its maker can fix", async ({ page, browse
   }
 });
 
+test("an update says how long players have played the game, and a first check does not", async ({
+  page,
+  browser,
+}) => {
+  // Audit R-3 b: how a person sees on the test site that members' play counted, until slice 5 gives it a home.
+  const update = await makerWithGameWhere(browser, { state: "live", updateWaiting: true });
+  const first = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, update.slug);
+    await expect(page.getByText("Players haven't played it yet.")).toBeVisible();
+
+    await page.goto(`/admin/games/${first.slug}`);
+    await pageHasSettled(page);
+    await expect(page.getByText(/^Players /)).toHaveCount(0);
+  } finally {
+    await update.close();
+    await first.close();
+  }
+});
+
 test("a game that needs a keyboard says so", async ({ page, browser }) => {
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {

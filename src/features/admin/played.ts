@@ -11,6 +11,17 @@ export function playedWords(countedSeconds: number): string {
 }
 
 /**
+ * What an update's check page says of members' play of the game that is live: "Players have played it for 2 minutes."
+ * It is how a person sees on the test site that play time is counted, until slice 5 gives play time a home.
+ */
+export function playersPlayedWords(countedSeconds: number): string {
+  if (countedSeconds <= 0) return "Players haven't played it yet.";
+  if (countedSeconds < 60) return "Players have played it for less than a minute.";
+  const minutes = Math.floor(countedSeconds / 60);
+  return `Players have played it for ${String(minutes)} ${minutes === 1 ? "minute" : "minutes"}.`;
+}
+
+/**
  * Whether Accept must first ask. Staff are meant to play a game before they say yes (spec 11.1), but not made to: an
  * Accept with no play counted asks "Accept it anyway?" once, and the same press with `confirmed` goes through. It reads the
  * play counted when the button is pressed, never the line the page was drawn with, so a game played since is not asked about.
