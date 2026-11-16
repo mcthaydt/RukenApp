@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled } from "./support/account.ts";
 import { makerWithGameWhere, signInAsStaff } from "./support/game.ts";
 import { decideButton, heading, nextButton, partBox, tickOn, toTheDecision } from "./support/check.ts";
-import { boxOf } from "./support/look.ts";
+import { boxOf, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The design check of the staff screens (docs/superpowers/audits/2026-11-16-staff-review-screens-design.md). CI checks
@@ -45,7 +45,7 @@ test("each choice is one to a row, as wide as its part", async ({ page, browser 
 
     for (const card of [
       cardOf(tickOn(page, "Name")),
-      cardOf(name.getByRole("radio", { name: "It's rude." })),
+      cardOf(name.getByRole("radio", { name: "It's rude" })),
       cardOf(name.getByRole("radio", { name: "Something else" })),
     ]) {
       expect((await boxOf(card)).width).toBeGreaterThanOrEqual(part.width - 2);
@@ -180,6 +180,26 @@ test("a refusal inside a part wears the needs-fixing edge, and the page opens wi
   }
 });
 
+test("the box for who it's for says what it sends back, and the decision's heading names the step", async ({
+  page,
+  browser,
+}) => {
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    // The files say what to look for, so staff are not asked to judge a file count.
+    await expect(
+      partBox(page, "Game files").getByText("Wrong if the game didn't load or parts were missing."),
+    ).toBeVisible();
+    await toTheDecision(page);
+    await expect(heading(page)).toHaveText(`Decide on ${maker.name}`);
+    await expect(tickOn(page, "Who it's for")).toBeVisible();
+    await expect(partBox(page, "Who it's for").getByText("This is wrong")).toHaveCount(0);
+  } finally {
+    await maker.close();
+  }
+});
+
 test("'This is wrong' for who it's for comes after the marks, beside the line that explains it", async ({
   page,
   browser,
@@ -196,6 +216,118 @@ test("'This is wrong' for who it's for comes after the marks, beside the line th
     const box = await boxOf(cardOf(tickOn(page, "Who it's for")));
     expect(explains.y).toBeGreaterThan(none.y);
     expect(box.y).toBeGreaterThan(explains.y);
+  } finally {
+    await maker.close();
+  }
+});
+
+test("a rating's number is in the middle of its tile's height", async ({ page, browser }) => {
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    await toTheDecision(page);
+    const size = page.viewportSize();
+    // The five ratings sit in one row of tiles only from a tablet up; below that each is a row of its own.
+    test.skip((size?.width ?? 0) < 500 || (size?.height ?? 0) < 450, "the ratings are rows here");
+    await expect
+      .poll(async () => {
+        const tile = await boxOf(page.locator(".picks[data-ratings] .pick").first());
+        const number = await boxOf(page.locator(".picks[data-ratings] .pick > b").first());
+        return Math.abs(tile.y + tile.height / 2 - (number.y + number.height / 2));
+      })
+      .toBeLessThan(4);
+  } finally {
+    await maker.close();
+  }
+});
+
+test("the game fits above the pinned bar, on first view where the window is big enough", async ({
+  page,
+  browser,
+}) => {
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    await wordsHaveSettled(page);
+    const size = page.viewportSize();
+    const wideEnough =
+      (size?.width ?? 0) >= 500 && (size?.height ?? 0) >= 450 && (size?.width ?? 0) > (size?.height ?? 0);
+    const short = (size?.height ?? 0) < 450;
+    test.skip(!wideEnough && !short, "an upright window scrolls to the game");
+    // A short window shows the game once it is scrolled to; a big one shows it as the page opens.
+    if (short)
+      await page.locator("iframe.frame").evaluate((one) => {
+        one.scrollIntoView({ block: "start" });
+      });
+    await expect
+      .poll(async () => {
+        const frame = await boxOf(page.locator("iframe.frame"));
+        const bar = await boxOf(page.locator(".acts"));
+        return frame.y >= 0 && frame.y + frame.height <= bar.y && frame.height >= 160;
+      })
+      .toBe(true);
+  } finally {
+    await maker.close();
+  }
+});
+
+test("on a phone held sideways the game shows on first view, and the bar is not over it", async ({
+  page,
+  browser,
+}) => {
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    await wordsHaveSettled(page);
+    test.skip((page.viewportSize()?.height ?? 0) >= 450, "only a short window has this");
+    // The first screen's bar is part of the page, not pinned over the window, so it never covers the game.
+    expect(await page.locator(".acts").evaluate((one) => getComputedStyle(one).position)).toBe("static");
+    // More than 120px of the game are in view as the page opens (before, 44px with the bar over it).
+    const frame = await boxOf(page.locator("iframe.frame"));
+    const height = page.viewportSize()?.height ?? 0;
+    expect(Math.min(frame.y + frame.height, height) - frame.y).toBeGreaterThanOrEqual(120);
+    // The decision's bar is pinned again: the one blue button stays in reach where nothing is being played.
+    await toTheDecision(page);
+    await expect
+      .poll(async () => page.locator(".acts").evaluate((one) => getComputedStyle(one).position))
+      .toBe("fixed");
+  } finally {
+    await maker.close();
+  }
+});
+
+test("a refusal about a part is in view at the top with what it asks for, above the bar", async ({
+  page,
+  browser,
+}) => {
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    // A video part: its video stands between its title and its reasons (a part of words is the test above).
+    await tickOn(page, "Upright video").check();
+    await toTheDecision(page);
+    await decideButton(page, "Send back").click();
+
+    // Its refusal and its reasons are in view together, clear of a pinned bar.
+    const alert = page.getByRole("alert");
+    await expect(alert).toHaveText("Pick a reason for Upright video.");
+    const part = partBox(page, "Upright video");
+    await expect
+      .poll(async () => {
+        const refusal = await boxOf(alert);
+        const first = await boxOf(part.getByRole("radio").first());
+        const pinned = await page
+          .locator(".acts")
+          .evaluate((one) => getComputedStyle(one).position === "fixed");
+        const bar = await boxOf(page.locator(".acts"));
+        const height = page.viewportSize()?.height ?? 0;
+        return (
+          refusal.y >= 0 &&
+          refusal.y < first.y &&
+          (pinned ? first.y + first.height <= bar.y : first.y < height)
+        );
+      })
+      .toBe(true);
   } finally {
     await maker.close();
   }
@@ -327,9 +459,13 @@ test.describe("the windows", () => {
         await tickOn(page, "Name").check();
 
         // On the first screen, which is long, the button is in view wherever staff are on it; on the decision too.
-        const first = await boxOf(nextButton(page));
-        expect(first.y, `${size.name}, check`).toBeGreaterThanOrEqual(0);
-        expect(first.y + first.height, `${size.name}, check`).toBeLessThanOrEqual(size.height);
+        // On a phone held sideways the first screen's bar is at the foot of the page, so it never covers the game (the
+        // Owner's choice, 2026-11-16, "Fine, and fix the sideways phone"): there the button is reached by scrolling.
+        if (size.height >= 450) {
+          const first = await boxOf(nextButton(page));
+          expect(first.y, `${size.name}, check`).toBeGreaterThanOrEqual(0);
+          expect(first.y + first.height, `${size.name}, check`).toBeLessThanOrEqual(size.height);
+        }
         await nextButton(page).click();
         const last = await boxOf(decideButton(page, "Send back"));
         expect(last.y, `${size.name}, decision`).toBeGreaterThanOrEqual(0);

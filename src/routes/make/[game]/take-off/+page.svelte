@@ -24,8 +24,9 @@
 </svelte:head>
 
 <main class="card">
-  <h1>Take “{data.name}” off Ruken?</h1>
-  <p>Players can't find it or play it.</p>
+  <h1>Take {data.name} off Ruken?</h1>
+  <p>If you take it off, players can't find it or play it.</p>
+  <p>Its files are deleted from Ruken. Putting it back copies them from GitHub again.</p>
   <p>You can put it back later. We'll check it again first.</p>
   {#if form?.problem !== undefined}
     <p class="problem" role="alert">{form.problem}</p>

@@ -22,7 +22,7 @@
 -->
 <script lang="ts">
   import { refreshAll } from "$app/navigation";
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import Picks from "../../../make/parts/Picks.svelte";
   import QuestionScreen from "../../../make/parts/QuestionScreen.svelte";
   import type { PageProps } from "./$types";
@@ -68,7 +68,7 @@
   const STEPS = ["check", "decide"] as const;
   const HEADINGS = $derived({
     check: `Check ${data.name}`,
-    decide: `Ready to decide on ${data.name}?`,
+    decide: `Decide on ${data.name}`,
   });
 
   // Script shows one screen at a time; until it wakes (and with none) every screen is on the page.
@@ -120,16 +120,42 @@
     const wanted = part === undefined || part === "age_rating" ? "decide" : "check";
     here = STEPS.indexOf(wanted);
     if (part !== undefined && part !== "age_rating")
-      void tick().then(() => document.getElementById(`part-${part}`)?.scrollIntoView());
+      void tick().then(() =>
+        document
+          .querySelector(`#part-${part}[data-refusal-from-top], #part-${part} [data-refusal-from-top]`)
+          ?.scrollIntoView({ block: "start" }),
+      );
   });
 
   // A game that changed while staff looked is read again where they are: a refused action does not run the page's load, so
   // without this the page would keep the old `seen` and the old answers, and every press after would be refused again.
   // What was ticked was ticked for what they saw before, so the ticks start again.
+  // The decision is not left in front of them with Accept ready: the first screen opens at the top, and a line there says
+  // which part changed, found by what each part said before and after the page read the game again.
+  let changedLine = $state<string | null>(null);
+  /** "One line", "One line and Name", "One line, Name and Game files". */
+  const listOf = (titles: string[]): string =>
+    titles.length < 2 ? (titles[0] ?? "") : `${titles.slice(0, -1).join(", ")} and ${titles.at(-1) ?? ""}`;
+  const signOfPart = (part: (typeof data.parts)[number]): string =>
+    JSON.stringify([part.value, part.video?.src ?? null]);
   $effect(() => {
-    if (form?.stale !== true) return;
+    if (form?.stale !== true) {
+      changedLine = null;
+      return;
+    }
     tickedNow = [];
-    void refreshAll();
+    const before = new Map(untrack(() => data.parts).map((part) => [part.part, signOfPart(part)]));
+    void refreshAll().then(() => {
+      const titles = data.parts
+        .filter((part) => before.get(part.part) !== signOfPart(part))
+        .map((part) => part.title);
+      changedLine =
+        titles.length === 0
+          ? "This game changed while you were looking. Look again."
+          : `The maker changed ${listOf(titles)} while you were looking. Look at it again.`;
+      here = 0;
+      window.scrollTo(0, 0);
+    });
   });
 
   let frame = $state<HTMLIFrameElement>();
@@ -160,11 +186,19 @@
       name="wrong"
       several
       labelledBy={`title-${part.part}`}
-      options={[{ value: part.part, title: "This is wrong" }]}
+      options={[
+        {
+          value: part.part,
+          title: part.part === "age_rating" ? "The maker's age pick is wrong" : "This is wrong",
+        },
+      ]}
       chosen={ticked}
       problem={undefined}
     />
-    <div data-reasons>
+    <div data-reasons data-refusal-from-top={part.video === null ? undefined : ""}>
+      {#if form?.at === part.part && part.video !== null}
+        <p class="problem" role="alert">{form.problem}</p>
+      {/if}
       <p class="note" id={`why-${part.part}`}>Pick one.</p>
       <Picks
         name={`reason-${part.part}`}
@@ -206,6 +240,9 @@
   {/if}
 
   <section data-step="check" hidden={!showing("check")}>
+    {#if changedLine !== null}
+      <p class="problem" role="alert">{changedLine}</p>
+    {/if}
     <!-- "Waiting 3 hours" is never cut, a dot stays with the words after it, and an email that does not fit moves down
          whole instead of breaking at a hyphen. -->
     <p class="note facts">
@@ -232,9 +269,12 @@
     {/if}
     <p class="note">{played}</p>
     {#each otherParts as part (part.part)}
-      <div class="part" id={`part-${part.part}`}>
+      <!-- A part's refusal sits under its title, and the page brings the part to the top. A part that is a video has the
+             video between its title and its reasons, which would leave the reasons under the bar, so its refusal sits
+             with the reasons (it names the part) and the page brings those to the top. -->
+      <div class="part" id={`part-${part.part}`} data-refusal-from-top={part.video === null ? "" : undefined}>
         <h2 id={`title-${part.part}`}>{part.title}</h2>
-        {#if form?.at === part.part}
+        {#if form?.at === part.part && part.video === null}
           <p class="problem" role="alert">{form.problem}</p>
         {/if}
         {#if part.video !== null}
@@ -249,6 +289,9 @@
           ></video>
         {:else}
           <p class="say">{part.value ?? "Not answered"}</p>
+          {#if part.hint !== null}
+            <p class="note">{part.hint}</p>
+          {/if}
         {/if}
         {@render tickBox(part)}
       </div>
@@ -305,6 +348,9 @@
     {/if}
     {#if !ready}
       <p class="note">Nothing ticked: press Accept. Anything ticked: press Send back.</p>
+    {:else if form?.asking === true}
+      <!-- Asked to accept anyway: the question above says it all, and a line saying nothing is wrong would say the
+           opposite of the button. -->
     {:else if ticked.length === 0 && data.filesBeingFixed === null}
       <p class="say">Nothing is wrong. Press Accept, and {data.name} goes live.</p>
     {:else}

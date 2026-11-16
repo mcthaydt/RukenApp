@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
-import { putGameWhereStaffLeaveIt, stateOf } from "./support/database.ts";
+import { putGameWhereStaffLeaveIt, stateOf, takeGameOffLeavingItsFiles } from "./support/database.ts";
 import { addDraft, answerEveryQuestion, gameWhere, MAKER_ADDRESSES, startDraft } from "./support/game.ts";
-import { filledButtons, pipRed, showTheOwner } from "./support/look.ts";
+import { boxOf, filledButtons, layoutHasSettled, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // A maker takes their own live game off Ruken, and puts it back (spec 13.1 M1 and M2). The journeys that look at the
@@ -26,8 +26,13 @@ test("a maker takes a live game off Ruken", async ({ page }, testInfo) => {
   await page.getByRole("link", { name: `Take ${name} off Ruken` }).click();
 
   await expect(page).toHaveURL(`/make/${slug}/take-off`);
-  await expect(page.getByRole("heading", { name: `Take “${name}” off Ruken?` })).toBeVisible();
-  await expect(page.getByText("Players can't find it or play it.")).toBeVisible();
+  // The name stands as it does on every other screen, with no quote marks round it.
+  await expect(page.getByRole("heading", { name: `Take ${name} off Ruken?` })).toBeVisible();
+  await expect(page.getByText("If you take it off, players can't find it or play it.")).toBeVisible();
+  // What can't be undone is said, which is why the button is red.
+  await expect(
+    page.getByText("Its files are deleted from Ruken. Putting it back copies them from GitHub again."),
+  ).toBeVisible();
   await expect(page.getByText("You can put it back later. We'll check it again first.")).toBeVisible();
   // Keep is the green, safe choice and has the focus; taking it off is the only red, and nothing is blue.
   await expect(page.getByRole("link", { name: "Keep it on Ruken" })).toBeFocused();
@@ -43,12 +48,43 @@ test("a maker takes a live game off Ruken", async ({ page }, testInfo) => {
     page.getByText(/^You took it off on \d{1,2} [A-Z][a-z]+\. Players can't find it\.$/),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Put it back on Ruken" })).toBeVisible();
+  // The note names what the button does, so it reads on its own wherever the screen puts it.
+  await expect(
+    page.getByText(
+      "Putting it back copies the newest version of your game from GitHub and sends it for review.",
+    ),
+  ).toBeVisible();
+  // The button and its note read as one: the button is in the page, not pinned to the foot of the window, and the note
+  // is the next thing under it.
+  const button = page.getByRole("button", { name: "Put it back on Ruken" });
+  const note = page.getByText("Putting it back copies the newest version");
+  await layoutHasSettled(page);
+  const buttonBox = await boxOf(button);
+  const noteBox = await boxOf(note);
+  expect(noteBox.y - (buttonBox.y + buttonBox.height)).toBeLessThan(24);
+  expect(await button.evaluate((one) => getComputedStyle(one.closest(".acts") ?? one).position)).toBe(
+    "static",
+  );
   // Its files were all deleted, so there is nothing left to offer to delete.
   await expect(page.getByRole("button", { name: "Delete them" })).toHaveCount(0);
   await showTheOwner(page, testInfo, "a game taken off Ruken");
   expect(await stateOf(slug)).toBe("taken_off");
   // It is off: the question is not asked a second time.
   expect((await page.request.get(`/make/${slug}/take-off`)).status()).toBe(404);
+});
+
+test("files left on Ruken: what happened, what to do, and that it can't be undone", async ({ page }) => {
+  const { slug } = await realLiveGame(page);
+  await takeGameOffLeavingItsFiles(slug);
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+
+  await expect(
+    page.getByText(
+      "Taking it off didn't finish. Some of its files are still on Ruken. Delete them to finish. This can't be undone.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delete them" })).toBeVisible();
 });
 
 test("Keep it on Ruken changes nothing", async ({ page }) => {
@@ -77,6 +113,25 @@ test("putting it back sends it for review", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Waiting for review" })).toBeVisible();
   // It waits for a person's yes, like a new game: putting it back never makes it live.
   expect(await stateOf(slug)).toBe("waiting");
+});
+
+test("a refused copy is told at once, with the game still off Ruken", async ({ page }) => {
+  // Made from rows, so the maker is not connected to GitHub and Ruken cannot see the game's repository.
+  const { slug } = await gameWhere(page, { state: "live" });
+  await page.goto(`/make/${slug}/take-off`);
+  await pageHasSettled(page);
+  await page.getByRole("button", { name: "Take it off" }).click();
+  await expect(page.getByRole("heading", { name: "Taken off Ruken" })).toBeVisible();
+  await pageHasSettled(page);
+
+  await page.getByRole("button", { name: "Put it back on Ruken" }).click();
+
+  // Ruken's refusal is on the screen she lands on, with the one step to fix it, and it says the game is still off.
+  await expect(page.getByText("Needs fixing")).toBeVisible();
+  await expect(page.getByText(/Ruken can't see that game on GitHub/)).toBeVisible();
+  await expect(page.getByText("It stays off Ruken until this is fixed.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Connect GitHub" })).toBeVisible();
+  expect(await stateOf(slug)).toBe("draft");
 });
 
 test("only a live game has the question", async ({ page }) => {

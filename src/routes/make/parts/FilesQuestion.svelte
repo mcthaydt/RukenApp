@@ -34,6 +34,8 @@
       branch: string;
       folder: string;
       refusal: Refusal | null;
+      /** True for a game put back after it was taken off: its files are not on Ruken yet. */
+      putBack: boolean;
       connectAddress: string;
       howToAddress: string;
       folderHowToAddress: string;
@@ -110,6 +112,9 @@
         ? `Ruken starts your game from a file called index.html. We couldn't find one in ${chosen[0] ?? "that folder"}.`
         : shown.words}
     </p>
+    {#if files.putBack}
+      <p class="note">It stays off Ruken until this is fixed.</p>
+    {/if}
   </div>
   <p class="note"><a href={files.folderHowToAddress}>Here's how to set up your game's folder</a></p>
 {/snippet}
@@ -190,6 +195,9 @@
 {:else if screen === "choose"}
   <QuestionScreen heading="Where are your game's files?" {counter} {back} {throwAway}>
     {@render connectionFailedLine()}
+    {#if refusal !== null}
+      {@render refusalCard(refusal)}
+    {/if}
     <div class="sheet">
       <p>Ruken can't see any of your games on GitHub yet.</p>
     </div>
@@ -200,6 +208,9 @@
 {:else}
   <QuestionScreen heading="Where are your game's files?" {counter} {back} {throwAway}>
     {@render connectionFailedLine()}
+    {#if refusal !== null}
+      {@render refusalCard(refusal)}
+    {/if}
     <div class="sheet">
       <p class="say">Your game lives on GitHub. Connect it, then pick your game.</p>
       <p class="note">You choose which games on GitHub Ruken can see. It can't see anything else.</p>

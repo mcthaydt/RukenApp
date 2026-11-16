@@ -4,7 +4,7 @@
  * a staff session of its own.
  */
 export function playedWords(countedSeconds: number): string {
-  if (countedSeconds <= 0) return "You haven't played it yet.";
+  if (countedSeconds <= 0) return "You haven't played it yet. Press inside the game to start.";
   if (countedSeconds < 60) return "You've played it for less than a minute.";
   const minutes = Math.floor(countedSeconds / 60);
   return `You've played it for ${String(minutes)} ${minutes === 1 ? "minute" : "minutes"}.`;
@@ -21,5 +21,5 @@ export function mustAskBeforeAccepting(countedSeconds: number, confirmed: boolea
 
 /** The question staff are asked when they accept a game they have not played. */
 export function acceptAnywayWords(name: string): string {
-  return `You haven't played ${name}. Accept it anyway?`;
+  return `You haven't played ${name} yet. Press Back to play it, or press Accept it anyway.`;
 }

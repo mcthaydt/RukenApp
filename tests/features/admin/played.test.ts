@@ -5,7 +5,7 @@ import { acceptAnywayWords, mustAskBeforeAccepting, playedWords } from "../../..
 
 describe("playedWords", () => {
   it.each([
-    [0, "You haven't played it yet."],
+    [0, "You haven't played it yet. Press inside the game to start."],
     [59, "You've played it for less than a minute."],
     [60, "You've played it for 1 minute."],
     [119, "You've played it for 1 minute."],
@@ -34,6 +34,8 @@ describe("mustAskBeforeAccepting", () => {
 
 describe("acceptAnywayWords", () => {
   it("names the game and asks the question", () => {
-    expect(acceptAnywayWords("Tiny game")).toBe("You haven't played Tiny game. Accept it anyway?");
+    expect(acceptAnywayWords("Tiny game")).toBe(
+      "You haven't played Tiny game yet. Press Back to play it, or press Accept it anyway.",
+    );
   });
 });

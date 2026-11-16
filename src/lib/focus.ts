@@ -26,6 +26,14 @@ export function showTheRefusal(): void {
   for (const animation of document.getAnimations()) {
     if (animation.effect?.getComputedTiming().iterations !== Infinity) animation.finish();
   }
+  // A refusal inside a block that asks to be read from its top (one of staff's parts) brings the whole part to the top of
+  // the window: its title, the refusal under it and, where they fit, the reasons it asks for are in view together, and
+  // not under the bar.
+  const block = problem.closest<HTMLElement>("[data-refusal-from-top]");
+  if (block !== null) {
+    block.scrollIntoView({ block: "start" });
+    return;
+  }
   problem.scrollIntoView({ block: "nearest" });
 
   const heading = document.querySelector("h1");

@@ -17,7 +17,9 @@ export const partBox = (page: Page, title: string): Locator =>
 
 /** The tick on a part. */
 export const tickOn = (page: Page, title: string): Locator =>
-  partBox(page, title).getByRole("checkbox", { name: "This is wrong" });
+  partBox(page, title).getByRole("checkbox", {
+    name: title === "Who it's for" ? "The maker's age pick is wrong" : "This is wrong",
+  });
 
 /** The part's own place, on screen: the first screen holds every part but who it's for. */
 export async function onPart(page: Page, title: string): Promise<void> {

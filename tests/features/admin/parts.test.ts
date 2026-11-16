@@ -92,8 +92,8 @@ describe("partsToCheck", () => {
   it("asks which way the age is wrong, and says it in staff's own words", () => {
     const age = partsToCheck(FIRST_SEND, media).find((one) => one.part === "age_rating");
     expect(age?.reasons.map((reason) => reason.words)).toEqual([
-      "It's for older players.",
-      "It's for younger players.",
+      "It's for older players",
+      "It's for younger players",
       "Something else",
     ]);
   });
@@ -107,6 +107,16 @@ describe("partsToCheck", () => {
     const quiet: GameToCheck = { ...FIRST_SEND, pending: { fileCount: 1, totalBytes: 10, connectHosts: [] } };
     expect(partsToCheck(quiet, media).find((one) => one.part === "other_websites")?.value).toBe(
       "Uses no other websites",
+    );
+  });
+
+  it("tells staff what to look for on the files, and says nothing like it on the other parts", () => {
+    const parts = partsToCheck(FIRST_SEND, media);
+    expect(parts.find((part) => part.part === "files")?.hint).toBe(
+      "Wrong if the game didn't load or parts were missing.",
+    );
+    expect(parts.filter((part) => part.part !== "files").map((part) => part.hint)).toEqual(
+      Array.from({ length: 7 }, () => null),
     );
   });
 
