@@ -165,7 +165,7 @@ export function measureScreen(page: Page): Promise<Measured> {
             .filter((child) => child.getBoundingClientRect().right > edge + 0.5)
             .slice(0, 6)
             .map((child) => `${describe(child)} right=${child.getBoundingClientRect().right.toFixed(1)} w=${child.getBoundingClientRect().width.toFixed(1)}`);
-          return `${describe(element)} scrollW=${element.scrollWidth} clientW=${element.clientWidth} winW=${window.innerWidth} past: ${wide.join(" ; ")}`;
+          return `${describe(element)} scrollW=${String(element.scrollWidth)} clientW=${String(element.clientWidth)} winW=${String(window.innerWidth)} past: ${wide.join(" ; ")}`;
         });
 
       // 3. Tap targets. A checkbox, a radio and a file field are pressed through their label, so the label is measured.
