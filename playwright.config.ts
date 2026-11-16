@@ -1,5 +1,6 @@
 import { generateKeyPairSync } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
+import { journeyClientHeaders } from "./tests/browser/support/rate-limits.ts";
 
 // The Ruken GitHub App's private key, made here each time the config loads and never written to a file. GitHub hands
 // out an app's key as PKCS#1, so the stand-in's journeys use that form too.
@@ -19,7 +20,14 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never" }]],
   // A missing page or field fails in 5 seconds, not after the whole 30-second test timeout, so a
   // journey that cannot find its form says so quickly.
-  use: { baseURL: "http://localhost:4173", trace: "off", actionTimeout: 5_000 },
+  // Each worker reaches the site from its own client address, so side-by-side journeys never share the site's
+  // per-address limits (tests/browser/support/rate-limits.ts).
+  use: {
+    baseURL: "http://localhost:4173",
+    trace: "off",
+    actionTimeout: 5_000,
+    extraHTTPHeaders: journeyClientHeaders(),
+  },
   webServer: [
     {
       // A stand-in for GitHub (tests/browser/support/fake-github-server.ts): the sign-in and installation pages, the

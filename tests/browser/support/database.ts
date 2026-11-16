@@ -345,3 +345,13 @@ export async function countPlay(slug: string, email: string, seconds: number): P
     },
   });
 }
+
+/** The sign-up counter the site keeps for one client address: how many sign-ups it has counted, or 0 when none. */
+export async function signUpsCountedFrom(clientAddress: string): Promise<number> {
+  // better-auth keys its per-address counters as "<address>|<path>".
+  const row = await db().rateLimit.findUnique({
+    where: { key: `${clientAddress}|/sign-up/email` },
+    select: { count: true },
+  });
+  return row?.count ?? 0;
+}
