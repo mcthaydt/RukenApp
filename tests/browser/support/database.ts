@@ -1,6 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { sealState } from "../../../src/features/games/github-connect.ts";
-import { ARRIVAL_COOKIE, sealArrival } from "../../../src/features/membership/arrival.ts";
 import type { AgeRating, GamePart, GameState, StaffRole } from "../../../src/lib/server/db.ts";
 import { PrismaClient, type MembershipStart } from "../../support/generated/prisma/client.ts";
 
@@ -90,24 +89,8 @@ export function membershipStartsOf(email: string): Promise<MembershipStart[]> {
   return db().membershipStart.findMany({ where: { user: { email } }, orderBy: { startedAt: "asc" } });
 }
 
-/** The secret `playwright.config.ts` gives the app, which seals the arrival cookie. */
+/** The secret `playwright.config.ts` gives the app, which seals the GitHub connection's state. */
 const APP_SECRET = "test-only-secret-not-used-anywhere-real";
-
-/**
- * The cookie a visitor has after landing on a maker's link, sealed as the server seals it. It is test code: until
- * slices 2 and 3 bring the links, this is the only way an arrival exists in a journey.
- */
-export function arrivalCookie(link: { makerUserId: string; path: string }): {
-  name: string;
-  value: string;
-  url: string;
-} {
-  return {
-    name: ARRIVAL_COOKIE,
-    value: sealArrival({ ...link, atMs: Date.now() }, APP_SECRET),
-    url: "http://localhost:4173",
-  };
-}
 
 /** The posting of the payment a member made, or null while the daily money job has not posted it. */
 export async function paymentPostingOf(email: string): Promise<{ stripeInvoiceId: string } | null> {
