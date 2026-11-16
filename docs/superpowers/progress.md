@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-11-16 18:07 UTC (from `date`). Written by the rules setup session on the coordinator's behalf,
+Last updated: 2026-11-16 19:58 UTC (from `date`). Written by the rules setup session on the coordinator's behalf,
 because the coordinator cannot write to the repo.
 
 ## Active milestone: slice 2, Games and play
@@ -13,11 +13,12 @@ Owner instruction (2026-11-15, roadmap): finish slice 2 only; everything after i
 - #157 staff screen design fixes (18 of 19; finding 6 left by design, spec 15.2).
 - #138, #150 to #155: staff review, game page, take a game off, rules rewrite.
 - #159 old workflow rules removed. #161 reverted the first rules attempt (#160).
+- #162 project rules, setup check record and CI gate; `gate` is required on `main`. #166's loading-cover journey fix
+  came in with it.
 
 ### Now
 
-- Rules setup: CLAUDE.md and the `review`, `release` and `visual-check` skills, plus this record, on branch
-  `claude/project-thread-9ru62m`. Lane 2 (first-time setup from the owner's rules text).
+- End-of-slice retro rule in CLAUDE.md, on branch `claude/project-thread-9ru62m`. Lane 3, on the owner's words.
 
 ### Next, in order
 
@@ -34,7 +35,7 @@ Owner instruction (2026-11-15, roadmap): finish slice 2 only; everything after i
 
 ### Blockers and risks
 
-- `main` has had no CI run of its own since #112 (2026-11-15); #162 fixes that (see Setup in `history.md`).
+- `main` had no CI run of its own from #112 (2026-11-15) until #162 added `test-main`; watch its first run on `5f831a2`.
 - Flaky tests seen once each on 2026-11-16: `tests/browser/make-after.test.ts:206` (phone-landscape-webkit),
   `tests/browser/make-design-pass.test.ts:293` (phone-landscape), `tests/browser/make-second-look.test.ts:501` (phone,
   second sighting: fix it).
@@ -43,17 +44,12 @@ Owner instruction (2026-11-15, roadmap): finish slice 2 only; everything after i
 
 - 2026-11-16, "yes to 1–3, keep 12": add a `gate` job and require it; let `main` run CI after a merge; remove
   `--passWithNoTests`; keep 12 browser test pieces. All in #162.
+- 2026-11-16, "Let's instead do this after the end of every slice": a retro after each slice closes (the
+  self-improving step), not a daily one.
 
 ## Owner steps
 
-Every step only the owner can run, as one batch. Run it after #162 is merged, so the `gate` job exists on `main`.
-
-```sh
-# After a "gate" job lands in ci.yml: require it alongside the existing checks (verify, browser, postgres stay).
-gh api -X POST repos/mcthaydt/RukenApp/branches/main/protection/required_status_checks/contexts -f 'contexts[]=gate'
-# Confirm.
-gh api repos/mcthaydt/RukenApp/branches/main/protection --jq '.required_status_checks.contexts'
-```
+None open. `gate` was made required on `main` on 2026-11-16.
 
 ## Preview
 
