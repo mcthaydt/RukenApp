@@ -168,7 +168,7 @@ export function createPlayService(deps: PlayServiceDeps) {
     only?: { pullId: string; userId: string },
   ): Promise<{ sessions: number; beats: number; countedSeconds: number }> {
     const sessions = await deps.db.playSession.findMany({
-      where: { gameId, ...(only === undefined ? {} : { userId: only.userId }) },
+      where: { gameId, ...only },
       select: { startedAt: true, beats: { select: { receivedAt: true, attentive: true } } },
     });
     let beats = 0;

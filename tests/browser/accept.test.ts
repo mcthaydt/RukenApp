@@ -152,6 +152,9 @@ test("Something else needs a line of your own, and keeps what was typed", async 
     await page.getByRole("button", { name: "Send back" }).click();
     await expect(page.getByRole("alert")).toHaveText("Say what's wrong in your own words.");
     await expect(partNamed(page, "One line").getByRole("radio", { name: "Something else" })).toBeChecked();
+    // The refused page is a new page, so it is waited for before anything is typed into it (in WebKit on a phone the
+    // second Send back stayed on the refused page once, run 43779234742).
+    await pageHasSettled(page);
 
     await partNamed(page, "One line").getByRole("textbox").fill("Say what the game is, not what it is like.");
     await page.getByRole("button", { name: "Send back" }).click();
