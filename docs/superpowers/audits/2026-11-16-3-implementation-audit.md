@@ -201,3 +201,35 @@ line only. A comment change: no test.
 R-1, R-2, R-4 and R-5 go to the implementer as written, each in its own files. R-3 needs a choice between a and b
 before its fix; a is recommended. Each fix is checked by its test on CI (R-5 by reading the line), never by the
 implementer's say-so.
+
+## Fix check, round 1
+
+Pull request #172, head `40667ed` (four commits on `5f831a2`: `9813197`, `65f7688`, `2c06a92`, `40667ed`). Lane 2
+(`tests/support/` and shared service code): this section is also its one fresh review. Checked by the audit session,
+not the implementer. Written 2026-11-16 20:18 UTC (from `date`).
+
+What ran, in a cloud container (Postgres 16, Node 22; never the Owner's computer): `pnpm exec vitest run --project
+postgres` on `sessions.pg.test.ts`, `review.pg.test.ts` and `service.pg.test.ts` at `40667ed`: 144 passed. The same three
+files with `src/features/games/service.ts` and `src/features/play/sessions.ts` put back to `5f831a2`: 5 failed, each
+new case and for its own reason (R-1 twice: `expected 'recorded' to be 'over'`; R-2: the clip save never waited for the
+row lock, `expected 0 to be greater than 0`; R-4 twice: the second write failed on the taken address). `eslint` on the
+eight changed files: clean. `pnpm typecheck`: 0 errors. Not run here: the browser journey added to `play.test.ts` (CI
+runs it); CI on #172 had not reported when this was written.
+
+| Finding | Result | Evidence |
+|---|---|---|
+| R-1 | pass | `recordBeat` answers `over` when `stillOn` is false: any basis but `staff` needs the game `live`; `staff` needs its pull to be the pending or live one. Cases: taken off ends a member's play; an update accepted mid-play keeps counting; staff's check of a first send counts; staff's check ends once sent back. The journey posts the member's real beat after the take off and expects 410 |
+| R-2 | pass | `saveClip` re-reads the state and upserts inside a transaction that takes `lockGame` first; a refusal deletes the file just stored. The new case holds the row, starts a clip save, sees it wait (`pg_stat_activity`), puts the game live, and the save is refused with the old clip kept |
+| R-4 | pass | `onFreeSlug` retries once on Prisma's unique failure on `slug` (`brokeUniqueSlug`), for `startGame` and the rename. Both cases make the other row uncommitted, see the write wait on the index, and get the `-2` address |
+| R-5 | pass | The comment now reads "because its files are deleted" (read) |
+
+Regressions looked for, none found: lock order is the same everywhere (`Game` row first: `accept`, `sendBack`,
+`saveClip`), so no new deadlock; `takeOutOfToFix` stays outside the lock and changes nothing `seenOf` reads; the
+helpers' new `live`/`pendingPullId` writes in `sessions.pg.test.ts` set up rows that `recordBeat` now reads, and loosen
+no expectation; `someoneWaitsForALock` waits on a condition with a 2 s limit, never on a sleep.
+
+Note (not a defect of the fix): a member's tab left open across a take off, a put back and a new yes counts again
+once the game is live again, though its old files are gone. Rare, bounded by the session's day, and the frame cannot
+load new files under the old pass. Recorded for slice 5, which pays on these beats.
+
+R-3 waits for the Owner's choice and is not part of this check.
