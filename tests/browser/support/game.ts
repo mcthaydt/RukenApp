@@ -141,6 +141,11 @@ export function MAKER_ADDRESSES(slug: string): { path: string; form?: Record<str
     { path: `/make/${slug}/throw-away` },
     // Sending a live game's newest files for review.
     { path: `/make/${slug}?/newVersion`, form: {} },
+    // Taking a live game off Ruken, putting it back, and deleting what is left of its files.
+    { path: `/make/${slug}/take-off` },
+    { path: `/make/${slug}/take-off?/takeOff`, form: {} },
+    { path: `/make/${slug}?/putBack`, form: {} },
+    { path: `/make/${slug}?/deleteLeft`, form: {} },
     { path: `/make/${slug}/agreement`, form: {} },
     // The send is a named action; the stranger's GET and POST both meet the same 404 before it is looked for.
     { path: `/make/${slug}/check` },

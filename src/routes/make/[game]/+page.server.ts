@@ -1,4 +1,5 @@
 import { error, fail, redirect } from "@sveltejs/kit";
+import { dayAndMonth } from "../../../lib/long-date.ts";
 import {
   answersOf,
   firstUnanswered,
@@ -18,7 +19,8 @@ import type { Actions, PageServerLoad } from "./$types";
 
 // A game's own address. A draft is not a screen of its own: it leads on to the first question not answered, or to the
 // last step when none is left. Every other state is a screen that says where the game stands: Waiting, Sent back and Live
-// each have one (spec 5, 5b "Sent back, now", 5c); a game off Ruken has only its headline.
+// each have one (spec 5, 5b "Sent back, now", 5c), and so does a game its maker took off Ruken (spec 13.1 M2); a game
+// taken down has only its headline.
 
 /** The parts a game's answers are made of, as a count: the name, the line, the files, where it plays, the two videos, who it is for and the websites. */
 const PARTS = ALL_PARTS.length;
@@ -148,7 +150,19 @@ export const load: PageServerLoad = async (event) => {
     };
   }
 
-  // Off Ruken: its headline and the way back, and no more until its own screens are built.
+  if (game.state === "taken_off") {
+    const players = "Players can't find it.";
+    return {
+      ...base,
+      view: "taken_off" as const,
+      // A game taken off before the record of when was kept has no day to name, so its line starts at the players.
+      line:
+        game.takenOffAt === null ? players : `You took it off on ${dayAndMonth(game.takenOffAt)}. ${players}`,
+      filesLeft: game.filesLeft,
+    };
+  }
+
+  // Taken down: its headline and the way back, and no more until its own screens are built.
   return {
     ...base,
     view: "plain" as const,
@@ -191,6 +205,32 @@ export const actions: Actions = {
     if (liveSend(game) !== "again") return fail(400, { problem: "That game can't be sent again right now." });
     try {
       await gamesServices().service.sendForReview(game.id, userId);
+    } catch (problem) {
+      return fail(400, refusal(problem));
+    }
+    redirect(303, `/make/${game.slug}`);
+  },
+
+  // A game taken off Ruken is put back: a draft again, its newest files copied from GitHub and sent for review. A copy
+  // that is refused leaves a draft, whose own address leads to the files question with the refusal on it.
+  putBack: async (event) => {
+    const { userId, game } = await ownGame(event);
+    if (game.state !== "taken_off") error(404, "Not found");
+    try {
+      await gamesServices().service.putBack(game.id, userId);
+    } catch (problem) {
+      // The service kept the refusal as the files' problem, so the draft's files question shows it.
+      if (!(problem instanceof GameError)) throw problem;
+    }
+    redirect(303, `/make/${game.slug}`);
+  },
+
+  // What is left of a taken-off game's files after a delete that stopped halfway.
+  deleteLeft: async (event) => {
+    const { userId, game } = await ownGame(event);
+    if (game.state !== "taken_off") error(404, "Not found");
+    try {
+      await gamesServices().service.deleteLeftFiles(game.id, userId);
     } catch (problem) {
       return fail(400, refusal(problem));
     }
