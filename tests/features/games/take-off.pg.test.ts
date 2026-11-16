@@ -172,6 +172,35 @@ describe("takeOff", () => {
     expect(await rowOf(game.id)).toMatchObject({ state: "taken_off", pendingPullId: null });
   });
 
+  it("stays out of staff's queue when it is taken off while a new version of a waiting update is being copied", async () => {
+    const game = await liveGame();
+    await service.pullLatest(game.id);
+    await service.sendForReview(game.id, game.makerUserId);
+    // The maker takes it off on another device while this copy is fetching the files (the files are read twice: once
+    // to check them, once to store them).
+    let takenOff = false;
+    const copying = createGamesService({
+      db: db(),
+      clock,
+      files,
+      github: {
+        ...github,
+        tarball: async (...args) => {
+          if (!takenOff) {
+            takenOff = true;
+            await service.takeOff(game.id, game.makerUserId);
+          }
+          return github.tarball(...args);
+        },
+      },
+    });
+
+    await copying.pullLatest(game.id);
+
+    expect(await rowOf(game.id)).toMatchObject({ state: "taken_off", pendingPullId: null });
+    expect((await service.waitingGames()).map((one) => one.slug)).not.toContain(game.slug);
+  });
+
   it("is another maker's game: not found, and nothing changes", async () => {
     const game = await liveGame();
 

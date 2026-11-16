@@ -336,9 +336,11 @@ export function createGamesService(deps: GamesServiceDeps) {
     // 404 for her): she mends the files on GitHub and presses "Send a new version", which comes through here.
     await takeOutOfToFix(gameId, "files");
     // Files are waiting for a person's yes: the new ones take their place, so staff always review the newest.
+    // Only while files still wait and the game is still on Ruken: a game taken off during the copy dropped what waited,
+    // and must not come back into staff's queue when the copy ends.
     if (game?.pendingPullId != null) {
-      await deps.db.game.update({
-        where: { id: gameId },
+      await deps.db.game.updateMany({
+        where: { id: gameId, pendingPullId: { not: null }, state: { notIn: ["taken_off", "taken_down"] } },
         data: { pendingPullId: pull.id, pendingSince: new Date(deps.clock.epochMs()) },
       });
     }
