@@ -13,8 +13,10 @@
 # - A pull request that is ready for review, and every push to main, gets the full run under the required names
 #   `verify`, `postgres` and `browser`. Marking a draft ready starts it. Nothing merges without it.
 #
-# Faster again (Owner, 2026-11-16: "All three" on "Make CI faster by changing the CI files?", then "Do 18"):
-# - The browser journeys run in eighteen pieces, not six, so each piece has fewer journeys to wait through.
+# Faster again (Owner, 2026-11-16: "All three" on "Make CI faster by changing the CI files?", then "Do 18", then
+# "Use 12" on the card "Use 12 test pieces instead of 18?", because eighteen pieces plus verify and postgres
+# reach GitHub's free cap of 20 jobs at once):
+# - The browser journeys run in twelve pieces, not six, so each piece has fewer journeys to wait through.
 # - A draft runs the journeys in Chromium only (the phone, tablet and computer windows). Safari's engine (the
 #   "-webkit" projects) runs only in the full run, which is the one that gates a merge.
 # - A draft that changes anything a screen is made of also runs the screen-rule walk (tests/browser/screen-rules.test.ts),
@@ -176,11 +178,11 @@ jobs:
             pnpm test:pg
           fi
 
-  # The journeys are split across eighteen runners, side by side, each with its own database and its own site, so a run
+  # The journeys are split across twelve runners, side by side, each with its own database and its own site, so a run
   # stays short as the journeys grow. Playwright deals the test files out among the pieces. On a draft only the
   # journeys the change reaches run, and the first failure stops every piece.
   browser-shard:
-    name: browser shard ${{ matrix.shard }} of 18${{ github.event.pull_request.draft && ' (quick, draft)' || '' }}
+    name: browser shard ${{ matrix.shard }} of 12${{ github.event.pull_request.draft && ' (quick, draft)' || '' }}
     needs: changes
     # The pieces are not required checks, so a docs-only pull request skips them whole. The `browser` check below
     # accepts that. As with `verify`, a failed `changes` job still runs them.
@@ -192,7 +194,7 @@ jobs:
       # of the first failure at once.
       fail-fast: ${{ github.event.pull_request.draft == true }}
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     services:
       postgres:
         image: postgres:16
@@ -230,7 +232,7 @@ jobs:
       - name: Pick the journeys
         id: pick
         run: |
-          pieces="--shard=${{ matrix.shard }}/18"
+          pieces="--shard=${{ matrix.shard }}/12"
           args="$pieces"
           walk=false
           if [ "$CHANGED_ONLY" = "true" ]; then
