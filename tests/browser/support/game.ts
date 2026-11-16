@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { expect, type Browser, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled, signUp, SITE_URL } from "./account.ts";
-import { fillAnswers, grantStaffRole, makerOf, putGameWhereStaffLeaveIt } from "./database.ts";
+import { changeGame, fillAnswers, grantStaffRole, makerOf, putGameWhereStaffLeaveIt } from "./database.ts";
 
 // The steps every maker journey shares: a maker with a game, the answers a screen asks for, and the videos. GitHub is
 // the stand-in on this machine (support/fake-github-server.ts), which lists `ruken-test/tiny-game` and
@@ -383,6 +383,31 @@ export async function makerWithGameWhere(
     makerEmail: (await makerOf(slug)).makerEmail,
     close: () => context.close(),
   };
+}
+
+/**
+ * A live game whose files are really in the bucket: sent the way a maker sends it (`submitGame`), then given staff's
+ * yes as a row. Only a journey that loads the game's files needs one; it costs 8 to 14 seconds a project, so a file
+ * makes the games it needs once and its journeys share them, unless a journey changes its game.
+ */
+export async function addGame(
+  browser: Browser,
+  options: { free?: boolean; playsOn?: "phone_and_computer" | "computer_only" } = {},
+): Promise<{
+  slug: string;
+  name: string;
+  publicId: string;
+  id: string;
+  makerUserId: string;
+  makerEmail: string;
+}> {
+  const { slug, name } = await submitGame(browser);
+  await putGameWhereStaffLeaveIt(slug, { state: "live" });
+  await changeGame(slug, {
+    ...(options.free === true ? { freeToPlay: true } : {}),
+    ...(options.playsOn === undefined ? {} : { playsOn: options.playsOn }),
+  });
+  return { slug, name, ...(await makerOf(slug)) };
 }
 
 /** Signs a new person up and makes them a curator, who checks games. Staff roles are read fresh on every request. */

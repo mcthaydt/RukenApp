@@ -315,7 +315,7 @@ export async function stateOf(slug: string): Promise<GameState> {
  */
 export async function changeGame(
   slug: string,
-  changes: { oneLine?: string; playsOn?: "phone_and_computer" | "computer_only" },
+  changes: { oneLine?: string; playsOn?: "phone_and_computer" | "computer_only"; freeToPlay?: boolean },
 ): Promise<void> {
   await db().game.update({ where: { slug }, data: changes });
 }
@@ -354,4 +354,13 @@ export async function signUpsCountedFrom(clientAddress: string): Promise<number>
     select: { count: true },
   });
   return row?.count ?? 0;
+}
+
+/**
+ * Ends a person's membership the way its last day ends it: the row is `ended`, which the site's one rule for "is a
+ * member" reads as not a member. The stand-in Stripe only ends one at the period's end, which no journey can wait for.
+ */
+export async function endMembershipOf(email: string): Promise<void> {
+  const user = await db().user.findUniqueOrThrow({ where: { email }, select: { id: true } });
+  await db().premiumMembership.update({ where: { userId: user.id }, data: { state: "ended" } });
 }
