@@ -59,11 +59,11 @@ type Kept = {
 /** What a refusal is about, besides its words: the part it belongs to, and whether it is a question. */
 type RefusalAbout = {
   /** The part the words are about, so the page can show them there. */
-  at?: GamePart;
+  at?: GamePart | undefined;
   /** The refusal is about the marks inside "Who it's for", so the page shows it under their question. */
-  atMarks?: boolean;
+  atMarks?: boolean | undefined;
   /** The one refusal that is a question, "Accept it anyway?". */
-  asking?: boolean;
+  asking?: boolean | undefined;
 };
 
 /**

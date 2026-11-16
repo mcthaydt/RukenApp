@@ -140,7 +140,7 @@ test("each video is drawn in its own shape, whole", async ({ page, browser }) =>
   }
 });
 
-test("who it is for says it once, in small words, with the way to send it back right under the ages", async ({
+test("who it is for says it once, in small words, with the way to send it back right over its box", async ({
   page,
   browser,
 }) => {
@@ -152,10 +152,11 @@ test("who it is for says it once, in small words, with the way to send it back r
     // The maker's pick is the picked age, and is not written a second time above the ages.
     await expect(age.getByText("12+", { exact: true })).toHaveCount(1);
     await expect(age.getByText("The maker picked 12+. Pick who it's for.")).toHaveCSS("font-size", "14px");
-    const underAges = await age
+    // The line that explains the box is the line right over it (HL2), not over the ages with the marks between.
+    const overItsBox = await age
       .getByText("Or send it back, and the maker will choose again.")
-      .evaluate((note) => note.previousElementSibling?.matches("[data-ratings]") === true);
-    expect(underAges).toBe(true);
+      .evaluate((note) => note.nextElementSibling?.querySelector('input[name="wrong"]') != null);
+    expect(overItsBox).toBe(true);
   } finally {
     await maker.close();
   }
