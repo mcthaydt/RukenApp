@@ -70,6 +70,14 @@ Every pull request is in one lane, set by how hard a mistake would be to undo, n
 
 When a fix is accepted, the fix session adds the lesson as one line to docs/superpowers/lessons.md, written as a rule for how later work is split or briefed. The coordinator reads lessons.md before writing a brief. A lesson that keeps coming back moves into this file in the daily rules batch, and leaves lessons.md.
 
+## Ordering and gates
+
+Owner, 2026-11-16, picked these three:
+
+- Real dependency: two steps wait for each other only if the second reads the first one's output. If you can't name what passes between them, run them side by side. The coordinator applies this when ordering threads.
+- Plain code for fixed steps: a step with one right answer (merge, rank, dedupe, compare before and after) is a script or a test, not a model asked to judge.
+- Gate first: before building any repeated job, write the one check that can fail it. A job with no gate is a faster way to make unchecked work.
+
 ## Graphify
 
 Graphify (Owner 2026-11-15): RukenApp is indexed in Graphify (workspace mcthaydt-s-workspace, repository mcthaydt/RukenApp). Every build, audit and fix session uses the Graphify tools to find code and check what a change affects: graphify_find for where something is defined, query_graph for how something works, graphify_callers for who calls it, graphify_impact before changing it, graphify_tests_for for its tests. Compare a result's commitSha to the checkout's HEAD; read the current file for anything changed since. Use text search for literal strings, config and unindexed files.
