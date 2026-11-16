@@ -109,3 +109,40 @@ FIX: None in branch A.
 
 `81765cc`: the code matches Tasks 1 and 2 and the three deviations are sound. Three reds, all in the plan text:
 record each deviation where it now takes effect. No code change is needed. CI on `81765cc` was still running.
+
+## Fix check
+
+Checked 2026-11-16 20:45 UTC (from `date`) on `e14c984`, by this audit session. `git diff c1eb502 e14c984` changes only the plan.
+
+- **Red 1: passed.** Task 1's `services.ts` bullet now says it moved to Task 4. Task 4 has a `services.ts` section with
+  the six required settings, `TEXT_ALLOWLIST`, the `TWILIO_API_BASE` guard (audit 18), `AuthServices.texter`, the
+  fake settings in `playwright.config.ts` and `.env.example`, and `services.test.ts` checks (each missing setting
+  named; `http://127.0.0.1:12114` taken, `https://sms.example` refused), listed in its tests and its Step 1.
+- **Red 2: passed.** Point 8 carries a dated line quoting `docs/messaging/tutorials/advanced-opt-out` ("will fail with
+  Error Code 21610 asynchronously") and the 21610 page's silence; both paths are built (a thrown 21610 in Task 6, a
+  reported one in Task 7, whose Step 1 tests it); Task 4's bullet names the second path; Task 0 Step 1 records 400 or
+  accepted-then-failed.
+- **Red 3: passed.** Step 0's result is recorded (account-wide, Communications > Messaging > Settings, free in the US
+  and Canada, error 30450, Messaging Services not mentioned), and X2 has the Console step.
+
+## The implementer's Task 6 call
+
+UNIT: plan, Task 6 `tellByText` (the accepted-then-21610 sentence) and Task 7's delivery-report step.
+VERDICT: red.
+REQUIREMENT: Spec, "After STOP on the account number": "Each notice that would have been a text waits on `/me`".
+Owner, 2026-11-15: "saying stop might make them not see important things".
+REASON: A notice Twilio accepts and then reports as 21610 is lost: it stays `sent` and never waits on `/me`.
+EVIDENCE: `e14c984` Task 6: "A send Twilio accepts and then reports as 21610 stays `sent` ... The one notice that was
+accepted and lost is not shown on `/me`: said in a comment." The lost notice can be `passwordChangedText` or
+`numberChangedText`, the security notices the account line exists for. It happens whenever Ruken did not hear the STOP
+first (a STOP before the number had an account, or a STOP post that failed all three retries), and point 8 now says
+the delayed failure may be Twilio's normal path for a Messaging Service.
+EXPECTED: When Task 7's report step reads `ErrorCode` 21610, it finds the notice by its `MessageSid` (the
+`TextSent` row's `providerId`) and saves its `WaitingNotice` with the same (person, kind, key), so the person sees it
+on `/me` as the spec says. The body has to be kept somewhere deleted with the account (for example a `WaitingNotice`
+written with every account-line send and shown only once a 21610 arrives), not on the append-only `TextSent`, which
+outlives the account.
+FIX: Plan only, Tasks 6 and 7 (and Task 3 if a column is needed): replace "stays sent ... not shown" with that step,
+add an `inbound.pg.test.ts` case (a sent notice, then a report with 21610 for its `MessageSid`: one waiting notice on
+`/me`, unread), and drop the comment. If the implementer wants to keep the loss instead, it goes to the Owner as a
+decision card, since it narrows the spec.
