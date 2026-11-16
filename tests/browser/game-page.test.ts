@@ -104,6 +104,11 @@ test("a computer-only game says so on a phone, and offers its link", async ({ pa
     await expect(page.getByText("This one needs a computer.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Play" })).toHaveCount(0);
     await expectOneCard(page);
+    // Like Play, the one button spans the card on a phone held upright, so a thumb finds it anywhere along the bottom.
+    const share = page.getByRole("button", { name: "Share the link" });
+    const [button, line] = [await share.boundingBox(), await share.locator("..").boundingBox()];
+    const narrow = await page.evaluate(() => window.innerWidth < 768);
+    if (narrow) expect(button?.width).toBeCloseTo(line?.width ?? 0, 0);
     // The test browser has no share sheet, so the address is copied, or the line says where it is.
     await page.getByRole("button", { name: "Share the link" }).click();
     await expect(
