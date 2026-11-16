@@ -34,6 +34,7 @@ const RUN_OUT = "This game's link has run out. Go back and press Play again.";
 const NOT_FOUND = "Not found.";
 const UNREADABLE = "We could not read that address.";
 const NOT_ALLOWED = "Not allowed.";
+const NOT_READY = "Games aren't ready yet. Try again later.";
 
 /** A game's own name: `g-` and its ten-character public id. */
 const GAME_HOST = /^g-([a-z2-7]{10})$/;
@@ -146,10 +147,14 @@ function serveGameFile(
   // serving the game's files from the browser after the pass ran out, and the pass must stay the only way in.
   if (request.headers.get("service-worker") === "script") return plain(403, RUN_OUT, deps);
 
+  // Between deploying the gate and setting its secret the setting is missing, and checking a pass would throw, so a
+  // player would see Cloudflare's own error page. A line of ours says what is going on instead.
+  if (deps.passSecret === undefined || deps.passSecret === "") return plain(503, NOT_READY, deps);
+
   // `/<pass>/<path>`: the pass is the first folder, so every file a game asks for by a relative address carries it.
   const slash = path.indexOf("/");
   const given = slash === -1 ? path : path.slice(0, slash);
-  const claims = checkPass(given, deps.passSecret ?? "", deps.nowMs);
+  const claims = checkPass(given, deps.passSecret, deps.nowMs);
   if (claims === null || claims.game !== game) return plain(403, RUN_OUT, deps);
 
   if (slash === -1) return plain(308, "", deps, { location: `${folder}/${given}/` });
