@@ -57,12 +57,7 @@ export const LEAST_TARGET = 44;
 export const WAY_BACK_WORDS = /\b(back|cancel|keep|close|home|never mind|leave)\b/i;
 
 export type Rule =
-  | "sideways scroll"
-  | "text cut off"
-  | "tap target too small"
-  | "dead link"
-  | "dead button"
-  | "no way back";
+  "sideways scroll" | "text cut off" | "tap target too small" | "dead link" | "dead button" | "no way back";
 
 /** One screen that breaks one rule, and how. */
 export interface Finding {
