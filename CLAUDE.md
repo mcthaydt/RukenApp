@@ -58,6 +58,10 @@ Audit all of your work for completeness, consistency, cohesion, and harmony, bot
 - In the cloud: work that is specified and checked without a browser, such as logic, tooling, unit tests and docs, and long work nobody is steering minute by minute. Cloud sessions run side by side. The coordinator, the merge session, plans and audits run here.
 - No session runs tests itself (Owner, 2026-11-13: "we don't run local tests, we do it all in gh cloud runners"). Lint, typecheck and every test run on GitHub's hosted runners, through the pull request. A session pushes and reads the result.
 
+## Graphify
+
+Graphify (Owner 2026-11-15): RukenApp is indexed in Graphify (workspace mcthaydt-s-workspace, repository mcthaydt/RukenApp). Every build, audit and fix session uses the Graphify tools to find code and check what a change affects: graphify_find for where something is defined, query_graph for how something works, graphify_callers for who calls it, graphify_impact before changing it, graphify_tests_for for its tests. Compare a result's commitSha to the checkout's HEAD; read the current file for anything changed since. Use text search for literal strings, config and unindexed files.
+
 ## Reporting
 
 Every session reports to the coordinator with send_message, short and factual; progress.md stays the full record.
