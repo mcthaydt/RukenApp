@@ -185,7 +185,7 @@ Pasted into Twilio by the Owner (X3), and pinned in `text-words.ts` as constants
 
 ### Task 0: Read first, and prove the two numbers
 
-- [ ] **Step 0:** read again the Twilio pages in "What Twilio's pages say" and better-auth 1.7.7's `dist/plugins/phone-number/routes.mjs` in `node_modules`. Also read: whether Twilio's signature covers the part of the address after `#` (point 6), and Twilio's page on SMS pumping protection, reporting whether it applies to a Messaging Service (audit 10). Any difference from this plan: stop and report.
+- [x] **Step 0:** read again the Twilio pages in "What Twilio's pages say" and better-auth 1.7.7's `dist/plugins/phone-number/routes.mjs` in `node_modules`. Also read: whether Twilio's signature covers the part of the address after `#` (point 6), and Twilio's page on SMS pumping protection, reporting whether it applies to a Messaging Service (audit 10). Any difference from this plan: stop and report.
 - [ ] **Step 1 (with the Owner, after X1 to X3; needs one real phone):** from the Owner's phone text STOP to the news number. Then send one text from each service to that phone with `twilio api:core:messages:create --messaging-service-sid MG… --to +1… --body "Ruken: test"`. Expected: the account one arrives; the news one fails with 21610. Then START, and both arrive. Record the four message ids and their statuses in the tracker. If the account text is also blocked, stop and report (point 3 under "What follows from it"). Without a Canadian phone, record that a reply from Canada is still unproven (point 9).
 
 This step needs the Owner and a real phone, so it may finish after Tasks 1 and 2 are green; branch B does not start before it.
@@ -228,7 +228,7 @@ export function textFailureCode(error: unknown): string;   // "TWILIO 400 21610"
 - The stand-in (`fake-twilio-server.ts`, modelled on `fake-mail-server.ts`): `POST /2010-04-01/Accounts/:sid/Messages.json` keeps the text and answers `{ sid }`; `GET /texts?to=` lists them; `GET /v2/PhoneNumbers/:number` answers from `POST /test/hands`; `POST /test/inbound` posts a signed text or report to the site's webhook, as Twilio would; `GET /ready`. `texts.ts`: `textTo(number, starts: string)` (waits with `expect.poll`, never a pause), `countTextsTo`, `codeIn(text)`, `textIn(from, body, extra?)`.
 - `services.ts` reads `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY`, `TWILIO_API_SECRET`, `TWILIO_AUTH_TOKEN`, `TWILIO_ACCOUNT_SERVICE`, `TWILIO_NEWS_SERVICE` (all required), `TEXT_ALLOWLIST` (optional) and `TWILIO_API_BASE` (optional; refused unless it starts `http://127.0.0.1:`, through the existing `standInAddress`; when set it is both `apiBase` and `lookupBase`, since the stand-in serves both, audit 18), and `AuthServices` gains `texter`.
 
-- [ ] **Step 1 (red):** `text.test.ts`, with a stubbed `fetch`:
+- [x] **Step 1 (red):** `text.test.ts`, with a stubbed `fetch`:
 
 ```ts
 it("posts the text to Twilio's Messages address with the line's service", async () => {
@@ -249,7 +249,9 @@ it("cannot say when Twilio has no data, answers 500, or the request throws", asy
 ```
 
   `twilio-signature.test.ts`: the worked example on Twilio's page (its address, fields, token and expected signature, copied from the page in Step 0); fields given in another order sign the same; one changed value, a missing header and a header of another length are refused. Stubs. Push. Expected: `verify` fails in both files with "not built yet".
-- [ ] **Step 2 (green):** the code, the stand-in and the config. Push. Expected: all pass; the journeys still pass with the new stand-in started and unused.
+- [x] **Step 2 (green):** the code, the stand-in and the config. Push. Expected: all pass; the journeys still pass with the new stand-in started and unused.
+
+  *Built 2026-11-16 (branch A):* `services.ts` does not read the Twilio settings or hold `texter` yet. That wiring, with its six required settings and the `TWILIO_API_BASE` guard, moves to Task 4, where the `Texter` gets its first user: the site builds its services on every request, so requiring secrets earlier would stop any deploy of `main` before X4. `isMadeUpNumber` lives in `src/lib/server/text.ts` (`lib` imports no feature) and `phone.ts` re-exports it. The plan's sample number `+13125550142` is itself a made-up number (`555 01xx`), so tests use `+1312555 1234` style numbers. Step 0 found the fragment `#rc=3&rp=…` is not signed (the stand-in and `isFromTwilio` cut it), and that Twilio says a send to an opted-out number fails "asynchronously" (a delivery report with `ErrorCode` 21610), not at once as point 8 says: Task 6 must handle 21610 from the delivery report as well.
 
 ### Task 2: A phone number, written one way
 
@@ -263,7 +265,7 @@ it("cannot say when Twilio has no data, answers 500, or the request throws", asy
 - `isMadeUpNumber(number: string): boolean`: true for `/^\+1\d{3}55501\d\d$/`.
 - `text-words.ts`: the functions, constants and `fitText` of "The words of every text" that branches A and B use (`codeText`, `alreadyText`, `resetCodeText`, `passwordChangedText`, `signInPausedText`).
 
-- [ ] **Step 1 (red):**
+- [x] **Step 1 (red):**
 
 ```ts
 it.each([
@@ -279,7 +281,7 @@ it("knows a made-up number", () => { expect(isMadeUpNumber("+12125550123")).toBe
 ```
 
   `text-words.test.ts`: each function's whole text; every one starts `Ruken:`, is plain GSM-7 (straight apostrophes only), takes at most 160 GSM-7 places with a six-digit code and with `https://ruken.io` as the site, and holds at most one `http`; `fitText("Ruken: ", "W".repeat(200), " is out. Play it now: https://ruken.io/g/x")` is exactly 160 long, ends with the whole link and holds `...`; the same with a name holding one emoji is at most 70 long; a name holding `€` counts it as two places. Every case also runs with the longest site address in use (a `workers.dev` one). (audit 13) Push. Expected: `verify` fails in both.
-- [ ] **Step 2 (green):** the code. Push. Expected: all pass. Branch A is ready to merge.
+- [x] **Step 2 (green):** the code. Push. Expected: all pass. Branch A is ready to merge.
 
 ---
 
