@@ -139,7 +139,7 @@ export const load: PageServerLoad = async (event) => {
       // An update waiting for review is replaced by the one sent now, which the note under the button says.
       updateWaiting: game.hasPending,
       fixes,
-      // Asked on a screen of its own, because it cannot be undone.
+      // Asked on a screen of its own, because its files are deleted.
       takeOffAddress: `/make/${game.slug}/take-off`,
       // The statement piece: the game's own video behind everything, in the shape of the screen it is seen on.
       backdrop: {
