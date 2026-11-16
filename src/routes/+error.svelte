@@ -21,6 +21,9 @@
 <main class="card">
   {#if page.status === 404}
     <h1>We can't find that page.</h1>
+  {:else if page.status === 429}
+    <h1>You've opened a lot of games just now.</h1>
+    <p>Try again in a minute.</p>
   {:else}
     <h1>Something went wrong on our side.</h1>
     <p>Try again in a moment.</p>

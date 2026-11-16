@@ -1,6 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { sealState } from "../../../src/features/games/github-connect.ts";
-import { ARRIVAL_COOKIE, sealArrival } from "../../../src/features/membership/arrival.ts";
 import type { AgeRating, GamePart, GameState, StaffRole } from "../../../src/lib/server/db.ts";
 import { PrismaClient, type MembershipStart } from "../../support/generated/prisma/client.ts";
 
@@ -90,24 +89,8 @@ export function membershipStartsOf(email: string): Promise<MembershipStart[]> {
   return db().membershipStart.findMany({ where: { user: { email } }, orderBy: { startedAt: "asc" } });
 }
 
-/** The secret `playwright.config.ts` gives the app, which seals the arrival cookie. */
+/** The secret `playwright.config.ts` gives the app, which seals the GitHub connection's state. */
 const APP_SECRET = "test-only-secret-not-used-anywhere-real";
-
-/**
- * The cookie a visitor has after landing on a maker's link, sealed as the server seals it. It is test code: until
- * slices 2 and 3 bring the links, this is the only way an arrival exists in a journey.
- */
-export function arrivalCookie(link: { makerUserId: string; path: string }): {
-  name: string;
-  value: string;
-  url: string;
-} {
-  return {
-    name: ARRIVAL_COOKIE,
-    value: sealArrival({ ...link, atMs: Date.now() }, APP_SECRET),
-    url: "http://localhost:4173",
-  };
-}
 
 /** The posting of the payment a member made, or null while the daily money job has not posted it. */
 export async function paymentPostingOf(email: string): Promise<{ stripeInvoiceId: string } | null> {
@@ -315,7 +298,12 @@ export async function stateOf(slug: string): Promise<GameState> {
  */
 export async function changeGame(
   slug: string,
-  changes: { oneLine?: string; playsOn?: "phone_and_computer" | "computer_only" },
+  changes: {
+    name?: string;
+    oneLine?: string;
+    playsOn?: "phone_and_computer" | "computer_only";
+    freeToPlay?: boolean;
+  },
 ): Promise<void> {
   await db().game.update({ where: { slug }, data: changes });
 }
@@ -354,4 +342,33 @@ export async function signUpsCountedFrom(clientAddress: string): Promise<number>
     select: { count: true },
   });
   return row?.count ?? 0;
+}
+
+/**
+ * Ends a person's membership the way its last day ends it: the row is `ended`, which the site's one rule for "is a
+ * member" reads as not a member. The stand-in Stripe only ends one at the period's end, which no journey can wait for.
+ */
+export async function endMembershipOf(email: string): Promise<void> {
+  const user = await db().user.findUniqueOrThrow({ where: { email }, select: { id: true } });
+  await db().premiumMembership.update({ where: { userId: user.id }, data: { state: "ended" } });
+}
+
+/** The play sessions of a game, oldest first: who played (null for nobody signed in) and on what basis. */
+export async function sessionsOf(
+  slug: string,
+): Promise<{ gameId: string; userId: string | null; basis: string }[]> {
+  return db().playSession.findMany({
+    where: { game: { slug } },
+    orderBy: { startedAt: "asc" },
+    select: { gameId: true, userId: true, basis: true },
+  });
+}
+
+/** Every beat a game's sessions took, oldest first. */
+export async function beatsOf(slug: string): Promise<{ attentive: boolean; receivedAt: Date }[]> {
+  return db().playBeat.findMany({
+    where: { session: { game: { slug } } },
+    orderBy: { receivedAt: "asc" },
+    select: { attentive: true, receivedAt: true },
+  });
 }

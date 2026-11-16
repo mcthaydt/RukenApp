@@ -15,9 +15,11 @@
   // The staff's own pages have a bar with the wordmark in it. The error page inside /admin is drawn outside that bar, so it
   // has the header every other error page has.
   const inStaffsArea = $derived(page.url.pathname.startsWith("/admin"));
+  // While a game is played the game is the window: the play screen has its own strip with the way back.
+  const playing = $derived(/^\/g\/[^/]+\/play$/.test(page.url.pathname) && page.error === null);
 </script>
 
-{#if page.url.pathname !== "/" && !page.url.pathname.startsWith("/make") && !(inStaffsArea && page.error === null)}
+{#if page.url.pathname !== "/" && !page.url.pathname.startsWith("/make") && !(inStaffsArea && page.error === null) && !playing}
   <header><a class="wordmark" href="/">Ruken</a></header>
 {/if}
 
