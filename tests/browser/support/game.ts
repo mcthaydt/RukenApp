@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { expect, type Locator, type Page } from "@playwright/test";
-import { pageHasSettled, signUp } from "./account.ts";
-import { fillAnswers, putGameWhereStaffLeaveIt } from "./database.ts";
+import { expect, type Browser, type Locator, type Page } from "@playwright/test";
+import { pageHasSettled, signUp, SITE_URL } from "./account.ts";
+import { fillAnswers, grantStaffRole, makerOf, putGameWhereStaffLeaveIt } from "./database.ts";
 
 // The steps every maker journey shares: a maker with a game, the answers a screen asks for, and the videos. GitHub is
 // the stand-in on this machine (support/fake-github-server.ts), which lists `ruken-test/tiny-game` and
@@ -339,4 +339,55 @@ export async function gameWhere(
   if (options.agreed === true) await agreeToTheAgreement(page, slug);
   await putGameWhereStaffLeaveIt(slug, decision);
   return { slug, name };
+}
+
+/**
+ * A game sent for review the way a maker sends it: every real screen, from the first question to Check and send, in a
+ * browser of its own that is closed afterwards. It ends on "Waiting for review". It costs 8 to 14 seconds a project, so
+ * a journey uses it only when it looks inside the frame or needs the game's files in the bucket; every other journey
+ * makes its waiting game from rows (`waitingGameFromRows`).
+ */
+export async function submitGame(
+  browser: Browser,
+): Promise<{ slug: string; name: string; makerEmail: string }> {
+  const context = await browser.newContext({ baseURL: SITE_URL });
+  try {
+    const page = await context.newPage();
+    const { slug, name } = await answerEveryQuestion(page);
+    await agreeToTheAgreement(page, slug);
+    await page.getByRole("button", { name: "Send for review" }).click();
+    await expect(page).toHaveURL(`/make/${slug}`);
+    await expect(page.getByRole("heading", { name: "Waiting for review" })).toBeVisible();
+    return { slug, name, makerEmail: (await makerOf(slug)).makerEmail };
+  } finally {
+    await context.close();
+  }
+}
+
+/**
+ * A maker in a browser of their own, with a finished game written into the database where staff's decision would leave
+ * it. The maker's page stays open, so a journey can come back to see what staff did; `close` ends that browser.
+ */
+export async function makerWithGameWhere(
+  browser: Browser,
+  decision: Parameters<typeof putGameWhereStaffLeaveIt>[1],
+): Promise<{ page: Page; slug: string; name: string; makerEmail: string; close: () => Promise<void> }> {
+  const context = await browser.newContext({ baseURL: SITE_URL });
+  const page = await context.newPage();
+  const { slug, name } = await startDraft(page);
+  await putGameWhereStaffLeaveIt(slug, decision);
+  return {
+    page,
+    slug,
+    name,
+    makerEmail: (await makerOf(slug)).makerEmail,
+    close: () => context.close(),
+  };
+}
+
+/** Signs a new person up and makes them a curator, who checks games. Staff roles are read fresh on every request. */
+export async function signInAsStaff(page: Page): Promise<{ email: string }> {
+  const { email } = await signUp(page);
+  await grantStaffRole(email, "curator");
+  return { email };
 }

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
 import { createGamesService, type GamesService } from "../../../src/features/games/service.ts";
-import type { PrismaClient } from "../../../src/lib/server/db.ts";
+import type { AgeRating, ContentMark, PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
@@ -120,6 +120,38 @@ async function readyGame() {
   return { ...game, pullId };
 }
 
+/**
+ * Staff look at a game and press the button without changing anything on the page: what the check page does. The
+ * rating and marks staff choose are the maker's own unless a test says otherwise.
+ */
+async function acceptAsSeen(
+  game: { id: string; slug: string },
+  staff: string,
+  choose: { ageRating?: AgeRating; contentMarks?: ContentMark[] } = {},
+): Promise<void> {
+  const looked = await lookAt(game.slug);
+  await service.accept(game.id, staff, {
+    ageRating: choose.ageRating ?? looked.ageRating ?? "age_12",
+    contentMarks: choose.contentMarks ?? looked.contentMarks,
+    seen: looked.seen,
+  });
+}
+
+/** The same for a send back: what was seen is what the page showed a moment ago. */
+async function sendBackAsSeen(
+  game: { id: string; slug: string },
+  staff: string,
+  parts: Parameters<GamesService["sendBack"]>[2],
+): Promise<void> {
+  await service.sendBack(game.id, staff, parts, (await lookAt(game.slug)).seen);
+}
+
+async function lookAt(slug: string) {
+  const looked = await service.gameForReview(slug);
+  if (looked === null) throw new Error(`${slug} is not there to look at`);
+  return looked;
+}
+
 async function stateOf(gameId: string) {
   return db().game.findUniqueOrThrow({ where: { id: gameId } });
 }
@@ -213,7 +245,7 @@ describe("sendForReview", () => {
   it("leaves a live game live on its old files while the new ones wait", async () => {
     const game = await readyGame();
     await service.sendForReview(game.id, game.makerUserId);
-    await service.accept(game.id, await createUser(db()));
+    await acceptAsSeen(game, await createUser(db()));
     const update = await addPull(game.id);
 
     await service.sendForReview(game.id, game.makerUserId);
@@ -240,7 +272,7 @@ describe("accept", () => {
     const staff = await createUser(db());
     await service.sendForReview(game.id, game.makerUserId);
 
-    await service.accept(game.id, staff);
+    await acceptAsSeen(game, staff);
 
     expect(await stateOf(game.id)).toMatchObject({
       state: "live",
@@ -263,7 +295,7 @@ describe("accept", () => {
     await service.sendForReview(game.id, game.makerUserId);
     await db().game.update({ where: { id: game.id }, data: { toFix: ["wide_video"] } });
 
-    await service.accept(game.id, await createUser(db()));
+    await acceptAsSeen(game, await createUser(db()));
 
     expect((await stateOf(game.id)).toFix).toEqual([]);
   });
@@ -271,7 +303,7 @@ describe("accept", () => {
   it("says so when nothing is waiting, and writes nothing", async () => {
     const game = await readyGame();
 
-    await expect(service.accept(game.id, await createUser(db()))).rejects.toMatchObject({
+    await expect(acceptAsSeen(game, await createUser(db()))).rejects.toMatchObject({
       code: "NOT_READY",
       message: "Nothing is waiting for review.",
     });
@@ -281,12 +313,12 @@ describe("accept", () => {
   it("puts a live game's update live on the new files, and the old files stay in the bucket", async () => {
     const game = await readyGame();
     await service.sendForReview(game.id, game.makerUserId);
-    await service.accept(game.id, await createUser(db()));
+    await acceptAsSeen(game, await createUser(db()));
     await files.put(`files/${game.publicId}/${game.pullId}/index.html`, new Uint8Array([1]));
     const update = await addPull(game.id);
     await service.sendForReview(game.id, game.makerUserId);
 
-    await service.accept(game.id, await createUser(db()));
+    await acceptAsSeen(game, await createUser(db()));
 
     expect(await stateOf(game.id)).toMatchObject({ state: "live", livePullId: update, pendingPullId: null });
     expect(files.keys()).toContain(`files/${game.publicId}/${game.pullId}/index.html`);
@@ -311,7 +343,7 @@ describe("sendBack", () => {
   it("sends a game back part by part, and records each part with its reason", async () => {
     const { game, staff } = await waitingGame();
 
-    await service.sendBack(game.id, staff, [
+    await sendBackAsSeen(game, staff, [
       { part: "name", reason: "rude" },
       { part: "upright_video", reason: "sideways" },
     ]);
@@ -334,7 +366,7 @@ describe("sendBack", () => {
   it("gives the maker each reason in plain words, with the game's name in it", async () => {
     const { game, staff } = await waitingGame();
 
-    await service.sendBack(game.id, staff, [
+    await sendBackAsSeen(game, staff, [
       { part: "name", reason: "rude" },
       { part: "upright_video", reason: "sideways" },
     ]);
@@ -349,7 +381,7 @@ describe("sendBack", () => {
       {
         part: "upright_video",
         title: "Upright video",
-        words: "It's sideways. Turn it the right way up.",
+        words: "It's on its side. Record it with your phone upright.",
         note: null,
       },
     ]);
@@ -358,7 +390,7 @@ describe("sendBack", () => {
   it("keeps staff's own line for Something else, and shows it as the words", async () => {
     const { game, staff } = await waitingGame();
 
-    await service.sendBack(game.id, staff, [
+    await sendBackAsSeen(game, staff, [
       { part: "one_line", reason: "something_else", note: "  Say what the game is.  " },
     ]);
 
@@ -375,7 +407,7 @@ describe("sendBack", () => {
   it("shows staff's own line beside a reason from the list, as a note under the words", async () => {
     const { game, staff } = await waitingGame();
 
-    await service.sendBack(game.id, staff, [
+    await sendBackAsSeen(game, staff, [
       { part: "upright_video", reason: "too_dark", note: "The second level is hard to see." },
     ]);
 
@@ -414,7 +446,7 @@ describe("sendBack", () => {
     const { game, staff } = await waitingGame();
 
     await expect(
-      service.sendBack(game.id, staff, parts as unknown as Parameters<GamesService["sendBack"]>[2]),
+      sendBackAsSeen(game, staff, parts as unknown as Parameters<GamesService["sendBack"]>[2]),
     ).rejects.toMatchObject({ code: "INVALID", message });
 
     expect(await stateOf(game.id)).toMatchObject({ state: "waiting", toFix: [] });
@@ -424,11 +456,11 @@ describe("sendBack", () => {
   it("leaves a live game live on its old files when its update is sent back", async () => {
     const game = await readyGame();
     await service.sendForReview(game.id, game.makerUserId);
-    await service.accept(game.id, await createUser(db()));
+    await acceptAsSeen(game, await createUser(db()));
     await addPull(game.id);
     await service.sendForReview(game.id, game.makerUserId);
 
-    await service.sendBack(game.id, await createUser(db()), [{ part: "files", reason: "breaks" }]);
+    await sendBackAsSeen(game, await createUser(db()), [{ part: "files", reason: "breaks" }]);
 
     expect(await stateOf(game.id)).toMatchObject({
       state: "live",
@@ -442,14 +474,14 @@ describe("sendBack", () => {
     const game = await readyGame();
 
     await expect(
-      service.sendBack(game.id, await createUser(db()), [{ part: "name", reason: "rude" }]),
+      sendBackAsSeen(game, await createUser(db()), [{ part: "name", reason: "rude" }]),
     ).rejects.toMatchObject({ code: "NOT_READY", message: "Nothing is waiting for review." });
   });
 
   // Review Focus 4: sent back for two things, one fixed, and the send is still refused.
   it("is not sendable again until every part is fixed, and fixing a video takes it off the list", async () => {
     const { game, staff } = await waitingGame();
-    await service.sendBack(game.id, staff, [
+    await sendBackAsSeen(game, staff, [
       { part: "name", reason: "rude" },
       { part: "upright_video", reason: "sideways" },
     ]);
@@ -467,16 +499,29 @@ describe("sendBack", () => {
   });
 });
 
+describe("a part that is not one of a game's eight", () => {
+  it("is refused in words, and nothing changes", async () => {
+    const { game, staff } = await waitingGame();
+
+    await expect(
+      sendBackAsSeen(game, staff, [
+        { part: "password" as unknown as "name", reason: "something_else", note: "Because." },
+      ]),
+    ).rejects.toMatchObject({ code: "INVALID", message: "Pick a reason for each part you ticked." });
+    expect((await stateOf(game.id)).state).toBe("waiting");
+  });
+});
+
 describe("a live game's update that was sent back", () => {
   /** A live game whose update waited and was sent back, for the parts given. */
   async function liveGameSentBack(parts: Parameters<GamesService["sendBack"]>[2]) {
     const game = await readyGame();
     await connect(game.makerUserId);
     await service.sendForReview(game.id, game.makerUserId);
-    await service.accept(game.id, await createUser(db()));
+    await acceptAsSeen(game, await createUser(db()));
     await addPull(game.id);
     await service.sendForReview(game.id, game.makerUserId);
-    await service.sendBack(game.id, await createUser(db()), parts);
+    await sendBackAsSeen(game, await createUser(db()), parts);
     return game;
   }
 
@@ -519,12 +564,12 @@ describe("a live game's update that was sent back", () => {
     const sentBackLast = async () => (await service.gameForMaker(game.slug, game.makerUserId))?.sentBackLast;
     await service.sendForReview(game.id, game.makerUserId);
     expect(await sentBackLast()).toBe(false);
-    await service.accept(game.id, await createUser(db()));
+    await acceptAsSeen(game, await createUser(db()));
     expect(await sentBackLast()).toBe(false);
 
     await addPull(game.id);
     await service.sendForReview(game.id, game.makerUserId);
-    await service.sendBack(game.id, await createUser(db()), [
+    await sendBackAsSeen(game, await createUser(db()), [
       { part: "one_line", reason: "something_else", note: "Say more." },
     ]);
     expect(await sentBackLast()).toBe(true);
@@ -535,7 +580,7 @@ describe("a live game's update that was sent back", () => {
     expect(await sentBackLast()).toBe(true);
     // Reviews are told apart by when they were decided, so staff's yes comes a moment after their no.
     clock.advance(1_000);
-    await service.accept(game.id, await createUser(db()));
+    await acceptAsSeen(game, await createUser(db()));
     expect(await sentBackLast()).toBe(false);
   });
 
@@ -554,12 +599,12 @@ describe("a live game's update that was sent back", () => {
     async (part) => {
       const game = await readyGame();
       await service.sendForReview(game.id, game.makerUserId);
-      await service.accept(game.id, await createUser(db()));
+      await acceptAsSeen(game, await createUser(db()));
       await addPull(game.id);
       await service.sendForReview(game.id, game.makerUserId);
 
       await expect(
-        service.sendBack(game.id, await createUser(db()), [{ part, reason: "something_else", note: "No." }]),
+        sendBackAsSeen(game, await createUser(db()), [{ part, reason: "something_else", note: "No." }]),
       ).rejects.toMatchObject({
         code: "INVALID",
         message: "A live game can only be sent back for its name, its line, where it plays or its files.",
@@ -575,7 +620,7 @@ describe("a live game's update that was sent back", () => {
     const game = await readyGame();
     await service.sendForReview(game.id, game.makerUserId);
 
-    await service.sendBack(game.id, await createUser(db()), [
+    await sendBackAsSeen(game, await createUser(db()), [
       { part: "wide_video", reason: "something_else", note: "Again." },
     ]);
 
@@ -587,7 +632,7 @@ describe("the review record", () => {
   it("is only ever added", async () => {
     const game = await readyGame();
     await service.sendForReview(game.id, game.makerUserId);
-    await service.accept(game.id, await createUser(db()));
+    await acceptAsSeen(game, await createUser(db()));
 
     await expect(db().$executeRaw`UPDATE "GameReview" SET "decision" = 'sent_back'`).rejects.toThrow(
       /GameReview is append-only/,
@@ -626,7 +671,7 @@ describe("a live game's clips", () => {
   it("cannot be changed yet, and the old clip stays", async () => {
     const game = await readyGame();
     await service.sendForReview(game.id, game.makerUserId);
-    await service.accept(game.id, await createUser(db()));
+    await acceptAsSeen(game, await createUser(db()));
     const before = files.keys();
 
     await expect(
@@ -686,7 +731,7 @@ describe("what the screens show", () => {
 
     await db().game.update({ where: { id: game.id }, data: { ageRating: "age_12" } });
     await service.sendForReview(game.id, game.makerUserId);
-    await service.sendBack(game.id, await createUser(db()), [{ part: "upright_video", reason: "sideways" }]);
+    await sendBackAsSeen(game, await createUser(db()), [{ part: "upright_video", reason: "sideways" }]);
     expect(await service.gamesOf(game.makerUserId)).toMatchObject([{ words: "Sent back. See what to fix." }]);
   });
 
@@ -719,7 +764,7 @@ describe("what the screens show", () => {
   it("says a game was live once, for good", async () => {
     const game = await readyGame();
     await service.sendForReview(game.id, game.makerUserId);
-    await service.accept(game.id, await createUser(db()));
+    await acceptAsSeen(game, await createUser(db()));
 
     expect((await service.gameForMaker(game.slug, game.makerUserId))?.everLive).toBe(true);
   });
@@ -737,5 +782,281 @@ describe("what the screens show", () => {
     expect(seen?.clipKeys.upright).toMatch(/^clips\/.*\/upright-/);
     expect(seen?.clipKeys.wide).toMatch(/^clips\/.*\/wide-/);
     expect(await service.gameForReview("no-such-game")).toBeNull();
+  });
+});
+
+/** A game waiting for staff's first yes, and a staff member to answer it. */
+async function waitingGame() {
+  const game = await readyGame();
+  await service.sendForReview(game.id, game.makerUserId);
+  return { game, staff: await createUser(db()) };
+}
+
+const CHANGED_WHILE_LOOKING = "This game changed while you were looking. Look again.";
+
+describe("accept, with the rating staff choose", () => {
+  it("lets staff change who it is for with the yes, and keeps what they chose", async () => {
+    const { game, staff } = await waitingGame();
+
+    await acceptAsSeen(game, staff, { ageRating: "age_16" });
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "live", ageRating: "age_16", contentMarks: [] });
+  });
+
+  it("keeps the rating and the marks of an 18+ game together", async () => {
+    const { game, staff } = await waitingGame();
+
+    await acceptAsSeen(game, staff, { ageRating: "age_18", contentMarks: ["gore", "drugs"] });
+
+    expect(await stateOf(game.id)).toMatchObject({
+      state: "live",
+      ageRating: "age_18",
+      contentMarks: ["gore", "drugs"],
+    });
+  });
+
+  it("keeps no marks for a game that is not 18+, even if some come with it", async () => {
+    const { game, staff } = await waitingGame();
+
+    await acceptAsSeen(game, staff, { ageRating: "age_12", contentMarks: ["gore"] });
+
+    expect((await stateOf(game.id)).contentMarks).toEqual([]);
+  });
+
+  it("makes None of these stand alone", async () => {
+    const { game, staff } = await waitingGame();
+
+    await acceptAsSeen(game, staff, { ageRating: "age_18", contentMarks: ["none"] });
+
+    expect((await stateOf(game.id)).contentMarks).toEqual(["none"]);
+  });
+
+  it.each([
+    ["18+ with no mark", [] as ContentMark[], "Choose at least one, or None of these."],
+    [
+      "18+ with None of these and another mark",
+      ["none", "gore"] as ContentMark[],
+      "Pick None of these on its own, or pick what's in it.",
+    ],
+  ])(
+    "refuses %s, in words, and the game still waits (Review Focus 5)",
+    async (_what, contentMarks, words) => {
+      const { game, staff } = await waitingGame();
+
+      await expect(acceptAsSeen(game, staff, { ageRating: "age_18", contentMarks })).rejects.toMatchObject({
+        code: "INVALID",
+        message: words,
+      });
+      expect(await stateOf(game.id)).toMatchObject({
+        state: "waiting",
+        ageRating: "age_12",
+        contentMarks: [],
+      });
+      expect(await db().gameReview.count({ where: { gameId: game.id } })).toBe(0);
+    },
+  );
+
+  it("refuses a rating that is not one of the five, and nothing changes", async () => {
+    const { game, staff } = await waitingGame();
+    const looked = await lookAt(game.slug);
+
+    await expect(
+      service.accept(game.id, staff, {
+        ageRating: "age_99" as unknown as AgeRating,
+        contentMarks: [],
+        seen: looked.seen,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID", message: "Pick who this game is for." });
+    expect((await stateOf(game.id)).state).toBe("waiting");
+  });
+
+  it("tells staff, in words that are about someone else's game, when no rating was picked", async () => {
+    const { game, staff } = await waitingGame();
+    const looked = await lookAt(game.slug);
+
+    // What a form posts when no rating is ticked: an empty string.
+    await expect(
+      service.accept(game.id, staff, {
+        ageRating: "" as unknown as AgeRating,
+        contentMarks: [],
+        seen: looked.seen,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID", message: "Pick who this game is for." });
+    expect((await stateOf(game.id)).state).toBe("waiting");
+  });
+});
+
+describe("a game that changed after staff looked (audit S-1)", () => {
+  it("is not accepted: a new name after the look means the look is stale", async () => {
+    const { game, staff } = await waitingGame();
+    const looked = await lookAt(game.slug);
+    await service.saveAnswer(game.id, game.makerUserId, { question: "name", name: "A changed name" });
+
+    await expect(
+      service.accept(game.id, staff, { ageRating: "age_12", contentMarks: [], seen: looked.seen }),
+    ).rejects.toMatchObject({ code: "NOT_READY", message: CHANGED_WHILE_LOOKING });
+    expect((await stateOf(game.id)).state).toBe("waiting");
+    expect(await db().gameReview.count({ where: { gameId: game.id } })).toBe(0);
+  });
+
+  it("is not accepted: a new video after the look means the look is stale", async () => {
+    const { game, staff } = await waitingGame();
+    const looked = await lookAt(game.slug);
+    await addClip(game.id, "upright");
+
+    await expect(
+      service.accept(game.id, staff, { ageRating: "age_12", contentMarks: [], seen: looked.seen }),
+    ).rejects.toMatchObject({ code: "NOT_READY", message: CHANGED_WHILE_LOOKING });
+    expect((await stateOf(game.id)).state).toBe("waiting");
+  });
+
+  it("is accepted once staff look again", async () => {
+    const { game, staff } = await waitingGame();
+    // A new name is a new address, so staff look at the game where it is now.
+    const renamed = await service.saveAnswer(game.id, game.makerUserId, {
+      question: "name",
+      name: "A changed name",
+    });
+
+    await acceptAsSeen({ id: game.id, slug: renamed.slug }, staff);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "live", name: "A changed name" });
+  });
+
+  it("is not sent back on reasons chosen for a game that has changed", async () => {
+    const { game, staff } = await waitingGame();
+    const looked = await lookAt(game.slug);
+    await addClip(game.id, "wide");
+
+    await expect(
+      service.sendBack(game.id, staff, [{ part: "wide_video", reason: "sideways" }], looked.seen),
+    ).rejects.toMatchObject({ code: "NOT_READY", message: CHANGED_WHILE_LOOKING });
+    expect(await stateOf(game.id)).toMatchObject({ state: "waiting", toFix: [] });
+    expect(await db().gameReview.count({ where: { gameId: game.id } })).toBe(0);
+  });
+
+  it("holds for a live game's update too, which a new copy of the files replaces", async () => {
+    const { game, staff } = await waitingGame();
+    await acceptAsSeen(game, staff);
+    await addPull(game.id);
+    await service.sendForReview(game.id, game.makerUserId);
+    const looked = await lookAt(game.slug);
+    await addPull(game.id);
+    await service.sendForReview(game.id, game.makerUserId);
+
+    await expect(
+      service.accept(game.id, staff, { ageRating: "age_12", contentMarks: [], seen: looked.seen }),
+    ).rejects.toMatchObject({ message: CHANGED_WHILE_LOOKING });
+  });
+});
+
+describe("two decisions at the same moment", () => {
+  it("lets one of two accepts through, and records one review", async () => {
+    const game = await readyGame();
+    await service.sendForReview(game.id, game.makerUserId);
+    const first = await createUser(db());
+    const second = await createUser(db());
+    const looked = await lookAt(game.slug);
+    const decision = { ageRating: "age_12" as const, contentMarks: [], seen: looked.seen };
+
+    const results = await Promise.allSettled([
+      service.accept(game.id, first, decision),
+      service.accept(game.id, second, decision),
+    ]);
+
+    expect(results.filter((one) => one.status === "fulfilled")).toHaveLength(1);
+    const refused = results.find((one) => one.status === "rejected");
+    expect(refused).toMatchObject({ reason: { code: "NOT_READY" } });
+    expect(await db().gameReview.count({ where: { gameId: game.id } })).toBe(1);
+  });
+
+  it("lets one of an accept and a send back through, and records one review", async () => {
+    const game = await readyGame();
+    await service.sendForReview(game.id, game.makerUserId);
+    const first = await createUser(db());
+    const second = await createUser(db());
+    const looked = await lookAt(game.slug);
+
+    const results = await Promise.allSettled([
+      service.accept(game.id, first, { ageRating: "age_12", contentMarks: [], seen: looked.seen }),
+      service.sendBack(game.id, second, [{ part: "wide_video", reason: "sideways" }], looked.seen),
+    ]);
+
+    expect(results.filter((one) => one.status === "fulfilled")).toHaveLength(1);
+    expect(await db().gameReview.count({ where: { gameId: game.id } })).toBe(1);
+  });
+});
+
+describe("a waiting game whose new files were refused (audit S-6)", () => {
+  const FIXING =
+    "The maker is fixing this game's files, so you can't accept it yet. It stays on your list until they're done. You can still send it back.";
+
+  it("is not accepted on its older files, and stays in the queue", async () => {
+    const { game, staff } = await waitingGame();
+    await db().game.update({ where: { id: game.id }, data: { pullProblem: "index.html is missing." } });
+
+    await expect(acceptAsSeen(game, staff)).rejects.toMatchObject({ code: "NOT_READY", message: FIXING });
+    expect(await stateOf(game.id)).toMatchObject({ state: "waiting", pendingPullId: game.pullId });
+    expect(await db().gameReview.count({ where: { gameId: game.id } })).toBe(0);
+  });
+
+  it("can still be sent back", async () => {
+    const { game, staff } = await waitingGame();
+    await db().game.update({ where: { id: game.id }, data: { pullProblem: "index.html is missing." } });
+
+    await sendBackAsSeen(game, staff, [{ part: "files", reason: "breaks" }]);
+
+    expect((await stateOf(game.id)).state).toBe("sent_back");
+  });
+
+  it("is accepted once its files are mended", async () => {
+    const { game, staff } = await waitingGame();
+    await db().game.update({ where: { id: game.id }, data: { pullProblem: "index.html is missing." } });
+    await db().game.update({ where: { id: game.id }, data: { pullProblem: null } });
+
+    await acceptAsSeen(game, staff);
+
+    expect((await stateOf(game.id)).state).toBe("live");
+  });
+});
+
+describe("what staff's list and page are made of", () => {
+  it("says a first send is a game and a live game's update is an update", async () => {
+    const first = await readyGame();
+    const live = await readyGame();
+    await service.sendForReview(first.id, first.makerUserId);
+    await service.sendForReview(live.id, live.makerUserId);
+    await acceptAsSeen(live, await createUser(db()));
+    await addPull(live.id);
+    await service.sendForReview(live.id, live.makerUserId);
+
+    const rows = (await service.waitingGames()).filter((one) => [first.slug, live.slug].includes(one.slug));
+
+    expect(Object.fromEntries(rows.map((one) => [one.slug, one.kind]))).toEqual({
+      [first.slug]: "game",
+      [live.slug]: "update",
+    });
+  });
+
+  it("gives the page its maker's address, when it was sent, and what was seen", async () => {
+    const { game } = await waitingGame();
+
+    const looked = await lookAt(game.slug);
+
+    expect(looked.makerEmail).toMatch(/@example\.test$/);
+    expect(looked.sentAt).toEqual(new Date(clock.epochMs()));
+    expect(looked.seen).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("gives the same sign of what was seen until something staff judge changes", async () => {
+    const { game } = await waitingGame();
+    const before = (await lookAt(game.slug)).seen;
+
+    // Not the maker's to judge: the state of the room, not of the game.
+    clock.advance(5 * 60_000);
+    expect((await lookAt(game.slug)).seen).toBe(before);
+
+    await service.saveAnswer(game.id, game.makerUserId, { question: "line", oneLine: "A new line." });
+    expect((await lookAt(game.slug)).seen).not.toBe(before);
   });
 });

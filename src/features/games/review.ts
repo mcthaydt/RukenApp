@@ -121,3 +121,16 @@ export function nextStepWords(
       return null;
   }
 }
+
+/** What staff are told when a game changed between their looking and their decision (audit S-1). */
+export const GAME_CHANGED_WORDS = "This game changed while you were looking. Look again.";
+
+/** What staff are told when Accept is pressed with no age picked. The maker's own words ("your game") are for the maker. */
+export const STAFF_NO_AGE_WORDS = "Pick who this game is for.";
+
+/**
+ * What staff are told when Accept is pressed on a game whose newest copy of its files was refused (audit S-6). The game
+ * stays on their list, so the line tells staff it waits for them; and they may still send it back, so the line says so.
+ */
+export const FILES_BEING_FIXED_WORDS =
+  "The maker is fixing this game's files, so you can't accept it yet. It stays on your list until they're done. You can still send it back.";

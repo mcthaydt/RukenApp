@@ -14,7 +14,7 @@ export {
   signUpWithPassword,
 } from "./forms.ts";
 export { signedInOnly, signedInRedirect } from "./pages.ts";
-export { grantFirstOwner, staffRolesOf, type FirstOwnerOutcome } from "./staff.ts";
+export { GAME_STAFF_ROLES, grantFirstOwner, staffRolesOf, type FirstOwnerOutcome } from "./staff.ts";
 export { authServices } from "./services.ts";
 export {
   DELETION_WAIT_DAYS,

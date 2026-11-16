@@ -5,8 +5,21 @@ export { connectHostsFrom, isMissingIndexHtml, megabytes } from "./files-check.t
 export { ageProblem, marksProblem, playsOnProblem } from "./fields.ts";
 export { GameError } from "./game-error.ts";
 export { playsOnWords, ratingWords, websitesWords } from "./laid-out.ts";
-export { nextStepWords, toFixWords } from "./review.ts";
-export { partNoun } from "./send-back.ts";
+export {
+  FILES_BEING_FIXED_WORDS,
+  GAME_CHANGED_WORDS,
+  nextStepWords,
+  STAFF_NO_AGE_WORDS,
+  toFixWords,
+} from "./review.ts";
+export {
+  isReasonFor,
+  LIVE_MAY_BE_SENT_BACK,
+  partNoun,
+  partTitle,
+  reasonsFor,
+  SOMETHING_ELSE,
+} from "./send-back.ts";
 export {
   answersOf,
   counterOf,
@@ -18,5 +31,5 @@ export {
   questionsFor,
   type QuestionId,
 } from "./questions.ts";
-export type { Answer, LiveGame, MakerGame } from "./service.ts";
+export type { Answer, LiveGame, MakerGame, ReviewDecision, ReviewGame, WaitingGame } from "./service.ts";
 export { gamesServices } from "./services.ts";

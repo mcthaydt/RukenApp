@@ -64,7 +64,7 @@ export async function signUp(
 }
 
 /** Where `wrangler dev` serves the site, for a browser context made by hand (such a context has no config of its own). */
-const SITE_URL = "http://localhost:4173";
+export const SITE_URL = "http://localhost:4173";
 
 /**
  * Makes an account in a browser of its own and closes it, for a journey that needs a second person (a maker, standing

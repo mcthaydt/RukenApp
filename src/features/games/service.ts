@@ -25,10 +25,18 @@ import {
 } from "./fields.ts";
 import { NOT_VISIBLE, type GitHub } from "./github.ts";
 import { newPublicId, slugOf } from "./ids.ts";
+import { seenOf } from "./seen.ts";
 import { pullGame, type Pull } from "./pull.ts";
 import { counterOf, firstUnanswered, type Answers } from "./questions.ts";
-import { listWords, stateParts, stateWords } from "./review.ts";
-import { isReasonFor, makerWords, partTitle } from "./send-back.ts";
+import {
+  FILES_BEING_FIXED_WORDS,
+  GAME_CHANGED_WORDS,
+  listWords,
+  STAFF_NO_AGE_WORDS,
+  stateParts,
+  stateWords,
+} from "./review.ts";
+import { isReasonFor, LIVE_MAY_BE_SENT_BACK, makerWords, partTitle } from "./send-back.ts";
 
 // What a game goes through, from its first clip to going live. It is built from what it needs (the database, the
 // clock, the bucket, GitHub) so a test hands it stand-ins and no test reaches for the real ones.
@@ -141,8 +149,31 @@ export interface MakerGame {
 
 /** What staff see of a game waiting for review: the maker's view, and the files that wait. */
 export interface ReviewGame extends MakerGame {
+  /** The maker's email: a maker has no handle until slice 3, so staff see this. */
+  makerEmail: string;
+  /** When the waiting files were sent, or null when none wait. */
+  sentAt: Date | null;
+  /** A sign of what staff are looking at: the decision carries it back, and a game that changed since is not decided. */
+  seen: string;
   pending: { id: string; fileCount: number; totalBytes: number; connectHosts: string[] } | null;
   clipKeys: { upright: string | null; wide: string | null };
+}
+
+/** A game waiting for a person's yes, as staff's list shows it. */
+export interface WaitingGame {
+  slug: string;
+  name: string;
+  makerEmail: string;
+  sentAt: Date;
+  /** A first send, or the new files of a game that is live already. */
+  kind: "game" | "update";
+}
+
+/** What staff decided to put with a yes: who it is for, and what was seen when they decided. */
+export interface ReviewDecision {
+  ageRating: AgeRating;
+  contentMarks: ContentMark[];
+  seen: string;
 }
 
 /** Staff's own line beside a reason, at most this many characters (GameReviewPart_note_check). */
@@ -152,6 +183,16 @@ const NOTE_MAX = 500;
 const PLAYS_ON: GamePlaysOn[] = ["phone_and_computer", "computer_only"];
 const AGE_RATINGS: AgeRating[] = ["age_3", "age_7", "age_12", "age_16", "age_18"];
 const CONTENT_MARKS: ContentMark[] = ["sex_or_nudity", "gore", "drugs", "none"];
+const GAME_PARTS: GamePart[] = [
+  "name",
+  "one_line",
+  "files",
+  "plays_on",
+  "upright_video",
+  "wide_video",
+  "age_rating",
+  "other_websites",
+];
 
 /** The page's address may end in `-2` to `-9`, so a name that makes the same address nine times over is refused. */
 const MAX_SLUG_NUMBER = 9;
@@ -344,6 +385,16 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
   }
 
+  /**
+   * Holds the game's row until the transaction ends. A decision reads what is waiting, checks what staff saw and then
+   * writes, and under READ COMMITTED a second decision or a maker's save that lands between those reads and the write
+   * would slip past `checkSeen`. Taking the row first makes the second one wait, then read what the first one left: a
+   * game with nothing waiting, or one that changed.
+   */
+  async function lockGame(tx: Pick<PrismaClient, "$queryRaw">, gameId: string): Promise<void> {
+    await tx.$queryRaw`SELECT "id" FROM "Game" WHERE "id" = ${gameId} FOR UPDATE`;
+  }
+
   /** The game waiting for a person's yes and the files that wait, or a `NOT_READY` that says nothing waits. */
   async function waitingOf(tx: Pick<PrismaClient, "game">, gameId: string) {
     const game = await tx.game.findUnique({
@@ -355,12 +406,29 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /**
-   * Staff's yes: the waiting files go live, and one review row records who said so and when. One transaction, so a
-   * game is never live without its record. The files the game was live on stay in the bucket.
+   * Throws unless the game is still what staff saw (audit S-1): its maker can change a waiting game's answers and videos
+   * at any moment, and each change is saved at once, so a decision made on a page that went stale would put live, or send
+   * back, something nobody looked at. Returns whether the newest copy of its files was refused.
    */
-  async function accept(gameId: string, staffUserId: string): Promise<void> {
+  async function checkSeen(tx: Pick<PrismaClient, "game">, gameId: string, seen: string): Promise<boolean> {
+    const row = await tx.game.findUniqueOrThrow({ where: { id: gameId }, select: judgedSelect });
+    if (seenOf(row) !== seen) throw new GameError("NOT_READY", GAME_CHANGED_WORDS);
+    return row.pullProblem !== null;
+  }
+
+  /**
+   * Staff's yes: the waiting files go live with the rating staff chose, and one review row records who said so and when.
+   * One transaction, so a game is never live without its record. The files the game was live on stay in the bucket.
+   * It refuses a game that changed since staff looked (`decision.seen`), and a game whose newest copy of its files was
+   * refused: the waiting files are older than what its maker now points at (audit S-6).
+   */
+  async function accept(gameId: string, staffUserId: string, decision: ReviewDecision): Promise<void> {
+    const marks = ratingMarks(decision);
     await deps.db.$transaction(async (tx) => {
+      await lockGame(tx, gameId);
       const { pullId } = await waitingOf(tx, gameId);
+      const filesRefused = await checkSeen(tx, gameId, decision.seen);
+      if (filesRefused) throw new GameError("NOT_READY", FILES_BEING_FIXED_WORDS);
       const decidedAt = new Date(deps.clock.epochMs());
       await tx.game.update({
         where: { id: gameId },
@@ -371,6 +439,8 @@ export function createGamesService(deps: GamesServiceDeps) {
           pendingSince: null,
           stateReason: null,
           toFix: [],
+          ageRating: decision.ageRating,
+          contentMarks: marks,
         },
       });
       await tx.gameReview.create({
@@ -380,11 +450,23 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /**
-   * The parts a live game's update may be sent back for: the ones its maker can fix (her name, line and where it plays,
-   * by the questions she may still answer) and the files (she mends them on GitHub and sends a new version). Its videos,
-   * rating and websites go through staff again only in slice 4, so an update sent back for one would be stuck for good.
+   * The marks that go with the rating staff chose, or a refusal in words. Marks belong to an 18+ game only; one sent with
+   * any other rating is dropped, since the check page hides the marks until 18+ is chosen and a hidden box that was
+   * ticked is still posted. An 18+ game has at least one, and "None of these" stands alone.
    */
-  const LIVE_MAY_BE_SENT_BACK: GamePart[] = ["name", "one_line", "plays_on", "files"];
+  function ratingMarks(choice: { ageRating: AgeRating; contentMarks: ContentMark[] }): ContentMark[] {
+    if (!AGE_RATINGS.includes(choice.ageRating)) throw new GameError("INVALID", STAFF_NO_AGE_WORDS);
+    if (choice.ageRating !== "age_18") return [];
+    const known = choice.contentMarks.filter((mark) => CONTENT_MARKS.includes(mark));
+    const problem = marksProblem(known);
+    if (problem !== undefined) throw new GameError("INVALID", problem);
+    if (known.includes("none")) {
+      if (known.length > 1)
+        throw new GameError("INVALID", "Pick None of these on its own, or pick what's in it.");
+      return ["none"];
+    }
+    return [...new Set(known)];
+  }
 
   /**
    * Staff's no, part by part: each part with a reason from that part's list, and for "Something else" their own line
@@ -395,12 +477,13 @@ export function createGamesService(deps: GamesServiceDeps) {
     gameId: string,
     staffUserId: string,
     parts: { part: GamePart; reason: string; note?: string }[],
+    seen: string,
   ): Promise<void> {
     if (parts.length === 0) throw new GameError("INVALID", "Tick what's wrong first.");
     const chosen = new Set<GamePart>();
     const kept = parts.map((one) => {
       // A part twice, or a reason that belongs to another part, is a screen that was not meant to be possible.
-      if (chosen.has(one.part) || !isReasonFor(one.part, one.reason))
+      if (!GAME_PARTS.includes(one.part) || chosen.has(one.part) || !isReasonFor(one.part, one.reason))
         throw new GameError("INVALID", "Pick a reason for each part you ticked.");
       chosen.add(one.part);
       const note = one.note?.trim() ?? "";
@@ -411,7 +494,9 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
 
     await deps.db.$transaction(async (tx) => {
+      await lockGame(tx, gameId);
       const { state, pullId } = await waitingOf(tx, gameId);
+      await checkSeen(tx, gameId, seen);
       if (state === "live" && kept.some((one) => !LIVE_MAY_BE_SENT_BACK.includes(one.part))) {
         throw new GameError(
           "INVALID",
@@ -660,11 +745,11 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /** Games with files waiting for a person's yes, the oldest first. */
-  async function waitingGames(): Promise<{ slug: string; name: string; makerEmail: string; sentAt: Date }[]> {
+  async function waitingGames(): Promise<WaitingGame[]> {
     const rows = await deps.db.game.findMany({
       where: { pendingPullId: { not: null } },
       orderBy: { pendingSince: "asc" },
-      select: { slug: true, name: true, pendingSince: true, maker: { select: { email: true } } },
+      select: { slug: true, name: true, state: true, pendingSince: true, maker: { select: { email: true } } },
     });
     return rows.map((row) => ({
       slug: row.slug,
@@ -672,6 +757,8 @@ export function createGamesService(deps: GamesServiceDeps) {
       makerEmail: row.maker.email,
       // `pendingSince` is set with `pendingPullId`, so a waiting game always has it.
       sentAt: row.pendingSince ?? new Date(0),
+      // A live game's waiting files are an update to it; every other game waits for its first yes.
+      kind: row.state === "live" ? ("update" as const) : ("game" as const),
     }));
   }
 
@@ -705,6 +792,19 @@ export function createGamesService(deps: GamesServiceDeps) {
         parts: { select: { part: true, reason: true, note: true } },
       },
     },
+  } as const;
+
+  /** What a decision is made on: the parts a person judges (`seenOf`), and whether the newest copy of the files was refused. */
+  const judgedSelect = {
+    name: true,
+    oneLine: true,
+    playsOn: true,
+    ageRating: true,
+    contentMarks: true,
+    connectHosts: true,
+    pendingPullId: true,
+    pullProblem: true,
+    clips: { select: { shape: true, key: true } },
   } as const;
 
   /** The clip of one shape, with its size, or null when there is none. */
@@ -867,6 +967,8 @@ export function createGamesService(deps: GamesServiceDeps) {
       where: { slug },
       select: {
         ...gameSelect,
+        pendingSince: true,
+        maker: { select: { email: true } },
         pendingPull: { select: { id: true, fileCount: true, totalBytes: true, connectHosts: true } },
       },
     });
@@ -874,6 +976,9 @@ export function createGamesService(deps: GamesServiceDeps) {
     const pending = row.pendingPull;
     return {
       ...makerView(row),
+      makerEmail: row.maker.email,
+      sentAt: row.pendingSince,
+      seen: seenOf(row),
       pending:
         pending === null
           ? null

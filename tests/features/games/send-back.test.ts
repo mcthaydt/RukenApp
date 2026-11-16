@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MAX_GAME_BYTES, megabytes } from "../../../src/features/games/files-check.ts";
 import {
   isReasonFor,
   makerWords,
@@ -25,12 +26,17 @@ const ALL_PARTS: GamePart[] = [
 /** Part, code, what staff choose, and what the maker reads ({name} is the game's name). */
 const REASONS: [GamePart, string, string, string][] = [
   ["name", "rude", "It's rude.", "We can't show this name on Ruken. It's rude. Pick another."],
-  ["name", "not_this_game", "It's not this game's.", "This name belongs to a different game. Pick your own."],
+  [
+    "name",
+    "not_this_game",
+    "It belongs to another game.",
+    "This name belongs to a different game. Pick your own.",
+  ],
   ["one_line", "rude", "It's rude.", "We can't show this line on Ruken. It's rude. Write another."],
   [
     "one_line",
     "not_this_game",
-    "It's not this game's.",
+    "It's not about this game.",
     "This line isn't about your game. Say what {name} is.",
   ],
   [
@@ -48,18 +54,28 @@ const REASONS: [GamePart, string, string, string][] = [
   [
     "files",
     "past_limit",
-    "It goes past what we allow.",
-    "Your game has too much in it for Ruken. Take some files out on GitHub, then send it again.",
+    "It's too big.",
+    "Your game is over Ruken's {limit} limit. Take files out on GitHub, then send it again.",
   ],
-  ["files", "pornography", "It's pornography.", "Ruken doesn't take pornography."],
-  ["files", "gambling", "Gambling isn't allowed on Ruken.", "Gambling isn't allowed on Ruken."],
+  [
+    "files",
+    "pornography",
+    "It's pornography.",
+    "Ruken doesn't take pornography. Take it out, then send it again.",
+  ],
+  [
+    "files",
+    "gambling",
+    "It has gambling.",
+    "Gambling isn't allowed on Ruken. Take it out, then send it again.",
+  ],
   [
     "plays_on",
     "needs_keyboard",
     "It needs a keyboard.",
     "Your game needs a keyboard, so it can't play on phones. Choose Computers only.",
   ],
-  ["upright_video", "sideways", "It's sideways.", "It's sideways. Turn it the right way up."],
+  ["upright_video", "sideways", "It's on its side.", "It's on its side. Record it with your phone upright."],
   [
     "upright_video",
     "not_this_game",
@@ -67,7 +83,12 @@ const REASONS: [GamePart, string, string, string][] = [
     "It shows a different game. Add a video of {name}.",
   ],
   ["upright_video", "too_dark", "It's too dark to see.", "It's too dark to see. Record it again, brighter."],
-  ["wide_video", "sideways", "It's sideways.", "It's sideways. Turn it the right way up."],
+  [
+    "wide_video",
+    "sideways",
+    "It's upright, not wide.",
+    "It's upright. Record it with your phone held sideways.",
+  ],
   [
     "wide_video",
     "not_this_game",
@@ -75,7 +96,13 @@ const REASONS: [GamePart, string, string, string][] = [
     "It shows a different game. Add a video of {name}.",
   ],
   ["wide_video", "too_dark", "It's too dark to see.", "It's too dark to see. Record it again, brighter."],
-  ["age_rating", "wrong_age", "The age is wrong.", "We think {name} is for older players. Choose again."],
+  ["age_rating", "older", "It's for older players.", "We think {name} is for older players. Choose again."],
+  [
+    "age_rating",
+    "younger",
+    "It's for younger players.",
+    "We think {name} is for younger players. Choose again.",
+  ],
   [
     "other_websites",
     "not_listed",
@@ -119,6 +146,17 @@ describe("what the maker reads", () => {
     expect(makerWords("upright_video", "not_this_game", null, "Floor Fifty")).toBe(
       "It shows a different game. Add a video of Floor Fifty.",
     );
+  });
+
+  it("puts the size limit into the words for a game that is too big, from the number the files check uses", () => {
+    expect(makerWords("files", "past_limit", null, "Floor Fifty")).toBe(
+      `Your game is over Ruken's ${megabytes(MAX_GAME_BYTES)} limit. Take files out on GitHub, then send it again.`,
+    );
+  });
+
+  it("tells the maker which way up to hold the phone, for each video", () => {
+    expect(makerWords("upright_video", "sideways", null, "x")).toContain("phone upright");
+    expect(makerWords("wide_video", "sideways", null, "x")).toContain("phone held sideways");
   });
 
   it("for Something else, is the staff member's own line", () => {

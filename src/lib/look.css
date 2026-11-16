@@ -518,6 +518,8 @@ form > * + button:not(.quiet) {
 .card form > button:not(.quiet),
 .card p > a.button:only-child {
   width: 100%;
+  /* Long words on a narrow card break into even lines, not a full line and a stray word. */
+  text-wrap: balance;
 }
 
 @media (min-width: 48rem) {
@@ -662,6 +664,8 @@ form > * + button:not(.quiet) {
 /* The bar across the top: the way home, and one more link. The track is above it, at the very top. */
 .topbar {
   display: flex;
+  /* Staff's bar has three links. A narrow phone has no room for three in a row, so the last one moves down whole. */
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -676,6 +680,23 @@ form > * + button:not(.quiet) {
 @media (min-width: 1200px) and (orientation: landscape) {
   .topbar {
     padding: 1.5rem 2.5rem 0;
+  }
+}
+
+/* A bar of three links (staff's) on the narrowest phone: the links are a size smaller and closer, so the three share one line
+   instead of the last dropping alone under the wordmark. The wordmark is a size smaller too, and the gaps and the sides are tighter. */
+@media (max-width: 359px) {
+  .topbar:has(> :nth-child(3)) {
+    gap: 0.5rem;
+    padding-inline: 0.75rem;
+  }
+
+  .topbar:has(> :nth-child(3)) > a:not(.wordmark) {
+    font: var(--text-small);
+  }
+
+  .topbar:has(> :nth-child(3)) > .wordmark {
+    font-size: 1.25rem;
   }
 }
 
@@ -1410,6 +1431,19 @@ a.foot {
   }
 }
 
+/* The same way back at the foot of the sheet, for where the left half does not stay in view: a phone, an upright tablet, and a
+   window too short to keep it. A long sheet ends here, and the way back used to be the other end of it. On the paper it is ink,
+   because the sage the link wears on felt is for felt only. */
+@media (orientation: landscape) and (min-width: 700px) and (min-height: 600px) {
+  .halves a.foot[data-end] {
+    display: none;
+  }
+}
+
+.sheet a.foot {
+  color: var(--ink);
+}
+
 /* On Live, "Back to your games" is a little larger than the link that takes the game off Ruken. That one is the quietest thing
    on the screen: last, a size smaller and dimmer, and a step below the way back, so a thumb that aims for one does not land
    on the other and it is never read as part of the blue button's note above. Each is on its own line. */
@@ -1460,6 +1494,205 @@ a.foot {
 
   .screen main[data-state] {
     margin-block: 0 auto;
+  }
+}
+
+/* Staff's check of a game (design 11.1, screen 2). A part is a block of the sheet: its title, its value in the maker's own
+   words (or its video), a box to say it is wrong and, once that is ticked, the reasons. Blocks are told apart by space and
+   not by a line: the look has no rule but a field's. */
+.part {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* More space between two parts than inside one, and a title a step larger than a note, so a long run of parts is read as
+   parts. */
+.part + .part {
+  margin-top: 2.5rem;
+}
+
+.part h2 {
+  margin: 0;
+  /* A page opened at a refusal puts the part's name in view, with a little of what is above it. */
+  scroll-margin-top: 1rem;
+  color: var(--ink-soft);
+  font: 600 1rem / 1.3 var(--font-text);
+}
+
+.part .say,
+.part .picks,
+.part .note {
+  margin: 0;
+}
+
+/* A refusal inside a part is seen as one: the look's own "needs fixing" edge (as `.sheet.fix` has), so it is not read as the
+   part's words, whose value is the next line. */
+.part .problem {
+  margin: 0;
+  padding-left: 1rem;
+  border-left: 6px solid var(--pay);
+}
+
+/* One choice to a row, as wide as its part: two across squeezed "This is wrong" and the reasons into half the width, and
+   broke their words. The ages are five short names and stay in their row. */
+.part .picks:not([data-ratings]) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* A game's clip, drawn in its own shape and whole, as tall as fits and no taller than 60% of the window: the upright one
+   upright (9 by 16), the wide one wide (16 by 9), never cropped to a box that is neither. The width does the sizing, so the
+   shape holds whatever the window. */
+.part video.clip {
+  height: auto;
+  max-height: none;
+  margin-inline: auto;
+  object-fit: contain;
+}
+
+.part video.clip[data-shape="upright"] {
+  width: min(100%, calc(min(32rem, 60dvh) * 9 / 16));
+  aspect-ratio: 9 / 16;
+}
+
+.part video.clip[data-shape="wide"] {
+  width: min(100%, calc(60dvh * 16 / 9));
+  aspect-ratio: 16 / 9;
+}
+
+/* Reasons and the line of one's own are for a part that is ticked. Hidden by the page's own rule, so the page is right
+   before script wakes and with none. */
+.part:not(:has(input[name="wrong"]:checked)) > [data-reasons] {
+  display: none;
+}
+
+.part [data-reasons],
+.part [data-marks] {
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* The marks of an 18+ game, with their question, are asked only once 18+ is chosen. */
+.asks:not(:has(input[name="ageRating"][value="age_18"]:checked)) [data-marks] {
+  display: none;
+}
+
+/* One blue button with two wordings: Accept while nothing is ticked, Send back as soon as something is. The server
+   decides by what was ticked, never by these words. */
+.decide > [data-send-back] {
+  display: none;
+}
+
+.asks:has(input[name="wrong"]:checked) .decide > [data-accept] {
+  display: none;
+}
+
+/* A game that cannot be accepted (its newest files were refused) offers only Send back, ticked or not. */
+.decide[data-sends-only] > [data-accept] {
+  display: none;
+}
+
+.decide[data-sends-only] > [data-send-back] {
+  display: inline;
+}
+
+.asks:has(input[name="wrong"]:checked) .decide > [data-send-back] {
+  display: inline;
+}
+
+/* The line above the name: "Waiting 3 hours" is never cut, and an email that does not fit moves down whole instead of breaking
+   at a hyphen, where it looked like two things. */
+.nobreak {
+  white-space: nowrap;
+}
+
+.email {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* The line of facts about a game ("Game · maker@example.com · Waiting 3 hours") is a note's size, so a whole email fits a
+   phone's line. Each dot is written with the words after it, so a line never starts with a dot or ends with one. */
+.facts {
+  font: var(--text-small);
+}
+
+/* On a computer the bar and the page start at one left edge: the bar is as wide as the page and centred with it. This is
+   staff's both pages (the list and the check page), so the wordmark does not jump between them more than the pages differ. */
+@media (min-width: 1200px) and (orientation: landscape) {
+  .screen[data-staff] .topbar {
+    width: min(100% - 2.5rem, var(--column));
+    margin-inline: auto;
+    padding-inline: 0;
+  }
+
+  /* The check is asked in the maker's own layout, whose column is as wide as a question's. */
+  .screen[data-staff]:has(.asks) .topbar {
+    width: min(100% - 5rem, 1200px);
+  }
+}
+
+/* The game's frame is the first question of a check: as wide as the question, a step clear of the words above it, and a step
+   above "Full size", so the button is not read as the frame's caption. A phone held sideways is short, so its frame takes
+   most of the window and is still big enough to play. */
+.asks .frame {
+  margin-top: 1.5rem;
+  border-radius: var(--radius-card);
+}
+
+.asks .frame + .quiet {
+  margin-top: 1.5rem;
+}
+
+@media (max-height: 449px) {
+  .asks .frame {
+    height: 80dvh;
+  }
+}
+
+/* A question with no card of the game beside it (staff's check) has its column to itself. */
+.asks[data-alone] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* A question that is a step of a page is hidden whole when it is not the one on screen: a part's own grid would show it
+   otherwise, as an author's display beats the browser's rule for the hidden attribute. */
+.asks section[hidden] {
+  display: none;
+}
+
+/* The check's one instruction is read at body size, in chalk, and not as a note under the name. */
+.asks .instruction {
+  color: var(--chalk);
+  font: var(--text-body);
+}
+
+/* A part's title is on felt here, not on a sheet of paper, so it is chalk and not the sheet's grey ink. */
+.asks .part h2 {
+  color: var(--chalk);
+}
+
+/* A screen of the check holds lines, a frame and parts, told apart by space as a part's are. */
+.asks section[data-step] > * + * {
+  margin-top: 1rem;
+}
+
+.asks section[data-step] > .part + .part,
+.asks section[data-step] > .note + .part {
+  margin-top: 2.5rem;
+}
+
+/* The check's list is long, so where the buttons sit under the answer they stay at the foot of the window: the blue button is in
+   view whatever part staff are looking at. (A phone's are already a bar across the bottom.) */
+@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
+  .asks[data-alone] .acts {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin-top: 2rem;
+    padding-block: 0.75rem;
+    background: var(--felt-deep);
   }
 }
 

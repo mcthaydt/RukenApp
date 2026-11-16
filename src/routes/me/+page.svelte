@@ -56,5 +56,9 @@
   {:else}
     <p class="apart">Make games? <a href="/make">Add yours to Ruken.</a></p>
   {/if}
-  <p class="note"><a href="/me/delete">Delete my account</a></p>
+  {#if data.staff}
+    <p><a href="/admin/games">Games to check</a></p>
+  {/if}
+  <!-- A step clear of what staff use every day, so the way to delete is never read as part of that group. -->
+  <p class="note apart"><a href="/me/delete">Delete my account</a></p>
 </main>

@@ -29,7 +29,7 @@ for (const state of ["waiting", "sent_back"] as const) {
   test(`a ${state} game made 18+ is asked what is in it, and nothing breaks`, async ({ page }) => {
     const { slug } = await gameWhere(
       page,
-      state === "waiting" ? { state } : { state, toFix: [{ part: "age_rating", reason: "wrong_age" }] },
+      state === "waiting" ? { state } : { state, toFix: [{ part: "age_rating", reason: "older" }] },
     );
     await page.goto(`/make/${slug}/age`);
     await pageHasSettled(page);
