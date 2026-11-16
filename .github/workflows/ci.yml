@@ -52,10 +52,13 @@ on:
   # auto-merge.yml uses this to test main after a merge; GitHub lets the workflow's own token start this event.
   workflow_dispatch:
 
-# A newer push to the same branch makes the older run pointless, so it is cancelled and nobody waits on it.
+# On a pull request, a newer push makes the older run pointless, so it is cancelled and nobody waits on it.
+# On main a running run is never cancelled: merges land close together, and cancelling left main with no finished
+# run (Owner, 2026-11-16: "Yes let main runs really finish"). A newer main run waits for it, and only the newest
+# waiting run is kept.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Read-only, and no secrets are used, so a forked pull request gets nothing it should not have.
 permissions:
