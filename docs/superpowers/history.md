@@ -18,9 +18,9 @@ Setup check from `release`, run 2026-11-16 18:07 UTC on `main` at `8dca316`. Eac
 - **The job that decides which checks apply:** present (`changes`, "what changed": docs-only or not).
 - **The final aggregate gate job:** added in #162 (`gate` in `ci.yml`), on the owner's words of 2026-11-16: "yes to
   1–3, keep 12".
-- **The gate is required by branch protection on `main`:** missing until the owner runs the command under "Owner
-  steps" in `progress.md`. Required today: `verify`, `browser`, `postgres`, strict (up to date with `main`),
-  force-push off.
+- **The gate is required by branch protection on `main`:** added 2026-11-16, on the owner's words "Run the gh api
+  command that adds gate as a required check on main of mcthaydt/RukenApp". Required now: `verify`, `browser`,
+  `postgres`, `gate`, strict (up to date with `main`), force-push off.
 - **Session tools for the staged path:** messaging present (`send_message`, thread messages); archiving present
   (`archive_session`); model choice present (`switch_model`); starting sessions belongs to the coordinator and was not
   checked from this thread.
