@@ -146,5 +146,7 @@ export async function signInAs(page: Page, email: string): Promise<void> {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
+  // Waits for the home page to finish loading, not only for its address: WebKit shows "/" while the redirect after
+  // the form is still loading, and a goto made then is cut off by it ("interrupted by another navigation").
+  await page.waitForURL("/", { waitUntil: "load" });
 }
