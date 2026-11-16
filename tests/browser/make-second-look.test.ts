@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
-import { fillAnswers, putGameWhereStaffLeaveIt } from "./support/database.ts";
+import { changeGame, fillAnswers, putGameWhereStaffLeaveIt } from "./support/database.ts";
 import {
   addDraft,
   addVideo,
@@ -494,12 +494,24 @@ test.describe("on an iPhone SE held upright", () => {
   });
 });
 
+/**
+ * The name the question of where the game plays is measured with. A fresh name's random letters differ in width, and
+ * about one in eight put the SE's heading on a fourth line, which moved the choices 38px down and failed the journey by
+ * chance. The address stays fresh; only the name shown is fixed.
+ */
+const CHOICES_NAME = "Tiny game 1899072e";
+
 /** Goes to the question of where the game plays and checks that the first `count` choices end above the bar, their words with them. */
 async function expectChoicesAboveTheBar(page: Page, count: number): Promise<void> {
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { files: true, playsOn: false });
+  await changeGame(slug, { name: CHOICES_NAME });
   await page.goto(`/make/${slug}/plays-on`);
   await wordsHaveSettled(page);
+  expect(
+    await lineCount(page.getByRole("heading", { level: 1 })),
+    "the heading takes at most three lines",
+  ).toBeLessThanOrEqual(3);
 
   const bar = await boxOf(page.locator(".acts"));
   const picks = page.locator(".pick");
