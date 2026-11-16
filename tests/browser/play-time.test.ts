@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { payAsNewMember, SITE_URL } from "./support/account.ts";
 import { beatsOf, sessionsOf, userIdOf } from "./support/database.ts";
 import { addGame, expectTheGameLoaded } from "./support/game.ts";
@@ -13,12 +13,22 @@ test.beforeEach(forgetRateLimits);
 
 const BEAT_MS = 15_000;
 
+/**
+ * Installs Playwright's clock stopped, so the page looks at nothing until the journey moves time on. A clock left running
+ * looks once a second from the moment the page mounts; on a slow browser a look came before the touch, rightly found the
+ * game not in focus, and spoiled a stretch the journey meant to be attentive from the touch on.
+ */
+async function stopTheClock(page: Page): Promise<void> {
+  await page.clock.install();
+  await page.clock.pauseAt(Date.now() + 1_000);
+}
+
 test("a member's play time is recorded against that game", async ({ page, browser }) => {
   // design 8. Its own game, so no other journey's beats are counted with it.
   test.setTimeout(90_000);
   const game = await addGame(browser);
   const member = await payAsNewMember(page);
-  await page.clock.install();
+  await stopTheClock(page);
   await page.goto(`/g/${game.slug}/play`);
   // Touching the game puts it in focus: from now on the stretch is attentive.
   await page.frameLocator("iframe.frame").locator(".game-container").click();
@@ -49,7 +59,7 @@ test("opening the Ruken menu and going back to the game does not count as touchi
 test("leaving with Exit game sends the last stretch of play", async ({ page, browser }) => {
   test.setTimeout(90_000);
   const game = await addGame(browser, { free: true });
-  await page.clock.install();
+  await stopTheClock(page);
   await page.goto(`/g/${game.slug}/play`);
   await page.frameLocator("iframe.frame").locator(".game-container").click();
   await page.clock.runFor(3_000);
@@ -60,6 +70,9 @@ test("leaving with Exit game sends the last stretch of play", async ({ page, bro
     .getByRole("dialog", { name: /^Exit / })
     .getByRole("link", { name: "Exit game" })
     .click();
+  // The site's links wait for the next frame, or 100ms at most, before they navigate; with the clock stopped that wait
+  // is moved on here, a long way short of the next look.
+  await page.clock.runFor(100);
   await expect(page).toHaveURL(`/g/${game.slug}`);
   await expect.poll(async () => (await beatsOf(game.slug)).length).toBe(1);
   expect((await beatsOf(game.slug)).at(-1)?.attentive).toBe(true);
