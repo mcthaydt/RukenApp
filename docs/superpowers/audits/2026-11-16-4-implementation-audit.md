@@ -146,3 +146,34 @@ FIX: Plan only, Tasks 6 and 7 (and Task 3 if a column is needed): replace "stays
 add an `inbound.pg.test.ts` case (a sent notice, then a report with 21610 for its `MessageSid`: one waiting notice on
 `/me`, unread), and drop the comment. If the implementer wants to keep the loss instead, it goes to the Owner as a
 decision card, since it narrows the spec.
+
+## Fix check of the Task 6 red
+
+Checked 2026-11-16 20:47 UTC (from `date`) on `b1d09eb`, by this audit session. `git diff e90c3d4 b1d09eb` changes only the plan.
+
+- **The red: passed.** Every account-line send that Twilio accepts now writes, in the same transaction as its
+  `TextSent` row, a hidden ("kept") `WaitingNotice` with the words and the provider's id. Task 7's report step turns
+  the kept copy whose `providerId` is the report's `MessageSid` into an unread waiting notice, so the notice waits on
+  `/me` as the spec's "After STOP on the account number" says. The words live on `WaitingNotice`, which is deleted
+  with the account, not on the append-only `TextSent`. `waitingNoticesOf` and the unread count leave kept copies out;
+  news-line sends keep none. Task 6 Step 1 and Task 7 Step 1 test each of these, including a repeated report (one
+  notice) and a report for a code text or an unknown id (nothing shown). Point 8 says so. The "said in a comment" loss
+  is gone.
+- **The 3-day purge of kept copies: sound, and within the spec.** It runs in the existing daily job
+  (`src/routes/jobs/purge-accounts`, started by the Worker's `17 9 * * *` cron through `cloudflare/worker.js`), with
+  the injected clock. A report later than 3 days would find no copy and show nothing, but a message's final status
+  comes once it leaves Twilio's queue, and a message can wait there at most its validity period (Twilio's message
+  resource allows up to 36,000 seconds, 10 hours; recalled, not re-read in this audit), and Twilio's retries of a
+  failed report post (`rc=3`) are minutes apart. Three days leaves a wide margin. Keeping no words longer than needed
+  fits the spec's "All deleted with the account" and the plan's data rules; the spec sets no shorter limit.
+
+UNIT: plan, Task 6 `markNoticesRead`.
+VERDICT: note.
+REQUIREMENT: Task 6 (kept copies are not waiting notices).
+REASON: The plan does not say `markNoticesRead` leaves kept copies alone.
+EVIDENCE: Only `waitingNoticesOf` and the unread count are said to leave them out. If `markNoticesRead` set
+`readAt` on a kept copy, a later 21610 would show that notice already read.
+EXPECTED: `markNoticesRead` touches shown notices only, or the report step clears `readAt` when it shows one.
+FIX: One clause in Task 6, and one case in its Step 1, when Task 6 is built.
+
+No red findings remain open on `b1d09eb`.
