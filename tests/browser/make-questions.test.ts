@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type FileChooser, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { filesOf, fillAnswers, putGameWhereStaffLeaveIt } from "./support/database.ts";
@@ -763,6 +763,12 @@ test("with reduced motion a video does not start by itself", async ({ page }) =>
 test("the picker is reached and opened from the keyboard", async ({ page }) => {
   await startAtVideo(page, "upright");
   const field = videoField(page);
+  // Playwright catches the browser's file picker only once something listens for it, and it tells the browser so without
+  // waiting for the answer. A listener added in the same breath as the Space press lost that race on a busy machine: the
+  // picker opened before it was caught and no event came (CI on 2026-11-15 and on #138; 12 times in 30 here with the
+  // processor slowed eightfold, never once with the listener added first). Listening before the walk with Tab means the
+  // browser has heard by the Space press: every Tab and focus check below is a round trip through the same page.
+  const chooserOpened = new Promise<FileChooser>((resolve) => page.once("filechooser", resolve));
 
   for (let presses = 0; presses < 40; presses += 1) {
     await page.keyboard.press("Tab");
@@ -771,7 +777,8 @@ test("the picker is reached and opened from the keyboard", async ({ page }) => {
   await expect(field).toBeFocused();
   expect(await pickerButton(page).evaluate((span) => getComputedStyle(span).outlineWidth)).toBe("3px");
 
-  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.keyboard.press("Space")]);
+  await page.keyboard.press("Space");
+  const chooser = await chooserOpened;
   await chooser.setFiles(videoFile());
   await expect(page.locator('[data-frame="upright"] video')).toBeAttached();
 });
