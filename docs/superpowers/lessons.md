@@ -19,3 +19,5 @@ One line per lesson, added by the fix session when its fix is accepted (see "Les
 - A screen whose pattern is new is shown to the Owner as rough shots before any review round, so the wrong pattern is found in minutes and not after the reviews. (2026-11-16, #138)
 - Fewest screens first: a form asked one screen at a time starts at the fewest screens that give each screen one job (here three), and splits only where the Owner asks. (2026-11-16, #138)
 - Rough shots are taken from a game made through the real screens, not from a test stand-in with no files, so an empty frame is not read as a bug. (2026-11-16, #138)
+- A decision that reads, checks and then writes takes the row it judges first (`SELECT ... FOR UPDATE`), and gets a test that fires two decisions at once; a check alone does not stop a second one slipping between the read and the write. (2026-11-16, #138)
+- A link whose page `load` does something (here, starting a staff play) turns hover preload off, and a refused form action does not re-run `load`, so the page reloads its own data on a refusal that says the data is stale. (2026-11-16, #138)

@@ -385,6 +385,16 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
   }
 
+  /**
+   * Holds the game's row until the transaction ends. A decision reads what is waiting, checks what staff saw and then
+   * writes, and under READ COMMITTED a second decision or a maker's save that lands between those reads and the write
+   * would slip past `checkSeen`. Taking the row first makes the second one wait, then read what the first one left: a
+   * game with nothing waiting, or one that changed.
+   */
+  async function lockGame(tx: Pick<PrismaClient, "$queryRaw">, gameId: string): Promise<void> {
+    await tx.$queryRaw`SELECT "id" FROM "Game" WHERE "id" = ${gameId} FOR UPDATE`;
+  }
+
   /** The game waiting for a person's yes and the files that wait, or a `NOT_READY` that says nothing waits. */
   async function waitingOf(tx: Pick<PrismaClient, "game">, gameId: string) {
     const game = await tx.game.findUnique({
@@ -415,6 +425,7 @@ export function createGamesService(deps: GamesServiceDeps) {
   async function accept(gameId: string, staffUserId: string, decision: ReviewDecision): Promise<void> {
     const marks = ratingMarks(decision);
     await deps.db.$transaction(async (tx) => {
+      await lockGame(tx, gameId);
       const { pullId } = await waitingOf(tx, gameId);
       const filesRefused = await checkSeen(tx, gameId, decision.seen);
       if (filesRefused) throw new GameError("NOT_READY", FILES_BEING_FIXED_WORDS);
@@ -483,6 +494,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
 
     await deps.db.$transaction(async (tx) => {
+      await lockGame(tx, gameId);
       const { state, pullId } = await waitingOf(tx, gameId);
       await checkSeen(tx, gameId, seen);
       if (state === "live" && kept.some((one) => !LIVE_MAY_BE_SENT_BACK.includes(one.part))) {

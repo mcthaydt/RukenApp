@@ -950,6 +950,43 @@ describe("a game that changed after staff looked (audit S-1)", () => {
   });
 });
 
+describe("two decisions at the same moment", () => {
+  it("lets one of two accepts through, and records one review", async () => {
+    const game = await readyGame();
+    await service.sendForReview(game.id, game.makerUserId);
+    const first = await createUser(db());
+    const second = await createUser(db());
+    const looked = await lookAt(game.slug);
+    const decision = { ageRating: "age_12" as const, contentMarks: [], seen: looked.seen };
+
+    const results = await Promise.allSettled([
+      service.accept(game.id, first, decision),
+      service.accept(game.id, second, decision),
+    ]);
+
+    expect(results.filter((one) => one.status === "fulfilled")).toHaveLength(1);
+    const refused = results.find((one) => one.status === "rejected");
+    expect(refused).toMatchObject({ reason: { code: "NOT_READY" } });
+    expect(await db().gameReview.count({ where: { gameId: game.id } })).toBe(1);
+  });
+
+  it("lets one of an accept and a send back through, and records one review", async () => {
+    const game = await readyGame();
+    await service.sendForReview(game.id, game.makerUserId);
+    const first = await createUser(db());
+    const second = await createUser(db());
+    const looked = await lookAt(game.slug);
+
+    const results = await Promise.allSettled([
+      service.accept(game.id, first, { ageRating: "age_12", contentMarks: [], seen: looked.seen }),
+      service.sendBack(game.id, second, [{ part: "wide_video", reason: "sideways" }], looked.seen),
+    ]);
+
+    expect(results.filter((one) => one.status === "fulfilled")).toHaveLength(1);
+    expect(await db().gameReview.count({ where: { gameId: game.id } })).toBe(1);
+  });
+});
+
 describe("a waiting game whose new files were refused (audit S-6)", () => {
   const FIXING =
     "The maker is fixing this game's files, so you can't accept it yet. It stays on your list until they're done. You can still send it back.";

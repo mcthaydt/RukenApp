@@ -326,6 +326,11 @@ export async function changeGame(
  * server counts from these rows, so this is what a played game looks like to it. The person must have opened the check
  * page first: opening it is what starts the session the beat belongs to.
  */
+/** How many times anyone has started playing a game: a staff play starts when the check page is loaded. */
+export async function playsStartedOn(slug: string): Promise<number> {
+  return db().playSession.count({ where: { game: { slug } } });
+}
+
 export async function countPlay(slug: string, email: string, seconds: number): Promise<void> {
   const session = await db().playSession.findFirstOrThrow({
     where: { game: { slug }, user: { email } },

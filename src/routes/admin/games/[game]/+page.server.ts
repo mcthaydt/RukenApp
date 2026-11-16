@@ -64,6 +64,8 @@ type RefusalAbout = {
   atMarks?: boolean | undefined;
   /** The one refusal that is a question, "Accept it anyway?". */
   asking?: boolean | undefined;
+  /** What staff saw is out of date, so the page reads the game again: its `seen` and its answers are new. */
+  stale?: boolean | undefined;
 };
 
 /**
@@ -77,6 +79,7 @@ function refused(problem: string, kept?: Kept, about: RefusalAbout = {}) {
     at: about.at,
     atMarks: about.atMarks === true,
     asking: about.asking === true,
+    stale: about.stale === true,
   });
 }
 
@@ -209,7 +212,9 @@ export const actions = {
     } catch (problem) {
       if (!(problem instanceof GameError)) throw problem;
       // A game that changed is looked at again from the top: what was ticked was ticked for what staff saw before.
-      if (problem.message === GAME_CHANGED_WORDS) return refused(problem.message);
+      // The page is told to read the game again: a failed action does not run `load`, so without that it would keep the old
+      // `seen` and the old answers, and every press after would be refused the same way.
+      if (problem.message === GAME_CHANGED_WORDS) return refused(problem.message, undefined, { stale: true });
       // An Accept the service refuses for its words is about who it is for: the rating and its marks are all it reads.
       const at = ticked.length === 0 && problem.code === "INVALID" ? "age_rating" : undefined;
       return refused(problem.message, kept, { at });

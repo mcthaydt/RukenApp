@@ -23,7 +23,8 @@
     <p>No games to check right now. New ones show up here.</p>
   {/if}
   {#each data.games as game (game.slug)}
-    <a class="game" href={`/admin/games/${game.slug}`}>
+    <!-- The page of a game starts staff's play of it as it loads, so a link is never read ahead by a hover or a touch. -->
+    <a class="game" href={`/admin/games/${game.slug}`} data-sveltekit-preload-data="off">
       <span>
         <span class="statement">{game.name}</span>
         <!-- "Waiting 3 hours" is never cut, a dot stays with the words after it, and an email that does not fit moves down

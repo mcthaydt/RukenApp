@@ -1,6 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
-import { changeGame, countPlay, putGameWhereStaffLeaveIt, stateOf } from "./support/database.ts";
+import {
+  changeGame,
+  countPlay,
+  playsStartedOn,
+  putGameWhereStaffLeaveIt,
+  stateOf,
+} from "./support/database.ts";
 import { makerWithGameWhere, signInAsStaff, submitGame } from "./support/game.ts";
 import { boxOf, showTheOwner } from "./support/look.ts";
 import {
@@ -369,10 +375,9 @@ test("a game that changed while staff looked is not accepted, and staff are told
     await expect(page.getByRole("alert")).toHaveText("This game changed while you were looking. Look again.");
     expect(await stateOf(maker.slug)).toBe("waiting");
 
-    // Looking again shows the new line, and Accept then works.
-    await page.goto(`/admin/games/${maker.slug}`);
-    await pageHasSettled(page);
-    await onPart(page, "One line");
+    // The refusal brings the new answers onto this same page, so there is nothing to reload by hand: the new line is on the
+    // list, and Accept then works (a page that kept the old look was refused again on every press).
+    await page.getByRole("button", { name: "Back", exact: true }).click();
     await expect(page.getByText("Something the staff did not read.")).toBeVisible();
     await toTheDecision(page);
     await decideButton(page, "Accept").click();
@@ -515,6 +520,29 @@ test("a game someone else decided first sends staff back to the list with a word
       "href",
       "/admin/games",
     );
+  } finally {
+    await maker.close();
+  }
+});
+
+test("hovering over a game on the list does not start a play", async ({ page, browser }) => {
+  // Review L2: the site reads a page ahead when a link is hovered, and the check page's load starts a staff play.
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await signInAsStaff(page);
+    await page.goto("/admin/games");
+    await pageHasSettled(page);
+    const row = page.getByRole("link", { name: new RegExp(maker.name) });
+    await expect(row).toHaveAttribute("data-sveltekit-preload-data", "off");
+
+    await row.hover();
+    await page.waitForLoadState("networkidle");
+    expect(await playsStartedOn(maker.slug)).toBe(0);
+
+    // Opening it does start one.
+    await row.click();
+    await expect(page).toHaveURL(`/admin/games/${maker.slug}`);
+    expect(await playsStartedOn(maker.slug)).toBe(1);
   } finally {
     await maker.close();
   }

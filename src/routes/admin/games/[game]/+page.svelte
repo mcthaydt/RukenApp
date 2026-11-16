@@ -21,6 +21,7 @@
   keyboard says so above its frame.
 -->
 <script lang="ts">
+  import { refreshAll } from "$app/navigation";
   import { onMount, tick } from "svelte";
   import Picks from "../../../make/parts/Picks.svelte";
   import QuestionScreen from "../../../make/parts/QuestionScreen.svelte";
@@ -120,6 +121,15 @@
     here = STEPS.indexOf(wanted);
     if (part !== undefined && part !== "age_rating")
       void tick().then(() => document.getElementById(`part-${part}`)?.scrollIntoView());
+  });
+
+  // A game that changed while staff looked is read again where they are: a refused action does not run the page's load, so
+  // without this the page would keep the old `seen` and the old answers, and every press after would be refused again.
+  // What was ticked was ticked for what they saw before, so the ticks start again.
+  $effect(() => {
+    if (form?.stale !== true) return;
+    tickedNow = [];
+    void refreshAll();
   });
 
   let frame = $state<HTMLIFrameElement>();
