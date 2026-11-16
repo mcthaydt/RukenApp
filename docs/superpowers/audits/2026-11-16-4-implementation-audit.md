@@ -1,236 +1,111 @@
-# Slice 2, Games and play: implementation audit, round 1
+# Texts, not email, branch A: implementation audit, round 4
 
-Commit examined: `main` at `5f831a2` (merge of #162). The slice 2 source is unchanged since `b706f58` (#157): #159 to
-#162 touched only rules, docs, CI and one journey (`tests/browser/play.test.ts`). A fresh session wrote this and
-changed nothing else. Written 2026-11-16 20:03 UTC (from `date`). Cycle 4 of the day's audits (1 to 3 were the rules
-setup and the retro rule; this file was first written as `-3` and renamed when #168 took that name); round 1 of
-this one.
+Pull request #175, commit `81765cc` on `claude/project-thread-cb74sj` (Tasks 0 Step 0, 1 and 2 of
+`docs/superpowers/plans/2026-11-15-texts-not-email.md`). Lane 3 (`src/features/accounts/`), with lane 2 parts
+(`src/lib/`, `tests/support/`, `tests/browser/support/`, `playwright.config.ts`). A fresh session wrote this and changed
+nothing else. Written 2026-11-16 20:42 UTC (from `date`).
 
 Audit all of your work for completeness, consistency, cohesion, and harmony, both within itself and relative to the spec and relative to the codebase. Assume nothing. Verify everything. Investigate any incomplete implementations or incomplete integrations. Do your best work.
 
-## Scope
+## What was checked
 
-The early audit (`2026-11-15-slice-2-early-implementation-audit.md`, removed from `main` by #159, readable at
-`c8e8726`) covered branches A to E, P, S0, Task 19, T and M, and left this audit branches S, F and G plus a check that
-its findings S-1, S-2, S-4 and S-6 were taken where it said. So this audit covers:
+- **Scope.** `git diff origin/main...81765cc` touches the 14 files in the plan's Task 1 and Task 2 file lists plus the
+  plan itself. No package added (`package.json` and the lockfile are unchanged). Commits `57c6384` and `81765cc` are
+  authored by McThayDT with no AI lines.
+- **Interfaces against the plan.** `TextLine`, `TextMessage`, `TextResult`, `Texter`, `TwilioTexterOptions`,
+  `createTwilioTexter`, `TextError` (`code`, `responseCode`, `twilioCode`), `textFailureCode`, `twilioSignatureOf`,
+  `isFromTwilio`, `createCaptureTexter`, `toE164`, `hashNumber`, `isMadeUpNumber`, the five text functions and
+  `fitText` all have the plan's names and shapes. `send` checks a made-up number first, then the allowlist, then posts
+  `To`, `Body`, `MessagingServiceSid`, `StatusCallback` with Basic auth; `fetch` is a plain constant; `changedHands`
+  answers `cannot_say` outside `+1` with no request and never throws; `textFailureCode` never reads the message.
+- **The signature.** The test uses the worked example from Twilio's security page (token `12345`, expected
+  `L/OH5YylLD5NRKLltdqwSvS0BnU=`), checks byte-order sorting, the cut `#` fragment, and refuses a changed value, a
+  missing header and a wrong length; comparison is `timingSafeEqual` after a length check.
+- **The words.** Each text matches "The words of every text" letter for letter. The GSM-7 basic set in `text-words.ts`
+  has 127 distinct characters (128 less ESC), counted with `node`; the extension set is the ten two-place characters.
+  Every text is tested at 160 places or fewer with both `https://ruken.io` and the longest site in use,
+  `https://ruken.ruken-beta.workers.dev`; `fitText` cases cover the 160 cut, emoji at 70, `€` as two places, never
+  cutting an emoji, and no space before `...`.
+- **Codebase fit (Graphify, index at `8dca316`).** `src/features/accounts/services.ts` is imported by `hooks.server.ts`
+  and every account route; `authServices()` builds the services once per process with `requireEnv`, so a required
+  setting missing on the Worker throws on the first request. `isMadeUpNumber` lives in `src/lib/server/text.ts` and
+  `phone.ts` re-exports it, which keeps `lib` free of feature imports (`tests/architecture.test.ts`).
+- **Tests run.** In this cloud container (Node 22), `vitest run --project unit` on the five new test files: 70 passed.
+  CI on `81765cc` (`verify (quick, draft)`, `postgres (quick, draft)`, the browser pieces) had not finished when this
+  was written; this audit does not count as green.
 
-- #138 branch S, Task 30 (Accept and Send back, `/admin/games`), with its staff screen reviews.
-- #154 branch S, Task 31 (take a game off Ruken, put it back).
-- #152 branch F, Task 20 (a game's page). #156 branch F, Tasks 21 to 23 (playing, play time, sign-up from a game's
-  link, 2048 as the test game). #157 the staff screen design fixes. #150, #151 test fixes.
-- Every early-audit finding, whether it was taken.
+## The three declared deviations
 
-Out of scope: G (the Owner's real-GitHub walk), the forms restyle and phone sign-up, and the design review loop on the
-play screen and the game page (`visual-check`, its own step).
-
-Against: the design (`specs/2026-11-13-ruken-reels-linktree-design.md` 5.2, 5.5, 5.7, 7.3, 8), the maker screens
-design (`specs/2026-11-14-maker-screens-redesign-design.md`), the slice 2 plan, the slice 2 rest plan
-(`plans/2026-11-15-slice-2-rest.md`, Tasks 20 to 24, 30 to 32, Review Focus 1 to 11), CLAUDE.md, and the early audit.
-
-What ran: no test, lint, typecheck or build (tests run on GitHub's runners only). Graphify (index at `8dca316`, same
-source as `5f831a2`) to find callers and definitions. Read in full: `src/features/admin/`, `src/features/play/sessions.ts`,
-`attention.ts`, `play.ts`, `src/features/games/seen.ts`, the diff of `service.ts`, `send-back.ts`, `review.ts`,
-`games.ts`, `services.ts` over #138 to #157, `pull.ts` (the copy and its clean-up), the routes `admin/games/**`,
-`g/[game]/**`, `make/[game]/+page.server.ts`, `make/[game]/take-off/**`, `make/parts/TakenOffScreen.svelte`,
-`join/+page.server.ts`, the `MakerAction` migration and schema, `src/lib/long-date.ts`. Test files were read for their
-case names against Review Focus 1 to 11, not line by line. CI on `main`: the first run of `main`'s own
-(run 43945063395, `workflow_dispatch` on `5f831a2`) was queued when this was written; no result is claimed.
-
-## Verdict
-
-**Not ready to close the slice: 5 red, 7 notes.** The bulk holds: staff accept and send back from one form whose ticks
-decide, guarded on every load and action; a stale page is refused (S-1) and a game whose new files were refused cannot
-be accepted (S-6); take off deletes the files after the database, records who did it, and put back goes through review
-again (S-2 taken whole); the game's page and play screen show only a live game, under a pass, with play time recorded
-by the server's clock. Red: one early finding (S-4) was not taken, S-1's lock misses video changes, the slice's own
-person-check of play time lost its screen, one small early finding (L-3) was not taken, and one comment still says
-take off cannot be undone.
-
-## What was checked, and holds
-
-1. **Staff only (Review Focus 7).** `staffOnly` throws 404 for signed-out callers and for roles outside
-   `GAME_STAFF_ROLES`; every `load` and the `decide` action call it first; `played/+server.ts` too. `isStaff` is the one
-   rule behind the pages and the links to them.
-2. **One form, the ticks decide.** No tick is `accept` with staff's rating; any tick is `sendBack`; the button's words
-   never decide. A part twice, a part not in `GAME_PARTS`, or a reason of another part is refused by the service, and
-   `tickProblem` names the part (Review Focus 4). An update offers boxes only on `LIVE_MAY_BE_SENT_BACK`, read from the
-   one list in `send-back.ts`, and the service refuses the rest (Review Focus 6). 18+ needs a mark and "None of these"
-   stands alone, in both `acceptProblem` and `ratingMarks`; marks on any other age are dropped (Review Focus 5).
-3. **S-1 and S-6 taken.** `seenOf` hashes name, line, where it plays, rating, marks, websites, pending pull and both
-   clip keys; `accept` and `sendBack` lock the `Game` row, then `checkSeen`; a stale page is told to look again and
-   reloads. `accept` refuses while `pullProblem` is set; the page offers only Send back then. (See R-2 for the one gap.)
-4. **S-2 taken (Task 31).** `takeOff` is one transaction (state `taken_off`, `livePullId`, `pendingPullId`,
-   `pendingSince`, `stateReason` null, `toFix` empty, one `MakerAction`) and only then `deleteAll("files/<id>/")`; a
-   second press changes nothing. `deleteLeftFiles` and `filesLeft` (`FileStore.hasAny`) cover a delete that stopped
-   halfway (Review Focus 9). An update waiting is dropped and leaves the queue (Review Focus 8). `putBack` makes a draft
-   with a files problem, copies again, and sends for review; it is never live without a yes (Review Focus 10). A copy
-   still running when the game is taken off does not put it back in the queue (`pullLatest`'s `updateMany` guard,
-   `sendForReview`'s state check). `MakerAction` is add-only by trigger, `Restrict` on both relations. The maker's
-   screens drop "You can't undo this" for take off (one comment left: R-5).
-5. **A game's page and play (Tasks 20, 21).** Both answer only `liveGameBySlug` (live, a live pull, both clips, every
-   answer), else 404. A computer-only game on a browser that says phone (Playwright's iPads included) gets the line, not
-   Play (Review Focus 11), and the play address sends it back to the page. Who may play is `playBasis`; staff by
-   `GAME_STAFF_ROLES`; someone who may not is sent to `/join?next=…`, whose "Not now" goes back to the game's page; too
-   many starts is a 429 in plain words. The frame is sandboxed, on the gate's address, with no referrer.
-6. **Play time (Task 22).** The page looks once a second, sends a beat every `BEAT_EVERY_MS` and one `sendBeacon` on
-   leaving; attentive means tab showing, frame on screen and frame focused for the whole stretch; the page never focuses
-   the game itself. The beat route takes no cookie, caps the body at 1,000 bytes, and maps results to 204/429/410/404.
-7. **Journeys for every Review Focus item of S and F** exist by name in `accept.test.ts`, `take-off.test.ts`,
-   `game-page.test.ts`, `play.test.ts`, `play-time.test.ts` (including "a game taken off Ruken is not at its address,
-   and a member's game stops loading", moved from S to F as the rest plan says).
-8. **Early audit S-3, S-5, L-1, L-2, L-4 taken.** `commitOf` checks `^[0-9a-f]{40}$`; `pullGame` deletes its folder on
-   any failure; the gate answers 503 with no pass secret; `gate.test.ts` asks the gate for every `clipKeyFor` shape;
-   a clip request is checked by `clipRequestTooBig`. S-5's tracker was replaced whole by the new `progress.md`.
-9. **Look rules under `src/routes/`.** No `<style>`, `style=`, `style:` or colour literal; no "Tap" (grep). The play
-   screen's tab is 48 by 56.
+1. **Twilio wiring in `services.ts` moved to Task 4: sound.** Requiring six secrets in `createAuthServices` before
+   their first user would make every request on `main` throw until the Owner runs X4. Nothing in branch A reads them.
+   The plan has to say so where the work now lives (finding 1).
+2. **21610 can arrive later, in a delivery report: sound as a precaution, not yet proven.** Twilio's 21610 page
+   (twilio.com/docs/api/errors/21610, modified 2026-03-11) says only that the recipient opted out; it does not say
+   whether the API refuses at once or accepts and fails later, and does not separate a Messaging Service from a `From`
+   number. Building for both is right; the plan must change in the places that still say "at once" (finding 2).
+3. **SMS Pumping Protection belongs in the Owner steps: sound.** Twilio's page
+   (twilio.com/docs/messaging/features/sms-pumping-protection-programmable-messaging, modified 2026-09-25): it is turned
+   on per account in the Console under Communications > Messaging > Settings, is free for the US and Canada, and a
+   blocked text shows error 30450. A sign-up that texts a code to any typed number is what pumping targets. The plan
+   does not yet record it (finding 3).
 
 ## Findings
 
-### R-1
-
-UNIT: `src/features/play/sessions.ts`, `recordBeat` (line 129).
+UNIT: plan, Task 4 (and Task 1's `services.ts` bullet).
 VERDICT: red.
-REQUIREMENT: early audit S-4, assigned to branch F's Task 22; design 6 and 5.2 (play time is what the pool is split by,
-and only a game that is on Ruken is played).
-REASON: beats keep counting for a game that is no longer live.
-EVIDENCE: `recordBeat` reads only `tokenHash` and `startedAt`; it returns `over` only after `PLAY_SESSION_LIFE_MS`
-(line 145) and never looks at the game. Nothing else in `src/` checks it (grep for `S-4`: no hit; the beat route calls
-`recordBeat` straight). A member's tab left open on a game its maker took off keeps the game running from memory and
-keeps recording attentive `member` beats for up to a day.
-EXPECTED: a beat for a session whose game is not `live` answers `over` (410), and the page stops beating. A `staff`
-session keeps counting while its pull is still the game's pending or live pull, since staff check games that are not
-live yet.
-FIX: in `recordBeat`, select the session's `basis`, `pullId` and its game's `state`, `livePullId`, `pendingPullId`;
-answer `over` when the game is not live (any basis but `staff`), or, for `staff`, when the pull is neither pending nor
-live. Tests first: a case in `tests/features/play/sessions.pg.test.ts` (member session, game taken off, beat is
-`over`; staff session on the pending pull of a waiting game, beat is `recorded`), and a beat step in the existing
-journey "a game taken off Ruken is not at its address, and a member's game stops loading" in
-`tests/browser/play.test.ts` (POST to `/g/<slug>/play/beat` with the session answers 410). Files: those three only.
+REQUIREMENT: The plan is the brief; a deviation is recorded where the work moves to (CLAUDE.md, Reporting).
+REASON: Task 1's `services.ts` bullet is now built by Task 4, but only Task 1's note says so.
+EVIDENCE: Task 4's files list `services.ts` for other reasons; nothing in Task 4 names the six required settings,
+`TEXT_ALLOWLIST`, the `TWILIO_API_BASE` guard through `standInAddress` (audit 18) or `AuthServices.texter`. Task 1's
+bullet still reads as part of a step marked done.
+EXPECTED: Task 4 carries the bullet, with its test (a missing setting named at start; `TWILIO_API_BASE` refused unless
+`http://127.0.0.1:`), and Task 1's bullet says it moved.
+FIX: Plan only: move the bullet into Task 4 and add those two checks to its Step 1; leave a one-line pointer in Task 1.
 
-### R-2
-
-UNIT: `src/features/games/service.ts`, `saveClip` (line 242) against `lockGame` (line 421).
+UNIT: plan, "What follows from it" point 8, Task 4's 21610 bullet, Task 0 Step 1.
 VERDICT: red.
-REQUIREMENT: early audit S-1 (a game is never accepted, or sent back, as something staff did not see), as `lockGame`'s
-own comment states it (line 417).
-REASON: a video change does not take the `Game` row lock, so it can land between `checkSeen` and the commit.
-EVIDENCE: `lockGame` says a maker's save "that lands between those reads and the write would slip past `checkSeen`.
-Taking the row first makes the second one wait". That holds for saves that update `Game`. `saveClip` writes only
-`GameClip` (`gameClip.upsert`, line 264) and touches `Game` only when the part was to fix; `GameClip` rows take no lock
-on `Game`. So: `accept` locks the row and reads the clips, the maker's new clip commits, `accept` commits, and the game
-goes live with a video nobody saw; `saveClip` then deletes the old file. `saveClip`'s own "not live" check is also read
-outside any lock, so the same window lets a clip change on a game that has just gone live. The window is milliseconds;
-the guarantee the comment gives is not met.
-EXPECTED: a clip change waits for a decision in progress, and is refused if the game went live meanwhile.
-FIX: in `saveClip`, after `files.put`, run the upsert in a transaction that first takes `lockGame` and re-reads the
-state (refuse `live` with the same words). Test first in `tests/features/games/review.pg.test.ts`: hold the row lock in
-one transaction, start `saveClip`, show its upsert has not landed until the first transaction ends (two Prisma clients,
-as the file's lock cases do if any; else a raw `pg` connection). Files: `service.ts`, `review.pg.test.ts`.
+REQUIREMENT: Review Focus 3 (a person who sent STOP asks for a code: no text is tried, and the screen says how to turn
+texts back on); the plan's Step 0 stop rule ("any difference from this plan: stop and report").
+REASON: The plan still says a send to an opted-out number "is refused at once", and Task 4 relies on a thrown
+`TextError` 21610 alone.
+EVIDENCE: Point 8 and Task 4's `auth.ts` bullet are unchanged at `81765cc`; only Task 1's note mentions the delivery
+report. Twilio's 21610 page does not settle the timing, and the note does not name the page that says "asynchronously".
+EXPECTED: Point 8 carries a dated line: either path can happen, both are handled; Task 4 (and Task 6/7) record a stop
+from a delivery report's `ErrorCode` 21610 as well as from a thrown one; Task 0 Step 1 records whether the API answered
+400 or accepted the send and reported 21610 later; the note names the page and quotes it.
+FIX: Plan only: those four edits.
 
-### R-3
+UNIT: plan, Task 0 Step 0 record and Owner step X2.
+VERDICT: red.
+REQUIREMENT: Task 0 Step 0: "Twilio's page on SMS pumping protection, reporting whether it applies to a Messaging
+Service (audit 10)".
+REASON: Step 0 is ticked, but its SMS pumping result is not written in the plan, and X2 has no step for it.
+EVIDENCE: The Task 1 note records the `#` and 21610 results only; `grep -n -i pumping` on the plan finds only Step 0's
+own text.
+EXPECTED: Step 0's result is recorded (account-wide Console setting, free in the US and Canada, error 30450, the page
+does not mention Messaging Services), and X2 adds: turn on SMS Pumping Protection under Communications > Messaging >
+Settings (a website; no command).
+FIX: Plan only: the record in Task 1's note (or under Step 0) and one line in X2.
 
-UNIT: `src/routes/admin/games/[game]/+page.server.ts` (lines 117, 182) and the person-check of play time.
-VERDICT: red (needs a choice; recommendation below).
-REQUIREMENT: design 8, "That member's play time is recorded against that game", "checked by a browser test in CI and
-once by a person on the real site"; rest plan Task 30 (`playSummary` gives "Played so far", "how a person checks on the
-test site that play time was recorded, until slice 5 gives it a home") and Task 24 Step 3 ("the update's page reads
-'Played so far' with counted time above zero for the member's play").
-REASON: no screen shows a member's play time any more, so the person-check the plan relies on cannot be done.
-EVIDENCE: the staff screen reviews (commits `b1a6434`, `2945ab7`, `a64a3e1`) narrowed the line to this staff member's
-own play of the waiting files: both calls pass `{ pullId: game.pending.id, userId }`, and the words are "You've played
-it for …". That change is sound for its own purpose (staff were confused by a count of their own opens). But nothing
-else calls `playSummary` without `only`, so the walk's Step 3 now reads staff's time, not the member's. The browser
-test half (`play-time.test.ts`, "a member's play time is recorded against that game") still holds.
-EXPECTED: the Owner can see, on the test site or by one command, that a member's play counted against the game.
-FIX, two options:
-- a. (recommended) No code. The G walk's Step 3 replaces the "Played so far" line with one read-only command the Owner
-  runs against the test database, giving counted seconds for the game's `member` sessions. It builds nothing ahead of
-  its user (slice 5 gives play time its real home) and keeps the staff line as reviewed. Files: the walk only
-  (`/mnt/project-files/owner-steps/…`, outside the repo) and the rest plan's Task 24 Step 3 line.
-- b. On an update's check page only, a second line "Players have played it for N minutes." from
-  `playSummary(game.id)` filtered to `member` sessions. Files: `played.ts`, the check page, `accept.test.ts`.
+UNIT: `src/features/accounts/phone.ts`, `toE164`.
+VERDICT: note (follow-up for Task 11).
+REQUIREMENT: Review Focus 1 (one account however the number is typed).
+REASON: Every leading zero is dropped for every country, but Italy keeps its leading 0 in E.164 for fixed lines.
+EVIDENCE: `national = digits.replace(/^0+/, "")`, per the plan's audit 14 rule. Only the US and Canada open first, so
+nothing is wrong today.
+EXPECTED: When Task 11 opens a country, its table says whether the trunk 0 is dropped.
+FIX: None here; a line in Task 11 when Italy is considered.
 
-### R-4
+UNIT: `tests/browser/support/texts.ts`, `textIn`.
+VERDICT: note (follow-up for branch C).
+REQUIREMENT: Review Focus 5; the webhook must tell the two lines apart.
+REASON: `textIn` sends no `To` or `MessagingServiceSid` by default, and its `MessageSid` is `SM-in-<Date.now()>`, which
+two calls in the same millisecond repeat.
+EVIDENCE: `const fields = { MessageSid: \`SM-in-${String(Date.now())}\`, From: from, Body: body, ...extra }`.
+EXPECTED: Branch C's journeys pass the line through `extra`, or `textIn` takes it, and ids are unique.
+FIX: None in branch A.
 
-UNIT: `src/features/games/service.ts`, `startGame` (line 570) and the rename in `saveAnswer` (line 635).
-VERDICT: red (small).
-REQUIREMENT: early audit L-3, assigned "waits for S, which edits `service.ts`"; S has merged.
-REASON: two games given the same name at the same moment fail with "Something went wrong".
-EVIDENCE: unchanged since the early audit: `freeSlug` reads which addresses are taken, then `game.create` (or
-`update`) writes one; nothing catches Prisma's unique failure on `slug` (grep `P2002` in `service.ts`: none).
-EXPECTED: the second maker gets the next free address.
-FIX: catch Prisma's unique failure on `slug` in `startGame` and in the rename, call `freeSlug` once more and retry once.
-Test first in `tests/features/games/` (a pg case that holds the first address's insert and makes the second). Files:
-`service.ts` and that test file.
+## Verdict
 
-### R-5
-
-UNIT: `src/routes/make/[game]/+page.server.ts`, line 142.
-VERDICT: red (small).
-REQUIREMENT: early audit S-2 ("check that the old words and comments go too"); rest plan Task 31 (a game taken off can
-be put back).
-REASON: the comment beside `takeOffAddress` says take off "cannot be undone".
-EVIDENCE: `// Asked on a screen of its own, because it cannot be undone.` The take-off page itself says the files go
-for good but the game can be put back, and the Taken off screen's button puts it back.
-EXPECTED: the comment says why it is asked first: the files are deleted.
-FIX: reword that one comment, for example "Asked on a screen of its own, because its files are deleted." Files: that
-line only. A comment change: no test.
-
-## Notes (recorded, not fixed here)
-
-- **N-1. O-1 is still the Owner's.** A game waiting for its first yes still cannot be withdrawn (only a draft or a
-  sent-back game can be thrown away; only a live one taken off). No answer is recorded. The early audit recommended
-  "leave it until slice 4".
-- **N-2. Take off's words differ from the plan's.** The heading is `Take {name} off Ruken?` without the plan's quote
-  marks, and the card has three lines where the plan had two (the files line was added). Both came through the staff
-  and maker screen reviews and the journeys pin them; recorded as deviations, not defects.
-- **N-3. A staff member can accept their own game.** Nothing in the spec forbids it today; the old admin's authority
-  rules (design 5.5) arrive with slice 4. Named here so slice 4's plan decides it.
-- **N-4. The play screen is the Owner's v1 screen** (2026-11-16, "copy ruken v1s play screen almost identical"): the
-  edge tab and its menu replace the rest plan's `back` button and Task 21's 48 by 48 ←. Design 5.7's first-time line
-  "Tap ← to go back to the feed" (slice 3) no longer matches a screen with no ←; slice 3's plan should restate it.
-- **N-5. A copy that runs while its game is taken off** writes its files after the delete (`pullGame` is not stopped
-  by the state), so they are left behind. `filesLeft` sees them and "Delete them" removes them; the game is never put
-  back in the queue. Holds; said so nobody is surprised by the card after a take off during a copy.
-- **N-6. Slice 2 is not done.** `main`'s first CI run of its own (43945063395) was queued at writing; G (the Owner's
-  walk), the design review loop and this audit's fixes are open.
-- **N-7. A flaky test outside this audit's code:** `tests/browser/make-second-look.test.ts:501` (phone) was seen a
-  second time on 2026-11-16 (`progress.md`). It belongs to the maker screens, not S or F: it gets its own thread.
-
-## Fix round
-
-R-1, R-2, R-4 and R-5 go to the implementer as written, each in its own files. R-3 needs a choice between a and b
-before its fix; a is recommended. Each fix is checked by its test on CI (R-5 by reading the line), never by the
-implementer's say-so.
-
-## Fix check, round 1
-
-Pull request #172, head `40667ed` (four commits on `5f831a2`: `9813197`, `65f7688`, `2c06a92`, `40667ed`). Lane 2
-(`tests/support/` and shared service code): this section is also its one fresh review. Checked by the audit session,
-not the implementer. Written 2026-11-16 20:18 UTC (from `date`).
-
-What ran, in a cloud container (Postgres 16, Node 22; never the Owner's computer): `pnpm exec vitest run --project
-postgres` on `sessions.pg.test.ts`, `review.pg.test.ts` and `service.pg.test.ts` at `40667ed`: 144 passed. The same three
-files with `src/features/games/service.ts` and `src/features/play/sessions.ts` put back to `5f831a2`: 5 failed, each
-new case and for its own reason (R-1 twice: `expected 'recorded' to be 'over'`; R-2: the clip save never waited for the
-row lock, `expected 0 to be greater than 0`; R-4 twice: the second write failed on the taken address). `eslint` on the
-eight changed files: clean. `pnpm typecheck`: 0 errors. Not run here: the browser journey added to `play.test.ts` (CI
-runs it); CI on #172 had not reported when this was written.
-
-| Finding | Result | Evidence |
-|---|---|---|
-| R-1 | pass | `recordBeat` answers `over` when `stillOn` is false: any basis but `staff` needs the game `live`; `staff` needs its pull to be the pending or live one. Cases: taken off ends a member's play; an update accepted mid-play keeps counting; staff's check of a first send counts; staff's check ends once sent back. The journey posts the member's real beat after the take off and expects 410 |
-| R-2 | pass | `saveClip` re-reads the state and upserts inside a transaction that takes `lockGame` first; a refusal deletes the file just stored. The new case holds the row, starts a clip save, sees it wait (`pg_stat_activity`), puts the game live, and the save is refused with the old clip kept |
-| R-4 | pass | `onFreeSlug` retries once on Prisma's unique failure on `slug` (`brokeUniqueSlug`), for `startGame` and the rename. Both cases make the other row uncommitted, see the write wait on the index, and get the `-2` address |
-| R-5 | pass | The comment now reads "because its files are deleted" (read) |
-
-Regressions looked for, none found: lock order is the same everywhere (`Game` row first: `accept`, `sendBack`,
-`saveClip`), so no new deadlock; `takeOutOfToFix` stays outside the lock and changes nothing `seenOf` reads; the
-helpers' new `live`/`pendingPullId` writes in `sessions.pg.test.ts` set up rows that `recordBeat` now reads, and loosen
-no expectation; `someoneWaitsForALock` waits on a condition with a 2 s limit, never on a sleep.
-
-Note (not a defect of the fix): a member's tab left open across a take off, a put back and a new yes counts again
-once the game is live again, though its old files are gone. Rare, bounded by the session's day, and the frame cannot
-load new files under the old pass. Recorded for slice 5, which pays on these beats.
-
-R-3 waits for the Owner's choice and is not part of this check.
+`81765cc`: the code matches Tasks 1 and 2 and the three deviations are sound. Three reds, all in the plan text:
+record each deviation where it now takes effect. No code change is needed. CI on `81765cc` was still running.
