@@ -1,18 +1,15 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled } from "./support/account.ts";
 import { makerWithGameWhere, signInAsStaff } from "./support/game.ts";
+import { decideButton, heading, nextButton, partBox, tickOn, toTheDecision } from "./support/check.ts";
 import { boxOf } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The design check of the staff screens (docs/superpowers/audits/2026-11-16-staff-review-screens-design.md). CI checks
-// values and places, not taste: an edge that is there, a box that is as wide as its sheet, a button that is in the window.
+// values and places, not taste: an edge that is there, a choice that is as wide as its part, a button that is in the window.
 
 test.beforeEach(forgetRateLimits);
 
-/** The part's own box on the check page, found by its title. */
-const partNamed = (page: Page, title: string) => page.getByRole("region", { name: title });
-/** The tick on a part. */
-const tickOn = (page: Page, title: string) => page.getByRole("checkbox", { name: `This is wrong: ${title}` });
 /** The card a radio button or checkbox lies over. */
 const cardOf = (field: Locator) => field.locator("xpath=..");
 
@@ -21,20 +18,8 @@ async function checkingAGame(page: Page, slug: string): Promise<void> {
   await signInAsStaff(page);
   await page.goto(`/admin/games/${slug}`);
   await pageHasSettled(page);
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(heading(page)).toBeVisible();
 }
-
-/** The colour and width of an edge, and the colour of the sheet the thing is on. */
-const edgeOf = (thing: Locator) =>
-  thing.evaluate((element) => {
-    const style = getComputedStyle(element);
-    const sheet = element.closest(".sheet");
-    return {
-      colour: style.borderTopColor,
-      width: Number.parseFloat(style.borderTopWidth),
-      sheet: sheet === null ? "" : getComputedStyle(sheet).backgroundColor,
-    };
-  });
 
 test("only one Ruken wordmark is at the top of a staff page", async ({ page, browser }) => {
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
@@ -50,63 +35,12 @@ test("only one Ruken wordmark is at the top of a staff page", async ({ page, bro
   }
 });
 
-test("the left half of the check page is its first child, not the hidden field", async ({
-  page,
-  browser,
-}) => {
-  const maker = await makerWithGameWhere(browser, { state: "waiting" });
-  try {
-    await checkingAGame(page, maker.slug);
-    // The look keeps the first child in view while the sheet scrolls; the hidden field was that child.
-    const first = await page.locator("form.halves").evaluate((form) => form.firstElementChild?.tagName);
-    expect(first).toBe("DIV");
-  } finally {
-    await maker.close();
-  }
-});
-
-test("on the white sheet a choice, a box to type in and a reason's mark can be seen when nothing is picked", async ({
-  page,
-  browser,
-}) => {
-  const maker = await makerWithGameWhere(browser, { state: "waiting" });
-  try {
-    await checkingAGame(page, maker.slug);
-    await tickOn(page, "Upright video").check();
-    const video = partNamed(page, "Upright video");
-
-    const choices = [
-      cardOf(video.getByRole("radio", { name: "It's too dark to see." })),
-      cardOf(video.getByRole("checkbox", { name: "This is wrong: Upright video" })),
-      cardOf(page.getByRole("radio", { name: "3+" })),
-    ];
-    for (const choice of choices) {
-      const edge = await edgeOf(choice);
-      expect(edge.width, "an edge is drawn").toBeGreaterThan(0);
-      expect(edge.colour, "and it is not the sheet's own colour").not.toBe(edge.sheet);
-    }
-
-    const box = await edgeOf(video.locator("textarea"));
-    expect(box.width, "the box to type in has an edge").toBeGreaterThan(0);
-    expect(box.colour, "that is not the sheet's own colour").not.toBe(box.sheet);
-
-    // A reason that is not picked has an empty mark, as a tick box that is not ticked has an empty square.
-    const mark = await cardOf(video.getByRole("radio", { name: "It's too dark to see." })).evaluate(
-      (card) => getComputedStyle(card, "::after").content,
-    );
-    expect(mark).not.toBe("none");
-    expect(mark).not.toBe("normal");
-  } finally {
-    await maker.close();
-  }
-});
-
-test("on the sheet each choice is one to a row, as wide as its part", async ({ page, browser }) => {
+test("each choice is one to a row, as wide as its part", async ({ page, browser }) => {
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
     await checkingAGame(page, maker.slug);
     await tickOn(page, "Name").check();
-    const name = partNamed(page, "Name");
+    const name = partBox(page, "Name");
     const part = await boxOf(name);
 
     for (const card of [
@@ -125,8 +59,8 @@ test("each video is drawn in its own shape, whole", async ({ page, browser }) =>
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
     await checkingAGame(page, maker.slug);
-    const upright = partNamed(page, "Upright video").locator("video");
-    const wide = partNamed(page, "Wide video").locator("video");
+    const upright = partBox(page, "Upright video").locator("video");
+    const wide = partBox(page, "Wide video").locator("video");
 
     const tall = await boxOf(upright);
     expect(tall.width / tall.height).toBeCloseTo(9 / 16, 1);
@@ -147,7 +81,8 @@ test("who it is for says it once, in small words, with the way to send it back r
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
     await checkingAGame(page, maker.slug);
-    const age = partNamed(page, "Who it's for");
+    await toTheDecision(page);
+    const age = partBox(page, "Who it's for");
 
     // The maker's pick is the picked age, and is not written a second time above the ages.
     await expect(age.getByText("12+", { exact: true })).toHaveCount(1);
@@ -173,15 +108,14 @@ test("the line about a line of your own is a small note, and the instruction is 
     await checkingAGame(page, maker.slug);
     await tickOn(page, "Name").check();
 
-    const own = partNamed(page, "Name").getByText(
+    const own = partBox(page, "Name").getByText(
       "Add a line of your own. You need one if you picked Something else.",
     );
     await expect(own).toHaveCSS("font-size", "14px");
-    await expect(
-      page.getByText(
-        "Play it and look at each part. Tick anything that's wrong, then press the blue button.",
-      ),
-    ).toHaveCSS("font-size", "18px");
+    await expect(page.getByText("Play it, then look at each part. Tick anything that's wrong.")).toHaveCSS(
+      "font-size",
+      "18px",
+    );
   } finally {
     await maker.close();
   }
@@ -204,7 +138,7 @@ test("the line above the name keeps 'Waiting' whole and the email in one piece",
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
     await checkingAGame(page, maker.slug);
-    const line = page.locator("p.count");
+    const line = page.locator("p.facts");
     await expect(line.getByText(/^Waiting /)).toHaveCSS("white-space", "nowrap");
     // A dot goes with the words after it (HL6), so it is never left at the end of a line.
     const email = await line.getByText(maker.makerEmail).evaluate((one) => one.textContent);
@@ -226,16 +160,17 @@ test("a refusal inside a part wears the needs-fixing edge, and the page opens wi
   try {
     await checkingAGame(page, maker.slug);
     await tickOn(page, "One line").check();
-    await page.getByRole("button", { name: "Send back" }).click();
+    await toTheDecision(page);
+    await decideButton(page, "Send back").click();
 
-    const refusal = partNamed(page, "One line").getByText("Pick a reason for One line.");
+    const refusal = partBox(page, "One line").getByText("Pick a reason for One line.");
     await expect(refusal).toBeVisible();
     const edge = await refusal.evaluate((words) => getComputedStyle(words).borderLeftWidth);
     expect(Number.parseFloat(edge), "the edge").toBeGreaterThanOrEqual(4);
 
     // The lines of the page rise into place as it opens, so the place is settled a moment after.
     await expect(async () => {
-      const name = await boxOf(partNamed(page, "One line").getByRole("heading", { name: "One line" }));
+      const name = await boxOf(partBox(page, "One line").getByRole("heading", { name: "One line" }));
       const size = page.viewportSize();
       expect(name.y).toBeGreaterThanOrEqual(0);
       expect(name.y + name.height).toBeLessThanOrEqual(size?.height ?? 0);
@@ -253,8 +188,9 @@ test("'This is wrong' for who it's for comes after the marks, beside the line th
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
     await checkingAGame(page, maker.slug);
+    await toTheDecision(page);
     await page.getByRole("radio", { name: "18+" }).check();
-    const age = partNamed(page, "Who it's for");
+    const age = partBox(page, "Who it's for");
     const none = await boxOf(cardOf(age.getByRole("checkbox", { name: "None of these" })));
     const explains = await boxOf(age.getByText("Or send it back, and the maker will choose again."));
     const box = await boxOf(cardOf(tickOn(page, "Who it's for")));
@@ -294,7 +230,7 @@ test("the staff's three links share one line on the narrowest phone", async ({ p
   expect(new Set(tops).size, `top of each link: ${tops.join(", ")}`).toBe(1);
 });
 
-test("on a computer the list's bar starts where the list does, and the way back is in view as the check page opens", async ({
+test("on a computer the bar starts where the list and the check start, and the blue button is in view as the check opens", async ({
   page,
   browser,
 }, testInfo) => {
@@ -307,8 +243,8 @@ test("on a computer the list's bar starts where the list does, and the way back 
     await page.goto("/admin/games");
     await pageHasSettled(page);
     const mark = await boxOf(page.getByRole("link", { name: "Ruken", exact: true }));
-    const heading = await boxOf(page.getByRole("heading", { level: 1 }));
-    expect(Math.abs(mark.x - heading.x)).toBeLessThanOrEqual(1);
+    const title = await boxOf(heading(page));
+    expect(Math.abs(mark.x - title.x)).toBeLessThanOrEqual(1);
 
     for (const size of [
       { width: 1440, height: 900 },
@@ -317,11 +253,16 @@ test("on a computer the list's bar starts where the list does, and the way back 
       await page.setViewportSize(size);
       await page.goto(`/admin/games/${maker.slug}`);
       await pageHasSettled(page);
-      const way = await boxOf(page.getByRole("link", { name: "Back to games to check" }).first());
-      expect(way.y + way.height, `${String(size.width)}x${String(size.height)}`).toBeLessThanOrEqual(
+      const button = await boxOf(nextButton(page));
+      expect(button.y + button.height, `${String(size.width)}x${String(size.height)}`).toBeLessThanOrEqual(
         size.height,
       );
     }
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`/admin/games/${maker.slug}`);
+    await pageHasSettled(page);
+    const first = await boxOf(page.getByRole("link", { name: "Ruken", exact: true }));
+    expect(Math.abs(first.x - (await boxOf(heading(page))).x), "the check page").toBeLessThanOrEqual(1);
   } finally {
     await maker.close();
   }
@@ -370,7 +311,7 @@ test.describe("the windows", () => {
     { name: "small phone", width: 375, height: 667 },
   ];
 
-  test("the blue button is in the window at the end of the sheet, in every window", async ({
+  test("the blue button is in the window on both screens, in every window", async ({
     page,
     browser,
   }, testInfo) => {
@@ -384,20 +325,22 @@ test.describe("the windows", () => {
         await pageHasSettled(page);
         await page.emulateMedia({ reducedMotion: "reduce" });
         await tickOn(page, "Name").check();
-        await page.evaluate(() => {
-          window.scrollTo(0, document.documentElement.scrollHeight);
-        });
 
-        const button = await boxOf(page.getByRole("button", { name: "Send back" }));
-        expect(button.y, size.name).toBeGreaterThanOrEqual(0);
-        expect(button.y + button.height, size.name).toBeLessThanOrEqual(size.height);
+        // On the first screen, which is long, the button is in view wherever staff are on it; on the decision too.
+        const first = await boxOf(nextButton(page));
+        expect(first.y, `${size.name}, check`).toBeGreaterThanOrEqual(0);
+        expect(first.y + first.height, `${size.name}, check`).toBeLessThanOrEqual(size.height);
+        await nextButton(page).click();
+        const last = await boxOf(decideButton(page, "Send back"));
+        expect(last.y, `${size.name}, decision`).toBeGreaterThanOrEqual(0);
+        expect(last.y + last.height, `${size.name}, decision`).toBeLessThanOrEqual(size.height);
       }
     } finally {
       await maker.close();
     }
   });
 
-  test("where the game sits beside the sheet, the whole left half fits the window", async ({
+  test("the game can be played where the check opens, in every window", async ({
     page,
     browser,
   }, testInfo) => {
@@ -405,15 +348,11 @@ test.describe("the windows", () => {
     const maker = await makerWithGameWhere(browser, { state: "waiting" });
     try {
       await signInAsStaff(page);
-      for (const size of WINDOWS.filter(
-        (one) => one.width >= 700 && one.height >= 450 && one.width > one.height,
-      )) {
+      for (const size of WINDOWS) {
         await page.setViewportSize({ width: size.width, height: size.height });
         await page.goto(`/admin/games/${maker.slug}`);
         await pageHasSettled(page);
-        const left = await boxOf(page.locator("form.halves > :first-child"));
-        expect(left.height, size.name).toBeLessThanOrEqual(size.height);
-        // And it is a game that can be played there, not a sliver.
+        // Not a sliver, and as wide as the question it sits in.
         expect((await boxOf(page.locator("iframe.frame"))).height, size.name).toBeGreaterThanOrEqual(190);
       }
     } finally {
@@ -451,7 +390,7 @@ test.describe("the windows", () => {
         await page.goto(`/admin/games/${maker.slug}`);
         await pageHasSettled(page);
         const mark = await boxOf(page.getByRole("link", { name: "Ruken", exact: true }));
-        const name = await boxOf(page.getByRole("heading", { level: 1 }));
+        const name = await boxOf(heading(page));
         expect(Math.abs(mark.x - name.x), size.name).toBeLessThanOrEqual(1);
       }
     } finally {

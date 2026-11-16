@@ -163,6 +163,8 @@ Sessions read less (Owner, 2026-11-15: "1-3 yes" and "A").
 
 Our copy and UX always pass the drunk-grandma test: a drunk grandma can understand and use what we make (Owner, 2026-11-13).
 
+Every form uses the maker screens' one-question-at-a-time pattern and shared components (Owner, 2026-11-16: "model our staff review after our typeform inspired maker screens; do this for all forms").
+
 No subagents unless the owner says so.
 
 Refresh a session after 90 minutes.

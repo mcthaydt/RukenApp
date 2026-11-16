@@ -22,6 +22,7 @@
     plain = false,
     hint,
     problem,
+    labelledBy = "question",
   }: {
     name: string;
     options: Option[];
@@ -34,6 +35,8 @@
     plain?: boolean;
     hint?: string;
     problem: string | undefined;
+    /** The id of the words that ask this question: the page's heading, unless the page asks more than one. */
+    labelledBy?: string;
   } = $props();
 
   // The ids of the lines under the choices that a reader should hear with them.
@@ -59,7 +62,7 @@
 
 <fieldset
   class="picks"
-  aria-labelledby="question"
+  aria-labelledby={labelledBy}
   aria-describedby={describedBy}
   data-several={several ? "" : undefined}
   data-ratings={ratings ? "" : undefined}

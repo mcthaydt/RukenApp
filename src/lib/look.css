@@ -1534,34 +1534,7 @@ a.foot {
   border-left: 6px solid var(--pay);
 }
 
-/* A choice is paper on paper here, so it has an edge that shows before it is picked (the sheet's ink, as a box has on paper),
-   and the blue edge of a picked one stays as it is. A reason that is not picked has an empty mark, as a tick box has an
-   empty square: the same corners as the square, because the look has no circle (Owner, 2026-11-15). */
-.part .pick {
-  border-color: var(--ink-soft);
-}
-
-.part .pick:has(input:checked) {
-  border-color: var(--pay);
-}
-
-.part .picks:not([data-several]) .pick::after {
-  content: "";
-  border: 2px solid var(--ink-soft);
-}
-
-.part .picks:not([data-several]) .pick:has(input:checked)::after {
-  content: "\2713";
-  border-color: transparent;
-}
-
-/* The box to type in is paper on paper too: it gets the same edge, and sits a small step under the words that ask for it. */
-.screen .part textarea.answer {
-  margin-top: 0.5rem;
-  border: 2px solid var(--ink-soft);
-}
-
-/* One choice to a row, as wide as its part: two across squeezed "This is wrong" and the reasons into half the sheet, and
+/* One choice to a row, as wide as its part: two across squeezed "This is wrong" and the reasons into half the width, and
    broke their words. The ages are five short names and stay in their row. */
 .part .picks:not([data-ratings]) {
   grid-template-columns: minmax(0, 1fr);
@@ -1600,7 +1573,7 @@ a.foot {
 }
 
 /* The marks of an 18+ game, with their question, are asked only once 18+ is chosen. */
-.halves:not(:has(input[name="ageRating"][value="age_18"]:checked)) [data-marks] {
+.asks:not(:has(input[name="ageRating"][value="age_18"]:checked)) [data-marks] {
   display: none;
 }
 
@@ -1610,7 +1583,7 @@ a.foot {
   display: none;
 }
 
-.halves:has(input[name="wrong"]:checked) .decide > [data-accept] {
+.asks:has(input[name="wrong"]:checked) .decide > [data-accept] {
   display: none;
 }
 
@@ -1623,7 +1596,7 @@ a.foot {
   display: inline;
 }
 
-.halves:has(input[name="wrong"]:checked) .decide > [data-send-back] {
+.asks:has(input[name="wrong"]:checked) .decide > [data-send-back] {
   display: inline;
 }
 
@@ -1645,12 +1618,6 @@ a.foot {
   font: var(--text-small);
 }
 
-/* The page's one instruction is read at body size, in chalk, and not as a note under the name. */
-.halves .instruction {
-  color: var(--chalk);
-  font: var(--text-body);
-}
-
 /* On a computer the bar and the page start at one left edge: the bar is as wide as the page and centred with it. This is
    staff's both pages (the list and the check page), so the wordmark does not jump between them more than the pages differ. */
 @media (min-width: 1200px) and (orientation: landscape) {
@@ -1659,61 +1626,74 @@ a.foot {
     margin-inline: auto;
     padding-inline: 0;
   }
-}
 
-/* Where the game stands beside the sheet and the window is tall enough, the whole left half fits the window, so the blue button,
-   the game, "Full size" and the way back are all in view while the sheet scrolls. The game's frame is what gives room: it
-   is 70% of the window, down to the least it can be played in. A shorter window cannot hold the whole half, so the half is
-   not kept in view there; it scrolls with the sheet, and the game is as large as the window allows. */
-@media (orientation: landscape) and (min-width: 700px) and (min-height: 600px) {
-  .halves[data-check] > :first-child {
-    display: flex;
-    flex-direction: column;
-    /* The bar above it (68px, 72px on a computer) and the page's own space above and below the half (2rem and 1.5rem) are
-       the window's too, so what it adds up to is in view as the page opens, with the way back under the game. */
-    max-height: calc(100dvh - 8rem);
-  }
-
-  .halves[data-check] > :first-child > * {
-    flex: none;
-  }
-
-  .halves[data-check] > :first-child > .frame {
-    flex: 1 1 auto;
-    min-height: 12rem;
-  }
-
-  .halves[data-check] > :first-child > :is(.quiet, a.foot) {
-    align-self: flex-start;
+  /* The check is asked in the maker's own layout, whose column is as wide as a question's. */
+  .screen[data-staff]:has(.asks) .topbar {
+    width: min(100% - 5rem, 1200px);
   }
 }
 
-@media (orientation: landscape) and (min-width: 700px) and (max-height: 599px) {
-  .halves[data-check] > :first-child {
-    position: static;
-  }
-}
-
-/* A phone held sideways: a wider left half, so the game is large enough to play. */
-@media (max-height: 449px) and (min-width: 700px) {
-  .halves[data-check] {
-    grid-template-columns: 380px minmax(0, 1fr);
-  }
-
-  .halves[data-check] .frame {
-    height: 80dvh;
-  }
-}
-
-/* The game's frame on the check page sits under its name, a step clear of the buttons above it. */
-.halves .frame {
+/* The game's frame is the first question of a check: as wide as the question, a step clear of the words above it, and a step
+   above "Full size", so the button is not read as the frame's caption. A phone held sideways is short, so its frame takes
+   most of the window and is still big enough to play. */
+.asks .frame {
   margin-top: 1.5rem;
   border-radius: var(--radius-card);
 }
 
-/* "Full size" is a button under the game and not a caption on it: the same step under the frame as above it. */
-.halves .frame + .quiet {
+.asks .frame + .quiet {
   margin-top: 1.5rem;
+}
+
+@media (max-height: 449px) {
+  .asks .frame {
+    height: 80dvh;
+  }
+}
+
+/* A question with no card of the game beside it (staff's check) has its column to itself. */
+.asks[data-alone] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* A question that is a step of a page is hidden whole when it is not the one on screen: a part's own grid would show it
+   otherwise, as an author's display beats the browser's rule for the hidden attribute. */
+.asks section[hidden] {
+  display: none;
+}
+
+/* The check's one instruction is read at body size, in chalk, and not as a note under the name. */
+.asks .instruction {
+  color: var(--chalk);
+  font: var(--text-body);
+}
+
+/* A part's title is on felt here, not on a sheet of paper, so it is chalk and not the sheet's grey ink. */
+.asks .part h2 {
+  color: var(--chalk);
+}
+
+/* A screen of the check holds lines, a frame and parts, told apart by space as a part's are. */
+.asks section[data-step] > * + * {
+  margin-top: 1rem;
+}
+
+.asks section[data-step] > .part + .part,
+.asks section[data-step] > .note + .part {
+  margin-top: 2.5rem;
+}
+
+/* The check's list is long, so where the buttons sit under the answer they stay at the foot of the window: the blue button is in
+   view whatever part staff are looking at. (A phone's are already a bar across the bottom.) */
+@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
+  .asks[data-alone] .acts {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin-top: 2rem;
+    padding-block: 0.75rem;
+    background: var(--felt-deep);
+  }
 }
 
 /* The agreement's points on a sheet: the number is the list's own, in the display face, and hangs in the left margin, so

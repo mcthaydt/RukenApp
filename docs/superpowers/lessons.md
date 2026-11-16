@@ -15,3 +15,7 @@ One line per lesson, added by the fix session when its fix is accepted (see "Les
 - A page that is drawn outside its area's layout gets what that layout would have given, such as the wordmark, from the page that hides it (HL10). (2026-11-16, #138)
 - A link that staff use every day is never the line right above "Delete my account"; the way to delete keeps a clear step (HL11). (2026-11-16, #138)
 - Check CI results yourself (`gh run watch` or poll the run's status); never wait for a notice. A session sat an hour on an already-green run. (2026-11-16)
+- A new screen starts from the shared pieces of the screens it must look like (here the maker's QuestionScreen and Picks), widened by a small option, never copied; a whole day of review rounds went on staff screens built in a pattern of their own. (2026-11-16, #138)
+- A screen whose pattern is new is shown to the Owner as rough shots before any review round, so the wrong pattern is found in minutes and not after the reviews. (2026-11-16, #138)
+- Fewest screens first: a form asked one screen at a time starts at the fewest screens that give each screen one job (here three), and splits only where the Owner asks. (2026-11-16, #138)
+- Rough shots are taken from a game made through the real screens, not from a test stand-in with no files, so an empty frame is not read as a bug. (2026-11-16, #138)
