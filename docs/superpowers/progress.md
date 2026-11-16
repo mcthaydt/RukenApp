@@ -53,7 +53,7 @@ workflow files change only on them; the command runs after the gate job is on `m
 
 ```sh
 # After a "gate" job lands in ci.yml: require it alongside the existing checks (verify, browser, postgres stay).
-gh api -X POST repos/mcthaydt/RukenApp/branches/main/protection/required_status_checks/contexts --input - <<< '["gate"]'
+gh api -X POST repos/mcthaydt/RukenApp/branches/main/protection/required_status_checks/contexts -f 'contexts[]=gate'
 # Confirm.
 gh api repos/mcthaydt/RukenApp/branches/main/protection --jq '.required_status_checks.contexts'
 ```

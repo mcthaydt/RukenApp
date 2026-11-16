@@ -102,10 +102,10 @@ reports into one owner-facing update. Otherwise the implementer handles these du
 
 ## Rules that never bend
 
-- **Identity.** Every commit is authored by McThayDT `107786093+mcthaydt@users.noreply.github.com`. No Claude co-author, no "Claude-Session" trailer and no
-  "Generated with Claude Code" line in commits, pull request bodies or docs. Pull requests end with "Requested by
-  **McThayDT**": check the body's last line after every create or edit, since tools such as `gh pr create` can add
-  a footer. Never force-push. Merge with a merge commit, never a squash.
+- **Identity.** Every commit is authored by McThayDT `107786093+mcthaydt@users.noreply.github.com`. No Claude
+  co-author, no "Claude-Session" trailer and no "Generated with Claude Code" line in commits, pull request bodies or
+  docs. Pull requests end with "Requested by **McThayDT**": check the body's last line after every create or edit,
+  since tools such as `gh pr create` can add a footer. Never force-push. Merge with a merge commit, never a squash.
 - **The drunk-grandma test.** All copy and UX must be something a drunk grandma could understand and use: plain words,
   one main action per screen, big obvious buttons, no jargon, and nothing that needs explaining.
 - **CLI first.** If something can be done with a CLI (gh, npm, wrangler and so on), do it with the CLI, and give the
@@ -149,18 +149,19 @@ tooling for this. The plan names any other lane 2 or 3 unit up front. The highes
 - **Lane 1**, small and easy to undo: a copy change, a test, a doc (specs, plans, audits and progress notes included),
   deleting a merged branch, an isolated change with coverage. Merges on green.
 - **Lane 2**, wide: `src/lib/`, `src/hooks.server.ts`, `src/app.html`, `src/app.d.ts`, `src/params/`,
-  `src/routes/+layout.*`, `src/routes/+error.svelte`, `prisma/schema/`, `tests/support/`, `tests/fixtures/`,
-  `static/`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `vite.config.ts`, `playwright.config.ts`,
-  `prisma.config.ts`, `tsconfig.json`, `eslint.config.js`, `prettier.config.js`, `.prettierignore`, `.nvmrc`,
-  `.env.example`, shared code many callers use, a schema, or config. Merges after `release`'s extra
-  checks.
+  `src/routes/+layout.*`, `src/routes/+error.svelte`, `prisma/schema/`, `tests/support/`, `tests/browser/support/`,
+  `tests/fixtures/`, `static/`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `vite.config.ts`,
+  `playwright.config.ts`, `prisma.config.ts`, `tsconfig.json`, `eslint.config.js`, `prettier.config.js`,
+  `.prettierignore`, `.nvmrc`, `.env.example`, shared code many callers use, a schema, or config. Merges after
+  `release`'s extra checks.
 - **Lane 3**, hard to undo: `tests/golden/` moves that no approved change explains, `prisma/migrations/`,
   `.github/workflows/`, `wrangler.jsonc`, `cloudflare/` (the deployed Workers and their bindings),
-  `src/features/money/`, `src/routes/webhooks/`, `.claude/settings.json`, credentials, money, device actions with
-  consequential side effects, release approvals and tags, CI workflow files, deleting
-  anything git cannot restore, any migration, any write of real data, and a change to the rules that decide what needs
-  the owner (CLAUDE.md and the skills, even though they are `.md` files). Requires its lane's checks and reviews plus
-  the owner's approval or a recorded standing permission covering the exact action.
+  `src/features/money/`, `src/features/membership/`, `src/features/accounts/`, `src/routes/api/auth/`,
+  `src/routes/webhooks/`, `.claude/settings.json`, credentials, money, device actions with consequential side
+  effects, release approvals and tags, CI workflow files, deleting anything git cannot restore, any migration, any
+  write of real data, and a change to the rules that decide what needs the owner (CLAUDE.md and the skills, even
+  though they are `.md` files). Requires its lane's checks and reviews plus the owner's approval or a recorded
+  standing permission covering the exact action.
 - **First-time setup.** Bootstrap from the owner's own rules text is lane 2: creating the repo, its CI and the rules
   files as the owner gave them. The owner's request is the standing permission for the setup check. Later changes to
   the rules or CI are lane 3 as usual.
