@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { longDate, longDay } from "../../src/lib/long-date.ts";
+import { dayAndMonth, longDate, longDay } from "../../src/lib/long-date.ts";
 
 describe("longDay", () => {
   it("writes a calendar day in words, the day it names whatever zone the server is in", () => {
@@ -22,5 +22,16 @@ describe("longDate", () => {
 
   it("moves to the next day once Chicago has", () => {
     expect(longDate(new Date("2026-12-15T07:00:00Z"))).toBe("Tuesday, December 15");
+  });
+});
+
+// The Taken off screen's "You took it off on 12 December" (spec 13.1 M2, the board's words).
+describe("dayAndMonth", () => {
+  it("writes the Chicago day an instant falls on as day then month", () => {
+    expect(dayAndMonth(new Date("2026-12-12T18:00:00Z"))).toBe("12 December");
+  });
+
+  it("is still the day before at 3 a.m. UTC", () => {
+    expect(dayAndMonth(new Date("2026-12-01T03:00:00Z"))).toBe("30 November");
   });
 });

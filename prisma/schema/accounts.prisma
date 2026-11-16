@@ -58,9 +58,10 @@ model User {
   // What GitHub said this person can reach; declared in games.prisma.
   githubInstallations GitHubInstallation[]
 
-  // Staff decisions about games (games.prisma) and what a maker agreed to (make.prisma).
-  gameReviews    GameReview[]   @relation("GameReviewStaff")
+  // Staff decisions about games (games.prisma), what a maker agreed to and what they did to their games (make.prisma).
+  gameReviews     GameReview[]     @relation("GameReviewStaff")
   makerAgreements MakerAgreement[]
+  makerActions    MakerAction[]
 
   // The pages feature's table points at a person; it is declared in pages.prisma.
   makerPage MakerPage?
