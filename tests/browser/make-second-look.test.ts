@@ -396,8 +396,11 @@ test("on a wide window the screen after taking a game off starts at the top left
   await giveRealClips(page, live.slug);
   await putGameWhereStaffLeaveIt(live.slug, { state: "live" });
   await page.goto(`/make/${live.slug}/take-off`);
+  await pageHasSettled(page);
   await page.getByRole("button", { name: "Take it off" }).click();
   await expect(page).toHaveURL(`/make/${live.slug}`);
+  // The address changes before the new screen is drawn, so the measure waits for the screen itself.
+  await expect(page.getByRole("heading", { name: "Taken off Ruken" })).toBeVisible();
   await wordsHaveSettled(page);
   const whereThisStarts = await boxOf(page.locator("main :is(.count, h1)").first());
 
