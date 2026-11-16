@@ -474,6 +474,39 @@ describe("playSummary", () => {
   });
 });
 
+describe("playSummary, for players only", () => {
+  it("counts members' play of the game, and not staff's or its maker's", async () => {
+    const game = await newGame();
+    const member = startedOf(
+      await service.startPlay({ game, viewer: await newViewer(), clientAddress: newAddress() }),
+    );
+    const staff = startedOf(
+      await service.startPlay({
+        game,
+        viewer: await newViewer({ isStaff: true }),
+        clientAddress: newAddress(),
+      }),
+    );
+    const maker = startedOf(
+      await service.startPlay({
+        game,
+        viewer: { userId: game.makerUserId, isStaff: false, isMember: false },
+        clientAddress: newAddress(),
+      }),
+    );
+    clock.advance(15_000);
+    for (const play of [member, staff, maker]) {
+      await service.recordBeat({ sessionId: play.session.id, token: play.session.token, attentive: true });
+    }
+
+    expect(await service.playSummary(game.id, { basis: "member" })).toEqual({
+      sessions: 1,
+      beats: 1,
+      countedSeconds: 15,
+    });
+  });
+});
+
 describe("playSummary, for one staff member's check of one copy of the files", () => {
   /** A pull of the game's files that is not live: the files staff are asked to check, waiting for their yes. */
   async function waitingPull(game: LiveGame): Promise<string> {

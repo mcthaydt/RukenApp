@@ -182,11 +182,12 @@ export function createPlayService(deps: PlayServiceDeps) {
   /**
    * What a game's plays add up to: sessions, beats, and the seconds that counted, worked out from the beats. With `only`
    * it is one person's plays of one copy of the files, which is what staff mean by "you've played it": a check of waiting
-   * files must not count players' time on the files that are live, or another staff member's.
+   * files must not count players' time on the files that are live, or another staff member's. Or it is one basis of
+   * play, such as members', which is what an update's page means by players.
    */
   async function playSummary(
     gameId: string,
-    only?: { pullId: string; userId: string },
+    only?: { pullId: string; userId: string } | { basis: PlayBasis },
   ): Promise<{ sessions: number; beats: number; countedSeconds: number }> {
     const sessions = await deps.db.playSession.findMany({
       where: { gameId, ...only },

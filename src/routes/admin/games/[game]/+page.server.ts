@@ -7,6 +7,7 @@ import {
   mustAskBeforeAccepting,
   partsToCheck,
   playedWords,
+  playersPlayedWords,
   staffOnly,
   TICK_FIRST_WORDS,
   tickProblem,
@@ -115,11 +116,17 @@ export const load: PageServerLoad = async ({ locals, params, cookies }) => {
   });
   // Only this staff member's play of these waiting files: "you've played it" is not players' time on the live files.
   const summary = await play.playSummary(game.id, { pullId: game.pending.id, userId });
+  const kind = game.state === "live" ? ("update" as const) : ("game" as const);
+  // An update's game is live, so members have played it: how a person checks that play time counted (audit R-3 b).
+  const players =
+    kind === "update"
+      ? playersPlayedWords((await play.playSummary(game.id, { basis: "member" })).countedSeconds)
+      : null;
 
   return {
     slug: game.slug,
     name: game.name,
-    kind: game.state === "live" ? ("update" as const) : ("game" as const),
+    kind,
     makerEmail: game.makerEmail,
     waited: waitedWords(game.sentAt ?? new Date(systemClock.epochMs()), systemClock.epochMs()),
     seen: game.seen,
@@ -131,6 +138,7 @@ export const load: PageServerLoad = async ({ locals, params, cookies }) => {
     filesBeingFixed: game.pullProblem === null ? null : FILES_BEING_FIXED_WORDS,
     frame: { src: started.frameUrl, sandbox: GAME_FRAME_SANDBOX, allow: GAME_FRAME_ALLOW },
     played: playedWords(summary.countedSeconds),
+    players,
   };
 };
 

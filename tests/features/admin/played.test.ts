@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { acceptAnywayWords, mustAskBeforeAccepting, playedWords } from "../../../src/features/admin/admin.ts";
+import {
+  acceptAnywayWords,
+  mustAskBeforeAccepting,
+  playedWords,
+  playersPlayedWords,
+} from "../../../src/features/admin/admin.ts";
 
 // What the check page says of the staff member's own play of the waiting files: "You've played it for 2 minutes."
 
@@ -13,6 +18,20 @@ describe("playedWords", () => {
     [3_600, "You've played it for 60 minutes."],
   ])("%d seconds says %s", (seconds, words) => {
     expect(playedWords(seconds)).toBe(words);
+  });
+});
+
+// What an update's check page says of members' play of the game that is live (audit R-3 b): how a person sees that
+// play time is recorded, until slice 5 gives it a home.
+
+describe("playersPlayedWords", () => {
+  it.each([
+    [0, "Players haven't played it yet."],
+    [59, "Players have played it for less than a minute."],
+    [60, "Players have played it for 1 minute."],
+    [120, "Players have played it for 2 minutes."],
+  ])("%d seconds says %s", (seconds, words) => {
+    expect(playersPlayedWords(seconds)).toBe(words);
   });
 });
 

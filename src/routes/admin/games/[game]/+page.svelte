@@ -268,6 +268,9 @@
       <button type="button" class="quiet" onclick={() => frame?.requestFullscreen()}>Full size</button>
     {/if}
     <p class="note">{played}</p>
+    {#if data.players !== null}
+      <p class="note">{data.players}</p>
+    {/if}
     {#each otherParts as part (part.part)}
       <!-- A part's refusal sits under its title, and the page brings the part to the top. A part that is a video has the
              video between its title and its reasons, which would leave the reasons under the bar, so its refusal sits
