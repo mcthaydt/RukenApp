@@ -389,6 +389,69 @@ describe("playSummary", () => {
   });
 });
 
+describe("playSummary, for one staff member's check of one copy of the files", () => {
+  /** A pull of the game's files that is not live: the files staff are asked to check. */
+  async function waitingPull(game: LiveGame): Promise<string> {
+    const pull = await db().gamePull.create({
+      data: {
+        id: crypto.randomUUID(),
+        gameId: game.id,
+        commitSha: "c".repeat(40),
+        fileCount: 3,
+        totalBytes: 1000n,
+        connectHosts: [],
+        pulledAt: new Date(clock.epochMs()),
+      },
+    });
+    return pull.id;
+  }
+
+  /** One beat, 15 seconds after the last thing that happened, so a session counts 15 seconds. */
+  async function playedFor15Seconds(session: { id: string; token: string }): Promise<void> {
+    clock.advance(15_000);
+    await service.recordBeat({ sessionId: session.id, token: session.token, attentive: true });
+  }
+
+  it("counts only this staff member's play of this pull, not members' play of the live files or other staff's", async () => {
+    const game = await newGame();
+    const pullId = await waitingPull(game);
+    const me = await createUser(db());
+    const colleague = await createUser(db());
+
+    const mine = await service.startReviewPlay({ game, pullId, staffUserId: me });
+    const theirs = await service.startReviewPlay({ game, pullId, staffUserId: colleague });
+    const liveFiles = startedOf(
+      await service.startPlay({ game, viewer: await newViewer(), clientAddress: newAddress() }),
+    );
+    await playedFor15Seconds(mine.session);
+    await playedFor15Seconds(theirs.session);
+    await playedFor15Seconds(liveFiles.session);
+
+    expect(await service.playSummary(game.id, { pullId, userId: me })).toEqual({
+      sessions: 1,
+      beats: 1,
+      countedSeconds: 15,
+    });
+    // Without a check to look at, it is still every play of the game.
+    expect((await service.playSummary(game.id)).sessions).toBe(3);
+  });
+
+  it("counts another copy of the files as nothing", async () => {
+    const game = await newGame();
+    const earlier = await waitingPull(game);
+    const later = await waitingPull(game);
+    const me = await createUser(db());
+    const earlierPlay = await service.startReviewPlay({ game, pullId: earlier, staffUserId: me });
+    await playedFor15Seconds(earlierPlay.session);
+
+    expect(await service.playSummary(game.id, { pullId: later, userId: me })).toEqual({
+      sessions: 0,
+      beats: 0,
+      countedSeconds: 0,
+    });
+  });
+});
+
 describe("startReviewPlay", () => {
   /** A game with a pull that is not live yet, as staff meet it: waiting for a first yes. */
   async function waitingGame(connectHosts: string[]) {

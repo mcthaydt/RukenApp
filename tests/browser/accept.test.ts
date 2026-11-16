@@ -11,6 +11,11 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
 
+/** What the page tells staff to do before anything is pressed (plain-words M1). */
+const WHAT_TO_DO = "Play it and look at each part. Tick anything that's wrong, then press the blue button.";
+/** What a part with no box says on a live game's update (plain-words M7). */
+const LIVE_NO_BOX = "This game is already live, so this can't be sent back.";
+
 /** The part's own box on the check page, found by its title. */
 const partNamed = (page: Page, title: string) => page.getByRole("region", { name: title });
 /** The tick on a part. */
@@ -60,7 +65,7 @@ test("the list says what is waiting, the oldest first, and is empty when nothing
 
     const row = page.getByRole("link", { name: new RegExp(maker.name) });
     await expect(row).toContainText(maker.makerEmail);
-    await expect(row).toContainText(/waited \d+ (minutes?|hours?|days?)/);
+    await expect(row).toContainText(/Waiting \d+ (minutes?|hours?|days?)/);
     expect((await boxOf(row)).height).toBeGreaterThanOrEqual(44);
   } finally {
     await maker.close();
@@ -76,18 +81,19 @@ test("ticking a part turns Accept into Send back, and the maker reads why", asyn
     await checkingAGame(page, maker.slug);
     await expect(page.getByRole("button", { name: "Accept" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Send back" })).toHaveCount(0);
+    await expect(page.getByText(WHAT_TO_DO)).toBeVisible();
 
     await tickOn(page, "Upright video").check();
     await expect(page.getByRole("button", { name: "Send back" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Accept" })).toHaveCount(0);
-    await partNamed(page, "Upright video").getByRole("radio", { name: "It's sideways." }).check();
+    await partNamed(page, "Upright video").getByRole("radio", { name: "It's on its side." }).check();
     await showTheOwner(page, testInfo, "sending a game back");
     await page.getByRole("button", { name: "Send back" }).click();
 
     await expect(page).toHaveURL("/admin/games");
     expect(await stateOf(maker.slug)).toBe("sent_back");
     await maker.page.goto(`/make/${maker.slug}`);
-    await expect(maker.page.getByText("It's sideways. Turn it the right way up.")).toBeVisible();
+    await expect(maker.page.getByText("It's on its side. Record it with your phone upright.")).toBeVisible();
   } finally {
     await maker.close();
   }
@@ -135,6 +141,12 @@ test("Something else needs a line of your own, and keeps what was typed", async 
   try {
     await checkingAGame(page, maker.slug);
     await tickOn(page, "One line").check();
+    // The label never says "if you want": for Something else the line is not optional (plain-words M5).
+    await expect(
+      partNamed(page, "One line").getByText(
+        "Add a line of your own. You need one if you picked Something else.",
+      ),
+    ).toBeVisible();
     await partNamed(page, "One line").getByRole("radio", { name: "Something else" }).check();
 
     await page.getByRole("button", { name: "Send back" }).click();
@@ -169,16 +181,52 @@ test("staff can change who it is for before Accept", async ({ page, browser }) =
   }
 });
 
+test("who it is for is one place: the maker's pick, staff's own pick, and sending it back", async ({
+  page,
+  browser,
+}) => {
+  // Plain-words H1 and H2
+  const maker = await makerWithGameWhere(browser, { state: "waiting" });
+  try {
+    await checkingAGame(page, maker.slug);
+    const age = partNamed(page, "Who it's for");
+
+    // Both ways to act on the age are under the one name, each saying what it does, and there is no second "Age rating".
+    await expect(page.getByRole("region", { name: "Age rating" })).toHaveCount(0);
+    await expect(age.getByText("Pick who it's for. You can change what the maker picked.")).toBeVisible();
+    await expect(age.getByRole("radio", { name: "12+" })).toBeChecked();
+    await expect(age.getByText("Or send it back, and the maker will choose again.")).toBeVisible();
+
+    // Sent back, the maker is told which way (not always "older").
+    await tickOn(page, "Who it's for").check();
+    await expect(age.getByRole("radio", { name: "It's for older players." })).toBeVisible();
+    await age.getByRole("radio", { name: "It's for younger players." }).check();
+    await page.getByRole("button", { name: "Send back" }).click();
+
+    await expect(page).toHaveURL("/admin/games");
+    await maker.page.goto(`/make/${maker.slug}`);
+    await expect(
+      maker.page.getByText(`We think ${maker.name} is for younger players. Choose again.`),
+    ).toBeVisible();
+  } finally {
+    await maker.close();
+  }
+});
+
 test("making a game 18+ asks for its marks, and Accept without one is refused", async ({ page, browser }) => {
   // Review Focus 5
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
     await checkingAGame(page, maker.slug);
     const gore = page.getByRole("checkbox", { name: "Gore" });
+    // The marks come with their own question, in the words the maker was asked (plain-words M6).
+    const question = page.getByText(`Does ${maker.name} have any of these?`);
     await expect(gore).toBeHidden();
+    await expect(question).toBeHidden();
 
     await page.getByRole("radio", { name: "18+" }).check();
     await expect(gore).toBeVisible();
+    await expect(question).toBeVisible();
     await page.getByRole("button", { name: "Accept" }).click();
     await expect(page.getByRole("alert")).toHaveText("Choose at least one, or None of these.");
     expect(await stateOf(maker.slug)).toBe("waiting");
@@ -199,11 +247,17 @@ test("an update has a box only on what its maker can fix", async ({ page, browse
     await checkingAGame(page, maker.slug);
 
     await expect(page.getByText(/^Update/)).toBeVisible();
+    await expect(page.getByText(/^Update to a live game/)).toBeVisible();
     await expect(page.getByRole("checkbox", { name: /^This is wrong/ })).toHaveCount(4);
     for (const title of ["Name", "One line", "Game files", "Where it plays"])
       await expect(tickOn(page, title)).toBeVisible();
-    for (const title of ["Upright video", "Wide video", "Who it's for", "Other websites"])
+    for (const title of ["Upright video", "Wide video", "Who it's for", "Other websites"]) {
       await expect(tickOn(page, title)).toHaveCount(0);
+      // A part with no box says why, so staff do not look for one.
+      await expect(partNamed(page, title).getByText(LIVE_NO_BOX)).toBeVisible();
+    }
+    // The parts that have a box say nothing of the kind.
+    await expect(partNamed(page, "Name").getByText(LIVE_NO_BOX)).toHaveCount(0);
   } finally {
     await maker.close();
   }
@@ -215,7 +269,9 @@ test("a game that needs a keyboard says so", async ({ page, browser }) => {
     await changeGame(maker.slug, { playsOn: "computer_only" });
     await checkingAGame(page, maker.slug);
 
-    await expect(page.getByText("This game needs a keyboard. Connect one to your iPad.")).toBeVisible();
+    await expect(
+      page.getByText("This game needs a keyboard. If you're on an iPad or phone, connect one."),
+    ).toBeVisible();
   } finally {
     await maker.close();
   }
@@ -249,7 +305,8 @@ test("a game that changed while staff looked is not accepted, and staff are told
 
 test("a game whose new files were refused is not accepted on its older ones", async ({ page, browser }) => {
   // Audit S-6
-  const words = "Its maker is fixing its files. It comes back when they're fixed.";
+  const words =
+    "The maker is fixing this game's files, so you can't accept it yet. Come back when they're done. You can still send it back.";
   const maker = await makerWithGameWhere(browser, {
     state: "waiting",
     pullProblem: "index.html is missing.",
@@ -267,12 +324,12 @@ test("a game whose new files were refused is not accepted on its older ones", as
   }
 });
 
-test("the page says how long the game has been played, and nothing yet", async ({ page, browser }) => {
+test("the page says how long you have played the game, and nothing yet", async ({ page, browser }) => {
   const maker = await makerWithGameWhere(browser, { state: "waiting" });
   try {
     await checkingAGame(page, maker.slug);
 
-    await expect(page.getByText("Played so far: nothing counted yet.")).toBeVisible();
+    await expect(page.getByText("You haven't played it yet.")).toBeVisible();
   } finally {
     await maker.close();
   }

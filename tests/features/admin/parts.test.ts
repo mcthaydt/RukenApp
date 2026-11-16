@@ -79,6 +79,25 @@ describe("partsToCheck", () => {
     expect(partsToCheck(update, media).find((one) => one.part === "age_rating")?.reasons).toEqual([]);
   });
 
+  it("says a video that was never added is not there yet, and a video that was added says nothing", () => {
+    const noUpright: GameToCheck = { ...FIRST_SEND, clipKeys: { upright: null, wide: "clips/a/wide-1.mp4" } };
+    const parts = partsToCheck(noUpright, media);
+    expect(parts.find((one) => one.part === "upright_video")).toMatchObject({
+      value: "No video yet",
+      video: null,
+    });
+    expect(parts.find((one) => one.part === "wide_video")?.value).toBeNull();
+  });
+
+  it("asks which way the age is wrong, and says it in staff's own words", () => {
+    const age = partsToCheck(FIRST_SEND, media).find((one) => one.part === "age_rating");
+    expect(age?.reasons.map((reason) => reason.words)).toEqual([
+      "It's for older players.",
+      "It's for younger players.",
+      "Something else",
+    ]);
+  });
+
   it("adds an 18+ game's marks to its rating", () => {
     const adult: GameToCheck = { ...FIRST_SEND, ageRating: "age_18", contentMarks: ["gore"] };
     expect(partsToCheck(adult, media).find((one) => one.part === "age_rating")?.value).toBe("18+ · Gore");

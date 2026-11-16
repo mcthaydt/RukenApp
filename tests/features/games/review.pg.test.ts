@@ -381,7 +381,7 @@ describe("sendBack", () => {
       {
         part: "upright_video",
         title: "Upright video",
-        words: "It's sideways. Turn it the right way up.",
+        words: "It's on its side. Record it with your phone upright.",
         note: null,
       },
     ]);
@@ -836,7 +836,7 @@ describe("accept, with the rating staff choose", () => {
     [
       "18+ with None of these and another mark",
       ["none", "gore"] as ContentMark[],
-      "Choose None of these on its own, or choose the marks that are in it.",
+      "Pick None of these on its own, or pick what's in it.",
     ],
   ])(
     "refuses %s, in words, and the game still waits (Review Focus 5)",
@@ -866,7 +866,22 @@ describe("accept, with the rating staff choose", () => {
         contentMarks: [],
         seen: looked.seen,
       }),
-    ).rejects.toMatchObject({ code: "INVALID" });
+    ).rejects.toMatchObject({ code: "INVALID", message: "Pick who this game is for." });
+    expect((await stateOf(game.id)).state).toBe("waiting");
+  });
+
+  it("tells staff, in words that are about someone else's game, when no rating was picked", async () => {
+    const { game, staff } = await waitingGame();
+    const looked = await lookAt(game.slug);
+
+    // What a form posts when no rating is ticked: an empty string.
+    await expect(
+      service.accept(game.id, staff, {
+        ageRating: "" as unknown as AgeRating,
+        contentMarks: [],
+        seen: looked.seen,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID", message: "Pick who this game is for." });
     expect((await stateOf(game.id)).state).toBe("waiting");
   });
 });
@@ -936,7 +951,8 @@ describe("a game that changed after staff looked (audit S-1)", () => {
 });
 
 describe("a waiting game whose new files were refused (audit S-6)", () => {
-  const FIXING = "Its maker is fixing its files. It comes back when they're fixed.";
+  const FIXING =
+    "The maker is fixing this game's files, so you can't accept it yet. Come back when they're done. You can still send it back.";
 
   it("is not accepted on its older files, and stays in the queue", async () => {
     const { game, staff } = await waitingGame();
