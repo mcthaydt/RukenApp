@@ -45,6 +45,8 @@ Every slice ends with one, after its design review loop and before the owner's o
   per step: the journey, the step, PASS or FAIL, and the evidence (a screenshot, or what it saw).
 - Each FAIL is a red finding in the format below. The implementer fixes it in the fix round, and the walk runs again on
   the failed journeys only, until every step passes.
+- It uses test accounts, test payments and test phone numbers. A step that would spend real money, send a real message
+  or write real data waits for its standing permission.
 - The owner's walk starts only when every step passes.
 
 ## One finding is one unit

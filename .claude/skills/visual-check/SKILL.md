@@ -24,10 +24,10 @@ already approved are skipped.
 
 ## Screens page
 
-At the end of every slice, after the owner's walk and before the retro, show all of the slice's screens in one organized
-artifact: grouped by flow, in the order a person meets them, each screen on each device in the device matrix, labeled
-with its name and the commit it shows. Screens the owner already approved are included and marked as approved. Share it
-as one link, not as screenshots scattered across messages.
+At the end of every slice, after the owner's walk and before the retro, the coordinator shows all of the slice's screens
+in one organized artifact: grouped by flow, in the order a person meets them, each screen on each device in the device
+matrix, labeled with its name and the commit it shows. Screens the owner already approved are included and marked as
+approved. Share it as one link, not as screenshots scattered across messages.
 
 ## Skip what is already approved
 
