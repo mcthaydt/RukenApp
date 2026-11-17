@@ -63,6 +63,16 @@ export async function signUp(
   return { email, password: JOURNEY_PASSWORD };
 }
 
+/** Signs in with the sign-in form, as a person fills it, and waits for the page it lands on. */
+export async function signInAs(page: Page, account: { email: string; password: string }): Promise<void> {
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").fill(account.email);
+  await page.getByLabel("Password").fill(account.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL("/");
+  await pageHasSettled(page);
+}
+
 /** Where `wrangler dev` serves the site, for a browser context made by hand (such a context has no config of its own). */
 const SITE_URL = "http://localhost:4173";
 

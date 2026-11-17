@@ -1,7 +1,14 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { expect, type Locator, type Page } from "@playwright/test";
-import { pageHasSettled, signUp } from "./account.ts";
-import { fillAnswers, putGameWhereStaffLeaveIt } from "./database.ts";
+import {
+  expect,
+  type APIRequestContext,
+  type APIResponse,
+  type Browser,
+  type Locator,
+  type Page,
+} from "@playwright/test";
+import { pageHasSettled, signUp, signUpInItsOwnContext } from "./account.ts";
+import { changeGame, fillAnswers, idsOf, putGameWhereStaffLeaveIt } from "./database.ts";
 
 // The steps every maker journey shares: a maker with a game, the answers a screen asks for, and the videos. GitHub is
 // the stand-in on this machine (support/fake-github-server.ts), which lists `ruken-test/tiny-game` and
@@ -265,9 +272,12 @@ export async function addVideo(page: Page, shape: "upright" | "wide"): Promise<v
 export async function answerEveryQuestion(
   page: Page,
   options: { rating?: "3+" | "7+" | "12+" | "16+" | "18+"; marks?: string[]; signedIn?: boolean } = {},
-): Promise<{ slug: string; name: string }> {
+): Promise<{ slug: string; name: string; maker?: { email: string; password: string } }> {
   // A maker who is already signed in adds a game; a new one signs up first.
-  const { slug, name } = options.signedIn === true ? await addDraftAndLine(page) : await startAtFiles(page);
+  const { slug, name, maker } =
+    options.signedIn === true
+      ? { ...(await addDraftAndLine(page)), maker: undefined }
+      : await startAtFiles(page);
   await connectGitHubFromFiles(page, slug);
   await page.getByLabel(TINY_GAME).check();
   await nextButton(page).click();
@@ -291,7 +301,7 @@ export async function answerEveryQuestion(
   }
   await expect(page).toHaveURL(new RegExp(`/make/${slug}/(agreement|check)$`));
   await pageHasSettled(page);
-  return { slug, name };
+  return maker === undefined ? { slug, name } : { slug, name, maker };
 }
 
 /** A game for a maker who is already signed in: question 1 and 2 answered, the browser on question 3. */
@@ -339,4 +349,77 @@ export async function gameWhere(
   if (options.agreed === true) await agreeToTheAgreement(page, slug);
   await putGameWhereStaffLeaveIt(slug, decision);
   return { slug, name };
+}
+
+const JOBS_SECRET = "test-only-jobs-secret";
+
+/** Whether this worker has made sure a staff account exists (the journeys share one database). */
+let staffMade = false;
+
+/**
+ * Posts one order to the Owner's review command with the journeys' secret. Before its first post in a worker it makes
+ * sure a staff account exists: 200 and 409 from the first-owner command both mean there is one.
+ */
+export async function reviewJob(
+  request: APIRequestContext,
+  order: object,
+  browser: Browser,
+): Promise<APIResponse> {
+  const headers = { "content-type": "application/json", authorization: `Bearer ${JOBS_SECRET}` };
+  if (!staffMade) {
+    const { email } = await signUpInItsOwnContext(browser);
+    const made = await request.post("/jobs/first-owner", { headers, data: JSON.stringify({ email }) });
+    expect([200, 409]).toContain(made.status());
+    staffMade = true;
+  }
+  return request.post("/jobs/review", { headers, data: JSON.stringify(order) });
+}
+
+/**
+ * A game sent through the real screens, in a context of its own that is then closed: every question, the agreement, and
+ * the blue button of Check and send. It ends waiting for review, with the maker's own account to sign in with.
+ */
+export async function submitGame(
+  browser: Browser,
+): Promise<{ slug: string; name: string; maker: { email: string; password: string } }> {
+  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  try {
+    const page = await context.newPage();
+    const { slug, name, maker } = await answerEveryQuestion(page);
+    if (maker === undefined) throw new Error("a new maker was signed up, so there is an account");
+    await agreeToTheAgreement(page, slug);
+    await page.getByRole("button", { name: "Send for review" }).click();
+    await expect(page).toHaveURL(`/make/${slug}`);
+    await expect(page.getByRole("heading", { name: "Waiting for review" })).toBeVisible();
+    return { slug, name, maker };
+  } finally {
+    await context.close();
+  }
+}
+
+/**
+ * A game that is live on real files and real videos: `submitGame`, then the Owner's real yes through the review
+ * command. `computer_only` and `free` change the row afterwards.
+ */
+export async function addGame(
+  browser: Browser,
+  request: APIRequestContext,
+  options: { playsOn?: "computer_only"; free?: boolean } = {},
+): Promise<{
+  slug: string;
+  name: string;
+  id: string;
+  publicId: string;
+  makerUserId: string;
+  maker: { email: string; password: string };
+}> {
+  const sent = await submitGame(browser);
+  const yes = await reviewJob(request, { do: "accept", game: sent.slug }, browser);
+  expect(yes.status()).toBe(200);
+  const changes = {
+    ...(options.playsOn === undefined ? {} : { playsOn: options.playsOn }),
+    ...(options.free === true ? { freeToPlay: true } : {}),
+  };
+  if (Object.keys(changes).length > 0) await changeGame(sent.slug, changes);
+  return { ...sent, ...(await idsOf(sent.slug)) };
 }
