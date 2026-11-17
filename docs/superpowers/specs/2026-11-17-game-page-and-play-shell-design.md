@@ -18,6 +18,7 @@ Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** a
 - **Owner, 2026-11-17:** "Non-members should be paywalled when they press play; either they pay on the landing page or they get hit with it when they try to play". As 5.2 says: Play takes a non-member to the price card, and after paying they are in the game they chose. Nothing plays without paying except a free game.
 - **Owner, 2026-11-17, on the first sketches:** "Not quite what I was looking for - players see the game on a reels like interface like this, but I'd prefer the bar be on the bottom like YouTube; we go to the game page when we click on the game, but not play". Pressing a game in the feed opens its page; Play is pressed on the page. Ruken's bar floats at the bottom (3.3). The sketches were redrawn from the feed (version 2).
 - **Owner, on a card:** "Home and You only, for now". The bar's two buttons (3.3).
+- **Owner, 2026-11-17 06:25 UTC:** "All games must be playable on computer and mobile". There is no computer-only game: every page says the game plays on the device in hand, and nothing sends a person away for their device. Taking the maker's "Where does it play?" question out of submitting is the plan's Unit R.
 - **Owner, 2026-11-17, the pick:** "1. A, easily" (the game's page: the watch page, 3.3) and "2. I'd prefer if it's a small semi transparent tab, that can be moved up and down, or dragged to either side if the screen, but when it opens A" (playing: a small see-through tab the person can move, which opens the menu of sketch A, 4.1 to 4.3).
 - **Owner, 2026-11-17, on the game's page:** "when we click on the game that's when we see game page specific details, which should have basically everything steam has, but trimmed". Read with the first card ("Now: what Ruken has; rest drawn"): the page has a trimmed set of a store page's sections (section 2.1, the rows marked Now and Later); each section whose data Ruken does not have yet is not drawn until its slice builds it (section 6). The Owner's notes on the feed itself are kept for slice 3 in section 6.
 
@@ -28,7 +29,7 @@ The two screens are judged by what the person in front of them needs, in the ord
 **Before pressing Play**, a person wants to know five things, and the page answers each in a plain sentence, never in a table of specs:
 
 1. **What is it like?** Watching it is the answer. The clip is the biggest thing on the page and plays at once, without sound; a press gives it sound and full size.
-2. **Will it work on what I'm holding?** The page knows the device and where the game plays, so it says so directly: "Plays on this phone. Nothing to install." A store's system requirements become one line about the device in the person's hand. A computer-only game on a phone says "This one needs a computer." and offers its link instead of Play.
+2. **Will it work on what I'm holding?** Every game on Ruken plays on phones, tablets and computers (Owner, section 0), and the page knows the device, so it says so directly: "Plays on this phone. Nothing to install." A store's system requirements become one line about the device in the person's hand.
 3. **Is it for me?** Who it is for, in the rating chip and its own plain line ("12+ · Real-looking fighting, or scary bits."), and how long a sitting is, measured from real play, never claimed ("Most people play about 12 minutes at a time."). A store's tags are guesses by the maker; Ruken measures.
 4. **Who made it?** A person, not a company link: the maker's photo, name and their own one line, from their page. Then their other games.
 5. **What does pressing Play cost me?** Said before the press, in one quiet line, and personal: a member reads "Included with your membership."; a free game reads "Free to play. No account needed."; anyone else reads "Members play every game. $9.99 a month." with "Tax is added where it applies." under it (5.8's money rule).
@@ -103,7 +104,7 @@ Owner: "In terms of functionality yes, match them". Every feature of the two is 
 - **The one line**, at the statement size.
 - **The play facts**, plain sentences in ink on one paper card (3.3), each its own line:
   - the rating chip, then its plain line in sage: the same words the maker's age question shows today: 3+ "Fine for anyone.", 7+ "Cartoon fighting, or a little scary.", 12+ "Real-looking fighting, or scary bits.", 16+ "More violence or strong words.", 18+ "Only for adults." (one list, moved to `laid-out.ts` so the question and the page share it);
-  - the device line: "Plays on this phone. Nothing to install.", "…on this tablet…", "…on this computer…"; for a computer-only game on a phone, "This one needs a computer." takes the place of Play (3.4);
+  - the device line: "Plays on this phone. Nothing to install.", "…on this tablet…", "…on this computer…". The server knows a phone by its `User-Agent`; the page's script says "tablet" where the pointer is coarse (an iPad sends a Mac's `User-Agent`); without script a tablet reads "…on this computer…";
   - the sitting line, once a game has 20 counted plays: "Most people play about 12 minutes at a time." (section 5);
   - the player line, only when the maker has turned it on: "214 people played it this week." (section 5).
 - **Play**, blue, the one main button. A link to `/g/<slug>/play`, so it works with no script.
@@ -185,8 +186,6 @@ On a computer a mouse can hover a tile; nothing depends on hover. Play is in the
 | Anyone, on a free game | "Free to play. No account needed." | the game |
 | The game's own maker | "This is your game. Playing it here doesn't count toward its play time." | the game |
 | Staff who check games | "You can play this to check it. It doesn't count toward its play time." | the game |
-| Anyone on a phone, for a computer-only game | none; in Play's place: "This one needs a computer." and Share, blue | (no Play) |
-| Anyone on a tablet, for a computer-only game | as on a phone. The server cannot tell an iPad from a Mac by its `User-Agent`, so the page's script decides: a coarse pointer (`pointer: coarse`) and a computer-only game put "This one needs a computer." and Share in Play's place. Without script the server's answer stands | (no Play) |
 
 The price comes from `PREMIUM_PRICES_CENTS` in `plans.ts`, formatted, never typed into the page.
 
@@ -318,10 +317,9 @@ These are folded into the plan's Unit F and the switch unit; the plan's tests ch
 
 - `/g/<game>` shows a live game's clip of the window's shape, its two clip tiles, name, one line, rating chip and line, device line, Play and the cost line for the viewer (3.4). A game that is not live, or not there, is the missing page with its way back.
 - Someone who is not a member sees Join beside the cost line, going to `/join?next=/g/<slug>`; nobody else sees it.
-- A computer-only game on a tablet reads "This one needs a computer." like a phone, where the page's script runs.
 - The sitting line shows only with 20 or more counted plays in 30 days, in the words of section 5; the player line only when the maker turned it on.
 - Made by and More from show only as 3.2 says.
-- A phone that opens a computer-only game reads "This one needs a computer.", is offered Share, and cannot reach the play page.
+- The device line names the device in hand (phone, tablet or computer), for every game; nothing on either screen sends a person away for their device.
 - Play takes a non-member to the price card and then into the game they chose; a member, the maker, staff and anyone on a free game go straight in.
 - The play screen is the game and the Menu tab only. Menu opens the menu; Keep playing returns to the game with focus in it; Start again reloads it; Leave game goes to the page; Escape closes the menu; Full screen appears only where it works. With no script, Menu then Leave game still leaves.
 - The first time on a device, "Choose Menu to leave the game. You can move it." shows for 5 seconds, once.
