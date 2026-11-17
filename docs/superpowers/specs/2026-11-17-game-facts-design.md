@@ -1,10 +1,10 @@
 # What a maker tells players about their game
 
-Date: 2026-11-17. Status: written for the plan audit and the Owner's review. Nothing here is built. Lane 3 (a migration), so the staged path: this spec and its plan, the plan audit, then the build.
+Date: 2026-11-17. Status: the Owner answered its three questions on 2026-11-17 (section 8); written for the plan audit. Nothing here is built. Lane 3 (a migration), so the staged path: this spec and its plan, the plan audit, then the build.
 
 This adds to the game's questions (main design 10.5, the maker screens redesign, and `src/features/games/questions.ts` on `main`), to what staff can send back (main design 11.2), and to the game's page (`2026-11-17-game-page-and-play-shell-design.md`, section 6, "Genre, tags and languages"). Everything else in them stands: one question a screen, the drunk-grandma test, nobody types a fact, and the look of 5.8.
 
-Lines marked **Owner** are the Owner's words or choices. **Call** is this design's choice, which the Owner can overrule. **Pending** waits for the Owner and is not built until the answer comes.
+Lines marked **Owner** are the Owner's words or choices. **Call** is this design's choice, which the Owner can overrule.
 
 ## 0. The Owner's words
 
@@ -22,14 +22,14 @@ Every field a store page shows about a game, and what Ruken does with it. **Now*
 | Short description | Have: the one line | |
 | About this game (the long text) | Now (**Owner**): up to 280 characters, a tweet's length, optional | 2.1 |
 | Trailer and videos | Have: the upright and wide videos | |
-| Screenshots | **Pending**, card 3: recommended No, the two videos are the pictures | 8 |
+| Screenshots | No (**Owner**, on a card: "No, the two videos are enough") | |
 | Genre | Now: one kind, from a short list | 2.2 |
 | Tags | Now: up to 5, from a fixed list | 2.3 |
 | Languages (interface, audio, subtitles) | Now: one list of the languages its words are in; spoken words with subtitles is one of "good to know" | 2.4, 2.6 |
 | Single-player, multiplayer, co-op, online | Now: how many people play at once | 2.5 |
 | Controller support | Now: "Works with a game controller too", in "good to know" | 2.6 |
 | Accessibility features | Now: one hand, needs sound, subtitles, flashing lights, in "good to know" | 2.6 |
-| AI content disclosure | **Pending**, card 2: recommended Now, shown only when AI helped | 2.7 |
+| AI content disclosure | No (**Owner**, on a card: "Don't ask") | |
 | Release date | Measured (Call): the day staff first said yes, "On Ruken since 17 November 2026." Nobody types it | 3 |
 | Developer and publisher | Have: the maker, a person with a page (game page 3.2) | |
 | Website and social links | Have, on the maker's own page (the "Linktree" half of Ruken), not on each game | |
@@ -47,7 +47,7 @@ Every field a store page shows about a game, and what Ruken does with it. **Now*
 
 Each is one screen, in the redesign's question layout (`QuestionScreen`), with the same counter, Back, the card beside it on a wide screen, and Next. Picks use `Picks` as the age and marks questions do. A maker answers in the order below; a game past draft changes any of them from Check and send (and, while live, from Live), as the one line is changed today.
 
-The order, after Unit R: name, line, **about**, files, upright video, wide video, **kind**, **tags**, **languages**, **players**, **good to know**, **AI** (if card 2 is ask), who it's for, and the marks of an 18+ game. A second game goes from 6 questions to 11 (12 with About, 13 with the pending AI question too; one more for an 18+ game, as `counterOf` works it out). Call: the facts come after the videos, because a maker who has just watched their own game back answers them quickest, and before the rating, which closes the list as it does today.
+The order, after Unit R: name, line, **about**, files, upright video, wide video, **kind**, **tags**, **languages**, **players**, **good to know**, who it's for, and the marks of an 18+ game. A second game goes from 6 questions to 12 (one more for an 18+ game, as `counterOf` works it out). Call: the facts come after the videos, because a maker who has just watched their own game back answers them quickest, and before the rating, which closes the list as it does today.
 
 ### 2.1 About
 
@@ -94,12 +94,6 @@ The order, after Unit R: name, line, **about**, files, upright video, wide video
 - The picks, in this order: "Works with a game controller too", "Can be played with one hand", "Needs sound to play", "Spoken words have subtitles", "Has flashing lights", and "None of these" (apart, last; with any other pick it is refused as the marks question refuses it).
 - Wrong: "Choose at least one, or None of these."
 
-### 2.7 AI (Pending, card 2)
-
-- Heading: "Did AI help make <name>?" Several, at least 1. Hint: "Say what it helped with. Players see this only if it did."
-- The picks: "The pictures", "The words", "The sound or music", "The code", and "No, none of it" (apart, last).
-- Wrong: "Choose at least one, or No, none of it."
-- The page says only what AI helped with ("Made with help from AI: the pictures and the words."). "No, none of it" shows nothing at all: Ruken never says a game is AI-free.
 
 ## 3. Storage
 
@@ -113,13 +107,12 @@ One migration, made by `pnpm prisma migrate dev --create-only` and read before i
 | `languages` | `TEXT[]`, default `{}` | not asked yet; `{none}` is "It has no words" |
 | `players` | `GamePlayers[]`, default `{}` (enum `alone`, `one_device`, `online`) | not asked yet |
 | `goodToKnow` | `GameNote[]`, default `{}` (enum `controller`, `one_hand`, `needs_sound`, `subtitles`, `flashing_lights`, `none`) | not asked yet |
-| `aiHelp` | `AiHelp[]`, default `{}` (enum `pictures`, `words`, `sound`, `code`, `none`) (card 2) | not asked yet |
 | `firstLiveAt` | `TIMESTAMPTZ`, null | never live yet |
 
-and to the enum `GamePart` the values `about`, `kind`, `tags`, `languages`, `players`, `good_to_know` and `ai_help` (card 2).
+and to the enum `GamePart` the values `about`, `kind`, `tags`, `languages`, `players` and `good_to_know`.
 
-- **Lists that grow are text, lists that don't are enums.** Kind, tags and languages are codes from `src/features/games/library/kinds.json`, `tags.json` and `languages.json` (each entry: its code and the words a person reads), checked by the games service, so a new tag or language is a change to a file, not a migration. Players, good to know and AI are short fixed sets, so they are enums, as `ContentMark` is. Call.
-- **CHECKs**, each named and listed in the model's `///` line as the others are: `Game_about_check` (`char_length(about) <= 280`), `Game_tags_check` (`cardinality(tags) <= 5`), and `Game_languages_check`, `Game_goodToKnow_check`, `Game_aiHelp_check` (`none` only alone, as `Game_marks_check` does for the marks).
+- **Lists that grow are text, lists that don't are enums.** Kind, tags and languages are codes from `src/features/games/library/kinds.json`, `tags.json` and `languages.json` (each entry: its code and the words a person reads), checked by the games service, so a new tag or language is a change to a file, not a migration. Players and good to know are short fixed sets, so they are enums, as `ContentMark` is. Call.
+- **CHECKs**, each named and listed in the model's `///` line as the others are: `Game_about_check` (`char_length(about) <= 280`), `Game_tags_check` (`cardinality(tags) <= 5`), and `Game_languages_check` and `Game_goodToKnow_check` (`none` only alone, as `Game_marks_check` does for the marks).
 - **`Game_answered_check` is not changed.** Games already past draft on the test site have none of the new answers, so a check that needs them would fail the migration, and a `NOT VALID` one would refuse every later write to those games (taking one off included). Sending for review already asks for every unanswered question first (`firstUnanswered`), so no new game reaches review without them. Call.
 - **`firstLiveAt`** is written once, in the same write that first makes a game live (staff's yes, Unit S's review job), and never changed; a game taken off and put back keeps it. Games already live keep null and show no date. Call: no backfill, since the test site's games are test data.
 - **Undoing it** is a second migration that drops the columns, not a revert. Postgres cannot drop a value from an enum, so the new `GamePart` values stay unused if it is undone.
@@ -140,15 +133,14 @@ Each new question is its own part, so staff can send back just that answer, and 
 | `players` | It doesn't play that way. | {name} doesn't play the way you said. Pick how it really plays. |
 | `good_to_know` | It has flashing lights. | {name} has flashing lights. Say so, so players know. |
 | `good_to_know` | Something picked isn't true. | Something you picked isn't true of {name}. Pick only what is. |
-| `ai_help` | AI helped with more than it says. | We think AI helped make more of {name} than you said. Pick everything it helped with. |
 
-- Their card titles (`partTitle`): "About", "Kind", "Tags", "Languages", "Players", "Good to know", "AI help". Their buttons (`partNoun`): "Fix what you wrote about it", "Fix the kind", "Fix the tags", "Fix the languages", "Fix how many play", "Fix what's good to know", "Fix the AI help".
+- Their card titles (`partTitle`): "About", "Kind", "Tags", "Languages", "Players", "Good to know". Their buttons (`partNoun`): "Fix what you wrote about it", "Fix the kind", "Fix the tags", "Fix the languages", "Fix how many play", "Fix what's good to know".
 - A live game may change every new answer by itself, and staff may send back any of them on a live game (both lists in `service.ts` gain them), as they can the name and the line: they are words about the game, so a wrong one is fixed without taking the game down.
 - The review command (Unit S's `review-order.ts`) takes the new parts by the same names, and its refusal's list of parts names them.
 
 ## 5. Where the maker sees them
 
-- **Check and send** lists every answer, in question order, each with its Change link, as it lists the name and line today: "Puzzle" / "Calm, Pixel art, Endless" / "In English and Spanish" / "Play alone or online" / "Works with a game controller too. Has flashing lights." / the About text, cut to two lines / the AI line. One not answered yet (an older game) reads "Not answered yet" in sage, its link "Answer".
+- **Check and send** lists every answer, in question order, each with its Change link, as it lists the name and line today: "Puzzle" / "Calm, Pixel art, Endless" / "In English and Spanish" / "Play alone or online" / "Works with a game controller too. Has flashing lights." / the About text, cut to two lines. One not answered yet (an older game) reads "Not answered yet" in sage, its link "Answer".
 - **Live** and **Sent back** show the same lines under the game laid out (`GameLaidOut`), each with its Change link.
 - A live game made before this spec has no new answers. Its Live screen shows each as "Not answered yet" with "Answer"; nothing else nags, and the page leaves those lines out until they are answered.
 
@@ -160,12 +152,11 @@ On the paper card of play facts (game page 3.1 and 3.3), under the device line a
 2. Languages: "In English." / "In English and Spanish." / "In English, Spanish and French." (every one named; "and" before the last) / "No words to read."
 3. Players: "Play alone." / "Play alone or together on one device." / "Play alone, together on one device, or online." (the picks in list order: "alone", "together on one device", "online").
 4. Good to know, one short line each: "Works with a game controller too." / "Can be played with one hand." / "Needs sound." / "Spoken words have subtitles." / "Has flashing lights." "None of these" draws nothing.
-5. AI (card 2): "Made with help from AI: the pictures and the words." Nothing when no AI helped.
-6. The date: "On Ruken since 17 November 2026." (America/Chicago, the day only).
+5. The date: "On Ruken since 17 November 2026." (America/Chicago, the day only).
 
 **About <name>**, as a watch page's description: under the paper card on a phone, in the left column under the card on a wide screen; the heading "About Floor Fifty" at the card title size, then the text in ink, line breaks kept, plain text only (escaped, never HTML). Over 4 lines on a phone, it shows 4 and "More" (a `<details>`, so it works with no script).
 
-All the words are made by pure functions with tests, beside `ratingWords` in `src/features/games/laid-out.ts`: `kindWords`, `languagesWords`, `playersWords`, `goodToKnowWords`, `aiWords`, `sinceWords`.
+All the words are made by pure functions with tests, beside `ratingWords` in `src/features/games/laid-out.ts`: `kindWords`, `languagesWords`, `playersWords`, `goodToKnowWords`, `sinceWords`.
 
 ## 7. The plan: units, lanes and order
 
@@ -201,22 +192,22 @@ Expected time: K 4 hours, Q 6 hours, V 3 hours, plus the audits. Models and effo
 - [ ] **Step 2: the lines and About.** Run again on `computer`, `phone` and `tablet`: pass. Open the draft pull request.
 - [ ] **Step 3: finish.** The visual check on the five devices; the fresh lane 2 review; fix; delete the live-state file, merge `main` in, mark ready, merge on green.
 
-## 8. Open decisions (for the Owner)
+## 8. Decisions
 
 1. **Settled, Owner 2026-11-17:** a longer About, optional, up to 280 characters ("However long a single tweet can be").
-2. **Pending, card 2:** saying whether AI helped. Recommended: ask, and show only when it did. If staff only: the page line (6, item 5) goes. If no: 2.7, `aiHelp`, its part and its line go.
-3. **Pending, card 3:** screenshots. Recommended: no; the upright and wide videos are the game's pictures. If yes: a picture question (up to 6) and a strip under the clip tiles become their own unit, with storage in the bucket like the videos; this spec would be amended first.
+2. **Settled, Owner 2026-11-17, on a card:** makers are not asked whether AI helped ("Don't ask"), and nothing about AI is on the page.
+3. **Settled, Owner 2026-11-17, on a card:** no screenshots ("No, the two videos are enough").
 4. **Calls** the Owner may overrule: the lists in 2.2 to 2.6, the question order, one language list instead of three, the date measured from the first yes, `Game_answered_check` left as it is.
 
 ## 9. Acceptance criteria
 
-- A new game is asked kind, tags, languages, players and good to know and About (and AI, by card 2), one per screen, in section 2's order, with section 2's words; the counter counts them.
+- A new game is asked kind, tags, languages, players and good to know and About, one per screen, in section 2's order, with section 2's words; the counter counts them.
 - Each refusal in section 2 shows its words on its own question, and nothing is saved.
 - A game cannot be sent for review until every new question is answered (`firstUnanswered`).
 - Each answer is stored as section 3 says; each CHECK refuses a write that breaks it, by the database itself.
 - Staff can send back each new part, with section 4's reasons; the maker reads section 4's words and fixes it on that question; a live game stays live while it is fixed.
 - A live game's maker can change each new answer from Live; a game made before this spec shows "Not answered yet" for each and can answer it.
-- The game's page shows section 6's lines in order, only for answers that exist, and About as plain text with line breaks; "None of these" and "No, none of it" draw nothing, and no line ever says a game has no AI.
+- The game's page shows section 6's lines in order, only for answers that exist, and About as plain text with line breaks; "None of these" draws nothing.
 - `firstLiveAt` is set by the first yes and never changed.
 - Everything works by keyboard alone with focus visible, nothing scrolls sideways, every target is at least 44 by 44, and each new screen passes the visual check on the five devices.
 - The words in this file are the words shipped.
