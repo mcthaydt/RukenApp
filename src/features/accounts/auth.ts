@@ -1,17 +1,20 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware } from "better-auth/api";
+import { phoneNumber } from "better-auth/plugins";
 import { systemClock, type Clock } from "../../lib/clock.ts";
 import { runAfterAnswer, type RunInBackground } from "../../lib/server/background.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 import { mailFailureCode, type Mailer } from "../../lib/server/mail.ts";
 import { createRateLimiter } from "../../lib/server/rate-limit.ts";
+import { TextError, textFailureCode, type Texter } from "../../lib/server/text.ts";
 import { authLimitsPlugin } from "./auth-limits-plugin.ts";
+import { resetChannel, resetCodeMessage, userHasMoney } from "./changed-hands.ts";
 import { WELCOME_BACK_COOKIE, WELCOME_BACK_MAX_AGE_SECONDS, type CookiePolicy } from "./cookies.ts";
 import { restoreOnSignIn } from "./deletion.ts";
-import { passwordChangedMessage, passwordResetMessage, verificationMessage } from "./mails.ts";
 import { signInPausePlugin } from "./sign-in-pause-plugin.ts";
 import { clearSignInFailures } from "./sign-in-guards.ts";
+import { alreadyText, passwordChangedText } from "./text-words.ts";
 
 // better-auth at /api/auth, configured to fit the tables in prisma/schema/accounts.prisma:
 // - ids come from Prisma's cuid2 defaults (`generateId: false`);
@@ -22,14 +25,23 @@ export const CLIENT_IP_HEADER = "x-ruken-client-ip";
 
 /**
  * Set by the public /api/auth route (forward.ts) on every request it passes on, overwriting any
- * copy the client sent. The sign-up form's action calls better-auth without it, so better-auth can
- * tell a sign-up that came through the form (with its age step) from one that did not.
+ * copy the client sent. Our own forms call better-auth without it, so better-auth can tell a
+ * request that came through a form (with its age step, its limits and its checks) from one that
+ * came from outside.
  */
 export const PUBLIC_ROUTE_HEADER = "x-ruken-public-route";
 
+/**
+ * The only /api/auth paths a request from outside may reach. Every form calls better-auth on the server, without the
+ * header above, so nothing else needs to be public. The phone plugin's `verify` above all must stay out of reach: it
+ * signs in whoever holds a code, so a code for a number that already has an account (a number that changed hands,
+ * say) would open that account. Our own form calls it only when no account has the number (forms.ts).
+ */
+export const PUBLIC_AUTH_PATHS: readonly string[] = ["/ok", "/get-session", "/sign-out"];
+
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 const ONE_DAY_SECONDS = 60 * 60 * 24;
-const ONE_HOUR_SECONDS = 60 * 60;
+const TEN_MINUTES_SECONDS = 10 * 60;
 const PASSWORD_LENGTHS = { min: 10, max: 128 };
 
 export interface AuthOptions {
@@ -38,18 +50,21 @@ export interface AuthOptions {
   secret: string;
   /** BETTER_AUTH_URL: the site's own origin, e.g. https://ruken.example. */
   baseURL: string;
+  /** Sends the one mail left: a reset code to the email a member pays with. */
   mailer: Mailer;
+  /** Sends every text: codes through Twilio Verify, notices through Ruken's own numbers. */
+  texter: Texter;
   cookies: CookiePolicy;
   /** Time for the rules that count recent events. Defaults to the system clock. */
   clock?: Clock;
-  /** Where a mail that could not be sent is reported. Gets no address. Defaults to one console line. */
+  /** Where a text or mail that could not be sent is reported. Gets no number or address. Defaults to one console line. */
   log?: (message: string) => void;
-  /** Where mail sent after the answer runs. Defaults to the host's `waitUntil` (background.ts). */
+  /** Where texts and mail sent after the answer run. Defaults to the host's `waitUntil` (background.ts). */
   runInBackground?: RunInBackground;
 }
 
 export function createAuth(options: AuthOptions) {
-  const { prisma, mailer, cookies } = options;
+  const { prisma, mailer, texter, cookies } = options;
   const clock = options.clock ?? systemClock;
   const log =
     options.log ??
@@ -58,24 +73,64 @@ export function createAuth(options: AuthOptions) {
     });
   const runInBackground: RunInBackground = options.runInBackground ?? runAfterAnswer;
   const cookiePrefix = cookies.secure ? "__Host-" : "";
-  // The sign-in pause and the per-address limits key their rows by a hash of the address made with
-  // this secret, so a copy of the database does not show which addresses were tried (sign-in-guard.ts).
+  // The sign-in pause and the per-number limits key their rows by a hash of the number made with
+  // this secret, so a copy of the database does not show which numbers were tried (phone.ts, hashNumber).
   const guards = { db: prisma, clock, secret: options.secret };
 
   /**
-   * Sends a mail after the answer. Why not wait for it: only real accounts get mail, so an answer
-   * that waited for the mail server would come back measurably later for an address with an account,
+   * Sends a text or a mail after the answer. Why not wait for it: only real accounts get one, so an answer
+   * that waited for Twilio or the mail server would come back measurably later for a number with an account,
    * and the form would tell a stranger who has one. A failed send is logged by its code only, never
-   * the error's message, which can hold the address (mailFailureCode).
+   * the error's message, which can hold the number or address (textFailureCode, mailFailureCode).
    */
-  function mailLater(what: string, send: () => Promise<unknown>): void {
+  function sendLater(what: string, send: () => Promise<unknown>, failureCode: (error: unknown) => string): void {
     runInBackground(async () => {
       try {
         await send();
       } catch (error) {
-        log(`${what} not sent: ${mailFailureCode(error)}`);
+        log(`${what} not sent: ${failureCode(error)}`);
       }
     });
+  }
+  const textLater = (what: string, send: () => Promise<unknown>): void => {
+    sendLater(what, send, textFailureCode);
+  };
+
+  /**
+   * A sign-up code. A number nobody has gets the code, through Twilio Verify. A number that already has an account
+   * gets no code at all (a code that could never work would be worse than none) and one text that says so instead;
+   * the form asks for both the same way, so the answer, its time and its limits are the same (audit 6). Until the
+   * carriers approve Ruken's numbers that text does not reach a real United States phone, and the code screen's "No
+   * text?" line is what the person has.
+   */
+  async function sendSignUpCode(number: string, code: string): Promise<void> {
+    const account = await prisma.user.findUnique({ where: { phoneNumber: number }, select: { id: true } });
+    if (account === null) {
+      await texter.sendCode(number, code);
+    } else {
+      await texter.send({ to: number, line: "account", body: alreadyText(options.baseURL) });
+    }
+  }
+
+  /** A reset code: by text, to the email the member pays with, or held for help (changed-hands.ts). */
+  async function sendResetCode(number: string, code: string): Promise<void> {
+    const account = await prisma.user.findUnique({
+      where: { phoneNumber: number },
+      select: { id: true, phoneNumber: true, paperEmail: true },
+    });
+    if (account?.phoneNumber == null) return;
+    const channel = await resetChannel(
+      { db: prisma, texter, hasMoney: userHasMoney },
+      { id: account.id, phoneNumber: account.phoneNumber, paperEmail: account.paperEmail },
+    );
+    if (channel === "text") {
+      await texter.sendCode(number, code);
+    } else if (channel === "email" && account.paperEmail !== null) {
+      await mailer.send(resetCodeMessage(account.paperEmail, code));
+    } else {
+      // The number may have changed hands and there is no email to send to. No number in the line.
+      log("reset held for help");
+    }
   }
 
   return betterAuth({
@@ -89,59 +144,36 @@ export function createAuth(options: AuthOptions) {
     trustedOrigins: [new URL(options.baseURL).origin],
     telemetry: { enabled: false },
 
-    // A reset link's token is stored only as its SHA-256: a copy of the database holds nothing that
-    // can reset a password. better-auth hashes the identifier the same way when it looks the token up.
-    verification: { storeIdentifier: { default: "plain", overrides: { "reset-password:": "hashed" } } },
+    // Codes are kept as plain text in `Verification.value` for ten minutes: the phone plugin has no option to hash
+    // them. A code works for ten minutes and allows three tries, and a copy of the table is a copy of codes that have
+    // mostly run out already.
 
+    // Email sign-up and sign-in are not offered: a person is their phone number. better-auth still reads this block
+    // for its password rules and for what happens after a forgot-password reset.
     emailAndPassword: {
-      enabled: true,
+      enabled: false,
       minPasswordLength: PASSWORD_LENGTHS.min,
       maxPasswordLength: PASSWORD_LENGTHS.max,
-      autoSignIn: true,
-
-      // A forgotten password is reset from a mailed link, on our /reset-password page. The request
-      // answers the same whether or not the address has an account (better-auth does that); only
-      // real accounts get mail, sent after the answer (mailLater). How often one address may ask is
-      // the per-address limit in auth-limits-plugin.ts, counted for any address typed in.
       // A reset signs every device out, and does not sign anyone in.
-      resetPasswordTokenExpiresIn: ONE_HOUR_SECONDS,
       revokeSessionsOnPasswordReset: true,
-      sendResetPassword: ({ user, url }) => {
-        mailLater("password reset mail", () => mailer.send(passwordResetMessage(user.email, url)));
-        return Promise.resolve();
-      },
       onPasswordReset: async ({ user }) => {
         // better-auth calls this after saving the new password and before it signs every device out,
         // and an error thrown here would skip the signing out (and answer 500, though the password
         // did change). So nothing here may throw: a stolen session must not outlive the reset
-        // because a mail server or the database hiccuped.
+        // because Twilio or the database hiccuped.
+        const number = (user as { phoneNumber?: string | null }).phoneNumber;
+        if (number == null) return;
         try {
-          // A finished reset lifts the sign-in pause: the person has just proved they own the address.
-          await clearSignInFailures(guards, user.email);
+          // A finished reset lifts the sign-in pause: the person has just proved they hold the number.
+          await clearSignInFailures(guards, number);
         } catch (error) {
           log(
             `sign-in pause not lifted after a reset: ${error instanceof Error ? error.message : "unknown error"}`,
           );
         }
-        mailLater("password changed notice", () => mailer.send(passwordChangedMessage(user.email)));
-      },
-    },
-
-    // Sign-up mails a link that confirms the address. Using the site never waits for it; /me shows
-    // whether the email is confirmed and offers to resend.
-    emailVerification: {
-      sendOnSignUp: true,
-      autoSignInAfterVerification: true,
-      expiresIn: ONE_DAY_SECONDS,
-      // Waited for, unlike the mails above: sign-up already says the account is new. A failure is
-      // logged here by its code, because better-auth would log the raw error, which can hold the
-      // address; better-auth ignores the failure either way.
-      sendVerificationEmail: async ({ user, url }) => {
-        try {
-          await mailer.send(verificationMessage(user.email, url));
-        } catch (error) {
-          log(`email confirmation mail not sent: ${mailFailureCode(error)}`);
-        }
+        textLater("password changed notice", () =>
+          texter.send({ to: number, line: "account", body: passwordChangedText(options.baseURL) }),
+        );
       },
     },
 
@@ -166,18 +198,19 @@ export function createAuth(options: AuthOptions) {
       enabled: true,
       storage: "database",
       // Per client address (better-auth keys every rule by IP and path). Paths are relative to
-      // /api/auth. The limits that count per email address are in auth-limits-plugin.ts.
+      // /api/auth. The limits that count per number are in auth-limits-plugin.ts.
       // Keep every window under a day: RATE_LIMIT_ROWS_KEPT_MS in rate-limit.ts.
       customRules: {
-        // The per-address plugin allows 5 a minute for one address from one client. This wider
-        // per-client backstop still stops one client trying many addresses quickly, while people
+        // The per-number plugin allows 5 a minute for one number from one client. This wider
+        // per-client backstop still stops one client trying many numbers quickly, while people
         // behind one shared address (a campus, a mobile carrier) do not lock each other out.
-        "/sign-in/email": { window: 60, max: 30 },
-        "/sign-up/email": { window: 60 * 60, max: 5 },
-        "/request-password-reset": { window: 60 * 60, max: 10 },
-        "/send-verification-email": { window: 15 * 60, max: 3 },
-        // Keep it to what a person retyping a password needs.
-        "/reset-password": { window: 15 * 60, max: 10 },
+        "/sign-in/phone-number": { window: 60, max: 30 },
+        // A client's sign-up starts, which cost a text each.
+        "/phone-number/send-otp": { window: 60 * 60, max: 5 },
+        "/phone-number/request-password-reset": { window: 60 * 60, max: 10 },
+        // Keep it to what a person retyping a code or a password needs.
+        "/phone-number/verify": { window: 15 * 60, max: 10 },
+        "/phone-number/reset-password": { window: 15 * 60, max: 10 },
       },
     },
 
@@ -198,24 +231,49 @@ export function createAuth(options: AuthOptions) {
     },
 
     plugins: [
-      // The limits that count per email address. First, so a refused request does not use up one of
-      // the address's ten password guesses.
+      // The limits that count per phone number. First, so a refused request does not use up one of
+      // the number's ten password guesses.
       authLimitsPlugin({
         limiter: createRateLimiter(prisma, clock),
         secret: options.secret,
         clientIpHeader: CLIENT_IP_HEADER,
       }),
-      // Ten wrong passwords for one address pause password sign-in for that address for an hour.
-      signInPausePlugin({ guards, prisma, mailer, log, runInBackground }),
+      // Ten wrong passwords for one number pause password sign-in for that number for an hour.
+      signInPausePlugin({ guards, prisma, texter, siteUrl: options.baseURL, log, runInBackground }),
+      // better-auth makes and checks every code (six digits, ten minutes, three tries); Twilio Verify only carries it.
+      // `sendOTP` and `sendPasswordResetOTP` hand the send on and return at once.
+      phoneNumber({
+        otpLength: 6,
+        expiresIn: TEN_MINUTES_SECONDS,
+        allowedAttempts: 3,
+        phoneNumberValidator: (number) => /^\+[0-9]{8,15}$/.test(number),
+        sendOTP: ({ phoneNumber: number, code }) => {
+          textLater("sign-up code", () => sendSignUpCode(number, code));
+          return Promise.resolve();
+        },
+        sendPasswordResetOTP: ({ phoneNumber: number, code }) => {
+          sendLater(
+            "reset code",
+            () => sendResetCode(number, code),
+            // A text's failure is logged by its Twilio code, a mail's by its own; neither holds the number or address.
+            (error) => (error instanceof TextError ? textFailureCode(error) : mailFailureCode(error)),
+          );
+          return Promise.resolve();
+        },
+        signUpOnVerification: {
+          // better-auth cannot make a user without an email, so each gets one that can never be real (`.invalid`,
+          // RFC 2606) and that nothing mails.
+          getTempEmail: () => `${crypto.randomUUID()}@phone.ruken.invalid`,
+          getTempName: () => "Player",
+        },
+      }),
     ],
 
     hooks: {
-      // Accounts are made only by the sign-up page, which asks the age first. Its action calls
-      // better-auth on the server, so an email sign-up reached through the public route is refused
-      // as if it did not exist.
+      // Everything else is for our own forms, which call better-auth on the server without the public-route header.
       before: createAuthMiddleware((ctx) => {
         if (ctx.headers?.get(PUBLIC_ROUTE_HEADER) == null) return Promise.resolve();
-        if (ctx.path === "/sign-up/email") throw new APIError("NOT_FOUND");
+        if (!PUBLIC_AUTH_PATHS.includes(ctx.path)) throw new APIError("NOT_FOUND");
         return Promise.resolve();
       }),
     },
