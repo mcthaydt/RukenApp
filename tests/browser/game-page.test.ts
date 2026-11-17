@@ -156,6 +156,8 @@ test("a computer-only game says so on a phone, and offers its link", async ({ pa
     // Like Play, the one button spans the card on a phone held upright, so a thumb finds it anywhere along the bottom.
     const share = page.getByRole("button", { name: "Share the link" });
     await expectOnFirstScreen(page, share);
+    // Why it is Share and not Play is on the first screen too.
+    await expectOnFirstScreen(page, page.getByText("This one needs a computer."));
     const [button, line] = [await share.boundingBox(), await share.locator("..").boundingBox()];
     const narrow = await page.evaluate(() => window.innerWidth < 768);
     if (narrow) expect(button?.width).toBeCloseTo(line?.width ?? 0, 0);

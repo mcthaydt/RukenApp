@@ -48,8 +48,9 @@
     <p><span class="chip">{data.rating}</span></p>
   {/if}
   {#if data.needsComputer}
-    <p>This one needs a computer.</p>
+    <!-- The reason goes with the button, so a phone that pins the button shows why it says Share and not Play. -->
     <div class="pin">
+      <p>This one needs a computer.</p>
       <p><button type="button" onclick={share}>Share the link</button></p>
       <p aria-live="polite">{shared}</p>
     </div>
