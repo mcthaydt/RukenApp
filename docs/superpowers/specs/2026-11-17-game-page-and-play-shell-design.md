@@ -2,7 +2,7 @@
 
 Date: 2026-11-17. Status: the Owner picked the layouts on 2026-11-17 (section 0); written for the Owner's review of this file. Nothing here is built.
 
-This amends the main design (`2026-11-13-ruken-reels-linktree-design.md`), sections 5.2 (Play and the paywall) and 5.7 (the line shown the first time in a game), and adds to the maker's Live screen (`2026-11-14-maker-screens-redesign-design.md`, 5c) one switch. Everything else in them stands: the colours, type and button rules of 5.8 and the redesign's sections 1 and 15.1, "the felt asks one thing and paper is what you touch", and the drunk-grandma test.
+This amends the main design (`2026-11-13-ruken-reels-linktree-design.md`), sections 5.2 (Play and the paywall) and 5.7 (the line shown the first time in a game), and adds to the maker's Live screen (`2026-11-14-maker-screens-redesign-design.md`, 5c) one switch. It also ends the main design's computer-only Call in 5.2 ("This one needs a computer") and its submit question "Plays on": every game plays on phones and computers (Owner, 2026-11-17 06:25 UTC; the plan's Unit R takes the question out). Everything else in them stands: the colours, type and button rules of 5.8 and the redesign's sections 1 and 15.1, "the felt asks one thing and paper is what you touch", and the drunk-grandma test.
 
 Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** are this design's choices; the Owner can overrule any of them. Lines marked **Pending** wait for the Owner and are not built until the answer comes.
 
