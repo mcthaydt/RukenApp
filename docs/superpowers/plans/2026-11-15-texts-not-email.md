@@ -1,6 +1,6 @@
 # Texts, Not Email Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task (CLAUDE.md: no subagents). Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task, under the repository's `CLAUDE.md` and its skills (`build`, `release`, `review`, `visual-check`, `staged-path`); where they and this plan differ, they win. Steps use checkbox (`- [ ]`) syntax for tracking. **Read "This slice: branches A and B" first.**
 
 **Goal:** A person joins Ruken, signs in and gets back in with their phone number and a code by text; every notice Ruken sends is a short text from one of two numbers; nobody is texted without a yes or after STOP; and the few legal emails still go out and are recorded.
 
@@ -8,17 +8,173 @@
 
 **Tech Stack:** as slice 1 (Node 24, pnpm 10.34.6, SvelteKit 3.0.0, Svelte 5.57.1, Prisma 7.10.0, Postgres 16, better-auth 1.7.7, `@js-temporal/polyfill` 0.5.1, Vitest 5.0.3, Playwright 1.63.0, Cloudflare Workers). Twilio is a new outside service the Owner chose ("3. A"). **No new package.**
 
-**Spec:** `docs/superpowers/specs/2026-11-15-texts-not-email-design.md` (approved by the Owner, 2026-11-15: "Text design approved"). Read it with `CLAUDE.md`, slice 1's plan (`2026-11-13-slice-1-accounts-membership.md`: "How a task runs" and "The look" hold here), and the tracker. The country table is `2026-11-15-texts-countries.md`. The help chat's own design is `docs/superpowers/specs/2026-11-15-help-chat-design.md` (written with this plan, not yet approved; nothing here builds it).
+**Spec:** `docs/superpowers/specs/2026-11-15-texts-not-email-design.md` (approved by the Owner, 2026-11-15: "Text design approved"). Read it with `CLAUDE.md` and its skills, and slice 1's plan (`2026-11-13-slice-1-accounts-membership.md`: "The look" holds here; how a task runs is in this plan now). The country table is `2026-11-15-texts-countries.md`. The help chat's own design is `docs/superpowers/specs/2026-11-15-help-chat-design.md` (written with this plan, not yet approved; nothing here builds it).
+
+**Brought up to date:** 2026-11-17, against `main` at `3b1fabf`, for branches A and B only. "This slice: branches A and B" says what changed and is the brief for the build. Branches C, D and E wait; their tasks were not read against `3b1fabf`.
 
 **Planned against:** `main` at `286bfdf`. Read in the plan session, 2026-11-15: every file under `src/features/accounts/`, `src/lib/server/mail.ts`, the account routes, the journeys' stand-ins, better-auth 1.7.7's own `dist/plugins/phone-number/` (its routes, options and error codes, from the published package), and Twilio's pages named under "What Twilio's pages say". No test, lint or typecheck ran; no code was written.
 
-**Audited:** `docs/superpowers/audits/2026-11-15-texts-not-email-plan-audit.md` (2026-11-15). Its fixes are written into this plan; a line that an audit finding changed names it, as "(audit 3)".
+**Audited:** `docs/superpowers/audits/2026-11-15-texts-not-email-plan-audit.md` (2026-11-15). Its fixes are written into this plan; a line that an audit finding changed names it, as "(audit 3)". A line marked "(audit round 4)" or dated 2026-11-16 comes from the first attempt at branch A and its review, whose own files were rolled back with it; those lines are carried over as written. The 2026-11-17 changes have not been audited: branch B adds a migration, so it is lane 3 and needs a second plan audit (`docs/superpowers/audits/<date>-texts-not-email-2-plan-audit.md`) before it is built.
 
-**When it is built:** not now. Owner, 2026-11-15: "I want us to stick to our original plan only building things directly relevant to slice we're currently on". This plan reworks slice 1 (accounts), so the coordinator opens it when the slice order allows. It needs an Opus plan audit first.
+**When it is built:** now, for branches A and B. The Owner's handoff, 2026-11-17: this slice is this plan's branches A and B only (together: sign-up, sign-in and forgot password by phone); C, D and E wait; texts to real phones come last, after the Owner upgrades Twilio. (This replaces the 2026-11-15 line that held the whole plan for a later slice.)
+
+## This slice: branches A and B
+
+Written 2026-11-17, against `main` at `3b1fabf`. This section is the brief for the build of branches A and B. Where it and a task below differ, this section wins, and the task has been edited to match.
+
+### What the Owner already answered (not asked again)
+
+- Sign-up is a phone number, a password and a date of birth, then a code sent by text. Email is asked for only when someone pays. Sign-in is the phone number and the password. Texts go through Twilio, opening first where replies work: the United States and Canada. (The spec, and the handoff of 2026-11-17.)
+- This slice is branch A (the port) and branch B (sign-up, sign-in and forgot password). Branches C, D and E wait.
+- Texts to real phones come last in the slice. A Twilio trial account cannot make Messaging Services, so the Owner upgrades Twilio first. Nothing has been bought or set up in Twilio yet.
+
+### What changed since the plan was written
+
+**`main` moved from `286bfdf` to `3b1fabf`.** Game submission (#63) merged, the later attempt at slice 2 was rolled back (#186), and the old workflow rules and CI were taken out (#187). Checked with `git diff 286bfdf 3b1fabf`:
+
+| What | Then | Now | Where this plan says so |
+|---|---|---|---|
+| The accounts feature, `src/lib/server/`, `src/hooks.server.ts`, membership, money, the sign-up, sign-in, forgot-password and reset-password routes, the jobs, and their tests | as read | **no change at all** (the diff is empty for these paths) | the audit's reading of them still holds |
+| The package versions in "Tech Stack" | as written | the same in `package.json` | no change |
+| `/me` | the email, the membership line, sign out, delete | also "Your games" or "Make games? Add yours to Ruken." | Task 4: those two lines stay |
+| The games feature | no staff list | `waitingGames()` in `src/features/games/service.ts` answers each waiting game's `makerEmail`; no screen reads it, one test does (`tests/features/games/review.pg.test.ts`) | Task 4: `makerEmail` is taken out |
+| Journeys and their helpers | slice 1's | many more, all signing up by email through `signUp`: the `make-*` journeys, `buttons`, `client-address`, `connect-github`, `game-gate`; `tests/browser/support/game.ts`, `look.ts` (its `CARD_SCREENS` open "check your email" and `/reset-password`), and nine helpers in `database.ts` that take an email | Task 4: its file list names them |
+| `playwright.config.ts` | three stand-ins on ports 12111 to 12113 | the same three, plus each worker's own client address (`journeyClientHeaders`) and the game gate on 8788; port 12114 is still free | Task 1: no change |
+| Migrations | the newest was `20261114180000_final_month_lines` | the newest is `20261115190000_agreement_per_version`; `User` gained two relations | Task 3: the new migration is dated after it |
+| `/help` | expected from the legal pages | only `/help/github` and `/help/record-screen`; there is no `/help` page | Task 5: no link to `/help` |
+| The workflow | the old `CLAUDE.md`: no session runs tests; a tracker; the Owner's "fine" on each branch | the apps kit (`CLAUDE.md` and `.claude/skills/`, coming back in pull request #188): targeted tests in the session's container, CI as the gate, lanes, audits by lane, acceptance criteria, layout sketches, a live-state file, one approval of the finished result | Global Constraints, "How a task runs", and below |
+
+**The first attempt at branch A (2026-11-16) was rolled back with the rest.** Its code is kept only under the tag `slice2-attempt-1` and is not built on. What it learned is written into this plan, because it is still true:
+
+- Task 0's Step 0 was read once: the part of a webhook address after `#` is not signed; Twilio's worked signature example reproduces; SMS Pumping Protection is one switch for the whole account; and Twilio's pages do not agree on when a send to someone who opted out fails (point 8). The build session reads them again.
+- `isMadeUpNumber` belongs in `src/lib/server/text.ts`, because `src/lib/` may import no feature (`tests/architecture.test.ts`); `phone.ts` re-exports it.
+- The sample number `+1 312 555 0142` is itself a made-up number, so a test that expects a text to be sent must use one that is not, such as `+13125551234`.
+- The Twilio settings are read in Task 4, not Task 1. The site builds its services on a request, so requiring the settings before anything uses them would stop the test site.
+- `twilio phone-numbers:buy:local` does not exist. The Owner's commands were corrected (X2).
+
+**New on 2026-11-17, decided in this plan session. The second plan audit should read these first.**
+
+1. **Real texts last.** Branches A and B are built and tested against the stand-in. Task 0's Step 1 (the proof with a real phone) no longer holds branch B's build back; it is the slice's last step. It decides how branch C is set up, not how A or B are built.
+2. **Branch B merges only after X4.** Once B is on `main` the site needs its Twilio settings to answer a sign-in at all, and `main` is what the test site runs. So B is built, audited and fixed on its branch, and merges after the Owner has done X1 to X4 and given the word a lane 3 change needs.
+3. **The email a member pays with is kept from branch B on.** Until X6 Twilio "cannot say" whether any number changed hands, so the spec's rule sends every paying member's reset code to their email. That email was only stored from branch D (Task 10). With D waiting, no member could reset a password. So `setPaperEmail`, and the call that stores the address when a checkout finishes, move from Task 10 into Task 5, and the reset's email arm sends through the `Mailer` there. `sendPaper`, `PaperMail` and the `.invalid` rule stay in D.
+4. **No link to `/help` yet.** The page does not exist and the help chat waits. The forgot-password screen keeps its way back ("Back to sign in") and "Text it again", and does not offer a help link until the help chat's plan builds one.
+5. **`TWILIO_AUTH_TOKEN` is read from branch C on**, with the webhook that checks signatures. Nothing in A or B uses it. The Owner may still set it in X4; an unused setting harms nothing.
+6. **`waitingGames()` no longer answers `makerEmail`.** After B that column holds a stand-in address. Nothing shows the list yet; the screen that will (slice 4) says then what staff see of a maker.
+
+### Open before the build
+
+One fact for the coordinator to put in front of the Owner once. It is not a question this plan can answer.
+
+- **A real code may not reach a United States phone until the carriers approve Ruken (X5).** Twilio's error 30034 is titled "US A2P 10DLC - Message from an Unregistered Number", and its help centre has a page titled "Shutdown of Unregistered 10DLC Messaging" (found by search on 2026-11-17; the pages themselves were not read in this session, and Step 0 reads them). X5 waits for the company and its tax number. If that holds, then after branch B merges nobody can sign up or sign in on the test site with a real phone until X5 is done, the Owner included, and the slice's last step (a real code on a real phone) cannot pass. **Recommended:** branch B does not merge until one real code has reached the Owner's phone. It costs an open branch that must be kept up to date with `main` for longer than the two days the rules allow, so it needs the Owner's word. The other way is to merge after X4 and accept a test site nobody can sign in to until the carriers say yes.
+
+### Units
+
+One pull request for each branch. Each merges before the next starts, and leaves `main` green.
+
+| Unit | Branch | Lane, and why | Waits on | Files it owns | Output | Acceptance check |
+|---|---|---|---|---|---|---|
+| Task 0, Step 0 | A | 1: reading | nothing | the "Step 0" lines of this plan | what Twilio's pages and the plugin say today | every difference from this plan is written under the step, or the build stops and reports |
+| Task 1 | A | 2: `src/lib/`, `playwright.config.ts`, `tests/support/` | Step 0 | Task 1's files | the `Texter` and the stand-in | A1 to A3, A6 |
+| Task 2 | A | 1: new files with their tests | Task 1 (`isMadeUpNumber`) | Task 2's files | the number rules and the words | A4, A5 |
+| Task 3 | B | 3: a migration | branch A on `main` | Task 3's files | the tables | B9 |
+| Task 4 | B | 3: `src/features/membership/` | Task 3 | Task 4's files | sign-up and sign-in by phone; email sign-up gone | B1 to B3, B5 to B8, B10, B11 |
+| Task 5 | B | 3: `src/features/membership/`, `src/features/money/` | Task 4 | Task 5's files | forgot password | B4 to B7, B10, B11 |
+| Task 0, Step 1 | none (no code) | 3: a real device and the Owner's money | X1 to X4, and branch B built | the "Step 1" lines of this plan | the proof of the two numbers | the four message ids and their statuses are written under the step |
+
+- **Branch A is lane 2:** the full run, and one fresh review after the build. It needs nothing from the Owner and can merge before any Twilio step: it adds code nothing calls yet.
+- **Branch B is lane 3:** this plan's second audit before the build, an implementation audit after it, and the Owner's approval before it merges. It stays a draft until then.
+- **Models (Settings in `CLAUDE.md`):** the build is execution against a spec, so Sonnet 5.5 at medium effort. **Branch B is marked hard, so high effort:** Task 4 rewrites the one path where a mistake signs a stranger in to someone's account (the plugin's `verify`), and moves every journey to new helpers in the same change. The audits are Opus 5.5, medium.
+- **Expected duration (an estimate, not measured):** branch A about half a day of session time, branch B one to two days with its audits. Waiting on the Owner's Twilio steps is not counted.
+
+### Acceptance criteria
+
+A gap against one of these is a defect. The device matrix is the nine projects in `playwright.config.ts` (phone, tablet and computer, upright and sideways, in Chromium and WebKit); they are browser profiles, so they are emulation evidence and not proof on a real phone.
+
+**Branch A**
+
+- A1. `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build` exit 0, and the full CI run is green on the pull request's last commit.
+- A2. Every case in Task 1's `text.test.ts` passes: the request Twilio gets, the allowlist, a made-up number never texted, the error code with no number or words in it, and the three answers of `changedHands`.
+- A3. The stand-in answers a send as Twilio does: a text the `Texter` sends to it is read back by `textTo`, with its words (`tests/browser/twilio-stand-in.test.ts`).
+- A4. Every row of Task 2's `toE164` table passes, and every text starts "Ruken:", is plain GSM-7 and takes at most 160 places with the longest site address in use.
+- A5. Nothing a visitor can see or do changes: the diff holds only the files Tasks 1 and 2 list, no route, screen, table or required setting is added, and every existing journey passes with the stand-in started and unused.
+- A6. `tests/architecture.test.ts` passes: nothing under `src/lib/` imports a feature.
+
+**Branch B**
+
+- B1. A person joins with a phone number, a password, a date of birth and the code from the text, and lands where they were going, on every project.
+- B2. A number that already has an account gets the same screens, the same words and one `alreadyText`; no code typed there signs anyone in, even at the limit.
+- B3. Signing in works however the number is typed (Review Focus 1), and a wrong number or password reads the same one line.
+- B4. Forgot password works end to end: a person who never paid gets the code by text; a member gets it at the email they paid with; a number with no account sees the same second screen and gets nothing. After it every device is signed out, the old password fails, and the person gets `passwordChangedText`.
+- B5. Each state has its plain line and a next step: a wrong code, a code asked for too soon, codes paused, a closed country, under 13 (refused before any text), Twilio answering 500 (the code screen still shows and "Text it again" works), and a sign-up whose last step fails (no account is left and it can be tried again). No screen is a dead end.
+- B6. Every screen here works with the keyboard alone and focus is always visible, and the code screen works with no script.
+- B7. Nobody reaches what is not theirs: every `/api/auth` path answers 404 from outside except `/ok`, `/get-session` and `/sign-out`; a phone number shows only on its owner's `/me`; and a log line holds no number and no code (a test reads the log).
+- B8. Email sign-up is gone, not kept beside this: `/reset-password` answers 404, `mails.ts` and `mailed-links.test.ts` are deleted, and no journey signs up or signs in by email.
+- B9. The migration applies on top of `main`'s schema, `tests/lib/server/migrations.pg.test.ts` passes, and each case in Task 3's Step 1 passes.
+- B10. Every journey that was on `main` passes on the new helpers. None is skipped, loosened or deleted except the three files Task 4 names.
+- B11. The visual check (`visual-check`) passes on each screen below: plain words, one blue button, the layout in its sketch, on each project.
+- **Not measured in this slice:** that a real text reaches a real phone. It is reported as not measured until Task 0's Step 1.
+- **Budgets:** the spec sets none for these screens, and none is added. They are plain forms rendered on the server.
+
+### The screens (layout sketches)
+
+Each is the one card the account screens already use (`main.card`): one column, the same on a small phone and on a computer, where the card sits in the middle. So each has one sketch. Blue is the forward button; green is a quiet way back.
+
+```
+/sign-up, first                      /sign-up, the code
+┌──────────────────────────┐         ┌──────────────────────────┐
+│ Join Ruken               │         │ We texted you a code     │
+│ Country                  │         │                          │
+│ [ United States (+1) ▾ ] │         │ The code we texted you   │
+│ Phone number             │         │ [ 123456               ] │
+│ [ 312 555 0142         ] │         │ (a problem shows here)   │
+│ Password                 │         │                          │
+│ [ ••••••••••           ] │         │ [     Join Ruken     ]   │ blue
+│ Date of birth            │         │ [   Text it again    ]   │ green
+│ [ MM ][ DD ][ YYYY ]     │         │ [ Change the number  ]   │ green
+│ We'll text you a code to │         └──────────────────────────┘
+│ check it's you, and      │
+│ texts about your account.│         /sign-in
+│ Message and data rates   │         ┌──────────────────────────┐
+│ may apply. Reply STOP to │         │ Sign in                  │
+│ stop, HELP for help.     │         │ Country                  │
+│ (a problem shows here)   │         │ [ United States (+1) ▾ ] │
+│ [   Text me a code   ]   │ blue    │ Phone number             │
+│ Already have an account? │         │ [ 312 555 0142         ] │
+│ Sign in                  │         │ Password                 │
+└──────────────────────────┘         │ [ ••••••••••           ] │
+                                     │ (a problem shows here)   │
+/forgot-password, first              │ [      Sign in       ]   │ blue
+┌──────────────────────────┐         │ Forgot your password?    │
+│ Forgot your password?    │         │ New here? Create an      │
+│ Country                  │         │ account                  │
+│ [ United States (+1) ▾ ] │         └──────────────────────────┘
+│ Phone number             │
+│ [ 312 555 0142         ] │         /forgot-password, the code
+│ (a problem shows here)   │         ┌──────────────────────────┐
+│ [   Text me a code   ]   │ blue    │ Choose a new password    │
+│ Back to sign in          │         │ If that number has a     │
+└──────────────────────────┘         │ Ruken account, we sent a │
+                                     │ code. It may come by     │
+/me, the top                         │ text, or to the email    │
+┌──────────────────────────┐         │ you pay with.            │
+│ Your account             │         │ The code we sent you     │
+│ +1 312 555 0142          │         │ [ 123456               ] │
+│ (the membership line and │         │ New password             │
+│ everything under it, as  │         │ [ ••••••••••           ] │
+│ on main today)           │         │ Type it again            │
+└──────────────────────────┘         │ [ ••••••••••           ] │
+                                     │ (a problem shows here)   │
+                                     │ [ Save my new password ] │ blue
+                                     │ [   Text it again    ]   │ green
+                                     │ Back to sign in          │
+                                     └──────────────────────────┘
+```
+
+Two differences from the spec's drawing, each with its reason: "Country" is its own labelled field above the number, where the spec draws the code and the number on one row, so that a screen reader hears what the list is and the country's name fits on a small phone; and forgot password has a "Country" field too, which the task did not say, because the number is read the same way on all three screens (audit 14).
 
 ## Global Constraints
 
-- No session runs tests. Every red and green is read from CI on the branch (`verify`, `postgres`, `browser`).
+- Tests run where the rules say (`release`, "Where tests run"): the quick, targeted ones in the session's own cloud container before a push (`pnpm test`, `pnpm test:pg`, the journeys that the change reaches), and the full suite in CI, which is the merge gate (`gate` and `commit-authors` are the required checks; `verify`, `postgres` and `browser` are the jobs `gate` sums up). Nothing runs on the Owner's computer. (This replaces "No session runs tests", which the old workflow rules asked for.)
 - No new package. Twilio is called with plain `fetch`; phone numbers are handled by the small rules in Task 2, not a library.
 - Every text starts with "Ruken:", fits in one text (160 GSM-7 places, or 70 characters when it holds anything outside GSM-7; `fitText`, audit 13), holds one link at most, and passes the drunk-grandma test. The words are in "The words of every text" and are tested letter for letter.
 - A log never holds a phone number or a code. A failed send is logged as `TWILIO <status> <Twilio's code>` and nothing else.
@@ -53,12 +209,12 @@ Read on 2026-11-15. The build session reads each again before Task 1 (Step 0) an
 5. **The changed-hands check works for US numbers only**, and only once Twilio approves its use. Everywhere else the answer is "cannot say". The rule in Task 5 treats it so.
 6. **Twilio does not resend a webhook that answered 500 unless asked to** (`docs/usage/webhooks/webhooks-connection-overrides`: the retry policy `rp` defaults to `ct`, a failed connection only, and the retry count `rc` to 1). So both of Ruken's webhook addresses, the services' incoming address (X3) and `statusCallback`, end `#rc=3&rp=5xx,ct,rt`. Task 1's Step 0 reads whether the signature covers the part after `#`; the stand-in signs the same way. (audit 2)
 7. **A new Twilio account texts only its home country** (`docs/messaging/guides/sms-geo-permissions`). Each other country is turned on in Twilio's Geo Permissions when it opens, and Twilio advises leaving off the rest. (audit 10)
-8. **A send to someone who opted out is refused at once** with error 21610 ("opted out of receiving messages from your Twilio phone number, Channels sender, or Messaging Service"). Ruken treats that answer as a STOP it had not yet heard of (Task 6). (audit 3)
+8. **A send to someone who opted out fails with error 21610 ("opted out of receiving messages from your Twilio phone number, Channels sender, or Messaging Service"), and Twilio's pages do not agree on when.** *Step 0, 2026-11-16:* `docs/messaging/tutorials/advanced-opt-out` says "Any subsequent outgoing messages from your account to this user will fail with Error Code 21610 asynchronously", in the delivery report; Twilio's 21610 error page (`docs/api/errors/21610`) does not say whether the API refuses the send at once or accepts it and fails later, and does not separate a Messaging Service from a `From` number. So both are built, and either records the STOP Ruken had not yet heard of: a thrown `TextError` 21610 (Task 6) and a delivery report whose `ErrorCode` is 21610 (Task 7). A notice lost that way still waits on `/me` (Tasks 6 and 7). Task 0 Step 1 records which one Twilio does. (audit 3, audit round 4)
 9. **Replying needs a number of the person's own country** (the country table). With two US numbers, only people in the US and Canada can reply STOP or HELP. Canada shares the US numbering plan; that a Canadian phone can text a US number is expected and not yet proved. (audit 11)
 
 ## The Calls in this plan
 
-- **The email column stays, as a stand-in.** better-auth's `User.email` cannot be empty. Every account gets `<random id>@phone.ruken.invalid` there: never shown, never mailed (`.invalid` can never be a real address, RFC 2606, and the mailer refuses it). The real, optional address for legal papers is a new column, `paperEmail`. This is how "the email address becomes optional" is met without changing the library's table.
+- **The email column stays, as a stand-in.** better-auth's `User.email` cannot be empty. Every account gets `<random id>@phone.ruken.invalid` there: never shown, never mailed (`.invalid` can never be a real address, RFC 2606; from branch B on nothing mails this column at all, and branch D makes the mailer refuse such an address outright). The real, optional address for legal papers is a new column, `paperEmail`. This is how "the email address becomes optional" is met without changing the library's table.
 - **Sign-up keeps the password between its two screens in the database**, hashed, for ten minutes (`PendingSignUp`), keyed by a keyed hash of the number. Nothing readable is kept for a number that never finishes.
 - **A code never signs anyone in to an account that exists.** The plugin's `verify` would sign in whoever holds the code. So the public `/api/auth/phone-number/*` routes are refused, and Ruken's own form calls `verify` only when no account has that number. A code alone can therefore never open an account whose number changed hands.
 - **Forgot password is two screens:** the number, then one screen with the code, the new password and the password again. The library checks the code and saves the password in one step; splitting them would mean holding a checked code open.
@@ -80,44 +236,52 @@ Asked on a card in the thread, and answered.
 
 ## Where execution stops and waits for the Owner
 
-Commands are one line each for the Owner's Mac. A step goes to a website only where no command can do it, and says so. X1 to X4 need the computer, not the iPad.
+Commands are for the Owner to paste into iTerm2; nothing else runs on the Owner's computer. A step goes to a website only where no command can do it, and says so. The coordinator hands the Owner X1 to X4 as one batch, and they are not needed until the slice's last step: branches A and B are built against the stand-in.
 
-The `twilio` commands below were written from the plan session's knowledge of Twilio's command-line tool and were not run. Task 0's Step 0 checks each against the tool's own `--help` before the Owner is handed it, and corrects it here.
+The `twilio` commands in X2 and X4 were checked against twilio-cli's own `--help` by the setup check on 2026-11-17 (this plan session did not run them). Task 0's Step 0 checks them once more before the Owner is handed anything new.
 
-- **X1. The Twilio account** (a website: a first sign-up, and billing). Then install the tool once: `brew tap twilio/brew && brew install twilio` and sign it in: `twilio login`.
-- **X2. Two local US numbers and two Messaging Services.** `twilio api:messaging:v1:services:create --friendly-name "Ruken account"` and the same with `"Ruken news"`; each prints an id starting `MG`. Buy two numbers (`twilio phone-numbers:buy:local --country-code US --sms-enabled`) and add one to each service (`twilio api:messaging:v1:services:phone-numbers:create --service-sid MG… --phone-number-sid PN…`). Turn on Canada in Twilio's SMS Geo Permissions (a website; the US is on already). (audit 10)
-- **X3. The reply words** (a website: Twilio's Console has no command for Advanced Opt-Out). For each service turn Advanced Opt-Out on and paste the STOP, START and HELP replies from "The words of every text". Set each service's incoming address to `<site>/webhooks/twilio#rc=3&rp=5xx,ct,rt`, so Twilio sends a post again after a 500 (audit 2).
-- **X4. The Worker's settings**, each with `npx -y wrangler@4.156.0 secret put NAME --name ruken`: `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY`, `TWILIO_API_SECRET` (`twilio api:core:keys:create --friendly-name ruken` prints both), `TWILIO_AUTH_TOKEN`, `TWILIO_ACCOUNT_SERVICE`, `TWILIO_NEWS_SERVICE`, and `TEXT_ALLOWLIST` with the Owner's and the testers' own numbers. The test copy gets its own set (the apps' test-copy plan, amended).
+- **X1. The Twilio account** (a website: upgrade the account from a trial and add billing; a trial account cannot make Messaging Services). Then install the tool once: `brew tap twilio/brew && brew install twilio` and sign it in: `twilio login`.
+- **X2. Two local US numbers and two Messaging Services.** Find numbers that take texts: `twilio api:core:available-phone-numbers:local:list --country-code US --sms-enabled --limit 5 --properties phoneNumber`. Buy two ordinary local ones: `twilio api:core:incoming-phone-numbers:local:create --phone-number +1XXXXXXXXXX`, twice; each prints an id starting `PN`. Make the services: `twilio api:messaging:v1:services:create --friendly-name "Ruken account"` and the same with `"Ruken news"`; each prints an id starting `MG`. Put one number in each: `twilio api:messaging:v1:services:phone-numbers:create --service-sid MG… --phone-number-sid PN…`. (`twilio phone-numbers:buy:local`, which this plan first named, does not exist.) Turn on Canada in Twilio's SMS Geo Permissions (a website; the US is on already). Turn on SMS Pumping Protection under Communications > Messaging > Settings (a website; no command): a sign-up that texts a code to any typed number is what it guards against (Step 0). (audit 10)
+- **X3. The reply words** (a website: Twilio's Console has no command for Advanced Opt-Out). For each service turn Advanced Opt-Out on and paste the STOP, START and HELP replies from "The words of every text". **Branch C adds:** each service's incoming address, `<site>/webhooks/twilio#rc=3&rp=5xx,ct,rt`, so Twilio sends a post again after a 500 (audit 2). The address does not exist until branch C builds it, so it is not set in this slice; the command for it is checked when C's turn comes.
+- **X4. The Worker's settings**, each with `npx -y wrangler@4.156.0 secret put NAME --name ruken`: `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY`, `TWILIO_API_SECRET` (`twilio api:core:keys:create --friendly-name ruken` prints both), `TWILIO_ACCOUNT_SERVICE`, `TWILIO_NEWS_SERVICE`, and `TEXT_ALLOWLIST` with the Owner's and the testers' own numbers. `TWILIO_AUTH_TOKEN` is read from branch C on; setting it now does no harm. **Branch B does not merge before these are set** ("This slice", 2). The test copy gets its own set (the apps' test-copy plan, amended).
 - **X5. After the LLC and its tax number:** registering Ruken's name and both numbers with the US carriers (a website: Twilio's Console walks through it). Launch waits for this (Owner: "Launch waits for the carriers"). The privacy and terms pages must be public first, with the lines in "Notes for the plans that follow", and so must `/help`, which the HELP reply names (audit 20).
 - **X6. After X5:** ask Twilio to turn on the changed-hands check (a website). Until then Task 5 treats every number as "cannot say".
 - **X7. Each country the Owner wants open on the first day:** it must be one of the 43 where two-way is "Yes" (the Owner's answer to Question 1). Turn it on in Twilio's SMS Geo Permissions (a website), buy two numbers of that country that can take replies and add one to each Messaging Service, and register where the table says so. Some of these cost money. (audits 10, 12)
-- **X8. Once branch B is on the real site:** the Owner signs up again with their phone, then the first-owner command with their number in place of the email. The accounts made by email cannot be signed in to any more; no real person has one.
+- **X8. Once branch B is on the test site (and again on the real site at launch):** the Owner signs up again with their phone, then the first-owner command with their number in place of the email (the build session writes the exact command into the pull request). The accounts made by email cannot be signed in to any more; no real person has one.
 
 ## How a task runs
 
-As slice 1's plan: write the failing test, push, read the red in CI and check it failed for the right reason; write the code, push, read the green; update the tracker with the task and the progress; one line to the coordinator with the commit, the test count and anything surprising. A stop rule, a third failed fix or a step that needs the Owner: stop that task and report.
+Write the failing test, run it in the session's own container and check that it fails for the right reason; write the code; run the checks that touch it (`pnpm test`, `pnpm test:pg` with a local Postgres, the journeys the change reaches); then push. The pull request is a draft, and a draft's quick run is not the gate: the full run starts when the pull request is marked ready, after the reviews its lane calls for (`release`). The session watches each run until it ends.
+
+Tick each step in this plan as it is done, and keep the session's live state in `docs/superpowers/live/<branch>.md` as `CLAUDE.md` says. The coordinator keeps `progress.md`. Report to the coordinator at each milestone with the commit and anything surprising. A stop rule, a third failed try, or a step that needs the Owner: stop that task and report.
+
+Where a step below says "Push. Expected: `verify` fails" (or `postgres`, or `browser`), read it as: that kind of test fails for the right reason, seen first in the session's container and then in CI. The three names are still CI's jobs.
 
 ## Branches
 
 Each is small enough to review in one sitting, merges before the next starts, and leaves `main` green.
 
-| Branch | Tasks | Needs | What |
-|---|---|---|---|
-| A `texts/port` | 0, 1, 2 | X1, X2 for Step 0 only | the `Texter`, the stand-in, the number rules |
-| B `texts/sign-in` | 3, 4, 5 | A | the tables; sign-up, sign-in, forgot password; email sign-up removed |
-| C `texts/notices` | 6, 7, 8 | B | one text a notice, once; texts in, STOP and START; what a person sees while texts are off; changing the number |
-| D `texts/yes` | 9, 10 | C | the yes to news texts, quiet hours, the legal email |
-| E `texts/countries` | 11 | B | which countries are open, and their words |
+| Branch | Tasks | Lane | Needs | What | In this slice |
+|---|---|---|---|---|---|
+| A `texts/port` | 0 (Step 0), 1, 2 | 2 | nothing from the Owner | the `Texter`, the stand-in, the number rules | yes |
+| B `texts/sign-in` | 3, 4, 5 | 3 | A on `main`; X1 to X4 before it merges | the tables; sign-up, sign-in, forgot password; email sign-up removed | yes |
+| (no branch) | 0 (Step 1) | 3 | X1 to X4, B built | the proof of the two numbers with a real phone | yes, last |
+| C `texts/notices` | 6, 7, 8 | not set yet | B | one text a notice, once; texts in, STOP and START; what a person sees while texts are off; changing the number | waits |
+| D `texts/yes` | 9, 10 | not set yet | C | the yes to news texts, quiet hours, the legal email | waits |
+| E `texts/countries` | 11 | not set yet | B | which countries are open, and their words | waits |
+
+The branch names are labels; a session uses the branch name its own prompt gives it.
 
 ## File map
 
 ```
 src/lib/server/
-  text.ts                 Texter, TextMessage, createTwilioTexter, TextError, textFailureCode        (A)
-  twilio-signature.ts     twilioSignatureOf, isFromTwilio                                             (A)
+  text.ts                 Texter, TextMessage, createTwilioTexter, TextError, textFailureCode,
+                          isMadeUpNumber                                                              (A)
+  twilio-signature.ts     twilioSignatureOf, isFromTwilio                                             (C)
   mail.ts                 refuses an `.invalid` address                                               (D)
 src/features/accounts/
-  phone.ts                toE164, hashNumber, isMadeUpNumber                                          (A)
+  phone.ts                toE164, hashNumber; re-exports isMadeUpNumber                               (A)
   text-words.ts           every text's words, and fitText                                             (A, C)
   pending-sign-up.ts      keepPending, takePending                                                    (B)
   auth.ts                 the phoneNumber plugin; email sign-up, its mails and its routes go          (B)
@@ -130,10 +294,13 @@ src/features/accounts/
   inbound.ts              receiveText                                                                 (C)
   change-number.ts        startNumberChange, finishNumberChange                                       (C)
   text-yes.ts             sayYes, sayNo, yesOf, tellByNews, inQuietHours                              (D)
-  paper.ts                setPaperEmail, sendPaper                                                    (D)
+  paper.ts                setPaperEmail (B), sendPaper (D)                                            (B, D)
   countries.ts, library/countries.json   openCountries, countryOf                                    (E)
   mails.ts                deleted                                                                     (B)
   deletion.ts, staff.ts, services.ts, accounts.ts   amended                                          (B, C, D)
+src/features/membership/   createCustomer takes no email; the paid-with email is kept; hasBillingCustomer  (B)
+src/features/money/        hasBeenPaid                                                                 (B)
+src/features/games/service.ts   waitingGames no longer answers makerEmail                             (B)
 src/routes/
   sign-up/, sign-in/, forgot-password/, me/        rewritten                                          (B, C, D)
   reset-password/                                  deleted                                            (B)
@@ -186,16 +353,18 @@ Pasted into Twilio by the Owner (X3), and pinned in `text-words.ts` as constants
 ### Task 0: Read first, and prove the two numbers
 
 - [ ] **Step 0:** read again the Twilio pages in "What Twilio's pages say" and better-auth 1.7.7's `dist/plugins/phone-number/routes.mjs` in `node_modules`. Also read: whether Twilio's signature covers the part of the address after `#` (point 6), and Twilio's page on SMS pumping protection, reporting whether it applies to a Messaging Service (audit 10). Any difference from this plan: stop and report.
-- [ ] **Step 1 (with the Owner, after X1 to X3; needs one real phone):** from the Owner's phone text STOP to the news number. Then send one text from each service to that phone with `twilio api:core:messages:create --messaging-service-sid MG… --to +1… --body "Ruken: test"`. Expected: the account one arrives; the news one fails with 21610. Then START, and both arrive. Record the four message ids and their statuses in the tracker. If the account text is also blocked, stop and report (point 3 under "What follows from it"). Without a Canadian phone, record that a reply from Canada is still unproven (point 9).
+  *Read once, in the first attempt, on 2026-11-16 (the build session reads it again and corrects this line):* the `#…` part is **not** signed (`docs/usage/webhooks/webhooks-connection-overrides`: "omit the fragment"); Twilio's worked example reproduces (`L/OH5YylLD5NRKLltdqwSvS0BnU=`); signature order is byte order. SMS Pumping Protection (`docs/messaging/features/sms-pumping-protection-programmable-messaging`, modified 2026-09-25) is an **account-wide** setting, turned on in the Console under Communications > Messaging > Settings, free for the United States and Canada, and a blocked text shows error 30450. The page does not mention Messaging Services, so it is taken to cover them (they are Programmable Messaging); X2 turns it on. The one difference from the plan is point 8 (21610 timing), written there.
+- [ ] **Step 1 (the slice's last step; with the Owner, after X1 to X4 and after branch B is built; needs one real phone):** from the Owner's phone text STOP to the news number. Then send one text from each service to that phone with `twilio api:core:messages:create --messaging-service-sid MG… --to +1… --body "Ruken: test"`. Expected: the account one arrives; the news one fails with 21610: record whether the API refused it at once (HTTP 400) or accepted it and later reported `failed` with 21610 (read it again with `twilio api:core:messages:fetch --sid SM…`), point 8. Then START, and both arrive. Record the four message ids and their statuses under this step. If the account text is also blocked, stop and report (point 3 under "What follows from it"). Without a Canadian phone, record that a reply from Canada is still unproven (point 9).
 
-This step needs the Owner and a real phone, so it may finish after Tasks 1 and 2 are green; branch B does not start before it.
+Step 1 needs the Owner, a real phone and an upgraded Twilio account, so it comes last in the slice and holds back neither branch's build ("This slice", 1). What it proves decides how branch C is set up: if STOP on one service silences both, the two numbers need two Twilio accounts, and the `Texter`'s options change then. If the test texts do not arrive because the carriers have not approved the numbers ("Open before the build"), record Twilio's error code for each and report; the step stays open.
 
 ### Task 1: The `Texter`
 
 **Files:**
-- Create: `src/lib/server/text.ts`, `src/lib/server/twilio-signature.ts`, `tests/support/capture-texter.ts`, `tests/browser/support/fake-twilio-server.ts`, `tests/browser/support/texts.ts`
-- Modify: `playwright.config.ts` (the stand-in on port 12114, and the settings below, all plainly fake)
-- Test: `tests/lib/server/text.test.ts`, `tests/lib/server/twilio-signature.test.ts`
+- Create: `src/lib/server/text.ts`, `tests/support/capture-texter.ts`, `tests/browser/support/fake-twilio-server.ts`, `tests/browser/support/texts.ts`
+- Modify: `playwright.config.ts` (starts the stand-in on port 12114, beside the three that are there; the Worker's Twilio settings are added in Task 4)
+- Test: `tests/lib/server/text.test.ts`, `tests/browser/twilio-stand-in.test.ts`
+- Moved to branch C (Task 7), with the webhook that is its only user: `src/lib/server/twilio-signature.ts` and its test, the stand-in's `POST /test/inbound`, and `textIn`. Nothing is built ahead of its user.
 
 **Interfaces (produces):**
 
@@ -211,7 +380,7 @@ export interface Texter {
 export interface TwilioTexterOptions {
   accountSid: string; apiKey: string; apiSecret: string;
   services: Record<TextLine, string>;           // the two MG… ids
-  statusCallback: string;                        // <site>/webhooks/twilio
+  statusCallback?: string;                       // <site>/webhooks/twilio; set from branch C on, when that address exists
   allowlist: string | undefined;                 // TEXT_ALLOWLIST: comma-separated numbers
   apiBase?: string; lookupBase?: string;         // stand-ins only
   fetch?: typeof fetch;
@@ -219,26 +388,27 @@ export interface TwilioTexterOptions {
 export function createTwilioTexter(options: TwilioTexterOptions): Texter;
 export class TextError extends Error { readonly code = "TWILIO"; readonly responseCode: number; readonly twilioCode: number | null }
 export function textFailureCode(error: unknown): string;   // "TWILIO 400 21610", never the message
+export function isMadeUpNumber(number: string): boolean;   // here, not in a feature: src/lib/ imports no feature
 ```
 
-- `send`: a made-up number (`isMadeUpNumber`, Task 2) answers `made_up` before anything else; with an allowlist set, a number not on it answers `allowlist`; else the POST from "What Twilio's pages say" with `To`, `Body`, `MessagingServiceSid` and `StatusCallback`, `Authorization: Basic base64(apiKey:apiSecret)`. A non-2xx answer throws `TextError` with the status and the `code` from Twilio's JSON body (null when there is none). `fetch` is kept in a constant and called as a plain function, as `mail.ts` does.
+- `send`: a made-up number (`isMadeUpNumber`: true for `/^\+1\d{3}55501\d\d$/`) answers `made_up` before anything else; with an allowlist set, a number not on it answers `allowlist`; else the POST from "What Twilio's pages say" with `To`, `Body`, `MessagingServiceSid` and, when one is set, `StatusCallback`; `Authorization: Basic base64(apiKey:apiSecret)`. A non-2xx answer throws `TextError` with the status and the `code` from Twilio's JSON body (null when there is none). `fetch` is kept in a constant and called as a plain function, as `mail.ts` does.
 - `changedHands`: a number that does not start `+1`: `cannot_say`, with no request. Else the GET above with `LastVerifiedDate` as the UTC day of `since`; `yes` and `no` pass through; `no_data_available`, a missing field, a non-2xx answer or a thrown `fetch`: `cannot_say`. It never throws.
-- `twilio-signature.ts`: `twilioSignatureOf(authToken: string, url: string, fields: ReadonlyMap<string, string>): string` and `isFromTwilio(authToken, url, fields, header: string | null): boolean`, compared with `timingSafeEqual`; a null or wrong-length header is false.
 - `createCaptureTexter(): Texter & { sent: TextMessage[]; hands: Map<string, "yes" | "no" | "cannot_say"> }`: keeps what it was given, answers `{ sent: true, providerId: "SM-test-<n>" }`, and answers `changedHands` from `hands` (default `cannot_say`).
-- The stand-in (`fake-twilio-server.ts`, modelled on `fake-mail-server.ts`): `POST /2010-04-01/Accounts/:sid/Messages.json` keeps the text and answers `{ sid }`; `GET /texts?to=` lists them; `GET /v2/PhoneNumbers/:number` answers from `POST /test/hands`; `POST /test/inbound` posts a signed text or report to the site's webhook, as Twilio would; `GET /ready`. `texts.ts`: `textTo(number, starts: string)` (waits with `expect.poll`, never a pause), `countTextsTo`, `codeIn(text)`, `textIn(from, body, extra?)`.
-- `services.ts` reads `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY`, `TWILIO_API_SECRET`, `TWILIO_AUTH_TOKEN`, `TWILIO_ACCOUNT_SERVICE`, `TWILIO_NEWS_SERVICE` (all required), `TEXT_ALLOWLIST` (optional) and `TWILIO_API_BASE` (optional; refused unless it starts `http://127.0.0.1:`, through the existing `standInAddress`; when set it is both `apiBase` and `lookupBase`, since the stand-in serves both, audit 18), and `AuthServices` gains `texter`.
+- The stand-in (`fake-twilio-server.ts`, modelled on `fake-mail-server.ts`): `POST /2010-04-01/Accounts/:sid/Messages.json` keeps the text and answers `{ sid }`; `GET /texts?to=` lists them; `GET /v2/PhoneNumbers/:number` answers from `POST /test/hands`; `POST /test/fail` makes the next send answer 500 (Review Focus 6); `GET /ready`. `texts.ts`: `textTo(number, starts: string)` (waits with `expect.poll`, never a pause), `countTextsTo`, `codeIn(text)`.
+- `services.ts` and `AuthServices.texter`: **moved to Task 4** (built there, where the `Texter` has its first user). Branch A leaves `services.ts` alone.
 
 - [ ] **Step 1 (red):** `text.test.ts`, with a stubbed `fetch`:
 
 ```ts
 it("posts the text to Twilio's Messages address with the line's service", async () => {
-  const result = await texter.send({ to: "+13125550142", line: "news", body: "Ruken: hi" });
+  const result = await texter.send({ to: "+13125551234", line: "news", body: "Ruken: hi" });   // not 555 01xx: that is a made-up number
   expect(calls[0].url).toBe("https://api.twilio.com/2010-04-01/Accounts/AC1/Messages.json");
   expect(Object.fromEntries(new URLSearchParams(calls[0].body))).toEqual({
-    To: "+13125550142", Body: "Ruken: hi", MessagingServiceSid: "MG-news", StatusCallback: "https://ruken.test/webhooks/twilio" });
+    To: "+13125551234", Body: "Ruken: hi", MessagingServiceSid: "MG-news" });
   expect(calls[0].headers.authorization).toBe(`Basic ${btoa("SK1:secret")}`);
   expect(result).toEqual({ sent: true, providerId: "SM123" });
 });
+it("adds StatusCallback only when one is set", async () => { /* with statusCallback: the field is there; without: it is not */ });
 it("texts only the allowlist when one is set", async () => { /* off the list: { sent: false, why: "allowlist" }, no call */ });
 it("never texts a made-up number, allowlist or not", async () => { /* +12125550123: why "made_up", no call */ });
 it("throws a TextError with the status and Twilio's code", async () => { /* 400 {"code":21610}: textFailureCode → "TWILIO 400 21610" */ });
@@ -248,8 +418,10 @@ it("cannot say for a number outside +1, with no request", async () => {});
 it("cannot say when Twilio has no data, answers 500, or the request throws", async () => {});
 ```
 
-  `twilio-signature.test.ts`: the worked example on Twilio's page (its address, fields, token and expected signature, copied from the page in Step 0); fields given in another order sign the same; one changed value, a missing header and a header of another length are refused. Stubs. Push. Expected: `verify` fails in both files with "not built yet".
+  `twilio-stand-in.test.ts` (a journey with no page): a `Texter` made with `apiBase` at the stand-in sends one text, and `textTo` reads it back with its words; `codeIn` finds the six digits. Stubs. Push. Expected: the unit tests fail in `text.test.ts` with "not built yet", and the stand-in's journey fails because nothing answers on port 12114.
 - [ ] **Step 2 (green):** the code, the stand-in and the config. Push. Expected: all pass; the journeys still pass with the new stand-in started and unused.
+
+  Three things the first attempt found, kept here so they are not found again: the Twilio settings are not read in this task (Task 4 reads them, where the `Texter` gets its first user, so the test site keeps running on `main` between branch A and branch B); `isMadeUpNumber` lives in this file; and the spec's sample number `+1 312 555 0142` is itself a made-up number, so only the made-up-number test uses one like it.
 
 ### Task 2: A phone number, written one way
 
@@ -260,7 +432,7 @@ it("cannot say when Twilio has no data, answers 500, or the request throws", asy
 **Interfaces (produces):**
 - `toE164(dialingCode: string, typed: string): string | null`. Spaces, dashes, dots and brackets are dropped. Typed text starting `+`, `00` or `011`: what follows is the whole number. Otherwise leading zeros are dropped, under `+1` one leading `1` is dropped, and the dialing code's digits go in front. (audit 14) The answer is `+` and 8 to 15 digits, or null.
 - `hashNumber(number: string, secret: string): string`: HMAC-SHA-256 of `phone:<E.164>` under `BETTER_AUTH_SECRET`, in hex. Used wherever a number that may have no account is kept (limits, the pause, a pending sign-up, STOP).
-- `isMadeUpNumber(number: string): boolean`: true for `/^\+1\d{3}55501\d\d$/`.
+- `isMadeUpNumber`: re-exported from `src/lib/server/text.ts` (Task 1), so the feature's own code and tests import it from here.
 - `text-words.ts`: the functions, constants and `fitText` of "The words of every text" that branches A and B use (`codeText`, `alreadyText`, `resetCodeText`, `passwordChangedText`, `signInPausedText`).
 
 - [ ] **Step 1 (red):**
@@ -298,7 +470,9 @@ it("knows a made-up number", () => { expect(isMadeUpNumber("+12125550123")).toBe
 | `SignInGuard` | the column `emailHash` is renamed `numberHash` (and its check). The rows are thrown away by the migration: they are pauses of at most an hour. |
 | `TextSent` | `id`, `userId` (a `User`, `onDelete: Restrict`), `kind String`, `key String`, `line String`, `providerId String?`, `sentAt`, `createdAt`; `@@unique([userId, kind, key])`. Added and never changed (`reject_append_only_change('TextSent')`). It holds an id and no number, so it stays when the account is deleted, as `WishlistMail` was to. |
 
-The migration is made with `prisma migrate diff` from `main`'s schema, as earlier ones were, then the checks and the trigger by hand at its end.
+The migration is made with `prisma migrate diff` from `main`'s schema, as earlier ones were, then the checks and the trigger by hand at its end. Its folder is dated after `20261115190000_agreement_per_version`, the newest on `main`; `User` has gained two relations since this plan was written (`gameReviews`, `makerAgreements`), which this change leaves alone.
+
+**Lane 3.** The deploy command (`pnpm deploy`) runs `prisma migrate deploy` first, so this migration reaches the test site's database when branch B merges. It adds columns that may be empty and two tables, renames one column and throws away only `SignInGuard`'s rows. Undoing it is a second migration, not a revert; the pull request says so. Accounts made by email stay in the database with no number and can no longer be signed in to (X8).
 
 - [ ] **Step 1 (red):** a second `User` with the same `phoneNumber` rejects; `phoneNumber` `"3125550142"` rejects; two users with no number are fine; a second `TextSent` with the same person, kind and key rejects; `UPDATE` and `DELETE` on `TextSent` reject; `SignInGuard` has `numberHash` and no `emailHash`. Push. Expected: `postgres` fails.
 - [ ] **Step 2 (green):** the schema and migration. Push. Expected: all pass.
@@ -307,13 +481,14 @@ The migration is made with `prisma migrate diff` from `main`'s schema, as earlie
 
 **Files:**
 - Create: `src/features/accounts/pending-sign-up.ts`
-- Modify: `auth.ts`, `auth-limits-plugin.ts`, `sign-in-guard.ts`, `sign-in-guards.ts`, `sign-in-pause-plugin.ts`, `forms.ts`, `services.ts`, `accounts.ts`, `staff.ts`, `deletion.ts`; `src/routes/sign-up/+page.server.ts`, `+page.svelte`, `src/routes/sign-in/+page.svelte`, `src/routes/me/+page.server.ts`, `+page.svelte`, `src/routes/jobs/first-owner/+server.ts`; `src/features/membership/service.ts`, `stripe-port.ts`, `checkout.ts` (`createCustomer` takes no email: Stripe asks for it at paying)
+- Modify: `auth.ts`, `auth-limits-plugin.ts`, `sign-in-guard.ts`, `sign-in-guards.ts`, `sign-in-pause-plugin.ts`, `forms.ts`, `services.ts`, `accounts.ts`, `staff.ts`, `deletion.ts`; `src/routes/sign-up/+page.server.ts`, `+page.svelte`, `src/routes/sign-in/+page.svelte`, `src/routes/me/+page.server.ts`, `+page.svelte`, `src/routes/jobs/first-owner/+server.ts`; `src/features/membership/service.ts`, `stripe-port.ts`, `checkout.ts` (`createCustomer` takes no email: Stripe asks for it at paying); `src/features/games/service.ts` (`waitingGames` no longer answers `makerEmail`); `playwright.config.ts` and `.env.example` (the Twilio settings)
 - Delete: `src/features/accounts/mails.ts`, `tests/features/accounts/mails.test.ts`, `tests/browser/mailed-links.test.ts`
-- Test: `tests/features/accounts/auth.pg.test.ts`, `forms.test.ts`, `auth-limits-plugin.test.ts`, `sign-in-guards.pg.test.ts`, `sign-in-pause-plugin.test.ts`, `pending-sign-up.pg.test.ts`, `staff.pg.test.ts`, `purge.pg.test.ts`; `tests/browser/sign-up.test.ts`, `sign-in.test.ts`, `auth-route.test.ts`, `first-owner.test.ts`, `me.test.ts`; `tests/browser/support/account.ts`, `database.ts`; `tests/support/create-user.ts`
+- Test: `tests/features/accounts/auth.pg.test.ts`, `forms.test.ts`, `auth-limits-plugin.test.ts`, `services.test.ts`, `sign-in-guards.pg.test.ts`, `sign-in-pause-plugin.test.ts`, `pending-sign-up.pg.test.ts`, `staff.pg.test.ts`, `purge.pg.test.ts`; `tests/browser/sign-up.test.ts`, `sign-in.test.ts`, `auth-route.test.ts`, `first-owner.test.ts`, `me.test.ts`; `tests/browser/support/account.ts`, `database.ts`; `tests/support/create-user.ts`
+- Test, added since this plan was written (each signs up by email today, or names an email screen): `tests/browser/client-address.test.ts`, `connect-github.test.ts`, `look.test.ts`, `look-layout.test.ts`, `delete-account.test.ts`, `membership.test.ts`; `tests/browser/support/look.ts` (`CARD_SCREENS`), `game.ts` (`startAtFiles` answers the maker's number), `rate-limits.ts` (its comment); `tests/features/games/review.pg.test.ts`. Every other journey (the `make-*` ones, `buttons`, `game-gate`, `join`, `pay`, `money-job`, `purged-account`) changes only through the helpers it calls; if one needs more, say so in the pull request.
 
 **`auth.ts`:**
-- `AuthOptions` gains `texter: Texter`; `mailer` goes (nothing here mails).
-- Plugin: `phoneNumber({ otpLength: 6, expiresIn: 600, allowedAttempts: 3, phoneNumberValidator: (n) => /^\+[0-9]{8,15}$/.test(n), sendOTP, sendPasswordResetOTP, signUpOnVerification: { getTempEmail: () => `${randomUUID()}@phone.ruken.invalid`, getTempName: () => "Player" } })` from `better-auth/plugins`. `sendOTP` and `sendPasswordResetOTP` hand the send to `textLater` (the present `mailLater`, renamed, logging `textFailureCode`) and return at once. Inside `textLater`, `sendOTP` looks the number up: when an account has it, the text is `alreadyText` in place of the code (audit 6). A `TextError` with Twilio's code 21610 records a stop for the number on the account line (`recordStop`, Task 7; until then only logged), so the next screen shows the START words (audit 3).
+- `AuthOptions` gains `texter: Texter`. `mailer` stays for one mail only: a reset code sent to the email a member pays with (Task 5). Nothing mails `User.email` any more.
+- Plugin: `phoneNumber({ otpLength: 6, expiresIn: 600, allowedAttempts: 3, phoneNumberValidator: (n) => /^\+[0-9]{8,15}$/.test(n), sendOTP, sendPasswordResetOTP, signUpOnVerification: { getTempEmail: () => `${randomUUID()}@phone.ruken.invalid`, getTempName: () => "Player" } })` from `better-auth/plugins`. `sendOTP` and `sendPasswordResetOTP` hand the send to `textLater` (the present `mailLater`, renamed, logging `textFailureCode`) and return at once. Inside `textLater`, `sendOTP` looks the number up: when an account has it, the text is `alreadyText` in place of the code (audit 6). A `TextError` with Twilio's code 21610 records a stop for the number on the account line (`recordStop`, Task 7; until then only logged), so the next screen shows the START words (audit 3). Twilio may instead accept the send and report 21610 afterwards (point 8): that path is Task 7's delivery-report step, which records the same stop, so the screen shows the START words from the next ask.
 - `emailAndPassword` keeps `enabled`, the two lengths, `revokeSessionsOnPasswordReset` and `onPasswordReset` (the plugin's reset calls both); `onPasswordReset` lifts the pause for `user.phoneNumber` and texts `passwordChangedText`. `sendResetPassword`, the whole `emailVerification` block and the `verification.storeIdentifier` override for `reset-password:` go: nothing uses them any more (audit 7).
 - The `before` hook: a request that came through the public route (`PUBLIC_ROUTE_HEADER`) is answered `NOT_FOUND` unless its path is in `PUBLIC_AUTH_PATHS = ["/ok", "/get-session", "/sign-out"]`. Every form calls better-auth on the server without that header, so nothing else needs to be public, and the email routes and the plugin's `verify` cannot be reached from outside. A comment says why: `verify` signs in whoever holds a code.
 - `rateLimit.customRules`: `/sign-in/phone-number` 30 a minute; `/phone-number/send-otp` 5 an hour (a client's sign-up starts, as `/sign-up/email` was); `/phone-number/request-password-reset` 10 an hour; `/phone-number/verify` and `/phone-number/reset-password` 10 per 15 minutes. The email rules go.
@@ -333,11 +508,13 @@ The migration is made with `prisma migrate diff` from `main`'s schema, as earlie
 - `resendVerification` and `resetPassword` go.
 - `FORM_MESSAGES` changes: `wrongPassword` "That number and password don't match. Try again, or reset your password."; `phoneInvalid` "That doesn't look like a phone number. Check it and try again."; `codeWrong` "That code isn't right. Check the text, or ask for a new one."; `codeTooSoon` "Give it a few seconds, then try again."; `codesPaused` "Too many wrong codes. Codes are paused for an hour for this number."; `closedCountry` "Ruken isn't in your country yet."; `emailMissing` and `accountExists` go.
 
-**The screens.** `/sign-up`, first state: the spec's drawing, with "Country" as a `<select>` of the open countries (name and code) and "Phone number" as `type="tel"`, `autocomplete="tel-national"`; the note under the fields is the spec's five lines; the button "Text me a code". Second state, the same address: "We texted you a code", one field "The code we texted you" (`inputmode="numeric"`, `autocomplete="one-time-code"`), "Join Ruken" (blue), "Text it again" (green, shown after 30 seconds by a script and always without one) and "Change the number" (green, back to the first state with the fields kept). `/sign-in`: "Country" (the same `<select>` as sign-up, starting on the browser's region), "Phone number" and "Password". (audit 14) `/me` shows the number in place of the email, and the "Confirm your email" block goes.
+**The screens** (drawn in "This slice", "The screens"). `/sign-up`, first state: the spec's drawing, headed "Join Ruken", with "Country" as a `<select>` of the open countries (name and code) and "Phone number" as `type="tel"`, `autocomplete="tel-national"`; the note under the fields is the spec's five lines; the button "Text me a code". Second state, the same address: "We texted you a code", one field "The code we texted you" (`inputmode="numeric"`, `autocomplete="one-time-code"`), "Join Ruken" (blue), "Text it again" (green, shown after 30 seconds by a script and always without one) and "Change the number" (green, back to the first state with the fields kept). `/sign-in`: "Country" (the same `<select>` as sign-up, starting on the browser's region), "Phone number" and "Password". (audit 14) `/me` shows the number in place of the email, and the "Confirm your email" block goes; the lines game submission added ("Your games", or "Make games? Add yours to Ruken.") stay as they are. Each screen keeps the way back it has today ("Already have an account? Sign in", "New here? Create an account", "Forgot your password?").
 
-**Elsewhere:** `grantFirstOwner(db, phoneNumber)` and the job's body `{ "phone": "+1…" }` with "No account has that number. Sign up on the site first."; `purgeDueAccounts` also sets `phoneNumber` and `paperEmail` to null and `phoneNumberVerified` false, deletes the `PendingSignUp` and `Verification` rows for the number (`identifier` the number, and the number followed by `-request-password-reset`); `createUser` (tests) gives each person a made-up number; the journeys' `signUp(page, number = freshNumber())` reads the code from the stand-in (`codeIn(await textTo(number, "Ruken: your code is"))`), `freshNumber()` answers `+1` and a random area code, `555` and four random digits outside `01··`, and every helper that took an email (`signInAs`, `userIdOf` and the rest of `database.ts`) takes the number.
+**`services.ts`** (moved here from Task 1): reads `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY`, `TWILIO_API_SECRET`, `TWILIO_ACCOUNT_SERVICE`, `TWILIO_NEWS_SERVICE` (all required; `TWILIO_AUTH_TOKEN` joins them in branch C, with the webhook), `TEXT_ALLOWLIST` (optional) and `TWILIO_API_BASE` (optional; refused unless it starts `http://127.0.0.1:`, through the existing `standInAddress`; when set it is both `apiBase` and `lookupBase`, since the stand-in serves both, audit 18); `AuthServices` gains `texter`, built with `createTwilioTexter` and no `statusCallback` (the address it would name is built in branch C); `playwright.config.ts` gives the Worker the plainly fake settings, pointing at the stand-in. `.env.example` lists them. Required settings are asked for here, not before, so `main` keeps running on the test site after branch A; branch B itself merges only once the Owner's X4 is done ("This slice", 2). Tests in `services.test.ts`: a missing setting is named at start (`Missing setting TWILIO_ACCOUNT_SID`, one case for each of the five), `TWILIO_API_BASE` is taken at `http://127.0.0.1:12114` and refused at `https://sms.example`.
 
-- [ ] **Step 1 (red):** the journeys, with the unit and Postgres cases for each rule above:
+**Elsewhere:** `grantFirstOwner(db, phoneNumber)` and the job's body `{ "phone": "+1…" }` with "No account has that number. Sign up on the site first."; `purgeDueAccounts` also sets `phoneNumber` and `paperEmail` to null and `phoneNumberVerified` false, deletes the `PendingSignUp` and `Verification` rows for the number (`identifier` the number, and the number followed by `-request-password-reset`); `createUser` (tests) gives each person a made-up number and a stand-in address ending `@phone.ruken.invalid`; `waitingGames()` (`src/features/games/service.ts`) stops answering `makerEmail`, which would now be that stand-in, and its test in `review.pg.test.ts` checks the list without it (nothing shows the list yet; "This slice", 6); `signUpsCountedFrom` (`database.ts`) reads the counter kept under `/phone-number/send-otp`, where it read `/sign-up/email`; `CARD_SCREENS` (`look.ts`) opens sign-up by its new heading, the code state of forgot password in place of "check your email", and no `/reset-password`; the journeys' `signUp(page, number = freshNumber())` reads the code from the stand-in (`codeIn(await textTo(number, "Ruken: your code is"))`), `freshNumber()` answers `+1` and a random area code, `555` and four random digits outside `01··`, and every helper that took an email (`signInAs`, `userIdOf` and the rest of `database.ts`) takes the number.
+
+- [ ] **Step 1 (red):** the journeys, with the unit and Postgres cases for each rule above (the `services.ts` checks in `services.test.ts` among them):
 
 ```ts
 test("a person joins with their phone and a code", async ({ page }) => {
@@ -370,15 +547,15 @@ test("Twilio failing does not break the code screen", async ({ page }) => {});  
 
   Push. Expected: `browser` fails at "Phone number"; `postgres` and `verify` fail in the new cases.
 - [ ] **Step 2 (green):** the code, with every old journey moved to the new helpers. Push. Expected: all pass, on all nine projects.
-- [ ] **Step 3:** `showTheOwner` for the two states of `/sign-up`, `/sign-in` and `/me`, every view, before and after. The Owner's "fine" before the branch is marked ready.
+- [ ] **Step 3:** `showTheOwner` for the two states of `/sign-up`, `/sign-in` and `/me`, on every project, before and after, so the visual check (`visual-check`) and the slice's screens page have their pictures. The session that built the screens checks them against the sketches and fixes what it finds. The Owner sees them on the screens page, with the finished result; there is no separate "fine" for this branch.
 
 ### Task 5: Forgot password, and a number that changed hands
 
 **Files:**
-- Create: `src/features/accounts/changed-hands.ts`
-- Modify: `auth.ts` (`sendPasswordResetOTP`), `forms.ts` (`requestReset`, `finishReset`), `src/routes/forgot-password/+page.server.ts`, `+page.svelte`
+- Create: `src/features/accounts/changed-hands.ts`, `src/features/accounts/paper.ts` (`setPaperEmail` only; "This slice", 3)
+- Modify: `auth.ts` (`sendPasswordResetOTP`), `forms.ts` (`requestReset`, `finishReset`), `accounts.ts` (`setMoneyCheck`, `setPaperEmail`), `src/hooks.server.ts`, `src/routes/forgot-password/+page.server.ts`, `+page.svelte`; `src/features/membership/` (`hasBillingCustomer`; the finished checkout stores the email paid with), `src/features/money/` (`hasBeenPaid`)
 - Delete: `src/routes/reset-password/`
-- Test: `tests/features/accounts/changed-hands.pg.test.ts`, `forms.test.ts` (add cases), `tests/browser/forgot-password.test.ts`
+- Test: `tests/features/accounts/changed-hands.pg.test.ts`, `paper.pg.test.ts`, `forms.test.ts` (add cases), `tests/features/membership/service.pg.test.ts` and `tests/features/money/` (a case each), `tests/browser/forgot-password.test.ts`; `tests/browser/support/fake-stripe-server.ts`, `tests/support/fake-premium-stripe.ts` (a finished checkout carries an email), `tests/browser/support/account.ts` (`payAsNewMember` answers it), `mail.ts` (kept: the reset journey reads the mail)
 
 **The rule** (the spec left it to the plan; "What follows from it", 5):
 
@@ -391,29 +568,34 @@ test("Twilio failing does not break the code screen", async ({ page }) => {});  
 
 `hasMoney` is handed in from above, because `accounts` sits below the features that know and better-auth's `sendPasswordResetOTP` is built once, in `createAuthServices`. `accounts.ts` exports `setMoneyCheck(check: (userId: string) => Promise<boolean>)`; `src/hooks.server.ts` calls it at start, as it calls `setFileStore`, with `(id) => membershipServices().service.hasBillingCustomer(id)` joined with `moneyServices().hasBeenPaid(id)` (two one-line reads added to those features, with a test each; `hasBeenPaid` is true when a `JournalLine` names the person). Until it is set the check answers true, so a reset never goes by text on a guess. (audit 5)
 
-`sendPasswordResetOTP({ phoneNumber, code })`, after the answer: find the account; `resetChannel`; `text`: `resetCodeText(code)` on the account line. `email`: the same code by `sendPaper` (Task 10; until branch D is merged this arm logs `reset held: no channel` and sends nothing) with the subject "Your Ruken code" and the text "Your code to choose a new password is `<code>`. It works for 10 minutes." `help`: nothing is sent and one line is logged, `reset held for help`, with no number.
+`sendPasswordResetOTP({ phoneNumber, code })`, after the answer: find the account; `resetChannel`; `text`: `resetCodeText(code)` on the account line. `email`: the same code through the `Mailer`, to the account's `paperEmail`, with the subject "Your Ruken code" and the text "Your code to choose a new password is `<code>`. It works for 10 minutes.", sent after the answer and logged by `mailFailureCode` if it fails, as mails are today. (Branch D's Task 10 moves this one send onto `sendPaper`, with its record.) `help`: nothing is sent and one line is logged, `reset held for help`, with no number. In this slice only an account with money and no kept email can land here: a member whose checkout finished before branch B (the test accounts, which X8 replaces) or a maker who has been paid (payouts are not built). The help chat's plan gives this arm its screen.
 
-**The screens.** `/forgot-password`, first: "Phone number" and "Text me a code". Second, the same address, whatever the number: "If that number has a Ruken account, we sent a code. It may come by text, or to the email you pay with." then "The code we sent you", "New password", "Type it again", "Save my new password" (blue), "Text it again" (green) and, underneath, "No code? Get help" to `/help`. `finishReset` checks the length and the two passwords first, then `callAuth("/phone-number/reset-password", { phoneNumber, otp, newPassword })`; success redirects to `/sign-in?reset=1`; a 400 or 403 reads `codeWrong` and keeps the number.
+**The email a member pays with** (brought forward from Task 10; "This slice", 3). `setPaperEmail(db, userId: string, email: string): Promise<void>` in `paper.ts`: trimmed, lower-cased, written to `User.paperEmail`. Membership calls it when a checkout finishes, with the address Stripe collected (`customer_details.email`). The kept copy of the event still holds no address (`kept-event.ts` is unchanged); the handler reads it from the verified event before it is cut down. Nobody types it into Ruken. The stand-in Stripe's payment page shows an "Email" field already filled with a made-up address ending `@example.test`, as Stripe's own page asks for one, and puts it in the finished checkout; `payAsNewMember` answers it.
 
-- [ ] **Step 1 (red):** `resetChannel`'s seven cases (no; cannot say without and with money; yes with and without a paper email; a number outside +1; `since` taken from the newer of the two dates). The journeys: a reset by code signs every device out, the old password stops working, and the person gets `passwordChangedText`; a number with no account sees the same second screen and gets no text; the stand-in says the number changed hands: no code text is sent, and the second screen is the same; a paused sign-in can still reset. Push. Expected: `postgres` and `browser` fail.
-- [ ] **Step 2 (green):** the code. Push. Expected: all pass. Branch B is ready to merge after the Owner's "fine" on Task 4's screens. Tell the coordinator about X8.
+**The screens** (drawn in "This slice", "The screens"). `/forgot-password`, first: "Country" (the same `<select>` as sign-in), "Phone number" and "Text me a code". Second, the same address, whatever the number: "If that number has a Ruken account, we sent a code. It may come by text, or to the email you pay with." then "The code we sent you", "New password", "Type it again", "Save my new password" (blue), "Text it again" (green) and, underneath, "Back to sign in". There is no link to `/help`: that page does not exist yet ("This slice", 4). `finishReset` checks the length and the two passwords first, then `callAuth("/phone-number/reset-password", { phoneNumber, otp, newPassword })`; success redirects to `/sign-in?reset=1`; a 400 or 403 reads `codeWrong` and keeps the number.
+
+- [ ] **Step 1 (red):** `resetChannel`'s seven cases (no; cannot say without and with money; yes with and without a paper email; a number outside +1; `since` taken from the newer of the two dates). The journeys: a reset by code signs every device out, the old password stops working, and the person gets `passwordChangedText`; a number with no account sees the same second screen and gets no text; the stand-in says the number changed hands: no code text is sent, and the second screen is the same; a member (someone who paid through the stand-in) gets the code at the email they paid with and no code text, and the reset works with it; a finished checkout sets `paperEmail` and the kept event holds no `@`; `hasBillingCustomer` and `hasBeenPaid` each answer true and false; a paused sign-in can still reset. Push. Expected: `postgres` and `browser` fail.
+- [ ] **Step 2 (green):** the code. Push. Expected: all pass.
+- [ ] **Step 3:** `showTheOwner` for the two states of `/forgot-password`, on every project, as Task 4's Step 3. Then hand the branch to the implementation audit by naming its commit. Branch B merges after that audit and its fixes, the Owner's X1 to X4, and the Owner's approval (lane 3). Tell the coordinator about X8.
 
 ---
 
 # Branch C: `texts/notices`
 
+**Waits.** Branches C, D and E are not in this slice. Their tasks below are as the first audit and the first attempt left them and were not read against `3b1fabf`; a plan session brings them up to date when their turn comes. Three things this slice moved into them or out of them: `twilio-signature.ts`, the stand-in's `POST /test/inbound`, `textIn`, the `statusCallback` setting and `TWILIO_AUTH_TOKEN` are built in Task 7; `setPaperEmail` and its call from membership are already built in Task 5, so Task 10 builds the rest; and the reset's email arm moves onto `sendPaper` in Task 10.
+
 ### Task 6: One text a notice, once
 
 **Files:**
-- Create: `src/features/accounts/notices.ts`; modify `prisma/schema/accounts.prisma` (+ migration), `accounts.ts`, `deletion.ts`
+- Create: `src/features/accounts/notices.ts`; modify `prisma/schema/accounts.prisma` (+ migration), `accounts.ts`, `deletion.ts`, `src/routes/jobs/purge-accounts/+server.ts`
 - Test: `tests/features/accounts/notices.pg.test.ts`
 
-- `WaitingNotice`: `id`, `userId`, `kind`, `key`, `body`, `madeAt`, `readAt DateTime?`; `@@unique([userId, kind, key])`. Deleted with the account.
-- `tellByText(deps: { db; clock; texter; log }, input: { userId: string; kind: string; key: string; body: string }): Promise<"sent" | "waiting" | "already" | "held_back" | "no_number">`, in this order: the account is `active` and has a number, else `no_number`; a `TextSent` or `WaitingNotice` row for (person, kind, key): `already`; the account line is stopped for this number (Task 7; until then never): one `WaitingNotice` row, `waiting`; else, in one transaction, insert the `TextSent` row first and send inside it, as the wishlist plan's launch mail did, so two calls at once send one text: `sent: true` commits with the provider's id; `allowlist` or `made_up` rolls back, `held_back`; a `TextError` with Twilio's code 21610 rolls back, records the stop (`recordStop`, `providerId` `refused:<userId>:<kind>:<key>`; Task 7, until then only the rollback) and saves one `WaitingNotice`: `waiting` (audit 3); any other throw rolls back, logs `textFailureCode` and rethrows.
-- `waitingNoticesOf(db, userId)`: newest first. `markNoticesRead(db, clock, userId)`.
+- `WaitingNotice`: `id`, `userId`, `kind`, `key`, `body`, `madeAt`, `readAt DateTime?`, `providerId String?` (indexed) and `kept Boolean @default(false)`; `@@unique([userId, kind, key])`. Deleted with the account. A **kept** row is a hidden copy, written with every account-line send and shown only if Twilio later reports that send lost (21610): it holds the notice's words where the append-only `TextSent` cannot, because `TextSent` outlives the account (audit round 4). A kept row is not a waiting notice: `waitingNoticesOf` and the unread count leave it out.
+- `tellByText(deps: { db; clock; texter; log }, input: { userId: string; kind: string; key: string; body: string }): Promise<"sent" | "waiting" | "already" | "held_back" | "no_number">`, in this order: the account is `active` and has a number, else `no_number`; a `TextSent` or `WaitingNotice` row for (person, kind, key): `already`; the account line is stopped for this number (Task 7; until then never): one `WaitingNotice` row, `waiting`; else, in one transaction, insert the `TextSent` row first and send inside it, as the wishlist plan's launch mail did, so two calls at once send one text: `sent: true` commits with the provider's id and, on the account line, a **kept** `WaitingNotice` in the same transaction (same person, kind and key, the words, the provider's id); `allowlist` or `made_up` rolls back, `held_back`; a `TextError` with Twilio's code 21610 rolls back, records the stop (`recordStop`, `providerId` `refused:<userId>:<kind>:<key>`; Task 7, until then only the rollback) and saves one `WaitingNotice`: `waiting` (audit 3); any other throw rolls back, logs `textFailureCode` and rethrows. A send Twilio accepts and then reports as 21610 is handled by Task 7's report step, which records the stop and shows the notice's kept copy on `/me` (point 8); the next notice waits. `tellByNews` keeps no copy: STOP on the news line does not hide an account notice.
+- `waitingNoticesOf(db, userId)`: newest first, kept copies left out. `markNoticesRead(db, clock, userId)`, which touches shown notices only, so a kept copy shown later by a 21610 report is still unread. `purgeKeptNotices(db, clock)`: deletes kept copies older than 3 days (a delivery report comes within minutes), called by the daily job that runs `purgeDueAccounts` (`src/routes/jobs/purge-accounts`), so nobody's words are kept without a reason.
 - Exported from `accounts.ts`: every other feature's notice goes through it.
 
-- [ ] **Step 1 (red):** each answer above; two calls at once send one text (Review Focus 4); a retry after a throw sends; a send refused with 21610 leaves one `WaitingNotice` and answers `waiting` (audit 3); a deleted or waiting-to-be-deleted account gets nothing; the purge removes `WaitingNotice` rows and leaves `TextSent`. Push. Expected: `postgres` fails.
+- [ ] **Step 1 (red):** each answer above; two calls at once send one text (Review Focus 4); a retry after a throw sends; a send refused with 21610 leaves one `WaitingNotice` and answers `waiting` (audit 3); an account-line send leaves one kept copy that `waitingNoticesOf` and the unread count do not show, and a news-line send leaves none; `markNoticesRead` leaves a kept copy unread; `purgeKeptNotices` removes kept copies older than 3 days and leaves younger ones and shown notices; a deleted or waiting-to-be-deleted account gets nothing; the purge removes `WaitingNotice` rows and leaves `TextSent`. Push. Expected: `postgres` fails.
 - [ ] **Step 2 (green):** the code; `passwordChangedText` and `signInPausedText` now go through `tellByText` (key: the clock's minute). Push. Expected: all pass.
 
 ### Task 7: Texts in: STOP, START, HELP, and reports
@@ -425,7 +607,7 @@ test("Twilio failing does not break the code screen", async ({ page }) => {});  
 - `TextStopEvent`: `id`, `numberHash`, `line`, `stopped Boolean`, `at`, `providerId String @unique`, `createdAt`. Never updated (a trigger of its own rejects `UPDATE` only: the purge deletes a person's rows, as the spec asks). The rows hold the number's hash, not the person's id, so `purgeDueAccounts` hashes the number before it clears it, and deletes the rows with that hash (audit 4). The state of a number on a line is its newest row.
 - `recordStop(deps, input: { number; line; stopped: boolean; providerId: string }): Promise<void>`: a second row with the same `providerId` is skipped, not an error. `textStateOf(db, secret, userId): Promise<{ accountOff: boolean; newsOff: boolean; unread: number }>`.
 - `receiveText(deps: { db; clock; texter; secret; services: Record<TextLine, string>; site: string; limiter }, fields: ReadonlyMap<string, string>): Promise<void>`:
-  - `MessageStatus` present (a report): `ErrorCode` `21610` records a stop for `To` on the line of `MessagingServiceSid`; anything else `failed` or `undelivered` logs `text not delivered: <ErrorCode>`. Nothing else is kept.
+  - `MessageStatus` present (a report): `ErrorCode` `21610` records a stop for `To` on the line of `MessagingServiceSid` (`providerId`: the report's `MessageSid`) and shows the notice that send carried: the kept `WaitingNotice` whose `providerId` is the report's `MessageSid` becomes a waiting one (`kept` false, unread), so it waits on `/me` as a refused send does; a report for an id with no kept copy (a code, a news text, a copy already purged) or a second report changes nothing more; anything else `failed` or `undelivered` logs `text not delivered: <ErrorCode>`. Nothing else is kept.
   - `OptOutType` `STOP` or `START`: `recordStop` for `From` on the line of `MessagingServiceSid`. `HELP`: nothing (Twilio has replied).
   - Any other text: `helpText` back on the same line, at most once an hour per number (`api:help-reply:<hash>`), through the `Texter` directly (it answers a text the person just sent). The help chat's plan replaces this arm for the account line.
   - An unknown `MessagingServiceSid`: ignored.
@@ -437,7 +619,7 @@ test("Twilio failing does not break the code screen", async ({ page }) => {});  
 - The account number shown to people is a setting, `TEXT_ACCOUNT_NUMBER` (X4 gains it), since the service's id is not a number.
 
 - [ ] **Step 0:** confirm from a real post (Task 0's test texts, read in Twilio's request log) that Twilio's webhook carries no `Origin`. If it carries the site's own, the `worker.js` line is not needed; report either way. (audit 1)
-- [ ] **Step 1 (red):** `inbound.pg.test.ts`: STOP then START on each line changes only that line; the same `MessageSid` twice stores one row (Review Focus 5); a report with 21610 records a stop; an ordinary text gets one `helpText` and a second inside the hour gets none; a `From` with no account stores a hashed row and throws nothing; the purge removes a deleted person's `TextStopEvent` rows (audit 4). `twilio-webhook.test.ts`: a post with no signature and with a wrong one answers 400 and stores nothing; the stand-in's signed STOP, sent as Twilio sends it (form-encoded, no `Origin`), answers 200 through `worker.js` (audit 1). `texts-off.test.ts`: after a signed STOP to the account line the person sees the line on `/` and `/me`; a password change then waits on `/me` and counts as unread; `/forgot-password` shows the START words and no text is sent (Review Focus 3); after START the line is gone and the next notice is a text; STOP to the news line shows no line at all. Push. Expected: `postgres` and `browser` fail.
+- [ ] **Step 1 (red):** `inbound.pg.test.ts`: STOP then START on each line changes only that line; the same `MessageSid` twice stores one row (Review Focus 5); a report with 21610 records a stop (the same stop a thrown 21610 records in Task 6, point 8) **and shows the lost notice**: a notice sent through `tellByText`, then a report with 21610 for its `MessageSid`, leaves one unread waiting notice with its words, and the same report again leaves one; a 21610 report for a code text or an unknown `MessageSid` shows nothing; an ordinary text gets one `helpText` and a second inside the hour gets none; a `From` with no account stores a hashed row and throws nothing; the purge removes a deleted person's `TextStopEvent` rows (audit 4). `twilio-webhook.test.ts`: a post with no signature and with a wrong one answers 400 and stores nothing; the stand-in's signed STOP, sent as Twilio sends it (form-encoded, no `Origin`), answers 200 through `worker.js` (audit 1). `texts-off.test.ts`: after a signed STOP to the account line the person sees the line on `/` and `/me`; a password change then waits on `/me` and counts as unread; `/forgot-password` shows the START words and no text is sent (Review Focus 3); after START the line is gone and the next notice is a text; STOP to the news line shows no line at all. Push. Expected: `postgres` and `browser` fail.
 - [ ] **Step 2 (green):** the code. Push. Expected: all pass.
 - [ ] **Step 3:** `showTheOwner` for the top line and `/me`'s Texts block, every view.
 
@@ -519,7 +701,7 @@ The Owner's answer to Question 1 (C, "Stay closed there until replies work") is 
 - **The privacy and terms pages** (held on pull request #104) must say, before X5: what texts Ruken sends (codes, account notices and, with a yes, one text when a wishlisted game is out), about how often, that message and data rates may apply, how to stop (reply STOP, or the account page) and get help (reply HELP), and that phone numbers are never shared or sold. The carriers read these pages.
 - **Slice 5's bank step** calls `setPaperEmail` with the address Stripe Connect holds for a maker.
 - **The apps' slice N** adds the fourth notification, "About my account", off until turned on; with it on, a `WaitingNotice` also goes out as a notification.
-- **The help chat** (`2026-11-15-help-chat-design.md`) replaces `receiveText`'s "any other text" arm for the account line, and `/help`, which this plan links to and does not build. Until it is on `main`, `/help` is whatever the legal pages' branch puts there; if nothing is there when Task 5 starts, stop and ask the coordinator.
+- **The help chat** (`2026-11-15-help-chat-design.md`) replaces `receiveText`'s "any other text" arm for the account line, and builds `/help`, which `helpText` names and this plan does not build. On `main` at `3b1fabf` there is no `/help` page (only `/help/github` and `/help/record-screen`), so branch B links to none; branch C's turn decides what `helpText` names if the help chat is still waiting.
 - **Worth the Owner's eye, left as they are on purpose:** an account that never paid can be reset by whoever holds its number (Task 5, rule 3); outside the United States Twilio cannot say whether a number changed hands; a person who stops account texts can only turn them back on from their own phone; codes are kept readable for their ten minutes (audit 7); and the spec's "ten wrong codes pause codes for that number for an hour", with limits counted per number, lets a stranger who knows a number keep its owner from getting a code for an hour at a time. Slice 1 counted per client to stop that for resets. It is built as the spec says (audit 9).
 
 ## Self-review
@@ -527,4 +709,5 @@ The Owner's answer to Question 1 (C, "Stay closed there until replies work") is 
 - **Spec coverage.** "Which message goes where": codes and account notices, Tasks 4 to 6; the maker's, split's, extra's and wishlist's texts, the other plans' amended tasks through Task 6 and 9; help, the help chat's design; the three emails, Task 10 and their own plans. "Signing up and signing in": Tasks 2, 4, 5, 8. "The email that stays": Task 10. "Saying yes, and STOP": Tasks 7 and 9. "Every country": Task 11 and the country table. "Twilio": Task 1. "Before the carriers say yes": X5, `TEXT_ALLOWLIST` (Task 1), and Task 4 removes email sign-up. "Stored": Tasks 3, 6, 7, 9. "Left to the plan": Twilio's calls ("What Twilio's pages say"), the words ("The words of every text"), how email sign-up is removed (Task 4), the countries (the table, Task 11), the stand-in (Task 1).
 - **Not covered here, and said so:** the fourth notification (the apps' slice N); the help chat; the legal pages' lines; the three legal emails' own senders.
 - **Names.** `Texter`, `TextMessage`, `TextLine`, `tellByText`, `tellByNews`, `textStateOf`, `hashNumber`, `toE164`, `resetChannel`, `sendPaper` and `setPaperEmail` are spelled one way throughout.
-- **Open before the build:** Task 0's proof of the two numbers; Task 7's Step 0 on the cross-site check.
+- **Open before the build:** Task 0's proof of the two numbers (now the slice's last step); Task 7's Step 0 on the cross-site check (branch C); and whether a real code can reach a United States phone before X5 ("This slice", "Open before the build").
+- **Brought up to date, 2026-11-17.** Read for branches A and B against `main` at `3b1fabf`: the diff from `286bfdf` for every path Tasks 0 to 5 name; `playwright.config.ts`, `package.json`, `.env.example`, `prisma/schema/accounts.prisma` and the migrations' names; `src/features/accounts/services.ts`, `accounts.ts`, `auth.ts` and `src/hooks.server.ts`; the account screens; `tests/architecture.test.ts`; the journeys' helpers; the callers of a person's email outside `accounts`; the rules and CI in pull request #188; and the first attempt's plan under the tag `slice2-attempt-1`. Not read again: better-auth's package and Twilio's pages (Step 0 does), and anything branches C, D and E touch. No test, lint or typecheck ran; no code was written.
