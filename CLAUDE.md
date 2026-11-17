@@ -257,8 +257,14 @@ The least every brief's acceptance criteria cover, where they apply:
   approving designs or mockups. It does not reopen the owner's decisions.
 - Sessions the coordinator starts are threads, not subagents. No session starts subagents of its own unless the owner
   says so.
-- **Slices.** Do not move to the next slice without a design review loop on the screens completed during that slice (see
-  `visual-check`).
+- **Slice end.** Do not move to the next slice without a design review loop on the screens completed during that slice
+  (see `visual-check`). Every slice, the first one included, then closes in this order: a fresh end-to-end walk (see
+  `review`), the owner's own walk, the screens page (see `visual-check`), and last the retro.
+- **End-to-end walk.** A fresh session that did not build the slice walks every journey in it from start to finish as a
+  real person would, in a cloud container or on the test site, on each device in the matrix. It reports each step as
+  pass or fail with its evidence, and its failures are fixed through `review` before the owner's walk.
+- **Screens page.** All of the slice's screens in one organized artifact, grouped by flow and device, shared with the
+  owner as one link before the retro.
 - **End-of-slice retro.** When a slice closes, a fresh session reads that slice's audits, the flaky tests it reported
   and the findings that needed fixing more than once. It turns each lesson into a test where a test can catch it (for
   example, a check that a pull request body ends with "Requested by **McThayDT**"), and proposes the rest as one

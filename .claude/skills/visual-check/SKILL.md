@@ -22,6 +22,13 @@ Do not move to the next slice without a design review loop on the screens comple
 side by side, then the fixes, then step 3, on each device in the device matrix in Settings. Screens the owner has
 already approved are skipped.
 
+## Screens page
+
+At the end of every slice, after the owner's walk and before the retro, show all of the slice's screens in one organized
+artifact: grouped by flow, in the order a person meets them, each screen on each device in the device matrix, labeled
+with its name and the commit it shows. Screens the owner already approved are included and marked as approved. Share it
+as one link, not as screenshots scattered across messages.
+
 ## Skip what is already approved
 
 - Each step looks only at screens the owner has not approved yet. The coordinator records each approval under "Approved

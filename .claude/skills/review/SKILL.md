@@ -33,6 +33,20 @@ Audit all of your work for completeness, consistency, cohesion, and harmony, bot
   one lens (for example correctness, completeness, the codebase). Four reviewers sharing one window are one opinion,
   paid for four times. A review that needs another's output waits for it.
 
+## End-to-end walk
+
+Every slice ends with one, after its design review loop and before the owner's own walk (see "Slice end" in CLAUDE.md).
+
+- A fresh session runs it, never one that built the slice: builders know the way and skip the steps a stranger trips on.
+- It walks every journey the slice added or changed, from the first screen to the last, the way a real person would:
+  real taps, clicks, keys and typing in the running app, in a cloud container or on the test site, on each device in
+  the device matrix in Settings. Passing tests are not a walk.
+- It writes `docs/superpowers/audits/<date>-<slice>-e2e-walk.md`, naming the commit or deploy it walked, with one line
+  per step: the journey, the step, PASS or FAIL, and the evidence (a screenshot, or what it saw).
+- Each FAIL is a red finding in the format below. The implementer fixes it in the fix round, and the walk runs again on
+  the failed journeys only, until every step passes.
+- The owner's walk starts only when every step passes.
+
 ## One finding is one unit
 
 Write each finding so the implementer can act on it alone:
