@@ -52,9 +52,9 @@ make it better is a note.
    action that is visible without scrolling, and buttons are big enough to hit with a thumb. Then layout and polish.
 2. **End-to-end walk:** every journey, on each device in the matrix. A drunk grandma must always see the next step and a
    way back: no screen is a dead end, and every error says what to do next.
-3. **Last look:** one, at the end, by a fresh session, on each device in the matrix, after the fixes have landed. A
-   defect it finds returns to bounded fixing within the tries in Settings, and the look runs again on those screens
-   only.
+3. **Last look:** in each round after the first, by a fresh session, on each device in the matrix, after the fixes have
+   landed. A defect it finds returns to bounded fixing within the tries in Settings, and the look runs again on those
+   screens only.
 
 The order is initial reviews, then the fixes, then the final look. Steps 1 and 2 do not need each other, so they run
 side by side; step 3 waits for the fixes.
