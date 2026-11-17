@@ -309,6 +309,8 @@ describe("screens wear the look and nothing of their own", () => {
     "meter",
     "file",
     "game",
+    // A game's page: its one button, pinned to the window's bottom on a phone.
+    "pin",
     "games",
     // The maker's screens (spec 4): the felt is the window, and paper is what a person touches.
     "screen",

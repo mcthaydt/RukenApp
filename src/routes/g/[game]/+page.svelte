@@ -2,6 +2,7 @@
   A game's page, in the order "What players will see" shows the maker: the clip, the name, the one line, who it is for,
   then Play. The clip plays without sound and loops; the tap for sound belongs to the feed. On a phone, a game made for
   a computer says so in one plain line, and its one button shares the link so the person can open it on a computer.
+  On a phone, that one button is pinned to the bottom of the window, so it is on the first screen however tall the clip.
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
@@ -36,7 +37,7 @@
   <title>{data.name} · Ruken</title>
 </svelte:head>
 
-<main class="card">
+<main class="card game">
   <video class="clip" muted loop autoplay playsinline>
     <source src={data.clips.upright} media="(orientation: portrait)" />
     <source src={data.clips.wide} />
@@ -47,11 +48,16 @@
     <p><span class="chip">{data.rating}</span></p>
   {/if}
   {#if data.needsComputer}
-    <p>This one needs a computer.</p>
-    <p><button type="button" onclick={share}>Share the link</button></p>
-    <p aria-live="polite">{shared}</p>
+    <!-- The reason goes with the button, so a phone that pins the button shows why it says Share and not Play. -->
+    <div class="pin">
+      <p>This one needs a computer.</p>
+      <p><button type="button" onclick={share}>Share the link</button></p>
+      <p aria-live="polite">{shared}</p>
+    </div>
   {:else}
     <!-- No preload: opening the play address starts a play (a session and a pass), which only a press may do. -->
-    <p><a class="button" href={`/g/${data.slug}/play`} data-sveltekit-preload-data="off">Play</a></p>
+    <p class="pin">
+      <a class="button" href={`/g/${data.slug}/play`} data-sveltekit-preload-data="off">Play</a>
+    </p>
   {/if}
 </main>

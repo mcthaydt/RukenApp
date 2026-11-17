@@ -373,6 +373,15 @@ dialog.exit {
   font: var(--text-statement);
 }
 
+/* The edge tab floats over the cover too: the cover's words and bar keep clear of the edge it is on. */
+.stage:has(.tab[data-edge="right"]) .cover {
+  padding-right: max(4rem, (100% - var(--width-read)) / 2);
+}
+
+.stage:has(.tab[data-edge="left"]) .cover {
+  padding-left: max(4rem, (100% - var(--width-read)) / 2);
+}
+
 /* A bar with no amount: a short piece slides across its track, or sits still for someone who asked for less
    motion. */
 .meter {
@@ -739,6 +748,50 @@ form > * + button:not(.quiet) {
   width: 100%;
   /* Long words on a narrow card break into even lines, not a full line and a stray word. */
   text-wrap: balance;
+}
+
+/* A game's page on a phone (upright or sideways) or an upright tablet: its one button (Play, or Share the link) is
+   pinned to the bottom of the window on the felt, as Next is on the maker's screens, so it is on the first screen
+   however tall the clip is. The card ends above the bar. */
+@media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
+  main.game {
+    margin-bottom: calc(var(--size-target) + 5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* So that room under the card is part of the page and can be scrolled to, not lost past the body's end. */
+  body:has(main.game) {
+    display: flow-root;
+  }
+
+  .game > .pin {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    margin: 0;
+    padding: 0.75rem max(1rem, (100% - var(--width-read)) / 2)
+      calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    background: var(--felt-deep);
+    color: var(--chalk);
+  }
+
+  .game > .pin p {
+    margin: 0;
+  }
+
+  .game > .pin p + p:not(:empty) {
+    margin-top: 0.5rem;
+  }
+
+  .card.game > .pin :is(a.button, button) {
+    width: 100%;
+  }
+
+  /* On the felt the focus ring is paper again, not the card's ink. */
+  .game > .pin :focus-visible {
+    outline-color: var(--paper);
+  }
 }
 
 @media (min-width: 48rem) {

@@ -262,6 +262,46 @@ test("while the game loads, a cover says so and has a way back", async ({ page }
   await expect(page.getByRole("heading", { name: `Getting ${free.name} ready.` })).toBeVisible();
   await expect(page.getByRole("progressbar", { name: "Loading the game" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Go back" })).toHaveAttribute("href", `/g/${free.slug}`);
+  // The edge tab is over the cover too, but never on its words or its bar, on either edge.
+  const tab = page.getByRole("button", { name: "Ruken menu" });
+  const cover = [
+    page.getByRole("heading", { name: `Getting ${free.name} ready.` }),
+    page.getByRole("progressbar", { name: "Loading the game" }),
+    page.getByRole("link", { name: "Go back" }),
+  ];
+  for (const edge of ["right", "left"]) {
+    if (edge === "left") {
+      await tab.focus();
+      await page.keyboard.press("ArrowLeft");
+      await expect(tab).toHaveAttribute("data-edge", "left");
+    }
+    const at = await tab.boundingBox();
+    for (const part of cover) {
+      const box = await part.boundingBox();
+      const apart =
+        at === null ||
+        box === null ||
+        at.x + at.width <= box.x ||
+        box.x + box.width <= at.x ||
+        at.y + at.height <= box.y ||
+        box.y + box.height <= at.y;
+      expect(
+        apart,
+        `the tab on the ${edge} edge is clear of ${(await part.textContent()) ?? "the bar"}`,
+      ).toBe(true);
+    }
+  }
+});
+
+test("when the connection drops, the menu says so and what to do", async ({ page, context }) => {
+  await page.goto(`/g/${free.slug}/play`);
+  await expectTheGameLoaded(page);
+  await context.setOffline(true);
+  await page.getByRole("button", { name: "Ruken menu" }).click();
+  const menu = page.getByRole("dialog", { name: "Ruken menu" });
+  await expect(menu.getByText("Ruken can't reach the internet. Check your Wi-Fi.")).toBeVisible();
+  await context.setOffline(false);
+  await expect(menu.getByText("Connected")).toBeVisible();
 });
 
 test("a phone that opens a computer-only game's play address is sent to its page", async ({ page }) => {
