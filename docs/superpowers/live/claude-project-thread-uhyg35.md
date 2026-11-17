@@ -1,0 +1,4 @@
+- Task: spec and plan for the facts a store page shows that a maker's game doesn't have yet (genre, tags, languages and the rest).
+- Last commit: 98e30ed (main, before this branch's first commit)
+- Next step: write `docs/superpowers/specs/2026-11-17-game-facts-design.md`, open the draft docs pull request.
+- Open decisions: three cards with the Owner (a longer About text, saying if AI helped, screenshots).
