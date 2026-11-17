@@ -14,6 +14,9 @@ describe("toE164", () => {
     ["+1", "0044 7700 900123", "+447700900123"],
     ["+1", "011 44 7700 900123", "+447700900123"],
     ["+1", "312.555.0142", "+13125550142"],
+    // "011" is the North American international prefix only: in the UK it starts Leeds, Bristol and Reading.
+    ["+44", "0113 496 0000", "+441134960000"],
+    ["+44", "0118 496 0000", "+441184960000"],
   ])("writes %s %s as %s", (code, typed, want) => {
     expect(toE164(code, typed)).toBe(want);
   });

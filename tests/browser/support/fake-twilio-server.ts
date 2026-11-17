@@ -13,7 +13,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 //   none is open.
 // - GET /codes?to=<number>: the codes kept for that number, oldest first, with their statuses.
 // - GET /v2/PhoneNumbers/:number: whether the number changed hands, from POST /test/hands ({ number, answer }).
-// - POST /test/fail: the next text or code started answers 500, once.
+// - POST /test/fail ({ to }): the next text or code started for that number answers 500, once. It is keyed by number
+//   because every journey running at once shares this one stand-in, and one must not trip another.
 // - GET /ready: for Playwright to know it is up.
 
 const PORT = 12114;
@@ -35,7 +36,7 @@ type Hands = "yes" | "no" | "no_data_available";
 const texts: KeptText[] = [];
 const codes: KeptCode[] = [];
 const hands = new Map<string, Hands>();
-let failNext = false;
+const failNext = new Set<string>();
 
 function readBody(request: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -53,11 +54,9 @@ function json(response: ServerResponse, status: number, body: unknown): void {
   response.end(JSON.stringify(body));
 }
 
-/** Takes the failure the journey asked for, once. */
-function takeFailure(): boolean {
-  const fail = failNext;
-  failNext = false;
-  return fail;
+/** Takes the failure a journey asked for this number, once. */
+function takeFailure(to: string): boolean {
+  return failNext.delete(to);
 }
 
 async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -72,7 +71,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
 
   if (method === "POST" && /^\/2010-04-01\/Accounts\/[^/]+\/Messages\.json$/.test(path)) {
     const form = new URLSearchParams(await readBody(request));
-    if (takeFailure()) {
+    if (takeFailure(form.get("To") ?? "")) {
       json(response, 500, { code: 20500, message: "the stand-in was told to fail" });
       return;
     }
@@ -103,7 +102,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       json(response, 400, { code: 60200, message: "Invalid parameter: CustomCode" });
       return;
     }
-    if (takeFailure()) {
+    if (takeFailure(form.get("To") ?? "")) {
       json(response, 500, { code: 20500, message: "the stand-in was told to fail" });
       return;
     }
@@ -153,7 +152,8 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   }
 
   if (method === "POST" && path === "/test/fail") {
-    failNext = true;
+    const asked = JSON.parse(await readBody(request)) as { to: string };
+    failNext.add(asked.to);
     json(response, 200, { ok: true });
     return;
   }

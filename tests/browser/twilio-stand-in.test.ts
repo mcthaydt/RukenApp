@@ -59,12 +59,21 @@ test("a code handed to sendCode is read back, and a second one replaces the firs
   expect(after.map((code) => code.status)).toEqual(["canceled", "approved"]);
 });
 
-test("the next send fails with 500 when the stand-in is told to, then works again", async () => {
+test("the next send to a number fails with 500 when the stand-in is told to, then works again", async () => {
   const number = newNumber();
-  await fetch(`${TWILIO_URL}/test/fail`, { method: "POST" });
+  await fetch(`${TWILIO_URL}/test/fail`, { method: "POST", body: JSON.stringify({ to: number }) });
 
   await expect(texter().sendCode(number, "333333")).rejects.toMatchObject({ responseCode: 500 });
   expect((await texter().sendCode(number, "333333")).sent).toBe(true);
+});
+
+test("a failure asked for one number leaves another number's send alone", async () => {
+  const asked = newNumber();
+  const other = newNumber();
+  await fetch(`${TWILIO_URL}/test/fail`, { method: "POST", body: JSON.stringify({ to: asked }) });
+
+  expect((await texter().sendCode(other, "444444")).sent).toBe(true);
+  await expect(texter().sendCode(asked, "555555")).rejects.toMatchObject({ responseCode: 500 });
 });
 
 test("the stand-in says whether a number changed hands, from what it was told", async () => {

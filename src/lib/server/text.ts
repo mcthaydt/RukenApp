@@ -176,11 +176,11 @@ export function createTwilioTexter(options: TwilioTexterOptions): Texter {
     async changedHands(number, since) {
       // Twilio can say only for United States numbers.
       if (!number.startsWith("+1")) return "cannot_say";
-      const day = since.toISOString().slice(0, 10).replaceAll("-", "");
-      const url =
-        `${lookupBase}/v2/PhoneNumbers/${encodeURIComponent(number)}` +
-        `?Fields=reassigned_number&LastVerifiedDate=${day}`;
       try {
+        const day = since.toISOString().slice(0, 10).replaceAll("-", "");
+        const url =
+          `${lookupBase}/v2/PhoneNumbers/${encodeURIComponent(number)}` +
+          `?Fields=reassigned_number&LastVerifiedDate=${day}`;
         const answer = await call(url, { method: "GET", headers: { Authorization: authorization } });
         if (!answer.ok) return "cannot_say";
         const body: { reassigned_number?: { is_number_reassigned?: unknown } } = await answer.json();

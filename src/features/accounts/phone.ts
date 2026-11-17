@@ -9,8 +9,9 @@ export { isMadeUpNumber } from "../../lib/server/text.ts";
 
 /**
  * Writes a typed number as E.164, or null when it cannot be one. `dialingCode` is the country the person picked
- * ("+1"). Spaces, dashes, dots and brackets are dropped. Typed text starting "+", "00" or "011" already names its
- * country, so what follows is the whole number, whatever country was picked. Otherwise leading zeros are dropped
+ * ("+1"). Spaces, dashes, dots and brackets are dropped. Typed text starting "+" or "00" already names its country,
+ * and so does "011" under "+1" (the North American prefix; elsewhere it is a national number, as in Leeds's 0113),
+ * so what follows is the whole number, whatever country was picked. Otherwise leading zeros are dropped
  * (several countries write one), under "+1" one leading "1" is dropped, and the dialing code goes in front.
  */
 export function toE164(dialingCode: string, typed: string): string | null {
@@ -19,7 +20,7 @@ export function toE164(dialingCode: string, typed: string): string | null {
 
   let digits: string;
   if (cleaned.startsWith("+")) digits = cleaned.slice(1);
-  else if (cleaned.startsWith("011")) digits = cleaned.slice(3);
+  else if (dialingCode === "+1" && cleaned.startsWith("011")) digits = cleaned.slice(3);
   else if (cleaned.startsWith("00")) digits = cleaned.slice(2);
   else {
     const local = cleaned.replace(/^0+/, "");
