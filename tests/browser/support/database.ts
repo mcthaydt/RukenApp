@@ -142,6 +142,11 @@ export async function filesOf(slug: string): Promise<{ repo: string | null; pull
 /** The commit a stand-in pull is made from: any 40 hex characters. */
 const STAND_IN_COMMIT = "a".repeat(40);
 
+/** Changes a game's name straight in the database, as a journey's setup. */
+export async function changeGame(slug: string, changes: { name?: string }): Promise<void> {
+  await db().game.update({ where: { slug }, data: changes });
+}
+
 /**
  * Writes answers into a game straight into the database, so a journey about one screen does not have to walk all the
  * ones before it. The name is the game's own, and `line` and `playsOn` are written unless set to false. `files` writes
