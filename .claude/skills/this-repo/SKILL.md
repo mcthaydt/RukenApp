@@ -11,6 +11,8 @@ The code is under the Functional Source License, FSL-1.1-ALv2 (`LICENSE.md`): an
 
 This repository is public. No secret, private plan, customer data or real address goes in it, and no strategy or research: market research, critiques, competitors, launch strategy, forecasts, the owner's personal and company details and the reasons behind business decisions go to `mcthaydt/RukenPrivate`. The design here says what Ruken does, not why.
 
+Code from the archived RukenAppFailed is copied on purpose, file by file, with its tests; never its history, plans or secrets.
+
 ## Layout
 
 - `src/features/<feature>/` holds each feature (accounts, games, launch, make, membership, money, pages, play); `src/lib/` and `src/lib/server/` hold shared helpers; `src/routes/` is SvelteKit's pages and endpoints.

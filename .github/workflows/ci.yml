@@ -12,12 +12,12 @@
 #   reaches, the first failure stops the run, and the screenshots are taken only when something visual changed or the
 #   pull request carries the `screenshots` label (read on the next push). Its checks carry different names, so they
 #   never stand in for the required ones.
-# - A pull request that is ready for review, and every push to main, gets the full run under the required names
-#   `verify`, `postgres` and `browser`. Marking a draft ready starts it. Nothing merges without it.
+# - A pull request that is ready for review, and every push to main, gets the full run: `verify`, `postgres` and
+#   `browser`, summed up by the required check `gate`. Marking a draft ready starts it. Nothing merges without it.
 #
 # A pull request that changes only .md files has nothing to test (Owner, 2026-11-15: "when a PR only touches .md
-# files, skip the tests and allow the merge, in all repos."). The `changes` job spots it, and the required checks
-# `verify`, `postgres` and `browser` still run and still report success, but do no work. They are not left out of
+# files, skip the tests and allow the merge, in all repos."). The `changes` job spots it, and `verify`, `postgres`
+# and `browser` still run and still report success to `gate`, but do no work. They are not left out of
 # the workflow with `paths-ignore`, because a required check that never starts stays pending and nothing merges.
 # One file that is not .md, or any doubt about what changed, runs everything as before. A push to main always does.
 #
@@ -288,10 +288,10 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # The one check the branch protection and the auto-merge workflow know by the name `browser`: it passes only when
+  # The one check that sums up the browser pieces for `gate`, under the name `browser`: it passes only when
   # every piece above passed. A piece that was cancelled or skipped is not a pass, except when the pull request
   # changes only .md files and every piece was skipped on purpose. On a draft it is named differently,
-  # so a draft's quick run can never stand in for the required one.
+  # so a draft's quick run can never stand in for the full one.
   browser:
     name: ${{ github.event.pull_request.draft && 'browser (quick, draft)' || 'browser' }}
     needs: [changes, browser-shard]
