@@ -190,7 +190,7 @@ On a computer a mouse can hover a tile; nothing depends on hover. Play is in the
 
 The price comes from `PREMIUM_PRICES_CENTS` in `plans.ts`, formatted, never typed into the page.
 
-**Join.** Owner, 2026-11-17: "either they pay on the landing page or they get hit with it when they try to play". So a person who is not a member can pay from the game's page without pressing Play: a quiet blue outline, "Join", beside the cost line, going to `/join?next=/g/<slug>`, so after paying they are back on the game's page, which then reads "Included with your membership." Play stays the one blue button, and Play still goes to the price card. Pending: the coordinator has asked the Owner whether the page has this button; this is the recommended answer, and if the Owner says no, the button and its rows go and nothing else changes.
+**Join.** Owner, 2026-11-17: "either they pay on the landing page or they get hit with it when they try to play". So a person who is not a member can pay from the game's page without pressing Play: a quiet blue outline, "Join", beside the cost line, going to `/join?next=/g/<slug>`, so after paying they are back on the game's page, which then reads "Included with your membership." Play stays the one blue button, and Play still goes to the price card. Owner, 2026-11-17, on a card: "Yes, a quiet Join beside the price".
 
 ### 3.5 What moves
 
