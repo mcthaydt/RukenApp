@@ -33,11 +33,11 @@ How to read each list: **Done** is merged and green. **Now** is what is being bu
 
 1. Done: games, their files, the play gate, connecting GitHub, the play rules (branches A to E and P).
 2. Done: the clip and frame look (branch S, part 1).
-3. **Now: the maker's submission screens, rebuilt to the approved design (branch M, pull request #63, Tasks 5 to 11).**
-4. Next, beside the submission screens: games on one free test address until launch (branch T). Plan: `plans/2026-11-15-slice-2-rest.md`, which also brings the three steps below up to date.
-5. Next: Accept and Send back, and a maker taking their own game off Ruken (branch S, the rest). Waits for the submission screens to merge.
-6. Next: a game's page and playing it (branch F). Waits for branch S.
-7. Next: the GitHub App hookup, and a real game sent, accepted and played on the test site (branch G). The real domain waits for launch.
+3. Done: the maker's submission screens, rebuilt to the approved design (branch M, pull request #63).
+4. Done: games on one free test address until launch (branch T, pull request #125). Plan for this and the steps below: `plans/2026-11-15-slice-2-rest.md`.
+5. Next: the Owner accepts a game or sends it back by a command, and a maker takes their own game off Ruken and puts it back (unit S). The staff screens wait for slice 4.
+6. Next: a game's page and playing it (unit F). Waits for unit S.
+7. Next: the GitHub App hookup, and a real game sent, accepted and played on the test site (unit G). The real domain waits for launch.
 8. Next: the slice 2 audit, then its fixes.
 
 ---
