@@ -359,7 +359,7 @@
     {/if}
     <dl>
       <dt>Connection</dt>
-      <dd>{online ? "Connected" : "Ruken can't reach the internet."}</dd>
+      <dd>{online ? "Connected" : "Ruken can't reach the internet. Check your Wi-Fi."}</dd>
     </dl>
     <p><button type="button" class="quiet" onclick={askToExit}>Exit game</button></p>
   </dialog>

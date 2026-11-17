@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { changeGame, putGameWhereStaffLeaveIt } from "./support/database.ts";
 import { gameWhere } from "./support/game.ts";
 import { expectOneCard, showTheOwner } from "./support/look.ts";
@@ -15,6 +15,37 @@ async function browserSaysPhone(page: Page): Promise<boolean> {
   return /Mobi|Android/.test(await page.evaluate(() => navigator.userAgent));
 }
 
+/**
+ * The page's one thing to do is on the first screen, with nothing scrolled, once the clip has its size; and scrolled
+ * to the end, nothing of the card is hidden under it.
+ */
+async function expectOnFirstScreen(page: Page, action: Locator): Promise<void> {
+  await expect
+    .poll(() => page.locator("video.clip").evaluate((clip: HTMLVideoElement) => clip.readyState))
+    .toBeGreaterThan(0);
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+  });
+  const box = await action.boundingBox();
+  const height = page.viewportSize()?.height ?? 0;
+  expect(box).not.toBeNull();
+  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(height);
+  // Pinned to the window's bottom, it must still leave the card's last line in sight at the end of the page.
+  const pinned = await action.evaluate(
+    (act) => getComputedStyle(act.closest(".acts") ?? act).position === "fixed",
+  );
+  if (pinned) {
+    await page.evaluate(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight);
+    });
+    const [card, bar] = [await page.locator("main.card").boundingBox(), await action.boundingBox()];
+    expect((card?.y ?? 0) + (card?.height ?? 0)).toBeLessThanOrEqual(bar?.y ?? 0);
+    await page.evaluate(() => {
+      window.scrollTo(0, 0);
+    });
+  }
+}
+
 test("a game's page shows its clip, its name, its line, who it is for and Play", async ({
   page,
 }, testInfo) => {
@@ -24,6 +55,7 @@ test("a game's page shows its clip, its name, its line, who it is for and Play",
   await expect(page.getByText("A tiny game about tapping.")).toBeVisible();
   await expect(page.locator("main .chip")).toHaveText("12+");
   await expect(page.getByRole("link", { name: "Play" })).toHaveAttribute("href", `/g/${game.slug}/play`);
+  await expectOnFirstScreen(page, page.getByRole("link", { name: "Play" }));
   await expect(page.getByRole("button")).toHaveCount(0);
   await expect(page).toHaveTitle(`${game.name} · Ruken`);
   const video = page.locator("video.clip");
@@ -106,6 +138,7 @@ test("a computer-only game says so on a phone, and offers its link", async ({ pa
     await expectOneCard(page);
     // Like Play, the one button spans the card on a phone held upright, so a thumb finds it anywhere along the bottom.
     const share = page.getByRole("button", { name: "Share the link" });
+    await expectOnFirstScreen(page, share);
     const [button, line] = [await share.boundingBox(), await share.locator("..").boundingBox()];
     const narrow = await page.evaluate(() => window.innerWidth < 768);
     if (narrow) expect(button?.width).toBeCloseTo(line?.width ?? 0, 0);
