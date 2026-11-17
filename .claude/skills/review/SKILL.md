@@ -35,7 +35,8 @@ Audit all of your work for completeness, consistency, cohesion, and harmony, bot
 
 ## End-to-end walk
 
-Every slice ends with one, after its design review loop and before the owner's own walk (see "Slice end" in CLAUDE.md).
+Every slice ends with one, after its design review loop and before the screens page and the owner's own walk (see
+"Slice end" in CLAUDE.md).
 
 - A fresh session runs it, never one that built the slice: builders know the way and skip the steps a stranger trips on.
 - It walks every journey the slice added or changed, from the first screen to the last, the way a real person would:
