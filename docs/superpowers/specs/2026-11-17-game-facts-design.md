@@ -10,6 +10,7 @@ Lines marked **Owner** are the Owner's words or choices. **Call** is this design
 
 - **Owner, 2026-11-17 06:27 UTC:** "We need to add in the bits to game submission that we don't have like languages and tags/genre, everything steam pages have, we have".
 - **Owner, 2026-11-17 06:25 UTC:** "All games must be playable on computer and mobile". So nothing here asks where a game plays or what it needs to run: every game plays on phones and computers (Unit R of `plans/2026-11-15-slice-2-rest.md` takes that question out).
+- **Owner, 2026-11-17 06:37 UTC:** "Video can only be at most 60 seconds long too, minimum 15 seconds". Both of a game's videos, the upright and the wide, are 15 to 60 seconds long (2.7).
 - **Owner, on a card (the game page):** "Now: what Ruken has; rest drawn", and on that page "basically everything steam has, but trimmed". This spec is what makes genre, tags and languages "what Ruken has", so the page shows them.
 
 ## 1. A store page, field by field
@@ -21,7 +22,7 @@ Every field a store page shows about a game, and what Ruken does with it. **Now*
 | Name | Have: the name question | |
 | Short description | Have: the one line | |
 | About this game (the long text) | Now (**Owner**): up to 280 characters, a tweet's length, optional | 2.1 |
-| Trailer and videos | Have: the upright and wide videos | |
+| Trailer and videos | Have: the upright and wide videos. Now (**Owner**): each 15 to 60 seconds long | 2.7 |
 | Screenshots | No (**Owner**, on a card: "No, the two videos are enough") | |
 | Genre | Now: one kind, from a short list | 2.2 |
 | Tags | Now: up to 5, from a fixed list | 2.3 |
@@ -95,6 +96,21 @@ The order, after Unit R: name, line, **about**, files, upright video, wide video
 - Wrong: "Choose at least one, or None of these."
 
 
+### 2.7 How long a video is
+
+**Owner, 2026-11-17 06:37 UTC:** "Video can only be at most 60 seconds long too, minimum 15 seconds". This is a rule on the two video questions that are on `main` already, not a new question.
+
+- **The hint** on both video questions changes from "Record your screen while you play for 10 to 30 seconds." to "Record your screen while you play for 15 to 60 seconds."
+- **Measured, never typed.** The server reads the length from the file itself, before it is saved: an MP4 or MOV from its `mvhd` box (duration ÷ timescale), a WebM from its Segment Info (`Duration` × `TimecodeScale`). A pure function in `src/features/games/clips.ts`, `clipSeconds(bytes, contentType): number | null`, with tests on real small files of each kind kept in `tests/fixtures/`. No new dependency.
+- **The rule:** from 15.0 to 60.0 seconds, both ends allowed, measured to the tenth of a second.
+- **The browser checks first,** to save a 30 MB trip, from the chosen file's `<video>` metadata (`src/lib/video-choice.ts`, beside the size check). The server checks again whatever the browser said.
+- **The words**, on the video question, in the order `clipProblem` already uses (the kind, the size, the file's first bytes, then the length):
+  - Too short: "That video is 9 seconds. Videos need to be 15 to 60 seconds long. Record a little more, then choose it again."
+  - Too long: "That video is 1 minute 24 seconds. Videos can be up to 60 seconds. Trim it, then choose it again."
+  - Length not in the file: "We couldn't tell how long that video is. Save it as MP4 and choose it again." Call: a WebM recorded in a browser often carries no length, and the length is never taken from what the browser says, so such a file is refused with a way through.
+- **Videos already saved** are not checked again. Call: the test site's games are test data, and a live game's video is changed only by its maker. The rule applies to every new video, a live game's replacement included.
+- Nothing is stored: the length is checked, not kept. No migration.
+
 ## 3. Storage
 
 One migration, made by `pnpm prisma migrate dev --create-only` and read before it is kept, adds to `Game`:
@@ -166,11 +182,12 @@ These units add to the units of `plans/2026-11-15-slice-2-rest.md` and go after 
 |---|---|---|---|---|---|
 | K, the facts stored | **3** (`prisma/schema/`, `prisma/migrations/`) | this spec's plan audit; R and F on `main` (both change `service.ts`, `laid-out.ts`); not alongside P (both change `games.prisma` and add a migration: whichever starts second waits for the other to merge) | `prisma/schema/games.prisma`, the migration, `library/kinds.json`, `tags.json`, `languages.json`, `src/features/games/fields.ts` (the checks), `laid-out.ts` (the words), `service.ts` (the answers and reads, `firstLiveAt` on the first yes) and their tests | the columns, the checks, the words; no screen asks yet | the plan audit before; CI green on a ready pull request; the implementation audit; the Owner's approval of the merge (the migration) |
 | Q, the maker is asked | **2** (`src/features/games/`, shared by the maker's screens) | K on `main` | `questions.ts`, `src/params/question.ts`, `send-back.ts`, `library/send-back-reasons.json`, `review-order.ts`, `service.ts` (the two live lists), the question route and its screens, Check and send, `GameLaidOut`, `LiveScreen`, `SentBackScreen`, `tests/browser/support/game.ts` and `database.ts` (`answerEveryQuestion`, `fillAnswers`), and the journeys that walk the questions | the new questions, their send backs and Change links | CI green on a ready pull request; one fresh review; the visual check on the five devices |
+| L, how long a video is | **2** (`src/lib/video-choice.ts`, `tests/fixtures/`, and `clips.ts`, which the games service uses) | R on `main` (both change `VideoQuestion.svelte`); it does not wait on K, Q or V | `clips.ts`, `src/lib/video-choice.ts`, `VideoQuestion.svelte`, the fixtures and their tests | 2.7 | CI green on a ready pull request; one fresh review; the visual check on the five devices for the two video questions |
 | V, players see them | **2** (the game page's server and `look.css`) | Q on `main` (and F) | `src/routes/g/[game]/+page.server.ts` and `+page.svelte`, `src/lib/look.css` if a class is new, and their tests | the facts and About on `/g/<game>` | the same as Q |
 
 Why these lanes: K is the only unit with a migration, so it alone carries lane 3's audits and the Owner's approval; it adds nothing a maker or player sees, so merging it alone changes no screen. Q makes the questions real only once their storage is on `main`, so a draft never reaches a question that cannot be saved. V waits on Q so the page never shows a fact no maker can give.
 
-Expected time: K 4 hours, Q 6 hours, V 3 hours, plus the audits. Models and effort as Settings in `CLAUDE.md` names them (execution against a spec: Sonnet 5.5, medium; K's audits: Opus 5.5, medium).
+Expected time: K 4 hours, Q 6 hours, V 3 hours, L 3 hours, plus the audits. Models and effort as Settings in `CLAUDE.md` names them (execution against a spec: Sonnet 5.5, medium; K's audits: Opus 5.5, medium).
 
 **Boundaries.** No new dependency, tool, environment or spend. One migration, in K. The test site's database is changed only by K's merge. Nothing runs on the Owner's computer, and the Owner has no steps of their own here.
 
@@ -186,6 +203,12 @@ Expected time: K 4 hours, Q 6 hours, V 3 hours, plus the audits. Models and effo
 - [ ] **Step 2: the questions, the parts and the screens.** Change the journeys that walk the questions only where they answer them or read a counter; nothing is loosened. Run every file named, the browser files on `computer`, `phone` and `tablet`: pass. Open the draft pull request.
 - [ ] **Step 3: finish.** The visual check on the five devices for each new question, Check and send, Live and Sent back (approved maker screens whose approval ends with this change; the pull request names them for the screens page). The fresh lane 2 review; fix its findings. Delete the live-state file, merge `main` in, mark ready, merge on green.
 
+### Unit L, step by step
+
+- [ ] **Step 1: the failing tests.** `clips.test.ts`: `clipSeconds` reads the length of a short MP4, MOV and WebM fixture, and gives null for a WebM with no `Duration`; `clipProblem` refuses a 14.9-second and a 60.1-second video and a video with no length, each with 2.7's words, and passes 15.0 and 60.0. `video-choice.test.ts`: the browser's words for a length out of range. A journey: a maker choosing a 9-second video sees the too-short words and nothing is saved. Run them: they fail for those reasons.
+- [ ] **Step 2: the check, the words and the hint.** Run again, then the browser file on `computer`, `phone` and `tablet`: pass. Open the draft pull request.
+- [ ] **Step 3: finish.** The visual check on the five devices for the two video questions (approved maker screens whose approval ends with this change); the fresh lane 2 review; fix; delete the live-state file, merge `main` in, mark ready, merge on green.
+
 ### Unit V, step by step
 
 - [ ] **Step 1: the failing tests.** The game page's journey: a game with every answer shows each line of section 6 in order, and About with "More" on a phone; a game with none of them shows none of those lines and no About; About's text with `<b>` in it shows the angle brackets as text.
@@ -197,9 +220,12 @@ Expected time: K 4 hours, Q 6 hours, V 3 hours, plus the audits. Models and effo
 1. **Settled, Owner 2026-11-17:** a longer About, optional, up to 280 characters ("However long a single tweet can be").
 2. **Settled, Owner 2026-11-17, on a card:** makers are not asked whether AI helped ("Don't ask"), and nothing about AI is on the page.
 3. **Settled, Owner 2026-11-17, on a card:** no screenshots ("No, the two videos are enough").
-4. **Calls** the Owner may overrule: the lists in 2.2 to 2.6, the question order, one language list instead of three, the date measured from the first yes, `Game_answered_check` left as it is.
+4. **Settled, Owner 2026-11-17 06:37 UTC:** both videos are 15 to 60 seconds long (2.7).
+5. **Calls** the Owner may overrule: refusing a video whose file does not say its length, not checking videos already saved, the lists in 2.2 to 2.6, the question order, one language list instead of three, the date measured from the first yes, `Game_answered_check` left as it is.
 
 ## 9. Acceptance criteria
+
+- A video under 15 seconds or over 60 seconds, or one whose length the file does not say, is refused on its question with 2.7's words, by the server whatever the browser said, and nothing is saved; 15 and 60 seconds exactly are taken. Both video questions' hints say 15 to 60 seconds.
 
 - A new game is asked kind, tags, languages, players and good to know and About, one per screen, in section 2's order, with section 2's words; the counter counts them.
 - Each refusal in section 2 shows its words on its own question, and nothing is saved.
