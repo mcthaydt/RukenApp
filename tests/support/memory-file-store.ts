@@ -63,6 +63,15 @@ export class MemoryFileStore implements FileStore {
     return Promise.resolve(gone);
   }
 
+  hasAny(prefix: string): Promise<boolean> {
+    try {
+      checkFolderPrefix(prefix);
+    } catch (refusal) {
+      return Promise.reject(refusal instanceof Error ? refusal : new Error(String(refusal)));
+    }
+    return Promise.resolve([...this.#files.keys()].some((key) => key.startsWith(prefix)));
+  }
+
   /** Every key held, in the order they were first stored. For assertions only; the real store has no such call. */
   keys(): string[] {
     return [...this.#files.keys()];

@@ -47,9 +47,7 @@ describe("stateWords", () => {
   });
 
   it("says the maker took a game off Ruken themselves", () => {
-    expect(stateWords({ state: "taken_off", stateReason: null, hasPending: false })).toBe(
-      "Off Ruken. You took it off.",
-    );
+    expect(stateWords({ state: "taken_off", stateReason: null, hasPending: false })).toBe("Taken off Ruken");
   });
 
   it("says a game staff took down, and why", () => {
@@ -71,7 +69,7 @@ describe("stateParts", () => {
     expect(parts("draft", null)).toEqual({ headline: "Not sent yet", reason: null });
     expect(parts("waiting", null, true)).toEqual({ headline: "Waiting for review", reason: null });
     expect(parts("live", null)).toEqual({ headline: "Live", reason: null });
-    expect(parts("taken_off", null)).toEqual({ headline: "Off Ruken. You took it off.", reason: null });
+    expect(parts("taken_off", null)).toEqual({ headline: "Taken off Ruken", reason: null });
   });
 
   it("gives staff's reason apart from the headline", () => {
@@ -130,7 +128,7 @@ describe("listWords", () => {
     expect(listWords({ ...base, state: "live", hasPending: true })).toBe(
       "Live. Your update is waiting for review",
     );
-    expect(listWords({ ...base, state: "taken_off" })).toBe("Off Ruken. You took it off.");
+    expect(listWords({ ...base, state: "taken_off" })).toBe("Taken off Ruken");
     expect(listWords({ ...base, state: "taken_down" })).toBe("Taken down. See why.");
   });
 });
@@ -191,9 +189,9 @@ describe("nextStepWords", () => {
     );
   });
 
-  it("tells a maker whose game is off Ruken what changed and how to put it back", () => {
+  it("tells a maker whose game is off Ruken what changed", () => {
     expect(nextStepWords({ ...base, state: "taken_off" })).toBe(
-      "Players can't find it or play it any more. Nothing changed on GitHub. To put it back, add it again as a new game. We'll look at it first.",
+      "Players can't find it or play it. Nothing changed on GitHub.",
     );
   });
 

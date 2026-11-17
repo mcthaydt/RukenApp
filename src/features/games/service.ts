@@ -137,6 +137,8 @@ export interface MakerGame {
    * what lets the maker send the copy Ruken already holds again, without copying from GitHub.
    */
   sentBackLast: boolean;
+  /** For a game that is off Ruken: whether some of its files are still in the bucket. False for every other state. */
+  filesLeft: boolean;
 }
 
 /** What staff see of a game waiting for review: the maker's view, and the files that wait. */
@@ -617,19 +619,51 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /**
-   * Takes a live game off Ruken, which its maker cannot undo (the agreement's first point: the maker may remove a game
-   * at any time). The row stays with its address, so what the game earned and who played it are still there, and an
-   * update that was waiting for review is dropped with it. Only a live game is taken off: every other state has its own
-   * way out (a draft or a sent-back game is thrown away, a waiting one is with staff).
+   * Takes a live game off Ruken. The row stays with its address, so what the game earned and who played it are still
+   * there, and an update that was waiting for review is dropped with it. The database goes first: if deleting the files
+   * stops halfway, the game is already off its page and no new pass is given, and `filesLeft` says some are still there.
+   * Only a live game is taken off: every other state has its own way out (a draft or a sent-back game is thrown away, a
+   * waiting one is with staff). Its two videos stay, because putting it back needs them.
    */
   async function takeOff(gameId: string, makerUserId: string): Promise<{ name: string }> {
     const game = await ownGame(gameId, makerUserId);
     if (game.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
     await deps.db.game.update({
       where: { id: gameId },
-      data: { state: "taken_off", stateReason: null, pendingPullId: null, pendingSince: null, toFix: [] },
+      data: {
+        state: "taken_off",
+        stateReason: null,
+        livePullId: null,
+        pendingPullId: null,
+        pendingSince: null,
+        toFix: [],
+      },
     });
+    await deps.files.deleteAll(`files/${game.publicId}/`);
     return { name: game.name };
+  }
+
+  /** The maker's own game, which must be off Ruken: what putting it back and cleaning up are for. */
+  async function ownTakenOff(gameId: string, makerUserId: string) {
+    const game = await ownGame(gameId, makerUserId);
+    if (game.state !== "taken_off") throw new GameError("NOT_READY", "This game isn't off Ruken.");
+    return game;
+  }
+
+  /** Deletes again what a delete that stopped left behind in the bucket, for a game that is off Ruken. */
+  async function deleteLeftFiles(gameId: string, makerUserId: string): Promise<void> {
+    const game = await ownTakenOff(gameId, makerUserId);
+    await deps.files.deleteAll(`files/${game.publicId}/`);
+  }
+
+  /**
+   * Puts a game that is off Ruken back: the newest files are copied from GitHub and sent for review like a new game's.
+   * Nothing here makes it live; a person's yes does. A refused copy throws its own words and the game stays off.
+   */
+  async function putBack(gameId: string, makerUserId: string): Promise<void> {
+    await ownTakenOff(gameId, makerUserId);
+    await pullLatest(gameId);
+    await sendForReview(gameId, makerUserId);
   }
 
   /**
@@ -778,6 +812,8 @@ export function createGamesService(deps: GamesServiceDeps) {
       toFix: partsToFix(row),
       // Newest first (see `gameSelect`), so the first review is staff's latest word.
       sentBackLast: row.reviews[0]?.decision === "sent_back",
+      // Asking the bucket is `withFilesLeft`'s job, and only for a game that is off.
+      filesLeft: false,
     };
   }
 
@@ -864,7 +900,13 @@ export function createGamesService(deps: GamesServiceDeps) {
       where: { slug, makerUserId, state: { not: "thrown_away" } },
       select: gameSelect,
     });
-    return row === null ? null : makerView(row);
+    return row === null ? null : withFilesLeft(makerView(row));
+  }
+
+  /** The view with `filesLeft` asked of the bucket, which only a game that is off Ruken needs. */
+  async function withFilesLeft<View extends MakerGame>(view: View): Promise<View> {
+    if (view.state !== "taken_off") return view;
+    return { ...view, filesLeft: await deps.files.hasAny(`files/${view.publicId}/`) };
   }
 
   /** A game as staff see it: the maker's view, the files that wait and the two clips' keys. Null when there is none. */
@@ -878,7 +920,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
     if (row === null) return null;
     const pending = row.pendingPull;
-    return {
+    return withFilesLeft({
       ...makerView(row),
       pending:
         pending === null
@@ -893,7 +935,7 @@ export function createGamesService(deps: GamesServiceDeps) {
         upright: row.clips.find((clip) => clip.shape === "upright")?.key ?? null,
         wide: row.clips.find((clip) => clip.shape === "wide")?.key ?? null,
       },
-    };
+    });
   }
 
   /** The game at `/g/<slug>`, only while it is live. */
@@ -992,6 +1034,8 @@ export function createGamesService(deps: GamesServiceDeps) {
     saveAnswer,
     throwAway,
     takeOff,
+    deleteLeftFiles,
+    putBack,
     pullLatest,
     sendForReview,
     accept,
