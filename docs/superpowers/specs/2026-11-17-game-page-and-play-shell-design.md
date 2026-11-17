@@ -1,6 +1,6 @@
 # A game's page and playing it
 
-Date: 2026-11-17. Status: written for the Owner's review. The layout of each screen waits for the Owner's pick among three sketches (section 0); this file is written on the recommended pick, A and A, and changes to follow the pick. Nothing here is built.
+Date: 2026-11-17. Status: the Owner picked the layouts on 2026-11-17 (section 0); written for the Owner's review of this file. Nothing here is built.
 
 This amends the main design (`2026-11-13-ruken-reels-linktree-design.md`), sections 5.2 (Play and the paywall) and 5.7 (the line shown the first time in a game), and adds to the maker's Live screen (`2026-11-14-maker-screens-redesign-design.md`, 5c) one switch. Everything else in them stands: the colours, type and button rules of 5.8 and the redesign's sections 1 and 15.1, "the felt asks one thing and paper is what you touch", and the drunk-grandma test.
 
@@ -16,7 +16,10 @@ Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** a
 - **Owner, on a card:** "Show sitting length and player count". Then, in words: "Show player count should be an option set by the maker".
 - **Owner, on a card:** "Yes, one quiet line". People who are not members see the price under Play.
 - **Owner, 2026-11-17:** "Non-members should be paywalled when they press play; either they pay on the landing page or they get hit with it when they try to play". As 5.2 says: Play takes a non-member to the price card, and after paying they are in the game they chose. Nothing plays without paying except a free game.
-- **Pending: the pick.** Page A, B or C, and playing A, B or C, from the sketches. Recommended: page A, playing A. Sections 3 and 4 are written on A and A; another pick rewrites only the layout parts of those sections (3.3 and 4.3), not the pieces, the words or the criteria.
+- **Owner, 2026-11-17, on the first sketches:** "Not quite what I was looking for - players see the game on a reels like interface like this, but I'd prefer the bar be on the bottom like YouTube; we go to the game page when we click on the game, but not play". Pressing a game in the feed opens its page; Play is pressed on the page. Ruken's bar floats at the bottom (3.3). The sketches were redrawn from the feed (version 2).
+- **Owner, on a card:** "Home and You only, for now". The bar's two buttons (3.3).
+- **Owner, 2026-11-17, the pick:** "1. A, easily" (the game's page: the watch page, 3.3) and "2. I'd prefer if it's a small semi transparent tab, that can be moved up and down, or dragged to either side if the screen, but when it opens A" (playing: a small see-through tab the person can move, which opens the menu of sketch A, 4.1 to 4.3).
+- **Owner, 2026-11-17, on the game's page:** "when we click on the game that's when we see game page specific details, which should have basically everything steam has, but trimmed". Read with the first card ("Now: what Ruken has; rest drawn"): the page has a trimmed set of a store page's sections (section 2.1, the rows marked Now and Later); each section whose data Ruken does not have yet is not drawn until its slice builds it (section 6). The Owner's notes on the feed itself are kept for slice 3 in section 6.
 
 ## 1. From first principles: what a person needs
 
@@ -93,18 +96,18 @@ Owner: "In terms of functionality yes, match them". Every feature of the two is 
 
 ### 3.1 The pieces, top to bottom
 
-- **The ground.** The game's own video, blurred, dimmed, with the five drifting circles, exactly as the maker's Live screen does it (redesign 5c, the same `.backdrop` and `quietVideo`). Where a video may not move by itself (reduced motion, Save-Data, a small device), its still frame, as on Live.
-- **The top bar.** "Ruken" on the left, a link home: the way back.
+- **The ground** is the plain felt. The clip at the top carries the game's colours; the page under it is calm (3.3). Where a video may not move by itself (reduced motion, Save-Data, a small device), `quietVideo` shows its first frame, as on Live.
+- **The way back.** "← Ruken" over the top left of the clip, a link home; from slice 3, "← Back to the feed" (3.3).
 - **The clip.** The upright clip on an upright window, the wide clip on a wide one, sharp, 20px corners, playing without sound where a video may move. Under it, two small tiles, one per clip at its own shape; the one showing has the blue edge of a picked choice. Pressing a tile shows that clip in the same box (an upright clip in a wide box stands in the middle, with the blurred ground either side). Pressing the clip opens it full size with sound and the browser's own controls; Escape or the browser's close returns. Each tile's name: "Watch the upright video", "Watch the wide video".
 - **The name**, `h1`, Young Serif at the section heading size (64px wide, 36px on a phone).
 - **The one line**, at the statement size.
-- **The play facts**, plain sentences in chalk, each its own line:
+- **The play facts**, plain sentences in ink on one paper card (3.3), each its own line:
   - the rating chip, then its plain line in sage: the same words the maker's age question shows today: 3+ "Fine for anyone.", 7+ "Cartoon fighting, or a little scary.", 12+ "Real-looking fighting, or scary bits.", 16+ "More violence or strong words.", 18+ "Only for adults." (one list, moved to `laid-out.ts` so the question and the page share it);
   - the device line: "Plays on this phone. Nothing to install.", "…on this tablet…", "…on this computer…"; for a computer-only game on a phone, "This one needs a computer." takes the place of Play (3.4);
   - the sitting line, once a game has 20 counted plays: "Most people play about 12 minutes at a time." (section 5);
   - the player line, only when the maker has turned it on: "214 people played it this week." (section 5).
 - **Play**, blue, the one main button. A link to `/g/<slug>/play`, so it works with no script.
-- **The cost line**, under Play, small, sage (1, item 5). On the price card nothing changes: the card says the price again, as 5.2 has it.
+- **The cost line**, under Play and Share, small, sage (1, item 5). On the price card nothing changes: the card says the price again, as 5.2 has it.
 - **Share**, a quiet blue outline: the device's share sheet, or the link copied, with "Link copied." under it, or, if neither works, "Copy the address from the bar at the top."
 - **Made by** (3.2) and **More from** (3.2).
 - The page's title is `<name> · Ruken`.
@@ -114,88 +117,64 @@ Owner: "In terms of functionality yes, match them". Every feature of the two is 
 - **Made by.** Shown when the maker has saved a page (`MakerPage`): their photo (round, as people's photos are) or none, "Made by" and the page's name, and their one line in their own words, in quotes. Until maker pages have their own address (slice 3) it links nowhere; from then the whole block links to `/<handle>`. A maker with no page: the block is not drawn, and nothing says why.
 - **More from <name>.** Their other live games, newest accepted first, at most 6, each a paper tile (the wide clip's still frame, the name in Young Serif) that links to its own page. Not drawn when there are none, or when the maker has no page (then there is no name to head it with).
 
-### 3.3 Layout, on the pick A ("the shop window")
+### 3.3 Layout: the watch page (the Owner's pick, A)
 
-Phone, upright (390 × 844). Play is pinned to the bottom in the bar of the maker's screens (redesign 4.3), with the cost line above it. The page scrolls under it.
+Owner, 2026-11-17: "A, easily", on the second set of sketches, where the page opens from the feed and Ruken's bar floats at the bottom. The idea: the clip a person pressed keeps playing at the top, and the page unrolls under it in a watch page's order: the name, the one line, the maker, one row with Play and Share, the facts together on one paper card, then more from the maker.
+
+**The bar.** Owner, on a card: "Home and You only, for now". Ruken's bar floats at the bottom of every screen, like a video app's, and stays on the game's page; it goes away only while playing. Its two buttons are Home (the feed) and You (`/me`). **The bar comes with the feed in slice 3.** Until then the page has no bar, and its way back is "← Ruken" over the top left of the clip, a link home; from slice 3 the same place reads "← Back to the feed". The layouts below leave the bar's room at the foot so nothing moves when it arrives.
+
+Phone, upright (390 × 844). The upright clip runs edge to edge at the top (no corners, no gutter), its height 46% of the window. The page scrolls under it; the clip scrolls away with it.
 
 ```
 ┌──────────────────────────┐
-│ Ruken              Share │
-│ ┌──────────────────────┐ │
-│ │                      │ │
-│ │   upright clip,      │ │
-│ │   playing, no sound  │ │
-│ │                      │ │
-│ └──────────────────────┘ │
-│ [▮] [▬▬]  the two clips  │
+│← Ruken                   │  over the clip
+│                          │
+│   upright clip,          │
+│   edge to edge, playing  │
+│                          │
+│ [▮] [▬▬]                 │  the two clip tiles, over its foot
+├──────────────────────────┤
 │ Floor Fifty              │  h1, 36px
 │ Climb. Fall. Climb again.│
-│ [12+] Real-looking…      │
-│ Plays on this phone.     │
-│ Nothing to install.      │
-│ Most people play about   │
-│ 12 minutes at a time.    │
-│ ── scrolls ──            │
-│ (photo) Made by Snek     │
-│ "I make small, hard…"    │
+│ (photo) Snek · "I make…" │  Made by
+│ [   Play    ] [ Share ]  │  blue, quiet outline
+│ Members play every game. │  the cost line
+│ ┌──────────────────────┐ │
+│ │[12+] Real-looking…   │ │  paper: the facts
+│ │✓ Plays on this phone.│ │
+│ │Most people play about│ │
+│ │12 minutes at a time. │ │
+│ └──────────────────────┘ │
 │ More from Snek           │
 │ [tile] [tile]            │
-├──────────────────────────┤
-│ Members play every game. │  bar, felt-deep
-│ [         Play         ] │  blue, full width
+│      ( Home · You )      │  the bar, from slice 3
 └──────────────────────────┘
 ```
 
-Phone, sideways (852 × 393): the tablet's sideways layout made smaller (redesign 4.5). The clip on the left half, its height the window's less the bar; the name, line, facts on the right, scrolling; Play pinned in the bar along the bottom, on the right half, with the cost line beside it.
-
-```
-┌───────────────────────────────────────────────────┐
-│ Ruken                                        Share│
-│ ┌──────────────────────┐  Floor Fifty             │
-│ │  wide clip           │  Climb. Fall. Climb again│
-│ └──────────────────────┘  [12+] Real-looking…     │
-│ [▬▬] [▮]                  Plays on this phone. …  │
-├───────────────────────────────────────────────────┤
-│                 Members play every… [   Play    ] │
-└───────────────────────────────────────────────────┘
-```
-
-Tablet, upright (820 × 1180): one column 640 wide, as the redesign's tablet upright; the upright clip on the left of the top half with the name, line and facts on its right; Play pinned in the bar (redesign 15.2: buttons are pinned on an iPad held upright). Made by and More from under them.
-
-```
-┌────────────────────────────────────┐
-│ Ruken                        Share │
-│ ┌───────────┐  Floor Fifty         │
-│ │ upright   │  Climb. Fall. Climb… │
-│ │ clip      │  [12+] Real-looking… │
-│ │           │  Plays on this…      │
-│ └───────────┘  Most people play…   │
-│ [▮] [▬▬]                           │
-│ (photo) Made by Snek  "I make…"    │
-│ More from Snek  [tile] [tile]      │
-├────────────────────────────────────┤
-│ Members play every game. [ Play  ] │
-└────────────────────────────────────┘
-```
-
-Tablet, sideways (1180 × 820) and computer (1280 × 800): two halves, as the redesign's two-half screens. The wide clip on the left (about three fifths), its tiles under it, and More from under those; on the right, the name, line, facts, Play, the cost line, Share and Made by. Play is in the column, not pinned: everything to decide and Play fit in one window without scrolling.
+Phone, sideways (852 × 393), tablet sideways (1180 × 820) and computer (1280 × 800): two columns, as a watch page on a wide screen. On the left, about three fifths: the wide clip (20px corners), its tiles, the name, the maker with Play and Share on the same line, and the paper card with the one line and the facts. On the right: More from the maker as a list (a still and the name and rating chip each), then the cost line. On a sideways phone the clip is the window's height less 120, so the name and Play show without scrolling beside it.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ Ruken                                                    │
-│ ┌──────────────────────────────┐   Floor Fifty           │  h1, 64px
-│ │                              │   Climb. Fall. Climb…   │
-│ │   wide clip, playing         │   [12+] Real-looking…   │
-│ │                              │   Plays on this tablet. │
-│ └──────────────────────────────┘   Most people play…     │
-│ [▬▬] [▮]                           [       Play       ]  │  blue
-│ More from Snek                     Members play every…   │
-│ [tile] [tile] [tile]               [ Share ]  (outline)  │
-│                                    (photo) Made by Snek  │
+│ ┌──────────────────────────────────┐  More from Snek     │
+│ │← Ruken                           │  [still] Tiny Tower │
+│ │   wide clip, playing             │          7+         │
+│ │                                  │  [still] Ladder Day │
+│ └──────────────────────────────────┘          3+         │
+│ [▬▬] [▮]                                                 │
+│ Floor Fifty                           Members play every │
+│ (photo) Snek  "I make…"   [ Play ] [Share]  game. $9.99… │
+│ ┌──────────────────────────────────┐                     │
+│ │ Climb. Fall. Climb again.        │                     │
+│ │ [12+] Real-looking… · ✓ Plays on │                     │
+│ │ this tablet · About 12 minutes   │                     │
+│ └──────────────────────────────────┘                     │
+│                 ( Home · You )                           │
 └──────────────────────────────────────────────────────────┘
 ```
 
-On a computer a mouse can hover a tile; nothing depends on hover.
+Tablet, upright (820 × 1180): the phone's order in one column 640 wide, centred, the upright clip at the top with 20px corners, its height 52% of the window.
+
+On a computer a mouse can hover a tile; nothing depends on hover. Play is in the content, not pinned: on a phone it is in view without scrolling, under the clip and the name, and it scrolls away only once the person scrolls down to read.
 
 ### 3.4 Who sees what
 
@@ -219,8 +198,12 @@ As the redesign (4.6) and 5.8 allow: a button pressed scales to 0.97; the clip s
 ### 4.1 Playing
 
 - The game fills the window: a `<main>` the window's size (`100dvh`, no gutter), `felt-deep`, holding the frame and the Menu tab. The frame is as the plan has it (sandbox, `allow`, no referrer, no name, nothing of the player in its address).
-- **The Menu tab**, top left, over the game, clear of the notch: `felt-deep`, chalk words "Menu" with a three-line mark, 12px corners, at least 48 by 48. It is a `<details>`' summary, so the menu opens and Leave game works with no script (4.2).
-- **The first time on a device** a line sits beside the tab for 5 seconds, then goes: "Choose Menu to leave the game". This replaces 5.7's "Tap ← to go back to the feed", which no longer describes the screen (the Owner's card). Kept as 5.7 kept it: once per device (`rk_seen_menu` in `localStorage`); with no script it stays.
+- **The Menu tab.** Owner: "a small semi transparent tab, that can be moved up and down, or dragged to either side if the screen, but when it opens A".
+  - **How it looks.** A small tab against the edge of the screen, 48 wide and 56 tall, `felt-deep` at 72% (the game shows faintly through it), with the three-line mark in chalk and the word "Menu" under it at 12px, 12px corners on the side away from the edge. It rests at 72%; while it is pressed, dragged or has focus it is solid. Chalk on `felt-deep` at 72% over a pure white game is 7.48:1 (worked out from the tokens: the layer over white is `#545556`); over anything darker it is more. This amends 5.8's "no glass" for this one control, in the Owner's words.
+  - **Where it rests.** The first time, at the left edge, a quarter of the way down, clear of the notch and the home indicator. Wherever the person leaves it, it stays there on that device (`rk_menu_tab` in `localStorage`: the side and the height as a share of the window), and comes back there in every game.
+  - **Moving it.** A press that moves more than 8px drags the tab (touch, pen or mouse, by pointer events). Let go, and it glides to the nearer side, at the height it was let go, kept clear of the top and bottom insets; 200ms on the redesign's curve, none with reduced motion. A press that moves less than 8px is a press: it opens the menu. With the keyboard, the tab has focus and the arrow keys move it: up and down by a tenth of the window, left and right to that side. Its name for a screen reader is "Menu. Use the arrow keys to move it."
+  - **No script.** It is a `<details>`' summary at the left, a quarter of the way down, solid, and does not move; the menu opens and Leave game works (4.2).
+- **The first time on a device** a line sits beside the tab for 5 seconds, then goes: "Choose Menu to leave the game. You can move it." This replaces 5.7's "Tap ← to go back to the feed", which no longer describes the screen (the Owner's card). Kept as 5.7 kept it: once per device (`rk_seen_menu` in `localStorage`); with no script it stays.
 
 ### 4.2 The menu
 
@@ -244,13 +227,13 @@ Not working? Choose Start again.   sage
 - Nothing says "Paused". The words never claim the game stopped.
 - Play time keeps its rules: while the menu is open the frame does not have focus, so the time is not counted as attentive.
 
-### 4.3 Layout, on the pick A ("corner tab")
+### 4.3 Layout: the menu of sketch A (the Owner's pick)
 
 Phone, upright: the menu rises from the bottom, under the thumb, full width, 20px corners at the top.
 
 ```
 ┌──────────────────────────┐
-│[≡ Menu]        Floor 23  │  the tab over the game
+│[≡]             Floor 23  │  the tab, at the edge
 │▒▒▒▒▒▒ the game, dimmed ▒▒│
 │▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒│
 │┌────────────────────────┐│
@@ -279,7 +262,7 @@ Phone, sideways, tablet (both ways) and computer: the menu slides in from the le
 └─────────────┴──────────────────────────────────────┘
 ```
 
-Closed, on every device: the game and the tab only.
+Closed, on every device: the game and the tab only. The menu always opens from the side the tab is on: on the left, it slides in from the left; on the right, from the right. On an upright phone it rises from the bottom whichever side the tab is on.
 
 ### 4.4 Starting, and when it won't start
 
@@ -304,7 +287,8 @@ Owner's card: "rest drawn". Each later feature has its place, so the page does n
 - **Achievements:** a play fact, "12 achievements", opening the list.
 - **Extras:** "Extras for Floor Fifty", a row of paper tiles under Made by, each with its price.
 - **Report:** a small link at the foot of the page.
-- **The feed** (slice 3): `/g/<game>` opens the feed at the game's clip, as 5.1 says; this page then becomes what "More about it" on a clip opens. Call: the feed's own design decides that, not this one.
+- **The bar** (slice 3): Home and You, floating at the bottom (3.3).
+- **The feed** (slice 3). The Owner's notes, 2026-11-17, kept here for the feed's own design and not built in slice 2, word for word: "not that we're there yet, but I'd like the feed sidebar options to be like, repost, share, comment, save"; "Bottom bar options: play/wishlist and follow with the profile pic, handle, game name, description, and playing audio"; "The feed should be human first rather than game, when we click on the game that's when we see game page specific details". So a clip in the feed leads with the person who made it (their photo, handle and Follow) and the game's name, line and audio; its side has Repost, Share, Comment and Save; Play (or Wishlist, for a game not out yet) sits with them; pressing the game opens this page. Main design 5.1 is amended by the feed's own spec, not by this file.
 
 ## 7. Approaches considered
 
@@ -321,7 +305,7 @@ For each screen, three, drawn in the sketches:
 
 ## 9. Open decisions
 
-1. **Pending: the pick** (section 0). Recommended: page A, playing A.
+1. **Settled:** the picks (section 0).
 2. **A longer "About this game".** Recommended: not now. One line and the clips say what a game is; a longer text is a new question for every maker and more for staff to check. If wanted later, it is its own small spec.
 3. **Call, the Owner can overrule:** the player count is off until the maker turns it on (section 5).
 
@@ -335,7 +319,8 @@ These are folded into the plan's Unit F and the switch unit; the plan's tests ch
 - A phone that opens a computer-only game reads "This one needs a computer.", is offered Share, and cannot reach the play page.
 - Play takes a non-member to the price card and then into the game they chose; a member, the maker, staff and anyone on a free game go straight in.
 - The play screen is the game and the Menu tab only. Menu opens the menu; Keep playing returns to the game with focus in it; Start again reloads it; Leave game goes to the page; Escape closes the menu; Full screen appears only where it works. With no script, Menu then Leave game still leaves.
-- The first time on a device, "Choose Menu to leave the game" shows for 5 seconds, once.
+- The first time on a device, "Choose Menu to leave the game. You can move it." shows for 5 seconds, once.
+- The Menu tab is see-through at rest and solid when pressed or focused; it can be dragged up and down and to either side by touch and mouse, and moved by the arrow keys; a press that does not move it opens the menu; where it was left is where it is next time, in any game.
 - Starting shows the game's name; after 20 seconds without the game, "Floor Fifty is taking a while." with Start again and Leave game.
 - Everything works by keyboard alone with focus visible, nothing scrolls sideways, every target is at least 44 by 44, and nothing on either screen is red.
 - Each layout matches its sketch in section 3.3 and 4.3 on the five devices (phone upright and sideways, tablet upright and sideways, computer), or the pull request names the difference and why.
