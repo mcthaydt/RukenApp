@@ -70,5 +70,6 @@
       </form>
     </div>
   {/if}
-  <a class="foot" href="/make">Back to your games</a>
 </main>
+<!-- Outside main, a direct child of the screen, where the foot link stands in the column of words (as on Check and send). -->
+<a class="foot" href="/make">Back to your games</a>

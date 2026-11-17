@@ -112,6 +112,36 @@ test("the screen works by keyboard alone, with focus showing", async ({ page }) 
   }
 });
 
+test("Back to your games starts at the same left edge as the words above it", async ({ page }) => {
+  const { slug } = await gameWhere(page, { state: "live" });
+  await takeOff(page, slug);
+  await layoutHasSettled(page);
+
+  const heading = await boxOf(page.getByRole("heading", { level: 1 }));
+  const back = await boxOf(page.getByRole("link", { name: "Back to your games" }));
+  expect(Math.abs(back.x - heading.x)).toBeLessThanOrEqual(1);
+});
+
+test("the question works by keyboard alone: Enter keeps the game, Tab reaches the red button with focus showing", async ({
+  page,
+}) => {
+  const { slug } = await gameWhere(page, { state: "live" });
+  await page.goto(`/make/${slug}/take-off`);
+  await pageHasSettled(page);
+  await expect(page.getByRole("link", { name: "Keep it on Ruken" })).toBeFocused();
+
+  await page.keyboard.press("Tab");
+  const red = page.getByRole("button", { name: "Take it off Ruken" });
+  await expect(red).toBeFocused();
+  expect(await red.evaluate((button) => getComputedStyle(button).outlineStyle)).not.toBe("none");
+
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(`/make/${slug}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Live");
+  expect(await stateOf(slug)).toBe("live");
+});
+
 test("nothing scrolls sideways, and the blue button is in view", async ({ page }) => {
   const { slug } = await gameWhere(page, { state: "live" });
   await takeOff(page, slug);
