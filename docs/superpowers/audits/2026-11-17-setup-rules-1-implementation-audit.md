@@ -48,3 +48,13 @@ UNIT: `.claude/skills/this-repo/SKILL.md`. VERDICT: red. REQUIREMENT: `release` 
 - N4. `this-repo` states "Branch protection on `main` requires `gate` and `commit-authors`" as fact, but that holds only after the owner runs the batch. Fine once it is run; until then, sessions should not rely on it.
 - N5. The handoff said branch protection required `verify`, `browser` and `postgres`; the setup check found no required checks. The owner's command sets `gate` and `commit-authors` instead, which covers all three through `gate`. No action, recorded for the record.
 - N6. The closed-but-unmerged branch clean-up that `auto-merge.yml` did (Owner, 2026-11-14) is gone with that workflow. The kit's "a branch merges or closes within 2 days" and the owner's batch cover it by hand. No action unless branches pile up.
+
+## Fix check, on `0509a3a` (2026-11-17 04:12 UTC, from `date`)
+
+| Finding | Result | Evidence |
+|---|---|---|
+| R1 | PASS | `git diff ca66889 0509a3a -- .github/workflows/ci.yml` changes comment lines only (no non-comment line differs). The header now names `gate` as the required check fed by `verify`, `postgres` and `browser`; the `browser` job's comment no longer names branch protection or the auto-merge workflow. `grep` finds no "required names", "required checks `verify`" or "auto-merge" left (line 191 correctly says the pieces are not required). |
+| R2 | PASS | `this-repo` now carries the RukenAppFailed sentence word for word from `eda037a:AGENTS.md`, after the public-repo paragraph. `history.md` Setup names the section-2 rule as replaced by CLAUDE.md's "What it is for, and anything new, is the owner's call". |
+| N3 (note, also addressed) | Recorded | `history.md` Setup now records Graphify, the session tools and the branch protection found at the check. |
+
+The fix commit touches only the files the FIX lines allowed (plus `history.md` for N3) and is authored and committed by McThayDT with no trailers. This review now counts for `0509a3a` plus this audit-only commit. No live-state lines were kept in this file.
