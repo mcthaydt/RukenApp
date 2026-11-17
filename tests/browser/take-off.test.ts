@@ -101,7 +101,7 @@ test("the screen works by keyboard alone, with focus showing", async ({ page }) 
       const there = document.activeElement;
       return there === null
         ? null
-        : { name: (there.textContent ?? "").trim(), outline: getComputedStyle(there).outlineStyle };
+        : { name: there.textContent.trim(), outline: getComputedStyle(there).outlineStyle };
     });
     if (focused !== null) reached.set(focused.name, focused.outline);
   }
