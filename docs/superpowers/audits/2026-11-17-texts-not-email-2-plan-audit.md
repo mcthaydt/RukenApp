@@ -65,3 +65,46 @@ The Owner is being asked whether codes should go through Twilio Verify, which se
 ## Verdict
 
 Not ready to build branch B. Five red findings: two are security holes in Task 4's design (1 and 2), and three are plan fixes (3, 4, 5). Branch A can be built once finding 5 is settled; none of the others touch it. If the Owner picks Verify, the plan session rewrites Tasks 1, 4 and 5 by the list above, and the rewrite gets its own audit (cycle 3).
+
+---
+
+# Cycle 3: the fixes, and codes through Twilio Verify
+
+Date: 2026-11-17. Plan at `6dadbfd`: the fixes for findings 1 to 4 at `3787034`, `main` merged in at `f4ecc79` (pull request #188, merged as `e5a1f62`), and the Owner's choice "Send codes through Twilio Verify" (a card, 2026-11-17 04:43 UTC) written in at `6dadbfd`. Read: the whole diff from `476797c` to `6dadbfd` in the plan, and the plan's new "Codes go through Twilio Verify" section, Tasks 0, 1, 2, 4 and 5 and the acceptance criteria again in full. Checked against the same code and better-auth 1.7.7 package as above. Twilio's pages were not read in this session; where a line below depends on them, it says so. No test ran; no code was written.
+
+## The earlier red findings
+
+| # | Verdict | What was checked |
+|---|---|---|
+| 1. A second sign-up sets the password | **PASS** | `PendingSignUp` is keyed `@@id([numberHash, browserHash])`; `keepPending` and `takePending` take the browser's value from an `httpOnly` cookie made at `startSignUp`; a try from another browser adds its own row and replaces none; success deletes every row for the number. Task 3's Step 1 and Task 4's new journey ("a second browser starting sign-up for the same number cannot set the password") test it, including the case where the second browser is inside the 30 seconds. |
+| 2. Wrong codes for a number with an account are not counted | **PASS** | The existing-account (and no-row) branch now checks the code through `auth.api.consumePhoneNumberOTP`, which 1.7.7 exports as a server-only endpoint with no path (`index.mjs:39`, `routes.mjs` `consumePhoneNumberOTP`), counts `INVALID_OTP` and `TOO_MANY_ATTEMPTS` under the same key through shared `countWrongCode` and `codesPausedFor`, refuses with `CODES_PAUSED` first, and answers `codeWrong` whatever the check says. New journey: "wrong codes typed for a number with an account pause codes at the same count". With Verify, nothing here changes: Ruken still checks every code itself. |
+| 3. Task 4 removes what `/reset-password` imports | **PASS** | `sendResetPassword`, the `storeIdentifier` override, `requestPasswordReset`, `resetPassword` and `passwordResetMessage` stay in Task 4 and go in Task 5 with `src/routes/reset-password/`, `mails.ts` and `mails.test.ts`. B8 and B10 say "by the end of the branch". |
+| 4. Missing files in Task 4 | **PASS** | `join.test.ts`, `pay.test.ts`, `purged-account.test.ts` and `sign-in-guard.test.ts` are listed, and those three journeys are out of the "only through the helpers" list. |
+| 5. CI not on `main` | **PASS** | #188 merged (`e5a1f62`, checked on GitHub); Task 1 waits on it, marked met; A1 now names the container's runs and the CI run. |
+
+## Codes through Verify
+
+No new red finding. The shape the plan chose (better-auth makes and checks every code; Verify only carries it as a `CustomCode`, and Ruken marks it `approved` afterwards) keeps every rule above working: the plugin's one-step reset, the three tries, the wrong-code pause, and the existing-account path. That covers the reset problem the cycle-2 section raised. It rests on one fact that only Twilio can confirm, custom codes on the Owner's account. The plan makes that Task 0's Step 1a, before branch B merges, with a stop rule if it fails (60204). That is the right place for it.
+
+Checked in the plan:
+
+- `sendCode` applies the made-up-number and allowlist guards before any request, as `send` does, and carries the code only in the request body. `codeUsed` never throws and logs only `textFailureCode`. B7 (no number and no code in a log) still holds.
+- A number with an account gets no code at all, and the plugin still stores one (`send-otp` always does), so `consumePhoneNumberOTP` has something to check and the work is the same either way. Every send runs after the answer, so Verify's time is never part of the answer's time (Global Constraints).
+- `services.ts` requires `TWILIO_VERIFY_SERVICE` ("each of the six"); `TWILIO_API_BASE` points `verifyBase` at the stand-in too. The stand-in's Verify paths (`/v2/Services/…`) do not collide with Lookup's (`/v2/PhoneNumbers/…`). It refuses a verification without `CustomCode`, so a `Texter` that forgot the code fails in tests.
+- The words: `codeText`, `resetCodeText` and `codeIn` are gone everywhere; journeys read `codeTo`. A4 now covers "every text Ruken words"; the narrowing of "every text starts Ruken:" names the Owner's choice as its reason.
+
+## The three points the plan session asked about
+
+1. **The new line, "No text? Check the number, or sign in if you already have an account."** It passes the drunk-grandma test: one short line, it says what to do, and it shows to everyone, so it gives nothing away. It is new copy on a screen the spec drew, so the Owner sees it on the screens page with the rest. The plan already lists it as a difference from the spec. One note (not blocking): the "sign in" link should carry the sign-up's `next`, as the other ways back do, so someone who came from `/join` lands back there.
+2. **`passwordChangedText` and `signInPausedText` cannot reach a US phone until X5.** Accepted, and said plainly in the plan and in B4. These two texts are the real owner's alarm after a reset or a guessing run. Until X5, only the test site is open (launch waits for the carriers), and the person who reset held the phone or the paid-with email. So the gap is small and goes away before launch. Recorded, not a finding.
+3. **Branch C's STOP lines are only marked out of date.** Fine for this slice: nothing in A or B rests on them, and C waits for its own plan round. That round must also decide what a STOP to Verify's sender does, since Twilio, not Ruken, holds that block list (not read here).
+
+## Notes (recorded, not blocking)
+
+- **The Owner's command sheet is out of date.** The Owner ran Part 2 of `owner-steps/2026-11-17-owner-commands.md` before Verify was chosen, so the Verify service (X2's last command) and the `TWILIO_VERIFY_SERVICE` secret (X4) are not done. Step 1a needs the first. The coordinator should hand the Owner those two steps and Step 1a as one short batch.
+- **The sign-up cookie.** `ruken_sign_up` has path `/sign-up`, so it must not get the `__Host-` prefix the session cookies get when secure, because that prefix requires `Path=/`. The plan names it without a prefix; keep it so.
+- **A failed `alreadyText` may still cost money.** Before X5, a send to a US phone from an unregistered number is accepted and then fails (30034, per the cycle-2 search). Whether Twilio charges for that was not read. It only happens when someone signs up with a number that already has an account.
+
+## Verdict, cycle 3
+
+All five earlier red findings pass at `6dadbfd`, and the Verify changes add none. Branch A can be built now. Branch B can be built now too, and it merges only after its implementation audit, X4 with the Verify secret, Task 0's Step 1a and the Owner's word.
