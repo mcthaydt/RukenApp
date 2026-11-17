@@ -49,7 +49,7 @@ Then one blue button: Play.
 - The play facts are measured by Ruken's own play time (main design 5.2), so they cannot be inflated.
 - The maker is a person with a face and their own words, because every maker has a Linktree-style page (5.3).
 - The price is said before the press, and differently to each person, because the page knows who is looking.
-- The game page and the maker's Live screen are one design: the game's own video, blurred and dimmed, is the ground of both (redesign 5c), so a maker sees on Live what players see on the page.
+- The game page and the maker's Live screen show the same clip, name, line and rating, so a maker sees on Live what players see on the page. Only Live has the blurred video behind it (redesign 5c); the game's page keeps the plain felt (3.1).
 
 ## 2. Matching the two products, feature by feature
 
@@ -180,18 +180,21 @@ On a computer a mouse can hover a tile; nothing depends on hover. Play is in the
 
 | Who | The cost line | Play goes to |
 |---|---|---|
-| Signed out, or signed in and not a member | "Members play every game. $9.99 a month." and "Tax is added where it applies." | the price card (`/join?next=…`), then the game |
+| Signed out, or signed in and not a member | "Members play every game. $9.99 a month." and "Tax is added where it applies.", with a quiet outline **Join** beside it | the price card (`/join?next=…`), then the game |
 | A member | "Included with your membership." | the game |
 | Anyone, on a free game | "Free to play. No account needed." | the game |
 | The game's own maker | "This is your game. Playing it here doesn't count toward its play time." | the game |
 | Staff who check games | "You can play this to check it. It doesn't count toward its play time." | the game |
 | Anyone on a phone, for a computer-only game | none; in Play's place: "This one needs a computer." and Share, blue | (no Play) |
+| Anyone on a tablet, for a computer-only game | as on a phone. The server cannot tell an iPad from a Mac by its `User-Agent`, so the page's script decides: a coarse pointer (`pointer: coarse`) and a computer-only game put "This one needs a computer." and Share in Play's place. Without script the server's answer stands | (no Play) |
 
 The price comes from `PREMIUM_PRICES_CENTS` in `plans.ts`, formatted, never typed into the page.
 
+**Join.** Owner, 2026-11-17: "either they pay on the landing page or they get hit with it when they try to play". So a person who is not a member can pay from the game's page without pressing Play: a quiet blue outline, "Join", beside the cost line, going to `/join?next=/g/<slug>`, so after paying they are back on the game's page, which then reads "Included with your membership." Play stays the one blue button, and Play still goes to the price card. Pending: the coordinator has asked the Owner whether the page has this button; this is the recommended answer, and if the Owner says no, the button and its rows go and nothing else changes.
+
 ### 3.5 What moves
 
-As the redesign (4.6) and 5.8 allow: a button pressed scales to 0.97; the clip swaps with a 250ms tone change; the backdrop's circles drift as on Live. With reduced motion nothing moves and no video plays by itself.
+As the redesign (4.6) and 5.8 allow: a button pressed scales to 0.97; the clip swaps with a 250ms tone change. With reduced motion nothing moves and no video plays by itself.
 
 ## 4. Playing (`/g/<game>/play`)
 
@@ -199,7 +202,7 @@ As the redesign (4.6) and 5.8 allow: a button pressed scales to 0.97; the clip s
 
 - The game fills the window: a `<main>` the window's size (`100dvh`, no gutter), `felt-deep`, holding the frame and the Menu tab. The frame is as the plan has it (sandbox, `allow`, no referrer, no name, nothing of the player in its address).
 - **The Menu tab.** Owner: "a small semi transparent tab, that can be moved up and down, or dragged to either side if the screen, but when it opens A".
-  - **How it looks.** A small tab against the edge of the screen, 48 wide and 56 tall, `felt-deep` at 72% (the game shows faintly through it), with the three-line mark in chalk and the word "Menu" under it at 12px, 12px corners on the side away from the edge. It rests at 72%; while it is pressed, dragged or has focus it is solid. Chalk on `felt-deep` at 72% over a pure white game is 7.48:1 (worked out from the tokens: the layer over white is `#545556`); over anything darker it is more. This amends 5.8's "no glass" for this one control, in the Owner's words.
+  - **How it looks.** A small tab against the edge of the screen, 48 wide and 56 tall, `felt-deep` at 72% (the game shows faintly through it), with the three-line mark in chalk and the word "Menu" under it at the small size (`--text-small`, 14px), 12px corners on the side away from the edge. It rests at 72%; while it is pressed, dragged or has focus it is solid. Chalk on `felt-deep` at 72% over a pure white game is 7.48:1 (worked out from the tokens: the layer over white is `#545556`); over anything darker it is more. This amends 5.8's "no glass" for this one control, in the Owner's words.
   - **Where it rests.** The first time, at the left edge, a quarter of the way down, clear of the notch and the home indicator. Wherever the person leaves it, it stays there on that device (`rk_menu_tab` in `localStorage`: the side and the height as a share of the window), and comes back there in every game.
   - **Moving it.** A press that moves more than 8px drags the tab (touch, pen or mouse, by pointer events). Let go, and it glides to the nearer side, at the height it was let go, kept clear of the top and bottom insets; 200ms on the redesign's curve, none with reduced motion. A press that moves less than 8px is a press: it opens the menu. With the keyboard, the tab has focus and the arrow keys move it: up and down by a tenth of the window, left and right to that side. Its name for a screen reader is "Menu. Use the arrow keys to move it."
   - **No script.** It is a `<details>`' summary at the left, a quarter of the way down, solid, and does not move; the menu opens and Leave game works (4.2).
@@ -220,7 +223,7 @@ by Snek                        sage; only when the maker has a page
 Not working? Choose Start again.   sage
 ```
 
-- **Keep playing** closes the menu and puts focus in the game's frame: the person's own press, so the play-time rule (Task 22, "never focuses the frame itself") is kept.
+- **Keep playing** closes the menu and puts focus in the game's frame: the person's own press, so the play-time rule (Task 22, "never focuses the frame by itself") is kept.
 - **Escape** closes the menu when focus is in it. Focus stays inside the menu while it is open, and returns to the tab on close.
 - **Start again** reloads the frame with the same address: the pass lasts a day, so it needs no new pass. It does not ask first: the line under it says what it is for, and a game that saves keeps its save.
 - **Leave game** goes to the game's page. Leaving removes the frame, so the game stops.
@@ -274,8 +277,8 @@ Closed, on every device: the game and the tab only. The menu always opens from t
 
 Both are measured by Ruken's play time (Task 22's beats), worked out by pure functions with tests, and read by the server when the page loads. Nobody types either.
 
-- **How long a sitting is.** The median of the counted time of a game's plays in the last 30 days, counting plays by members and free plays only (staff and a maker's own play never count, as for the pool), and only plays with at least one beat. Shown once there are at least 20 such plays; before that the line is not drawn and nothing says why. In words: under 2 minutes, "Most people play a minute or two at a time."; up to 15 minutes, to the nearest minute ("about 12 minutes"); up to an hour, to the nearest 5; beyond, to the nearest half hour ("about 1½ hours"). Call: the thresholds and rounding.
-- **How many people played this week.** Owner: "Show player count should be an option set by the maker". The number of different accounts with a counted play of the game (members, and signed-in free play) in the last 7 days by the server's clock. Free play by nobody cannot be told apart and is not counted. "1 person played it this week." / "214 people played it this week." Shown only while the maker has turned it on, even when the number is small: it is the maker's choice to show it.
+- **How long a sitting is.** The median of the counted time of a game's plays in the last 30 days, counting plays by members and free plays only (staff and a maker's own play never count, as for the pool), and only plays that counted some time: at least one attentive beat, so a counted time above 0 (`countedMs`). Shown once there are at least 20 such plays; before that the line is not drawn and nothing says why. In words: under 2 minutes, "Most people play a minute or two at a time."; up to 15 minutes, to the nearest minute ("about 12 minutes"); up to an hour, to the nearest 5, with 60 minutes reading "about an hour"; beyond an hour, to the nearest half hour ("about 1½ hours", "about 2 hours"). Call: the thresholds and rounding.
+- **How many people played this week.** Owner: "Show player count should be an option set by the maker". The number of different accounts with a counted play of the game (a play with at least one attentive beat; members, and signed-in free play) in the last 7 days by the server's clock. Free play by nobody cannot be told apart and is not counted. "1 person played it this week." / "214 people played it this week." Shown only while the maker has turned it on, even when the number is small: it is the maker's choice to show it.
 - **The maker's switch.** On the maker's Live screen, under the game laid out: "Show how many people played it" with an On/Off chip (redesign 15.2's switch), and the line "Players see it on Floor Fifty's page." **Call: off until the maker turns it on**, so a new game never looks empty without its maker choosing that. It is stored on the game (`Game.showsPlayerCount`, a boolean, false by default), which is a new column and a migration: lane 3 (section 8).
 
 ## 6. What waits for a later slice, and where it goes
@@ -300,7 +303,7 @@ For each screen, three, drawn in the sketches:
 ## 8. Lanes and what the plan changes
 
 - Unit F (Tasks 20 to 23) stays lane 2: routes, `look.css`, the games, pages and play services, `tests/support/`. No migration. The play facts' sitting line is in F; the player line reads the switch only once it exists.
-- **The player count switch is its own unit, lane 3** (a migration): the column, the switch on Live, and the player line. Lane 3 needs the plan audit before building, the implementation audit after, and the Owner's approval (or a standing permission covering the migration) before merging; the migration is applied to the test site's database by the Owner's own command after merge, as every migration is. It waits on F.
+- **The player count switch is its own unit, lane 3** (a migration): the column, the switch on Live, and the player line. Lane 3 needs the plan audit before building, the implementation audit after, and the Owner's approval (or a standing permission covering the migration) before merging; merging applies the migration to the test site's database, because the site's deploy command runs `prisma migrate deploy` first on every merge to `main`. So the Owner's lane 3 approval is for that merge. Undoing it is a second migration (`DROP COLUMN`), not a revert. It waits on F.
 - F's expected time grows from five hours to eight: the page has more pieces (the maker, More from, the play facts, the full-size clip, the menu, starting). The switch unit: three hours, plus its audits.
 
 ## 9. Open decisions
@@ -314,6 +317,8 @@ For each screen, three, drawn in the sketches:
 These are folded into the plan's Unit F and the switch unit; the plan's tests check them.
 
 - `/g/<game>` shows a live game's clip of the window's shape, its two clip tiles, name, one line, rating chip and line, device line, Play and the cost line for the viewer (3.4). A game that is not live, or not there, is the missing page with its way back.
+- Someone who is not a member sees Join beside the cost line, going to `/join?next=/g/<slug>`; nobody else sees it.
+- A computer-only game on a tablet reads "This one needs a computer." like a phone, where the page's script runs.
 - The sitting line shows only with 20 or more counted plays in 30 days, in the words of section 5; the player line only when the maker turned it on.
 - Made by and More from show only as 3.2 says.
 - A phone that opens a computer-only game reads "This one needs a computer.", is offered Share, and cannot reach the play page.
