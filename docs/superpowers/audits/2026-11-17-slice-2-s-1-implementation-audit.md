@@ -55,3 +55,14 @@ Not run here: the WebKit projects and the landscape projects (this container has
 ## Checked and found right
 
 `firstGameStaff` (oldest by `createdAt`, then `id`, only game-staff roles); `readReviewOrder`'s four refusals word for word; every status and sentence in the route's table; `reviewLook` writes a pass for the pending pull and no play session; `hasAny` checks the folder prefix and asks R2 for one key; `takeOff` writes the database before deleting, and the action sends a maker whose delete stopped to the screen that offers to finish it; `putBack` and `deleteLeftFiles` refuse any state but `taken_off`, and both actions 404 for one; `filesLeft` asks the bucket only for a taken-off game; the new words in `review.ts` and the question; nothing under `src/routes/` has a style, colour or `<style>`; no new package, table, migration or `look.css` rule; commit identity (`commit-authors` green); the live-state file is gone in `ef29275`; the pull request body starts with the attribution and ends "Requested by **McThayDT**". Words: every line on both screens is plain; each screen has one blue button in view; red only on "Take it off Ruken" and "Delete them", both of which delete.
+
+## Fix check, at `33c67bb`
+
+Checked by this audit session, not by the fixer. The diff from `8f83b72` touches only `TakenOffScreen.svelte` and `tests/browser/take-off.test.ts`, the two files the findings allowed. No rule was added to `look.css`.
+
+- **R1: closed.** "Back to your games" is now a direct child of `.screen`, so it gets `.screen > a.foot`. Measured: its x equals the heading's x on `phone`, the 320 by 568 small phone, `tablet` (all 20) and `computer` (40). On every device it sits above the pinned bar (small phone: the link ends at y 440, the bar starts at 488). The new assertion fails on the old screen: putting `ef29275`'s `TakenOffScreen.svelte` back makes it fail on `phone` and `computer`, and it passes on `33c67bb`.
+- **R2: closed.** The new journey checks that focus starts on "Keep it on Ruken", that Tab reaches "Take it off Ruken" with an outline that is not `none`, and that Enter on the safe choice leads to Live with the game still `live`. The behaviour was already right, so this closes a missing check, not a defect.
+- Ran: `take-off`, `make-walk` and `make-second-look` on `phone`, `tablet` and `computer`: 200 passed, 67 skipped (the files' own layout conditions), 0 failed.
+- Note 10 (new, not blocking): `.screen > a.foot` puts the link at the foot of the window. On a computer it now sits near the window's bottom edge, well below the button, as it does on Check and send. Its pressable box is also the column's full width. Both follow the existing pattern; the slice-end design rounds can weigh them.
+
+Nothing is red. The unit can be marked ready once CI's full run is green.
