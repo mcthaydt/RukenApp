@@ -659,16 +659,22 @@ export function createGamesService(deps: GamesServiceDeps) {
     return { name: game.name };
   }
 
-  /** Games with files waiting for a person's yes, the oldest first. */
-  async function waitingGames(): Promise<{ slug: string; name: string; makerEmail: string; sentAt: Date }[]> {
+  /**
+   * Games with files waiting for a person's yes, the oldest first. `kind` says whether it is a first send or the new
+   * files of a game that is already live.
+   */
+  async function waitingGames(): Promise<
+    { slug: string; name: string; kind: "game" | "update"; makerEmail: string; sentAt: Date }[]
+  > {
     const rows = await deps.db.game.findMany({
       where: { pendingPullId: { not: null } },
       orderBy: { pendingSince: "asc" },
-      select: { slug: true, name: true, pendingSince: true, maker: { select: { email: true } } },
+      select: { slug: true, name: true, state: true, pendingSince: true, maker: { select: { email: true } } },
     });
     return rows.map((row) => ({
       slug: row.slug,
       name: row.name,
+      kind: row.state === "live" ? "update" : "game",
       makerEmail: row.maker.email,
       // `pendingSince` is set with `pendingPullId`, so a waiting game always has it.
       sentAt: row.pendingSince ?? new Date(0),
