@@ -49,13 +49,13 @@
   {/if}
   {#if data.needsComputer}
     <p>This one needs a computer.</p>
-    <div class="acts">
+    <div class="pin">
       <p><button type="button" onclick={share}>Share the link</button></p>
       <p aria-live="polite">{shared}</p>
     </div>
   {:else}
     <!-- No preload: opening the play address starts a play (a session and a pass), which only a press may do. -->
-    <p class="acts">
+    <p class="pin">
       <a class="button" href={`/g/${data.slug}/play`} data-sveltekit-preload-data="off">Play</a>
     </p>
   {/if}

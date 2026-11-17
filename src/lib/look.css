@@ -763,7 +763,7 @@ form > * + button:not(.quiet) {
     display: flow-root;
   }
 
-  .game > .acts {
+  .game > .pin {
     position: fixed;
     right: 0;
     bottom: 0;
@@ -776,20 +776,20 @@ form > * + button:not(.quiet) {
     color: var(--chalk);
   }
 
-  .game > .acts p {
+  .game > .pin p {
     margin: 0;
   }
 
-  .game > .acts p + p:not(:empty) {
+  .game > .pin p + p:not(:empty) {
     margin-top: 0.5rem;
   }
 
-  .card.game > .acts :is(a.button, button) {
+  .card.game > .pin :is(a.button, button) {
     width: 100%;
   }
 
   /* On the felt the focus ring is paper again, not the card's ink. */
-  .game > .acts :focus-visible {
+  .game > .pin :focus-visible {
     outline-color: var(--paper);
   }
 }

@@ -32,7 +32,7 @@ async function expectOnFirstScreen(page: Page, action: Locator): Promise<void> {
   expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(height);
   // Pinned to the window's bottom, it must still leave the card's last line in sight at the end of the page.
   const pinned = await action.evaluate(
-    (act) => getComputedStyle(act.closest(".acts") ?? act).position === "fixed",
+    (act) => getComputedStyle(act.closest(".pin") ?? act).position === "fixed",
   );
   if (pinned) {
     await page.evaluate(() => {
@@ -56,6 +56,23 @@ test("a game's page shows its clip, its name, its line, who it is for and Play",
   await expect(page.locator("main .chip")).toHaveText("12+");
   await expect(page.getByRole("link", { name: "Play" })).toHaveAttribute("href", `/g/${game.slug}/play`);
   await expectOnFirstScreen(page, page.getByRole("link", { name: "Play" }));
+  // Where Play stays in the card (a tablet held sideways, a computer), it is as wide as its word and its padding.
+  const play = page.getByRole("link", { name: "Play" });
+  const inCard = await play.evaluate(
+    (link) => getComputedStyle(link.closest(".pin") ?? link).position !== "fixed",
+  );
+  if (inCard && (page.viewportSize()?.width ?? 0) >= 768) {
+    const [width, words] = await play.evaluate((link) => {
+      const range = document.createRange();
+      range.selectNodeContents(link);
+      const style = getComputedStyle(link);
+      return [
+        link.getBoundingClientRect().width,
+        range.getBoundingClientRect().width + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight),
+      ];
+    });
+    expect(width).toBeCloseTo(words, 0);
+  }
   await expect(page.getByRole("button")).toHaveCount(0);
   await expect(page).toHaveTitle(`${game.name} · Ruken`);
   const video = page.locator("video.clip");
