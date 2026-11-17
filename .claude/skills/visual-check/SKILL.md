@@ -19,15 +19,20 @@ included, is never a small change: fresh sessions run every step, even when it h
 ## Before the next slice
 
 Do not move to the next slice without a design review loop on the screens completed during that slice: steps 1 and 2
-side by side, then the fixes, then step 3, on each device in the device matrix in Settings. Screens the owner has
-already approved are skipped.
+side by side, then the fixes, then step 3, on each device in the device matrix in Settings. The loop runs in the rounds
+set in Settings, every one of them. A round shoots the screens, a fresh session checks them, and the session that built
+them fixes what it found; a round with no findings has no fixes. The first round is steps 1 and 2 and their fixes; later
+rounds are step 3 on the screens again. After the rounds before the owner's first look, the screens page goes to the
+owner; the next round fixes the owner's notes along with its own findings, and the screens page goes to the owner again.
+Screens the owner has already approved are skipped.
 
 ## Screens page
 
-At the end of every slice, after the design review loop and before the owner's walk, the coordinator shows all of the
-slice's screens in one organized artifact: grouped by flow, in the order a person meets them, each screen on each device
-in the device matrix, labeled with its name and the commit it shows. Screens the owner already approved are included and
-marked as approved. Share it as one link, not as screenshots scattered across messages.
+The coordinator shows the screens page twice at the end of every slice: after the design review rounds before the
+owner's first look, and again after the round on the owner's notes, before the owner's walk. Each time it shows all of
+the slice's screens in one organized artifact: grouped by flow, in the order a person meets them, each screen on each
+device in the device matrix, labeled with its name and the commit it shows. Screens the owner already approved are
+included and marked as approved. Share it as one link, not as screenshots scattered across messages.
 
 ## Skip what is already approved
 

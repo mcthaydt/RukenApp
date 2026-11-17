@@ -257,15 +257,16 @@ The least every brief's acceptance criteria cover, where they apply:
   approving designs or mockups. It does not reopen the owner's decisions.
 - Sessions the coordinator starts are threads, not subagents. No session starts subagents of its own unless the owner
   says so.
-- **Slice end.** Every slice, the first one included, closes in this order: a fresh end-to-end walk (see `review`),
-  the design review loop on its screens (see `visual-check`), the screens page (see `visual-check`), the owner's own
-  walk, and last the retro. Do not move to the next slice without a design review loop on the screens completed during
-  that slice.
+- **Slice end.** Every slice, the first one included, closes in this order: a fresh end-to-end walk (see `review`); the
+  design review rounds before the owner's first look (see `visual-check`); the screens page, for the owner's first look;
+  the round after it, on the owner's notes; the screens page again, for the owner's second look; the owner's own walk;
+  and last the retro. Do not move to the next slice without a design review loop on the screens completed during that
+  slice.
 - **End-to-end walk.** A fresh session that did not build the slice walks every journey in it from start to finish as a
   real person would, in a cloud container or on the test site, on each device in the matrix. It reports each step as
   pass or fail with its evidence, and its failures are fixed through `review` before the owner's walk.
 - **Screens page.** All of the slice's screens in one organized artifact, grouped by flow and device, shared with the
-  owner as one link before the owner's walk.
+  owner as one link at each of the owner's two looks.
 - **End-of-slice retro.** As the last step of each slice, a fresh session reads that slice's audits, the flaky tests it
   reported and the findings that needed fixing more than once. It turns each lesson into a test where a test can catch
   it (for example, a check that a pull request body ends with "Requested by **McThayDT**"), and proposes the rest as one
@@ -314,6 +315,8 @@ Change a number or a model here and nowhere else.
 - Tries per problem: 3. After that, stop that approach and reassess: try another with a reason, or move to independent
   work. Include material setbacks in the owner update, with what was tried and what it showed. Pause for an owner
   decision only when their decision, access or a change to an agreed budget is needed.
+- Design review rounds: 2 before the owner's first look at the screens page, then 1 on the owner's notes before the
+  second look. A round is shoot, check by a fresh reviewer, fix.
 - Overrun: a task that has taken twice the duration its brief estimated. Reassess the estimate and the approach, and
   report the changed outlook. Request a decision only if the authorized budget or scope must change.
 - Pull requests open: 3. Checks run at once, as many as the CI capacity takes without queueing (measured, not guessed);
