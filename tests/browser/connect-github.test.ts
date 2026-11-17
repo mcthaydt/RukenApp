@@ -31,7 +31,7 @@ test("connecting GitHub comes back with the maker's repositories remembered", as
     {
       installationId: 1n,
       accountLogin: "ruken-test",
-      repositories: ["ruken-test/2048", "ruken-test/broken-game", "ruken-test/tiny-game"],
+      repositories: ["ruken-test/broken-game", "ruken-test/tiny-game"],
     },
   ]);
 });
@@ -166,7 +166,7 @@ test("a failed reconnect says so to a maker who is already connected, above her 
   // The list still works, and the line says so: with no Connect button on this screen, "Try again" would have nothing to press.
   const failure = page.getByText("GitHub didn't connect. You can still pick a game from the list.");
   await expect(failure).toBeVisible();
-  await expect(page.getByRole("radio")).toHaveCount(3);
+  await expect(page.getByRole("radio")).toHaveCount(2);
   // Under the hint, beneath the answer, where every other refusal is.
   const hint = page.getByText("Pick the one that is your game.");
   expect((await boxOf(failure)).y).toBeGreaterThan((await boxOf(hint)).y);

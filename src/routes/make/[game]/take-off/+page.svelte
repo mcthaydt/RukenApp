@@ -1,7 +1,6 @@
 <!--
-  Taking a live game off Ruken. Its files are deleted from Ruken, which can't be undone, though the game can be put back
-  and checked again. "Keep it on Ruken" is the way back: the green, safe choice, and the one that has focus, so a stray
-  Enter keeps the game. "Take it off" is the red one, the only red thing here. Nothing
+  Taking a live game off Ruken, which can't be undone. "Keep it on Ruken" is the way back: the green, safe choice, and the
+  one that has focus, so a stray Enter keeps the game. "Take it off Ruken" is the red one, the only red thing here. Nothing
   here is blue and there is no field to type in, so Enter has nothing to press but the focused "Keep it on Ruken".
 -->
 <script lang="ts">
@@ -25,9 +24,8 @@
 
 <main class="card">
   <h1>Take {data.name} off Ruken?</h1>
-  <p>If you take it off, players can't find it or play it.</p>
-  <p>Its files are deleted from Ruken. Putting it back copies them from GitHub again.</p>
-  <p>You can put it back later. We'll check it again first.</p>
+  <p>Players won't be able to find it or play it any more. Nothing changes on GitHub.</p>
+  <p>You can't undo this.</p>
   {#if form?.problem !== undefined}
     <p class="problem" role="alert">{form.problem}</p>
   {/if}
@@ -45,6 +43,6 @@
       };
     }}
   >
-    <button class="danger" disabled={sending}>Take it off</button>
+    <button class="danger" disabled={sending}>Take it off Ruken</button>
   </form>
 </main>

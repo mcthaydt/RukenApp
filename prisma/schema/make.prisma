@@ -17,24 +17,3 @@ model MakerAgreement {
 
   @@unique([userId, version])
 }
-
-/// What a maker did to their own game: took it off Ruken, or put it back (spec 13.1 M1 and M2). Added and never
-/// changed, and kept when an account is purged, because it is the record of who did what to a game and when.
-model MakerAction {
-  id        String          @id @default(cuid(2))
-  gameId    String
-  userId    String
-  action    MakerActionKind
-  at        DateTime        @db.Timestamptz
-  createdAt DateTime        @default(now()) @db.Timestamptz
-
-  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
-  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
-
-  @@index([gameId])
-}
-
-enum MakerActionKind {
-  taken_off
-  put_back
-}

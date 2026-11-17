@@ -1,12 +1,6 @@
 import type { PrismaClient, StaffRole } from "../../lib/server/db.ts";
 
 /**
- * The staff who check games: they accept a game or send it back (design 5.5). The same list is who plays a game without
- * paying and without counting for pay.
- */
-export const GAME_STAFF_ROLES: readonly StaffRole[] = ["owner", "head_curator", "curator"];
-
-/**
  * The person's staff roles, read fresh from StaffAssignment each time (empty for a player). Nothing
  * grants a role but the first-owner command (`grantFirstOwner`); the admin portal does the rest later.
  */

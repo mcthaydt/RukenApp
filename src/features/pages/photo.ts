@@ -10,9 +10,6 @@ export const PHOTO_MAX_BYTES = 5_000_000;
 const EXTENSIONS = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" } as const;
 export type PhotoContentType = keyof typeof EXTENSIONS;
 
-/** Every type a photo may have. The gate's test makes a key for each, so a type added here is held against the gate. */
-export const PHOTO_CONTENT_TYPES = Object.keys(EXTENSIONS) as readonly PhotoContentType[];
-
 export function isPhotoContentType(value: string): value is PhotoContentType {
   // `Object.hasOwn`, not `value in`: a plain object also "has" what every object inherits (`constructor`).
   return Object.hasOwn(EXTENSIONS, value);

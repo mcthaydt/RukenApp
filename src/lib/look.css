@@ -185,232 +185,6 @@ header + main {
   background: var(--felt-deep);
 }
 
-/* The play screen (Ruken's first version's, Owner 2026-11-16): the window is the game. No gutter and no width limit,
-   on the darkest felt, and the frame fills it. Ruken's own pieces float over it: the edge tab, the cover while the game
-   loads, the Ruken menu and the exit question. */
-.stage {
-  position: relative;
-  width: 100%;
-  height: 100dvh;
-  margin: 0;
-  background: var(--felt-deep);
-}
-
-.stage .frame {
-  height: 100%;
-}
-
-/* The edge tab: 48 by 56 on the window's edge, halfway down unless it was moved (the page writes --down). Felt-deep
-   with a white R, so it reads over bright art and over dark art. Rounded only on the side that faces the game. A
-   finger on it drags it, so the page must not scroll or zoom instead. */
-.tab {
-  position: fixed;
-  top: calc(var(--down, 0.5) * 100% - 28px);
-  right: 0;
-  z-index: 2;
-  flex-direction: column;
-  gap: 0.25rem;
-  width: 48px;
-  min-height: 56px;
-  height: 56px;
-  padding: 0;
-  border-radius: var(--radius-button) 0 0 var(--radius-button);
-  background: var(--felt-deep);
-  color: var(--chalk);
-  touch-action: none;
-  user-select: none;
-  transition: opacity 150ms ease-out;
-}
-
-.tab[data-edge="left"] {
-  right: auto;
-  left: 0;
-  border-radius: 0 var(--radius-button) var(--radius-button) 0;
-}
-
-/* Faded while nobody is on it, so it covers less of the game; whole when hovered, focused, dragged or open. */
-.tab[data-resting] {
-  opacity: 0.4;
-}
-
-.tab:hover,
-.tab[aria-expanded="true"] {
-  background: var(--felt-raised);
-}
-
-/* A small corner of a square, turned, so it points at the game from either edge. */
-.chevron {
-  width: 0.4375rem;
-  height: 0.4375rem;
-  border-bottom: 2px solid currentcolor;
-  border-left: 2px solid currentcolor;
-  color: var(--sage);
-  transform: rotate(45deg);
-}
-
-.tab[data-edge="left"] .chevron {
-  transform: rotate(-135deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tab {
-    transition: none;
-  }
-}
-
-/* The Ruken menu: a panel of the darkest felt down the side the tab is on, with the game dimmed beside it. 345px on
-   a phone (48px of game left to press), 336px from a tablet, 360px on a wide window, 300px on a phone held sideways. */
-dialog.drawer {
-  position: fixed;
-  inset: 0 0 0 auto;
-  width: min(21.5625rem, 100% - 3rem);
-  max-width: none;
-  height: 100dvh;
-  max-height: none;
-  margin: 0;
-  padding: 1rem;
-  overflow-y: auto;
-  border: 0;
-  border-radius: var(--radius-card) 0 0 var(--radius-card);
-  background: var(--felt-deep);
-  color: var(--chalk);
-}
-
-dialog.drawer[data-edge="left"] {
-  inset: 0 auto 0 0;
-  border-radius: 0 var(--radius-card) var(--radius-card) 0;
-}
-
-dialog.drawer::backdrop,
-dialog.exit::backdrop {
-  background: var(--felt-deep);
-  opacity: 0.6;
-}
-
-@media (min-width: 40rem) {
-  dialog.drawer {
-    width: 21rem;
-  }
-}
-
-@media (min-width: 75rem) {
-  dialog.drawer {
-    width: 22.5rem;
-  }
-}
-
-@media (orientation: landscape) and (max-height: 32rem) {
-  dialog.drawer {
-    width: 18.75rem;
-  }
-}
-
-.drawer h2 {
-  margin: 0 0 1rem;
-  font: var(--text-card-title);
-}
-
-.drawer p {
-  margin: 0 0 0.5rem;
-}
-
-.drawer p > button:not(.quiet) {
-  width: 100%;
-}
-
-/* The connection line: its name a sage note, its value white, side by side. */
-.drawer dl {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  margin: 1rem 0;
-  font: var(--text-small);
-}
-
-.drawer dt {
-  color: var(--sage);
-}
-
-.drawer dd {
-  margin: 0;
-}
-
-/* The exit question: a card in the middle of the window, its two buttons side by side. */
-dialog.exit {
-  width: min(100% - 2rem, 24rem);
-  padding: 1.5rem;
-  border: 0;
-  border-radius: var(--radius-card);
-  background: var(--paper);
-  color: var(--ink);
-}
-
-.exit h2 {
-  margin: 0 0 0.5rem;
-  font: var(--text-statement);
-}
-
-.exit p:last-child {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 1.5rem 0 0;
-}
-
-/* The cover while the game loads: the darkest felt over the frame, one heading, a bar, and a way back. */
-.cover {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 1.5rem max(1rem, (100% - var(--width-read)) / 2);
-  background: var(--felt-deep);
-}
-
-.cover h1 {
-  font: var(--text-statement);
-}
-
-/* The edge tab floats over the cover too: the cover's words and bar keep clear of the edge it is on. */
-.stage:has(.tab[data-edge="right"]) .cover {
-  padding-right: max(4rem, (100% - var(--width-read)) / 2);
-}
-
-.stage:has(.tab[data-edge="left"]) .cover {
-  padding-left: max(4rem, (100% - var(--width-read)) / 2);
-}
-
-/* A bar with no amount: a short piece slides across its track, or sits still for someone who asked for less
-   motion. */
-.meter {
-  height: 0.375rem;
-  margin: 1rem 0;
-  overflow: hidden;
-  border-radius: 3px;
-  background: var(--felt-raised);
-}
-
-.meter > div {
-  width: 30%;
-  height: 100%;
-  background: var(--chalk);
-  animation: meter 1.2s ease-in-out infinite alternate;
-}
-
-@keyframes meter {
-  to {
-    transform: translateX(233%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .meter > div {
-    animation: none;
-  }
-}
-
 h1 {
   margin: 0;
   font: var(--text-section);
@@ -736,68 +510,19 @@ button,
 
 /* The main button of a form is a step and a half under the last field. On a phone it spans the card, so a
    thumb finds it anywhere along the bottom; a quiet button stays as wide as its words. A link that looks like
-   a button, alone in its line ("Back to Ruken"), is the same button and spans the card the same way, and so does a
-   button alone in its line that is not in a form ("Share the link"). */
+   a button, alone in its line ("Back to Ruken"), is the same button and spans the card the same way. */
 form > * + button:not(.quiet) {
   margin-top: 1.5rem;
 }
 
 .card form > button:not(.quiet),
-.card p > a.button:only-child,
-.card p > button:not(.quiet):only-child {
+.card p > a.button:only-child {
   width: 100%;
-  /* Long words on a narrow card break into even lines, not a full line and a stray word. */
-  text-wrap: balance;
-}
-
-/* A game's page on a phone (upright or sideways) or an upright tablet: its one button (Play, or Share the link) is
-   pinned to the bottom of the window on the felt, as Next is on the maker's screens, so it is on the first screen
-   however tall the clip is. The card ends above the bar. */
-@media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
-  main.game {
-    margin-bottom: calc(var(--size-target) + 5rem + env(safe-area-inset-bottom, 0px));
-  }
-
-  /* So that room under the card is part of the page and can be scrolled to, not lost past the body's end. */
-  body:has(main.game) {
-    display: flow-root;
-  }
-
-  .game > .pin {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 2;
-    margin: 0;
-    padding: 0.75rem max(1rem, (100% - var(--width-read)) / 2)
-      calc(0.75rem + env(safe-area-inset-bottom, 0px));
-    background: var(--felt-deep);
-    color: var(--chalk);
-  }
-
-  .game > .pin p {
-    margin: 0;
-  }
-
-  .game > .pin p + p:not(:empty) {
-    margin-top: 0.5rem;
-  }
-
-  .card.game > .pin :is(a.button, button) {
-    width: 100%;
-  }
-
-  /* On the felt the focus ring is paper again, not the card's ink. */
-  .game > .pin :focus-visible {
-    outline-color: var(--paper);
-  }
 }
 
 @media (min-width: 48rem) {
   .card form > button:not(.quiet),
-  .card p > a.button:only-child,
-  .card p > button:not(.quiet):only-child {
+  .card p > a.button:only-child {
     width: auto;
   }
 }
@@ -805,7 +530,7 @@ form > * + button:not(.quiet) {
 /* A screen that can't be undone has its two buttons the same distance apart wherever it is. Throw it away's form has a hidden
    field before its button, so its button follows a sibling and gets the step and a half above; Take it off's form is only the
    button, so it asks for the same step itself. From a tablet up the two buttons are one width: the least width is more than
-   the longest words need ("Keep it on Ruken", with its padding), so neither button's own words set its width and a
+   the longest words need ("Take it off Ruken", with its padding), so neither button's own words set its width and a
    difference in the words can't show as a difference in the buttons. */
 .card form > button.danger:first-child {
   margin-top: 1.5rem;
@@ -937,8 +662,6 @@ form > * + button:not(.quiet) {
 /* The bar across the top: the way home, and one more link. The track is above it, at the very top. */
 .topbar {
   display: flex;
-  /* Staff's bar has three links. A narrow phone has no room for three in a row, so the last one moves down whole. */
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -953,23 +676,6 @@ form > * + button:not(.quiet) {
 @media (min-width: 1200px) and (orientation: landscape) {
   .topbar {
     padding: 1.5rem 2.5rem 0;
-  }
-}
-
-/* A bar of three links (staff's) on the narrowest phone: the links are a size smaller and closer, so the three share one line
-   instead of the last dropping alone under the wordmark. The wordmark is a size smaller too, and the gaps and the sides are tighter. */
-@media (max-width: 359px) {
-  .topbar:has(> :nth-child(3)) {
-    gap: 0.5rem;
-    padding-inline: 0.75rem;
-  }
-
-  .topbar:has(> :nth-child(3)) > a:not(.wordmark) {
-    font: var(--text-small);
-  }
-
-  .topbar:has(> :nth-child(3)) > .wordmark {
-    font-size: 1.25rem;
   }
 }
 
@@ -1302,13 +1008,9 @@ form > * + button:not(.quiet) {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
-  /* The number sits in the middle of the tile's height, and the tick in the corner takes no room from it, so the tile
-     does not look half empty with its number low. */
   .picks[data-ratings] .pick {
-    justify-content: center;
-    min-height: 4.5rem;
-    padding-block: 0.75rem;
     padding-right: 0.75rem;
+    padding-top: 2.25rem;
   }
 
   .picks[data-ratings] .pick::after {
@@ -1708,19 +1410,6 @@ a.foot {
   }
 }
 
-/* The same way back at the foot of the sheet, for where the left half does not stay in view: a phone, an upright tablet, and a
-   window too short to keep it. A long sheet ends here, and the way back used to be the other end of it. On the paper it is ink,
-   because the sage the link wears on felt is for felt only. */
-@media (orientation: landscape) and (min-width: 700px) and (min-height: 600px) {
-  .halves a.foot[data-end] {
-    display: none;
-  }
-}
-
-.sheet a.foot {
-  color: var(--ink);
-}
-
 /* On Live, "Back to your games" is a little larger than the link that takes the game off Ruken. That one is the quietest thing
    on the screen: last, a size smaller and dimmer, and a step below the way back, so a thumb that aims for one does not land
    on the other and it is never read as part of the blue button's note above. Each is on its own line. */
@@ -1771,269 +1460,6 @@ a.foot {
 
   .screen main[data-state] {
     margin-block: 0 auto;
-  }
-}
-
-/* On Taken off, the way back is a link under the blue button's note, at the column's left edge where the words start, with a
-   thumb's height, as Live's is. The card that offers to delete files left behind has a step above it, and no more width than its line needs on a wide
-   window. */
-main[data-state] a.foot {
-  display: flex;
-  align-items: center;
-  width: fit-content;
-  min-height: 44px;
-  margin: 1rem 0 0;
-}
-
-main[data-state] .sheet.fix {
-  max-width: 40rem;
-  margin-top: 1.5rem;
-}
-
-/* On Taken off the blue button stays in the column, under the line and above its note, on every window. Pinned to the
-   foot of a phone or an upright tablet it sat a screen away from the note that says what it does. */
-.screen main[data-state] form .acts {
-  position: static;
-  flex-wrap: wrap;
-  margin: 1.25rem 0 0;
-  padding: 0;
-  background: none;
-}
-
-.screen main[data-state] form .acts > button {
-  flex: none;
-  min-width: 168px;
-}
-
-.screen main[data-state] form > .note {
-  margin-top: 0.5rem;
-}
-
-/* Staff's check of a game (design 11.1, screen 2). A part is a block of the sheet: its title, its value in the maker's own
-   words (or its video), a box to say it is wrong and, once that is ticked, the reasons. Blocks are told apart by space and
-   not by a line: the look has no rule but a field's. */
-.part {
-  display: grid;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-/* More space between two parts than inside one, and a title a step larger than a note, so a long run of parts is read as
-   parts. */
-/* A part with a refusal is brought to the top of the window (showTheRefusal), a step clear of its edge. */
-[data-refusal-from-top] {
-  scroll-margin-top: 1rem;
-}
-
-.part + .part {
-  margin-top: 2.5rem;
-}
-
-.part h2 {
-  margin: 0;
-  /* A page opened at a refusal puts the part's name in view, with a little of what is above it. */
-  scroll-margin-top: 1rem;
-  color: var(--ink-soft);
-  font: 600 1rem / 1.3 var(--font-text);
-}
-
-.part .say,
-.part .picks,
-.part .note {
-  margin: 0;
-}
-
-/* A refusal inside a part is seen as one: the look's own "needs fixing" edge (as `.sheet.fix` has), so it is not read as the
-   part's words, whose value is the next line. */
-.part .problem {
-  margin: 0;
-  padding-left: 1rem;
-  border-left: 6px solid var(--pay);
-}
-
-/* One choice to a row, as wide as its part: two across squeezed "This is wrong" and the reasons into half the width, and
-   broke their words. The ages are five short names and stay in their row. */
-.part .picks:not([data-ratings]) {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-/* A game's clip, drawn in its own shape and whole, as tall as fits and no taller than 60% of the window: the upright one
-   upright (9 by 16), the wide one wide (16 by 9), never cropped to a box that is neither. The width does the sizing, so the
-   shape holds whatever the window. */
-.part video.clip {
-  height: auto;
-  max-height: none;
-  margin-inline: auto;
-  object-fit: contain;
-}
-
-.part video.clip[data-shape="upright"] {
-  width: min(100%, calc(min(32rem, 60dvh) * 9 / 16));
-  aspect-ratio: 9 / 16;
-}
-
-.part video.clip[data-shape="wide"] {
-  width: min(100%, calc(60dvh * 16 / 9));
-  aspect-ratio: 16 / 9;
-}
-
-/* Reasons and the line of one's own are for a part that is ticked. Hidden by the page's own rule, so the page is right
-   before script wakes and with none. */
-.part:not(:has(input[name="wrong"]:checked)) > [data-reasons] {
-  display: none;
-}
-
-.part [data-reasons],
-.part [data-marks] {
-  display: grid;
-  gap: 0.75rem;
-}
-
-/* The marks of an 18+ game, with their question, are asked only once 18+ is chosen. */
-.asks:not(:has(input[name="ageRating"][value="age_18"]:checked)) [data-marks] {
-  display: none;
-}
-
-/* One blue button with two wordings: Accept while nothing is ticked, Send back as soon as something is. The server
-   decides by what was ticked, never by these words. */
-.decide > [data-send-back] {
-  display: none;
-}
-
-.asks:has(input[name="wrong"]:checked) .decide > [data-accept] {
-  display: none;
-}
-
-/* A game that cannot be accepted (its newest files were refused) offers only Send back, ticked or not. */
-.decide[data-sends-only] > [data-accept] {
-  display: none;
-}
-
-.decide[data-sends-only] > [data-send-back] {
-  display: inline;
-}
-
-.asks:has(input[name="wrong"]:checked) .decide > [data-send-back] {
-  display: inline;
-}
-
-/* The line above the name: "Waiting 3 hours" is never cut, and an email that does not fit moves down whole instead of breaking
-   at a hyphen, where it looked like two things. */
-.nobreak {
-  white-space: nowrap;
-}
-
-.email {
-  display: inline-block;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-/* The line of facts about a game ("Game · maker@example.com · Waiting 3 hours") is a note's size, so a whole email fits a
-   phone's line. Each dot is written with the words after it, so a line never starts with a dot or ends with one. */
-.facts {
-  font: var(--text-small);
-}
-
-/* On a computer the bar and the page start at one left edge: the bar is as wide as the page and centred with it. This is
-   staff's both pages (the list and the check page), so the wordmark does not jump between them more than the pages differ. */
-@media (min-width: 1200px) and (orientation: landscape) {
-  .screen[data-staff] .topbar {
-    width: min(100% - 2.5rem, var(--column));
-    margin-inline: auto;
-    padding-inline: 0;
-  }
-
-  /* The check is asked in the maker's own layout, whose column is as wide as a question's. */
-  .screen[data-staff]:has(.asks) .topbar {
-    width: min(100% - 5rem, 1200px);
-  }
-}
-
-/* The game's frame is the first question of a check: as wide as the question, a step clear of the words above it, and a step
-   above "Full size", so the button is not read as the frame's caption. A phone held sideways is short, so its frame takes
-   most of the window and is still big enough to play. */
-.asks .frame {
-  margin-top: 1.5rem;
-  border-radius: var(--radius-card);
-}
-
-.asks .frame + .quiet {
-  margin-top: 1.5rem;
-}
-
-/* A window that is wide and tall enough for the check to hold its bar and the game together: the game is as tall as what is left
-   under the heading and above the bar, so staff can play it on first view with no scroll. A heading is the one place the
-   work screens spend less than a statement does, so it does not push the game down. */
-@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
-  .screen[data-staff] .asks h1 {
-    font: var(--text-section);
-  }
-
-  .asks .frame {
-    height: clamp(16rem, calc(100dvh - 26rem), 70dvh);
-  }
-}
-
-/* A short window (a phone held sideways): on the first screen the bar is part of the page, at its foot, and not pinned over the
-   window. A pinned bar is a quarter of a window this short and covers the game, which is what staff are there to play. The
-   decision's bar stays pinned, where nothing is being played. */
-@media (max-height: 449px) {
-  .asks .frame {
-    height: 80dvh;
-    scroll-margin-top: 0.5rem;
-  }
-
-  .screen .asks[data-alone]:has(section[data-step="check"]:not([hidden])) .acts {
-    position: static;
-    margin-top: 2rem;
-    padding: 0;
-    background: none;
-  }
-}
-
-/* A question with no card of the game beside it (staff's check) has its column to itself. */
-.asks[data-alone] {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-/* A question that is a step of a page is hidden whole when it is not the one on screen: a part's own grid would show it
-   otherwise, as an author's display beats the browser's rule for the hidden attribute. */
-.asks section[hidden] {
-  display: none;
-}
-
-/* The check's one instruction is read at body size, in chalk, and not as a note under the name. */
-.asks .instruction {
-  color: var(--chalk);
-  font: var(--text-body);
-}
-
-/* A part's title is on felt here, not on a sheet of paper, so it is chalk and not the sheet's grey ink. */
-.asks .part h2 {
-  color: var(--chalk);
-}
-
-/* A screen of the check holds lines, a frame and parts, told apart by space as a part's are. */
-.asks section[data-step] > * + * {
-  margin-top: 1rem;
-}
-
-.asks section[data-step] > .part + .part,
-.asks section[data-step] > .note + .part {
-  margin-top: 2.5rem;
-}
-
-/* The check's list is long, so where the buttons sit under the answer they stay at the foot of the window: the blue button is in
-   view whatever part staff are looking at. (A phone's are already a bar across the bottom.) */
-@media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
-  .asks[data-alone] .acts {
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
-    margin-top: 2rem;
-    padding-block: 0.75rem;
-    background: var(--felt-deep);
   }
 }
 

@@ -192,24 +192,6 @@ describe("commitOf", () => {
     });
   });
 
-  // Anything else would be copied from, and only refused at the very end by the database's own check.
-  it.each(["main", "", "<html>Bad gateway</html>", SHA.toUpperCase(), `${SHA}0`, SHA.slice(1)])(
-    "refuses an answer that is not a commit id, and says which path gave it (%j)",
-    async (answer) => {
-      const { github } = gitHubWith([...tokenAnswers(), new Response(answer)]);
-      const failure = await github.commitOf("acme/game", null).catch((error: unknown) => error);
-      expect(failure).toBeInstanceOf(Error);
-      expect(failure).not.toBeInstanceOf(GameError);
-      expect((failure as Error).message).toContain("/repos/acme/game/commits/HEAD");
-      expect((failure as Error).message).toContain("not a commit id");
-    },
-  );
-
-  it("takes a commit id with a line break after it, as GitHub sends it", async () => {
-    const { github } = gitHubWith([...tokenAnswers(), new Response(`${SHA}\n`)]);
-    expect(await github.commitOf("acme/game", null)).toBe(SHA);
-  });
-
   it("names the status and the path when GitHub fails in a way nobody expected, and not the token", async () => {
     const { github } = gitHubWith([...tokenAnswers(), new Response("who are you", { status: 401 })]);
     const failure = await github.commitOf("acme/game", null).catch((error: unknown) => error);

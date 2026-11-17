@@ -298,19 +298,8 @@ describe("screens wear the look and nothing of their own", () => {
     "apart",
     "clip",
     "frame",
-    // The play screen (Ruken's first version's): the window is the game, with the edge tab, the Ruken menu, the exit
-    // question and the cover over it.
-    "stage",
-    "tab",
-    "chevron",
-    "drawer",
-    "exit",
-    "cover",
-    "meter",
     "file",
     "game",
-    // A game's page: its one button, pinned to the window's bottom on a phone.
-    "pin",
     "games",
     // The maker's screens (spec 4): the felt is the window, and paper is what a person touches.
     "screen",
@@ -351,14 +340,6 @@ describe("screens wear the look and nothing of their own", () => {
     "drift",
     "asks",
     "preview",
-    // Staff's check of a game: a part to tick, and a button whose words follow the ticks.
-    "part",
-    "decide",
-    // The same page's line above the name (pieces that are never cut, in a note's size) and its one instruction.
-    "nobreak",
-    "email",
-    "facts",
-    "instruction",
   ];
   const ROUTES = "src/routes";
 
@@ -423,33 +404,8 @@ describe("a game's clips and its frame", () => {
     expect(frame).toMatch(/background:\s*var\(--felt-deep\)/);
   });
 
-  it("stage fills the window with the darkest felt, with no gutter, and the frame fills the stage", () => {
-    const stage = ruleOf("stage");
-    expect(stage).toMatch(/width:\s*100%/);
-    expect(stage).toMatch(/height:\s*100dvh/);
-    expect(stage).toMatch(/margin:\s*0/);
-    expect(stage).toMatch(/background:\s*var\(--felt-deep\)/);
-    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
-    const inStage = /\.stage \.frame\s*\{([^}]*)\}/.exec(withoutComments)?.[1] ?? "";
-    expect(inStage).toMatch(/height:\s*100%/);
-  });
-
-  it("tab is a 48 by 56 felt-deep tab on the window's edge, white R, 12px corners facing the game, faded at rest", () => {
-    const tab = ruleOf("tab");
-    expect(tab).toMatch(/position:\s*fixed/);
-    expect(tab).toMatch(/right:\s*0/);
-    expect(tab).toMatch(/width:\s*48px/);
-    expect(tab).toMatch(/height:\s*56px/);
-    expect(tab).toMatch(/background:\s*var\(--felt-deep\)/);
-    expect(tab).toMatch(/color:\s*var\(--chalk\)/);
-    expect(tab).toMatch(/border-radius:\s*var\(--radius-button\) 0 0 var\(--radius-button\)/);
-    expect(tab).toMatch(/touch-action:\s*none/);
-    expect(css).toMatch(/\.tab\[data-resting\]\s*\{\s*opacity:\s*0\.4;/);
-    expect(contrast(token("--chalk"), token("--felt-deep"))).toBeGreaterThanOrEqual(4.5);
-  });
-
   it("uses only the look's tokens: no colour is written into either rule", () => {
-    for (const name of ["clip", "frame", "stage", "tab", "cover", "meter"])
+    for (const name of ["clip", "frame"])
       expect(ruleOf(name), name).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(|hsl\(/i);
     // An empty rule would pass that check, so each must exist.
     expect(ruleOf("clip")).not.toBe("");
@@ -490,12 +446,6 @@ describe("the maker's screens", () => {
     "drift",
     "asks",
     "preview",
-    "part",
-    "decide",
-    "nobreak",
-    "email",
-    "facts",
-    "instruction",
   ];
 
   it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {
@@ -520,49 +470,5 @@ describe("the maker's screens", () => {
     // The text from the start of each reduced-motion block on, which holds the rule that stops a screen.
     const reduced = withoutComments.split("@media (prefers-reduced-motion: reduce)").slice(1).join("");
     expect(reduced).toMatch(/\.screen[^{]*\{[^}]*animation:\s*none/);
-  });
-});
-
-// Staff's check of a game (Task 30): a part is a row in a sheet with a tick, and the one blue button says Accept or Send
-// back by what is ticked, with no script, so the page is right before script wakes and without it.
-describe("staff's check of a game", () => {
-  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
-  const ruleBodies = (name: string): string[] =>
-    [...withoutComments.matchAll(new RegExp(`[^{}]*\\.${name}(?![\\w-])[^{}]*\\{([^}]*)\\}`, "g"))].map(
-      (match) => match[1] ?? "",
-    );
-
-  it("has a rule for part and for decide", () => {
-    expect(ruleBodies("part").length).toBeGreaterThan(0);
-    expect(ruleBodies("decide").length).toBeGreaterThan(0);
-  });
-
-  it("shows the wording that follows the ticks, by :has() and not by script", () => {
-    const selectors = [...withoutComments.matchAll(/([^{}]*\.decide[^{}]*)\{/g)].map(
-      (match) => match[1] ?? "",
-    );
-    expect(selectors.some((selector) => selector.includes(":has("))).toBe(true);
-    expect(selectors.some((selector) => selector.includes('input[name="wrong"]:checked'))).toBe(true);
-  });
-
-  it("hides a part's reasons until it is ticked, by :has() and not by script", () => {
-    expect(withoutComments).toMatch(/\.part:not\(:has\(input\[name="wrong"\]:checked\)\)/);
-  });
-
-  // A game whose files are being fixed cannot be accepted: its button says Send back whether or not anything is ticked.
-  it("shows only Send back on a button that can only send back", () => {
-    expect(withoutComments).toMatch(
-      /\.decide\[data-sends-only\]\s*>\s*\[data-accept\]\s*\{\s*display:\s*none/,
-    );
-    expect(withoutComments).toMatch(
-      /\.decide\[data-sends-only\]\s*>\s*\[data-send-back\]\s*\{\s*display:\s*inline/,
-    );
-  });
-
-  // The way back at the foot of the sheet is only for where the left half is not kept in view.
-  it("hides the way back at the foot of the sheet where the left half stays in view", () => {
-    expect(withoutComments).toMatch(
-      /@media \(orientation: landscape\) and \(min-width: 700px\) and \(min-height: 600px\)\s*\{\s*\.halves a\.foot\[data-end\]\s*\{\s*display:\s*none/,
-    );
   });
 });

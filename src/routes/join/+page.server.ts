@@ -7,7 +7,6 @@ import {
   PREMIUM_PRICES_CENTS,
   type PremiumPlan,
 } from "../../features/membership/membership.ts";
-import { backFromPaywall } from "../../features/play/play.ts";
 import { safeNextPath } from "../../lib/safe-next.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -27,11 +26,8 @@ function planOf(value: unknown): PremiumPlan {
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   const caller = locals.caller;
-  const next = safeNextPath(url.searchParams.get("next"));
   return {
-    next,
-    // "Not now" goes back to the game's page when the card was opened from its Play, and home from anywhere else.
-    back: backFromPaywall(next),
+    next: safeNextPath(url.searchParams.get("next")),
     plan: planOf(url.searchParams.get("plan")),
     // The prices are the rules' (plans.ts), written out in words here, never typed on the page.
     prices: { monthly: dollars(PREMIUM_PRICES_CENTS.monthly), annual: dollars(PREMIUM_PRICES_CENTS.annual) },

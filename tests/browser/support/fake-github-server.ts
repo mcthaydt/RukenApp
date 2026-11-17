@@ -1,7 +1,5 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
 import { tarGz } from "../../support/tar.ts";
 
 // A stand-in GitHub for the journeys. It runs in Node on the runner, beside `wrangler dev`, and answers the calls the
@@ -9,9 +7,9 @@ import { tarGz } from "../../support/tar.ts";
 // game with no network and no GitHub account. It exists only under tests/: the real site refuses a GitHub address
 // that is not on this machine.
 //
-// It holds one installation of the app (number 1, on the account `ruken-test`) that can read four repositories:
-// `tiny-game`, `2048` and `broken-game` (no index.html) are listed for the person who signs in, `not-yours` is not.
-// That is the case an installation really has: the app can read a repository the person cannot open.
+// It holds one installation of the app (number 1, on the account `ruken-test`) that can read three repositories:
+// `tiny-game` and `broken-game` (no index.html) are listed for the person who signs in, `not-yours` is not. That is
+// the case an installation really has: the app can read a repository the person cannot open.
 
 const PORT = 12112;
 const SITE_URL = "http://localhost:4173";
@@ -29,16 +27,6 @@ const INSTALLATION_TOKEN = "ghs_test_installation";
 const FIXTURES = new URL("../../fixtures/tiny-game/", import.meta.url);
 const fixture = (path: string) => ({ path, content: readFileSync(new URL(path, FIXTURES)) });
 
-// 2048 (tests/fixtures/2048/CREDIT.md), a real game for the journeys that play one: every file in its folder, as a
-// maker's repository would hold them.
-const TWENTY_48 = new URL("../../fixtures/2048/", import.meta.url);
-const twenty48Files = readdirSync(TWENTY_48, { recursive: true, withFileTypes: true })
-  .filter((entry) => entry.isFile())
-  .map((entry) => {
-    const full = join(entry.parentPath, entry.name);
-    return { path: relative(fileURLToPath(TWENTY_48), full), content: readFileSync(full) };
-  });
-
 interface Repository {
   fullName: string;
   /** Listed for the person who signs in. */
@@ -55,15 +43,6 @@ const repositories = new Map<string, Repository>([
       listed: true,
       files: [fixture("index.html"), fixture("main.js"), fixture("img/dot.png")],
       commit: "1".repeat(40),
-    },
-  ],
-  [
-    `${ACCOUNT}/2048`,
-    {
-      fullName: `${ACCOUNT}/2048`,
-      listed: true,
-      files: twenty48Files,
-      commit: "4".repeat(40),
     },
   ],
   [

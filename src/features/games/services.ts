@@ -110,7 +110,6 @@ const currentFiles: FileStore = {
   put: (key, bytes) => fileStore().put(key, bytes),
   delete: (key) => fileStore().delete(key),
   deleteAll: (prefix) => fileStore().deleteAll(prefix),
-  hasAny: (prefix) => fileStore().hasAny(prefix),
 };
 
 let shared: GamesServices | undefined;

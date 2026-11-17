@@ -32,8 +32,6 @@ const NO_BRANCH = "We couldn't find that branch on GitHub.";
 const NO_GAME = "We can't find that game on GitHub any more. Choose it on GitHub again.";
 const EMPTY_REPOSITORY = "Your game on GitHub is empty. Upload your game's files, then try again.";
 const GITHUB_BUSY = "GitHub isn't answering right now. Try again in a minute.";
-/** What GitHub calls a commit: 40 lower-case hex characters, as the database's own check on a pull's commit holds. */
-const COMMIT_ID = /^[0-9a-f]{40}$/;
 const NOT_A_KEY = "GITHUB_APP_PRIVATE_KEY is not a private key in PEM form.";
 
 // ---- The private key -------------------------------------------------------------------------------------------
@@ -256,11 +254,7 @@ export function createGitHub(options: GitHubOptions): GitHub {
       if (response.status === 403 || response.status === 429 || response.status >= 500)
         throw new GameError("NOT_READY", GITHUB_BUSY);
       if (!response.ok) throw failure("GET", path, response);
-      // Checked here, before anything is read from it: the database refuses anything else only when the pull's row is
-      // written, after every file was copied.
-      const commitSha = (await response.text()).trim();
-      if (!COMMIT_ID.test(commitSha)) throw new Error(`GitHub's answer to GET ${path} was not a commit id`);
-      return commitSha;
+      return (await response.text()).trim();
     },
 
     async tarball(repo, commitSha) {

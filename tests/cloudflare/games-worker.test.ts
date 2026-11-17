@@ -68,11 +68,6 @@ describe("the gate's worker.ts", () => {
     expect(imports.sort()).toEqual(["../../src/features/play/gate.ts", "../../src/lib/files/r2-store.ts"]);
   });
 
-  // Until the Owner sets the secret the Worker has none, and the gate answers a line of ours instead of an error page.
-  it("reads PLAY_PASS_SECRET as a setting that may be missing", () => {
-    expect(read("cloudflare/games/worker.ts")).toMatch(/PLAY_PASS_SECRET\?:\s*string/);
-  });
-
   // On the one free address the game is in the path; the setting says which host that is.
   it("reads PATH_HOST and hands it to the gate as pathHost", () => {
     const source = read("cloudflare/games/worker.ts");

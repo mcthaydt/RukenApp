@@ -152,11 +152,3 @@ test("Continue to payment is Blue with white words, and nothing on the card is r
   await expect(pay).toHaveCSS("color", rgb(token("--chalk")));
   await showTheOwner(page, testInfo, "the paywall card, signed in");
 });
-
-test("Not now goes back to the game's page when the card was opened from its Play", async ({ page }) => {
-  await page.goto("/join?next=%2Fg%2Ftiny-game%2Fplay");
-  await expect(page.getByRole("link", { name: "Not now" })).toHaveAttribute("href", "/g/tiny-game");
-  // Any other way here still goes back to the front page.
-  await page.goto("/join?next=%2Fme");
-  await expect(page.getByRole("link", { name: "Not now" })).toHaveAttribute("href", "/");
-});

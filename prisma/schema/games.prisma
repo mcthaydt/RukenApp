@@ -111,9 +111,6 @@ model Game {
   clips       GameClip[]
   reviews     GameReview[]
 
-  // What its maker did to it (taken off, put back); declared in make.prisma.
-  makerActions MakerAction[]
-
   // The play feature's tables point at a game; they are declared in play.prisma.
   playPasses   PlayPass[]
   playSessions PlaySession[]

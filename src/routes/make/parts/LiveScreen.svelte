@@ -148,7 +148,7 @@
     {/if}
     <a class="foot" href="/make">Back to your games</a>
     <!-- Last, smaller and dimmer than Back, and clear of the blue button's note above, so it is never read as part of it. -->
-    <a class="foot" href={takeOffAddress} data-off>Take {game.name} off Ruken</a>
+    <a class="foot" href={takeOffAddress} data-off>Take it off Ruken</a>
   </div>
   <div class="after">
     {#each fixes as fix (fix.part)}

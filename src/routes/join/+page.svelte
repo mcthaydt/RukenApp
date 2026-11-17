@@ -33,7 +33,7 @@
     <form method="POST" action="/me?/portal">
       <button>Update card</button>
     </form>
-    <p><a href={data.back}>Not now</a></p>
+    <p><a href="/">Not now</a></p>
   {:else}
     <h1>Join Ruken to play</h1>
     <p>Tax is added where it applies.</p>
@@ -66,6 +66,6 @@
         <button>Continue</button>
       {/if}
     </form>
-    <p><a href={data.back}>Not now</a></p>
+    <p><a href="/">Not now</a></p>
   {/if}
 </main>

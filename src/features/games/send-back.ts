@@ -1,29 +1,18 @@
 import type { GamePart } from "../../lib/server/db.ts";
-import { MAX_GAME_BYTES, megabytes } from "./files-check.ts";
 import reasons from "./library/send-back-reasons.json" with { type: "json" };
 
 // Staff send a game back part by part, each with a reason from a short list (spec 11.2). The words staff choose from and
 // the words the maker reads are written once, in library/send-back-reasons.json, so the two stay a pair.
 
-/**
- * The parts a live game's update may be sent back for: the ones its maker can fix (her name, line and where it plays, by
- * the questions she may still answer) and the files (she mends them on GitHub and sends a new version). Its videos,
- * rating and websites go through staff again only in slice 4, so an update sent back for one would be stuck for good.
- */
-export const LIVE_MAY_BE_SENT_BACK: readonly GamePart[] = ["name", "one_line", "plays_on", "files"];
-
 /** The code of the one reason every part has: staff write their own line, and the maker reads that line. */
-export const SOMETHING_ELSE = "something_else";
+const SOMETHING_ELSE = "something_else";
 
 export interface SendBackReason {
   part: GamePart;
   code: string;
   /** What staff read and choose. */
   staff: string;
-  /**
-   * What the maker reads; {name} stands for the game's name and {limit} for the most a game's files may add up to. For
-   * something_else it is empty: the maker reads staff's line.
-   */
+  /** What the maker reads; {name} stands for the game's name. For something_else it is empty: the maker reads staff's line. */
   maker: string;
 }
 
@@ -40,17 +29,11 @@ export function isReasonFor(part: GamePart, code: string): boolean {
   return reasonsFor(part).some((reason) => reason.code === code);
 }
 
-/**
- * What the maker reads on the card: the reason's own words with {name} and {limit} filled in; for Something else,
- * staff's line. The limit is read from the files check that refuses a game that is too big, so the two never disagree.
- */
+/** What the maker reads on the card: the reason's own words with {name} filled in; for Something else, staff's line. */
 export function makerWords(part: GamePart, code: string, note: string | null, gameName: string): string {
   if (code === SOMETHING_ELSE) return note ?? "";
   const reason = reasonsFor(part).find((one) => one.code === code);
-  // The limit goes first, so a game named "{limit}" is shown as typed.
-  return (reason?.maker ?? "")
-    .replaceAll("{limit}", megabytes(MAX_GAME_BYTES))
-    .replaceAll("{name}", gameName);
+  return (reason?.maker ?? "").replaceAll("{name}", gameName);
 }
 
 /** The heading of a card for a part sent back: "Name: Floor Fifty", "Upright video". */
