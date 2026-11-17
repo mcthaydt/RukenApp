@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": { "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "450000" },
+  "permissions": {
+    "allow": ["Bash(gh api -X PUT repos/mcthaydt/RukenApp/pulls/*/merge *)"]
+  },
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [{ "type": "command", "command": "cat \"$CLAUDE_PROJECT_DIR/.claude/after-compaction.md\"" }]
+      }
+    ]
+  }
+}
