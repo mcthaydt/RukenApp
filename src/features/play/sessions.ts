@@ -3,7 +3,7 @@ import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 import type { RateLimiter, RateLimitRule } from "../../lib/server/rate-limit.ts";
 import type { LiveGame } from "../games/games.ts";
-import { playBasis, type PlayBasis, type PlayViewer } from "./may-play.ts";
+import { playBasis, type PlayViewer } from "./may-play.ts";
 import { checkPass } from "./pass.ts";
 import { passFor } from "./passes.ts";
 import { BEAT_TOO_SOON_MS, countedMs, PLAY_SESSION_LIFE_MS } from "./time.ts";
@@ -36,18 +36,6 @@ function newToken(): string {
   return Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url");
 }
 
-/** Whether a play's game, or for staff the files they check, is still there to be played. */
-function stillOn(session: {
-  basis: PlayBasis;
-  pullId: string;
-  game: { state: string; livePullId: string | null; pendingPullId: string | null };
-}): boolean {
-  const { game } = session;
-  if (session.basis === "staff")
-    return session.pullId === game.pendingPullId || session.pullId === game.livePullId;
-  return game.state === "live";
-}
-
 export function createPlayService(deps: PlayServiceDeps) {
   /**
    * Starts a play: the address of the game's files under a pass made for this person, and a session whose token the
@@ -69,25 +57,12 @@ export function createPlayService(deps: PlayServiceDeps) {
     );
     if (!limit.allowed) return { refused: "busy" };
 
-    return openSession({
+    const pass = await passFor(deps, {
       game,
       pull: { id: game.livePullId, connectHosts: game.connectHosts },
       userId: viewer?.userId ?? null,
-      basis,
     });
-  }
-
-  /**
-   * Makes the pass for one pull of a game, and the session a play of it is counted in. The pass is made by this service,
-   * so it reads back; the session names the row it was made from. The token is shown once and only its hash is kept.
-   */
-  async function openSession(input: {
-    game: { id: string; publicId: string };
-    pull: { id: string; connectHosts: string[] };
-    userId: string | null;
-    basis: PlayBasis;
-  }): Promise<{ frameUrl: string; session: { id: string; token: string } }> {
-    const pass = await passFor(deps, { game: input.game, pull: input.pull, userId: input.userId });
+    // The pass was just made by this service, so it reads back; the session names the row it was made from.
     const claims = checkPass(pass, deps.passSecret, deps.clock.epochMs());
     if (claims === null) throw new Error("a pass that was just made did not read back");
 
@@ -96,40 +71,16 @@ export function createPlayService(deps: PlayServiceDeps) {
     await deps.db.playSession.create({
       data: {
         id,
-        gameId: input.game.id,
-        pullId: input.pull.id,
+        gameId: game.id,
+        pullId: game.livePullId,
         passId: claims.id,
-        userId: input.userId,
-        basis: input.basis,
+        userId: viewer?.userId ?? null,
+        basis,
         tokenHash: sha256Hex(token),
         startedAt: new Date(deps.clock.epochMs()),
       },
     });
-    return { frameUrl: `${deps.address(`g-${input.game.publicId}`)}/${pass}/`, session: { id, token } };
-  }
-
-  /**
-   * Starts a play of files that are not live yet, for staff who check a game before they say yes. It is `startPlay` for a
-   * pull of the game's own that waits: the pass carries that pull's own servers, read from its row, and the session's basis
-   * is `staff`, so it never counts for pay. The caller has already checked that this is staff; a pull that is not this
-   * game's is refused before any pass is made.
-   */
-  async function startReviewPlay(input: {
-    game: { id: string; publicId: string };
-    pullId: string;
-    staffUserId: string;
-  }): Promise<{ frameUrl: string; session: { id: string; token: string } }> {
-    const pull = await deps.db.gamePull.findFirst({
-      where: { id: input.pullId, gameId: input.game.id },
-      select: { id: true, connectHosts: true },
-    });
-    if (pull === null) throw new Error("that pull is not this game's");
-    return openSession({
-      game: input.game,
-      pull,
-      userId: input.staffUserId,
-      basis: "staff",
-    });
+    return { frameUrl: `${deps.address(`g-${game.publicId}`)}/${pass}/`, session: { id, token } };
   }
 
   /**
@@ -137,8 +88,6 @@ export function createPlayService(deps: PlayServiceDeps) {
    * the page). A session takes beats for a day, and a beat that comes too soon after the last is dropped, so a page
    * cannot make time pass faster than the clock. The first beat is never too soon: measured from the start it would
    * refuse a first beat whose page clock runs ahead of the server's, and it adds no time the clock did not see.
-   * A play ends once its game is no longer on Ruken, so a tab left open on a game that was taken off counts nothing.
-   * Staff check files that are not live yet, so theirs ends only once those files are neither waiting nor live.
    */
   async function recordBeat(input: {
     sessionId: string;
@@ -147,13 +96,7 @@ export function createPlayService(deps: PlayServiceDeps) {
   }): Promise<BeatResult> {
     const session = await deps.db.playSession.findUnique({
       where: { id: input.sessionId },
-      select: {
-        tokenHash: true,
-        startedAt: true,
-        basis: true,
-        pullId: true,
-        game: { select: { state: true, livePullId: true, pendingPullId: true } },
-      },
+      select: { tokenHash: true, startedAt: true },
     });
     if (session === null) return "unknown";
     // Compared in constant time, and of equal length (both are 64 hex characters of a SHA-256).
@@ -163,7 +106,6 @@ export function createPlayService(deps: PlayServiceDeps) {
 
     const nowMs = deps.clock.epochMs();
     if (nowMs > session.startedAt.getTime() + PLAY_SESSION_LIFE_MS) return "over";
-    if (!stillOn(session)) return "over";
 
     const last = await deps.db.playBeat.findFirst({
       where: { sessionId: input.sessionId },
@@ -179,18 +121,12 @@ export function createPlayService(deps: PlayServiceDeps) {
     return "recorded";
   }
 
-  /**
-   * What a game's plays add up to: sessions, beats, and the seconds that counted, worked out from the beats. With `only`
-   * it is one person's plays of one copy of the files, which is what staff mean by "you've played it": a check of waiting
-   * files must not count players' time on the files that are live, or another staff member's. Or it is one basis of
-   * play, such as members', which is what an update's page means by players.
-   */
+  /** What a game's plays add up to: sessions, beats, and the seconds that counted, worked out from the beats. */
   async function playSummary(
     gameId: string,
-    only?: { pullId: string; userId: string } | { basis: PlayBasis },
   ): Promise<{ sessions: number; beats: number; countedSeconds: number }> {
     const sessions = await deps.db.playSession.findMany({
-      where: { gameId, ...only },
+      where: { gameId },
       select: { startedAt: true, beats: { select: { receivedAt: true, attentive: true } } },
     });
     let beats = 0;
@@ -205,7 +141,7 @@ export function createPlayService(deps: PlayServiceDeps) {
     return { sessions: sessions.length, beats, countedSeconds: Math.floor(counted / 1000) };
   }
 
-  return { startPlay, startReviewPlay, recordBeat, playSummary };
+  return { startPlay, recordBeat, playSummary };
 }
 
 export type PlayService = ReturnType<typeof createPlayService>;

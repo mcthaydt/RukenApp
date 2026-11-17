@@ -64,7 +64,7 @@ export async function signUp(
 }
 
 /** Where `wrangler dev` serves the site, for a browser context made by hand (such a context has no config of its own). */
-export const SITE_URL = "http://localhost:4173";
+const SITE_URL = "http://localhost:4173";
 
 /**
  * Makes an account in a browser of its own and closes it, for a journey that needs a second person (a maker, standing
@@ -138,15 +138,4 @@ export async function letMembershipRunOut(member: { checkoutSessionId: string })
 export async function releaseLateNews(checkoutSessionId: string): Promise<void> {
   const answer = await fetch(`${STAND_IN_URL}/test/release/${checkoutSessionId}`, { method: "POST" });
   if (!answer.ok) throw new Error(`the stand-in would not release its news: ${String(answer.status)}`);
-}
-
-/** Signs in as someone who already has an account, on the real screen. Every journey's account has JOURNEY_PASSWORD. */
-export async function signInAs(page: Page, email: string): Promise<void> {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  // Waits for the home page to finish loading, not only for its address: WebKit shows "/" while the redirect after
-  // the form is still loading, and a goto made then is cut off by it ("interrupted by another navigation").
-  await page.waitForURL("/", { waitUntil: "load" });
 }

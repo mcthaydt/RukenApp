@@ -17,8 +17,7 @@ import { checkPass } from "./pass.ts";
 
 export interface GateDeps {
   files: FileStore;
-  /** The secret the site signs passes with. A Worker deployed before it is set has none, and answers "not ready". */
-  passSecret: string | undefined;
+  passSecret: string;
   /** Ruken's own address (`https://…`), the only one allowed to put a game in a frame. */
   siteOrigin: string;
   nowMs: number;
@@ -34,7 +33,6 @@ const RUN_OUT = "This game's link has run out. Go back and press Play again.";
 const NOT_FOUND = "Not found.";
 const UNREADABLE = "We could not read that address.";
 const NOT_ALLOWED = "Not allowed.";
-const NOT_READY = "Games aren't ready yet. Try again later.";
 
 /** A game's own name: `g-` and its ten-character public id. */
 const GAME_HOST = /^g-([a-z2-7]{10})$/;
@@ -146,10 +144,6 @@ function serveGameFile(
   // A browser sends this when a page asks to install a service worker. The gate refuses: a service worker could go on
   // serving the game's files from the browser after the pass ran out, and the pass must stay the only way in.
   if (request.headers.get("service-worker") === "script") return plain(403, RUN_OUT, deps);
-
-  // Between deploying the gate and setting its secret the setting is missing, and checking a pass would throw, so a
-  // player would see Cloudflare's own error page. A line of ours says what is going on instead.
-  if (deps.passSecret === undefined || deps.passSecret === "") return plain(503, NOT_READY, deps);
 
   // `/<pass>/<path>`: the pass is the first folder, so every file a game asks for by a relative address carries it.
   const slash = path.indexOf("/");

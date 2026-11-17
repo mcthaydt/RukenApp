@@ -9,8 +9,8 @@ import { r2FileStore } from "../../src/lib/files/r2-store.ts";
 interface Env {
   /** The bucket the site writes games and clips to. The gate only reads it. */
   GAME_FILES: R2Bucket;
-  /** The secret the site signs play passes with, set on this Worker too. Missing until the Owner sets it. */
-  PLAY_PASS_SECRET?: string;
+  /** The secret the site signs play passes with, set on this Worker too. */
+  PLAY_PASS_SECRET: string;
   /** Ruken's own address, the only one allowed to put a game in a frame. */
   SITE_ORIGIN: string;
   /**

@@ -12,10 +12,11 @@ import {
   tooBigVideo,
   TINY_GAME,
 } from "./support/game.ts";
+import { pipRed } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the end-to-end walk of the submission screens found (docs/superpowers/audits/2026-11-15-submission-screens-end-to-end.md),
-// one journey for each thing that was wrong.
+// one journey for each thing that was wrong, and the take-off button the Owner chose for the agreement's first point.
 
 test.beforeEach(forgetRateLimits);
 
@@ -28,7 +29,7 @@ for (const state of ["waiting", "sent_back"] as const) {
   test(`a ${state} game made 18+ is asked what is in it, and nothing breaks`, async ({ page }) => {
     const { slug } = await gameWhere(
       page,
-      state === "waiting" ? { state } : { state, toFix: [{ part: "age_rating", reason: "older" }] },
+      state === "waiting" ? { state } : { state, toFix: [{ part: "age_rating", reason: "wrong_age" }] },
     );
     await page.goto(`/make/${slug}/age`);
     await pageHasSettled(page);
@@ -310,4 +311,42 @@ test("Your account invites a person with no games to add theirs", async ({ page 
   await expect(page.getByRole("link", { name: "Add yours to Ruken." })).toHaveAttribute("href", "/make");
 });
 
-// ---- Taking a live game off Ruken: its journeys are in take-off.test.ts, with putting it back. ---------------------------------
+// ---- Taking a live game off Ruken (the agreement's first point, the Owner's choice) -------------------------------------------
+
+test("a live game can be taken off Ruken, after a question whose safe answer has the focus", async ({
+  page,
+}) => {
+  const { slug } = await gameWhere(page, { state: "live" });
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+  await page.getByRole("link", { name: "Take it off Ruken" }).click();
+
+  await expect(page).toHaveURL(`/make/${slug}/take-off`);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("off Ruken?");
+  // Keep is the green, safe choice and has the focus; the one thing that cannot be undone is the only red.
+  await expect(page.getByRole("link", { name: "Keep it on Ruken" })).toBeFocused();
+  expect(await pipRed(page)).toEqual(["Take it off Ruken"]);
+
+  await page.getByRole("button", { name: "Take it off Ruken" }).click();
+  await expect(page).toHaveURL(`/make/${slug}`);
+  await expect(page.getByRole("button", { name: "Send a new version" })).toHaveCount(0);
+  // It is off: the question is not asked a second time.
+  expect((await page.request.get(`/make/${slug}/take-off`)).status()).toBe(404);
+});
+
+test("Keep it on Ruken changes nothing", async ({ page }) => {
+  const { slug } = await gameWhere(page, { state: "live" });
+  await page.goto(`/make/${slug}/take-off`);
+  await pageHasSettled(page);
+
+  await page.getByRole("link", { name: "Keep it on Ruken" }).click();
+
+  await expect(page).toHaveURL(`/make/${slug}`);
+  await expect(page.getByRole("button", { name: "Send a new version" })).toBeVisible();
+});
+
+test("only a live game can be taken off", async ({ page }) => {
+  const { slug } = await startDraft(page);
+
+  expect((await page.request.get(`/make/${slug}/take-off`)).status()).toBe(404);
+});

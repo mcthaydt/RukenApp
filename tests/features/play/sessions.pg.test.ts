@@ -56,10 +56,7 @@ function newAddress(): string {
   return `203.0.113.${String(made % 250)}-${String(made)}`;
 }
 
-/**
- * A live game: its rows exist and are live (a pass and a session point at them, and a beat reads its state), and its
- * `LiveGame` is what a page would hold.
- */
+/** A live game: its rows exist (a pass and a session point at them) and its `LiveGame` is what a page would hold. */
 async function newGame(options: { freeToPlay?: boolean; connectHosts?: string[] } = {}): Promise<LiveGame> {
   made += 1;
   const makerUserId = await createUser(db());
@@ -73,7 +70,6 @@ async function newGame(options: { freeToPlay?: boolean; connectHosts?: string[] 
       oneLine: "A game about a thing.",
       playsOn: "phone_and_computer",
       repoFullName: "acme/game",
-      ageRating: "age_12",
       freeToPlay: options.freeToPlay ?? false,
     },
   });
@@ -108,7 +104,6 @@ async function withNewPull(game: LiveGame): Promise<LiveGame> {
       pulledAt: new Date(clock.epochMs()),
     },
   });
-  await db().game.update({ where: { id: game.id }, data: { state: "live", livePullId: pull.id } });
   return { ...game, livePullId: pull.id };
 }
 
@@ -364,87 +359,7 @@ describe("recordBeat", () => {
     clock.advance(1);
     expect(await service.recordBeat({ sessionId: play.id, token: play.token, attentive: true })).toBe("over");
   });
-
-  // Audit R-1: a tab left open on a game that left Ruken must not keep counting.
-  it("ends a play once its game is no longer live", async () => {
-    const play = await startedPlay();
-    await db().game.update({
-      where: { id: play.game.id },
-      data: { state: "taken_off", livePullId: null },
-    });
-    clock.advance(15_000);
-
-    expect(await service.recordBeat({ sessionId: play.id, token: play.token, attentive: true })).toBe("over");
-    expect(await db().playBeat.count({ where: { sessionId: play.id } })).toBe(0);
-  });
-
-  it("keeps counting a member's play of a live game whose files were updated meanwhile", async () => {
-    const play = await startedPlay();
-    await withNewPull(play.game);
-    clock.advance(15_000);
-
-    expect(await service.recordBeat({ sessionId: play.id, token: play.token, attentive: true })).toBe(
-      "recorded",
-    );
-  });
-
-  it("keeps counting staff's check of files that wait for a first yes", async () => {
-    const play = await staffCheck();
-
-    expect(await service.recordBeat({ sessionId: play.id, token: play.token, attentive: true })).toBe(
-      "recorded",
-    );
-  });
-
-  it("ends staff's check once its files are neither waiting nor live", async () => {
-    const play = await staffCheck();
-    await db().game.update({
-      where: { id: play.gameId },
-      data: { state: "sent_back", pendingPullId: null, pendingSince: null },
-    });
-    clock.advance(15_000);
-
-    expect(await service.recordBeat({ sessionId: play.id, token: play.token, attentive: true })).toBe("over");
-  });
 });
-
-/** Staff checking a game that waits for its first yes: its files are the game's pending pull, and it is not live. */
-async function staffCheck() {
-  made += 1;
-  const row = await db().game.create({
-    data: {
-      publicId: newPublicId(),
-      slug: `waiting-game-${String(made)}`,
-      makerUserId: await createUser(db()),
-      name: "A game",
-      oneLine: "A game about a thing.",
-      playsOn: "phone_and_computer",
-      repoFullName: "acme/game",
-      ageRating: "age_12",
-    },
-  });
-  const pull = await db().gamePull.create({
-    data: {
-      id: crypto.randomUUID(),
-      gameId: row.id,
-      commitSha: "d".repeat(40),
-      fileCount: 3,
-      totalBytes: 1000n,
-      connectHosts: [],
-      pulledAt: new Date(clock.epochMs()),
-    },
-  });
-  await db().game.update({
-    where: { id: row.id },
-    data: { state: "waiting", pendingPullId: pull.id, pendingSince: new Date(clock.epochMs()) },
-  });
-  const started = await service.startReviewPlay({
-    game: row,
-    pullId: pull.id,
-    staffUserId: await createUser(db()),
-  });
-  return { gameId: row.id, ...started.session };
-}
 
 describe("playSummary", () => {
   it("adds up what counted", async () => {
@@ -471,166 +386,5 @@ describe("playSummary", () => {
     await service.recordBeat({ sessionId: other.id, token: other.token, attentive: true });
 
     expect(await service.playSummary(one.game.id)).toEqual({ sessions: 1, beats: 1, countedSeconds: 15 });
-  });
-});
-
-describe("playSummary, for players only", () => {
-  it("counts members' play of the game, and not staff's or its maker's", async () => {
-    const game = await newGame();
-    const member = startedOf(
-      await service.startPlay({ game, viewer: await newViewer(), clientAddress: newAddress() }),
-    );
-    const staff = startedOf(
-      await service.startPlay({
-        game,
-        viewer: await newViewer({ isStaff: true }),
-        clientAddress: newAddress(),
-      }),
-    );
-    const maker = startedOf(
-      await service.startPlay({
-        game,
-        viewer: { userId: game.makerUserId, isStaff: false, isMember: false },
-        clientAddress: newAddress(),
-      }),
-    );
-    clock.advance(15_000);
-    for (const play of [member, staff, maker]) {
-      await service.recordBeat({ sessionId: play.session.id, token: play.session.token, attentive: true });
-    }
-
-    expect(await service.playSummary(game.id, { basis: "member" })).toEqual({
-      sessions: 1,
-      beats: 1,
-      countedSeconds: 15,
-    });
-  });
-});
-
-describe("playSummary, for one staff member's check of one copy of the files", () => {
-  /** A pull of the game's files that is not live: the files staff are asked to check, waiting for their yes. */
-  async function waitingPull(game: LiveGame): Promise<string> {
-    const pull = await db().gamePull.create({
-      data: {
-        id: crypto.randomUUID(),
-        gameId: game.id,
-        commitSha: "c".repeat(40),
-        fileCount: 3,
-        totalBytes: 1000n,
-        connectHosts: [],
-        pulledAt: new Date(clock.epochMs()),
-      },
-    });
-    await db().game.update({ where: { id: game.id }, data: { pendingPullId: pull.id } });
-    return pull.id;
-  }
-
-  /** One beat, 15 seconds after the last thing that happened, so a session counts 15 seconds. */
-  async function playedFor15Seconds(session: { id: string; token: string }): Promise<void> {
-    clock.advance(15_000);
-    await service.recordBeat({ sessionId: session.id, token: session.token, attentive: true });
-  }
-
-  it("counts only this staff member's play of this pull, not members' play of the live files or other staff's", async () => {
-    const game = await newGame();
-    const pullId = await waitingPull(game);
-    const me = await createUser(db());
-    const colleague = await createUser(db());
-
-    const mine = await service.startReviewPlay({ game, pullId, staffUserId: me });
-    const theirs = await service.startReviewPlay({ game, pullId, staffUserId: colleague });
-    const liveFiles = startedOf(
-      await service.startPlay({ game, viewer: await newViewer(), clientAddress: newAddress() }),
-    );
-    await playedFor15Seconds(mine.session);
-    await playedFor15Seconds(theirs.session);
-    await playedFor15Seconds(liveFiles.session);
-
-    expect(await service.playSummary(game.id, { pullId, userId: me })).toEqual({
-      sessions: 1,
-      beats: 1,
-      countedSeconds: 15,
-    });
-    // Without a check to look at, it is still every play of the game.
-    expect((await service.playSummary(game.id)).sessions).toBe(3);
-  });
-
-  it("counts another copy of the files as nothing", async () => {
-    const game = await newGame();
-    const earlier = await waitingPull(game);
-    const later = await waitingPull(game);
-    const me = await createUser(db());
-    const earlierPlay = await service.startReviewPlay({ game, pullId: earlier, staffUserId: me });
-    await playedFor15Seconds(earlierPlay.session);
-
-    expect(await service.playSummary(game.id, { pullId: later, userId: me })).toEqual({
-      sessions: 0,
-      beats: 0,
-      countedSeconds: 0,
-    });
-  });
-});
-
-describe("startReviewPlay", () => {
-  /** A game with a pull that is not live yet, as staff meet it: waiting for a first yes. */
-  async function waitingGame(connectHosts: string[]) {
-    const game = await newGame();
-    const pull = await db().gamePull.create({
-      data: {
-        id: crypto.randomUUID(),
-        gameId: game.id,
-        commitSha: "b".repeat(40),
-        fileCount: 3,
-        totalBytes: 1000n,
-        connectHosts,
-        pulledAt: new Date(clock.epochMs()),
-      },
-    });
-    await db().game.update({ where: { id: game.id }, data: { pendingPullId: pull.id } });
-    return { game, pullId: pull.id };
-  }
-
-  it("gives staff the waiting files under a pass for that pull, with that pull's own servers", async () => {
-    const { game, pullId } = await waitingGame(["api.example.com"]);
-    const staffUserId = await createUser(db());
-
-    const started = await service.startReviewPlay({ game, pullId, staffUserId });
-
-    const url = new URL(started.frameUrl);
-    expect(url.origin).toBe(`https://g-${game.publicId}.games.test`);
-    expect(checkPass(url.pathname.split("/")[1] ?? "", SECRET, clock.epochMs())).toMatchObject({
-      game: game.publicId,
-      pull: pullId,
-      connect: ["api.example.com"],
-    });
-  });
-
-  it("records a staff play, which never counts for pay, and a token to match", async () => {
-    const { game, pullId } = await waitingGame([]);
-    const staffUserId = await createUser(db());
-
-    const started = await service.startReviewPlay({ game, pullId, staffUserId });
-
-    expect(await db().playSession.findMany({ where: { gameId: game.id } })).toMatchObject([
-      { id: started.session.id, userId: staffUserId, pullId, basis: "staff" },
-    ]);
-    expect(
-      await service.recordBeat({
-        sessionId: started.session.id,
-        token: started.session.token,
-        attentive: true,
-      }),
-    ).toBe("recorded");
-  });
-
-  it("will not hand out a pass for a pull that belongs to another game", async () => {
-    const { game } = await waitingGame([]);
-    const other = await waitingGame([]);
-
-    await expect(
-      service.startReviewPlay({ game, pullId: other.pullId, staffUserId: await createUser(db()) }),
-    ).rejects.toThrow();
-    expect(await db().playSession.count({ where: { gameId: game.id } })).toBe(0);
-    expect(await db().playPass.count({ where: { gameId: game.id } })).toBe(0);
   });
 });

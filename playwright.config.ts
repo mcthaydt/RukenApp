@@ -47,19 +47,6 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      // A stand-in for Twilio (tests/browser/support/fake-twilio-server.ts): it keeps every text the site sends and posts
-      // signed texts in to the site's webhook. It is ready when it answers /ready.
-      command: "node tests/browser/support/fake-twilio-server.ts",
-      url: "http://127.0.0.1:12114/ready",
-      reuseExistingServer: false,
-      timeout: 30_000,
-      env: {
-        // Plainly fake: the token the stand-in signs with, and the site address it posts to.
-        TWILIO_AUTH_TOKEN: "test-only-twilio-auth-token",
-        TWILIO_WEBHOOK_URL: "http://localhost:4173/webhooks/twilio",
-      },
-    },
-    {
       // A stand-in for Stripe's API and its hosted pages (tests/browser/support/fake-stripe-server.ts), so the
       // journeys can pay and cancel with no network. It is ready when it answers /ready.
       command: "node tests/browser/support/fake-stripe-server.ts",

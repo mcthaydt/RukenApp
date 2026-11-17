@@ -42,7 +42,7 @@ test("sent back for one thing: the screen leads with it, the blue button names i
   await expect(card).toHaveAttribute("href", `/make/${slug}/upright?again=1`);
   await expect(card).toContainText("Needs fixing");
   await expect(card).toContainText("Upright video");
-  await expect(card).toContainText("It's on its side. Record it with your phone upright.");
+  await expect(card).toContainText("It's sideways. Turn it the right way up.");
   await expect(card.locator("video")).toHaveCount(1);
   const fix = page.getByRole("link", { name: "Fix the upright video" });
   await expect(fix).toHaveCSS("background-color", rgb(token("--pay")));

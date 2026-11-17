@@ -13,34 +13,11 @@
 # - A pull request that is ready for review, and every push to main, gets the full run under the required names
 #   `verify`, `postgres` and `browser`. Marking a draft ready starts it. Nothing merges without it.
 #
-# Faster again (Owner, 2026-11-16: "All three" on "Make CI faster by changing the CI files?", then "Do 18", then
-# "Use 12" on the card "Use 12 test pieces instead of 18?", because eighteen pieces plus verify and postgres
-# reach GitHub's free cap of 20 jobs at once):
-# - The browser journeys run in twelve pieces, not six, so each piece has fewer journeys to wait through.
-# - A draft runs the journeys in Chromium only (the phone, tablet and computer windows). Safari's engine (the
-#   "-webkit" projects) runs only in the full run, which is the one that gates a merge.
-#
-# Balanced pieces, a lighter draft, no installs (Owner, 2026-11-16: "Do 1, 2 and 3" on "Which CI speedups should I
-# make?", after measuring 30 runs: a full run took 11.9 minutes, 3.4 of them waiting for GitHub's 20-job cap):
-# 1. The full run's twelve pieces are split by engine: Safari's engine gets seven, Chromium five, because WebKit's
-#    journeys take about three fifths of the time and dealing tests out by count left one piece at 978 seconds of
-#    journeys and another at 364.
-# 2. A draft runs four browser pieces, not twelve, so a draft and a full run fit under the 20-job cap together.
-# 3. The pieces run in Playwright's own image, so none installs browsers or system libraries (27 to 104 seconds each).
-#
 # A pull request that changes only .md files has nothing to test (Owner, 2026-11-15: "when a PR only touches .md
 # files, skip the tests and allow the merge, in all repos."). The `changes` job spots it, and the required checks
 # `verify`, `postgres` and `browser` still run and still report success, but do no work. They are not left out of
 # the workflow with `paths-ignore`, because a required check that never starts stays pending and nothing merges.
 # One file that is not .md, or any doubt about what changed, runs everything as before. A push to main always does.
-#
-# One gate, main tested after each merge, no empty pass (Owner, 2026-11-16: "yes to 1–3, keep 12", to: 1. add a final
-# `gate` job and require it; 2. let main run CI after a merge; 3. remove `--passWithNoTests` from the draft run):
-# - `gate` passes only when `verify`, `postgres` and `browser` all passed (each still marks a docs-only change as
-#   nothing to do). The owner then makes branch protection require it beside the three.
-# - A merge made by auto-merge starts no run on main, so auto-merge.yml starts this workflow on main by hand
-#   (`workflow_dispatch`) when main's newest commit has no run yet.
-# - A draft whose change reaches no tests runs the whole suite instead of passing an empty one.
 name: CI
 
 on:
@@ -49,16 +26,11 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
-  # auto-merge.yml uses this to test main after a merge; GitHub lets the workflow's own token start this event.
-  workflow_dispatch:
 
-# On a pull request, a newer push makes the older run pointless, so it is cancelled and nobody waits on it.
-# On main a running run is never cancelled: merges land close together, and cancelling left main with no finished
-# run (Owner, 2026-11-16: "Yes let main runs really finish"). A newer main run waits for it, and only the newest
-# waiting run is kept.
+# A newer push to the same branch makes the older run pointless, so it is cancelled and nobody waits on it.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 # Read-only, and no secrets are used, so a forked pull request gets nothing it should not have.
 permissions:
@@ -140,12 +112,7 @@ jobs:
           if [ "$CHANGED_ONLY" = "true" ] && ! git diff --name-only origin/main | grep -Eq "$RUN_EVERYTHING_WHEN"; then
             # The tests the change reaches, stopping at the first failure. The two below read files as text, so
             # the import graph cannot tell when they are affected: they always run.
-            # A change that reaches no test runs them all: an empty run would pass without checking anything.
-            if [ -n "$(pnpm exec vitest list --project unit --changed=origin/main --filesOnly)" ]; then
-              pnpm test --changed=origin/main --bail=1
-            else
-              pnpm test --bail=1
-            fi
+            pnpm test --changed=origin/main --passWithNoTests --bail=1
             pnpm test --bail=1 tests/architecture.test.ts tests/wrangler.test.ts
           else
             pnpm test
@@ -196,43 +163,28 @@ jobs:
         if: needs.changes.outputs.docs_only != 'true'
         run: |
           if [ "$CHANGED_ONLY" = "true" ] && ! git diff --name-only origin/main | grep -Eq "$RUN_EVERYTHING_WHEN"; then
-            # As in verify: a change that reaches no database test runs them all, never an empty run.
-            pnpm generate
-            if [ -n "$(pnpm exec vitest list --project postgres --changed=origin/main --filesOnly)" ]; then
-              pnpm exec vitest run --project postgres --changed=origin/main --bail=1
-            else
-              pnpm exec vitest run --project postgres --bail=1
-            fi
+            pnpm test:pg --changed=origin/main --passWithNoTests --bail=1
           else
             pnpm test:pg
           fi
 
-  # The journeys are split across runners, side by side, each with its own database and its own site, so a run stays
-  # short as the journeys grow. Each piece runs one engine's windows, and Playwright deals that engine's test files out
-  # among its pieces. Safari's engine (the "-webkit" projects) takes about three fifths of the time, so the full run
-  # gives it seven of the twelve pieces and Chromium five. A draft runs Chromium only, in four pieces, and only the
-  # journeys the change reaches; the first failure stops every piece.
+  # The journeys are split across six runners, side by side, each with its own database and its own site, so a run
+  # stays short as the journeys grow. Playwright deals the test files out among the pieces. On a draft only the
+  # journeys the change reaches run, and the first failure stops every piece.
   browser-shard:
-    name: browser ${{ matrix.engine }} ${{ matrix.shard }} of ${{ matrix.of }}${{ github.event.pull_request.draft && ' (quick, draft)' || '' }}
+    name: browser shard ${{ matrix.shard }} of 6${{ github.event.pull_request.draft && ' (quick, draft)' || '' }}
     needs: changes
     # The pieces are not required checks, so a docs-only pull request skips them whole. The `browser` check below
     # accepts that. As with `verify`, a failed `changes` job still runs them.
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # Playwright's own image already holds the browsers and the system libraries they need, so no piece installs
-    # them. Its version must match @playwright/test in package.json exactly: change both together. A mismatch fails
-    # loudly, as Playwright then cannot find its browser.
-    container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble
-      # The runner's own user (Playwright's advice for GitHub Actions), and the shared memory Chromium wants.
-      options: --user 1001 --ipc=host
     strategy:
       # The full run wants every piece's result, so a failing piece must not hide the others. A draft wants to hear
       # of the first failure at once.
       fail-fast: ${{ github.event.pull_request.draft == true }}
       matrix:
-        include: ${{ fromJSON(github.event.pull_request.draft == true && '[{"engine":"chromium","shard":1,"of":4},{"engine":"chromium","shard":2,"of":4},{"engine":"chromium","shard":3,"of":4},{"engine":"chromium","shard":4,"of":4}]' || '[{"engine":"chromium","shard":1,"of":5},{"engine":"chromium","shard":2,"of":5},{"engine":"chromium","shard":3,"of":5},{"engine":"chromium","shard":4,"of":5},{"engine":"chromium","shard":5,"of":5},{"engine":"webkit","shard":1,"of":7},{"engine":"webkit","shard":2,"of":7},{"engine":"webkit","shard":3,"of":7},{"engine":"webkit","shard":4,"of":7},{"engine":"webkit","shard":5,"of":7},{"engine":"webkit","shard":6,"of":7},{"engine":"webkit","shard":7,"of":7}]') }}
+        shard: [1, 2, 3, 4, 5, 6]
     services:
       postgres:
         image: postgres:16
@@ -244,9 +196,10 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+        ports:
+          - 5432:5432
     env:
-      # Inside a container the database is reached by its service name, not localhost.
-      TEST_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -264,12 +217,7 @@ jobs:
       - name: Pick the journeys
         id: pick
         run: |
-          if [ "${{ matrix.engine }}" = "webkit" ]; then
-            projects="--project=phone-webkit --project=phone-landscape-webkit --project=tablet-webkit --project=tablet-landscape-webkit"
-          else
-            projects="--project=phone --project=phone-landscape --project=tablet --project=tablet-landscape --project=computer"
-          fi
-          args="$projects --shard=${{ matrix.shard }}/${{ matrix.of }}"
+          args="--shard=${{ matrix.shard }}/6"
           if [ "$CHANGED_ONLY" = "true" ]; then
             args="$args --max-failures=1"
             if ! git diff --name-only origin/main | grep -Eq "$RUN_EVERYTHING_WHEN"; then
@@ -301,6 +249,19 @@ jobs:
             case " $PULL_REQUEST_LABELS " in *" screenshots "*) shots=on ;; esac
           fi
           echo "LOOK_SHOTS=$shots" >> "$GITHUB_ENV"
+      # The browsers are kept between runs, keyed by Playwright's version (pinned exactly in package.json). The
+      # install below still adds the system libraries, and downloads a browser only when the cache has none.
+      - name: Find Playwright's version
+        id: playwright
+        if: steps.pick.outputs.run == 'true'
+        run: echo "version=$(node -p "require('./package.json').devDependencies['@playwright/test']")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.pick.outputs.run == 'true'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - if: steps.pick.outputs.run == 'true'
+        run: pnpm exec playwright install --with-deps chromium webkit
       - if: steps.pick.outputs.run == 'true'
         run: pnpm test:browser ${{ steps.pick.outputs.args }}
       # The report also carries the look's screenshots, which a person looks at (Owner, 2026-11-13: "Screenshots
@@ -309,7 +270,7 @@ jobs:
         if: always() && steps.pick.outputs.run == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report-${{ matrix.engine }}-${{ matrix.shard }}
+          name: playwright-report-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 7
 
@@ -335,22 +296,3 @@ jobs:
             exit 0
           fi
           test "$PIECES_RESULT" = "success"
-
-  # The one check that says the whole run passed. It passes only when verify, postgres and browser each passed; each of
-  # those already reports success on a docs-only change after deciding there was nothing to test. On a draft it is
-  # named differently, so a quick run never stands in for the required one.
-  gate:
-    name: ${{ github.event.pull_request.draft && 'gate (quick, draft)' || 'gate' }}
-    needs: [verify, postgres, browser]
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Every check passed
-        env:
-          VERIFY: ${{ needs.verify.result }}
-          POSTGRES: ${{ needs.postgres.result }}
-          BROWSER: ${{ needs.browser.result }}
-        run: |
-          echo "verify: $VERIFY, postgres: $POSTGRES, browser: $BROWSER"
-          test "$VERIFY" = "success" && test "$POSTGRES" = "success" && test "$BROWSER" = "success"

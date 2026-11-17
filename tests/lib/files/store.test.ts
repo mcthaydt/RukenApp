@@ -95,17 +95,6 @@ describe("the memory file store", () => {
         expect(await make().deleteAll("nothing/")).toBe(0);
       });
 
-      it("says whether any file is under a prefix, and deletes nothing", async () => {
-        const store = make();
-        await store.put("files/a/x", bytesOf(1));
-        await store.put("files/ab/x", bytesOf(2));
-
-        expect(await store.hasAny("files/a/")).toBe(true);
-        expect(await store.hasAny("files/b/")).toBe(false);
-        expect(await store.head("files/a/x")).not.toBeNull();
-        await expect(store.hasAny("files/a")).rejects.toThrow("must end in a slash");
-      });
-
       it("answers the size and the tag from head, without a body", async () => {
         const store = make();
         await store.put("a", bytesOf(1, 2, 3));
@@ -148,7 +137,6 @@ describe("r2FileStore", () => {
       list: (...args: unknown[]) => {
         calls.push(["list", ...args]);
         const options = args[0] as { prefix: string; cursor?: string };
-        if (!options.prefix.startsWith("files/a/")) return Promise.resolve({ objects: [], truncated: false });
         return Promise.resolve(
           options.cursor === undefined
             ? { objects: [{ key: "files/a/x" }], truncated: true, cursor: "next" }
@@ -204,18 +192,6 @@ describe("r2FileStore", () => {
       ["delete", ["files/a/x"]],
       ["list", { prefix: "files/a/", cursor: "next" }],
       ["delete", ["files/a/y"]],
-    ]);
-  });
-
-  it("asks R2 for one key under a prefix to say whether any is there", async () => {
-    const { store, calls } = standIn();
-
-    expect(await store.hasAny("files/a/")).toBe(true);
-    expect(await store.hasAny("files/none/")).toBe(false);
-
-    expect(calls).toEqual([
-      ["list", { prefix: "files/a/", limit: 1 }],
-      ["list", { prefix: "files/none/", limit: 1 }],
     ]);
   });
 

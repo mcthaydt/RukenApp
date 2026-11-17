@@ -15,24 +15,13 @@ export function focusFirstRefused(): void {
  * down as far as the reason can go and still be above the bar, to bring the heading back.
  */
 export function showTheRefusal(): void {
-  // The first one that is on the page: a page that asks one question at a time keeps the others' lines hidden.
-  const problem = [...document.querySelectorAll<HTMLElement>(".problem")].find(
-    (one) => one.getClientRects().length > 0,
-  );
-  if (problem === undefined) return;
+  const problem = document.querySelector<HTMLElement>(".problem");
+  if (problem === null) return;
   // A line rises 28px into place over 460ms, and a box measured on the way is 28px lower than where it ends up, so the page was
   // scrolled 28px too far and the heading's place was misjudged. Every line is where it ends up at once, and then measured.
   // (The drifting circles go on for ever and are left alone.)
   for (const animation of document.getAnimations()) {
     if (animation.effect?.getComputedTiming().iterations !== Infinity) animation.finish();
-  }
-  // A refusal inside a block that asks to be read from its top (one of staff's parts) brings the whole part to the top of
-  // the window: its title, the refusal under it and, where they fit, the reasons it asks for are in view together, and
-  // not under the bar.
-  const block = problem.closest<HTMLElement>("[data-refusal-from-top]");
-  if (block !== null) {
-    block.scrollIntoView({ block: "start" });
-    return;
   }
   problem.scrollIntoView({ block: "nearest" });
 

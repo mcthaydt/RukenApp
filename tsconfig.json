@@ -35,7 +35,5 @@
     "playwright.config.ts",
     "prisma.config.ts",
     "worker-configuration.d.ts"
-  ],
-  // 2048, a game by someone else kept byte for byte (tests/fixtures/2048/CREDIT.md): plain old JavaScript, not ours to type.
-  "exclude": ["tests/fixtures/2048"]
+  ]
 }

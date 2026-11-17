@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { CLIP_CONTENT_TYPES, clipKeyFor } from "../../../src/features/games/clips.ts";
-import { newPublicId } from "../../../src/features/games/ids.ts";
-import { isPhotoKey, PHOTO_CONTENT_TYPES, photoKeyFor } from "../../../src/features/pages/photo.ts";
+import { isPhotoKey } from "../../../src/features/pages/photo.ts";
 import { handleGameRequest } from "../../../src/features/play/gate.ts";
 import { makePass, type PassClaims } from "../../../src/features/play/pass.ts";
-import type { ClipShape } from "../../../src/lib/server/db.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
 
 const SECRET = "test-play-pass-secret";
@@ -58,8 +55,6 @@ function get(
     method?: string;
     headers?: Record<string, string>;
     pathHost?: string;
-    /** The gate's pass secret; `undefined` is a Worker that was deployed before the secret was set. */
-    passSecret?: string | undefined;
   } = {},
 ): Promise<Response> {
   const request = new Request(`http://${options.host ?? "g-aaaaaaaaaa.games.test"}${path}`, {
@@ -68,7 +63,7 @@ function get(
   });
   return handleGameRequest(request, {
     files,
-    passSecret: "passSecret" in options ? options.passSecret : SECRET,
+    passSecret: SECRET,
     siteOrigin: SITE,
     nowMs: options.nowMs ?? NOW,
     ...(options.pathHost === undefined ? {} : { pathHost: options.pathHost }),
@@ -245,39 +240,6 @@ describe("a game's files", () => {
     expect(response.headers.get("content-length")).toBe(String(MAIN.length));
     expect(await response.text()).toBe("");
     expect(files.reads).toEqual(["files/aaaaaaaaaa/p1/main.js"]);
-  });
-});
-
-describe("a gate whose pass secret is not set yet", () => {
-  // Between deploying the gate and setting its secret the Worker's setting is missing (undefined), not empty. A person
-  // must read a line of ours, never Cloudflare's own error page.
-  const NOT_READY = "Games aren't ready yet. Try again later.";
-
-  it.each([undefined, ""])(
-    "answers a game's request with a line saying so when the secret is %j",
-    async (secret) => {
-      const response = await get(`/${pass}/index.html`, { passSecret: secret });
-      expect(response.status).toBe(503);
-      expect(await response.text()).toBe(NOT_READY);
-      expect(response.headers.get("cache-control")).toBe("no-store");
-      expect(files.reads).toEqual([]);
-    },
-  );
-
-  it.each([undefined, ""])("says the same on the one free address when the secret is %j", async (secret) => {
-    const response = await get(`/g-aaaaaaaaaa/${pass}/index.html`, {
-      host: "play.games.test",
-      pathHost: "play.games.test",
-      passSecret: secret,
-    });
-    expect(response.status).toBe(503);
-    expect(await response.text()).toBe(NOT_READY);
-  });
-
-  // Clips, photos and the health check never needed the secret.
-  it("still sends a clip and answers the health check", async () => {
-    expect((await get(`/${CLIP_KEY}`, { host: "media.games.test", passSecret: undefined })).status).toBe(200);
-    expect((await get("/__ruken/health", { passSecret: undefined })).status).toBe(200);
   });
 });
 
@@ -526,26 +488,5 @@ describe("on the one free address", () => {
     for (const name of ["content-security-policy", "cross-origin-resource-policy", "cache-control"]) {
       expect(shared.headers.get(name)).toBe(own.headers.get(name));
     }
-  });
-});
-
-describe("the keys the site makes", () => {
-  // The gate keeps its own copy of each key's shape (it imports no feature), so a type added on the site's side alone
-  // would be refused here while every test on either side still passed. This is the one place both sides are met.
-  const SHAPES = Object.keys({ upright: true, wide: true } satisfies Record<ClipShape, true>) as ClipShape[];
-
-  it.each(CLIP_CONTENT_TYPES.flatMap((type) => SHAPES.map((shape) => ({ type, shape }))))(
-    "serves the clip key made for a $shape clip of type $type",
-    async ({ type, shape }) => {
-      const key = clipKeyFor(newPublicId(), shape, "0123456789abcdef", type);
-      await files.put(key, new Uint8Array([0, 0, 0, 20, 0x66, 0x74, 0x79, 0x70]));
-      expect((await get(`/${key}`, { host: "media.games.test" })).status).toBe(200);
-    },
-  );
-
-  it.each(PHOTO_CONTENT_TYPES)("serves the photo key made for %s", async (type) => {
-    const key = photoKeyFor("0123456789abcdef", type);
-    await files.put(key, PNG_BYTES);
-    expect((await get(`/${key}`, { host: "media.games.test" })).status).toBe(200);
   });
 });

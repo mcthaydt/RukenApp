@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { sealState } from "../../../src/features/games/github-connect.ts";
-import type { AgeRating, GamePart, GameState, StaffRole } from "../../../src/lib/server/db.ts";
+import { ARRIVAL_COOKIE, sealArrival } from "../../../src/features/membership/arrival.ts";
+import type { AgeRating, GamePart } from "../../../src/lib/server/db.ts";
 import { PrismaClient, type MembershipStart } from "../../support/generated/prisma/client.ts";
 
 // The one place a journey reads the app's database. No screen shows who brought a member, so the journeys that check
@@ -89,8 +90,24 @@ export function membershipStartsOf(email: string): Promise<MembershipStart[]> {
   return db().membershipStart.findMany({ where: { user: { email } }, orderBy: { startedAt: "asc" } });
 }
 
-/** The secret `playwright.config.ts` gives the app, which seals the GitHub connection's state. */
+/** The secret `playwright.config.ts` gives the app, which seals the arrival cookie. */
 const APP_SECRET = "test-only-secret-not-used-anywhere-real";
+
+/**
+ * The cookie a visitor has after landing on a maker's link, sealed as the server seals it. It is test code: until
+ * slices 2 and 3 bring the links, this is the only way an arrival exists in a journey.
+ */
+export function arrivalCookie(link: { makerUserId: string; path: string }): {
+  name: string;
+  value: string;
+  url: string;
+} {
+  return {
+    name: ARRIVAL_COOKIE,
+    value: sealArrival({ ...link, atMs: Date.now() }, APP_SECRET),
+    url: "http://localhost:4173",
+  };
+}
 
 /** The posting of the payment a member made, or null while the daily money job has not posted it. */
 export async function paymentPostingOf(email: string): Promise<{ stripeInvoiceId: string } | null> {
@@ -124,6 +141,11 @@ export async function filesOf(slug: string): Promise<{ repo: string | null; pull
 
 /** The commit a stand-in pull is made from: any 40 hex characters. */
 const STAND_IN_COMMIT = "a".repeat(40);
+
+/** Changes a game's name straight in the database, as a journey's setup. */
+export async function changeGame(slug: string, changes: { name?: string }): Promise<void> {
+  await db().game.update({ where: { slug }, data: changes });
+}
 
 /**
  * Writes answers into a game straight into the database, so a journey about one screen does not have to walk all the
@@ -253,92 +275,10 @@ export async function putGameWhereStaffLeaveIt(
             state: "live",
             stateReason: null,
             pendingPullId: decision.updateWaiting === true ? newest.id : null,
-            pendingSince: decision.updateWaiting === true ? new Date() : null,
             livePullId: newest.id,
             toFix: toFix.map((one) => one.part),
           }
-        : {
-            state: decision.state,
-            toFix: toFix.map((one) => one.part),
-            // A game that waits holds its files in staff's queue, with the time they were sent.
-            ...(decision.state === "waiting" ? { pendingPullId: newest.id, pendingSince: new Date() } : {}),
-          },
-  });
-}
-
-/** Makes the account with this address staff, in `role`. Nothing on a screen grants a role yet (the admin portal will). */
-export async function grantStaffRole(email: string, role: StaffRole): Promise<void> {
-  await db().staffAssignment.create({ data: { userId: await userIdOf(email), role } });
-}
-
-/** A game's own id, its public id and its maker, read from its rows. */
-export async function makerOf(
-  slug: string,
-): Promise<{ id: string; publicId: string; makerUserId: string; makerEmail: string }> {
-  const game = await db().game.findUniqueOrThrow({
-    where: { slug },
-    select: { id: true, publicId: true, makerUserId: true, maker: { select: { email: true } } },
-  });
-  return {
-    id: game.id,
-    publicId: game.publicId,
-    makerUserId: game.makerUserId,
-    makerEmail: game.maker.email,
-  };
-}
-
-/**
- * Takes a game off Ruken from its row alone, so its files stay in the bucket: the state a game is left in when deleting
- * its files stops halfway.
- */
-export async function takeGameOffLeavingItsFiles(slug: string): Promise<void> {
-  await db().game.update({ where: { slug }, data: { state: "taken_off" } });
-}
-
-/** Where a game stands, read from its row. */
-export async function stateOf(slug: string): Promise<GameState> {
-  return (await db().game.findUniqueOrThrow({ where: { slug }, select: { state: true } })).state;
-}
-
-/**
- * Changes a game's answers straight in the database, as its maker would on another screen while staff are looking at
- * the game. The maker's own screens would do the same; this is quicker and cannot fail halfway.
- */
-export async function changeGame(
-  slug: string,
-  changes: {
-    name?: string;
-    oneLine?: string;
-    playsOn?: "phone_and_computer" | "computer_only";
-    freeToPlay?: boolean;
-  },
-): Promise<void> {
-  await db().game.update({ where: { slug }, data: changes });
-}
-
-/**
- * Counts `seconds` of play (at most 45, the longest one beat counts) for a person on a game's waiting files, as the game's
- * "still here" messages would. The check page's frame shows a stand-in game that sends none, so a journey cannot play; the
- * server counts from these rows, so this is what a played game looks like to it. The person must have opened the check
- * page first: opening it is what starts the session the beat belongs to.
- */
-/** How many times anyone has started playing a game: a staff play starts when the check page is loaded. */
-export async function playsStartedOn(slug: string): Promise<number> {
-  return db().playSession.count({ where: { game: { slug } } });
-}
-
-export async function countPlay(slug: string, email: string, seconds: number): Promise<void> {
-  const session = await db().playSession.findFirstOrThrow({
-    where: { game: { slug }, user: { email } },
-    orderBy: { startedAt: "desc" },
-    select: { id: true, startedAt: true },
-  });
-  await db().playBeat.create({
-    data: {
-      sessionId: session.id,
-      receivedAt: new Date(session.startedAt.getTime() + seconds * 1000),
-      attentive: true,
-    },
+        : { state: decision.state, toFix: toFix.map((one) => one.part) },
   });
 }
 
@@ -350,33 +290,4 @@ export async function signUpsCountedFrom(clientAddress: string): Promise<number>
     select: { count: true },
   });
   return row?.count ?? 0;
-}
-
-/**
- * Ends a person's membership the way its last day ends it: the row is `ended`, which the site's one rule for "is a
- * member" reads as not a member. The stand-in Stripe only ends one at the period's end, which no journey can wait for.
- */
-export async function endMembershipOf(email: string): Promise<void> {
-  const user = await db().user.findUniqueOrThrow({ where: { email }, select: { id: true } });
-  await db().premiumMembership.update({ where: { userId: user.id }, data: { state: "ended" } });
-}
-
-/** The play sessions of a game, oldest first: who played (null for nobody signed in) and on what basis. */
-export async function sessionsOf(
-  slug: string,
-): Promise<{ gameId: string; userId: string | null; basis: string }[]> {
-  return db().playSession.findMany({
-    where: { game: { slug } },
-    orderBy: { startedAt: "asc" },
-    select: { gameId: true, userId: true, basis: true },
-  });
-}
-
-/** Every beat a game's sessions took, oldest first. */
-export async function beatsOf(slug: string): Promise<{ attentive: boolean; receivedAt: Date }[]> {
-  return db().playBeat.findMany({
-    where: { session: { game: { slug } } },
-    orderBy: { receivedAt: "asc" },
-    select: { attentive: true, receivedAt: true },
-  });
 }
