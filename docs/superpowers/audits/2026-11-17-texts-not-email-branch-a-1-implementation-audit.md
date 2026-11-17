@@ -60,3 +60,18 @@ Two red findings and three notes. The `Texter`, its Verify calls, the stand-in a
 ## Follow-ups outside this change
 
 None.
+
+## Fix check, at `f598a59`
+
+Checked 2026-11-17 05:55 UTC (from `date`), by this audit session, on `f598a59` ("Fix the review's two reds: 011 only under +1, and a failure asked for one number"), the branch head. This check counts only for that commit.
+
+| Finding | Result | Evidence |
+|---|---|---|
+| Red 1: `011` under every country | PASS | `toE164` takes the `011` arm only when `dialingCode === "+1"`. New rows `["+44", "0113 496 0000", "+441134960000"]` and `["+44", "0118 496 0000", "+441184960000"]` pass; with `064fe28`'s `phone.ts` put back they fail (2 failed, 19 passed), so they fail by themselves. `["+1", "011 44 7700 900123", "+447700900123"]` still passes. The plan's Task 2 interface line now says the same. |
+| Red 2: shared failure switch | PASS | `/test/fail` takes `{ to }`; `failNext` is a `Set` and `takeFailure(to)` is called with the form's `To` for both texts and codes. The new journey "a failure asked for one number leaves another number's send alone" sends to another number first and checks it succeeds, then checks the asked number gets the 500. The plan's Task 1 stand-in line and the file's header comment say the same. |
+| Note 2: `changedHands` and an invalid date | Fixed (was a note) | The date and address lines moved inside the `try`. No test holds it; it was a note, so none is required. |
+| Notes 1 and 3 | Open, as recorded | Not in this fix's scope. |
+
+Ran here: `pnpm lint` 0, `pnpm typecheck` 0, `vitest run` on `text.test.ts`, `phone.test.ts`, `text-words.test.ts` and `architecture.test.ts`: 61 of 61 passed. The draft's quick CI run for the push at 05:38 UTC passed `verify`, `postgres`, all six browser pieces, `gate` and `commit-authors`. The journeys were not run here (no Postgres in this container).
+
+**Verdict at `f598a59`: no red findings left.** Branch A can be marked ready for the full CI run (A1).
