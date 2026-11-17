@@ -30,7 +30,7 @@ The two screens are judged by what the person in front of them needs, in the ord
 
 1. **What is it like?** Watching it is the answer. The clip is the biggest thing on the page and plays at once, without sound; a press gives it sound and full size.
 2. **Will it work on what I'm holding?** Every game on Ruken plays on phones, tablets and computers (Owner, section 0), and the page knows the device, so it says so directly: "Plays on this phone. Nothing to install." A store's system requirements become one line about the device in the person's hand.
-3. **Is it for me?** Who it is for, in the rating chip and its own plain line ("12+ · Real-looking fighting, or scary bits."), and how long a sitting is, measured from real play, never claimed ("Most people play about 12 minutes at a time."). A store's tags are guesses by the maker; Ruken measures.
+3. **Is it for me?** Who it is for, in the rating chip and its own plain line ("12+ · Real-looking fighting, or scary bits."), and how long a sitting is, measured from real play, never claimed ("Most people play about 12 minutes at a time."). The maker's own facts (genre, tags, languages) join these once the submission spec that asks for them lands (section 6).
 4. **Who made it?** A person, not a company link: the maker's photo, name and their own one line, from their page. Then their other games.
 5. **What does pressing Play cost me?** Said before the press, in one quiet line, and personal: a member reads "Included with your membership."; a free game reads "Free to play. No account needed."; anyone else reads "Members play every game. $9.99 a month." with "Tax is added where it applies." under it (5.8's money rule).
 
@@ -68,14 +68,14 @@ Owner: "In terms of functionality yes, match them". Every feature of the two is 
 | Developer and publisher | Now: the maker as a person (photo, name, their line) when they have a page | 3.2 |
 | More from this developer | Now: their other live games, as paper tiles | 3.2 |
 | Share | Now: "Share", a quiet outline | 3.1 |
-| Tags and genres | Now, measured instead: how long a sitting is, and, if the maker turns it on, how many people played this week | 3.1, 5 |
+| Tags and genres | Now: how long a sitting is, and, if the maker turns it on, how many people played this week. Later: the maker's genre and tags, from the submission spec (section 6) | 3.1, 5, 6 |
 | Release date | No: Ruken keeps no first-live date, and a date says little about a game. Added only if the Owner asks | |
 | Long "About this game" text | No, for now: a maker writes one line. A longer text needs a new question for makers and staff review. Pending, item 2 in section 9 | |
 | User reviews and their summary | Later, slice 3 and after (apps spec, "Reviews"): "Mostly liked (84% of 212)" sits under the play facts; the reviews list sits under the maker | 6 |
 | Wishlist and follow | Later (wishlist spec; follow, apps spec): a quiet outline beside Share | 6 |
 | Achievements | Later (apps spec, Ruken hooks): a row under the play facts, "12 achievements" | 6 |
 | Extras (DLC) | Later (sales spec): a row of paper tiles under the maker | 6 |
-| Languages, controller support | No: Ruken asks makers neither. Added with its question if the Owner asks | |
+| Languages, controller support | Later: languages come with the submission spec (section 6). Controller support is in that spec's scope, not this one | 6 |
 | News, community hub, curators, awards | No: not in Ruken's sentence (main design 2) | |
 | "Is this game relevant to you?" | Answered by the device line and the play facts | |
 | Report | Later, slice 4 (moderation, 5.5): a small link at the foot | 6 |
@@ -278,12 +278,13 @@ Both are measured by Ruken's play time (Task 22's beats), worked out by pure fun
 
 - **How long a sitting is.** The median of the counted time of a game's plays in the last 30 days, counting plays by members and free plays only (staff and a maker's own play never count, as for the pool), and only plays that counted some time: at least one attentive beat, so a counted time above 0 (`countedMs`). Shown once there are at least 20 such plays; before that the line is not drawn and nothing says why. In words: under 2 minutes, "Most people play a minute or two at a time."; up to 15 minutes, to the nearest minute ("about 12 minutes"); up to an hour, to the nearest 5, with 60 minutes reading "about an hour"; beyond an hour, to the nearest half hour ("about 1½ hours", "about 2 hours"). Call: the thresholds and rounding.
 - **How many people played this week.** Owner: "Show player count should be an option set by the maker". The number of different accounts with a counted play of the game (a play with at least one attentive beat; members, and signed-in free play) in the last 7 days by the server's clock. Free play by nobody cannot be told apart and is not counted. "1 person played it this week." / "214 people played it this week." Shown only while the maker has turned it on, even when the number is small: it is the maker's choice to show it.
-- **The maker's switch.** On the maker's Live screen, under the game laid out: "Show how many people played it" with an On/Off chip (redesign 15.2's switch), and the line "Players see it on Floor Fifty's page." **Call: off until the maker turns it on**, so a new game never looks empty without its maker choosing that. It is stored on the game (`Game.showsPlayerCount`, a boolean, false by default), which is a new column and a migration: lane 3 (section 8).
+- **The maker's switch.** On the maker's Live screen, under the game laid out: "Show how many people played it" with an On/Off chip (redesign 15.2's switch), and the line "Players see it on Floor Fifty's page." **Owner, 2026-11-17 06:28 UTC: off until the maker turns it on**, so a new game never looks empty without its maker choosing that. It is stored on the game (`Game.showsPlayerCount`, a boolean, false by default), which is a new column and a migration: lane 3 (section 8).
 
 ## 6. What waits for a later slice, and where it goes
 
 Owner's card: "rest drawn". Each later feature has its place, so the page does not change shape when it arrives. None is built, drawn on screen or stubbed in slice 2.
 
+- **Genre, tags and languages** (their own submission spec, lane 3). Owner, 2026-11-17 06:27 UTC: "We need to add in the bits to game submission that we don't have like languages and tags/genre, everything steam pages have, we have". That spec asks makers for them and stores them; once it lands, the game page shows them as play facts on the paper card, under the device line ("Puzzle · Calm · Short"; "In English and Spanish"). Nothing here builds, draws or stubs them.
 - **Reviews** (apps spec): "Mostly liked (84% of 212)" as a play fact, under the sitting line; the reviews themselves after Made by.
 - **Wishlist and follow:** a quiet outline beside Share ("Add to wishlist", "Follow Snek").
 - **Achievements:** a play fact, "12 achievements", opening the list.
@@ -309,7 +310,8 @@ For each screen, three, drawn in the sketches:
 
 1. **Settled:** the picks (section 0).
 2. **A longer "About this game".** Recommended: not now. One line and the clips say what a game is; a longer text is a new question for every maker and more for staff to check. If wanted later, it is its own small spec.
-3. **Call, the Owner can overrule:** the player count is off until the maker turns it on (section 5).
+3. **Settled, Owner 2026-11-17 06:28 UTC:** the player count starts off and shows only once the maker turns it on (section 5).
+4. **Genre, tags and languages** are a separate submission spec (section 6); this spec only says where the page shows them.
 
 ## 10. Acceptance criteria
 
