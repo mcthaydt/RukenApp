@@ -23,6 +23,7 @@
 <script lang="ts">
   import { refreshAll } from "$app/navigation";
   import { onMount, tick, untrack } from "svelte";
+  import { startBeats } from "../../../../features/play/play.browser.ts";
   import Picks from "../../../make/parts/Picks.svelte";
   import QuestionScreen from "../../../make/parts/QuestionScreen.svelte";
   import type { PageProps } from "./$types";
@@ -90,8 +91,8 @@
     return false;
   }
 
-  // How long staff have played, as the server counted it when the page was drawn, and as it counts it since. The frame's
-  // heartbeats reach the server by themselves, so the page asks again, as often as the frame beats.
+  // How long staff have played, as the server counted it when the page was drawn, and as it counts it since. The page
+  // beats while staff play (features/play/beats.ts) and asks again as often as it beats.
   let playedSince = $state<string | null>(null);
   const played = $derived(playedSince ?? data.played);
   const REREAD_PLAYED_EVERY_MS = 15_000;
@@ -169,7 +170,13 @@
     // Coming back to the tab after playing in another window or app: the line is right at once, not at the next beat.
     const comeBack = () => void rereadPlayed();
     document.addEventListener("visibilitychange", comeBack);
+    const stopBeats = startBeats({
+      beatAt: `/g/${data.slug}/play/beat`,
+      session: data.session,
+      frame: () => frame,
+    });
     return () => {
+      stopBeats();
       clearInterval(timer);
       document.removeEventListener("visibilitychange", comeBack);
     };

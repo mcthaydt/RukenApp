@@ -137,6 +137,8 @@ export const load: PageServerLoad = async ({ locals, params, cookies }) => {
     // Accept is refused while the newest copy of the files was refused; the page says so before it is pressed.
     filesBeingFixed: game.pullProblem === null ? null : FILES_BEING_FIXED_WORDS,
     frame: { src: started.frameUrl, sandbox: GAME_FRAME_SANDBOX, allow: GAME_FRAME_ALLOW },
+    // The page beats for this session as staff play, as the play page does, so staff's own play is counted.
+    session: started.session,
     played: playedWords(summary.countedSeconds),
     players,
   };

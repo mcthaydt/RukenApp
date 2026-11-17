@@ -141,6 +141,7 @@ export const load: PageServerLoad = async (event) => {
       fixes,
       // Asked on a screen of its own, because its files are deleted.
       takeOffAddress: `/make/${game.slug}/take-off`,
+      pageAddress: `/g/${game.slug}`,
       // The statement piece: the game's own video behind everything, in the shape of the screen it is seen on.
       backdrop: {
         upright: game.clips.upright === null ? null : gamesServices().media(game.clips.upright.key),

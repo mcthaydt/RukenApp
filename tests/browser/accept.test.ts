@@ -1,13 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import {
+  beatsOf,
   changeGame,
   countPlay,
   playsStartedOn,
   putGameWhereStaffLeaveIt,
   stateOf,
 } from "./support/database.ts";
-import { makerWithGameWhere, signInAsStaff, submitGame } from "./support/game.ts";
+import { makerWithGameWhere, signInAsStaff, submitGame, TWENTY_48 } from "./support/game.ts";
 import { boxOf, showTheOwner } from "./support/look.ts";
 import {
   decideButton,
@@ -476,6 +477,37 @@ test("the line about play moves while staff play, without a new page", async ({ 
   } finally {
     await maker.close();
   }
+});
+
+test("staff's own play in the frame is counted, so the line moves and Accept does not ask", async ({
+  page,
+  browser,
+}) => {
+  // The slice 2 walk of 2026-11-17: the check page never told the server that staff were playing, so after a minute of
+  // play the line still said "yet" and every Accept asked "Accept it anyway". The journeys above write the play as rows.
+  test.setTimeout(90_000);
+  const waiting = await submitGame(browser, TWENTY_48);
+  await signInAsStaff(page);
+  // Stopped until the journey moves time on, so nothing is looked at before the touch.
+  await page.clock.install();
+  await page.clock.pauseAt(Date.now() + 1_000);
+  await page.goto(`/admin/games/${waiting.slug}`);
+  await pageHasSettled(page);
+  await expect(page.getByText("You haven't played it yet.")).toBeVisible();
+
+  await page.frameLocator("iframe.frame").locator(".game-container").click();
+  await page.clock.runFor(16_000);
+
+  await expect.poll(async () => (await beatsOf(waiting.slug)).length).toBe(1);
+  expect((await beatsOf(waiting.slug)).at(-1)?.attentive).toBe(true);
+  await expect(async () => {
+    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await expect(page.getByText("You've played it for less than a minute.")).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await toTheDecision(page);
+  await decideButton(page, "Accept").click();
+  await expect(page).toHaveURL("/admin/games");
+  expect(await stateOf(waiting.slug)).toBe("live");
 });
 
 test("Accept on a game nobody played asks once, and then accepts", async ({ page, browser }) => {

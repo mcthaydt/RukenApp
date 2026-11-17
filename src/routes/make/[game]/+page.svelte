@@ -38,6 +38,7 @@
     updateWaiting={data.updateWaiting}
     fixes={data.fixes}
     takeOffAddress={data.takeOffAddress}
+    pageAddress={data.pageAddress}
     backdrop={data.backdrop}
     game={data.game}
     problem={form?.problem}

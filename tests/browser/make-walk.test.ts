@@ -113,15 +113,19 @@ test("a live game whose last copy was refused offers a new version, which copies
   ).toBeVisible();
 });
 
-// ---- E5: no dead link on Live ----------------------------------------------------------------------------------------------
+// ---- E5: Live leads to the game's page --------------------------------------------------------------------------------------
 
-test("Live has no See it on Ruken until the game's page exists", async ({ page }) => {
-  const { slug } = await gameWhere(page, { state: "live" });
+test("Live has See it on Ruken, which opens the game's page", async ({ page }) => {
+  // E5 left the link out until the game's page existed. It does now (/g/<game>), and the slice 2 walk of 2026-11-17
+  // found a maker with no way from Live to their own game on Ruken.
+  const { slug, name } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
 
   await expect(page.getByRole("button", { name: "Send a new version" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "See it on Ruken" })).toHaveCount(0);
+  await page.getByRole("link", { name: "See it on Ruken" }).click();
+  await expect(page).toHaveURL(`/g/${slug}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
 });
 
 // ---- E6: GitHub taking a long time ------------------------------------------------------------------------------------------
