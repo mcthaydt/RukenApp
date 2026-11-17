@@ -135,7 +135,8 @@ The order, after Unit R: name, line, **about**, files, upright videos, wide vide
 - The upright and wide video questions each hold 1 to 5 videos. Each question still needs one to go on; the screen shows the saved ones as tiles in the order added, each with "Take this one out" (not shown on the last one of its shape: a game always has at least one of each), and "Add another video" until there are 5. Adding a sixth: "You have 5 upright videos, the most a game can have. Take one out to add another." (or "wide").
 - Each video keeps 2.7's rule (15 to 60 seconds) and today's (type, 30 MB, first bytes).
 - Hint, under the existing one: "Add up to 5. The feed takes turns showing them."
-- **The feed's turns** are the feed's own (slice 3): each time the feed shows a game, it shows the next of its videos of the window's shape. Nothing in this spec builds or stores the turns.
+- **Why, Owner 2026-11-17 06:43 UTC:** "The video rotation is so the same game can appear more than once on a feed without users seeing the same video, it creates a trial reels like effect without using trial reels", and "A player might not have been interested in one video, but they see it again, a different video this time maybe a cutscene and now they're interested".
+- **The feed's turns** are the feed's own (slice 3), kept here for its spec: the same game may come round again in a person's feed, and each time it shows one of its videos of the window's shape that this person has not seen yet, so a second look is a new video. Nothing in this spec builds or stores the turns.
 
 ## 3. Storage
 
