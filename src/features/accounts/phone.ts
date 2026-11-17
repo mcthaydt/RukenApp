@@ -42,3 +42,31 @@ export function toE164(dialingCode: string, typed: string): string | null {
 export function hashNumber(number: string, secret: string): string {
   return createHmac("sha256", secret).update(`phone:${number}`).digest("hex");
 }
+
+export interface OpenCountry {
+  /** ISO 3166-1 alpha-2, what the form posts. */
+  code: string;
+  name: string;
+  /** What `toE164` puts in front of a number typed without one. */
+  dialing: string;
+}
+
+/**
+ * The countries the sign-in screens offer. Ruken opens only where a person can text Ruken back (STOP, START, HELP), which
+ * today is the United States and Canada; each one that follows is added here, with its numbers, when it opens.
+ */
+export const OPEN_COUNTRIES: readonly OpenCountry[] = [
+  { code: "US", name: "United States", dialing: "+1" },
+  { code: "CA", name: "Canada", dialing: "+1" },
+];
+
+/** The open country with these two capital letters, or null for anything else (a closed country, or text a form made up). */
+export function countryOf(code: string): OpenCountry | null {
+  return OPEN_COUNTRIES.find((country) => country.code === code) ?? null;
+}
+
+/** A number as /me shows it to its owner: "+1 312 555 0142" for a North American one, the digits as they are otherwise. */
+export function shownAs(number: string): string {
+  const north = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(number);
+  return north === null ? number : `+1 ${north[1] ?? ""} ${north[2] ?? ""} ${north[3] ?? ""}`;
+}

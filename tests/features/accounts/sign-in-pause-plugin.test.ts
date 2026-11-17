@@ -1,19 +1,21 @@
 import { APIError } from "better-auth/api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
-import type { Mailer, MailMessage } from "../../../src/lib/server/mail.ts";
+import { TextError, type Texter, type TextMessage } from "../../../src/lib/server/text.ts";
+import { signInPausedText } from "../../../src/features/accounts/text-words.ts";
+import { createCaptureTexter } from "../../support/capture-texter.ts";
 import type { SignInGuards } from "../../../src/features/accounts/sign-in-guards.ts";
 
-// The sign-in pause plugin: how the two hooks on /sign-in/email behave. The counting rules live in
+// The sign-in pause plugin: how the two hooks on /sign-in/phone-number behave. The counting rules live in
 // sign-in-guards.ts (tested against Postgres in sign-in-guards.pg.test.ts), so here those four
 // functions are replaced with spies, and the tests check which one the plugin calls for each kind of
-// request and answer, and that the owner of the account hears about a pause that starts.
+// request and answer, and that the owner of the account hears about a pause that starts, by text.
 
 const guardCalls = vi.hoisted(() => ({
-  reserveSignInAttempt: vi.fn<(guards: unknown, email: string) => Promise<{ allowed: boolean }>>(),
-  recordWrongPassword: vi.fn<(guards: unknown, email: string) => Promise<{ pauseStarted: boolean }>>(),
-  releaseSignInAttempt: vi.fn<(guards: unknown, email: string) => Promise<void>>(),
-  clearSignInFailures: vi.fn<(guards: unknown, email: string) => Promise<void>>(),
+  reserveSignInAttempt: vi.fn<(guards: unknown, number: string) => Promise<{ allowed: boolean }>>(),
+  recordWrongPassword: vi.fn<(guards: unknown, number: string) => Promise<{ pauseStarted: boolean }>>(),
+  releaseSignInAttempt: vi.fn<(guards: unknown, number: string) => Promise<void>>(),
+  clearSignInFailures: vi.fn<(guards: unknown, number: string) => Promise<void>>(),
 }));
 
 vi.mock("../../../src/features/accounts/sign-in-guards.ts", () => guardCalls);
@@ -22,32 +24,26 @@ const { SIGN_IN_PAUSED, SIGN_IN_PAUSED_MESSAGE, signInPausePlugin } =
   await import("../../../src/features/accounts/sign-in-pause-plugin.ts");
 
 const guards = { secret: "test-secret-that-is-long-enough" } as unknown as SignInGuards;
-const SIGN_IN_PATH = "/sign-in/email";
-const EMAIL = "Pat@Example.test";
+const SIGN_IN_PATH = "/sign-in/phone-number";
+const NUMBER = "+13125551234";
+const SITE = "https://ruken.example";
 
-const OWNER = "pat@example.test";
-
-/** Everything the plugin is given besides the guards, with a mail box we can read and tasks we can wait for. */
-function setup(options: { accountEmail?: string | null; sendMail?: Mailer["send"] } = {}) {
-  const sent: MailMessage[] = [];
+/** Everything the plugin is given besides the guards, with a texter we can read and tasks we can wait for. */
+function setup(options: { hasAccount?: boolean; send?: Texter["send"] } = {}) {
+  const capture = createCaptureTexter();
+  const sent: TextMessage[] = capture.sent;
   const logged: string[] = [];
   const tasks: Promise<void>[] = [];
-  const accountEmail = options.accountEmail === undefined ? OWNER : options.accountEmail;
+  const hasAccount = options.hasAccount ?? true;
   const prisma = {
-    user: { findUnique: () => Promise.resolve(accountEmail === null ? null : { email: accountEmail }) },
+    user: { findUnique: () => Promise.resolve(hasAccount ? { phoneNumber: NUMBER } : null) },
   } as unknown as PrismaClient;
-  const mailer: Mailer = {
-    send:
-      options.sendMail ??
-      ((message) => {
-        sent.push(message);
-        return Promise.resolve(true);
-      }),
-  };
+  const texter: Texter = options.send === undefined ? capture : { ...capture, send: options.send };
   const plugin = signInPausePlugin({
     guards,
     prisma,
-    mailer,
+    texter,
+    siteUrl: SITE,
     log: (line) => logged.push(line),
     runInBackground: (task) => {
       tasks.push(task());
@@ -96,35 +92,36 @@ describe("the plugin", () => {
   it("uses the error code SIGN_IN_PAUSED, with words that point to the reset", () => {
     expect(SIGN_IN_PAUSED).toBe("SIGN_IN_PAUSED");
     expect(SIGN_IN_PAUSED_MESSAGE).toBe(
-      "Too many tries. Sign-in is paused for an hour for this email. You can reset your password now.",
+      "Too many tries. Sign-in is paused for an hour for this number. You can reset your password now.",
     );
   });
 
   it("matches only the password sign-in path, in both hooks", () => {
     const { before, after } = hooksOf();
     for (const hook of [before, after]) {
-      expect(hook.matcher({ path: "/sign-in/email" } as never)).toBe(true);
+      expect(hook.matcher({ path: "/sign-in/phone-number" } as never)).toBe(true);
+      expect(hook.matcher({ path: "/sign-in/email" } as never)).toBe(false);
       expect(hook.matcher({ path: "/sign-in/magic-link" } as never)).toBe(false);
       expect(hook.matcher({ path: "/request-password-reset" } as never)).toBe(false);
-      expect(hook.matcher({ path: "/sign-in/email/" } as never)).toBe(false);
+      expect(hook.matcher({ path: "/sign-in/phone-number/" } as never)).toBe(false);
       expect(hook.matcher({ path: undefined } as never)).toBe(false);
     }
   });
 });
 
 describe("the before hook", () => {
-  it("reserves a guess for the address typed in, exactly as typed, and lets the request go on when allowed", async () => {
+  it("reserves a guess for the number typed in, exactly as typed, and lets the request go on when allowed", async () => {
     const { before } = hooksOf();
-    await expect(callBefore(before, { email: EMAIL, password: "x" })).resolves.toBeUndefined();
+    await expect(callBefore(before, { phoneNumber: NUMBER, password: "x" })).resolves.toBeUndefined();
     expect(guardCalls.reserveSignInAttempt).toHaveBeenCalledTimes(1);
-    expect(guardCalls.reserveSignInAttempt).toHaveBeenCalledWith(guards, EMAIL);
+    expect(guardCalls.reserveSignInAttempt).toHaveBeenCalledWith(guards, NUMBER);
   });
 
-  it("refuses with 429 and the paused words when the address is paused or out of guesses", async () => {
+  it("refuses with 429 and the paused words when the number is paused or out of guesses", async () => {
     guardCalls.reserveSignInAttempt.mockResolvedValue({ allowed: false });
     const { before } = hooksOf();
 
-    const error: unknown = await callBefore(before, { email: EMAIL, password: "right-one" }).catch(
+    const error: unknown = await callBefore(before, { phoneNumber: NUMBER, password: "right-one" }).catch(
       (caught: unknown) => caught,
     );
 
@@ -138,110 +135,107 @@ describe("the before hook", () => {
   it.each([
     ["no body", undefined],
     ["an empty body", {}],
-    ["an empty address", { email: "" }],
-    ["an address of only spaces", { email: "   " }],
-    ["an address that is not text", { email: 42 }],
-    ["an address that is null", { email: null }],
+    ["an empty number", { phoneNumber: "" }],
+    ["a number of only spaces", { phoneNumber: "   " }],
+    ["a number that is not text", { phoneNumber: 42 }],
+    ["a number that is null", { phoneNumber: null }],
   ])("leaves %s for the endpoint's own checks and counts nothing", async (_name, body) => {
     const { before } = hooksOf();
     await expect(callBefore(before, body)).resolves.toBeUndefined();
     expect(guardCalls.reserveSignInAttempt).not.toHaveBeenCalled();
   });
 
-  it("does not trim the address it passes on (the guards lower-case and trim it when they hash it)", async () => {
+  it("does not change the number it passes on", async () => {
     const { before } = hooksOf();
-    await callBefore(before, { email: "  pat@example.test " });
-    expect(guardCalls.reserveSignInAttempt).toHaveBeenCalledWith(guards, "  pat@example.test ");
+    await callBefore(before, { phoneNumber: " +13125551234 " });
+    expect(guardCalls.reserveSignInAttempt).toHaveBeenCalledWith(guards, " +13125551234 ");
   });
 
   it("lets an error from the guards through, so a broken table does not quietly allow guesses", async () => {
     guardCalls.reserveSignInAttempt.mockRejectedValue(new Error("database is down"));
     const { before } = hooksOf();
-    await expect(callBefore(before, { email: EMAIL })).rejects.toThrow("database is down");
+    await expect(callBefore(before, { phoneNumber: NUMBER })).rejects.toThrow("database is down");
   });
 });
 
 describe("the after hook, when the password was right", () => {
-  it("forgives the address: clears its guesses, and records nothing", async () => {
+  it("forgives the number: clears its guesses, and records nothing", async () => {
     const { after } = hooksOf();
-    await callAfter(after, { email: EMAIL }, { token: "t", user: { id: "u1" } });
+    await callAfter(after, { phoneNumber: NUMBER }, { token: "t", user: { id: "u1" } });
     expect(guardCalls.clearSignInFailures).toHaveBeenCalledTimes(1);
-    expect(guardCalls.clearSignInFailures).toHaveBeenCalledWith(guards, EMAIL);
+    expect(guardCalls.clearSignInFailures).toHaveBeenCalledWith(guards, NUMBER);
     expect(guardCalls.recordWrongPassword).not.toHaveBeenCalled();
     expect(guardCalls.releaseSignInAttempt).not.toHaveBeenCalled();
   });
 });
 
 describe("the after hook, when BetterAuth answered 401", () => {
-  const wrongPassword = () => new APIError("UNAUTHORIZED", { message: "Invalid email or password" });
+  const wrongPassword = () => new APIError("UNAUTHORIZED", { message: "Invalid phone number or password" });
 
   it("counts it as a wrong password, and does not give the guess back", async () => {
     const { after } = hooksOf();
-    await callAfter(after, { email: EMAIL }, wrongPassword());
+    await callAfter(after, { phoneNumber: NUMBER }, wrongPassword());
     expect(guardCalls.recordWrongPassword).toHaveBeenCalledTimes(1);
-    expect(guardCalls.recordWrongPassword).toHaveBeenCalledWith(guards, EMAIL);
+    expect(guardCalls.recordWrongPassword).toHaveBeenCalledWith(guards, NUMBER);
     expect(guardCalls.releaseSignInAttempt).not.toHaveBeenCalled();
     expect(guardCalls.clearSignInFailures).not.toHaveBeenCalled();
   });
 
-  it("mails the account's own address once, when that wrong password starts the pause", async () => {
+  it("texts the account's own number once, when that wrong password starts the pause", async () => {
     guardCalls.recordWrongPassword.mockResolvedValue({ pauseStarted: true });
     const { after, sent, finishBackgroundWork } = setup();
 
-    await callAfter(after, { email: EMAIL }, wrongPassword());
+    await callAfter(after, { phoneNumber: NUMBER }, wrongPassword());
     await finishBackgroundWork();
 
     expect(sent).toHaveLength(1);
-    expect(sent[0]?.to).toBe(OWNER);
-    expect(sent[0]?.subject).toBe("Password sign-in on your Ruken account is paused");
+    expect(sent[0]).toEqual({ to: NUMBER, line: "account", body: signInPausedText(SITE) });
   });
 
   it("sends nothing when the pause did not start (earlier wrong guesses, or already paused)", async () => {
     guardCalls.recordWrongPassword.mockResolvedValue({ pauseStarted: false });
     const { after, sent, finishBackgroundWork } = setup();
 
-    await callAfter(after, { email: EMAIL }, wrongPassword());
+    await callAfter(after, { phoneNumber: NUMBER }, wrongPassword());
     await finishBackgroundWork();
 
     expect(sent).toEqual([]);
   });
 
-  it("sends nothing for an address with no account, so a pause says nothing about who has one", async () => {
+  it("sends nothing for a number with no account, so a pause says nothing about who has one", async () => {
     guardCalls.recordWrongPassword.mockResolvedValue({ pauseStarted: true });
-    const { after, sent, finishBackgroundWork } = setup({ accountEmail: null });
+    const { after, sent, finishBackgroundWork } = setup({ hasAccount: false });
 
-    await callAfter(after, { email: EMAIL }, wrongPassword());
+    await callAfter(after, { phoneNumber: NUMBER }, wrongPassword());
     await finishBackgroundWork();
 
     expect(sent).toEqual([]);
   });
 
-  it("does not wait for the mail, so the answer does not depend on what the mail server does", async () => {
+  it("does not wait for the text, so the answer does not depend on what Twilio does", async () => {
     guardCalls.recordWrongPassword.mockResolvedValue({ pauseStarted: true });
-    // A mail server that never answers. If the hook waited for it, the hook would never finish, so
+    // A text service that never answers. If the hook waited for it, the hook would never finish, so
     // the hook is raced against a short timer.
-    const { after } = setup({ sendMail: () => new Promise<boolean>(() => undefined) });
+    const { after } = setup({ send: () => new Promise(() => undefined) });
 
     const outcome = await Promise.race([
-      callAfter(after, { email: EMAIL }, wrongPassword()).then(() => "done"),
+      callAfter(after, { phoneNumber: NUMBER }, wrongPassword()).then(() => "done"),
       new Promise<string>((resolve) => setTimeout(resolve, 20, "stuck")),
     ]);
 
     expect(outcome).toBe("done");
   });
 
-  it("logs a failed notice by its error code, never with the address", async () => {
+  it("logs a failed notice by its error code, never with the number", async () => {
     guardCalls.recordWrongPassword.mockResolvedValue({ pauseStarted: true });
-    const rejected = Object.assign(new Error("550 5.1.1 <pat@example.test>: Recipient address rejected"), {
-      code: "EENVELOPE",
-      responseCode: 550,
-    });
-    const { after, logged, finishBackgroundWork } = setup({ sendMail: () => Promise.reject(rejected) });
+    // Twilio's own words can name the number, so only the status and its code are ever logged.
+    const rejected = new TextError(400, 21610);
+    const { after, logged, finishBackgroundWork } = setup({ send: () => Promise.reject(rejected) });
 
-    await callAfter(after, { email: EMAIL }, wrongPassword());
+    await callAfter(after, { phoneNumber: NUMBER }, wrongPassword());
     await finishBackgroundWork();
 
-    expect(logged).toEqual(["sign-in pause notice not sent: EENVELOPE 550"]);
+    expect(logged).toEqual(["sign-in pause notice not sent: TWILIO 400 21610"]);
   });
 });
 
@@ -258,10 +252,10 @@ describe("the after hook, when BetterAuth answered with any other error", () => 
 
       const answer = new APIError(status, { message: "nope" });
       expect(answer.statusCode).toBe(code); // the status number the case name says, so the case is what it claims
-      await callAfter(after, { email: EMAIL }, answer);
+      await callAfter(after, { phoneNumber: NUMBER }, answer);
 
       expect(guardCalls.releaseSignInAttempt).toHaveBeenCalledTimes(1);
-      expect(guardCalls.releaseSignInAttempt).toHaveBeenCalledWith(guards, EMAIL);
+      expect(guardCalls.releaseSignInAttempt).toHaveBeenCalledWith(guards, NUMBER);
       expect(guardCalls.recordWrongPassword).not.toHaveBeenCalled();
       expect(guardCalls.clearSignInFailures).not.toHaveBeenCalled();
       await finishBackgroundWork();
@@ -271,11 +265,11 @@ describe("the after hook, when BetterAuth answered with any other error", () => 
 });
 
 describe("the after hook, when there is nothing to settle", () => {
-  it("does nothing when the request had no address", async () => {
+  it("does nothing when the request had no number", async () => {
     const { after } = hooksOf();
     await callAfter(after, {}, new APIError("UNAUTHORIZED", { message: "x" }));
     await callAfter(after, undefined, { token: "t" });
-    await callAfter(after, { email: "   " }, { token: "t" });
+    await callAfter(after, { phoneNumber: "   " }, { token: "t" });
     expect(guardCalls.clearSignInFailures).not.toHaveBeenCalled();
     expect(guardCalls.recordWrongPassword).not.toHaveBeenCalled();
     expect(guardCalls.releaseSignInAttempt).not.toHaveBeenCalled();
@@ -283,7 +277,7 @@ describe("the after hook, when there is nothing to settle", () => {
 
   it("does nothing when BetterAuth returned nothing", async () => {
     const { after } = hooksOf();
-    await callAfter(after, { email: EMAIL }, undefined);
+    await callAfter(after, { phoneNumber: NUMBER }, undefined);
     expect(guardCalls.clearSignInFailures).not.toHaveBeenCalled();
     expect(guardCalls.recordWrongPassword).not.toHaveBeenCalled();
     expect(guardCalls.releaseSignInAttempt).not.toHaveBeenCalled();
