@@ -20,7 +20,7 @@ Every field a store page shows about a game, and what Ruken does with it. **Now*
 |---|---|---|
 | Name | Have: the name question | |
 | Short description | Have: the one line | |
-| About this game (the long text) | **Pending**, card 1: recommended Now, up to 600 characters, optional | 2.1 |
+| About this game (the long text) | Now (**Owner**): up to 280 characters, a tweet's length, optional | 2.1 |
 | Trailer and videos | Have: the upright and wide videos | |
 | Screenshots | **Pending**, card 3: recommended No, the two videos are the pictures | 8 |
 | Genre | Now: one kind, from a short list | 2.2 |
@@ -47,12 +47,14 @@ Every field a store page shows about a game, and what Ruken does with it. **Now*
 
 Each is one screen, in the redesign's question layout (`QuestionScreen`), with the same counter, Back, the card beside it on a wide screen, and Next. Picks use `Picks` as the age and marks questions do. A maker answers in the order below; a game past draft changes any of them from Check and send (and, while live, from Live), as the one line is changed today.
 
-The order, after Unit R: name, line, **about** (if card 1 is yes), files, upright video, wide video, **kind**, **tags**, **languages**, **players**, **good to know**, **AI** (if card 2 is ask), who it's for, and the marks of an 18+ game. A second game goes from 6 questions to 11 (13 with both pending ones; one more for an 18+ game, as `counterOf` works it out). Call: the facts come after the videos, because a maker who has just watched their own game back answers them quickest, and before the rating, which closes the list as it does today.
+The order, after Unit R: name, line, **about**, files, upright video, wide video, **kind**, **tags**, **languages**, **players**, **good to know**, **AI** (if card 2 is ask), who it's for, and the marks of an 18+ game. A second game goes from 6 questions to 11 (12 with About, 13 with the pending AI question too; one more for an 18+ game, as `counterOf` works it out). Call: the facts come after the videos, because a maker who has just watched their own game back answers them quickest, and before the rating, which closes the list as it does today.
 
-### 2.1 About (Pending, card 1)
+### 2.1 About
 
-- Heading: "Tell players more about <name>." Hint: "A few sentences. Plain words, no links. Leave it empty if the line says it all." A `TextAnswer` that grows, up to 600 characters; Next with it empty keeps it empty.
-- Wrong: "Keep it to 600 characters." A link (anything with `://` or `www.`): "Take the link out. Your links go on your own page."
+- **Owner, 2026-11-17, on a card:** "Yes, short", then in words: "However long a single tweet can be for about this game". So 280 characters.
+
+- Heading: "Tell players more about <name>." Hint: "A few sentences. Plain words, no links. Leave it empty if the line says it all." A `TextAnswer` that grows, up to 280 characters; Next with it empty keeps it empty.
+- Wrong: "Keep it to 280 characters." A link (anything with `://` or `www.`): "Take the link out. Your links go on your own page."
 - Stored as it was typed, its line breaks kept. Empty is an answer ("" once Next is pressed; null until then).
 
 ### 2.2 Kind
@@ -105,7 +107,7 @@ One migration, made by `pnpm prisma migrate dev --create-only` and read before i
 
 | Column | Type | Empty means |
 |---|---|---|
-| `about` | `TEXT`, null (card 1) | null: not asked yet; "": answered empty |
+| `about` | `TEXT`, null | null: not asked yet; "": answered empty |
 | `kind` | `TEXT`, null | not asked yet |
 | `tags` | `TEXT[]`, default `{}` | not asked yet |
 | `languages` | `TEXT[]`, default `{}` | not asked yet; `{none}` is "It has no words" |
@@ -114,10 +116,10 @@ One migration, made by `pnpm prisma migrate dev --create-only` and read before i
 | `aiHelp` | `AiHelp[]`, default `{}` (enum `pictures`, `words`, `sound`, `code`, `none`) (card 2) | not asked yet |
 | `firstLiveAt` | `TIMESTAMPTZ`, null | never live yet |
 
-and to the enum `GamePart` the values `about` (card 1), `kind`, `tags`, `languages`, `players`, `good_to_know` and `ai_help` (card 2).
+and to the enum `GamePart` the values `about`, `kind`, `tags`, `languages`, `players`, `good_to_know` and `ai_help` (card 2).
 
 - **Lists that grow are text, lists that don't are enums.** Kind, tags and languages are codes from `src/features/games/library/kinds.json`, `tags.json` and `languages.json` (each entry: its code and the words a person reads), checked by the games service, so a new tag or language is a change to a file, not a migration. Players, good to know and AI are short fixed sets, so they are enums, as `ContentMark` is. Call.
-- **CHECKs**, each named and listed in the model's `///` line as the others are: `Game_about_check` (`char_length(about) <= 600`), `Game_tags_check` (`cardinality(tags) <= 5`), and `Game_languages_check`, `Game_goodToKnow_check`, `Game_aiHelp_check` (`none` only alone, as `Game_marks_check` does for the marks).
+- **CHECKs**, each named and listed in the model's `///` line as the others are: `Game_about_check` (`char_length(about) <= 280`), `Game_tags_check` (`cardinality(tags) <= 5`), and `Game_languages_check`, `Game_goodToKnow_check`, `Game_aiHelp_check` (`none` only alone, as `Game_marks_check` does for the marks).
 - **`Game_answered_check` is not changed.** Games already past draft on the test site have none of the new answers, so a check that needs them would fail the migration, and a `NOT VALID` one would refuse every later write to those games (taking one off included). Sending for review already asks for every unanswered question first (`firstUnanswered`), so no new game reaches review without them. Call.
 - **`firstLiveAt`** is written once, in the same write that first makes a game live (staff's yes, Unit S's review job), and never changed; a game taken off and put back keeps it. Games already live keep null and show no date. Call: no backfill, since the test site's games are test data.
 - **Undoing it** is a second migration that drops the columns, not a revert. Postgres cannot drop a value from an enum, so the new `GamePart` values stay unused if it is undone.
@@ -161,7 +163,7 @@ On the paper card of play facts (game page 3.1 and 3.3), under the device line a
 5. AI (card 2): "Made with help from AI: the pictures and the words." Nothing when no AI helped.
 6. The date: "On Ruken since 17 November 2026." (America/Chicago, the day only).
 
-**About <name>** (card 1), as a watch page's description: under the paper card on a phone, in the left column under the card on a wide screen; the heading "About Floor Fifty" at the card title size, then the text in ink, line breaks kept, plain text only (escaped, never HTML). Over 4 lines on a phone, it shows 4 and "More" (a `<details>`, so it works with no script).
+**About <name>**, as a watch page's description: under the paper card on a phone, in the left column under the card on a wide screen; the heading "About Floor Fifty" at the card title size, then the text in ink, line breaks kept, plain text only (escaped, never HTML). Over 4 lines on a phone, it shows 4 and "More" (a `<details>`, so it works with no script).
 
 All the words are made by pure functions with tests, beside `ratingWords` in `src/features/games/laid-out.ts`: `kindWords`, `languagesWords`, `playersWords`, `goodToKnowWords`, `aiWords`, `sinceWords`.
 
@@ -183,7 +185,7 @@ Expected time: K 4 hours, Q 6 hours, V 3 hours, plus the audits. Models and effo
 
 ### Unit K, step by step
 
-- [ ] **Step 1: the failing tests.** `fields.test.ts`: every check of section 2 refuses with its words and passes a good answer (a kind not in the list, a sixth tag, `none` with a language, a link in About, 601 characters). `laid-out.test.ts`: every line of section 6 from its answers, a missing answer giving null. `service.pg.test.ts`: each new answer is saved by its maker, refused for anyone else, and refused with its words when wrong; a live game takes each; the first yes writes `firstLiveAt` and a second yes after take off and put back leaves it. A `pg` test for each CHECK: a write that breaks it is refused by the database. Run them: they fail for those reasons.
+- [ ] **Step 1: the failing tests.** `fields.test.ts`: every check of section 2 refuses with its words and passes a good answer (a kind not in the list, a sixth tag, `none` with a language, a link in About, 281 characters). `laid-out.test.ts`: every line of section 6 from its answers, a missing answer giving null. `service.pg.test.ts`: each new answer is saved by its maker, refused for anyone else, and refused with its words when wrong; a live game takes each; the first yes writes `firstLiveAt` and a second yes after take off and put back leaves it. A `pg` test for each CHECK: a write that breaks it is refused by the database. Run them: they fail for those reasons.
 - [ ] **Step 2: the columns, the migration, the lists, the checks, the words and the answers.** Paste the empty output of `pnpm exec prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema --shadow-database-url "$TEST_DATABASE_URL" --script` into the pull request. The migration opens with a comment line, as every other one does, and holds only section 3. Run again: pass. Open the draft pull request; it names the migration, says merging applies it to the test site's database, and says undoing it is a second migration.
 - [ ] **Step 3: finish.** The implementation audit on the commit named; fix its findings; the Owner's approval of this merge. Delete the live-state file in the last commit, merge `main` in, mark the pull request ready, merge on green with a merge commit.
 
@@ -201,14 +203,14 @@ Expected time: K 4 hours, Q 6 hours, V 3 hours, plus the audits. Models and effo
 
 ## 8. Open decisions (for the Owner)
 
-1. **Pending, card 1:** a longer About. Recommended: yes, up to 600 characters, optional. If no: 2.1, `about`, its part and its page lines go.
+1. **Settled, Owner 2026-11-17:** a longer About, optional, up to 280 characters ("However long a single tweet can be").
 2. **Pending, card 2:** saying whether AI helped. Recommended: ask, and show only when it did. If staff only: the page line (6, item 5) goes. If no: 2.7, `aiHelp`, its part and its line go.
 3. **Pending, card 3:** screenshots. Recommended: no; the upright and wide videos are the game's pictures. If yes: a picture question (up to 6) and a strip under the clip tiles become their own unit, with storage in the bucket like the videos; this spec would be amended first.
 4. **Calls** the Owner may overrule: the lists in 2.2 to 2.6, the question order, one language list instead of three, the date measured from the first yes, `Game_answered_check` left as it is.
 
 ## 9. Acceptance criteria
 
-- A new game is asked kind, tags, languages, players and good to know (and About and AI, by the cards), one per screen, in section 2's order, with section 2's words; the counter counts them.
+- A new game is asked kind, tags, languages, players and good to know and About (and AI, by card 2), one per screen, in section 2's order, with section 2's words; the counter counts them.
 - Each refusal in section 2 shows its words on its own question, and nothing is saved.
 - A game cannot be sent for review until every new question is answered (`firstUnanswered`).
 - Each answer is stored as section 3 says; each CHECK refuses a write that breaks it, by the database itself.

@@ -1,4 +1,4 @@
 - Task: spec and plan for the facts a store page shows that a maker's game doesn't have yet (genre, tags, languages and the rest).
 - Last commit: c6487c7 (2026-11-17 06:35 UTC)
 - Next step: fold the Owner's three card answers into spec sections 2.1, 2.7 and 8, then delete this file and hand the pull request (#195) to the plan audit.
-- Open decisions: a longer About, saying if AI helped, screenshots (cards with the Owner).
+- Open decisions: saying if AI helped, screenshots (cards with the Owner). About settled: 280 characters.
