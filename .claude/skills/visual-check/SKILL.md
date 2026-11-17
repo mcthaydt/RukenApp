@@ -24,7 +24,7 @@ already approved are skipped.
 
 ## Screens page
 
-At the end of every slice, after the end-to-end walk and before the owner's walk, the coordinator shows all of the
+At the end of every slice, after the design review loop and before the owner's walk, the coordinator shows all of the
 slice's screens in one organized artifact: grouped by flow, in the order a person meets them, each screen on each device
 in the device matrix, labeled with its name and the commit it shows. Screens the owner already approved are included and
 marked as approved. Share it as one link, not as screenshots scattered across messages.
