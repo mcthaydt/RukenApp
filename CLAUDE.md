@@ -316,7 +316,8 @@ Change a number or a model here and nowhere else.
   work. Include material setbacks in the owner update, with what was tried and what it showed. Pause for an owner
   decision only when their decision, access or a change to an agreed budget is needed.
 - Design review rounds: 2 before the owner's first look at the screens page, then 1 on the owner's notes before the
-  second look. A round is shoot, check by a fresh reviewer, fix.
+  second look. A round is shoot, check by a fresh reviewer, fix. Round 1 is checked on Fable 5.2, medium; rounds 2 and
+  3 on Opus, medium.
 - Overrun: a task that has taken twice the duration its brief estimated. Reassess the estimate and the approach, and
   report the changed outlook. Request a decision only if the authorized budget or scope must change.
 - Pull requests open: 3. Checks run at once, as many as the CI capacity takes without queueing (measured, not guessed);
@@ -334,4 +335,4 @@ Change a number or a model here and nowhere else.
   implementation audit.
 - Models and effort: a session whose model and effort are not named runs on Opus, medium. Nothing runs above high
   effort. Plan: Fable 5.2, medium. Plan audit: Opus, medium. Execution (and its fixes): Sonnet, high. Implementation
-  audit: Opus, medium. Advisor: Fable 5.2, medium. Design review: Fable 5.2, medium.
+  audit: Opus, medium. Advisor: Fable 5.2, medium.
