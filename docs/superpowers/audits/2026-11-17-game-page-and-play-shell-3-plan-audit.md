@@ -49,3 +49,19 @@ Read: the diffs `39acaef..c07ab1e` of the spec and the plan, in full. Against th
 
 - The main design's 5.2 Call ("a game marked "computer only" shows "This one needs a computer" on a phone") and its submit sketch ("Plays on (•) phone and computer ( ) computer only") still stand in the main design. The spec's section 0 records the Owner's rule. The opening line of the spec ("This amends ... sections 5.2 ... and 5.7") could add that the computer-only Call and the question are gone, so a later reader of the main design is not misled.
 - Existing rows marked `computer_only` stay (test data). After R, nothing tells them apart, which is what the Owner's rule wants.
+
+## Re-check at `4db28f1`
+
+Commit examined: `4db28f1` (one commit after this file's `fc32968`). Read: the diff `fc32968..4db28f1` of the spec and the plan, in full, and a search of the plan for `createDraft`, `playsOn`, `plays_on`, `playsOnWords`, `computer_only` and "of 10".
+
+| Finding | Result | Evidence at `4db28f1` |
+|---|---|---|
+| R1 `createDraft` | PASS | Task 26 names `startGame` (`service.ts:446`), writing `playsOn: "phone_and_computer"` in its `db.game.create`; `createDraft` appears nowhere in the plan |
+| R2 `VideoQuestion.svelte` | PASS | In Modify (the `computersOnly` prop and its note go) and in Step 3's visual check (the upright video question) |
+| R3 the missing journey | PASS | `connect-github` (its counter line only) is in the list, with the `grep` to run before the list is called final |
+| R4 "a first game of 10" | PASS | The criterion and Step 1 read "every game ... of 6, and of 7 for an 18+ game"; "9 for a first game" is under what moves to slice 4 |
+| R5 `playsOnWords` and Task 30 | PASS | Task 30's `look` answer and its journey have no `playsOn`; the refusal words and the Owner's command list have no `plays_on`; `changeGame` takes only `freeToPlay`; Task 26 says R's only change to S's code is that `review-order.ts` refuses a `plays_on` part. The Names line lists `playsOnWords`, `playsOnProblem` and `answerPlaysOn` as removed once, in Task 26 |
+
+The first note was taken (the spec's opening now says the main design's computer-only Call and its "Plays on" question are ended).
+
+**Nothing is red at `4db28f1`.** One note, new: between S merging and R merging, the review job accepts a `plays_on` part (it is still a `GamePart`) while its refusal words no longer name it. Nothing in that window sends one, and R closes it; recorded, not to fix.
