@@ -15,7 +15,7 @@ None recorded since the restart.
 
 ## Flaky tests
 
-None recorded since the restart.
+- 2026-11-17, main at 78008fc (run 44024056397, browser shard 6): `[tablet-landscape-webkit] make-second-look.test.ts:397` "on a wide window the screen after taking a game off starts at the top left, where Waiting starts, not in the middle" failed with "there is nothing on the page to measure" (`tests/browser/support/look.ts:151`, called at line 415); the next main run, 98e30ed, passed with no change to that screen. Root cause handed to S (#194), which changes that screen.
 
 ## Lessons
 
