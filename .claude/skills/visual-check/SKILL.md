@@ -21,10 +21,11 @@ included, is never a small change: fresh sessions run every step, even when it h
 Do not move to the next slice without a design review loop on the screens completed during that slice: steps 1 and 2
 side by side, then the fixes, then step 3, on each device in the device matrix in Settings. The loop runs in the rounds
 set in Settings, every one of them. A round shoots the screens, a fresh session checks them, and the session that built
-them fixes what it found; a round with no findings has no fixes. The first round is steps 1 and 2 and their fixes; later
-rounds are step 3 on the screens again. After the rounds before the owner's first look, the screens page goes to the
-owner; the next round fixes the owner's notes along with its own findings, and the screens page goes to the owner again.
-Screens the owner has already approved are skipped.
+them fixes what it found; a round with no findings has no fixes. Every check looks at every screenshot one by one, never
+a sample, on the design review model in Settings. The first round is steps 1 and 2 and their fixes; later rounds are
+step 3 on the screens again. After the rounds before the owner's first look, the screens page goes to the owner; the
+next round fixes the owner's notes along with its own findings, and the screens page goes to the owner again. Screens
+the owner has already approved are skipped.
 
 ## Screens page
 

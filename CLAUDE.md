@@ -334,4 +334,4 @@ Change a number or a model here and nowhere else.
   implementation audit.
 - Models and effort: a session whose model and effort are not named runs on Opus, medium. Nothing runs above high
   effort. Plan: Fable 5.2, medium. Plan audit: Opus, medium. Execution (and its fixes): Sonnet, high. Implementation
-  audit: Opus, medium. Advisor: Fable 5.2, medium.
+  audit: Opus, medium. Advisor: Fable 5.2, medium. Design review: Fable 5.2, medium.
