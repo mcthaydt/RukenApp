@@ -146,6 +146,11 @@ export function MAKER_ADDRESSES(slug: string): { path: string; form?: Record<str
     { path: `/make/${slug}/upright?/clip`, form: {} },
     { path: `/make/${slug}/wide?/clip`, form: {} },
     { path: `/make/${slug}/throw-away` },
+    // Taking a live game off, putting it back, and deleting what a stopped delete left.
+    { path: `/make/${slug}/take-off` },
+    { path: `/make/${slug}/take-off?/takeOff`, form: {} },
+    { path: `/make/${slug}?/putBack`, form: {} },
+    { path: `/make/${slug}?/deleteLeft`, form: {} },
     // Sending a live game's newest files for review.
     { path: `/make/${slug}?/newVersion`, form: {} },
     { path: `/make/${slug}/agreement`, form: {} },

@@ -381,17 +381,17 @@ test("on a phone Check and send's two video captions are the same height", async
 
 // ---- L19: after taking a game off, the screen says what changed ----------------------------------------------------------------
 
-test("after a game is taken off Ruken, the screen says players can't find it and how to put it back", async ({
+test("after a game is taken off Ruken, the screen says players can't find it and has the button to put it back", async ({
   page,
 }) => {
   const { slug } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}/take-off`);
   await page.getByRole("button", { name: "Take it off Ruken" }).click();
   await expect(page).toHaveURL(`/make/${slug}`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Off Ruken. You took it off.");
-  await expect(page.getByText("Players can't find it or play it any more.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Taken off Ruken");
+  await expect(page.getByText("Players can't find it or play it.")).toBeVisible();
   await expect(page.getByText("Nothing changed on GitHub.")).toBeVisible();
-  await expect(page.getByText("To put it back, add it again as a new game.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Put it back on Ruken" })).toBeVisible();
 });
 
 test("on a wide window the screen after taking a game off starts at the top left, where Waiting starts, not in the middle", async ({

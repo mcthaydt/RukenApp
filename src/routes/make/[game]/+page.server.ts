@@ -17,8 +17,8 @@ import { ALL_PARTS, laidOut } from "../laid-out.server.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
 // A game's own address. A draft is not a screen of its own: it leads on to the first question not answered, or to the
-// last step when none is left. Every other state is a screen that says where the game stands: Waiting, Sent back and Live
-// each have one (spec 5, 5b "Sent back, now", 5c); a game off Ruken has only its headline.
+// last step when none is left. Every other state is a screen that says where the game stands: Waiting, Sent back, Live and Taken off
+// each have one (spec 5, 5b "Sent back, now", 5c); a game staff took down has only its headline.
 
 /** The parts a game's answers are made of, as a count: the name, the line, the files, where it plays, the two videos, who it is for and the websites. */
 const PARTS = ALL_PARTS.length;
@@ -148,7 +148,23 @@ export const load: PageServerLoad = async (event) => {
     };
   }
 
-  // Off Ruken: its headline and the way back, and no more until its own screens are built.
+  if (game.state === "taken_off") {
+    return {
+      ...base,
+      view: "taken_off" as const,
+      nextStep: nextStepWords({
+        state: game.state,
+        stateReason: game.reason,
+        hasPending: game.hasPending,
+        filesProblem: false,
+        upright: true,
+        wide: true,
+      }),
+      filesLeft: game.filesLeft,
+    };
+  }
+
+  // Taken down by staff, and any other state without a screen of its own: its headline and the way back.
   return {
     ...base,
     view: "plain" as const,
@@ -191,6 +207,30 @@ export const actions: Actions = {
     if (liveSend(game) !== "again") return fail(400, { problem: "That game can't be sent again right now." });
     try {
       await gamesServices().service.sendForReview(game.id, userId);
+    } catch (problem) {
+      return fail(400, refusal(problem));
+    }
+    redirect(303, `/make/${game.slug}`);
+  },
+
+  // A game its maker took off is copied again and sent for review like a new game; only a person's yes makes it live.
+  putBack: async (event) => {
+    const { userId, game } = await ownGame(event);
+    if (game.state !== "taken_off") error(404, "Not found");
+    try {
+      await gamesServices().service.putBack(game.id, userId);
+    } catch (problem) {
+      return fail(400, refusal(problem));
+    }
+    redirect(303, `/make/${game.slug}`);
+  },
+
+  // Files a delete that stopped left in the bucket, deleted again.
+  deleteLeft: async (event) => {
+    const { userId, game } = await ownGame(event);
+    if (game.state !== "taken_off") error(404, "Not found");
+    try {
+      await gamesServices().service.deleteLeftFiles(game.id, userId);
     } catch (problem) {
       return fail(400, refusal(problem));
     }
