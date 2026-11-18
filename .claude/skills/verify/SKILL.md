@@ -37,16 +37,17 @@ export GITHUB_API_BASE=http://127.0.0.1:12112 GITHUB_WEB_BASE=http://127.0.0.1:1
 until [ "$(curl -s -o /dev/null -w '%{http_code}' localhost:4173/healthz)$(curl -s -o /dev/null -w '%{http_code}' localhost:8788/__ruken/health)" = 200200 ]; do sleep 2; done
 ```
 
-It is ready when both `localhost:4173/healthz` (the app) and `localhost:8788/__ruken/health` (the game gate) answer 200, and each stand-in answers 200 at `127.0.0.1:PORT/ready (PORT is 12111, 12112, 12113 or 12114)`. If the wait loop goes on past 4 minutes, read the three logs in `/tmp/verify-ruken/`. Last clean start, timed with `date` before and after: 20 seconds with the pnpm store already warm (install, migrations, build and all six servers; a cold install takes longer), on commit bc4ddd3.
+It is ready when both `localhost:4173/healthz` (the app) and `localhost:8788/__ruken/health` (the game gate) answer 200, and each stand-in answers 200 at `127.0.0.1:PORT/ready` (PORT is 12111, 12112, 12113 or 12114). If the wait loop goes on past 4 minutes, read the three logs in `/tmp/verify-ruken/`. Last clean start, timed with `date` before and after: 20 seconds with the pnpm store already warm (install, migrations, build and all six servers; a cold install takes longer), on commit bc4ddd3.
 
 ## Drive it
 
 Open it in a real browser: the Chromium and Playwright the container already has (`require('playwright')`, then `chromium.launch()`), at each size in the device matrix in Settings. Tap, click, type and press keys the way a person would, and find things by their label or role. Take a screenshot at deviceScaleFactor 1 for your own check, and save it in the scratchpad, never in the repo. The main screen, what it shows and how to use it:
 
-The main screen today is the home page at `http://localhost:4173/`: "Ruken", "Games, one swipe at a time. Coming soon." and one big "Sign in" button (there is no feed yet; when it lands, this line is updated in the same pull request). Run the driver script below from the repo root; it needs the default `node` that has Playwright (`NODE_PATH=/opt/node-tools/node_modules`), and it opens a phone-sized window (412 by 915, the Pixel 7 size in `playwright.config.ts`); for the tablet and the computer, change `viewport` to 1024 by 768 and 1280 by 720. It looks for headings and labels, and exits 1 at the first thing it cannot find.
+The main screen today is the home page at `http://localhost:4173/`: "Ruken", "Games, one swipe at a time. Coming soon." and one big "Sign in" button (there is no feed yet; when it lands, this line is updated in the same pull request). Run the driver script below from the repo root; it runs on any `node` once `NODE_PATH=/opt/node-tools/node_modules` is set, and it opens a phone-sized window (412 by 915, the Pixel 7 size in `playwright.config.ts`); for the tablet and the computer, change `viewport` to 1024 by 768 and 1280 by 720. It looks for headings and labels, and exits 1 at the first thing it cannot find.
 
 ```sh
-mkdir -p "$SHOTS"   # SHOTS is a folder in the scratchpad, never in the repo
+: "${SHOTS:?set SHOTS to a scratchpad folder, outside the repo}"
+mkdir -p "$SHOTS"
 NODE_PATH=/opt/node-tools/node_modules node - "$SHOTS" <<'JS'
 const { chromium } = require('playwright');
 (async () => {
@@ -87,8 +88,8 @@ Stop every server it started and clear what it wrote, so the next run starts cle
 pkill -f 'wrangler|workerd|fake-.*-server|when-up'
 su postgres -c "psql -c 'DROP DATABASE IF EXISTS verify_ruken'"
 pg_ctlcluster 16 main stop
-rm -rf /tmp/verify-ruken .wrangler
-git status --short   # must show nothing from this run
+rm -rf /tmp/verify-ruken .wrangler cloudflare/games/.wrangler
+git status --short --ignored   # must show only node_modules, .svelte-kit and the build folder, nothing else
 ```
 
 ## When it breaks
@@ -99,5 +100,5 @@ A step that breaks or flakes is fixed in this skill first. Each known way a star
 - `prisma migrate deploy` cannot reach the database: `TEST_DATABASE_URL` is not exported in this shell, or the `verify_ruken` database was not made; run the `su postgres` line again.
 - The wait loop never ends and `/tmp/verify-ruken/app.log` is quiet: the build is still running (it takes under a minute), so wait; if it says a port is in use, a run before this one was not stopped, so run "Stop it" and start again.
 - The game gate log says "database is locked": the gate started before the app; the `when-up.ts` step in front of it prevents that, so keep it.
-- `require('playwright')` is not found: `NODE_PATH=/opt/node-tools/node_modules` was left off, or the repo's Node 24 is first in `PATH` and `node` there has no Playwright path; set it as shown.
+- `require('playwright')` is not found: `NODE_PATH=/opt/node-tools/node_modules` was left off; set it as shown (it works under Node 24 too).
 - A sign-up says "too many tries": the site limits each address; wait a minute, or stop and start again.
