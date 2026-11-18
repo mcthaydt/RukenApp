@@ -17,7 +17,7 @@ Needs Node 24 (`engines` says `24.x`): `export PATH=/opt/node24/bin:$PATH`. The 
 cd "$(git rev-parse --show-toplevel)"
 export PATH=/opt/node24/bin:$PATH
 pnpm install --frozen-lockfile
-pg_ctlcluster 16 main start
+pg_ctlcluster 16 main start || true   # exits 2 when it is already running
 su postgres -c "psql -c \"ALTER USER postgres PASSWORD 'postgres'\" -c 'DROP DATABASE IF EXISTS verify_ruken' -c 'CREATE DATABASE verify_ruken'"
 export TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/verify_ruken
 mkdir -p /tmp/verify-ruken
@@ -95,7 +95,7 @@ git status --short   # must show nothing from this run
 
 A step that breaks or flakes is fixed in this skill first. Each known way a start or a step fails, what it looks like, and the fix:
 
-- `pg_ctlcluster` says the cluster is already running: fine; carry on.
+- `pg_ctlcluster` says the cluster is already running (it exits 2): fine, the line ends with `|| true` for that.
 - `prisma migrate deploy` cannot reach the database: `TEST_DATABASE_URL` is not exported in this shell, or the `verify_ruken` database was not made; run the `su postgres` line again.
 - The wait loop never ends and `/tmp/verify-ruken/app.log` is quiet: the build is still running (it takes under a minute), so wait; if it says a port is in use, a run before this one was not stopped, so run "Stop it" and start again.
 - The game gate log says "database is locked": the gate started before the app; the `when-up.ts` step in front of it prevents that, so keep it.
