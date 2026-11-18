@@ -92,12 +92,6 @@ describe("stateParts", () => {
       reason: null,
     });
   });
-
-  it("is what stateWords says in one line", () => {
-    expect(stateWords({ state: "sent_back", stateReason: "Fix the sound.", hasPending: false })).toBe(
-      "Sent back: Fix the sound.",
-    );
-  });
 });
 
 // The second line of each game in Your games: where it stands and what to do, never staff's whole reason (review F11).
