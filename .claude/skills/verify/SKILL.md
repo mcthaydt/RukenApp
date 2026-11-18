@@ -37,7 +37,7 @@ export GITHUB_API_BASE=http://127.0.0.1:12112 GITHUB_WEB_BASE=http://127.0.0.1:1
 until [ "$(curl -s -o /dev/null -w '%{http_code}' localhost:4173/healthz)$(curl -s -o /dev/null -w '%{http_code}' localhost:8788/__ruken/health)" = 200200 ]; do sleep 2; done
 ```
 
-It is ready when both `localhost:4173/healthz` (the app) and `localhost:8788/__ruken/health` (the game gate) answer 200, and each stand-in answers 200 at `127.0.0.1:PORT/ready` (PORT is 12111, 12112, 12113 or 12114). If the wait loop goes on past 4 minutes, read the three logs in `/tmp/verify-ruken/`. Last clean start, timed with `date` before and after: 20 seconds with the pnpm store already warm (install, migrations, build and all six servers; a cold install takes longer), on commit bc4ddd3.
+It is ready when both `localhost:4173/healthz` (the app) and `localhost:8788/__ruken/health` (the game gate) answer 200, and each stand-in answers 200 at `127.0.0.1:PORT/ready` (PORT is 12111, 12112, 12113 or 12114). If the wait loop goes on past 4 minutes, read the three logs in `/tmp/verify-ruken/`. Last clean start, timed with `date` before and after: about 25 seconds with the pnpm store already warm and about 42 seconds cold (install, migrations, build and all six servers), on commit 8d6ac68.
 
 ## Drive it
 
@@ -89,7 +89,7 @@ pkill -f 'wrangler|workerd|fake-.*-server|when-up'
 su postgres -c "psql -c 'DROP DATABASE IF EXISTS verify_ruken'"
 pg_ctlcluster 16 main stop
 rm -rf /tmp/verify-ruken .wrangler cloudflare/games/.wrangler
-git status --short --ignored   # must show only node_modules, .svelte-kit and the build folder, nothing else
+git status --short --ignored   # only ignored build files (node_modules, .svelte-kit, generated folders); no .wrangler, nothing untracked
 ```
 
 ## When it breaks
