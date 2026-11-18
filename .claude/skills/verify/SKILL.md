@@ -34,10 +34,17 @@ export GITHUB_API_BASE=http://127.0.0.1:12112 GITHUB_WEB_BASE=http://127.0.0.1:1
 # the app on 4173, then the game gate on 8788, which waits for the app (two Workers opening one storage folder at once fail)
 (pnpm exec prisma migrate deploy && pnpm build && exec pnpm exec wrangler dev cloudflare/worker.js --port 4173 --test-scheduled --persist-to .wrangler/state) > /tmp/verify-ruken/app.log 2>&1 &
 (env -u GITHUB_APP_PRIVATE_KEY SITE_ORIGIN=http://localhost:4173 PATH_HOST=localhost:8788 sh -c 'node tests/browser/support/when-up.ts http://localhost:4173/healthz && exec pnpm exec wrangler dev --config cloudflare/games/wrangler.jsonc --port 8788 --persist-to .wrangler/state') > /tmp/verify-ruken/gate.log 2>&1 &
-until [ "$(curl -s -o /dev/null -w '%{http_code}' localhost:4173/healthz)$(curl -s -o /dev/null -w '%{http_code}' localhost:8788/__ruken/health)" = 200200 ]; do sleep 2; done
+# wait up to 4 minutes (120 tries, 2 seconds apart), then fail loudly
+tries=0
+until [ "$(curl -s -o /dev/null -w '%{http_code}' localhost:4173/healthz)$(curl -s -o /dev/null -w '%{http_code}' localhost:8788/__ruken/health)" = 200200 ]; do
+  tries=$((tries+1))
+  if [ "$tries" -ge 120 ]; then echo "NOT READY after 4 minutes: read the logs in /tmp/verify-ruken/" >&2; break; fi
+  sleep 2
+done
+[ "$tries" -lt 120 ]   # the block's status: 0 when ready, 1 when it gave up
 ```
 
-It is ready when both `localhost:4173/healthz` (the app) and `localhost:8788/__ruken/health` (the game gate) answer 200, and each stand-in answers 200 at `127.0.0.1:PORT/ready` (PORT is 12111, 12112, 12113 or 12114). If the wait loop goes on past 4 minutes, read the three logs in `/tmp/verify-ruken/`. Last clean start, timed with `date` before and after: about 25 seconds with the pnpm store already warm and about 42 seconds cold (install, migrations, build and all six servers), on commit 8d6ac68.
+It is ready when both `localhost:4173/healthz` (the app) and `localhost:8788/__ruken/health` (the game gate) answer 200, and each stand-in answers 200 at `127.0.0.1:PORT/ready` (PORT is 12111, 12112, 12113 or 12114). The wait gives up after 4 minutes, prints "NOT READY" and exits non-zero; then read the logs in `/tmp/verify-ruken/`. Last clean start, timed with `date` before and after: 21.3 to 21.7 seconds with the pnpm store already warm, measured on commit fce4668, and about 42 seconds cold (install, migrations, build and all six servers), on commit 8d6ac68.
 
 ## Drive it
 
@@ -96,9 +103,10 @@ git status --short --ignored   # only ignored build files (node_modules, .svelte
 
 A step that breaks or flakes is fixed in this skill first. Each known way a start or a step fails, what it looks like, and the fix:
 
+- Harmless, ignore them: pnpm's "Ignored build scripts" warning during install, and wrangler's "Proxy environment variables detected" line in the app and gate logs.
 - `pg_ctlcluster` says the cluster is already running (it exits 2): fine, the line ends with `|| true` for that.
 - `prisma migrate deploy` cannot reach the database: `TEST_DATABASE_URL` is not exported in this shell, or the `verify_ruken` database was not made; run the `su postgres` line again.
-- The wait loop never ends and `/tmp/verify-ruken/app.log` is quiet: the build is still running (it takes under a minute), so wait; if it says a port is in use, a run before this one was not stopped, so run "Stop it" and start again.
+- The wait prints "NOT READY": read `/tmp/verify-ruken/app.log` and `gate.log`; if one says a port is in use, a run before this one was not stopped, so run "Stop it" and start again.
 - The game gate log says "database is locked": the gate started before the app; the `when-up.ts` step in front of it prevents that, so keep it.
 - `require('playwright')` is not found: `NODE_PATH=/opt/node-tools/node_modules` was left off; set it as shown (it works under Node 24 too).
 - A sign-up says "too many tries": the site limits each address; wait a minute, or stop and start again.
