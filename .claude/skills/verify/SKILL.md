@@ -37,7 +37,7 @@ export GITHUB_API_BASE=http://127.0.0.1:12112 GITHUB_WEB_BASE=http://127.0.0.1:1
 until [ "$(curl -s -o /dev/null -w '%{http_code}' localhost:4173/healthz)$(curl -s -o /dev/null -w '%{http_code}' localhost:8788/__ruken/health)" = 200200 ]; do sleep 2; done
 ```
 
-It is ready when both `localhost:4173/healthz` (the app) and `localhost:8788/__ruken/health` (the game gate) answer 200, and each stand-in answers 200 at `127.0.0.1:PORT/ready (PORT is 12111, 12112, 12113 or 12114)`. If the wait loop goes on past 4 minutes, read the three logs in `/tmp/verify-ruken/`. Last clean start, timed with `date` before and after: START_TIME, on commit COMMIT.
+It is ready when both `localhost:4173/healthz` (the app) and `localhost:8788/__ruken/health` (the game gate) answer 200, and each stand-in answers 200 at `127.0.0.1:PORT/ready (PORT is 12111, 12112, 12113 or 12114)`. If the wait loop goes on past 4 minutes, read the three logs in `/tmp/verify-ruken/`. Last clean start, timed with `date` before and after: 20 seconds with the pnpm store already warm (install, migrations, build and all six servers; a cold install takes longer), on commit bc4ddd3.
 
 ## Drive it
 
