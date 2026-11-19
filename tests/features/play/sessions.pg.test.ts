@@ -388,3 +388,40 @@ describe("playSummary", () => {
     expect(await service.playSummary(one.game.id)).toEqual({ sessions: 1, beats: 1, countedSeconds: 15 });
   });
 });
+
+describe("reviewLook", () => {
+  /** A pull that waits for a yes: a pull row, not live. */
+  async function pendingPull(game: LiveGame, connectHosts: string[]) {
+    const live = await withNewPull({ ...game, connectHosts });
+    return { id: live.livePullId, connectHosts };
+  }
+
+  it("gives the address of the waiting files under a pass for the staff account, and records no play", async () => {
+    const game = await newGame();
+    const pull = await pendingPull(game, ["api.example.com"]);
+    const staffUserId = await createUser(db());
+
+    const address = await service.reviewLook({ game, pull, staffUserId });
+
+    expect(address.startsWith(`https://g-${game.publicId}.games.test/`)).toBe(true);
+    expect(address.endsWith("/")).toBe(true);
+    const claims = checkPass(new URL(address).pathname.split("/")[1] ?? "", SECRET, clock.epochMs());
+    expect(claims).toMatchObject({ game: game.publicId, pull: pull.id, connect: ["api.example.com"] });
+    expect(await db().playPass.findUniqueOrThrow({ where: { id: claims?.id ?? "" } })).toMatchObject({
+      userId: staffUserId,
+      gameId: game.id,
+      pullId: pull.id,
+    });
+    expect(await db().playSession.count({ where: { gameId: game.id } })).toBe(0);
+  });
+
+  it("gives the same address when asked twice", async () => {
+    const game = await newGame();
+    const pull = await pendingPull(game, []);
+    const staffUserId = await createUser(db());
+
+    const first = await service.reviewLook({ game, pull, staffUserId });
+
+    expect(await service.reviewLook({ game, pull, staffUserId })).toBe(first);
+  });
+});

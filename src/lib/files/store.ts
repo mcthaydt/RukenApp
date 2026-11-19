@@ -34,4 +34,6 @@ export interface FileStore {
    * `files/abc/` never also takes `files/abcd/`; one that does not throws.
    */
   deleteAll(prefix: string): Promise<number>;
+  /** Whether any file's key starts with `prefix`, which must end in `/` as for `deleteAll`. Reads no bytes. */
+  hasAny(prefix: string): Promise<boolean>;
 }

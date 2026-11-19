@@ -6,7 +6,8 @@ export { ageProblem, marksProblem, playsOnProblem } from "./fields.ts";
 export { GameError } from "./game-error.ts";
 export { playsOnWords, ratingWords, websitesWords } from "./laid-out.ts";
 export { nextStepWords, toFixWords } from "./review.ts";
-export { partNoun } from "./send-back.ts";
+export { readReviewOrder, type ReviewOrder } from "./review-order.ts";
+export { partNoun, SOMETHING_ELSE } from "./send-back.ts";
 export {
   answersOf,
   counterOf,

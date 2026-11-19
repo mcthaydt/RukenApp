@@ -95,6 +95,21 @@ describe("the memory file store", () => {
         expect(await make().deleteAll("nothing/")).toBe(0);
       });
 
+      it("knows whether anything is stored under a folder, and not under a longer sibling's name", async () => {
+        const store = make();
+        expect(await store.hasAny("files/ab/")).toBe(false);
+        await store.put("files/abc/x", bytesOf(1));
+
+        expect(await store.hasAny("files/ab/")).toBe(false);
+        expect(await store.hasAny("files/abc/")).toBe(true);
+        await store.deleteAll("files/abc/");
+        expect(await store.hasAny("files/abc/")).toBe(false);
+      });
+
+      it("refuses to ask about a prefix that does not end in a slash", async () => {
+        await expect(make().hasAny("files/a")).rejects.toThrow("must end in a slash");
+      });
+
       it("answers the size and the tag from head, without a body", async () => {
         const store = make();
         await store.put("a", bytesOf(1, 2, 3));
@@ -193,6 +208,14 @@ describe("r2FileStore", () => {
       ["list", { prefix: "files/a/", cursor: "next" }],
       ["delete", ["files/a/y"]],
     ]);
+  });
+
+  it("asks R2 for one key under the folder to know whether any is left", async () => {
+    const { store, calls } = standIn();
+
+    expect(await store.hasAny("files/a/")).toBe(true);
+
+    expect(calls).toEqual([["list", { prefix: "files/a/", limit: 1 }]]);
   });
 
   it("refuses a prefix that does not end in a slash before it asks R2 anything", async () => {

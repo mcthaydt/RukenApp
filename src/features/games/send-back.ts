@@ -5,7 +5,7 @@ import reasons from "./library/send-back-reasons.json" with { type: "json" };
 // the words the maker reads are written once, in library/send-back-reasons.json, so the two stay a pair.
 
 /** The code of the one reason every part has: staff write their own line, and the maker reads that line. */
-const SOMETHING_ELSE = "something_else";
+export const SOMETHING_ELSE = "something_else";
 
 export interface SendBackReason {
   part: GamePart;

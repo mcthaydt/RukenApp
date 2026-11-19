@@ -31,3 +31,19 @@ export function grantFirstOwner(db: PrismaClient, email: string): Promise<FirstO
     return "granted";
   });
 }
+
+/** The staff who check games: they accept a game or send it back, and play any game without paying. */
+export const GAME_STAFF_ROLES: readonly StaffRole[] = ["owner", "head_curator", "curator"];
+
+/**
+ * The oldest staff account that may check games, or null when there is none. The Owner's review command acts as this
+ * account, so the command names no person.
+ */
+export async function firstGameStaff(db: PrismaClient): Promise<string | null> {
+  const row = await db.staffAssignment.findFirst({
+    where: { role: { in: [...GAME_STAFF_ROLES] } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { userId: true },
+  });
+  return row?.userId ?? null;
+}

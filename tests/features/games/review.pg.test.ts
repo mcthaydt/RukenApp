@@ -655,6 +655,21 @@ describe("waitingGames", () => {
     expect(waiting[0]).toMatchObject({ name: "A game", sentAt: expect.any(Date) as Date });
     expect(waiting[0]?.makerEmail).toMatch(/@example\.test$/);
   });
+
+  it("says a first send is a game and a live game's new files are an update", async () => {
+    const first = await readyGame();
+    await service.sendForReview(first.id, first.makerUserId);
+    const live = await readyGame();
+    await service.sendForReview(live.id, live.makerUserId);
+    await service.accept(live.id, await createUser(db()));
+    await addPull(live.id);
+    await service.sendForReview(live.id, live.makerUserId);
+
+    const waiting = await service.waitingGames();
+
+    expect(waiting.find((game) => game.slug === first.slug)?.kind).toBe("game");
+    expect(waiting.find((game) => game.slug === live.slug)?.kind).toBe("update");
+  });
 });
 
 describe("what the screens show", () => {
