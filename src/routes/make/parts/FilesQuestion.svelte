@@ -187,9 +187,10 @@
     <details open={boxesOpen}>
       <summary>Change the branch or folder</summary>
       <label>
-        Branch
+        <span id="branch-label">Branch</span>
         <select
           class="answer"
+          aria-labelledby="branch-label"
           name="branch"
           aria-describedby={describedBy("branch")}
           aria-invalid={problems?.branch === undefined ? undefined : "true"}

@@ -60,6 +60,7 @@
 
 <div
   class="lines"
+  bind:this={group}
   role="group"
   aria-labelledby="question"
   aria-describedby={shown === undefined ? "hint" : "hint problem"}
@@ -84,7 +85,7 @@
         onclick={() => {
           remove(line.id);
         }}
-        aria-label={`Remove website ${String(index + 1)}`}
+        aria-label={`Remove line ${String(index + 1)}`}
       >
         Remove
       </button>

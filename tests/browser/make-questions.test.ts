@@ -5,6 +5,7 @@ import { filesOf, fillAnswers, putGameWhereStaffLeaveIt } from "./support/databa
 import {
   addDraft,
   answerAge,
+  answerEveryQuestion,
   answerLine,
   aviFile,
   BROKEN_GAME,
@@ -770,8 +771,8 @@ test("a game's card in Your games shows a still from its wide video", async ({ p
 test("each website is its own line: add, remove, five at most, two kept, and a bad one is refused", async ({
   page,
 }) => {
-  const { slug } = await startDraft(page);
-  await fillAnswers(slug, { files: true });
+  // Saving copies the game from GitHub again, so this game's files come from the stand-in GitHub, not the database.
+  const { slug } = await answerEveryQuestion(page);
   await page.goto(`/make/${slug}/websites`);
   await pageHasSettled(page);
   const boxes = page.getByRole("textbox");
@@ -790,9 +791,9 @@ test("each website is its own line: add, remove, five at most, two kept, and a b
   for (let line = 3; line <= 5; line++) await add.click();
   await expect(boxes).toHaveCount(5);
   await expect(add).toHaveCount(0);
-  await page.getByRole("button", { name: "Remove website 5" }).click();
-  await page.getByRole("button", { name: "Remove website 4" }).click();
-  await page.getByRole("button", { name: "Remove website 3" }).click();
+  await page.getByRole("button", { name: "Remove line 5" }).click();
+  await page.getByRole("button", { name: "Remove line 4" }).click();
+  await page.getByRole("button", { name: "Remove line 3" }).click();
   await expect(add).toBeVisible();
 
   // A bad line is refused in the same words, and every line stays as typed.
@@ -803,9 +804,10 @@ test("each website is its own line: add, remove, five at most, two kept, and a b
   await expect(boxes.nth(1)).toHaveValue("not a website");
 
   // Removing the bad line leaves the good one, which is saved; coming back shows it with an empty line after it.
-  await page.getByRole("button", { name: "Remove website 2" }).click();
+  await page.getByRole("button", { name: "Remove line 2" }).click();
   await expect(boxes.first()).toBeFocused();
   await nextButton(page).click();
+  await expect(page).not.toHaveURL(/\/websites/);
   await page.goto(`/make/${slug}/websites`);
   await expect(boxes).toHaveCount(2);
   await expect(boxes.first()).toHaveValue("api.example.com");
