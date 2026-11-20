@@ -47,7 +47,7 @@ How the feed weighs any of this is not written here. RukenApp is public, and the
 
 ## 5. The player's place
 
-- On the Owner's card (section 7, question 1), recommended: country and state or province, filled in for them.
+- **Owner, 2026-11-20 00:16 UTC, on a card:** "Country and state, filled in".
 - **Sign-up gets one screen** after the birthday: "Where do you live?" The country and state are filled in from where the connection comes from (Cloudflare's `request.cf.country` and `request.cf.regionCode`, measured, not typed), with "Yes, that's right" as the big button and "Change it" beside it. "Change it" opens a country list and, for countries split into states or provinces, a second list.
 - **Stored:** `User.country` (two letters, ISO 3166-1) and `User.region` (ISO 3166-2, empty where the country is not split). No city, no street, no coordinates.
 - **Changing it:** the player's own page (`/me`) shows "You live in: Ohio, United States" with Change.
@@ -68,7 +68,7 @@ Call: O is its own migration, not folded into #195's K, so K's plan audit stays 
 
 ## 7. The Owner's questions
 
-1. How exact a player's place is. Recommended: country and state, filled in.
+1. How exact a player's place is. **Answered** 2026-11-20 00:16 UTC: country and state, filled in.
 2. Keep the whole birthday. Recommended: yes, the full date already typed.
 3. When to build. Recommended: the questions and fields now, with #195; the ranking with the feed in slice 3.
 
