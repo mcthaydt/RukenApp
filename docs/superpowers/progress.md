@@ -1,6 +1,6 @@
 # Ruken progress
 
-Last updated: 2026-11-20 07:50 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
+Last updated: 2026-11-20 07:53 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
 
 ## Outcome
 
@@ -58,7 +58,6 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 ## Follow-ups (not built yet)
 
 - `release` says CI screenshots need no label, but `ci.yml` still reads the `screenshots` label. Unit C would have dropped it; with C dropped, it needs its own small change.
-- N16 from C's plan audit: `visual-check`'s second screens-page look includes approved screens, so once the page is deleted after each look, those screens must be reshot. `visual-check` should say so, in the slice's rule-change pull request.
 - R left 4px of room under the new line on Check it, then send on an iPhone SE held sideways; the counter, Check it then send, Live and Sent back screens lost their approval and go on the screens page.
 - `LiveGame.playsOn` is still selected but nothing reads it; unit F, which rebuilds that page, can drop it.
 - F (#218) review notes left for later (optional): order More from by acceptance date; cap the play-time beat body before reading it; the drag flag can swallow one Enter after a drag.
