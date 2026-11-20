@@ -1,6 +1,6 @@
 # Online servers, and a player's birthday and place
 
-Date: 2026-11-20. Status: draft, written for the Owner's three questions (section 7) and then a lane 3 plan audit. Nothing here is built. Lane 3 (a migration), so the staged path.
+Date: 2026-11-20. Status: the Owner answered its three questions on 2026-11-20 (section 7); written for the lane 3 plan audit. Nothing here is built. Lane 3 (a migration), so the staged path.
 
 ## 1. What the Owner asked
 
@@ -64,13 +64,13 @@ How the feed weighs any of this is not written here. RukenApp is public, and the
 | Y | O, branch B (phone sign-up) merged | `src/features/accounts/age.ts`, the sign-up screens, `/me` | birthday kept, the place screen, the sign-in ask for older accounts | 2 |
 | N | the feed (slice 3) | private | nearby servers in the feed's order | slice 3 |
 
-Call: O is its own migration, not folded into #195's K, so K's plan audit stays settled; it waits on K and on D (#204) because all three touch `games.prisma`. #195 leaves room for the servers question right after "Two or more, online". When to build is the Owner's card 3; if the Owner picks "All of it with the feed", O, Q+ and Y move to slice 3.
+Call: O is its own migration, not folded into #195's K, so K's plan audit stays settled; it waits on K and on D (#204) because all three touch `games.prisma`. #195 leaves room for the servers question right after "Two or more, online". **Owner, 2026-11-20 00:17 UTC, on a card:** "Fields now, ranking with the feed": O, Q+ and Y are built in slice 2; N waits for the feed in slice 3.
 
 ## 7. The Owner's questions
 
 1. How exact a player's place is. **Answered** 2026-11-20 00:16 UTC: country and state, filled in.
 2. Keep the whole birthday. **Answered** 2026-11-20 00:17 UTC: keep the full date.
-3. When to build. Recommended: the questions and fields now, with #195; the ranking with the feed in slice 3.
+3. When to build. **Answered** 2026-11-20 00:17 UTC: the questions and fields now; the ranking with the feed in slice 3.
 
 Further questions on what goes with nearby-server ranking (the "additional things to compensate") are kept with the feed's private design, because they are about how the feed weighs games.
 
