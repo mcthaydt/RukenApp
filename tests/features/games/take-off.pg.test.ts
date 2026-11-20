@@ -1,3 +1,4 @@
+import { decisionsOff } from "../../support/decisions-off.ts";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
@@ -52,7 +53,7 @@ beforeEach(() => {
   clock = new TestClock("2026-11-14T12:00:00Z");
   files = new FlakyFileStore();
   installed = null;
-  service = createGamesService({ db: db(), clock, files, github });
+  service = createGamesService({ db: db(), clock, files, github, schedule: decisionsOff });
 });
 
 let made = 0;

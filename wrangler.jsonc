@@ -16,8 +16,10 @@
   "workers_dev": true,
   "preview_urls": false,
   "observability": { "enabled": true },
-  // Once a day, at 09:17 UTC, early morning in Chicago. The handler is in cloudflare/worker.js.
-  "triggers": { "crons": ["17 9 * * *"] },
+  // Once a day, at 09:17 UTC, early morning in Chicago; and every hour, on the hour, which is when decision day goes
+  // out (Friday noon New York time). cloudflare/crons.js says which jobs each one knocks on; the handler is in
+  // cloudflare/worker.js.
+  "triggers": { "crons": ["17 9 * * *", "0 * * * *"] },
   // Cloudflare's connection pool in front of Neon. The id names a setting in the Owner's account; it is not a
   // credential and is useless without the Owner's Cloudflare login (Owner, 2026-11-13: committed here).
   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "eb64483c638e4f5eab2ce9dd1b7ea081" }],

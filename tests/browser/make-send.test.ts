@@ -12,7 +12,7 @@ import {
   startAtCheck,
   startDraft,
 } from "./support/game.ts";
-import { showTheOwner } from "./support/look.ts";
+import { boxOf, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The last two screens before a game is sent: the maker agreement (a maker's first game only) and Check and send, where
@@ -22,12 +22,12 @@ test.beforeEach(forgetRateLimits);
 
 const AGREEMENT_VERSION_LINE = "Version 2 · Last updated 15 November 2026";
 
-test("a first game: seven questions, the agreement, Check and send, then Waiting for review", async ({
+test("a first game: six questions, the agreement, Check and send, then Waiting for review", async ({
   page,
 }, testInfo) => {
   const { slug } = await answerEveryQuestion(page);
 
-  // Seven questions, then the agreement, which only a first game meets.
+  // Six questions, then the agreement, which only a first game meets.
   await expect(page).toHaveURL(`/make/${slug}/agreement`);
   await expect(page.getByText("Almost done")).toBeVisible();
   await showTheOwner(page, testInfo, "the maker agreement, first game");
@@ -104,7 +104,7 @@ test("I agree is the agreeing, and a second game is not asked again", async ({ p
   await expect(page).toHaveURL(`/make/${second.slug}/check`);
 });
 
-test("Check and send lays the game out: two videos, its name and line, and four chips", async ({
+test("Check and send lays the game out: two videos, its name and line, and three chips", async ({
   page,
 }, testInfo) => {
   const { name } = await startAtCheck(page);
@@ -115,15 +115,23 @@ test("Check and send lays the game out: two videos, its name and line, and four 
   await expect(page.getByRole("heading", { level: 2, name })).toBeVisible();
   await expect(page.locator(".tagline")).toHaveText("A tiny game about tapping.");
   const chips = page.locator(".chip");
-  await expect(chips).toHaveText([
-    "ruken-test/tiny-game",
-    "Plays on phones and computers",
-    "12+",
-    "Uses no other websites",
-  ]);
+  await expect(chips).toHaveText(["ruken-test/tiny-game", "12+", "Uses no other websites"]);
   // Sizes and counts are not for a maker to weigh up here.
   await expect(page.getByText(/\d+ files?|\bKB\b|\bMB\b/)).toHaveCount(0);
+  // Every game has to work on both, so it is said once, above Send for review, and never asked.
+  const rule = page.getByText("Your game must work on phones and computers.");
+  await expect(rule).toBeVisible();
+  await expect(page.getByText("Plays on", { exact: false })).toHaveCount(0);
+  const ruleBox = await boxOf(rule);
+  const sendBox = await boxOf(page.getByRole("button", { name: "Send for review" }));
+  expect(ruleBox.y).toBeLessThan(sendBox.y);
   await showTheOwner(page, testInfo, "Check and send, the game laid out");
+});
+
+test("where a game plays is not a page: there is no such question", async ({ page }) => {
+  const { slug } = await startAtCheck(page);
+  const response = await page.goto(`/make/${slug}/plays-on`);
+  expect(response?.status()).toBe(404);
 });
 
 test("an 18+ game's chip names its marks", async ({ page }) => {

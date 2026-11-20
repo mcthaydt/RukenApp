@@ -5,6 +5,7 @@ import {
   stateParts,
   stateWords,
   toFixWords,
+  waitingLine,
 } from "../../../src/features/games/review.ts";
 
 // A game's state in the maker's plain words (design 5.4): one case per line.
@@ -173,6 +174,22 @@ describe("nextStepWords", () => {
     expect(nextStepWords({ ...base, state: "waiting", hasPending: true, upright: true, wide: true })).toBe(
       "We're looking at it. Come back here to see when it's live.",
     );
+  });
+
+  it("tells a waiting game that would be held the day everyone finds out, decided or not", () => {
+    expect(waitingLine("Friday 27 November")).toBe(
+      "We tell everyone on Fridays at noon New York time. The next one is Friday 27 November.",
+    );
+    expect(
+      nextStepWords({
+        ...base,
+        state: "waiting",
+        hasPending: true,
+        upright: true,
+        wide: true,
+        decisionDay: "Friday 27 November",
+      }),
+    ).toBe("We tell everyone on Fridays at noon New York time. The next one is Friday 27 November.");
   });
 
   it("tells a live game that players can find it, unless its update was sent back", () => {

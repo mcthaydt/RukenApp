@@ -1,3 +1,4 @@
+import { decisionsOff } from "../../support/decisions-off.ts";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
@@ -44,7 +45,7 @@ afterAll(async () => {
 beforeEach(() => {
   clock = new TestClock("2026-11-14T12:00:00Z");
   files = new MemoryFileStore();
-  service = createGamesService({ db: db(), clock, files, github });
+  service = createGamesService({ db: db(), clock, files, github, schedule: decisionsOff });
 });
 
 let made = 0;
@@ -194,6 +195,29 @@ describe("sendForReview", () => {
       message: "Your game's files need fixing first.",
     });
     expect(await stateOf(game.id)).toMatchObject({ state: "sent_back", pendingPullId: null });
+  });
+
+  it("makes a game whose place was never written play on phones and computers", async () => {
+    const game = await readyGame();
+    await db().game.update({ where: { id: game.id }, data: { playsOn: null } });
+
+    await service.sendForReview(game.id, game.makerUserId);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "waiting", playsOn: "phone_and_computer" });
+  });
+
+  // Staff once sent a game back for where it plays. Every game plays on both now, so that is already met: it asks the
+  // maker for nothing, no question can clear it, and it must not stop the game being sent.
+  it("sends a game that was sent back for where it plays, and clears that part", async () => {
+    const game = await readyGame();
+    await service.sendForReview(game.id, game.makerUserId);
+    await service.sendBack(game.id, await createUser(db()), [{ part: "plays_on", reason: "needs_keyboard" }]);
+    expect((await service.gameForMaker(game.slug, game.makerUserId))?.toFix).toEqual([]);
+    expect(await service.gamesOf(game.makerUserId)).toMatchObject([{ words: "Fixed. Send it again." }]);
+
+    await service.sendForReview(game.id, game.makerUserId);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "waiting", toFix: [] });
   });
 
   it("makes a draft wait on its newest files, and notes when they were sent", async () => {
@@ -480,6 +504,18 @@ describe("a live game's update that was sent back", () => {
     return game;
   }
 
+  it("sends a live update that was sent back for where it plays", async () => {
+    // A live update cannot be sent back for it any more, so the old send back is put there by hand.
+    const game = await liveGameSentBack([{ part: "files", reason: "breaks" }]);
+    await db().game.update({ where: { id: game.id }, data: { toFix: ["plays_on"] } });
+    expect((await service.gameForMaker(game.slug, game.makerUserId))?.toFix).toEqual([]);
+
+    await service.sendForReview(game.id, game.makerUserId);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "live", toFix: [] });
+    expect((await stateOf(game.id)).pendingPullId).not.toBeNull();
+  });
+
   // The files are the update, and a live game's maker fixes them on GitHub: a copy that passes is the fix.
   it("takes the files off what was sent back when a copy passes", async () => {
     const game = await liveGameSentBack([{ part: "files", reason: "breaks" }]);
@@ -506,7 +542,13 @@ describe("a live game's update that was sent back", () => {
       ...github,
       tarball: async () => new Blob([await tarGz([{ path: "top/readme.txt", content: "hello" }])]).stream(),
     };
-    const refusing = createGamesService({ db: db(), clock, files, github: noIndexHtml });
+    const refusing = createGamesService({
+      db: db(),
+      clock,
+      files,
+      github: noIndexHtml,
+      schedule: decisionsOff,
+    });
 
     await expect(refusing.pullLatest(game.id)).rejects.toMatchObject({ code: "FILES_REFUSED" });
 
@@ -547,9 +589,9 @@ describe("a live game's update that was sent back", () => {
     expect((await stateOf(game.id)).toFix).toEqual(["one_line"]);
   });
 
-  // These four a live game's maker cannot change by herself (slice 4), so sending its update back for one would leave
+  // These a live game's maker cannot change by herself (slice 4), so sending its update back for one would leave
   // it stuck for good.
-  it.each(["upright_video", "wide_video", "age_rating", "other_websites"] as const)(
+  it.each(["plays_on", "upright_video", "wide_video", "age_rating", "other_websites"] as const)(
     "refuses to send an update back for %s, and changes nothing",
     async (part) => {
       const game = await readyGame();
@@ -562,7 +604,7 @@ describe("a live game's update that was sent back", () => {
         service.sendBack(game.id, await createUser(db()), [{ part, reason: "something_else", note: "No." }]),
       ).rejects.toMatchObject({
         code: "INVALID",
-        message: "A live game can only be sent back for its name, its line, where it plays or its files.",
+        message: "A live game can only be sent back for its name, its line or its files.",
       });
 
       expect((await stateOf(game.id)).pendingPullId).not.toBeNull();
@@ -654,7 +696,7 @@ describe("waitingGames", () => {
     expect(waiting.map((game) => game.slug)).toEqual([second.slug, first.slug]);
     expect(waiting[0]).toMatchObject({ name: "A game", sentAt: expect.any(Date) as Date });
     // The maker's address would now be a stand-in nobody can read, so the list does not carry it.
-    expect(Object.keys(waiting[0] ?? {}).sort()).toEqual(["kind", "name", "sentAt", "slug"]);
+    expect(Object.keys(waiting[0] ?? {}).sort()).toEqual(["decided", "kind", "name", "sentAt", "slug"]);
   });
 
   it("says a first send is a game and a live game's new files are an update", async () => {
@@ -697,7 +739,7 @@ describe("what the screens show", () => {
 
     await db().game.update({ where: { id: game.id }, data: { ageRating: null } });
     expect(await service.gamesOf(game.makerUserId)).toMatchObject([
-      { words: "Not finished. Go on from question 7." },
+      { words: "Not finished. Go on from question 6." },
     ]);
 
     await db().game.update({ where: { id: game.id }, data: { ageRating: "age_12" } });
@@ -722,7 +764,6 @@ describe("what the screens show", () => {
         wide: { key: expect.stringMatching(/^clips\//) as string, bytes: 32 },
       },
       oneLine: "A game about a thing.",
-      playsOn: "phone_and_computer",
       ageRating: "age_12",
       contentMarks: [],
       everLive: false,

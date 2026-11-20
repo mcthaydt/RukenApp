@@ -16,11 +16,11 @@ import type { GamePart } from "../../../src/lib/server/db.ts";
 // One question at a time (spec 3, 10.5): which question is next, the counter, and how a question maps to the part
 // of a game that staff can send back.
 
+// plays_on is still a part in the database (an old send back may name it) but no question fixes it any more.
 const ALL_PARTS: GamePart[] = [
   "name",
   "one_line",
   "files",
-  "plays_on",
   "upright_video",
   "wide_video",
   "age_rating",
@@ -30,13 +30,12 @@ const ALL_PARTS: GamePart[] = [
 const none: Answers = {
   oneLine: null,
   hasFiles: false,
-  playsOn: null,
   upright: false,
   wide: false,
   ageRating: null,
   contentMarks: [],
 };
-const all = { oneLine: "x", hasFiles: true, playsOn: "computer_only", upright: true, wide: true } as const;
+const all = { oneLine: "x", hasFiles: true, upright: true, wide: true } as const;
 
 describe("which question is next", () => {
   it("a new game goes on from its one line, because its name is already given", () => {
@@ -45,10 +44,8 @@ describe("which question is next", () => {
 
   it("goes in the order the maker is asked, whatever is still missing after", () => {
     expect(firstUnanswered({ ...none, oneLine: "x" })).toBe("files");
-    expect(firstUnanswered({ ...none, oneLine: "x", hasFiles: true })).toBe("plays-on");
-    expect(firstUnanswered({ ...none, oneLine: "x", hasFiles: true, playsOn: "computer_only" })).toBe(
-      "upright",
-    );
+    expect(firstUnanswered({ ...none, oneLine: "x", hasFiles: true })).toBe("upright");
+    expect(firstUnanswered({ ...none, oneLine: "x", hasFiles: true, upright: true })).toBe("wide");
   });
 
   it("an 18+ game is not done until its marks are answered", () => {
@@ -64,17 +61,21 @@ describe("which question is next", () => {
 });
 
 describe("the counter", () => {
-  it("asks seven questions, and an eighth of an 18+ game", () => {
-    expect(questionsFor({ ageRating: "age_12" })).toHaveLength(7);
-    expect(questionsFor({ ageRating: null })).toHaveLength(7);
+  it("asks six questions, and a seventh of an 18+ game", () => {
+    expect(questionsFor({ ageRating: "age_12" })).toHaveLength(6);
+    expect(questionsFor({ ageRating: null })).toHaveLength(6);
     expect(questionsFor({ ageRating: "age_18" }).at(-1)).toBe("marks");
-    expect(questionsFor({ ageRating: "age_18" })).toHaveLength(8);
+    expect(questionsFor({ ageRating: "age_18" })).toHaveLength(7);
   });
 
-  it("counts the age question as 7 of 7, and the marks as 8 of 8", () => {
-    expect(counterOf("age", none)).toEqual({ n: 7, of: 7 });
-    expect(counterOf("marks", { ...none, ageRating: "age_18" })).toEqual({ n: 8, of: 8 });
-    expect(counterOf("name", none)).toEqual({ n: 1, of: 7 });
+  it("never asks where the game plays: every game plays on phones and computers", () => {
+    expect(questionsFor({ ageRating: "age_18" })).not.toContain("plays-on");
+  });
+
+  it("counts the age question as 6 of 6, and the marks as 7 of 7", () => {
+    expect(counterOf("age", none)).toEqual({ n: 6, of: 6 });
+    expect(counterOf("marks", { ...none, ageRating: "age_18" })).toEqual({ n: 7, of: 7 });
+    expect(counterOf("name", none)).toEqual({ n: 1, of: 6 });
   });
 });
 
@@ -109,7 +110,6 @@ describe("a question and the part it answers", () => {
 describe("what a game holds, read as answers", () => {
   const bare: AnswerSource = {
     oneLine: null,
-    playsOn: null,
     ageRating: null,
     contentMarks: [],
     pullProblem: null,
@@ -121,19 +121,17 @@ describe("what a game holds, read as answers", () => {
     expect(answersOf(bare)).toEqual(none);
   });
 
-  it("holds the line, the place it plays, the rating and the marks as they are", () => {
+  it("holds the line, the rating and the marks as they are", () => {
     expect(
       answersOf({
         ...bare,
         oneLine: "Climb.",
-        playsOn: "computer_only",
         ageRating: "age_18",
         contentMarks: ["gore"],
       }),
     ).toEqual({
       ...none,
       oneLine: "Climb.",
-      playsOn: "computer_only",
       ageRating: "age_18",
       contentMarks: ["gore"],
     });

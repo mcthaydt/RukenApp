@@ -57,7 +57,7 @@
     "parts": ["plays_on"],
     "code": "needs_keyboard",
     "staff": "It needs a keyboard.",
-    "maker": "Your game needs a keyboard, so it can't play on phones. Choose Computers only."
+    "maker": "Your game needs a keyboard, so it can't play on phones. Every game must work on both."
   },
   {
     "parts": ["upright_video", "wide_video"],

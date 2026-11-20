@@ -48,12 +48,6 @@ export async function answerLine(page: Page, line = "Climb. Fall. Climb again.")
   await nextButton(page).click();
 }
 
-/** Chooses where the game plays and presses Next. */
-export async function answerPlaysOn(page: Page, where: "computers" | "both"): Promise<void> {
-  await page.getByLabel(where === "both" ? "Phones and computers" : "Computers only").check();
-  await nextButton(page).click();
-}
-
 /** Chooses who the game is for ("3+", "7+", "12+", "16+" or "18+") and presses Next. */
 export async function answerAge(page: Page, rating: "3+" | "7+" | "12+" | "16+" | "18+"): Promise<void> {
   await page.getByRole("radio", { name: new RegExp(`^${rating.replace("+", "\\+")}`) }).check();
@@ -138,7 +132,6 @@ export function MAKER_ADDRESSES(slug: string): { path: string; form?: Record<str
     { path: `/make/${slug}/name?/answer`, form: { name: "Somebody else's game" } },
     { path: `/make/${slug}/line?/answer`, form: { oneLine: "Somebody else's line." } },
     { path: `/make/${slug}/files?/answer`, form: { repo: TINY_GAME } },
-    { path: `/make/${slug}/plays-on?/answer`, form: { playsOn: "computer_only" } },
     { path: `/make/${slug}/age?/answer`, form: { ageRating: "age_12" } },
     { path: `/make/${slug}/websites?/answer`, form: { servers: "api.example.com" } },
     { path: `/make/${slug}/marks?/answer`, form: { contentMarks: "gore" } },
@@ -286,9 +279,6 @@ export async function answerEveryQuestion(
   await connectGitHubFromFiles(page, slug);
   await page.getByLabel(TINY_GAME).check();
   await nextButton(page).click();
-  await expect(page).toHaveURL(`/make/${slug}/plays-on`);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Where does");
-  await answerPlaysOn(page, "both");
   await expect(page).toHaveURL(`/make/${slug}/upright`);
   await addVideo(page, "upright");
   await nextButton(page).click();
@@ -407,12 +397,12 @@ export async function submitGame(
 
 /**
  * A game that is live on real files and real videos: `submitGame`, then the Owner's real yes through the review
- * command. `computer_only` and `free` change the row afterwards.
+ * command. `free` changes the row afterwards.
  */
 export async function addGame(
   browser: Browser,
   request: APIRequestContext,
-  options: { playsOn?: "computer_only"; free?: boolean } = {},
+  options: { free?: boolean } = {},
 ): Promise<{
   slug: string;
   name: string;
@@ -425,7 +415,6 @@ export async function addGame(
   const yes = await reviewJob(request, { do: "accept", game: sent.slug }, browser);
   expect(yes.status()).toBe(200);
   const changes = {
-    ...(options.playsOn === undefined ? {} : { playsOn: options.playsOn }),
     ...(options.free === true ? { freeToPlay: true } : {}),
   };
   if (Object.keys(changes).length > 0) await changeGame(sent.slug, changes);

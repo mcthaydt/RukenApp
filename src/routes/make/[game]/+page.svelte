@@ -16,6 +16,7 @@
 {#if data.view === "waiting"}
   <WaitingScreen
     game={data.game}
+    line={data.line}
     changeAddress={data.changeAddress}
     filesProblem={data.filesProblem}
     filesAddress={data.filesAddress}

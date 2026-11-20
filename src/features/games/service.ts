@@ -5,7 +5,6 @@ import type {
   ClipShape,
   ContentMark,
   GamePart,
-  GamePlaysOn,
   GameState,
   PrismaClient,
 } from "../../lib/server/db.ts";
@@ -20,7 +19,6 @@ import {
   marksProblem,
   nameProblem,
   oneLineProblem,
-  playsOnProblem,
   repoProblem,
 } from "./fields.ts";
 import { NOT_VISIBLE, type GitHub } from "./github.ts";
@@ -29,6 +27,13 @@ import { pullGame, type Pull } from "./pull.ts";
 import { counterOf, firstUnanswered, type Answers } from "./questions.ts";
 import { listWords, stateParts, stateWords } from "./review.ts";
 import { isReasonFor, makerWords, partTitle } from "./send-back.ts";
+import {
+  dayWords,
+  decisionDaysDue,
+  decisionSchedule,
+  nextDecisionDay,
+  type DecisionSchedule,
+} from "./seats.ts";
 
 // What a game goes through, from its first clip to going live. It is built from what it needs (the database, the
 // clock, the bucket, GitHub) so a test hands it stand-ins and no test reaches for the real ones.
@@ -40,6 +45,8 @@ export interface GamesServiceDeps {
   clock: Clock;
   files: FileStore;
   github: GitHub;
+  /** The decision day schedule; a test hands its own. Left out, the schedule in `library/decision-days.json`. */
+  schedule?: DecisionSchedule;
 }
 
 /** A live game as the pages and the gate need it. `clips` holds the two clips' keys in the bucket. */
@@ -49,7 +56,6 @@ export interface LiveGame {
   slug: string;
   name: string;
   oneLine: string;
-  playsOn: GamePlaysOn;
   freeToPlay: boolean;
   makerUserId: string;
   livePullId: string;
@@ -69,7 +75,6 @@ export type Answer =
   | { question: "name"; name: string }
   | { question: "line"; oneLine: string }
   | { question: "files"; repo: { fullName: string; branch: string | null; folder: string } }
-  | { question: "plays-on"; playsOn: GamePlaysOn }
   // A game past draft that is made 18+ brings its marks with the rating: the database holds an 18+ game that is past
   // draft to having them, so the two are one write.
   | { question: "age"; ageRating: AgeRating; contentMarks?: ContentMark[] }
@@ -115,7 +120,6 @@ export interface MakerGame {
   hasPending: boolean;
   /** Null until the maker answers it. */
   oneLine: string | null;
-  playsOn: GamePlaysOn | null;
   ageRating: AgeRating | null;
   contentMarks: ContentMark[];
   /** True once staff have accepted the game at least once: its address never changes after that. */
@@ -143,15 +147,29 @@ export interface MakerGame {
 
 /** What staff see of a game waiting for review: the maker's view, and the files that wait. */
 export interface ReviewGame extends MakerGame {
+  /** First send, a game that was live before, or a live game's update (see `ReviewKind`). */
+  kind: ReviewKind;
+  /** What the Owner held on it that has not lapsed, and the decision day it goes out on. */
+  decided: "yes" | "sent back" | null;
+  heldDay: string | null;
   pending: { id: string; fileCount: number; totalBytes: number; connectHosts: string[] } | null;
   clipKeys: { upright: string | null; wide: string | null };
+}
+
+/**
+ * Parts staff may have sent back before games stopped being asked about them: every game now meets them, no question fixes them
+ * and no screen shows them. A game that still holds one is not stopped by it.
+ */
+const MET_PARTS: readonly GamePart[] = ["plays_on"];
+
+function stillToFix(toFix: readonly GamePart[]): GamePart[] {
+  return toFix.filter((part) => !MET_PARTS.includes(part));
 }
 
 /** Staff's own line beside a reason, at most this many characters (GameReviewPart_note_check). */
 const NOTE_MAX = 500;
 
 /** The values the answers may take, for answers that arrive from a form and are never believed. */
-const PLAYS_ON: GamePlaysOn[] = ["phone_and_computer", "computer_only"];
 const AGE_RATINGS: AgeRating[] = ["age_3", "age_7", "age_12", "age_16", "age_18"];
 const CONTENT_MARKS: ContentMark[] = ["sex_or_nudity", "gore", "drugs", "none"];
 
@@ -159,6 +177,64 @@ const CONTENT_MARKS: ContentMark[] = ["sex_or_nudity", "gore", "drugs", "none"];
 const MAX_SLUG_NUMBER = 9;
 /** 38 characters and `-9` is 40, the most the database takes for an address. */
 const SLUG_STEM_MAX = 38;
+
+/**
+ * Holding a decision and sending a decision day out both take this one lock first, so two yeses at the last seat
+ * cannot both get in and a yes made while a day goes out is held for the next day, never left on a day that has gone.
+ */
+const DECISION_LOCK_KEY = 7_340_113;
+
+/**
+ * A decision that took effect: made at once, or held and then sent out as `applied`. A held or lapsed decision has not,
+ * and nothing a maker sees may read it. Every reader of `GameReview` outside the review command and the release uses this.
+ */
+export const tookEffect = {
+  OR: [{ goesOutOn: null }, { outcome: { is: { result: "applied" as const } } }],
+};
+
+/** The date column holds a plain day: "2026-11-27" and midnight UTC are the same day. */
+const dateOfDay = (day: string): Date => new Date(`${day}T00:00:00.000Z`);
+const dayOfDate = (date: Date): string => date.toISOString().slice(0, 10);
+
+/**
+ * A held decision applies only to the game as it was decided. It lapses when the game is no longer waiting, when
+ * its waiting files are no longer the ones it names, or when the maker changed the game after it.
+ */
+function lapsed(
+  review: { decidedAt: Date; pullId: string },
+  game: { state: GameState; pendingPullId: string | null; changedAt: Date | null },
+): boolean {
+  return (
+    game.state !== "waiting" ||
+    game.pendingPullId !== review.pullId ||
+    (game.changedAt !== null && game.changedAt.getTime() > review.decidedAt.getTime())
+  );
+}
+
+/** A waiting game is a new game (a seat and a held decision), a game that was live before, or a live game's update. */
+export type ReviewKind = "game" | "back" | "update";
+
+/** What the Owner's command knows about a waiting game's standing beyond its state. */
+export interface Standing {
+  kind: ReviewKind;
+  /** What the Owner decided on it that is held and has not lapsed, with the day it goes out; else null. */
+  held: { decision: "accepted" | "sent_back"; day: string } | null;
+}
+
+/** What the Owner's list says of a held decision. */
+function decidedWords(standing: Standing | undefined): "yes" | "sent back" | null {
+  if (standing?.held == null) return null;
+  return standing.held.decision === "accepted" ? "yes" : "sent back";
+}
+
+/** What a decision did: at once, or held for a day (with the seats that day has and how many are taken now). */
+export type DecisionMade = { held: false } | { held: true; day: string; seats: number; taken: number };
+
+type ReviewReader = Pick<PrismaClient, "gameReview">;
+
+/** The words a seat refusal and a held decision share. */
+const seatsTakenWords = (seats: number): string =>
+  `This week's ${String(seats)} seats are taken. Send it back, or leave it for next week.`;
 
 /** A game's pulls, the newest first. A plain array, not `as const`, because Prisma takes only a mutable one. */
 const NEWEST_FIRST: ({ pulledAt: "desc" } | { createdAt: "desc" })[] = [
@@ -201,6 +277,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     const replaced = await deps.db.gameClip.findUnique({ where: { gameId_shape: { gameId, shape } } });
 
     await deps.files.put(key, upload.bytes);
+    await markChanged(gameId);
     await deps.db.gameClip.upsert({
       where: { gameId_shape: { gameId, shape } },
       create: { gameId, shape, key, contentType, bytes: upload.bytes.length },
@@ -208,6 +285,11 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
     await takeOutOfToFix(gameId, shape === "upright" ? "upright_video" : "wide_video");
     if (replaced !== null) await deps.files.delete(replaced.key);
+  }
+
+  /** Every maker write to a game says so, so a decision held on it lapses (spec 2). */
+  async function markChanged(gameId: string): Promise<void> {
+    await deps.db.game.update({ where: { id: gameId }, data: { changedAt: new Date(deps.clock.epochMs()) } });
   }
 
   /** The maker changed a part that staff sent back: it is no longer to fix. */
@@ -280,6 +362,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     // A passing copy is the fix for files staff sent back. A live game's maker has no files question to answer (it is a
     // 404 for her): she mends the files on GitHub and presses "Send a new version", which comes through here.
     await takeOutOfToFix(gameId, "files");
+    await markChanged(gameId);
     // Files are waiting for a person's yes: the new ones take their place, so staff always review the newest.
     if (game?.pendingPullId != null) {
       await deps.db.game.update({
@@ -327,14 +410,13 @@ export function createGamesService(deps: GamesServiceDeps) {
     const answers: Answers = {
       oneLine: game.oneLine,
       hasFiles: true,
-      playsOn: game.playsOn,
       upright: true,
       wide: true,
       ageRating: game.ageRating,
       contentMarks: game.contentMarks,
     };
     if (firstUnanswered(answers) !== null) throw new GameError("NOT_READY", "Answer every question first.");
-    if (game.toFix.length > 0) throw new GameError("NOT_READY", "Fix what was sent back first.");
+    if (stillToFix(game.toFix).length > 0) throw new GameError("NOT_READY", "Fix what was sent back first.");
 
     await deps.db.game.update({
       where: { id: gameId },
@@ -342,6 +424,11 @@ export function createGamesService(deps: GamesServiceDeps) {
         pendingPullId: newest.id,
         pendingSince: new Date(deps.clock.epochMs()),
         state: game.state === "live" ? "live" : "waiting",
+        // Only parts that are met are left in `toFix` here (the refusal above), so sending clears them.
+        toFix: [],
+        // A game started before this change may have no answer: it plays on both, as every game does, and the database
+        // holds a game past draft to having one.
+        ...(game.playsOn === null ? { playsOn: "phone_and_computer" as const } : {}),
       },
     });
   }
@@ -350,43 +437,164 @@ export function createGamesService(deps: GamesServiceDeps) {
   async function waitingOf(tx: Pick<PrismaClient, "game">, gameId: string) {
     const game = await tx.game.findUnique({
       where: { id: gameId },
-      select: { state: true, pendingPullId: true },
+      select: { name: true, state: true, pendingPullId: true, changedAt: true },
     });
     if (game?.pendingPullId == null) throw new GameError("NOT_READY", "Nothing is waiting for review.");
-    return { state: game.state, pullId: game.pendingPullId };
+    return { name: game.name, state: game.state, pullId: game.pendingPullId, changedAt: game.changedAt };
+  }
+
+  const schedule = (): DecisionSchedule => deps.schedule ?? decisionSchedule;
+  const now = (): Date => new Date(deps.clock.epochMs());
+
+  /** One lock for holding and for sending out (see DECISION_LOCK_KEY). Held until the transaction ends. */
+  async function takeDecisionLock(tx: { $executeRaw: PrismaClient["$executeRaw"] }): Promise<void> {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${DECISION_LOCK_KEY})`;
   }
 
   /**
-   * Staff's yes: the waiting files go live, and one review row records who said so and when. One transaction, so a
-   * game is never live without its record. The files the game was live on stay in the bucket.
+   * Where each waiting game stands: a new game (its decision is held), a game that was live before, or a live game's
+   * update (both are decided at once), and the held decision on it that has not lapsed. A game "was live before" when a
+   * yes on it took effect; it does not read when the game first went live.
    */
-  async function accept(gameId: string, staffUserId: string): Promise<void> {
-    await deps.db.$transaction(async (tx) => {
-      const { pullId } = await waitingOf(tx, gameId);
-      const decidedAt = new Date(deps.clock.epochMs());
-      await tx.game.update({
-        where: { id: gameId },
-        data: {
-          state: "live",
-          livePullId: pullId,
-          pendingPullId: null,
-          pendingSince: null,
-          stateReason: null,
-          toFix: [],
-        },
-      });
+  async function standingsOf(
+    tx: ReviewReader,
+    games: { id: string; state: GameState; pendingPullId: string | null; changedAt: Date | null }[],
+  ): Promise<Map<string, Standing>> {
+    const reviews = await tx.gameReview.findMany({
+      where: {
+        gameId: { in: games.map((game) => game.id) },
+        OR: [
+          { AND: [{ decision: "accepted" }, tookEffect] },
+          { goesOutOn: { not: null }, outcome: { is: null } },
+        ],
+      },
+      orderBy: { decidedAt: "desc" },
+      select: { gameId: true, decision: true, decidedAt: true, pullId: true, goesOutOn: true, outcome: true },
+    });
+    return new Map(
+      games.map((game) => {
+        const own = reviews.filter((review) => review.gameId === game.id);
+        const yesBefore = own.some(
+          (review) =>
+            review.decision === "accepted" &&
+            (review.goesOutOn === null || review.outcome?.result === "applied"),
+        );
+        const held = own.find(
+          (review) => review.goesOutOn !== null && review.outcome === null && !lapsed(review, game),
+        );
+        const kind: ReviewKind = game.state === "live" ? "update" : yesBefore ? "back" : "game";
+        return [
+          game.id,
+          {
+            kind,
+            held:
+              held?.goesOutOn == null ? null : { decision: held.decision, day: dayOfDate(held.goesOutOn) },
+          },
+        ];
+      }),
+    );
+  }
+
+  /** The held yeses for a decision day that have not lapsed: each takes one of its seats. */
+  async function seatsTaken(tx: ReviewReader, day: string): Promise<number> {
+    const yeses = await tx.gameReview.findMany({
+      where: { goesOutOn: dateOfDay(day), decision: "accepted", outcome: { is: null } },
+      select: {
+        decidedAt: true,
+        pullId: true,
+        game: { select: { state: true, pendingPullId: true, changedAt: true } },
+      },
+    });
+    return yeses.filter((review) => !lapsed(review, review.game)).length;
+  }
+
+  /**
+   * Decides how the Owner's yes or no is made: held for the next decision day (a new game while the ritual is on), or
+   * at once. The caller already holds the decision lock, and read the game after taking it. The day is picked here, after
+   * the lock and from the clock as it reads now, so a yes made while a day goes out is held for the next day and never
+   * left on a day that has gone. A decision already held and not lapsed is final.
+   */
+  async function holdOrNot(
+    tx: Pick<PrismaClient, "game" | "gameReview" | "decisionDay">,
+    gameId: string,
+    game: { name: string; state: GameState; pullId: string; changedAt: Date | null },
+    yes: boolean,
+  ): Promise<{ goesOutOn: Date | null; made: DecisionMade }> {
+    const atOnce = { goesOutOn: null, made: { held: false } } as const;
+    let next = nextDecisionDay(now(), schedule());
+    if (next === null) return atOnce;
+    const standing = (
+      await standingsOf(tx, [
+        { id: gameId, state: game.state, pendingPullId: game.pullId, changedAt: game.changedAt },
+      ])
+    ).get(gameId);
+    if (standing === undefined || standing.kind !== "game") return atOnce;
+    if (standing.held !== null)
+      throw new GameError(
+        "CONFLICT",
+        `You already decided on ${game.name}. It goes out on ${dayWords(standing.held.day)}.`,
+      );
+    // A day that already has its row has gone out, whatever the clock says.
+    while ((await tx.decisionDay.findUnique({ where: { day: dateOfDay(next.day) } })) !== null) {
+      const after = nextDecisionDay(next.at, schedule());
+      if (after === null) return atOnce;
+      next = after;
+    }
+    const taken = await seatsTaken(tx, next.day);
+    if (yes && taken >= next.seats) throw new GameError("CONFLICT", seatsTakenWords(next.seats));
+    return {
+      goesOutOn: dateOfDay(next.day),
+      made: { held: true, day: next.day, seats: next.seats, taken: yes ? taken + 1 : taken },
+    };
+  }
+
+  /** What a yes does to a game: its waiting files go live. The release does the same thing on decision day. */
+  function becomesLive(pullId: string) {
+    return {
+      state: "live" as const,
+      livePullId: pullId,
+      pendingPullId: null,
+      pendingSince: null,
+      stateReason: null,
+      toFix: [],
+    };
+  }
+
+  /**
+   * Staff's yes. For a new game while the ritual is on, a seat is taken and the yes is held for decision day: the game
+   * stays as it is and nothing a maker sees changes. Otherwise (an update, a game that was live before) the waiting
+   * files go live now. One transaction, so a game is never live without its record.
+   */
+  async function accept(gameId: string, staffUserId: string): Promise<DecisionMade> {
+    return deps.db.$transaction(async (tx) => {
+      // The lock comes before anything is read, so what is read is what a release that ran first left behind.
+      if (schedule().firstDay !== null) await takeDecisionLock(tx);
+      const waiting = await waitingOf(tx, gameId);
+      const { goesOutOn, made } = await holdOrNot(tx, gameId, waiting, true);
+      const decidedAt = now();
+      if (goesOutOn === null) {
+        await tx.game.update({
+          where: { id: gameId },
+          data: becomesLive(waiting.pullId),
+        });
+        await tx.game.updateMany({
+          where: { id: gameId, acceptedSeenAt: null },
+          data: { acceptedSeenAt: decidedAt },
+        });
+      }
       await tx.gameReview.create({
-        data: { gameId, pullId, staffUserId, decision: "accepted", decidedAt },
+        data: { gameId, pullId: waiting.pullId, staffUserId, decision: "accepted", decidedAt, goesOutOn },
       });
+      return made;
     });
   }
 
   /**
-   * The parts a live game's update may be sent back for: the ones its maker can fix (her name, line and where it plays,
-   * by the questions she may still answer) and the files (she mends them on GitHub and sends a new version). Its videos,
+   * The parts a live game's update may be sent back for: the ones its maker can fix (her name and line, by the
+   * questions she may still answer) and the files (she mends them on GitHub and sends a new version). Its videos,
    * rating and websites go through staff again only in slice 4, so an update sent back for one would be stuck for good.
    */
-  const LIVE_MAY_BE_SENT_BACK: GamePart[] = ["name", "one_line", "plays_on", "files"];
+  const LIVE_MAY_BE_SENT_BACK: GamePart[] = ["name", "one_line", "files"];
 
   /**
    * Staff's no, part by part: each part with a reason from that part's list, and for "Something else" their own line
@@ -397,7 +605,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     gameId: string,
     staffUserId: string,
     parts: { part: GamePart; reason: string; note?: string }[],
-  ): Promise<void> {
+  ): Promise<DecisionMade> {
     if (parts.length === 0) throw new GameError("INVALID", "Tick what's wrong first.");
     const chosen = new Set<GamePart>();
     const kept = parts.map((one) => {
@@ -412,25 +620,19 @@ export function createGamesService(deps: GamesServiceDeps) {
       return { part: one.part, reason: one.reason, note: note === "" ? null : note };
     });
 
-    await deps.db.$transaction(async (tx) => {
-      const { state, pullId } = await waitingOf(tx, gameId);
+    return deps.db.$transaction(async (tx) => {
+      if (schedule().firstDay !== null) await takeDecisionLock(tx);
+      const waiting = await waitingOf(tx, gameId);
+      const { state, pullId } = waiting;
       if (state === "live" && kept.some((one) => !LIVE_MAY_BE_SENT_BACK.includes(one.part))) {
         throw new GameError(
           "INVALID",
-          "A live game can only be sent back for its name, its line, where it plays or its files.",
+          "A live game can only be sent back for its name, its line or its files.",
         );
       }
-      const decidedAt = new Date(deps.clock.epochMs());
-      await tx.game.update({
-        where: { id: gameId },
-        data: {
-          state: state === "live" ? "live" : "sent_back",
-          pendingPullId: null,
-          pendingSince: null,
-          stateReason: null,
-          toFix: kept.map((one) => one.part),
-        },
-      });
+      const { goesOutOn, made } = await holdOrNot(tx, gameId, waiting, false);
+      const decidedAt = now();
+      if (goesOutOn === null) await sentBackNow(tx, gameId, state, kept);
       await tx.gameReview.create({
         data: {
           gameId,
@@ -438,9 +640,30 @@ export function createGamesService(deps: GamesServiceDeps) {
           staffUserId,
           decision: "sent_back",
           decidedAt,
+          goesOutOn,
           parts: { create: kept },
         },
       });
+      return made;
+    });
+  }
+
+  /** What a send back does to a game: a live game stays live on its old files, and what to fix is listed either way. */
+  async function sentBackNow(
+    tx: Pick<PrismaClient, "game">,
+    gameId: string,
+    state: GameState,
+    kept: { part: GamePart }[],
+  ): Promise<void> {
+    await tx.game.update({
+      where: { id: gameId },
+      data: {
+        state: state === "live" ? "live" : "sent_back",
+        pendingPullId: null,
+        pendingSince: null,
+        stateReason: null,
+        toFix: kept.map((one) => one.part),
+      },
     });
   }
 
@@ -457,7 +680,14 @@ export function createGamesService(deps: GamesServiceDeps) {
     if (base === null)
       throw new GameError("INVALID", "Pick a name with at least three letters or numbers.", "name");
     return deps.db.game.create({
-      data: { publicId: newPublicId(), slug: await freeSlug(base), makerUserId: input.makerUserId, name },
+      // Every game plays on phones and computers, so it is said once, here, and no one is asked.
+      data: {
+        publicId: newPublicId(),
+        slug: await freeSlug(base),
+        makerUserId: input.makerUserId,
+        name,
+        playsOn: "phone_and_computer",
+      },
       select: { id: true, slug: true },
     });
   }
@@ -474,7 +704,7 @@ export function createGamesService(deps: GamesServiceDeps) {
         publicId: true,
         name: true,
         repoFullName: true,
-        reviews: { where: { decision: "accepted" }, take: 1, select: { id: true } },
+        reviews: { where: { decision: "accepted", ...tookEffect }, take: 1, select: { id: true } },
       },
     });
     if (game === null) throw new GameError("NOT_FOUND", "We can't find that game.");
@@ -482,11 +712,11 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /** The answers a live game may still change by itself: the rest go through staff again (slice 4). */
-  const LIVE_MAY_CHANGE: Answer["question"][] = ["name", "line", "plays-on"];
+  const LIVE_MAY_CHANGE: Answer["question"][] = ["name", "line"];
 
   /**
-   * Keeps one answer. A draft, a waiting game and a sent-back game take every answer; a live game takes only its name,
-   * its line and where it plays; anything else is not the maker's to change. Answers the game's address, which a new
+   * Keeps one answer. A draft, a waiting game and a sent-back game take every answer; a live game takes only its name
+   * and its line; anything else is not the maker's to change. Answers the game's address, which a new
    * name may have changed.
    */
   async function saveAnswer(gameId: string, makerUserId: string, answer: Answer): Promise<{ slug: string }> {
@@ -502,7 +732,6 @@ export function createGamesService(deps: GamesServiceDeps) {
       name?: string;
       slug?: string;
       oneLine?: string;
-      playsOn?: GamePlaysOn;
       ageRating?: AgeRating;
       contentMarks?: ContentMark[];
       connectHosts?: string[];
@@ -551,13 +780,6 @@ export function createGamesService(deps: GamesServiceDeps) {
         part = "files";
         break;
       }
-      case "plays-on": {
-        const problem = PLAYS_ON.includes(answer.playsOn) ? undefined : playsOnProblem(null);
-        if (problem !== undefined) throw new GameError("INVALID", problem);
-        data.playsOn = answer.playsOn;
-        part = "plays_on";
-        break;
-      }
       case "age": {
         const problem = AGE_RATINGS.includes(answer.ageRating) ? undefined : ageProblem(null);
         if (problem !== undefined) throw new GameError("INVALID", problem);
@@ -603,7 +825,11 @@ export function createGamesService(deps: GamesServiceDeps) {
     // The files are the one answer whose part comes off the list only when the pull passes, so it is not in this write.
     await deps.db.game.update({
       where: { id: gameId },
-      data: { ...data, ...(part === "files" ? {} : { toFix: game.toFix.filter((one) => one !== part) }) },
+      data: {
+        ...data,
+        changedAt: now(),
+        ...(part === "files" ? {} : { toFix: game.toFix.filter((one) => one !== part) }),
+      },
     });
 
     // The files are the answer that copies: a refused copy leaves the choice kept, and the screen that asked shows the
@@ -694,24 +920,122 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /**
-   * Games with files waiting for a person's yes, the oldest first. `kind` says whether it is a first send or the new
-   * files of a game that is already live. No maker's address: it would now be a stand-in nobody can read.
+   * Games with files waiting for a person's yes, the oldest first. `kind` says whether it is a first send, a game that
+   * was live before, or the new files of a game that is live; `decided` says what the Owner held on it, if anything. No maker's address: it would now be a stand-in nobody can
+   * read.
    */
   async function waitingGames(): Promise<
-    { slug: string; name: string; kind: "game" | "update"; sentAt: Date }[]
+    {
+      slug: string;
+      name: string;
+      kind: ReviewKind;
+      decided: "yes" | "sent back" | null;
+      sentAt: Date;
+    }[]
   > {
     const rows = await deps.db.game.findMany({
       where: { pendingPullId: { not: null } },
       orderBy: { pendingSince: "asc" },
-      select: { slug: true, name: true, state: true, pendingSince: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        state: true,
+        pendingPullId: true,
+        changedAt: true,
+        pendingSince: true,
+      },
     });
-    return rows.map((row) => ({
-      slug: row.slug,
-      name: row.name,
-      kind: row.state === "live" ? "update" : "game",
-      // `pendingSince` is set with `pendingPullId`, so a waiting game always has it.
-      sentAt: row.pendingSince ?? new Date(0),
-    }));
+    const standings = await standingsOf(deps.db, rows);
+    return rows.map((row) => {
+      const standing = standings.get(row.id);
+      return {
+        slug: row.slug,
+        name: row.name,
+        kind: standing?.kind ?? "game",
+        decided: decidedWords(standing),
+        // `pendingSince` is set with `pendingPullId`, so a waiting game always has it.
+        sentAt: row.pendingSince ?? new Date(0),
+      };
+    });
+  }
+
+  /** The coming decision day and how many of its seats are taken; null while the ritual is off. */
+  async function thisWeek(): Promise<{ day: string; words: string; seats: number; taken: number } | null> {
+    const next = nextDecisionDay(now(), schedule());
+    if (next === null) return null;
+    return {
+      day: next.day,
+      words: dayWords(next.day),
+      seats: next.seats,
+      taken: await seatsTaken(deps.db, next.day),
+    };
+  }
+
+  /**
+   * The coming decision day in words ("Friday 27 November") for a waiting game that would be held, which is what its
+   * waiting line names; null for any other game and while the ritual is off. It reads the same whether or not the
+   * Owner has decided, so nothing is given away early.
+   */
+  async function decisionDayWordsFor(gameId: string): Promise<string | null> {
+    const next = nextDecisionDay(now(), schedule());
+    if (next === null) return null;
+    const game = await deps.db.game.findUnique({
+      where: { id: gameId },
+      select: { id: true, state: true, pendingPullId: true, changedAt: true },
+    });
+    if (game === null) return null;
+    const standing = (await standingsOf(deps.db, [game])).get(gameId);
+    return standing?.kind === "game" ? dayWords(next.day) : null;
+  }
+
+  /**
+   * Sends out every decision day whose moment has passed and that has not gone out, oldest first, each in its own
+   * transaction under the lock. A held decision that lapsed is recorded as lapsed and changes nothing; the others take
+   * effect together. Safe to run again: a day with a row is never sent out twice.
+   */
+  async function sendOutDecisionDays(): Promise<string[]> {
+    const due = decisionDaysDue(now(), schedule());
+    const says: string[] = [];
+    for (const moment of due) {
+      const line = await deps.db.$transaction(async (tx) => {
+        await takeDecisionLock(tx);
+        const day = dateOfDay(moment.day);
+        if ((await tx.decisionDay.findUnique({ where: { day } })) !== null) return null;
+        const held = await tx.gameReview.findMany({
+          where: { goesOutOn: day, outcome: { is: null } },
+          orderBy: { decidedAt: "asc" },
+          include: {
+            parts: true,
+            game: { select: { state: true, pendingPullId: true, changedAt: true } },
+          },
+        });
+        let gotIn = 0;
+        let wentBack = 0;
+        for (const review of held) {
+          const game = await tx.game.findUniqueOrThrow({
+            where: { id: review.gameId },
+            select: { state: true, pendingPullId: true, changedAt: true },
+          });
+          if (lapsed(review, game)) {
+            await tx.decisionOutcome.create({ data: { reviewId: review.id, result: "lapsed" } });
+            continue;
+          }
+          if (review.decision === "accepted") {
+            await tx.game.update({ where: { id: review.gameId }, data: becomesLive(review.pullId) });
+            gotIn += 1;
+          } else {
+            await sentBackNow(tx, review.gameId, game.state, review.parts);
+            wentBack += 1;
+          }
+          await tx.decisionOutcome.create({ data: { reviewId: review.id, result: "applied" } });
+        }
+        await tx.decisionDay.create({ data: { day, seats: moment.seats, wentOutAt: now() } });
+        return `${dayWords(moment.day)} went out: ${String(gotIn)} got in, ${String(wentBack)} went back.`;
+      });
+      if (line !== null) says.push(line);
+    }
+    return says;
   }
 
   /** What a game's rows say, for the maker's screens and staff's. */
@@ -728,8 +1052,8 @@ export function createGamesService(deps: GamesServiceDeps) {
     connectHosts: true,
     pullProblem: true,
     pendingPullId: true,
+    changedAt: true,
     oneLine: true,
-    playsOn: true,
     ageRating: true,
     contentMarks: true,
     toFix: true,
@@ -738,6 +1062,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     // Newest first: the first sent-back review is what the maker still has to fix, and any accepted one means the
     // game has been live.
     reviews: {
+      where: tookEffect,
       orderBy: { decidedAt: "desc" },
       select: {
         decision: true,
@@ -767,7 +1092,6 @@ export function createGamesService(deps: GamesServiceDeps) {
     pullProblem: string | null;
     pendingPullId: string | null;
     oneLine: string | null;
-    playsOn: GamePlaysOn | null;
     ageRating: AgeRating | null;
     contentMarks: ContentMark[];
     toFix: GamePart[];
@@ -791,7 +1115,6 @@ export function createGamesService(deps: GamesServiceDeps) {
       reason: stateParts(state).reason,
       hasPending: state.hasPending,
       oneLine: row.oneLine,
-      playsOn: row.playsOn,
       ageRating: row.ageRating,
       contentMarks: row.contentMarks,
       everLive: row.reviews.some((review) => review.decision === "accepted"),
@@ -829,7 +1152,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     }[];
   }): PartToFix[] {
     const newest = row.reviews.find((review) => review.decision === "sent_back");
-    return row.toFix.flatMap((part) => {
+    return stillToFix(row.toFix).flatMap((part) => {
       const found = newest?.parts.find((one) => one.part === part);
       if (found === undefined) return [];
       return [
@@ -857,20 +1180,18 @@ export function createGamesService(deps: GamesServiceDeps) {
         pendingPullId: true,
         pullProblem: true,
         oneLine: true,
-        playsOn: true,
         ageRating: true,
         contentMarks: true,
         toFix: true,
         clips: { select: { shape: true, key: true } },
         _count: { select: { pulls: true } },
-        reviews: { orderBy: { decidedAt: "desc" }, take: 1, select: { decision: true } },
+        reviews: { where: tookEffect, orderBy: { decidedAt: "desc" }, take: 1, select: { decision: true } },
       },
     });
     return rows.map((row) => {
       const answers: Answers = {
         oneLine: row.oneLine,
         hasFiles: row._count.pulls > 0 && row.pullProblem === null,
-        playsOn: row.playsOn,
         upright: row.clips.some((clip) => clip.shape === "upright"),
         wide: row.clips.some((clip) => clip.shape === "wide"),
         ageRating: row.ageRating,
@@ -884,7 +1205,7 @@ export function createGamesService(deps: GamesServiceDeps) {
         words: listWords({
           state: row.state,
           hasPending: row.pendingPullId !== null,
-          toFix: row.toFix.length,
+          toFix: stillToFix(row.toFix).length,
           firstUnanswered: next,
           questionNumber: next === null ? null : counterOf(next, answers).n,
           sentBackLast: row.reviews[0]?.decision === "sent_back",
@@ -919,8 +1240,12 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
     if (row === null) return null;
     const pending = row.pendingPull;
+    const standing = (await standingsOf(deps.db, [{ ...row, pendingPullId: row.pendingPullId }])).get(row.id);
     return withFilesLeft({
       ...makerView(row),
+      kind: standing?.kind ?? "game",
+      decided: decidedWords(standing),
+      heldDay: standing?.held == null ? null : standing.held.day,
       pending:
         pending === null
           ? null
@@ -947,7 +1272,6 @@ export function createGamesService(deps: GamesServiceDeps) {
         slug: true,
         name: true,
         oneLine: true,
-        playsOn: true,
         freeToPlay: true,
         makerUserId: true,
         state: true,
@@ -962,14 +1286,13 @@ export function createGamesService(deps: GamesServiceDeps) {
     const wide = game.clips.find((clip) => clip.shape === "wide")?.key;
     if (upright === undefined || wide === undefined) return null;
     // A live game has every answer (Game_answered_check), so these are only absent in a row that cannot be live.
-    if (game.oneLine === null || game.playsOn === null || game.ageRating === null) return null;
+    if (game.oneLine === null || game.ageRating === null) return null;
     return {
       id: game.id,
       publicId: game.publicId,
       slug: game.slug,
       name: game.name,
       oneLine: game.oneLine,
-      playsOn: game.playsOn,
       freeToPlay: game.freeToPlay,
       makerUserId: game.makerUserId,
       livePullId: game.livePull.id,
@@ -978,6 +1301,30 @@ export function createGamesService(deps: GamesServiceDeps) {
       contentMarks: game.contentMarks,
       clips: { upright, wide },
     };
+  }
+
+  /** A maker's other live games, newest accepted first, for the "More from" row of a game's page. */
+  async function moreLiveGamesBy(
+    makerUserId: string,
+    exceptSlug: string,
+  ): Promise<{ slug: string; name: string; wideClip: string; ageRating: AgeRating }[]> {
+    const rows = await deps.db.game.findMany({
+      where: { makerUserId, state: "live", slug: { not: exceptSlug }, livePullId: { not: null } },
+      orderBy: { livePull: { createdAt: "desc" } },
+      take: 6,
+      select: {
+        slug: true,
+        name: true,
+        ageRating: true,
+        clips: { where: { shape: "wide" }, select: { key: true } },
+      },
+    });
+    return rows.flatMap((row) => {
+      const wideClip = row.clips[0]?.key;
+      return wideClip === undefined || row.ageRating === null
+        ? []
+        : [{ slug: row.slug, name: row.name, wideClip, ageRating: row.ageRating }];
+    });
   }
 
   /**
@@ -1040,10 +1387,15 @@ export function createGamesService(deps: GamesServiceDeps) {
     accept,
     sendBack,
     waitingGames,
+    thisWeek,
+    decisionDayWordsFor,
+    sendOutDecisionDays,
+    standingsOf,
     gamesOf,
     gameForMaker,
     gameForReview,
     liveGameBySlug,
+    moreLiveGamesBy,
     rememberConnection,
     repositoriesFor,
     hasConnectedGitHub,

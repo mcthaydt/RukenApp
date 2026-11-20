@@ -1,6 +1,5 @@
 import {
   gamesServices,
-  playsOnWords,
   questionOf,
   ratingWords,
   websitesWords,
@@ -16,18 +15,16 @@ export const ALL_PARTS: readonly ChangePart[] = [
   "name",
   "one_line",
   "files",
-  "plays_on",
   "upright_video",
   "wide_video",
   "age_rating",
   "other_websites",
 ];
 
-/** The four facts shown as chips, in the order they are shown, each with its words when the game has an answer. */
+/** The three facts shown as chips, in the order they are shown, each with its words when the game has an answer. */
 function chipsOf(game: MakerGame): { part: ChipPart; words: string }[] {
   const facts: [ChipPart, string | null][] = [
     ["files", game.repoFullName],
-    ["plays_on", playsOnWords(game.playsOn)],
     ["age_rating", ratingWords(game.ageRating, game.contentMarks)],
     ["other_websites", websitesWords(game.connectHosts)],
   ];

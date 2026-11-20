@@ -51,7 +51,6 @@ test("the Owner looks at a waiting game, accepts it, and its maker sees it Live"
   expect(look).toMatchObject({
     says: "Open the look link in a private window. It works for a day.",
     oneLine: "Climb. Fall. Climb again.",
-    playsOn: "Plays on phones and computers",
     rating: "12+",
     playedSeconds: 0,
   });
@@ -114,7 +113,7 @@ test("a live game's update can't be sent back for what its maker can't fix", asy
   );
   expect(refused.status()).toBe(400);
   expect(await asJson(refused)).toEqual({
-    problem: "A live game can only be sent back for its name, its line, where it plays or its files.",
+    problem: "A live game can only be sent back for its name, its line or its files.",
   });
   // The update still waits.
   const again = (await asJson(await reviewJob(request, { do: "list" }, browser))) as {
@@ -152,7 +151,7 @@ test("a mistake answers with what to type", async ({ request, page, browser }) =
   expect(notAPart.status()).toBe(400);
   expect(await asJson(notAPart)).toEqual({
     problem:
-      "That part isn't one of: name, one_line, files, plays_on, upright_video, wide_video, age_rating, other_websites.",
+      "That part isn't one of: name, one_line, files, upright_video, wide_video, age_rating, other_websites.",
   });
 
   const noWords = await post({ do: "send-back", game: waiting.slug, parts: [{ part: "files", words: "" }] });

@@ -1,3 +1,4 @@
+import { decisionsOff } from "../../support/decisions-off.ts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId, PUBLIC_ID } from "../../../src/features/games/ids.ts";
@@ -32,7 +33,13 @@ function db(): PrismaClient {
 
 beforeAll(async () => {
   database = await startTestDatabase();
-  service = createGamesService({ db: db(), clock: systemClock, files, github: noGitHub });
+  service = createGamesService({
+    db: db(),
+    clock: systemClock,
+    files,
+    github: noGitHub,
+    schedule: decisionsOff,
+  });
 });
 
 afterAll(async () => {
@@ -188,7 +195,13 @@ const NO_INDEX_WORDS = "Ruken starts your game from a file called index.html. We
 
 /** The service as it is when GitHub holds a game that starts, and when it holds one that cannot. */
 function serviceFor(entries: { path: string; content: string }[]): GamesService {
-  return createGamesService({ db: db(), clock: systemClock, files, github: githubHolding(entries) });
+  return createGamesService({
+    db: db(),
+    clock: systemClock,
+    files,
+    github: githubHolding(entries),
+    schedule: decisionsOff,
+  });
 }
 
 /** A maker who has connected GitHub, and the game they have just named. */
@@ -225,7 +238,8 @@ describe("startGame", () => {
       makerUserId: maker,
       name: "Floor Fifty",
       oneLine: null,
-      playsOn: null,
+      // Every game plays on phones and computers, so a new draft says so before it is asked anything.
+      playsOn: "phone_and_computer",
       repoFullName: null,
       ageRating: null,
       contentMarks: [],
@@ -302,12 +316,11 @@ describe("saveAnswer", () => {
     const { makerUserId, id } = await begin();
 
     await service.saveAnswer(id, makerUserId, { question: "line", oneLine: "  Climb fifty floors.  " });
-    await service.saveAnswer(id, makerUserId, { question: "plays-on", playsOn: "computer_only" });
     await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_12" });
 
     expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
       oneLine: "Climb fifty floors.",
-      playsOn: "computer_only",
+      playsOn: "phone_and_computer",
       ageRating: "age_12",
     });
   });
@@ -403,7 +416,6 @@ describe("saveAnswer", () => {
       { question: "name", name: "Another" },
       { question: "line", oneLine: "A line." },
       FILES_ANSWER,
-      { question: "plays-on", playsOn: "computer_only" },
       { question: "age", ageRating: "age_12" },
       { question: "marks", contentMarks: ["gore"] },
       { question: "websites", connectHosts: [] },
@@ -555,7 +567,7 @@ describe("saveAnswer", () => {
     expect((await db().game.findUniqueOrThrow({ where: { id } })).contentMarks).toEqual(["none"]);
   });
 
-  it("lets a live game change its name, its line and where it plays, and nothing else", async () => {
+  it("lets a live game change its name and its line, and nothing else", async () => {
     const { makerUserId, id } = await begin();
     const pulling = serviceFor(GOOD_FILES);
     await pulling.saveAnswer(id, makerUserId, FILES_ANSWER);
@@ -566,6 +578,14 @@ describe("saveAnswer", () => {
     await makeLive(id, (await db().gamePull.findFirstOrThrow({ where: { gameId: id } })).id);
 
     await service.saveAnswer(id, makerUserId, { question: "line", oneLine: "A better line." });
+    // Where a game plays is no longer a question: even a hand-made answer is not the maker's to change.
+    await expect(
+      service.saveAnswer(id, makerUserId, {
+        question: "plays-on",
+        playsOn: "computer_only",
+      } as unknown as Answer),
+    ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).playsOn).toBe("computer_only");
     await expect(
       service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_16" }),
     ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
@@ -575,7 +595,7 @@ describe("saveAnswer", () => {
     const { makerUserId, id } = await begin();
     for (const state of ["waiting", "sent_back"] as const) {
       await setState(id, state);
-      await service.saveAnswer(id, makerUserId, { question: "plays-on", playsOn: "computer_only" });
+      await service.saveAnswer(id, makerUserId, { question: "line", oneLine: `A line in ${state}.` });
     }
   });
 
@@ -694,7 +714,6 @@ describe("liveGameBySlug", () => {
       slug: game.slug,
       name: "A game",
       oneLine: "A game about a thing.",
-      playsOn: "phone_and_computer",
       ageRating: "age_12",
       contentMarks: [],
       freeToPlay: false,
@@ -703,6 +722,61 @@ describe("liveGameBySlug", () => {
       connectHosts: ["api.example.com"],
       clips: { upright: keyOf("upright"), wide: keyOf("wide") },
     });
+  });
+});
+
+describe("moreLiveGamesBy", () => {
+  /** A live game for this maker, with both clips. */
+  async function liveGameOf(makerUserId: string) {
+    const game = await db().game.create({
+      data: {
+        publicId: newPublicId(),
+        slug: `more-${String((made += 1))}`,
+        makerUserId,
+        name: "Another",
+        oneLine: "x",
+        playsOn: "phone_and_computer",
+        repoFullName: "acme/game",
+        ageRating: "age_7",
+      },
+    });
+    await addBothClips(game.id);
+    await makeLive(game.id, await addPull(game.id, []));
+    return game;
+  }
+
+  it("lists the maker's other live games, newest accepted first, at most six, and never the game itself", async () => {
+    const mine = await newGame();
+    const makerUserId = mine.makerUserId;
+    await makeLive(mine.id, await addPull(mine.id, []));
+    const others = [];
+    for (let i = 0; i < 7; i += 1) others.push(await liveGameOf(makerUserId));
+
+    const more = await service.moreLiveGamesBy(makerUserId, mine.slug);
+
+    expect(more).toHaveLength(6);
+    expect(more.map((one) => one.slug)).toEqual(
+      others
+        .slice(1)
+        .reverse()
+        .map((one) => one.slug),
+    );
+    expect(more.some((one) => one.slug === mine.slug)).toBe(false);
+  });
+
+  it("leaves out games that are not live and other makers' games", async () => {
+    const mine = await newGame();
+    await db().game.create({
+      data: {
+        publicId: newPublicId(),
+        slug: `more-${String((made += 1))}`,
+        makerUserId: mine.makerUserId,
+        name: "Draft",
+      },
+    });
+    await liveGameOf(await createUser(db()));
+
+    expect(await service.moreLiveGamesBy(mine.makerUserId, mine.slug)).toEqual([]);
   });
 });
 
@@ -715,7 +789,13 @@ describe("pullLatest", () => {
       tarball: async () =>
         new Blob([await tarGz([{ path: "top/index.html", content: "<html></html>" }])]).stream(),
     };
-    const pulling = createGamesService({ db: db(), clock: systemClock, files, github });
+    const pulling = createGamesService({
+      db: db(),
+      clock: systemClock,
+      files,
+      github,
+      schedule: decisionsOff,
+    });
     const game = await newGame();
     await connectMaker(game.makerUserId, "acme/game");
 

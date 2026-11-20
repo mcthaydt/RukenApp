@@ -157,8 +157,9 @@ describe("deploying", () => {
 describe("the daily job", () => {
   const scripts = () => (JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts;
 
-  it("runs once a day, at 09:17 UTC", () => {
-    expect(wrangler().triggers?.crons).toEqual(["17 9 * * *"]);
+  // Decision day (unit H) adds the hourly trigger on purpose: it goes out at noon New York time, on the hour.
+  it("runs once a day, at 09:17 UTC, and once an hour for decision day", () => {
+    expect(wrangler().triggers?.crons).toEqual(["17 9 * * *", "0 * * * *"]);
   });
 
   it("is a wrapper around the built site that knocks with the Worker's secret and holds none of its own", () => {

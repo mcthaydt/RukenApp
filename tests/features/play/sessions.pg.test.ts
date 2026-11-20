@@ -79,7 +79,6 @@ async function newGame(options: { freeToPlay?: boolean; connectHosts?: string[] 
     slug: row.slug,
     name: row.name,
     oneLine: row.oneLine ?? "",
-    playsOn: row.playsOn ?? "phone_and_computer",
     ageRating: "age_12",
     contentMarks: [],
     freeToPlay: row.freeToPlay,
@@ -423,5 +422,73 @@ describe("reviewLook", () => {
     const first = await service.reviewLook({ game, pull, staffUserId });
 
     expect(await service.reviewLook({ game, pull, staffUserId })).toBe(first);
+  });
+});
+
+describe("sittingOf", () => {
+  const NOW = new Date("2026-11-14T12:00:00Z");
+
+  /** A play of a game that counts `minutes` of attentive time (a beat every 15 seconds), started `daysAgo` days back. */
+  async function addPlay(
+    game: LiveGame,
+    options: {
+      minutes?: number;
+      basis?: "member" | "free_game" | "staff" | "own_game";
+      daysAgo?: number;
+      attentive?: boolean;
+    },
+  ): Promise<void> {
+    const startedAt = new Date(NOW.getTime() - (options.daysAgo ?? 1) * 86_400_000);
+    const pass = await db().playPass.create({
+      data: {
+        id: crypto.randomUUID().replaceAll("-", "").slice(0, 22),
+        gameId: game.id,
+        pullId: game.livePullId,
+        userId: null,
+        madeAt: startedAt,
+        expiresAt: new Date(NOW.getTime() + 86_400_000),
+      },
+    });
+    const session = await db().playSession.create({
+      data: {
+        id: crypto.randomUUID(),
+        gameId: game.id,
+        pullId: game.livePullId,
+        passId: pass.id,
+        userId: (options.basis ?? "member") === "free_game" ? null : await createUser(db()),
+        basis: options.basis ?? "member",
+        tokenHash: "0".repeat(64),
+        startedAt,
+      },
+    });
+    const beats = options.minutes === undefined ? 0 : options.minutes * 4;
+    for (let i = 1; i <= beats; i += 1) {
+      await db().playBeat.create({
+        data: {
+          sessionId: session.id,
+          receivedAt: new Date(startedAt.getTime() + i * 15_000),
+          attentive: options.attentive ?? true,
+        },
+      });
+    }
+  }
+
+  it("is null under 20 counted plays, then their median", async () => {
+    const game = await newGame();
+    for (let i = 0; i < 19; i += 1) await addPlay(game, { minutes: 12 });
+    expect(await service.sittingOf(game.id, NOW)).toBeNull();
+    await addPlay(game, { minutes: 12 });
+    expect(await service.sittingOf(game.id, NOW)).toBe(12 * 60_000);
+  });
+
+  it("does not count staff, the maker's own play, a play with no beat, one that only looked away, or one 31 days old", async () => {
+    const game = await newGame();
+    for (let i = 0; i < 19; i += 1) await addPlay(game, { minutes: 12 });
+    await addPlay(game, { minutes: 12, basis: "staff" });
+    await addPlay(game, { minutes: 12, basis: "own_game" });
+    await addPlay(game, {});
+    await addPlay(game, { minutes: 12, attentive: false });
+    await addPlay(game, { minutes: 12, daysAgo: 31 });
+    expect(await service.sittingOf(game.id, NOW)).toBeNull();
   });
 });

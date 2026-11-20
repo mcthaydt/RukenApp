@@ -5,14 +5,14 @@ import {
   GameError,
   gamesServices,
   nextStepWords,
+  waitingLine,
   partNoun,
   questionOf,
   toFixWords,
-  type GamePart,
   type MakerGame,
 } from "../../../features/games/games.ts";
 import { ownGame } from "../own-game.server.ts";
-import type { FixCardData } from "../laid-out.ts";
+import type { ChangePart, FixCardData } from "../laid-out.ts";
 import { ALL_PARTS, laidOut } from "../laid-out.server.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -20,17 +20,17 @@ import type { Actions, PageServerLoad } from "./$types";
 // last step when none is left. Every other state is a screen that says where the game stands: Waiting, Sent back, Live and Taken off
 // each have one (spec 5, 5b "Sent back, now", 5c); a game staff took down has only its headline.
 
-/** The parts a game's answers are made of, as a count: the name, the line, the files, where it plays, the two videos, who it is for and the websites. */
+/** The parts a game's answers are made of, as a count: the name, the line, the files, the two videos, who it is for and the websites. */
 const PARTS = ALL_PARTS.length;
 
-/** The answers a live game's maker may still change by herself (the rest go through staff again): the same three the service allows. */
-const LIVE_CHANGEABLE: readonly GamePart[] = ["name", "one_line", "plays_on"];
+/** The answers a live game's maker may still change by herself (the rest go through staff again): the same two the service allows. */
+const LIVE_CHANGEABLE: readonly ChangePart[] = ["name", "one_line"];
 
 /**
- * The facts Live draws beside the game: where it plays and who it is for (spec 5c, and the plan's rating chip). Its files
+ * The facts Live draws beside the game: who it is for (spec 5c, and the plan's rating chip). Its files
  * and websites are not for a player-facing screen, and a maker cannot change either from here.
  */
-const LIVE_CHIPS: readonly string[] = ["plays_on", "age_rating"];
+const LIVE_CHIPS: readonly string[] = ["age_rating"];
 
 /**
  * One thing sent back, as its card shows it: where it is fixed and, for a video, the video itself. A live game's card for
@@ -46,7 +46,7 @@ function fixCards(game: MakerGame): FixCardData[] {
     note: one.note,
     // A video that was sent back opens its picker at once: the old video stays in its frame, and nothing is pressed first.
     href:
-      game.state === "live" && !LIVE_CHANGEABLE.includes(one.part)
+      game.state === "live" && !LIVE_CHANGEABLE.some((part) => part === one.part)
         ? null
         : `/make/${game.slug}/${questionOf(one.part)}${one.part === "upright_video" || one.part === "wide_video" ? "?again=1" : ""}`,
     video:
@@ -60,7 +60,7 @@ function fixCards(game: MakerGame): FixCardData[] {
   }));
 }
 
-/** The game as Live lays it out: its name, line and the two chips, with a Change on the three it may still change. */
+/** The game as Live lays it out: its name, line and the chip, with a Change on the two it may still change. */
 function liveLaidOut(game: MakerGame) {
   const laid = laidOut(game, LIVE_CHANGEABLE);
   return { ...laid, chips: laid.chips.filter((chip) => LIVE_CHIPS.includes(chip.part)) };
@@ -69,7 +69,7 @@ function liveLaidOut(game: MakerGame) {
 /**
  * Which send a live game offers (spec 5c, and the Owner's "Send it again"). While an update waits, or nothing was sent
  * back, it is a new version, copied from GitHub. When staff sent files back it is still a new version: the files are
- * mended on GitHub and copied again. When they sent back a name, a line or where it plays, nothing on GitHub changes, so
+ * mended on GitHub and copied again. When they sent back a name or a line, nothing on GitHub changes, so
  * there is nothing to send until it is mended, and then the copy Ruken already holds is sent again.
  */
 type LiveSend = "new_version" | "again" | "none";
@@ -107,6 +107,7 @@ export const load: PageServerLoad = async (event) => {
       ...base,
       view: "waiting" as const,
       game: laidOut(game, []),
+      line: waitingLine(await gamesServices().service.decisionDayWordsFor(game.id)),
       changeAddress: `/make/${game.slug}/check`,
       // A refused newest copy leaves the older one waiting, so the screen says so and leads to where it is mended.
       filesProblem: game.pullProblem,

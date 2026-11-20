@@ -30,8 +30,6 @@
       howToRecord: string;
       /** The how-to's part for a video that is over the limit. */
       howToTooBig: string;
-      /** True for a game that plays on computers only, which still needs an upright video for phones' feeds. */
-      computersOnly: boolean;
     };
     counter: { n: number; of: number } | null;
     back: string;
@@ -120,10 +118,6 @@
     Record your screen while you play for 10 to 30 seconds. Players see it in the feed before they play.
   </p>
   <p class="note" id="note">{words.note}</p>
-  {#if shape === "upright" && video.computersOnly}
-    <!-- A game for computers is still seen in the feed, which is upright, so it needs this video too. -->
-    <p class="note">Phone players see this in the feed, even if your game is for computers.</p>
-  {/if}
   <!-- The action first (choosing another video), then the how-to: one look, one to a line. -->
   {#if !choosing}
     <a class="help" href={video.replaceAddress}>Choose a different video</a>

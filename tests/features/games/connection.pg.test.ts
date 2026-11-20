@@ -1,3 +1,4 @@
+import { decisionsOff } from "../../support/decisions-off.ts";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Connection } from "../../../src/features/games/github-connect.ts";
 import type { GitHub } from "../../../src/features/games/github.ts";
@@ -42,7 +43,13 @@ function db(): PrismaClient {
 
 beforeAll(async () => {
   database = await startTestDatabase();
-  service = createGamesService({ db: db(), clock: systemClock, files: new MemoryFileStore(), github });
+  service = createGamesService({
+    db: db(),
+    clock: systemClock,
+    files: new MemoryFileStore(),
+    github,
+    schedule: decisionsOff,
+  });
 });
 
 afterAll(async () => {

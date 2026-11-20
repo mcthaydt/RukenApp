@@ -11,15 +11,14 @@ import {
   isMissingIndexHtml,
   isQuestionAddress,
   marksProblem,
-  playsOnProblem,
   questionBefore,
   questionsFor,
+  RATING_LINE_LIST,
   ratingWords,
   type AgeRating,
   type Answer,
   type ClipShape,
   type ContentMark,
-  type GamePlaysOn,
   type MakerGame,
 } from "../../../../features/games/games.ts";
 import { ownGame } from "../../own-game.server.ts";
@@ -29,7 +28,7 @@ import type { Actions, PageServerLoad } from "./$types";
 // maker's own, so another maker's game is a 404 for every question (Review Focus 2).
 
 /** The questions that have a screen. "websites" is reached only from Check and send, so it is never in the count. */
-const BUILT = ["name", "line", "files", "plays-on", "upright", "wide", "age", "marks", "websites"] as const;
+const BUILT = ["name", "line", "files", "upright", "wide", "age", "marks", "websites"] as const;
 type BuiltQuestion = (typeof BUILT)[number];
 
 /** The two questions answered with a video: its word is the shape of the clip. */
@@ -51,7 +50,7 @@ function isBuilt(word: string): word is BuiltQuestion {
 }
 
 /** The questions a live game's maker may still answer by herself; the rest go through staff again (slice 4). */
-const LIVE_MAY_ANSWER: readonly BuiltQuestion[] = ["name", "line", "plays-on"];
+const LIVE_MAY_ANSWER: readonly BuiltQuestion[] = ["name", "line"];
 
 /**
  * The question this address asks of this game, or a 404: a word with no screen, marks for a game that is not 18+, or a
@@ -130,7 +129,6 @@ function videoScreen(url: URL, game: MakerGame, shape: VideoQuestion) {
     howToRecord,
     // The same how-to, at its part for a video that is too big.
     howToTooBig: `${howToRecord}#too-big`,
-    computersOnly: game.playsOn === "computer_only",
   };
 }
 
@@ -163,7 +161,8 @@ export const load: PageServerLoad = async (event) => {
     // One website to a line, as the game's list was typed.
     servers: game.connectHosts.join("\n"),
     oneLine: game.oneLine ?? "",
-    playsOn: game.playsOn === null ? [] : [game.playsOn],
+    // The five ratings and their plain lines: one list, shared with a game's own page (`ratingLine`).
+    ageLines: RATING_LINE_LIST.map(({ value, title, line }) => ({ value, title, line })),
     ageRating: game.ageRating === null ? [] : [game.ageRating],
     contentMarks: game.contentMarks,
     // Set while a waiting or sent-back game is being made 18+: the marks form says so, so the rating and the marks are
@@ -173,7 +172,7 @@ export const load: PageServerLoad = async (event) => {
     addressStays: game.everLive,
     counter: firstTime && question !== "websites" ? counterOf(question, answers) : null,
     // The age question's count follows the rating being picked: an 18+ game is asked one question more (its marks), so a maker
-    // who picks 18+ is told there are 8 at once, not after pressing Next.
+    // who picks 18+ is told there are 7 at once, not after pressing Next.
     ageCounters:
       firstTime && question === "age"
         ? {
@@ -194,10 +193,6 @@ export const load: PageServerLoad = async (event) => {
 function textOf(form: FormData, name: string): string {
   const value = form.get(name);
   return typeof value === "string" ? value : "";
-}
-
-function playsOnFrom(value: string): GamePlaysOn | null {
-  return value === "phone_and_computer" || value === "computer_only" ? value : null;
 }
 
 function ageRatingFrom(value: string): AgeRating | null {
@@ -273,10 +268,6 @@ function answerFrom(
       return {
         answer: { question, repo: { fullName: repo, branch: branch === "" ? null : branch, folder } },
       };
-    }
-    case "plays-on": {
-      const playsOn = playsOnFrom(textOf(form, "playsOn"));
-      return playsOn === null ? { problem: playsOnProblem(null) ?? "" } : { answer: { question, playsOn } };
     }
     case "age": {
       const ageRating = ageRatingFrom(textOf(form, "ageRating"));

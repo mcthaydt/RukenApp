@@ -1,13 +1,7 @@
-import type { AgeRating, ContentMark, GamePlaysOn } from "../../lib/server/db.ts";
+import type { AgeRating, ContentMark } from "../../lib/server/db.ts";
 
-// The small facts a game is laid out with where a maker checks it (spec 5b): where it plays, who it is for, and which
+// The small facts a game is laid out with where a maker checks it (spec 5b): who it is for, and which
 // other websites it uses, each as the words a maker reads. Pure, so the words are tested in one place.
-
-/** Where a game plays, or null while the maker has not said. */
-export function playsOnWords(playsOn: GamePlaysOn | null): string | null {
-  if (playsOn === null) return null;
-  return playsOn === "phone_and_computer" ? "Plays on phones and computers" : "Plays on computers only";
-}
 
 const RATING_WORDS: Record<AgeRating, string> = {
   age_3: "3+",
@@ -39,3 +33,21 @@ export function ratingWords(ageRating: AgeRating | null, marks: readonly Content
 export function websitesWords(hosts: readonly string[]): string {
   return hosts.length === 0 ? "Uses no other websites" : `Uses ${hosts.join(", ")}`;
 }
+
+/** The plain line under a rating, in the age question's own words and on a game's page: one list, so they never differ. */
+const RATING_LINES: Record<AgeRating, string> = {
+  age_3: "Fine for anyone.",
+  age_7: "Cartoon fighting, or a little scary.",
+  age_12: "Real-looking fighting, or scary bits.",
+  age_16: "More violence or strong words.",
+  age_18: "Only for adults.",
+};
+
+export function ratingLine(ageRating: AgeRating): string {
+  return RATING_LINES[ageRating];
+}
+
+/** Every rating's line, for a screen that offers all five. */
+export const RATING_LINE_LIST: readonly { value: AgeRating; title: string; line: string }[] = (
+  ["age_3", "age_7", "age_12", "age_16", "age_18"] as const
+).map((value) => ({ value, title: RATING_WORDS[value], line: RATING_LINES[value] }));

@@ -166,20 +166,9 @@ test("a waiting game whose newest copy was refused says so and leads to its file
   await expect(page.locator(`a[href="/make/${slug}/files"]`).first()).toBeVisible();
 });
 
-// ---- E9: the upright video of a game for computers ------------------------------------------------------------------------
+// ---- E9: the upright video ------------------------------------------------------------------------------------------------
 
-test("a game for computers is told why it still needs an upright video", async ({ page }) => {
-  const { slug } = await startDraft(page);
-  await fillAnswers(slug, { files: true, playsOn: "computers" });
-  await page.goto(`/make/${slug}/upright`);
-  await pageHasSettled(page);
-
-  await expect(
-    page.getByText("Phone players see this in the feed, even if your game is for computers."),
-  ).toBeVisible();
-});
-
-test("a game for phones and computers is not told that", async ({ page }) => {
+test("the upright video question does not say a game might be for computers only", async ({ page }) => {
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { files: true });
   await page.goto(`/make/${slug}/upright`);

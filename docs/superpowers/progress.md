@@ -1,6 +1,6 @@
 # Ruken progress
 
-Last updated: 2026-11-17 06:39 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
+Last updated: 2026-11-20 08:04 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
 
 ## Outcome
 
@@ -22,26 +22,47 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 - 2026-11-17 06:25 UTC: "All games must be playable on computer and mobile" (Unit R).
 - 2026-11-17 06:27 UTC: "We need to add in the bits to game submission that we don't have like languages and tags/genre, everything steam pages have, we have" (spec PR #195).
 - 2026-11-17 06:28 UTC, on a card: the weekly player count starts off until the maker turns it on.
+- 2026-11-17 06:47 to 06:53 UTC: an Accepted screen with the blurred background, and the acceptance rate as a label on the first maker screen; then "Slow number of seats makes the most sense, we pick one day where everyone finds out if they got accepted, it becomes a ritual, the number of acceptances per week is capped but grows every 3 months up to 500 total worldwide maximum" ("500 a week, at most"). Spec #204.
+- 2026-11-17: About up to 280 characters; no AI question; 3 to 10 screenshots, required; videos 15 to 60 seconds, up to 5 of each shape; English is always one of the languages. Spec #195.
+- 2026-11-19 15:11 UTC: online games ask where their servers are, and players give their birthday and place. Spec #203 (country and state; the full birthday kept; the fields built in slice 2, the ranking in slice 3).
+- 2026-11-20 00:16 UTC, on cards: decision day is Friday at noon New York time; 10 seats a week to start, growing by half again every 3 months.
+- 2026-11-20: connect the games domain on the test site now (spec #207).
+- 2026-11-20 01:28 UTC, on a card: merge decision day storage (#208) once checks pass.
+- 2026-11-20 02:03 UTC: "Finish the slice, I'm going to sleep"; 02:04 UTC: "Make sure you obey the workflow".
+- 2026-11-20 07:40 UTC: "Are you going to run the design loop? and when? It looks awful": design round 1 starts now on what slice 2 has merged, not only at the slice end.
+- 2026-11-20 07:43 UTC: "Ok to merge decision day" (H, #219); "ok for next unit" (P); "ONCE AGAIN, USE GH OVER GIT". Every command handed to the owner uses `gh` wherever `gh` can do it (a branch delete is `gh api -X DELETE repos/mcthaydt/RukenApp/git/refs/heads/<branch>`; updating a local copy is `gh repo sync --branch main`), never `git`.
+- 2026-11-20 07:50 UTC: "that R2 rule should only be on private repos, I forgot that we don't have an artifact limit for public repos". RukenApp is public, so unit C (CI screenshots in R2) is dropped.
+- 2026-11-20 08:03 UTC: "Bento for Game Page, Store sheet for Playing, menu open" (mockups 3 and 2 of five, `/mnt/project-files/game-page-mockups/`). The built game page and in-game menu are restyled to them with what Ruken has now; it replaces design round 1's R1 to R3. The new systems the mockups show (reviews, maker news, extras, friends, pictures, messages, and a maker kit for achievements, settings and saves) each need their own spec first.
 
 ## Active milestone: slice 2 (phone sign-up and the rest of slice 2)
 
 | Step | State |
 |---|---|
-| Setup check and the rules pull request (#188) | done: merged at e5a1f62 |
-| Owner's batch, Part 1 (branch protection, old branches deleted) | done by the owner, checked 05:07 UTC |
-| Phone sign-up plan, Verify folded in (#189) | done: merged at 2202698 |
-| Rest-of-slice-2 plan brought up to date (#192) | done: merged at 78008fc |
-| Branch A, the Texter, the stand-in and the number rules (#191), lane 2 | done: merged at 98e30ed, main green |
-| Game page and play screen spec and plan, Units F, P, R (#193) | done: merged at cfa20b4 |
-| S, accept and take off (#194), lane 2 | review clear at 33c67bb; merging main, then the full run |
-| Branch B, sign-in and forgot password, lane 3 | building (Sonnet 5.5, high); held unmerged until Step 1a and the owner's OK |
-| Game facts for submission: languages, tags, genre (#195), lane 3 | spec in draft; three owner questions open; plan audit next |
-| R, every game plays on phones and computers, lane 2 | not started; after S |
-| F, the game page and the play screen, lane 2 | not started; after S and R |
-| P, the maker's player count switch, lane 3 | plan audit clear; after F; merging applies a migration, so it needs the owner's OK |
+| Setup, plans and specs (#188, #189, #192, #193, #195, #203, #204, #207) | done: merged; each lane 3 plan cleared its plan audit |
+| Branch A, the Texter and the number rules (#191), lane 2 | done: merged at 98e30ed |
+| S, accept and take off (#194), lane 2 | done: merged at dc96dc9 |
+| D, decision days stored (#208), lane 3 | done: merged at 36e87c0 with the owner's OK; the test site's migration is still to be confirmed on Cloudflare (owner step) |
+| R, every game plays on phones and computers (#206), lane 2 | merged at c7f14bb |
+| F, the game page and the play screen, lane 2 | merged at bb16ec1 (#218) |
+| W, the games domain's workers_dev switch, lane 3 | built (#217), audit clear; merges with the owner's OK |
+| H, hold and release on decision day, lane 3 | audit clear at 0343e69; the owner said OK 2026-11-20 07:43 UTC; merging |
+| P, the maker's player count switch, lane 3 | after F; merging applies a migration, so it needs the owner's OK |
+| A, the Accepted screen and the label, lane 2 | after H (not beside F, P, K or Q) |
+| L, K, Q, V, game facts | L after R; K after D and P; then Q and V |
+| O, U, Q+, Y, servers and a player's place | O after K and D; U after B; Y after U |
+| C, CI screenshots in R2 (#211), lane 3 | dropped: RukenApp is public, so GitHub's artifact limit does not apply (owner, 2026-11-20 07:50 UTC); the merged spec is superseded |
 | G, a real game on the test site | not started |
+| Branch B, sign-in and forgot password (#209), lane 3 | built, audit clear; held as a draft until the Twilio upgrade, Step 1a and the owner's OK |
 | Owner's Twilio upgrade, Verify service, Step 1a | at the slice end, by the owner's call |
 | Slice end: walk, design rounds, screens page, owner's walk, retrospective | not started |
+
+## Follow-ups (not built yet)
+
+- `release` says CI screenshots need no label, but `ci.yml` still reads the `screenshots` label. Unit C would have dropped it; with C dropped, it needs its own small change.
+- R left 4px of room under the new line on Check it, then send on an iPhone SE held sideways; the counter, Check it then send, Live and Sent back screens lost their approval and go on the screens page.
+- `LiveGame.playsOn` is still selected but nothing reads it; unit F, which rebuilds that page, can drop it.
+- F (#218) review notes left for later (optional): order More from by acceptance date; cap the play-time beat body before reading it; the drag flag can swallow one Enter after a drag.
+- N1 from W's audit: `src/features/play/gate.ts` comments (lines 13 to 16, 25 to 26) still call the free workers.dev address current; a small fix after W merges. N3: unit K must deploy the gate with `--route` (game-facts spec line 140).
 
 ## Material decisions (agent-selected, not owner-approved)
 

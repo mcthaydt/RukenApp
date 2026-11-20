@@ -1,10 +1,10 @@
-import type { AgeRating, ContentMark, GamePart, GamePlaysOn } from "../../lib/server/db.ts";
+import type { AgeRating, ContentMark, GamePart } from "../../lib/server/db.ts";
 
 // A game is made one question at a time (spec 3 and 10.5): which question comes next, the counter over the heading,
 // and which part of a game each question answers (the part staff can send back). Pure rules, so the screens stay thin.
 
 /** Every question a game is asked, in the order they are asked. "marks" is asked only of an 18+ game. */
-export const QUESTIONS = ["name", "line", "files", "plays-on", "upright", "wide", "age", "marks"] as const;
+export const QUESTIONS = ["name", "line", "files", "upright", "wide", "age", "marks"] as const;
 export type QuestionId = (typeof QUESTIONS)[number];
 
 /** A question that is only ever changed from Check and send, so it has no place in the count. */
@@ -15,14 +15,13 @@ export interface Answers {
   oneLine: string | null;
   /** True when the game has a pull and its last pull was not refused. */
   hasFiles: boolean;
-  playsOn: GamePlaysOn | null;
   upright: boolean;
   wide: boolean;
   ageRating: AgeRating | null;
   contentMarks: ContentMark[];
 }
 
-/** The questions this game is asked, in order: seven, or eight with "marks" for an 18+ game. */
+/** The questions this game is asked, in order: six, or seven with "marks" for an 18+ game. */
 export function questionsFor(answers: Pick<Answers, "ageRating">): QuestionId[] {
   return QUESTIONS.filter((question) => question !== "marks" || answers.ageRating === "age_18");
 }
@@ -36,8 +35,6 @@ export function isAnswered(question: QuestionId, answers: Answers): boolean {
       return answers.oneLine !== null;
     case "files":
       return answers.hasFiles;
-    case "plays-on":
-      return answers.playsOn !== null;
     case "upright":
       return answers.upright;
     case "wide":
@@ -72,7 +69,6 @@ const PART_OF: Record<QuestionId | ChangeOnlyId, GamePart> = {
   name: "name",
   line: "one_line",
   files: "files",
-  "plays-on": "plays_on",
   upright: "upright_video",
   wide: "wide_video",
   age: "age_rating",
@@ -95,7 +91,7 @@ export function questionOf(part: GamePart): QuestionId | ChangeOnlyId {
   return found;
 }
 
-/** Every word a question's address may end in: the eight questions, and the websites a maker changes from Check and send. */
+/** Every word a question's address may end in: the seven questions, and the websites a maker changes from Check and send. */
 export const QUESTION_ADDRESSES: readonly (QuestionId | ChangeOnlyId)[] = [...QUESTIONS, "websites"];
 
 /** Whether `word` is the end of a question's address. A made-up word is not a page. */
@@ -107,7 +103,6 @@ export function isQuestionAddress(word: string): word is QuestionId | ChangeOnly
 /** The rows of a game that tell which questions it has been answered: what the maker's page already holds. */
 export interface AnswerSource {
   oneLine: string | null;
-  playsOn: GamePlaysOn | null;
   ageRating: AgeRating | null;
   contentMarks: ContentMark[];
   pullProblem: string | null;
@@ -121,7 +116,6 @@ export function answersOf(game: AnswerSource): Answers {
     oneLine: game.oneLine,
     // A refused pull can sit beside older passing ones, but the files are answered only while the last pull passed.
     hasFiles: game.newestPull !== null && game.pullProblem === null,
-    playsOn: game.playsOn,
     upright: game.clips.upright !== null,
     wide: game.clips.wide !== null,
     ageRating: game.ageRating,

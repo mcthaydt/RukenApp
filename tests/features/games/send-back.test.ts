@@ -57,7 +57,7 @@ const REASONS: [GamePart, string, string, string][] = [
     "plays_on",
     "needs_keyboard",
     "It needs a keyboard.",
-    "Your game needs a keyboard, so it can't play on phones. Choose Computers only.",
+    "Your game needs a keyboard, so it can't play on phones. Every game must work on both.",
   ],
   ["upright_video", "sideways", "It's sideways.", "It's sideways. Turn it the right way up."],
   [

@@ -30,27 +30,6 @@
     return picked.startsWith("18+") ? data.ageCounters.eighteen : data.ageCounters.younger;
   });
 
-  const PLAYS_ON = [
-    {
-      value: "phone_and_computer",
-      title: "Phones and computers",
-      line: "Choose this if it also works with a finger on a phone.",
-    },
-    {
-      value: "computer_only",
-      title: "Computers only",
-      line: "Choose this if your game needs a keyboard or a mouse.",
-    },
-  ];
-
-  const AGES = [
-    { value: "age_3", title: "3+", line: "Fine for anyone." },
-    { value: "age_7", title: "7+", line: "Cartoon fighting, or a little scary." },
-    { value: "age_12", title: "12+", line: "Real-looking fighting, or scary bits." },
-    { value: "age_16", title: "16+", line: "More violence or strong words." },
-    { value: "age_18", title: "18+", line: "Only for adults." },
-  ];
-
   const MARKS = [
     { value: "sex_or_nudity", title: "Sex or nudity" },
     { value: "gore", title: "Gore" },
@@ -131,15 +110,6 @@
         {problem}
       />
     </QuestionScreen>
-  {:else if data.question === "plays-on"}
-    <QuestionScreen
-      heading={`Where does ${data.name} play?`}
-      counter={data.counter}
-      back={data.back}
-      throwAway={data.throwAway}
-    >
-      <Picks name="playsOn" options={PLAYS_ON} chosen={data.playsOn} {problem} />
-    </QuestionScreen>
   {:else if data.question === "age"}
     <QuestionScreen
       heading={`Who is ${data.name} for?`}
@@ -149,7 +119,7 @@
     >
       <Picks
         name="ageRating"
-        options={AGES}
+        options={data.ageLines}
         chosen={data.ageRating}
         ratings
         hint="We check this when we look at your game."

@@ -6,7 +6,6 @@ import {
   addDraft,
   answerAge,
   answerLine,
-  answerPlaysOn,
   aviFile,
   BROKEN_GAME,
   chooseVideo,
@@ -103,7 +102,7 @@ test("a maker answers the name and is asked the next question, with her name in 
   await signUp(page);
   await page.goto("/make/new");
   await pageHasSettled(page);
-  await expect(page.getByText("Question 1 of 7")).toBeVisible();
+  await expect(page.getByText("Question 1 of 6")).toBeVisible();
   await showTheOwner(page, testInfo, "question 1, the name");
 
   const name = freshName("Floor Fifty");
@@ -112,7 +111,7 @@ test("a maker answers the name and is asked the next question, with her name in 
 
   await expect(page).toHaveURL(/\/make\/floor-fifty-[a-z0-9]+\/line$/);
   await expect(page.getByRole("heading", { name: `What's ${name} about, in one line?` })).toBeVisible();
-  await expect(page.getByText("Question 2 of 7")).toBeVisible();
+  await expect(page.getByText("Question 2 of 6")).toBeVisible();
   await showTheOwner(page, testInfo, "question 2, the line");
 });
 
@@ -160,25 +159,6 @@ test("an empty line is refused in today's words", async ({ page }) => {
   await expect(box).toBeFocused();
 });
 
-test("where it plays has nothing picked, and Next without a choice says so", async ({ page }, testInfo) => {
-  const { slug } = await startDraft(page);
-  await fillAnswers(slug, { playsOn: false, files: true });
-  await page.goto(`/make/${slug}/plays-on`);
-  await pageHasSettled(page);
-
-  await expect(page.getByRole("radio")).toHaveCount(2);
-  await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
-  await expect(page.getByText("Phones and computers")).toBeVisible();
-  await expect(page.getByText("Computers only")).toBeVisible();
-  await expect(page.getByText("Choose this if your game needs a keyboard or a mouse.")).toBeVisible();
-  await showTheOwner(page, testInfo, "question 4, where it plays");
-
-  await nextButton(page).click();
-
-  await expect(page.getByText("Choose where your game plays.")).toBeVisible();
-  await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
-});
-
 test("a line is kept, and the next question waits where she left it", async ({ page }) => {
   await startDraft(page);
 
@@ -189,28 +169,13 @@ test("a line is kept, and the next question waits where she left it", async ({ p
   await expect(page.locator("a.game")).toContainText("Not finished. Go on from question 3.");
 });
 
-test("a choice of where it plays is kept, and comes back chosen", async ({ page }) => {
-  const { slug } = await startDraft(page);
-  await fillAnswers(slug, { playsOn: false, files: true });
-  await page.goto(`/make/${slug}/plays-on`);
-  await pageHasSettled(page);
-
-  await answerPlaysOn(page, "computers");
-
-  await expect(page).toHaveURL(`/make/${slug}/upright`);
-  await page.goto(`/make/${slug}/plays-on`);
-  await pageHasSettled(page);
-  await expect(page.getByLabel("Computers only")).toBeChecked();
-  await expect(page.getByLabel("Phones and computers")).not.toBeChecked();
-});
-
 test("the age question offers five choices with nothing picked", async ({ page }, testInfo) => {
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { files: true, videos: true });
   await page.goto(`/make/${slug}/age`);
   await pageHasSettled(page);
 
-  await expect(page.getByText("Question 7 of 7")).toBeVisible();
+  await expect(page.getByText("Question 6 of 6")).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(5);
   await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
   for (const words of [
@@ -222,7 +187,7 @@ test("the age question offers five choices with nothing picked", async ({ page }
   ])
     await expect(page.getByText(words)).toBeVisible();
   await expect(page.getByText("We check this when we look at your game.")).toBeVisible();
-  await showTheOwner(page, testInfo, "question 7, who it is for");
+  await showTheOwner(page, testInfo, "question 6, who it is for");
 
   await nextButton(page).click();
 
@@ -238,7 +203,7 @@ test("an 18+ game is asked one more question, and a 12+ game is not", async ({ p
   await answerAge(page, "18+");
 
   await expect(page).toHaveURL(`/make/${slug}/marks`);
-  await expect(page.getByText("Question 8 of 8")).toBeVisible();
+  await expect(page.getByText("Question 7 of 7")).toBeVisible();
   await expect(
     page.getByText(
       "Only adults will see this game. Sex or nudity is fine here. No game may have pornography or gambling.",
@@ -252,13 +217,13 @@ test("an 18+ game is asked one more question, and a 12+ game is not", async ({ p
   await expect(page.getByLabel("Drugs")).not.toBeChecked();
   await page.getByLabel("Gore").check();
   await expect(page.getByLabel("None of these")).not.toBeChecked();
-  await showTheOwner(page, testInfo, "question 8, what an 18+ game has");
+  await showTheOwner(page, testInfo, "question 7, what an 18+ game has");
 
   // Back, and a younger rating: the marks are cleared and the question is not asked (Review Focus 5).
   await page.getByRole("link", { name: "Back" }).click();
   await expect(page).toHaveURL(`/make/${slug}/age`);
   await answerAge(page, "12+");
-  // Seven questions are done, so the maker's first game is led on to the agreement (a maker who agreed goes to Check and send).
+  // Six questions are done, so the maker's first game is led on to the agreement (a maker who agreed goes to Check and send).
   await expect(page).toHaveURL(new RegExp(`/make/${slug}/(agreement|check)$`));
   expect((await page.goto(`/make/${slug}/marks`))?.status()).toBe(404);
 });
@@ -353,11 +318,11 @@ test("the questions work with script off", async ({ page, browser, baseURL }) =>
     await plain.getByRole("button", { name: "Next" }).click();
     await expect(plain).toHaveURL(`/make/${slug}/files`);
 
-    await fillAnswers(slug, { playsOn: false, files: true });
-    await plain.goto(`/make/${slug}/plays-on`);
-    await plain.getByLabel("Computers only").check();
+    await fillAnswers(slug, { files: true, videos: true });
+    await plain.goto(`/make/${slug}/age`);
+    await plain.getByRole("radio", { name: /^12\+/ }).check();
     await plain.getByRole("button", { name: "Next" }).click();
-    await expect(plain).toHaveURL(`/make/${slug}/upright`);
+    await expect(plain).toHaveURL(new RegExp(`/make/${slug}/(agreement|check)$`));
   } finally {
     await context.close();
   }
@@ -376,7 +341,7 @@ test("she picks a repository from Ruken's own rows, and Next copies the game", a
   await page.getByLabel(TINY_GAME).check();
   await nextButton(page).click();
 
-  await expect(page).toHaveURL(`/make/${slug}/plays-on`);
+  await expect(page).toHaveURL(`/make/${slug}/upright`);
   expect(await filesOf(slug)).toEqual({ repo: TINY_GAME, pulls: 1 });
 });
 
@@ -409,7 +374,7 @@ test("while the game is copied the button says so and cannot be pressed again", 
   await showTheOwner(page, testInfo, "question 3, copying your game");
 
   held.release();
-  await expect(page).toHaveURL(`/make/${slug}/plays-on`);
+  await expect(page).toHaveURL(`/make/${slug}/upright`);
   expect(held.requestsSoFar()).toBe(1);
 });
 
@@ -545,7 +510,7 @@ test("the upright question shows its frame before anything is chosen, in the rig
 }, testInfo) => {
   await startAtVideo(page, "upright");
 
-  await expect(page.getByText("Question 5 of 7")).toBeVisible();
+  await expect(page.getByText("Question 4 of 6")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Add your upright video");
   const frame = page.locator('[data-frame="upright"]');
   await expect(frame).toContainText("Taller than wide");
@@ -594,7 +559,7 @@ test("the wide question follows, and after it the age question", async ({ page }
   await nextButton(page).click();
 
   await expect(page).toHaveURL(`/make/${slug}/wide`);
-  await expect(page.getByText("Question 6 of 7")).toBeVisible();
+  await expect(page.getByText("Question 5 of 6")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Add your wide video");
   const frame = page.locator('[data-frame="wide"]');
   await expect(frame).toContainText("Wider than tall");
