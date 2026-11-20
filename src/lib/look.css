@@ -2586,6 +2586,7 @@ main.playing {
   font: var(--text-small);
   line-height: 1.1;
   list-style: none;
+  text-decoration: none;
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -2638,6 +2639,10 @@ main.playing {
   border-radius: var(--radius-button);
   background: var(--felt-deep);
   font: var(--text-small);
+}
+
+.playing .menu[open] + .menuhint {
+  display: none;
 }
 
 .playing .menu[data-side="right"] + .menuhint {
