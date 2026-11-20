@@ -1,6 +1,6 @@
 # Ruken progress
 
-Last updated: 2026-11-20 05:33 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
+Last updated: 2026-11-20 07:45 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
 
 ## Outcome
 
@@ -29,6 +29,8 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 - 2026-11-20: connect the games domain on the test site now (spec #207).
 - 2026-11-20 01:28 UTC, on a card: merge decision day storage (#208) once checks pass.
 - 2026-11-20 02:03 UTC: "Finish the slice, I'm going to sleep"; 02:04 UTC: "Make sure you obey the workflow".
+- 2026-11-20 07:40 UTC: "Are you going to run the design loop? and when? It looks awful": design round 1 starts now on what slice 2 has merged, not only at the slice end.
+- 2026-11-20 07:43 UTC: "Ok to merge decision day" (H, #219); "ok for next unit" (P); "ONCE AGAIN, USE GH OVER GIT". Every command handed to the owner uses `gh` wherever `gh` can do it (a branch delete is `gh api -X DELETE repos/mcthaydt/RukenApp/git/refs/heads/<branch>`; updating a local copy is `gh repo sync --branch main`), never `git`.
 
 ## Active milestone: slice 2 (phone sign-up and the rest of slice 2)
 
@@ -41,7 +43,7 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 | R, every game plays on phones and computers (#206), lane 2 | merged at c7f14bb |
 | F, the game page and the play screen, lane 2 | merged at bb16ec1 (#218) |
 | W, the games domain's workers_dev switch, lane 3 | built (#217), audit clear; merges with the owner's OK |
-| H, hold and release on decision day, lane 3 | built (#219, #220); implementation audit running; merges with the owner's OK |
+| H, hold and release on decision day, lane 3 | audit clear at 0343e69; the owner said OK 2026-11-20 07:43 UTC; merging |
 | P, the maker's player count switch, lane 3 | after F; merging applies a migration, so it needs the owner's OK |
 | A, the Accepted screen and the label, lane 2 | after H (not beside F, P, K or Q) |
 | L, K, Q, V, game facts | L after R; K after D and P; then Q and V |
@@ -60,7 +62,6 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 - `LiveGame.playsOn` is still selected but nothing reads it; unit F, which rebuilds that page, can drop it.
 - F (#218) review notes left for later (optional): order More from by acceptance date; cap the play-time beat body before reading it; the drag flag can swallow one Enter after a drag.
 - N1 from W's audit: `src/features/play/gate.ts` comments (lines 13 to 16, 25 to 26) still call the free workers.dev address current; a small fix after W merges. N3: unit K must deploy the gate with `--route` (game-facts spec line 140).
-- Branch `claude/project-thread-4etcra` (#206, merged) still needs deleting.
 - Owner steps O1 to O4 in the R2 spec (the bucket, its rule and the key) come before unit C's step A3.
 
 ## Material decisions (agent-selected, not owner-approved)
