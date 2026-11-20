@@ -57,6 +57,8 @@ export interface LiveGame {
   name: string;
   oneLine: string;
   freeToPlay: boolean;
+  /** The maker's choice: the page says how many people played it this week only while this is true. */
+  showsPlayerCount: boolean;
   makerUserId: string;
   livePullId: string;
   /** The servers the live pull's game may reach (the list as it stood at that pull). */
@@ -122,6 +124,8 @@ export interface MakerGame {
   oneLine: string | null;
   ageRating: AgeRating | null;
   contentMarks: ContentMark[];
+  /** Whether the game's page says how many people played it this week (the maker's switch on Live). */
+  showsPlayerCount: boolean;
   /** True once staff have accepted the game at least once: its address never changes after that. */
   everLive: boolean;
   /** Null until the maker chooses where the game's files are. */
@@ -869,6 +873,15 @@ export function createGamesService(deps: GamesServiceDeps) {
     return { name: game.name };
   }
 
+  /**
+   * The maker's switch for the player count on the game's page. Only the game's own maker may change it; for anyone
+   * else's game it is the same "not found" as every other change.
+   */
+  async function setShowsPlayerCount(gameId: string, makerUserId: string, on: boolean): Promise<void> {
+    await ownGame(gameId, makerUserId);
+    await deps.db.game.update({ where: { id: gameId }, data: { showsPlayerCount: on } });
+  }
+
   /** The maker's own game, which must be off Ruken: what putting it back and cleaning up are for. */
   async function ownTakenOff(gameId: string, makerUserId: string) {
     const game = await ownGame(gameId, makerUserId);
@@ -1054,6 +1067,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     pendingPullId: true,
     changedAt: true,
     oneLine: true,
+    showsPlayerCount: true,
     ageRating: true,
     contentMarks: true,
     toFix: true,
@@ -1092,6 +1106,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     pullProblem: string | null;
     pendingPullId: string | null;
     oneLine: string | null;
+    showsPlayerCount: boolean;
     ageRating: AgeRating | null;
     contentMarks: ContentMark[];
     toFix: GamePart[];
@@ -1115,6 +1130,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       reason: stateParts(state).reason,
       hasPending: state.hasPending,
       oneLine: row.oneLine,
+      showsPlayerCount: row.showsPlayerCount,
       ageRating: row.ageRating,
       contentMarks: row.contentMarks,
       everLive: row.reviews.some((review) => review.decision === "accepted"),
@@ -1273,6 +1289,7 @@ export function createGamesService(deps: GamesServiceDeps) {
         name: true,
         oneLine: true,
         freeToPlay: true,
+        showsPlayerCount: true,
         makerUserId: true,
         state: true,
         ageRating: true,
@@ -1294,6 +1311,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       name: game.name,
       oneLine: game.oneLine,
       freeToPlay: game.freeToPlay,
+      showsPlayerCount: game.showsPlayerCount,
       makerUserId: game.makerUserId,
       livePullId: game.livePull.id,
       connectHosts: game.livePull.connectHosts,
@@ -1380,6 +1398,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     saveAnswer,
     throwAway,
     takeOff,
+    setShowsPlayerCount,
     deleteLeftFiles,
     putBack,
     pullLatest,

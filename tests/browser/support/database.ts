@@ -168,6 +168,12 @@ export async function stateOf(slug: string): Promise<string> {
   return (await db().game.findUniqueOrThrow({ where: { slug }, select: { state: true } })).state;
 }
 
+/** Whether the maker has turned the player count on, as the database holds it. */
+export async function showsPlayerCountOf(slug: string): Promise<boolean> {
+  return (await db().game.findUniqueOrThrow({ where: { slug }, select: { showsPlayerCount: true } }))
+    .showsPlayerCount;
+}
+
 /** A game's own ids, read from its row: what a journey needs to look inside the game. */
 export async function idsOf(slug: string): Promise<{ id: string; publicId: string; makerUserId: string }> {
   return db().game.findUniqueOrThrow({
