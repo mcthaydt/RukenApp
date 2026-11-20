@@ -335,8 +335,8 @@ test("she picks a repository from Ruken's own rows, and Next copies the game", a
   const { slug } = await startAtFiles(page);
   await connectGitHubFromFiles(page, slug);
 
-  // Ruken's rows, never the browser's own list.
-  await expect(page.locator("select")).toHaveCount(0);
+  // Ruken's rows, never the browser's own list. The branch list is a select, so it is left out of this check.
+  await expect(page.locator('select:not([name="branch"])')).toHaveCount(0);
   await expect(page.getByText("Pick the one that is your game.")).toBeVisible();
   await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
   await page.getByLabel(TINY_GAME).check();
