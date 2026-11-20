@@ -6,10 +6,10 @@
   "compatibility_date": "2026-10-01",
   // Node's crypto, for checking a play pass.
   "compatibility_flags": ["nodejs_compat"],
-  // Until the games' domain exists, the gate answers on its own free Cloudflare address, with the game in the path
-  // (the PATH_HOST setting says which host that is). When the Owner adds the domain's route, every game gets a name
-  // of its own, and this goes back to false. The domain is not written here: this repository is public.
-  "workers_dev": true,
+  // The gate answers only on the games domain's route, every name under that domain, so each game has a name of its
+  // own. The route is not written here, because this repository is public and never names the domain: the Owner
+  // gives it as --route on every deploy of the gate. No free Cloudflare address beside it.
+  "workers_dev": false,
   "preview_urls": false,
   "observability": { "enabled": true },
   // The same bucket the site writes to. The gate only reads it.

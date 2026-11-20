@@ -39,8 +39,9 @@ describe("the gate's wrangler.jsonc", () => {
     expect(config().compatibility_flags).toContain("nodejs_compat");
   });
 
-  it("runs on its workers.dev address until the games domain exists, and has no preview addresses", () => {
-    expect(config().workers_dev).toBe(true);
+  // The games domain's route, given on the command line, is its only address: no free address beside it.
+  it("has no free address and no preview addresses: it answers only on the games domain's route", () => {
+    expect(config().workers_dev).toBe(false);
     expect(config().preview_urls).toBe(false);
   });
 
