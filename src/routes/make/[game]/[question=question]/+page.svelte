@@ -7,6 +7,7 @@
   import FilesQuestion from "../../parts/FilesQuestion.svelte";
   import Picks from "../../parts/Picks.svelte";
   import QuestionScreen from "../../parts/QuestionScreen.svelte";
+  import WebsiteLines from "../../parts/WebsiteLines.svelte";
   import TextAnswer from "../../parts/TextAnswer.svelte";
   import { providePreview } from "../../parts/preview.svelte.ts";
   import VideoQuestion from "../../parts/VideoQuestion.svelte";
@@ -38,7 +39,7 @@
   ];
 
   const WEBSITES_HINT =
-    "One per line, like api.example.com. Leave this empty if your game runs on its own. Saving copies your game from GitHub again.";
+    "One website in each box, like api.example.com. Leave it empty if your game runs on its own. Saving copies your game from GitHub again.";
   const NAME_HINT = "The name players see. Like: Floor Fifty.";
   const ADDRESS_STAYS = " Its link on Ruken stays the same, so links you've shared keep working.";
 </script>
@@ -102,13 +103,7 @@
       throwAway={data.throwAway}
       enterHint={false}
     >
-      <TextAnswer
-        name="servers"
-        value={form?.value ?? data.servers}
-        hint={WEBSITES_HINT}
-        lines={3}
-        {problem}
-      />
+      <WebsiteLines name="servers" value={form?.value ?? data.servers} hint={WEBSITES_HINT} {problem} />
     </QuestionScreen>
   {:else if data.question === "age"}
     <QuestionScreen

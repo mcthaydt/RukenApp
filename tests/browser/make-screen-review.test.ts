@@ -82,11 +82,11 @@ test("the other websites question has a paper box, a gap under the heading and n
   await page.goto(`/make/${slug}/websites`);
   await pageHasSettled(page);
 
-  const box = page.locator("textarea.answer");
+  const box = page.locator("input.answer");
   await expect(box).toHaveCSS("background-color", rgb(token("--paper")));
   const heading = await boxOf(page.getByRole("heading", { level: 1 }));
   expect((await boxOf(box)).y - (heading.y + heading.height)).toBeGreaterThanOrEqual(16);
-  // Enter makes a new line in this box, so a hint that it presses the button would be wrong.
+  // The screen has several boxes and an Add button, so a hint that Enter presses the button would be wrong.
   await expect(page.getByText("press Enter")).toHaveCount(0);
 });
 
@@ -270,12 +270,12 @@ test("a refusal of the websites goes away once the box is changed", async ({ pag
   await page.goto(`/make/${slug}/websites`);
   await pageHasSettled(page);
 
-  await page.getByLabel(/use other websites\?$/).fill("not a website");
+  await page.getByLabel("Website 1").fill("not a website");
   await nextButton(page).click();
   const refusal = page.locator("#problem");
   await expect(refusal).toBeVisible();
 
-  await page.getByLabel(/use other websites\?$/).fill("api.example.com");
+  await page.getByLabel("Website 1").fill("api.example.com");
   await expect(refusal).toHaveCount(0);
 });
 
