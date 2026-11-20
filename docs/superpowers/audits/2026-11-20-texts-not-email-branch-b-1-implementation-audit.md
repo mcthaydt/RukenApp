@@ -101,3 +101,33 @@ Five red findings and six notes. The core of the branch is sound: the plugin's `
 ## For the fix round
 
 Reds R1 to R5 are in scope, each in its own files as listed. None needs the Owner's choice. After the fixes, this audit's session (or a program) checks each fix on the new commit, and the pull request goes to the full CI run, the visual check, Step 1a and the Owner's approval.
+
+## Re-check of the fixes at `f6580be`
+
+- Commit examined: `f6580be` ("Fix the audit's five reds: …"), on top of `a0d4a4e` (this audit). The re-check counts only for that commit.
+- Written: 2026-11-20 01:25 UTC (from `date`).
+- Ran here: `pnpm lint` exit 0, `pnpm typecheck` exit 0, `pnpm test` 102 files and 1517 tests passed (the new cases in `forms.test.ts` and `sign-in-pause-plugin.test.ts` among them). Not run here: `pnpm test:pg`, `pnpm build` and the journeys (no Postgres server in this container); the builder reports them green.
+
+**Verdict: four of five pass; R2 is still red, with a one-line fix.**
+
+| Finding | Result | Evidence |
+|---|---|---|
+| R1 sign-in timing | PASS | `sign-in-pause-plugin.ts`: for a number with no account the `before` hook runs `password.verify` against a hash made once by the same hasher, and does not throw, so the endpoint's own 401 and the pause's count still happen. Tests: one dummy check for an unknown number, none for a number with an account, none while paused. Both paths now do one password check; the remaining difference is one indexed lookup, as on `main`'s email sign-in. |
+| R2 same answer at the client limit | **still red** | See R2a below. The form's own count (`countCodeTry`, 10 per 15 minutes per client, on both paths) is right and tested. |
+| R3 closed country typed with "+" | PASS | `numberOf` refuses an E.164 that does not start with the picked country's dialing code; `refusedNumber` reads it as `closedCountry`; sign-in reads it as a wrong password. Tests on sign-up and forgot password. The Caribbean under `+1` stays for Task 11, as the plan says. |
+| R4 "Change the number" | PASS | A `quiet` button with `formaction="?/change"` in the code form; `changeNumber` answers the country, number, date of birth and `next`, never the password. Journey added. |
+| R5 "Text it again" after 30 s | PASS | `src/lib/text-it-again.svelte` hides the button on mount and shows it after 30 s; the server render keeps it, so without a script it is always there. Journey added, with the page clock. |
+
+### R2a. better-auth still limits `/phone-number/verify` per client, so the two sign-up paths can still answer differently
+
+- UNIT: `src/features/accounts/auth.ts` `rateLimit.customRules`.
+- VERDICT: red (what is left of R2).
+- REQUIREMENT: as R2 (B2, audits 6 and 2.2, Global Constraints).
+- REASON: taking `/phone-number/verify` out of `customRules` does not take its limit away: the phone plugin brings its own rule for every `/phone-number*` path, 10 a minute per client, and better-auth counts it in `onRequest`, before any hook, so requests from outside count too even though they are answered 404.
+- EVIDENCE: `node_modules/better-auth/dist/plugins/phone-number/index.mjs` lines 45 to 51 (`path.startsWith("/phone-number")`, `window: 60, max: 10`); `api/rate-limiter/index.mjs` `resolveRateLimitConfig` takes a plugin rule when no custom rule matches, and returns no limit only for a custom rule of `false`; `api/index.mjs` line 172 counts it before the endpoint. So ten posts to `/api/auth/phone-number/verify` from outside in a minute (each answered 404) fill the client's bucket, and the next code typed on the sign-up form reads "Too many tries" for a number with no account (it goes through `verify`) and "That code isn't right" for a number with one (it goes through `consumePhoneNumberOTP`). This was true at `b7fe8f7` as well; R2's suggested fix missed the plugin's rule.
+- EXPECTED: the sign-up code's only per-client limit is the form's own count, so both paths answer the same at every try.
+- FIX: in `customRules`, `"/phone-number/verify": false`, with the comment saying why (the plugin's own rule would otherwise apply). Test: `auth.pg.test.ts` (or a journey) posts ten times to `/api/auth/phone-number/verify` through the public route, then a code typed on the sign-up form reads the same for a number with and without an account. Files: `auth.ts` and that test.
+
+### Note added
+
+- N7. Each post reloads the page, so after a wrong code "Text it again" waits another 30 seconds. Harmless (the server allows a new code every 30 seconds anyway); recorded only.
