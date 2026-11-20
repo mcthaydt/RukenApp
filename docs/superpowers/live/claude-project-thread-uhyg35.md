@@ -1,0 +1,4 @@
+- Task: fix the cycle 1 plan audit's 11 reds in the game facts spec (and the Owner's English rule), for cycle 2.
+- Last commit: 77c1f82 (2026-11-20 00:04 UTC)
+- Next step: edit docs/superpowers/specs/2026-11-17-game-facts-design.md for R1 to R11, delete this file, name the commit to the audit thread.
+- Open decisions: none with the Owner.
