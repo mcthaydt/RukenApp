@@ -1,0 +1,204 @@
+{
+  "defaultBranch": "main",
+  "repo": "mcthaydt/RukenApp",
+  "alsoGuards": [],
+  "identity": {
+    "enabled": true,
+    "commitTools": [
+      "^mcp__github__(create_or_update_file|push_files|delete_file|update_pull_request_branch)$"
+    ],
+    "allowCommitters": [
+      "GitHub <noreply@github.com>"
+    ]
+  },
+  "attribution": {
+    "enabled": true,
+    "patterns": [
+      "^\\s*Co-Authored-By:.*(Claude|anthropic\\.com)",
+      "^\\s*Claude-Session:",
+      "^[\\s>*_]*(🤖\\s*)?Generated (by|with)\\b",
+      "^\\s*https://claude\\.ai/code/session_"
+    ],
+    "filePatterns": [
+      "^\\s*Co-Authored-By:.*(Claude|anthropic\\.com)",
+      "^\\s*Claude-Session:",
+      "^[\\s>*_]*(🤖\\s*)?Generated (by|with) .*Claude",
+      "^\\s*https://claude\\.ai/code/session_"
+    ],
+    "exemptPaths": [
+      "tests/**"
+    ]
+  },
+  "commitVerify": {
+    "enabled": true
+  },
+  "forcePush": {
+    "enabled": true
+  },
+  "defaultBranchPush": {
+    "enabled": true
+  },
+  "mergeMethod": {
+    "enabled": true
+  },
+  "bypassFlags": {
+    "enabled": true,
+    "configFiles": [
+      "*test*.config.*",
+      "**/*test*.config.*",
+      "playwright*.config.*",
+      "**/playwright*.config.*",
+      "cypress.config.*",
+      "**/cypress.config.*",
+      "package.json",
+      "**/package.json",
+      ".github/workflows/*"
+    ]
+  },
+  "prBody": {
+    "enabled": true,
+    "footerStrippedByCi": false
+  },
+  "prBodyVerify": {
+    "enabled": true
+  },
+  "prFlow": {
+    "enabled": true,
+    "maxOpenPrs": 3
+  },
+  "liveState": {
+    "enabled": true,
+    "path": "docs/superpowers/live/{branch}.md"
+  },
+  "mergeGreen": {
+    "enabled": true,
+    "statuses": []
+  },
+  "ruleMix": {
+    "enabled": true,
+    "firstTimeSetup": true,
+    "rulePaths": [
+      "CLAUDE.md",
+      ".claude/skills/review/**",
+      ".claude/skills/release/**",
+      ".claude/skills/visual-check/**",
+      ".claude/skills/build/**",
+      ".claude/skills/staged-path/**",
+      ".claude/skills/owner-updates/**",
+      ".claude/skills/vertical-slice/**",
+      ".claude/skills/scene-polish/**",
+      ".github/workflows/**"
+    ],
+    "docPaths": [
+      "docs/**",
+      "*.md",
+      "**/*.md",
+      ".claude/**"
+    ]
+  },
+  "gpu": {
+    "enabled": false,
+    "detect": {
+      "env": "RULES_GPU",
+      "command": [
+        "nvidia-smi",
+        "-L"
+      ]
+    },
+    "softwareEnv": "",
+    "renderCommands": [],
+    "gpuOnlySpecs": [],
+    "gpuOnlyProjects": [],
+    "allowedHelpers": [],
+    "captureCalls": [
+      ".screenshot(",
+      "toHaveScreenshot(",
+      "toMatchSnapshot(",
+      "recordVideo",
+      "startScreencast",
+      "captureScreenshot"
+    ],
+    "mcpTools": [
+      "^mcp__.*(screenshot|screencast)"
+    ],
+    "mcpToolsAllowed": [
+      "^mcp__.*([Ff]igma|[Pp]enpot|[Ss]ketch|[Cc]anva)"
+    ],
+    "hint": "Render on a GPU machine: the CI's GPU job or a cloud GPU pod (Where work runs in release)."
+  },
+  "hostedRunners": {
+    "enabled": false,
+    "labels": [
+      "ubuntu",
+      "windows",
+      "macos"
+    ],
+    "hint": "Use the self-hosted runner labels the gate starts."
+  },
+  "ownerDevice": {
+    "enabled": false,
+    "tools": []
+  },
+  "ownerCommands": {
+    "enabled": true,
+    "tools": []
+  },
+  "sessionTools": {
+    "enabled": true,
+    "maxEffort": "high",
+    "tools": [
+      {
+        "tool": "^Agent$",
+        "effortFields": [
+          "effort"
+        ],
+        "requireModel": true,
+        "models": [
+          "^haiku$",
+          "^claude-haiku-5"
+        ],
+        "modelRule": "A subagent is a narrow read-only helper on the helper model in Settings (CLAUDE.md, Limits; Settings)."
+      },
+      {
+        "tool": "^Workflow$",
+        "effortFields": [
+          "effort"
+        ]
+      }
+    ]
+  },
+  "bannedCommands": [],
+  "laneNotice": {
+    "enabled": true,
+    "paths": [
+      "CLAUDE.md",
+      ".claude/**",
+      ".github/workflows/**"
+    ]
+  },
+  "stop": {
+    "enabled": true,
+    "dirty": true,
+    "ciPending": true
+  },
+  "mcp": {
+    "mergeTools": [
+      "merge_pull_request$"
+    ],
+    "autoMergeTools": [
+      "enable_pr_auto_merge$"
+    ],
+    "updatePrTools": [
+      "update_pull_request$"
+    ],
+    "prBodyTools": [
+      "create_pull_request$",
+      "update_pull_request$"
+    ]
+  },
+  "inject": {
+    "maxChars": 9000,
+    "rules": [],
+    "syncNote": "A new owner rule goes to project memory in the turn it is given and into inject.rules (with a new id) in the next rule-change pull request; the brief check only knows ids listed here."
+  }
+}

@@ -10,3 +10,6 @@ test-results/
 # The design and the workflow are kept word for word as the Owner approved them.
 *.md
 src/features/pages/library/colours.json
+# The rule hooks and their settings are kept word for word as the Owner gave them.
+.claude/hooks/
+.claude/settings.json
