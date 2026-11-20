@@ -219,7 +219,9 @@ test("with no script, Menu then Leave game still leaves", async ({ browser }) =>
   const page = await context.newPage();
   await page.goto(`/g/${free.slug}/play`);
   await page.locator("details.menu > summary").click();
-  await page.getByRole("link", { name: "Leave game" }).click();
+  // By keyboard: with script off this page does not give Playwright's pointer click its "has stopped moving" check.
+  await page.getByRole("link", { name: "Leave game" }).focus();
+  await page.keyboard.press("Enter");
   await expect(page).toHaveURL(`/g/${free.slug}`);
   await context.close();
 });
@@ -264,7 +266,10 @@ test("a game taken off Ruken is gone on the next load", async ({ page, browser, 
 
   expect((await page.goto(`/g/${own.slug}`))?.status()).toBe(404);
   expect((await page.goto(`/g/${own.slug}/play`))?.status()).toBe(404);
-  expect((await page.goto(`${frameAddress}main.js`))?.status()).toBe(404);
+  // Asked by a browser that has not seen it before: the player's own browser may still hold the file for the pass's life.
+  const fresh = await browser.newContext();
+  expect((await (await fresh.newPage()).goto(`${frameAddress}main.js`))?.status()).toBe(404);
+  await fresh.close();
 });
 
 test("nothing on the play screen is red, and nothing scrolls sideways", async ({ page }) => {

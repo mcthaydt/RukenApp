@@ -7,6 +7,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import {
+    BEAT_EVERY_MS,
+    createAttention,
     FIRST_PLACE,
     heightRange,
     isDrag,
@@ -32,6 +34,8 @@
   let panel = $state<HTMLElement>();
   let open = $state(false);
   let started = $state(false);
+  // True once the script is running: the starting words need it to go away again, so with no script there are none.
+  let alive = $state(false);
   let slow = $state(false);
   let hint = $state(true);
   let canFullScreen = $state(false);
@@ -70,6 +74,7 @@
     })();
     if (kept !== null) place = kept;
 
+    alive = true;
     canFullScreen = document.fullscreenEnabled;
     const onFullScreen = () => {
       fullScreen = document.fullscreenElement !== null;
@@ -94,7 +99,60 @@
     if (document.readyState === "complete") started = true;
     const slowTimer = setTimeout(() => (slow = true), SLOW_AFTER_MS);
 
+    // Play time (spec 4.2): look once a second; every beat's worth of time say whether every look was attentive. The page
+    // never focuses the game by itself: time starts when the person first presses the game, or Keep playing.
+    const attention = createAttention();
+    const look = () => {
+      const box = frame?.getBoundingClientRect();
+      attention.look({
+        tabShowing: document.visibilityState === "visible",
+        frameOnScreen:
+          box !== undefined &&
+          box.bottom > 0 &&
+          box.right > 0 &&
+          box.top < innerHeight &&
+          box.left < innerWidth,
+        frameFocused: document.activeElement === frame && document.hasFocus(),
+      });
+    };
+    const beatAddress = `/g/${data.slug}/play/beat`;
+    const body = (attentive: boolean) =>
+      JSON.stringify({ session: data.session.id, token: data.session.token, attentive });
+    let ticks = 0;
+    let stopped = false;
+    const tick = async () => {
+      look();
+      ticks += 1;
+      if (stopped || ticks * 1000 < BEAT_EVERY_MS) return;
+      ticks = 0;
+      try {
+        const answer = await fetch(beatAddress, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: body(attention.report()),
+          keepalive: true,
+        });
+        if (answer.status === 204) attention.taken();
+        // A session that is over or unknown takes no more beats.
+        if (answer.status === 410 || answer.status === 404) stopped = true;
+      } catch {
+        // A beat that did not arrive is spoken for by the next one (`taken` was not called).
+      }
+    };
+    const timer = setInterval(() => void tick(), 1000);
+    const onVisible = () => {
+      look();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    const onLeave = () => {
+      if (!stopped) navigator.sendBeacon(beatAddress, body(attention.report()));
+    };
+    addEventListener("pagehide", onLeave);
+
     return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      removeEventListener("pagehide", onLeave);
       document.removeEventListener("fullscreenchange", onFullScreen);
       clearTimeout(slowTimer);
       if (hintTimer !== undefined) clearTimeout(hintTimer);
@@ -242,7 +300,7 @@
     }}
   ></iframe>
 
-  {#if !started}
+  {#if alive && !started}
     <div class="starting">
       {#if slow}
         <p class="statement">{data.name} is taking a while.</p>

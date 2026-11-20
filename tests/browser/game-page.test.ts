@@ -163,9 +163,8 @@ test("Play and every tile are reached by the keyboard, with focus showing", asyn
     await page.keyboard.press("Tab");
     visits.push(
       await page.evaluate(() => {
-        const now = document.activeElement;
-        const outline = now === null ? "none" : getComputedStyle(now).outlineStyle;
-        return `${now?.getAttribute("aria-label") ?? now?.textContent?.trim() ?? ""}|${outline}`;
+        const now = document.activeElement ?? document.body;
+        return `${now.getAttribute("aria-label") ?? now.textContent.trim()}|${getComputedStyle(now).outlineStyle}`;
       }),
     );
   }

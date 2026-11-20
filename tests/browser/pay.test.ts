@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "@playwright/test";
 import {
   continueToPayment,
   fillBirthDate,
@@ -6,11 +6,11 @@ import {
   JOURNEY_PASSWORD,
   payAsNewMember,
   releaseLateNews,
-  signUpInItsOwnContext,
   standInPayButton,
   yearsAgo,
 } from "./support/account.ts";
-import { arrivalCookie, membershipStartsOf, userIdOf } from "./support/database.ts";
+import { idsOf, membershipStartsOf } from "./support/database.ts";
+import { gameWhere } from "./support/game.ts";
 import { rgb, token } from "../support/look-tokens.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -59,16 +59,44 @@ test("when Stripe's news is late, the page says so and goes on by itself", async
   await expect(page).toHaveURL("/me"); // waits on the page, not a sleep
 });
 
+/** A live game with its own maker, made in a context of its own; its page is a real link a visitor can land on. */
+async function liveGameOfItsOwnMaker(browser: Browser): Promise<{ slug: string; makerUserId: string }> {
+  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  try {
+    const { slug } = await gameWhere(await context.newPage(), { state: "live" });
+    return { slug, makerUserId: (await idsOf(slug)).makerUserId };
+  } finally {
+    await context.close();
+  }
+}
+
 // Design 8: a member's sign-up records the maker's link they came through. No screen shows it, so the row is read.
 test("a member's sign-up records the maker's link they came through", async ({ page, browser }) => {
-  const maker = await signUpInItsOwnContext(browser);
-  const makerUserId = await userIdOf(maker.email);
-  await page.context().addCookies([arrivalCookie({ makerUserId, path: "/g/a-game" })]);
+  const game = await liveGameOfItsOwnMaker(browser);
+  await page.goto(`/g/${game.slug}`);
+  await page.getByRole("link", { name: "Play" }).click();
+  await expect(page).toHaveURL(/\/join/);
 
   const member = await payAsNewMember(page);
 
   expect(await membershipStartsOf(member.email)).toMatchObject([
-    { broughtByUserId: makerUserId, arrivalPath: "/g/a-game" },
+    { broughtByUserId: game.makerUserId, arrivalPath: `/g/${game.slug}` },
+  ]);
+});
+
+test("a visitor who lands on one game's page and then another's is recorded with the last", async ({
+  page,
+  browser,
+}) => {
+  const first = await liveGameOfItsOwnMaker(browser);
+  const second = await liveGameOfItsOwnMaker(browser);
+  await page.goto(`/g/${first.slug}`);
+  await page.goto(`/g/${second.slug}`);
+
+  const member = await payAsNewMember(page);
+
+  expect(await membershipStartsOf(member.email)).toMatchObject([
+    { broughtByUserId: second.makerUserId, arrivalPath: `/g/${second.slug}` },
   ]);
 });
 
