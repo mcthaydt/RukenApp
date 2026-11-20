@@ -341,6 +341,8 @@ describe("screens wear the look and nothing of their own", () => {
     "asks",
     "preview",
     "checking",
+    // The maker's On/Off switch on Live.
+    "countswitch",
     // A game's page (spec 3) and the play screen (spec 4).
     "gamepage",
     "stage",
@@ -468,10 +470,18 @@ describe("the maker's screens", () => {
     "asks",
     "preview",
     "checking",
+    "countswitch",
   ];
 
   it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {
     expect(withoutComments).toMatch(new RegExp(`\\.${name}(?![\\w-])`));
+  });
+
+  // Unit P: the player count switch is pressed with a thumb, so it is at least 44 tall and wide.
+  it("the player count switch is at least 44 by 44", () => {
+    const rule = /\.countswitch button\s*\{([^}]*)\}/.exec(withoutComments)?.[1] ?? "";
+    expect(rule).toMatch(/min-height:\s*var\(--size-target\)/);
+    expect(rule).toMatch(/min-width:\s*var\(--size-target\)/);
   });
 
   // Owner, 2026-11-15: no new colour. The ten tokens in :root are the only place a colour is written.

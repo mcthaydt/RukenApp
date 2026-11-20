@@ -79,6 +79,7 @@ async function newGame(options: { freeToPlay?: boolean; connectHosts?: string[] 
     slug: row.slug,
     name: row.name,
     oneLine: row.oneLine ?? "",
+    showsPlayerCount: false,
     ageRating: "age_12",
     contentMarks: [],
     freeToPlay: row.freeToPlay,
@@ -490,5 +491,78 @@ describe("sittingOf", () => {
     await addPlay(game, { minutes: 12, attentive: false });
     await addPlay(game, { minutes: 12, daysAgo: 31 });
     expect(await service.sittingOf(game.id, NOW)).toBeNull();
+  });
+});
+
+describe("playersThisWeek", () => {
+  const NOW = new Date("2026-11-14T12:00:00Z");
+
+  /** One play of a game by `userId` (null: nobody), started `daysAgo` days back, with one beat. */
+  async function addPlay(
+    game: LiveGame,
+    options: {
+      userId: string | null;
+      basis?: "member" | "free_game" | "staff" | "own_game";
+      daysAgo?: number;
+      beat?: "attentive" | "looked_away" | "none";
+    },
+  ): Promise<void> {
+    const startedAt = new Date(NOW.getTime() - (options.daysAgo ?? 1) * 86_400_000);
+    const pass = await db().playPass.create({
+      data: {
+        id: crypto.randomUUID().replaceAll("-", "").slice(0, 22),
+        gameId: game.id,
+        pullId: game.livePullId,
+        userId: null,
+        madeAt: startedAt,
+        expiresAt: new Date(NOW.getTime() + 86_400_000),
+      },
+    });
+    const session = await db().playSession.create({
+      data: {
+        id: crypto.randomUUID(),
+        gameId: game.id,
+        pullId: game.livePullId,
+        passId: pass.id,
+        userId: options.userId,
+        basis: options.basis ?? "member",
+        tokenHash: "0".repeat(64),
+        startedAt,
+      },
+    });
+    if ((options.beat ?? "attentive") === "none") return;
+    await db().playBeat.create({
+      data: {
+        sessionId: session.id,
+        receivedAt: new Date(startedAt.getTime() + 15_000),
+        attentive: (options.beat ?? "attentive") === "attentive",
+      },
+    });
+  }
+
+  it("counts each account once, however many times it played", async () => {
+    const game = await newGame();
+    const one = await createUser(db());
+    const two = await createUser(db());
+    await addPlay(game, { userId: one });
+    await addPlay(game, { userId: one, daysAgo: 3 });
+    await addPlay(game, { userId: two, basis: "free_game" });
+    expect(await service.playersThisWeek(game.id, NOW)).toBe(2);
+  });
+
+  it("does not count staff, the maker's own play, free play by nobody, a play 8 days old, or one with no attentive beat", async () => {
+    const game = await newGame();
+    await addPlay(game, { userId: await createUser(db()) });
+    await addPlay(game, { userId: await createUser(db()), basis: "staff" });
+    await addPlay(game, { userId: await createUser(db()), basis: "own_game" });
+    await addPlay(game, { userId: null, basis: "free_game" });
+    await addPlay(game, { userId: await createUser(db()), daysAgo: 8 });
+    await addPlay(game, { userId: await createUser(db()), beat: "none" });
+    await addPlay(game, { userId: await createUser(db()), beat: "looked_away" });
+    expect(await service.playersThisWeek(game.id, NOW)).toBe(1);
+  });
+
+  it("is zero for a game nobody played", async () => {
+    expect(await service.playersThisWeek((await newGame()).id, NOW)).toBe(0);
   });
 });
