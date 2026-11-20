@@ -2090,6 +2090,24 @@ a.sheet.fix {
   color: var(--chalk);
 }
 
+/* The maker's On/Off switch for the player count (under the game laid out). One button the whole width of its line: the
+   words on the left, the chip on the right, and the chip says the state in words as well as by its fill, so it is not read
+   by colour alone. */
+.live .countswitch button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  min-width: var(--size-target);
+  min-height: var(--size-target);
+  text-align: left;
+}
+
+.live .countswitch button[data-on] .chip {
+  background: var(--pay);
+}
+
 /* The statement piece, only on Live (spec 5c): the game's own video fills the screen behind everything, blurred, dimmed and
    under a black layer. Everything else sits above it. */
 .backdrop {

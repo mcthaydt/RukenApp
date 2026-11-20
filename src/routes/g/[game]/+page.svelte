@@ -142,6 +142,13 @@
       </div>
     {/if}
 
+    {#if data.players !== null}
+      <div class="card cell fact">
+        <p class="note">Players</p>
+        <p>{data.players}</p>
+      </div>
+    {/if}
+
     {#if enhanced}
       <div class="card cell watch">
         <p class="note">Watch it two ways</p>
