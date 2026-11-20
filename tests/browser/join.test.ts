@@ -2,11 +2,9 @@ import { expect, test } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import {
   continueToPayment,
-  fillBirthDate,
-  freshEmail,
-  JOURNEY_PASSWORD,
+  finishSignUpForm,
+  freshNumber,
   signUp,
-  yearsAgo,
 } from "./support/account.ts";
 import { boxOf, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -108,10 +106,7 @@ test("a signed-out person is asked to sign up only after pressing Continue, and 
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page).toHaveURL(/\/sign-up\?next=/);
 
-  await page.getByLabel("Email").fill(freshEmail());
-  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
-  await fillBirthDate(page, yearsAgo(30));
-  await page.getByRole("button", { name: "Create account" }).click();
+  await finishSignUpForm(page, freshNumber());
 
   // Back on the same card, with the plan still chosen, and now the button that spends money.
   await expect(page).toHaveURL(/\/join\?/);

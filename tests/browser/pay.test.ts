@@ -1,14 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   continueToPayment,
-  fillBirthDate,
-  freshEmail,
-  JOURNEY_PASSWORD,
+  finishSignUpForm,
+  freshNumber,
   payAsNewMember,
   releaseLateNews,
   signUpInItsOwnContext,
   standInPayButton,
-  yearsAgo,
 } from "./support/account.ts";
 import { arrivalCookie, membershipStartsOf, userIdOf } from "./support/database.ts";
 import { rgb, token } from "../support/look-tokens.ts";
@@ -18,15 +16,12 @@ test.beforeEach(forgetRateLimits);
 
 /** Signs up through the card, as a stranger who has not signed in yet, and lands back on it as a person who can pay. */
 async function signUpFromTheCard(page: Page): Promise<string> {
-  const email = freshEmail();
+  const number = freshNumber();
   await page.goto("/join?next=/me");
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
-  await fillBirthDate(page, yearsAgo(30));
-  await page.getByRole("button", { name: "Create account" }).click();
+  await finishSignUpForm(page, number);
   await expect(page.getByRole("button", { name: "Continue to payment" })).toBeVisible();
-  return email;
+  return number;
 }
 
 test("a stranger signs up, pays, and lands where they were going as a member", async ({ page }) => {
@@ -62,12 +57,12 @@ test("when Stripe's news is late, the page says so and goes on by itself", async
 // Design 8: a member's sign-up records the maker's link they came through. No screen shows it, so the row is read.
 test("a member's sign-up records the maker's link they came through", async ({ page, browser }) => {
   const maker = await signUpInItsOwnContext(browser);
-  const makerUserId = await userIdOf(maker.email);
+  const makerUserId = await userIdOf(maker.number);
   await page.context().addCookies([arrivalCookie({ makerUserId, path: "/g/a-game" })]);
 
   const member = await payAsNewMember(page);
 
-  expect(await membershipStartsOf(member.email)).toMatchObject([
+  expect(await membershipStartsOf(member.number)).toMatchObject([
     { broughtByUserId: makerUserId, arrivalPath: "/g/a-game" },
   ]);
 });
@@ -75,7 +70,7 @@ test("a member's sign-up records the maker's link they came through", async ({ p
 test("a member who came through no maker's link has no maker recorded", async ({ page }) => {
   const member = await payAsNewMember(page);
 
-  expect(await membershipStartsOf(member.email)).toMatchObject([
+  expect(await membershipStartsOf(member.number)).toMatchObject([
     { broughtByUserId: null, arrivalPath: null },
   ]);
 });

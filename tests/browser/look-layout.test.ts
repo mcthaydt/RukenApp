@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
+import { shownAs } from "../../src/features/accounts/phone.ts";
 import { signUp } from "./support/account.ts";
 import { boxOf, CARD_SCREENS, startsWithFamily, wordsHaveSettled, type Box } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -54,9 +55,9 @@ test.describe("sign up", () => {
     page,
   }) => {
     await visit(page, "/sign-up");
-    const email = await boxOf(page.getByLabel("Email"));
-    const legend = page.getByText("When were you born?");
-    closeTo(await textLeft(legend), email.x, 0.5);
+    const field = await boxOf(page.getByLabel("Phone number"));
+    const legend = page.getByText("Date of birth", { exact: true });
+    closeTo(await textLeft(legend), field.x, 0.5);
     const passwordNote = await boxOf(page.getByText("At least 10 characters."));
     closeTo((await boxOf(legend)).y - bottomOf(passwordNote), 16);
   });
@@ -73,7 +74,7 @@ test.describe("sign up", () => {
 
   test("the question has half a rem of air above Month, Day and Year", async ({ page }) => {
     await visit(page, "/sign-up");
-    const legend = await boxOf(page.getByText("When were you born?"));
+    const legend = await boxOf(page.getByText("Date of birth", { exact: true }));
     const row = await boxOf(page.locator(".row"));
     closeTo(row.y - bottomOf(legend), 8);
   });
@@ -87,29 +88,13 @@ test.describe("sign up", () => {
 });
 
 test.describe("your account", () => {
-  test("the address is printed once, and the line under it says what to do", async ({ page }) => {
-    const { email } = await signUp(page);
+  test("the number is printed once, and the membership line follows a rem under it", async ({ page }) => {
+    const { number } = await signUp(page);
     await visit(page, "/me");
-    await expect(page.getByText(email)).toHaveCount(1);
-    await expect(page.getByText("Confirm your email. We sent you a link.", { exact: true })).toBeVisible();
-  });
-
-  test("'Send it again' starts where the words above it start, and sits a rem under them", async ({
-    page,
-  }) => {
-    await signUp(page);
-    await visit(page, "/me");
-    const heading = await boxOf(page.getByRole("heading", { name: "Your account" }));
-    const again = page.getByRole("button", { name: "Send it again" });
-    const box = await boxOf(again);
-    closeTo(box.x, heading.x, 0.5);
-    expect(box.height).toBeGreaterThanOrEqual(48);
-    const air = await airAround(again);
-    const line = await boxOf(page.getByText("Confirm your email. We sent you a link.", { exact: true }));
-    closeTo(box.y + air - bottomOf(line), 16);
-    // And what follows it, now the membership line, comes at the same rhythm: no hole below the button.
+    const shown = page.getByText(shownAs(number), { exact: true });
+    await expect(shown).toHaveCount(1);
     const membership = await boxOf(page.getByText("You're not a member.", { exact: true }));
-    closeTo(membership.y - (bottomOf(box) - air), 16);
+    closeTo(membership.y - bottomOf(await boxOf(shown)), 16);
   });
 
   // The Owner, 2026-11-14, "All six": two tap targets that overlap are one wrong tap from deleting an account.
@@ -294,6 +279,6 @@ test.describe("the card", () => {
 
   test("a field has an edge in ink, easy to see on paper", async ({ page }) => {
     await visit(page, "/sign-in");
-    await expect(page.getByLabel("Email")).toHaveCSS("border-top-color", rgb(token("--ink")));
+    await expect(page.getByLabel("Phone number")).toHaveCSS("border-top-color", rgb(token("--ink")));
   });
 });

@@ -47,7 +47,7 @@
       <button>Join Ruken</button>
       <button class="quiet" formaction="?/again" formnovalidate>Text it again</button>
     </form>
-    <p><a class="button quiet" href={`/sign-up?next=${encodeURIComponent(nextPath)}`}>Change the number</a></p>
+    <p><a href={`/sign-up?next=${encodeURIComponent(nextPath)}`}>Change the number</a></p>
     <p class="note">
       No text? Check the number, or <a href={signInLink}>sign in</a> if you already have an account.
     </p>

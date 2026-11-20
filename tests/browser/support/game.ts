@@ -83,7 +83,7 @@ export async function startDraft(
 /** A new maker with a game, answered up to the question of where its files are: signs up, then answers 1 and 2. */
 export async function startAtFiles(
   page: Page,
-): Promise<{ slug: string; name: string; maker: { email: string; password: string } }> {
+): Promise<{ slug: string; name: string; maker: { number: string; password: string } }> {
   const maker = await signUp(page);
   const { slug, name } = await addDraft(page);
   await answerLine(page);

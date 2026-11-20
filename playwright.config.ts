@@ -84,6 +84,15 @@ export default defineConfig({
         RESEND_API_KEY: "re_test_fake",
         RESEND_API_BASE: "http://127.0.0.1:12113",
         MAIL_FROM: "Ruken <hello@ruken.test>",
+        // Texts and sign-in codes go to the stand-in Twilio, which keeps them for the journeys to read, and to no one
+        // else. The line names are what the stand-in reports a text's line as. All plainly fake.
+        TWILIO_ACCOUNT_SID: "AC_test_fake",
+        TWILIO_API_KEY: "SK_test_fake",
+        TWILIO_API_SECRET: "test-only-twilio-secret",
+        TWILIO_ACCOUNT_SERVICE: "MG-account",
+        TWILIO_NEWS_SERVICE: "MG-news",
+        TWILIO_VERIFY_SERVICE: "VA_test_fake",
+        TWILIO_API_BASE: "http://127.0.0.1:12114",
         // The daily job's secret, so the journeys can knock on it. Plainly fake.
         JOBS_SECRET: "test-only-jobs-secret",
         // Money goes through the stand-in Stripe, never the real one. All plainly fake.
