@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { JOURNEY_PASSWORD, signUp } from "./support/account.ts";
+import { JOURNEY_PASSWORD, signUp, SITE_ANSWER_TIMEOUT } from "./support/account.ts";
 import { linkIn, mailTo } from "./support/mail.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -76,7 +76,7 @@ test("a person who forgot their password opens the mailed link, saves a new one,
 
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(NEW_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/");
 });
 
