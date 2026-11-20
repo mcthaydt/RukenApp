@@ -295,10 +295,10 @@ export async function letDecisionDayIn(slug: string): Promise<void> {
     select: { id: true, makerUserId: true, pendingPullId: true },
   });
   if (game.pendingPullId === null) throw new Error(`${slug} holds no files that wait`);
-  // One day per call: the day is unique, and an old one is out of the way of any real decision day.
+  // A random old day, out of the way of any real decision day. Two games may land on the same day: they share its row.
   const day = new Date(Date.UTC(2000, 0, 1 + Math.floor(Math.random() * 9000)));
   const wentOutAt = new Date();
-  await db().decisionDay.create({ data: { day, seats: 10, wentOutAt } });
+  await db().decisionDay.upsert({ where: { day }, update: {}, create: { day, seats: 10, wentOutAt } });
   const review = await db().gameReview.create({
     data: {
       gameId: game.id,

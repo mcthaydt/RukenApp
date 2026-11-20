@@ -579,7 +579,7 @@ export function createGamesService(deps: GamesServiceDeps) {
           data: becomesLive(waiting.pullId),
         });
         await tx.game.updateMany({
-          where: { id: gameId, acceptedSeenAt: null },
+          where: { id: gameId, state: "live", acceptedSeenAt: null },
           data: { acceptedSeenAt: decidedAt },
         });
       }
