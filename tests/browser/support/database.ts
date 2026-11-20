@@ -318,6 +318,8 @@ export async function putGameWhereStaffLeaveIt(
             pendingSince: decision.updateWaiting === true ? new Date() : null,
             livePullId: newest.id,
             toFix: toFix.map((one) => one.part),
+            // A yes made at once also writes this, so the Accepted screen is not shown for it.
+            acceptedSeenAt: new Date(),
           }
         : {
             state: decision.state,
@@ -325,6 +327,39 @@ export async function putGameWhereStaffLeaveIt(
             // A game that waits holds the files that wait, as a real send leaves it.
             ...(decision.state === "waiting" ? { pendingPullId: newest.id, pendingSince: new Date() } : {}),
           },
+  });
+}
+
+/**
+ * A waiting game that a decision day has just let in: its yes was held for a day, and the day went out and applied it.
+ * The game is live and its maker has not yet seen the Accepted screen. Written straight into the rows, as the release
+ * writes them, because the journeys run with decision day off (DECISION_DAYS_TEST_OFF) and a real day is a Friday noon.
+ */
+export async function letDecisionDayIn(slug: string): Promise<void> {
+  await putGameWhereStaffLeaveIt(slug, { state: "waiting" });
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { id: true, makerUserId: true, pendingPullId: true },
+  });
+  if (game.pendingPullId === null) throw new Error(`${slug} holds no files that wait`);
+  // A random old day, out of the way of any real decision day. Two games may land on the same day: they share its row.
+  const day = new Date(Date.UTC(2000, 0, 1 + Math.floor(Math.random() * 9000)));
+  const wentOutAt = new Date();
+  await db().decisionDay.upsert({ where: { day }, update: {}, create: { day, seats: 10, wentOutAt } });
+  const review = await db().gameReview.create({
+    data: {
+      gameId: game.id,
+      pullId: game.pendingPullId,
+      staffUserId: game.makerUserId,
+      decision: "accepted",
+      decidedAt: new Date(wentOutAt.getTime() - 86_400_000),
+      goesOutOn: day,
+    },
+  });
+  await db().decisionOutcome.create({ data: { reviewId: review.id, result: "applied" } });
+  await db().game.update({
+    where: { id: game.id },
+    data: { state: "live", livePullId: game.pendingPullId, pendingPullId: null, pendingSince: null },
   });
 }
 

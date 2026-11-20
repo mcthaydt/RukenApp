@@ -23,9 +23,7 @@
   let { data }: PageProps = $props();
 
   const PLACE_KEY = "rk_menu_tab";
-  const SEEN_KEY = "rk_seen_menu";
   const SLOW_AFTER_MS = 20_000;
-  const HINT_FOR_MS = 5_000;
 
   let stage = $state<HTMLElement>();
   let frame = $state<HTMLIFrameElement>();
@@ -37,7 +35,6 @@
   // True once the script is running: the starting words need it to go away again, so with no script there are none.
   let alive = $state(false);
   let slow = $state(false);
-  let hint = $state(true);
   let canFullScreen = $state(false);
   let fullScreen = $state(false);
   let place = $state<TabPlace>(FIRST_PLACE);
@@ -80,19 +77,6 @@
       fullScreen = document.fullscreenElement !== null;
     };
     document.addEventListener("fullscreenchange", onFullScreen);
-
-    // The line beside the tab shows once on a device, for five seconds. Without script it simply stays.
-    let hintTimer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      if (localStorage.getItem(SEEN_KEY) === null) {
-        localStorage.setItem(SEEN_KEY, "yes");
-        hintTimer = setTimeout(() => (hint = false), HINT_FOR_MS);
-      } else {
-        hint = false;
-      }
-    } catch {
-      hintTimer = setTimeout(() => (hint = false), HINT_FOR_MS);
-    }
 
     // A frame that finished loading before the script started has already missed its own `load`; the window's own
     // `load` waits for frames, so it is the same fact.
@@ -155,7 +139,6 @@
       removeEventListener("pagehide", onLeave);
       document.removeEventListener("fullscreenchange", onFullScreen);
       clearTimeout(slowTimer);
-      if (hintTimer !== undefined) clearTimeout(hintTimer);
     };
   });
 
@@ -333,8 +316,7 @@
       onclick={tabClick}
       onkeydown={tabKey}
     >
-      <span aria-hidden="true">≡</span>
-      <span aria-hidden="true">Menu</span>
+      <span aria-hidden="true">RKN</span>
     </summary>
     <div class="menusheet">
       <div class="menupanel" bind:this={panel}>
@@ -345,17 +327,40 @@
         <button type="button" onclick={keepPlaying}>Keep playing</button>
         {#if canFullScreen}
           <button type="button" class="outline" onclick={toggleFullScreen}>
-            {fullScreen ? "Leave full screen" : "Full screen"}
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"
+              ><path
+                d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              /></svg
+            >
+            <span><b>{fullScreen ? "Leave full screen" : "Full screen"}</b></span>
           </button>
         {/if}
-        <button type="button" class="outline" onclick={startAgain}>Start again</button>
-        <a class="button safe" href={`/g/${data.slug}`}>Leave game</a>
-        <p class="note">Not working? Choose Start again.</p>
+        <button type="button" class="outline" onclick={startAgain}>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"
+            ><path
+              d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            /></svg
+          >
+          <span><b>Start again</b><small>Use this if the game is stuck.</small></span>
+        </button>
+        <a class="button safe" href={`/g/${data.slug}`}>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"
+            ><path
+              d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            /></svg
+          >
+          <span><b>Leave game</b><small>Back to the game's page.</small></span>
+        </a>
       </div>
     </div>
   </details>
-  <!-- Beside the tab, and outside the <details>, which hides everything but its summary while it is shut. -->
-  {#if hint}
-    <p class="menuhint">Choose Menu to leave the game. You can move it.</p>
-  {/if}
 </main>

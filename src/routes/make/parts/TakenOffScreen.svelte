@@ -58,7 +58,7 @@
       {#if sending}
         Copying your game can take a minute. Keep this page open.
       {:else}
-        Copies the newest version of your game from GitHub and sends it for review.
+        Put it back on Ruken copies the newest version of your game from GitHub and sends it for review.
       {/if}
     </p>
   </form>

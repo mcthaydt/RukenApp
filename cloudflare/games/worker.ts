@@ -14,8 +14,8 @@ interface Env {
   /** Ruken's own address, the only one allowed to put a game in a frame. */
   SITE_ORIGIN: string;
   /**
-   * Until the games' domain exists: the one host (like `ruken-games.example.workers.dev`) on which the game is in the
-   * path. Unset once every game has a name of its own.
+   * Set only on a local run (the path-form browser test): the one host on which the game is in the path. The deployed
+   * gate has none, so every game is served from a name of its own.
    */
   PATH_HOST?: string;
 }
