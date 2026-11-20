@@ -15,7 +15,7 @@
 
 <main class="games">
   <h1>Your games</h1>
-  <p class="note" data-acceptance>{data.acceptance}</p>
+  <p data-acceptance>{data.acceptance}</p>
   {#if data.thrown !== null}
     <p role="status">{data.thrown} was thrown away.</p>
   {/if}

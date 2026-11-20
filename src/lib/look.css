@@ -317,9 +317,11 @@ form > * + * {
   color: var(--ink-soft);
 }
 
-/* The acceptance label on Your games is read, not skimmed past: chalk on the felt, not the dimmer sage of a note. */
+/* The acceptance label on Your games is read, not skimmed past: chalk on the felt, not the dimmer sage of a note. It is
+   not a `.note`: the Maker agreement's own note is the one `.note` that main holds. */
 .games [data-acceptance] {
   color: var(--chalk);
+  font: var(--text-small);
 }
 
 /* An action under another action ("Sign out", then "Delete my account"): each is a 48px target, so their lines are
