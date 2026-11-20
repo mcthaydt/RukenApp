@@ -46,9 +46,12 @@ test("a number typed with brackets and dashes is the same account as +1 and spac
   await page.getByLabel("Day").fill("1");
   await page.getByLabel("Year").fill("1990");
   await page.getByRole("button", { name: "Text me a code" }).click();
+  await expect(page.getByRole("heading", { name: "We texted you a code" })).toBeVisible();
+  await pageHasSettled(page);
   await page.getByLabel("The code we texted you").fill(await codeTo(number));
   await page.getByRole("button", { name: "Join Ruken" }).click();
   await expect(page).toHaveURL("/");
+  await pageHasSettled(page);
   // Found again at sign-in whichever way it is typed.
   await page.context().clearCookies();
   await page.goto("/sign-in");
