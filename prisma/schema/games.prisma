@@ -101,6 +101,12 @@ model Game {
   pendingPullId String?       @unique
   /// When those files were sent: the review queue's order, and its "sent 2 hours ago".
   pendingSince  DateTime?     @db.Timestamptz
+  /// The last time the maker changed the game while it was waiting. A decision held for decision day applies only to
+  /// the game as it was decided, so a change after it makes the decision lapse. Null until a maker changes one.
+  changedAt     DateTime?     @db.Timestamptz
+  /// When the maker saw the Accepted screen for this game. Null until they do; the decision days migration sets it for
+  /// every game accepted before it, so only a game made live by a decision day shows that screen.
+  acceptedSeenAt DateTime?    @db.Timestamptz
   createdAt     DateTime      @default(now()) @db.Timestamptz
   updatedAt     DateTime      @updatedAt @db.Timestamptz
 
@@ -223,12 +229,17 @@ model GameReview {
   staffUserId String
   decision    ReviewDecision
   decidedAt   DateTime       @db.Timestamptz
+  /// The decision day a held decision goes out on. Null for a decision that took effect when it was made (an update
+  /// to a live game, a game that was live before, and every review made before decision days). Set when the decision
+  /// is made and never changed.
+  goesOutOn   DateTime?      @db.Date
   createdAt   DateTime       @default(now()) @db.Timestamptz
 
-  game  Game             @relation(fields: [gameId], references: [id], onDelete: Restrict)
-  pull  GamePull         @relation(fields: [pullId], references: [id], onDelete: Restrict)
-  staff User             @relation("GameReviewStaff", fields: [staffUserId], references: [id], onDelete: Restrict)
-  parts GameReviewPart[]
+  game    Game             @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  pull    GamePull         @relation(fields: [pullId], references: [id], onDelete: Restrict)
+  staff   User             @relation("GameReviewStaff", fields: [staffUserId], references: [id], onDelete: Restrict)
+  parts   GameReviewPart[]
+  outcome DecisionOutcome?
 
   @@index([gameId])
 }
@@ -249,4 +260,36 @@ model GameReviewPart {
   review GameReview @relation(fields: [reviewId], references: [id], onDelete: Restrict)
 
   @@unique([reviewId, part])
+}
+
+/// What happened to a held decision on its decision day: `applied` took effect, `lapsed` did not because the maker
+/// changed the game after it was decided.
+enum DecisionResult {
+  applied
+  lapsed
+}
+
+/// A decision day that went out: one row per day, written when the day's held decisions took effect. A row means: this
+/// day's decisions went out at this time, with this many seats. Added and never changed (the add-only trigger is in the
+/// migration).
+/// CHECKs: DecisionDay_seats_check.
+model DecisionDay {
+  id        String   @id @default(cuid(2))
+  /// The decision day in its own time zone.
+  day       DateTime @unique @db.Date
+  /// The seats that day had, from the schedule at the time, so a later change to the schedule never rewrites a past week.
+  seats     Int
+  wentOutAt DateTime @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+}
+
+/// What a decision day did with one held decision. Written only by the release, one per held decision of the day it
+/// sends out. Added and never changed (the add-only trigger is in the migration).
+model DecisionOutcome {
+  id        String         @id @default(cuid(2))
+  reviewId  String         @unique
+  result    DecisionResult
+  createdAt DateTime       @default(now()) @db.Timestamptz
+
+  review GameReview @relation(fields: [reviewId], references: [id], onDelete: Restrict)
 }
