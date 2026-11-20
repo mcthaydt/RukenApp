@@ -1,6 +1,6 @@
 # CI screenshots in R2, not in GitHub's artifacts
 
-Date: 2026-11-20. Status: spec and plan in one, for the plan audit (lane 3). Nothing here is built.
+Date: 2026-11-20. Status: **not going ahead.** Owner, 2026-11-20 07:50 UTC: "Oh and that R2 rule should only be on private repos, I forgot that we don't have an artifact limit for public repos". RukenApp is public, so its screenshots stay in GitHub's artifacts and nothing here is built. The spec stays as the record, and as a model for a private repo.
 
 Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** are this spec's choices; the Owner can overrule any of them.
 
