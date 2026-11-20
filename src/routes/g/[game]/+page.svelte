@@ -111,7 +111,7 @@
       <div class="costrow">
         {#if data.cost === "join"}
           <p class="costline">
-            Members play every game. {data.price} a month. <a class="joinlink" href={joinAt}>Join</a>
+            Members play every game. {data.price} a month.&nbsp;<a class="joinlink" href={joinAt}>Join</a>
           </p>
           <p class="costline">Tax is added where it applies.</p>
         {:else}
@@ -202,7 +202,7 @@
     {/if}
 
     {#if data.maker !== null && data.more.length > 0}
-      <section class="card cell more">
+      <section class="card cell more" data-solo={data.more.length === 1 ? "" : undefined}>
         <h2>More from {data.maker.name}</h2>
         <ul>
           {#each data.more as game (game.slug)}

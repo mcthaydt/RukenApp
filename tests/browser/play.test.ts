@@ -106,7 +106,7 @@ test("a member whose membership has ended gets the price card on reload", async 
   await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   await endMembershipOf(member);
-  await page.reload();
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/join\?next=/);
 });
 
@@ -119,6 +119,8 @@ test("the menu opens, keeps playing, starts again and leaves", async ({ page }, 
   for (const name of ["Keep playing", "Start again", "Leave game"])
     await expect(page.getByRole("button", { name }).or(page.getByRole("link", { name }))).toBeVisible();
   await expect(page.getByText("Use this if the game is stuck.")).toBeVisible();
+  // This game's maker has no page, so the menu says where it is from instead of leaving the line out.
+  await expect(page.getByText("Made on Ruken")).toBeVisible();
   await showTheOwner(page, testInfo, "the menu");
 
   await page.keyboard.press("Escape");
@@ -154,7 +156,7 @@ test("the Menu tab moves, and stays where it was left", async ({ page }) => {
   await expect(page.locator("details.menu")).toHaveAttribute("data-side", "right");
   await expect(page.locator("details.menu")).not.toHaveAttribute("open", "");
   await expect.poll(async () => (await tab.boundingBox())?.x).toBeGreaterThan(view.width - 60);
-  await page.reload();
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.locator("details.menu")).toHaveAttribute("data-side", "right");
 
   await tab.focus();
