@@ -109,37 +109,37 @@
     <div class="card cell playtile">
       <a class="button" href={`/g/${data.slug}/play`}>Play</a>
       <div class="costrow">
-        <div>
-          {#if data.cost === "join"}
-            <p class="costline">Members play every game. {data.price} a month.</p>
-            <p class="costline">Tax is added where it applies.</p>
-          {:else}
-            <p class="costline">{COST_WORDS[data.cost]}</p>
-          {/if}
-        </div>
         {#if data.cost === "join"}
+          <p class="costline">Members play every game. {data.price} a month.</p>
+          <p class="costline">Tax is added where it applies.</p>
           <a class="button outline" href={joinAt}>Join</a>
+        {:else}
+          <p class="costline">{COST_WORDS[data.cost]}</p>
         {/if}
       </div>
-    </div>
-
-    <div class="card cell">
-      <p><span class="chip">{data.rating.chip}</span> {data.rating.line}</p>
-    </div>
-
-    <div class="card cell">
-      <p>Plays on this {device}. Nothing to install.</p>
-      {#if data.sitting !== null}
-        <p>Most people play {data.sitting} at a time.</p>
-      {/if}
-    </div>
-
-    <div class="card cell">
       <button type="button" class="outline" onclick={share}>Share</button>
       {#if sharedNote !== ""}
         <p class="note" role="status">{sharedNote}</p>
       {/if}
     </div>
+
+    <div class="card cell fact">
+      <p class="note">Age</p>
+      <p><span class="chip">{data.rating.chip}</span></p>
+      <p class="note">{data.rating.line}</p>
+    </div>
+
+    <div class="card cell fact">
+      <p class="note">Where it plays</p>
+      <p>Plays on this {device}. Nothing to install.</p>
+    </div>
+
+    {#if data.sitting !== null}
+      <div class="card cell fact">
+        <p class="note">Play time</p>
+        <p>Most people play {data.sitting} at a time.</p>
+      </div>
+    {/if}
 
     {#if enhanced}
       <div class="card cell watch">

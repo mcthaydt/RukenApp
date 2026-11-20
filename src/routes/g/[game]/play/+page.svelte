@@ -327,12 +327,39 @@
         <button type="button" onclick={keepPlaying}>Keep playing</button>
         {#if canFullScreen}
           <button type="button" class="outline" onclick={toggleFullScreen}>
-            {fullScreen ? "Leave full screen" : "Full screen"}
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"
+              ><path
+                d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              /></svg
+            >
+            <span><b>{fullScreen ? "Leave full screen" : "Full screen"}</b></span>
           </button>
         {/if}
-        <button type="button" class="outline" onclick={startAgain}>Start again</button>
-        <a class="button safe" href={`/g/${data.slug}`}>Leave game</a>
-        <p class="note">Not working? Choose Start again.</p>
+        <button type="button" class="outline" onclick={startAgain}>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"
+            ><path
+              d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            /></svg
+          >
+          <span><b>Start again</b><small>Use this if the game is stuck.</small></span>
+        </button>
+        <a class="button safe" href={`/g/${data.slug}`}>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"
+            ><path
+              d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            /></svg
+          >
+          <span><b>Leave game</b><small>Back to the game's page.</small></span>
+        </a>
       </div>
     </div>
   </details>

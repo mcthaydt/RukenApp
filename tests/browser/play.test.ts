@@ -118,7 +118,7 @@ test("the menu opens, keeps playing, starts again and leaves", async ({ page }, 
   await expect(page.getByRole("heading", { name: free.name })).toBeVisible();
   for (const name of ["Keep playing", "Start again", "Leave game"])
     await expect(page.getByRole("button", { name }).or(page.getByRole("link", { name }))).toBeVisible();
-  await expect(page.getByText("Not working? Choose Start again.")).toBeVisible();
+  await expect(page.getByText("Use this if the game is stuck.")).toBeVisible();
   await showTheOwner(page, testInfo, "the menu");
 
   await page.keyboard.press("Escape");
@@ -203,12 +203,12 @@ test("Full screen is offered only where the page can go full screen", async ({ p
   await expect(page.getByRole("button", { name: "Full screen" })).toHaveCount(0);
 });
 
-test("the way out and its help line are in sight with the menu open, in any window", async ({ page }) => {
+test("the way out and every row are in sight with the menu open, in any window", async ({ page }) => {
   await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   await tabOf(page).click();
   await expect(page.getByRole("link", { name: "Leave game" })).toBeInViewport({ ratio: 1 });
-  await expect(page.getByText("Not working? Choose Start again.")).toBeInViewport({ ratio: 1 });
+  await expect(page.getByText("Use this if the game is stuck.")).toBeInViewport({ ratio: 1 });
 });
 
 test("the menu is reached by the keyboard, with focus showing", async ({ page }) => {

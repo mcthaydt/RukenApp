@@ -347,6 +347,7 @@ describe("screens wear the look and nothing of their own", () => {
     "cell",
     "hero",
     "heroname",
+    "fact",
     "playtile",
     "watch",
     "pickers",
