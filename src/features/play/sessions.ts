@@ -84,6 +84,20 @@ export function createPlayService(deps: PlayServiceDeps) {
   }
 
   /**
+   * The address of a game's waiting files, for a staff account to look at before the game is live. Like `startPlay`'s,
+   * under a pass made for that pull, but it records no session: nothing sends beats from it, so a look never counts as
+   * play.
+   */
+  async function reviewLook(input: {
+    game: { id: string; publicId: string };
+    pull: { id: string; connectHosts: string[] };
+    staffUserId: string;
+  }): Promise<string> {
+    const pass = await passFor(deps, { game: input.game, pull: input.pull, userId: input.staffUserId });
+    return `${deps.address(`g-${input.game.publicId}`)}/${pass}/`;
+  }
+
+  /**
    * One "still here" from a page. It must carry the session's own token (the id alone is not enough, since the id is in
    * the page). A session takes beats for a day, and a beat that comes too soon after the last is dropped, so a page
    * cannot make time pass faster than the clock. The first beat is never too soon: measured from the start it would
@@ -141,7 +155,7 @@ export function createPlayService(deps: PlayServiceDeps) {
     return { sessions: sessions.length, beats, countedSeconds: Math.floor(counted / 1000) };
   }
 
-  return { startPlay, recordBeat, playSummary };
+  return { startPlay, reviewLook, recordBeat, playSummary };
 }
 
 export type PlayService = ReturnType<typeof createPlayService>;

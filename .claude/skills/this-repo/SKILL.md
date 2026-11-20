@@ -23,6 +23,7 @@ Code from the archived RukenAppFailed is copied on purpose, file by file, with i
 
 - `.github/workflows/ci.yml`: `verify` (lint, typecheck, unit tests, build), `postgres` (database tests on Postgres 16), six browser pieces summed up by `browser`, and `gate`, which passes only when all three passed. A draft gets the quick run under names ending "(quick, draft)"; marking it ready starts the full run.
 - `.github/workflows/commit-authors.yml`: the identity check, `commit-authors`.
+- No program picks the screens a change reaches yet (`visual-check`, "Shoot what the change touches"). The builder lists the screens and sizes in the pull request by hand, and CI still takes the journeys' screenshots of every screen: on every full run, and on a draft when a `.svelte` or `.css` file, `static/` or a `tests/browser/` look file changed, or the pull request carries the `screenshots` label.
 - Branch protection on `main` requires `gate` and `commit-authors`. The repo is owned by a person, not an organization, so it has no GitHub merge queue: the session that merges runs the queue by hand (`release`). Auto-merge is allowed and merged branches are deleted by GitHub.
 
 ## Outside the repo

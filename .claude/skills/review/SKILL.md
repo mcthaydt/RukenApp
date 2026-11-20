@@ -12,6 +12,7 @@ Reviews find problems and change nothing but their own audit file. The implement
 - A check is a test that fails by itself. Before the work starts, write down every check a program can judge, from the brief's acceptance criteria.
 - A review (a model or a person reading the work) is real evidence of a different kind: it finds what no check encodes, such as missing requirements, confusing screens and wrong assumptions. Use both.
 - Review against the acceptance criteria in the brief, plus exploratory checks for what the criteria missed. A gap against a criterion is red; an improvement is a note, kept apart from the blocking defects.
+- A pull request that changes or deletes an existing test, golden or `verify` step names each one and why in its body. Read those first. When it edits `verify`, also run `verify` from `main` (Verification in `build`).
 
 ## Audits
 
@@ -30,7 +31,7 @@ Audit all of your work for completeness, consistency, cohesion, and harmony, bot
 It is the first step of every slice's end, before the design review loop, the screens page and the owner's own walk (see "Slice end" in `staged-path`).
 
 - A fresh session runs it, never one that built the slice: builders know the way and skip the steps a stranger trips on.
-- It walks every journey the slice added or changed, from the first screen to the last, the way a real person would: real taps, clicks, keys and typing in the running app or game, in a cloud container or on the preview, on each device in the device matrix in Settings. Passing tests are not a walk.
+- It walks every journey the slice added or changed, from the first screen to the last, the way a real person would: real taps, clicks, keys and typing in the running app or game, in a cloud container or on the preview, at the sizes the slice affects (see "Shoot what the change touches" in `visual-check`). Passing tests are not a walk.
 - It writes `docs/superpowers/audits/<date>-<slice>-e2e-walk.md`, naming the commit or deploy it walked, with one line per step: the journey, the step, PASS or FAIL, and the evidence (a screenshot, or what it saw).
 - Each FAIL is a red finding in the format below. The implementer fixes it in the fix round and names in the pull request every journey the fix touches. The walk runs again on the failed journeys and on those, and again on any journey a later slice-end fix touches, until every step passes on the commit the owner will walk.
 - It uses test accounts, test payments and test phone numbers. A step that would spend real money, send a real message or write real data waits for its standing permission.
@@ -50,8 +51,8 @@ UNIT: the file or piece the finding is in. VERDICT: red (violates a requirement,
 
 ## Lessons
 
-A confirmed failure gets a regression test first. A lesson is written down only when no test can catch it: one line under "Lessons" in `docs/superpowers/history.md`, which the coordinator (or short-path implementer) adds when the work is archived. A merge with nothing to learn leaves none.
+A confirmed failure gets a regression test first. A lesson is written down only when no test can catch it: one line under "Lessons" in `docs/superpowers/history.md` naming its trigger (the paths, or the kind of change, a diff shows), what to look for and the failure behind it, which the coordinator (or short-path implementer) adds when the work is archived. A merge with nothing to learn leaves none.
 
-ACCEPTED: utils slice merged, green on the first try. DERIVED: adapters keep keyword arguments exactly. LANDS IN: the plan's brief for every later slice.
+ACCEPTED: a pull request sat green and unmerged for hours because the wake that says CI is done never came. DERIVED: watch CI in the foreground. TRIGGER: a session that waits on CI. LOOK FOR: it never ends its turn only to wait. LANDS IN: the plan's brief when its trigger matches.
 
-A lesson lands in the plan's brief, not in a worker's instructions. The retrospective after the slice moves each lesson that no test can capture into CLAUDE.md through its rule-change pull request.
+A lesson lands in the plan's brief when its trigger matches the plan's work, not in a worker's instructions. The retrospective after the slice moves into CLAUDE.md, through its rule-change pull request, only a lesson that holds for every change (one with no narrower trigger), and keeps the rest in `history.md`, pruning them as Verification in `build` says.

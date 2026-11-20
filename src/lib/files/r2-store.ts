@@ -45,5 +45,9 @@ export function r2FileStore(bucket: R2Bucket): FileStore {
       } while (cursor !== undefined);
       return gone;
     },
+    async hasAny(prefix) {
+      checkFolderPrefix(prefix);
+      return (await bucket.list({ prefix, limit: 1 })).objects.length > 0;
+    },
   };
 }

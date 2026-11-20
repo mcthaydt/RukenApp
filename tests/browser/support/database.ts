@@ -180,11 +180,27 @@ export async function filesOf(slug: string): Promise<{ repo: string | null; pull
   return { repo: game.repoFullName, pulls: game._count.pulls };
 }
 
+/** Where a game stands: its state, as the database holds it. */
+export async function stateOf(slug: string): Promise<string> {
+  return (await db().game.findUniqueOrThrow({ where: { slug }, select: { state: true } })).state;
+}
+
+/** A game's own ids, read from its row: what a journey needs to look inside the game. */
+export async function idsOf(slug: string): Promise<{ id: string; publicId: string; makerUserId: string }> {
+  return db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { id: true, publicId: true, makerUserId: true },
+  });
+}
+
 /** The commit a stand-in pull is made from: any 40 hex characters. */
 const STAND_IN_COMMIT = "a".repeat(40);
 
 /** Changes a game's name straight in the database, as a journey's setup. */
-export async function changeGame(slug: string, changes: { name?: string }): Promise<void> {
+export async function changeGame(
+  slug: string,
+  changes: { name?: string; playsOn?: "computer_only"; freeToPlay?: boolean },
+): Promise<void> {
   await db().game.update({ where: { slug }, data: changes });
 }
 
@@ -316,10 +332,16 @@ export async function putGameWhereStaffLeaveIt(
             state: "live",
             stateReason: null,
             pendingPullId: decision.updateWaiting === true ? newest.id : null,
+            pendingSince: decision.updateWaiting === true ? new Date() : null,
             livePullId: newest.id,
             toFix: toFix.map((one) => one.part),
           }
-        : { state: decision.state, toFix: toFix.map((one) => one.part) },
+        : {
+            state: decision.state,
+            toFix: toFix.map((one) => one.part),
+            // A game that waits holds the files that wait, as a real send leaves it.
+            ...(decision.state === "waiting" ? { pendingPullId: newest.id, pendingSince: new Date() } : {}),
+          },
   });
 }
 

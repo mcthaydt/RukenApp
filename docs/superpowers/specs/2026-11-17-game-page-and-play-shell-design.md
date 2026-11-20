@@ -99,6 +99,7 @@ Owner: "In terms of functionality yes, match them". Every feature of the two is 
 
 - **The ground** is the plain felt. The clip at the top carries the game's colours; the page under it is calm (3.3). Where a video may not move by itself (reduced motion, Save-Data, a small device), `quietVideo` shows its first frame, as on Live.
 - **The way back.** "← Ruken" over the top left of the clip, a link home; from slice 3, "← Back to the feed" (3.3).
+- **Amended later** by `2026-11-17-game-facts-design.md`, section 6: with its Unit V, the clip and its two tiles become one carousel of every video and screenshot. Unit F builds what this section says.
 - **The clip.** The upright clip on an upright window, the wide clip on a wide one, sharp, 20px corners, playing without sound where a video may move. Under it, two small tiles, one per clip at its own shape; the one showing has the blue edge of a picked choice. Pressing a tile shows that clip in the same box (an upright clip in a wide box stands in the middle, with the blurred ground either side). Pressing the clip opens it full size with sound and the browser's own controls; Escape or the browser's close returns. Each tile's name: "Watch the upright video", "Watch the wide video".
 - **The name**, `h1`, Young Serif at the section heading size (64px wide, 36px on a phone).
 - **The one line**, at the statement size.
@@ -314,6 +315,8 @@ For each screen, three, drawn in the sketches:
 4. **Genre, tags and languages** are a separate submission spec (section 6); this spec only says where the page shows them.
 
 ## 10. Acceptance criteria
+
+Unit F is judged on these. The carousel that replaces the two clip tiles is judged by `2026-11-17-game-facts-design.md`, section 9, with its Unit V.
 
 These are folded into the plan's Unit F and the switch unit; the plan's tests check them.
 
