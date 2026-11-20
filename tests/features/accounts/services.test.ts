@@ -8,6 +8,12 @@ const settings = {
   BETTER_AUTH_URL: "https://ruken.example",
   RESEND_API_KEY: "re_test_fake",
   MAIL_FROM: "Ruken <hello@ruken.test>",
+  TWILIO_ACCOUNT_SID: "AC_test_fake",
+  TWILIO_API_KEY: "SK_test_fake",
+  TWILIO_API_SECRET: "test-fake-secret",
+  TWILIO_ACCOUNT_SERVICE: "MG_test_account",
+  TWILIO_NEWS_SERVICE: "MG_test_news",
+  TWILIO_VERIFY_SERVICE: "VA_test_verify",
 };
 
 /**
@@ -16,12 +22,12 @@ const settings = {
  * `prisma()` throws, which would surface as an unhandled rejection that fails the whole run. An empty object
  * has no data model, so better-auth skips that check. Nothing here talks to a database.
  */
-async function inRequest(work: () => void): Promise<void> {
+async function inRequest(work: () => void | Promise<unknown>): Promise<void> {
   await databasePerRequest(() => ({}) as PrismaClient)({
     event: {} as RequestEvent,
-    resolve: () => {
-      work();
-      return Promise.resolve(new Response("ok"));
+    resolve: async () => {
+      await work();
+      return new Response("ok");
     },
   });
 }
@@ -35,6 +41,44 @@ describe("createAuthServices", () => {
       expect(services.handleDeps.cookies).toBe(services.cookies);
       expect(services.formDeps.baseURL).toBe("https://ruken.example");
       expect(services.signUpDeps.clock).toBe(services.clock);
+      expect(typeof services.texter.sendCode).toBe("function");
+    });
+  });
+
+  it.each([
+    "TWILIO_ACCOUNT_SID",
+    "TWILIO_API_KEY",
+    "TWILIO_API_SECRET",
+    "TWILIO_ACCOUNT_SERVICE",
+    "TWILIO_NEWS_SERVICE",
+    "TWILIO_VERIFY_SERVICE",
+  ])("refuses to start without %s, naming it", async (name) => {
+    await inRequest(() => {
+      expect(() => createAuthServices({ ...settings, [name]: undefined })).toThrow(`Missing setting ${name}`);
+    });
+  });
+
+  it("takes the text service's address of a stand-in on this machine", async () => {
+    await inRequest(() => {
+      expect(() => createAuthServices({ ...settings, TWILIO_API_BASE: "http://127.0.0.1:12114" })).not.toThrow();
+    });
+  });
+
+  it("refuses a text service address that is not a stand-in on this machine, so the real site cannot be pointed away from Twilio", async () => {
+    await inRequest(() => {
+      expect(() => createAuthServices({ ...settings, TWILIO_API_BASE: "https://sms.example" })).toThrow(
+        /TWILIO_API_BASE is for a stand-in on this machine only/,
+      );
+    });
+  });
+
+  it("texts only the allowlist when one is set, so a test copy cannot text strangers", async () => {
+    await inRequest(() => {
+      const services = createAuthServices({ ...settings, TEXT_ALLOWLIST: "+13125551234" });
+      return expect(services.texter.send({ to: "+13125559999", line: "account", body: "Ruken: hi" })).resolves.toEqual({
+        sent: false,
+        why: "allowlist",
+      });
     });
   });
 

@@ -4,15 +4,19 @@ export type { Caller } from "./caller.ts";
 export { createHandle } from "./handle.ts";
 export { forwardToAuth } from "./forward.ts";
 export {
+  finishReset,
+  finishSignUp,
   FORM_MESSAGES,
   readForm,
-  requestPasswordReset,
-  resendVerification,
-  resetPassword,
+  requestReset,
+  resendCode,
   signInWithPassword,
   signOut,
-  signUpWithPassword,
+  startSignUp,
 } from "./forms.ts";
+export { OPEN_COUNTRIES, shownAs } from "./phone.ts";
+export { setPaperEmail } from "./paper.ts";
+export { setMoneyCheck } from "./changed-hands.ts";
 export { signedInOnly, signedInRedirect } from "./pages.ts";
 export { grantFirstOwner, staffRolesOf, type FirstOwnerOutcome } from "./staff.ts";
 export { authServices } from "./services.ts";
