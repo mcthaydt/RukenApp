@@ -180,9 +180,11 @@ test("the websites chip opens the websites question, and a name that is not a we
   await expect(page).toHaveURL(`/make/${slug}/websites`);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Does ${name} use other websites?`);
   await expect(
-    page.getByText("One per line, like api.example.com. Leave this empty if your game runs on its own."),
+    page.getByText(
+      "One website in each box, like api.example.com. Leave it empty if your game runs on its own.",
+    ),
   ).toBeVisible();
-  const box = page.getByLabel(`Does ${name} use other websites?`);
+  const box = page.getByLabel("Website 1");
   await showTheOwner(page, testInfo, "the websites question, nothing typed");
   await box.fill("not a website");
   await nextButton(page).click();

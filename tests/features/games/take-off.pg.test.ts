@@ -31,6 +31,7 @@ let installed: bigint | null = null;
 
 const github: GitHub = {
   commitOf: () => Promise.resolve(SHA),
+  branchesOf: () => Promise.resolve([]),
   installationOf: () => Promise.resolve(installed),
   tarball: async () =>
     new Blob([await tarGz([{ path: "top/index.html", content: "<html></html>" }])]).stream(),

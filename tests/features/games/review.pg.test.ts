@@ -24,6 +24,7 @@ const holding = new Map<string, bigint>();
 
 const github: GitHub = {
   commitOf: () => Promise.resolve(SHA),
+  branchesOf: () => Promise.resolve([]),
   installationOf: (repo) => Promise.resolve(holding.get(repo) ?? null),
   tarball: async () =>
     new Blob([await tarGz([{ path: "top/index.html", content: "<html></html>" }])]).stream(),

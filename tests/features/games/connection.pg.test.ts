@@ -26,6 +26,7 @@ const github: GitHub = {
     seen.commits += 1;
     return Promise.resolve(SHA);
   },
+  branchesOf: () => Promise.resolve([]),
   installationOf: (repo) => {
     seen.installationAsks += 1;
     return Promise.resolve(holding.get(repo) ?? null);

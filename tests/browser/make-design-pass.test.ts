@@ -187,7 +187,7 @@ test("a refusal of the other websites is read above the bar", async ({ page }) =
   await fillAnswers(slug, { files: true });
   await page.goto(`/make/${slug}/websites`);
   await pageHasSettled(page);
-  await page.getByLabel(/use other websites\?$/).fill("not a website");
+  await page.getByLabel("Website 1").fill("not a website");
   await nextButton(page).click();
   await expectReasonAboveBar(page);
 });
@@ -336,11 +336,11 @@ test("the other websites box is the same height refused as before, with room abo
   await fillAnswers(slug, { files: true });
   await page.goto(`/make/${slug}/websites`);
   await pageHasSettled(page);
-  const box = page.locator("textarea.answer");
+  const box = page.locator("input.answer");
   const before = await boxOf(box);
   await expect(box).toHaveCSS("padding-top", "16px");
 
-  await page.getByLabel(/use other websites\?$/).fill("not a website");
+  await page.getByLabel("Website 1").fill("not a website");
   await nextButton(page).click();
   await expect(page.getByRole("alert")).toBeVisible();
 

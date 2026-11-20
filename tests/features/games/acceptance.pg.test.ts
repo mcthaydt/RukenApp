@@ -18,6 +18,7 @@ let makerUserId: string;
 
 const github: GitHub = {
   commitOf: () => Promise.reject(new Error("not used")),
+  branchesOf: () => Promise.resolve([]),
   installationOf: () => Promise.resolve(null),
   tarball: () => Promise.reject(new Error("not used")),
 };

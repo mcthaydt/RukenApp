@@ -39,6 +39,7 @@ function fakeGitHub(entries: readonly Entry[]) {
       return Promise.resolve(SHA);
     },
     // Pulling never asks which installation holds a repository; the games service checks that before it pulls.
+    branchesOf: () => Promise.resolve([]),
     installationOf: () => Promise.resolve(null),
     tarball: async (_repo, commitSha) => {
       seen.tarballs.push(commitSha);

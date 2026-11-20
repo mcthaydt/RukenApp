@@ -416,7 +416,9 @@ test("a folder that cannot be right is refused beside its box", async ({ page })
   await connectGitHubFromFiles(page, slug);
   await page.getByLabel(TINY_GAME).check();
   await page.getByText("Change the branch or folder").click();
-  await expect(page.getByText("Leave empty for your main branch.")).toBeVisible();
+  await expect(
+    page.getByText("Pick the branch your game is on. Main branch is the usual one."),
+  ).toBeVisible();
   await expect(page.getByText("Leave empty if index.html isn't inside a folder.")).toBeVisible();
   const folder = page.getByLabel("Folder");
   await folder.fill("/web");

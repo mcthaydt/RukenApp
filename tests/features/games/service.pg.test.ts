@@ -22,6 +22,7 @@ const installationOf: GitHub["installationOf"] = (repo) => Promise.resolve(insta
 const noGitHub: GitHub = {
   commitOf: () => Promise.reject(new Error("this test reaches for GitHub")),
   tarball: () => Promise.reject(new Error("this test reaches for GitHub")),
+  branchesOf: () => Promise.resolve([]),
   installationOf,
 };
 let service: GamesService;
@@ -184,6 +185,7 @@ const SHA = "0123456789abcdef0123456789abcdef01234567";
 function githubHolding(entries: { path: string; content: string }[]): GitHub {
   return {
     commitOf: () => Promise.resolve(SHA),
+    branchesOf: () => Promise.resolve([]),
     installationOf,
     tarball: async () => new Blob([await tarGz(entries)]).stream(),
   };
@@ -786,6 +788,7 @@ describe("pullLatest", () => {
     const sha = "0123456789abcdef0123456789abcdef01234567";
     const github: GitHub = {
       commitOf: () => Promise.resolve(sha),
+      branchesOf: () => Promise.resolve([]),
       installationOf,
       tarball: async () =>
         new Blob([await tarGz([{ path: "top/index.html", content: "<html></html>" }])]).stream(),
