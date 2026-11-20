@@ -84,6 +84,8 @@ export async function startSignUpForm(
   await fillBirthDate(page, yearsAgo(30));
   await page.getByRole("button", { name: "Text me a code" }).click();
   await expect(page.getByRole("heading", { name: "We texted you a code" })).toBeVisible();
+  // The code screen can be on the page before it is alive; a press while it comes alive is lost (seen in WebKit).
+  await pageHasSettled(page);
 }
 
 /**
