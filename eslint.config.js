@@ -16,6 +16,8 @@ export default defineConfig(
     "**/tests/support/generated/",
     "**/playwright-report/",
     "**/test-results/",
+    // The rule hooks are kept word for word as the owner gave them.
+    ".claude/hooks/",
   ]),
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
