@@ -717,6 +717,7 @@ describe("liveGameBySlug", () => {
       ageRating: "age_12",
       contentMarks: [],
       freeToPlay: false,
+      showsPlayerCount: false,
       makerUserId: game.makerUserId,
       livePullId: pullId,
       connectHosts: ["api.example.com"],
@@ -803,5 +804,28 @@ describe("pullLatest", () => {
 
     expect(pull).toMatchObject({ commitSha: sha, fileCount: 1 });
     expect(files.keys()).toContain(`files/${game.publicId}/${pull.id}/index.html`);
+  });
+});
+
+describe("setShowsPlayerCount", () => {
+  const shows = async (gameId: string) =>
+    (await db().game.findUniqueOrThrow({ where: { id: gameId } })).showsPlayerCount;
+
+  it("is off for a new game, and its maker turns it on and off", async () => {
+    const game = await newGame();
+    expect(await shows(game.id)).toBe(false);
+    await service.setShowsPlayerCount(game.id, game.makerUserId, true);
+    expect(await shows(game.id)).toBe(true);
+    await service.setShowsPlayerCount(game.id, game.makerUserId, false);
+    expect(await shows(game.id)).toBe(false);
+  });
+
+  it("refuses another account and changes nothing", async () => {
+    const game = await newGame();
+    await expect(service.setShowsPlayerCount(game.id, await createUser(db()), true)).rejects.toMatchObject({
+      name: "GameError",
+      code: "NOT_FOUND",
+    });
+    expect(await shows(game.id)).toBe(false);
   });
 });

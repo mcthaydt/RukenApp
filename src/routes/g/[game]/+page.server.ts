@@ -1,6 +1,12 @@
 import { error } from "@sveltejs/kit";
 import { GAME_STAFF_ROLES } from "../../../features/accounts/accounts.ts";
-import { gamesServices, ratingLine, ratingWords, sittingWords } from "../../../features/games/games.ts";
+import {
+  gamesServices,
+  ratingLine,
+  playersWords,
+  ratingWords,
+  sittingWords,
+} from "../../../features/games/games.ts";
 import {
   dollars,
   membershipServices,
@@ -34,6 +40,10 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
 
   const makerPage = await pagesServices().service.pageOf(game.makerUserId);
   const sitting = await playServices().service.sittingOf(game.id, new Date());
+  // Asked only while the maker has turned the count on, so a game that has it off costs nothing and shows nothing.
+  const players = game.showsPlayerCount
+    ? playersWords(await playServices().service.playersThisWeek(game.id, new Date()))
+    : null;
   const more = makerPage === null ? [] : await games.service.moreLiveGamesBy(game.makerUserId, game.slug);
 
   return {
@@ -47,6 +57,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
     cost,
     price: dollars(PREMIUM_PRICES_CENTS.monthly),
     sitting: sitting === null ? null : sittingWords(sitting),
+    players,
     maker:
       makerPage === null
         ? null

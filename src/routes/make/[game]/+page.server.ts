@@ -146,6 +146,7 @@ export const load: PageServerLoad = async (event) => {
         wide: game.clips.wide === null ? null : gamesServices().media(game.clips.wide.key),
       },
       game: liveLaidOut(game),
+      showsPlayerCount: game.showsPlayerCount,
     };
   }
 
@@ -211,6 +212,17 @@ export const actions: Actions = {
     } catch (problem) {
       return fail(400, refusal(problem));
     }
+    redirect(303, `/make/${game.slug}`);
+  },
+
+  // The maker's switch for the player count on the game's page. It posts the state it wants, so a second press of an
+  // old page says the same thing twice and changes nothing more.
+  playerCount: async (event) => {
+    const { userId, game } = await ownGame(event);
+    if (game.state !== "live") error(404, "Not found");
+    const wanted = (await event.request.formData()).get("show");
+    if (wanted !== "on" && wanted !== "off") return fail(400, { problem: "That didn't work. Try again." });
+    await gamesServices().service.setShowsPlayerCount(game.id, userId, wanted === "on");
     redirect(303, `/make/${game.slug}`);
   },
 
