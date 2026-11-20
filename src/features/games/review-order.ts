@@ -13,7 +13,6 @@ const GAME_PARTS: readonly GamePart[] = [
   "name",
   "one_line",
   "files",
-  "plays_on",
   "upright_video",
   "wide_video",
   "age_rating",

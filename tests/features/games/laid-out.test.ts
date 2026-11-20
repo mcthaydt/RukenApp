@@ -1,19 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { playsOnWords, ratingWords, websitesWords } from "../../../src/features/games/games.ts";
+import { ratingWords, websitesWords } from "../../../src/features/games/games.ts";
 
-// The small facts a game is laid out with on Check and send (spec 5b): where it plays, who it is for, and which other
+// The small facts a game is laid out with on Check and send (spec 5b): who it is for, and which other
 // websites it uses, in the words a maker reads.
-
-describe("playsOnWords", () => {
-  it("says phones and computers, or computers only", () => {
-    expect(playsOnWords("phone_and_computer")).toBe("Plays on phones and computers");
-    expect(playsOnWords("computer_only")).toBe("Plays on computers only");
-  });
-
-  it("says nothing for a game that has not been asked yet", () => {
-    expect(playsOnWords(null)).toBeNull();
-  });
-});
 
 describe("ratingWords", () => {
   it.each([

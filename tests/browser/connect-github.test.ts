@@ -90,7 +90,7 @@ test("before GitHub is connected, the files question says what Ruken will see, w
   const { slug } = await startAtFiles(page);
 
   await expect(page.getByRole("heading", { name: "Where are your game's files?" })).toBeVisible();
-  await expect(page.getByText("Question 3 of 7")).toBeVisible();
+  await expect(page.getByText("Question 3 of 6")).toBeVisible();
   await expect(page.getByText("Your game lives on GitHub. Connect it, then pick your game.")).toBeVisible();
   await expect(
     page.getByText("You choose which games on GitHub Ruken can see. It can't see anything else."),

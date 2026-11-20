@@ -217,7 +217,7 @@ test("Live shows the one video for this window, the name, the line and two chips
   );
   await expect(laid.getByRole("heading", { level: 2 })).toHaveText(name);
   await expect(laid.locator(".tagline")).toHaveText("A tiny game about tapping.");
-  await expect(laid.locator(".chip")).toHaveText(["Plays on phones and computers", "12+"]);
+  await expect(laid.locator(".chip")).toHaveText(["12+"]);
 });
 
 // A live game's maker mends the files on GitHub, and a new version copies them. Its files question is a 404 for her, so

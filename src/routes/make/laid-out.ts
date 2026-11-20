@@ -2,8 +2,8 @@
 // the server code that fills them in (laid-out.server.ts).
 import type { GamePart } from "../../features/games/games.ts";
 
-/** A part of a game that has something to say about it on the laid-out game: the four facts shown as chips. */
-export type ChipPart = "files" | "plays_on" | "age_rating" | "other_websites";
+/** A part of a game that has something to say about it on the laid-out game: the three facts shown as chips. */
+export type ChipPart = "files" | "age_rating" | "other_websites";
 
 /** Every part a Change link can lead to. */
 export type ChangePart = "name" | "one_line" | "upright_video" | "wide_video" | ChipPart;

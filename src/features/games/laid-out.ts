@@ -1,13 +1,7 @@
-import type { AgeRating, ContentMark, GamePlaysOn } from "../../lib/server/db.ts";
+import type { AgeRating, ContentMark } from "../../lib/server/db.ts";
 
-// The small facts a game is laid out with where a maker checks it (spec 5b): where it plays, who it is for, and which
+// The small facts a game is laid out with where a maker checks it (spec 5b): who it is for, and which
 // other websites it uses, each as the words a maker reads. Pure, so the words are tested in one place.
-
-/** Where a game plays, or null while the maker has not said. */
-export function playsOnWords(playsOn: GamePlaysOn | null): string | null {
-  if (playsOn === null) return null;
-  return playsOn === "phone_and_computer" ? "Plays on phones and computers" : "Plays on computers only";
-}
 
 const RATING_WORDS: Record<AgeRating, string> = {
   age_3: "3+",

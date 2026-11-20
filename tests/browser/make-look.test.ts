@@ -31,12 +31,9 @@ const SIZES: Record<Layout, { heading: number; box: number; button: number; inBa
 };
 
 /** A game whose first question not answered is the one asked, so a journey can open that question alone. */
-async function gameAskingAbout(page: Page, question: "plays-on" | "age"): Promise<string> {
+async function gameAskingAbout(page: Page, question: "age"): Promise<string> {
   const { slug } = await startDraft(page);
-  await fillAnswers(
-    slug,
-    question === "plays-on" ? { playsOn: false, files: true } : { files: true, videos: true },
-  );
+  await fillAnswers(slug, { files: true, videos: true });
   // The layout is what is measured, not the entrance, so the cards are measured at rest.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(`/make/${slug}/${question}`);
@@ -93,12 +90,12 @@ test("Enter presses the blue button", async ({ page }) => {
 });
 
 test("a picked choice has a blue edge, and the others stay white", async ({ page }) => {
-  await gameAskingAbout(page, "plays-on");
-  const picked = page.locator(".pick", { hasText: "Computers only" });
-  const other = page.locator(".pick", { hasText: "Phones and computers" });
+  await gameAskingAbout(page, "age");
+  const picked = page.locator(".pick", { hasText: "12+" });
+  const other = page.locator(".pick", { hasText: "7+" });
 
   await expect(other).toHaveCSS("background-color", rgb(token("--paper")));
-  await page.getByLabel("Computers only").check();
+  await page.getByRole("radio", { name: /^12\+/ }).check();
 
   await expect(picked).toHaveCSS("border-top-color", rgb(token("--pay")));
   await expect(picked).toHaveCSS("border-top-width", "4px");
@@ -123,14 +120,7 @@ test("everything to press is at least 44 by 44", async ({ page }) => {
   await fillAnswers(slug, { files: true, videos: true });
   // An 18+ game, so the marks are asked too: every choice is a target.
   await fillAnswers(slug, { age: "age_18" });
-  const screens = [
-    `/make/${slug}/line`,
-    `/make/${slug}/plays-on`,
-    `/make/${slug}/age`,
-    `/make/${slug}/marks`,
-    "/make",
-    "/make/new",
-  ];
+  const screens = [`/make/${slug}/line`, `/make/${slug}/age`, `/make/${slug}/marks`, "/make", "/make/new"];
 
   for (const address of screens) {
     await page.goto(address);

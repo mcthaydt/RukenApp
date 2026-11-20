@@ -30,19 +30,6 @@
     return picked.startsWith("18+") ? data.ageCounters.eighteen : data.ageCounters.younger;
   });
 
-  const PLAYS_ON = [
-    {
-      value: "phone_and_computer",
-      title: "Phones and computers",
-      line: "Choose this if it also works with a finger on a phone.",
-    },
-    {
-      value: "computer_only",
-      title: "Computers only",
-      line: "Choose this if your game needs a keyboard or a mouse.",
-    },
-  ];
-
   const AGES = [
     { value: "age_3", title: "3+", line: "Fine for anyone." },
     { value: "age_7", title: "7+", line: "Cartoon fighting, or a little scary." },
@@ -130,15 +117,6 @@
         lines={3}
         {problem}
       />
-    </QuestionScreen>
-  {:else if data.question === "plays-on"}
-    <QuestionScreen
-      heading={`Where does ${data.name} play?`}
-      counter={data.counter}
-      back={data.back}
-      throwAway={data.throwAway}
-    >
-      <Picks name="playsOn" options={PLAYS_ON} chosen={data.playsOn} {problem} />
     </QuestionScreen>
   {:else if data.question === "age"}
     <QuestionScreen

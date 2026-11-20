@@ -196,6 +196,15 @@ describe("sendForReview", () => {
     expect(await stateOf(game.id)).toMatchObject({ state: "sent_back", pendingPullId: null });
   });
 
+  it("makes a game whose place was never written play on phones and computers", async () => {
+    const game = await readyGame();
+    await db().game.update({ where: { id: game.id }, data: { playsOn: null } });
+
+    await service.sendForReview(game.id, game.makerUserId);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "waiting", playsOn: "phone_and_computer" });
+  });
+
   it("makes a draft wait on its newest files, and notes when they were sent", async () => {
     const game = await readyGame();
     const newer = await addPull(game.id);
@@ -547,9 +556,9 @@ describe("a live game's update that was sent back", () => {
     expect((await stateOf(game.id)).toFix).toEqual(["one_line"]);
   });
 
-  // These four a live game's maker cannot change by herself (slice 4), so sending its update back for one would leave
+  // These a live game's maker cannot change by herself (slice 4), so sending its update back for one would leave
   // it stuck for good.
-  it.each(["upright_video", "wide_video", "age_rating", "other_websites"] as const)(
+  it.each(["plays_on", "upright_video", "wide_video", "age_rating", "other_websites"] as const)(
     "refuses to send an update back for %s, and changes nothing",
     async (part) => {
       const game = await readyGame();
@@ -562,7 +571,7 @@ describe("a live game's update that was sent back", () => {
         service.sendBack(game.id, await createUser(db()), [{ part, reason: "something_else", note: "No." }]),
       ).rejects.toMatchObject({
         code: "INVALID",
-        message: "A live game can only be sent back for its name, its line, where it plays or its files.",
+        message: "A live game can only be sent back for its name, its line or its files.",
       });
 
       expect((await stateOf(game.id)).pendingPullId).not.toBeNull();
@@ -696,7 +705,7 @@ describe("what the screens show", () => {
 
     await db().game.update({ where: { id: game.id }, data: { ageRating: null } });
     expect(await service.gamesOf(game.makerUserId)).toMatchObject([
-      { words: "Not finished. Go on from question 7." },
+      { words: "Not finished. Go on from question 6." },
     ]);
 
     await db().game.update({ where: { id: game.id }, data: { ageRating: "age_12" } });
@@ -721,7 +730,6 @@ describe("what the screens show", () => {
         wide: { key: expect.stringMatching(/^clips\//) as string, bytes: 32 },
       },
       oneLine: "A game about a thing.",
-      playsOn: "phone_and_computer",
       ageRating: "age_12",
       contentMarks: [],
       everLive: false,

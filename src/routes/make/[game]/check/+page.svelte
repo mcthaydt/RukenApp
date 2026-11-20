@@ -49,6 +49,8 @@
       {#if form?.problem !== undefined}
         <p class="problem" role="alert">{form.problem}</p>
       {/if}
+      <!-- Every game plays on both, so this is said once, above the button, and never asked. -->
+      <p>Your game must work on phones and computers.</p>
       <div class="acts">
         <button disabled={sending} aria-busy={sending ? "true" : undefined}>
           {sending ? "Sending your game…" : "Send for review"}

@@ -6,7 +6,6 @@ import {
   marksProblem,
   nameProblem,
   oneLineProblem,
-  playsOnProblem,
   repoProblem,
 } from "../../../src/features/games/fields.ts";
 
@@ -31,11 +30,6 @@ describe("one checker for each answer", () => {
     expect(branchProblem("a b")).toBe("That doesn't look like a branch name.");
     expect(folderProblem("web/build")).toBeUndefined();
     expect(folderProblem("/web")).toMatch(/^That doesn't look like a folder/);
-  });
-
-  it("where it plays", () => {
-    expect(playsOnProblem("computer_only")).toBeUndefined();
-    expect(playsOnProblem(null)).toBe("Choose where your game plays.");
   });
 
   it("who it is for", () => {

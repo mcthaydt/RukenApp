@@ -317,11 +317,11 @@ async function expectQuestionAndReason(page: Page): Promise<void> {
 test.describe("on an iPhone SE held upright, a refusal", () => {
   test.use({ viewport: IPHONE_SE });
 
-  test("of where the game plays is read with its heading", async ({ page }) => {
+  test("of who the game is for is read with its heading", async ({ page }) => {
     test.skip(test.info().project.name !== "phone", "one Chromium project is enough for a window of its own");
     const { slug } = await startDraft(page);
-    await fillAnswers(slug, { files: true, playsOn: false });
-    await page.goto(`/make/${slug}/plays-on`);
+    await fillAnswers(slug, { files: true, videos: true });
+    await page.goto(`/make/${slug}/age`);
     await wordsHaveSettled(page);
     await nextButton(page).click();
     await expectQuestionAndReason(page);
@@ -509,18 +509,18 @@ test.describe("on an iPhone SE held upright", () => {
 });
 
 /**
- * The name the question of where the game plays is measured with. A fresh name's random letters differ in width, and
+ * The name the question of who the game is for is measured with. A fresh name's random letters differ in width, and
  * about one in eight put the SE's heading on a fourth line, which moved the choices 38px down and failed the journey by
  * chance. The address stays fresh; only the name shown is fixed.
  */
 const CHOICES_NAME = "Tiny game 1899072e";
 
-/** Goes to the question of where the game plays and checks that the first `count` choices end above the bar, their words with them. */
+/** Goes to the question of who the game is for and checks that the first `count` choices end above the bar, their words with them. */
 async function expectChoicesAboveTheBar(page: Page, count: number): Promise<void> {
   const { slug } = await startDraft(page);
-  await fillAnswers(slug, { files: true, playsOn: false });
+  await fillAnswers(slug, { files: true, videos: true });
   await changeGame(slug, { name: CHOICES_NAME });
-  await page.goto(`/make/${slug}/plays-on`);
+  await page.goto(`/make/${slug}/age`);
   await wordsHaveSettled(page);
   expect(
     await lineCount(page.getByRole("heading", { level: 1 })),
@@ -743,23 +743,23 @@ test("on an upright tablet a question, Check and send, Waiting and Live all star
 
 // ---- L25: the age question says the count it will have -------------------------------------------------------------------------
 
-test("picking 18+ on the age question says Question 7 of 8 at once, and picking 12+ says 7 of 7 again", async ({
+test("picking 18+ on the age question says Question 6 of 7 at once, and picking 12+ says 6 of 6 again", async ({
   page,
 }) => {
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { files: true, videos: true });
   await page.goto(`/make/${slug}/age`);
   await pageHasSettled(page);
-  await expect(page.getByText("Question 7 of 7")).toBeVisible();
-  await expect(page.locator(".track i")).toHaveCount(7);
+  await expect(page.getByText("Question 6 of 6")).toBeVisible();
+  await expect(page.locator(".track i")).toHaveCount(6);
 
   await page.getByRole("radio", { name: /^18\+/ }).check();
-  await expect(page.getByText("Question 7 of 8")).toBeVisible();
-  await expect(page.locator(".track i")).toHaveCount(8);
+  await expect(page.getByText("Question 6 of 7")).toBeVisible();
+  await expect(page.locator(".track i")).toHaveCount(7);
 
   await page.getByRole("radio", { name: /^12\+/ }).check();
-  await expect(page.getByText("Question 7 of 7")).toBeVisible();
-  await expect(page.locator(".track i")).toHaveCount(7);
+  await expect(page.getByText("Question 6 of 6")).toBeVisible();
+  await expect(page.locator(".track i")).toHaveCount(6);
 });
 
 // ---- L9: the card of what players will see shows both videos, across its whole width -----------------------------------
