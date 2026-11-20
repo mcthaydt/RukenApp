@@ -182,3 +182,23 @@
 ## Note
 
 7. **"After H merges" against "after that commit."** 1.2 says the first decision day is the first Friday after H merges; H's step 3 writes the first Friday after its last commit. If the merge slips past that Friday, the first day is already past: the release writes it with no decisions and the steps count from it. Harmless, but one wording should win (recommended: step 3's, and say so in 1.2).
+
+---
+
+# Cycle 3
+
+- **Examined:** `docs/superpowers/specs/2026-11-20-decision-day-design.md` at `dc8fab3` (on top of `0b266a0`; the diff changes the spec only).
+- **Against:** cycle 2's findings and the Owner's three card answers, read from the cards themselves in the "Plan decision day and acceptance cap" thread (answered 2026-11-20 00:16 UTC: day and time option 0, "Friday, noon New York time"; starting seats option 1, "10 a week"; growth option 0, "Half again each time").
+
+## Verdict
+
+**Clear: nothing red, no new notes.** The spec is ready to merge as a doc, and D can start from a `main` that holds it (not alongside P or K, as section 7 says).
+
+| Item | Where it landed | Result |
+|---|---|---|
+| 11, A's order | section 7, A's row: not alongside F, P, K or Q, with the shared files named | pass |
+| 12, #195's write paths | section 2: "Every maker write to a waiting game" writes `changedAt`; "Lining up with #195": whichever of H and K or Q merges second makes K's and Q's writes set it, with a test each | pass |
+| Note 7 | 1.2 and section 8: the first Friday after H's last commit, matching H's step 3 | pass |
+| The Owner's cards | section 0 records them with the time; 1.1, 1.2 and section 8 state them as settled; no "(card)" marker or "follows the card" is left (`grep`) | pass, matches the cards |
+
+Nothing else in the spec changed between `0b266a0` and `dc8fab3`, so cycle 1 and cycle 2's passes stand.
