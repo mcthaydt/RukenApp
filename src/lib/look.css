@@ -2305,6 +2305,8 @@ main.gamepage {
 /* The clip, with the name and the one line on a dark band over its foot, so chalk reads on any clip. */
 .gamepage .hero {
   position: relative;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   padding: 0;
   border-radius: var(--radius-card);
@@ -2313,13 +2315,16 @@ main.gamepage {
 
 .gamepage .clipbox {
   position: relative;
+  flex: 1 1 auto;
   width: 100%;
-  height: 46dvh;
+  min-height: 46dvh;
   overflow: hidden;
   background: var(--felt-deep);
 }
 
 .gamepage .clipbox video {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
@@ -2518,7 +2523,7 @@ main.gamepage {
   }
 
   .gamepage .clipbox {
-    height: clamp(16rem, calc(100dvh - 2rem), 44rem);
+    min-height: clamp(16rem, calc(100dvh - 2rem), 44rem);
   }
 }
 
@@ -2533,8 +2538,7 @@ main.gamepage {
   }
 
   .gamepage .clipbox {
-    height: auto;
-    aspect-ratio: 16 / 9;
+    min-height: 20rem;
     max-height: calc(100dvh - 2rem);
   }
 

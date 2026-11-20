@@ -129,7 +129,7 @@ test("the maker is shown when they have a page, with their other games", async (
   page,
   browser,
   request,
-}) => {
+}, testInfo) => {
   const first = await addGame(browser, request);
   await givePage(first.maker, { name: "Snek", oneLine: "I make small games." });
   // A second live game by the same maker, from rows.
@@ -143,6 +143,7 @@ test("the maker is shown when they have a page, with their other games", async (
   await expect(page.getByRole("heading", { name: "More from Snek" })).toBeVisible();
   await expect(page.locator(".more a")).toHaveCount(1);
   await expect(page.locator(".more a")).toHaveAttribute("href", `/g/${second.slug}`);
+  await showTheOwner(page, testInfo, "a game's page, with its maker and their other games");
 });
 
 test("a maker with no page is not shown", async ({ page }) => {
