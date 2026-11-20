@@ -75,6 +75,8 @@ test("pressing a tile shows that clip, and pressing the clip opens it with sound
 });
 
 test("the cost line is said to each person in their own words", async ({ page, browser }) => {
+  // Three people sign in one after another, which WebKit does slowly.
+  test.slow();
   await page.goto(`/g/${free.slug}`);
   await expect(page.getByText("Free to play. No account needed.")).toBeVisible();
 
