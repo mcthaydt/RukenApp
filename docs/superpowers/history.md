@@ -59,6 +59,9 @@ None recorded since the restart.
 - 2026-11-20, #217 (unit W) at 4e47ce5 (CI run 44753512820, attempt 1, browser shard 6): `[tablet-landscape-webkit] make-screen-review.test.ts:32, 41, 47` and `make-second-look.test.ts:48, 96` failed once: the "Create account" click timed out, or the page did not reach `/make/<game>/line`. All passed on attempt 2. No root-cause work, because slice 2 is the last work in this project (owner, 15:17 UTC).
 - 2026-11-20, CI infrastructure: `playwright install --with-deps` stalled for 40 minutes or more on some runs, so the job reached its time limit (main's run on d7e95ba was cancelled this way). The one rerun passed.
 
+- 2026-11-20, #233 at a0e7b8f (run 44763681759, shard 4): `[phone-landscape-webkit] make-screen-review.test.ts:77` measured a 15.87px gap under the heading where it needs at least 16. It's not #233's code (that page is the maker's websites question), and the test isn't run again on this page since #234 replaced the box.
+- 2026-11-20, main at 213dcab (run 44763598929) and 1aa59aa (run 44768194341), browser shard 6: `[tablet-landscape-webkit] player-count.test.ts:22` timed out at 30s on `page.goto` waiting for "load". That's red twice in a row, so not a flake. The cause is the WebKit video-metadata stall above: WebKit holds the load event for each `preload="metadata"` clip, and a game-gate media request never answers under load. #233 at 64713fd made every visit to and reload of a game's page wait for `domcontentloaded` (game-page 124 and 208, play 109 and 159, player-count 22, 33 and 39). The same cause hit `game-page.test.ts:118` on #233 at d548b37.
+
 ## Lessons
 
 None recorded since the restart.
