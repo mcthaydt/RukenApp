@@ -351,6 +351,26 @@ describe("sending a decision day out", () => {
     expect(await db().decisionDay.count()).toBe(1);
   });
 
+  it("opens the Accepted screen for a game the release let in, and counts it in the rate", async () => {
+    const yes = await waitingGame();
+    const no = await waitingGame();
+    const staff = await createUser(db());
+    await service.accept(yes.id, staff);
+    await service.sendBack(no.id, staff, [{ part: "name", reason: "something_else", note: "Rename it." }]);
+    // Held: nothing shows until the day has gone out.
+    expect(await service.acceptedScreenFor(yes.id)).toBeNull();
+    expect(await service.acceptance()).toEqual({ decided: 0, accepted: 0 });
+
+    clock.set(FRIDAY_NOON);
+    await service.sendOutDecisionDays();
+
+    expect(await service.acceptedScreenFor(yes.id)).toEqual({ count: 1 });
+    expect(await service.acceptedScreenFor(no.id)).toBeNull();
+    expect(await service.acceptance()).toEqual({ decided: 2, accepted: 1 });
+    await service.markAcceptedSeen(yes.id);
+    expect(await service.acceptedScreenFor(yes.id)).toBeNull();
+  });
+
   it("sends missed days out oldest first, and a later day's decisions wait", async () => {
     const first = await waitingGame();
     await service.accept(first.id, await createUser(db()));
