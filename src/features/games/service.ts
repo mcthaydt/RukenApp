@@ -510,19 +510,19 @@ export function createGamesService(deps: GamesServiceDeps) {
 
   /**
    * Decides how the Owner's yes or no is made: held for the next decision day (a new game while the ritual is on), or
-   * at once. Takes the lock first, so it is called inside the decision's transaction. A decision already held and not
-   * lapsed is final.
+   * at once. The caller already holds the decision lock, and read the game after taking it. The day is picked here, after
+   * the lock and from the clock as it reads now, so a yes made while a day goes out is held for the next day and never
+   * left on a day that has gone. A decision already held and not lapsed is final.
    */
   async function holdOrNot(
-    tx: Pick<PrismaClient, "game" | "gameReview" | "$executeRaw">,
+    tx: Pick<PrismaClient, "game" | "gameReview" | "decisionDay">,
     gameId: string,
     game: { name: string; state: GameState; pullId: string; changedAt: Date | null },
     yes: boolean,
   ): Promise<{ goesOutOn: Date | null; made: DecisionMade }> {
     const atOnce = { goesOutOn: null, made: { held: false } } as const;
-    const next = nextDecisionDay(now(), schedule());
+    let next = nextDecisionDay(now(), schedule());
     if (next === null) return atOnce;
-    await takeDecisionLock(tx);
     const standing = (
       await standingsOf(tx, [
         { id: gameId, state: game.state, pendingPullId: game.pullId, changedAt: game.changedAt },
@@ -534,6 +534,12 @@ export function createGamesService(deps: GamesServiceDeps) {
         "CONFLICT",
         `You already decided on ${game.name}. It goes out on ${dayWords(standing.held.day)}.`,
       );
+    // A day that already has its row has gone out, whatever the clock says.
+    while ((await tx.decisionDay.findUnique({ where: { day: dateOfDay(next.day) } })) !== null) {
+      const after = nextDecisionDay(next.at, schedule());
+      if (after === null) return atOnce;
+      next = after;
+    }
     const taken = await seatsTaken(tx, next.day);
     if (yes && taken >= next.seats) throw new GameError("CONFLICT", seatsTakenWords(next.seats));
     return {
@@ -561,6 +567,8 @@ export function createGamesService(deps: GamesServiceDeps) {
    */
   async function accept(gameId: string, staffUserId: string): Promise<DecisionMade> {
     return deps.db.$transaction(async (tx) => {
+      // The lock comes before anything is read, so what is read is what a release that ran first left behind.
+      if (schedule().firstDay !== null) await takeDecisionLock(tx);
       const waiting = await waitingOf(tx, gameId);
       const { goesOutOn, made } = await holdOrNot(tx, gameId, waiting, true);
       const decidedAt = now();
@@ -613,6 +621,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
 
     return deps.db.$transaction(async (tx) => {
+      if (schedule().firstDay !== null) await takeDecisionLock(tx);
       const waiting = await waitingOf(tx, gameId);
       const { state, pullId } = waiting;
       if (state === "live" && kept.some((one) => !LIVE_MAY_BE_SENT_BACK.includes(one.part))) {

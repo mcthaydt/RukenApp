@@ -1,13 +1,17 @@
 import { error } from "@sveltejs/kit";
 import { firstGameStaff } from "../../../features/accounts/accounts.ts";
 import {
+  acceptSays,
   dayWords,
+  failureStatus,
   GameError,
   gamesServices,
+  listSays,
   megabytes,
   ratingWords,
   readReviewOrder,
   SOMETHING_ELSE,
+  sendBackSays,
   websitesWords,
 } from "../../../features/games/games.ts";
 import { playServices } from "../../../features/play/play.ts";
@@ -46,16 +50,7 @@ export const POST: RequestHandler = async ({ request }) => {
   if (order.do === "list") {
     const waiting = await games.service.waitingGames();
     const week = await games.service.thisWeek();
-    const waitingSays =
-      waiting.length === 0
-        ? "Nothing is waiting."
-        : waiting.length === 1
-          ? "1 game is waiting."
-          : `${String(waiting.length)} games are waiting.`;
-    const says =
-      week === null
-        ? waitingSays
-        : `${waitingSays} ${String(week.taken)} of ${String(week.seats)} seats are taken for ${week.words}.`;
+    const says = listSays(waiting.length, week);
     return answer({
       says,
       waiting: waiting.map((one) => ({
@@ -102,29 +97,17 @@ export const POST: RequestHandler = async ({ request }) => {
     }
     if (order.do === "accept") {
       const made = await games.service.accept(game.id, staffUserId);
-      if (made.held) {
-        return answer({
-          says: `${game.name} gets in on ${dayWords(made.day)}. ${String(made.taken)} of ${String(made.seats)} seats are taken.`,
-        });
-      }
-      return answer({
-        says: kind === "update" ? `${game.name}'s new version is live.` : `${game.name} is live.`,
-      });
+      return answer({ says: acceptSays(game.name, kind, made, dayWords) });
     }
     const made = await games.service.sendBack(
       game.id,
       staffUserId,
       order.parts.map(({ part, words }) => ({ part, reason: SOMETHING_ELSE, note: words })),
     );
-    return answer({
-      says: made.held
-        ? `${game.name} goes back to its maker on ${dayWords(made.day)}.`
-        : `${game.name} went back to its maker.`,
-    });
+    return answer({ says: sendBackSays(game.name, made, dayWords) });
   } catch (failure) {
     // A decision that is already held, or a week with no seats left, is a clash and not a mistyped order.
-    if (failure instanceof GameError)
-      return problem(failure.message, failure.code === "CONFLICT" ? 409 : 400);
+    if (failure instanceof GameError) return problem(failure.message, failureStatus(failure.code));
     throw failure;
   }
 };

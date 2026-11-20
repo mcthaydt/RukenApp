@@ -1,6 +1,7 @@
 import { systemClock, type Clock } from "../../lib/clock.ts";
 import type { FileStore } from "../../lib/files/store.ts";
 import { prisma, type PrismaClient } from "../../lib/server/db.ts";
+import { isThisMachine } from "../../lib/this-machine.ts";
 import { optionalEnv, requireEnv } from "../../lib/server/env.ts";
 import { fileStore } from "../../lib/server/files.ts";
 import { checkAddressPattern, gameAddress } from "./addresses.ts";
@@ -46,11 +47,10 @@ export interface GamesServices {
  * game in keeps seeing it go live at once whatever day it runs. Like LAUNCH_TEST_SWITCH it is refused unless the site's
  * own address is this machine, so a real site that has it set by mistake fails instead of quietly skipping decision day.
  */
-function scheduleFor(source: Settings): DecisionSchedule {
+export function scheduleFor(source: Settings): DecisionSchedule {
   const flag = source.DECISION_DAYS_TEST_OFF;
   if (flag === undefined || flag === "") return decisionSchedule;
-  const own = source.BETTER_AUTH_URL ?? "";
-  if (flag !== "on" || !(own.startsWith("http://localhost") || own.startsWith("http://127.0.0.1"))) {
+  if (flag !== "on" || !isThisMachine(source.BETTER_AUTH_URL)) {
     throw new Error(
       "DECISION_DAYS_TEST_OFF is for tests on this machine. Remove it from this site's settings.",
     );

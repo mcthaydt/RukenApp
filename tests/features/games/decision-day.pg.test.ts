@@ -211,6 +211,34 @@ describe("holding a new game's decision", () => {
     expect((await service.thisWeek())?.taken).toBe(2);
   });
 
+  it("holds a yes made while a day is going out for the next day, never on the day that has gone", async () => {
+    const game = await waitingGame();
+    const staff = await createUser(db());
+    clock.set("2026-11-27T16:59:59Z");
+    let letGo: () => void = () => undefined;
+    const goes = new Promise<void>((resolve) => (letGo = resolve));
+    let locked: () => void = () => undefined;
+    const isLocked = new Promise<void>((resolve) => (locked = resolve));
+    // A release in the middle of its transaction: it holds the lock and has written the day's row.
+    const release = db().$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(7340113)`;
+      await tx.decisionDay.create({
+        data: { day: new Date("2026-11-27T00:00:00Z"), seats: 2, wentOutAt: new Date() },
+      });
+      locked();
+      await goes;
+    });
+    await isLocked;
+
+    const yes = service.accept(game.id, staff);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    clock.set("2026-11-27T17:00:01Z");
+    letGo();
+    await release;
+
+    expect(await yes).toMatchObject({ held: true, day: "2026-12-04" });
+  });
+
   it("holds a decision made after noon on decision day for the next Friday", async () => {
     const game = await waitingGame();
     clock.set(FRIDAY_NOON);
