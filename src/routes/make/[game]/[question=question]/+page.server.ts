@@ -13,6 +13,7 @@ import {
   marksProblem,
   questionBefore,
   questionsFor,
+  RATING_LINE_LIST,
   ratingWords,
   type AgeRating,
   type Answer,
@@ -160,6 +161,8 @@ export const load: PageServerLoad = async (event) => {
     // One website to a line, as the game's list was typed.
     servers: game.connectHosts.join("\n"),
     oneLine: game.oneLine ?? "",
+    // The five ratings and their plain lines: one list, shared with a game's own page (`ratingLine`).
+    ageLines: RATING_LINE_LIST.map(({ value, title, line }) => ({ value, title, line })),
     ageRating: game.ageRating === null ? [] : [game.ageRating],
     contentMarks: game.contentMarks,
     // Set while a waiting or sent-back game is being made 18+: the marks form says so, so the rating and the marks are
