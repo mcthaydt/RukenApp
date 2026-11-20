@@ -13,6 +13,7 @@ import {
   type Connection,
 } from "./github-connect.ts";
 import { createGitHub } from "./github.ts";
+import { decisionSchedule, type DecisionSchedule } from "./seats.ts";
 import { createGamesService, type GamesService } from "./service.ts";
 
 // Everything the games feature needs, built once per server process from the settings. Routes call
@@ -38,6 +39,23 @@ export interface GamesServices {
   address(name: string): string;
   /** The address of a clip, from its key in the bucket: the media address, a slash, the key. */
   media(key: string): string;
+}
+
+/**
+ * The decision day schedule the site uses. The journeys' site sets DECISION_DAYS_TEST_OFF=on, so every journey that lets a
+ * game in keeps seeing it go live at once whatever day it runs. Like LAUNCH_TEST_SWITCH it is refused unless the site's
+ * own address is this machine, so a real site that has it set by mistake fails instead of quietly skipping decision day.
+ */
+function scheduleFor(source: Settings): DecisionSchedule {
+  const flag = source.DECISION_DAYS_TEST_OFF;
+  if (flag === undefined || flag === "") return decisionSchedule;
+  const own = source.BETTER_AUTH_URL ?? "";
+  if (flag !== "on" || !(own.startsWith("http://localhost") || own.startsWith("http://127.0.0.1"))) {
+    throw new Error(
+      "DECISION_DAYS_TEST_OFF is for tests on this machine. Remove it from this site's settings.",
+    );
+  }
+  return { ...decisionSchedule, firstDay: null };
 }
 
 /** The only place GitHub's addresses may be changed: a stand-in server on this machine, for the journeys. */
@@ -81,7 +99,13 @@ export function createGamesServices(
     clock: parts.clock,
     ...(apiBase === undefined ? {} : { apiBase }),
   });
-  const service = createGamesService({ db: parts.db, clock: parts.clock, files: parts.files, github });
+  const service = createGamesService({
+    db: parts.db,
+    clock: parts.clock,
+    files: parts.files,
+    github,
+    schedule: scheduleFor(source),
+  });
   // Each is given only the addresses that were set, so an unset one keeps the library's own (GitHub's).
   const addresses = {
     ...(apiBase === undefined ? {} : { apiBase }),

@@ -1,6 +1,7 @@
 import { error } from "@sveltejs/kit";
 import { firstGameStaff } from "../../../features/accounts/accounts.ts";
 import {
+  dayWords,
   GameError,
   gamesServices,
   megabytes,
@@ -44,18 +45,24 @@ export const POST: RequestHandler = async ({ request }) => {
   const games = gamesServices();
   if (order.do === "list") {
     const waiting = await games.service.waitingGames();
-    const says =
+    const week = await games.service.thisWeek();
+    const waitingSays =
       waiting.length === 0
         ? "Nothing is waiting."
         : waiting.length === 1
           ? "1 game is waiting."
           : `${String(waiting.length)} games are waiting.`;
+    const says =
+      week === null
+        ? waitingSays
+        : `${waitingSays} ${String(week.taken)} of ${String(week.seats)} seats are taken for ${week.words}.`;
     return answer({
       says,
       waiting: waiting.map((one) => ({
         game: one.slug,
         name: one.name,
         kind: one.kind,
+        decided: one.decided,
         since: one.sentAt.toISOString(),
       })),
     });
@@ -66,7 +73,7 @@ export const POST: RequestHandler = async ({ request }) => {
   if (game.pending === null) return problem("Nothing is waiting for review.", 409);
   const staffUserId = await firstGameStaff(prisma());
   if (staffUserId === null) return problem("Make the first staff account first.", 409);
-  const kind = game.state === "live" ? "update" : "game";
+  const { kind } = game;
 
   try {
     if (order.do === "look") {
@@ -82,6 +89,7 @@ export const POST: RequestHandler = async ({ request }) => {
         game: game.slug,
         name: game.name,
         kind,
+        decided: game.decided,
         look,
         uprightVideo: game.clipKeys.upright === null ? null : games.media(game.clipKeys.upright),
         wideVideo: game.clipKeys.wide === null ? null : games.media(game.clipKeys.wide),
@@ -93,19 +101,30 @@ export const POST: RequestHandler = async ({ request }) => {
       });
     }
     if (order.do === "accept") {
-      await games.service.accept(game.id, staffUserId);
+      const made = await games.service.accept(game.id, staffUserId);
+      if (made.held) {
+        return answer({
+          says: `${game.name} gets in on ${dayWords(made.day)}. ${String(made.taken)} of ${String(made.seats)} seats are taken.`,
+        });
+      }
       return answer({
         says: kind === "update" ? `${game.name}'s new version is live.` : `${game.name} is live.`,
       });
     }
-    await games.service.sendBack(
+    const made = await games.service.sendBack(
       game.id,
       staffUserId,
       order.parts.map(({ part, words }) => ({ part, reason: SOMETHING_ELSE, note: words })),
     );
-    return answer({ says: `${game.name} went back to its maker.` });
+    return answer({
+      says: made.held
+        ? `${game.name} goes back to its maker on ${dayWords(made.day)}.`
+        : `${game.name} went back to its maker.`,
+    });
   } catch (failure) {
-    if (failure instanceof GameError) return problem(failure.message, 400);
+    // A decision that is already held, or a week with no seats left, is a clash and not a mistyped order.
+    if (failure instanceof GameError)
+      return problem(failure.message, failure.code === "CONFLICT" ? 409 : 400);
     throw failure;
   }
 };
