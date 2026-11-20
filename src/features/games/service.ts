@@ -1424,6 +1424,20 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /**
+   * The branches of one of the maker's own repositories, for the branch list. A repository that is not theirs, or a
+   * GitHub that does not answer, gives an empty list: the list then offers only the main branch, which always works.
+   */
+  async function branchesFor(userId: string, repo: string): Promise<string[]> {
+    const theirs = (await repositoriesFor(userId)).some((one) => one.fullName === repo);
+    if (!theirs) return [];
+    try {
+      return await deps.github.branchesOf(repo);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * True once the maker has connected GitHub, even if they chose no repository there. The new-game screen tells "not
    * connected" (one button to connect) from "connected, but Ruken can see nothing yet" (one button to choose some).
    */
@@ -1464,6 +1478,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     moreLiveGamesBy,
     rememberConnection,
     repositoriesFor,
+    branchesFor,
     hasConnectedGitHub,
   };
 }

@@ -32,6 +32,9 @@
       changing: boolean;
       chosen: string[];
       branch: string;
+      /** The branches of the chosen game, when GitHub answered; empty otherwise. */
+      branches: string[];
+      branchesAddress: string;
       folder: string;
       refusal: Refusal | null;
       connectAddress: string;
@@ -54,8 +57,46 @@
   const refusal = $derived(refusedNow ?? files.refusal);
   const repositories = $derived(files.repositories.map((name) => ({ value: name, title: name })));
   const chosen = $derived(asked === undefined ? files.chosen : asked.repo === "" ? [] : [asked.repo]);
-  const branch = $derived(asked?.branch ?? files.branch);
+  // Ticking a different game than the one the branch was for clears it to the main branch: another game may not have it.
+  let otherGameTicked = $state(false);
+  const branch = $derived(otherGameTicked ? "" : (asked?.branch ?? files.branch));
   const folder = $derived(asked?.folder ?? files.folder);
+
+  // The branches to pick from belong to the game that is ticked, so ticking another game fetches its own. The main
+  // branch is always on the list and is the empty answer, so nothing here can make a game that cannot be copied.
+  let fetched = $state<{ repo: string; names: string[] } | undefined>(undefined);
+  const savedRepo = $derived(files.chosen[0] ?? "");
+  const branchNames = $derived(fetched === undefined ? files.branches : fetched.names);
+  // A branch that was typed or saved stays on the list even when GitHub no longer lists it, so what she sees is what she sent.
+  const branchChoices = $derived(
+    branch === "" || branchNames.includes(branch) ? branchNames : [branch, ...branchNames],
+  );
+
+  async function repoTicked(event: Event): Promise<void> {
+    const ticked = event.target;
+    if (!(ticked instanceof HTMLInputElement) || ticked.name !== "repo") return;
+    const repo = ticked.value;
+    otherGameTicked = repo !== (asked?.repo ?? savedRepo);
+    if (repo === savedRepo) {
+      fetched = undefined;
+      return;
+    }
+    try {
+      const response = await fetch(`${files.branchesAddress}?repo=${encodeURIComponent(repo)}`);
+      const body: unknown = await response.json();
+      const names = Array.isArray(body)
+        ? body.filter((name): name is string => typeof name === "string")
+        : [];
+      // Ticking another game while this answer was on its way: the answer is for a game no longer ticked.
+      if (ticked.form?.querySelector<HTMLInputElement>('input[name="repo"]:checked')?.value === repo) {
+        fetched = { repo, names };
+      }
+    } catch {
+      if (ticked.form?.querySelector<HTMLInputElement>('input[name="repo"]:checked')?.value === repo) {
+        fetched = { repo, names: [] };
+      }
+    }
+  }
 
   // The boxes for another branch or folder are open when she asked for them, or when they were typed in or refused,
   // so what she sees is what she sent.
@@ -126,14 +167,16 @@
     {#if refusal !== null}
       {@render refusalCard(refusal)}
     {/if}
-    <Picks
-      name="repo"
-      options={repositories}
-      {chosen}
-      plain
-      hint="Pick the one that is your game."
-      problem={problems?.repo}
-    />
+    <div onchange={repoTicked} role="presentation">
+      <Picks
+        name="repo"
+        options={repositories}
+        {chosen}
+        plain
+        hint="Pick the one that is your game."
+        problem={problems?.repo}
+      />
+    </div>
     {#if files.copiesAgain}
       <p class="note">Next copies your game from GitHub again.</p>
     {/if}
@@ -144,18 +187,21 @@
     <details open={boxesOpen}>
       <summary>Change the branch or folder</summary>
       <label>
-        Branch
-        <input
+        <span id="branch-label">Branch</span>
+        <select
           class="answer"
-          type="text"
+          aria-labelledby="branch-label"
           name="branch"
-          value={branch}
-          autocomplete="off"
           aria-describedby={describedBy("branch")}
           aria-invalid={problems?.branch === undefined ? undefined : "true"}
-        />
+        >
+          <option value="" selected={branch === ""}>Main branch</option>
+          {#each branchChoices as name (name)}
+            <option value={name} selected={name === branch}>{name}</option>
+          {/each}
+        </select>
       </label>
-      <p class="note" id="branch-hint">Leave empty for your main branch.</p>
+      <p class="note" id="branch-hint">Pick the branch your game is on. Main branch is the usual one.</p>
       {#if problems?.branch !== undefined}
         <p class="problem" id="branch-problem" role="alert">{problems.branch}</p>
       {/if}

@@ -10,6 +10,8 @@ export interface GitHub {
   commitOf(repo: string, branch: string | null): Promise<string>;
   /** The commit's files as one gzipped tarball, streamed. */
   tarball(repo: string, commitSha: string): Promise<ReadableStream<Uint8Array<ArrayBuffer>>>;
+  /** The names of a repository's branches, the first hundred GitHub lists. */
+  branchesOf(repo: string): Promise<string[]>;
   /** The number of the installation of the app that holds a repository now, or null when the app is not there. */
   installationOf(repo: string): Promise<bigint | null>;
 }
@@ -255,6 +257,21 @@ export function createGitHub(options: GitHubOptions): GitHub {
         throw new GameError("NOT_READY", GITHUB_BUSY);
       if (!response.ok) throw failure("GET", path, response);
       return (await response.text()).trim();
+    },
+
+    async branchesOf(repo) {
+      checkRepo(repo);
+      const token = await repositoryToken(repo);
+      const path = `/repos/${repo}/branches?per_page=100`;
+      const response = await request(path, { token });
+      if (!response.ok) throw failure("GET", path, response);
+      const body: unknown = await response.json();
+      if (!Array.isArray(body)) throw new Error(`GitHub's answer to GET ${path} was not a list`);
+      return body.flatMap((branch: unknown) =>
+        typeof branch === "object" && branch !== null && "name" in branch && typeof branch.name === "string"
+          ? [branch.name]
+          : [],
+      );
     },
 
     async tarball(repo, commitSha) {
