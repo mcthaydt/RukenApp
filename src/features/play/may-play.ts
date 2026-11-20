@@ -28,9 +28,15 @@ export function playBasis(input: {
   return null;
 }
 
-/** True when the browser says it is a phone. A phone's User-Agent has `Mobi` (iPhone, most Androids) or `Android`. */
-export function isPhone(userAgent: string | null): boolean {
-  return /Mobi|Android/.test(userAgent ?? "");
+/**
+ * What the browser says it is: a phone (`Mobi` is in an iPhone's and most Androids' User-Agent), a tablet (an iPad, or an
+ * Android with no `Mobile`), or a computer. An iPad that says it is a Mac is told apart by the page's script.
+ */
+export function deviceOf(userAgent: string | null): "phone" | "tablet" | "computer" {
+  const says = userAgent ?? "";
+  if (/iPad|Tablet/.test(says) || (/Android/.test(says) && !/Mobile/.test(says))) return "tablet";
+  if (/Mobi/.test(says)) return "phone";
+  return "computer";
 }
 
 /** A game's page address ends in a slug: lower-case letters and digits in runs joined by hyphens, 3 to 40 characters. */

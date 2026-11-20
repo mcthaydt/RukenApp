@@ -231,17 +231,6 @@ test("with no script, Menu then Leave game still leaves", async ({ browser }) =>
   await context.close();
 });
 
-test("the Menu line shows once", async ({ page }) => {
-  await page.clock.install();
-  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
-  await pageHasSettled(page);
-  await expect(page.getByText("Choose Menu to leave the game. You can move it.")).toBeVisible();
-  await page.clock.runFor(5_000);
-  await expect(page.getByText("Choose Menu to leave the game. You can move it.")).toHaveCount(0);
-  await page.reload();
-  await expect(page.getByText("Choose Menu to leave the game. You can move it.")).toHaveCount(0);
-});
-
 test("starting says the game's name, and says so when it is slow", async ({ page }) => {
   await page.route(/g-[^/]*\.localhost:8788/, () => new Promise(() => undefined));
   await page.clock.install();

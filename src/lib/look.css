@@ -1972,16 +1972,34 @@ a.sheet.fix {
   object-fit: cover;
 }
 
-/* An upright video sits beside the card's words, at the right, and not under them with the rest of the card blank. */
-.sheet.fix:has(> video[data-shape="upright"]) {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: 1.25rem;
-  align-items: start;
+/* An upright video sits beside the card's words, at the right, and not under them with the rest of the card blank. On a
+   phone the card is only 280 wide, so beside the words the video left them a strip two words wide: there it goes under
+   the words, small. */
+.sheet.fix > video[data-shape="upright"] {
+  width: 4rem;
+  height: auto;
+  aspect-ratio: 9 / 16;
+  margin-top: 0.75rem;
 }
 
-.sheet.fix:has(> video[data-shape="upright"]) > :not(video) {
-  grid-column: 1;
+@media (min-width: 500px) {
+  .sheet.fix:has(> video[data-shape="upright"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 1.25rem;
+    align-items: start;
+  }
+
+  .sheet.fix:has(> video[data-shape="upright"]) > :not(video) {
+    grid-column: 1;
+  }
+
+  .sheet.fix > video[data-shape="upright"] {
+    width: auto;
+    height: auto;
+    aspect-ratio: auto;
+    margin-top: 0;
+  }
 }
 
 .sheet.fix video[data-shape="upright"] {
@@ -2254,17 +2272,43 @@ a.sheet.fix {
   color: var(--ink-soft);
 }
 
-/* A game's page (spec 3, the watch page). The clip runs edge to edge at the top of a phone held upright and the page
-   unrolls under it; held sideways, or on a computer, it is two columns, the clip and the facts on the left and the
-   maker's other games on the right. The foot keeps room for the bar slice 3 adds, so nothing moves when it comes. */
+/* A game's page (spec 3, the Bento page): one grid of tiles. One column on a phone held upright, two from 520px wide, and
+   four from 1000px: the clip with the name over it takes the left half and its tiles stand beside it, so Play is in view
+   on a sideways phone too. The foot keeps room for the bar slice 3 adds, so nothing moves when it comes. */
 main.gamepage {
-  width: min(100%, var(--width-read));
+  width: min(100% - 1.5rem, 80rem);
   margin: 0 auto;
-  padding-bottom: 7rem;
+  padding: 0.75rem 0 7rem;
 }
 
-.gamepage .stage {
+.gamepage .bento {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-flow: dense;
+  gap: 0.75rem;
+}
+
+.gamepage .cell {
+  min-width: 0;
+  margin: 0;
+  padding: 1.25rem;
+}
+
+.gamepage .cell p {
+  margin: 0;
+}
+
+.gamepage .cell p + p {
+  margin-top: 0.75rem;
+}
+
+/* The clip, with the name and the one line on a dark band over its foot, so chalk reads on any clip. */
+.gamepage .hero {
   position: relative;
+  overflow: hidden;
+  padding: 0;
+  border-radius: var(--radius-card);
+  background: var(--felt-deep);
 }
 
 .gamepage .clipbox {
@@ -2296,6 +2340,26 @@ main.gamepage {
   }
 }
 
+.gamepage .heroname {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 1rem 1.25rem 1.25rem;
+  background: color-mix(in srgb, var(--felt-deep) 82%, transparent);
+  color: var(--chalk);
+  pointer-events: none;
+}
+
+.gamepage .heroname h1 {
+  margin: 0;
+  font: var(--text-card-title);
+  overflow-wrap: anywhere;
+}
+
+.gamepage .heroname p {
+  margin: 0.25rem 0 0;
+  font: var(--text-small);
+}
+
 /* Pressing the clip opens it full size: a button over the whole clip, with nothing of its own to see. */
 .gamepage .clipopen {
   position: absolute;
@@ -2325,36 +2389,61 @@ main.gamepage {
   text-decoration: none;
 }
 
-/* The two clip tiles over the clip's foot. The one showing has the blue edge of a picked choice. */
-.gamepage .pickers {
-  position: absolute;
-  bottom: 0.5rem;
-  left: 0.5rem;
+/* Play and what it costs, said before the press, with Join quietly beside the cost for someone who is not a member. */
+.gamepage .playtile {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.gamepage .playtile .button {
+  width: 100%;
+}
+
+.gamepage .costrow {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.gamepage .costline {
+  margin: 0;
+  color: var(--ink-soft);
+  font: var(--text-small);
+}
+
+.gamepage .cell .note {
+  margin-top: 0.75rem;
+}
+
+/* The two clips, each at its own shape. The one showing has a thick blue edge on the paper around its clip, which shows on any clip. */
+.gamepage .pickers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
 }
 
 .gamepage .pickers button {
-  width: var(--size-target);
-  height: var(--size-target);
-  min-height: 0;
+  width: 3.5rem;
+  height: 6.25rem;
+  min-width: var(--size-target);
+  min-height: var(--size-target);
   padding: 0;
-  border: 2px solid var(--felt-deep);
+  border: 4px solid var(--paper);
   border-radius: var(--radius-button);
   background: var(--felt-deep);
   overflow: hidden;
 }
 
+.gamepage .pickers button:last-child {
+  width: 11.125rem;
+}
+
 .gamepage .pickers button[aria-pressed="true"] {
   border-color: var(--pay);
-}
-
-.gamepage .about {
-  padding: 1.25rem 1rem 0;
-}
-
-.gamepage .about > p {
-  margin-top: 0.75rem;
 }
 
 .gamepage .madeby {
@@ -2371,55 +2460,12 @@ main.gamepage {
 
 .gamepage .madeby q {
   display: block;
-  color: var(--sage);
+  color: var(--ink-soft);
   font: var(--text-small);
-}
-
-.gamepage .playrow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
-}
-
-.gamepage .playrow > * {
-  min-width: 8.5rem;
-}
-
-/* What pressing Play costs this person, said before the press, and Join quietly beside it for someone who is not a member. */
-.gamepage .costrow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem 1.5rem;
-  margin-top: 0.75rem;
-}
-
-.gamepage .costline {
-  margin: 0;
-  color: var(--sage);
-  font: var(--text-small);
-}
-
-/* The facts together on one paper card: who it is for, whether it works here, how long people sit. */
-.gamepage .facts {
-  margin-top: 1.5rem;
-  padding: 1.25rem;
-  border-radius: var(--radius-card);
-  background: var(--paper);
-  color: var(--ink);
-}
-
-.gamepage .facts p {
-  margin: 0;
-}
-
-.gamepage .facts p + p {
-  margin-top: 0.75rem;
 }
 
 .gamepage .more {
-  padding: 1.5rem 1rem 0;
+  grid-column: 1 / -1;
 }
 
 .gamepage .more h2 {
@@ -2441,10 +2487,11 @@ main.gamepage {
   min-height: 0;
   margin: 0;
   overflow: hidden;
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-field);
   background: var(--paper);
   color: var(--ink);
   text-decoration: none;
+  border: 2px solid var(--ink-soft);
 }
 
 .gamepage .more .tile {
@@ -2459,57 +2506,41 @@ main.gamepage {
   font: var(--text-statement);
 }
 
-/* A tablet held upright: the phone's order in one column, 640 wide, the clip with its corners. */
-@media (orientation: portrait) and (min-width: 48rem) {
-  main.gamepage {
-    width: min(100%, 40rem);
+/* Two columns from 520px wide, so a sideways phone has Play beside the clip: the clip is the window's height less a
+   little, and the tiles stand in the other column. */
+@media (min-width: 32.5rem) {
+  .gamepage .bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gamepage .hero {
+    grid-row: span 4;
   }
 
   .gamepage .clipbox {
-    height: 52dvh;
-    border-radius: var(--radius-card);
-  }
-
-  .gamepage .stage {
-    margin-top: 1rem;
+    height: clamp(16rem, calc(100dvh - 2rem), 44rem);
   }
 }
 
-/* Sideways, or on a computer: two columns. The clip is as tall as the window less 120px, so the name and Play show beside it. */
-@media (orientation: landscape) {
-  main.gamepage {
-    display: grid;
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    column-gap: 2rem;
-    align-items: start;
-    width: min(100% - 2rem, 80rem);
-    padding-top: 1rem;
+/* A computer: four columns, the clip over the left two, its tiles in the right two. */
+@media (min-width: 62.5rem) {
+  .gamepage .bento {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .gamepage .stage,
-  .gamepage .about {
-    grid-column: 1;
-  }
-
-  .gamepage .about {
-    padding-inline: 0;
+  .gamepage .hero {
+    grid-column: span 2;
   }
 
   .gamepage .clipbox {
     height: auto;
     aspect-ratio: 16 / 9;
-    max-height: calc(100dvh - 7.5rem);
-    border-radius: var(--radius-card);
+    max-height: calc(100dvh - 2rem);
   }
 
-  .gamepage .more {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-    padding-inline: 0;
-  }
-
-  .gamepage .more ul {
-    grid-template-columns: 1fr;
+  .gamepage .watch,
+  .gamepage .madeby {
+    grid-column: span 2;
   }
 }
 
@@ -2601,8 +2632,10 @@ main.playing {
   display: none;
 }
 
-.playing .menu > summary > span:first-child {
-  font-size: 1.25rem;
+/* The tab says RKN, the logo, in the face the wordmark uses. */
+.playing .menu > summary > span {
+  font: var(--text-statement);
+  font-size: 1.125rem;
   line-height: 1;
 }
 
@@ -2628,31 +2661,6 @@ main.playing {
   transform: translateX(var(--drag-x));
   transition: none;
   cursor: grabbing;
-}
-
-/* The line beside the tab, shown once on a device. */
-.playing .menuhint {
-  position: fixed;
-  z-index: 2;
-  top: calc(var(--tab-at, 0.25) * 100dvh + 14px);
-  left: 56px;
-  right: 1rem;
-  width: fit-content;
-  max-width: calc(100vw - 72px);
-  margin: 0;
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-button);
-  background: var(--felt-deep);
-  font: var(--text-small);
-}
-
-.playing .menu[open] + .menuhint {
-  display: none;
-}
-
-.playing .menu[data-side="right"] + .menuhint {
-  left: auto;
-  right: 56px;
 }
 
 /* The menu: the game stays in view behind a dimming layer, and the panel comes in from the tab's side (from the bottom
@@ -2738,9 +2746,42 @@ main.playing {
   }
 }
 
-@media (orientation: landscape) and (max-height: 30rem) {
+/* The Store sheet: the name and maker on top, Keep playing the one blue button, and the rest as plain rows with a
+   line between them, so the sheet reads as one list. */
+.playing .menupanel .outline,
+.playing .menupanel .safe {
+  justify-content: flex-start;
+  border: 0;
+  border-bottom: 1px solid var(--ink-soft);
+  border-radius: 0;
+  background: none;
+  color: var(--pay);
+  padding-inline: 0;
+}
+
+/* A window under 450 tall: the name stays on one line, the gaps close, and the four buttons sit two by two, so every
+   one and the help line are in sight in 320 of height. */
+@media (max-height: 28rem) {
   .playing .menupanel {
-    width: 300px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-content: start;
+    gap: 0.5rem 0.75rem;
+    width: min(420px, 100%);
+    padding: 1rem;
+  }
+
+  .playing .menupanel h2 {
+    font-size: 1.25rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .playing .menupanel h2,
+  .playing .menupanel .note {
+    grid-column: 1 / -1;
   }
 }
 

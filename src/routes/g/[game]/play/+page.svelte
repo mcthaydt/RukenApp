@@ -23,9 +23,7 @@
   let { data }: PageProps = $props();
 
   const PLACE_KEY = "rk_menu_tab";
-  const SEEN_KEY = "rk_seen_menu";
   const SLOW_AFTER_MS = 20_000;
-  const HINT_FOR_MS = 5_000;
 
   let stage = $state<HTMLElement>();
   let frame = $state<HTMLIFrameElement>();
@@ -37,7 +35,6 @@
   // True once the script is running: the starting words need it to go away again, so with no script there are none.
   let alive = $state(false);
   let slow = $state(false);
-  let hint = $state(true);
   let canFullScreen = $state(false);
   let fullScreen = $state(false);
   let place = $state<TabPlace>(FIRST_PLACE);
@@ -80,19 +77,6 @@
       fullScreen = document.fullscreenElement !== null;
     };
     document.addEventListener("fullscreenchange", onFullScreen);
-
-    // The line beside the tab shows once on a device, for five seconds. Without script it simply stays.
-    let hintTimer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      if (localStorage.getItem(SEEN_KEY) === null) {
-        localStorage.setItem(SEEN_KEY, "yes");
-        hintTimer = setTimeout(() => (hint = false), HINT_FOR_MS);
-      } else {
-        hint = false;
-      }
-    } catch {
-      hintTimer = setTimeout(() => (hint = false), HINT_FOR_MS);
-    }
 
     // A frame that finished loading before the script started has already missed its own `load`; the window's own
     // `load` waits for frames, so it is the same fact.
@@ -155,7 +139,6 @@
       removeEventListener("pagehide", onLeave);
       document.removeEventListener("fullscreenchange", onFullScreen);
       clearTimeout(slowTimer);
-      if (hintTimer !== undefined) clearTimeout(hintTimer);
     };
   });
 
@@ -333,8 +316,7 @@
       onclick={tabClick}
       onkeydown={tabKey}
     >
-      <span aria-hidden="true">≡</span>
-      <span aria-hidden="true">Menu</span>
+      <span aria-hidden="true">RKN</span>
     </summary>
     <div class="menusheet">
       <div class="menupanel" bind:this={panel}>
@@ -354,8 +336,4 @@
       </div>
     </div>
   </details>
-  <!-- Beside the tab, and outside the <details>, which hides everything but its summary while it is shut. -->
-  {#if hint}
-    <p class="menuhint">Choose Menu to leave the game. You can move it.</p>
-  {/if}
 </main>
