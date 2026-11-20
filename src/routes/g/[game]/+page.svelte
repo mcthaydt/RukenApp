@@ -80,6 +80,7 @@
         <video
           src={`${data.clips[shape]}#t=0.001`}
           preload="metadata"
+          tabindex={enhanced ? -1 : undefined}
           controls={!enhanced}
           muted
           loop
@@ -105,6 +106,7 @@
             class="tile"
             src={`${data.clips.upright}#t=0.001`}
             preload="metadata"
+            tabindex="-1"
             muted
             playsinline
             aria-hidden="true"
@@ -120,6 +122,7 @@
             class="tile"
             src={`${data.clips.wide}#t=0.001`}
             preload="metadata"
+            tabindex="-1"
             muted
             playsinline
             aria-hidden="true"
@@ -190,6 +193,7 @@
                 class="tile"
                 src={`${game.wideClip}#t=0.001`}
                 preload="metadata"
+                tabindex="-1"
                 muted
                 playsinline
                 aria-hidden="true"
