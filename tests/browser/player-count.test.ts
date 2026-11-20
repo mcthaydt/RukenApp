@@ -91,7 +91,7 @@ test("another account's post is refused and changes nothing", async ({ page, bro
   try {
     await signUp(await stranger.newPage());
     const posted = await stranger.request.post(`/make/${slug}?/playerCount`, {
-      form: {},
+      form: { show: "on" },
       headers: { origin: site },
     });
     expect(posted.status()).toBe(404);
