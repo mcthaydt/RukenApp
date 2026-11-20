@@ -20,8 +20,8 @@ const on = (firstDay: string | null, extra: Partial<DecisionSchedule> = {}): Dec
 });
 
 describe("the shipped schedule", () => {
-  it("starts on Friday 27 November 2026, the first Friday after unit H's last commit", () => {
-    expect(schedule.firstDay).toBe("2026-11-27");
+  it("starts on Friday 20 November 2026, the day Floor Fifty goes out as batch 0", () => {
+    expect(schedule.firstDay).toBe("2026-11-20");
   });
 
   it("is Friday, noon, New York time, 10 seats growing to 500", () => {
