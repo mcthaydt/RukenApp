@@ -19,7 +19,7 @@ test.beforeEach(forgetRateLimits);
 test("a member's play time is recorded against that game", async ({ page }) => {
   await payAsNewMember(page);
   await page.clock.install();
-  await page.goto(`/g/${game.slug}/play`);
+  await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   await page.frameLocator("iframe.frame").getByRole("button", { name: "Tap" }).click();
   await page.clock.runFor(16_000);
@@ -29,21 +29,21 @@ test("a member's play time is recorded against that game", async ({ page }) => {
 
 test("no time counts while the person has not touched the game", async ({ page }) => {
   await page.clock.install();
-  await page.goto(`/g/${free.slug}/play`);
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   await page.clock.runFor(16_000);
   await expect.poll(async () => (await playOf(free.slug)).sessions.at(-1)?.beats).toEqual([false]);
 });
 
 test("free play by nobody is recorded, as free", async ({ page }) => {
-  await page.goto(`/g/${free.slug}/play`);
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await expect
     .poll(async () => (await playOf(free.slug)).sessions.at(-1))
     .toMatchObject({ basis: "free_game", userId: null });
 });
 
 test("a beat with a wrong token is not taken", async ({ page, request }) => {
-  await page.goto(`/g/${free.slug}/play`);
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await expect.poll(async () => (await playOf(free.slug)).sessions.at(-1)).toBeDefined();
   const real = (await playOf(free.slug)).sessions.at(-1);
   const answer = await request.post(`/g/${free.slug}/play/beat`, {

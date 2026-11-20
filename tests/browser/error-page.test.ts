@@ -18,7 +18,7 @@ test("opening a lot of games in a minute says so, and offers the way back", asyn
   const free = await addGame(browser, request, { free: true });
   await forgetRateLimits();
   for (let opened = 0; opened < 30; opened += 1) await request.get(`/g/${free.slug}/play`);
-  const answer = await page.goto(`/g/${free.slug}/play`);
+  const answer = await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   expect(answer?.status()).toBe(429);
   await expect(page.getByRole("heading", { name: "You've opened a lot of games just now." })).toBeVisible();
   await expect(page.getByText("Try again in a minute.")).toBeVisible();

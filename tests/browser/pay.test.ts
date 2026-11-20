@@ -73,7 +73,7 @@ async function liveGameOfItsOwnMaker(browser: Browser): Promise<{ slug: string; 
 // Design 8: a member's sign-up records the maker's link they came through. No screen shows it, so the row is read.
 test("a member's sign-up records the maker's link they came through", async ({ page, browser }) => {
   const game = await liveGameOfItsOwnMaker(browser);
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("link", { name: "Play" }).click();
   await expect(page).toHaveURL(/\/join/);
 
@@ -90,8 +90,8 @@ test("a visitor who lands on one game's page and then another's is recorded with
 }) => {
   const first = await liveGameOfItsOwnMaker(browser);
   const second = await liveGameOfItsOwnMaker(browser);
-  await page.goto(`/g/${first.slug}`);
-  await page.goto(`/g/${second.slug}`);
+  await page.goto(`/g/${first.slug}`, { waitUntil: "domcontentloaded" });
+  await page.goto(`/g/${second.slug}`, { waitUntil: "domcontentloaded" });
 
   const member = await payAsNewMember(page);
 
