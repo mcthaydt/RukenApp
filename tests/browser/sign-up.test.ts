@@ -347,7 +347,7 @@ test("it works with no script at all", async ({ browser, baseURL }) => {
     const page = await context.newPage();
     const number = freshNumber();
     await page.goto("/sign-up");
-    await startSignUpForm(page, number);
+    await startSignUpForm(page, number, undefined, false);
     await page.getByLabel("The code we texted you").fill(await codeTo(number));
     await page.getByRole("button", { name: "Join Ruken" }).click();
     await expect(page).toHaveURL("/");

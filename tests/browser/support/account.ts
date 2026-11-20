@@ -78,6 +78,7 @@ export async function startSignUpForm(
   page: Page,
   number: string,
   password: string = JOURNEY_PASSWORD,
+  scriptRuns: boolean = true,
 ): Promise<void> {
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(password);
@@ -85,7 +86,8 @@ export async function startSignUpForm(
   await page.getByRole("button", { name: "Text me a code" }).click();
   await expect(page.getByRole("heading", { name: "We texted you a code" })).toBeVisible();
   // The code screen can be on the page before it is alive; a press while it comes alive is lost (seen in WebKit).
-  await pageHasSettled(page);
+  // A browser with no script never comes alive, so it passes `scriptRuns: false` and does not wait.
+  if (scriptRuns) await pageHasSettled(page);
 }
 
 /**
