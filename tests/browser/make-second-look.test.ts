@@ -381,17 +381,17 @@ test("on a phone Check and send's two video captions are the same height", async
 
 // ---- L19: after taking a game off, the screen says what changed ----------------------------------------------------------------
 
-test("after a game is taken off Ruken, the screen says players can't find it and how to put it back", async ({
+test("after a game is taken off Ruken, the screen says players can't find it and has the button to put it back", async ({
   page,
 }) => {
   const { slug } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}/take-off`);
   await page.getByRole("button", { name: "Take it off Ruken" }).click();
   await expect(page).toHaveURL(`/make/${slug}`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Off Ruken. You took it off.");
-  await expect(page.getByText("Players can't find it or play it any more.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Taken off Ruken");
+  await expect(page.getByText("Players can't find it or play it.")).toBeVisible();
   await expect(page.getByText("Nothing changed on GitHub.")).toBeVisible();
-  await expect(page.getByText("To put it back, add it again as a new game.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Put it back on Ruken" })).toBeVisible();
 });
 
 test("on a wide window the screen after taking a game off starts at the top left, where Waiting starts, not in the middle", async ({
@@ -400,6 +400,7 @@ test("on a wide window the screen after taking a game off starts at the top left
   test.skip(!["computer", "tablet-sideways"].includes(layoutOf(page)), "a window held sideways, with room");
   const waiting = await gameWhere(page, { state: "waiting" });
   await page.goto(`/make/${waiting.slug}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Waiting for review");
   await wordsHaveSettled(page);
   const whereWaitingStarts = await boxOf(page.locator("main :is(.count, h1)").first());
 
@@ -411,6 +412,9 @@ test("on a wide window the screen after taking a game off starts at the top left
   await page.goto(`/make/${live.slug}/take-off`);
   await page.getByRole("button", { name: "Take it off Ruken" }).click();
   await expect(page).toHaveURL(`/make/${live.slug}`);
+  // The address changes a moment before the new screen replaces the question's card, so the screen itself is waited for:
+  // measured at once, the first match can be the card as it leaves, with no box (the flake on main, run 44024056397).
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Taken off Ruken");
   await wordsHaveSettled(page);
   const whereThisStarts = await boxOf(page.locator("main :is(.count, h1)").first());
 

@@ -1,11 +1,12 @@
 <!--
   A game that is past its questions: where it stands, in the maker's words, and the one next step. Waiting, Sent back and
-  Live each have their own screen; a game off Ruken has only its headline and the way back.
+  Live and Taken off each have their own screen; a game staff took down has only its headline and the way back.
 -->
 <script lang="ts">
   import LiveScreen from "../parts/LiveScreen.svelte";
   import SentBackScreen from "../parts/SentBackScreen.svelte";
   import StateScreen from "../parts/StateScreen.svelte";
+  import TakenOffScreen from "../parts/TakenOffScreen.svelte";
   import WaitingScreen from "../parts/WaitingScreen.svelte";
   import type { PageProps } from "./$types";
 
@@ -38,6 +39,13 @@
     takeOffAddress={data.takeOffAddress}
     backdrop={data.backdrop}
     game={data.game}
+    problem={form?.problem}
+  />
+{:else if data.view === "taken_off"}
+  <TakenOffScreen
+    name={data.name}
+    nextStep={data.nextStep}
+    filesLeft={data.filesLeft}
     problem={form?.problem}
   />
 {:else}

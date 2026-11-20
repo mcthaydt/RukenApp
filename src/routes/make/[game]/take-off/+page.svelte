@@ -1,5 +1,6 @@
 <!--
-  Taking a live game off Ruken, which can't be undone. "Keep it on Ruken" is the way back: the green, safe choice, and the
+  Taking a live game off Ruken. Red stays: its files are deleted and it leaves at once, though its maker can put it back
+  (it goes through review again). "Keep it on Ruken" is the way back: the green, safe choice, and the
   one that has focus, so a stray Enter keeps the game. "Take it off Ruken" is the red one, the only red thing here. Nothing
   here is blue and there is no field to type in, so Enter has nothing to press but the focused "Keep it on Ruken".
 -->
@@ -25,7 +26,7 @@
 <main class="card">
   <h1>Take {data.name} off Ruken?</h1>
   <p>Players won't be able to find it or play it any more. Nothing changes on GitHub.</p>
-  <p>You can't undo this.</p>
+  <p>You can put it back later. We'll check it again first.</p>
   {#if form?.problem !== undefined}
     <p class="problem" role="alert">{form.problem}</p>
   {/if}

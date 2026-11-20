@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { grantFirstOwner, staffRolesOf } from "../../../src/features/accounts/staff.ts";
+import {
+  firstGameStaff,
+  GAME_STAFF_ROLES,
+  grantFirstOwner,
+  staffRolesOf,
+} from "../../../src/features/accounts/staff.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 
@@ -90,5 +95,43 @@ describe("grantFirstOwner", () => {
 
     expect([...answers].sort()).toEqual(["already_one", "granted"]);
     expect(await db().staffAssignment.count()).toBe(1);
+  });
+});
+
+describe("firstGameStaff", () => {
+  // Like the first-owner rule, this is about the whole table, so each case starts from an empty one.
+  beforeEach(async () => {
+    await db().staffAssignment.deleteMany();
+  });
+
+  it("is the roles that check games, and no other", () => {
+    expect(GAME_STAFF_ROLES).toEqual(["owner", "head_curator", "curator"]);
+  });
+
+  it("is null with no staff at all", async () => {
+    expect(await firstGameStaff(db())).toBeNull();
+  });
+
+  it("is null when the only staff role is one that does not check games", async () => {
+    const userId = await newUser("money@example.test");
+    await db().staffAssignment.create({ data: { userId, role: "finance" } });
+
+    expect(await firstGameStaff(db())).toBeNull();
+  });
+
+  it("is the older of two curators", async () => {
+    const older = await newUser("older@example.test");
+    const newer = await newUser("newer@example.test");
+    await db().staffAssignment.create({ data: { userId: older, role: "curator" } });
+    await db().staffAssignment.create({ data: { userId: newer, role: "curator" } });
+
+    expect(await firstGameStaff(db())).toBe(older);
+  });
+
+  it("is the owner that grantFirstOwner made", async () => {
+    const userId = await newUser("owner-first@example.test");
+    await grantFirstOwner(db(), "owner-first@example.test");
+
+    expect(await firstGameStaff(db())).toBe(userId);
   });
 });
