@@ -129,3 +129,56 @@
 - The `firstLiveAt` hand-off agrees with #195 section 3 ("if a later spec makes games go live on a set day after the yes, it is that write instead").
 - Q's "not alongside a decision day unit" in #195 matches H's.
 - D alone holds the migration, and H merging hold with release keeps a held decision from being written by a `main` that cannot send it out.
+
+---
+
+# Cycle 2
+
+- **Examined:** `docs/superpowers/specs/2026-11-20-decision-day-design.md` at `c5f7580` (the spec's answer to cycle 1, on top of `4b87183`).
+- **Against:** the same sources as cycle 1 (`main` at `dc96dc9`, the #193 plan, #195 at `0582f7e`, the handover patch).
+
+## Verdict
+
+**Red: 2 new red findings (11, 12), 1 note.** All ten cycle 1 reds and six notes are answered and pass, each where the spec marks it. The two new reds are the same kind as findings 8 and 3, in places cycle 1 did not reach: A's order, and #195's new ways for a maker to change a waiting game. Both are one-line spec fixes; D does not depend on either, so D's content is settled once they are folded in.
+
+## Cycle 1 findings re-checked
+
+| Finding | Where it landed | Result |
+|---|---|---|
+| 1, held reviews read as real | 1.3 (`tookEffect`), section 2 "What changes on `main`" naming `ownGame` `:477/:525`, `everLive` `:798`, `sentBackLast` `:814/:891`, `partsToFix`; H step 1 tests `addressStays` and the fix list | pass |
+| 2, applied vs lapsed | 1.3, section 3, section 4 `DecisionOutcome` (add-only, unique `reviewId`); counts read `applied` | pass |
+| 3, lapse on any change | section 2 (F3), `Game.changedAt` from `saveAnswer`, `saveClip`, `pullLatest`; "no longer waiting" also lapses; tests for files, rating, video | pass on `main`'s write paths (see 12 for #195's) |
+| 4, was live before | 1.3 `wasLiveBefore`, kind `"back"`, no `firstLiveAt` dependency | pass |
+| 5, Accepted for put-back | 5.2's show rule, backfill for every game with an `accepted` review, at-once yes sets it; D and H tests | pass |
+| 6, races | section 2 "One lock", 1.1 "has not gone out yet", H `pg` tests for both races | pass |
+| 7, oldest first | section 3, each day its own transaction, test for two missed days | pass |
+| 8, H's order | H's row names Q, R, F, P, K with the shared files | pass |
+| 9, one rate | 5.3 states one definition matching the patch (any yes that took effect; floor over the same 90 days), added to the calls | pass |
+| 10, the cron check | `cloudflare/crons.js` with `crons.test.ts`, unknown cron throws; `tests/wrangler.test.ts` named with why | pass |
+| Notes 1 to 6 | 1.2 (`firstDay: null`), 1.2 (clamp), 5.1 (held-kind games only), section 3 (early fire), section 3 and H step 0 (limits page), A step 1 (typecheck and lint) | all answered |
+
+## New red findings
+
+### 11. A's order misses F, P, K and Q, which change the same files
+
+- UNIT: section 7, A's "Waits on".
+- VERDICT: red.
+- REQUIREMENT: `staged-path`, Splitting: "no two running units own the same file".
+- REASON: A waits only on H, but owns files that F, P, K and Q also change, none of which has merged.
+- EVIDENCE: A owns `src/routes/make/[game]/+page.server.ts`, `LiveScreen.svelte` (the patch rewrites it to pull out the backdrop), `service.ts` and the browser helpers in `tests/browser/support/`. Plan `2026-11-15-slice-2-rest.md`, Task 25 (P) modifies `src/routes/make/[game]/+page.server.ts` and `LiveScreen.svelte`; its "Why F waits for S" says F adds to `tests/browser/support/game.ts` and `database.ts`; #195's Q owns `LiveScreen`, `src/routes/make/[game]/+page.server.ts`, `service.ts`, `tests/browser/support/game.ts` and `database.ts`; K owns `service.ts`. `progress.md` shows F and P not started and #195 in draft.
+- EXPECTED: A runs alongside none of F, P, K and Q; whichever starts second starts from a `main` holding the other (as H's row now says).
+- FIX: A's "Waits on" cell adds "not alongside F, P, K or Q", naming the shared files. Files: the spec only.
+
+### 12. #195's new write paths must also mark a waiting game changed
+
+- UNIT: section 2, "A maker changes a waiting game", and "Lining up with #195".
+- VERDICT: red.
+- REQUIREMENT: section 9, "A held decision lapses when the maker changes the game in any way (files, answers, videos) after it".
+- REASON: the spec names the three write paths on `main`, but #195 adds new ones a waiting game takes (screenshots added and taken out, up to 5 videos a shape added and taken out by position, the new answers). If K or Q lands after H without writing `changedAt` there, a maker can swap the screenshots after a held yes and they go live with no person's look, the same harm as finding 3.
+- EVIDENCE: #195 section 3 ("Taking one out ... deletes it, then moves each one after it down"; `GameShot`; `GameClip` gains `position`) and unit K's owned files ("adding and taking out screenshots and videos by position"); spec section 2 names only `saveAnswer`, `saveClip` and `pullLatest`.
+- EXPECTED: every maker write to a waiting game writes `changedAt`, whichever of H and K or Q merges second.
+- FIX: section 2 states the rule as "every maker write to a waiting game", and "Lining up with #195" adds: whichever of H and K (and Q) merges second makes K's and Q's new writes (screenshots and videos by position, the new answers) write `changedAt`, with one `service.pg.test.ts` case each. Files: the spec only.
+
+## Note
+
+7. **"After H merges" against "after that commit."** 1.2 says the first decision day is the first Friday after H merges; H's step 3 writes the first Friday after its last commit. If the merge slips past that Friday, the first day is already past: the release writes it with no decisions and the steps count from it. Harmless, but one wording should win (recommended: step 3's, and say so in 1.2).
