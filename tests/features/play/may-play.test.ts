@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { backFromPaywall, isPhone, playBasis } from "../../../src/features/play/may-play.ts";
+import { backFromPaywall, deviceOf, playBasis } from "../../../src/features/play/may-play.ts";
 
 const game = { freeToPlay: false, makerUserId: "maker" };
 const viewer = { userId: "u", isStaff: false, isMember: false };
@@ -45,18 +45,31 @@ describe("playBasis", () => {
   });
 });
 
-describe("isPhone", () => {
+describe("deviceOf", () => {
+  const pixel =
+    "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36";
+  const iphone =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+  const ipad =
+    "Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+  const androidTablet =
+    "Mozilla/5.0 (Linux; Android 14; SM-X710) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+  const desktop =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
   it("knows a phone by what it says it is", () => {
-    const pixel =
-      "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36";
-    const iphone =
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
-    const desktop =
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
-    expect(isPhone(pixel)).toBe(true);
-    expect(isPhone(iphone)).toBe(true);
-    expect(isPhone(desktop)).toBe(false);
-    expect(isPhone(null)).toBe(false);
+    expect(deviceOf(pixel)).toBe("phone");
+    expect(deviceOf(iphone)).toBe("phone");
+  });
+
+  it("knows a tablet, which an iPad's Mobile word must not turn into a phone", () => {
+    expect(deviceOf(ipad)).toBe("tablet");
+    expect(deviceOf(androidTablet)).toBe("tablet");
+  });
+
+  it("calls anything else a computer", () => {
+    expect(deviceOf(desktop)).toBe("computer");
+    expect(deviceOf(null)).toBe("computer");
   });
 });
 

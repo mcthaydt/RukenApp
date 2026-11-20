@@ -173,3 +173,19 @@ export function nextDecisionDay(
     day = addDays(day, 7);
   }
 }
+
+/**
+ * Every decision day whose moment is at or before `now`, oldest first: what the release looks at, so a day missed (a
+ * cron that failed) still goes out. Empty while the schedule is off.
+ */
+export function decisionDaysDue(now: Date, s: DecisionSchedule = decisionSchedule): DecisionDayMoment[] {
+  if (s.firstDay === null) return [];
+  const due: DecisionDayMoment[] = [];
+  let day = firstDecisionDayOnOrAfter(s.firstDay, s);
+  for (;;) {
+    const at = momentOf(day, s);
+    if (at.getTime() > now.getTime()) return due;
+    due.push({ day, at, seats: seatsOn(day, s) });
+    day = addDays(day, 7);
+  }
+}

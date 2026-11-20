@@ -341,24 +341,30 @@ describe("screens wear the look and nothing of their own", () => {
     "asks",
     "preview",
     "checking",
+    // The maker's On/Off switch on Live.
+    "countswitch",
     // A game's page (spec 3) and the play screen (spec 4).
     "gamepage",
-    "stage",
+    "bento",
+    "cell",
+    "hero",
+    "heroname",
+    "fact",
+    "joinlink",
+    "playtile",
+    "watch",
+    "pickers",
     "clipbox",
     "clipopen",
     "back",
-    "pickers",
-    "about",
     "madeby",
     "playrow",
     "costrow",
     "costline",
-    "facts",
     "more",
     "playing",
     "starting",
     "menu",
-    "menuhint",
     "menusheet",
     "menupanel",
   ];
@@ -468,10 +474,18 @@ describe("the maker's screens", () => {
     "asks",
     "preview",
     "checking",
+    "countswitch",
   ];
 
   it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {
     expect(withoutComments).toMatch(new RegExp(`\\.${name}(?![\\w-])`));
+  });
+
+  // Unit P: the player count switch is pressed with a thumb, so it is at least 44 tall and wide.
+  it("the player count switch is at least 44 by 44", () => {
+    const rule = /\.countswitch button\s*\{([^}]*)\}/.exec(withoutComments)?.[1] ?? "";
+    expect(rule).toMatch(/min-height:\s*var\(--size-target\)/);
+    expect(rule).toMatch(/min-width:\s*var\(--size-target\)/);
   });
 
   // Owner, 2026-11-15: no new colour. The ten tokens in :root are the only place a colour is written.
@@ -502,17 +516,18 @@ describe("the maker's screens", () => {
 describe("a game's page", () => {
   const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
   const PAGE_CLASSES = [
-    "stage",
+    "bento",
+    "cell",
+    "hero",
+    "heroname",
+    "playtile",
     "clipbox",
     "clipopen",
     "back",
     "pickers",
-    "about",
     "madeby",
-    "playrow",
     "costrow",
     "costline",
-    "facts",
     "more",
   ];
 
@@ -524,8 +539,8 @@ describe("a game's page", () => {
     const rule = (selector: string) =>
       new RegExp(`${selector.replaceAll(".", "\\.")}\\s*\\{([^}]*)\\}`).exec(withoutComments)?.[1] ?? "";
     expect(rule(".gamepage .back")).toMatch(/min-height:\s*var\(--size-target\)/);
-    expect(rule(".gamepage .pickers button")).toMatch(/width:\s*var\(--size-target\)/);
-    expect(rule(".gamepage .pickers button")).toMatch(/height:\s*var\(--size-target\)/);
+    expect(rule(".gamepage .pickers button")).toMatch(/min-width:\s*var\(--size-target\)/);
+    expect(rule(".gamepage .pickers button")).toMatch(/min-height:\s*var\(--size-target\)/);
   });
 
   it("the tile showing has the picked blue edge, by attribute and not by class", () => {
@@ -549,7 +564,7 @@ describe("the play screen", () => {
     ).exec(withoutComments)?.[1] ?? "";
   const tab = rule(".playing .menu > summary");
 
-  it.each(["menuhint", "menusheet", "menupanel", "starting"])("%s has a rule", (name) => {
+  it.each(["menusheet", "menupanel", "starting"])("%s has a rule", (name) => {
     expect(withoutComments).toMatch(new RegExp(`\\.playing \\.${name}\\s*[,{]`));
   });
 

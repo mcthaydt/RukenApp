@@ -27,7 +27,7 @@ const noSideways = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 
 test("a game's page shows its clip, its name, its line, its rating and Play", async ({ page }, testInfo) => {
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(game.name);
   await expect(page.getByText("Climb. Fall. Climb again.")).toBeVisible();
@@ -48,12 +48,12 @@ test("a game's page shows its clip, its name, its line, its rating and Play", as
 
 test("the clip's address answers anyone, as video", async ({ page }) => {
   // The clip is on its own address, which a visitor with no account reaches: the browser decodes it as a video.
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await expectFrame(page.locator(".clipbox video"));
 });
 
 test("pressing a tile shows that clip, and pressing the clip opens it with sound", async ({ page }) => {
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   const box = page.locator(".clipbox video");
   const upright = page.getByRole("button", { name: "Watch the upright video" });
@@ -77,11 +77,11 @@ test("pressing a tile shows that clip, and pressing the clip opens it with sound
 test("the cost line is said to each person in their own words", async ({ page, browser }) => {
   // Three people sign in one after another, which WebKit does slowly.
   test.slow();
-  await page.goto(`/g/${free.slug}`);
+  await page.goto(`/g/${free.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Free to play. No account needed.")).toBeVisible();
 
   await signInAs(page, game.maker);
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await expect(
     page.getByText("This is your game. Playing it here doesn't count toward its play time."),
   ).toBeVisible();
@@ -91,7 +91,7 @@ test("the cost line is said to each person in their own words", async ({ page, b
   const context = await browser.newContext({ baseURL: "http://localhost:4173" });
   const staffPage = await context.newPage();
   await signInAs(staffPage, staff);
-  await staffPage.goto(`/g/${game.slug}`);
+  await staffPage.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await expect(
     staffPage.getByText("You can play this to check it. It doesn't count toward its play time."),
   ).toBeVisible();
@@ -100,25 +100,25 @@ test("the cost line is said to each person in their own words", async ({ page, b
 
 test("a member reads that Play is included, and has no Join", async ({ page }) => {
   await payAsNewMember(page);
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Included with your membership.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Join" })).toHaveCount(0);
 });
 
 test("Join is beside the price for someone who is not a member, and only for them", async ({ page }) => {
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("link", { name: "Join" })).toHaveAttribute(
     "href",
     `/join?next=${encodeURIComponent(`/g/${game.slug}`)}`,
   );
-  await page.goto(`/g/${free.slug}`);
+  await page.goto(`/g/${free.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("link", { name: "Join" })).toHaveCount(0);
 });
 
 test("the sitting line waits for 20 plays", async ({ page, browser, request }) => {
   const own = await addGame(browser, request);
   await addPlays(own.slug, 19, 12);
-  await page.goto(`/g/${own.slug}`);
+  await page.goto(`/g/${own.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText(/^Most people play/)).toHaveCount(0);
   await addPlays(own.slug, 1, 12);
   await page.reload();
@@ -129,7 +129,7 @@ test("the maker is shown when they have a page, with their other games", async (
   page,
   browser,
   request,
-}) => {
+}, testInfo) => {
   const first = await addGame(browser, request);
   await givePage(first.maker, { name: "Snek", oneLine: "I make small games." });
   // A second live game by the same maker, from rows.
@@ -137,28 +137,29 @@ test("the maker is shown when they have a page, with their other games", async (
   await changeGame(second.slug, {});
   await moveGameTo(second.slug, first.makerUserId);
 
-  await page.goto(`/g/${first.slug}`);
+  await page.goto(`/g/${first.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Made by")).toBeVisible();
   await expect(page.getByText("I make small games.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "More from Snek" })).toBeVisible();
   await expect(page.locator(".more a")).toHaveCount(1);
   await expect(page.locator(".more a")).toHaveAttribute("href", `/g/${second.slug}`);
+  await showTheOwner(page, testInfo, "a game's page, with its maker and their other games");
 });
 
 test("a maker with no page is not shown", async ({ page }) => {
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Made by")).toHaveCount(0);
   await expect(page.getByText(/^More from/)).toHaveCount(0);
 });
 
 test("landing on a game's page remembers its maker's link", async ({ page }) => {
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   const cookie = (await page.context().cookies()).find((one) => one.name === "rk_arrival");
   expect(cookie).toMatchObject({ httpOnly: true, sameSite: "Lax" });
 });
 
 test("Play and every tile are reached by the keyboard, with focus showing", async ({ page }) => {
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   const wanted = [
     "Watch the video full size",
@@ -186,6 +187,23 @@ test("Play and every tile are reached by the keyboard, with focus showing", asyn
   expect([...seen].sort()).toEqual([...wanted].sort());
 });
 
+test("with no script the clip's own controls are not under the name", async ({ browser }) => {
+  const context = await browser.newContext({ baseURL: "http://localhost:4173", javaScriptEnabled: false });
+  const page = await context.newPage();
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
+  const clip = await page.locator(".clipbox video").boundingBox();
+  const name = await page.locator(".heroname").boundingBox();
+  if (clip === null || name === null) throw new Error("the clip or the name has no box");
+  expect(name.y).toBeGreaterThanOrEqual(clip.y + clip.height - 1);
+  await context.close();
+});
+
+test("Play is on the first screen, whatever the window", async ({ page }) => {
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
+  await pageHasSettled(page);
+  await expect(page.getByRole("link", { name: "Play" })).toBeInViewport();
+});
+
 test("a game that is not there is a missing page with a way back", async ({ page }) => {
   const answer = await page.goto("/g/no-such-game");
   expect(answer?.status()).toBe(404);
@@ -194,9 +212,9 @@ test("a game that is not there is a missing page with a way back", async ({ page
 
 test("a game is not at its address until it is accepted", async ({ page }) => {
   const waiting = await gameWhere(page, { state: "waiting" });
-  expect((await page.goto(`/g/${waiting.slug}`))?.status()).toBe(404);
+  expect((await page.goto(`/g/${waiting.slug}`, { waitUntil: "domcontentloaded" }))?.status()).toBe(404);
   await putGameWhereStaffLeaveIt(waiting.slug, { state: "live" });
-  expect((await page.goto(`/g/${waiting.slug}`))?.status()).toBe(200);
+  expect((await page.goto(`/g/${waiting.slug}`, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
 });
 
 test("the device line names a tablet that says it is a computer", async ({ browser }) => {
@@ -208,13 +226,13 @@ test("the device line names a tablet that says it is a computer", async ({ brows
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
   });
   const page = await context.newPage();
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Plays on this tablet. Nothing to install.")).toBeVisible();
   await context.close();
 });
 
 test("Share gives the link", async ({ page }) => {
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   await page.evaluate(() => {
     Object.defineProperty(navigator, "share", { value: undefined, configurable: true });
@@ -225,7 +243,7 @@ test("Share gives the link", async ({ page }) => {
 });
 
 test("nothing on the page is red, and nothing scrolls sideways", async ({ page }) => {
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   expect(await pipRed(page)).toEqual([]);
   expect(await noSideways(page)).toBe(true);

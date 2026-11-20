@@ -1,13 +1,19 @@
 import { error } from "@sveltejs/kit";
 import { GAME_STAFF_ROLES } from "../../../features/accounts/accounts.ts";
-import { gamesServices, ratingLine, ratingWords, sittingWords } from "../../../features/games/games.ts";
+import {
+  gamesServices,
+  ratingLine,
+  playersWords,
+  ratingWords,
+  sittingWords,
+} from "../../../features/games/games.ts";
 import {
   dollars,
   membershipServices,
   PREMIUM_PRICES_CENTS,
 } from "../../../features/membership/membership.ts";
 import { pagesServices } from "../../../features/pages/pages.ts";
-import { isPhone, playServices } from "../../../features/play/play.ts";
+import { deviceOf, playServices } from "../../../features/play/play.ts";
 import type { PageServerLoad } from "./$types";
 
 // A live game's page (spec 3). A game that is not live is not here at all: the missing page.
@@ -34,6 +40,10 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
 
   const makerPage = await pagesServices().service.pageOf(game.makerUserId);
   const sitting = await playServices().service.sittingOf(game.id, new Date());
+  // Asked only while the maker has turned the count on, so a game that has it off costs nothing and shows nothing.
+  const players = game.showsPlayerCount
+    ? playersWords(await playServices().service.playersThisWeek(game.id, new Date()))
+    : null;
   const more = makerPage === null ? [] : await games.service.moreLiveGamesBy(game.makerUserId, game.slug);
 
   return {
@@ -43,10 +53,11 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
     rating: { chip: ratingWords(game.ageRating, game.contentMarks) ?? "", line: ratingLine(game.ageRating) },
     clips: { upright: games.media(game.clips.upright), wide: games.media(game.clips.wide) },
     // The server knows a phone from its User-Agent; the page's script says "tablet" where the pointer is coarse.
-    device: isPhone(request.headers.get("user-agent")) ? ("phone" as const) : ("computer" as const),
+    device: deviceOf(request.headers.get("user-agent")),
     cost,
     price: dollars(PREMIUM_PRICES_CENTS.monthly),
     sitting: sitting === null ? null : sittingWords(sitting),
+    players,
     maker:
       makerPage === null
         ? null

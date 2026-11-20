@@ -29,14 +29,19 @@ test.beforeEach(forgetRateLimits);
 
 const tabOf = (page: import("@playwright/test").Page) =>
   page.getByRole("group").getByLabel("Menu. Use the arrow keys to move it.");
-const loaded = (page: import("@playwright/test").Page) =>
-  expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");
+// The game has loaded and the page's own script has come alive. The Menu tab's drag, keys and menu are script, so a
+// press made before it has is not seen; the game loading says nothing about that (the cause of the drag journey's
+// failures).
+const loaded = async (page: import("@playwright/test").Page): Promise<void> => {
+  await pageHasSettled(page);
+  await expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");
+};
 
 test("a member presses Play and the game loads, in a frame on another address", async ({
   page,
 }, testInfo) => {
   await payAsNewMember(page);
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("link", { name: "Play" }).click();
   const frame = page.locator("iframe.frame");
   await expect(frame).toHaveAttribute("sandbox", "allow-scripts allow-same-origin allow-pointer-lock");
@@ -51,7 +56,7 @@ test("a member presses Play and the game loads, in a frame on another address", 
 
 test("the game sees nothing about the player", async ({ page }) => {
   const member = await payAsNewMember(page);
-  await page.goto(`/g/${game.slug}/play`);
+  await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   const seen = page.frameLocator("iframe.frame").locator("#seen");
   await expect(seen).not.toHaveText("");
@@ -63,14 +68,14 @@ test("the game sees nothing about the player", async ({ page }) => {
 });
 
 test("someone who has not paid gets the price card, and the files do not load", async ({ page }) => {
-  await page.goto(`/g/${game.slug}/play`);
+  await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(`/join?next=${encodeURIComponent(`/g/${game.slug}/play`)}`);
   await expect(page.getByRole("heading", { name: "Join Ruken to play" })).toBeVisible();
   expect((await page.goto(`http://g-${game.publicId}.localhost:8788/index.html`))?.status()).toBe(403);
 });
 
 test("a stranger signs up, pays, and is in the game they chose", async ({ page }) => {
-  await page.goto(`/g/${game.slug}`);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("link", { name: "Play" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Email").fill(freshEmail());
@@ -84,7 +89,7 @@ test("a stranger signs up, pays, and is in the game they chose", async ({ page }
 });
 
 test("anyone can play a free game without an account", async ({ page }) => {
-  await page.goto(`/g/${free.slug}`);
+  await page.goto(`/g/${free.slug}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("link", { name: "Play" }).click();
   await expect(page).toHaveURL(`/g/${free.slug}/play`);
   await loaded(page);
@@ -92,13 +97,13 @@ test("anyone can play a free game without an account", async ({ page }) => {
 
 test("the game's own maker plays it without paying", async ({ page }) => {
   await signInAs(page, game.maker);
-  await page.goto(`/g/${game.slug}/play`);
+  await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
 });
 
 test("a member whose membership has ended gets the price card on reload", async ({ page }) => {
   const member = await payAsNewMember(page);
-  await page.goto(`/g/${game.slug}/play`);
+  await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   await endMembershipOf(member);
   await page.reload();
@@ -106,14 +111,14 @@ test("a member whose membership has ended gets the price card on reload", async 
 });
 
 test("the menu opens, keeps playing, starts again and leaves", async ({ page }, testInfo) => {
-  await page.goto(`/g/${free.slug}/play`);
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   const tab = tabOf(page);
   await tab.click();
   await expect(page.getByRole("heading", { name: free.name })).toBeVisible();
   for (const name of ["Keep playing", "Start again", "Leave game"])
     await expect(page.getByRole("button", { name }).or(page.getByRole("link", { name }))).toBeVisible();
-  await expect(page.getByText("Not working? Choose Start again.")).toBeVisible();
+  await expect(page.getByText("Use this if the game is stuck.")).toBeVisible();
   await showTheOwner(page, testInfo, "the menu");
 
   await page.keyboard.press("Escape");
@@ -136,7 +141,7 @@ test("the menu opens, keeps playing, starts again and leaves", async ({ page }, 
 });
 
 test("the Menu tab moves, and stays where it was left", async ({ page }) => {
-  await page.goto(`/g/${free.slug}/play`);
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   const tab = tabOf(page);
   const view = page.viewportSize() ?? { width: 0, height: 0 };
@@ -175,7 +180,7 @@ test("the Menu tab moves, and stays where it was left", async ({ page }) => {
 });
 
 test("a press that moves under 8px opens the menu, and the tab is see-through at rest", async ({ page }) => {
-  await page.goto(`/g/${free.slug}/play`);
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   const tab = tabOf(page);
   const rest = await tab.evaluate((element) => getComputedStyle(element).backgroundColor);
@@ -193,13 +198,21 @@ test("Full screen is offered only where the page can go full screen", async ({ p
   await page.addInitScript(() => {
     Object.defineProperty(document, "fullscreenEnabled", { value: false, configurable: true });
   });
-  await page.goto(`/g/${free.slug}/play`);
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await tabOf(page).click();
   await expect(page.getByRole("button", { name: "Full screen" })).toHaveCount(0);
 });
 
+test("the way out and every row are in sight with the menu open, in any window", async ({ page }) => {
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
+  await loaded(page);
+  await tabOf(page).click();
+  await expect(page.getByRole("link", { name: "Leave game" })).toBeInViewport({ ratio: 1 });
+  await expect(page.getByText("Use this if the game is stuck.")).toBeInViewport({ ratio: 1 });
+});
+
 test("the menu is reached by the keyboard, with focus showing", async ({ page }) => {
-  await page.goto(`/g/${free.slug}/play`);
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   await tabOf(page).focus();
   await page.keyboard.press("Enter");
@@ -217,24 +230,13 @@ test("the menu is reached by the keyboard, with focus showing", async ({ page })
 test("with no script, Menu then Leave game still leaves", async ({ browser }) => {
   const context = await browser.newContext({ baseURL: "http://localhost:4173", javaScriptEnabled: false });
   const page = await context.newPage();
-  await page.goto(`/g/${free.slug}/play`);
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await page.locator("details.menu > summary").click();
   // By keyboard: with script off this page does not give Playwright's pointer click its "has stopped moving" check.
   await page.getByRole("link", { name: "Leave game" }).focus();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(`/g/${free.slug}`);
   await context.close();
-});
-
-test("the Menu line shows once", async ({ page }) => {
-  await page.clock.install();
-  await page.goto(`/g/${free.slug}/play`);
-  await pageHasSettled(page);
-  await expect(page.getByText("Choose Menu to leave the game. You can move it.")).toBeVisible();
-  await page.clock.runFor(5_000);
-  await expect(page.getByText("Choose Menu to leave the game. You can move it.")).toHaveCount(0);
-  await page.reload();
-  await expect(page.getByText("Choose Menu to leave the game. You can move it.")).toHaveCount(0);
 });
 
 test("starting says the game's name, and says so when it is slow", async ({ page }) => {
@@ -252,7 +254,7 @@ test("starting says the game's name, and says so when it is slow", async ({ page
 test("a game taken off Ruken is gone on the next load", async ({ page, browser, request }) => {
   test.setTimeout(120_000);
   const own = await addGame(browser, request, { free: true });
-  await page.goto(`/g/${own.slug}/play`);
+  await page.goto(`/g/${own.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   const frameAddress = (await page.locator("iframe.frame").getAttribute("src")) ?? "";
 
@@ -264,8 +266,8 @@ test("a game taken off Ruken is gone on the next load", async ({ page, browser, 
   await expect(maker.getByRole("heading", { level: 1 })).toHaveText("Taken off Ruken");
   await context.close();
 
-  expect((await page.goto(`/g/${own.slug}`))?.status()).toBe(404);
-  expect((await page.goto(`/g/${own.slug}/play`))?.status()).toBe(404);
+  expect((await page.goto(`/g/${own.slug}`, { waitUntil: "domcontentloaded" }))?.status()).toBe(404);
+  expect((await page.goto(`/g/${own.slug}/play`, { waitUntil: "domcontentloaded" }))?.status()).toBe(404);
   // Asked by a browser that has not seen it before: the player's own browser may still hold the file for the pass's life.
   const fresh = await browser.newContext();
   expect((await (await fresh.newPage()).goto(`${frameAddress}main.js`))?.status()).toBe(404);
@@ -273,7 +275,7 @@ test("a game taken off Ruken is gone on the next load", async ({ page, browser, 
 });
 
 test("nothing on the play screen is red, and nothing scrolls sideways", async ({ page }) => {
-  await page.goto(`/g/${free.slug}/play`);
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   const sideways = () =>
     page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);

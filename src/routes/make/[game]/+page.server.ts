@@ -5,6 +5,7 @@ import {
   GameError,
   gamesServices,
   nextStepWords,
+  waitingLine,
   partNoun,
   questionOf,
   toFixWords,
@@ -106,6 +107,7 @@ export const load: PageServerLoad = async (event) => {
       ...base,
       view: "waiting" as const,
       game: laidOut(game, []),
+      line: waitingLine(await gamesServices().service.decisionDayWordsFor(game.id)),
       changeAddress: `/make/${game.slug}/check`,
       // A refused newest copy leaves the older one waiting, so the screen says so and leads to where it is mended.
       filesProblem: game.pullProblem,
@@ -127,6 +129,14 @@ export const load: PageServerLoad = async (event) => {
   }
 
   if (game.state === "live") {
+    // The statement piece: the game's own video behind everything, in the shape of the screen it is seen on.
+    const backdrop = {
+      upright: game.clips.upright === null ? null : gamesServices().media(game.clips.upright.key),
+      wide: game.clips.wide === null ? null : gamesServices().media(game.clips.wide.key),
+    };
+    // The first look at a game a decision day let in is the Accepted screen, once.
+    const accepted = await gamesServices().service.acceptedScreenFor(game.id);
+    if (accepted !== null) return { ...base, view: "accepted" as const, count: accepted.count, backdrop };
     const send = liveSend(game);
     return {
       ...base,
@@ -138,12 +148,9 @@ export const load: PageServerLoad = async (event) => {
       fixes,
       // Asked on a screen of its own, because it cannot be undone.
       takeOffAddress: `/make/${game.slug}/take-off`,
-      // The statement piece: the game's own video behind everything, in the shape of the screen it is seen on.
-      backdrop: {
-        upright: game.clips.upright === null ? null : gamesServices().media(game.clips.upright.key),
-        wide: game.clips.wide === null ? null : gamesServices().media(game.clips.wide.key),
-      },
+      backdrop,
       game: liveLaidOut(game),
+      showsPlayerCount: game.showsPlayerCount,
     };
   }
 
@@ -185,6 +192,12 @@ function refusal(problem: unknown): { problem: string } {
 }
 
 export const actions: Actions = {
+  // "See your game" on the Accepted screen: it has been seen, so the next look is Live.
+  seen: async (event) => {
+    const { game } = await ownGame(event);
+    await gamesServices().service.markAcceptedSeen(game.id);
+    redirect(303, `/make/${game.slug}`);
+  },
   // A game that was sent back is sent again once everything that was sent back is fixed; the service says so in its own
   // words when something is left, so a send posted by hand is refused the same way.
   send: async (event) => {
@@ -209,6 +222,17 @@ export const actions: Actions = {
     } catch (problem) {
       return fail(400, refusal(problem));
     }
+    redirect(303, `/make/${game.slug}`);
+  },
+
+  // The maker's switch for the player count on the game's page. It posts the state it wants, so a second press of an
+  // old page says the same thing twice and changes nothing more.
+  playerCount: async (event) => {
+    const { userId, game } = await ownGame(event);
+    if (game.state !== "live") error(404, "Not found");
+    const wanted = (await event.request.formData()).get("show");
+    if (wanted !== "on" && wanted !== "off") return fail(400, { problem: "That didn't work. Try again." });
+    await gamesServices().service.setShowsPlayerCount(game.id, userId, wanted === "on");
     redirect(303, `/make/${game.slug}`);
   },
 

@@ -34,6 +34,8 @@ export const PLAY_STARTS_PER_ADDRESS: RateLimitRule = { max: 30, windowMs: 60_00
 const SITTING_DAYS = 30;
 const SITTING_PLAYS_LEAST = 20;
 const SITTING_PLAYS_READ = 500;
+/** "This week" on a game's page is the 7 days before now. */
+const PLAYERS_DAYS = 7;
 
 const sha256Hex = (text: string): string => createHash("sha256").update(text).digest("hex");
 
@@ -185,7 +187,27 @@ export function createPlayService(deps: PlayServiceDeps) {
     return counted.length < SITTING_PLAYS_LEAST ? null : medianMs(counted);
   }
 
-  return { startPlay, reviewLook, recordBeat, playSummary, sittingOf };
+  /**
+   * How many different accounts played a game in the 7 days before now: members, and signed-in free play, with at least
+   * one attentive beat. Staff's and the maker's own plays never count, and free play by nobody cannot be told apart, so
+   * it is not counted either.
+   */
+  async function playersThisWeek(gameId: string, now: Date): Promise<number> {
+    const since = new Date(now.getTime() - PLAYERS_DAYS * 24 * 60 * 60 * 1000);
+    const players = await deps.db.playSession.groupBy({
+      by: ["userId"],
+      where: {
+        gameId,
+        userId: { not: null },
+        basis: { in: ["member", "free_game"] },
+        startedAt: { gte: since, lte: now },
+        beats: { some: { attentive: true } },
+      },
+    });
+    return players.length;
+  }
+
+  return { startPlay, reviewLook, recordBeat, playSummary, sittingOf, playersThisWeek };
 }
 
 export type PlayService = ReturnType<typeof createPlayService>;

@@ -1,3 +1,4 @@
+import { decisionsOff } from "../../support/decisions-off.ts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId, PUBLIC_ID } from "../../../src/features/games/ids.ts";
@@ -32,7 +33,13 @@ function db(): PrismaClient {
 
 beforeAll(async () => {
   database = await startTestDatabase();
-  service = createGamesService({ db: db(), clock: systemClock, files, github: noGitHub });
+  service = createGamesService({
+    db: db(),
+    clock: systemClock,
+    files,
+    github: noGitHub,
+    schedule: decisionsOff,
+  });
 });
 
 afterAll(async () => {
@@ -188,7 +195,13 @@ const NO_INDEX_WORDS = "Ruken starts your game from a file called index.html. We
 
 /** The service as it is when GitHub holds a game that starts, and when it holds one that cannot. */
 function serviceFor(entries: { path: string; content: string }[]): GamesService {
-  return createGamesService({ db: db(), clock: systemClock, files, github: githubHolding(entries) });
+  return createGamesService({
+    db: db(),
+    clock: systemClock,
+    files,
+    github: githubHolding(entries),
+    schedule: decisionsOff,
+  });
 }
 
 /** A maker who has connected GitHub, and the game they have just named. */
@@ -704,6 +717,7 @@ describe("liveGameBySlug", () => {
       ageRating: "age_12",
       contentMarks: [],
       freeToPlay: false,
+      showsPlayerCount: false,
       makerUserId: game.makerUserId,
       livePullId: pullId,
       connectHosts: ["api.example.com"],
@@ -776,7 +790,13 @@ describe("pullLatest", () => {
       tarball: async () =>
         new Blob([await tarGz([{ path: "top/index.html", content: "<html></html>" }])]).stream(),
     };
-    const pulling = createGamesService({ db: db(), clock: systemClock, files, github });
+    const pulling = createGamesService({
+      db: db(),
+      clock: systemClock,
+      files,
+      github,
+      schedule: decisionsOff,
+    });
     const game = await newGame();
     await connectMaker(game.makerUserId, "acme/game");
 
@@ -784,5 +804,28 @@ describe("pullLatest", () => {
 
     expect(pull).toMatchObject({ commitSha: sha, fileCount: 1 });
     expect(files.keys()).toContain(`files/${game.publicId}/${pull.id}/index.html`);
+  });
+});
+
+describe("setShowsPlayerCount", () => {
+  const shows = async (gameId: string) =>
+    (await db().game.findUniqueOrThrow({ where: { id: gameId } })).showsPlayerCount;
+
+  it("is off for a new game, and its maker turns it on and off", async () => {
+    const game = await newGame();
+    expect(await shows(game.id)).toBe(false);
+    await service.setShowsPlayerCount(game.id, game.makerUserId, true);
+    expect(await shows(game.id)).toBe(true);
+    await service.setShowsPlayerCount(game.id, game.makerUserId, false);
+    expect(await shows(game.id)).toBe(false);
+  });
+
+  it("refuses another account and changes nothing", async () => {
+    const game = await newGame();
+    await expect(service.setShowsPlayerCount(game.id, await createUser(db()), true)).rejects.toMatchObject({
+      name: "GameError",
+      code: "NOT_FOUND",
+    });
+    expect(await shows(game.id)).toBe(false);
   });
 });

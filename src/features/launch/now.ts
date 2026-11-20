@@ -1,3 +1,4 @@
+import { isThisMachine } from "../../lib/this-machine.ts";
 import type { Clock } from "../../lib/clock.ts";
 import { LAUNCH_MS } from "./switch.ts";
 
@@ -8,19 +9,6 @@ import { LAUNCH_MS } from "./switch.ts";
 export const TEST_LAUNCH_COOKIE = "rk_test_launch";
 
 const DAY_MS = 86_400_000;
-
-/** The only addresses the switch may be used on: this machine, over plain http, as the journeys run. */
-const THIS_MACHINE = new Set(["localhost", "127.0.0.1"]);
-
-function isThisMachine(address: string | undefined): boolean {
-  if (address === undefined) return false;
-  try {
-    const url = new URL(address);
-    return url.protocol === "http:" && THIS_MACHINE.has(url.hostname);
-  } catch {
-    return false;
-  }
-}
 
 /**
  * The launch time a request sees, from the cookies it came with.

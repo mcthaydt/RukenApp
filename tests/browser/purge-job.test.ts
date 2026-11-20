@@ -37,5 +37,10 @@ test("only a POST starts it", async ({ request }) => {
 // handler when this address is fetched. The handler knocks on the job with the secret and throws unless it
 // gets a 200, so a 200 here means the whole chain worked.
 test("the daily trigger runs the job", async ({ request }) => {
-  expect((await request.get("/cdn-cgi/local/scheduled")).status()).toBe(200);
+  expect((await request.get("/cdn-cgi/local/scheduled?cron=17+9+*+*+*")).status()).toBe(200);
+});
+
+// The hourly trigger knocks on decision day's job; with nothing due it changes nothing and still answers 200.
+test("the hourly trigger runs decision day's job", async ({ request }) => {
+  expect((await request.get("/cdn-cgi/local/scheduled?cron=0+*+*+*+*")).status()).toBe(200);
 });

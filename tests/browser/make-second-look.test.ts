@@ -796,6 +796,12 @@ test("a Needs fixing card with an upright video has the video beside its words, 
     const box = element.getBoundingClientRect();
     return { right: box.right - parseFloat(style.paddingRight) };
   });
+  if ((page.viewportSize()?.width ?? 0) < 500) {
+    // A phone's card is about 280 wide, so beside the words left them a strip two words wide: the video goes under them, small (80 wide).
+    expect(video.y, "under the words on a phone").toBeGreaterThanOrEqual(title.y + title.height - 1);
+    expect(video.width, "small, 80 wide at most").toBeLessThanOrEqual(80.5);
+    return;
+  }
   expect(video.x, "beside the words, not over them").toBeGreaterThanOrEqual(title.x + title.width - 1);
   expect(video.y, "level with the top of the words, not below them").toBeLessThan(title.y + title.height);
   expect(video.x + video.width, "at the card's right edge").toBeGreaterThanOrEqual(sheet.right - 2);

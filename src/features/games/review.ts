@@ -89,11 +89,28 @@ export function toFixWords(count: number): string | null {
 }
 
 /**
+ * What a waiting game is told. A game that would be held is told the day everyone finds out; it promises no day for this
+ * game, since a game may wait for a later week, and reads the same whether or not it is decided. No mail is sent yet, so
+ * the other line must not promise one.
+ */
+export function waitingLine(decisionDay: string | null): string {
+  return decisionDay === null
+    ? "We're looking at it. Come back here to see when it's live."
+    : `We tell everyone on Fridays at noon New York time. The next one is ${decisionDay}.`;
+}
+
+/**
  * The one next step, in a line under a game's state on its own page. Null when there is nothing to do (a game taken
  * down or thrown away). What is wrong with the files comes first, since nothing else works until they are fixed.
  */
 export function nextStepWords(
-  game: StateInput & { filesProblem: boolean; upright: boolean; wide: boolean },
+  game: StateInput & {
+    filesProblem: boolean;
+    upright: boolean;
+    wide: boolean;
+    /** The coming decision day ("Friday 27 November") for a waiting game that would be held; left out otherwise. */
+    decisionDay?: string | null;
+  },
 ): string | null {
   const canSend = game.state === "draft" || game.state === "sent_back";
   if (canSend && game.filesProblem)
@@ -107,8 +124,7 @@ export function nextStepWords(
     case "sent_back":
       return "Fix it, then send it again.";
     case "waiting":
-      // No mail is sent yet, so the line must not promise one.
-      return "We're looking at it. Come back here to see when it's live.";
+      return waitingLine(game.decisionDay ?? null);
     case "live":
       return !game.hasPending && game.stateReason !== null
         ? "Fix it, then send your newest version for review."
