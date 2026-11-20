@@ -1,6 +1,6 @@
 # Ruken progress
 
-Last updated: 2026-11-20 07:45 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
+Last updated: 2026-11-20 07:53 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
 
 ## Outcome
 
@@ -31,6 +31,7 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 - 2026-11-20 02:03 UTC: "Finish the slice, I'm going to sleep"; 02:04 UTC: "Make sure you obey the workflow".
 - 2026-11-20 07:40 UTC: "Are you going to run the design loop? and when? It looks awful": design round 1 starts now on what slice 2 has merged, not only at the slice end.
 - 2026-11-20 07:43 UTC: "Ok to merge decision day" (H, #219); "ok for next unit" (P); "ONCE AGAIN, USE GH OVER GIT". Every command handed to the owner uses `gh` wherever `gh` can do it (a branch delete is `gh api -X DELETE repos/mcthaydt/RukenApp/git/refs/heads/<branch>`; updating a local copy is `gh repo sync --branch main`), never `git`.
+- 2026-11-20 07:50 UTC: "that R2 rule should only be on private repos, I forgot that we don't have an artifact limit for public repos". RukenApp is public, so unit C (CI screenshots in R2) is dropped.
 
 ## Active milestone: slice 2 (phone sign-up and the rest of slice 2)
 
@@ -48,7 +49,7 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 | A, the Accepted screen and the label, lane 2 | after H (not beside F, P, K or Q) |
 | L, K, Q, V, game facts | L after R; K after D and P; then Q and V |
 | O, U, Q+, Y, servers and a player's place | O after K and D; U after B; Y after U |
-| C, CI screenshots in R2 (#211), lane 3 | spec in plan audit; builds when a writer place is free; merges with the owner's OK |
+| C, CI screenshots in R2 (#211), lane 3 | dropped: RukenApp is public, so GitHub's artifact limit does not apply (owner, 2026-11-20 07:50 UTC); the merged spec is superseded |
 | G, a real game on the test site | not started |
 | Branch B, sign-in and forgot password (#209), lane 3 | built, audit clear; held as a draft until the Twilio upgrade, Step 1a and the owner's OK |
 | Owner's Twilio upgrade, Verify service, Step 1a | at the slice end, by the owner's call |
@@ -56,13 +57,11 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 
 ## Follow-ups (not built yet)
 
-- `release` says CI screenshots need no label, but `ci.yml` still reads the `screenshots` label. Unit C's Step 1b drops it (the owner may overrule).
-- N16 from C's plan audit: `visual-check`'s second screens-page look includes approved screens, so once the page is deleted after each look, those screens must be reshot. `visual-check` should say so, in the slice's rule-change pull request.
+- `release` says CI screenshots need no label, but `ci.yml` still reads the `screenshots` label. Unit C would have dropped it; with C dropped, it needs its own small change.
 - R left 4px of room under the new line on Check it, then send on an iPhone SE held sideways; the counter, Check it then send, Live and Sent back screens lost their approval and go on the screens page.
 - `LiveGame.playsOn` is still selected but nothing reads it; unit F, which rebuilds that page, can drop it.
 - F (#218) review notes left for later (optional): order More from by acceptance date; cap the play-time beat body before reading it; the drag flag can swallow one Enter after a drag.
 - N1 from W's audit: `src/features/play/gate.ts` comments (lines 13 to 16, 25 to 26) still call the free workers.dev address current; a small fix after W merges. N3: unit K must deploy the gate with `--route` (game-facts spec line 140).
-- Owner steps O1 to O4 in the R2 spec (the bucket, its rule and the key) come before unit C's step A3.
 
 ## Material decisions (agent-selected, not owner-approved)
 
