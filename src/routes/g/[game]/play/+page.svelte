@@ -161,7 +161,13 @@
 
   function onToggle(): void {
     open = menu?.open ?? false;
-    if (open) panel?.querySelector<HTMLElement>("button, a")?.focus();
+    if (!open) return;
+    const first = (): void => panel?.querySelector<HTMLElement>("button, a")?.focus();
+    first();
+    // The sheet has only just been shown: if the browser did not take the focus, ask again on the next frame.
+    requestAnimationFrame(() => {
+      if (open && panel !== undefined && !panel.contains(document.activeElement)) first();
+    });
   }
 
   function keepPlaying(): void {
