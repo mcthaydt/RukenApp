@@ -13,7 +13,7 @@ import {
   PREMIUM_PRICES_CENTS,
 } from "../../../features/membership/membership.ts";
 import { pagesServices } from "../../../features/pages/pages.ts";
-import { isPhone, playServices } from "../../../features/play/play.ts";
+import { deviceOf, playServices } from "../../../features/play/play.ts";
 import type { PageServerLoad } from "./$types";
 
 // A live game's page (spec 3). A game that is not live is not here at all: the missing page.
@@ -53,7 +53,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
     rating: { chip: ratingWords(game.ageRating, game.contentMarks) ?? "", line: ratingLine(game.ageRating) },
     clips: { upright: games.media(game.clips.upright), wide: games.media(game.clips.wide) },
     // The server knows a phone from its User-Agent; the page's script says "tablet" where the pointer is coarse.
-    device: isPhone(request.headers.get("user-agent")) ? ("phone" as const) : ("computer" as const),
+    device: deviceOf(request.headers.get("user-agent")),
     cost,
     price: dollars(PREMIUM_PRICES_CENTS.monthly),
     sitting: sitting === null ? null : sittingWords(sitting),

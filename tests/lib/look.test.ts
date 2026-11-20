@@ -345,22 +345,26 @@ describe("screens wear the look and nothing of their own", () => {
     "countswitch",
     // A game's page (spec 3) and the play screen (spec 4).
     "gamepage",
-    "stage",
+    "bento",
+    "cell",
+    "hero",
+    "heroname",
+    "fact",
+    "joinlink",
+    "playtile",
+    "watch",
+    "pickers",
     "clipbox",
     "clipopen",
     "back",
-    "pickers",
-    "about",
     "madeby",
     "playrow",
     "costrow",
     "costline",
-    "facts",
     "more",
     "playing",
     "starting",
     "menu",
-    "menuhint",
     "menusheet",
     "menupanel",
   ];
@@ -512,17 +516,18 @@ describe("the maker's screens", () => {
 describe("a game's page", () => {
   const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
   const PAGE_CLASSES = [
-    "stage",
+    "bento",
+    "cell",
+    "hero",
+    "heroname",
+    "playtile",
     "clipbox",
     "clipopen",
     "back",
     "pickers",
-    "about",
     "madeby",
-    "playrow",
     "costrow",
     "costline",
-    "facts",
     "more",
   ];
 
@@ -534,8 +539,8 @@ describe("a game's page", () => {
     const rule = (selector: string) =>
       new RegExp(`${selector.replaceAll(".", "\\.")}\\s*\\{([^}]*)\\}`).exec(withoutComments)?.[1] ?? "";
     expect(rule(".gamepage .back")).toMatch(/min-height:\s*var\(--size-target\)/);
-    expect(rule(".gamepage .pickers button")).toMatch(/width:\s*var\(--size-target\)/);
-    expect(rule(".gamepage .pickers button")).toMatch(/height:\s*var\(--size-target\)/);
+    expect(rule(".gamepage .pickers button")).toMatch(/min-width:\s*var\(--size-target\)/);
+    expect(rule(".gamepage .pickers button")).toMatch(/min-height:\s*var\(--size-target\)/);
   });
 
   it("the tile showing has the picked blue edge, by attribute and not by class", () => {
@@ -559,7 +564,7 @@ describe("the play screen", () => {
     ).exec(withoutComments)?.[1] ?? "";
   const tab = rule(".playing .menu > summary");
 
-  it.each(["menuhint", "menusheet", "menupanel", "starting"])("%s has a rule", (name) => {
+  it.each(["menusheet", "menupanel", "starting"])("%s has a rule", (name) => {
     expect(withoutComments).toMatch(new RegExp(`\\.playing \\.${name}\\s*[,{]`));
   });
 

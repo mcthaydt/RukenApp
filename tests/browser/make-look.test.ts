@@ -205,9 +205,13 @@ test("the Needs fixing card is paper with a blue left edge, a plain label, and n
   await expect(card).toBeVisible();
 
   await expect(card).toHaveCSS("background-color", rgb(token("--paper")));
-  // The edge is the sheet's own left border: the look has no shadows.
-  await expect(card).toHaveCSS("border-left-color", rgb(token("--pay")));
-  await expect(card).toHaveCSS("border-left-width", "6px");
+  // The edge is a 6px strip inside the card's own corners (the look has no shadows, and a border showed as a crescent
+  // behind the round corners).
+  const edge = await card.evaluate((element) => {
+    const style = getComputedStyle(element, "::before");
+    return { color: style.backgroundColor, width: style.width };
+  });
+  expect(edge).toEqual({ color: rgb(token("--pay")), width: "6px" });
   const label = page.getByText("Needs fixing");
   await expect(label).toHaveCSS("color", rgb(token("--pay")));
   await expect(label).toHaveCSS("text-transform", "none");
