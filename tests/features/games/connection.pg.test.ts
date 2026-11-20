@@ -21,9 +21,9 @@ const seen = {
   commits: 0,
   tarballs: 0,
   installationAsks: 0,
-  branchAsks: [] as string[],
-  branchesFail: false,
 };
+/** The branch lists GitHub was asked for, and whether it answers them. */
+const branches = { asked: [] as string[], fails: false };
 /** The installation GitHub says holds each repository now. */
 const holding = new Map<string, bigint>();
 
