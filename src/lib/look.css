@@ -1984,13 +1984,6 @@ a.sheet.fix {
 /* An upright video sits beside the card's words, at the right, and not under them with the rest of the card blank. On a
    phone the card is only 280 wide, so beside the words the video left them a strip two words wide: there it goes under
    the words, small. */
-.sheet.fix > video[data-shape="upright"] {
-  width: 4rem;
-  height: auto;
-  aspect-ratio: 9 / 16;
-  margin-top: 0.75rem;
-}
-
 @media (min-width: 500px) {
   .sheet.fix:has(> video[data-shape="upright"]) {
     display: grid;
@@ -2002,13 +1995,6 @@ a.sheet.fix {
   .sheet.fix:has(> video[data-shape="upright"]) > :not(video) {
     grid-column: 1;
   }
-
-  .sheet.fix > video[data-shape="upright"] {
-    width: auto;
-    height: auto;
-    aspect-ratio: auto;
-    margin-top: 0;
-  }
 }
 
 .sheet.fix video[data-shape="upright"] {
@@ -2016,13 +2002,14 @@ a.sheet.fix {
   grid-row: 1 / span 6;
   width: 5rem;
   height: auto;
-  margin: 0;
+  margin: 0.75rem 0 0;
   aspect-ratio: 9 / 16;
 }
 
 @media (min-width: 500px) {
   .sheet.fix video[data-shape="upright"] {
     width: 9rem;
+    margin: 0;
   }
 }
 
