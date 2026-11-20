@@ -20,7 +20,7 @@ export class FakePremiumStripe implements PremiumStripe {
   readonly subscriptions = new Map<string, PremiumSubscription>();
   readonly invoices = new Map<string, PaidPremiumInvoice>();
   readonly sessions = new Map<string, "open" | "complete" | "expired">();
-  readonly customersMade: { userId: string; email: string }[] = [];
+  readonly customersMade: { userId: string }[] = [];
   readonly checkouts: PremiumCheckoutInput[] = [];
   readonly portalLinks: { customerId: string; returnUrl: string }[] = [];
   /** The calls that change something in Stripe, in order. */
@@ -38,7 +38,7 @@ export class FakePremiumStripe implements PremiumStripe {
     return Promise.resolve({ monthly: "price_monthly", annual: "price_annual" });
   }
 
-  createCustomer(input: { userId: string; email: string }) {
+  createCustomer(input: { userId: string }) {
     this.customersMade.push(input);
     return Promise.resolve(nextStripeId("cus"));
   }

@@ -11,7 +11,7 @@ import {
   sealArrival,
   type Arrival,
 } from "./arrival.ts";
-import { handleStripeEvent, type MembershipEventHandlers, type StripeEvent } from "./events.ts";
+import { handleStripeEvent, paidWithEmailOf, type MembershipEventHandlers, type StripeEvent } from "./events.ts";
 import { processStripeDelivery, storeStripeDelivery } from "./inbox.ts";
 import { createMembershipService, type MembershipService } from "./service.ts";
 import { createStripe } from "./stripe-client.ts";
@@ -130,7 +130,7 @@ export function createMembershipServices(source: Settings, auth: AuthParts): Mem
     async receive(event) {
       const inboxId = await storeStripeDelivery(prisma, event, clock.epochMs());
       await processStripeDelivery(
-        { db: prisma, clock, live, handle: (stored) => handleStripeEvent(handlers, stored) },
+        { db: prisma, clock, live, handle: (stored) => handleStripeEvent(handlers, stored, paidWithEmailOf(event)) },
         inboxId,
       );
     },

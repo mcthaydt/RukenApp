@@ -660,16 +660,15 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /** Games with files waiting for a person's yes, the oldest first. */
-  async function waitingGames(): Promise<{ slug: string; name: string; makerEmail: string; sentAt: Date }[]> {
+  async function waitingGames(): Promise<{ slug: string; name: string; sentAt: Date }[]> {
     const rows = await deps.db.game.findMany({
       where: { pendingPullId: { not: null } },
       orderBy: { pendingSince: "asc" },
-      select: { slug: true, name: true, pendingSince: true, maker: { select: { email: true } } },
+      select: { slug: true, name: true, pendingSince: true },
     });
     return rows.map((row) => ({
       slug: row.slug,
       name: row.name,
-      makerEmail: row.maker.email,
       // `pendingSince` is set with `pendingPullId`, so a waiting game always has it.
       sentAt: row.pendingSince ?? new Date(0),
     }));

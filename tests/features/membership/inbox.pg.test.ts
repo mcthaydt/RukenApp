@@ -105,6 +105,7 @@ describe("storeStripeDelivery and a person's details", () => {
     expect(completeCheckout).toHaveBeenCalledWith({
       stripeCheckoutSessionId: "cs_kept_1",
       subscriptionId: "sub_kept_1",
+      paidWithEmail: null,
       atMs: 1_793_620_800_000,
     });
   });

@@ -166,7 +166,7 @@ describe("writeStatements", () => {
     const asked = new TestClock("2028-09-21T12:00:00Z");
     await requestDeletion({ prisma: db(), clock: asked }, game.makerUserId);
     asked.advance(15 * 24 * 60 * 60 * 1000);
-    await purgeDueAccounts({ prisma: db(), clock: asked, files: new MemoryFileStore() });
+    await purgeDueAccounts({ prisma: db(), clock: asked, files: new MemoryFileStore(), secret: "test-secret-that-is-long-enough" });
     expect(await finish("2028-09", "2028-10-10T12:00:00Z")).toContain(game.makerUserId);
     expect(await db().statement.count({ where: { makerUserId: game.makerUserId, period: "2028-09" } })).toBe(
       1,

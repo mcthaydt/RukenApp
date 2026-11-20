@@ -1,6 +1,7 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { FileStore } from "../../lib/files/store.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
+import { forgetPending } from "./pending-sign-up.ts";
 
 // "Delete my account".
 //
@@ -19,9 +20,13 @@ export interface DeletionDeps {
   readonly clock: Clock;
 }
 
-/** What the daily job needs besides that: the bucket a person's files (their photo) are kept in. */
+/**
+ * What the daily job needs besides that: the bucket a person's files (their photo) are kept in, and the server's
+ * secret, which a number's kept sign-ups are found by (they hold only keyed hashes).
+ */
 export interface PurgeDeps extends DeletionDeps {
   readonly files: FileStore;
+  readonly secret: string;
 }
 
 /** Prisma's "unique constraint failed" error (P2002). */
@@ -101,7 +106,7 @@ export async function restoreOnSignIn(prisma: PrismaClient, clock: Clock, userId
  * at it stay true. A later slice that stores more of a person adds its own removal here, with a test.
  */
 export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
-  const { prisma, clock, files } = deps;
+  const { prisma, clock, files, secret } = deps;
   const now = new Date(clock.epochMs());
   const due = await prisma.deletionRequest.findMany({
     where: { cancelledAt: null, purgedAt: null, purgeAfter: { lte: now } },
@@ -124,7 +129,10 @@ export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
       });
       if (claimed.count === 0) return false;
 
-      const { email } = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
+      const { email, phoneNumber } = await tx.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { email: true, phoneNumber: true },
+      });
       await tx.session.deleteMany({ where: { userId } });
       await tx.account.deleteMany({ where: { userId } });
       // What GitHub said the person can reach is theirs; their repositories go with their installations.
@@ -135,10 +143,14 @@ export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
       // The person's page, and its links with it, so the address is free for someone else. It stays up for the 14
       // days of the wait, and goes only here.
       await tx.makerPage.deleteMany({ where: { userId } });
-      // A mail link is kept by address, or by the person's id (a password reset), so both are cleared.
-      await tx.verification.deleteMany({
-        where: { OR: [{ identifier: email }, { value: email }, { value: userId }] },
-      });
+      // A code is kept by the number (and, for a password reset, by the number and a suffix), a mail link by address
+      // or by the person's id, so every way is cleared. A sign-up kept for the number goes too.
+      const kept = [{ identifier: email }, { value: email }, { value: userId }];
+      if (phoneNumber !== null) {
+        kept.push({ identifier: phoneNumber }, { identifier: `${phoneNumber}-request-password-reset` });
+        await forgetPending({ db: tx, secret }, phoneNumber);
+      }
+      await tx.verification.deleteMany({ where: { OR: kept } });
       await tx.user.update({
         where: { id: userId },
         data: {
@@ -147,6 +159,11 @@ export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
           email: `deleted-${userId}@deleted.invalid`,
           name: "Deleted",
           emailVerified: false,
+          // The number is free for someone else (or for the same person, signing up again).
+          phoneNumber: null,
+          phoneNumberVerified: false,
+          phoneConfirmedAt: null,
+          paperEmail: null,
           image: null,
           adultOn: null,
         },

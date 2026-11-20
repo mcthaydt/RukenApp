@@ -653,7 +653,8 @@ describe("waitingGames", () => {
 
     expect(waiting.map((game) => game.slug)).toEqual([second.slug, first.slug]);
     expect(waiting[0]).toMatchObject({ name: "A game", sentAt: expect.any(Date) as Date });
-    expect(waiting[0]?.makerEmail).toMatch(/@example\.test$/);
+    // The maker's address would now be a stand-in nobody can read, so the list does not carry it.
+    expect(Object.keys(waiting[0] ?? {}).sort()).toEqual(["name", "sentAt", "slug"]);
   });
 });
 
