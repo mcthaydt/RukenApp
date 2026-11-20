@@ -26,6 +26,7 @@
     takeOffAddress,
     backdrop,
     game,
+    showsPlayerCount,
     problem,
   }: {
     line: string;
@@ -38,6 +39,8 @@
     takeOffAddress: string;
     backdrop: { upright: string | null; wide: string | null };
     game: LaidOutGame;
+    /** Whether the game's page says how many people played it this week. */
+    showsPlayerCount: boolean;
     problem: string | undefined;
   } = $props();
 
@@ -128,5 +131,14 @@
     {/each}
     <!-- One video: the shape this window is, as the backdrop (spec 5c). -->
     <GameLaidOut {game} only={screen.upright ? "upright" : "wide"} />
+    <!-- A plain form, so it works with no script. It posts the state it wants, so a second press never undoes the first. -->
+    <form class="countswitch" method="POST" action="?/playerCount">
+      <input type="hidden" name="show" value={showsPlayerCount ? "off" : "on"} />
+      <button class="outline" data-on={showsPlayerCount ? "" : undefined}>
+        Show how many people played it:
+        <span class="chip">{showsPlayerCount ? "On" : "Off"}</span>
+      </button>
+      <p class="note">Players see it on {game.name}'s page.</p>
+    </form>
   </div>
 </main>

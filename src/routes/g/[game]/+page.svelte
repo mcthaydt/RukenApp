@@ -176,6 +176,9 @@
       {#if data.sitting !== null}
         <p>Most people play {data.sitting} at a time.</p>
       {/if}
+      {#if data.players !== null}
+        <p>{data.players}</p>
+      {/if}
     </div>
   </div>
 

@@ -43,6 +43,7 @@
     takeOffAddress={data.takeOffAddress}
     backdrop={data.backdrop}
     game={data.game}
+    showsPlayerCount={data.showsPlayerCount}
     problem={form?.problem}
   />
 {:else if data.view === "taken_off"}
