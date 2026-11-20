@@ -20,8 +20,8 @@ const on = (firstDay: string | null, extra: Partial<DecisionSchedule> = {}): Dec
 });
 
 describe("the shipped schedule", () => {
-  it("is off until the first decision day is written", () => {
-    expect(schedule.firstDay).toBeNull();
+  it("starts on Friday 27 November 2026, the first Friday after unit H's last commit", () => {
+    expect(schedule.firstDay).toBe("2026-11-27");
   });
 
   it("is Friday, noon, New York time, 10 seats growing to 500", () => {
@@ -36,8 +36,9 @@ describe("the shipped schedule", () => {
   });
 
   it("names no decision day while it is off", () => {
-    expect(nextDecisionDay(new Date("2026-11-20T00:00:00Z"))).toBeNull();
-    expect(seatsOn("2026-11-27")).toBe(0);
+    const off = on(null);
+    expect(nextDecisionDay(new Date("2026-11-20T00:00:00Z"), off)).toBeNull();
+    expect(seatsOn("2026-11-27", off)).toBe(0);
   });
 });
 
@@ -195,7 +196,7 @@ describe("the decision days that are due", () => {
   const ON = on(FIRST);
 
   it("names none while the schedule is off, or before the first day's moment", () => {
-    expect(decisionDaysDue(new Date("2027-01-01T00:00:00Z"))).toEqual([]);
+    expect(decisionDaysDue(new Date("2027-01-01T00:00:00Z"), on(null))).toEqual([]);
     expect(decisionDaysDue(new Date("2026-11-27T16:59:59Z"), ON)).toEqual([]);
   });
 
