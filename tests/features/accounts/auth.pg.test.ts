@@ -199,6 +199,30 @@ describe("what the public /api/auth route lets through", () => {
     expect((await forwarded(path)).status).toBe(404);
   });
 
+  it("does not let posts from outside fill the client's limit on the sign-up code, which the form's two paths must share", async () => {
+    const ip = nextIp();
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const outside = await theAuth().handler(
+        new Request(`${ORIGIN}/api/auth/phone-number/verify`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            origin: ORIGIN,
+            "x-ruken-client-ip": ip,
+            [PUBLIC_ROUTE_HEADER]: "1",
+          },
+          body: JSON.stringify({ phoneNumber: nextNumber(), code: "000000" }),
+        }),
+      );
+      expect(outside.status).toBe(404);
+    }
+    // The form's own call, from the same client, is not refused by better-auth's limiter.
+    const number = nextNumber();
+    await post("/phone-number/send-otp", { phoneNumber: number }, { ip });
+    const typed = await post("/phone-number/verify", { phoneNumber: number, code: "000000" }, { ip });
+    expect(typed.status).toBe(400);
+  });
+
   it("still answers /ok, /get-session and /sign-out", async () => {
     const ok = await theAuth().handler(
       new Request(`${ORIGIN}/api/auth/ok`, { headers: { [PUBLIC_ROUTE_HEADER]: "1" } }),

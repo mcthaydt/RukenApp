@@ -212,6 +212,11 @@ export function createAuth(options: AuthOptions) {
         // A client's sign-up starts, which cost a text each.
         "/phone-number/send-otp": { window: 60 * 60, max: 5 },
         "/phone-number/request-password-reset": { window: 60 * 60, max: 10 },
+        // The phone plugin brings its own limit for every /phone-number path (10 a minute per client) and applies it
+        // wherever no rule is named here, counting requests from outside that are answered 404. Switched off for
+        // `verify`, so that posts from outside cannot make the sign-up code read differently for a number with an
+        // account (which never goes through `verify`) and one without.
+        "/phone-number/verify": false,
         // Keep it to what a person retyping a password needs. The sign-up code has no rule here: the sign-up form
         // counts every code typed per client itself (forms.ts), so a number with an account and one without are
         // refused at the same try.
