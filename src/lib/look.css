@@ -317,6 +317,11 @@ form > * + * {
   color: var(--ink-soft);
 }
 
+/* The acceptance label on Your games is read, not skimmed past: chalk on the felt, not the dimmer sage of a note. */
+.games [data-acceptance] {
+  color: var(--chalk);
+}
+
 /* An action under another action ("Sign out", then "Delete my account"): each is a 48px target, so their lines are
    two rem apart, enough that the targets meet and never overlap. A thumb cannot hit the wrong one. */
 .card .apart {

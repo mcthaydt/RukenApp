@@ -1,6 +1,6 @@
 import { redirect } from "@sveltejs/kit";
 import { signedInOnly } from "../../features/accounts/accounts.ts";
-import { GameError, gamesServices } from "../../features/games/games.ts";
+import { acceptanceWords, GameError, gamesServices } from "../../features/games/games.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
 // The maker's area: their games, each with where it stands in words. Signed out, to sign-in and back. A connection to
@@ -21,6 +21,8 @@ export const load: PageServerLoad = async ({ locals, url, cookies }) => {
       ...game,
       still: game.wideClipKey === null ? null : games.media(game.wideClipKey),
     })),
+    // Measured from staff's decisions on every look, never typed.
+    acceptance: acceptanceWords(await games.service.acceptance()),
     githubFailed: url.searchParams.get("github") === "failed",
     thrown,
   };

@@ -3,6 +3,7 @@
   Live and Taken off each have their own screen; a game staff took down has only its headline and the way back.
 -->
 <script lang="ts">
+  import AcceptedScreen from "../parts/AcceptedScreen.svelte";
   import LiveScreen from "../parts/LiveScreen.svelte";
   import SentBackScreen from "../parts/SentBackScreen.svelte";
   import StateScreen from "../parts/StateScreen.svelte";
@@ -31,6 +32,8 @@
     throwAway={data.throwAway}
     problem={form?.problem}
   />
+{:else if data.view === "accepted"}
+  <AcceptedScreen name={data.name} count={data.count} backdrop={data.backdrop} />
 {:else if data.view === "live"}
   <LiveScreen
     line={data.line}

@@ -8,6 +8,7 @@ import type {
   GameState,
   PrismaClient,
 } from "../../lib/server/db.ts";
+import { countAcceptance, type AcceptanceCounts } from "./acceptance.ts";
 import { clipKeyFor, clipProblem, type ClipContentType } from "./clips.ts";
 import { connectHostsFrom } from "./files-check.ts";
 import { GameError } from "./game-error.ts";
@@ -992,6 +993,42 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /**
+   * What the Accepted screen says for a live game, or null when it is not to be shown: the game is live, its maker has
+   * not seen it, and its newest decision that took effect is a yes that a decision day sent out. The count is that
+   * day's yeses that took effect, this game's among them.
+   */
+  async function acceptedScreenFor(gameId: string): Promise<{ count: number } | null> {
+    const game = await deps.db.game.findUnique({
+      where: { id: gameId },
+      select: {
+        state: true,
+        acceptedSeenAt: true,
+        reviews: {
+          where: tookEffect,
+          orderBy: { decidedAt: "desc" },
+          take: 1,
+          select: { decision: true, goesOutOn: true },
+        },
+      },
+    });
+    const newest = game?.reviews[0];
+    if (game?.state !== "live" || game.acceptedSeenAt !== null) return null;
+    if (newest?.decision !== "accepted" || newest.goesOutOn === null) return null;
+    const count = await deps.db.gameReview.count({
+      where: { decision: "accepted", goesOutOn: newest.goesOutOn, outcome: { is: { result: "applied" } } },
+    });
+    return { count };
+  }
+
+  /** The maker has seen the Accepted screen: it never shows again for this game. */
+  async function markAcceptedSeen(gameId: string): Promise<void> {
+    await deps.db.game.updateMany({
+      where: { id: gameId, acceptedSeenAt: null },
+      data: { acceptedSeenAt: now() },
+    });
+  }
+
+  /**
    * Sends out every decision day whose moment has passed and that has not gone out, oldest first, each in its own
    * transaction under the lock. A held decision that lapsed is recorded as lapsed and changes nothing; the others take
    * effect together. Safe to run again: a day with a row is never sent out twice.
@@ -1376,7 +1413,13 @@ export function createGamesService(deps: GamesServiceDeps) {
     return (await deps.db.gitHubInstallation.count({ where: { userId } })) > 0;
   }
 
+  /** How many games were decided lately, and how many got in: the label on Your games and the Accepted screen. */
+  function acceptance(): Promise<AcceptanceCounts> {
+    return countAcceptance(deps.db, deps.clock.now());
+  }
+
   return {
+    acceptance,
     saveClip,
     startGame,
     saveAnswer,
@@ -1391,6 +1434,8 @@ export function createGamesService(deps: GamesServiceDeps) {
     waitingGames,
     thisWeek,
     decisionDayWordsFor,
+    acceptedScreenFor,
+    markAcceptedSeen,
     sendOutDecisionDays,
     standingsOf,
     gamesOf,
