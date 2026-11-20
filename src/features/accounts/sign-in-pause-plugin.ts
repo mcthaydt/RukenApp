@@ -64,7 +64,10 @@ export function signInPausePlugin(options: SignInPauseOptions): BetterAuthPlugin
   /** Tells the account's owner their password sign-in is paused. Never throws: it runs after the answer is decided. */
   async function sendPauseNotice(number: string): Promise<void> {
     try {
-      const user = await prisma.user.findUnique({ where: { phoneNumber: number }, select: { phoneNumber: true } });
+      const user = await prisma.user.findUnique({
+        where: { phoneNumber: number },
+        select: { phoneNumber: true },
+      });
       if (user?.phoneNumber == null) return;
       await texter.send({ to: user.phoneNumber, line: "account", body: signInPausedText(siteUrl) });
     } catch (error) {

@@ -84,6 +84,9 @@ export async function failNextTextTo(number: string): Promise<void> {
 }
 
 /** Tells the stand-in what Twilio's number check says about this number: it changed hands, or not, or cannot say. */
-export async function sayChangedHands(number: string, answer: "yes" | "no" | "no_data_available"): Promise<void> {
+export async function sayChangedHands(
+  number: string,
+  answer: "yes" | "no" | "no_data_available",
+): Promise<void> {
   await fetch(`${TWILIO_URL}/test/hands`, { method: "POST", body: JSON.stringify({ number, answer }) });
 }

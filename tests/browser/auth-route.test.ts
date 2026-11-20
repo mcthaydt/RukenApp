@@ -26,7 +26,12 @@ test("an account cannot be made, signed in to or reset around the forms", async 
   ];
   for (const path of paths) {
     const response = await request.post(path, {
-      data: { phoneNumber: number, email: "around@ruken.test", password: "a long enough password", code: "123456" },
+      data: {
+        phoneNumber: number,
+        email: "around@ruken.test",
+        password: "a long enough password",
+        code: "123456",
+      },
     });
     expect(response.status(), path).toBe(404);
   }

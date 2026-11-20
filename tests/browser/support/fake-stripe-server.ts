@@ -374,7 +374,8 @@ async function sendAll(events: [string, Json][]): Promise<void> {
 
 function page(response: ServerResponse, title: string, button: string, email?: string): void {
   response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-  const field = email === undefined ? "" : `<p><label>Email <input name="email" value="${email}"></label></p>`;
+  const field =
+    email === undefined ? "" : `<p><label>Email <input name="email" value="${email}"></label></p>`;
   response.end(
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title></head>` +
       `<body><h1>${title}</h1><form method="POST">${field}<button>${button}</button></form></body></html>`,
@@ -614,7 +615,12 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     }
     if (method === "GET") {
       // Already filled with a made-up address, as a journey would have typed one.
-      page(response, "Stand-in payment page", "Pay", `journey+${crypto.randomUUID().slice(0, 12)}@example.test`);
+      page(
+        response,
+        "Stand-in payment page",
+        "Pay",
+        `journey+${crypto.randomUUID().slice(0, 12)}@example.test`,
+      );
       return;
     }
     session.email = text(fields, "email") ?? null;

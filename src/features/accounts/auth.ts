@@ -83,7 +83,11 @@ export function createAuth(options: AuthOptions) {
    * and the form would tell a stranger who has one. A failed send is logged by its code only, never
    * the error's message, which can hold the number or address (textFailureCode, mailFailureCode).
    */
-  function sendLater(what: string, send: () => Promise<unknown>, failureCode: (error: unknown) => string): void {
+  function sendLater(
+    what: string,
+    send: () => Promise<unknown>,
+    failureCode: (error: unknown) => string,
+  ): void {
     runInBackground(async () => {
       try {
         await send();

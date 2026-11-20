@@ -127,7 +127,7 @@ describe("signInWithPassword", () => {
     const formDeps = deps(() => Promise.resolve(reply(200)));
     await redirectOf(signInWithPassword(formEvent({ country, phone, password: "correct horse" }), formDeps));
     const request = formDeps.handler.mock.calls[0]?.[0] as Request;
-    expect(((await request.json()) as { phoneNumber: string }).phoneNumber).toBe(NUMBER);
+    expect((await request.json<{ phoneNumber: string }>()).phoneNumber).toBe(NUMBER);
   });
 
   it("copies the session cookie to the browser and goes on to next", async () => {
@@ -216,8 +216,14 @@ describe("signInWithPassword", () => {
       deps(paused),
     );
 
-    expect(known).toMatchObject({ status: 429, data: { phone: "312 555 1234", error: FORM_MESSAGES.signInPaused } });
-    expect(stranger).toMatchObject({ status: 429, data: { phone: "415 555 9999", error: FORM_MESSAGES.signInPaused } });
+    expect(known).toMatchObject({
+      status: 429,
+      data: { phone: "312 555 1234", error: FORM_MESSAGES.signInPaused },
+    });
+    expect(stranger).toMatchObject({
+      status: 429,
+      data: { phone: "415 555 9999", error: FORM_MESSAGES.signInPaused },
+    });
     // One message, said once: the form shows the same words better-auth answered with.
     expect(FORM_MESSAGES.signInPaused).toBe(SIGN_IN_PAUSED_MESSAGE);
     expect(FORM_MESSAGES.signInPaused).toMatch(/reset your password/);
@@ -267,7 +273,10 @@ describe("requestReset", () => {
       formEvent(US),
       deps(() => Promise.resolve(reply(429, body))),
     );
-    expect(result).toMatchObject({ status: 429, data: { error: message, country: "US", phone: "312 555 1234" } });
+    expect(result).toMatchObject({
+      status: 429,
+      data: { error: message, country: "US", phone: "312 555 1234" },
+    });
   });
 
   it("asks again from the code screen with the number it kept, and stays on that screen", async () => {
@@ -281,12 +290,20 @@ describe("requestReset", () => {
       formEvent({ ...US, number: NUMBER, step: "code" }),
       deps(() => Promise.resolve(reply(429, { code: "CODE_TOO_SOON" }))),
     );
-    expect(result).toMatchObject({ status: 429, data: { step: "code", number: NUMBER, error: FORM_MESSAGES.codeTooSoon } });
+    expect(result).toMatchObject({
+      status: 429,
+      data: { step: "code", number: NUMBER, error: FORM_MESSAGES.codeTooSoon },
+    });
   });
 });
 
 describe("finishReset", () => {
-  const GOOD = { number: NUMBER, code: "123456", password: "a brand new horse", confirm: "a brand new horse" };
+  const GOOD = {
+    number: NUMBER,
+    code: "123456",
+    password: "a brand new horse",
+    confirm: "a brand new horse",
+  };
 
   function resetDeps(handler: (request: Request) => Promise<Response>) {
     return { ...deps(handler), codeUsed: vi.fn() };
@@ -302,7 +319,11 @@ describe("finishReset", () => {
 
     const request = formDeps.handler.mock.calls[0]?.[0] as Request;
     expect(request.url).toBe(`${ORIGIN}/api/auth/phone-number/reset-password`);
-    expect(await request.json()).toEqual({ phoneNumber: NUMBER, otp: "123456", newPassword: "a brand new horse" });
+    expect(await request.json()).toEqual({
+      phoneNumber: NUMBER,
+      otp: "123456",
+      newPassword: "a brand new horse",
+    });
     expect(formDeps.codeUsed).toHaveBeenCalledWith(NUMBER);
   });
 
@@ -336,9 +357,17 @@ describe("finishReset", () => {
 
   it("says codes are paused, and explains any other rate limit", async () => {
     expect(
-      await finishReset(formEvent(GOOD), resetDeps(() => Promise.resolve(reply(429, { code: "CODES_PAUSED" })))),
+      await finishReset(
+        formEvent(GOOD),
+        resetDeps(() => Promise.resolve(reply(429, { code: "CODES_PAUSED" }))),
+      ),
     ).toMatchObject({ status: 429, data: { step: "code", error: FORM_MESSAGES.codesPaused } });
-    expect(await finishReset(formEvent(GOOD), resetDeps(() => Promise.resolve(reply(429))))).toMatchObject({
+    expect(
+      await finishReset(
+        formEvent(GOOD),
+        resetDeps(() => Promise.resolve(reply(429))),
+      ),
+    ).toMatchObject({
       status: 429,
       data: { error: FORM_MESSAGES.rateLimited },
     });
@@ -386,9 +415,17 @@ describe("startSignUp", () => {
 
     const result = await startSignUp(event, formDeps);
 
-    expect(result).toMatchObject({ step: "code", number: NUMBER, country: "US", phone: "312 555 1234", next: "/me" });
+    expect(result).toMatchObject({
+      step: "code",
+      number: NUMBER,
+      country: "US",
+      phone: "312 555 1234",
+      next: "/me",
+    });
     expect(formDeps.hashPassword).toHaveBeenCalledWith("correct horse");
-    const kept = formDeps.keepPending.mock.calls[0] as unknown as [{ number: string; browser: string; passwordHash: string; adultOn: Date }];
+    const kept = formDeps.keepPending.mock.calls[0] as unknown as [
+      { number: string; browser: string; passwordHash: string; adultOn: Date },
+    ];
     expect(kept[0]).toMatchObject({ number: NUMBER, passwordHash: "hashed:correct horse" });
     expect(kept[0].browser).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(kept[0].adultOn).toEqual(new Date("2008-05-03T00:00:00Z"));
@@ -403,11 +440,18 @@ describe("startSignUp", () => {
     const formDeps = signUpDeps();
     await startSignUp(event, formDeps);
 
-    const [name, value, options] = event.cookies.set.mock.calls.find(([cookie]) => cookie === SIGN_UP_COOKIE) ?? [];
+    const calls = event.cookies.set.mock.calls as [string, string, Record<string, unknown>][];
+    const [name, value, options] = calls.find(([cookie]) => cookie === SIGN_UP_COOKIE) ?? [];
     expect(SIGN_UP_COOKIE).toBe("ruken_sign_up");
     expect(name).toBe("ruken_sign_up");
     expect(value).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(options).toMatchObject({ path: "/sign-up", httpOnly: true, sameSite: "lax", maxAge: 600, secure: false });
+    expect(options).toMatchObject({
+      path: "/sign-up",
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 600,
+      secure: false,
+    });
     expect((formDeps.keepPending.mock.calls[0] as unknown as [{ browser: string }])[0].browser).toBe(value);
   });
 
@@ -415,8 +459,14 @@ describe("startSignUp", () => {
     const event = formEvent(valid, "rk_session=old", { [SIGN_UP_COOKIE]: "kept-value" });
     const formDeps = { ...signUpDeps(), cookies: cookiePolicy("https://ruken.example") };
     await startSignUp(event, formDeps);
-    expect((formDeps.keepPending.mock.calls[0] as unknown as [{ browser: string }])[0].browser).toBe("kept-value");
-    expect(event.cookies.set).toHaveBeenCalledWith(SIGN_UP_COOKIE, "kept-value", expect.objectContaining({ secure: true }));
+    expect((formDeps.keepPending.mock.calls[0] as unknown as [{ browser: string }])[0].browser).toBe(
+      "kept-value",
+    );
+    expect(event.cookies.set).toHaveBeenCalledWith(
+      SIGN_UP_COOKIE,
+      "kept-value",
+      expect.objectContaining({ secure: true }),
+    );
   });
 
   it("lets a 13 to 17 year old in the same way", async () => {
@@ -441,7 +491,10 @@ describe("startSignUp", () => {
   it("is refused for a closed country before anything is kept or sent", async () => {
     const formDeps = signUpDeps();
     const result = await startSignUp(formEvent({ ...valid, country: "GB", phone: "7700 900123" }), formDeps);
-    expect(result).toMatchObject({ status: 400, data: { closedCountry: true, error: FORM_MESSAGES.closedCountry } });
+    expect(result).toMatchObject({
+      status: 400,
+      data: { closedCountry: true, error: FORM_MESSAGES.closedCountry },
+    });
     expect(formDeps.handler).not.toHaveBeenCalled();
     expect(formDeps.keepPending).not.toHaveBeenCalled();
   });
@@ -454,17 +507,27 @@ describe("startSignUp", () => {
     [{ ...valid, month: "2", day: "30" }, FORM_MESSAGES.birthDateInvalid],
     [{ ...valid, year: "" }, FORM_MESSAGES.birthDateInvalid],
     [{ ...valid, year: "2027" }, FORM_MESSAGES.birthDateInvalid],
-  ])("checks %j before calling better-auth, keeping what was typed but not the password", async (fields, message) => {
-    const formDeps = signUpDeps();
-    const result = await startSignUp(formEvent(fields), formDeps);
-    expect(result).toMatchObject({
-      status: 400,
-      data: { error: message, country: fields.country, phone: fields.phone, month: fields.month, day: fields.day, year: fields.year },
-    });
-    expect(JSON.stringify(result)).not.toContain(fields.password);
-    expect(formDeps.handler).not.toHaveBeenCalled();
-    expect(formDeps.keepPending).not.toHaveBeenCalled();
-  });
+  ])(
+    "checks %j before calling better-auth, keeping what was typed but not the password",
+    async (fields, message) => {
+      const formDeps = signUpDeps();
+      const result = await startSignUp(formEvent(fields), formDeps);
+      expect(result).toMatchObject({
+        status: 400,
+        data: {
+          error: message,
+          country: fields.country,
+          phone: fields.phone,
+          month: fields.month,
+          day: fields.day,
+          year: fields.year,
+        },
+      });
+      expect(JSON.stringify(result)).not.toContain(fields.password);
+      expect(formDeps.handler).not.toHaveBeenCalled();
+      expect(formDeps.keepPending).not.toHaveBeenCalled();
+    },
+  );
 
   it("shows the same code screen whether or not an account has the number: the form never asks", async () => {
     const formDeps = signUpDeps();
@@ -481,7 +544,10 @@ describe("startSignUp", () => {
       formEvent(valid),
       signUpDeps(() => Promise.resolve(reply(429, body))),
     );
-    expect(result).toMatchObject({ status: 429, data: { error: message, country: "US", phone: "312 555 1234" } });
+    expect(result).toMatchObject({
+      status: 429,
+      data: { error: message, country: "US", phone: "312 555 1234" },
+    });
   });
 
   it("sends a person on to / when next points off the site: it is only carried to the end", async () => {
@@ -554,7 +620,10 @@ describe("finishSignUp", () => {
 
     expect(formDeps.handler).not.toHaveBeenCalled();
     expect(formDeps.consumeCode).toHaveBeenCalledWith(NUMBER, "123456");
-    expect(result).toMatchObject({ status: 400, data: { step: "code", number: NUMBER, error: FORM_MESSAGES.codeWrong } });
+    expect(result).toMatchObject({
+      status: 400,
+      data: { step: "code", number: NUMBER, error: FORM_MESSAGES.codeWrong },
+    });
     expect(formDeps.makeAccount).not.toHaveBeenCalled();
   });
 
@@ -571,7 +640,9 @@ describe("finishSignUp", () => {
   });
 
   it("counts a wrong code on that path as better-auth's own check does, and says the same words", async () => {
-    const wrong = signUpDeps(() => Promise.resolve(verified()), { accountExists: vi.fn(() => Promise.resolve(true)) });
+    const wrong = signUpDeps(() => Promise.resolve(verified()), {
+      accountExists: vi.fn(() => Promise.resolve(true)),
+    });
     const right = signUpDeps(() => Promise.resolve(verified()), {
       accountExists: vi.fn(() => Promise.resolve(true)),
       consumeCode: vi.fn(() => Promise.resolve("ok" as const)),
@@ -597,7 +668,10 @@ describe("finishSignUp", () => {
       codesPaused: vi.fn(() => Promise.resolve(true)),
     });
     const result = await finishSignUp(formEvent(BASE, "rk_session=old", jar), formDeps);
-    expect(result).toMatchObject({ status: 429, data: { step: "code", number: NUMBER, error: FORM_MESSAGES.codesPaused } });
+    expect(result).toMatchObject({
+      status: 429,
+      data: { step: "code", number: NUMBER, error: FORM_MESSAGES.codesPaused },
+    });
     expect(formDeps.consumeCode).not.toHaveBeenCalled();
     expect(formDeps.handler).not.toHaveBeenCalled();
   });
@@ -606,7 +680,10 @@ describe("finishSignUp", () => {
     for (const status of [400, 403]) {
       const formDeps = signUpDeps(() => Promise.resolve(reply(status, { code: "INVALID_OTP" })));
       const result = await finishSignUp(formEvent(BASE, "rk_session=old", jar), formDeps);
-      expect(result).toMatchObject({ status: 400, data: { step: "code", number: NUMBER, error: FORM_MESSAGES.codeWrong } });
+      expect(result).toMatchObject({
+        status: 400,
+        data: { step: "code", number: NUMBER, error: FORM_MESSAGES.codeWrong },
+      });
       expect(formDeps.codeUsed).not.toHaveBeenCalled();
       expect(formDeps.makeAccount).not.toHaveBeenCalled();
     }
@@ -636,21 +713,33 @@ describe("finishSignUp", () => {
     const result = await finishSignUp(event, formDeps);
 
     expect(formDeps.removeHalfMadeAccount).toHaveBeenCalledWith("user_1");
-    expect(result).toMatchObject({ status: 500, data: { step: "code", number: NUMBER, error: FORM_MESSAGES.failed } });
+    expect(result).toMatchObject({
+      status: 500,
+      data: { step: "code", number: NUMBER, error: FORM_MESSAGES.failed },
+    });
     // The session cookie better-auth set is forgotten again, and the browser keeps its own value for the next try.
-    expect(event.cookies.set).toHaveBeenLastCalledWith("rk_session", "", expect.objectContaining({ path: "/", maxAge: 0 }));
+    expect(event.cookies.set).toHaveBeenLastCalledWith(
+      "rk_session",
+      "",
+      expect.objectContaining({ path: "/", maxAge: 0 }),
+    );
     expect(event.cookies.delete).not.toHaveBeenCalledWith(SIGN_UP_COOKIE, expect.anything());
     expect(formDeps.codeUsed).not.toHaveBeenCalled();
   });
 
   it("sends a person to / when next points off the site", async () => {
-    const result = finishSignUp(formEvent({ ...BASE, next: "https://evil.example" }, "rk_session=old", jar), signUpDeps());
+    const result = finishSignUp(
+      formEvent({ ...BASE, next: "https://evil.example" }, "rk_session=old", jar),
+      signUpDeps(),
+    );
     await expect(result).rejects.toMatchObject({ status: 303, location: "/" });
   });
 
   it("refuses a number that is not one", async () => {
     const formDeps = signUpDeps();
-    expect(await finishSignUp(formEvent({ ...BASE, number: "312" }, "rk_session=old", jar), formDeps)).toMatchObject({
+    expect(
+      await finishSignUp(formEvent({ ...BASE, number: "312" }, "rk_session=old", jar), formDeps),
+    ).toMatchObject({
       status: 400,
     });
     expect(formDeps.handler).not.toHaveBeenCalled();
@@ -661,7 +750,10 @@ describe("resendCode", () => {
   const pending = { passwordHash: "hashed", adultOn: new Date("2008-05-03T00:00:00Z") };
   const jar = { [SIGN_UP_COOKIE]: "browser-value" };
 
-  function signUpDeps(handler: (request: Request) => Promise<Response>, took: typeof pending | null = pending) {
+  function signUpDeps(
+    handler: (request: Request) => Promise<Response>,
+    took: typeof pending | null = pending,
+  ) {
     return {
       ...deps(handler),
       clock: new TestClock("2026-10-14T17:00:00Z"),
@@ -687,13 +779,20 @@ describe("resendCode", () => {
     const request = formDeps.handler.mock.calls[0]?.[0] as Request;
     expect(request.url).toBe(`${ORIGIN}/api/auth/phone-number/send-otp`);
     expect(await request.json()).toEqual({ phoneNumber: NUMBER });
-    expect(formDeps.keepPending).toHaveBeenCalledWith({ number: NUMBER, browser: "browser-value", ...pending });
+    expect(formDeps.keepPending).toHaveBeenCalledWith({
+      number: NUMBER,
+      browser: "browser-value",
+      ...pending,
+    });
   });
 
   it("goes back to the first screen, asking to start again, when this browser kept nothing", async () => {
     const formDeps = signUpDeps(() => Promise.resolve(reply(200)), null);
     const result = await resendCode(formEvent(fields, "rk_session=old", jar), formDeps);
-    expect(result).toMatchObject({ status: 400, data: { error: FORM_MESSAGES.signUpExpired, country: "US", phone: "312 555 1234" } });
+    expect(result).toMatchObject({
+      status: 400,
+      data: { error: FORM_MESSAGES.signUpExpired, country: "US", phone: "312 555 1234" },
+    });
     expect(JSON.stringify(result)).not.toContain('"step"');
     expect(formDeps.handler).not.toHaveBeenCalled();
   });
@@ -703,7 +802,10 @@ describe("resendCode", () => {
       formEvent(fields, "rk_session=old", jar),
       signUpDeps(() => Promise.resolve(reply(429, { code: "CODE_TOO_SOON" }))),
     );
-    expect(result).toMatchObject({ status: 429, data: { step: "code", number: NUMBER, error: FORM_MESSAGES.codeTooSoon } });
+    expect(result).toMatchObject({
+      status: 429,
+      data: { step: "code", number: NUMBER, error: FORM_MESSAGES.codeTooSoon },
+    });
   });
 });
 

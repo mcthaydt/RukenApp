@@ -107,7 +107,11 @@ export async function signUp(
 }
 
 /** Signs a person in through the sign-in form, as a person would, and waits for `/me`'s sign-in to settle. */
-export async function signInAs(page: Page, number: string, password: string = JOURNEY_PASSWORD): Promise<void> {
+export async function signInAs(
+  page: Page,
+  number: string,
+  password: string = JOURNEY_PASSWORD,
+): Promise<void> {
   await page.goto("/sign-in");
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(password);

@@ -20,13 +20,17 @@ export type ResetChannel = "text" | "email" | "help";
  * The newest moment the person is known to have held the number: their latest session, or the last time a code proved
  * it. An account with neither is as old as the account itself.
  */
-async function heldSince(
-  db: PrismaClient,
-  user: { id: string },
-): Promise<Date> {
+async function heldSince(db: PrismaClient, user: { id: string }): Promise<Date> {
   const [session, row] = await Promise.all([
-    db.session.findFirst({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
-    db.user.findUniqueOrThrow({ where: { id: user.id }, select: { phoneConfirmedAt: true, createdAt: true } }),
+    db.session.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
+    db.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: { phoneConfirmedAt: true, createdAt: true },
+    }),
   ]);
   const known = [session?.createdAt, row.phoneConfirmedAt].filter((date): date is Date => date != null);
   if (known.length === 0) return row.createdAt;

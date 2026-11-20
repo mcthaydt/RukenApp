@@ -62,7 +62,10 @@ export function createRateLimiter(prisma: PrismaClient, clock: Clock): RateLimit
     },
 
     async count(key, rule) {
-      const row = await prisma.rateLimit.findUnique({ where: { key }, select: { count: true, lastRequest: true } });
+      const row = await prisma.rateLimit.findUnique({
+        where: { key },
+        select: { count: true, lastRequest: true },
+      });
       if (row === null || Number(row.lastRequest) <= clock.epochMs() - rule.windowMs) return 0;
       return row.count;
     },

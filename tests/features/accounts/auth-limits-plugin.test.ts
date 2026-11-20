@@ -269,7 +269,7 @@ describe.each([SEND, RESET])("asking for a code at %s", (path) => {
     const { hook, clock } = setup();
     const results: (string | undefined)[] = [];
     for (let attempt = 1; attempt <= 4; attempt += 1) {
-      results.push((await send(hook, path, { phoneNumber: "+13125550000" }))?.body?.code as string | undefined);
+      results.push((await send(hook, path, { phoneNumber: "+13125550000" }))?.body?.code);
       clock.advance(31_000);
     }
     expect(results).toEqual([undefined, undefined, undefined, RATE_LIMITED]);
@@ -325,7 +325,8 @@ describe("the keys", () => {
 
 describe("wrong codes: ten in an hour pause codes for the number", () => {
   const wrong = () => new APIError("BAD_REQUEST", { message: "Invalid OTP", code: "INVALID_OTP" });
-  const tooMany = () => new APIError("FORBIDDEN", { message: "Too many attempts", code: "TOO_MANY_ATTEMPTS" });
+  const tooMany = () =>
+    new APIError("FORBIDDEN", { message: "Too many attempts", code: "TOO_MANY_ATTEMPTS" });
 
   it("is ten in an hour", () => {
     expect(WRONG_CODES).toEqual({ max: 10, windowMs: HOUR });
@@ -334,7 +335,12 @@ describe("wrong codes: ten in an hour pause codes for the number", () => {
   it("counts a wrong code and a code that ran out of tries, at the typing and at the reset, and nothing else", async () => {
     const { afterHook, limiter } = setup();
     const run = (path: string, returned: unknown) =>
-      afterHook.handler({ path, body: { phoneNumber: NUMBER }, headers: new Headers(), context: { returned } } as never);
+      afterHook.handler({
+        path,
+        body: { phoneNumber: NUMBER },
+        headers: new Headers(),
+        context: { returned },
+      } as never);
     for (const path of [VERIFY, FINISH]) {
       await run(path, wrong());
       await run(path, tooMany());
@@ -370,7 +376,9 @@ describe("wrong codes: ten in an hour pause codes for the number", () => {
       const refused = await send(pausedHook, path, { phoneNumber: NUMBER });
       expect(refused?.statusCode).toBe(429);
       expect(refused?.body?.code).toBe(CODES_PAUSED);
-      expect(refused?.body?.message).toBe("Too many wrong codes. Codes are paused for an hour for this number.");
+      expect(refused?.body?.message).toBe(
+        "Too many wrong codes. Codes are paused for an hour for this number.",
+      );
     }
     // Another number is not paused, and the pause check counts nothing itself.
     expect(await send(pausedHook, SEND, { phoneNumber: OTHER_NUMBER })).toBeUndefined();

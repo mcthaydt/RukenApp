@@ -10,7 +10,7 @@ import {
   startSignUpForm,
 } from "./support/account.ts";
 import { forgetCodeLimits, userIdOf } from "./support/database.ts";
-import { forgetRateLimits } from "./support/rate-limits.ts";
+import { forgetAddressCounters, forgetRateLimits } from "./support/rate-limits.ts";
 import { codesKept, codeTo, countCodesTo, failNextTextTo } from "./support/texts.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -34,7 +34,11 @@ test("a stranger makes an account with a texted code and lands signed in, and th
 test("a number typed with brackets and dashes is the same account as +1 and spaces", async ({ page }) => {
   const number = freshNumber();
   await page.goto("/sign-up");
-  await page.getByLabel("Phone number").fill(`(${nationalOf(number).slice(0, 3)}) ${nationalOf(number).slice(3, 6)}-${nationalOf(number).slice(6)}`);
+  await page
+    .getByLabel("Phone number")
+    .fill(
+      `(${nationalOf(number).slice(0, 3)}) ${nationalOf(number).slice(3, 6)}-${nationalOf(number).slice(6)}`,
+    );
   await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
   await page.getByLabel("Month").fill("1");
   await page.getByLabel("Day").fill("1");
@@ -46,7 +50,9 @@ test("a number typed with brackets and dashes is the same account as +1 and spac
   // Found again at sign-in whichever way it is typed.
   await page.context().clearCookies();
   await page.goto("/sign-in");
-  await page.getByLabel("Phone number").fill(`1 ${nationalOf(number).slice(0, 3)} ${nationalOf(number).slice(3)}`);
+  await page
+    .getByLabel("Phone number")
+    .fill(`1 ${nationalOf(number).slice(0, 3)} ${nationalOf(number).slice(3)}`);
   await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL("/");
@@ -76,7 +82,9 @@ test("something that is not a number says so", async ({ page }) => {
   await page.getByLabel("Day").fill("1");
   await page.getByLabel("Year").fill("1990");
   await page.getByRole("button", { name: "Text me a code" }).click();
-  await expect(page.getByText("That doesn't look like a phone number. Check it and try again.")).toBeVisible();
+  await expect(
+    page.getByText("That doesn't look like a phone number. Check it and try again."),
+  ).toBeVisible();
 });
 
 // The stranger sees the same screens as anyone, and the code never signs them in to someone else's account.
@@ -86,6 +94,8 @@ test("a number that already has an account gets the same code screen, no code, a
 }) => {
   const { number } = await signUpInTheirOwnContext(browser);
   const before = await countCodesTo(number);
+  // The first sign-up asked for a code a moment ago, and the site makes a second one wait half a minute.
+  await forgetCodeLimits(number);
 
   await page.goto("/sign-up");
   await startSignUpForm(page, number, "another long password");
@@ -119,14 +129,26 @@ test("ten wrong codes pause codes for the number, in the same words as for a num
   const number = freshNumber();
   await page.goto("/sign-up");
   await startSignUpForm(page, number);
-  for (let guess = 0; guess < 10; guess += 1) {
-    await page.getByLabel("The code we texted you").fill("000000");
-    await page.getByRole("button", { name: "Join Ruken" }).click();
-    await expect(page.getByText(/That code isn't right|Too many wrong codes/)).toBeVisible();
+  // A code allows three tries, and the fourth is refused as too many (all four count); then a new code is needed. So ten
+  // wrong ones take three codes: four, four, and two.
+  for (const [round, tries] of [4, 4, 2].entries()) {
+    await forgetAddressCounters();
+    await forgetCodeLimits(number);
+    if (round > 0) await page.getByRole("button", { name: "Text it again" }).click();
+    for (let guess = 0; guess < tries; guess += 1) {
+      await page.getByLabel("The code we texted you").fill("000000");
+      await page.getByRole("button", { name: "Join Ruken" }).click();
+      await expect(page.getByText(/That code isn't right|Too many wrong codes/)).toBeVisible();
+    }
   }
+  // The site also limits how many codes one address may try in a quarter of an hour; its counter is forgotten so the
+  // pause on the number is what is under test.
+  await forgetAddressCounters();
   await page.getByLabel("The code we texted you").fill(await codeTo(number));
   await page.getByRole("button", { name: "Join Ruken" }).click();
-  await expect(page.getByText("Too many wrong codes. Codes are paused for an hour for this number.")).toBeVisible();
+  await expect(
+    page.getByText("Too many wrong codes. Codes are paused for an hour for this number."),
+  ).toBeVisible();
 });
 
 test("Text it again sends a new code and the old one stops working", async ({ page }) => {
@@ -166,7 +188,11 @@ test("when Twilio fails, the code screen still shows and Text it again works", a
 });
 
 // The password and the birthday are kept for the browser that started the sign-up, and for no other.
-test("a second browser cannot choose the password, even when it has the code", async ({ page, browser, baseURL }) => {
+test("a second browser cannot choose the password, even when it has the code", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
   const number = freshNumber();
   await page.goto("/sign-up");
   await startSignUpForm(page, number, "the first long password");
@@ -174,11 +200,15 @@ test("a second browser cannot choose the password, even when it has the code", a
   const other = await browser.newContext({ baseURL: baseURL ?? "http://localhost:4173" });
   try {
     const stranger = await other.newPage();
+    // A second code for the same number within half a minute is refused by the site; the wait is forgotten.
+    await forgetCodeLimits(number);
     await stranger.goto("/sign-up");
     await startSignUpForm(stranger, number, "a stranger's long password");
     await stranger.getByLabel("The code we texted you").fill("000000");
     await stranger.getByRole("button", { name: "Join Ruken" }).click();
-    await expect(stranger.getByText("That code isn't right. Check the text, or ask for a new one.")).toBeVisible();
+    await expect(
+      stranger.getByText("That code isn't right. Check the text, or ask for a new one."),
+    ).toBeVisible();
   } finally {
     await other.close();
   }
@@ -193,7 +223,9 @@ test("a second browser cannot choose the password, even when it has the code", a
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill("a stranger's long password");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByText("That number and password don't match. Try again, or reset your password.")).toBeVisible();
+  await expect(
+    page.getByText("That number and password don't match. Try again, or reset your password."),
+  ).toBeVisible();
   await signInAs(page, number, "the first long password");
 });
 
@@ -244,7 +276,10 @@ test("the sign-up's own cookie is only for the sign-up, and is gone once it is d
 });
 
 test("it works with no script at all", async ({ browser, baseURL }) => {
-  const context = await browser.newContext({ baseURL: baseURL ?? "http://localhost:4173", javaScriptEnabled: false });
+  const context = await browser.newContext({
+    baseURL: baseURL ?? "http://localhost:4173",
+    javaScriptEnabled: false,
+  });
   try {
     const page = await context.newPage();
     const number = freshNumber();
@@ -259,7 +294,9 @@ test("it works with no script at all", async ({ browser, baseURL }) => {
 });
 
 /** Makes an account in a browser of its own, the way `signUpInItsOwnContext` does, and answers its number. */
-async function signUpInTheirOwnContext(browser: import("@playwright/test").Browser): Promise<{ number: string }> {
+async function signUpInTheirOwnContext(
+  browser: import("@playwright/test").Browser,
+): Promise<{ number: string }> {
   const context = await browser.newContext({ baseURL: "http://localhost:4173" });
   try {
     const page = await context.newPage();

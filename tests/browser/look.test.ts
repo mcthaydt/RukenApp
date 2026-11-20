@@ -201,11 +201,15 @@ test("with reduced motion, nothing moves", async ({ page }) => {
   ).toBe(0);
 });
 
-test("a very long number, typed by mistake, is refused in words and wraps inside the card", async ({ page }) => {
+test("a very long number, typed by mistake, is refused in words and wraps inside the card", async ({
+  page,
+}) => {
   await page.goto("/forgot-password");
   await page.getByLabel("Phone number").fill("1".repeat(90));
   await page.getByRole("button", { name: "Text me a code" }).click();
-  await expect(page.getByText("That doesn't look like a phone number. Check it and try again.")).toBeVisible();
+  await expect(
+    page.getByText("That doesn't look like a phone number. Check it and try again."),
+  ).toBeVisible();
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
   ).toBe(true);

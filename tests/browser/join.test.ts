@@ -1,11 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
-import {
-  continueToPayment,
-  finishSignUpForm,
-  freshNumber,
-  signUp,
-} from "./support/account.ts";
+import { continueToPayment, finishSignUpForm, freshNumber, signUp } from "./support/account.ts";
 import { boxOf, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 

@@ -17,7 +17,9 @@
 <main class="card">
   {#if form?.step === "code"}
     <h1>Choose a new password</h1>
-    <p>If that number has a Ruken account, we sent a code. It may come by text, or to the email you pay with.</p>
+    <p>
+      If that number has a Ruken account, we sent a code. It may come by text, or to the email you pay with.
+    </p>
     <form method="POST" action="?/finish">
       <input type="hidden" name="number" value={form.number} />
       <input type="hidden" name="country" value={form.country} />
@@ -50,7 +52,7 @@
   {:else}
     <h1>Forgot your password?</h1>
     <p>Enter your phone number and we'll text you a code to choose a new one.</p>
-    <form method="POST">
+    <form method="POST" action="?/start">
       <PhoneFields countries={data.countries} country={form?.country} phone={form?.phone} />
       {#if form?.error}
         <p class="problem" role="alert">{form.error}</p>

@@ -17,7 +17,7 @@ export const load: PageServerLoad = ({ locals, url }) => ({
 
 export const actions: Actions = {
   // The first screen: checks the form, keeps the password and the birthday for this browser, asks for a code.
-  default: (event) => startSignUp(event, authServices().signUpDeps),
+  start: (event) => startSignUp(event, authServices().signUpDeps),
   // The code screen: "Join Ruken".
   finish: (event) => finishSignUp(event, authServices().signUpDeps),
   // The code screen: "Text it again".

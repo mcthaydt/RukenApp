@@ -22,7 +22,7 @@ const settings = {
  * `prisma()` throws, which would surface as an unhandled rejection that fails the whole run. An empty object
  * has no data model, so better-auth skips that check. Nothing here talks to a database.
  */
-async function inRequest(work: () => void | Promise<unknown>): Promise<void> {
+async function inRequest(work: () => unknown): Promise<void> {
   await databasePerRequest(() => ({}) as PrismaClient)({
     event: {} as RequestEvent,
     resolve: async () => {
@@ -60,7 +60,9 @@ describe("createAuthServices", () => {
 
   it("takes the text service's address of a stand-in on this machine", async () => {
     await inRequest(() => {
-      expect(() => createAuthServices({ ...settings, TWILIO_API_BASE: "http://127.0.0.1:12114" })).not.toThrow();
+      expect(() =>
+        createAuthServices({ ...settings, TWILIO_API_BASE: "http://127.0.0.1:12114" }),
+      ).not.toThrow();
     });
   });
 
@@ -75,7 +77,9 @@ describe("createAuthServices", () => {
   it("texts only the allowlist when one is set, so a test copy cannot text strangers", async () => {
     await inRequest(() => {
       const services = createAuthServices({ ...settings, TEXT_ALLOWLIST: "+13125551234" });
-      return expect(services.texter.send({ to: "+13125559999", line: "account", body: "Ruken: hi" })).resolves.toEqual({
+      return expect(
+        services.texter.send({ to: "+13125559999", line: "account", body: "Ruken: hi" }),
+      ).resolves.toEqual({
         sent: false,
         why: "allowlist",
       });

@@ -49,7 +49,8 @@ export function createMoneyServices(
   });
   const feeReportSkipped = feeReportSkipReason(source);
   return {
-    hasBeenPaid: async (userId) => (await parts.prisma.journalLine.count({ where: { makerUserId: userId } })) > 0,
+    hasBeenPaid: async (userId) =>
+      (await parts.prisma.journalLine.count({ where: { makerUserId: userId } })) > 0,
     runJob: () =>
       runMoneyJob({
         db: parts.prisma,

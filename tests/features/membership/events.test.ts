@@ -60,11 +60,15 @@ describe("checkout.session.completed", () => {
     });
     expect(paidWithEmailOf(verified)).toBe("Paid@Example.test");
     expect(paidWithEmailOf(keptEvent(verified))).toBeNull();
-    expect(paidWithEmailOf(event("invoice.paid", { id: "in_1", customer_email: "x@example.test" }))).toBeNull();
+    expect(
+      paidWithEmailOf(event("invoice.paid", { id: "in_1", customer_email: "x@example.test" })),
+    ).toBeNull();
 
     await handleStripeEvent(h, verified, paidWithEmailOf(verified));
 
-    expect(h.completeCheckout).toHaveBeenCalledWith(expect.objectContaining({ paidWithEmail: "Paid@Example.test" }));
+    expect(h.completeCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({ paidWithEmail: "Paid@Example.test" }),
+    );
   });
 
   it("throws for a membership checkout without a subscription, so it is tried again", async () => {

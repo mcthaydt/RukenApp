@@ -52,7 +52,9 @@ describe("a phone number on a user", () => {
   it("may be missing on any number of users", async () => {
     await insertUser(null);
     await insertUser(null);
-    const rows = await db().$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM "User" WHERE "phoneNumber" IS NULL`;
+    const rows = await db().$queryRaw<
+      { n: bigint }[]
+    >`SELECT count(*) AS n FROM "User" WHERE "phoneNumber" IS NULL`;
     expect(Number(rows[0]?.n)).toBeGreaterThanOrEqual(2);
   });
 
@@ -129,6 +131,8 @@ describe("a text that was sent", () => {
   it("keeps its person from being deleted", async () => {
     const userId = await createUser(db());
     await insertText(userId, "extra", "e1");
-    await expect(db().$executeRaw`DELETE FROM "User" WHERE "id" = ${userId}`).rejects.toThrow(/TextSent_userId_fkey/);
+    await expect(db().$executeRaw`DELETE FROM "User" WHERE "id" = ${userId}`).rejects.toThrow(
+      /TextSent_userId_fkey/,
+    );
   });
 });

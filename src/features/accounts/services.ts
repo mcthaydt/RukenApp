@@ -87,7 +87,9 @@ export function createAuthServices(source: Settings, db?: PrismaClient): AuthSer
     services: { account: accountService, news: newsService },
     verifyService,
     allowlist: textAllowlist,
-    ...(textApiBase === undefined ? {} : { apiBase: textApiBase, lookupBase: textApiBase, verifyBase: textApiBase }),
+    ...(textApiBase === undefined
+      ? {}
+      : { apiBase: textApiBase, lookupBase: textApiBase, verifyBase: textApiBase }),
     log: (line) => {
       console.warn(`text: ${line}`);
     },
@@ -131,7 +133,19 @@ export function createAuthServices(source: Settings, db?: PrismaClient): AuthSer
     makeAccount: (input) => makeAccount({ db: prisma, clock, secret }, input),
     removeHalfMadeAccount: (userId) => removeHalfMadeAccount(prisma, userId),
   };
-  return { prisma, clock, cookies, mailer, texter, auth, secret, handleDeps, formDeps, resetDeps, signUpDeps };
+  return {
+    prisma,
+    clock,
+    cookies,
+    mailer,
+    texter,
+    auth,
+    secret,
+    handleDeps,
+    formDeps,
+    resetDeps,
+    signUpDeps,
+  };
 }
 
 let shared: AuthServices | undefined;

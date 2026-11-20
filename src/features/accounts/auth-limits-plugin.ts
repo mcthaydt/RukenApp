@@ -58,7 +58,12 @@ interface NumberLimit {
  */
 const CODE_LIMITS: readonly NumberLimit[] = [
   { rule: { max: 3, windowMs: FIFTEEN_MINUTES_MS }, perClientAddress: true, code: RATE_LIMITED },
-  { rule: { max: 1, windowMs: 30 * ONE_SECOND_MS }, perClientAddress: false, code: CODE_TOO_SOON, suffix: "soon" },
+  {
+    rule: { max: 1, windowMs: 30 * ONE_SECOND_MS },
+    perClientAddress: false,
+    code: CODE_TOO_SOON,
+    suffix: "soon",
+  },
   { rule: { max: 10, windowMs: ONE_HOUR_MS }, perClientAddress: false, code: RATE_LIMITED },
 ];
 

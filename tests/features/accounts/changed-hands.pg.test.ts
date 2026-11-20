@@ -95,14 +95,24 @@ describe("resetChannel", () => {
   it("asks Twilio about the number since the newer of the newest session and the number's last confirmation", async () => {
     const user = await makeUser({ confirmedAt: new Date("2026-03-01T00:00:00Z") });
     await db().session.create({
-      data: { token: `t-${user.id}-1`, userId: user.id, expiresAt: new Date("2030-01-01"), createdAt: new Date("2026-02-01T00:00:00Z") },
+      data: {
+        token: `t-${user.id}-1`,
+        userId: user.id,
+        expiresAt: new Date("2030-01-01"),
+        createdAt: new Date("2026-02-01T00:00:00Z"),
+      },
     });
     const first = depsWith("no", false);
     await resetChannel(first.deps, user);
     expect(first.asked).toEqual([{ number: user.phoneNumber, since: new Date("2026-03-01T00:00:00Z") }]);
 
     await db().session.create({
-      data: { token: `t-${user.id}-2`, userId: user.id, expiresAt: new Date("2030-01-01"), createdAt: new Date("2026-04-01T00:00:00Z") },
+      data: {
+        token: `t-${user.id}-2`,
+        userId: user.id,
+        expiresAt: new Date("2030-01-01"),
+        createdAt: new Date("2026-04-01T00:00:00Z"),
+      },
     });
     const second = depsWith("no", false);
     await resetChannel(second.deps, user);

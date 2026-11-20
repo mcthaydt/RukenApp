@@ -173,7 +173,12 @@ describe("what the public /api/auth route lets through", () => {
           // The public route sets this on every request it passes on (forward.ts); the forms' own calls do not.
           [PUBLIC_ROUTE_HEADER]: "1",
         },
-        body: JSON.stringify({ phoneNumber: nextNumber(), code: "123456", password: PASSWORD, email: "x@example.test" }),
+        body: JSON.stringify({
+          phoneNumber: nextNumber(),
+          code: "123456",
+          password: PASSWORD,
+          email: "x@example.test",
+        }),
       }),
     );
 
@@ -364,7 +369,8 @@ describe("sign-in with a phone number and a password", () => {
     const statuses: number[] = [];
     for (let attempt = 0; attempt < 6; attempt += 1)
       statuses.push(
-        (await post("/sign-in/phone-number", { phoneNumber: number, password: "wrong horse!" }, { ip })).status,
+        (await post("/sign-in/phone-number", { phoneNumber: number, password: "wrong horse!" }, { ip }))
+          .status,
       );
 
     expect(statuses).toEqual([401, 401, 401, 401, 401, 429]);
@@ -373,13 +379,13 @@ describe("sign-in with a phone number and a password", () => {
       (await post("/sign-in/phone-number", { phoneNumber: nextNumber(), password: "wrong horse!" }, { ip }))
         .status,
     ).toBe(401);
-    expect((await post("/sign-in/phone-number", { phoneNumber: number, password: "wrong horse!" })).status).toBe(
-      401,
-    );
+    expect(
+      (await post("/sign-in/phone-number", { phoneNumber: number, password: "wrong horse!" })).status,
+    ).toBe(401);
     // The counter is kept under the keyed hash of the number, never the number itself.
-    const keys = (await db().rateLimit.findMany({ where: { key: { contains: ip } }, select: { key: true } })).map(
-      (row) => row.key,
-    );
+    const keys = (
+      await db().rateLimit.findMany({ where: { key: { contains: ip } }, select: { key: true } })
+    ).map((row) => row.key);
     expect(keys.join("\n")).not.toContain(number.slice(2));
   });
 
@@ -523,7 +529,9 @@ describe("forgot password", () => {
     expect((await finish(number, code)).status).toBe(200);
 
     expect(await sessionInfo(theAuth(), new Headers({ cookie }))).toBeNull();
-    expect((await post("/sign-in/phone-number", { phoneNumber: number, password: PASSWORD })).status).toBe(401);
+    expect((await post("/sign-in/phone-number", { phoneNumber: number, password: PASSWORD })).status).toBe(
+      401,
+    );
     expect(
       (await post("/sign-in/phone-number", { phoneNumber: number, password: "a brand new horse" })).status,
     ).toBe(200);
@@ -546,7 +554,9 @@ describe("forgot password", () => {
     await request(number);
     const wrong = await finish(number, "000000");
     expect(wrong.status).toBe(400);
-    expect(await db().rateLimit.count({ where: { key: { startsWith: "api:auth:wrong-code:" } } })).toBeGreaterThan(0);
+    expect(
+      await db().rateLimit.count({ where: { key: { startsWith: "api:auth:wrong-code:" } } }),
+    ).toBeGreaterThan(0);
   });
 
   it("refuses a new password that is too short or too long", async () => {
@@ -555,7 +565,9 @@ describe("forgot password", () => {
       await accountWith(number);
       await request(number);
       expect((await finish(number, codesTo(number)[0]?.code ?? "", newPassword)).status).toBe(400);
-      expect((await post("/sign-in/phone-number", { phoneNumber: number, password: PASSWORD })).status).toBe(200);
+      expect((await post("/sign-in/phone-number", { phoneNumber: number, password: PASSWORD })).status).toBe(
+        200,
+      );
     }
   });
 
@@ -621,9 +633,9 @@ describe("forgot password", () => {
     });
     logged.length = 0;
 
-    expect((await post("/phone-number/request-password-reset", { phoneNumber: number }, { auth: failing })).status).toBe(
-      200,
-    );
+    expect(
+      (await post("/phone-number/request-password-reset", { phoneNumber: number }, { auth: failing })).status,
+    ).toBe(200);
 
     expect(logged).toEqual(["reset code not sent: TWILIO 400 21610"]);
   });
@@ -743,7 +755,8 @@ describe("account sign-in pause", () => {
     await failTimes(number, SIGN_IN_FAILURE_LIMIT);
 
     expect(
-      (await post("/phone-number/request-password-reset", { phoneNumber: number }, { auth: thePauseAuth() })).status,
+      (await post("/phone-number/request-password-reset", { phoneNumber: number }, { auth: thePauseAuth() }))
+        .status,
     ).toBe(200);
     expect(pauseTexter.codes.filter((code) => code.to === number)).toHaveLength(1);
   });
@@ -808,12 +821,17 @@ describe("account sign-in pause", () => {
       await post("/sign-in/phone-number", { password: "wrong horse" }, { auth: thePauseAuth() });
       // A body better-auth refuses (400) was counted before the check and is given back after it.
       expect(
-        (await post("/sign-in/phone-number", { phoneNumber: "not a number", password: "x" }, { auth: thePauseAuth() }))
-          .status,
+        (
+          await post(
+            "/sign-in/phone-number",
+            { phoneNumber: "not a number", password: "x" },
+            { auth: thePauseAuth() },
+          )
+        ).status,
       ).toBe(400);
-      expect((await post("/sign-in/phone-number", { phoneNumber: number }, { auth: thePauseAuth() })).status).toBe(
-        400,
-      );
+      expect(
+        (await post("/sign-in/phone-number", { phoneNumber: number }, { auth: thePauseAuth() })).status,
+      ).toBe(400);
     }
 
     expect((await signIn(number, PASSWORD)).status).toBe(200);

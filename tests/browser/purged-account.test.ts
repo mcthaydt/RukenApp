@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { freshNumber, JOURNEY_PASSWORD, nationalOf, signUp } from "./support/account.ts";
-import { makeDeletionDue, numberOfId, userIdOf } from "./support/database.ts";
+import { forgetCodeLimits, makeDeletionDue, numberOfId, userIdOf } from "./support/database.ts";
 import { shownAs } from "../../src/features/accounts/phone.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -51,6 +51,8 @@ test("after the 14 days the account is gone: sign-in is refused, and the number 
   await expect(page).toHaveURL(/\/sign-in/);
 
   // The same number makes a new account, which is a new person's, not the old one come back.
+  // The first code for this number was sent a moment ago; the site makes a second one wait half a minute.
+  await forgetCodeLimits(number);
   await signUp(page, number);
   await page.goto("/me");
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();

@@ -24,15 +24,29 @@ export async function makeAccount(
 ): Promise<void> {
   await deps.db.$transaction(async (tx) => {
     await tx.account.create({
-      data: { userId: input.userId, providerId: "credential", accountId: input.userId, password: input.passwordHash },
+      data: {
+        userId: input.userId,
+        providerId: "credential",
+        accountId: input.userId,
+        password: input.passwordHash,
+      },
     });
-    await tx.user.updateMany({ where: { id: input.userId, adultOn: null }, data: { adultOn: input.adultOn } });
-    await tx.user.update({ where: { id: input.userId }, data: { phoneConfirmedAt: new Date(deps.clock.epochMs()) } });
+    await tx.user.updateMany({
+      where: { id: input.userId, adultOn: null },
+      data: { adultOn: input.adultOn },
+    });
+    await tx.user.update({
+      where: { id: input.userId },
+      data: { phoneConfirmedAt: new Date(deps.clock.epochMs()) },
+    });
     await forgetPending({ db: tx, secret: deps.secret }, input.number);
   });
 }
 
 /** Takes back a user and its sessions that `verify` made, when the rest of sign-up could not be finished. */
 export async function removeHalfMadeAccount(db: PrismaClient, userId: string): Promise<void> {
-  await db.$transaction([db.session.deleteMany({ where: { userId } }), db.user.deleteMany({ where: { id: userId } })]);
+  await db.$transaction([
+    db.session.deleteMany({ where: { userId } }),
+    db.user.deleteMany({ where: { id: userId } }),
+  ]);
 }

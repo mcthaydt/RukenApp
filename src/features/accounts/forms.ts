@@ -164,7 +164,9 @@ export async function requestReset(
   if (number === null) return refusedNumber(form, kept);
   const onCodeScreen: AuthFormData = again ? { ...kept, step: "code", number } : kept;
 
-  const response = await callAuth(event, deps, "/phone-number/request-password-reset", { phoneNumber: number });
+  const response = await callAuth(event, deps, "/phone-number/request-password-reset", {
+    phoneNumber: number,
+  });
   if (response.ok) return { step: "code", number, ...kept };
   if (response.status === 429) return codeLimitFailure(response, onCodeScreen);
   return otherFailure(response, onCodeScreen);
@@ -184,10 +186,7 @@ function refusedNumber(form: FormFields, kept: AuthFormData): ActionFailure<Auth
  * in one step and a code is used up the moment it is checked, so a typing mistake must not reach it. better-auth
  * signs every device out on success, so the person signs in again with the new password.
  */
-export async function finishReset(
-  event: FormEvent,
-  deps: ResetDeps,
-): Promise<ActionFailure<AuthFormData>> {
+export async function finishReset(event: FormEvent, deps: ResetDeps): Promise<ActionFailure<AuthFormData>> {
   const form = await readForm(event);
   if (!isNumber(form.number)) return fail(400, { error: FORM_MESSAGES.phoneInvalid });
   const kept: AuthFormData = { step: "code", number: form.number, country: form.country, phone: form.phone };
@@ -244,7 +243,8 @@ export async function startSignUp(
   }
   const date = birthDateOf(form);
   const age = date === null ? { kind: "invalid" as const } : ageCheck(date, deps.clock);
-  if (date === null || age.kind === "invalid") return fail(400, { ...kept, error: FORM_MESSAGES.birthDateInvalid });
+  if (date === null || age.kind === "invalid")
+    return fail(400, { ...kept, error: FORM_MESSAGES.birthDateInvalid });
   if (age.kind === "under13") return fail(400, { tooYoung: true });
 
   const browser = browserOf(event, deps);
@@ -285,7 +285,13 @@ export async function resendCode(
   deps: SignUpDeps,
 ): Promise<AuthFormData | ActionFailure<AuthFormData>> {
   const form = await readForm(event);
-  const first: AuthFormData = { country: form.country, phone: form.phone, month: form.month, day: form.day, year: form.year };
+  const first: AuthFormData = {
+    country: form.country,
+    phone: form.phone,
+    month: form.month,
+    day: form.day,
+    year: form.year,
+  };
   if (!isNumber(form.number)) return fail(400, { ...first, error: FORM_MESSAGES.phoneInvalid });
   const browser = event.cookies.get(SIGN_UP_COOKIE) ?? "";
   const kept = await deps.takePending({ number: form.number, browser });
@@ -307,10 +313,7 @@ export async function resendCode(
  * exactly as `verify` would, and the screen reads the same whatever it answers, so a number with an account and one
  * without read the same at every try, do the same work and pause at the same count.
  */
-export async function finishSignUp(
-  event: FormEvent,
-  deps: SignUpDeps,
-): Promise<ActionFailure<AuthFormData>> {
+export async function finishSignUp(event: FormEvent, deps: SignUpDeps): Promise<ActionFailure<AuthFormData>> {
   const form = await readForm(event);
   if (!isNumber(form.number)) return fail(400, { error: FORM_MESSAGES.phoneInvalid });
   const number = form.number;
@@ -334,7 +337,10 @@ export async function finishSignUp(
     return fail(400, { ...kept, error: FORM_MESSAGES.codeWrong });
   }
 
-  const response = await callAuth(event, deps, "/phone-number/verify", { phoneNumber: number, code: form.code });
+  const response = await callAuth(event, deps, "/phone-number/verify", {
+    phoneNumber: number,
+    code: form.code,
+  });
   if (response.status === 400 || response.status === 403) {
     return fail(400, { ...kept, error: FORM_MESSAGES.codeWrong });
   }
@@ -344,7 +350,12 @@ export async function finishSignUp(
   // `json<T>()` is how the Workers types let a body be read as a known shape.
   const { user } = await response.json<{ user: { id: string } }>();
   try {
-    await deps.makeAccount({ userId: user.id, number, passwordHash: pending.passwordHash, adultOn: pending.adultOn });
+    await deps.makeAccount({
+      userId: user.id,
+      number,
+      passwordHash: pending.passwordHash,
+      adultOn: pending.adultOn,
+    });
   } catch (cause) {
     // Left as it was, the account would have no password and no age, so an adult would get every under-18 default,
     // and a second try would meet "an account has this number". So it is taken back, the session better-auth just

@@ -41,7 +41,7 @@ function keyHolding(addressPattern: string): string {
  * to 5 an hour per address, so a run would still use up the limit and fail for a reason no visitor would meet. The
  * site's limits themselves are not changed, loosened or turned off: only the counters are cleared, in the journeys'
  * own database. Counters that hold another worker's address are left alone, because that worker's journey may be
- * counting on them right now. Counters with no address in them (per person or per email) are cleared as before.
+ * counting on them right now. Counters with no address in them are cleared as before, except the ones about one phone number (`api:auth:…`): every journey uses a number of its own, so another worker's journey is the only one that could hold them, and clearing them would undo its count of wrong codes.
  */
 export async function forgetRateLimits(): Promise<void> {
   const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -51,10 +51,29 @@ export async function forgetRateLimits(): Promise<void> {
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
   try {
-    await client.query('DELETE FROM "RateLimit" WHERE key !~ $1 OR key ~ $2', [
-      keyHolding(ANY_JOURNEY_ADDRESS),
-      keyHolding(journeyClientAddress().replaceAll(".", String.raw`\.`)),
-    ]);
+    await client.query(
+      "DELETE FROM \"RateLimit\" WHERE (key !~ $1 AND key NOT LIKE 'api:auth:%') OR key ~ $2",
+      [keyHolding(ANY_JOURNEY_ADDRESS), keyHolding(journeyClientAddress().replaceAll(".", String.raw`\.`))],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
+/**
+ * Forgets only better-auth's own per-address counters for this worker ("<address>|<path>", such as ten verifications
+ * in a quarter of an hour), and none of the site's counters about a number. For a journey that is about a number's
+ * wrong codes and must not be stopped first by the address's limit.
+ */
+export async function forgetAddressCounters(): Promise<void> {
+  const databaseUrl = process.env.TEST_DATABASE_URL;
+  if (databaseUrl === undefined || databaseUrl === "") {
+    throw new Error("TEST_DATABASE_URL is not set. The journeys run in CI's browser job.");
+  }
+  const client = new pg.Client({ connectionString: databaseUrl });
+  await client.connect();
+  try {
+    await client.query('DELETE FROM "RateLimit" WHERE key LIKE $1', [`${journeyClientAddress()}|%`]);
   } finally {
     await client.end();
   }

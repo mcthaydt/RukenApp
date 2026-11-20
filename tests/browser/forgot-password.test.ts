@@ -1,10 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import {
-  freshNumber,
-  nationalOf,
-  payAsNewMember,
-  signUp,
-} from "./support/account.ts";
+import { freshNumber, nationalOf, payAsNewMember, signUp } from "./support/account.ts";
 import { forgetCodeLimits, paperEmailOf, pauseOf } from "./support/database.ts";
 import { countMailsTo, mailTo } from "./support/mail.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -116,6 +111,8 @@ test("a wrong code, a short password and two different passwords each say what t
 test("Text it again sends a new code and the old one stops working", async ({ page }) => {
   const { number } = await signUp(page);
   await page.context().clearCookies();
+  // The sign-up's own code is one of the kept ones, so what is counted is what comes after it.
+  const before = (await codesKept(number)).length;
   await askForCode(page, number);
   const first = await codeTo(number);
   await forgetCodeLimits(number);
@@ -123,11 +120,13 @@ test("Text it again sends a new code and the old one stops working", async ({ pa
   await page.getByRole("button", { name: "Text it again" }).click();
 
   await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
-  await expect.poll(async () => (await codesKept(number)).length).toBe(2);
+  await expect.poll(async () => (await codesKept(number)).length).toBe(before + 2);
   const second = await codeTo(number);
   if (first !== second) {
     await chooseNewPassword(page, first);
-    await expect(page.getByText("That code isn't right. Check the text, or ask for a new one.")).toBeVisible();
+    await expect(
+      page.getByText("That code isn't right. Check the text, or ask for a new one."),
+    ).toBeVisible();
   }
   await chooseNewPassword(page, second);
   await expect(page).toHaveURL("/sign-in?reset=1");
@@ -190,7 +189,9 @@ test("a reset lifts a sign-in pause", async ({ page }) => {
   await expect(page).toHaveURL("/");
 });
 
-test("the first screen links back to sign in and has no link to help or to a mailed link", async ({ page }) => {
+test("the first screen links back to sign in and has no link to help or to a mailed link", async ({
+  page,
+}) => {
   await page.goto("/forgot-password");
   await expect(page.getByRole("link", { name: "Back to sign in" })).toHaveAttribute("href", "/sign-in");
   await expect(page.getByRole("link", { name: /help/i })).toHaveCount(0);

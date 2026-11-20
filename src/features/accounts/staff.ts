@@ -25,7 +25,9 @@ export function grantFirstOwner(db: PrismaClient, phoneNumber: string): Promise<
     // Numbers are kept as E.164; the command may be given one written any way (a leading "+" names its country).
     const number = toE164("+1", phoneNumber);
     const user =
-      number === null ? null : await tx.user.findUnique({ where: { phoneNumber: number }, select: { id: true } });
+      number === null
+        ? null
+        : await tx.user.findUnique({ where: { phoneNumber: number }, select: { id: true } });
     if (user === null) return "no_account";
     await tx.staffAssignment.create({ data: { userId: user.id, role: "owner" } });
     return "granted";

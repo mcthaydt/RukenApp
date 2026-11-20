@@ -40,7 +40,12 @@ function depsAt(clock: TestClock): PendingDeps {
 describe("a pending sign-up", () => {
   it("is kept for the browser that started it, and given back to it", async () => {
     const deps = depsAt(new TestClock("2026-11-17T12:00:00Z"));
-    await keepPending(deps, { number: NUMBER, browser: "browser-a", passwordHash: "hash-a", adultOn: ADULT_ON });
+    await keepPending(deps, {
+      number: NUMBER,
+      browser: "browser-a",
+      passwordHash: "hash-a",
+      adultOn: ADULT_ON,
+    });
 
     expect(await takePending(deps, { number: NUMBER, browser: "browser-a" })).toEqual({
       passwordHash: "hash-a",
@@ -50,7 +55,12 @@ describe("a pending sign-up", () => {
 
   it("is not given to another browser, or for another number", async () => {
     const deps = depsAt(new TestClock("2026-11-17T12:00:00Z"));
-    await keepPending(deps, { number: "+13125551001", browser: "browser-a", passwordHash: "hash-a", adultOn: ADULT_ON });
+    await keepPending(deps, {
+      number: "+13125551001",
+      browser: "browser-a",
+      passwordHash: "hash-a",
+      adultOn: ADULT_ON,
+    });
 
     expect(await takePending(deps, { number: "+13125551001", browser: "browser-b" })).toBeNull();
     expect(await takePending(deps, { number: "+13125551002", browser: "browser-a" })).toBeNull();
@@ -61,7 +71,12 @@ describe("a pending sign-up", () => {
     const deps = depsAt(new TestClock("2026-11-17T12:00:00Z"));
     const number = "+13125551003";
     await keepPending(deps, { number, browser: "person", passwordHash: "the-person's", adultOn: ADULT_ON });
-    await keepPending(deps, { number, browser: "stranger", passwordHash: "the-stranger's", adultOn: ADULT_ON });
+    await keepPending(deps, {
+      number,
+      browser: "stranger",
+      passwordHash: "the-stranger's",
+      adultOn: ADULT_ON,
+    });
 
     expect((await takePending(deps, { number, browser: "person" }))?.passwordHash).toBe("the-person's");
     expect((await takePending(deps, { number, browser: "stranger" }))?.passwordHash).toBe("the-stranger's");
@@ -94,7 +109,12 @@ describe("a pending sign-up", () => {
 
   it("is kept under keyed hashes: no number, browser value or password in the table", async () => {
     const deps = depsAt(new TestClock("2026-11-17T12:00:00Z"));
-    await keepPending(deps, { number: "+13125551006", browser: "a-browser-value", passwordHash: "hash", adultOn: ADULT_ON });
+    await keepPending(deps, {
+      number: "+13125551006",
+      browser: "a-browser-value",
+      passwordHash: "hash",
+      adultOn: ADULT_ON,
+    });
     const rows = JSON.stringify(await db().pendingSignUp.findMany());
     expect(rows).not.toContain("3125551006");
     expect(rows).not.toContain("a-browser-value");

@@ -39,7 +39,8 @@ export async function paperEmailOf(number: string): Promise<string | null> {
  * a journey that wants to know it was cleared asks for the account by id.
  */
 export async function numberOfId(userId: string): Promise<string | null> {
-  return (await db().user.findUniqueOrThrow({ where: { id: userId }, select: { phoneNumber: true } })).phoneNumber;
+  return (await db().user.findUniqueOrThrow({ where: { id: userId }, select: { phoneNumber: true } }))
+    .phoneNumber;
 }
 
 /**
@@ -51,7 +52,9 @@ export async function expireKeptSignUps(): Promise<void> {
 }
 
 /** Everything a journey can see of a sign-in pause for this number: the guesses counted and when it ends. */
-export async function pauseOf(number: string): Promise<{ failures: number; pausedUntil: Date | null } | null> {
+export async function pauseOf(
+  number: string,
+): Promise<{ failures: number; pausedUntil: Date | null } | null> {
   return db().signInGuard.findUnique({
     where: { numberHash: hashNumber(number, APP_SECRET) },
     select: { failures: true, pausedUntil: true },
@@ -122,7 +125,10 @@ export function connectStateFor(userId: string, game: string | null = null): str
 }
 
 export function membershipStartsOf(number: string): Promise<MembershipStart[]> {
-  return db().membershipStart.findMany({ where: { user: { phoneNumber: number } }, orderBy: { startedAt: "asc" } });
+  return db().membershipStart.findMany({
+    where: { user: { phoneNumber: number } },
+    orderBy: { startedAt: "asc" },
+  });
 }
 
 /** The secret `playwright.config.ts` gives the app, which seals the arrival cookie. */

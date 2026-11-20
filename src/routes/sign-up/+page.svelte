@@ -53,7 +53,7 @@
     </p>
   {:else}
     <h1>Join Ruken</h1>
-    <form method="POST">
+    <form method="POST" action="?/start">
       <input type="hidden" name="next" value={data.next} />
       <PhoneFields countries={data.countries} country={form?.country} phone={form?.phone} />
       <p>
@@ -103,8 +103,8 @@
         <p class="note">We only check that you're 13 or older. We don't keep your birthday.</p>
       </fieldset>
       <p class="note">
-        We'll text you a code to check it's you, and texts about your account. Message and data rates may apply. Reply
-        STOP to stop, HELP for help.
+        We'll text you a code to check it's you, and texts about your account. Message and data rates may
+        apply. Reply STOP to stop, HELP for help.
       </p>
       {#if form?.error}
         <p class="problem" role="alert">{form.error}</p>
