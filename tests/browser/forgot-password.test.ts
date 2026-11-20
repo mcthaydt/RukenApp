@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { freshNumber, nationalOf, payAsNewMember, signUp, textItAgain } from "./support/account.ts";
+import {
+  freshNumber,
+  nationalOf,
+  pageHasSettled,
+  payAsNewMember,
+  signUp,
+  textItAgain,
+} from "./support/account.ts";
 import { forgetCodeLimits, paperEmailOf, pauseOf } from "./support/database.ts";
 import { countMailsTo, mailTo } from "./support/mail.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -72,11 +79,15 @@ test("a reset by code saves the new password, signs every device out, and texts 
   const changed = await textTo(number, "Ruken: your password was changed");
   expect(changed.line).toBe("account");
 
-  // The old password stops working and the new one works.
+  // The old password stops working and the new one works. Each screen is let to come alive before it is typed into: a
+  // box filled while the page is still waking is filled again when it does (run 44655089262, tablet-webkit, typed the
+  // number twice into the box the failed sign-in had kept).
+  await pageHasSettled(page);
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByText("That number and password don't match.")).toBeVisible();
+  await pageHasSettled(page);
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(NEW_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
