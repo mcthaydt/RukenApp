@@ -579,7 +579,7 @@ export function createGamesService(deps: GamesServiceDeps) {
           data: becomesLive(waiting.pullId),
         });
         await tx.game.updateMany({
-          where: { id: gameId, state: "live", acceptedSeenAt: null },
+          where: { id: gameId, acceptedSeenAt: null },
           data: { acceptedSeenAt: decidedAt },
         });
       }
@@ -1023,7 +1023,7 @@ export function createGamesService(deps: GamesServiceDeps) {
   /** The maker has seen the Accepted screen: it never shows again for this game. */
   async function markAcceptedSeen(gameId: string): Promise<void> {
     await deps.db.game.updateMany({
-      where: { id: gameId, acceptedSeenAt: null },
+      where: { id: gameId, state: "live", acceptedSeenAt: null },
       data: { acceptedSeenAt: now() },
     });
   }
