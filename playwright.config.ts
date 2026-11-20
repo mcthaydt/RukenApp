@@ -22,6 +22,12 @@ export default defineConfig({
   // journey that cannot find its form says so quickly.
   // Each worker reaches the site from its own client address, so side-by-side journeys never share the site's
   // per-address limits (tests/browser/support/rate-limits.ts).
+  // A wait for the site's answer (a new address, a saved answer on screen) gets 15 seconds. The site in a journey is
+  // one `wrangler dev` process on a four-core runner shared with two browsers, so while another worker's journey keeps
+  // it busy a single answer can take over 5 seconds: run 44835171025 saw a sign-up land after the 5-second wait ended,
+  // and an answer still "Saving…" when it did, both correct and both refused only for the time. The real site answers
+  // each visitor in its own Worker.
+  expect: { timeout: 15_000 },
   use: {
     baseURL: "http://localhost:4173",
     trace: "off",
