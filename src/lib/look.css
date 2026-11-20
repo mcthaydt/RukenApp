@@ -2613,9 +2613,14 @@ main.playing {
 
 .playing .menu > summary:active,
 .playing .menu > summary:focus-visible,
-.playing .menu[open] > summary,
 .playing .menu[data-dragging] > summary {
   background: var(--felt-deep);
+}
+
+/* While the menu is open the tab steps out of the way: it would cover the panel's edge, and Keep playing, Escape and
+   Leave game already close or leave it. */
+.playing .menu[open] > summary {
+  visibility: hidden;
 }
 
 .playing .menu[data-dragging] > summary {
