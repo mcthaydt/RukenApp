@@ -30,14 +30,6 @@
     return picked.startsWith("18+") ? data.ageCounters.eighteen : data.ageCounters.younger;
   });
 
-  const AGES = [
-    { value: "age_3", title: "3+", line: "Fine for anyone." },
-    { value: "age_7", title: "7+", line: "Cartoon fighting, or a little scary." },
-    { value: "age_12", title: "12+", line: "Real-looking fighting, or scary bits." },
-    { value: "age_16", title: "16+", line: "More violence or strong words." },
-    { value: "age_18", title: "18+", line: "Only for adults." },
-  ];
-
   const MARKS = [
     { value: "sex_or_nudity", title: "Sex or nudity" },
     { value: "gore", title: "Gore" },
@@ -127,7 +119,7 @@
     >
       <Picks
         name="ageRating"
-        options={AGES}
+        options={data.ageLines}
         chosen={data.ageRating}
         ratings
         hint="We check this when we look at your game."

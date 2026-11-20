@@ -341,6 +341,26 @@ describe("screens wear the look and nothing of their own", () => {
     "asks",
     "preview",
     "checking",
+    // A game's page (spec 3) and the play screen (spec 4).
+    "gamepage",
+    "stage",
+    "clipbox",
+    "clipopen",
+    "back",
+    "pickers",
+    "about",
+    "madeby",
+    "playrow",
+    "costrow",
+    "costline",
+    "facts",
+    "more",
+    "playing",
+    "starting",
+    "menu",
+    "menuhint",
+    "menusheet",
+    "menupanel",
   ];
   const ROUTES = "src/routes";
 
@@ -463,7 +483,10 @@ describe("the maker's screens", () => {
   // Owner, 2026-11-15: "we don't do super rounded anything here". The only round thing is a person's photo.
   // Owner, 2026-11-15, on a card: the five drifting circles behind a live game are allowed, there and nowhere else.
   it("has no pill or circle shape, except the drifting circles behind Live", () => {
-    const withoutDrift = withoutComments.replace(/\.drift\s*\{[^}]*\}/, "");
+    const withoutDrift = withoutComments
+      .replace(/\.drift\s*\{[^}]*\}/, "")
+      // A maker's photo on a game's page is round, as people's photos are (spec 3.2).
+      .replace(/\.gamepage \.madeby img\s*\{[^}]*\}/, "");
     expect(withoutDrift).not.toMatch(/border-radius:\s*(999|9999|50%|100%)/);
   });
 
@@ -472,5 +495,82 @@ describe("the maker's screens", () => {
     // The text from the start of each reduced-motion block on, which holds the rule that stops a screen.
     const reduced = withoutComments.split("@media (prefers-reduced-motion: reduce)").slice(1).join("");
     expect(reduced).toMatch(/\.screen[^{]*\{[^}]*animation:\s*none/);
+  });
+});
+
+// A game's page (spec 3): each class has a rule, and what a person presses is at least 44 by 44.
+describe("a game's page", () => {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const PAGE_CLASSES = [
+    "stage",
+    "clipbox",
+    "clipopen",
+    "back",
+    "pickers",
+    "about",
+    "madeby",
+    "playrow",
+    "costrow",
+    "costline",
+    "facts",
+    "more",
+  ];
+
+  it.each(PAGE_CLASSES)("%s has a rule under .gamepage", (name) => {
+    expect(withoutComments).toMatch(new RegExp(`\\.gamepage \\.${name}\\b[^{]*\\{`));
+  });
+
+  it("the page's own links and tiles are at least 44 tall", () => {
+    const rule = (selector: string) =>
+      new RegExp(`${selector.replaceAll(".", "\\.")}\\s*\\{([^}]*)\\}`).exec(withoutComments)?.[1] ?? "";
+    expect(rule(".gamepage .back")).toMatch(/min-height:\s*var\(--size-target\)/);
+    expect(rule(".gamepage .pickers button")).toMatch(/width:\s*var\(--size-target\)/);
+    expect(rule(".gamepage .pickers button")).toMatch(/height:\s*var\(--size-target\)/);
+  });
+
+  it("the tile showing has the picked blue edge, by attribute and not by class", () => {
+    expect(withoutComments).toMatch(
+      /\.gamepage \.pickers button\[aria-pressed="true"\]\s*\{[^}]*var\(--pay\)/,
+    );
+  });
+
+  it("uses no pip (red) anywhere", () => {
+    const start = withoutComments.indexOf("main.gamepage");
+    expect(withoutComments.slice(start)).not.toMatch(/--pip/);
+  });
+});
+
+// The play screen (spec 4): the Menu tab is big enough to press, readable over any game, and wears the look's corners.
+describe("the play screen", () => {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const rule = (selector: string) =>
+    new RegExp(
+      `${selector.replaceAll(".", "\\.").replaceAll("[", "\\[").replaceAll("]", "\\]")}\\s*\\{([^}]*)\\}`,
+    ).exec(withoutComments)?.[1] ?? "";
+  const tab = rule(".playing .menu > summary");
+
+  it.each(["menuhint", "menusheet", "menupanel", "starting"])("%s has a rule", (name) => {
+    expect(withoutComments).toMatch(new RegExp(`\\.playing \\.${name}\\s*[,{]`));
+  });
+
+  it("the Menu tab is at least 48 by 56", () => {
+    expect(tab).toMatch(/width:\s*48px/);
+    expect(tab).toMatch(/height:\s*56px/);
+  });
+
+  it("chalk on the tab at its rest opacity, over a white game, is 4.5:1 or better", () => {
+    const share = Number(/color-mix\(in srgb, var\(--felt-deep\) (\d+)%/.exec(tab)?.[1]) / 100;
+    expect(share).toBeGreaterThan(0);
+    expect(share).toBeLessThan(1);
+    const [r = 0, g = 0, b = 0] = rgb(token("--felt-deep")).match(/\d+/g)?.map(Number) ?? [];
+    const over = (channel: number) => Math.round(channel * share + 255 * (1 - share));
+    const blended = `#${[r, g, b].map((one) => over(one).toString(16).padStart(2, "0")).join("")}`;
+    expect(contrast(token("--chalk"), blended)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("has 12px corners on the tab and no use of the pip", () => {
+    expect(tab).toMatch(/var\(--radius-button\)/);
+    const start = withoutComments.indexOf("main.playing");
+    expect(withoutComments.slice(start)).not.toMatch(/--pip/);
   });
 });

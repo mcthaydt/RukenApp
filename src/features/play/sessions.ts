@@ -3,6 +3,7 @@ import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 import type { RateLimiter, RateLimitRule } from "../../lib/server/rate-limit.ts";
 import type { LiveGame } from "../games/games.ts";
+import { medianMs } from "../games/games.ts";
 import { playBasis, type PlayViewer } from "./may-play.ts";
 import { checkPass } from "./pass.ts";
 import { passFor } from "./passes.ts";
@@ -28,6 +29,11 @@ export type BeatResult = "recorded" | "too_soon" | "over" | "unknown";
 
 /** How fast one address may open games: a person tapping around never meets it, a script that opens games does. */
 export const PLAY_STARTS_PER_ADDRESS: RateLimitRule = { max: 30, windowMs: 60_000 };
+
+/** A sitting is measured over this many days, from at least this many plays, reading at most this many. */
+const SITTING_DAYS = 30;
+const SITTING_PLAYS_LEAST = 20;
+const SITTING_PLAYS_READ = 500;
 
 const sha256Hex = (text: string): string => createHash("sha256").update(text).digest("hex");
 
@@ -155,7 +161,31 @@ export function createPlayService(deps: PlayServiceDeps) {
     return { sessions: sessions.length, beats, countedSeconds: Math.floor(counted / 1000) };
   }
 
-  return { startPlay, reviewLook, recordBeat, playSummary };
+  /**
+   * How long a sitting of a game is: the median counted time of its member and free plays in the 30 days before now,
+   * counting only plays that counted some time. Null under 20 such plays, so a page never states what too few plays
+   * cannot back. Staff's and the maker's own plays never count. It reads the newest 500 plays only.
+   */
+  async function sittingOf(gameId: string, now: Date): Promise<number | null> {
+    const since = new Date(now.getTime() - SITTING_DAYS * 24 * 60 * 60 * 1000);
+    const sessions = await deps.db.playSession.findMany({
+      where: { gameId, basis: { in: ["member", "free_game"] }, startedAt: { gte: since, lte: now } },
+      orderBy: { startedAt: "desc" },
+      take: SITTING_PLAYS_READ,
+      select: { startedAt: true, beats: { select: { receivedAt: true, attentive: true } } },
+    });
+    const counted = sessions
+      .map((session) =>
+        countedMs(
+          session.startedAt.getTime(),
+          session.beats.map((beat) => ({ atMs: beat.receivedAt.getTime(), attentive: beat.attentive })),
+        ),
+      )
+      .filter((ms) => ms > 0);
+    return counted.length < SITTING_PLAYS_LEAST ? null : medianMs(counted);
+  }
+
+  return { startPlay, reviewLook, recordBeat, playSummary, sittingOf };
 }
 
 export type PlayService = ReturnType<typeof createPlayService>;

@@ -59,6 +59,9 @@ function featureOf(path: string): { feature: string; inside: string } | null {
 
 const sourceFiles = filesUnder(SRC);
 
+/** A file whose code is sent to a visitor's browser: a screen's own script, or a +page.ts that runs there too. */
+const isPageScript = (file: string): boolean => file.endsWith(".svelte") || /\+page\.ts$/.test(file);
+
 describe("the layer rule", () => {
   test("no test sits in src/", () => {
     const testsInSrc = sourceFiles.filter((file) => /\.(test|spec)\.[jt]s$/.test(file));
@@ -97,12 +100,57 @@ describe("the layer rule", () => {
         }
         if (to.inside.startsWith("library/")) {
           broken.push(`${where}: ${to.feature}'s library/ is read only by ${to.feature}`);
+        } else if (isPageScript(file)) {
+          // A page's own script is downloaded by every visitor, so it reaches a feature only through its browser entry.
+          if (to.inside !== `${to.feature}.browser.ts`)
+            broken.push(`${where}: a page's script imports ${to.feature} through ${to.feature}.browser.ts`);
         } else if (to.inside.replace(/\.ts$/, "") !== to.feature) {
           broken.push(`${where}: import ${to.feature} through ${to.feature}.ts`);
         }
       }
     }
 
+    expect(broken).toEqual([]);
+  });
+});
+
+describe("what a browser entry may reach", () => {
+  // `<feature>.browser.ts` is what a page's own script may import from a feature. Nothing it reaches may carry the
+  // database, a Node module or server code into the visitor's download.
+  const entries = sourceFiles.filter((file) => /features\/[^/]+\/[^/]+\.browser\.ts$/.test(file));
+
+  /** Every file a browser entry reaches by relative imports, itself included. */
+  function reachedFrom(entry: string): string[] {
+    const seen = new Set<string>();
+    const queue = [entry];
+    for (let file = queue.pop(); file !== undefined; file = queue.pop()) {
+      if (seen.has(file)) continue;
+      seen.add(file);
+      for (const target of importsOf(file)) {
+        const path = resolveImport(file, target);
+        if (path !== null && path.endsWith(".ts")) queue.push(path);
+      }
+    }
+    return [...seen];
+  }
+
+  test("a browser entry reaches no server code, no Node module and no generated database client", () => {
+    const broken: string[] = [];
+    for (const entry of entries) {
+      for (const file of reachedFrom(entry)) {
+        for (const target of importsOf(file)) {
+          const path = resolveImport(file, target);
+          const where = `${relative(ROOT, file)} imports "${target}"`;
+          if (target.startsWith("node:")) broken.push(`${where}: a Node module`);
+          if (path === null) continue;
+          if (path.startsWith(join(LIB, "server"))) broken.push(`${where}: src/lib/server/`);
+          if (path.includes(`${sep}generated${sep}`)) broken.push(`${where}: the generated database client`);
+          const inFeature = featureOf(path);
+          if (inFeature !== null && inFeature.inside.replace(/\.ts$/, "") === inFeature.feature)
+            broken.push(`${where}: a feature's server entry`);
+        }
+      }
+    }
     expect(broken).toEqual([]);
   });
 });

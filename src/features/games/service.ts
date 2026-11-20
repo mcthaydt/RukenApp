@@ -5,7 +5,6 @@ import type {
   ClipShape,
   ContentMark,
   GamePart,
-  GamePlaysOn,
   GameState,
   PrismaClient,
 } from "../../lib/server/db.ts";
@@ -48,7 +47,6 @@ export interface LiveGame {
   slug: string;
   name: string;
   oneLine: string;
-  playsOn: GamePlaysOn;
   freeToPlay: boolean;
   makerUserId: string;
   livePullId: string;
@@ -952,7 +950,6 @@ export function createGamesService(deps: GamesServiceDeps) {
         slug: true,
         name: true,
         oneLine: true,
-        playsOn: true,
         freeToPlay: true,
         makerUserId: true,
         state: true,
@@ -967,14 +964,13 @@ export function createGamesService(deps: GamesServiceDeps) {
     const wide = game.clips.find((clip) => clip.shape === "wide")?.key;
     if (upright === undefined || wide === undefined) return null;
     // A live game has every answer (Game_answered_check), so these are only absent in a row that cannot be live.
-    if (game.oneLine === null || game.playsOn === null || game.ageRating === null) return null;
+    if (game.oneLine === null || game.ageRating === null) return null;
     return {
       id: game.id,
       publicId: game.publicId,
       slug: game.slug,
       name: game.name,
       oneLine: game.oneLine,
-      playsOn: game.playsOn,
       freeToPlay: game.freeToPlay,
       makerUserId: game.makerUserId,
       livePullId: game.livePull.id,
@@ -983,6 +979,30 @@ export function createGamesService(deps: GamesServiceDeps) {
       contentMarks: game.contentMarks,
       clips: { upright, wide },
     };
+  }
+
+  /** A maker's other live games, newest accepted first, for the "More from" row of a game's page. */
+  async function moreLiveGamesBy(
+    makerUserId: string,
+    exceptSlug: string,
+  ): Promise<{ slug: string; name: string; wideClip: string; ageRating: AgeRating }[]> {
+    const rows = await deps.db.game.findMany({
+      where: { makerUserId, state: "live", slug: { not: exceptSlug }, livePullId: { not: null } },
+      orderBy: { livePull: { createdAt: "desc" } },
+      take: 6,
+      select: {
+        slug: true,
+        name: true,
+        ageRating: true,
+        clips: { where: { shape: "wide" }, select: { key: true } },
+      },
+    });
+    return rows.flatMap((row) => {
+      const wideClip = row.clips[0]?.key;
+      return wideClip === undefined || row.ageRating === null
+        ? []
+        : [{ slug: row.slug, name: row.name, wideClip, ageRating: row.ageRating }];
+    });
   }
 
   /**
@@ -1049,6 +1069,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     gameForMaker,
     gameForReview,
     liveGameBySlug,
+    moreLiveGamesBy,
     rememberConnection,
     repositoriesFor,
     hasConnectedGitHub,

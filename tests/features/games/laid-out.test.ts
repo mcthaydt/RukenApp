@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ratingWords, websitesWords } from "../../../src/features/games/games.ts";
+import { ratingLine, ratingWords, websitesWords } from "../../../src/features/games/games.ts";
 
 // The small facts a game is laid out with on Check and send (spec 5b): who it is for, and which other
 // websites it uses, in the words a maker reads.
@@ -39,5 +39,17 @@ describe("websitesWords", () => {
     expect(websitesWords(["api.example.com", "cdn.example.net"])).toBe(
       "Uses api.example.com, cdn.example.net",
     );
+  });
+});
+
+describe("ratingLine", () => {
+  it.each([
+    ["age_3", "Fine for anyone."],
+    ["age_7", "Cartoon fighting, or a little scary."],
+    ["age_12", "Real-looking fighting, or scary bits."],
+    ["age_16", "More violence or strong words."],
+    ["age_18", "Only for adults."],
+  ] as const)("says %s as its plain line", (rating, line) => {
+    expect(ratingLine(rating)).toBe(line);
   });
 });
