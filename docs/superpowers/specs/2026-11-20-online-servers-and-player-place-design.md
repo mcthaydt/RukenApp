@@ -39,7 +39,7 @@ How the feed weighs any of this is not written here. RukenApp is public, and the
 
 ## 4. The player's birthday
 
-- On the Owner's card (section 7, question 2), recommended: keep the full date already typed at sign-up. No new question.
+- **Owner, 2026-11-20 00:17 UTC, on a card:** "Keep the full date", the one already typed at sign-up. No new question.
 - Stored as `User.birthDate` (a calendar day). `adultOn` is still worked out from it as today, so every age rule keeps working.
 - Under 13: still refused, and still nothing stored.
 - Sign-up's line changes from "We don't keep your birthday." to "We keep your birthday private. Nobody else sees it."
@@ -69,7 +69,7 @@ Call: O is its own migration, not folded into #195's K, so K's plan audit stays 
 ## 7. The Owner's questions
 
 1. How exact a player's place is. **Answered** 2026-11-20 00:16 UTC: country and state, filled in.
-2. Keep the whole birthday. Recommended: yes, the full date already typed.
+2. Keep the whole birthday. **Answered** 2026-11-20 00:17 UTC: keep the full date.
 3. When to build. Recommended: the questions and fields now, with #195; the ranking with the feed in slice 3.
 
 Further questions on what goes with nearby-server ranking (the "additional things to compensate") are kept with the feed's private design, because they are about how the feed weighs games.
