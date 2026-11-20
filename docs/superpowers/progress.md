@@ -1,6 +1,6 @@
 # Ruken progress
 
-Last updated: 2026-11-20 07:53 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
+Last updated: 2026-11-20 08:04 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
 
 ## Outcome
 
@@ -32,6 +32,7 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 - 2026-11-20 07:40 UTC: "Are you going to run the design loop? and when? It looks awful": design round 1 starts now on what slice 2 has merged, not only at the slice end.
 - 2026-11-20 07:43 UTC: "Ok to merge decision day" (H, #219); "ok for next unit" (P); "ONCE AGAIN, USE GH OVER GIT". Every command handed to the owner uses `gh` wherever `gh` can do it (a branch delete is `gh api -X DELETE repos/mcthaydt/RukenApp/git/refs/heads/<branch>`; updating a local copy is `gh repo sync --branch main`), never `git`.
 - 2026-11-20 07:50 UTC: "that R2 rule should only be on private repos, I forgot that we don't have an artifact limit for public repos". RukenApp is public, so unit C (CI screenshots in R2) is dropped.
+- 2026-11-20 08:03 UTC: "Bento for Game Page, Store sheet for Playing, menu open" (mockups 3 and 2 of five, `/mnt/project-files/game-page-mockups/`). The built game page and in-game menu are restyled to them with what Ruken has now; it replaces design round 1's R1 to R3. The new systems the mockups show (reviews, maker news, extras, friends, pictures, messages, and a maker kit for achievements, settings and saves) each need their own spec first.
 
 ## Active milestone: slice 2 (phone sign-up and the rest of slice 2)
 
