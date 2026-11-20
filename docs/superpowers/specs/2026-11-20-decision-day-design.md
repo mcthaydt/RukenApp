@@ -1,6 +1,6 @@
 # Decision day and the weekly seats
 
-Staged path, spec stage. Lane 3 (a migration and `cloudflare/`), so this spec has a plan audit before it merges, and each lane 3 unit has the Owner's approval before its merge. Cycle 2: this version answers the ten red findings and six notes of `audits/2026-11-20-decision-day-1-plan-audit.md`; each place that changed names the finding as (F1) to (F10) or (N1) to (N6).
+Staged path, spec stage. Lane 3 (a migration and `cloudflare/`), so this spec has a plan audit before it merges, and each lane 3 unit has the Owner's approval before its merge. Cycle 3: this version answers the ten red findings and six notes of `audits/2026-11-20-decision-day-1-plan-audit.md` (named (F1) to (F10) and (N1) to (N6) where they landed), the two reds and note of cycle 2 ((F11), (F12), (N7)), and the Owner's three card answers.
 
 ## 0. The Owner's words
 
@@ -8,7 +8,7 @@ Staged path, spec stage. Lane 3 (a migration and `cloudflare/`), so this spec ha
 - **Owner, 2026-11-17 06:53 UTC, on a card:** the 500 is "500 a week, at most": the weekly number grows every 3 months until it reaches 500 games a week, then stays there.
 - **Owner, 2026-11-17 06:47 UTC:** maker screens get an Accepted screen "with the blurred background similar to the one where we first submit it", and the acceptance rate "on the first screen at the top like a label".
 - **Owner, 2026-11-17 06:50 UTC, on a card:** until 20 games are decided the label says "A person checks every game."; from 20 on it shows the measured rate.
-- Three choices are open on cards (section 8): which day and time, how many seats to start with, and how the seats grow. The spec is written with the recommended answer in each place and marks it **(card)**; an answer that differs changes only that number or word.
+- **Owner, 2026-11-20 00:16 UTC, on three cards:** decision day is "Friday, noon New York time"; "10 a week" to start; the seats grow by "Half again each time" every 3 months.
 
 This builds on the review command of unit S (`POST /jobs/review`, `src/routes/jobs/review/+server.ts`, merged in #194) and lines up with the game facts spec (#195), which adds parts to that command and writes `firstLiveAt` on a game's first yes.
 
@@ -23,13 +23,13 @@ What is **not** held, and uses no seat: an update to a live game, and a game tha
 
 ### 1.1 The moment
 
-Decision day is every **Friday at 12:00 noon, New York time (card)**, stored as a weekday, a time and a zone (`America/New_York`), so it stays at noon local time across daylight saving. A decision is held for the first decision day whose moment is after the decision was made **and that has not gone out yet** (F6): a yes at 11:59 on a Friday goes out at noon that day; a yes at 12:00 goes out the next Friday.
+Decision day is every **Friday at 12:00 noon, New York time**, stored as a weekday, a time and a zone (`America/New_York`), so it stays at noon local time across daylight saving. A decision is held for the first decision day whose moment is after the decision was made **and that has not gone out yet** (F6): a yes at 11:59 on a Friday goes out at noon that day; a yes at 12:00 goes out the next Friday.
 
 ### 1.2 The seats
 
-- The first decision day is the first Friday after unit H merges. D ships `src/features/games/library/decision-days.json` with `"firstDay": null`, which means the ritual is off and `seats.ts` names no decision day; H writes the date (from `date`, never typed) in its last commit, after the Owner's approval of H's merge (N1).
-- Seats on the first decision day: **10 (card)**.
-- Every 3 months after the first decision day, the seats grow. Step n starts on the first decision day on or after the first decision day's date plus 3n calendar months; a date past the end of its month is clamped to the month's last day (30 November plus 3 months is 28 February, or 29 in a leap year) (N2). The seats grow **by half again (card)**: at step n, the starting seats × 1.5ⁿ, rounded half up to a whole game once (never rounding a rounded number), and never above **500**: 10, 15, 23, 34, 51, 76, 114, 171, 256, 384, 500. It reaches 500 at step 10, about two and a half years.
+- The first decision day is the first Friday after H's last commit (below). D ships `src/features/games/library/decision-days.json` with `"firstDay": null`, which means the ritual is off and `seats.ts` names no decision day; H writes the date (from `date`, never typed) in its last commit, after the Owner's approval of H's merge: the first Friday after that commit (N1, N7).
+- Seats on the first decision day: **10**.
+- Every 3 months after the first decision day, the seats grow. Step n starts on the first decision day on or after the first decision day's date plus 3n calendar months; a date past the end of its month is clamped to the month's last day (30 November plus 3 months is 28 February, or 29 in a leap year) (N2). The seats grow **by half again**: at step n, the starting seats × 1.5ⁿ, rounded half up to a whole game once (never rounding a rounded number), and never above **500**: 10, 15, 23, 34, 51, 76, 114, 171, 256, 384, 500. It reaches 500 at step 10, about two and a half years.
 - The schedule lives in code (`decision-days.json` and the pure `seats.ts`), never typed into the database. Each decision day's seats are recorded on its row when it goes out, so a later change to the schedule never rewrites what a past week had.
 - Only a held yes takes a seat. A send back takes none.
 
@@ -60,7 +60,7 @@ The command stays one `POST /jobs/review` with the job secret, and its JSON stay
 
 The words for a day are made by one pure function (`dayWords`, "Friday 27 November", the decision day's own date in its own zone), with tests.
 
-**A maker changes a waiting game (F3).** A maker can still change a waiting game: its answers and videos are saved at once (`saveAnswer`, `saveClip`), and Check and send can copy new files (`pullLatest`). Each of those, for a game in state `waiting`, writes `Game.changedAt`. A held decision applies only to the game as it was decided: it **lapses** when the game's waiting pull is no longer the one it names, or when `changedAt` is after its `decidedAt`, or when the game is no longer waiting. A lapsed decision's seat is free again in `list` at once (the seats count uses the same test), and the game stays waiting for the Owner to look at again. The maker is told nothing about a decision that lapsed, since they were never told it was made.
+**A maker changes a waiting game (F3).** A maker can still change a waiting game: its answers and videos are saved at once (`saveAnswer`, `saveClip`), and Check and send can copy new files (`pullLatest`). **Every maker write to a waiting game** writes `Game.changedAt` in the same write (F12); on `main` today those are those three. A held decision applies only to the game as it was decided: it **lapses** when the game's waiting pull is no longer the one it names, or when `changedAt` is after its `decidedAt`, or when the game is no longer waiting. A lapsed decision's seat is free again in `list` at once (the seats count uses the same test), and the game stays waiting for the Owner to look at again. The maker is told nothing about a decision that lapsed, since they were never told it was made.
 
 **What changes on `main` for held decisions (F1).** H moves these readers to `tookEffect`, so a held or lapsed decision changes nothing a maker sees:
 
@@ -69,7 +69,7 @@ The words for a day are made by one pure function (`dayWords`, "Friday 27 Novemb
 - `gamesOf` (`:891` `sentBackLast`).
 - `waitingGames` and `gameForReview` read every review, since the command is where held decisions are shown.
 
-**Lining up with #195.** Unit Q of the game facts spec changes `review-order.ts` and what `look` shows. K writes `firstLiveAt` "on the first yes"; with this spec the write that first makes a game live is the release (or an at-once yes, which for a game never live cannot happen once H is on `main`). Whichever of K and H merges second moves that write. #195 section 3 already says "if a later spec makes games go live on a set day after the yes, it is that write instead".
+**Lining up with #195.** Unit Q of the game facts spec changes `review-order.ts` and what `look` shows. K writes `firstLiveAt` "on the first yes"; with this spec the write that first makes a game live is the release (or an at-once yes, which for a game never live cannot happen once H is on `main`). Whichever of K and H merges second moves that write. #195 also adds maker writes to a waiting game (screenshots and videos by position in K, the new answers in Q): whichever of H and K or Q merges second makes each of them set `changedAt`, with a test each that it makes a held decision lapse (F12). #195 section 3 already says "if a later spec makes games go live on a set day after the yes, it is that write instead".
 
 ## 3. The release
 
@@ -104,7 +104,7 @@ The Waiting screen and the line in Your games stay "Waiting for review". For a g
 
 > We tell everyone on Fridays at noon New York time. The next one is Friday 27 November.
 
-It reads the same whether or not a decision is held, so nothing is given away early, and it promises no day for this game, since a game may wait for a later week. ("noon New York time" follows the card.) A game that was live before, decided at once, keeps today's line. While the ritual is off (`firstDay` null), every game keeps today's line.
+It reads the same whether or not a decision is held, so nothing is given away early, and it promises no day for this game, since a game may wait for a later week. A game that was live before, decided at once, keeps today's line. While the ritual is off (`firstDay` null), every game keeps today's line.
 
 ### 5.2 The Accepted screen
 
@@ -146,7 +146,7 @@ Each unit is one session and one pull request, from a `main` that holds what it 
 |---|---|---|---|---|---|
 | D, decision days stored | **3** (`prisma/schema/`, `prisma/migrations/`) | this spec's plan audit; not alongside P or K (each changes `games.prisma` and adds a migration: whichever starts later waits for the other to merge) | `prisma/schema/games.prisma`, the migration, `src/features/games/library/decision-days.json` (`firstDay: null`), `src/features/games/seats.ts` (the schedule: the next decision day after a moment, a day's seats, `dayWords`, all naming no day while `firstDay` is null), `tests/features/games/schema.pg.test.ts`, and their tests | the tables and columns, the backfill, the schedule maths; nothing a maker or the Owner sees changes | the plan audit before; CI green; the implementation audit; the Owner's approval of the merge (the migration) |
 | H, hold and release | **3** (`cloudflare/`) | D on `main`; not alongside Q, R, F, P or K (F8): Q and R change `review-order.ts`, the review route or its tests; R, F, P and K change `service.ts`. Whichever starts second starts from a `main` holding the other | `src/features/games/service.ts` (hold, the lock, seats taken, `tookEffect`, `wasLiveBefore`, `changedAt`, the readers of section 2, the release), `review-order.ts`, `review.ts` (the waiting line), `src/routes/jobs/review/+server.ts`, `src/routes/jobs/decision-day/+server.ts`, `cloudflare/worker.js`, `cloudflare/crons.js`, `wrangler.jsonc` (the cron), `decision-days.json` (the first day, last commit), `tests/wrangler.test.ts` (changed: lines 160 to 162 pin `crons` to the daily one; they now pin both, because H adds the hourly one on purpose; F10), and their tests | sections 1 to 3 and 5.1, working | CI green; the implementation audit; the Owner's approval of the merge (turns the ritual on and adds a cron) |
-| A, accepted and the label | **2** (the maker's screens, `src/features/games/`, `tests/browser/support/`) | H on `main` | `src/features/games/acceptance.ts`, `service.ts` (the rate, `acceptedSeenAt`), `src/routes/make/+page.server.ts` and `+page.svelte` (the label), `src/routes/make/[game]/+page.server.ts` and `+page.svelte`, a new `src/routes/make/parts/AcceptedScreen.svelte`, `GameBackdrop.svelte` and `upright.svelte.ts` (the backdrop shared with `LiveScreen.svelte`), the browser helpers in `tests/browser/support/` that make live games, and their tests | sections 5.2 and 5.3 | CI green; one fresh review; the visual check on the five devices for the Accepted screen and Your games |
+| A, accepted and the label | **2** (the maker's screens, `src/features/games/`, `tests/browser/support/`) | H on `main`; not alongside F, P, K or Q (F11): they change `LiveScreen.svelte`, `src/routes/make/[game]/+page.server.ts`, `service.ts`, `tests/browser/support/game.ts` and `database.ts`. Whichever starts second starts from a `main` holding the other | `src/features/games/acceptance.ts`, `service.ts` (the rate, `acceptedSeenAt`), `src/routes/make/+page.server.ts` and `+page.svelte` (the label), `src/routes/make/[game]/+page.server.ts` and `+page.svelte`, a new `src/routes/make/parts/AcceptedScreen.svelte`, `GameBackdrop.svelte` and `upright.svelte.ts` (the backdrop shared with `LiveScreen.svelte`), the browser helpers in `tests/browser/support/` that make live games, and their tests | sections 5.2 and 5.3 | CI green; one fresh review; the visual check on the five devices for the Accepted screen and Your games |
 
 Why: D alone holds the migration and changes nothing anyone sees, so its merge is easy to judge. H turns the ritual on, and a held decision must never be written by a `main` that cannot send it out, so holding and releasing merge together. A is screens only.
 
@@ -177,7 +177,7 @@ Expected time: D 4 hours, H 10 hours, A 6 hours, plus the audits. Models and eff
 
 1. **Settled, Owner 2026-11-17:** seats per week, growing every 3 months, to at most 500 a week; one decision day when everyone finds out.
 2. **Settled, Owner 2026-11-17, on cards:** the Accepted screen with the blurred background; the label "A person checks every game." until 20 games are decided, then the measured rate.
-3. **Open, on cards (2026-11-20):** the day and time (recommended Friday, noon New York time), the starting seats (recommended 10 a week), and the growth (recommended half again every 3 months).
+3. **Settled, Owner 2026-11-20 00:16 UTC, on cards:** Friday, noon New York time; 10 seats a week to start; growing by half again every 3 months.
 4. **Calls** the Owner may overrule:
    - Both yes and send back are held to decision day, so everyone finds out on the same day.
    - Updates, and games that were live before, are decided at once and take no seat.
@@ -185,7 +185,7 @@ Expected time: D 4 hours, H 10 hours, A 6 hours, plus the audits. Models and eff
    - A maker may still change a waiting game; any change makes a held decision lapse quietly, and the Owner decides again.
    - A full week refuses a yes; the game stays in the list for next week, with no waiting list of its own.
    - The Accepted screen's quiet line "It's one of 8 games that got in this week."
-   - The first decision day is the first Friday after H merges; the 3-month steps count from it.
+   - The first decision day is the first Friday after H's last commit; the 3-month steps count from it.
    - The rate counts a game as in if any decision that took effect was a yes (5.3).
 
 ## 9. Acceptance criteria
