@@ -1,6 +1,6 @@
 # Ruken progress
 
-Last updated: 2026-11-20 07:44 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
+Last updated: 2026-11-20 07:45 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
 
 ## Outcome
 
@@ -62,7 +62,6 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 - `LiveGame.playsOn` is still selected but nothing reads it; unit F, which rebuilds that page, can drop it.
 - F (#218) review notes left for later (optional): order More from by acceptance date; cap the play-time beat body before reading it; the drag flag can swallow one Enter after a drag.
 - N1 from W's audit: `src/features/play/gate.ts` comments (lines 13 to 16, 25 to 26) still call the free workers.dev address current; a small fix after W merges. N3: unit K must deploy the gate with `--route` (game-facts spec line 140).
-- Branch `claude/project-thread-4etcra` (#206, merged) still needs deleting: `gh api -X DELETE repos/mcthaydt/RukenApp/git/refs/heads/claude/project-thread-4etcra`.
 - Owner steps O1 to O4 in the R2 spec (the bucket, its rule and the key) come before unit C's step A3.
 
 ## Material decisions (agent-selected, not owner-approved)
