@@ -16,9 +16,9 @@ Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** a
 
 Each game on the test site runs at `https://g-<public id>.GAMES-DOMAIN`, and clips at `https://media.GAMES-DOMAIN`. The gate's free `workers.dev` address stops answering. From then:
 
-- each game is its own origin, so one game cannot read another game's saves (the one step back taken on 2026-11-15 ends);
+- each game is its own origin, so one game cannot read another game's local storage or IndexedDB (the one step back taken on 2026-11-15 ends). Cookies are the exception: every game is under one registrable name, so a game can set a cookie for the whole games domain that every other game receives (section 6);
 - the games and the site are different sites, so a game can no longer set a cookie the site receives (slice 2 rest, Found 1). Whether the "only games the Owner trusts" rule can then be lifted is the Owner's call at launch, not this spec's;
-- a game's own server that checks where players come from must allow `https://g-<public id>.GAMES-DOMAIN` instead of the gate's free address. Floor Fifty's server needs that change at the moment of the switch, or it stops connecting.
+- a game's own server that checks where players come from must allow `https://g-<public id>.GAMES-DOMAIN` instead of the gate's free address. It can allow it before the switch, so nothing breaks.
 
 The site's address (`SITE_ORIGIN`, `BETTER_AUTH_URL`, the GitHub App's addresses) does not change.
 
@@ -26,17 +26,19 @@ The site's address (`SITE_ORIGIN`, `BETTER_AUTH_URL`, the GitHub App's addresses
 
 | Where | Today | After | Who |
 |---|---|---|---|
-| `cloudflare/games/wrangler.jsonc` | `"workers_dev": true` | `false`, its comment says the route is given on the command line | the build |
-| `tests/cloudflare/games-worker.test.ts` | expects `workers_dev` true | expects false | the build |
-| `cloudflare/games/worker.ts` | `PATH_HOST` comment: "until the games' domain exists" | comment: only a local run (the journeys and `verify`) sets it | the build |
 | DNS on GAMES-DOMAIN | nothing | `AAAA *` → `100::`, proxied | the Owner, a website step |
-| the gate's route | none | `*.GAMES-DOMAIN/*`, given as `--route` on the gate's deploy | the Owner, a command |
-| the gate's `PATH_HOST` secret | the gate's free host | deleted | the Owner, a command |
+| the gate's route | none | `*.GAMES-DOMAIN/*`, given as `--route` on every deploy of the gate | the Owner, a command |
 | the site's `GAME_ADDRESS_PATTERN` secret | the free host with `/{name}` | `https://{name}.GAMES-DOMAIN` | the Owner, a command |
+| the gate's `PATH_HOST` secret | the gate's free host | deleted | the Owner, a command |
+| `cloudflare/games/wrangler.jsonc` | `"workers_dev": true` | `false`, its comment says the route is given on the command line | the build (W) |
+| `tests/cloudflare/games-worker.test.ts` | expects `workers_dev` true | expects false | the build (W) |
+| `cloudflare/games/worker.ts` | `PATH_HOST` comment: "until the games' domain exists" | comment: only a local run sets it | the build (W) |
+| the slice 2 rest plan | O-B and Task 24 use the free host | point at this spec once it is live | the build (W) |
 | the gate's `SITE_ORIGIN` | the test site | unchanged | nobody |
 
-- **Call: `PATH_HOST` stays in the code.** `src/features/play/gate.ts` keeps its one-host mode and `worker.ts` keeps reading the setting: the journeys (`playwright.config.ts`) and the `verify` skill run the gate on `localhost:8788` with it, and its tests cover it. Only the deployed gate loses the setting. Removing the code too would change the journeys, for no gain on the test site.
-- **Call: the domain stays out of the repository, and the route with it** (the Owner's 2026-11-13 rule). The gate's config keeps its tests that it holds no `routes` and names no real address. The route is given with `--route` each time the gate is deployed. Only the Owner deploys the gate (`pnpm run deploy:games`); Workers Builds deploys only the site, under the name `ruken` (design, "One build, one Worker"), so a site deploy never touches the gate's route.
+- **Call: switch first, then close the free address.** The gate already answers a game's own name whenever the host is not `PATH_HOST` (`src/features/play/gate.ts`, `handleGameRequest`), so the Owner can add the route on today's `main`, while `workers_dev` is still true: for a while both addresses answer, and nothing stops loading. W's merge, and the gate's next deploy with it, is the last step and only closes the free address.
+- **Call: `PATH_HOST` stays in the code.** The journeys run the site with name-form addresses (`playwright.config.ts`, `GAME_ADDRESS_PATTERN: "http://{name}.localhost:8788"`), but one browser test (`tests/browser/game-gate.test.ts`) and the gate's unit tests cover the path form on `localhost:8788` with `PATH_HOST`. Only the deployed gate loses the setting.
+- **Call: the domain stays out of the repository, and the route with it** (the Owner's 2026-11-13 rule). The gate's config keeps its tests that it holds no `routes` and names no real address. Only the Owner deploys the gate (`pnpm run deploy:games`); Workers Builds deploys only the site, under the name `ruken` (design, "One build, one Worker"), so a site deploy never touches the gate's route.
 - **Call: the DNS record is one website step.** Wrangler has no DNS command, and Cloudflare's DNS API needs a token that is itself made on the website. The record is safe to add before anything else: with no route on it, it serves nothing of Ruken's.
 - **No new dependency, tool, environment or spend.** The domain is already bought.
 
@@ -46,72 +48,73 @@ Each is observable by a program or a person, and names who checks it.
 
 1. **A1, the config test fails first.** On `main`'s config, `pnpm exec vitest run tests/cloudflare/games-worker.test.ts` fails on the changed `workers_dev` expectation alone; with the change it passes. (The build session, shown in its report.)
 2. **A2, the gate's config still holds no route, variable or domain.** The existing tests in that file pass unchanged: no `vars`, `route`, `routes` or `hyperdrive`; no `https://` and no real domain outside the `$schema` line. (CI.)
-3. **A3, nothing local changes.** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` and the CI `gate` pass; the journeys, which run the gate in its one-host mode on `localhost:8788`, pass unchanged. (CI.)
-4. **A4, the games domain answers.** After the Owner's steps: `curl -s https://media.GAMES-DOMAIN/__ruken/health` prints `ok`. (A cloud session; no secret needed.)
-5. **A5, a game's name answers as a game.** `curl -s https://g-aaaaaaaaaa.GAMES-DOMAIN/x/` prints "This game's link has run out. Go back and press Play again." (A cloud session.)
-6. **A6, the free address is gone.** `curl -s -o /dev/null -w "%{http_code}" https://ruken-games.<account>.workers.dev/__ruken/health` is not `200`. (A cloud session.)
-7. **A7, the site points at the new names.** The `look` link the review command prints, and the "Your game runs at" line on a maker's page, start `https://g-` and contain `.GAMES-DOMAIN/`. (The Owner, or a cloud session with the jobs' secret if one is given.)
-8. **A8, a game plays from its own name, like a person.** On the test site, a member presses Play on a live game; the frame's address is `https://g-<public id>.GAMES-DOMAIN/<pass>/…`; the game runs; ← goes back. (The Owner, as Task 24 Step 3 of slice 2 rest; a cloud session cannot be a paying member on the real test site.)
-9. **A9, the route outlives the site's deploy.** After the next merge to `main` deploys the site, A4 still prints `ok`. (A cloud session.)
+3. **A3, nothing local changes.** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` and the CI `gate` pass; the journeys, including the path-form test in `tests/browser/game-gate.test.ts`, pass unchanged. (CI.)
+4. **A4, the games domain answers.** After O2: `curl -s https://media.GAMES-DOMAIN/__ruken/health` prints `ok`. (A cloud session; no secret needed.)
+5. **A5, a game's name answers as a game.** After O2: `curl -s https://g-aaaaaaaaaa.GAMES-DOMAIN/x/` prints "This game's link has run out. Go back and press Play again." (A cloud session.)
+6. **A6, the free address is gone.** After O6: `curl -s -o /dev/null -w "%{http_code}" https://ruken-games.<account>.workers.dev/__ruken/health` is not `200`, and A4 still prints `ok`. (A cloud session.)
+7. **A7, the site points at the new names.** After O3: the `look` link the review command prints (`src/routes/jobs/review/+server.ts`) starts `https://g-` and contains `.GAMES-DOMAIN/`. (The Owner, who holds the jobs' secret.)
+8. **A8, a game plays from its own name, like a person.** After O4: on the test site, a member presses Play on a live game; the frame's address is `https://g-<public id>.GAMES-DOMAIN/<pass>/…`; the game runs; ← goes back. (The Owner, as Task 24 Step 3 of slice 2 rest; a cloud session cannot be a paying member on the real test site.)
+9. **A9, the route outlives the site's deploy.** After the next merge to `main` that deploys the site, A4 still prints `ok`. (A cloud session.)
 
 ## 4. The plan
 
-One unit. Lane 3: it touches `cloudflare/`.
+One unit in the repository, and the Owner's steps around it. Lane 3: it touches `cloudflare/`.
 
 | Unit | Waits on | Files it owns | Output | Check |
 |---|---|---|---|---|
-| W, the gate leaves its free address (`workers_dev`) | nothing in the repo; reads `main` | `cloudflare/games/wrangler.jsonc`, `cloudflare/games/worker.ts` (comments only), `tests/cloudflare/games-worker.test.ts` | one pull request | A1 to A3 |
+| W, the gate leaves its free address (`workers_dev`) | R (#206) merged, since both edit the slice 2 rest plan; starts from a `main` that holds it | `cloudflare/games/wrangler.jsonc`, `cloudflare/games/worker.ts` (comments only), `tests/cloudflare/games-worker.test.ts`, `docs/superpowers/plans/2026-11-15-slice-2-rest.md` (O-B and Task 24 lines, "What moves to launch") | one pull request | A1 to A3 |
 
-**Other open work, checked for shared files (2026-11-20, `main` at `949ffb5`):** Unit R (PR #206) touches `src/features/games/`, `src/routes/make/`, `src/routes/jobs/review/`, the slice 2 rest plan and browser tests; none of W's files. F (the game page and play screen) builds the frame that shows the game's address but reads it from `GAME_ADDRESS_PATTERN` through `gameAddress`, which W does not change. So W runs beside R and F. Decision day's Unit H changes `cloudflare/worker.js` (the site's wrapper, for its cron): a different file from W's, but the same lane 3 folder and the same Owner deploy step, so W and H do not build at the same time; whichever is second starts from a `main` that holds the first. G (Task 24) reads the deployed addresses: its Steps 1 and 4 use the gate's one-host shapes and change as section 5 says once this is live.
+**Other open work, checked for shared files (2026-11-20, `main` at `949ffb5`):** Unit R (PR #206) edits `docs/superpowers/plans/2026-11-15-slice-2-rest.md`, which W edits too, so W waits on R; R shares no other file. F (the game page and play screen) builds the frame from `GAME_ADDRESS_PATTERN` through `gameAddress`, which W does not change. Decision day's Unit H changes `cloudflare/worker.js` and is deployed by Workers Builds; it shares no file and no deploy with W. W and H still do not build at the same time, so that one lane 3 change in `cloudflare/` is in flight at once and a broken deploy has one cause. G (Task 24) reads the deployed addresses: its Steps 1 and 4 change as section 5 says.
 
-### Task 1: the gate's config (the build session)
+The Owner's steps O1 to O5 need nothing from W and can run now; O6 follows W's merge.
 
-- [ ] **Step 1:** in `tests/cloudflare/games-worker.test.ts`, the test "runs on its workers.dev address until the games domain exists, and has no preview addresses" becomes "has no workers.dev address and no preview addresses: it answers only on the games domain's route", expecting `workers_dev` to be `false`. Run it; it fails on that line only (A1).
-- [ ] **Step 2:** `cloudflare/games/wrangler.jsonc`: `"workers_dev": false`, and the comment above it says the gate answers only on its route, `*.GAMES-DOMAIN/*`, which the Owner gives as `--route` on every deploy of the gate because the domain is not written in this repository. Run the test; it passes.
-- [ ] **Step 3:** `cloudflare/games/worker.ts`: `PATH_HOST`'s comment says it is set only on a local run (the journeys and `verify`), where the game is in the path; the deployed gate has none. No code changes.
-- [ ] **Step 4:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`. Push; the pull request body names the changed test and why (`build`, "A change does not quietly edit its own check").
-- [ ] **Step 5:** in `docs/superpowers/plans/2026-11-15-slice-2-rest.md`, "What moves to launch", the first item is marked done on the test site by this spec, and "Whether the gate's route outlives a deploy of the site" points at A9.
-
-### Task 2: the Owner's steps (after Task 1 merges)
+### Task 1: the Owner's switch (any time, on today's `main`)
 
 The commands, with the real domain in them, are in the project's files for the Owner, not in this repository. In order, each in the Owner's clone of RukenApp:
 
-- [ ] **O1** (any time, even before the merge): the website step, GAMES-DOMAIN → DNS → Records → Add record: `AAAA`, name `*`, address `100::`, Proxied.
-- [ ] **O2:** `git switch main && git pull && pnpm install --frozen-lockfile && pnpm run deploy:games --route "*.GAMES-DOMAIN/*"`. From here the gate answers on the games domain only.
-- [ ] **O3:** `printf %s 'https://{name}.GAMES-DOMAIN' | pnpm exec wrangler secret put GAME_ADDRESS_PATTERN` (the site's Worker, `ruken`; `{name}` typed as it is).
-- [ ] **O4:** `pnpm exec wrangler secret delete PATH_HOST --config cloudflare/games/wrangler.jsonc`.
-- [ ] **O5:** Floor Fifty's server allows `https://g-<its public id>.GAMES-DOMAIN` (the Floor Fifty thread gives the exact id).
+- [ ] **O1:** the website step, GAMES-DOMAIN → DNS → Records → Add record: `AAAA`, name `*`, address `100::`, Proxied.
+- [ ] **O2:** `git switch main && git pull && pnpm install --frozen-lockfile && pnpm run deploy:games --route "*.GAMES-DOMAIN/*"`. The gate now answers on both its free address and the games domain. A cloud session runs A4 and A5.
+- [ ] **O3:** a game's own server that checks where players come from (Floor Fifty's) allows `https://g-<its public id>.GAMES-DOMAIN` as well as the free address (the public id is the `g-…` part of its `look` link).
+- [ ] **O4:** `printf %s 'https://{name}.GAMES-DOMAIN' | pnpm exec wrangler secret put GAME_ADDRESS_PATTERN` (the site's Worker, `ruken`; `{name}` typed as it is). The site now hands out the new names. A7 and A8.
+- [ ] **O5:** `pnpm exec wrangler secret delete PATH_HOST --config cloudflare/games/wrangler.jsonc` (it asks "Are you sure…?"; answer `y`). The free address no longer serves games.
 
-O2 to O4 run back to back: between O2 and O3 the site still hands out the old addresses, which no longer answer, so a game started then fails to load until O3 lands.
+**Undoing O2 to O5** (if A4, A5, A7 or A8 fail and the cause is not found in the tries in Settings): `printf %s 'https://ruken-games.<account>.workers.dev/{name}' | pnpm exec wrangler secret put GAME_ADDRESS_PATTERN` and `printf %s 'ruken-games.<account>.workers.dev' | pnpm exec wrangler secret put PATH_HOST --config cloudflare/games/wrangler.jsonc`. With `workers_dev` still true the free address works again at once. The route and the DNS record can stay.
 
-**Undoing it** (if A4 to A8 fail and the cause is not found in the tries in Settings): `printf %s 'https://ruken-games.<account>.workers.dev/{name}' | pnpm exec wrangler secret put GAME_ADDRESS_PATTERN`, `printf %s 'ruken-games.<account>.workers.dev' | pnpm exec wrangler secret put PATH_HOST --config cloudflare/games/wrangler.jsonc`, and a revert of Task 1's pull request, then `pnpm run deploy:games` from `main`. The DNS record can stay.
+### Task 2: the gate's config (the build session, after R merges)
 
-### Task 3: the checks (a cloud session, after the Owner says O2 to O4 are done)
+- [ ] **Step 1:** in `tests/cloudflare/games-worker.test.ts`, the test "runs on its workers.dev address until the games domain exists, and has no preview addresses" becomes "has no free address and no preview addresses: it answers only on the games domain's route", expecting `workers_dev` to be `false`. Run it; it fails on that line only (A1).
+- [ ] **Step 2:** `cloudflare/games/wrangler.jsonc`: `"workers_dev": false`, and the comment above it says the gate answers only on its route, which the Owner gives as `--route` on every deploy of the gate because the games domain is not written in this repository. The comment names neither `workers.dev` nor any domain: the test's "names no real address" check reads comments too. Run the test; it passes.
+- [ ] **Step 3:** `cloudflare/games/worker.ts`: `PATH_HOST`'s comment says it is set only on a local run (the path-form browser test), where the game is in the path; the deployed gate has none. No code changes.
+- [ ] **Step 4:** `docs/superpowers/plans/2026-11-15-slice-2-rest.md`: O-B's lead line says not to run its commands once the games domain is live, and points at this spec's undo; Task 24 Steps 1 and 4 get section 5's lines; in "What moves to launch", the first item is marked done on the test site by this spec, and "Whether the gate's route outlives a deploy of the site" points at A9.
+- [ ] **Step 5:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`. Push; the pull request body names the changed test and why (`build`, "A change does not quietly edit its own check").
 
-- [ ] A4, A5 and A6, each its one line, with what it printed.
-- [ ] A7 and A8 with the Owner.
-- [ ] A9 after the next merge to `main`.
-- [ ] The coordinator records in `progress.md` what was checked, by whom and when (no address, no secret), and tells the Floor Fifty thread the switch is live.
+### Task 3: closing the free address (after W merges)
+
+- [ ] **O6:** the Owner: `git switch main && git pull && pnpm run deploy:games --route "*.GAMES-DOMAIN/*"`. Every later deploy of the gate passes the same `--route`.
+- [ ] A cloud session runs A6, then A9 after the next merge to `main`, each its one line with what it printed.
+- [ ] The coordinator records in `progress.md` what was checked, by whom and when (no address, no secret), and tells the Floor Fifty thread.
+
+**Undoing O6:** revert W's pull request and run `pnpm run deploy:games --route "*.GAMES-DOMAIN/*"` from `main`, then the undo under Task 1 if the free address must serve games again.
 
 ## 5. What it changes in slice 2's Task 24 (G)
 
-Once this is live, Task 24's checks use a game's own name instead of the gate's free host:
+Once O5 is done, Task 24's checks use a game's own name instead of the gate's free host:
 
-- Step 1: `curl -s https://media.GAMES-DOMAIN/__ruken/health` answers `ok`, and `curl -s https://g-aaaaaaaaaa.GAMES-DOMAIN/x/` answers the run-out line. "Not found." from a game under a fresh pass now means `GAME_ADDRESS_PATTERN` is wrong (`PATH_HOST` no longer exists on the gate).
+- Step 1: `curl -s https://media.GAMES-DOMAIN/__ruken/health` answers `ok`, and `curl -s https://g-aaaaaaaaaa.GAMES-DOMAIN/x/` answers the run-out line. "Not found." from a game under a fresh pass now means `GAME_ADDRESS_PATTERN` is wrong (`PATH_HOST` no longer exists on the gate). O-B is not run again.
 - Step 4: the game's folder without a pass is `curl -s https://g-PUBLIC-ID.GAMES-DOMAIN/index.html`, and it answers the run-out line. The other two checks are unchanged.
 
-If Task 24 runs before this is live, it runs as written.
+If Task 24 runs before O5, it runs as written.
 
 ### What changes for a game that is already on the test site
 
 - Its public id (`g-…`) and its `/g/<address>` page on the site do not change. Only where its files are served from changes: from `https://ruken-games.<account>.workers.dev/g-<id>/…` to `https://g-<id>.GAMES-DOMAIN/…`. The site works the address out from `GAME_ADDRESS_PATTERN` each time a page is drawn, so nothing stored in the database changes and nothing needs a migration.
-- A play pass is in the path, not tied to the host, so a pass handed out after O3 works on the new name. A frame opened before O2 stops loading files; pressing Play again fixes it.
+- A play pass is in the path, not tied to the host, so a pass handed out after O4 works on the new name. A frame opened on the free address stops loading files at O5; pressing Play again fixes it.
 - Anything a game saved in the browser (its local storage) was under the shared old origin and is not carried over: on the test site, players start that game fresh.
-- `look` links printed before the switch stop working; `look` again prints a new one.
-- The game's own server must allow the new origin (O5).
+- `look` links printed before O5 stop working; `look` again prints a new one.
+- The game's own server must allow the new origin (O3).
 
 ## 6. Risks, and what is not checked
 
-- **Not checked, and said so:** that the zone's Universal SSL certificate already covers `*.GAMES-DOMAIN` (it covers the apex and one level of names by default; A4 proves it); that `wrangler deploy` with `--route` and no `routes` in the config keeps the route on a later deploy of the gate that forgets `--route` (the Owner's command file always passes it; a forgotten one is caught by A4 run again); whether `GAME_ADDRESS_PATTERN` on the site is a secret or a plain variable today (the 2026-11-13 plan set it as a secret; if O3 refuses because a variable of that name exists, the Owner removes the variable and runs O3 again).
-- **Floor Fifty stops connecting to its server** between O2 and O5. On the test site, with one trusted game, that is accepted; the Floor Fifty thread is told before O2.
-- **Duration:** Task 1 under an hour including CI; the Owner's steps about ten minutes; the checks a few minutes.
+- **Games share cookies with each other.** Every `g-…` name is under one registrable name, so a game's script can set a cookie with `Domain=` the games domain that every other game and `media.` receive. Local storage and IndexedDB stay per game. Listing the games domain on the Public Suffix List would end it; that is a launch question for the Owner, not this unit.
+- **Not checked, and said so:** that the zone's Universal SSL certificate already covers `*.GAMES-DOMAIN` (it covers the apex and one level of names by default; A4 proves it); that a later deploy of the gate that forgets `--route` keeps the route (the Owner's command file always passes it; A4 run again catches a lost one); whether `GAME_ADDRESS_PATTERN` on the site is a secret or a plain variable today (the 2026-11-13 plan set it as a secret; if O4 refuses because a variable of that name exists, the Owner removes the variable and runs O4 again).
+- **Duration:** the Owner's switch about ten minutes; W under an hour including CI; the checks a few minutes each.
