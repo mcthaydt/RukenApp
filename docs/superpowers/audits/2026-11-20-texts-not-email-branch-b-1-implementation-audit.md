@@ -131,3 +131,13 @@ Reds R1 to R5 are in scope, each in its own files as listed. None needs the Owne
 ### Note added
 
 - N7. Each post reloads the page, so after a wrong code "Text it again" waits another 30 seconds. Harmless (the server allows a new code every 30 seconds anyway); recorded only.
+
+## Re-check of R2a at `d0c8353`
+
+- Commit examined: `d0c8353` ("Switch off the phone plugin's own limit on verify …"), on top of `b2b1cf0`. The re-check counts only for that commit.
+- Written: 2026-11-20 01:31 UTC (from `date`).
+- Ran here: `pnpm lint` exit 0, `pnpm typecheck` exit 0, `pnpm test` 1517 tests passed. Not run here: `pnpm test:pg` (no Postgres server in this container), so the new pg case was read, not run; the builder reports it red without the fix and green with it.
+
+**R2a: PASS.** `auth.ts` sets `"/phone-number/verify": false` in `customRules`, with the reason. In better-auth 1.7.7 a custom rule of `false` makes `resolveRateLimitConfig` return no limit for that path (`api/rate-limiter/index.mjs`, `if (resolved === false) return null`), so the plugin's own 10-a-minute rule no longer applies to `verify`, and outside posts cannot fill a bucket for it. The form's own count (`countCodeTry`, 10 per 15 minutes per client, on both sign-up paths) is now the only per-client limit on the sign-up code, so a number with an account and one without are refused at the same try with the same words. `verify` stays unreachable from outside (the 404 hook). No other `/phone-number` path changed: `send-otp`, `request-password-reset` and `reset-password` keep their named rules. The new case in `auth.pg.test.ts` posts 12 times from outside (each must be 404; with the plugin's rule the 11th would be 429) and then checks the form's own `verify` from the same client answers 400, not 429.
+
+**All five reds (R1 to R5, with R2 as R2a) now pass at `d0c8353`.** Still open before merge, unchanged: the full CI run on a ready pull request, WebKit and the tablet projects, Step 3 and the visual check (B11), Step 1a, X1 to X4, and the Owner's lane 3 approval (N5).
