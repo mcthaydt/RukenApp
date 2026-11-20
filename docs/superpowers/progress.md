@@ -1,6 +1,6 @@
 # Ruken progress
 
-Last updated: 2026-11-20 08:04 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
+Last updated: 2026-11-20 15:26 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
 
 ## Outcome
 
@@ -34,6 +34,10 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 - 2026-11-20 07:50 UTC: "that R2 rule should only be on private repos, I forgot that we don't have an artifact limit for public repos". RukenApp is public, so unit C (CI screenshots in R2) is dropped.
 - 2026-11-20 08:03 UTC: "Bento for Game Page, Store sheet for Playing, menu open" (mockups 3 and 2 of five, `/mnt/project-files/game-page-mockups/`). The built game page and in-game menu are restyled to them with what Ruken has now; it replaces design round 1's R1 to R3. The new systems the mockups show (reviews, maker news, extras, friends, pictures, messages, and a maker kit for achievements, settings and saves) each need their own spec first.
 
+- 2026-11-20 08:31 UTC: "release ff today, this is batch 0". The first decision day is 2026-11-20 (#227, merged at 501e674 and live 09:15 UTC), with 10 seats and the release at 17:00 UTC; Floor Fifty is re-accepted for it.
+- 2026-11-20 09:24 UTC: "yes, do not ask me to merge anything". A standing merge permission, recorded in `history.md`.
+- 2026-11-20 13:55 to 13:56 UTC: a CI and tooling speed-up after slice 2. Cancelled at 15:17 UTC: "Lets not, lets just finish the slice so we can start a new project with better workflow". Slice 2 is the last work in this project; nothing is started after it.
+
 ## Active milestone: slice 2 (phone sign-up and the rest of slice 2)
 
 | Step | State |
@@ -44,10 +48,13 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 | D, decision days stored (#208), lane 3 | done: merged at 36e87c0 with the owner's OK; the test site's migration is still to be confirmed on Cloudflare (owner step) |
 | R, every game plays on phones and computers (#206), lane 2 | merged at c7f14bb |
 | F, the game page and the play screen, lane 2 | merged at bb16ec1 (#218) |
-| W, the games domain's workers_dev switch, lane 3 | built (#217), audit clear; merges with the owner's OK |
-| H, hold and release on decision day, lane 3 | audit clear at 0343e69; the owner said OK 2026-11-20 07:43 UTC; merging |
-| P, the maker's player count switch, lane 3 | after F; merging applies a migration, so it needs the owner's OK |
-| A, the Accepted screen and the label, lane 2 | after H (not beside F, P, K or Q) |
+| W, the games domain's workers_dev switch, lane 3 | done: merged at 76d97cb (#217) |
+| H, hold and release on decision day, lane 3 | done: merged (#219); batch 0 set by #227 at 501e674 |
+| P, the maker's player count switch, lane 3 | done: merged at d7e95ba (#231, which replaced #229) |
+| A, the Accepted screen and the label, lane 2 | done: merged (#228) |
+| Design round 1 and the Bento game page and Store sheet menu (#226, #230), lane 2 | done: merged |
+| The design check's four small game page notes (#233), lane 2 | review clear; main merged in at 45cf6f4; merges on green |
+| Maker form: branch list and one line per website (#234), lane 2 | review clear; merges on green |
 | L, K, Q, V, game facts | L after R; K after D and P; then Q and V |
 | O, U, Q+, Y, servers and a player's place | O after K and D; U after B; Y after U |
 | C, CI screenshots in R2 (#211), lane 3 | dropped: RukenApp is public, so GitHub's artifact limit does not apply (owner, 2026-11-20 07:50 UTC); the merged spec is superseded |
@@ -62,6 +69,7 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 - R left 4px of room under the new line on Check it, then send on an iPhone SE held sideways; the counter, Check it then send, Live and Sent back screens lost their approval and go on the screens page.
 - `LiveGame.playsOn` is still selected but nothing reads it; unit F, which rebuilds that page, can drop it.
 - F (#218) review notes left for later (optional): order More from by acceptance date; cap the play-time beat body before reading it; the drag flag can swallow one Enter after a drag.
+- Notes from #233's review for the slice-end walk: the menu at 568 by 320, now that it always has a second line; spec 4.3's amendment still says "the maker under it" (it should say "by <name>" or "Made on Ruken"); a lone "More from" card on a tablet leaves an empty column, for the owner to look at.
 - N1 from W's audit: `src/features/play/gate.ts` comments (lines 13 to 16, 25 to 26) still call the free workers.dev address current; a small fix after W merges. N3: unit K must deploy the gate with `--route` (game-facts spec line 140).
 
 ## Material decisions (agent-selected, not owner-approved)
