@@ -187,6 +187,23 @@ test("Play and every tile are reached by the keyboard, with focus showing", asyn
   expect([...seen].sort()).toEqual([...wanted].sort());
 });
 
+test("with no script the clip's own controls are not under the name", async ({ browser }) => {
+  const context = await browser.newContext({ baseURL: "http://localhost:4173", javaScriptEnabled: false });
+  const page = await context.newPage();
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
+  const clip = await page.locator(".clipbox video").boundingBox();
+  const name = await page.locator(".heroname").boundingBox();
+  if (clip === null || name === null) throw new Error("the clip or the name has no box");
+  expect(name.y).toBeGreaterThanOrEqual(clip.y + clip.height - 1);
+  await context.close();
+});
+
+test("Play is on the first screen, whatever the window", async ({ page }) => {
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
+  await pageHasSettled(page);
+  await expect(page.getByRole("link", { name: "Play" })).toBeInViewport();
+});
+
 test("a game that is not there is a missing page with a way back", async ({ page }) => {
   const answer = await page.goto("/g/no-such-game");
   expect(answer?.status()).toBe(404);

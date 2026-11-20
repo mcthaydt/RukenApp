@@ -6,6 +6,8 @@ This amends the main design (`2026-11-13-ruken-reels-linktree-design.md`), secti
 
 Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** are this design's choices; the Owner can overrule any of them. Lines marked **Pending** wait for the Owner and are not built until the answer comes.
 
+> **Amended 2026-11-20 (the Owner picked "Bento for the game page, Store sheet for playing, menu open").** Where 3.3 describes the page as a two-column watch page, and 4.3 and its sketch describe the old panel and a three-line tab, read these instead. The game's page is one grid of tiles: one column on a phone held upright, two from 520px wide, four from 1000px. The clip carries the name and the one line on a dark band (under the clip, with no script); beside it are tiles for Play with its cost and Join, the age, where it plays and how long people sit, Share, the two clips, who made it, and more from the maker. Reviews, news, extras, friends, pictures, messages, achievements, settings and saves are not built; each waits for its own spec. The menu is a Store sheet: a side sheet, or a bottom sheet on an upright phone, with the name and maker, Keep playing as the one blue button, and the rest as plain rows; on a window under 450 tall the buttons sit two by two so all of them and the help line are in sight. The tab says RKN.
+
 ## 0. The Owner's direction and choices
 
 - **Owner, 2026-11-17:** "The games page should be basically steams game page, but elegant and tasteful in an above in beyond way like how we did we the game submissions; the in-game shell should do the same, but for Xbox game pass in-game shell".

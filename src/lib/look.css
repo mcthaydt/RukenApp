@@ -2354,6 +2354,11 @@ main.gamepage {
   pointer-events: none;
 }
 
+/* With no script the clip keeps the browser's own control bar on its foot, so the name goes under the clip, not over it. */
+.gamepage .clipbox:has(> video[controls]) ~ .heroname {
+  position: static;
+}
+
 .gamepage .heroname h1 {
   margin: 0;
   font: var(--text-card-title);
@@ -2588,8 +2593,7 @@ main.playing {
   pointer-events: none;
 }
 
-.playing .starting .note,
-.playing .menuhint {
+.playing .starting .note {
   color: var(--sage);
 }
 
