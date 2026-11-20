@@ -21,7 +21,7 @@
   <title>{data.changing ? "Change something" : "Check it, then send"} · Ruken</title>
 </svelte:head>
 
-<main class="halves">
+<main class="halves checking">
   {#if data.changing}
     <div>
       <p class="count">{data.name}</p>
@@ -49,6 +49,8 @@
       {#if form?.problem !== undefined}
         <p class="problem" role="alert">{form.problem}</p>
       {/if}
+      <!-- Every game plays on both, so this is said once, above the button, and never asked. -->
+      <p class="note">Your game must work on phones and computers.</p>
       <div class="acts">
         <button disabled={sending} aria-busy={sending ? "true" : undefined}>
           {sending ? "Sending your game…" : "Send for review"}

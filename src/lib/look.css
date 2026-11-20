@@ -1389,6 +1389,15 @@ a.foot {
   margin-top: 2rem;
 }
 
+/* A short window held sideways (an iPhone SE, 568 by 320) stacks Check and send's halves under a bar that covers its lower
+   part. The line every game carries sits above the game, so the game starts close under it: the name and the line stay
+   clear of the bar. */
+@media (max-height: 449px) and (max-width: 699px) {
+  .halves.checking > * + * {
+    margin-top: 0.25rem;
+  }
+}
+
 /* The left half is above the right one: its buttons are the bar, and the right half's sheets and cards have entrances that
    would otherwise paint over it. */
 .halves > :first-child {

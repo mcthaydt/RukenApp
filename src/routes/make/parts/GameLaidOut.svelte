@@ -15,7 +15,6 @@
     name: "Change the name",
     one_line: "Change the line",
     files: "Change the game's files",
-    plays_on: "Change where it plays",
     upright_video: "Change the upright video",
     wide_video: "Change the wide video",
     age_rating: "Change who it's for",

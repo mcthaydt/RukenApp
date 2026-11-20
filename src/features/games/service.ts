@@ -20,7 +20,6 @@ import {
   marksProblem,
   nameProblem,
   oneLineProblem,
-  playsOnProblem,
   repoProblem,
 } from "./fields.ts";
 import { NOT_VISIBLE, type GitHub } from "./github.ts";
@@ -69,7 +68,6 @@ export type Answer =
   | { question: "name"; name: string }
   | { question: "line"; oneLine: string }
   | { question: "files"; repo: { fullName: string; branch: string | null; folder: string } }
-  | { question: "plays-on"; playsOn: GamePlaysOn }
   // A game past draft that is made 18+ brings its marks with the rating: the database holds an 18+ game that is past
   // draft to having them, so the two are one write.
   | { question: "age"; ageRating: AgeRating; contentMarks?: ContentMark[] }
@@ -115,7 +113,6 @@ export interface MakerGame {
   hasPending: boolean;
   /** Null until the maker answers it. */
   oneLine: string | null;
-  playsOn: GamePlaysOn | null;
   ageRating: AgeRating | null;
   contentMarks: ContentMark[];
   /** True once staff have accepted the game at least once: its address never changes after that. */
@@ -147,11 +144,20 @@ export interface ReviewGame extends MakerGame {
   clipKeys: { upright: string | null; wide: string | null };
 }
 
+/**
+ * Parts staff may have sent back before games stopped being asked about them: every game now meets them, no question fixes them
+ * and no screen shows them. A game that still holds one is not stopped by it.
+ */
+const MET_PARTS: readonly GamePart[] = ["plays_on"];
+
+function stillToFix(toFix: readonly GamePart[]): GamePart[] {
+  return toFix.filter((part) => !MET_PARTS.includes(part));
+}
+
 /** Staff's own line beside a reason, at most this many characters (GameReviewPart_note_check). */
 const NOTE_MAX = 500;
 
 /** The values the answers may take, for answers that arrive from a form and are never believed. */
-const PLAYS_ON: GamePlaysOn[] = ["phone_and_computer", "computer_only"];
 const AGE_RATINGS: AgeRating[] = ["age_3", "age_7", "age_12", "age_16", "age_18"];
 const CONTENT_MARKS: ContentMark[] = ["sex_or_nudity", "gore", "drugs", "none"];
 
@@ -327,14 +333,13 @@ export function createGamesService(deps: GamesServiceDeps) {
     const answers: Answers = {
       oneLine: game.oneLine,
       hasFiles: true,
-      playsOn: game.playsOn,
       upright: true,
       wide: true,
       ageRating: game.ageRating,
       contentMarks: game.contentMarks,
     };
     if (firstUnanswered(answers) !== null) throw new GameError("NOT_READY", "Answer every question first.");
-    if (game.toFix.length > 0) throw new GameError("NOT_READY", "Fix what was sent back first.");
+    if (stillToFix(game.toFix).length > 0) throw new GameError("NOT_READY", "Fix what was sent back first.");
 
     await deps.db.game.update({
       where: { id: gameId },
@@ -342,6 +347,11 @@ export function createGamesService(deps: GamesServiceDeps) {
         pendingPullId: newest.id,
         pendingSince: new Date(deps.clock.epochMs()),
         state: game.state === "live" ? "live" : "waiting",
+        // Only parts that are met are left in `toFix` here (the refusal above), so sending clears them.
+        toFix: [],
+        // A game started before this change may have no answer: it plays on both, as every game does, and the database
+        // holds a game past draft to having one.
+        ...(game.playsOn === null ? { playsOn: "phone_and_computer" as const } : {}),
       },
     });
   }
@@ -382,11 +392,11 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /**
-   * The parts a live game's update may be sent back for: the ones its maker can fix (her name, line and where it plays,
-   * by the questions she may still answer) and the files (she mends them on GitHub and sends a new version). Its videos,
+   * The parts a live game's update may be sent back for: the ones its maker can fix (her name and line, by the
+   * questions she may still answer) and the files (she mends them on GitHub and sends a new version). Its videos,
    * rating and websites go through staff again only in slice 4, so an update sent back for one would be stuck for good.
    */
-  const LIVE_MAY_BE_SENT_BACK: GamePart[] = ["name", "one_line", "plays_on", "files"];
+  const LIVE_MAY_BE_SENT_BACK: GamePart[] = ["name", "one_line", "files"];
 
   /**
    * Staff's no, part by part: each part with a reason from that part's list, and for "Something else" their own line
@@ -417,7 +427,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       if (state === "live" && kept.some((one) => !LIVE_MAY_BE_SENT_BACK.includes(one.part))) {
         throw new GameError(
           "INVALID",
-          "A live game can only be sent back for its name, its line, where it plays or its files.",
+          "A live game can only be sent back for its name, its line or its files.",
         );
       }
       const decidedAt = new Date(deps.clock.epochMs());
@@ -457,7 +467,14 @@ export function createGamesService(deps: GamesServiceDeps) {
     if (base === null)
       throw new GameError("INVALID", "Pick a name with at least three letters or numbers.", "name");
     return deps.db.game.create({
-      data: { publicId: newPublicId(), slug: await freeSlug(base), makerUserId: input.makerUserId, name },
+      // Every game plays on phones and computers, so it is said once, here, and no one is asked.
+      data: {
+        publicId: newPublicId(),
+        slug: await freeSlug(base),
+        makerUserId: input.makerUserId,
+        name,
+        playsOn: "phone_and_computer",
+      },
       select: { id: true, slug: true },
     });
   }
@@ -482,11 +499,11 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /** The answers a live game may still change by itself: the rest go through staff again (slice 4). */
-  const LIVE_MAY_CHANGE: Answer["question"][] = ["name", "line", "plays-on"];
+  const LIVE_MAY_CHANGE: Answer["question"][] = ["name", "line"];
 
   /**
-   * Keeps one answer. A draft, a waiting game and a sent-back game take every answer; a live game takes only its name,
-   * its line and where it plays; anything else is not the maker's to change. Answers the game's address, which a new
+   * Keeps one answer. A draft, a waiting game and a sent-back game take every answer; a live game takes only its name
+   * and its line; anything else is not the maker's to change. Answers the game's address, which a new
    * name may have changed.
    */
   async function saveAnswer(gameId: string, makerUserId: string, answer: Answer): Promise<{ slug: string }> {
@@ -502,7 +519,6 @@ export function createGamesService(deps: GamesServiceDeps) {
       name?: string;
       slug?: string;
       oneLine?: string;
-      playsOn?: GamePlaysOn;
       ageRating?: AgeRating;
       contentMarks?: ContentMark[];
       connectHosts?: string[];
@@ -549,13 +565,6 @@ export function createGamesService(deps: GamesServiceDeps) {
         data.repoBranch = branch;
         data.repoFolder = folder;
         part = "files";
-        break;
-      }
-      case "plays-on": {
-        const problem = PLAYS_ON.includes(answer.playsOn) ? undefined : playsOnProblem(null);
-        if (problem !== undefined) throw new GameError("INVALID", problem);
-        data.playsOn = answer.playsOn;
-        part = "plays_on";
         break;
       }
       case "age": {
@@ -730,7 +739,6 @@ export function createGamesService(deps: GamesServiceDeps) {
     pullProblem: true,
     pendingPullId: true,
     oneLine: true,
-    playsOn: true,
     ageRating: true,
     contentMarks: true,
     toFix: true,
@@ -768,7 +776,6 @@ export function createGamesService(deps: GamesServiceDeps) {
     pullProblem: string | null;
     pendingPullId: string | null;
     oneLine: string | null;
-    playsOn: GamePlaysOn | null;
     ageRating: AgeRating | null;
     contentMarks: ContentMark[];
     toFix: GamePart[];
@@ -792,7 +799,6 @@ export function createGamesService(deps: GamesServiceDeps) {
       reason: stateParts(state).reason,
       hasPending: state.hasPending,
       oneLine: row.oneLine,
-      playsOn: row.playsOn,
       ageRating: row.ageRating,
       contentMarks: row.contentMarks,
       everLive: row.reviews.some((review) => review.decision === "accepted"),
@@ -830,7 +836,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     }[];
   }): PartToFix[] {
     const newest = row.reviews.find((review) => review.decision === "sent_back");
-    return row.toFix.flatMap((part) => {
+    return stillToFix(row.toFix).flatMap((part) => {
       const found = newest?.parts.find((one) => one.part === part);
       if (found === undefined) return [];
       return [
@@ -858,7 +864,6 @@ export function createGamesService(deps: GamesServiceDeps) {
         pendingPullId: true,
         pullProblem: true,
         oneLine: true,
-        playsOn: true,
         ageRating: true,
         contentMarks: true,
         toFix: true,
@@ -871,7 +876,6 @@ export function createGamesService(deps: GamesServiceDeps) {
       const answers: Answers = {
         oneLine: row.oneLine,
         hasFiles: row._count.pulls > 0 && row.pullProblem === null,
-        playsOn: row.playsOn,
         upright: row.clips.some((clip) => clip.shape === "upright"),
         wide: row.clips.some((clip) => clip.shape === "wide"),
         ageRating: row.ageRating,
@@ -885,7 +889,7 @@ export function createGamesService(deps: GamesServiceDeps) {
         words: listWords({
           state: row.state,
           hasPending: row.pendingPullId !== null,
-          toFix: row.toFix.length,
+          toFix: stillToFix(row.toFix).length,
           firstUnanswered: next,
           questionNumber: next === null ? null : counterOf(next, answers).n,
           sentBackLast: row.reviews[0]?.decision === "sent_back",

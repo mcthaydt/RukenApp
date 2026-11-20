@@ -225,7 +225,8 @@ describe("startGame", () => {
       makerUserId: maker,
       name: "Floor Fifty",
       oneLine: null,
-      playsOn: null,
+      // Every game plays on phones and computers, so a new draft says so before it is asked anything.
+      playsOn: "phone_and_computer",
       repoFullName: null,
       ageRating: null,
       contentMarks: [],
@@ -302,12 +303,11 @@ describe("saveAnswer", () => {
     const { makerUserId, id } = await begin();
 
     await service.saveAnswer(id, makerUserId, { question: "line", oneLine: "  Climb fifty floors.  " });
-    await service.saveAnswer(id, makerUserId, { question: "plays-on", playsOn: "computer_only" });
     await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_12" });
 
     expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
       oneLine: "Climb fifty floors.",
-      playsOn: "computer_only",
+      playsOn: "phone_and_computer",
       ageRating: "age_12",
     });
   });
@@ -403,7 +403,6 @@ describe("saveAnswer", () => {
       { question: "name", name: "Another" },
       { question: "line", oneLine: "A line." },
       FILES_ANSWER,
-      { question: "plays-on", playsOn: "computer_only" },
       { question: "age", ageRating: "age_12" },
       { question: "marks", contentMarks: ["gore"] },
       { question: "websites", connectHosts: [] },
@@ -555,7 +554,7 @@ describe("saveAnswer", () => {
     expect((await db().game.findUniqueOrThrow({ where: { id } })).contentMarks).toEqual(["none"]);
   });
 
-  it("lets a live game change its name, its line and where it plays, and nothing else", async () => {
+  it("lets a live game change its name and its line, and nothing else", async () => {
     const { makerUserId, id } = await begin();
     const pulling = serviceFor(GOOD_FILES);
     await pulling.saveAnswer(id, makerUserId, FILES_ANSWER);
@@ -566,6 +565,14 @@ describe("saveAnswer", () => {
     await makeLive(id, (await db().gamePull.findFirstOrThrow({ where: { gameId: id } })).id);
 
     await service.saveAnswer(id, makerUserId, { question: "line", oneLine: "A better line." });
+    // Where a game plays is no longer a question: even a hand-made answer is not the maker's to change.
+    await expect(
+      service.saveAnswer(id, makerUserId, {
+        question: "plays-on",
+        playsOn: "computer_only",
+      } as unknown as Answer),
+    ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).playsOn).toBe("computer_only");
     await expect(
       service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_16" }),
     ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
@@ -575,7 +582,7 @@ describe("saveAnswer", () => {
     const { makerUserId, id } = await begin();
     for (const state of ["waiting", "sent_back"] as const) {
       await setState(id, state);
-      await service.saveAnswer(id, makerUserId, { question: "plays-on", playsOn: "computer_only" });
+      await service.saveAnswer(id, makerUserId, { question: "line", oneLine: `A line in ${state}.` });
     }
   });
 

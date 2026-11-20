@@ -70,11 +70,6 @@ export function folderProblem(folder: string): string | undefined {
   });
 }
 
-/** The words for "where does it play", or undefined when a place was chosen. */
-export function playsOnProblem(playsOn: string | null): string | undefined {
-  return playsOn === null ? "Choose where your game plays." : undefined;
-}
-
 /** The words for "who is it for", or undefined when a rating was chosen. */
 export function ageProblem(ageRating: string | null): string | undefined {
   return ageRating === null ? "Choose who your game is for." : undefined;

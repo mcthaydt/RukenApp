@@ -158,14 +158,14 @@ const STAND_IN_COMMIT = "a".repeat(40);
 /** Changes a game's name straight in the database, as a journey's setup. */
 export async function changeGame(
   slug: string,
-  changes: { name?: string; playsOn?: "computer_only"; freeToPlay?: boolean },
+  changes: { name?: string; freeToPlay?: boolean },
 ): Promise<void> {
   await db().game.update({ where: { slug }, data: changes });
 }
 
 /**
  * Writes answers into a game straight into the database, so a journey about one screen does not have to walk all the
- * ones before it. The name is the game's own, and `line` and `playsOn` are written unless set to false. `files` writes
+ * ones before it. The name is the game's own, and `line` is written unless set to false; every game plays on phones and computers. `files` writes
  * a repository and a pull that passed, `videos` the two clips (or `"upright"`, the upright one alone, so the wide
  * question is the next one), and `age` a rating (an 18+ game has no marks yet).
  */
@@ -173,7 +173,6 @@ export async function fillAnswers(
   slug: string,
   answers: {
     line?: boolean;
-    playsOn?: boolean | "computers";
     files?: boolean;
     videos?: boolean | "upright";
     age?: AgeRating;
@@ -184,12 +183,7 @@ export async function fillAnswers(
     where: { id: game.id },
     data: {
       ...(answers.line === false ? {} : { oneLine: "A tiny game about tapping." }),
-      ...(answers.playsOn === false
-        ? {}
-        : {
-            playsOn:
-              answers.playsOn === "computers" ? ("computer_only" as const) : ("phone_and_computer" as const),
-          }),
+      playsOn: "phone_and_computer" as const,
       ...(answers.age === undefined ? {} : { ageRating: answers.age, contentMarks: [] }),
       ...(answers.files === true ? { repoFullName: "ruken-test/tiny-game", pullProblem: null } : {}),
     },

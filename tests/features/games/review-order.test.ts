@@ -52,7 +52,16 @@ describe("readReviewOrder", () => {
       readReviewOrder({ do: "send-back", game: "tiny-game", parts: [{ part: "music", words: "x" }] }),
     ).toEqual({
       problem:
-        "That part isn't one of: name, one_line, files, plays_on, upright_video, wide_video, age_rating, other_websites.",
+        "That part isn't one of: name, one_line, files, upright_video, wide_video, age_rating, other_websites.",
+    });
+  });
+
+  it("refuses plays_on: no game is asked where it plays any more", () => {
+    expect(
+      readReviewOrder({ do: "send-back", game: "tiny-game", parts: [{ part: "plays_on", words: "x" }] }),
+    ).toEqual({
+      problem:
+        "That part isn't one of: name, one_line, files, upright_video, wide_video, age_rating, other_websites.",
     });
   });
 

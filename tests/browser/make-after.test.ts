@@ -48,10 +48,31 @@ test("sent back for one thing: the screen leads with it, the blue button names i
   await expect(fix).toHaveCSS("background-color", rgb(token("--pay")));
   await expect(page.getByRole("button", { name: "Send it again" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Send it again" })).toHaveCount(0);
-  // What passed is folded away: seven of the eight parts.
-  await expect(page.getByText("7 accepted")).toBeVisible();
+  // What passed is folded away: six of the seven parts.
+  await expect(page.getByText("6 accepted")).toBeVisible();
   await expect(page.locator("details.accepted")).not.toHaveAttribute("open", "");
   await showTheOwner(page, testInfo, "Sent back, for one thing");
+});
+
+// A game staff sent back for where it plays, before games stopped being asked where they play: that is met by every game playing on both, so the
+// screen opens (it used to throw), asks for nothing that is gone, and the game can be sent again.
+test("an old send back for where the game plays opens, asks for nothing, and can be sent again", async ({
+  page,
+}) => {
+  const { slug } = await gameWhere(page, {
+    state: "sent_back",
+    toFix: [{ part: "plays_on", reason: "needs_keyboard" }],
+  });
+
+  const response = await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+
+  expect(response?.status()).toBe(200);
+  await expect(page.getByText("Fixed. Send it again when you're ready.")).toBeVisible();
+  await expect(page.locator("a.fix")).toHaveCount(0);
+  await expect(page.getByText("Choose Computers only.")).toHaveCount(0);
+  await page.getByRole("button", { name: "Send it again" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Waiting for review");
 });
 
 test("staff's own line shows under the reason", async ({ page }, testInfo) => {
@@ -217,7 +238,7 @@ test("Live shows the one video for this window, the name, the line and two chips
   );
   await expect(laid.getByRole("heading", { level: 2 })).toHaveText(name);
   await expect(laid.locator(".tagline")).toHaveText("A tiny game about tapping.");
-  await expect(laid.locator(".chip")).toHaveText(["Plays on phones and computers", "12+"]);
+  await expect(laid.locator(".chip")).toHaveText(["12+"]);
 });
 
 // A live game's maker mends the files on GitHub, and a new version copies them. Its files question is a 404 for her, so

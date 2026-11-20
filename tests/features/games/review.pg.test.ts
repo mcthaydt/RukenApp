@@ -196,6 +196,29 @@ describe("sendForReview", () => {
     expect(await stateOf(game.id)).toMatchObject({ state: "sent_back", pendingPullId: null });
   });
 
+  it("makes a game whose place was never written play on phones and computers", async () => {
+    const game = await readyGame();
+    await db().game.update({ where: { id: game.id }, data: { playsOn: null } });
+
+    await service.sendForReview(game.id, game.makerUserId);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "waiting", playsOn: "phone_and_computer" });
+  });
+
+  // Staff once sent a game back for where it plays. Every game plays on both now, so that is already met: it asks the
+  // maker for nothing, no question can clear it, and it must not stop the game being sent.
+  it("sends a game that was sent back for where it plays, and clears that part", async () => {
+    const game = await readyGame();
+    await service.sendForReview(game.id, game.makerUserId);
+    await service.sendBack(game.id, await createUser(db()), [{ part: "plays_on", reason: "needs_keyboard" }]);
+    expect((await service.gameForMaker(game.slug, game.makerUserId))?.toFix).toEqual([]);
+    expect(await service.gamesOf(game.makerUserId)).toMatchObject([{ words: "Fixed. Send it again." }]);
+
+    await service.sendForReview(game.id, game.makerUserId);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "waiting", toFix: [] });
+  });
+
   it("makes a draft wait on its newest files, and notes when they were sent", async () => {
     const game = await readyGame();
     const newer = await addPull(game.id);
@@ -480,6 +503,18 @@ describe("a live game's update that was sent back", () => {
     return game;
   }
 
+  it("sends a live update that was sent back for where it plays", async () => {
+    // A live update cannot be sent back for it any more, so the old send back is put there by hand.
+    const game = await liveGameSentBack([{ part: "files", reason: "breaks" }]);
+    await db().game.update({ where: { id: game.id }, data: { toFix: ["plays_on"] } });
+    expect((await service.gameForMaker(game.slug, game.makerUserId))?.toFix).toEqual([]);
+
+    await service.sendForReview(game.id, game.makerUserId);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "live", toFix: [] });
+    expect((await stateOf(game.id)).pendingPullId).not.toBeNull();
+  });
+
   // The files are the update, and a live game's maker fixes them on GitHub: a copy that passes is the fix.
   it("takes the files off what was sent back when a copy passes", async () => {
     const game = await liveGameSentBack([{ part: "files", reason: "breaks" }]);
@@ -547,9 +582,9 @@ describe("a live game's update that was sent back", () => {
     expect((await stateOf(game.id)).toFix).toEqual(["one_line"]);
   });
 
-  // These four a live game's maker cannot change by herself (slice 4), so sending its update back for one would leave
+  // These a live game's maker cannot change by herself (slice 4), so sending its update back for one would leave
   // it stuck for good.
-  it.each(["upright_video", "wide_video", "age_rating", "other_websites"] as const)(
+  it.each(["plays_on", "upright_video", "wide_video", "age_rating", "other_websites"] as const)(
     "refuses to send an update back for %s, and changes nothing",
     async (part) => {
       const game = await readyGame();
@@ -562,7 +597,7 @@ describe("a live game's update that was sent back", () => {
         service.sendBack(game.id, await createUser(db()), [{ part, reason: "something_else", note: "No." }]),
       ).rejects.toMatchObject({
         code: "INVALID",
-        message: "A live game can only be sent back for its name, its line, where it plays or its files.",
+        message: "A live game can only be sent back for its name, its line or its files.",
       });
 
       expect((await stateOf(game.id)).pendingPullId).not.toBeNull();
@@ -696,7 +731,7 @@ describe("what the screens show", () => {
 
     await db().game.update({ where: { id: game.id }, data: { ageRating: null } });
     expect(await service.gamesOf(game.makerUserId)).toMatchObject([
-      { words: "Not finished. Go on from question 7." },
+      { words: "Not finished. Go on from question 6." },
     ]);
 
     await db().game.update({ where: { id: game.id }, data: { ageRating: "age_12" } });
@@ -721,7 +756,6 @@ describe("what the screens show", () => {
         wide: { key: expect.stringMatching(/^clips\//) as string, bytes: 32 },
       },
       oneLine: "A game about a thing.",
-      playsOn: "phone_and_computer",
       ageRating: "age_12",
       contentMarks: [],
       everLive: false,

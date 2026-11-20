@@ -173,15 +173,6 @@ test("a refused name is read above the bar", async ({ page }) => {
   await expectReasonAboveBar(page);
 });
 
-test("a refusal of where the game plays is read above the bar", async ({ page }) => {
-  const { slug } = await startDraft(page);
-  await fillAnswers(slug, { files: true, playsOn: false });
-  await page.goto(`/make/${slug}/plays-on`);
-  await pageHasSettled(page);
-  await nextButton(page).click();
-  await expectReasonAboveBar(page);
-});
-
 test("a refusal of who the game is for is read above the bar", async ({ page }) => {
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { files: true, videos: true });
@@ -465,15 +456,4 @@ test("the record-your-screen page opens with a link to each device's steps", asy
     expect(target).toMatch(/^#[a-z-]+$/);
     await expect(page.locator(target ?? "#none")).toHaveText(device);
   }
-});
-
-// ---- P1: both ways a game plays are explained -----------------------------------------------------------------------
-
-test("both choices of where the game plays have a line under them", async ({ page }) => {
-  const { slug } = await startDraft(page);
-  await fillAnswers(slug, { files: true, playsOn: false });
-  await page.goto(`/make/${slug}/plays-on`);
-  await pageHasSettled(page);
-
-  await expect(page.locator(".pick > span")).toHaveCount(2);
 });
