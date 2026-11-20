@@ -701,7 +701,6 @@ describe("liveGameBySlug", () => {
       slug: game.slug,
       name: "A game",
       oneLine: "A game about a thing.",
-      playsOn: "phone_and_computer",
       ageRating: "age_12",
       contentMarks: [],
       freeToPlay: false,
@@ -710,6 +709,61 @@ describe("liveGameBySlug", () => {
       connectHosts: ["api.example.com"],
       clips: { upright: keyOf("upright"), wide: keyOf("wide") },
     });
+  });
+});
+
+describe("moreLiveGamesBy", () => {
+  /** A live game for this maker, with both clips. */
+  async function liveGameOf(makerUserId: string) {
+    const game = await db().game.create({
+      data: {
+        publicId: newPublicId(),
+        slug: `more-${String((made += 1))}`,
+        makerUserId,
+        name: "Another",
+        oneLine: "x",
+        playsOn: "phone_and_computer",
+        repoFullName: "acme/game",
+        ageRating: "age_7",
+      },
+    });
+    await addBothClips(game.id);
+    await makeLive(game.id, await addPull(game.id, []));
+    return game;
+  }
+
+  it("lists the maker's other live games, newest accepted first, at most six, and never the game itself", async () => {
+    const mine = await newGame();
+    const makerUserId = mine.makerUserId;
+    await makeLive(mine.id, await addPull(mine.id, []));
+    const others = [];
+    for (let i = 0; i < 7; i += 1) others.push(await liveGameOf(makerUserId));
+
+    const more = await service.moreLiveGamesBy(makerUserId, mine.slug);
+
+    expect(more).toHaveLength(6);
+    expect(more.map((one) => one.slug)).toEqual(
+      others
+        .slice(1)
+        .reverse()
+        .map((one) => one.slug),
+    );
+    expect(more.some((one) => one.slug === mine.slug)).toBe(false);
+  });
+
+  it("leaves out games that are not live and other makers' games", async () => {
+    const mine = await newGame();
+    await db().game.create({
+      data: {
+        publicId: newPublicId(),
+        slug: `more-${String((made += 1))}`,
+        makerUserId: mine.makerUserId,
+        name: "Draft",
+      },
+    });
+    await liveGameOf(await createUser(db()));
+
+    expect(await service.moreLiveGamesBy(mine.makerUserId, mine.slug)).toEqual([]);
   });
 });
 

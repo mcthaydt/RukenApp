@@ -33,3 +33,21 @@ export function ratingWords(ageRating: AgeRating | null, marks: readonly Content
 export function websitesWords(hosts: readonly string[]): string {
   return hosts.length === 0 ? "Uses no other websites" : `Uses ${hosts.join(", ")}`;
 }
+
+/** The plain line under a rating, in the age question's own words and on a game's page: one list, so they never differ. */
+const RATING_LINES: Record<AgeRating, string> = {
+  age_3: "Fine for anyone.",
+  age_7: "Cartoon fighting, or a little scary.",
+  age_12: "Real-looking fighting, or scary bits.",
+  age_16: "More violence or strong words.",
+  age_18: "Only for adults.",
+};
+
+export function ratingLine(ageRating: AgeRating): string {
+  return RATING_LINES[ageRating];
+}
+
+/** Every rating's line, for a screen that offers all five. */
+export const RATING_LINE_LIST: readonly { value: AgeRating; title: string; line: string }[] = (
+  ["age_3", "age_7", "age_12", "age_16", "age_18"] as const
+).map((value) => ({ value, title: RATING_WORDS[value], line: RATING_LINES[value] }));
