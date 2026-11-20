@@ -1,14 +1,12 @@
 import { expect, test } from "@playwright/test";
 import {
   continueToPayment,
-  fillBirthDate,
-  freshEmail,
-  JOURNEY_PASSWORD,
+  finishSignUpForm,
+  freshNumber,
   pageHasSettled,
   payAsNewMember,
   signInAs,
   standInPayButton,
-  yearsAgo,
 } from "./support/account.ts";
 import { endMembershipOf, userIdOf } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
@@ -78,10 +76,7 @@ test("a stranger signs up, pays, and is in the game they chose", async ({ page }
   await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("link", { name: "Play" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByLabel("Email").fill(freshEmail());
-  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
-  await fillBirthDate(page, yearsAgo(30));
-  await page.getByRole("button", { name: "Create account" }).click();
+  await finishSignUpForm(page, freshNumber());
   await continueToPayment(page);
   await standInPayButton(page).click();
   await expect(page).toHaveURL(`/g/${game.slug}/play`);
