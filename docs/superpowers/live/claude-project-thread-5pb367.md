@@ -1,8 +1,8 @@
 # Branch B (texts/sign-in): live state
 
-- Current task: audit closed with nothing red at d0c8353; running the webkit and tablet journeys and the visual check, then handing the owner's steps over.
-- Last commit: afb27a4 (written 2026-11-20 01:33 UTC).
-- Next step: hold. The pull request (#209) stays a draft until the owner has done X1 to X4 and Step 1a, the full CI run on a ready pull request is green, and the owner gives the lane 3 OK. Nothing is pushed while CI is queued.
+- Current task: main (206789a) merged in; waiting for CI on the new head. Twilio is set up on the test site (owner, 2026-11-20 09:11 UTC: Verify service, both Messaging Services, seven secrets).
+- Last commit: 53da7dc (written 2026-11-20 09:18 UTC).
+- Next step: when CI is green, tell the coordinator it is ready for the owner's merge OK. The pull request (#209) stays a draft until the owner says so; then mark it ready, wait for the full run, and delete this file in the last commit before the merge.
 - Open decisions: none for the build. The owner's Twilio upgrade is deferred to the slice end (owner, 2026-11-17).
 
 ## What the owner runs, in order, before this merges
