@@ -188,9 +188,7 @@ test("the websites chip opens the websites question, and a name that is not a we
   await showTheOwner(page, testInfo, "the websites question, nothing typed");
   await box.fill("not a website");
   await nextButton(page).click();
-  await expect(
-    page.getByText("Write each website like api.example.com, one per line. Five at most."),
-  ).toBeVisible();
+  await expect(page.getByText("Write each website like api.example.com. Five at most.")).toBeVisible();
   await expect(box).toHaveValue("not a website");
   await showTheOwner(page, testInfo, "the websites question, refused");
 

@@ -92,7 +92,9 @@
         fetched = { repo, names };
       }
     } catch {
-      fetched = { repo, names: [] };
+      if (ticked.form?.querySelector<HTMLInputElement>('input[name="repo"]:checked')?.value === repo) {
+        fetched = { repo, names: [] };
+      }
     }
   }
 

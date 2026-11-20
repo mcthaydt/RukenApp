@@ -141,7 +141,7 @@ describe("checkGameFiles", () => {
 });
 
 describe("connectHostsFrom", () => {
-  const PROBLEM = "Write each website like api.example.com, one per line. Five at most.";
+  const PROBLEM = "Write each website like api.example.com. Five at most.";
 
   it("lower-cases, drops blank lines and keeps a port", () => {
     expect(connectHostsFrom("API.Example.com\n\nrt.example.com:8443")).toEqual({

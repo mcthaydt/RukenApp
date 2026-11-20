@@ -361,7 +361,7 @@ describe("saveAnswer", () => {
       service.saveAnswer(id, makerUserId, { question: "websites", connectHosts: ["not a website"] }),
     ).rejects.toMatchObject({
       code: "INVALID",
-      message: "Write each website like api.example.com, one per line. Five at most.",
+      message: "Write each website like api.example.com. Five at most.",
     });
     await expect(
       service.saveAnswer(id, makerUserId, {

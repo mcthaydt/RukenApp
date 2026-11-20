@@ -910,7 +910,7 @@ form > * + button:not(.quiet) {
   gap: 0.5rem;
 }
 
-.line > .answer {
+.screen .line > .answer {
   flex: 1;
   min-width: 0;
   margin: 0;

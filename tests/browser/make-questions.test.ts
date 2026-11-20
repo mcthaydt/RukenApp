@@ -798,9 +798,7 @@ test("each website is its own line: add, remove, five at most, two kept, and a b
   // A bad line is refused in the same words, and every line stays as typed.
   await boxes.nth(1).fill("not a website");
   await nextButton(page).click();
-  await expect(
-    page.getByText("Write each website like api.example.com, one per line. Five at most."),
-  ).toBeVisible();
+  await expect(page.getByText("Write each website like api.example.com. Five at most.")).toBeVisible();
   await expect(boxes.first()).toHaveValue("api.example.com");
   await expect(boxes.nth(1)).toHaveValue("not a website");
 
