@@ -40,6 +40,7 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 | F, the game page and the play screen, lane 2 | not started; after S and R |
 | P, the maker's player count switch, lane 3 | plan audit clear; after F; merging applies a migration, so it needs the owner's OK |
 | G, a real game on the test site | not started |
+| Games domain on the test site (#207 spec; unit W, lane 3) | spec audited clean; the Owner's switch (O1 to O5) can run now; W waits on R and a writer place. From O5 until W merges, Task 24 Steps 1 and 4 use section 5 of `specs/2026-11-20-games-domain-design.md`, and O-B is not run (it would undo the switch) |
 | Owner's Twilio upgrade, Verify service, Step 1a | at the slice end, by the owner's call |
 | Slice end: walk, design rounds, screens page, owner's walk, retrospective | not started |
 
