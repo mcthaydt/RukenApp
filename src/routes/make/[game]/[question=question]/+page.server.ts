@@ -104,6 +104,8 @@ async function filesScreen(url: URL, userId: string, game: MakerGame) {
     changing: url.searchParams.get("change") === "1",
     chosen: game.repoFullName === null ? [] : [game.repoFullName],
     branch: game.repoBranch ?? "",
+    branches: game.repoFullName === null ? [] : await service.branchesFor(userId, game.repoFullName),
+    branchesAddress: "/make/github/branches",
     folder: game.repoFolder,
     refusal: game.pullProblem === null ? null : refusalOf(game.pullProblem),
     // `data-sveltekit-reload` links: a server redirect to GitHub, not a page of the app.
@@ -233,6 +235,14 @@ function oneLineOf(form: FormData): string {
   return textOf(form, "oneLine").replace(/\s*[\r\n]+\s*/g, " ");
 }
 
+/** The websites as typed, one box each, as the one-per-line text the checker reads. */
+function websitesTypedIn(form: FormData): string {
+  return form
+    .getAll("servers")
+    .filter((value): value is string => typeof value === "string")
+    .join("\n");
+}
+
 /** What was typed in the question's one box, to come back with a refusal. */
 function typedFor(question: BuiltQuestion, form: FormData): string {
   switch (question) {
@@ -241,7 +251,7 @@ function typedFor(question: BuiltQuestion, form: FormData): string {
     case "line":
       return oneLineOf(form);
     case "websites":
-      return textOf(form, "servers");
+      return websitesTypedIn(form);
     default:
       return "";
   }
@@ -254,7 +264,7 @@ function answerFrom(
 ): { answer: Answer } | { problem: string } {
   switch (question) {
     case "websites": {
-      const servers = connectHostsFrom(textOf(form, "servers"));
+      const servers = connectHostsFrom(websitesTypedIn(form));
       return "problem" in servers
         ? { problem: servers.problem }
         : { answer: { question, connectHosts: servers.hosts } };

@@ -9,6 +9,7 @@
   import {
     BEAT_EVERY_MS,
     createAttention,
+    dragSpot,
     FIRST_PLACE,
     heightRange,
     isDrag,
@@ -209,9 +210,24 @@
     if (dragFrom === null || menu === undefined) return;
     if (!dragged && !isDrag(event.clientX - dragFrom.x, event.clientY - dragFrom.y)) return;
     dragged = true;
+    const spot = spotUnder(event, dragFrom);
     menu.setAttribute("data-dragging", "");
-    menu.style.setProperty("--drag-x", `${String(event.clientX - dragFrom.grabX)}px`);
-    menu.style.setProperty("--drag-top", `${String(event.clientY - dragFrom.grabY)}px`);
+    menu.style.setProperty("--drag-x", `${String(spot.left)}px`);
+    menu.style.setProperty("--drag-top", `${String(spot.top)}px`);
+  }
+
+  // Where the tab is drawn for a pointer at this point, kept inside the window.
+  function spotUnder(
+    event: PointerEvent,
+    from: { grabX: number; grabY: number },
+  ): { left: number; top: number } {
+    return dragSpot({
+      left: event.clientX - from.grabX,
+      top: event.clientY - from.grabY,
+      windowWidth: innerWidth,
+      windowHeight: innerHeight,
+      insets: insets(),
+    });
   }
 
   function dragEnd(event: PointerEvent): void {
@@ -219,8 +235,7 @@
     const from = dragFrom;
     dragFrom = null;
     if (!dragged) return;
-    const left = event.clientX - from.grabX;
-    const top = event.clientY - from.grabY;
+    const { left, top } = spotUnder(event, from);
     remember(
       tabRest({
         centreX: left + TAB_WIDTH / 2,
@@ -243,7 +258,10 @@
 
   function tabKey(event: KeyboardEvent): void {
     if (event.key.startsWith("Arrow")) {
-      const next = tabByKey(place, event.key, heightRange(innerHeight, insets()));
+      const range = heightRange(innerHeight, insets());
+      // A height kept from a taller window is shown held to this one, so the keys start from where it is seen.
+      const shown = { ...place, height: Math.min(Math.max(place.height, range.least), range.most) };
+      const next = tabByKey(shown, event.key, range);
       if (next !== null) {
         event.preventDefault();
         remember(next);
@@ -321,9 +339,7 @@
     <div class="menusheet">
       <div class="menupanel" bind:this={panel}>
         <h2>{data.name}</h2>
-        {#if data.makerName !== null}
-          <p class="note">by {data.makerName}</p>
-        {/if}
+        <p class="note">{data.makerName === null ? "Made on Ruken" : `by ${data.makerName}`}</p>
         <button type="button" onclick={keepPlaying}>Keep playing</button>
         {#if canFullScreen}
           <button type="button" class="outline" onclick={toggleFullScreen}>

@@ -63,7 +63,7 @@ for (const [branch, words] of [
     await connectGitHubFromFiles(page, slug);
     await page.getByLabel(TINY_GAME).check();
     await page.getByText("Change the branch or folder").click();
-    await page.getByLabel("Branch", { exact: true }).fill(branch);
+    await page.getByLabel("Branch", { exact: true }).selectOption(branch);
     await nextButton(page).click();
 
     await expect(page.getByText(words)).toBeVisible();

@@ -239,6 +239,31 @@ describe("installationOf", () => {
   });
 });
 
+describe("branchesOf", () => {
+  it("asks for the repository's branches with the repository's token and answers their names", async () => {
+    const { github, calls } = gitHubWith([
+      ...tokenAnswers(),
+      json([{ name: "main" }, { name: "dev/x" }, {}]),
+    ]);
+    expect(await github.branchesOf("acme/game")).toEqual(["main", "dev/x"]);
+    expect(calls[2]?.url).toBe(`${BASE}/repos/acme/game/branches?per_page=100`);
+    expect(calls[2]?.headers.authorization).toBe("Bearer ghs_test_fake");
+  });
+
+  it("names the status and not the token when GitHub fails", async () => {
+    const { github } = gitHubWith([...tokenAnswers(), new Response("broken", { status: 500 })]);
+    const failure = await github.branchesOf("acme/game").catch((error: unknown) => error);
+    expect((failure as Error).message).toContain("500");
+    expect((failure as Error).message).not.toContain("ghs_");
+  });
+
+  it("refuses a name that is not owner/name before it asks anything", async () => {
+    const { github, calls } = gitHubWith([]);
+    await expect(github.branchesOf("../x")).rejects.toMatchObject({ code: "INVALID" });
+    expect(calls).toHaveLength(0);
+  });
+});
+
 describe("tarball", () => {
   it("asks for the commit's files with the repository's token and answers the body", async () => {
     const { github, calls } = gitHubWith([...tokenAnswers(), new Response("the tarball")]);

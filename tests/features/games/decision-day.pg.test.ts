@@ -15,6 +15,7 @@ import { TestClock } from "../../support/test-clock.ts";
 
 const noGitHub: GitHub = {
   commitOf: () => Promise.reject(new Error("this test reaches for GitHub")),
+  branchesOf: () => Promise.resolve([]),
   installationOf: () => Promise.resolve(null),
   tarball: () => Promise.reject(new Error("this test reaches for GitHub")),
 };

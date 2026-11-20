@@ -57,6 +57,24 @@ export function tabRest(input: {
   };
 }
 
+/**
+ * Where a tab being dragged is drawn: under the finger, but never past an edge of the window or into the top and bottom
+ * insets, so a drag can never carry it off screen.
+ */
+export function dragSpot(input: {
+  left: number;
+  top: number;
+  windowWidth: number;
+  windowHeight: number;
+  insets: { top: number; bottom: number };
+}): { left: number; top: number } {
+  const most = Math.max(input.insets.top, input.windowHeight - input.insets.bottom - TAB_HEIGHT);
+  return {
+    left: clamp(input.left, 0, Math.max(0, input.windowWidth - TAB_WIDTH)),
+    top: clamp(input.top, input.insets.top, most),
+  };
+}
+
 /** What an arrow key does to a tab at rest: left and right go to that side, up and down a tenth of the window. */
 export function tabByKey(
   place: TabPlace,

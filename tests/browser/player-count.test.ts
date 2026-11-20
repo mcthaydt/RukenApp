@@ -19,7 +19,7 @@ test("a new game shows no player line; once the maker turns it on, the page says
   const { slug } = await gameWhere(page, { state: "live" });
   await addPlays(slug, 1, 1);
 
-  await page.goto(`/g/${slug}`);
+  await page.goto(`/g/${slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText(PLAYED)).toHaveCount(0);
 
   await page.goto(`/make/${slug}`);
@@ -30,13 +30,13 @@ test("a new game shows no player line; once the maker turns it on, the page says
   await expect(switchButton(page)).toHaveAccessibleName("Show how many people played it: On");
   expect(await showsPlayerCountOf(slug)).toBe(true);
 
-  await page.goto(`/g/${slug}`);
+  await page.goto(`/g/${slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText("1 person played it this week.")).toBeVisible();
 
   await page.goto(`/make/${slug}`);
   await switchButton(page).click();
   await expect(switchButton(page)).toHaveAccessibleName("Show how many people played it: Off");
-  await page.goto(`/g/${slug}`);
+  await page.goto(`/g/${slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText(PLAYED)).toHaveCount(0);
 });
 

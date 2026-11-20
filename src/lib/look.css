@@ -764,7 +764,7 @@ form > * + button:not(.quiet) {
   font: var(--text-small);
 }
 
-.screen :is(input, textarea).answer {
+.screen :is(input, textarea, select).answer {
   display: block;
   width: 100%;
   height: var(--box);
@@ -814,14 +814,14 @@ form > * + button:not(.quiet) {
     margin-top: 0;
   }
 
-  .screen :is(input, textarea).answer {
+  .screen :is(input, textarea, select).answer {
     margin-top: 1rem;
   }
 }
 
 /* A refused box keeps the size and padding it had: a box of several lines that lost its vertical padding when refused was a
    quarter shorter and its words touched its top edge. */
-.screen :is(input, textarea).answer[aria-invalid="true"] {
+.screen :is(input, textarea, select).answer[aria-invalid="true"] {
   outline: 4px solid var(--chalk);
   outline-offset: 3px;
 }
@@ -893,8 +893,27 @@ form > * + button:not(.quiet) {
   margin-top: 1rem;
 }
 
-.screen details > label > input.answer {
+.screen details > label > :is(input, select).answer {
   margin-top: 0.5rem;
+}
+
+/* The other websites: a box and its Remove button on a line, the lines stacked, then "Add another website". The box takes
+   the width the button leaves. */
+.lines {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.line {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.screen .line > .answer {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
 }
 
 /* A choice is a paper card the whole card is the target of: its real radio button or checkbox lies over it, clear. The
@@ -2597,6 +2616,10 @@ main.gamepage {
     align-self: stretch;
   }
 
+  .gamepage .more[data-solo] {
+    grid-column: auto;
+  }
+
   .gamepage .clipbox {
     min-height: clamp(16rem, calc(100dvh - 2rem), 44rem);
   }
@@ -2606,6 +2629,12 @@ main.gamepage {
 @media (min-width: 62.5rem) {
   .gamepage .bento {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  /* One other game: its panel is half the width, not a whole row with one small card in it. */
+  .gamepage .more[data-solo] {
+    grid-column: span 2;
   }
 
   .gamepage .hero {
@@ -2693,8 +2722,12 @@ main.playing {
 .playing .menu > summary {
   position: fixed;
   z-index: 3;
-  top: calc(var(--tab-at, 0.25) * 100dvh);
+  /* The kept height is a share of the window it was left in; a shorter window (a phone turned sideways) would put it
+     past the bottom, so it is held between the top and bottom insets of the window as it is now. */
+  top: clamp(var(--inset-top), calc(var(--tab-at, 0.25) * 100dvh), calc(100dvh - var(--inset-bottom) - 56px));
   left: 0;
+  /* Not the pull every other summary has on its margins: it would draw the tab 16px above where it is put. */
+  margin: 0;
   display: flex;
   flex-direction: column;
   align-items: center;

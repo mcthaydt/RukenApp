@@ -101,7 +101,7 @@ test("a member whose membership has ended gets the price card on reload", async 
   await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   await endMembershipOf(member);
-  await page.reload();
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/join\?next=/);
 });
 
@@ -114,6 +114,8 @@ test("the menu opens, keeps playing, starts again and leaves", async ({ page }, 
   for (const name of ["Keep playing", "Start again", "Leave game"])
     await expect(page.getByRole("button", { name }).or(page.getByRole("link", { name }))).toBeVisible();
   await expect(page.getByText("Use this if the game is stuck.")).toBeVisible();
+  // This game's maker has no page, so the menu says where it is from instead of leaving the line out.
+  await expect(page.getByText("Made on Ruken")).toBeVisible();
   await showTheOwner(page, testInfo, "the menu");
 
   await page.keyboard.press("Escape");
@@ -149,7 +151,7 @@ test("the Menu tab moves, and stays where it was left", async ({ page }) => {
   await expect(page.locator("details.menu")).toHaveAttribute("data-side", "right");
   await expect(page.locator("details.menu")).not.toHaveAttribute("open", "");
   await expect.poll(async () => (await tab.boundingBox())?.x).toBeGreaterThan(view.width - 60);
-  await page.reload();
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.locator("details.menu")).toHaveAttribute("data-side", "right");
 
   await tab.focus();
@@ -172,6 +174,64 @@ test("the Menu tab moves, and stays where it was left", async ({ page }) => {
   const before = await settledAt();
   await page.keyboard.press("ArrowUp");
   await expect.poll(async () => (await tab.boundingBox())?.y ?? before).toBeLessThan(before);
+});
+
+test("the Menu tab never leaves the screen: dragged past an edge, kept from a taller window, or turned sideways", async ({
+  page,
+}) => {
+  const inside = async (): Promise<void> => {
+    const view = page.viewportSize() ?? { width: 0, height: 0 };
+    await expect
+      .poll(async () => {
+        const box = await tabOf(page).boundingBox();
+        return (
+          box !== null &&
+          box.x >= 0 &&
+          box.y >= 0 &&
+          box.x + box.width <= view.width + 0.5 &&
+          box.y + box.height <= view.height + 0.5
+        );
+      })
+      .toBe(true);
+  };
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
+  await loaded(page);
+  const tab = tabOf(page);
+  const view = page.viewportSize() ?? { width: 0, height: 0 };
+  const from = await tab.boundingBox();
+  if (from === null) throw new Error("the tab has no box");
+
+  // Dragged far past the bottom right corner: held inside while dragging, and after it is let go.
+  await page.mouse.move(from.x + 20, from.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(view.width + 300, view.height + 300, { steps: 8 });
+  await expect(page.locator("details.menu")).toHaveAttribute("data-dragging", "");
+  await inside();
+  await page.mouse.up();
+  await inside();
+
+  // Dragged far past the top left corner.
+  const now = await tab.boundingBox();
+  if (now === null) throw new Error("the tab has no box");
+  await page.mouse.move(now.x + 20, now.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(-300, -300, { steps: 8 });
+  await inside();
+  await page.mouse.up();
+  await inside();
+
+  // A place kept at the very bottom of a taller window, then the window turned sideways.
+  await page.evaluate(() => {
+    localStorage.setItem("rk_menu_tab", JSON.stringify({ side: "right", height: 1 }));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await loaded(page);
+  await inside();
+  await page.setViewportSize({
+    width: Math.max(view.width, view.height),
+    height: Math.min(view.width, view.height),
+  });
+  await inside();
 });
 
 test("a press that moves under 8px opens the menu, and the tab is see-through at rest", async ({ page }) => {

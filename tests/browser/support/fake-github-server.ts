@@ -182,6 +182,15 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       if (branch === "busy-branch") return sendJson(response, 503, { message: "Service Unavailable" });
       return send(response, 200, repository.commit, "text/plain");
     }
+    if (parts[3] === "branches") {
+      return sendJson(response, 200, [
+        { name: "main" },
+        { name: "release" },
+        { name: "dev/new-level" },
+        { name: "empty-branch" },
+        { name: "busy-branch" },
+      ]);
+    }
     if (parts[3] === "tarball") {
       const top = `${repository.fullName.replace("/", "-")}-${repository.commit.slice(0, 7)}`;
       const files = repository.files.map((file) => ({ path: `${top}/${file.path}`, content: file.content }));

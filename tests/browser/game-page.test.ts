@@ -121,7 +121,7 @@ test("the sitting line waits for 20 plays", async ({ page, browser, request }) =
   await page.goto(`/g/${own.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText(/^Most people play/)).toHaveCount(0);
   await addPlays(own.slug, 1, 12);
-  await page.reload();
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByText("Most people play about 12 minutes at a time.")).toBeVisible();
 });
 
@@ -205,7 +205,7 @@ test("Play is on the first screen, whatever the window", async ({ page }) => {
 });
 
 test("a game that is not there is a missing page with a way back", async ({ page }) => {
-  const answer = await page.goto("/g/no-such-game");
+  const answer = await page.goto("/g/no-such-game", { waitUntil: "domcontentloaded" });
   expect(answer?.status()).toBe(404);
   await expect(page.getByRole("link", { name: "Back to Ruken" })).toBeVisible();
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  dragSpot,
   FIRST_PLACE,
   heightRange,
   isDrag,
@@ -7,6 +8,7 @@ import {
   tabByKey,
   tabRest,
   TAB_HEIGHT,
+  TAB_WIDTH,
 } from "../../../src/features/play/menu-tab.ts";
 
 const window = { windowWidth: 400, windowHeight: 800, insets: { top: 40, bottom: 30 } };
@@ -24,6 +26,24 @@ describe("tabRest", () => {
   it("stays clear of the top and bottom insets", () => {
     expect(tabRest({ ...window, centreX: 10, top: 0 }).height).toBeCloseTo(40 / 800);
     expect(tabRest({ ...window, centreX: 10, top: 790 }).height).toBeCloseTo((800 - 30 - TAB_HEIGHT) / 800);
+  });
+});
+
+describe("dragSpot", () => {
+  it("follows the finger inside the window", () => {
+    expect(dragSpot({ ...window, left: 120, top: 300 })).toEqual({ left: 120, top: 300 });
+  });
+  it("never goes past the left, right, top or bottom edge", () => {
+    expect(dragSpot({ ...window, left: -500, top: -500 })).toEqual({ left: 0, top: 40 });
+    expect(dragSpot({ ...window, left: 5000, top: 5000 })).toEqual({
+      left: 400 - TAB_WIDTH,
+      top: 800 - 30 - TAB_HEIGHT,
+    });
+  });
+  it("stays at the top-left in a window too small for the tab", () => {
+    expect(
+      dragSpot({ windowWidth: 20, windowHeight: 50, insets: { top: 10, bottom: 10 }, left: 9, top: 9 }),
+    ).toEqual({ left: 0, top: 10 });
   });
 });
 
