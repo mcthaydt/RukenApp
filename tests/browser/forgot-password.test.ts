@@ -21,6 +21,8 @@ async function askForCode(page: Page, number: string): Promise<void> {
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByRole("button", { name: "Text me a code" }).click();
   await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
+  // "Text it again" shows only once the page is alive; without this wait the screen can be read before that.
+  await pageHasSettled(page);
 }
 
 async function chooseNewPassword(page: Page, code: string, password: string = NEW_PASSWORD): Promise<void> {
