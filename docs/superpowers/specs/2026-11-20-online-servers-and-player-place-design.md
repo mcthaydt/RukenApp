@@ -59,12 +59,12 @@ How the feed weighs any of this is not written here. RukenApp is public, and the
 
 | Unit | Waits on | Owns | Output | Lane |
 |---|---|---|---|---|
-| K+ | #195's K | the migration K writes (`games.prisma`, `accounts.prisma`) | `Game.serverAreas` (a list of the section 3 areas), `User.birthDate`, `User.country`, `User.region` | 3 |
-| Q+ | K+, #195's Q | `src/features/games/questions.ts` and its screen | the servers question and its send-back | 2 |
-| Y | K+, branch B (phone sign-up) merged | `src/features/accounts/age.ts`, the sign-up screens, `/me` | birthday kept, the place screen, the sign-in ask for older accounts | 2 |
+| O | #195's K, and D (decision day, #204), both merged | its own migration (`games.prisma`, `accounts.prisma`) | `Game.serverAreas` (a list of the section 3 areas), `User.birthDate`, `User.country`, `User.region` | 3 |
+| Q+ | O, #195's Q | `src/features/games/questions.ts` and its screen | the servers question and its send-back | 2 |
+| Y | O, branch B (phone sign-up) merged | `src/features/accounts/age.ts`, the sign-up screens, `/me` | birthday kept, the place screen, the sign-in ask for older accounts | 2 |
 | N | the feed (slice 3) | private | nearby servers in the feed's order | slice 3 |
 
-Call: K+ folds into #195's migration rather than a second one, because both touch `games.prisma` and #195 is not merged. This is the Owner's card 3; if the Owner picks "All of it with the feed", K+, Q+ and Y move to slice 3 and #195 is unchanged.
+Call: O is its own migration, not folded into #195's K, so K's plan audit stays settled; it waits on K and on D (#204) because all three touch `games.prisma`. #195 leaves room for the servers question right after "Two or more, online". When to build is the Owner's card 3; if the Owner picks "All of it with the feed", O, Q+ and Y move to slice 3.
 
 ## 7. The Owner's questions
 
