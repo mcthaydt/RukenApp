@@ -33,8 +33,8 @@ const github: GitHub = {
     return Promise.resolve(SHA);
   },
   branchesOf: (repo) => {
-    seen.branchAsks.push(repo);
-    return seen.branchesFail ? Promise.reject(new Error("GitHub is down")) : Promise.resolve(["main", "dev"]);
+    branches.asked.push(repo);
+    return branches.fails ? Promise.reject(new Error("GitHub is down")) : Promise.resolve(["main", "dev"]);
   },
   installationOf: (repo) => {
     seen.installationAsks += 1;
@@ -70,8 +70,8 @@ beforeEach(() => {
   seen.commits = 0;
   seen.tarballs = 0;
   seen.installationAsks = 0;
-  seen.branchAsks = [];
-  seen.branchesFail = false;
+  branches.asked = [];
+  branches.fails = false;
   holding.clear();
 });
 
@@ -345,13 +345,13 @@ describe("branchesFor", () => {
     expect(await service.branchesFor(maker, "alice/mine")).toEqual(["main", "dev"]);
     expect(await service.branchesFor(maker, "bob/theirs")).toEqual([]);
     expect(await service.branchesFor(maker, "not/listed")).toEqual([]);
-    expect(seen.branchAsks).toEqual(["alice/mine"]);
+    expect(branches.asked).toEqual(["alice/mine"]);
   });
 
   it("answers an empty list when GitHub cannot say, so the form still offers the main branch", async () => {
     const maker = await createUser(db());
     await service.rememberConnection(maker, [installation(23n, "alice", [repo("alice/mine")])]);
-    seen.branchesFail = true;
+    branches.fails = true;
 
     expect(await service.branchesFor(maker, "alice/mine")).toEqual([]);
   });
