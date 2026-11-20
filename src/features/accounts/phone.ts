@@ -12,7 +12,8 @@ export { isMadeUpNumber } from "../../lib/server/text.ts";
  * ("+1"). Spaces, dashes, dots and brackets are dropped. Typed text starting "+" or "00" already names its country,
  * and so does "011" under "+1" (the North American prefix; elsewhere it is a national number, as in Leeds's 0113),
  * so what follows is the whole number, whatever country was picked. Otherwise leading zeros are dropped
- * (several countries write one), under "+1" one leading "1" is dropped, and the dialing code goes in front.
+ * (several countries write one), under "+1" one leading "1" is dropped, and the dialing code goes in front. A North
+ * American number (country code 1) must be ten digits after it.
  */
 export function toE164(dialingCode: string, typed: string): string | null {
   const cleaned = typed.replace(/[\s\-.()]/g, "");
@@ -28,6 +29,9 @@ export function toE164(dialingCode: string, typed: string): string | null {
     digits = dialingCode.replace(/\D/g, "") + withoutTrunkOne;
   }
 
+  // Country code 1 is North America's: a number there is ten digits after it, so a short one (a number typed without
+  // its area code) is refused here and never reaches a text.
+  if (digits.startsWith("1") && digits.length !== 11) return null;
   return /^\d{8,15}$/.test(digits) ? `+${digits}` : null;
 }
 

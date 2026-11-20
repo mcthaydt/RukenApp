@@ -34,6 +34,11 @@ describe("toE164", () => {
     ["+1", "abc"],
     ["+1", "312 555 01x2"],
     ["+1", "1234567890123456"],
+    // North America is ten digits after the 1: a number typed without its area code is not one.
+    ["+1", "555 0142"],
+    ["+1", "+1 555 0142"],
+    ["+1", "312 555 014"],
+    ["+1", "312 555 01422"],
   ])("refuses %s %s", (code, typed) => {
     expect(toE164(code, typed)).toBeNull();
   });
