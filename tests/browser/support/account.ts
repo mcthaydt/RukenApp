@@ -45,7 +45,7 @@ export async function pageHasSettled(page: Page): Promise<void> {
 }
 
 /** How long a press that sends a form waits for the site's answer: the same as the config's wait for an answer. */
-const SITE_ANSWER_TIMEOUT = 15_000;
+export const SITE_ANSWER_TIMEOUT = 15_000;
 
 /**
  * Makes a new account through the sign-up form, as a person would, and waits for the page it lands

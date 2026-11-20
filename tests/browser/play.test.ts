@@ -9,6 +9,7 @@ import {
   signInAs,
   standInPayButton,
   yearsAgo,
+  SITE_ANSWER_TIMEOUT,
 } from "./support/account.ts";
 import { endMembershipOf, userIdOf } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
@@ -81,7 +82,7 @@ test("a stranger signs up, pays, and is in the game they chose", async ({ page }
   await page.getByLabel("Email").fill(freshEmail());
   await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
   await fillBirthDate(page, yearsAgo(30));
-  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByRole("button", { name: "Create account" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await continueToPayment(page);
   await standInPayButton(page).click();
   await expect(page).toHaveURL(`/g/${game.slug}/play`);

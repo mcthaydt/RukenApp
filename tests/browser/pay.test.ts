@@ -8,6 +8,7 @@ import {
   releaseLateNews,
   standInPayButton,
   yearsAgo,
+  SITE_ANSWER_TIMEOUT,
 } from "./support/account.ts";
 import { idsOf, membershipStartsOf } from "./support/database.ts";
 import { gameWhere } from "./support/game.ts";
@@ -24,7 +25,7 @@ async function signUpFromTheCard(page: Page): Promise<string> {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
   await fillBirthDate(page, yearsAgo(30));
-  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByRole("button", { name: "Create account" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page.getByRole("button", { name: "Continue to payment" })).toBeVisible();
   return email;
 }
