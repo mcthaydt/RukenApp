@@ -60,9 +60,9 @@ One unit. Lane 3: it touches `cloudflare/`.
 
 | Unit | Waits on | Files it owns | Output | Check |
 |---|---|---|---|---|
-| N, the gate leaves its free address ("names") | nothing in the repo; reads `main` | `cloudflare/games/wrangler.jsonc`, `cloudflare/games/worker.ts` (comments only), `tests/cloudflare/games-worker.test.ts` | one pull request | A1 to A3 |
+| W, the gate leaves its free address (`workers_dev`) | nothing in the repo; reads `main` | `cloudflare/games/wrangler.jsonc`, `cloudflare/games/worker.ts` (comments only), `tests/cloudflare/games-worker.test.ts` | one pull request | A1 to A3 |
 
-**Other open work, checked for shared files (2026-11-20, `main` at `949ffb5`):** Unit R (PR #206) touches `src/features/games/`, `src/routes/make/`, `src/routes/jobs/review/`, the slice 2 rest plan and browser tests; none of N's files. F (the game page and play screen) builds the frame that shows the game's address but reads it from `GAME_ADDRESS_PATTERN` through `gameAddress`, which N does not change. So N runs beside R and F. Decision day's Unit H changes `cloudflare/worker.js` (the site's wrapper, for its cron): a different file from N's, but the same lane 3 folder and the same Owner deploy step, so N and H do not build at the same time; whichever is second starts from a `main` that holds the first. G (Task 24) reads the deployed addresses: its Steps 1 and 4 use the gate's one-host shapes and change as section 5 says once this is live.
+**Other open work, checked for shared files (2026-11-20, `main` at `949ffb5`):** Unit R (PR #206) touches `src/features/games/`, `src/routes/make/`, `src/routes/jobs/review/`, the slice 2 rest plan and browser tests; none of W's files. F (the game page and play screen) builds the frame that shows the game's address but reads it from `GAME_ADDRESS_PATTERN` through `gameAddress`, which W does not change. So W runs beside R and F. Decision day's Unit H changes `cloudflare/worker.js` (the site's wrapper, for its cron): a different file from W's, but the same lane 3 folder and the same Owner deploy step, so W and H do not build at the same time; whichever is second starts from a `main` that holds the first. G (Task 24) reads the deployed addresses: its Steps 1 and 4 use the gate's one-host shapes and change as section 5 says once this is live.
 
 ### Task 1: the gate's config (the build session)
 
