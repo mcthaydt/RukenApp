@@ -128,3 +128,26 @@ UNIT: 2.4 and 4. VERDICT: red. REQUIREMENT: Owner, 2026-11-17 06:53 UTC ("One of
 ## Next
 
 The spec author fixes R12 to R16 in the spec only (the notes at their choice), names the commit, and this audit runs again as cycle 3 on that commit, reading only those changes and the rows they touch.
+
+---
+
+# Plan audit, cycle 3
+
+Examined: `docs/superpowers/specs/2026-11-17-game-facts-design.md` at **e2cbd40** (PR #195), the diff from cycle 2's 0582f7e, and the rows and sections it touches. Also read: decision day at ae622ff (PR #204) for the shared files, and the servers spec at 55295f4 (PR #203) for N9. Nothing was run: this is a read of documents.
+
+## Verdict
+
+**Cleared. 0 red.** Each cycle 2 red is fixed as its FIX said, with no other change to the spec. Notes N10 to N12 stay open, at the author's choice.
+
+| | Closed? | Where, at e2cbd40 |
+|---|---|---|
+| R12 live list | Yes | K's row: `LIVE_MAY_CHANGE` gains the six, `LIVE_MAY_BE_SENT_BACK` left as it is; Q's row: `LIVE_MAY_BE_SENT_BACK` gains the six, screenshots stay out. Agrees with 4 and K step 1 |
+| R13 deploy wait | Yes | Q's "Waits on" is K only; the deploy is in Q's check cell, as in Boundaries and Q step 3 |
+| R14 decision day | Yes | K: not alongside D (`games.prisma`, a migration) or H and A (`service.ts`); Q: not alongside H (`service.ts`, `review-order.ts`, the review route) or A (`service.ts`, `src/routes/make/[game]/+page.server.ts`, `tests/browser/support/`). Matches decision day 7 at ae622ff |
+| R15 `firstLiveAt` test | Yes | K step 1: the write that first makes a game live (the yes, or the release with H on `main`) |
+| R16 English checked | Yes | 2.4 (staff check; sent back on its files) and 4's new `files` row |
+| N9 servers columns | Settled | Boundaries: a coordinator's Call keeps them out of K. The servers spec at 55295f4 agrees: Unit O, its own migration, after K and D |
+
+## Next
+
+The spec merges on green as `staged-path` says (a doc, lane 1 to merge), with this audit. Unit K still needs its implementation audit and the Owner's approval of its merge, since it carries the migration.
