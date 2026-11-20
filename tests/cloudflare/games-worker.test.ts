@@ -69,7 +69,7 @@ describe("the gate's worker.ts", () => {
     expect(imports.sort()).toEqual(["../../src/features/play/gate.ts", "../../src/lib/files/r2-store.ts"]);
   });
 
-  // On the one free address the game is in the path; the setting says which host that is.
+  // On a local run (the path-form browser test) the game is in the path; the setting says which host that is.
   it("reads PATH_HOST and hands it to the gate as pathHost", () => {
     const source = read("cloudflare/games/worker.ts");
     expect(source).toMatch(/PATH_HOST\??:\s*string/);
