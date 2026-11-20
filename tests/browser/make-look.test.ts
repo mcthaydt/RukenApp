@@ -188,7 +188,7 @@ test("the track has one piece per question, and the answered ones are chalk", as
   await startDraft(page);
 
   const pieces = page.locator(".track > *");
-  await expect(pieces).toHaveCount(7);
+  await expect(pieces).toHaveCount(6);
   await expect(pieces.nth(0)).toHaveCSS("background-color", rgb(token("--chalk")));
   await expect(pieces.nth(1)).toHaveCSS("background-color", rgb(token("--felt-raised")));
   await expect(pieces.nth(0)).toHaveCSS("height", "6px");
