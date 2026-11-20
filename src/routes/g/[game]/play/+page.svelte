@@ -321,9 +321,7 @@
     <div class="menusheet">
       <div class="menupanel" bind:this={panel}>
         <h2>{data.name}</h2>
-        {#if data.makerName !== null}
-          <p class="note">by {data.makerName}</p>
-        {/if}
+        <p class="note">{data.makerName === null ? "Made on Ruken" : `by ${data.makerName}`}</p>
         <button type="button" onclick={keepPlaying}>Keep playing</button>
         {#if canFullScreen}
           <button type="button" class="outline" onclick={toggleFullScreen}>

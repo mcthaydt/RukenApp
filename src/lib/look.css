@@ -2590,6 +2590,10 @@ main.gamepage {
     align-self: stretch;
   }
 
+  .gamepage .more[data-solo] {
+    grid-column: auto;
+  }
+
   .gamepage .clipbox {
     min-height: clamp(16rem, calc(100dvh - 2rem), 44rem);
   }
@@ -2599,6 +2603,12 @@ main.gamepage {
 @media (min-width: 62.5rem) {
   .gamepage .bento {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  /* One other game: its panel is half the width, not a whole row with one small card in it. */
+  .gamepage .more[data-solo] {
+    grid-column: span 2;
   }
 
   .gamepage .hero {

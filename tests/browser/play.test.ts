@@ -119,6 +119,8 @@ test("the menu opens, keeps playing, starts again and leaves", async ({ page }, 
   for (const name of ["Keep playing", "Start again", "Leave game"])
     await expect(page.getByRole("button", { name }).or(page.getByRole("link", { name }))).toBeVisible();
   await expect(page.getByText("Use this if the game is stuck.")).toBeVisible();
+  // This game's maker has no page, so the menu says where it is from instead of leaving the line out.
+  await expect(page.getByText("Made on Ruken")).toBeVisible();
   await showTheOwner(page, testInfo, "the menu");
 
   await page.keyboard.press("Escape");
