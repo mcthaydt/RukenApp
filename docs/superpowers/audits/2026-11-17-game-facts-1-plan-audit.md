@@ -66,3 +66,65 @@ UNIT: 9 and 4. VERDICT: red. REQUIREMENT: 9, "Staff can send back each new part,
 ## Next
 
 The spec author fixes R1 to R11 in the spec only (the notes at their choice), names the commit, and this audit runs again as cycle 2 on that commit. R1's deploy step is a CLI command for the Owner, `pnpm run deploy:games`, after K merges.
+
+---
+
+# Plan audit, cycle 2
+
+Examined: `docs/superpowers/specs/2026-11-17-game-facts-design.md` at **0582f7e** (PR #195, branch `claude/project-thread-uhyg35`, which holds `main` at **dc96dc9**). Checked against cycle 1 above, the Owner's 2026-11-17 06:53 UTC words ("One of the supported languages is must be English though"), the code on `main` at dc96dc9 (Graphify's index is built from dc96dc9), the slice 2 plan's Units R, F and P, and two specs on open branches: decision day (PR #204 at **ae622ff**, `specs/2026-11-20-decision-day-design.md`) and online servers (branch `claude/project-thread-e67vg7` at ee606f1). Nothing was run: this is a read of documents and code.
+
+## Verdict
+
+**Not cleared. 5 red, 4 notes.** All 11 cycle 1 reds are closed and all 8 notes are taken. The English rule, the room for the servers question and the Owner's deploy step are in, and each is placed right. What is left is narrow: one contradiction inside Unit K, Q's wait on the deploy being stricter than the rest of the spec says, the decision day units that share files with K and Q, a test K cannot write once decision day's H is on `main`, and nobody checking that a game really can be played in English. Each fix is a line or two in the spec. None needs the Owner.
+
+## Cycle 1, finding by finding
+
+| | Closed? | Where, at 0582f7e |
+|---|---|---|
+| R1 gate | Yes | 2.8 (`SHOT_KEY`, same publicId shape as `CLIP_KEY`, `gate.ts:44`); K owns `gate.ts` and `gate.test.ts`; 7 Boundaries; Q step 3. `cloudflare/games/worker.ts:6` imports `gate.ts`, and `deploy:games` (`package.json:17`) is its only deploy, so the step is needed and right |
+| R2 live pictures | Yes | 2 opening, 2.8, 2.9, 4, 5; K and Q step 1 |
+| R3 review `look` | Yes | 4 last bullet, `genre` key; Q owns `+server.ts` (today `uprightVideo`, `wideVideo` only, `+server.ts:87-88`) and `review-job.test.ts` |
+| R4 Q and V beside P | Yes | 7: K waits on P; chain R, F, P, K, Q, V; L after R |
+| R5 `playersWords` | Yes | 6: `playWaysWords`; no clash with the plan's names or decision day's `dayWords` |
+| R6 card order | Yes | 6: after P's line, every device, 3.3 redrawn in V's check |
+| R7 renumbering | Yes | 3 and K step 1 |
+| R8 length reading | Yes | 2.7 (`mehd`, exact compare, rounding, default `TimecodeScale`, non-finite) and L step 1 |
+| R9 help page | Yes | 2.7 and L's row |
+| R10 file lists | Yes | Q and V rows |
+| R11 criterion | Yes | 4 opening and 9 |
+| N1 to N8 | Taken | `main` is merged in (dc96dc9 is an ancestor of 0582f7e); N2 kept as a Call in 8.6, which is the author's right; N3 in 2.1; N4 in 8.6; N5 in 2.8; N6 in the game page spec (3.1 and 10); N7 in 2.9; N8 in 4 |
+
+## The new parts
+
+- **English always (Owner 06:53).** Held through every section: 0, 1, 2.4 (a fixed line, not a disabled box; no "It has no words"), 3 (`Game_languages_check`: empty until answered, `en` first after), 6 (`languagesWords` always names English), 8.5, 9, K step 1. The CHECK and "empty means not asked" agree with `firstUnanswered`. One gap: R16.
+- **Room for the servers question.** 2.5 keeps the `online` code and the order, and asks nothing. `questionsFor` (`questions.ts:26-28`) already filters a question by an earlier answer, so a question after players slots in as the marks do. The servers spec (ee606f1, 3 and 6) puts it straight after players, only for "Two or more, online", and leaves live changes to this spec: it agrees. See N9 for its migration.
+- **The deploy step.** Right command, right reason, in 2.8, K's check, Boundaries, Q step 3 and 9. Q's row asks for it earlier than the rest: R13.
+- **The waits.** Against `main` at dc96dc9 (S merged, R, F, P not), the chain holds and every pair inside this spec and the slice 2 plan that shares a file runs one after the other. Against decision day, not yet: R14.
+
+## Red findings
+
+**R12. K's row leaves the live list alone, and K's own test needs it changed.**
+UNIT: 7, K's row and step 1. VERDICT: red. REQUIREMENT: 4 ("both lists in `service.ts` … gain those six") and K step 1 ("a live game takes each of the six words-and-picks answers"). REASON: K owns `service.ts` "the live lists left as they are", but a live game's answer is refused unless its question is in `LIVE_MAY_CHANGE`, so K's test fails and stays failing. EVIDENCE: `src/features/games/service.ts:485` (`LIVE_MAY_CHANGE = ["name", "line", "plays-on"]`) and `:498` (the refusal for anything else on a live game). EXPECTED: K's row and K's tests say the same thing. FIX: K adds the six answers to `LIVE_MAY_CHANGE` (they are K's answers); Q adds them to `LIVE_MAY_BE_SENT_BACK` and the screen's `LIVE_CHANGEABLE`, and keeps screenshots out of both. K's row reads "`LIVE_MAY_CHANGE` gains the six; `LIVE_MAY_BE_SENT_BACK` left as it is", and Q's row "`service.ts` (`LIVE_MAY_BE_SENT_BACK`)". Only 7 changes.
+
+**R13. Q's row makes Q wait to start on the Owner's deploy; the rest of the spec only needs it before Q's merge.**
+UNIT: 7, Q's row. VERDICT: red. REQUIREMENT: `staged-path`, Splitting ("what it waits on decides only when it may start") and 7 Boundaries ("after K merges, and before Q merges"); Q step 3 ("After the Owner's `pnpm run deploy:games`"). REASON: the row's "Waits on" lists the deploy, so a coordinator holds Q's whole build on an Owner step that only Q's last check reads. EVIDENCE: 7, Q's "Waits on" cell. EXPECTED: Q starts once K is on `main`; the deploy is needed before Q's step 3. FIX: Q's "Waits on" drops the deploy and its check cell says "after the Owner's `pnpm run deploy:games`, one saved picture's media address answers 200". Only 7 changes.
+
+**R14. K and Q are not kept apart from decision day's units, which own the same files.**
+UNIT: 7, K's and Q's rows. VERDICT: red. REQUIREMENT: `staged-path`, Splitting ("no two running units own the same file"; "a unit waits on another when … the two touch the same file, interface, schema"). REASON: decision day (PR #204, ae622ff, its 7) has D own `games.prisma` and a migration, H own `service.ts`, `review-order.ts` and `src/routes/jobs/review/+server.ts`, and A own `service.ts`, `src/routes/make/[game]/+page.server.ts` and the browser helpers in `tests/browser/support/`. K owns `games.prisma`, a migration and `service.ts`; Q owns `service.ts`, `review-order.ts`, `+server.ts`, `src/routes/make/[game]/+page.server.ts`, `tests/browser/support/game.ts` and `database.ts`. This spec names only one of those pairs (Q and "a decision day unit that changes the review command", by one file). Decision day names D and K, and H and Q, but not H and K, or A and Q. EVIDENCE: decision day 7, rows D, H, A; this spec 7, rows K and Q. EXPECTED: every pair that shares a file is named on both sides, whichever spec merges first. FIX: K's "Waits on" adds "not alongside decision day's D (`games.prisma`, a migration) or H and A (`service.ts`): whichever starts second waits for the other to merge"; Q's replaces its decision day clause with "not alongside decision day's H (`service.ts`, `review-order.ts`, the review route) or A (`service.ts`, `src/routes/make/[game]/+page.server.ts`, `tests/browser/support/`): whichever starts second waits for the other to merge". Only 7 changes. (Decision day's own rows want the same pairs added; that is for its plan audit.)
+
+**R15. K's test of `firstLiveAt` is wrong once decision day's H is on `main`.**
+UNIT: K step 1. VERDICT: red. REQUIREMENT: 3 ("`firstLiveAt` is written once, in the same write that first makes a game live … if a later spec makes games go live on a set day after the yes, it is that write instead") and 9. REASON: step 1 says "the first yes writes `firstLiveAt`". With H on `main`, a new game's yes is held and the game stays waiting until the release (decision day 1 and 3: "whichever of K and H merges second moves that write"), so the test as written fails or tests the wrong write. EVIDENCE: K step 1; decision day ae622ff, lines 51 and 57. EXPECTED: K's test follows section 3's rule whichever merges first. FIX: K step 1 reads "the write that first makes a game live writes `firstLiveAt` (staff's yes; the release, if decision day's H is on `main`), and making it live again after take off and put back leaves it". Only K step 1 changes.
+
+**R16. Nobody checks that a game can really be played in English, yet the page says so of every game.**
+UNIT: 2.4 and 4. VERDICT: red. REQUIREMENT: Owner, 2026-11-17 06:53 UTC ("One of the supported languages is must be English though"), a rule about the game; 6 ("In English." on every game's page). REASON: the spec makes the stored list start with `en`, but nothing checks the game itself, and a maker cannot fix a wrong English on the languages question (English cannot be taken off), so the `languages` reason "Pick only the ones it's in" cannot fix it. 2.5 says staff check online play; 2.4 says nothing alike. EVIDENCE: 2.4, 4's `languages` row, 2.5's "Staff check that when they play it". EXPECTED: a game that cannot be played in English does not go live, and the maker is told what to change. FIX: 2.4 adds: "Staff check it can be played in English when they play it. One that can't is sent back on its files (in slice 2, in the Owner's words), since the game itself must change." 4 adds a row: `files` / "It can't be played in English." / "{name} needs to be playable in English. Add English to the game, then send it again." Only 2.4 and 4 change (Q's `send-back-reasons.json` and `send-back.test.ts` already cover it).
+
+## Notes (recorded, not blocking)
+
+- **N9. The servers spec may fold its columns into K's migration.** Its Call (ee606f1, 6) puts `Game.serverAreas` and the player's birthday and place into "the migration K writes", while K's row says "One migration, in K" holding "only section 3", and the servers spec's own row has K+ wait on K. Until the Owner answers that spec's card 3, K's scope is open on that point. The coordinator should settle it before K starts: K as written plus a second migration (simplest, and what K+'s "waits on K" says), or K's row grows.
+- **N10. Repeats in a list.** 2.4 says "Saving always stores `en` first, whatever the form sent", and `en` is in `languages.json`, so a form sending `en` could store it twice; tags can repeat too. Say the service drops repeats before it checks the count, and add a case to `fields.test.ts`.
+- **N11. The new questions' addresses are not named.** K adds the answers (`service.ts`'s `Answer["question"]`) before Q makes their addresses (`src/params/question.ts`). Name them in 2 (for example `about`, `screenshots`, `kind`, `tags`, `languages`, `players`, `good-to-know`) so K and Q use one set.
+- **N12. "and go after them".** 7's first sentence says these units go after all of the slice 2 plan's units, but L waits only on R and K on R, F, P and L. Since #202 an order is a claim of what a unit reads; say "and wait on them as each row says".
+
+## Next
+
+The spec author fixes R12 to R16 in the spec only (the notes at their choice), names the commit, and this audit runs again as cycle 3 on that commit, reading only those changes and the rows they touch.
