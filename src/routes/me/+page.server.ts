@@ -1,18 +1,18 @@
 import { error, fail, redirect } from "@sveltejs/kit";
 import { gamesServices } from "../../features/games/games.ts";
-import { authServices, resendVerification, signedInOnly } from "../../features/accounts/accounts.ts";
+import { authServices, shownAs, signedInOnly } from "../../features/accounts/accounts.ts";
 import { membershipLine, membershipServices } from "../../features/membership/membership.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
 // The signed-in person's own page. Signed out, `signedInOnly` sends them to sign in and back here.
-async function accountOf(userId: string): Promise<{ email: string; emailVerified: boolean }> {
+async function accountOf(userId: string): Promise<{ phone: string }> {
   const user = await authServices().prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, emailVerified: true },
+    select: { phoneNumber: true },
   });
   // The hook only lets an active account through, so a missing row means it was removed a moment ago.
   if (user === null) error(404);
-  return user;
+  return { phone: user.phoneNumber === null ? "" : shownAs(user.phoneNumber) };
 }
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -26,14 +26,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 };
 
 export const actions: Actions = {
-  // The address mailed is read from the database, never from the form: nobody can ask for a
-  // confirmation link to be sent to someone else's address.
-  resend: async (event) => {
-    const { userId } = signedInOnly(event.locals.caller, event.url);
-    const { email } = await accountOf(userId);
-    return resendVerification(event, authServices().formDeps, email);
-  },
-
   // "Manage or cancel", "Manage" and "Update card" all open Stripe's own billing page, where the member changes
   // their card or cancels: Ruken keeps no cancel screen of its own. It comes back to /me.
   portal: async ({ locals, url }) => {
