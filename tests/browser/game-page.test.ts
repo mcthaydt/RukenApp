@@ -158,27 +158,30 @@ test("landing on a game's page remembers its maker's link", async ({ page }) => 
 test("Play and every tile are reached by the keyboard, with focus showing", async ({ page }) => {
   await page.goto(`/g/${game.slug}`);
   await pageHasSettled(page);
-  const visits: string[] = [];
-  for (let step = 0; step < 6; step += 1) {
+  const wanted = [
+    "Watch the video full size",
+    "Watch the upright video",
+    "Watch the wide video",
+    "Play",
+    "Share",
+  ];
+  const seen = new Set<string>();
+  // A browser may spend a press or two on the address bar or a link before the page's own controls.
+  for (let step = 0; step < 14 && seen.size < wanted.length; step += 1) {
     await page.keyboard.press("Tab");
-    visits.push(
-      await page.evaluate(() => {
-        const now = document.activeElement ?? document.body;
-        return `${now.getAttribute("aria-label") ?? now.textContent.trim()}|${getComputedStyle(now).outlineStyle}`;
-      }),
-    );
+    const visit = await page.evaluate(() => {
+      const now = document.activeElement;
+      if (now === null || now === document.body) return null;
+      return {
+        name: now.getAttribute("aria-label") ?? now.textContent.trim(),
+        outline: getComputedStyle(now).outlineStyle,
+      };
+    });
+    if (visit === null) continue;
+    expect(visit.outline).not.toBe("none");
+    if (wanted.includes(visit.name)) seen.add(visit.name);
   }
-  const names = visits.map((one) => one.split("|")[0]);
-  expect(names).toEqual(
-    expect.arrayContaining([
-      "Watch the video full size",
-      "Watch the upright video",
-      "Watch the wide video",
-      "Play",
-      "Share",
-    ]),
-  );
-  for (const visit of visits) expect(visit.split("|")[1]).not.toBe("none");
+  expect([...seen].sort()).toEqual([...wanted].sort());
 });
 
 test("a game that is not there is a missing page with a way back", async ({ page }) => {
