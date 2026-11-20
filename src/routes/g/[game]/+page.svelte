@@ -80,7 +80,7 @@
         <video
           src={`${data.clips[shape]}#t=0.001`}
           preload="metadata"
-          tabindex="-1"
+          tabindex={enhanced ? -1 : undefined}
           controls={!enhanced}
           muted
           loop
