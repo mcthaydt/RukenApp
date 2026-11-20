@@ -129,6 +129,14 @@ export const load: PageServerLoad = async (event) => {
   }
 
   if (game.state === "live") {
+    // The statement piece: the game's own video behind everything, in the shape of the screen it is seen on.
+    const backdrop = {
+      upright: game.clips.upright === null ? null : gamesServices().media(game.clips.upright.key),
+      wide: game.clips.wide === null ? null : gamesServices().media(game.clips.wide.key),
+    };
+    // The first look at a game a decision day let in is the Accepted screen, once.
+    const accepted = await gamesServices().service.acceptedScreenFor(game.id);
+    if (accepted !== null) return { ...base, view: "accepted" as const, count: accepted.count, backdrop };
     const send = liveSend(game);
     return {
       ...base,
@@ -140,11 +148,7 @@ export const load: PageServerLoad = async (event) => {
       fixes,
       // Asked on a screen of its own, because it cannot be undone.
       takeOffAddress: `/make/${game.slug}/take-off`,
-      // The statement piece: the game's own video behind everything, in the shape of the screen it is seen on.
-      backdrop: {
-        upright: game.clips.upright === null ? null : gamesServices().media(game.clips.upright.key),
-        wide: game.clips.wide === null ? null : gamesServices().media(game.clips.wide.key),
-      },
+      backdrop,
       game: liveLaidOut(game),
       showsPlayerCount: game.showsPlayerCount,
     };
@@ -188,6 +192,12 @@ function refusal(problem: unknown): { problem: string } {
 }
 
 export const actions: Actions = {
+  // "See your game" on the Accepted screen: it has been seen, so the next look is Live.
+  seen: async (event) => {
+    const { game } = await ownGame(event);
+    await gamesServices().service.markAcceptedSeen(game.id);
+    redirect(303, `/make/${game.slug}`);
+  },
   // A game that was sent back is sent again once everything that was sent back is fixed; the service says so in its own
   // words when something is left, so a send posted by hand is refused the same way.
   send: async (event) => {
