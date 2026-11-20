@@ -106,7 +106,7 @@ test("a member whose membership has ended gets the price card on reload", async 
   await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   await endMembershipOf(member);
-  await page.reload();
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/join\?next=/);
 });
 
@@ -156,7 +156,7 @@ test("the Menu tab moves, and stays where it was left", async ({ page }) => {
   await expect(page.locator("details.menu")).toHaveAttribute("data-side", "right");
   await expect(page.locator("details.menu")).not.toHaveAttribute("open", "");
   await expect.poll(async () => (await tab.boundingBox())?.x).toBeGreaterThan(view.width - 60);
-  await page.reload();
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.locator("details.menu")).toHaveAttribute("data-side", "right");
 
   await tab.focus();
