@@ -24,11 +24,11 @@ Code from the archived RukenAppFailed is copied on purpose, file by file, with i
 - `.github/workflows/ci.yml`: `verify` (lint, typecheck, unit tests, build), `postgres` (database tests on Postgres 16), six browser pieces summed up by `browser`, and `gate`, which passes only when all three passed. A draft gets the quick run under names ending "(quick, draft)"; marking it ready starts the full run.
 - `.github/workflows/commit-authors.yml`: the identity check, `commit-authors`.
 - No program picks the screens a change reaches yet (`visual-check`, "Shoot what the change touches"). The builder lists the screens and sizes in the pull request by hand, and CI still takes the journeys' screenshots of every screen: on every full run, and on a draft when a `.svelte` or `.css` file, `static/` or a `tests/browser/` look file changed, or the pull request carries the `screenshots` label.
-- Branch protection on `main` requires `gate` and `commit-authors`. The repo is owned by a person, not an organization, so it has no GitHub merge queue: the session that merges runs the queue by hand (`release`). Auto-merge is allowed and merged branches are deleted by GitHub.
+- Branch protection on `main` should require `gate` and `commit-authors`. As of the 2026-11-20 setup check it requires neither: missing until the owner runs step 1 of `owner-steps/2026-11-20-setup-commands.md` in the project files. The repo is owned by a person, not an organization, so it has no GitHub merge queue: the session that merges runs the queue by hand (`release`). Auto-merge is allowed and merged branches are deleted by GitHub.
 
 ## Outside the repo
 
-- The live site is https://ruken.io, which sends mail from no-reply@ruken.io; https://ruken.dev serves games and media. The old games address is closed. A merge to `main` does not deploy: the owner runs `pnpm deploy` (and `pnpm deploy:games` for the games Worker).
+- The live site is https://ruken.io, which sends mail from no-reply@ruken.io; https://ruken.dev serves games and media. The old games address is closed. A merge to `main` does not deploy: the owner runs `pnpm run deploy` (and `pnpm run deploy:games`; a bare `pnpm deploy` is pnpm's own deploy command, not this script) for the games Worker).
 - This repo is public: R2 stays out of it (no R2 bucket names, keys or upload steps), and nothing for it runs on the owner's computer.
 - Secrets are the owner's, typed into Cloudflare with `wrangler secret put`. None is written in the repository or in chat.
 

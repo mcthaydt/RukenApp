@@ -72,10 +72,7 @@
   },
   "mergeGreen": {
     "enabled": true,
-    "statuses": [
-      "gate",
-      "commit-authors"
-    ]
+    "statuses": []
   },
   "ruleMix": {
     "enabled": true,

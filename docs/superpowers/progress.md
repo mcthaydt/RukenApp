@@ -19,6 +19,7 @@ Completed:
 Remaining:
 
 - Merge the setup pull request; the owner runs the branch protection command.
+- Right after that merge: a one-line pull request that turns `ruleMix.firstTimeSetup` off in `.claude/hooks/rules.json` (it cannot share a branch with other rule files; the hook refuses the mixed push).
 - Build Ruken to launch, slice by slice in roadmap order, starting with phone sign-in (#209).
 
 Blockers: none.
