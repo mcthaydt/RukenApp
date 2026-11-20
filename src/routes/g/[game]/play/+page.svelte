@@ -258,7 +258,10 @@
 
   function tabKey(event: KeyboardEvent): void {
     if (event.key.startsWith("Arrow")) {
-      const next = tabByKey(place, event.key, heightRange(innerHeight, insets()));
+      const range = heightRange(innerHeight, insets());
+      // A height kept from a taller window is shown held to this one, so the keys start from where it is seen.
+      const shown = { ...place, height: Math.min(Math.max(place.height, range.least), range.most) };
+      const next = tabByKey(shown, event.key, range);
       if (next !== null) {
         event.preventDefault();
         remember(next);

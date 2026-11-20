@@ -2726,6 +2726,8 @@ main.playing {
      past the bottom, so it is held between the top and bottom insets of the window as it is now. */
   top: clamp(var(--inset-top), calc(var(--tab-at, 0.25) * 100dvh), calc(100dvh - var(--inset-bottom) - 56px));
   left: 0;
+  /* Not the pull every other summary has on its margins: it would draw the tab 16px above where it is put. */
+  margin: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
