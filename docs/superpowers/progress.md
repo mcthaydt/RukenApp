@@ -1,6 +1,6 @@
 # Ruken progress
 
-Last updated: 2026-11-20 17:26 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
+Last updated: 2026-11-20 17:46 UTC. Written by the Ruken coordinator thread, which writes to the repo itself.
 
 ## Outcome
 
@@ -41,6 +41,11 @@ The owner, 2026-11-17: "The outcome I want: a finished app". Built slice by slic
 ## Project stopped: 2026-11-20
 
 The owner, 15:17 UTC: "Lets not, lets just finish the slice so we can start a new project with better workflow"; 15:37 UTC, "yes" to the wrap-up plan. Work stops around 18:00 UTC, after Floor Fifty's release and the two domain switches, which are the owner's steps. The slice-end walk, the screens page, the owner's walk and the retrospective are skipped. The units below marked "not built" stay unbuilt. Ruken continues in a new project with a better workflow, not here.
+
+Domain switches, done with the owner on 2026-11-20 (the plan is in the project files, `owner-steps/2026-11-20-site-domain-plan.md`):
+- ruken.io, Part B, at 17:37 UTC: the three secrets set; the GitHub app's callback (first) and homepage moved to ruken.io; the Stripe test endpoint points at `https://ruken.io/webhooks/stripe`. Twilio's HELP reply was not changed, because `/help` is a 404.
+- Games, step 6, at 17:45 UTC: `deploy:games --route "*.ruken.dev/*"` from main 4f641d6 (gate version 80a73d4d). The old games workers.dev address now answers 1042.
+- Not checked yet: A7 and A8 (the owner plays a game on its `g-<id>.ruken.dev` address) and A9.
 
 ## Last milestone: slice 2 (phone sign-up and the rest of slice 2)
 
