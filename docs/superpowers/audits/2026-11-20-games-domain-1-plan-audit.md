@@ -63,3 +63,34 @@ Prompt: Audit all of your work for completeness, consistency, cohesion, and harm
 - The owner command file matches O1 to O5 in order and content, with the real domain where the spec writes `GAMES-DOMAIN`.
 
 Not checked, as the spec says: whether Universal SSL already covers one level of names on the new zone, and whether a gate deploy without `--route` keeps the route. A4, run again, catches both.
+
+## Cycle 2, at `57fee80`
+
+Read against the same `main` (`949ffb5`), PR #206's file list, `gate.ts` and the Owner's command file as it stands after the fixes.
+
+### Verdict
+
+**Nothing red. F1 to F3 are closed, N1 to N6 are taken, and the new step order is safe.** Two notes below; neither blocks the merge.
+
+### The cycle 1 findings
+
+- **F1, closed.** W's row now lists `docs/superpowers/plans/2026-11-15-slice-2-rest.md`, waits on R (#206) merged and starts from a `main` that holds it. "Other open work" says R shares only that file, which matches #206's file list.
+- **F2, closed.** Task 2 Step 4 makes O-B's lead line say not to run its commands once the games domain is live and point at the spec's undo, and gives Task 24 Steps 1 and 4 section 5's lines. Section 5 adds "O-B is not run again".
+- **F3, closed.** A7 names only the `look` link from `src/routes/jobs/review/+server.ts`; the maker's-page line is gone.
+- **N1 to N6, taken:** the switch runs first on today's `main` (Task 1, O1 to O5) and W only closes the free address (Task 3, O6); H's reason is reworded and no longer claims a shared deploy; A3 and the `PATH_HOST` Call name the name-form journeys and the one path-form browser test; Step 2 keeps `workers.dev` and the domain out of the comment; section 1 and section 6 name the shared cookies; the command file has the undo commands and the `y` answer.
+
+### The new order, step by step
+
+- **O2** deploys today's gate (`workers_dev` true) with the route. The `PATH_HOST` secret stays across a deploy, so the free address keeps path mode (`gate.ts:199`) and every other host goes by its first label (`gate.ts:201-207`): both addresses serve games and clips. Nothing the site hands out changes yet.
+- **O3** (the game's server allows the new origin as well as the old) comes before the site hands out the new names, so Floor Fifty never loses its server.
+- **O4** changes only the site's setting. New passes and `look` links name `g-<id>.` the games domain and clips `media.`; frames already open on the free address keep loading, since `PATH_HOST` is still set.
+- **O5** deletes `PATH_HOST`. A free-address request then goes by its first label, `ruken-games`, and gets "Not found." (`gate.ts:205`); `/__ruken/health` still answers `ok` there (`gate.ts:196`), which is why A6 waits for O6.
+- **The undo before O6** puts both settings back; with `workers_dev` still true, the free address serves games again on the next request. The route and the record are harmless left in place.
+- **O6** deploys W's config (`workers_dev` false) with the same `--route`, closing the free address. Its undo needs W reverted first, and the command file says "tell us first" for that case.
+- The command file matches O1 to O6 in order and content, with the real domain and account where the spec writes placeholders, and names the domain nowhere in the repository.
+
+### Notes
+
+**N7. A7 says "After O3"; the site hands out the new names at O4.** O3 is now the game server's step. O4's own line says "A7 and A8", so a person following the steps runs it at the right time, but A7's header is wrong. FIX: A7, "After O4". Spec only.
+
+**N8. Between O5 and W's merge, the plan still carries the old Task 24 Step 1 and O-B.** W waits on R, so O5 can land days before the plan is edited. If Task 24 runs in that window, Step 1's `curl …/g-aaaaaaaaaa/x/` on the free host answers "Not found." (`gate.ts:205`), and the plan as it stands sends the Owner to O-B, which is the undo: harmless, but it quietly reverses the switch. FIX: when the Owner reports O5 done, the coordinator records in `progress.md` that Task 24 uses the spec's section 5 until W merges; or the Owner runs O5 only after W merges (the free address then serves games until O6). No repository change needed for the first.
