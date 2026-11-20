@@ -57,7 +57,9 @@
   const refusal = $derived(refusedNow ?? files.refusal);
   const repositories = $derived(files.repositories.map((name) => ({ value: name, title: name })));
   const chosen = $derived(asked === undefined ? files.chosen : asked.repo === "" ? [] : [asked.repo]);
-  const branch = $derived(asked?.branch ?? files.branch);
+  // Ticking a different game than the one the branch was for clears it to the main branch: another game may not have it.
+  let otherGameTicked = $state(false);
+  const branch = $derived(otherGameTicked ? "" : (asked?.branch ?? files.branch));
   const folder = $derived(asked?.folder ?? files.folder);
 
   // The branches to pick from belong to the game that is ticked, so ticking another game fetches its own. The main
@@ -74,6 +76,7 @@
     const ticked = event.target;
     if (!(ticked instanceof HTMLInputElement) || ticked.name !== "repo") return;
     const repo = ticked.value;
+    otherGameTicked = repo !== (asked?.repo ?? savedRepo);
     if (repo === savedRepo) {
       fetched = undefined;
       return;
@@ -84,7 +87,10 @@
       const names = Array.isArray(body)
         ? body.filter((name): name is string => typeof name === "string")
         : [];
-      fetched = { repo, names };
+      // Ticking another game while this answer was on its way: the answer is for a game no longer ticked.
+      if (ticked.form?.querySelector<HTMLInputElement>('input[name="repo"]:checked')?.value === repo) {
+        fetched = { repo, names };
+      }
     } catch {
       fetched = { repo, names: [] };
     }

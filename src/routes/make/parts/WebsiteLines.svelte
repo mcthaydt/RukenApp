@@ -4,6 +4,8 @@
   it). Five at most, as the checker allows. A refusal goes away once a line is changed, as in TextAnswer.
 -->
 <script lang="ts">
+  import { tick } from "svelte";
+
   const MOST = 5;
 
   let {
@@ -22,9 +24,10 @@
   // Each line has a number of its own, so removing one in the middle does not hand its words to the next.
   let nextId = 0;
   const lineOf = (text: string) => ({ id: nextId++, text });
+  // The saved sites, then one empty box to type in (also for a maker without script, who cannot add one).
   const start = () => {
     const typed = value.split("\n").filter((text) => text.trim() !== "");
-    return (typed.length === 0 ? [""] : typed).map(lineOf);
+    return (typed.length < MOST ? [...typed, ""] : typed).map(lineOf);
   };
   let lines = $state(start());
 
@@ -32,15 +35,26 @@
   let editedFrom = $state<string | undefined>(undefined);
   const shown = $derived(editedFrom === sent ? undefined : problem);
 
+  let group = $state<HTMLElement | undefined>(undefined);
+
+  /** Puts the keyboard in box number `index` once the page has drawn it, so a pressed button never drops it to the top. */
+  async function focusBox(index: number): Promise<void> {
+    await tick();
+    group?.querySelectorAll<HTMLInputElement>("input")[index]?.focus();
+  }
+
   function add(): void {
     editedFrom = sent;
     lines.push(lineOf(""));
+    void focusBox(lines.length - 1);
   }
 
   function remove(id: number): void {
     editedFrom = sent;
+    const at = lines.findIndex((line) => line.id === id);
     lines = lines.filter((line) => line.id !== id);
     if (lines.length === 0) lines.push(lineOf(""));
+    void focusBox(Math.min(at, lines.length - 1));
   }
 </script>
 
@@ -66,7 +80,7 @@
       />
       <button
         type="button"
-        class="remove"
+        class="outline"
         onclick={() => {
           remove(line.id);
         }}
@@ -77,33 +91,10 @@
     </div>
   {/each}
   {#if lines.length < MOST}
-    <button type="button" class="add" onclick={add}>Add another website</button>
+    <button type="button" class="outline" onclick={add}>Add another website</button>
   {/if}
 </div>
 <p class="note" id="hint">{hint}</p>
 {#if shown !== undefined}
   <p class="problem" id="problem" role="alert">{shown}</p>
 {/if}
-
-<style>
-  .lines {
-    display: grid;
-    gap: 0.75rem;
-  }
-  .line {
-    display: flex;
-    gap: 0.5rem;
-    align-items: stretch;
-  }
-  .line .answer {
-    flex: 1;
-    min-width: 0;
-  }
-  .remove,
-  .add {
-    font: inherit;
-    min-height: 2.75rem;
-    padding: 0 1rem;
-    cursor: pointer;
-  }
-</style>

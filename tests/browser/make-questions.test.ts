@@ -764,3 +764,52 @@ test("a game's card in Your games shows a still from its wide video", async ({ p
   expect([96, 128]).toContain(Math.round(small.width));
   expect(Math.round(small.height)).toBe(Math.round((small.width * 9) / 16));
 });
+
+// ---- The other websites: one line each ------------------------------------------------------------------------------
+
+test("each website is its own line: add, remove, five at most, two kept, and a bad one is refused", async ({
+  page,
+}) => {
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true });
+  await page.goto(`/make/${slug}/websites`);
+  await pageHasSettled(page);
+  const boxes = page.getByRole("textbox");
+  const add = page.getByRole("button", { name: "Add another website" });
+
+  // A new game starts with one empty line to type in.
+  await expect(boxes).toHaveCount(1);
+  await boxes.first().fill("api.example.com");
+  await add.click();
+  // The keyboard is in the new line, so typing goes on without a click.
+  await expect(boxes.nth(1)).toBeFocused();
+  await page.keyboard.type("cdn.example.com");
+  await expect(boxes).toHaveCount(2);
+
+  // Five is the most: the fifth line takes the Add button away.
+  for (let line = 3; line <= 5; line++) await add.click();
+  await expect(boxes).toHaveCount(5);
+  await expect(add).toHaveCount(0);
+  await page.getByRole("button", { name: "Remove website 5" }).click();
+  await page.getByRole("button", { name: "Remove website 4" }).click();
+  await page.getByRole("button", { name: "Remove website 3" }).click();
+  await expect(add).toBeVisible();
+
+  // A bad line is refused in the same words, and every line stays as typed.
+  await boxes.nth(1).fill("not a website");
+  await nextButton(page).click();
+  await expect(
+    page.getByText("Write each website like api.example.com, one per line. Five at most."),
+  ).toBeVisible();
+  await expect(boxes.first()).toHaveValue("api.example.com");
+  await expect(boxes.nth(1)).toHaveValue("not a website");
+
+  // Removing the bad line leaves the good one, which is saved; coming back shows it with an empty line after it.
+  await page.getByRole("button", { name: "Remove website 2" }).click();
+  await expect(boxes.first()).toBeFocused();
+  await nextButton(page).click();
+  await page.goto(`/make/${slug}/websites`);
+  await expect(boxes).toHaveCount(2);
+  await expect(boxes.first()).toHaveValue("api.example.com");
+  await expect(boxes.nth(1)).toHaveValue("");
+});

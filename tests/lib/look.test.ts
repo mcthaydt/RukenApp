@@ -301,6 +301,8 @@ describe("screens wear the look and nothing of their own", () => {
     "file",
     "game",
     "games",
+    "lines",
+    "line",
     // The maker's screens (spec 4): the felt is the window, and paper is what a person touches.
     "screen",
     "track",
@@ -475,6 +477,8 @@ describe("the maker's screens", () => {
     "preview",
     "checking",
     "countswitch",
+    "lines",
+    "line",
   ];
 
   it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {

@@ -17,7 +17,13 @@ const SHA = "0123456789abcdef0123456789abcdef01234567";
 let database: TestDatabase | undefined;
 let service: GamesService;
 /** What GitHub's stand-in answers, and how often it was asked. */
-const seen = { commits: 0, tarballs: 0, installationAsks: 0 };
+const seen = {
+  commits: 0,
+  tarballs: 0,
+  installationAsks: 0,
+  branchAsks: [] as string[],
+  branchesFail: false,
+};
 /** The installation GitHub says holds each repository now. */
 const holding = new Map<string, bigint>();
 
@@ -26,7 +32,10 @@ const github: GitHub = {
     seen.commits += 1;
     return Promise.resolve(SHA);
   },
-  branchesOf: () => Promise.resolve([]),
+  branchesOf: (repo) => {
+    seen.branchAsks.push(repo);
+    return seen.branchesFail ? Promise.reject(new Error("GitHub is down")) : Promise.resolve(["main", "dev"]);
+  },
   installationOf: (repo) => {
     seen.installationAsks += 1;
     return Promise.resolve(holding.get(repo) ?? null);
@@ -61,6 +70,8 @@ beforeEach(() => {
   seen.commits = 0;
   seen.tarballs = 0;
   seen.installationAsks = 0;
+  seen.branchAsks = [];
+  seen.branchesFail = false;
   holding.clear();
 });
 
@@ -321,5 +332,27 @@ describe("a maker can only use what GitHub listed for them", () => {
 
   it("says a game is not there when it is not, as before", async () => {
     await expect(service.pullLatest("no-such-game")).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("branchesFor", () => {
+  it("lists the branches of a repository the maker was given, and asks GitHub about no other", async () => {
+    const maker = await createUser(db());
+    const other = await createUser(db());
+    await service.rememberConnection(maker, [installation(21n, "alice", [repo("alice/mine")])]);
+    await service.rememberConnection(other, [installation(22n, "bob", [repo("bob/theirs")])]);
+
+    expect(await service.branchesFor(maker, "alice/mine")).toEqual(["main", "dev"]);
+    expect(await service.branchesFor(maker, "bob/theirs")).toEqual([]);
+    expect(await service.branchesFor(maker, "not/listed")).toEqual([]);
+    expect(seen.branchAsks).toEqual(["alice/mine"]);
+  });
+
+  it("answers an empty list when GitHub cannot say, so the form still offers the main branch", async () => {
+    const maker = await createUser(db());
+    await service.rememberConnection(maker, [installation(23n, "alice", [repo("alice/mine")])]);
+    seen.branchesFail = true;
+
+    expect(await service.branchesFor(maker, "alice/mine")).toEqual([]);
   });
 });
