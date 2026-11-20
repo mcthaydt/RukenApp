@@ -205,6 +205,20 @@ describe("sendForReview", () => {
     expect(await stateOf(game.id)).toMatchObject({ state: "waiting", playsOn: "phone_and_computer" });
   });
 
+  // Staff once sent a game back for where it plays. Every game plays on both now, so that is already met: it asks the
+  // maker for nothing, no question can clear it, and it must not stop the game being sent.
+  it("sends a game that was sent back for where it plays, and clears that part", async () => {
+    const game = await readyGame();
+    await service.sendForReview(game.id, game.makerUserId);
+    await service.sendBack(game.id, await createUser(db()), [{ part: "plays_on", reason: "needs_keyboard" }]);
+    expect((await service.gameForMaker(game.slug, game.makerUserId))?.toFix).toEqual([]);
+    expect(await service.gamesOf(game.makerUserId)).toMatchObject([{ words: "Fixed. Send it again." }]);
+
+    await service.sendForReview(game.id, game.makerUserId);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "waiting", toFix: [] });
+  });
+
   it("makes a draft wait on its newest files, and notes when they were sent", async () => {
     const game = await readyGame();
     const newer = await addPull(game.id);
@@ -488,6 +502,18 @@ describe("a live game's update that was sent back", () => {
     await service.sendBack(game.id, await createUser(db()), parts);
     return game;
   }
+
+  it("sends a live update that was sent back for where it plays", async () => {
+    // A live update cannot be sent back for it any more, so the old send back is put there by hand.
+    const game = await liveGameSentBack([{ part: "files", reason: "breaks" }]);
+    await db().game.update({ where: { id: game.id }, data: { toFix: ["plays_on"] } });
+    expect((await service.gameForMaker(game.slug, game.makerUserId))?.toFix).toEqual([]);
+
+    await service.sendForReview(game.id, game.makerUserId);
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "live", toFix: [] });
+    expect((await stateOf(game.id)).pendingPullId).not.toBeNull();
+  });
 
   // The files are the update, and a live game's maker fixes them on GitHub: a copy that passes is the fix.
   it("takes the files off what was sent back when a copy passes", async () => {

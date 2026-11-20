@@ -340,6 +340,7 @@ describe("screens wear the look and nothing of their own", () => {
     "drift",
     "asks",
     "preview",
+    "checking",
   ];
   const ROUTES = "src/routes";
 
@@ -446,6 +447,7 @@ describe("the maker's screens", () => {
     "drift",
     "asks",
     "preview",
+    "checking",
   ];
 
   it.each(MAKER_CLASSES)("the look has a rule for .%s", (name) => {

@@ -144,6 +144,16 @@ export interface ReviewGame extends MakerGame {
   clipKeys: { upright: string | null; wide: string | null };
 }
 
+/**
+ * Parts staff may have sent back before nobody was asked about them: every game now meets them, no question fixes them
+ * and no screen shows them. A game that still holds one is not stopped by it.
+ */
+const MET_PARTS: readonly GamePart[] = ["plays_on"];
+
+function stillToFix(toFix: readonly GamePart[]): GamePart[] {
+  return toFix.filter((part) => !MET_PARTS.includes(part));
+}
+
 /** Staff's own line beside a reason, at most this many characters (GameReviewPart_note_check). */
 const NOTE_MAX = 500;
 
@@ -329,7 +339,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       contentMarks: game.contentMarks,
     };
     if (firstUnanswered(answers) !== null) throw new GameError("NOT_READY", "Answer every question first.");
-    if (game.toFix.length > 0) throw new GameError("NOT_READY", "Fix what was sent back first.");
+    if (stillToFix(game.toFix).length > 0) throw new GameError("NOT_READY", "Fix what was sent back first.");
 
     await deps.db.game.update({
       where: { id: gameId },
@@ -337,8 +347,10 @@ export function createGamesService(deps: GamesServiceDeps) {
         pendingPullId: newest.id,
         pendingSince: new Date(deps.clock.epochMs()),
         state: game.state === "live" ? "live" : "waiting",
-        // A game that was started before nobody was asked where it plays has no answer: it plays on both, as every game
-        // does, and the database holds a game past draft to having one.
+        // Only parts that are met are left in `toFix` here (the refusal above), so sending clears them.
+        toFix: [],
+        // A game started before this change may have no answer: it plays on both, as every game does, and the database
+        // holds a game past draft to having one.
         ...(game.playsOn === null ? { playsOn: "phone_and_computer" as const } : {}),
       },
     });
@@ -824,7 +836,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     }[];
   }): PartToFix[] {
     const newest = row.reviews.find((review) => review.decision === "sent_back");
-    return row.toFix.flatMap((part) => {
+    return stillToFix(row.toFix).flatMap((part) => {
       const found = newest?.parts.find((one) => one.part === part);
       if (found === undefined) return [];
       return [
@@ -877,7 +889,7 @@ export function createGamesService(deps: GamesServiceDeps) {
         words: listWords({
           state: row.state,
           hasPending: row.pendingPullId !== null,
-          toFix: row.toFix.length,
+          toFix: stillToFix(row.toFix).length,
           firstUnanswered: next,
           questionNumber: next === null ? null : counterOf(next, answers).n,
           sentBackLast: row.reviews[0]?.decision === "sent_back",

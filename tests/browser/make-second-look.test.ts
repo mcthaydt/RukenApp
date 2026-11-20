@@ -488,7 +488,7 @@ test.describe("on an iPhone SE held upright", () => {
     });
   }
 
-  test("the choices of where the game plays are both above the bar", async ({ page }) => {
+  test("the choices of who the game is for are both above the bar", async ({ page }) => {
     onlyInPhone();
     await expectChoicesAboveTheBar(page, 2);
   });
@@ -538,7 +538,7 @@ async function expectFactsBeforeTheVideos(page: Page, facts: Locator[]): Promise
 test.describe("on a phone held sideways", () => {
   test.use({ viewport: { width: 915, height: 412 } });
 
-  test("the choices of where the game plays are both above the bar", async ({ page }) => {
+  test("the choices of who the game is for are both above the bar", async ({ page }) => {
     onlyInPhone();
     await expectChoicesAboveTheBar(page, 2);
   });
@@ -558,16 +558,16 @@ test.describe("on a phone held sideways", () => {
 test.describe("on an iPhone SE held sideways", () => {
   test.use({ viewport: IPHONE_SE_SIDEWAYS });
 
-  test("the first choice of where the game plays is above the bar, whole", async ({ page }) => {
+  test("the first choice of who the game is for is above the bar, whole", async ({ page }) => {
     onlyInPhone();
     await expectChoicesAboveTheBar(page, 1);
   });
 
-  test("Check and send shows the name above the bar, and the videos after it", async ({ page }) => {
+  test("Check and send shows the name and the line above the bar, and the videos after them", async ({
+    page,
+  }) => {
     onlyInPhone();
-    // The line every game carries ("Your game must work on phones and computers.") takes a line of this 320-tall window
-    // above the game, so the name stays above the bar and the tagline is a short scroll away; it was 2px clear before.
-    await expectFactsBeforeTheVideos(page, [page.locator(".laid .title")]);
+    await expectFactsBeforeTheVideos(page, [page.locator(".laid .title"), page.locator(".laid .tagline")]);
   });
 });
 

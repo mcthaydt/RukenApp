@@ -21,7 +21,7 @@
   <title>{data.changing ? "Change something" : "Check it, then send"} · Ruken</title>
 </svelte:head>
 
-<main class="halves">
+<main class="halves checking">
   {#if data.changing}
     <div>
       <p class="count">{data.name}</p>

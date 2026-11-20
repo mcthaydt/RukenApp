@@ -54,6 +54,27 @@ test("sent back for one thing: the screen leads with it, the blue button names i
   await showTheOwner(page, testInfo, "Sent back, for one thing");
 });
 
+// A game staff sent back for where it plays, before nobody was asked: that is met by every game playing on both, so the
+// screen opens (it used to throw), asks for nothing that is gone, and the game can be sent again.
+test("an old send back for where the game plays opens, asks for nothing, and can be sent again", async ({
+  page,
+}) => {
+  const { slug } = await gameWhere(page, {
+    state: "sent_back",
+    toFix: [{ part: "plays_on", reason: "needs_keyboard" }],
+  });
+
+  const response = await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+
+  expect(response?.status()).toBe(200);
+  await expect(page.getByText("Fixed. Send it again when you're ready.")).toBeVisible();
+  await expect(page.locator("a.fix")).toHaveCount(0);
+  await expect(page.getByText("Choose Computers only.")).toHaveCount(0);
+  await page.getByRole("button", { name: "Send it again" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Waiting for review");
+});
+
 test("staff's own line shows under the reason", async ({ page }, testInfo) => {
   const { slug } = await gameWhere(page, {
     state: "sent_back",
