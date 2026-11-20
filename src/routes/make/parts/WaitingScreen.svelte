@@ -11,11 +11,14 @@
 
   let {
     game,
+    line,
     changeAddress,
     filesProblem,
     filesAddress,
   }: {
     game: LaidOutGame;
+    /** What the game is told while it waits (when decisions go out, or that someone is looking). */
+    line: string;
     /** Check and send, where a waiting game is changed and sent again. */
     changeAddress: string;
     /** What was wrong with the newest copy of the game's files from GitHub, or null when the copy passed. */
@@ -32,7 +35,7 @@
 <main class="halves">
   <div>
     <h1>Waiting for review</h1>
-    <p>We're looking at it. Come back here to see when it's live.</p>
+    <p>{line}</p>
     {#if filesProblem !== null}
       <p class="problem" role="alert">{filesProblem}</p>
       <p><a href={filesAddress}>Fix your files</a></p>

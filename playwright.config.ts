@@ -107,6 +107,9 @@ export default defineConfig({
         // 30th as before it. A cookie makes one browser see the day before. The site refuses this setting unless its
         // own address is this machine, and the real site never has it.
         LAUNCH_TEST_SWITCH: "on",
+        // Decision day is off in the journeys, so a game the Owner lets in goes live at once, whatever day it runs.
+        // The site refuses this setting unless its own address is this machine.
+        DECISION_DAYS_TEST_OFF: "on",
       },
     },
     {

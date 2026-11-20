@@ -1,3 +1,4 @@
+import { decisionsOff } from "../../support/decisions-off.ts";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
@@ -44,7 +45,7 @@ afterAll(async () => {
 beforeEach(() => {
   clock = new TestClock("2026-11-14T12:00:00Z");
   files = new MemoryFileStore();
-  service = createGamesService({ db: db(), clock, files, github });
+  service = createGamesService({ db: db(), clock, files, github, schedule: decisionsOff });
 });
 
 let made = 0;
@@ -541,7 +542,13 @@ describe("a live game's update that was sent back", () => {
       ...github,
       tarball: async () => new Blob([await tarGz([{ path: "top/readme.txt", content: "hello" }])]).stream(),
     };
-    const refusing = createGamesService({ db: db(), clock, files, github: noIndexHtml });
+    const refusing = createGamesService({
+      db: db(),
+      clock,
+      files,
+      github: noIndexHtml,
+      schedule: decisionsOff,
+    });
 
     await expect(refusing.pullLatest(game.id)).rejects.toMatchObject({ code: "FILES_REFUSED" });
 

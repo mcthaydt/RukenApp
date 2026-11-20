@@ -5,6 +5,7 @@ import {
   GameError,
   gamesServices,
   nextStepWords,
+  waitingLine,
   partNoun,
   questionOf,
   toFixWords,
@@ -106,6 +107,7 @@ export const load: PageServerLoad = async (event) => {
       ...base,
       view: "waiting" as const,
       game: laidOut(game, []),
+      line: waitingLine(await gamesServices().service.decisionDayWordsFor(game.id)),
       changeAddress: `/make/${game.slug}/check`,
       // A refused newest copy leaves the older one waiting, so the screen says so and leads to where it is mended.
       filesProblem: game.pullProblem,

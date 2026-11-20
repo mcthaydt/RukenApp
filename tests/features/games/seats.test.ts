@@ -3,6 +3,7 @@ import schedule from "../../../src/features/games/library/decision-days.json" wi
 import {
   addMonths,
   dayWords,
+  decisionDaysDue,
   nextDecisionDay,
   seatsOn,
   type DecisionSchedule,
@@ -19,8 +20,8 @@ const on = (firstDay: string | null, extra: Partial<DecisionSchedule> = {}): Dec
 });
 
 describe("the shipped schedule", () => {
-  it("is off until the first decision day is written", () => {
-    expect(schedule.firstDay).toBeNull();
+  it("starts on Friday 27 November 2026, the first Friday after unit H's last commit", () => {
+    expect(schedule.firstDay).toBe("2026-11-27");
   });
 
   it("is Friday, noon, New York time, 10 seats growing to 500", () => {
@@ -35,8 +36,9 @@ describe("the shipped schedule", () => {
   });
 
   it("names no decision day while it is off", () => {
-    expect(nextDecisionDay(new Date("2026-11-20T00:00:00Z"))).toBeNull();
-    expect(seatsOn("2026-11-27")).toBe(0);
+    const off = on(null);
+    expect(nextDecisionDay(new Date("2026-11-20T00:00:00Z"), off)).toBeNull();
+    expect(seatsOn("2026-11-27", off)).toBe(0);
   });
 });
 
@@ -189,3 +191,19 @@ function addDays(day: string, days: number): string {
   const [year = 0, month = 0, date = 0] = day.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, date + days)).toISOString().slice(0, 10);
 }
+
+describe("the decision days that are due", () => {
+  const ON = on(FIRST);
+
+  it("names none while the schedule is off, or before the first day's moment", () => {
+    expect(decisionDaysDue(new Date("2027-01-01T00:00:00Z"), on(null))).toEqual([]);
+    expect(decisionDaysDue(new Date("2026-11-27T16:59:59Z"), ON)).toEqual([]);
+  });
+
+  it("names every Friday whose noon has passed, oldest first, with its seats", () => {
+    const due = decisionDaysDue(new Date("2026-12-11T17:00:00Z"), ON);
+    expect(due.map((one) => one.day)).toEqual(["2026-11-27", "2026-12-04", "2026-12-11"]);
+    expect(due.map((one) => one.seats)).toEqual([10, 10, 10]);
+    expect(due[0]?.at.toISOString()).toBe("2026-11-27T17:00:00.000Z");
+  });
+});
