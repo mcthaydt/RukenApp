@@ -62,7 +62,7 @@ One unit. Lane 3: it touches `cloudflare/`.
 |---|---|---|---|---|
 | D, the gate leaves its free address | nothing in the repo; reads `main` | `cloudflare/games/wrangler.jsonc`, `cloudflare/games/worker.ts` (comments only), `tests/cloudflare/games-worker.test.ts` | one pull request | A1 to A3 |
 
-**Other open work, checked for shared files (2026-11-20, `main` at `0053810`):** Unit R (PR #206) touches `src/features/games/`, `src/routes/make/`, `src/routes/jobs/review/`, the slice 2 rest plan and browser tests; none of D's files. F (the game page and play screen) builds the frame that shows the game's address but reads it from `GAME_ADDRESS_PATTERN` through `gameAddress`, which D does not change. So D runs beside R and F. G (Task 24) reads the deployed addresses: its Steps 1 and 4 use the gate's one-host shapes and change as section 5 says once this is live.
+**Other open work, checked for shared files (2026-11-20, `main` at `949ffb5`):** Unit R (PR #206) touches `src/features/games/`, `src/routes/make/`, `src/routes/jobs/review/`, the slice 2 rest plan and browser tests; none of D's files. F (the game page and play screen) builds the frame that shows the game's address but reads it from `GAME_ADDRESS_PATTERN` through `gameAddress`, which D does not change. So D runs beside R and F. G (Task 24) reads the deployed addresses: its Steps 1 and 4 use the gate's one-host shapes and change as section 5 says once this is live.
 
 ### Task 1: the gate's config (the build session)
 
