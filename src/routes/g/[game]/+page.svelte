@@ -110,9 +110,10 @@
       <a class="button" href={`/g/${data.slug}/play`}>Play</a>
       <div class="costrow">
         {#if data.cost === "join"}
-          <p class="costline">Members play every game. {data.price} a month.</p>
+          <p class="costline">
+            Members play every game. {data.price} a month. <a class="joinlink" href={joinAt}>Join</a>
+          </p>
           <p class="costline">Tax is added where it applies.</p>
-          <a class="button outline" href={joinAt}>Join</a>
         {:else}
           <p class="costline">{COST_WORDS[data.cost]}</p>
         {/if}

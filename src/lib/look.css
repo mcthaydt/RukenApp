@@ -2315,7 +2315,6 @@ main.gamepage {
 /* The clip, with the name and the one line on a dark band over its foot, so chalk reads on any clip. */
 .gamepage .hero {
   position: relative;
-  align-self: start;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2443,9 +2442,18 @@ main.gamepage {
   gap: 0.25rem;
 }
 
-.gamepage .costrow .button {
-  width: auto;
-  margin-top: 0.5rem;
+.gamepage .costrow .joinlink {
+  display: inline;
+  min-height: 0;
+  margin: 0;
+  color: var(--chalk);
+  text-decoration: underline;
+}
+
+.gamepage .playtile > .outline {
+  align-self: flex-start;
+  min-height: var(--size-target);
+  padding-block: 0.25rem;
 }
 
 .gamepage .costline {
@@ -2574,6 +2582,7 @@ main.gamepage {
 
   .gamepage .hero {
     grid-row: span 5;
+    align-self: stretch;
   }
 
   .gamepage .clipbox {
@@ -2589,6 +2598,11 @@ main.gamepage {
 
   .gamepage .hero {
     grid-column: span 2;
+    grid-row: span 3;
+  }
+
+  .gamepage .playtile {
+    grid-row: span 2;
   }
 
   .gamepage .clipbox {
@@ -2598,7 +2612,14 @@ main.gamepage {
 
   .gamepage .watch,
   .gamepage .madeby {
-    grid-column: span 2;
+    grid-column: span 1;
+  }
+}
+
+/* A short window: the clip is the window's height, so its name and Play stay in the first screen. */
+@media (max-height: 28rem) and (min-width: 32.5rem) {
+  .gamepage .hero {
+    align-self: start;
   }
 }
 
@@ -2800,6 +2821,7 @@ main.playing {
 }
 
 .playing .menupanel h2 {
+  font: var(--text-statement);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
