@@ -145,7 +145,7 @@ export interface ReviewGame extends MakerGame {
 }
 
 /**
- * Parts staff may have sent back before nobody was asked about them: every game now meets them, no question fixes them
+ * Parts staff may have sent back before games stopped being asked about them: every game now meets them, no question fixes them
  * and no screen shows them. A game that still holds one is not stopped by it.
  */
 const MET_PARTS: readonly GamePart[] = ["plays_on"];

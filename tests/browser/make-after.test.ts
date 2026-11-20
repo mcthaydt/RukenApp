@@ -54,7 +54,7 @@ test("sent back for one thing: the screen leads with it, the blue button names i
   await showTheOwner(page, testInfo, "Sent back, for one thing");
 });
 
-// A game staff sent back for where it plays, before nobody was asked: that is met by every game playing on both, so the
+// A game staff sent back for where it plays, before games stopped being asked where they play: that is met by every game playing on both, so the
 // screen opens (it used to throw), asks for nothing that is gone, and the game can be sent again.
 test("an old send back for where the game plays opens, asks for nothing, and can be sent again", async ({
   page,
