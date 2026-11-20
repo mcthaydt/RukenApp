@@ -345,3 +345,94 @@ describe("the parts of a review", () => {
     await insertPart(reviewId, "one_line", "something_else", "Say what the game is.");
   });
 });
+
+describe("decision days", () => {
+  /** A review of a new game, by plain SQL, with the day it goes out on (null: it took effect at once). */
+  async function insertReview(goesOutOn: string | null): Promise<string> {
+    const makerId = await newMaker();
+    const gameId = await insertGame(makerId, { publicId: newPublicId() });
+    const pullId = await insertPull({ gameId });
+    const reviewId = randomUUID();
+    await db().$executeRaw`
+      INSERT INTO "GameReview" ("id", "gameId", "pullId", "staffUserId", "decision", "decidedAt", "goesOutOn")
+      VALUES (${reviewId}, ${gameId}, ${pullId}, ${makerId}, 'accepted'::"ReviewDecision", now(), ${goesOutOn}::date)`;
+    return reviewId;
+  }
+
+  it("leave a decision's day empty when it took effect at once, and keep it when it was held", async () => {
+    const atOnce = await insertReview(null);
+    const held = await insertReview("2026-11-27");
+    const rows = await db().$queryRaw<{ id: string; goesOutOn: string | null }[]>`
+      SELECT "id", to_char("goesOutOn", 'YYYY-MM-DD') AS "goesOutOn" FROM "GameReview"
+      WHERE "id" IN (${atOnce}, ${held})`;
+    expect(rows.find((row) => row.id === atOnce)?.goesOutOn).toBeNull();
+    expect(rows.find((row) => row.id === held)?.goesOutOn).toBe("2026-11-27");
+  });
+
+  it("never change the day a decision goes out on", async () => {
+    const reviewId = await insertReview("2026-11-27");
+    await expect(
+      db().$executeRaw`UPDATE "GameReview" SET "goesOutOn" = '2026-12-04'::date WHERE "id" = ${reviewId}`,
+    ).rejects.toThrow(/GameReview is append-only/);
+  });
+
+  it("hold a day once, added and never changed or removed", async () => {
+    await db().$executeRaw`
+      INSERT INTO "DecisionDay" ("id", "day", "seats", "wentOutAt")
+      VALUES (${randomUUID()}, '2026-11-27'::date, 10, now())`;
+    await expect(
+      db().$executeRaw`
+        INSERT INTO "DecisionDay" ("id", "day", "seats", "wentOutAt")
+        VALUES (${randomUUID()}, '2026-11-27'::date, 10, now())`,
+    ).rejects.toThrow(/DecisionDay_day_key/);
+    await expect(db().$executeRaw`UPDATE "DecisionDay" SET "seats" = 11`).rejects.toThrow(
+      /DecisionDay is append-only/,
+    );
+    await expect(db().$executeRaw`DELETE FROM "DecisionDay"`).rejects.toThrow(/DecisionDay is append-only/);
+  });
+
+  it("refuse a day with no seats, or more than 500", async () => {
+    for (const seats of [0, 501]) {
+      await expect(
+        db().$executeRaw`
+          INSERT INTO "DecisionDay" ("id", "day", "seats", "wentOutAt")
+          VALUES (${randomUUID()}, '2030-01-04'::date, ${seats}, now())`,
+      ).rejects.toThrow(/DecisionDay_seats_check/);
+    }
+  });
+
+  it("hold one outcome for a review, added and never changed or removed", async () => {
+    const reviewId = await insertReview("2026-12-04");
+    await db().$executeRaw`
+      INSERT INTO "DecisionOutcome" ("id", "reviewId", "result")
+      VALUES (${randomUUID()}, ${reviewId}, 'applied'::"DecisionResult")`;
+    await expect(
+      db().$executeRaw`
+        INSERT INTO "DecisionOutcome" ("id", "reviewId", "result")
+        VALUES (${randomUUID()}, ${reviewId}, 'lapsed'::"DecisionResult")`,
+    ).rejects.toThrow(/DecisionOutcome_reviewId_key/);
+    await expect(
+      db().$executeRaw`UPDATE "DecisionOutcome" SET "result" = 'lapsed'::"DecisionResult"`,
+    ).rejects.toThrow(/DecisionOutcome is append-only/);
+    await expect(db().$executeRaw`DELETE FROM "DecisionOutcome"`).rejects.toThrow(
+      /DecisionOutcome is append-only/,
+    );
+  });
+
+  it("refuse an outcome of a result that is neither applied nor lapsed", async () => {
+    const reviewId = await insertReview("2026-12-11");
+    await expect(
+      db().$executeRaw`
+        INSERT INTO "DecisionOutcome" ("id", "reviewId", "result")
+        VALUES (${randomUUID()}, ${reviewId}, 'maybe'::"DecisionResult")`,
+    ).rejects.toThrow(/invalid input value for enum "DecisionResult"/);
+  });
+
+  it("keep when the maker last changed a waiting game, and when they saw the Accepted screen, empty until then", async () => {
+    const makerId = await newMaker();
+    const gameId = await insertGame(makerId, { publicId: newPublicId() });
+    const [row] = await db().$queryRaw<{ changedAt: Date | null; acceptedSeenAt: Date | null }[]>`
+      SELECT "changedAt", "acceptedSeenAt" FROM "Game" WHERE "id" = ${gameId}`;
+    expect(row).toEqual({ changedAt: null, acceptedSeenAt: null });
+  });
+});

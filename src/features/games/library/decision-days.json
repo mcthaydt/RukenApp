@@ -1,0 +1,9 @@
+{
+  "firstDay": null,
+  "weekday": 5,
+  "hour": 12,
+  "zone": "America/New_York",
+  "startSeats": 10,
+  "maxSeats": 500,
+  "growsEveryMonths": 3
+}
