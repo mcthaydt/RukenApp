@@ -114,7 +114,7 @@ The Accepted screen shows when a game is live, its `acceptedSeenAt` is null, and
 - The heading **"You're in."**, the line **"Floor Fifty is live on Ruken."** and under it, quieter, **"It's one of 8 games that got in this week."** (that day's `applied` yeses, counted).
 - One big blue button, **"See your game"**, to the game's Live screen.
 
-Opening it writes `acceptedSeenAt`, so it shows once; with it set, the game opens on Live as today. A game sent back on decision day opens on the Sent back screen, as today.
+Pressing "See your game" writes `acceptedSeenAt`, so it shows once (the Owner's call, 2026-11-20: the site preloads pages when a link is hovered, so a write on opening could use the screen up unseen; a maker who leaves without pressing sees it again); with it set, the game opens on Live as today. A game sent back on decision day opens on the Sent back screen, as today.
 
 ### 5.3 The label on Your games
 
