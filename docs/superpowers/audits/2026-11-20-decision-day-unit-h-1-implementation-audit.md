@@ -70,3 +70,15 @@ Audit all of your work for completeness, consistency, cohesion, and harmony, bot
 ## Follow-ups outside this change
 
 None found.
+
+## Re-check at 995cf66
+
+All three reds pass. Checked by this audit session at `995cf66`:
+
+- **R1 passes.** `accept` and `sendBack` take the lock before reading anything when the schedule is on; `holdOrNot` reads the clock after it and skips any day that has its `DecisionDay` row. The new pg test "holds a yes made while a day is going out for the next day" passes, and it fails by itself: with `service.ts` put back to `8626f34` it fails with `day: '2026-11-27'`.
+- **R2 passes.** `scheduleFor` uses the shared `isThisMachine` (now `src/lib/this-machine.ts`, also used by the launch switch). `schedule-switch.test.ts` refuses https, `http://localhost.example.com`, no address and a value other than `on`; with the old `startsWith` check put back, 2 of its 8 tests fail.
+- **R3 passes.** The command's sentences and the 409 mapping are pure functions in `review-words.ts`, tested in `review-words.test.ts`; `decided` stays covered by the pg tests.
+- Here: `pnpm test` 110 files, 1578 pass; `pnpm test:pg` 41 files, 619 pass; typecheck and lint clean.
+- Notes N1 to N4 stand as follow-ups. CI's browser shard 2 failure on `tests/browser/play.test.ts:138` (the Menu tab drag, phone-landscape) at `f44ff05` comes from #218's play screen, not this change, and was reported to the coordinator.
+
+The audit is closed: nothing red at `995cf66`.
