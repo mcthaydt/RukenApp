@@ -13,7 +13,7 @@
   let { data, children }: LayoutProps = $props();
 </script>
 
-{#if page.url.pathname !== "/" && !page.url.pathname.startsWith("/make")}
+{#if page.url.pathname !== "/" && !page.url.pathname.startsWith("/make") && !page.url.pathname.startsWith("/g/")}
   <header><a class="wordmark" href="/">Ruken</a></header>
 {/if}
 

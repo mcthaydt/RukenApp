@@ -158,7 +158,7 @@ const STAND_IN_COMMIT = "a".repeat(40);
 /** Changes a game's name straight in the database, as a journey's setup. */
 export async function changeGame(
   slug: string,
-  changes: { name?: string; freeToPlay?: boolean },
+  changes: { name?: string; freeToPlay?: boolean; makerUserId?: string },
 ): Promise<void> {
   await db().game.update({ where: { slug }, data: changes });
 }
@@ -306,4 +306,102 @@ export async function signUpsCountedFrom(clientAddress: string): Promise<number>
     select: { count: true },
   });
   return row?.count ?? 0;
+}
+
+/** Gives an account a maker's page (name and one line), as the page editor would have saved it. */
+export async function givePage(
+  account: { email: string },
+  page: { name: string; oneLine: string },
+): Promise<void> {
+  const userId = await userIdOf(account.email);
+  await db().makerPage.create({
+    data: { userId, handle: `m${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`, ...page },
+  });
+}
+
+/**
+ * Writes `count` plays of a game by members, each with attentive beats every 15 seconds for `minutes`, so each counts
+ * that long. They are the rows the game's own play writes (a session and its beats), started just far enough back that
+ * every beat is in the past.
+ */
+export async function addPlays(slug: string, count: number, minutes: number): Promise<void> {
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { id: true, makerUserId: true, livePullId: true },
+  });
+  if (game.livePullId === null) throw new Error(`${slug} is not live`);
+  const startedAt = new Date(Date.now() - (minutes * 60 + 60) * 1000);
+  for (let play = 0; play < count; play += 1) {
+    const pass = await db().playPass.create({
+      data: {
+        id: crypto.randomUUID().replaceAll("-", "").slice(0, 22),
+        gameId: game.id,
+        pullId: game.livePullId,
+        userId: game.makerUserId,
+        madeAt: startedAt,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      },
+    });
+    const session = await db().playSession.create({
+      data: {
+        id: crypto.randomUUID(),
+        gameId: game.id,
+        pullId: game.livePullId,
+        passId: pass.id,
+        userId: game.makerUserId,
+        basis: "member",
+        tokenHash: "0".repeat(64),
+        startedAt,
+      },
+    });
+    await db().playBeat.createMany({
+      data: Array.from({ length: minutes * 4 }, (_, beat) => ({
+        sessionId: session.id,
+        receivedAt: new Date(startedAt.getTime() + (beat + 1) * 15_000),
+        attentive: true,
+      })),
+    });
+  }
+}
+
+/** Ends a member's membership at once: the stand-in Stripe ends one only at its period's end. */
+export async function endMembershipOf(account: { email: string }): Promise<void> {
+  const ended = await db().premiumMembership.updateMany({
+    where: { user: { email: account.email } },
+    data: { state: "ended" },
+  });
+  if (ended.count !== 1) throw new Error(`expected one membership for ${account.email}`);
+}
+
+/**
+ * A game's plays as the database holds them: for each session, why it was allowed, who played (null: nobody was signed
+ * in), and each beat's "still here". Newest session last.
+ */
+export async function playOf(slug: string): Promise<{
+  sessions: { basis: string; userId: string | null; beats: boolean[] }[];
+}> {
+  const sessions = await db().playSession.findMany({
+    where: { game: { slug } },
+    orderBy: { startedAt: "asc" },
+    select: {
+      basis: true,
+      userId: true,
+      beats: { orderBy: { receivedAt: "asc" }, select: { attentive: true } },
+    },
+  });
+  return {
+    sessions: sessions.map((one) => ({
+      basis: one.basis,
+      userId: one.userId,
+      beats: one.beats.map((beat) => beat.attentive),
+    })),
+  };
+}
+
+/** Makes an account staff who check games, as the first-owner command or a later promotion would. */
+export async function giveStaffRole(
+  account: { email: string },
+  role: "owner" | "head_curator" | "curator",
+): Promise<void> {
+  await db().staffAssignment.create({ data: { userId: await userIdOf(account.email), role } });
 }

@@ -2253,3 +2253,493 @@ a.sheet.fix {
 .preview [data-empty] {
   color: var(--ink-soft);
 }
+
+/* A game's page (spec 3, the watch page). The clip runs edge to edge at the top of a phone held upright and the page
+   unrolls under it; held sideways, or on a computer, it is two columns, the clip and the facts on the left and the
+   maker's other games on the right. The foot keeps room for the bar slice 3 adds, so nothing moves when it comes. */
+main.gamepage {
+  width: min(100%, var(--width-read));
+  margin: 0 auto;
+  padding-bottom: 7rem;
+}
+
+.gamepage .stage {
+  position: relative;
+}
+
+.gamepage .clipbox {
+  position: relative;
+  width: 100%;
+  height: 46dvh;
+  overflow: hidden;
+  background: var(--felt-deep);
+}
+
+.gamepage .clipbox video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity 250ms;
+}
+
+/* A clip of the window's own shape fills the box; the other shape stands in the middle of it. */
+@media (orientation: portrait) {
+  .gamepage .clipbox[data-shape="upright"] video {
+    object-fit: cover;
+  }
+}
+
+@media (orientation: landscape) {
+  .gamepage .clipbox[data-shape="wide"] video {
+    object-fit: cover;
+  }
+}
+
+/* Pressing the clip opens it full size: a button over the whole clip, with nothing of its own to see. */
+.gamepage .clipopen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.gamepage .clipopen:focus-visible {
+  outline-offset: -6px;
+}
+
+.gamepage .back {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  min-height: var(--size-target);
+  margin: 0;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-deep);
+  color: var(--chalk);
+  text-decoration: none;
+}
+
+/* The two clip tiles over the clip's foot. The one showing has the blue edge of a picked choice. */
+.gamepage .pickers {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.gamepage .pickers button {
+  width: var(--size-target);
+  height: var(--size-target);
+  min-height: 0;
+  padding: 0;
+  border: 2px solid var(--felt-deep);
+  border-radius: var(--radius-button);
+  background: var(--felt-deep);
+  overflow: hidden;
+}
+
+.gamepage .pickers button[aria-pressed="true"] {
+  border-color: var(--pay);
+}
+
+.gamepage .about {
+  padding: 1.25rem 1rem 0;
+}
+
+.gamepage .about > p {
+  margin-top: 0.75rem;
+}
+
+.gamepage .madeby {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.gamepage .madeby img {
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.gamepage .madeby q {
+  display: block;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
+.gamepage .playrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.gamepage .playrow > * {
+  min-width: 8.5rem;
+}
+
+/* What pressing Play costs this person, said before the press, and Join quietly beside it for someone who is not a member. */
+.gamepage .costrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  margin-top: 0.75rem;
+}
+
+.gamepage .costline {
+  margin: 0;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
+/* The facts together on one paper card: who it is for, whether it works here, how long people sit. */
+.gamepage .facts {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.gamepage .facts p {
+  margin: 0;
+}
+
+.gamepage .facts p + p {
+  margin-top: 0.75rem;
+}
+
+.gamepage .more {
+  padding: 1.5rem 1rem 0;
+}
+
+.gamepage .more h2 {
+  margin: 0;
+  font: var(--text-statement);
+}
+
+.gamepage .more ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gamepage .more a {
+  display: block;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.gamepage .more .tile {
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border-radius: 0;
+}
+
+.gamepage .more a span {
+  display: block;
+  padding: 0.75rem;
+  font: var(--text-statement);
+}
+
+/* A tablet held upright: the phone's order in one column, 640 wide, the clip with its corners. */
+@media (orientation: portrait) and (min-width: 48rem) {
+  main.gamepage {
+    width: min(100%, 40rem);
+  }
+
+  .gamepage .clipbox {
+    height: 52dvh;
+    border-radius: var(--radius-card);
+  }
+
+  .gamepage .stage {
+    margin-top: 1rem;
+  }
+}
+
+/* Sideways, or on a computer: two columns. The clip is as tall as the window less 120px, so the name and Play show beside it. */
+@media (orientation: landscape) {
+  main.gamepage {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    column-gap: 2rem;
+    align-items: start;
+    width: min(100% - 2rem, 80rem);
+    padding-top: 1rem;
+  }
+
+  .gamepage .stage,
+  .gamepage .about {
+    grid-column: 1;
+  }
+
+  .gamepage .about {
+    padding-inline: 0;
+  }
+
+  .gamepage .clipbox {
+    height: auto;
+    aspect-ratio: 16 / 9;
+    max-height: calc(100dvh - 7.5rem);
+    border-radius: var(--radius-card);
+  }
+
+  .gamepage .more {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    padding-inline: 0;
+  }
+
+  .gamepage .more ul {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gamepage .clipbox video {
+    transition: none;
+  }
+}
+
+/* Playing (spec 4): the game fills the window, with Ruken's one small see-through Menu tab. */
+:root {
+  --inset-top: env(safe-area-inset-top, 0px);
+  --inset-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+main.playing {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  margin: 0;
+  overflow: hidden;
+  background: var(--felt-deep);
+}
+
+.playing .frame {
+  height: 100%;
+}
+
+/* While the game starts: its name in the middle of the dark window, and words if it is slow. */
+.playing .starting {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--felt-deep);
+  color: var(--chalk);
+  text-align: center;
+  pointer-events: none;
+}
+
+.playing .starting .note,
+.playing .menuhint {
+  color: var(--sage);
+}
+
+.playing .starting .playrow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  pointer-events: auto;
+}
+
+/* The tab: 48 by 56, the game showing faintly through it (chalk on this is 7.48:1 over a white game), solid while
+   pressed, dragged or focused. It rests on the left; the right is a slide across, so it can glide between the two. */
+.playing .menu > summary {
+  position: fixed;
+  z-index: 3;
+  top: calc(var(--tab-at, 0.25) * 100dvh);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 56px;
+  border-radius: 0 var(--radius-button) var(--radius-button) 0;
+  background: color-mix(in srgb, var(--felt-deep) 72%, transparent);
+  color: var(--chalk);
+  font: var(--text-small);
+  line-height: 1.1;
+  list-style: none;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition:
+    transform 200ms ease-out,
+    top 200ms ease-out,
+    background-color 160ms;
+}
+
+.playing .menu > summary::-webkit-details-marker,
+.playing .menu > summary::after {
+  display: none;
+}
+
+.playing .menu > summary > span:first-child {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.playing .menu[data-side="right"] > summary {
+  transform: translateX(calc(100vw - 48px));
+  border-radius: var(--radius-button) 0 0 var(--radius-button);
+}
+
+.playing .menu > summary:active,
+.playing .menu > summary:focus-visible,
+.playing .menu[open] > summary,
+.playing .menu[data-dragging] > summary {
+  background: var(--felt-deep);
+}
+
+.playing .menu[data-dragging] > summary {
+  top: var(--drag-top);
+  transform: translateX(var(--drag-x));
+  transition: none;
+  cursor: grabbing;
+}
+
+/* The line beside the tab, shown once on a device. */
+.playing .menuhint {
+  position: fixed;
+  z-index: 2;
+  top: calc(var(--tab-at, 0.25) * 100dvh + 14px);
+  left: 56px;
+  right: 1rem;
+  width: fit-content;
+  max-width: calc(100vw - 72px);
+  margin: 0;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-deep);
+  font: var(--text-small);
+}
+
+.playing .menu[data-side="right"] + .menuhint {
+  left: auto;
+  right: 56px;
+}
+
+/* The menu: the game stays in view behind a dimming layer, and the panel comes in from the tab's side (from the bottom
+   on an upright phone). */
+.playing .menusheet {
+  position: fixed;
+  z-index: 2;
+  inset: 0;
+  display: flex;
+  background: color-mix(in srgb, var(--felt-deep) 62%, transparent);
+}
+
+.playing .menu:not([open]) .menusheet {
+  display: none;
+}
+
+.playing .menupanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(360px, 100%);
+  padding: 1.5rem;
+  overflow-y: auto;
+  background: var(--paper);
+  color: var(--ink);
+  animation: menu-in 200ms ease-out;
+}
+
+.playing .menu[data-side="right"] .menusheet {
+  justify-content: flex-end;
+}
+
+.playing .menupanel h2 {
+  margin: 0;
+  font: var(--text-card-title);
+}
+
+.playing .menupanel .note {
+  margin: 0;
+  color: var(--ink-soft);
+  font: var(--text-small);
+}
+
+.playing .menupanel .outline {
+  border-color: var(--pay);
+  color: var(--pay);
+}
+
+@keyframes menu-in {
+  from {
+    transform: translateX(-1.5rem);
+    opacity: 0;
+  }
+}
+
+@keyframes menu-in-right {
+  from {
+    transform: translateX(1.5rem);
+    opacity: 0;
+  }
+}
+
+.playing .menu[data-side="right"] .menupanel {
+  animation-name: menu-in-right;
+}
+
+@media (orientation: portrait) and (max-width: 47.99rem) {
+  .playing .menusheet {
+    align-items: flex-end;
+  }
+
+  .playing .menupanel {
+    width: 100%;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    animation-name: menu-up;
+  }
+}
+
+@keyframes menu-up {
+  from {
+    transform: translateY(2rem);
+    opacity: 0;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 30rem) {
+  .playing .menupanel {
+    width: 300px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playing .menu > summary {
+    transition: none;
+  }
+
+  .playing .menupanel {
+    animation: none;
+  }
+}

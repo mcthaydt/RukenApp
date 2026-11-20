@@ -152,3 +152,12 @@ test("Continue to payment is Blue with white words, and nothing on the card is r
   await expect(pay).toHaveCSS("color", rgb(token("--chalk")));
   await showTheOwner(page, testInfo, "the paywall card, signed in");
 });
+
+test("Not now goes back to the game the person came from, and to the front page from anywhere else", async ({
+  page,
+}) => {
+  await page.goto("/join?next=/g/some-game/play");
+  await expect(page.getByRole("link", { name: "Not now" })).toHaveAttribute("href", "/g/some-game");
+  await page.goto("/join?next=/me");
+  await expect(page.getByRole("link", { name: "Not now" })).toHaveAttribute("href", "/");
+});
