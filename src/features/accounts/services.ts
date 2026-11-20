@@ -15,6 +15,9 @@ import { keepPending, takePending } from "./pending-sign-up.ts";
 import { makeAccount, removeHalfMadeAccount } from "./sign-up-account.ts";
 import { staffRolesOf } from "./staff.ts";
 
+/** Codes typed on the sign-up screen from one client address: what a person retyping a code needs, and no more. */
+const CODE_TRIES_PER_CLIENT = { max: 10, windowMs: 15 * 60_000 };
+
 // Everything sign-in needs, built once per server process from the settings. Routes and the hook
 // call authServices(); tests build their own with createAuthServices.
 
@@ -116,6 +119,8 @@ export function createAuthServices(source: Settings, db?: PrismaClient): AuthSer
     hashPassword: async (password) => (await auth.$context).password.hash(password),
     keepPending: (input) => keepPending({ db: prisma, clock, secret }, input),
     takePending: (input) => takePending({ db: prisma, clock, secret }, input),
+    countCodeTry: async (address) =>
+      (await wrongCodes.limiter.hit(`api:sign-up-code:${address}`, CODE_TRIES_PER_CLIENT)).allowed,
     accountExists: async (number) => (await prisma.user.count({ where: { phoneNumber: number } })) > 0,
     consumeCode: async (number, code) => {
       try {

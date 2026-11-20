@@ -400,6 +400,7 @@ describe("startSignUp", () => {
       keepPending: vi.fn(() => Promise.resolve()),
       takePending: vi.fn(() => Promise.resolve(null)),
       accountExists: vi.fn(() => Promise.resolve(false)),
+      countCodeTry: vi.fn(() => Promise.resolve(true)),
       consumeCode: vi.fn(() => Promise.resolve("wrong" as const)),
       countWrongCode: vi.fn(() => Promise.resolve()),
       codesPaused: vi.fn(() => Promise.resolve(false)),
@@ -499,6 +500,48 @@ describe("startSignUp", () => {
     expect(formDeps.keepPending).not.toHaveBeenCalled();
   });
 
+  it("is refused for a number of another country typed with its +, before anything is kept or sent", async () => {
+    const formDeps = signUpDeps();
+    const result = await startSignUp(
+      formEvent({ ...valid, country: "US", phone: "+44 7700 900123" }),
+      formDeps,
+    );
+    expect(result).toMatchObject({
+      status: 400,
+      data: { closedCountry: true, error: FORM_MESSAGES.closedCountry },
+    });
+    expect(formDeps.handler).not.toHaveBeenCalled();
+    expect(formDeps.keepPending).not.toHaveBeenCalled();
+  });
+
+  it("refuses a number of another country on forgot password too, and signs in as a wrong password", async () => {
+    const formDeps = deps(() => Promise.resolve(sent()));
+    expect(
+      await requestReset(formEvent({ country: "US", phone: "+44 7700 900123" }), formDeps),
+    ).toMatchObject({ status: 400, data: { closedCountry: true } });
+    expect(
+      await signInWithPassword(
+        formEvent({ country: "US", phone: "+44 7700 900123", password: "correct horse" }),
+        formDeps,
+      ),
+    ).toMatchObject({ status: 400, data: { error: FORM_MESSAGES.wrongPassword } });
+    expect(formDeps.handler).not.toHaveBeenCalled();
+  });
+
+  it("answers a code from a client past its tries the same, whether or not the number has an account", async () => {
+    const answers: unknown[] = [];
+    for (const hasAccount of [false, true]) {
+      const formDeps = signUpDeps();
+      formDeps.countCodeTry.mockResolvedValue(false);
+      formDeps.accountExists.mockResolvedValue(hasAccount);
+      answers.push(await finishSignUp(formEvent({ number: NUMBER, code: "123456" }), formDeps));
+      expect(formDeps.consumeCode).not.toHaveBeenCalled();
+      expect(formDeps.handler).not.toHaveBeenCalled();
+    }
+    expect(answers[0]).toEqual(answers[1]);
+    expect(answers[0]).toMatchObject({ status: 429, data: { error: FORM_MESSAGES.rateLimited } });
+  });
+
   it.each([
     [{ ...valid, phone: "" }, FORM_MESSAGES.phoneInvalid],
     [{ ...valid, phone: "12345" }, FORM_MESSAGES.phoneInvalid],
@@ -573,6 +616,7 @@ describe("finishSignUp", () => {
       keepPending: vi.fn(() => Promise.resolve()),
       takePending: vi.fn(() => Promise.resolve(pending)),
       accountExists: vi.fn(() => Promise.resolve(false)),
+      countCodeTry: vi.fn(() => Promise.resolve(true)),
       consumeCode: vi.fn(() => Promise.resolve("wrong" as const)),
       countWrongCode: vi.fn(() => Promise.resolve()),
       codesPaused: vi.fn(() => Promise.resolve(false)),
@@ -761,6 +805,7 @@ describe("resendCode", () => {
       keepPending: vi.fn(() => Promise.resolve()),
       takePending: vi.fn(() => Promise.resolve(took)),
       accountExists: vi.fn(() => Promise.resolve(false)),
+      countCodeTry: vi.fn(() => Promise.resolve(true)),
       consumeCode: vi.fn(() => Promise.resolve("wrong" as const)),
       countWrongCode: vi.fn(() => Promise.resolve()),
       codesPaused: vi.fn(() => Promise.resolve(false)),

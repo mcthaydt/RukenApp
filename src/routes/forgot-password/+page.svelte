@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
   import PhoneFields from "../../lib/phone-fields.svelte";
+  import TextItAgain from "../../lib/text-it-again.svelte";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
@@ -47,7 +48,7 @@
         <p class="problem" role="alert">{form.error}</p>
       {/if}
       <button>Save my new password</button>
-      <button class="quiet" formaction="?/again" formnovalidate>Text it again</button>
+      <TextItAgain />
     </form>
   {:else}
     <h1>Forgot your password?</h1>

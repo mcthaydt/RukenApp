@@ -5,9 +5,11 @@ import {
   freshNumber,
   JOURNEY_PASSWORD,
   nationalOf,
+  pageHasSettled,
   signInAs,
   signUp,
   startSignUpForm,
+  textItAgain,
 } from "./support/account.ts";
 import { forgetCodeLimits, userIdOf } from "./support/database.ts";
 import { forgetAddressCounters, forgetRateLimits } from "./support/rate-limits.ts";
@@ -127,6 +129,7 @@ test("ten wrong codes pause codes for the number, in the same words as for a num
   page,
 }) => {
   const number = freshNumber();
+  await page.clock.install();
   await page.goto("/sign-up");
   await startSignUpForm(page, number);
   // A code allows three tries, and the fourth is refused as too many (all four count); then a new code is needed. So ten
@@ -134,7 +137,7 @@ test("ten wrong codes pause codes for the number, in the same words as for a num
   for (const [round, tries] of [4, 4, 2].entries()) {
     await forgetAddressCounters();
     await forgetCodeLimits(number);
-    if (round > 0) await page.getByRole("button", { name: "Text it again" }).click();
+    if (round > 0) await textItAgain(page);
     for (let guess = 0; guess < tries; guess += 1) {
       await page.getByLabel("The code we texted you").fill("000000");
       await page.getByRole("button", { name: "Join Ruken" }).click();
@@ -153,12 +156,13 @@ test("ten wrong codes pause codes for the number, in the same words as for a num
 
 test("Text it again sends a new code and the old one stops working", async ({ page }) => {
   const number = freshNumber();
+  await page.clock.install();
   await page.goto("/sign-up");
   await startSignUpForm(page, number);
   const first = await codeTo(number);
   await forgetCodeLimits(number);
 
-  await page.getByRole("button", { name: "Text it again" }).click();
+  await textItAgain(page);
 
   await expect(page.getByRole("heading", { name: "We texted you a code" })).toBeVisible();
   await expect.poll(async () => (await codesKept(number)).length).toBe(2);
@@ -172,15 +176,74 @@ test("Text it again sends a new code and the old one stops working", async ({ pa
   await expect(page).toHaveURL("/");
 });
 
+test("Text it again shows 30 seconds after the code screen, and is there at once without a script", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const number = freshNumber();
+  await page.clock.install();
+  await page.goto("/sign-up");
+  await startSignUpForm(page, number);
+  await pageHasSettled(page);
+  await expect(page.getByRole("button", { name: "Text it again" })).toHaveCount(0);
+  await page.clock.fastForward(29_000);
+  await expect(page.getByRole("button", { name: "Text it again" })).toHaveCount(0);
+  await page.clock.fastForward(1_500);
+  await expect(page.getByRole("button", { name: "Text it again" })).toBeVisible();
+
+  // Without a script the page is plain HTML and the button is always there.
+  const plain = await browser.newContext({ baseURL: baseURL ?? "", javaScriptEnabled: false });
+  try {
+    const bare = await plain.newPage();
+    await bare.goto("/sign-up");
+    await bare.getByLabel("Phone number").fill(nationalOf(freshNumber()));
+    await bare.getByLabel("Password").fill(JOURNEY_PASSWORD);
+    await bare.getByLabel("Month").fill("1");
+    await bare.getByLabel("Day").fill("1");
+    await bare.getByLabel("Year").fill("1990");
+    await bare.getByRole("button", { name: "Text me a code" }).click();
+    await expect(bare.getByRole("heading", { name: "We texted you a code" })).toBeVisible();
+    await expect(bare.getByRole("button", { name: "Text it again" })).toBeVisible();
+  } finally {
+    await plain.close();
+  }
+});
+
+test("Change the number goes back to the first screen with what was typed, and not the password", async ({
+  page,
+}) => {
+  const number = freshNumber();
+  await page.goto("/sign-up");
+  await startSignUpForm(page, number);
+
+  await page.getByRole("button", { name: "Change the number" }).click();
+
+  await expect(page.getByRole("heading", { name: "Join Ruken", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Phone number")).toHaveValue(nationalOf(number));
+  await expect(page.getByLabel("Month")).toHaveValue(/^\d+$/);
+  await expect(page.getByLabel("Year")).toHaveValue(/^\d{4}$/);
+  await expect(page.getByLabel("Password")).toHaveValue("");
+  // A new number from here works as a first try would.
+  const other = freshNumber();
+  await page.getByLabel("Phone number").fill(nationalOf(other));
+  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
+  await page.getByRole("button", { name: "Text me a code" }).click();
+  await page.getByLabel("The code we texted you").fill(await codeTo(other));
+  await page.getByRole("button", { name: "Join Ruken" }).click();
+  await expect(page).toHaveURL("/");
+});
+
 test("when Twilio fails, the code screen still shows and Text it again works", async ({ page }) => {
   const number = freshNumber();
   await failNextTextTo(number);
+  await page.clock.install();
   await page.goto("/sign-up");
   await startSignUpForm(page, number);
   expect(await countCodesTo(number)).toBe(0);
   await forgetCodeLimits(number);
 
-  await page.getByRole("button", { name: "Text it again" }).click();
+  await textItAgain(page);
 
   await page.getByLabel("The code we texted you").fill(await codeTo(number));
   await page.getByRole("button", { name: "Join Ruken" }).click();

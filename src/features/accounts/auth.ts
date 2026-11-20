@@ -212,8 +212,9 @@ export function createAuth(options: AuthOptions) {
         // A client's sign-up starts, which cost a text each.
         "/phone-number/send-otp": { window: 60 * 60, max: 5 },
         "/phone-number/request-password-reset": { window: 60 * 60, max: 10 },
-        // Keep it to what a person retyping a code or a password needs.
-        "/phone-number/verify": { window: 15 * 60, max: 10 },
+        // Keep it to what a person retyping a password needs. The sign-up code has no rule here: the sign-up form
+        // counts every code typed per client itself (forms.ts), so a number with an account and one without are
+        // refused at the same try.
         "/phone-number/reset-password": { window: 15 * 60, max: 10 },
       },
     },

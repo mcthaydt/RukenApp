@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import PhoneFields from "../../lib/phone-fields.svelte";
+  import TextItAgain from "../../lib/text-it-again.svelte";
   import type { PageProps } from "./$types";
 
   // `value` is left undefined on a first visit, not "": Svelte writes any value it is given onto the
@@ -45,16 +46,16 @@
         <p class="problem" role="alert">{form.error}</p>
       {/if}
       <button>Join Ruken</button>
-      <button class="quiet" formaction="?/again" formnovalidate>Text it again</button>
+      <TextItAgain />
+      <button class="quiet" formaction="?/change" formnovalidate>Change the number</button>
     </form>
-    <p><a href={`/sign-up?next=${encodeURIComponent(nextPath)}`}>Change the number</a></p>
     <p class="note">
       No text? Check the number, or <a href={signInLink}>sign in</a> if you already have an account.
     </p>
   {:else}
     <h1>Join Ruken</h1>
     <form method="POST" action="?/start">
-      <input type="hidden" name="next" value={data.next} />
+      <input type="hidden" name="next" value={nextPath} />
       <PhoneFields countries={data.countries} country={form?.country} phone={form?.phone} />
       <p>
         <label>

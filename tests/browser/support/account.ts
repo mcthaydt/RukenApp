@@ -61,6 +61,16 @@ export async function pageHasSettled(page: Page): Promise<void> {
 }
 
 /**
+ * Presses "Text it again" on a code screen. The button shows 30 seconds after the screen does, so the journey installs
+ * the page's clock before it opens the screen (`page.clock.install()`) and moves it on here instead of waiting.
+ */
+export async function textItAgain(page: Page): Promise<void> {
+  await pageHasSettled(page);
+  await page.clock.fastForward(30_000);
+  await page.getByRole("button", { name: "Text it again" }).click();
+}
+
+/**
  * Fills the sign-up form that is on the page with this number and password and asks for the code, and waits for the
  * code screen. The country stays on its first choice, the United States.
  */

@@ -61,8 +61,28 @@ function hooksOf() {
 }
 
 /** Calls a hook's handler directly with only the parts of the context the plugin reads. */
-function callBefore(hook: ReturnType<typeof hooksOf>["before"], body: unknown): Promise<unknown> {
-  return hook.handler({ path: SIGN_IN_PATH, body, headers: new Headers(), context: {} } as never);
+function callBefore(
+  hook: ReturnType<typeof hooksOf>["before"],
+  body: unknown,
+  password: {
+    hash: (text: string) => Promise<string>;
+    verify: (data: unknown) => Promise<boolean>;
+  } = hasher(),
+): Promise<unknown> {
+  return hook.handler({
+    path: SIGN_IN_PATH,
+    body,
+    headers: new Headers(),
+    context: { password },
+  } as never);
+}
+
+/** better-auth's password hasher, counted. */
+function hasher() {
+  return {
+    hash: vi.fn((text: string) => Promise.resolve(`hash:${text}`)),
+    verify: vi.fn(() => Promise.resolve(false)),
+  };
 }
 
 function callAfter(
@@ -106,6 +126,38 @@ describe("the plugin", () => {
       expect(hook.matcher({ path: "/sign-in/phone-number/" } as never)).toBe(false);
       expect(hook.matcher({ path: undefined } as never)).toBe(false);
     }
+  });
+});
+
+describe("the before hook, for a stranger's number", () => {
+  it("checks the typed password against a dummy hash for a number with no account, so it takes the time of a real check", async () => {
+    const { before } = setup({ hasAccount: false });
+    const password = hasher();
+    await expect(
+      callBefore(before, { phoneNumber: NUMBER, password: "x" }, password),
+    ).resolves.toBeUndefined();
+    expect(password.verify).toHaveBeenCalledTimes(1);
+    expect(password.verify).toHaveBeenCalledWith({ hash: "hash:a password nobody has", password: "x" });
+    // The hash is made once and kept.
+    await callBefore(before, { phoneNumber: NUMBER, password: "y" }, password);
+    expect(password.hash).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a number with an account to better-auth's own check", async () => {
+    const { before } = setup({ hasAccount: true });
+    const password = hasher();
+    await callBefore(before, { phoneNumber: NUMBER, password: "x" }, password);
+    expect(password.verify).not.toHaveBeenCalled();
+  });
+
+  it("does no hashing for a paused number", async () => {
+    guardCalls.reserveSignInAttempt.mockResolvedValue({ allowed: false });
+    const { before } = setup({ hasAccount: false });
+    const password = hasher();
+    await expect(callBefore(before, { phoneNumber: NUMBER, password: "x" }, password)).rejects.toMatchObject({
+      status: "TOO_MANY_REQUESTS",
+    });
+    expect(password.verify).not.toHaveBeenCalled();
   });
 });
 

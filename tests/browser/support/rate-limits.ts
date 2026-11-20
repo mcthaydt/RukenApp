@@ -73,7 +73,11 @@ export async function forgetAddressCounters(): Promise<void> {
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
   try {
-    await client.query('DELETE FROM "RateLimit" WHERE key LIKE $1', [`${journeyClientAddress()}|%`]);
+    // better-auth's counters are "<address>|<path>"; the sign-up form's own count of codes typed is "api:sign-up-code:<address>".
+    await client.query('DELETE FROM "RateLimit" WHERE key LIKE $1 OR key = $2', [
+      `${journeyClientAddress()}|%`,
+      `api:sign-up-code:${journeyClientAddress()}`,
+    ]);
   } finally {
     await client.end();
   }

@@ -9,6 +9,7 @@ export {
   FORM_MESSAGES,
   readForm,
   requestReset,
+  changeNumber,
   resendCode,
   signInWithPassword,
   signOut,

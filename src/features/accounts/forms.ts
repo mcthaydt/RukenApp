@@ -72,6 +72,11 @@ export interface SignUpDeps extends ResetDeps {
   keepPending(input: { number: string; browser: string; passwordHash: string; adultOn: Date }): Promise<void>;
   takePending(input: { number: string; browser: string }): Promise<PendingSignUp | null>;
   accountExists(number: string): Promise<boolean>;
+  /**
+   * Counts one code typed from this client address and says whether it may go ahead (10 in 15 minutes). Every code
+   * typed on the sign-up screen is counted here, so a number with an account and one without are refused at the same try.
+   */
+  countCodeTry(address: string): Promise<boolean>;
   /** Checks and uses up a code without making a user or a session (better-auth's server-only check). */
   consumeCode(number: string, code: string): Promise<"ok" | "wrong" | "other">;
   /** Counts a wrong code toward the pause, as better-auth's own routes do. */
@@ -130,10 +135,17 @@ export async function signInWithPassword(
   return otherFailure(response, kept);
 }
 
-/** The number a form's country and phone fields name, as E.164, or null for a closed country or a number that cannot be one. */
+/**
+ * The number a form's country and phone fields name, as E.164, or null for a closed country or a number that cannot be
+ * one. A number typed with its own "+" (or "00") names its own country, so it must still start with the dialing code of
+ * the open country that was picked: "+44 ..." under United States is a closed country's number, and is refused here
+ * before anything is kept or texted.
+ */
 function numberOf(form: Pick<FormFields, "country" | "phone">): string | null {
   const country = countryOf(form.country);
-  return country === null ? null : toE164(country.dialing, form.phone);
+  if (country === null) return null;
+  const number = toE164(country.dialing, form.phone);
+  return number !== null && number.startsWith(country.dialing) ? number : null;
 }
 
 /** A 429 from asking for a code, in words: too soon, paused, or just too many. */
@@ -174,7 +186,10 @@ export async function requestReset(
 
 /** The refusal for a number that cannot be used: a closed country, or something that is not a number. */
 function refusedNumber(form: FormFields, kept: AuthFormData): ActionFailure<AuthFormData> {
-  if (countryOf(form.country) === null) {
+  const country = countryOf(form.country);
+  const typed = country === null ? null : toE164(country.dialing, form.phone);
+  // Readable, but not under the picked country's dialing code: a number from somewhere that is not open yet.
+  if (country === null || (typed !== null && !typed.startsWith(country.dialing))) {
     return fail(400, { ...kept, closedCountry: true, error: FORM_MESSAGES.closedCountry });
   }
   return fail(400, { ...kept, error: FORM_MESSAGES.phoneInvalid });
@@ -327,6 +342,9 @@ export async function finishSignUp(event: FormEvent, deps: SignUpDeps): Promise<
     year: form.year,
     next: form.next,
   };
+  if (!(await deps.countCodeTry(event.getClientAddress()))) {
+    return fail(429, { ...kept, error: FORM_MESSAGES.rateLimited });
+  }
   const pending = await deps.takePending({ number, browser: event.cookies.get(SIGN_UP_COOKIE) ?? "" });
 
   if (pending === null || (await deps.accountExists(number))) {
@@ -374,6 +392,22 @@ export async function finishSignUp(event: FormEvent, deps: SignUpDeps): Promise<
   deps.codeUsed(number);
   event.cookies.delete(SIGN_UP_COOKIE, { path: SIGN_UP_COOKIE_PATH });
   redirect(303, safeNextPath(form.next));
+}
+
+/**
+ * Sign-up, code screen, "Change the number": the first screen again, with the country, number and date of birth that
+ * were typed in its fields. Nothing is kept or sent, and the password is not carried back.
+ */
+export async function changeNumber(event: FormEvent): Promise<AuthFormData> {
+  const form = await readForm(event);
+  return {
+    country: form.country,
+    phone: form.phone,
+    month: form.month,
+    day: form.day,
+    year: form.year,
+    next: form.next,
+  };
 }
 
 /** The three date fields as numbers, or null when one is missing or not a whole number. `ageCheck` does the calendar. */

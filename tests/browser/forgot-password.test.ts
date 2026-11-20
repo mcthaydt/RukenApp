@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { freshNumber, nationalOf, payAsNewMember, signUp } from "./support/account.ts";
+import { freshNumber, nationalOf, payAsNewMember, signUp, textItAgain } from "./support/account.ts";
 import { forgetCodeLimits, paperEmailOf, pauseOf } from "./support/database.ts";
 import { countMailsTo, mailTo } from "./support/mail.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -109,6 +109,7 @@ test("a wrong code, a short password and two different passwords each say what t
 });
 
 test("Text it again sends a new code and the old one stops working", async ({ page }) => {
+  await page.clock.install();
   const { number } = await signUp(page);
   await page.context().clearCookies();
   // The sign-up's own code is one of the kept ones, so what is counted is what comes after it.
@@ -117,7 +118,7 @@ test("Text it again sends a new code and the old one stops working", async ({ pa
   const first = await codeTo(number);
   await forgetCodeLimits(number);
 
-  await page.getByRole("button", { name: "Text it again" }).click();
+  await textItAgain(page);
 
   await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
   await expect.poll(async () => (await codesKept(number)).length).toBe(before + 2);

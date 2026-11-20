@@ -61,6 +61,13 @@ function numberOf(body: unknown): string | undefined {
 export function signInPausePlugin(options: SignInPauseOptions): BetterAuthPlugin {
   const { guards, prisma, texter, siteUrl, log, runInBackground } = options;
 
+  // better-auth answers 401 at once for a number with no account, and only after hashing the password for one that has
+  // an account, which would tell a stranger which numbers have accounts by the time of the answer. For a number with no
+  // account the "before" hook checks the password against this hash, made once from the same hasher, so both take the
+  // time of one check. The hook does not throw: the endpoint still answers its own 401 and the "after" hook still counts
+  // the guess.
+  let dummyHash: Promise<string> | undefined;
+
   /** Tells the account's owner their password sign-in is paused. Never throws: it runs after the answer is decided. */
   async function sendPauseNotice(number: string): Promise<void> {
     try {
@@ -90,6 +97,19 @@ export function signInPausePlugin(options: SignInPauseOptions): BetterAuthPlugin
               throw new APIError("TOO_MANY_REQUESTS", {
                 message: SIGN_IN_PAUSED_MESSAGE,
                 code: SIGN_IN_PAUSED,
+              });
+            }
+            const account = await prisma.user.findUnique({
+              where: { phoneNumber: number },
+              select: { id: true },
+            });
+            if (account === null) {
+              const { password } = ctx.context;
+              dummyHash ??= password.hash("a password nobody has");
+              const typed = (ctx.body as { password?: unknown } | undefined)?.password;
+              await password.verify({
+                hash: await dummyHash,
+                password: typeof typed === "string" ? typed : "",
               });
             }
           }),

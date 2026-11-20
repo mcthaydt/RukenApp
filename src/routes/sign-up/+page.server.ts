@@ -1,5 +1,6 @@
 import {
   authServices,
+  changeNumber,
   finishSignUp,
   OPEN_COUNTRIES,
   resendCode,
@@ -22,4 +23,6 @@ export const actions: Actions = {
   finish: (event) => finishSignUp(event, authServices().signUpDeps),
   // The code screen: "Text it again".
   again: (event) => resendCode(event, authServices().signUpDeps),
+  // The code screen: "Change the number". Back to the first screen with what was typed there still in its fields.
+  change: (event) => changeNumber(event),
 };
