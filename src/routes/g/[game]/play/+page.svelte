@@ -177,7 +177,8 @@
   }
 
   function onKeydown(event: KeyboardEvent): void {
-    if (!open || menu === undefined) return;
+    // Read the menu itself: its toggle event arrives a moment after it is shown.
+    if (menu === undefined || !menu.open) return;
     if (event.key === "Escape") {
       event.preventDefault();
       menu.open = false;
