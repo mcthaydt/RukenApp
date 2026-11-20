@@ -39,3 +39,13 @@ Audit all of your work for completeness, consistency, cohesion, and harmony, bot
 ## Notes
 
 - **D-N1. better-auth's own session answer would then carry the birthday.** With `birthDate` and `country` as `additionalFields`, `/api/auth/get-session` returns them to the signed-in browser. That is the player's own data, so section 4's rule still holds, but Y's privacy test should name that route too: it returns them only for its own session.
+
+## Re-check at df51e59
+
+Examined: **df51e59** (f5a60ce plus one line in section 5 of the spec).
+
+- **D1: fixed.** Section 5 now says `aboutYouFirst` reads `birthDate` and `country` "in one small query by the signed-in user's id, once a page request", and the "no query of its own" claim is gone. It runs after `createHandle` in `src/hooks.server.ts`, which Y owns, and takes the user's id from the caller `createHandle` already makes. So `auth.ts` and `handle.ts` stay unchanged and Y's list is complete.
+- **D-N1: no longer applies.** The columns are not added to better-auth's session user, so `/api/auth/get-session` does not return them. The spec gives that as the reason for the choice.
+- **No new findings.** The diff is that one line; the leak check passes.
+
+**Verdict at df51e59: 0 red, 0 open notes. The plan audit passes.** The spec can merge on green as a doc. Each lane 3 unit (O, U) still needs its implementation audit and the Owner's approval of its merge.
