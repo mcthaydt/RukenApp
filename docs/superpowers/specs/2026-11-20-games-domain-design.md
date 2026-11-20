@@ -52,7 +52,7 @@ Each is observable by a program or a person, and names who checks it.
 4. **A4, the games domain answers.** After O2: `curl -s https://media.GAMES-DOMAIN/__ruken/health` prints `ok`. (A cloud session; no secret needed.)
 5. **A5, a game's name answers as a game.** After O2: `curl -s https://g-aaaaaaaaaa.GAMES-DOMAIN/x/` prints "This game's link has run out. Go back and press Play again." (A cloud session.)
 6. **A6, the free address is gone.** After O6: `curl -s -o /dev/null -w "%{http_code}" https://ruken-games.<account>.workers.dev/__ruken/health` is not `200`, and A4 still prints `ok`. (A cloud session.)
-7. **A7, the site points at the new names.** After O3: the `look` link the review command prints (`src/routes/jobs/review/+server.ts`) starts `https://g-` and contains `.GAMES-DOMAIN/`. (The Owner, who holds the jobs' secret.)
+7. **A7, the site points at the new names.** After O4: the `look` link the review command prints (`src/routes/jobs/review/+server.ts`) starts `https://g-` and contains `.GAMES-DOMAIN/`. (The Owner, who holds the jobs' secret.)
 8. **A8, a game plays from its own name, like a person.** After O4: on the test site, a member presses Play on a live game; the frame's address is `https://g-<public id>.GAMES-DOMAIN/<pass>/…`; the game runs; ← goes back. (The Owner, as Task 24 Step 3 of slice 2 rest; a cloud session cannot be a paying member on the real test site.)
 9. **A9, the route outlives the site's deploy.** After the next merge to `main` that deploys the site, A4 still prints `ok`. (A cloud session.)
 
