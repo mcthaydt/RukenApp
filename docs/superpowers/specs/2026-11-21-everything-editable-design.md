@@ -147,6 +147,7 @@ A renamed game's address moving with its name was planned here. The owner chose 
   - `src/features/games/games.ts`: exports the new service call and words to the routes.
   - `src/features/games/review.ts`: the rule for a live game that is plain Live again after a kept old one, and which parts a live game holds.
   - `src/features/games/review-order.ts`: carries the look (`seen`) with staff's yes.
+  - `src/routes/make/parts/GamePreview.svelte`, `src/routes/make/parts/preview.svelte.ts` and `src/routes/make/new/+page.svelte`: the card beside a question is headed "What players will see after we say yes" while a change waits, so the card showing the waiting rating does not seem to disagree with the line that says what players see now (design round 2, E3); the new-game page's empty card gets the new field.
   - `tests/browser/support/game.ts` and `tests/browser/support/database.ts`: helpers added for the new journeys (no existing helper changed).
 - A and D run side by side. B follows A: they edit the same functions.
 - Unit D changes how a sign-in is changed. The lane lists name "credentials" under lane 3; D's paths are lane 2. **Call:** D is audited as lane 3 (a fresh implementation audit on Opus 5.5 medium), since a mistake here locks a person out or lets one in (plan audit 1, N4).
