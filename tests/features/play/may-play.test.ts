@@ -76,6 +76,8 @@ describe("deviceOf", () => {
 describe("backFromPaywall", () => {
   it.each([
     ["/g/floor-fifty/play", "/g/floor-fifty"],
+    ["/g/floor-fifty", "/g/floor-fifty"],
+    ["/g/ab", "/"],
     ["/me", "/"],
     ["/g/x/play/beat", "/"],
     ["/g/UP/play", "/"],
