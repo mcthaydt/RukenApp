@@ -45,3 +45,9 @@ FIX: export `SITE_ANSWER_TIMEOUT` from `tests/browser/support/account.ts` and pa
 Notes 1 and 2 are fixed. The four presses from red 1 now pass `SITE_ANSWER_TIMEOUT`. The cycle 1 search was truncated (`head -20`) and missed three more successful presses with the same cause:
 
 UNIT: `tests/browser/sign-in.test.ts:20`, `tests/browser/sign-up.test.ts:16` (`fillSignUp`, used for working sign-ups at lines 22, 39 and 54), `tests/browser/mailed-links.test.ts:79`. VERDICT: red. REQUIREMENT: criterion 2, and history.md's own line "every press of Create account or Sign in that waits for the next page". EVIDENCE: each one is a `.click()` with the 5 s action timeout, followed by `toHaveURL`. EXPECTED: 15 s. FIX: pass `{ timeout: SITE_ANSWER_TIMEOUT }` at the three presses; only those three files change. CHECK: `grep -rn '"Create account" }).click()\|"Sign in" }).click()' tests/browser` lists only the refusals `sign-in.test.ts:29`, `mailed-links.test.ts:96`, `purged-account.test.ts:42,67` and `look.test.ts:137`.
+
+## Cycle 3: re-check of `53b4fc4`
+
+**53b4fc4 PASS**
+
+The cycle 2 red is fixed: the three presses pass `SITE_ANSWER_TIMEOUT`, and only those three files and this audit changed since `1084568`. The check search lists only the five refusals. A wider search for every "Create account" and "Sign in" button found no other press that sends the form. Criterion 5 (full CI green, no rerun) is left to the full run after the PR is marked ready.
