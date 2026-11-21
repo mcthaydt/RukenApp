@@ -767,6 +767,52 @@ describe("moreLiveGamesBy", () => {
     expect(more.some((one) => one.slug === mine.slug)).toBe(false);
   });
 
+  it("orders by when each game first went live, not by when its files were copied", async () => {
+    const mine = await newGame();
+    const makerUserId = mine.makerUserId;
+    await makeLive(mine.id, await addPull(mine.id, []));
+    const day = 86_400_000;
+    const ago = (days: number) => new Date(Date.now() - days * day);
+    const accept = async (game: { id: string }, decidedAt: Date, held?: Date) => {
+      const pullId = await addPull(game.id, []);
+      const goesOutOn = held === undefined ? null : new Date(held.toISOString().slice(0, 10));
+      const review = await db().gameReview.create({
+        data: {
+          gameId: game.id,
+          pullId,
+          staffUserId: makerUserId,
+          decision: "accepted",
+          decidedAt,
+          goesOutOn,
+        },
+      });
+      if (held !== undefined && goesOutOn !== null) {
+        await db().decisionDay.upsert({
+          where: { day: goesOutOn },
+          update: {},
+          create: { day: goesOutOn, seats: 10, wentOutAt: held },
+        });
+        await db().decisionOutcome.create({ data: { reviewId: review.id, result: "applied" } });
+      }
+    };
+    // Created (so their files were copied) in this order, which is the opposite of the order they got in.
+    const newest = await liveGameOf(makerUserId);
+    const held = await liveGameOf(makerUserId);
+    const second = await liveGameOf(makerUserId);
+    const first = await liveGameOf(makerUserId);
+    await accept(first, ago(10));
+    // A later yes on an update must not move a game up.
+    await accept(first, ago(0));
+    await accept(second, ago(5));
+    // Decided long ago, but held: it went live when its decision day went out.
+    await accept(held, ago(20), ago(2));
+    await accept(newest, ago(1));
+
+    const more = await service.moreLiveGamesBy(makerUserId, mine.slug);
+
+    expect(more.map((one) => one.slug)).toEqual([newest.slug, held.slug, second.slug, first.slug]);
+  });
+
   it("leaves out games that are not live and other makers' games", async () => {
     const mine = await newGame();
     await db().game.create({

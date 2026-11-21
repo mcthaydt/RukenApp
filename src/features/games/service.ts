@@ -1360,28 +1360,53 @@ export function createGamesService(deps: GamesServiceDeps) {
     };
   }
 
-  /** A maker's other live games, newest accepted first, for the "More from" row of a game's page. */
+  /**
+   * A maker's other live games, newest first by the day each first went live, for the "More from" row of a game's
+   * page. That day is its first accepted review that took effect: the day it was decided, or for a held yes the day
+   * its decision day went out. Later yeses on updates do not move a game, and neither does when its files were copied.
+   * A game made live with no such review (a row set up by hand) is dated by its live copy instead.
+   */
   async function moreLiveGamesBy(
     makerUserId: string,
     exceptSlug: string,
   ): Promise<{ slug: string; name: string; wideClip: string; ageRating: AgeRating }[]> {
     const rows = await deps.db.game.findMany({
       where: { makerUserId, state: "live", slug: { not: exceptSlug }, livePullId: { not: null } },
-      orderBy: { livePull: { createdAt: "desc" } },
-      take: 6,
       select: {
         slug: true,
         name: true,
         ageRating: true,
         clips: { where: { shape: "wide" }, select: { key: true } },
+        livePull: { select: { createdAt: true } },
+        reviews: {
+          where: { decision: "accepted", ...tookEffect },
+          select: { decidedAt: true, goesOutOn: true },
+        },
       },
     });
-    return rows.flatMap((row) => {
-      const wideClip = row.clips[0]?.key;
-      return wideClip === undefined || row.ageRating === null
-        ? []
-        : [{ slug: row.slug, name: row.name, wideClip, ageRating: row.ageRating }];
+    const days = await deps.db.decisionDay.findMany({
+      where: { day: { in: rows.flatMap((row) => row.reviews.flatMap((review) => review.goesOutOn ?? [])) } },
+      select: { day: true, wentOutAt: true },
     });
+    const wentOutAt = new Map(days.map((one) => [one.day.getTime(), one.wentOutAt.getTime()]));
+    const wentLiveAt = (row: (typeof rows)[number]): number => {
+      const times = row.reviews.map((review) =>
+        review.goesOutOn === null
+          ? review.decidedAt.getTime()
+          : (wentOutAt.get(review.goesOutOn.getTime()) ?? review.decidedAt.getTime()),
+      );
+      return times.length > 0 ? Math.min(...times) : (row.livePull?.createdAt.getTime() ?? 0);
+    };
+    return rows
+      .map((row) => ({ row, at: wentLiveAt(row) }))
+      .sort((one, other) => other.at - one.at)
+      .slice(0, 6)
+      .flatMap(({ row }) => {
+        const wideClip = row.clips[0]?.key;
+        return wideClip === undefined || row.ageRating === null
+          ? []
+          : [{ slug: row.slug, name: row.name, wideClip, ageRating: row.ageRating }];
+      });
   }
 
   /**
