@@ -9,7 +9,7 @@
 </script>
 
 <svelte:head>
-  <title>Forgot your password? · Ruken</title>
+  <title>Forgot your password?? · Ruken</title>
 </svelte:head>
 
 <main class="card">
@@ -17,7 +17,7 @@
     <h1>Check your email</h1>
     <p role="status">If {form.email} has an account, we sent a link. It works once, for an hour.</p>
   {:else}
-    <h1>Forgot your password?</h1>
+    <h1>Forgot your password??</h1>
     <p>Enter your email and we'll send a link to choose a new one.</p>
     <form method="POST">
       <p>
