@@ -298,6 +298,9 @@ export function createGamesService(deps: GamesServiceDeps) {
       select: { publicId: true, state: true, makerUserId: true },
     });
     if (game === null) throw new GameError("NOT_FOUND", "We can't find that game.");
+    // Staff's takedown, and a game thrown away, are not the maker's to change.
+    if (game.state === "taken_down" || game.state === "thrown_away")
+      throw new GameError("NOT_READY", "That can't be changed right now.");
     if (game.state === "live") return saveHeldClip(gameId, game, shape, contentType, upload.bytes);
 
     const key = clipKeyFor(game.publicId, shape, randomHex16(), contentType);
@@ -847,12 +850,15 @@ export function createGamesService(deps: GamesServiceDeps) {
     return game;
   }
 
+  /** The states a maker may throw a game away from. A live game is taken off first; staff's own takedown is not the maker's. */
+  const MAY_BE_THROWN_AWAY: GameState[] = ["draft", "sent_back", "waiting", "taken_off"];
+
   /** The questions a live game's maker may answer: the rating and its marks are held for a yes, never changed under players. */
   const LIVE_MAY_CHANGE: Answer["question"][] = ["name", "line", "files", "websites", "age", "marks"];
 
   /**
-   * Keeps one answer. A draft, a waiting game, a sent-back game and a live game take every answer a game asks; anything else is not
-   * the maker's to change. A live game's name and line show to players at once. Its files and websites are part of a
+   * Keeps one answer. A draft, a waiting game, a sent-back game and a game that is off Ruken take every answer a game asks; a
+   * live game takes the ones below; a game staff took down is not the maker's to change. A live game's name and line show to players at once. Its files and websites are part of a
    * copy, which is copied and sent for review while players keep the old one. Its rating (with its marks) is held apart
    * and sent for review in the same save. Answers the game's address, which a new name may have changed.
    */
@@ -862,6 +868,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       game.state === "draft" ||
       game.state === "waiting" ||
       game.state === "sent_back" ||
+      game.state === "taken_off" ||
       (game.state === "live" && LIVE_MAY_CHANGE.includes(answer.question));
     if (!changeable) throw new GameError("NOT_READY", "That can't be changed right now.");
 
@@ -1001,6 +1008,9 @@ export function createGamesService(deps: GamesServiceDeps) {
 
     // The files are the answer that copies: a refused copy leaves the choice kept, and the screen that asked shows the
     // refusal. A copy that passes takes the files off the list of what to fix (pullLatest).
+    // A game that is off Ruken keeps only what was chosen: nothing is copied and nothing is sent until it is put back,
+    // which copies the newest files from GitHub (a copy now would leave files in the bucket of a game that is off).
+    if (game.state === "taken_off") return { slug };
     if (answer.question === "files") {
       await pullLatest(gameId);
       await sendLiveUpdate(gameId, makerUserId, game.state);
@@ -1192,27 +1202,37 @@ export function createGamesService(deps: GamesServiceDeps) {
   }
 
   /**
-   * Throws a draft or a sent-back game away. The database first, in one transaction, so a failure part way never
-   * leaves a game that is gone from its list but still holds its name; then its files and videos in the bucket. The
-   * row stays, with its address changed so the name is free again, because money and records may point at a game.
+   * Throws a game away: a draft, a game sent back, a game waiting for a yes, or a game that is off Ruken. The database
+   * first, in one transaction, so a failure part way never leaves a game that is gone from its list but still holds its
+   * name; then its files and videos in the bucket. The row stays, with its address changed so the name is free again,
+   * because money and records may point at a game. A waiting game is taken out of the waiting list and counted as
+   * changed, so a decision held on it for decision day lapses on its day (and gives its seat back at once, as any
+   * lapsed yes does). A live game is never thrown away: taking it off comes first.
    */
   async function throwAway(gameId: string, makerUserId: string): Promise<{ name: string }> {
     const game = await ownGame(gameId, makerUserId);
-    if (game.state !== "draft" && game.state !== "sent_back")
-      throw new GameError("NOT_READY", "This game can't be thrown away.");
-    await deps.db.$transaction([
-      deps.db.game.update({
+    if (!MAY_BE_THROWN_AWAY.includes(game.state)) throw new GameError("NOT_READY", "This game can't be thrown away.");
+    await deps.db.$transaction(async (tx) => {
+      // The same order a yes takes, decision lock then the game's row, so a yes being made finishes first and this sees
+      // what it left: a game that has gone live is no longer waiting, and is refused below.
+      if (schedule().firstDay !== null) await takeDecisionLock(tx);
+      await tx.$queryRaw`SELECT "id" FROM "Game" WHERE "id" = ${gameId} FOR UPDATE`;
+      const current = await tx.game.findUniqueOrThrow({ where: { id: gameId }, select: { state: true } });
+      if (!MAY_BE_THROWN_AWAY.includes(current.state))
+        throw new GameError("NOT_READY", "This game can't be thrown away.");
+      await tx.game.update({
         where: { id: gameId },
         data: {
           state: "thrown_away",
           slug: `x-${game.publicId}`,
           pendingPullId: null,
           pendingSince: null,
+          changedAt: now(),
           toFix: [],
         },
-      }),
-      deps.db.gameClip.deleteMany({ where: { gameId } }),
-    ]);
+      });
+      await tx.gameClip.deleteMany({ where: { gameId } });
+    });
     await deps.files.deleteAll(`files/${game.publicId}/`);
     await deps.files.deleteAll(`clips/${game.publicId}/`);
     return { name: game.name };
