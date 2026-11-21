@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { signInAs, signUpInItsOwnContext } from "./support/account.ts";
-import { adultOnOf, forgetAgeOf, makeItAnOldAccount } from "./support/database.ts";
+import { pageHasSettled, signInAs, signUpInItsOwnContext } from "./support/account.ts";
+import { adultOnOf, changeGame, forgetAgeOf, makeItAnOldAccount } from "./support/database.ts";
+import { addGame } from "./support/game.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -62,10 +63,15 @@ test("an account made by email gets a number and signs in by phone with its old 
 test("gives the account its age when a birth date comes, so an 18+ game opens for it", async ({
   request,
   browser,
+  page,
 }) => {
-  const { number } = await signUpInItsOwnContext(browser);
-  const email = await makeItAnOldAccount(number);
+  test.setTimeout(120_000);
+  const game = await addGame(browser, request, { free: true });
+  await changeGame(game.slug, { ageRating: "age_18", contentMarks: ["gore"] });
+  const { number, password } = await signUpInItsOwnContext(browser);
+  // Made before the age question was asked: no age on file. (The age goes first: the lookup is by number.)
   await forgetAgeOf(number);
+  const email = await makeItAnOldAccount(number);
 
   const bad = await request.post("/jobs/attach-phone", {
     headers: WITH_SECRET,
@@ -80,4 +86,10 @@ test("gives the account its age when a birth date comes, so an 18+ game opens fo
   });
   expect(await answer.json()).toEqual({ attached: true });
   expect(await adultOnOf(number)).toBe("2008-06-15");
+
+  await signInAs(page, number, password);
+  await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
+  await pageHasSettled(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(game.name);
+  await expect(page.locator(".chip")).toHaveText("18+ · Gore");
 });
