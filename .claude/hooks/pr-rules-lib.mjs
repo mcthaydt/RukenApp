@@ -12,44 +12,13 @@ export const matchesAny = (path, globs = []) => globs.some((g) => globToRegExp(g
 
 // ---------- the body ----------
 
-const FENCE = /^\s*(```|~~~)/;
-const HEADING = /^ {0,3}#{1,6}[ \t]*(.*?)[ \t#]*$/;
 const LANE_WORD = /\blane\s*([123])\b/gi;
 
-// The text of the "## Lane" section: its heading line and every line up to the next
-// heading. Fenced code is skipped. Null when the body has no such heading.
-export function laneSection(body) {
-  const ls = String(body ?? '').split('\n');
-  let inCode = false;
-  let section = null;
-  for (const l of ls) {
-    if (FENCE.test(l)) { inCode = !inCode; continue; }
-    if (inCode) continue;
-    const h = HEADING.exec(l);
-    if (section === null) { if (h && /^lane\b/i.test(h[1])) section = [h[1]]; continue; }
-    if (h) break;
-    section.push(l);
-  }
-  return section === null ? null : section.join('\n');
-}
-
-// The lane a body names, read only from its "## Lane" section, never from a lane number
-// in the prose around it. A body with no such heading (a one-line body, say) is read by
-// the lines that start with a lane ("Lane 1: why"), never by a mention inside a sentence.
-// The highest lane in the section wins. Null when no lane is named.
+// The lane a body names: the highest lane named anywhere in it wins, so a body that says
+// lane 1 in one place and lane 3 in another is read as lane 3 and gets the stricter review.
+// Null when no lane is named.
 export function laneOf(body) {
-  const sec = laneSection(body);
-  let text = sec;
-  if (text === null) {
-    let inCode = false;
-    const starts = [];
-    for (const l of String(body ?? '').split('\n')) {
-      if (FENCE.test(l)) { inCode = !inCode; continue; }
-      if (!inCode && /^[\s>*_#-]*lane\s*[123]\b/i.test(l)) starts.push(l);
-    }
-    text = starts.join('\n');
-  }
-  const all = [...text.matchAll(LANE_WORD)].map((m) => Number(m[1]));
+  const all = [...String(body ?? '').matchAll(LANE_WORD)].map((m) => Number(m[1]));
   return all.length ? Math.max(...all) : null;
 }
 

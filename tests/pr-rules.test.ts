@@ -1,7 +1,7 @@
 // pr-rules (docs/superpowers/specs/2026-11-21-hooks-cover-every-pr-route-design.md, 3.1 and criteria 1 to 7):
 // the check GitHub runs on every pull request event. The real script runs against a stub GitHub API on a
 // local port, and a real git fixture for the clean-merge rule, so nothing touches the network.
-import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -299,14 +299,15 @@ describe("lane, criteria and workflows (criteria 3, 4, 6b)", () => {
     });
     fails(await judge(1), "its files are lane 3");
   });
-  test("a lane 1 docs pull request whose prose mentions lane 3 reads as lane 1", async () => {
-    const body =
-      "## Lane\nLane 1: docs only.\n\n## Why\nIt is not lane 3 because no code changes; a lane 3 change would need the owner.\n\nRequested by **McThayDT**";
-    add(1, ["docs/a.md"], { body });
-    passes(await judge(1)); // lane 1 (not 3): ready with no review needed
-    // And one named only in the prose, outside a Lane section, names no lane.
-    add(2, ["docs/a.md"], { body: "## Why\nThis is a lane 3 matter.\n\nRequested by **McThayDT**" });
-    fails(await judge(2), "names no lane");
+  test("the highest lane named anywhere in the body wins", async () => {
+    add(1, ["docs/a.md"], { body: "## Lane\nLane 1\n\n## Why\nlane 3 would need the owner" });
+    fails(await judge(1), "no passing review");
+  });
+  test("the criteria need an Acceptance criteria heading, not only the words", async () => {
+    add(1, ["src/features/x/a.ts"], { body: "## Lane\nLane 1\n\nThe acceptance criteria are in my head." });
+    fails(await judge(1), "Acceptance criteria");
+    add(2, ["src/features/x/a.ts"], { body: "## Lane\nLane 1\n\n## Acceptance criteria\n- x" });
+    passes(await judge(2));
   });
 });
 
@@ -467,28 +468,5 @@ describe("one library (criterion 7)", () => {
   test("rules.mjs no longer defines them", () => {
     for (const name of ["laneOf", "verdicts", "onlyCleanMerges", "ownBranchPrs", "hasCriteria"])
       expect(rules).not.toMatch(new RegExp(`(const|function) ${name}\\b`));
-  });
-  test("the library reads a lane only from the Lane section", () => {
-    const lib = join(HOOKS, "pr-rules-lib.mjs");
-    const laneOf = (body: string) =>
-      JSON.parse(
-        spawnSync(
-          process.execPath,
-          [
-            "--input-type=module",
-            "-e",
-            `import { laneOf } from ${JSON.stringify(lib)}; process.stdout.write(JSON.stringify(laneOf(process.argv[1])));`,
-            "--",
-            body,
-          ],
-          { encoding: "utf8" },
-        ).stdout,
-      ) as number | null;
-    expect(laneOf("## Lane\nLane 1\n\n## Notes\nlane 3 is for money")).toBe(1);
-    expect(laneOf("## Notes\nlane 3 is for money\n\n## Lane\nLane 2: because")).toBe(2);
-    expect(laneOf("## Lane 3\nwhy")).toBe(3);
-    expect(laneOf("## Notes\nthis is lane 3 work")).toBeNull();
-    expect(laneOf("Lane 1")).toBe(1);
-    expect(laneOf("```\n## Lane\nLane 3\n```\nnothing else")).toBeNull();
   });
 });

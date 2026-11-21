@@ -479,8 +479,4 @@ describe("only the owner's account's verdicts count at merge (criterion 17a)", (
     });
     expect(merge().deny).toBeNull();
   });
-  test("a lane 1 body whose prose mentions lane 3 reads as lane 1 and is merged as lane 1", () => {
-    setState({ body: "## Lane\nLane 1: docs.\n\n## Notes\nThis is not lane 3 work.", files: ["docs/x.md"] });
-    expect(merge().deny).toBeNull();
-  });
 });

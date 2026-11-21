@@ -952,7 +952,7 @@ function checkPrCreate(config, cwd, repo, body, draft, deny) {
   if (!f || f.enabled === false) return;
   const known = body !== null && body !== undefined && !/\$\{?[A-Za-z_(]|`/.test(body);
   const lane = known ? laneOf(body) : null;
-  if (known && f.requireLane !== false && !lane) { deny(refusal(FLOW_RULE, 'the body names no lane', 'add a "## Lane" section that says "Lane 1", "Lane 2" or "Lane 3" and why (the lane is read only from that section)')); return; }
+  if (known && f.requireLane !== false && !lane) { deny(refusal(FLOW_RULE, 'the body names no lane', 'add a "## Lane" section that says "Lane 1", "Lane 2" or "Lane 3" and why')); return; }
   if (known && f.requireCriteria !== false && !hasCriteria(body) && changesBeyondDocs(config, cwd)) deny(refusal(FLOW_RULE, 'the body has no "Acceptance criteria" heading and the branch changes more than docs', 'add an "## Acceptance criteria" section: what done looks like, as checks a program or a person can observe (build)'));
   if (f.draft !== false && !draft) {
     const info = repo ? ghJson(`repos/${repo}`, cwd) : null;
