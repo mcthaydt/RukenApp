@@ -2840,6 +2840,15 @@ main.playing {
   visibility: hidden;
 }
 
+/* While it is carried, the tab's rounded edge points to the side it will snap to, not the side it came from. */
+.playing .menu[data-dragging][data-lean="right"] > summary {
+  border-radius: var(--radius-button) 0 0 var(--radius-button);
+}
+
+.playing .menu[data-dragging][data-lean="left"] > summary {
+  border-radius: 0 var(--radius-button) var(--radius-button) 0;
+}
+
 .playing .menu[data-dragging] > summary {
   top: var(--drag-top);
   transform: translateX(var(--drag-x));
@@ -2873,8 +2882,24 @@ main.playing {
   animation: menu-in-right 200ms ease-out;
 }
 
+/* The panel comes in from the side the tab rests on. */
 .playing .menusheet {
   justify-content: flex-end;
+}
+
+.playing .menu[data-side="left"] .menusheet {
+  justify-content: flex-start;
+}
+
+.playing .menu[data-side="left"] .menupanel {
+  animation-name: menu-in-left;
+}
+
+@keyframes menu-in-left {
+  from {
+    transform: translateX(-1.5rem);
+    opacity: 0;
+  }
 }
 
 .playing .menupanel h2 {
@@ -2905,7 +2930,8 @@ main.playing {
     align-items: flex-end;
   }
 
-  .playing .menupanel {
+  .playing .menupanel,
+  .playing .menu[data-side] .menupanel {
     width: 100%;
     border-radius: var(--radius-card) var(--radius-card) 0 0;
     animation-name: menu-up;
