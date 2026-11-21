@@ -76,14 +76,15 @@ for (const [branch, words] of [
   });
 }
 
-// ---- E3: a way on from home and from the error page ----------------------------------------------------------------------
+// ---- E3: a way on from the feed and from the error page ----------------------------------------------------------------------
 
-test("a signed-in maker's home has a way to Your games and to Your account", async ({ page }) => {
+test("a signed-in maker gets from the feed to Your games: You, then Your games", async ({ page }) => {
   await signUp(page);
   await page.goto("/");
+  await page.getByRole("navigation", { name: "Ruken" }).getByRole("link", { name: "You" }).click();
 
+  await expect(page).toHaveURL("/me");
   await expect(page.getByRole("link", { name: "Your games" })).toHaveAttribute("href", "/make");
-  await expect(page.getByRole("link", { name: "Your account" })).toHaveAttribute("href", "/me");
 });
 
 test("the error page inside the maker's area goes back to Your games", async ({ page }) => {

@@ -14,18 +14,17 @@ const FONT_FILES = [
 ];
 
 test("the page is felt, with chalk words in Young Serif", async ({ page }) => {
-  await page.goto("/");
+  // A screen with a heading right on the felt: the maker's area, which a new account can open.
+  await signUp(page);
+  await page.goto("/make");
   await expect(page.locator("body")).toHaveCSS("background-color", rgb(token("--felt")));
-  const heading = page.getByRole("heading", { name: "Ruken" });
+  const heading = page.getByRole("heading", { name: "Your games" });
   await expect(heading).toHaveCSS("color", rgb(token("--chalk")));
   await expect(heading).toHaveCSS("font-family", startsWithFamily("Young Serif"));
   // The heading grows at the computer's width (design 5.8: 48rem), whatever the device: a tablet, or a phone held
   // sideways, is as wide as a small computer and gets the computer's size.
   const wide = (page.viewportSize()?.width ?? 0) >= 768;
   await expect(heading).toHaveCSS("font-size", wide ? "64px" : "36px");
-  const line = page.getByText("Games, one swipe at a time. Coming soon.");
-  await expect(line).toHaveCSS("font-family", startsWithFamily("Young Serif"));
-  await expect(line).toHaveCSS("font-size", "24px");
   // The face is really loaded, not only named. (fonts.check() answers true for a family that has no face at
   // all, so it proves nothing; load() answers the faces themselves, and their status.)
   expect(
@@ -91,11 +90,13 @@ for (const screen of CARD_SCREENS) {
   });
 }
 
-test("the home page sits on the felt, with no card and no red", async ({ page }, testInfo) => {
-  await page.goto("/");
+test("your games sits on the felt, with no card and no red", async ({ page }, testInfo) => {
+  await signUp(page);
+  await page.goto("/make");
+  await expect(page.getByRole("heading", { name: "Your games" })).toBeVisible();
   await expect(page.locator(".card")).toHaveCount(0);
   expect(await pipRed(page)).toEqual([]);
-  await showTheOwner(page, testInfo, "home");
+  await showTheOwner(page, testInfo, "your games");
 });
 
 test("the main button on a card is blue, 12px corners, a white label in Schibsted Grotesk 600", async ({

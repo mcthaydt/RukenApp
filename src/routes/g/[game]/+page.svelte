@@ -99,7 +99,7 @@
           </button>
         {/if}
       </div>
-      <a class="back" href="/">← Ruken</a>
+      <a class="back" href="/">← Back to the feed</a>
       <div class="heroname">
         <h1>{data.name}</h1>
         <p>{data.oneLine}</p>
