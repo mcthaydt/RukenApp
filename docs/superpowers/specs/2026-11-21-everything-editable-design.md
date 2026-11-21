@@ -2,7 +2,7 @@
 
 Date: 2026-11-21. Status: **spec and plan, revised after plan audit 1 (f6d9167 FAIL, 6 red); unit C struck by the owner 14:41 UTC; waiting on plan audit 2.** Read against `main` at 583661f.
 
-Lane 3 as a whole (unit A adds a migration; unit E removes real data). Each unit's own lane is in section 6.
+Lane 3 as a whole (unit A adds a migration). Each unit's own lane is in section 6.
 
 Lines marked **Owner** are the owner's words. Lines marked **Call** are this spec's choices; the owner can overrule any of them.
 
@@ -59,11 +59,11 @@ These are facts about what happened, not settings, and nobody edits them. Each i
 ## 4. Boundaries
 
 - No new dependency, tool, environment or spend.
-- Nothing runs on the owner's computer. No owner step is needed for units A, B, D and E. Deploying is the owner's as always (`pnpm run deploy`), after unit A's migration is applied.
+- Nothing runs on the owner's computer. No owner step is needed for any unit. Deploying is the owner's as always (`pnpm run deploy`), after unit A's migration is applied.
 - Not touched: the feed, the maker's page, `src/features/money/`, `src/features/membership/`, `cloudflare/`, `.github/`, CLAUDE.md and the skills.
 - Browsers and devices: the three profiles in Settings (small phone, tablet, computer). Emulation evidence.
-- Expected duration, as session time (estimates): A 4 hours, B 2 hours, D 3 hours, E 2 hours.
-- Slice: A, B and E finish slice 2's game screens ("confirm slice 2 is perfect"); D adds to slice 1's account page. Each goes through a design review round with its screens before the owner's look (`visual-check`).
+- Expected duration, as session time (estimates): A 4 hours, B 2 hours, D 3 hours, E under 1 hour.
+- Slice: A and B finish slice 2's game screens ("confirm slice 2 is perfect"); D adds to slice 1's account page. Each goes through a design review round with its screens before the owner's look (`visual-check`).
 
 ## 5. The changes
 
@@ -97,7 +97,7 @@ Making a live game 18+ asks the marks before anything is kept, as a waiting game
 
 **No.** `LIVE_MAY_BE_SENT_BACK` gains `upright_video`, `wide_video` and `age_rating`, each allowed only when that part has a held value: staff send back a change, never what is already live (taking a live game down is slice 4). The held value stays so the fix card can show the refused video; the maker's next save replaces it.
 
-**Leaving.** `takeOff` and "Keep the old one" delete held clip files and clear the held columns. The account purge does not touch games today; unit E makes it take a maker's games off, through `takeOff`, which clears them. `throwAway` never meets one (the check holds held values to live games).
+**Leaving.** `takeOff` and "Keep the old one" delete held clip files and clear the held columns. The account purge does not touch games on `main`; another thread is making it take a maker's games off, and unit E checks held values go with them (5.5). `throwAway` never meets one (the check holds held values to live games).
 
 **Players.** `/g/<game>`, Play, the feed's reads and the 18+ gate read only `GameClip`, `ageRating` and `contentMarks`, as today.
 
@@ -121,14 +121,11 @@ A renamed game's address moving with its name was planned here. The owner chose 
 - An account waiting to be deleted is signed out as today and reaches neither screen. A change-email link still open when its account is purged no longer works (N3; criterion D7).
 - A member's Stripe customer keeps the address it was made with (`stripe.customers.create({ email })` in `src/features/membership/`), so Stripe's receipts keep going to the old address after a change. That is not fixed here (section 7); the change-email screen says so to a member: "Your payment receipts still go to <old address> for now."
 
-### 5.5 Unit E: a deleted maker's games come off Ruken with the account
+### 5.5 Unit E: a purged maker's held changes go with their games
 
-**Owner, 2026-11-21 14:26 UTC, on a card:** "Games come off with the account". Not built on `main`: `purgeDueAccounts` (`src/features/accounts/deletion.ts`) removes sessions, sign-ins, GitHub rows, the wishlist and the page, and leaves every game as it is.
+**Owner, 2026-11-21 14:26 UTC, on a card:** "Games come off with the account". Not on `main`: `purgeDueAccounts` (`src/features/accounts/deletion.ts`) leaves every game as it is. The thread "Fill e2e CRUD test gaps" is building it, with its journey; this spec does not.
 
-- When an account is finally purged (after its 14 days), each of its live games is taken off as `takeOff` does (off its page, files deleted, held values cleared), and each of its draft, waiting and sent-back games is thrown away as `throwAway` does. The rows stay, as they do today, because money and play records point at them.
-- The purge calls the games feature through a function handed to it, so `accounts` does not import `games` (the layer rule in `tests/architecture.test.ts`).
-- A purge that stops part way is run again by the next job and finishes: taking off a game already off, or throwing away one already thrown away, is not an error there.
-- If another thread has built this before unit E starts, E is only its held-values test (E3).
+What is left for here is one check: once that work and unit A are both on `main`, a purged maker's live game with a held video and a held rating must leave no held row, column or file. If the purge takes games off through `takeOff`, unit A already makes that true and unit E is the test alone; if it does not, unit E adds the clearing to the purge's game step.
 
 ## 6. The plan
 
@@ -137,9 +134,9 @@ A renamed game's address moving with its name was planned here. The owner chose 
 | A. Live videos and rating | 3 (migration) | this spec merged; the pull request of `claude/project-thread-u1uamt` merged (it reads that Live flow and edits the same files) | `prisma/schema/games.prisma`, one new folder in `prisma/migrations/`, `src/features/games/` (service, clips, laid-out, review words), `src/routes/make/[game]/` and `src/routes/make/parts/LiveScreen.svelte`, `src/routes/jobs/review/+server.ts`, tests under `tests/features/games/`, `tests/browser/` | 5.1 | criteria A1 to A10 |
 | B. Waiting and taken-off games | 2 | A merged (same service file and make screens) | `src/features/games/service.ts`, `src/routes/make/[game]/`, `src/routes/make/parts/` (Waiting, Taken off), tests | 5.2 | criteria B1 to B5 |
 | D. Email and password | 2 (sign-in) | this spec merged; nothing else: it shares no file with A, B or E | `src/features/accounts/` (auth, forms, mails), `src/routes/me/`, tests | 5.4 | criteria D1 to D7 |
-| E. Games come off with the account | 3 (removes real data) | B merged (it uses `throwAway` for a waiting game, and A's `takeOff`) | `src/features/accounts/deletion.ts`, where the purge job is put together (`src/routes/jobs/purge-accounts/+server.ts` and the accounts services), `src/features/games/service.ts` (only if a repeat-safe entry is needed), tests | 5.5 | criteria E1 to E4 |
+| E. A purged maker's held changes | 1 (a test); 3 if the purge's game step must change (it removes real data) | A merged; the purge work of the thread "Fill e2e CRUD test gaps" merged | one pg test under `tests/features/`; only if it fails, the purge's game step that thread added | 5.5 | criterion E1 |
 
-- A and D run side by side. B follows A and E follows B: they edit the same functions.
+- A and D run side by side. B follows A: they edit the same functions. E is last and small.
 - Unit D changes how a sign-in is changed. The lane lists name "credentials" under lane 3; D's paths are lane 2. **Call:** D is audited as lane 3 (a fresh implementation audit on Opus 5.5 medium), since a mistake here locks a person out or lets one in (plan audit 1, N4).
 - Each unit is one branch and one pull request: build, then the audit its lane calls for (lane 2: one fresh review; lane 3: a fresh implementation audit), fixes on the same branch, then merge. Lane 3 units merge under the owner's standing permission in `history.md` ("Merge PRs yourself once CI, reviews and audits pass"); if the coordinator finds that permission does not cover a migration, it asks the owner by name before the merge.
 - Builders: Sonnet 5.5, medium (Settings: execution against a spec). Unit A is marked hard, so high, because it changes what an accept does inside the money-adjacent review transaction. Audits: lane 3 on Opus 5.5 medium; lane 2 on the builder's model, medium.
@@ -169,8 +166,7 @@ A renamed game's address moving with its name was planned here. The owner chose 
 
 ### Unit E steps
 
-1. Journey first (failing): E1.
-2. The purge takes each game off or throws it away through a function handed to it; pg tests E2 to E4.
+1. Write the pg test E1 against `main`. If it passes, that is the unit. If it fails, clear held values in the purge's game step and say so in the pull request body, which then is lane 3.
 
 ## 7. What waits, and on what
 
@@ -204,7 +200,7 @@ A gap against any of these blocks the unit. All journeys are Playwright tests in
 - A5. Journey: "Keep the old one" drops a held video and a held rating; Live shows no "Not sent yet"; the gate answers 404 for the held file's address.
 - A6. pg tests: `Game_held_check` refuses a held rating on a game not live, marks without a held 18+, and a held 18+ without marks; a held 18+ with marks on a live game that is already 18+ is kept (the marks-only change); `GameHeldClip` refuses a second row for one game and shape and a key outside `GameHeldClip_key_check`, and takes a `.mov` key.
 - A7. pg test: an accept that fails inside its transaction leaves the live video, rating, held values and `livePullId` exactly as they were.
-- A8. pg test: taking a live game off leaves no `GameHeldClip` row, no held column set and no held file in the stand-in bucket. (The purge is unit E's, E3.)
+- A8. pg test: taking a live game off leaves no `GameHeldClip` row, no held column set and no held file in the stand-in bucket. (The purge is checked by unit E, E1.)
 - A9. `/jobs/review` `look` on an update with a held video and rating answers `changes` with the current and the waiting value of each; with none held it answers as today. Unit-tested on the handler.
 
 - A10. pg test and journey step: with an update waiting, saving a new held video, saving a held rating, and "Keep the old one" each clear `pendingPullId`; `/jobs/review` `accept` then answers "Nothing is waiting for review."; Live shows "Send for review" again. After the new send and a yes, what is live is the last value saved.
@@ -230,10 +226,7 @@ A gap against any of these blocks the unit. All journeys are Playwright tests in
 
 **Unit E**
 
-- E1. Journey: a maker with one live game and one draft deletes their account; the purge job runs after the 14 days (the test's clock); `/g/<game>` is a 404, the gate answers 404 for its files, and the draft's name is free for another maker.
-- E2. pg test: a maker with games in `draft`, `waiting`, `sent_back`, `live`, `taken_off` and `taken_down` is purged: live becomes `taken_off`; draft, waiting and sent back become `thrown_away`; the other two are left; every row is still there; a waiting game's held yes lapses on its day.
-- E3. pg test: a purged maker's live game with a held video and held rating leaves no `GameHeldClip` row, no held column set and no held file.
-- E4. pg test: a purge stopped after the first game (the stand-in bucket fails once) is finished by the next run, and running it a third time changes nothing.
+- E1. pg test: a maker with a live game holding a held video and a held rating is purged; afterwards there is no `GameHeldClip` row for the game, no held column set, and no held file in the stand-in bucket.
 
 ## 9. Risks, and what is not checked
 
