@@ -1269,6 +1269,15 @@ label.vframe {
   }
 }
 
+/* A live game's video that waits for a yes has a line above it and "Keep the old one" under the buttons, about 120px more
+   than a question without them: on a computer the wide frame gives that back, so Save and Keep the old one still fit in the
+   window (1280 by 800). Taller windows keep the usual 640. */
+@media (min-width: 1200px) and (orientation: landscape) {
+  .vframe[data-frame="wide"][data-waiting] {
+    width: min(640px, 100%, calc((100dvh - 565px) * 16 / 9));
+  }
+}
+
 /* The question beside its upright frame, on a computer and on a tablet or phone held sideways; a wide frame is beside
    it on a phone held sideways only, and everywhere else it is under it. */
 @media (min-width: 1200px) and (orientation: landscape) {
@@ -1779,6 +1788,17 @@ a.foot {
 .laid .other a {
   margin-block: 0;
   color: var(--sage);
+}
+
+/* On a phone the mark wraps under its link: close to it, so it reads as the link's. */
+@media (max-width: 499px) {
+  .laid .other {
+    row-gap: 0;
+  }
+
+  .laid .other .waits {
+    margin-top: -0.5rem;
+  }
 }
 
 /* "Keep the old one" on a question: under the buttons, not in them, so the bar keeps one main action. It comes after the

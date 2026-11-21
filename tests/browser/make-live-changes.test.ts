@@ -534,8 +534,19 @@ test("the question screens say what waits, and Keep the old one is under the but
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Change your wide video");
   await expect(page.getByText("Waiting for review. Players see the old one until we say yes.")).toBeVisible();
 
+  // On a computer, Save and Keep the old one are both inside the window, with no scrolling, and the card beside the
+  // rating says it is how the game will look after the yes (it shows the waiting rating, the line says what is live).
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`/make/${slug}/wide`);
+  await pageHasSettled(page);
+  for (const name of ["Save", "Keep the old one"]) {
+    const box = await page.getByRole("button", { name }).boundingBox();
+    expect(box).not.toBeNull();
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(800);
+  }
   await page.goto(`/make/${slug}/age`);
   await pageHasSettled(page);
+  await expect(page.locator(".preview").getByText("What players will see after we say yes")).toBeVisible();
   await expect(page.getByText("Waiting for review. Players see 12+ until we say yes.")).toBeVisible();
   // Not in the row of buttons, and after Save in the form, so Enter in the form presses Save.
   await expect(page.locator(".acts").getByRole("button", { name: "Keep the old one" })).toHaveCount(0);

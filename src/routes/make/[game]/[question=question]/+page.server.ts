@@ -177,6 +177,10 @@ export const load: PageServerLoad = async (event) => {
       rating: ratingWords(shownRating.ageRating, shownRating.contentMarks),
       video: shownUpright === null ? null : gamesServices().media(shownUpright.key),
       wideVideo: shownWide === null ? null : gamesServices().media(shownWide.key),
+      // The card shows what waits for a yes, so it says it is how the game will look, not how it looks now.
+      waits:
+        game.state === "live" &&
+        (game.held !== null || game.heldClips.upright !== null || game.heldClips.wide !== null),
     },
     // One website to a line, as the game's list was typed.
     servers: game.connectHosts.join("\n"),

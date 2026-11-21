@@ -118,9 +118,11 @@
     <p class="note" role="status">Waiting for review. Players see the old one until we say yes.</p>
   {/if}
   {#if video.src === null}
-    <label class="vframe" data-frame={shape} for="clip-file"><span>{words.frame}</span></label>
+    <label class="vframe" data-frame={shape} data-waiting={video.waiting ? "" : undefined} for="clip-file"
+      ><span>{words.frame}</span></label
+    >
   {:else}
-    <div class="vframe" data-frame={shape}>
+    <div class="vframe" data-frame={shape} data-waiting={video.waiting ? "" : undefined}>
       <VideoTile src={video.src} {shape} />
     </div>
   {/if}
