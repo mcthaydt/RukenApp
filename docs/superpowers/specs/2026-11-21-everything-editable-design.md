@@ -139,6 +139,15 @@ A renamed game's address moving with its name was planned here. The owner chose 
 | B. Waiting and taken-off games | 2 | A merged (same service file and make screens) | `src/features/games/service.ts`, `src/routes/make/[game]/`, `src/routes/make/parts/` (Waiting, Taken off), tests | 5.2 | criteria B1 to B5 |
 | D. Email and password | 2 (sign-in) | this spec merged; nothing else: it shares no file with A or B | `src/features/accounts/` (auth, forms, mails), `src/routes/me/`, tests | 5.4 | criteria D1 to D7 |
 
+- Unit A also changes these files, which its row did not name (implementation audit 1, R2; each is needed for A1, A4, A5, A9 or A10, and the pull request body lists them for G6):
+  - `src/lib/look.css` and `tests/lib/look.test.ts`: the "Waiting for review" label (`.waits`) beside a held change, and the test that lists the class names.
+  - `src/routes/make/laid-out.ts` and `src/routes/make/laid-out.server.ts`: how a game is laid out for Live (the held values, and the parts that wait). Live is drawn by `GameLaidOut.svelte` through these, not by `LiveScreen.svelte`.
+  - `src/routes/make/parts/GameLaidOut.svelte`: the waiting label, and a Change for the video that is not drawn.
+  - `src/routes/make/parts/QuestionScreen.svelte` and `src/routes/make/parts/VideoQuestion.svelte`: the "Keep the old one" button and the waiting note on a question screen.
+  - `src/features/games/games.ts`: exports the new service call and words to the routes.
+  - `src/features/games/review.ts`: the rule for a live game that is plain Live again after a kept old one, and which parts a live game holds.
+  - `src/features/games/review-order.ts`: carries the look (`seen`) with staff's yes.
+  - `tests/browser/support/game.ts` and `tests/browser/support/database.ts`: helpers added for the new journeys (no existing helper changed).
 - A and D run side by side. B follows A: they edit the same functions.
 - Unit D changes how a sign-in is changed. The lane lists name "credentials" under lane 3; D's paths are lane 2. **Call:** D is audited as lane 3 (a fresh implementation audit on Opus 5.5 medium), since a mistake here locks a person out or lets one in (plan audit 1, N4).
 - Each unit is one branch and one pull request: build, then the audit its lane calls for (lane 2: one fresh review; lane 3: a fresh implementation audit), fixes on the same branch, then merge. Lane 3 units merge under the owner's standing permission in `history.md` ("Merge PRs yourself once CI, reviews and audits pass"); if the coordinator finds that permission does not cover a migration, it asks the owner by name before the merge.

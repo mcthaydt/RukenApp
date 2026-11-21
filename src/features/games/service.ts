@@ -326,15 +326,21 @@ export function createGamesService(deps: GamesServiceDeps) {
     bytes: Uint8Array,
   ): Promise<void> {
     const key = clipKeyFor(game.publicId, shape, randomHex16(), contentType);
-    const replaced = await deps.db.gameHeldClip.findUnique({ where: { gameId_shape: { gameId, shape } } });
     await deps.files.put(key, bytes);
+    // Set inside the transaction, deleted after it.
+    const replaced: { key: string | null } = { key: null };
     await deps.db.$transaction(async (tx) => {
-      // Only a live game holds anything (Game_held_check holds the columns to it; this holds the rows).
+      // Only a live game holds anything (Game_held_check holds the columns to it; this holds the rows). The update also
+      // takes the game's row lock, so a yes that is being made waits here, and what is read below is what it left.
       const live = await tx.game.updateMany({
         where: { id: gameId, state: "live" },
         data: { changedAt: now() },
       });
       if (live.count === 0) throw new GameError("NOT_READY", "That can't be changed right now.");
+      // The file to delete is decided here, never earlier: a yes between an earlier read and this write would have made
+      // that file the one players see.
+      const before = await tx.gameHeldClip.findUnique({ where: { gameId_shape: { gameId, shape } } });
+      replaced.key = before?.key ?? null;
       await tx.gameHeldClip.upsert({
         where: { gameId_shape: { gameId, shape } },
         create: { gameId, shape, key, contentType, bytes: bytes.length },
@@ -342,7 +348,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       });
       await takeOutOfToFix(gameId, shape === "upright" ? "upright_video" : "wide_video", tx);
     });
-    if (replaced !== null) await deps.files.delete(replaced.key);
+    if (replaced.key !== null) await deps.files.delete(replaced.key);
     await settleLive(gameId, game.makerUserId, { dropped: false });
   }
 
@@ -1078,6 +1084,8 @@ export function createGamesService(deps: GamesServiceDeps) {
     // Set inside the transaction, deleted after it.
     const held: { key: string | null } = { key: null };
     const outcome = await deps.db.$transaction(async (tx) => {
+      // Locked first: a yes being made finishes before anything is read, so a held row it already made live is not "dropped".
+      await tx.$queryRaw`SELECT "id" FROM "Game" WHERE "id" = ${gameId} FOR UPDATE`;
       const row = await tx.game.findUniqueOrThrow({
         where: { id: gameId },
         select: { toFix: true, heldAgeRating: true },
@@ -1121,9 +1129,15 @@ export function createGamesService(deps: GamesServiceDeps) {
     const game = await ownGame(gameId, makerUserId);
     if (game.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
     // What waited for a yes goes with the game: nothing is left to review, and only a live game may hold a change.
-    const held = await deps.db.gameHeldClip.findMany({ where: { gameId }, select: { key: true } });
-    await deps.db.$transaction([
-      deps.db.game.update({
+    const held = await deps.db.$transaction(async (tx) => {
+      // The game's row is locked first, so a yes being made finishes before the held files are read: a file that yes made
+      // the live video is no longer held, and is kept for "Put it back".
+      await tx.$queryRaw`SELECT "id" FROM "Game" WHERE "id" = ${gameId} FOR UPDATE`;
+      const now = await tx.game.findUniqueOrThrow({ where: { id: gameId }, select: { state: true } });
+      if (now.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
+      const keys = await tx.gameHeldClip.findMany({ where: { gameId }, select: { key: true } });
+      await tx.gameHeldClip.deleteMany({ where: { gameId } });
+      await tx.game.update({
         where: { id: gameId },
         data: {
           state: "taken_off",
@@ -1135,9 +1149,9 @@ export function createGamesService(deps: GamesServiceDeps) {
           heldContentMarks: [],
           toFix: [],
         },
-      }),
-      deps.db.gameHeldClip.deleteMany({ where: { gameId } }),
-    ]);
+      });
+      return keys;
+    });
     await deps.files.deleteAll(`files/${game.publicId}/`);
     for (const clip of held) await deps.files.delete(clip.key);
     return { name: game.name };

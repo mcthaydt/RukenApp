@@ -1,3 +1,4 @@
+import pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
@@ -455,6 +456,99 @@ describe("taking a live game off", () => {
       heldContentMarks: [],
     });
     expect(files.keys()).not.toContain(held.key);
+  });
+});
+
+/**
+ * Holds the game's row as staff's yes does, starts `run`, waits until it is stuck on that lock, then makes the yes: the
+ * held video becomes the live one and its held row goes. What `run` read before the lock is exactly what it would get
+ * wrong, so this is the order the code must survive. Returns what `run` ended with.
+ */
+async function runWhileAYesIsBeingMade(
+  game: { id: string },
+  held: { id: string; key: string; contentType: string; bytes: number },
+  run: () => Promise<unknown>,
+): Promise<PromiseSettledResult<unknown>> {
+  if (database === undefined) throw new Error("the database did not start");
+  // A connection of its own: the client's pool is small, and the racing call needs its share of it.
+  const staff = new pg.Client({ connectionString: database.url });
+  await staff.connect();
+  try {
+    await staff.query("BEGIN");
+    await staff.query('SELECT "id" FROM "Game" WHERE "id" = $1 FOR UPDATE', [game.id]);
+    const racer = run();
+    // Readiness, not a guess: someone is stuck on a lock when the server shows it.
+    for (let tries = 0; ; tries += 1) {
+      const waiting = await staff.query<{ n: string }>(
+        "SELECT count(*) AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()",
+      );
+      if (Number(waiting.rows[0]?.n ?? 0) > 0) break;
+      if (tries > 400) throw new Error("nothing is waiting for the game's lock");
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    // What a yes does to a held video: it becomes the live one and its held row goes.
+    await staff.query(
+      'UPDATE "GameClip" SET "key" = $1, "contentType" = $2, "bytes" = $3 WHERE "gameId" = $4 AND "shape" = \'wide\'',
+      [held.key, held.contentType, held.bytes, game.id],
+    );
+    await staff.query('DELETE FROM "GameHeldClip" WHERE "id" = $1', [held.id]);
+    await staff.query("COMMIT");
+    const [outcome] = await Promise.allSettled([racer]);
+    return outcome;
+  } finally {
+    await staff.end();
+  }
+}
+
+async function liveWideFile(gameId: string): Promise<string> {
+  return (await db().gameClip.findUniqueOrThrow({ where: { gameId_shape: { gameId, shape: "wide" } } })).key;
+}
+
+describe("a yes that lands while the maker is changing the game", () => {
+  it("never deletes the video it made live, when the maker saved another video at the same time", async () => {
+    const game = await liveGame();
+    const held = await newVideo(game);
+
+    const outcome = await runWhileAYesIsBeingMade(game, held, () =>
+      service.saveClip(game.id, "wide", { contentType: "video/mp4", bytes: mp4Bytes() }),
+    );
+
+    expect(outcome.status).toBe("fulfilled");
+    const live = await liveWideFile(game.id);
+    expect(live).toBe(held.key);
+    expect(files.keys()).toContain(live);
+    const waiting = await db().gameHeldClip.findUniqueOrThrow({
+      where: { gameId_shape: { gameId: game.id, shape: "wide" } },
+    });
+    expect(waiting.key).not.toBe(live);
+    expect(files.keys()).toContain(waiting.key);
+  });
+
+  it("keeps the video it made live when the maker takes the game off at the same time, for Put it back", async () => {
+    const game = await liveGame();
+    const held = await newVideo(game);
+
+    const outcome = await runWhileAYesIsBeingMade(game, held, () =>
+      service.takeOff(game.id, game.makerUserId),
+    );
+
+    expect(outcome.status).toBe("fulfilled");
+    expect(await stateOf(game.id)).toMatchObject({ state: "taken_off", heldAgeRating: null });
+    expect(await db().gameHeldClip.count({ where: { gameId: game.id } })).toBe(0);
+    expect(files.keys()).toContain(await liveWideFile(game.id));
+  });
+
+  it("does not fail, and does not drop the video it made live, when the maker keeps the old one at the same time", async () => {
+    const game = await liveGame();
+    const held = await newVideo(game);
+
+    const outcome = await runWhileAYesIsBeingMade(game, held, () =>
+      service.keepTheOldOne(game.id, game.makerUserId, "wide_video"),
+    );
+
+    expect(outcome.status).toBe("fulfilled");
+    expect(await liveWideFile(game.id)).toBe(held.key);
+    expect(files.keys()).toContain(held.key);
   });
 });
 

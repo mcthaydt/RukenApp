@@ -301,7 +301,7 @@ test.describe("a 56-letter name in a question's heading", () => {
 
 // ---- P11: sending a new version while one waits (the Owner: "Keep it, replace the waiting one") ---------------------
 
-test("while an update waits, Send a new version is still there and says it takes the waiting one's place", async ({
+test("while an update waits, Send a new version is still there and says its files take the waiting files' place", async ({
   page,
 }) => {
   const { slug } = await gameWhere(page, { state: "live", updateWaiting: true });
@@ -310,7 +310,9 @@ test("while an update waits, Send a new version is still there and says it takes
 
   await expect(page.getByText("Your update is waiting for review.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Send a new version" })).toBeVisible();
-  await expect(page.getByText(/It takes the place of the one that is waiting\./)).toBeVisible();
+  await expect(
+    page.getByText(/The files it copies take the place of the files that are waiting\./),
+  ).toBeVisible();
 });
 
 // ---- S2 and S10: a refused box ------------------------------------------------------------------------------------
