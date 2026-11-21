@@ -198,8 +198,8 @@ async function takeGamesOff(
 ): Promise<void> {
   // A live game's change that waited for a yes goes with it: the database holds such a change to a live game, so the
   // columns are cleared in the same write that takes the game off. The held videos' files share the game's folder of
-  // clips, which was deleted just before.
-  await tx.gameHeldClip.deleteMany({ where: { game: { makerUserId: userId } } });
+  // clips, which was deleted just before. The games come first and their held rows after, the order staff's yes takes
+  // its locks in (the game, then the held rows); the other way round, the two can wait on each other.
   await tx.game.updateMany({
     where: { makerUserId: userId, state: { in: ["live", "waiting"] } },
     data: {
@@ -213,6 +213,7 @@ async function takeGamesOff(
       toFix: [],
     },
   });
+  await tx.gameHeldClip.deleteMany({ where: { game: { makerUserId: userId } } });
   // Each thrown-away game's address is made from its own public id, so they are changed one at a time.
   const unsent = await tx.game.findMany({
     where: { makerUserId: userId, state: { in: ["draft", "sent_back"] } },

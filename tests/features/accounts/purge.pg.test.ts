@@ -1,3 +1,4 @@
+import pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   purgeDueAccounts,
@@ -468,6 +469,49 @@ describe("purgeDueAccounts", () => {
     });
     expect(await files.head(heldKey)).toBeNull();
     expect(await files.hasAny(`clips/${live.publicId}/`)).toBe(false);
+  });
+
+  // Staff's yes locks the game and then its held rows. The purge takes them in the same order, so a yes that is being
+  // made while a maker's account is deleted finishes first and neither waits on the other (a deadlock Postgres ends by
+  // cancelling one of them).
+  it("does not deadlock with a yes that is being made on the leaving maker's game", async () => {
+    const leaving = await seedPerson();
+    const live = await seedGame(leaving.id, "live");
+    const heldKey = `clips/${live.publicId}/wide-${"2".repeat(16)}.mp4`;
+    await files.put(heldKey, new Uint8Array([4, 5, 6]));
+    const held = await db().gameHeldClip.create({
+      data: { gameId: live.id, shape: "wide", key: heldKey, contentType: "video/mp4", bytes: 3 },
+    });
+    const clock = await askToBeDeleted(leaving.id);
+    clock.advance(15 * DAY_MS);
+    if (database === undefined) throw new Error("the database did not start");
+    // A connection of its own, so the yes holds the game while the purge runs on the client's.
+    const staff = new pg.Client({ connectionString: database.url });
+    await staff.connect();
+    try {
+      await staff.query("BEGIN");
+      await staff.query('SELECT "id" FROM "Game" WHERE "id" = $1 FOR UPDATE', [live.id]);
+      const purge = purgeDueAccounts({ prisma: db(), clock, files });
+      purge.catch(() => undefined);
+      // Readiness, not a guess: the purge is stuck on the game's lock when the server shows it.
+      for (let tries = 0; ; tries += 1) {
+        const waiting = await staff.query<{ n: string }>(
+          "SELECT count(*) AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()",
+        );
+        if (Number(waiting.rows[0]?.n ?? 0) > 0) break;
+        if (tries > 400) throw new Error("the purge is not waiting for the game's lock");
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      // What a yes does to the held row it made live.
+      await staff.query('DELETE FROM "GameHeldClip" WHERE "id" = $1', [held.id]);
+      await staff.query("COMMIT");
+      expect(await purge).toBe(1);
+    } finally {
+      await staff.end();
+    }
+
+    expect(await stateOf(live.id)).toMatchObject({ state: "taken_off" });
+    expect(await db().gameHeldClip.count({ where: { gameId: live.id } })).toBe(0);
   });
 
   // One account the bucket fails on must not stop everyone else's deletion, today or on any later day.

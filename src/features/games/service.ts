@@ -1133,8 +1133,8 @@ export function createGamesService(deps: GamesServiceDeps) {
       // The game's row is locked first, so a yes being made finishes before the held files are read: a file that yes made
       // the live video is no longer held, and is kept for "Put it back".
       await tx.$queryRaw`SELECT "id" FROM "Game" WHERE "id" = ${gameId} FOR UPDATE`;
-      const now = await tx.game.findUniqueOrThrow({ where: { id: gameId }, select: { state: true } });
-      if (now.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
+      const current = await tx.game.findUniqueOrThrow({ where: { id: gameId }, select: { state: true } });
+      if (current.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
       const keys = await tx.gameHeldClip.findMany({ where: { gameId }, select: { key: true } });
       await tx.gameHeldClip.deleteMany({ where: { gameId } });
       await tx.game.update({
