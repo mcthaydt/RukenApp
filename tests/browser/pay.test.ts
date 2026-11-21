@@ -6,11 +6,12 @@ import {
   JOURNEY_PASSWORD,
   payAsNewMember,
   releaseLateNews,
+  signUpInItsOwnContext,
   standInPayButton,
   yearsAgo,
   SITE_ANSWER_TIMEOUT,
 } from "./support/account.ts";
-import { idsOf, membershipStartsOf } from "./support/database.ts";
+import { changeGame, givePage, idsOf, membershipStartsOf, userIdOf } from "./support/database.ts";
 import { gameWhere } from "./support/game.ts";
 import { rgb, token } from "../support/look-tokens.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -82,6 +83,26 @@ test("a member's sign-up records the maker's link they came through", async ({ p
 
   expect(await membershipStartsOf(member.email)).toMatchObject([
     { broughtByUserId: game.makerUserId, arrivalPath: `/g/${game.slug}` },
+  ]);
+});
+
+test("a member who came through a maker's page, pressed Play on their game and paid has that page recorded", async ({
+  page,
+  browser,
+}) => {
+  const game = await liveGameOfItsOwnMaker(browser);
+  const owner = await signUpInItsOwnContext(browser);
+  await changeGame(game.slug, { makerUserId: await userIdOf(owner.email) });
+  const { handle } = await givePage(owner, { name: "Pay Maker", oneLine: "" });
+
+  await page.goto(`/${handle}`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("link", { name: "Play" }).click();
+  await expect(page).toHaveURL(/\/join/);
+
+  const member = await payAsNewMember(page);
+
+  expect(await membershipStartsOf(member.email)).toMatchObject([
+    { broughtByUserId: await userIdOf(owner.email), arrivalPath: `/${handle}` },
   ]);
 });
 

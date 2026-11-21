@@ -62,6 +62,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
       makerPage === null
         ? null
         : {
+            handle: makerPage.handle,
             name: makerPage.name,
             oneLine: makerPage.oneLine,
             photo: makerPage.photoKey === null ? null : games.media(makerPage.photoKey),
