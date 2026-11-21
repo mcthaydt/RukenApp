@@ -6,7 +6,7 @@ Approved by the owner, 2026-11-15: "Roadmap is fine".
 
 ## The rules
 
-**We finish slice 2, and only slice 2.** The owner, 2026-11-15: "We finish Slice 2: Games and play, everything after that is tagged for later work". Everything below slice 2 is marked **Later**. Nothing marked Later starts until slice 2 is done and the owner says go.
+**We build every slice up to Launch, in order.** The owner, 2026-11-20 22:27 UTC, on a card: "Ready to launch". That is the owner's go for the slices below that were marked Later: slice 2's rest, then slice 3, slice 4, slice 5 and the before-launch list. (Before that, 2026-11-15: "We finish Slice 2: Games and play, everything after that is tagged for later work".)
 
 1. **One slice at a time.** The owner, 2026-11-15: "One slice at a time is more what I meant by that". Work inside the slice being built may run side by side; nothing from a later slice starts. **Now** marks what is being built.
 2. **Slices go in order.** A slice starts only when the one before it is merged and green.
@@ -35,10 +35,11 @@ How to read each list: **Done** is merged and green. **Now** is what is being bu
 2. Done: the clip and frame look (branch S, part 1).
 3. Done: the maker's submission screens, rebuilt to the approved design (branch M, pull request #63).
 4. Done: games on one free test address until launch (branch T, pull request #125). Plan for this and the steps below: `plans/2026-11-15-slice-2-rest.md`.
-5. Next: the Owner accepts a game or sends it back by a command, and a maker takes their own game off Ruken and puts it back (unit S). The staff screens wait for slice 4.
-6. Next: a game's page and playing it (unit F). Waits for unit S.
-7. Next: the GitHub App hookup, and a real game sent, accepted and played on the test site (unit G). The real domain waits for launch.
-8. Next: the slice 2 audit, then its fixes.
+5. Done: the Owner accepts a game or sends it back by a command, and a maker takes their own game off Ruken and puts it back (unit S). The staff screens wait for slice 4.
+6. Done: every game plays on phones and computers (unit R), a game's page, playing it and play time (unit F), and the maker's player count switch (unit P).
+7. Done: the GitHub App is set up on ruken.io, and the games run on ruken.dev.
+8. Now: a real game sent, accepted and played on ruken.io (unit G, plan Task 24). The Owner's steps.
+9. Now: the slice 2 audit's fixes (`audits/2026-11-20-slice-2-1-implementation-audit.md`), then the slice end.
 
 ---
 
