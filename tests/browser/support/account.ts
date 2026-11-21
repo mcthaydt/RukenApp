@@ -147,6 +147,17 @@ export async function letMembershipRunOut(member: { checkoutSessionId: string })
 }
 
 /**
+ * The member's card stops working at the stand-in Stripe: their subscription is past due there, and the site is told,
+ * as when Stripe's renewal is refused. Fixing it is the stand-in billing portal's "Update card".
+ */
+export async function failCardAtStandIn(member: { checkoutSessionId: string }): Promise<void> {
+  const answer = await fetch(`${STAND_IN_URL}/test/fail-card/${member.checkoutSessionId}`, {
+    method: "POST",
+  });
+  if (!answer.ok) throw new Error(`the stand-in would not fail the card: ${String(answer.status)}`);
+}
+
+/**
  * Stripe's late news goes out: a payment page opened with `?events=later` holds the site's three events back until
  * this is called, so a journey can look at the page that waits for them and then let them arrive, with no timer to race.
  */

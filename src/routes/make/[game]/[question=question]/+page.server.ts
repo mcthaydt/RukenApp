@@ -49,12 +49,15 @@ function isBuilt(word: string): word is BuiltQuestion {
   return built.includes(word);
 }
 
-/** The questions a live game's maker may still answer by herself; the rest go through staff again (slice 4). */
-const LIVE_MAY_ANSWER: readonly BuiltQuestion[] = ["name", "line"];
+/**
+ * The questions a live game's maker may still answer by herself: a new copy of the files or websites goes for review in
+ * the same save. The videos and rating go through staff again (slice 4).
+ */
+const LIVE_MAY_ANSWER: readonly BuiltQuestion[] = ["name", "line", "files", "websites"];
 
 /**
  * The question this address asks of this game, or a 404: a word with no screen, marks for a game that is not 18+, or a
- * question a live game is not asked (its videos, files, rating and websites are not changed under the players).
+ * question a live game is not asked (its videos and rating are not changed under the players).
  */
 function askedQuestion(word: string, game: MakerGame, madeEighteen: boolean): BuiltQuestion {
   if (!isQuestionAddress(word) || !isBuilt(word)) error(404, "Not found");
@@ -115,6 +118,8 @@ async function filesScreen(url: URL, userId: string, game: MakerGame) {
     changeAddress: `${folder}?change=1`,
     // A waiting game has been copied already: Next copies it again, and staff go on with the newest copy.
     copiesAgain: game.state === "waiting",
+    // A live game's save copies the files and sends them for review; players keep the old ones meanwhile.
+    sendsForReview: game.state === "live",
   };
 }
 

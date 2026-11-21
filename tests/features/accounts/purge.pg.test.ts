@@ -6,6 +6,7 @@ import {
 } from "../../../src/features/accounts/deletion.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
 import { createWishlist } from "../../../src/features/launch/wishlist.ts";
+import type { FileStore } from "../../../src/lib/files/store.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
@@ -74,6 +75,89 @@ async function seedPerson() {
     ],
   });
   return { id: user.id, email };
+}
+
+let gamesMade = 0;
+
+/**
+ * A game of `makerUserId`'s in `state`, with a pull, an upright video and a file in the bucket. A live game is live on
+ * its pull, and a waiting one waits on it.
+ */
+async function seedGame(
+  makerUserId: string,
+  state: "draft" | "waiting" | "live" | "sent_back" | "taken_off",
+) {
+  gamesMade += 1;
+  const publicId = newPublicId();
+  const answered = state !== "draft";
+  const game = await db().game.create({
+    data: {
+      publicId,
+      slug: `purged-maker-game-${String(gamesMade)}`,
+      makerUserId,
+      name: `Game ${String(gamesMade)}`,
+      ...(answered
+        ? {
+            oneLine: "A game about a thing.",
+            playsOn: "phone_and_computer" as const,
+            repoFullName: "acme/game",
+            ageRating: "age_12" as const,
+          }
+        : {}),
+    },
+  });
+  const pull = await db().gamePull.create({
+    data: {
+      id: crypto.randomUUID(),
+      gameId: game.id,
+      commitSha: "a".repeat(40),
+      fileCount: 1,
+      totalBytes: 10n,
+      connectHosts: [],
+      pulledAt: new Date(START),
+    },
+  });
+  await db().game.update({
+    where: { id: game.id },
+    data: {
+      state,
+      ...(state === "live" ? { livePullId: pull.id } : {}),
+      ...(state === "waiting" ? { pendingPullId: pull.id, pendingSince: new Date(START) } : {}),
+    },
+  });
+  const clipKey = `clips/${publicId}/upright-${"0".repeat(16)}.mp4`;
+  await db().gameClip.create({
+    data: { gameId: game.id, shape: "upright", key: clipKey, contentType: "video/mp4", bytes: 3 },
+  });
+  await files.put(clipKey, new Uint8Array([1, 2, 3]));
+  await files.put(`files/${publicId}/${pull.id}/index.html`, new Uint8Array([1, 2, 3]));
+  return { id: game.id, publicId, slug: game.slug };
+}
+
+/** The test's bucket, except that deleting the folder `prefix` fails, as a bucket that is down does. */
+function brokenFor(prefix: string): FileStore {
+  return {
+    head: (key) => files.head(key),
+    get: (key, range) => files.get(key, range),
+    put: (key, bytes) => files.put(key, bytes),
+    delete: (key) => files.delete(key),
+    deleteAll: (folder) =>
+      folder === prefix ? Promise.reject(new Error("the bucket is down")) : files.deleteAll(folder),
+    hasAny: (folder) => files.hasAny(folder),
+  };
+}
+
+/** A person's account status. */
+async function statusOf(userId: string): Promise<string> {
+  return (await db().user.findUniqueOrThrow({ where: { id: userId }, select: { status: true } })).status;
+}
+
+/** Where a game stands, and the address and pulls that go with it. */
+function stateOf(gameId: string) {
+  return db().game.findUniqueOrThrow({
+    where: { id: gameId },
+    select: { state: true, slug: true, livePullId: true, pendingPullId: true },
+  });
 }
 
 /** Asks to be deleted at START, with a clock the test can move on. */
@@ -303,6 +387,87 @@ describe("purgeDueAccounts", () => {
     expect(await db().wishlistMail.count({ where: { userId: leaving.id } })).toBe(1);
     // Nobody else's list is touched.
     expect(await db().wishlist.count({ where: { userId: staying.id } })).toBe(1);
+  });
+
+  // The owner's decision (2026-11-21): a maker's games come off Ruken with their account, once the 14 days are over.
+  it("takes the person's games off after the 14 days, with their files and videos, and leaves everyone else's", async () => {
+    const leaving = await seedPerson();
+    const staying = await seedPerson();
+    const made = {
+      live: await seedGame(leaving.id, "live"),
+      waiting: await seedGame(leaving.id, "waiting"),
+      sentBack: await seedGame(leaving.id, "sent_back"),
+      draft: await seedGame(leaving.id, "draft"),
+      takenOff: await seedGame(leaving.id, "taken_off"),
+      others: await seedGame(staying.id, "live"),
+    };
+    const clock = await askToBeDeleted(leaving.id);
+
+    // Still up during the 14 days, so changing their mind loses nothing.
+    clock.advance(13 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
+    expect(await stateOf(made.live.id)).toMatchObject({ state: "live" });
+
+    clock.advance(2 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
+
+    for (const game of [made.live, made.waiting])
+      expect(await stateOf(game.id)).toEqual({
+        state: "taken_off",
+        slug: game.slug,
+        livePullId: null,
+        pendingPullId: null,
+      });
+    for (const game of [made.sentBack, made.draft])
+      expect(await stateOf(game.id)).toEqual({
+        state: "thrown_away",
+        slug: `x-${game.publicId}`,
+        livePullId: null,
+        pendingPullId: null,
+      });
+    expect(await stateOf(made.takenOff.id)).toMatchObject({ state: "taken_off", slug: made.takenOff.slug });
+    for (const game of [made.live, made.waiting, made.sentBack, made.draft, made.takenOff]) {
+      expect(await files.hasAny(`files/${game.publicId}/`)).toBe(false);
+      expect(await files.hasAny(`clips/${game.publicId}/`)).toBe(false);
+      expect(await db().gameClip.count({ where: { gameId: game.id } })).toBe(0);
+    }
+    // The rows stay, since money and records may point at them.
+    expect(await db().game.count({ where: { makerUserId: leaving.id } })).toBe(5);
+
+    // Someone else's game is untouched.
+    expect(await stateOf(made.others.id)).toMatchObject({ state: "live", slug: made.others.slug });
+    expect(await files.hasAny(`files/${made.others.publicId}/`)).toBe(true);
+    expect(await files.hasAny(`clips/${made.others.publicId}/`)).toBe(true);
+    expect(await db().gameClip.count({ where: { gameId: made.others.id } })).toBe(1);
+  });
+
+  // One account the bucket fails on must not stop everyone else's deletion, today or on any later day.
+  it("finishes the other accounts when one fails, reports the failure, and finishes that one on the next run", async () => {
+    const failing = await seedPerson();
+    const fine = await seedPerson();
+    const failingGame = await seedGame(failing.id, "live");
+    const fineGame = await seedGame(fine.id, "live");
+    const clock = await askToBeDeleted(failing.id);
+    await requestDeletion({ prisma: db(), clock }, fine.id);
+    clock.advance(15 * DAY_MS);
+
+    const broken = brokenFor(`files/${failingGame.publicId}/`);
+    await expect(purgeDueAccounts({ prisma: db(), clock, files: broken })).rejects.toThrow(
+      "1 account(s) could not be deleted; 1 were.",
+    );
+    expect(await statusOf(fine.id)).toBe("deleted");
+    expect(await stateOf(fineGame.id)).toMatchObject({ state: "taken_off" });
+    expect(await statusOf(failing.id)).toBe("pending_deletion");
+    expect(await stateOf(failingGame.id)).toMatchObject({ state: "live" });
+    expect(
+      await db().deletionRequest.count({ where: { userId: failing.id, purgedAt: null, cancelledAt: null } }),
+    ).toBe(1);
+
+    // The next run, with the bucket working, finishes it.
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
+    expect(await statusOf(failing.id)).toBe("deleted");
+    expect(await stateOf(failingGame.id)).toMatchObject({ state: "taken_off" });
+    expect(await files.hasAny(`files/${failingGame.publicId}/`)).toBe(false);
   });
 
   // The money rows are the ledger, so they outlive the person's details. The purge only
