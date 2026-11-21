@@ -12,16 +12,21 @@ const GITHUB_APP_PRIVATE_KEY = generateKeyPairSync("rsa", {
 
 // Browser journeys (design section 8) run against the built app, served by `wrangler dev`: the Workers runtime
 // the real site runs in.
-// CI runs them on GitHub's runners only (CLAUDE.md: no session runs tests itself).
 export default defineConfig({
   testDir: "tests/browser",
   forbidOnly: true,
   retries: 0,
   reporter: [["list"], ["html", { open: "never" }]],
-  // A missing page or field fails in 5 seconds, not after the whole 30-second test timeout, so a
-  // journey that cannot find its form says so quickly.
+  // An action on a missing button or field fails in 5 seconds, not after the whole 30-second test timeout, so a
+  // journey that cannot find its form says so quickly. A wait for the site's answer gets longer (below).
   // Each worker reaches the site from its own client address, so side-by-side journeys never share the site's
   // per-address limits (tests/browser/support/rate-limits.ts).
+  // A wait for the site's answer (a new address, a saved answer on screen) gets 15 seconds. The site in a journey is
+  // one `wrangler dev` process on a four-core runner shared with two browsers, so while another worker's journey keeps
+  // it busy a single answer can take over 5 seconds: run 44835171025 saw a sign-up land after the 5-second wait ended,
+  // and an answer still "Saving…" when it did, both correct and both refused only for the time. The real site answers
+  // each visitor in its own Worker.
+  expect: { timeout: 15_000 },
   use: {
     baseURL: "http://localhost:4173",
     trace: "off",
@@ -140,23 +145,15 @@ export default defineConfig({
       },
     },
   ],
-  // Every journey runs on each of these (the Owner, 2026-11-14: "tablet is first class supported, and mobile landscape";
-  // 2026-11-14: "23. A" to "Also run the browser tests in Safari's engine (WebKit) on tablet and phone").
-  // The Chromium projects keep the Android phone's and the iPad's windows. The "-webkit" projects run the same journeys
-  // in Safari's engine, the one an iPhone or iPad really uses, with the iPhone's and iPad's own windows, pixel density
-  // and touch. The computer stays on Chromium.
+  // The Owner, 2026-11-14: "tablet is first class supported, and mobile landscape", and "Also run the browser tests in
+  // Safari's engine (WebKit) on tablet and phone". Sideways phones and tablets are windows their own journeys set.
+  // The three devices the owner chose (2026-11-21): a small iPhone in Safari's engine, an iPad in Chrome's, and a
+  // computer. The small iPhone is today's iPhone SE (375 wide); the old 320-wide iPhone SE is a window the journeys
+  // written for it set themselves. Both engines stay checked, and each journey runs three times, not nine. A journey that needs another
+  // window, such as a phone held sideways, sets that window itself.
   projects: [
-    { name: "phone", use: { ...devices["Pixel 7"] } },
-    { name: "phone-landscape", use: { ...devices["Pixel 7 landscape"] } },
+    { name: "phone", use: { ...devices["iPhone SE (3rd gen)"] } },
     { name: "tablet", use: { ...devices["iPad (gen 7)"], defaultBrowserType: "chromium" } },
-    {
-      name: "tablet-landscape",
-      use: { ...devices["iPad (gen 7) landscape"], defaultBrowserType: "chromium" },
-    },
-    { name: "phone-webkit", use: { ...devices["iPhone 15"] } },
-    { name: "phone-landscape-webkit", use: { ...devices["iPhone 15 landscape"] } },
-    { name: "tablet-webkit", use: { ...devices["iPad (gen 7)"] } },
-    { name: "tablet-landscape-webkit", use: { ...devices["iPad (gen 7) landscape"] } },
     { name: "computer", use: { ...devices["Desktop Chrome"] } },
   ],
 });

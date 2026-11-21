@@ -41,7 +41,6 @@ test("a member cancels on Stripe and is told when it ends", async ({ page }) => 
   await expect(page.getByRole("button", { name: "Manage" })).toBeVisible();
 });
 
-// Review Focus 6.
 test("a member who deletes their account is told the membership ends now", async ({ page }) => {
   const member = await payAsNewMember(page);
   await page.goto("/me/delete");

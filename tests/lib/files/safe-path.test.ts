@@ -20,7 +20,7 @@ describe("normalizePath", () => {
     expect(normalizePath("cafe%CC%81.png")).toBe("café.png");
   });
 
-  // Review Focus 2: nothing may climb out of a game's folder, or name another file than it seems to.
+  // Nothing may climb out of a game's folder, or name another file than it seems to.
   it.each(["../x", "a/../../x", "a//b", "a/./b", "a\\b", "%2e%2e/x", "a%2fb", "a%5cb", "a%00b", "%E0%A4%A"])(
     "refuses %j",
     (raw) => {

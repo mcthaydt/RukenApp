@@ -51,7 +51,7 @@ describe("checkGameFiles", () => {
     });
   });
 
-  // Review Focus 5: a repository that keeps its big files in Git LFS, or holds a link, is refused by name.
+  // A repository that keeps its big files in Git LFS, or holds a link, is refused by name.
   it("refuses a file kept in Git LFS, naming it", () => {
     const files: PulledFile[] = [...tiny, { path: "sound/theme.ogg", size: 130, kind: "lfs" }];
     expect(checkGameFiles(files, INDEX)).toEqual({
@@ -120,7 +120,7 @@ describe("checkGameFiles", () => {
     expect(checkGameFiles(tiny, html)).toEqual({ ok: true, fileCount: 3, totalBytes: 600 });
   });
 
-  // Review Focus 4: a game whose index.html loads /assets/main.js from the top of the site is refused at the
+  // A game whose index.html loads /assets/main.js from the top of the site is refused at the
   // pull, with words that say how to fix it, and is never live and broken.
   it("names the first address that starts at the top of the site", () => {
     expect(checkGameFiles(tiny, '<script src="/assets/main.js"></script>')).toEqual({

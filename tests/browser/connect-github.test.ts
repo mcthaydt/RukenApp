@@ -185,7 +185,7 @@ test("a failed reconnect says so to a maker whose connection holds no repositori
   await expect(page.getByText("GitHub didn't connect. Try again.")).toBeVisible();
 });
 
-// Review Focus 7: the state travels through GitHub in an address.
+// The state travels through GitHub in an address.
 test("a state that someone changed lands on Your games, and says GitHub didn't connect", async ({ page }) => {
   await startDraft(page);
 
@@ -231,7 +231,9 @@ test("connected with nothing chosen, she is told, with one way to choose some", 
 
   await expect(page.getByText("Ruken can't see any of your games on GitHub yet.")).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(0);
-  const choose = page.getByRole("link", { name: "Choose your games on GitHub" });
+  const choose = page.getByRole("link", { name: "Choose on GitHub" });
+  // One centred line like every other bar button, not two lines on a phone.
+  expect((await choose.boundingBox())?.height ?? 999).toBeLessThanOrEqual(64);
   await expect(choose).toHaveCSS("background-color", rgb(token("--pay")));
   await expect(choose).toHaveAttribute("href", `/make/github?choose=1&game=${slug}`);
   await showTheOwner(page, testInfo, "question 3, connected, nothing chosen on GitHub");

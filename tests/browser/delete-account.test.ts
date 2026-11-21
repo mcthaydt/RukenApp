@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
-import { nationalOf, pageHasSettled, signUp } from "./support/account.ts";
+import { nationalOf, pageHasSettled, signUp, SITE_ANSWER_TIMEOUT } from "./support/account.ts";
 import { expectOneCard, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -32,7 +32,7 @@ test("a person asks to be deleted, is signed out, and is told the date", async (
   await expect(page.getByText(/^We'll delete it on \w+, \w+ \d+\. You're signed out now\.$/)).toBeVisible();
   await expectOneCard(page);
   await showTheOwner(page, testInfo, "signed out, to be deleted");
-  // Review Focus 7: the old session cookie of an account that is waiting to be deleted works no more.
+  // The old session cookie of an account that is waiting to be deleted works no more.
   await page.goto("/me");
   await expect(page).toHaveURL(/\/sign-in/);
 });
@@ -42,7 +42,7 @@ test("signing in again within the 14 days undoes it, and says so once", async ({
   await page.goto("/sign-in?next=%2Fme");
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/me");
   await expect(page.getByText(WELCOME_BACK)).toBeVisible();
   // The line sits on the darker felt, as a panel above the card (design 5.8).

@@ -6,18 +6,20 @@ import {
   BROKEN_GAME,
   connectGitHubFromFiles,
   freshName,
+  holdAnswersTo,
   nextButton,
   startAtCheck,
   startAtFiles,
   startAtVideo,
   startDraft,
 } from "./support/game.ts";
-import { boxOf, layoutOf, pipRed, showTheOwner, type Layout } from "./support/look.ts";
+import { boxOf, heldSideways, layoutOf, pipRed, showTheOwner, type Layout } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
-// How the maker's screens are laid out (spec 4, and the plan's table of sizes). A window is one of five layouts, and
-// each is read from the window's own size, not the project's name: an iPad held upright and a Pixel 7 held upright are
-// different layouts, a phone held sideways is the sideways tablet made smaller.
+// How the maker's screens are laid out (spec 4). A window is one of five layouts, and
+// each is read from the window's own size, not the project's name: an iPad held upright and an iPhone held upright are
+// different layouts, a phone held sideways is the sideways tablet made smaller. Every project is upright or a computer, so
+// the journeys that differ by layout run again in a phone's and an iPad's window held sideways.
 
 test.beforeEach(forgetRateLimits);
 
@@ -42,33 +44,42 @@ async function gameAskingAbout(page: Page, question: "age"): Promise<string> {
   return slug;
 }
 
-test("a question: the heading's size, the box and the buttons for this window", async ({ page }) => {
-  await startDraft(page);
-  const layout = layoutOf(page);
-  const sizes = SIZES[layout];
-  const box = page.getByRole("textbox");
+function questionSizes(): void {
+  test("a question: the heading's size, the box and the buttons for this window", async ({ page }) => {
+    await startDraft(page);
+    const layout = layoutOf(page);
+    const sizes = SIZES[layout];
+    const box = page.getByRole("textbox");
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveCSS("font-size", `${String(sizes.heading)}px`);
-  await expect(box).toHaveCSS("height", `${String(sizes.box)}px`);
-  await expect(box).toHaveCSS("font-size", "24px");
-  await expect(box).toHaveCSS("border-top-left-radius", "12px");
-  await expect(box).toHaveCSS("border-top-width", "0px");
-  await expect(box).toHaveCSS("background-color", rgb(token("--paper")));
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCSS(
+      "font-size",
+      `${String(sizes.heading)}px`,
+    );
+    await expect(box).toHaveCSS("height", `${String(sizes.box)}px`);
+    await expect(box).toHaveCSS("font-size", "24px");
+    await expect(box).toHaveCSS("border-top-left-radius", "12px");
+    await expect(box).toHaveCSS("border-top-width", "0px");
+    await expect(box).toHaveCSS("background-color", rgb(token("--paper")));
 
-  const next = nextButton(page);
-  await expect(next).toHaveCSS("height", `${String(sizes.button)}px`);
-  await expect(next).toHaveCSS("background-color", rgb(token("--pay")));
-  const viewport = page.viewportSize();
-  const bar = await boxOf(page.locator(".acts"));
-  if (sizes.inBar) {
-    // The buttons sit in a bar whose bottom is the window's bottom, so a thumb finds them in the same place.
-    expect(Math.abs(bar.y + bar.height - (viewport?.height ?? 0))).toBeLessThanOrEqual(1);
-  } else {
-    // Under the answer, the blue button at least 168 wide.
-    expect((await boxOf(next)).width).toBeGreaterThanOrEqual(168);
-    expect((await boxOf(next)).y).toBeGreaterThan((await boxOf(box)).y + (await boxOf(box)).height - 1);
-  }
-});
+    const next = nextButton(page);
+    await expect(next).toHaveCSS("height", `${String(sizes.button)}px`);
+    await expect(next).toHaveCSS("background-color", rgb(token("--pay")));
+    const viewport = page.viewportSize();
+    const bar = await boxOf(page.locator(".acts"));
+    if (sizes.inBar) {
+      // The buttons sit in a bar whose bottom is the window's bottom, so a thumb finds them in the same place.
+      expect(Math.abs(bar.y + bar.height - (viewport?.height ?? 0))).toBeLessThanOrEqual(1);
+    } else {
+      // Under the answer, the blue button at least 168 wide.
+      expect((await boxOf(next)).width).toBeGreaterThanOrEqual(168);
+      expect((await boxOf(next)).y).toBeGreaterThan((await boxOf(box)).y + (await boxOf(box)).height - 1);
+    }
+  });
+}
+
+questionSizes();
+heldSideways("tablet", questionSizes);
+heldSideways("phone", questionSizes);
 
 test("press Enter shows only where there is a mouse", async ({ page }, testInfo) => {
   await startDraft(page);
@@ -76,6 +87,22 @@ test("press Enter shows only where there is a mouse", async ({ page }, testInfo)
   const hint = page.getByText("press Enter");
   if (testInfo.project.name === "computer") await expect(hint).toBeVisible();
   else await expect(hint).toBeHidden();
+});
+
+test("press Enter goes while the blue button is off, as it saves", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "computer", "the hint shows only where there is a mouse");
+  await signUp(page);
+  await page.goto("/make/new");
+  await pageHasSettled(page);
+  const held = await holdAnswersTo(page, /\/make\/new\?\/answer$/);
+  await page.getByLabel("What's your game called?").fill(freshName());
+  await nextButton(page).click();
+
+  await expect(page.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  await expect(page.getByText("press Enter")).toBeHidden();
+
+  held.release();
+  await expect(page).toHaveURL(/\/line$/);
 });
 
 test("Enter presses the blue button", async ({ page }) => {
@@ -104,16 +131,23 @@ test("a picked choice has a blue edge, and the others stay white", async ({ page
   await expect(other).toHaveCSS("border-top-color", rgb(token("--paper")));
 });
 
-test("the five ratings sit in one row from a tablet up, and stack on a phone", async ({ page }) => {
-  await gameAskingAbout(page, "age");
-  const tops = await Promise.all(
-    (await page.locator(".pick").all()).map(async (one) => (await boxOf(one)).y),
-  );
+function ratingsInOneRow(): void {
+  test("the five ratings sit in one row from a tablet up, and stack on a phone", async ({ page }) => {
+    await gameAskingAbout(page, "age");
+    const tops = await Promise.all(
+      (await page.locator(".pick").all()).map(async (one) => (await boxOf(one)).y),
+    );
 
-  const rows = new Set(tops.map((top) => Math.round(top)));
-  if (layoutOf(page) === "phone" || layoutOf(page) === "phone-sideways") expect(rows.size).toBeGreaterThan(1);
-  else expect(rows.size).toBe(1);
-});
+    const rows = new Set(tops.map((top) => Math.round(top)));
+    if (layoutOf(page) === "phone" || layoutOf(page) === "phone-sideways")
+      expect(rows.size).toBeGreaterThan(1);
+    else expect(rows.size).toBe(1);
+  });
+}
+
+ratingsInOneRow();
+heldSideways("tablet", ratingsInOneRow);
+heldSideways("phone", ratingsInOneRow);
 
 test("everything to press is at least 44 by 44", async ({ page }) => {
   const { slug } = await startDraft(page);
@@ -221,7 +255,7 @@ test("the Needs fixing card is paper with a blue left edge, a plain label, and n
 });
 
 // The frame a video question draws is the biggest thing on the screen, in its real shape. Its size is read per layout
-// from the plan: an upright frame is a height, a wide frame a width.
+// from the design: an upright frame is a height, a wide frame a width.
 const UPRIGHT_HEIGHT: Record<Layout, number> = {
   computer: 540,
   "tablet-sideways": 540,
@@ -230,49 +264,61 @@ const UPRIGHT_HEIGHT: Record<Layout, number> = {
   "phone-sideways": 250,
 };
 
-test("the upright frame is this tall for this window, and nothing scrolls sideways", async ({ page }) => {
-  await startAtVideo(page, "upright");
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  const frame = page.locator('[data-frame="upright"]');
+function uprightFrameHeight(): void {
+  test("the upright frame is this tall for this window, and nothing scrolls sideways", async ({ page }) => {
+    await startAtVideo(page, "upright");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const frame = page.locator('[data-frame="upright"]');
 
-  // A phone held sideways has the frame the window leaves room for, up to 250 (the Owner, 2026-11-15, "5.a": shorter frames
-  // on small phones): the window less 180px, and never under 140. A phone held upright has its 340, or half its window where
-  // the window is under 800 tall (an iPhone 15 in Safari is 393 by 659: 329.5), so the question shows with its frame.
-  const height = page.viewportSize()?.height ?? 0;
-  const layout = layoutOf(page);
-  const planned =
-    layout === "phone-sideways"
-      ? Math.min(250, Math.max(140, height - 180))
-      : layout === "phone" && height < 800
-        ? Math.min(UPRIGHT_HEIGHT.phone, height / 2)
-        : UPRIGHT_HEIGHT[layout];
-  expect((await boxOf(frame)).height).toBeCloseTo(planned, 0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-});
+    // A phone held sideways has the frame the window leaves room for, up to 250 (the Owner, 2026-11-15, "5.a": shorter frames
+    // on small phones): the window less 180px, and never under 140. A phone held upright has its 340, or half its window where
+    // the window is under 800 tall (an iPhone 15 in Safari is 393 by 659: 329.5), so the question shows with its frame.
+    const height = page.viewportSize()?.height ?? 0;
+    const layout = layoutOf(page);
+    const planned =
+      layout === "phone-sideways"
+        ? Math.min(250, Math.max(140, height - 180))
+        : layout === "phone" && height < 800
+          ? Math.min(UPRIGHT_HEIGHT.phone, height / 2)
+          : UPRIGHT_HEIGHT[layout];
+    expect((await boxOf(frame)).height).toBeCloseTo(planned, 0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+}
 
-test("the wide frame is this wide for this window, and wider than tall", async ({ page }) => {
-  await startAtVideo(page, "wide");
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  const layout = layoutOf(page);
-  const frame = await boxOf(page.locator('[data-frame="wide"]'));
-  const window = page.viewportSize()?.width ?? 0;
+uprightFrameHeight();
+heldSideways("tablet", uprightFrameHeight);
+heldSideways("phone", uprightFrameHeight);
 
-  if (layout === "phone") {
-    // The full width of the column: the window less a gutter on each side.
-    expect(frame.width).toBeGreaterThanOrEqual(window - 40);
-    expect(frame.width).toBeLessThanOrEqual(window);
-  } else if (layout === "phone-sideways") {
-    // 240, not 380: beside a wider frame an iPhone SE held sideways left the heading a word to a line (the design pass, M5).
-    expect(frame.width).toBe(240);
-  } else if (layout === "computer" && (page.viewportSize()?.height ?? 0) < 800) {
-    // A short computer window (1280 by 720) keeps the question's words and buttons on its first screen: the frame is as tall as
-    // is left after 480px, in the wide shape (look.css, "A short computer window").
-    expect(frame.width).toBeCloseTo((((page.viewportSize()?.height ?? 0) - 480) * 16) / 9, 0);
-  } else {
-    expect(frame.width).toBe(640);
-  }
-  expect(frame.width).toBeGreaterThan(frame.height);
-});
+function wideFrameWidth(): void {
+  test("the wide frame is this wide for this window, and wider than tall", async ({ page }) => {
+    await startAtVideo(page, "wide");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const layout = layoutOf(page);
+    const frame = await boxOf(page.locator('[data-frame="wide"]'));
+    const window = page.viewportSize()?.width ?? 0;
+
+    if (layout === "phone") {
+      // The full width of the column: the window less a gutter on each side.
+      expect(frame.width).toBeGreaterThanOrEqual(window - 40);
+      expect(frame.width).toBeLessThanOrEqual(window);
+    } else if (layout === "phone-sideways") {
+      // 240, not 380: beside a wider frame an iPhone SE held sideways left the heading a word to a line (the design pass, M5).
+      expect(frame.width).toBe(240);
+    } else if (layout === "computer" && (page.viewportSize()?.height ?? 0) < 800) {
+      // A short computer window (1280 by 720) keeps the question's words and buttons on its first screen: the frame is as tall as
+      // is left after 480px, in the wide shape (look.css, "A short computer window").
+      expect(frame.width).toBeCloseTo((((page.viewportSize()?.height ?? 0) - 480) * 16) / 9, 0);
+    } else {
+      expect(frame.width).toBe(640);
+    }
+    expect(frame.width).toBeGreaterThan(frame.height);
+  });
+}
+
+wideFrameWidth();
+heldSideways("tablet", wideFrameWidth);
+heldSideways("phone", wideFrameWidth);
 
 // ---- Check and send ----------------------------------------------------------------------------------------------
 
@@ -284,51 +330,63 @@ const TILE_HEIGHT: Record<Exclude<Layout, "phone">, number> = {
   "phone-sideways": 180,
 };
 
-test("on Check and send the blue button is in the window without scrolling, and nothing scrolls sideways", async ({
-  page,
-}) => {
-  await startAtCheck(page);
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  const send = page.getByRole("button", { name: "Send for review" });
-  await expect(send).toBeVisible();
+function checkAndSendButtonInView(): void {
+  test("on Check and send the blue button is in the window without scrolling, and nothing scrolls sideways", async ({
+    page,
+  }) => {
+    await startAtCheck(page);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const send = page.getByRole("button", { name: "Send for review" });
+    await expect(send).toBeVisible();
 
-  const viewport = page.viewportSize() ?? { width: 0, height: 0 };
-  const box = await boxOf(send);
-  expect(box.y).toBeGreaterThanOrEqual(0);
-  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
-  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-});
+    const viewport = page.viewportSize() ?? { width: 0, height: 0 };
+    const box = await boxOf(send);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+}
 
-test("the two videos are the same height, this tall for this window", async ({ page }) => {
-  await startAtCheck(page);
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  const upright = await boxOf(page.locator('.tiles [data-shape="upright"]').first());
-  const wide = await boxOf(page.locator('.tiles [data-shape="wide"]').first());
-  const layout = layoutOf(page);
+checkAndSendButtonInView();
+heldSideways("tablet", checkAndSendButtonInView);
+heldSideways("phone", checkAndSendButtonInView);
 
-  if (layout === "phone") {
-    // A phone's two videos are the same row as every other window's, smaller: side by side at one height and inside the
-    // column, with the name and the line under them across the whole width (the design pass, M2).
+function videosSameHeight(): void {
+  test("the two videos are the same height, this tall for this window", async ({ page }) => {
+    await startAtCheck(page);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const upright = await boxOf(page.locator('.tiles [data-shape="upright"]').first());
+    const wide = await boxOf(page.locator('.tiles [data-shape="wide"]').first());
+    const layout = layoutOf(page);
+
+    if (layout === "phone") {
+      // A phone's two videos are the same row as every other window's, smaller: side by side at one height and inside the
+      // column, with the name and the line under them across the whole width (the design pass, M2).
+      expect(Math.abs(upright.height - wide.height)).toBeLessThanOrEqual(1);
+      expect(wide.x).toBeGreaterThan(upright.x + upright.width - 1);
+      expect(wide.x + wide.width).toBeLessThanOrEqual((page.viewportSize()?.width ?? 0) - 20 + 1);
+      expect(upright.width).toBeLessThan(upright.height);
+      expect(wide.width).toBeGreaterThan(wide.height);
+      return;
+    }
     expect(Math.abs(upright.height - wide.height)).toBeLessThanOrEqual(1);
-    expect(wide.x).toBeGreaterThan(upright.x + upright.width - 1);
-    expect(wide.x + wide.width).toBeLessThanOrEqual((page.viewportSize()?.width ?? 0) - 20 + 1);
+    expect(upright.height).toBeLessThanOrEqual(TILE_HEIGHT[layout]);
+    // Where the window has room for both videos at the planned height, that is the height; a narrower one shrinks them
+    // together, never to less than three quarters of it.
+    expect(upright.height).toBeGreaterThanOrEqual(TILE_HEIGHT[layout] * 0.75);
+    // A sideways tablet or phone has a narrow column beside the left half, so it may shrink them (Owner, 2026-11-15, on a
+    // card: "Yes, same as a sideways tablet"); the three-quarters floor above still holds.
+    if (layout !== "tablet-sideways" && layout !== "phone-sideways")
+      expect(Math.round(upright.height)).toBe(TILE_HEIGHT[layout]);
     expect(upright.width).toBeLessThan(upright.height);
     expect(wide.width).toBeGreaterThan(wide.height);
-    return;
-  }
-  expect(Math.abs(upright.height - wide.height)).toBeLessThanOrEqual(1);
-  expect(upright.height).toBeLessThanOrEqual(TILE_HEIGHT[layout]);
-  // Where the window has room for both videos at the planned height, that is the height; a narrower one shrinks them
-  // together, never to less than three quarters of it.
-  expect(upright.height).toBeGreaterThanOrEqual(TILE_HEIGHT[layout] * 0.75);
-  // A sideways tablet or phone has a narrow column beside the left half, so it may shrink them (Owner, 2026-11-15, on a
-  // card: "Yes, same as a sideways tablet"); the three-quarters floor above still holds.
-  if (layout !== "tablet-sideways" && layout !== "phone-sideways")
-    expect(Math.round(upright.height)).toBe(TILE_HEIGHT[layout]);
-  expect(upright.width).toBeLessThan(upright.height);
-  expect(wide.width).toBeGreaterThan(wide.height);
-});
+  });
+}
+
+videosSameHeight();
+heldSideways("tablet", videosSameHeight);
+heldSideways("phone", videosSameHeight);
 
 test("the facts are quiet chips: Dusky Green, white words, 8px corners", async ({ page }) => {
   await startAtCheck(page);
@@ -422,55 +480,70 @@ const PREVIEW_LABEL = "What players will see";
 /** A window that is landscape, at least 500 wide and 450 tall: the only ones with room for the card beside a question. */
 const hasRoomForPreview = (layout: Layout): boolean => layout === "computer" || layout === "tablet-sideways";
 
-test("beside a question on a wide screen, a card shows what players will see, and follows what she types", async ({
-  page,
-}, testInfo) => {
-  const layout = layoutOf(page);
-  test.skip(
-    !hasRoomForPreview(layout),
-    "Only a wide window has the card; the next journey shows the rest have none.",
-  );
-  await signUp(page);
-  await page.goto("/make/new");
-  await pageHasSettled(page);
-  await page.emulateMedia({ reducedMotion: "reduce" });
+function previewFollowsTyping(): void {
+  test("beside a question on a wide screen, a card shows what players will see, and follows what she types", async ({
+    page,
+  }, testInfo) => {
+    const layout = layoutOf(page);
+    test.skip(
+      !hasRoomForPreview(layout),
+      "Only a wide window has the card; the next journey shows the rest have none.",
+    );
+    await signUp(page);
+    await page.goto("/make/new");
+    await pageHasSettled(page);
+    await page.emulateMedia({ reducedMotion: "reduce" });
 
-  const preview = page.locator(".preview");
-  await expect(preview.getByText(PREVIEW_LABEL)).toBeVisible();
-  // 340 wide, or 260 on a tablet held sideways.
-  expect((await boxOf(preview)).width).toBe(layout === "computer" ? 340 : 260);
-  // A part not answered yet is words in grey, not an empty gap.
-  const emptyName = preview.getByText("Its name", { exact: true });
-  await expect(emptyName).toBeVisible();
-  await expect(emptyName).toHaveCSS("color", rgb(token("--ink-soft")));
-  await expect(preview.getByText("Its one line", { exact: true })).toBeVisible();
+    const preview = page.locator(".preview");
+    await expect(preview.getByText(PREVIEW_LABEL)).toBeVisible();
+    // 340 wide, or 260 on a tablet held sideways.
+    expect((await boxOf(preview)).width).toBe(layout === "computer" ? 340 : 260);
+    // A part not answered yet is words in grey, not an empty gap.
+    const emptyName = preview.getByText("Its name", { exact: true });
+    await expect(emptyName).toBeVisible();
+    await expect(emptyName).toHaveCSS("color", rgb(token("--ink-soft")));
+    await expect(preview.getByText("Its one line", { exact: true })).toBeVisible();
 
-  // It follows the typing, before Next is pressed.
-  await page.getByLabel("What's your game called?").fill("Floor Fifty");
-  await expect(preview.getByText("Floor Fifty", { exact: true })).toBeVisible();
-  await expect(emptyName).toBeHidden();
-  await showTheOwner(page, testInfo, "question 1 with the card of what players will see");
-});
+    // It follows the typing, before Next is pressed.
+    await page.getByLabel("What's your game called?").fill("Floor Fifty");
+    await expect(preview.getByText("Floor Fifty", { exact: true })).toBeVisible();
+    await expect(emptyName).toBeHidden();
+    await showTheOwner(page, testInfo, "question 1 with the card of what players will see");
+  });
+}
 
-test("on the age question, choosing 12+ puts a 12+ chip on the card", async ({ page }) => {
-  test.skip(!hasRoomForPreview(layoutOf(page)), "Only a wide window has the card.");
-  await gameAskingAbout(page, "age");
+previewFollowsTyping();
+heldSideways("tablet", previewFollowsTyping);
 
-  const preview = page.locator(".preview");
-  await expect(preview.locator(".chip")).toHaveCount(0);
-  await page.getByRole("radio", { name: /^12\+/ }).check();
-  await expect(preview.locator(".chip")).toHaveText("12+");
-});
+function previewAgeChip(): void {
+  test("on the age question, choosing 12+ puts a 12+ chip on the card", async ({ page }) => {
+    test.skip(!hasRoomForPreview(layoutOf(page)), "Only a wide window has the card.");
+    await gameAskingAbout(page, "age");
 
-test("on a phone, a sideways phone and an upright tablet there is no preview", async ({ page }) => {
-  test.skip(hasRoomForPreview(layoutOf(page)), "A wide window has the card; the other journeys show it.");
-  await signUp(page);
-  await page.goto("/make/new");
-  await pageHasSettled(page);
+    const preview = page.locator(".preview");
+    await expect(preview.locator(".chip")).toHaveCount(0);
+    await page.getByRole("radio", { name: /^12\+/ }).check();
+    await expect(preview.locator(".chip")).toHaveText("12+");
+  });
+}
 
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(page.getByText(PREVIEW_LABEL)).toBeHidden();
-});
+previewAgeChip();
+heldSideways("tablet", previewAgeChip);
+
+function noPreview(): void {
+  test("on a phone, a sideways phone and an upright tablet there is no preview", async ({ page }) => {
+    test.skip(hasRoomForPreview(layoutOf(page)), "A wide window has the card; the other journeys show it.");
+    await signUp(page);
+    await page.goto("/make/new");
+    await pageHasSettled(page);
+
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByText(PREVIEW_LABEL)).toBeHidden();
+  });
+}
+
+noPreview();
+heldSideways("phone", noPreview);
 
 test("the preview's label is not in capitals", async ({ page }) => {
   await signUp(page);

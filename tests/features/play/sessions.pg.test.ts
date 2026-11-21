@@ -155,7 +155,6 @@ describe("startPlay", () => {
     ]);
   });
 
-  // Review Focus 21.
   it("gives the same member the same address for that game all day", async () => {
     const game = await newGame();
     const member = await newViewer();
@@ -307,7 +306,6 @@ async function startedPlay() {
 }
 
 describe("recordBeat", () => {
-  // Review Focus 7.
   it("takes a beat from the session's own token only", async () => {
     const a = await startedPlay();
     const b = await startedPlay();
@@ -330,7 +328,7 @@ describe("recordBeat", () => {
     expect(beat.attentive).toBe(true);
   });
 
-  // Review Focus 24: the first beat is never too soon.
+  // The first beat is never too soon.
   it("takes the first beat at once, and drops one that comes too soon after the last", async () => {
     const play = await startedPlay();
 
@@ -564,5 +562,97 @@ describe("playersThisWeek", () => {
 
   it("is zero for a game nobody played", async () => {
     expect(await service.playersThisWeek((await newGame()).id, NOW)).toBe(0);
+  });
+});
+
+describe("memberBeatsByGame", () => {
+  const NOW = new Date("2026-11-14T12:00:00Z");
+  const SINCE = new Date(NOW.getTime() - 7 * 86_400_000);
+
+  /** A play of a game that started at `startedAt`, with one beat for each entry of `beats`. */
+  async function addPlay(
+    game: LiveGame,
+    options: {
+      basis?: "member" | "free_game" | "staff" | "own_game";
+      startedAt: Date;
+      beats: { at: Date; attentive?: boolean }[];
+    },
+  ): Promise<void> {
+    const pass = await db().playPass.create({
+      data: {
+        id: crypto.randomUUID().replaceAll("-", "").slice(0, 22),
+        gameId: game.id,
+        pullId: game.livePullId,
+        userId: null,
+        madeAt: options.startedAt,
+        expiresAt: new Date(NOW.getTime() + 86_400_000),
+      },
+    });
+    const session = await db().playSession.create({
+      data: {
+        id: crypto.randomUUID(),
+        gameId: game.id,
+        pullId: game.livePullId,
+        passId: pass.id,
+        userId: await createUser(db()),
+        basis: options.basis ?? "member",
+        tokenHash: "0".repeat(64),
+        startedAt: options.startedAt,
+      },
+    });
+    for (const beat of options.beats) {
+      await db().playBeat.create({
+        data: { sessionId: session.id, receivedAt: beat.at, attentive: beat.attentive ?? true },
+      });
+    }
+  }
+
+  const hoursAgo = (hours: number) => new Date(NOW.getTime() - hours * 3_600_000);
+
+  it("adds up each game's attentive beats from members, and leaves out a game with none", async () => {
+    const busy = await newGame();
+    const quiet = await newGame();
+    const nobody = await newGame();
+    await addPlay(busy, { startedAt: hoursAgo(5), beats: [{ at: hoursAgo(5) }, { at: hoursAgo(4) }] });
+    await addPlay(busy, { startedAt: hoursAgo(3), beats: [{ at: hoursAgo(3) }] });
+    await addPlay(quiet, { startedAt: hoursAgo(2), beats: [{ at: hoursAgo(2) }] });
+
+    const beats = await service.memberBeatsByGame(SINCE, NOW);
+
+    expect(beats.get(busy.id)).toBe(3);
+    expect(beats.get(quiet.id)).toBe(1);
+    expect(beats.has(nobody.id)).toBe(false);
+  });
+
+  it("does not count free play, staff, a maker's own play, or a beat of someone who looked away", async () => {
+    const game = await newGame();
+    for (const basis of ["free_game", "staff", "own_game"] as const) {
+      await addPlay(game, { basis, startedAt: hoursAgo(2), beats: [{ at: hoursAgo(2) }] });
+    }
+    await addPlay(game, { startedAt: hoursAgo(2), beats: [{ at: hoursAgo(2), attentive: false }] });
+
+    expect((await service.memberBeatsByGame(SINCE, NOW)).has(game.id)).toBe(false);
+  });
+
+  it("counts a beat received inside the window from a session that started before it, and nothing outside", async () => {
+    const game = await newGame();
+    // Started 7 days and 2 hours back, still beating inside the week: its beat counts.
+    await addPlay(game, { startedAt: hoursAgo(7 * 24 + 2), beats: [{ at: hoursAgo(7 * 24 - 1) }] });
+    // A beat before the window, and one after `now`, do not.
+    await addPlay(game, {
+      startedAt: hoursAgo(7 * 24 + 5),
+      beats: [{ at: hoursAgo(7 * 24 + 4) }, { at: new Date(NOW.getTime() + 60_000) }],
+    });
+
+    expect((await service.memberBeatsByGame(SINCE, NOW)).get(game.id)).toBe(1);
+  });
+
+  it("does not count a beat of a session that started more than a day before the window", async () => {
+    const game = await newGame();
+    // A session lives one day, so one that started over a day before `since` cannot honestly have a beat inside the
+    // window; the read leaves it out, which is what keeps the query to recent sessions.
+    await addPlay(game, { startedAt: hoursAgo(7 * 24 + 30), beats: [{ at: hoursAgo(7 * 24 - 1) }] });
+
+    expect((await service.memberBeatsByGame(SINCE, NOW)).has(game.id)).toBe(false);
   });
 });

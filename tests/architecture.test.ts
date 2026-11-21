@@ -1,4 +1,4 @@
-// The layer rule (CLAUDE.md, "Feature folders, and tests only in tests/"):
+// The layer rule (feature folders, and tests only in tests/):
 // - tests never sit in src/;
 // - a feature imports only from features below it, so features cannot form a cycle;
 // - another feature reaches a feature only through its entry file, src/features/<feature>/<feature>.ts;
@@ -59,8 +59,9 @@ function featureOf(path: string): { feature: string; inside: string } | null {
 
 const sourceFiles = filesUnder(SRC);
 
-/** A file whose code is sent to a visitor's browser: a screen's own script, or a +page.ts that runs there too. */
-const isPageScript = (file: string): boolean => file.endsWith(".svelte") || /\+page\.ts$/.test(file);
+/** A file whose code is sent to a visitor's browser: a screen's own script, a +page.ts that runs there too, or a route matcher. */
+const isPageScript = (file: string): boolean =>
+  file.endsWith(".svelte") || /\+page\.ts$/.test(file) || file.startsWith(join(SRC, "params") + sep);
 
 describe("the layer rule", () => {
   test("no test sits in src/", () => {
@@ -101,8 +102,11 @@ describe("the layer rule", () => {
         if (to.inside.startsWith("library/")) {
           broken.push(`${where}: ${to.feature}'s library/ is read only by ${to.feature}`);
         } else if (isPageScript(file)) {
-          // A page's own script is downloaded by every visitor, so it reaches a feature only through its browser entry.
-          if (to.inside !== `${to.feature}.browser.ts`)
+          // A page's own script is downloaded by every visitor, so it reaches a feature only through its browser entry,
+          // or, from a route, a screen the feature draws (a .svelte file, which imports no server code). A route matcher is built by
+          // Node, which cannot load a .svelte file, so a matcher takes the browser entry alone.
+          const isScreen = to.inside.endsWith(".svelte") && file.startsWith(join(SRC, "routes") + sep);
+          if (to.inside !== `${to.feature}.browser.ts` && !isScreen)
             broken.push(`${where}: a page's script imports ${to.feature} through ${to.feature}.browser.ts`);
         } else if (to.inside.replace(/\.ts$/, "") !== to.feature) {
           broken.push(`${where}: import ${to.feature} through ${to.feature}.ts`);

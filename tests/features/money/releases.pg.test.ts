@@ -97,7 +97,7 @@ describe("releaseDueMonths", () => {
       ]),
     );
     clock.advance(60_000);
-    expect(await releaseDueMonths({ db: db(), clock })).toEqual({ released: 0 }); // Review Focus 9
+    expect(await releaseDueMonths({ db: db(), clock })).toEqual({ released: 0 });
   });
 
   it("releases everything set aside by the twelfth month, to the cent", async () => {

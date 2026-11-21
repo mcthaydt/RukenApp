@@ -916,6 +916,18 @@ form > * + button:not(.quiet) {
   margin: 0;
 }
 
+/* On a phone Remove has less padding, so the box has room for a whole address such as "cdn.example.com" (it was cut at
+   375 wide), and so does the box itself. The button stays 48px tall. */
+@media (max-width: 499px) {
+  .line > button {
+    padding-inline: 0.75rem;
+  }
+
+  .screen .line > .answer {
+    padding-inline: 0.75rem;
+  }
+}
+
 /* A choice is a paper card the whole card is the target of: its real radio button or checkbox lies over it, clear. The
    edge is always there, paper while it is not picked, so picking one moves nothing. */
 .picks {
@@ -1269,6 +1281,9 @@ label.vframe {
   .screen main > form:has(> [data-frame="upright"]) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
+    /* The tall frame spans the rows: its spare height goes to the last row, so the words keep one gap in every state
+       (it had been shared out between the rows the words stand in, and the gap under the heading changed with them). */
+    grid-template-rows: repeat(7, max-content) minmax(0, 1fr);
     column-gap: 3rem;
     align-items: start;
   }
@@ -1287,6 +1302,7 @@ label.vframe {
   .screen main > form:has(> [data-frame]) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: repeat(7, max-content) minmax(0, 1fr);
     column-gap: 1.5rem;
     align-items: start;
   }
@@ -1485,6 +1501,25 @@ a.foot {
   .halves > :first-child {
     position: sticky;
     top: 1.5rem;
+  }
+}
+
+/* The maker agreement on a wide window: the points are on the right and the sheet scrolls inside itself when the window is
+   short, so "I agree" and Back are always in view under it, and agreeing still comes after the reading (spec 4.2, 5a note 2). */
+@media (orientation: landscape) and (min-width: 700px) {
+  .halves > form.agreement {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 8rem);
+  }
+
+  form.agreement > .sheet {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  form.agreement > .acts {
+    flex: none;
   }
 }
 
@@ -1815,9 +1850,9 @@ a.game:active {
   }
 }
 
-/* An iPhone SE's card is 248 wide inside its padding: with a 96px picture a name had 136px and "318346e0" was cut in two.
-   A phone from 360 wide has 40px or more beyond that, so it keeps the 96px picture (an iPhone 15 is 393 wide). */
-@media (max-width: 359px) {
+/* A phone's card is narrow: an iPhone SE's is 248 wide inside its padding, so with a 96px picture a name had 136px and
+   "318346e0" was cut in two. At 412 wide a long word such as "Extraordinary" was cut too, so every phone has the small picture. */
+@media (max-width: 499px) {
   a.game > .tile {
     width: 64px;
     height: 36px;
@@ -2132,6 +2167,31 @@ a.sheet.fix {
 
 .live .countswitch button[data-on] .chip {
   background: var(--pay);
+}
+
+/* The price card's backdrop: the clip of the game the person tapped, behind the card, under one flat layer of the darkest
+   felt at 62% (the play menu's dim). It sits under the page's own content, takes no press, and is not blurred. */
+.behindcard {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.behindcard video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.behindcard::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--felt-deep);
+  opacity: 0.62;
 }
 
 /* The statement piece, only on Live (spec 5c): the game's own video fills the screen behind everything, blurred, dimmed and
@@ -2560,6 +2620,11 @@ main.gamepage {
   grid-column: 1 / -1;
 }
 
+/* The tiles beside the clip. Below a computer they are the grid's own tiles. */
+.gamepage .side {
+  display: contents;
+}
+
 .gamepage .more h2 {
   margin: 0;
   font: var(--text-statement);
@@ -2625,35 +2690,36 @@ main.gamepage {
   }
 }
 
-/* A computer: four columns, the clip over the left two, its tiles in the right two. */
+/* A computer: two halves, the clip on the left and its tiles on the right. The tiles are their own two-column grid, so
+   they line up edge to edge: Play across the top, the facts in pairs, and the clips picker, each row as tall as its
+   words. The one tile left alone in its row takes the whole row. */
 @media (min-width: 62.5rem) {
   .gamepage .bento {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: stretch;
   }
 
-  /* One other game: its panel is half the width, not a whole row with one small card in it. */
-  .gamepage .more[data-solo] {
-    grid-column: span 2;
+  .gamepage .hero {
+    grid-row: auto;
   }
 
-  .gamepage .hero {
-    grid-column: span 2;
-    grid-row: span 3;
+  .gamepage .side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    align-content: start;
   }
 
   .gamepage .playtile {
-    grid-row: span 2;
+    grid-column: span 2;
+  }
+
+  .gamepage .side > :last-child:nth-child(even) {
+    grid-column: span 2;
   }
 
   .gamepage .clipbox {
     min-height: clamp(20rem, 62dvh, 40rem);
     max-height: calc(100dvh - 2rem);
-  }
-
-  .gamepage .watch,
-  .gamepage .madeby {
-    grid-column: span 1;
   }
 }
 
@@ -2780,6 +2846,15 @@ main.playing {
   visibility: hidden;
 }
 
+/* While it is carried, the tab's rounded edge points to the side it will snap to, not the side it came from. */
+.playing .menu[data-dragging][data-lean="right"] > summary {
+  border-radius: var(--radius-button) 0 0 var(--radius-button);
+}
+
+.playing .menu[data-dragging][data-lean="left"] > summary {
+  border-radius: 0 var(--radius-button) var(--radius-button) 0;
+}
+
 .playing .menu[data-dragging] > summary {
   top: var(--drag-top);
   transform: translateX(var(--drag-x));
@@ -2813,8 +2888,24 @@ main.playing {
   animation: menu-in-right 200ms ease-out;
 }
 
+/* The panel comes in from the side the tab rests on. */
 .playing .menusheet {
   justify-content: flex-end;
+}
+
+.playing .menu[data-side="left"] .menusheet {
+  justify-content: flex-start;
+}
+
+.playing .menu[data-side="left"] .menupanel {
+  animation-name: menu-in-left;
+}
+
+@keyframes menu-in-left {
+  from {
+    transform: translateX(-1.5rem);
+    opacity: 0;
+  }
 }
 
 .playing .menupanel h2 {
@@ -2845,7 +2936,8 @@ main.playing {
     align-items: flex-end;
   }
 
-  .playing .menupanel {
+  .playing .menupanel,
+  .playing .menu[data-side] .menupanel {
     width: 100%;
     border-radius: var(--radius-card) var(--radius-card) 0 0;
     animation-name: menu-up;

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { freshNumber, JOURNEY_PASSWORD, nationalOf, signUp } from "./support/account.ts";
+import { freshNumber, JOURNEY_PASSWORD, nationalOf, signUp, SITE_ANSWER_TIMEOUT } from "./support/account.ts";
 import { pauseOf } from "./support/database.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { textTo } from "./support/texts.ts";
@@ -17,7 +17,7 @@ async function tryPassword(page: Page, number: string, password: string): Promis
   await page.goto("/sign-in");
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
 }
 
 test("a person signs in with their number and password", async ({ page }) => {
@@ -26,7 +26,7 @@ test("a person signs in with their number and password", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/");
 });
 
@@ -43,7 +43,7 @@ test("the number can be typed with brackets, dashes, spaces or a leading 1", asy
     await page.goto("/sign-in");
     await page.getByLabel("Phone number").fill(typed);
     await page.getByLabel("Password").fill(password);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
     await expect(page, typed).toHaveURL("/");
     await page.context().clearCookies();
   }
@@ -99,6 +99,6 @@ test("signing in goes on to where the person was going", async ({ page }) => {
   await page.goto("/sign-in?next=%2Fme");
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/me");
 });

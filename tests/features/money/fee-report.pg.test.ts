@@ -63,7 +63,6 @@ describe("asking for the fee report, one stretch after another", () => {
   });
 
   it("waits while Stripe is still working, and asks for nothing else meanwhile", async () => {
-    // Review Focus 16
     expect(await collectFeeReport(deps())).toBe("pending");
     expect(await requestFeeReport(deps())).toBe("waiting");
     expect(await db().stripeFeeRow.count()).toBe(0);
@@ -117,7 +116,6 @@ describe("asking for the fee report, one stretch after another", () => {
   });
 
   it("asks again for a stretch whose run failed", async () => {
-    // Review Focus 16
     const run = await runStartingAt(5_000);
     stripe.setReport(run.stripeReportRunId, { status: "failed", problem: "no data for this stretch" });
     expect(await collectFeeReport(deps())).toBe("failed");

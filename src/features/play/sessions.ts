@@ -207,7 +207,30 @@ export function createPlayService(deps: PlayServiceDeps) {
     return players.length;
   }
 
-  return { startPlay, reviewLook, recordBeat, playSummary, sittingOf, playersThisWeek };
+  /**
+   * For each game, how many attentive beats members' plays sent from `since` to `now`: the measure of what is being
+   * played, for the feed's order. Free play, staff's and a maker's own plays never count. A game with none is not in
+   * the map. The database adds them up in one query. A session takes beats for `PLAY_SESSION_LIFE_MS`, so only sessions
+   * that started that long before `since`, or later, can have a beat in the window; that bound is what limits the read
+   * to recent sessions instead of every session ever played.
+   */
+  async function memberBeatsByGame(since: Date, now: Date): Promise<Map<string, number>> {
+    const earliestStart = new Date(since.getTime() - PLAY_SESSION_LIFE_MS);
+    const rows = await deps.db.$queryRaw<{ gameId: string; beats: bigint }[]>`
+      SELECT s."gameId", COUNT(*) AS beats
+      FROM "PlaySession" s
+      JOIN "PlayBeat" b ON b."sessionId" = s.id
+      WHERE s.basis = 'member'
+        AND s."startedAt" >= ${earliestStart}
+        AND s."startedAt" <= ${now}
+        AND b.attentive
+        AND b."receivedAt" >= ${since}
+        AND b."receivedAt" <= ${now}
+      GROUP BY s."gameId"`;
+    return new Map(rows.map((row) => [row.gameId, Number(row.beats)]));
+  }
+
+  return { startPlay, reviewLook, recordBeat, playSummary, sittingOf, playersThisWeek, memberBeatsByGame };
 }
 
 export type PlayService = ReturnType<typeof createPlayService>;

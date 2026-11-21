@@ -29,7 +29,7 @@ import { startTestDatabase, type TestDatabase } from "../../support/database.ts"
 import { TestClock } from "../../support/test-clock.ts";
 
 // better-auth for real, on the real schema in a throwaway Postgres. These tests prove that our
-// configuration fits the tables and behaves as the plan says. Every test signs in or up through
+// configuration fits the tables and behaves as the design says. Every test signs in or up through
 // better-auth, which hashes passwords with scrypt on purpose (slow by design); the postgres test
 // project allows 30 seconds a test for that.
 

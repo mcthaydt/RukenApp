@@ -51,7 +51,7 @@ It is ready when both `localhost:4173/healthz` (the app) and `localhost:8788/__r
 
 Open it in a real browser: the Chromium and Playwright the container already has (`require('playwright')`, then `chromium.launch()`), at the sizes the change affects (see "Shoot what the change touches" in `visual-check`). Tap, click, type and press keys the way a person would, and find things by their label or role. Take a screenshot at deviceScaleFactor 1 for your own check, and save it in the scratchpad, never in the repo. The main screen, what it shows and how to use it:
 
-The main screen today is the home page at `http://localhost:4173/`: "Ruken", "Games, one swipe at a time. Coming soon." and one big "Sign in" button (there is no feed yet; when it lands, this line is updated in the same pull request). Run the driver script below from the repo root; it runs on any `node` once `NODE_PATH=/opt/node-tools/node_modules` is set, and it opens a phone-sized window (412 by 915, the Pixel 7 size in `playwright.config.ts`); for the tablet and the computer, change `viewport` to 1024 by 768 and 1280 by 720. It looks for headings and labels, and exits 1 at the first thing it cannot find.
+The main screen today is the home page at `http://localhost:4173/`: "Ruken", "Games, one swipe at a time. Coming soon." and one big "Sign in" button (there is no feed yet; when it lands, this line is updated in the same pull request). Run the driver script below from the repo root; it runs on any `node` once `NODE_PATH=/opt/node-tools/node_modules` is set, and it opens a phone-sized window (375 by 667, the iPhone SE size in `playwright.config.ts`); for the tablet and the computer, change `viewport` to 1024 by 768 and 1280 by 720. It looks for headings and labels, and exits 1 at the first thing it cannot find.
 
 ```sh
 : "${SHOTS:?set SHOTS to a scratchpad folder, outside the repo}"
@@ -60,7 +60,7 @@ NODE_PATH=/opt/node-tools/node_modules node - "$SHOTS" <<'JS'
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch();
-  const c = await b.newContext({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 1 });
+  const c = await b.newContext({ viewport: { width: 375, height: 667 }, deviceScaleFactor: 1 });
   const p = await c.newPage();
   await p.goto('http://localhost:4173/');
   await p.getByRole('heading', { name: 'Ruken' }).first().waitFor();

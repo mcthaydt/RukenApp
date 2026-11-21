@@ -240,7 +240,7 @@
       <p>Ruken can't see any of your games on GitHub yet.</p>
     </div>
     {#snippet forward()}
-      {@render connectButton("Choose your games on GitHub")}
+      {@render connectButton("Choose on GitHub")}
     {/snippet}
   </QuestionScreen>
 {:else}

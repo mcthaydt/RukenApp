@@ -98,7 +98,7 @@
             {saving ? busyWords : counter === null ? "Save" : "Next"}
           </button>
         {/if}
-        {#if enterHint && forward === undefined}
+        {#if enterHint && forward === undefined && !saving}
           <span class="key">press Enter <kbd>↵</kbd></span>
         {/if}
       </div>

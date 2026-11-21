@@ -41,6 +41,7 @@
     updateWaiting={data.updateWaiting}
     fixes={data.fixes}
     takeOffAddress={data.takeOffAddress}
+    pageAddress={data.pageAddress}
     backdrop={data.backdrop}
     game={data.game}
     showsPlayerCount={data.showsPlayerCount}
@@ -51,6 +52,7 @@
     name={data.name}
     nextStep={data.nextStep}
     filesLeft={data.filesLeft}
+    connectAddress={data.connectAddress}
     problem={form?.problem}
   />
 {:else}

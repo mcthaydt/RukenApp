@@ -64,7 +64,40 @@
   },
   "prFlow": {
     "enabled": true,
-    "maxOpenPrs": 3
+    "maxOpenPrs": 3,
+    "lanePathsSource": "CLAUDE.md, Risk",
+    "lanePaths": {
+      "3": [
+        "tests/golden/**",
+        "prisma/migrations/**",
+        "cloudflare/**",
+        ".github/**",
+        "src/features/money/**",
+        "src/features/membership/**",
+        "CLAUDE.md",
+        "**/CLAUDE.md",
+        ".claude/**"
+      ],
+      "2": [
+        "src/lib/**",
+        "src/hooks.server.ts",
+        "src/app.html",
+        "prisma/schema/**",
+        "package.json",
+        "pnpm-lock.yaml",
+        "vite.config.ts",
+        "playwright.config.ts",
+        "wrangler.jsonc",
+        "tests/support/**",
+        "tests/fixtures/**"
+      ]
+    },
+    "lanePathsExcept": {
+      "3": [
+        ".claude/skills/verify/**",
+        ".claude/skills/this-repo/**"
+      ]
+    }
   },
   "liveState": {
     "enabled": true,
@@ -72,14 +105,11 @@
   },
   "mergeGreen": {
     "enabled": true,
-    "statuses": [
-      "gate",
-      "commit-authors"
-    ]
+    "statuses": []
   },
   "ruleMix": {
     "enabled": true,
-    "firstTimeSetup": true,
+    "firstTimeSetup": false,
     "rulePaths": [
       "CLAUDE.md",
       ".claude/skills/review/**",

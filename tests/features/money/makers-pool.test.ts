@@ -70,7 +70,6 @@ describe("allocateMakersPool", () => {
   });
 
   it("pays the bonus and carries the rest when nobody played", () => {
-    // Review Focus 8
     const outcome = allocateMakersPool(463n, [{ ...member, plays: [] }]);
     expect(outcome).toMatchObject({
       kind: "shared",

@@ -160,12 +160,10 @@ describe("placeFee", () => {
   });
 
   it("does not take a fee twice", () => {
-    // Review Focus 2
     expect(placeFee({ ...row, balanceTransactionId: "txn_charge" }, known)).toEqual({ kind: "counted" });
   });
 
   it("never guesses at a row it cannot read", () => {
-    // Review Focus 4
     expect(placeFee({ ...row, amountText: "n/a" }, known)).toEqual({ kind: "unreadable" });
     expect(placeFee({ ...row, currency: "eur" }, known)).toEqual({ kind: "unreadable" });
     expect(placeFee({ ...row, incurredAt: "yesterday" }, known)).toEqual({ kind: "unreadable" });
@@ -173,7 +171,6 @@ describe("placeFee", () => {
   });
 
   it("skips a fee Stripe's credits paid, and keeps a returned fee out of the split", () => {
-    // Review Focus 21
     expect(placeFee({ ...row, settledVia: "credit" }, known)).toEqual({ kind: "credit" });
     expect(placeFee({ ...row, amountText: "-0.06993" }, known)).toEqual({ kind: "returned" });
   });

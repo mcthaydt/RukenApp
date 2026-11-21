@@ -148,6 +148,7 @@ export const load: PageServerLoad = async (event) => {
       fixes,
       // Asked on a screen of its own, because it cannot be undone.
       takeOffAddress: `/make/${game.slug}/take-off`,
+      pageAddress: `/g/${game.slug}`,
       backdrop,
       game: liveLaidOut(game),
       showsPlayerCount: game.showsPlayerCount,
@@ -158,6 +159,7 @@ export const load: PageServerLoad = async (event) => {
     return {
       ...base,
       view: "taken_off" as const,
+      connectAddress: `/make/github?choose=1&game=${game.slug}`,
       nextStep: nextStepWords({
         state: game.state,
         stateReason: game.reason,

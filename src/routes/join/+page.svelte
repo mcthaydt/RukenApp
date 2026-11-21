@@ -5,6 +5,8 @@
   to Stripe's page, in place of the price (paywall.ts).
 -->
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { quietVideo } from "../../lib/quiet-video.ts";
   import type { PageProps } from "./$types";
 
   let { data, form }: PageProps = $props();
@@ -16,11 +18,43 @@
   // It is a property of one object, so the two bindings below are all that read it: the form posts the buttons' own state.
   // svelte-ignore state_referenced_locally
   let chosen = $state({ plan: form?.plan ?? data.plan });
+
+  // The clip behind the card is the shape of the window: upright until the page is alive and says otherwise.
+  let wide = $state(false);
+  onMount(() => {
+    const landscape = matchMedia("(orientation: landscape)");
+    wide = landscape.matches;
+    const follow = () => {
+      wide = landscape.matches;
+    };
+    landscape.addEventListener("change", follow);
+    return () => {
+      landscape.removeEventListener("change", follow);
+    };
+  });
 </script>
 
 <svelte:head>
   <title>Join Ruken to play · Ruken</title>
 </svelte:head>
+
+{#if data.backdrop !== null}
+  <!-- The game they tapped, dimmed, behind the card. It takes no press and no focus, and a screen reader does not meet it. -->
+  <div class="behindcard" aria-hidden="true">
+    <!-- Remounted when the shape changes, so the new clip is started by quietVideo too. -->
+    {#key wide}
+      <video
+        src={wide ? data.backdrop.wide : data.backdrop.upright}
+        preload="metadata"
+        tabindex="-1"
+        muted
+        loop
+        playsinline
+        use:quietVideo
+      ></video>
+    {/key}
+  </div>
+{/if}
 
 <main class="card">
   {#if data.card.kind === "member"}

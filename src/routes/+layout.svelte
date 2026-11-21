@@ -1,7 +1,7 @@
 <!--
   The one place the look is loaded (src/lib/look.css). Every page renders inside it, so a screen is plain
   elements and the few classes the look names. The layout adds the Ruken wordmark, a way home above the card (the
-  home page is the one screen without it, because its own heading is the name; the maker's area has its own bar),
+  home page is the one screen without it, because its own heading is the name; the maker's area has its own bar; a maker's page is the maker's own screen, so it has none),
   and, once, the line that says
   signing in undid a waiting deletion.
 -->
@@ -13,7 +13,7 @@
   let { data, children }: LayoutProps = $props();
 </script>
 
-{#if page.url.pathname !== "/" && !page.url.pathname.startsWith("/make") && !page.url.pathname.startsWith("/g/")}
+{#if page.url.pathname !== "/" && !page.url.pathname.startsWith("/make") && !page.url.pathname.startsWith("/g/") && !(page.route.id === "/[handle=handle]" && page.status < 400)}
   <header><a class="wordmark" href="/">Ruken</a></header>
 {/if}
 

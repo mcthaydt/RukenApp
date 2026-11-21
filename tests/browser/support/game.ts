@@ -68,6 +68,10 @@ export async function addDraft(
   await pageHasSettled(page);
   const name = await answerName(page, gameName);
   await expect(page).toHaveURL(/\/make\/[a-z0-9-]+\/line$/);
+  // The address changes to /line a moment before the screen does (see answerLine), so the journey waits for question
+  // 2 itself. Without this a journey could measure the name question's boxes while they were being taken away (run
+  // 44829777713: the name question's bar was gone between finding it and measuring it).
+  await expect(page.getByLabel(/about, in one line\?$/)).toBeVisible();
   await pageHasSettled(page);
   return { slug: slugOfPage(page), name };
 }

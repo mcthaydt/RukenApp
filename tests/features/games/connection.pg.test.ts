@@ -203,7 +203,7 @@ describe("repositoriesFor", () => {
   });
 });
 
-// Review Focus 23: an installation can read private repositories, some of which the maker cannot open (in an
+// An installation can read private repositories, some of which the maker cannot open (in an
 // organisation). So a game is made or pulled only from a repository GitHub listed for that maker, and only while
 // GitHub still says the same installation holds it.
 describe("a maker can only use what GitHub listed for them", () => {

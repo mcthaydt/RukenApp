@@ -176,6 +176,49 @@ test("the Menu tab moves, and stays where it was left", async ({ page }) => {
   await expect.poll(async () => (await tab.boundingBox())?.y ?? before).toBeLessThan(before);
 });
 
+test("the Menu tab turns to the side it will snap to while it is carried, and the menu opens on the side the tab rests on", async ({
+  page,
+}) => {
+  await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
+  await loaded(page);
+  const tab = tabOf(page);
+  const view = page.viewportSize() ?? { width: 0, height: 0 };
+  const menu = page.locator("details.menu");
+  const rounded = () => tab.evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
+  const from = await tab.boundingBox();
+  if (from === null) throw new Error("the tab has no box");
+  // At rest on the left its square edge is on the left and its rounded edge faces the game.
+  expect(await rounded()).toBe("0px");
+  await page.mouse.move(from.x + 20, from.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(view.width * 0.3, view.height * 0.5, { steps: 6 });
+  await expect(menu).toHaveAttribute("data-lean", "left");
+  // Past the middle, still carried, it already faces the other way.
+  await page.mouse.move(view.width * 0.8, view.height * 0.5, { steps: 6 });
+  await expect(menu).toHaveAttribute("data-dragging", "");
+  await expect(menu).toHaveAttribute("data-lean", "right");
+  expect(await rounded()).not.toBe("0px");
+  await page.mouse.up();
+  await expect(menu).toHaveAttribute("data-side", "right");
+  await expect(menu).not.toHaveAttribute("data-lean", /.*/);
+  // On a phone held upright the menu is a sheet from the bottom; everywhere else it comes in from the tab's side.
+  const sheet = view.width < 768 && view.height > view.width;
+  if (sheet) return;
+  const panel = page.locator(".menupanel");
+  await tab.click();
+  await expect(panel).toBeVisible();
+  await expect
+    .poll(async () => Math.round((await panel.boundingBox())?.x ?? 0))
+    .toBeGreaterThan(view.width / 2 - 1);
+  await page.keyboard.press("Escape");
+  await tab.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(menu).toHaveAttribute("data-side", "left");
+  await tab.click();
+  await expect(panel).toBeVisible();
+  await expect.poll(async () => Math.round((await panel.boundingBox())?.x ?? 99)).toBeLessThan(2);
+});
+
 test("the Menu tab never leaves the screen: dragged past an edge, kept from a taller window, or turned sideways", async ({
   page,
 }) => {

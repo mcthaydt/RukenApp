@@ -4,8 +4,8 @@
   version", which copies the newest files and sends them for review in the one press, or, once staff sent back a name,
   a line and it is mended, "Send it again", which sends the copy Ruken already holds, no copy from
   GitHub), or, while something that was sent back is to be fixed, the fix, with the send a quiet outline under it. While
-  one of those is still to mend there is no send at all. There is no "See it on Ruken" until a game has a page of its
-  own for players. At the foot, under the way back, the quietest link takes the game off Ruken (the agreement's first point). Beside them the game
+  one of those is still to mend there is no send at all. "See it on Ruken" opens the game's own page for players, a quiet link
+  above the way back (the blue button stays the send). At the foot, under the way back, the quietest link takes the game off Ruken (the agreement's first point). Beside them the game
   laid out sharp, with a Change on its name and its line only: its rating, files and videos go through
   staff again. Only the video of this window's shape is laid out, with the name, the line and the chip (who it is
   for). An update that was sent back is a card.
@@ -24,6 +24,7 @@
     updateWaiting,
     fixes,
     takeOffAddress,
+    pageAddress,
     backdrop,
     game,
     showsPlayerCount,
@@ -37,6 +38,8 @@
     fixes: FixCardData[];
     /** Where a maker is asked whether to take the game off Ruken. */
     takeOffAddress: string;
+    /** The game's own page, where players find it. */
+    pageAddress: string;
     backdrop: { upright: string | null; wide: string | null };
     game: LaidOutGame;
     /** Whether the game's page says how many people played it this week. */
@@ -121,6 +124,7 @@
       <!-- A send waiting on the maker is what to do next, so it is the blue button, as on Sent back. -->
       {@render sendForm(true)}
     {/if}
+    <a class="foot" href={pageAddress}>See it on Ruken</a>
     <a class="foot" href="/make">Back to your games</a>
     <!-- Last, smaller and dimmer than Back, and clear of the blue button's note above, so it is never read as part of it. -->
     <a class="foot" href={takeOffAddress} data-off>Take it off Ruken</a>

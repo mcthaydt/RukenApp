@@ -131,7 +131,7 @@ test("the maker is shown when they have a page, with their other games", async (
   request,
 }, testInfo) => {
   const first = await addGame(browser, request);
-  await givePage(first.maker, { name: "Snek", oneLine: "I make small games." });
+  const { handle } = await givePage(first.maker, { name: "Snek", oneLine: "I make small games." });
   // A second live game by the same maker, from rows.
   const second = await gameWhere(page, { state: "live" });
   await changeGame(second.slug, {});
@@ -139,6 +139,7 @@ test("the maker is shown when they have a page, with their other games", async (
 
   await page.goto(`/g/${first.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Made by")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Snek" })).toHaveAttribute("href", `/${handle}`);
   await expect(page.getByText("I make small games.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "More from Snek" })).toBeVisible();
   await expect(page.locator(".more a")).toHaveCount(1);

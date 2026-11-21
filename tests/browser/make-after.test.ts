@@ -176,7 +176,7 @@ test("a rude name is fixed on the name question, and the address follows the new
   await page.getByLabel("What's your game called?").fill(renamed);
   await nextButton(page).click();
 
-  // Not live yet, so the address follows the name (Review Focus 3), and the screen follows the address.
+  // Not live yet, so the address follows the name, and the screen follows the address.
   await expect(page).toHaveURL(/\/make\/floor-fifty-[a-z0-9]+$/);
   await expect(page.getByText("Fixed. Send it again when you're ready.")).toBeVisible();
   await expect(page.locator("p.count")).toHaveText(renamed);
@@ -223,7 +223,7 @@ test("a live game: Send a new version is the blue button, and a new version goes
 });
 
 // Spec 5c: beside the headline sit the game's one video (the shape of this window), its name and line, and where it plays;
-// the plan adds the rating. The files and the websites are not drawn on Live, and neither is the other video.
+// the rating is added. The files and the websites are not drawn on Live, and neither is the other video.
 test("Live shows the one video for this window, the name, the line and two chips", async ({ page }) => {
   const { slug, name } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}`);
@@ -338,7 +338,7 @@ test("a live game's update that was sent back and mended is sent again from the 
   await expect(page.locator(".fix")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Send a new version" })).toHaveCount(0);
   const again = page.getByRole("button", { name: "Send it again" });
-  // It is the one forward action there is (Live has no "See it on Ruken" until a game has a page), so it is the blue button.
+  // It is the one forward action there is (See it on Ruken is only a quiet link), so it is the blue button.
   await expect(again).toHaveCSS("background-color", rgb(token("--pay")));
   await expect(
     page.getByText("Sends your update for review again. Players can still play it while you wait."),
@@ -470,7 +470,7 @@ test("a thrown-away game's name can be used again, with the plain address", asyn
   await pageHasSettled(page);
   await answerName(page, first.name);
 
-  // Review Focus 8: the address the name made before is free again, not a "-2".
+  // The address the name made before is free again, not a "-2".
   await expect(page).toHaveURL(`/make/${first.slug}/line`);
 });
 

@@ -203,7 +203,7 @@ describe("startCheckout", { timeout: 30_000 }, () => {
   });
 
   it("two starts at the same moment leave one open checkout", async () => {
-    // Review Focus 2: a double click, or two tabs, must not leave two checkouts that could both be paid.
+    // A double click, or two tabs, must not leave two checkouts that could both be paid.
     const { stripe, service } = setup();
     const userId = await createUser(db());
     stripe.checkoutDelayMs = 300;
@@ -532,7 +532,7 @@ describe("recordInvoicePaid", { timeout: 30_000 }, () => {
   });
 
   it("invoice.paid arriving before the checkout completes still makes one membership and one payment", async () => {
-    // Review Focus 1: Stripe sends events in any order, and more than once.
+    // Stripe sends events in any order, and more than once.
     const { stripe, service } = setup();
     const userId = await createUser(db());
     await start(service, userId);
@@ -558,7 +558,7 @@ describe("recordInvoicePaid", { timeout: 30_000 }, () => {
 
 describe("endNow", { timeout: 30_000 }, () => {
   it("stops the subscription in Stripe and ends the membership, keeping the payments", async () => {
-    // Review Focus 6: a person who deletes their account is never charged while it waits.
+    // A person who deletes their account is never charged while it waits.
     const { stripe, service } = setup();
     const { userId, subscriptionId } = await member(service, stripe);
     const invoice = paidInvoice({ subscriptionId, userId });
@@ -625,7 +625,7 @@ describe("who brought a member", { timeout: 30_000 }, () => {
   });
 
   it("records no maker when the arrival names an account that does not exist", async () => {
-    // Review Focus 9: the person still pays and becomes a member.
+    // The person still pays and becomes a member.
     const { stripe, service } = setup();
     const userId = await createUser(db());
     await start(service, userId, { makerUserId: "nobody", path: "/g/a-game", atMs: ARRIVED_AT_MS });
@@ -637,7 +637,7 @@ describe("who brought a member", { timeout: 30_000 }, () => {
   });
 
   it("records the last arrival when a person starts paying twice", async () => {
-    // Review Focus 10: arrive through one maker, start paying, come back, arrive through another, pay.
+    // Arrive through one maker, start paying, come back, arrive through another, pay.
     const { stripe, service } = setup();
     const userId = await createUser(db());
     const maker = await createUser(db());

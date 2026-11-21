@@ -7,7 +7,8 @@ import {
   PREMIUM_PRICES_CENTS,
   type PremiumPlan,
 } from "../../features/membership/membership.ts";
-import { backFromPaywall } from "../../features/play/play.ts";
+import { gamesServices } from "../../features/games/games.ts";
+import { backFromPaywall, gameSlugOfNext } from "../../features/play/play.ts";
 import { safeNextPath } from "../../lib/safe-next.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -28,8 +29,19 @@ function planOf(value: unknown): PremiumPlan {
 export const load: PageServerLoad = async ({ locals, url }) => {
   const caller = locals.caller;
   const next = safeNextPath(url.searchParams.get("next"));
+  // When the person came from a live game, that game's clip plays behind the card. With no game in `next` the games
+  // settings are never read, so the card still opens on a site that has none.
+  const slug = gameSlugOfNext(next);
+  let backdrop: { upright: string; wide: string } | null = null;
+  if (slug !== null) {
+    const games = gamesServices();
+    const game = await games.service.liveGameBySlug(slug);
+    if (game !== null)
+      backdrop = { upright: games.media(game.clips.upright), wide: games.media(game.clips.wide) };
+  }
   return {
     next,
+    backdrop,
     // "Not now" goes back to the game the person came from, or to the front page.
     notNow: backFromPaywall(next),
     plan: planOf(url.searchParams.get("plan")),

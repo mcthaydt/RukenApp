@@ -60,6 +60,9 @@ export async function pageHasSettled(page: Page): Promise<void> {
   await expect(page.locator("#svelte-announcer")).toBeAttached();
 }
 
+/** How long a press that sends a form waits for the site's answer: the same as the config's wait for an answer. */
+export const SITE_ANSWER_TIMEOUT = 15_000;
+
 /**
  * Presses "Text it again" on a code screen. The button shows 30 seconds after the screen does, so the journey installs
  * the page's clock before it opens the screen (`page.clock.install()`) and moves it on here instead of waiting.
@@ -129,7 +132,7 @@ export async function signInAs(
   await page.goto("/sign-in");
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/");
   await pageHasSettled(page);
 }

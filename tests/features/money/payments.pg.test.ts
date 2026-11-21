@@ -51,7 +51,7 @@ describe("postUnpostedPayments", () => {
       "pool:premium:2026-11": -469n,
       "platform:revenue:premium": -530n,
     });
-    expect(await postUnpostedPayments(deps)).toEqual({ posted: 0 }); // Review Focus 9
+    expect(await postUnpostedPayments(deps)).toEqual({ posted: 0 });
     expect(await postingOf("in_1")).toMatchObject({
       firstPeriod: "2026-11",
       stripeChargeId: "ch_1",
@@ -86,7 +86,7 @@ describe("postUnpostedPayments", () => {
   });
 
   it("posts a payment found after its month closed into the open month", async () => {
-    // Review Focus 3. Paid in June, found on 9 July, when June has closed.
+    // Paid in June, found on 9 July, when June has closed.
     const clock = new TestClock("2027-07-09T12:00:00Z");
     await closePeriod({ db: db(), clock }, parsePeriod("2027-06"));
     await addMembershipPayment(db(), stripe, {
@@ -155,7 +155,7 @@ describe("postUnpostedPayments", () => {
   });
 
   it("makes the makers' half nothing, never less, when the fees are more than what is left", async () => {
-    // Review Focus 1. 500 paid, 82 tax, 450 fee: nothing is left, so the pool gets nothing and Ruken carries the loss.
+    // 500 paid, 82 tax, 450 fee: nothing is left, so the pool gets nothing and Ruken carries the loss.
     const clock = new TestClock("2028-01-03T12:00:00Z");
     await addMembershipPayment(db(), stripe, {
       invoice: "in_7",

@@ -471,7 +471,7 @@ describe("sendBack", () => {
     ).rejects.toMatchObject({ code: "NOT_READY", message: "Nothing is waiting for review." });
   });
 
-  // Review Focus 4: sent back for two things, one fixed, and the send is still refused.
+  // Sent back for two things, one fixed, and the send is still refused.
   it("is not sendable again until every part is fixed, and fixing a video takes it off the list", async () => {
     const { game, staff } = await waitingGame();
     await service.sendBack(game.id, staff, [

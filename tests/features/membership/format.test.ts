@@ -25,7 +25,7 @@ describe("longDate", () => {
   });
 });
 
-// What /me says under the email, one case for each row of the table in the plan (Task 30). The two past_due rows are
+// What /me says under the email, one case for each state a membership can be in. The two past_due rows are
 // here because no journey can reach them: the stand-in Stripe has no failing card.
 describe("membershipLine", () => {
   const NONE: MembershipView = {
