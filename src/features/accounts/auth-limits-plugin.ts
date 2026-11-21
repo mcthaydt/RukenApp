@@ -53,6 +53,39 @@ const LIMITS: Readonly<Record<string, readonly AddressLimit[]>> = {
   "/request-password-reset": RESET_LIMITS,
 };
 
+/**
+ * The limit on the two account-page changes (email, password). Each one starts by checking the current password, so it
+ * gets the same 5 a minute per client address and email as password sign-in. The pause after ten wrong passwords
+ * (sign-in-guards.ts) counts these guesses too.
+ */
+export const ACCOUNT_CHANGE_PATH = "/account/change";
+export const ACCOUNT_CHANGE_LIMITS: readonly AddressLimit[] = [
+  { rule: { max: 5, windowMs: ONE_MINUTE_MS }, perClientAddress: true },
+];
+
+/**
+ * Counts one request against each limit, in order. Answers false at the first limit that is used up. The key holds the
+ * keyed hash of the address, never the address.
+ */
+export async function hitAddressLimits(
+  limiter: RateLimiter,
+  secret: string,
+  path: string,
+  limits: readonly AddressLimit[],
+  email: string,
+  clientAddress: string,
+): Promise<boolean> {
+  const emailKey = hashSignInEmail(email, secret);
+  for (const limit of limits) {
+    const key = limit.perClientAddress
+      ? `api:auth:${path}:${clientAddress}:${emailKey}`
+      : `api:auth:${path}:${emailKey}`;
+    const result = await limiter.hit(key, limit.rule);
+    if (!result.allowed) return false;
+  }
+  return true;
+}
+
 export interface AuthLimitsOptions {
   limiter: RateLimiter;
   /** BETTER_AUTH_SECRET, the key for the address hash. */
@@ -75,19 +108,12 @@ export function authLimitsPlugin(options: AuthLimitsOptions): BetterAuthPlugin {
             // A body without an address is left for the endpoint's own validation to refuse.
             if (limits === undefined || typeof email !== "string" || email.trim() === "") return;
 
-            const emailKey = hashSignInEmail(email, secret);
             const clientAddress = ctx.headers?.get(clientIpHeader) ?? "unknown";
-            for (const limit of limits) {
-              const key = limit.perClientAddress
-                ? `api:auth:${ctx.path}:${clientAddress}:${emailKey}`
-                : `api:auth:${ctx.path}:${emailKey}`;
-              const result = await limiter.hit(key, limit.rule);
-              if (!result.allowed) {
-                throw new APIError("TOO_MANY_REQUESTS", {
-                  message: "Too many tries. Wait a little, then try again.",
-                  code: RATE_LIMITED,
-                });
-              }
+            if (!(await hitAddressLimits(limiter, secret, ctx.path, limits, email, clientAddress))) {
+              throw new APIError("TOO_MANY_REQUESTS", {
+                message: "Too many tries. Wait a little, then try again.",
+                code: RATE_LIMITED,
+              });
             }
           }),
         },

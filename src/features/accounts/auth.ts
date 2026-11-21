@@ -9,7 +9,12 @@ import { createRateLimiter } from "../../lib/server/rate-limit.ts";
 import { authLimitsPlugin } from "./auth-limits-plugin.ts";
 import { WELCOME_BACK_COOKIE, WELCOME_BACK_MAX_AGE_SECONDS, type CookiePolicy } from "./cookies.ts";
 import { restoreOnSignIn } from "./deletion.ts";
-import { passwordChangedMessage, passwordResetMessage, verificationMessage } from "./mails.ts";
+import {
+  emailChangeMessage,
+  passwordChangedMessage,
+  passwordResetMessage,
+  verificationMessage,
+} from "./mails.ts";
 import { signInPausePlugin } from "./sign-in-pause-plugin.ts";
 import { clearSignInFailures } from "./sign-in-guards.ts";
 
@@ -26,6 +31,35 @@ export const CLIENT_IP_HEADER = "x-ruken-client-ip";
  * tell a sign-up that came through the form (with its age step) from one that did not.
  */
 export const PUBLIC_ROUTE_HEADER = "x-ruken-public-route";
+
+/** Reached only by our own pages, never through the public /api/auth route. */
+const PAGE_ONLY_PATHS: ReadonlySet<string> = new Set(["/sign-up/email", "/change-email", "/change-password"]);
+
+/** The claims of a signed token, read without checking the signature (better-auth checks it when the link is opened). */
+function tokenClaims(token: string): { requestType?: unknown; email?: unknown; iat?: unknown } | null {
+  try {
+    const payload = token.split(".")[1];
+    if (payload === undefined) return null;
+    const claims: unknown = JSON.parse(atob(payload.replaceAll("-", "+").replaceAll("_", "/")));
+    return typeof claims === "object" && claims !== null ? claims : null;
+  } catch {
+    return null;
+  }
+}
+
+const CHANGE_LINK_PREFIX = "change-email:";
+
+/** The Verification row that ties a change link to its account: a hash of the token, never the token. */
+async function changeLinkIdentifier(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${CHANGE_LINK_PREFIX}${hex}`;
+}
+
+/** Whether a verification token is the one made for a change of email. The words of the mail depend on it. */
+function isEmailChangeToken(token: string): boolean {
+  return tokenClaims(token)?.requestType === "change-email-verification";
+}
 
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 const ONE_DAY_SECONDS = 60 * 60 * 24;
@@ -76,6 +110,34 @@ export function createAuth(options: AuthOptions) {
         log(`${what} not sent: ${mailFailureCode(error)}`);
       }
     });
+  }
+
+  /**
+   * A change-email link names the OLD address, not the account that asked. So when someone else holds that address by the
+   * time the link is opened (it was freed and taken again, even by an older account), the link would change THEIR
+   * address and sign the opener in to their account. Each link is therefore tied to the account that asked, in
+   * better-auth's own Verification table (a hash of the token, so a copy of the table holds no usable link), and is
+   * refused unless the account holding the old address is that one. It is refused the way better-auth refuses any bad
+   * link: a redirect to /me with INVALID_TOKEN. The place is fixed here, never the query's callbackURL, because this
+   * runs before better-auth checks that one.
+   */
+  async function refuseUnlessLinkIsTheirs(query: unknown, redirect: (url: string) => Error): Promise<void> {
+    const token = (query as { token?: unknown } | undefined)?.token;
+    if (typeof token !== "string" || !isEmailChangeToken(token)) return;
+    const claims = tokenClaims(token);
+    if (typeof claims?.email !== "string") return;
+    const holder = await prisma.user.findUnique({ where: { email: claims.email }, select: { id: true } });
+    // No holder: better-auth answers its own "user not found". With one, the row must say they asked.
+    if (holder === null) return;
+    const asked = await prisma.verification.findFirst({
+      where: {
+        identifier: await changeLinkIdentifier(token),
+        value: holder.id,
+        expiresAt: { gt: new Date(clock.epochMs()) },
+      },
+      select: { id: true },
+    });
+    if (asked === null) throw redirect("/me?error=INVALID_TOKEN");
   }
 
   return betterAuth({
@@ -133,10 +195,38 @@ export function createAuth(options: AuthOptions) {
       sendOnSignUp: true,
       autoSignInAfterVerification: true,
       expiresIn: ONE_DAY_SECONDS,
+      // A finished change ends every other change link the account has open (an older one would move it to an
+      // address it has already left).
+      afterEmailVerification: async (user, request) => {
+        const token = request === undefined ? null : new URL(request.url).searchParams.get("token");
+        if (token === null || !isEmailChangeToken(token)) return;
+        await prisma.verification.deleteMany({
+          where: { identifier: { startsWith: CHANGE_LINK_PREFIX }, value: user.id },
+        });
+      },
       // Waited for, unlike the mails above: sign-up already says the account is new. A failure is
       // logged here by its code, because better-auth would log the raw error, which can hold the
       // address; better-auth ignores the failure either way.
-      sendVerificationEmail: async ({ user, url }) => {
+      sendVerificationEmail: async ({ user, url, token }) => {
+        // A change of email also goes through here, with the NEW address as `user.email`. Its mail says what it is,
+        // and is sent after the answer like the other mails to a possibly unknown address: an address another
+        // account already has gets no mail at all (better-auth sends none), so waiting for the mail server would
+        // show the person which addresses are taken.
+        if (isEmailChangeToken(token)) {
+          mailLater("email change mail", async () => {
+            // Stored before the mail goes, so a link cannot be opened before it is tied to its account. Both happen after
+            // the answer: a taken address gets neither, and the answer's timing must not show which is which.
+            await prisma.verification.create({
+              data: {
+                identifier: await changeLinkIdentifier(token),
+                value: user.id,
+                expiresAt: new Date(clock.epochMs() + ONE_DAY_SECONDS * 1000),
+              },
+            });
+            await mailer.send(emailChangeMessage(user.email, url));
+          });
+          return;
+        }
         try {
           await mailer.send(verificationMessage(user.email, url));
         } catch (error) {
@@ -146,6 +236,10 @@ export function createAuth(options: AuthOptions) {
     },
 
     user: {
+      // Changing the email asks the NEW address to confirm, and nobody else: better-auth's other two ways (asking
+      // the old address first, or changing an unconfirmed address at once) stay off. They are off by leaving
+      // sendChangeEmailConfirmation and updateEmailWithoutVerification out.
+      changeEmail: { enabled: true },
       additionalFields: {
         // Read so the request hook can treat an account that is waiting to be deleted, or gone, as
         // signed out (sessionInfo). Never set by a request. Without this field every account would
@@ -178,6 +272,10 @@ export function createAuth(options: AuthOptions) {
         "/send-verification-email": { window: 15 * 60, max: 3 },
         // Keep it to what a person retyping a password needs.
         "/reset-password": { window: 15 * 60, max: 10 },
+        // The two account-page changes also check the current password first (credentials.ts, with the per-address
+        // limits); these are the per-client backstop under them.
+        "/change-email": { window: 15 * 60, max: 10 },
+        "/change-password": { window: 15 * 60, max: 10 },
       },
     },
 
@@ -213,10 +311,14 @@ export function createAuth(options: AuthOptions) {
       // Accounts are made only by the sign-up page, which asks the age first. Its action calls
       // better-auth on the server, so an email sign-up reached through the public route is refused
       // as if it did not exist.
-      before: createAuthMiddleware((ctx) => {
-        if (ctx.headers?.get(PUBLIC_ROUTE_HEADER) == null) return Promise.resolve();
-        if (ctx.path === "/sign-up/email") throw new APIError("NOT_FOUND");
-        return Promise.resolve();
+      // The same goes for the two changes: they are made on /me/email and /me/password, which check the current
+      // password first (credentials.ts). better-auth's own endpoints do not ask for it when the email changes, so a
+      // stolen session cookie must not reach them through the public route.
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === "/verify-email")
+          await refuseUnlessLinkIsTheirs(ctx.query, (url) => ctx.redirect(url));
+        if (ctx.headers?.get(PUBLIC_ROUTE_HEADER) == null) return;
+        if (PAGE_ONLY_PATHS.has(ctx.path)) throw new APIError("NOT_FOUND");
       }),
     },
 
