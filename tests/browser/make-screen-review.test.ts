@@ -213,6 +213,12 @@ test("on a sideways phone the answer box is in view above the bar, under a two-l
 // ---- The files question -------------------------------------------------------------------------------------------
 
 test("a repository's name is set in the text face and stays on one line", async ({ page }) => {
+  // An iPhone SE's window (320 wide) is too narrow for a whole name: there it may go to a second line after its slash,
+  // which make-design-pass.test.ts checks ("goes to a second line only after its slash").
+  test.skip(
+    (page.viewportSize()?.width ?? 0) <= 320,
+    "an iPhone SE breaks the name after its slash, checked elsewhere",
+  );
   const { slug } = await startAtFiles(page);
   await connectGitHubFromFiles(page, slug);
 
