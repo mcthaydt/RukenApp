@@ -6,6 +6,7 @@ import {
 } from "../../../src/features/accounts/deletion.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
 import { createWishlist } from "../../../src/features/launch/wishlist.ts";
+import type { FileStore } from "../../../src/lib/files/store.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
@@ -131,6 +132,24 @@ async function seedGame(
   await files.put(clipKey, new Uint8Array([1, 2, 3]));
   await files.put(`files/${publicId}/${pull.id}/index.html`, new Uint8Array([1, 2, 3]));
   return { id: game.id, publicId, slug: game.slug };
+}
+
+/** The test's bucket, except that deleting the folder `prefix` fails, as a bucket that is down does. */
+function brokenFor(prefix: string): FileStore {
+  return {
+    head: (key) => files.head(key),
+    get: (key, range) => files.get(key, range),
+    put: (key, bytes) => files.put(key, bytes),
+    delete: (key) => files.delete(key),
+    deleteAll: (folder) =>
+      folder === prefix ? Promise.reject(new Error("the bucket is down")) : files.deleteAll(folder),
+    hasAny: (folder) => files.hasAny(folder),
+  };
+}
+
+/** A person's account status. */
+async function statusOf(userId: string): Promise<string> {
+  return (await db().user.findUniqueOrThrow({ where: { id: userId }, select: { status: true } })).status;
 }
 
 /** Where a game stands, and the address and pulls that go with it. */
@@ -420,6 +439,35 @@ describe("purgeDueAccounts", () => {
     expect(await files.hasAny(`files/${made.others.publicId}/`)).toBe(true);
     expect(await files.hasAny(`clips/${made.others.publicId}/`)).toBe(true);
     expect(await db().gameClip.count({ where: { gameId: made.others.id } })).toBe(1);
+  });
+
+  // One account the bucket fails on must not stop everyone else's deletion, today or on any later day.
+  it("finishes the other accounts when one fails, reports the failure, and finishes that one on the next run", async () => {
+    const failing = await seedPerson();
+    const fine = await seedPerson();
+    const failingGame = await seedGame(failing.id, "live");
+    const fineGame = await seedGame(fine.id, "live");
+    const clock = await askToBeDeleted(failing.id);
+    await requestDeletion({ prisma: db(), clock }, fine.id);
+    clock.advance(15 * DAY_MS);
+
+    const broken = brokenFor(`files/${failingGame.publicId}/`);
+    await expect(purgeDueAccounts({ prisma: db(), clock, files: broken })).rejects.toThrow(
+      "1 account(s) could not be deleted; 1 were.",
+    );
+    expect(await statusOf(fine.id)).toBe("deleted");
+    expect(await stateOf(fineGame.id)).toMatchObject({ state: "taken_off" });
+    expect(await statusOf(failing.id)).toBe("pending_deletion");
+    expect(await stateOf(failingGame.id)).toMatchObject({ state: "live" });
+    expect(
+      await db().deletionRequest.count({ where: { userId: failing.id, purgedAt: null, cancelledAt: null } }),
+    ).toBe(1);
+
+    // The next run, with the bucket working, finishes it.
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
+    expect(await statusOf(failing.id)).toBe("deleted");
+    expect(await stateOf(failingGame.id)).toMatchObject({ state: "taken_off" });
+    expect(await files.hasAny(`files/${failingGame.publicId}/`)).toBe(false);
   });
 
   // The money rows are the ledger, so they outlive the person's details. The purge only
