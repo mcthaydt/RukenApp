@@ -9,7 +9,15 @@ Ruken is Instagram Reels meets Linktree for games. Read the design (`docs/superp
 
 The code is under the Functional Source License, FSL-1.1-ALv2 (`LICENSE.md`): anyone may read, change and use it, except to run a competing service; each version becomes Apache 2.0 two years after it is published. Files from others (fonts, colour data) keep their own licences, kept beside them.
 
-This repository is public. No secret, private plan, customer data or real address goes in it, and no strategy or research: market research, critiques, competitors, launch strategy, forecasts, the owner's personal and company details and the reasons behind business decisions go to `mcthaydt/RukenPrivate`. The design here says what Ruken does, not why.
+This repository is public. No secret, private plan, customer data or real address goes in it, and no strategy or research: market research, critiques, competitors, launch strategy, forecasts, the owner's personal and company details and the reasons behind business decisions go to the owner's Ruken page in Notion (https://app.notion.com/p/41f9145749a080cdbabfda8caf24cdc6), not to a repo. The design here says what Ruken does, not why.
+
+## Private notes go to Notion
+
+- **Where.** On the Ruken page (the red anchor; not the two Ruken pages under Finance): a decision the owner made goes in **Decisions**, one row with the decision, the date, the area, the owner's own words and where it is written; a note, draft, research, review or reasoning goes in **Library**, one page with its area, status, date and a one-line "In short". Change an existing page rather than adding a second copy. Leave the dashboard, Roadmap and "Was in RukenPrivate at" to the thread that keeps the page up to date.
+- **Never in Notion:** a password, key, token, secret or card or bank detail. Those stay where `Outside the repo` says.
+- **No Notion tools in this session?** Do not drop the note and do not put it here. Commit it to `mcthaydt/RukenPrivate` under `for-notion/<date>-<topic>.md` (a lane 1 pull request there, merged on green) and say in your report "saved to RukenPrivate for-notion, not in Notion yet". The next session that has Notion moves each file there into Notion and deletes it from `for-notion/` in one pull request.
+- `mcthaydt/RukenPrivate` stays as it is: an archive of what was moved, and the fallback above. Nothing new goes in it otherwise.
+
 
 Code from the archived RukenAppFailed is copied on purpose, file by file, with its tests; never its history, plans or secrets.
 
