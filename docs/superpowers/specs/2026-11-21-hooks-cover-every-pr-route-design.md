@@ -41,7 +41,7 @@ A workflow `.github/workflows/pr-rules.yml`, whose job is named `pr-rules-run`. 
 
 `scripts/pr-rules.mjs` reads the pull request, its files and its comments and reviews through the REST API, and fails (exit 1, with one `::error::` line per rule) when:
 
-1. **Open limit.** More than `maxOpenPrs` (3, read from `.claude/hooks/rules.json`) pull requests are open. Ordered by creation time, the pull requests beyond the third are over the limit. On `opened` or `reopened` of an over-limit pull request, the script also closes it, with the comment "Closed: 3 pull requests are already open (#a, #b, #c). Reopen this when one merges or closes." Every pull request counts, docs included (Owner, 3.5).
+1. **Open limit.** More than `maxOpenPrs` (3, read from `.claude/hooks/rules.json`) pull requests from this repo's own branches are open (forks do not count; Owner, 15:00 UTC). Ordered by creation time, the pull requests beyond the third are over the limit. On `opened` or `reopened` of an over-limit pull request, the script also closes it, with the comment "Closed: 3 pull requests are already open (#a, #b, #c). Reopen this when one merges or closes." Every pull request counts, docs included (Owner, 3.5).
 2. **Lane.** The body names no lane, or names a lane lower than its files' lane (the same `lanePaths` and `lanePathsExcept` from `rules.json` the hook uses).
 3. **Acceptance criteria.** The body has no "Acceptance criteria" heading and the files go beyond docs (`ruleMix.docPaths`).
 4. **Workflows.** A pull request that changes `.github/workflows/**` fails unless its body names lane 3 (audit 3 R1).
@@ -100,7 +100,7 @@ A new bullet, the first under "Rules that never bend", before **Identity**:
 PR-H criteria are Vitest cases: `tests/pr-rules.test.ts` drives `scripts/pr-rules.mjs` against a stub GitHub API (a local fixture server or an injected fetch), and `tests/rules-pr-routes.test.ts` drives the real hook against a scratch copy with a stub `gh`, like `tests/rules-merge-permission.test.ts`. The suites exit 0; `pnpm lint` and `pnpm typecheck` pass.
 
 **`pr-rules` (the guard):**
-1. With 3 open, a 4th pull request's `opened` event fails the check and closes it with the comment naming the 3; its `reopened` event does the same. With 2 open, a 3rd passes this rule. A docs-only 4th is treated the same.
+1. With 3 open, a 4th pull request's `opened` event fails the check and closes it with the comment naming the 3; its `reopened` event does the same. With 2 open, a 3rd passes this rule. A docs-only 4th is treated the same. With 3 of ours and 2 from forks open, a 4th of ours fails and is closed, a fork's pull request is neither counted nor closed, and with 2 of ours plus 3 from forks a 3rd of ours passes.
 2. With 4 open (one opened before the check existed), the newest fails and the three oldest pass this rule; nothing is closed on a `synchronize` or `edited` event.
 3. A body with no lane fails; a body naming lane 1 on a pull request that changes `.claude/hooks/rules.mjs` fails (files are lane 3); lane 3 passes.
 4. A body without "Acceptance criteria" fails when a file outside `docPaths` changes, and passes for docs only.
@@ -156,7 +156,7 @@ Criteria 6a and 6b belong to U1; 15a to U3. PR-H holds U1 to U3 on one branch, i
 1. ~~The footer route~~: decided 14:43 UTC, CI ignores the exact proxy footer.
 2. ~~The docs-only exemption~~: decided 14:48 UTC, every pull request counts.
 
-3. Whether pull requests from forks (outsiders) count toward the limit (audit 3 N4). The repo is public, so three outsider pull requests could make `pr-rules` close every session's new one. **Recommended:** count only pull requests whose branch is in this repo. Until answered, the builder counts every pull request, as the owner said at 14:48.
+3. ~~Whether pull requests from forks count~~: **Owner, 2026-11-21 15:00 UTC, on a card:** "No, only ours count". The open limit (in `pr-rules` and in the hook) counts only pull requests whose head branch is in this repo; an outsider's pull request is never counted and never closed by rule 1.
 
 3.1's "close over-limit pull requests" is a **Call** the owner can overrule.
 
