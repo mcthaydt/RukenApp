@@ -206,6 +206,9 @@ export const load: PageServerLoad = async (event) => {
       game.state === "draft" || game.state === "sent_back" ? `/make/${game.slug}/throw-away` : undefined,
     files: question === "files" ? await filesScreen(event.url, userId, game) : null,
     video: isVideoQuestion(question) ? videoScreen(event.url, game, question) : null,
+    // What players see while a live game's new rating waits for a yes, in the words of a rating; null when none waits.
+    ratingPlayersSee:
+      game.state === "live" && game.held !== null ? ratingWords(game.ageRating, game.contentMarks) : null,
     // A live game's change that waits for a yes can be dropped from the question it was made in.
     keepOld: game.state === "live" && waitsForYes(game, question),
   };

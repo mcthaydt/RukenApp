@@ -46,12 +46,13 @@
   const words = $derived(
     shape === "upright"
       ? {
-          heading: "Add your upright video",
+          heading:
+            video.src !== null && counter === null ? "Change your upright video" : "Add your upright video",
           frame: "Taller than wide",
           note: "For phones: taller than wide. MP4, WebM or MOV, up to 30 MB.",
         }
       : {
-          heading: "Add your wide video",
+          heading: video.src !== null && counter === null ? "Change your wide video" : "Add your wide video",
           frame: "Wider than tall",
           note: "For computers: wider than tall. MP4, WebM or MOV, up to 30 MB.",
         },
@@ -113,15 +114,15 @@
   bind:saving
   forward={choosing ? picker : undefined}
 >
+  {#if video.waiting}
+    <p class="note" role="status">Waiting for review. Players see the old one until we say yes.</p>
+  {/if}
   {#if video.src === null}
     <label class="vframe" data-frame={shape} for="clip-file"><span>{words.frame}</span></label>
   {:else}
     <div class="vframe" data-frame={shape}>
       <VideoTile src={video.src} {shape} />
     </div>
-  {/if}
-  {#if video.waiting}
-    <p class="note" role="status">Waiting for review. Players see the old one until it is a yes.</p>
   {/if}
   <p class="note" id="hint">
     Record your screen while you play for 10 to 30 seconds. Players see it in the feed before they play.

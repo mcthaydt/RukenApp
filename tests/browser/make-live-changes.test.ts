@@ -76,7 +76,11 @@ async function waitingSlugs(request: Parameters<typeof reviewJob>[0], browser: B
 async function changeVideo(page: Page, slug: string, shape: Shape): Promise<void> {
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
-  const change = page.getByRole("link", { name: `Change the ${shape} video` });
+  // The video Live draws has a bare Change, heard as "Change the wide video"; the other is a link in words, "Change the
+  // video for computers". Which is which depends on the window, so either name opens the question.
+  const change = page.getByRole("link", {
+    name: new RegExp(`^Change the (${shape} video|video for ${shape === "wide" ? "computers" : "phones"})$`),
+  });
   await change.focus();
   await expect(change).toBeFocused();
   await page.keyboard.press("Enter");
@@ -274,6 +278,8 @@ test("a held video staff sent back shows its words and the refused video, and an
   await pageHasSettled(page);
   const card = page.locator("a.fix");
   await expect(card).toContainText("It is too dark to see.");
+  // The card says it needs fixing, so the video itself carries no mark that says it waits.
+  await expect(page.locator(".laid .waits")).toHaveCount(0);
   await expect(card.locator("video")).toHaveAttribute("src", new RegExp(`^${escapeRegExp(refused)}`));
   await expect(page.getByText(WAITING)).toHaveCount(0);
 
@@ -481,8 +487,68 @@ test("a copy GitHub refused: a held video is kept and not sent, and Live says wh
 
   await expect(page.getByText("Your last copy from GitHub didn't work.")).toBeVisible();
   await expect(page.getByText(WAITING)).toHaveCount(0);
-  await expect(page.locator(".laid .waits")).toHaveText("Waiting for review");
+  // Nobody is reviewing it, so the mark does not say so.
+  await expect(page.locator(".laid .waits")).toHaveText("Not sent yet");
   expect(await waitingSlugs(request, browser)).not.toContain(slug);
+});
+
+// ---- What the screens say about what waits ---------------------------------------------------------------------------
+
+test("a video sent back while the rating waits: the rating says it is not sent yet, and the video says nothing of waiting", async ({
+  page,
+  browser,
+  request,
+}) => {
+  const { slug } = await gameWhere(page, { state: "live" });
+  await changeVideo(page, slug, "wide");
+  await page.goto(`/make/${slug}/age`);
+  await pageHasSettled(page);
+  await answerAge(page, "7+");
+  await expect(page).toHaveURL(`/make/${slug}`);
+  await expect(page.locator(".laid .waits")).toHaveText(["Waiting for review", "Waiting for review"]);
+  await reviewJob(
+    request,
+    { do: "send-back", game: slug, parts: [{ part: "wide_video", words: "Too dark." }] },
+    browser,
+  );
+
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+  await expect(page.locator("a.fix")).toHaveCount(1);
+  await expect(page.locator(".laid .waits")).toHaveText("Not sent yet");
+  await expect(page.locator(".laid").getByText("Waiting for review")).toHaveCount(0);
+});
+
+test("the question screens say what waits, and Keep the old one is under the buttons, never before Save", async ({
+  page,
+}) => {
+  const { slug } = await gameWhere(page, { state: "live" });
+  await changeVideo(page, slug, "wide");
+  await page.goto(`/make/${slug}/age`);
+  await pageHasSettled(page);
+  await answerAge(page, "7+");
+  await expect(page).toHaveURL(`/make/${slug}`);
+
+  await page.goto(`/make/${slug}/wide`);
+  await pageHasSettled(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Change your wide video");
+  await expect(page.getByText("Waiting for review. Players see the old one until we say yes.")).toBeVisible();
+
+  await page.goto(`/make/${slug}/age`);
+  await pageHasSettled(page);
+  await expect(page.getByText("Waiting for review. Players see 12+ until we say yes.")).toBeVisible();
+  // Not in the row of buttons, and after Save in the form, so Enter in the form presses Save.
+  await expect(page.locator(".acts").getByRole("button", { name: "Keep the old one" })).toHaveCount(0);
+  const buttons = await page
+    .locator("form button")
+    .evaluateAll((all) => all.map((one) => one.textContent.trim()));
+  expect(buttons.indexOf("Save")).toBeGreaterThanOrEqual(0);
+  expect(buttons.indexOf("Save")).toBeLessThan(buttons.indexOf("Keep the old one"));
+  // Enter on a choice saves it; it does not drop the change.
+  await page.getByRole("radio", { name: /^16\+/ }).check();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(`/make/${slug}`);
+  await expect(page.locator(".chip", { hasText: "16+" })).toBeVisible();
 });
 
 // ---- Everyone else -------------------------------------------------------------------------------------------------

@@ -42,17 +42,22 @@ export function laidOut(game: MakerGame, changeable: readonly ChangePart[]): Lai
   // A live game's new video that waits for a yes is the one its maker chose, so it is the one laid out.
   const upright = game.heldClips.upright ?? game.clips.upright;
   const wide = game.heldClips.wide ?? game.clips.wide;
+  const sentBack = game.toFix.map((one) => one.part);
+  const held: ChangePart[] = [
+    ...(game.heldClips.upright === null ? [] : (["upright_video"] as const)),
+    ...(game.heldClips.wide === null ? [] : (["wide_video"] as const)),
+    ...(game.held === null ? [] : (["age_rating"] as const)),
+  ].filter((part) => !sentBack.some((one) => one === part));
   return {
     name: game.name,
     line: game.oneLine ?? "",
     upright: upright === null ? null : services.media(upright.key),
     wide: wide === null ? null : services.media(wide.key),
     chips: chipsOf(game),
-    waiting: [
-      ...(game.heldClips.upright === null ? [] : (["upright_video"] as const)),
-      ...(game.heldClips.wide === null ? [] : (["wide_video"] as const)),
-      ...(game.held === null ? [] : (["age_rating"] as const)),
-    ],
+    // A part staff sent back says so on its own card, so it carries no mark here; one that nobody is reviewing yet
+    // says that, since "Waiting for review" would promise a yes that cannot come.
+    waiting: game.hasPending ? held : [],
+    notSent: game.hasPending ? [] : held,
     changes,
   };
 }

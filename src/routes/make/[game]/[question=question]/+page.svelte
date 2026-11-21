@@ -122,6 +122,11 @@
         hint="We check this when we look at your game."
         {problem}
       />
+      {#if data.ratingPlayersSee !== null}
+        <p class="note" role="status">
+          Waiting for review. Players see {data.ratingPlayersSee} until we say yes.
+        </p>
+      {/if}
     </QuestionScreen>
   {:else}
     <QuestionScreen
@@ -143,6 +148,11 @@
         hint="Only adults will see this game. Sex or nudity is fine here. No game may have pornography or gambling."
         {problem}
       />
+      {#if data.ratingPlayersSee !== null}
+        <p class="note" role="status">
+          Waiting for review. Players see {data.ratingPlayersSee} until we say yes.
+        </p>
+      {/if}
     </QuestionScreen>
   {/if}
 {/key}

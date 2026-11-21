@@ -132,6 +132,8 @@ export interface MakerGame {
   reason: string | null;
   /** True while an update waits for a person's yes. */
   hasPending: boolean;
+  /** True while a new copy of a live game's files waits for a yes (a waiting video or rating alone is not one). */
+  newCopyWaits: boolean;
   /** Null until the maker answers it. */
   oneLine: string | null;
   ageRating: AgeRating | null;
@@ -1459,6 +1461,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       headline: stateParts(state).headline,
       reason: stateParts(state).reason,
       hasPending: state.hasPending,
+      newCopyWaits: row.pendingPullId !== null && row.pendingPullId !== row.livePullId,
       oneLine: row.oneLine,
       showsPlayerCount: row.showsPlayerCount,
       ageRating: row.ageRating,

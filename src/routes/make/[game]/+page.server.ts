@@ -157,8 +157,8 @@ export const load: PageServerLoad = async (event) => {
       view: "live" as const,
       line: liveLine(game, send),
       send,
-      // An update waiting for review is replaced by the one sent now, which the note under the button says.
-      updateWaiting: game.hasPending,
+      // A new copy of the files waiting for review is replaced by the one sent now, which the note under the button says.
+      updateWaiting: game.newCopyWaits,
       fixes,
       // Asked on a screen of its own, because it cannot be undone.
       takeOffAddress: `/make/${game.slug}/take-off`,

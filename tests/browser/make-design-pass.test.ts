@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled } from "./support/account.ts";
-import { fillAnswers, type SentBackPart } from "./support/database.ts";
+import { fillAnswers, leaveNewCopyWaiting, type SentBackPart } from "./support/database.ts";
 import {
   agreeToTheAgreement,
   answerLine,
@@ -305,14 +305,13 @@ test("while an update waits, Send a new version is still there and says its file
   page,
 }) => {
   const { slug } = await gameWhere(page, { state: "live", updateWaiting: true });
+  await leaveNewCopyWaiting(slug);
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
 
   await expect(page.getByText("Your update is waiting for review.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Send a new version" })).toBeVisible();
-  await expect(
-    page.getByText(/The files it copies take the place of the files that are waiting\./),
-  ).toBeVisible();
+  await expect(page.getByText(/It replaces the version that is waiting\./)).toBeVisible();
 });
 
 // ---- S2 and S10: a refused box ------------------------------------------------------------------------------------

@@ -290,8 +290,18 @@ test("a live game offers Change on its videos and its rating, and a hand-made ra
   await pageHasSettled(page);
 
   // The video the window does not draw is still reached: from the list under the game.
-  for (const part of ["the upright video", "the wide video", "who it's for", "the name"]) {
+  for (const part of ["who it's for", "the name"]) {
     await expect(page.getByRole("link", { name: `Change ${part}` })).toHaveCount(1);
+  }
+  // One video has a bare Change (heard as "Change the wide video"), the other a link in words ("Change the video for
+  // phones"); which is which depends on the window.
+  for (const [shape, others] of [
+    ["upright", "phones"],
+    ["wide", "computers"],
+  ] as const) {
+    await expect(
+      page.getByRole("link", { name: new RegExp(`^Change the (${shape} video|video for ${others})$`) }),
+    ).toHaveCount(1);
   }
   const site = baseURL ?? "http://localhost:4173";
   expect((await page.request.get(`${site}/make/${slug}/upright`)).status()).toBe(200);

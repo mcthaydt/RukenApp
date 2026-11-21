@@ -98,8 +98,10 @@
       {:else}
         Send a new version copies the newest version of your game from GitHub and sends it for review.
         {#if updateWaiting}
-          The files it copies take the place of the files that are waiting. A video or rating that is waiting
-          stays.
+          It replaces the version that is waiting.
+        {/if}
+        {#if game.waiting.length > 0 || game.notSent.length > 0}
+          A waiting video or rating stays.
         {/if}
         Players can still play it while you wait.
       {/if}

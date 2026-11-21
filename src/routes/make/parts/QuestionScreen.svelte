@@ -101,15 +101,18 @@
             {saving ? busyWords : counter === null ? "Save" : "Next"}
           </button>
         {/if}
-        {#if keepOld}
-          <button class="quiet" formaction="?/keepOld" formnovalidate disabled={saving}
-            >Keep the old one</button
-          >
-        {/if}
         {#if enterHint && forward === undefined && !saving}
           <span class="key">press Enter <kbd>↵</kbd></span>
         {/if}
       </div>
+      {#if keepOld}
+        <!-- After the Save button, never before it: Enter in the form presses the first button, which must be Save. -->
+        <p class="keep">
+          <button class="quiet" formaction="?/keepOld" formnovalidate disabled={saving}
+            >Keep the old one</button
+          >
+        </p>
+      {/if}
     </form>
   </main>
   <GamePreview />

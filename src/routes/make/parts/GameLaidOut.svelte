@@ -2,7 +2,7 @@
   A game laid out as members will see it (spec 5b): its two videos side by side in their real shapes, its name as a
   title and its line as a tagline, and the facts as quiet chips. A small Change sits beside each part that may be
   changed here; it opens that one question, which comes straight back. A part whose new value waits for staff's yes
-  (a live game's video or rating) says so beside it. File sizes and counts are not shown: they are
+  (a live game's video or rating) says so beside it, or says it is not sent yet when nobody is reviewing it. File sizes and counts are not shown: they are
   not for a maker to weigh up here. Live draws one of the two videos (`only`), the shape of the window it is seen on.
 -->
 <script lang="ts">
@@ -27,6 +27,19 @@
     { shape: "wide", words: "On computers", part: "wide_video" },
   ] as const;
   const clips = $derived(only === undefined ? ALL_CLIPS : ALL_CLIPS.filter((clip) => clip.shape === only));
+
+  /** Whether a part carries a mark: a change with staff, or one nobody is reviewing yet. */
+  function marked(part: ChangePart): boolean {
+    return game.waiting.includes(part) || game.notSent.includes(part);
+  }
+  /** The video Live does not draw, reached from a line of its own under the facts. */
+  const other = $derived(
+    only === undefined
+      ? []
+      : ALL_CLIPS.filter(
+          (clip) => clip.shape !== only && (game.changes[clip.part] !== undefined || marked(clip.part)),
+        ),
+  );
 </script>
 
 {#snippet change(part: ChangePart)}
@@ -38,6 +51,8 @@
 {#snippet waiting(part: ChangePart)}
   {#if game.waiting.includes(part)}
     <span class="waits">Waiting for review</span>
+  {:else if game.notSent.includes(part)}
+    <span class="waits">Not sent yet</span>
   {/if}
 {/snippet}
 
@@ -49,7 +64,7 @@
           <VideoTile src={clip.shape === "upright" ? game.upright : game.wide} shape={clip.shape} />
         </div>
         <!-- Live draws one video, so its caption has no words of its own: only what waits, and the Change. -->
-        {#if only === undefined || game.waiting.includes(clip.part) || game.changes[clip.part] !== undefined}
+        {#if only === undefined || marked(clip.part) || game.changes[clip.part] !== undefined}
           <figcaption>
             {#if only === undefined}<span>{clip.words}</span>{/if}
             {@render waiting(clip.part)}
@@ -75,15 +90,18 @@
         {@render change(chip.part)}
       </li>
     {/each}
-    <!-- Live draws one video, so the one it does not draw is reached from here, as the other half of "its videos". -->
-    {#each ALL_CLIPS.filter((clip) => only !== undefined && clip.shape !== only) as clip (clip.shape)}
-      {#if game.changes[clip.part] !== undefined || game.waiting.includes(clip.part)}
-        <li>
-          <span>Video {clip.words.toLowerCase().replace("on ", "for ")}</span>
-          {@render waiting(clip.part)}
-          {@render change(clip.part)}
-        </li>
-      {/if}
-    {/each}
   </ul>
+  <!-- Live draws one video, so the one it does not draw is reached from here: one link in words, on a line of its own. -->
+  {#each other as clip (clip.shape)}
+    <p class="other">
+      {#if game.changes[clip.part] !== undefined}
+        <a href={game.changes[clip.part]}
+          >Change the video {clip.words.toLowerCase().replace("on ", "for ")}</a
+        >
+      {:else}
+        <span>The video {clip.words.toLowerCase().replace("on ", "for ")}</span>
+      {/if}
+      {@render waiting(clip.part)}
+    </p>
+  {/each}
 </div>

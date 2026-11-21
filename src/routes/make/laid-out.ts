@@ -17,10 +17,12 @@ export interface LaidOutGame {
   wide: string | null;
   chips: { part: ChipPart; words: string }[];
   /**
-   * The parts whose value shown here is a change waiting for staff's yes (a live game's new video or rating): players
-   * still see the old one, and the screen says this one is "Waiting for review".
+   * The parts whose value shown here is a change with staff, waiting for their yes (a live game's new video or rating):
+   * players still see the old one, and the screen says this one is "Waiting for review".
    */
   waiting: ChangePart[];
+  /** The parts that hold a change nobody is reviewing yet (something is still to fix, or the copy was refused). */
+  notSent: ChangePart[];
   /** The address of the question that changes each part named here; a part not named has no Change. */
   changes: Partial<Record<ChangePart, string>>;
 }

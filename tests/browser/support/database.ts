@@ -225,6 +225,29 @@ export async function fillAnswers(
   }
 }
 
+/**
+ * Leaves a new copy of a live game's files waiting for review beside the copy that is live, as the maker's "Send a new
+ * version" does (`updateWaiting` leaves the live copy itself as the waiting one).
+ */
+export async function leaveNewCopyWaiting(slug: string): Promise<void> {
+  const game = await db().game.findUniqueOrThrow({ where: { slug }, select: { id: true } });
+  const pull = await db().gamePull.create({
+    data: {
+      id: crypto.randomUUID(),
+      gameId: game.id,
+      commitSha: STAND_IN_COMMIT,
+      fileCount: 3,
+      totalBytes: 1000n,
+      connectHosts: [],
+      pulledAt: new Date(),
+    },
+  });
+  await db().game.update({
+    where: { id: game.id },
+    data: { pendingPullId: pull.id, pendingSince: new Date() },
+  });
+}
+
 /** A part staff sent back, with the reason they chose (a code from library/send-back-reasons.json) and their own line. */
 export interface SentBackPart {
   part: GamePart;
