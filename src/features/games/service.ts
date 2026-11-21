@@ -70,6 +70,17 @@ export interface LiveGame {
   clips: { upright: string; wide: string };
 }
 
+/** What `liveSinceOf` reads from a game: its live copy and the accepted reviews that took effect. */
+interface LiveSinceFacts {
+  livePull: { createdAt: Date } | null;
+  reviews: { decidedAt: Date; goesOutOn: Date | null }[];
+}
+
+/** A live game with the moment it first went live, for the screens that put games in an order. */
+export interface ListedGame extends LiveGame {
+  liveSince: Date;
+}
+
 /**
  * One answer of a game, as a screen hands it over. Each question keeps only its own answer, so a maker can stop after
  * any one and a game that is half answered is still a game.
@@ -1317,27 +1328,40 @@ export function createGamesService(deps: GamesServiceDeps) {
     });
   }
 
-  /** The game at `/g/<slug>`, only while it is live. */
-  async function liveGameBySlug(slug: string): Promise<LiveGame | null> {
-    const game = await deps.db.game.findUnique({
-      where: { slug },
-      select: {
-        id: true,
-        publicId: true,
-        slug: true,
-        name: true,
-        oneLine: true,
-        freeToPlay: true,
-        showsPlayerCount: true,
-        makerUserId: true,
-        state: true,
-        ageRating: true,
-        contentMarks: true,
-        livePull: { select: { id: true, connectHosts: true } },
-        clips: { select: { shape: true, key: true } },
-      },
-    });
-    if (game === null || game.state !== "live" || game.livePull === null) return null;
+  /** What a live game is read from: its own row, its live copy and the keys of its two clips. */
+  const liveGameSelect = {
+    id: true,
+    publicId: true,
+    slug: true,
+    name: true,
+    oneLine: true,
+    freeToPlay: true,
+    showsPlayerCount: true,
+    makerUserId: true,
+    state: true,
+    ageRating: true,
+    contentMarks: true,
+    livePull: { select: { id: true, connectHosts: true } },
+    clips: { select: { shape: true, key: true } },
+  } as const;
+
+  /** The game as a live game, or null for a row that is not live or lacks something a live game must have. */
+  function asLiveGame(game: {
+    id: string;
+    publicId: string;
+    slug: string;
+    name: string;
+    oneLine: string | null;
+    freeToPlay: boolean;
+    showsPlayerCount: boolean;
+    makerUserId: string;
+    state: string;
+    ageRating: AgeRating | null;
+    contentMarks: ContentMark[];
+    livePull: { id: string; connectHosts: string[] } | null;
+    clips: { shape: string; key: string }[];
+  }): LiveGame | null {
+    if (game.state !== "live" || game.livePull === null) return null;
     const upright = game.clips.find((clip) => clip.shape === "upright")?.key;
     const wide = game.clips.find((clip) => clip.shape === "wide")?.key;
     if (upright === undefined || wide === undefined) return null;
@@ -1360,11 +1384,63 @@ export function createGamesService(deps: GamesServiceDeps) {
     };
   }
 
+  /** The game at `/g/<slug>`, only while it is live. */
+  async function liveGameBySlug(slug: string): Promise<LiveGame | null> {
+    const game = await deps.db.game.findUnique({ where: { slug }, select: liveGameSelect });
+    return game === null ? null : asLiveGame(game);
+  }
+
   /**
-   * A maker's other live games, newest first by the day each first went live, for the "More from" row of a game's
-   * page. That day is its first accepted review that took effect: the day it was decided, or for a held yes the day
-   * its decision day went out. Later yeses on updates do not move a game, and neither does when its files were copied.
-   * A game made live with no such review (a row set up by hand) is dated by its live copy instead.
+   * When each of these live games first went live. That is its first accepted review that took effect: the moment it
+   * was decided, or for a held yes the moment its decision day went out. Later yeses on updates do not move a game,
+   * and neither does taking it off and putting it back. A game made live with no such review (a row set up by hand)
+   * is dated by its live copy instead.
+   */
+  async function liveSinceOf<Row extends LiveSinceFacts>(rows: Row[]): Promise<(row: Row) => Date> {
+    const days = await deps.db.decisionDay.findMany({
+      where: { day: { in: rows.flatMap((row) => row.reviews.flatMap((review) => review.goesOutOn ?? [])) } },
+      select: { day: true, wentOutAt: true },
+    });
+    const wentOutAt = new Map(days.map((one) => [one.day.getTime(), one.wentOutAt.getTime()]));
+    return (row) => {
+      const times = row.reviews.map((review) =>
+        review.goesOutOn === null
+          ? review.decidedAt.getTime()
+          : (wentOutAt.get(review.goesOutOn.getTime()) ?? review.decidedAt.getTime()),
+      );
+      return new Date(times.length > 0 ? Math.min(...times) : (row.livePull?.createdAt.getTime() ?? 0));
+    };
+  }
+
+  /**
+   * Every live game, or only one maker's, each with the moment it first went live. The order is left to the caller.
+   */
+  async function liveGames(filter: { makerUserId?: string } = {}): Promise<ListedGame[]> {
+    const rows = await deps.db.game.findMany({
+      where: {
+        state: "live",
+        livePullId: { not: null },
+        ...(filter.makerUserId === undefined ? {} : { makerUserId: filter.makerUserId }),
+      },
+      select: {
+        ...liveGameSelect,
+        livePull: { select: { id: true, connectHosts: true, createdAt: true } },
+        reviews: {
+          where: { decision: "accepted", ...tookEffect },
+          select: { decidedAt: true, goesOutOn: true },
+        },
+      },
+    });
+    const liveSince = await liveSinceOf(rows);
+    return rows.flatMap((row) => {
+      const game = asLiveGame(row);
+      return game === null ? [] : [{ ...game, liveSince: liveSince(row) }];
+    });
+  }
+
+  /**
+   * A maker's other live games, newest first by the day each first went live (see `liveSinceOf`), for the "More
+   * from" row of a game's page.
    */
   async function moreLiveGamesBy(
     makerUserId: string,
@@ -1384,21 +1460,9 @@ export function createGamesService(deps: GamesServiceDeps) {
         },
       },
     });
-    const days = await deps.db.decisionDay.findMany({
-      where: { day: { in: rows.flatMap((row) => row.reviews.flatMap((review) => review.goesOutOn ?? [])) } },
-      select: { day: true, wentOutAt: true },
-    });
-    const wentOutAt = new Map(days.map((one) => [one.day.getTime(), one.wentOutAt.getTime()]));
-    const wentLiveAt = (row: (typeof rows)[number]): number => {
-      const times = row.reviews.map((review) =>
-        review.goesOutOn === null
-          ? review.decidedAt.getTime()
-          : (wentOutAt.get(review.goesOutOn.getTime()) ?? review.decidedAt.getTime()),
-      );
-      return times.length > 0 ? Math.min(...times) : (row.livePull?.createdAt.getTime() ?? 0);
-    };
+    const liveSince = await liveSinceOf(rows);
     return rows
-      .map((row) => ({ row, at: wentLiveAt(row) }))
+      .map((row) => ({ row, at: liveSince(row).getTime() }))
       .sort((one, other) => other.at - one.at)
       .slice(0, 6)
       .flatMap(({ row }) => {
@@ -1500,6 +1564,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     gameForMaker,
     gameForReview,
     liveGameBySlug,
+    liveGames,
     moreLiveGamesBy,
     rememberConnection,
     repositoriesFor,

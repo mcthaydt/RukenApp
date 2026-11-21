@@ -366,6 +366,24 @@ describe("what a visitor sees and counts", () => {
     );
     expect(await service.handlesOf([])).toEqual(new Map());
   });
+
+  it("finds the address, name and photo of each maker it is asked about, and leaves out one with no page", async () => {
+    const a = await makerWithPage();
+    const b = await makerWithPage();
+    const c = await createUser(db());
+    await service.savePhoto(a.userId, { contentType: "image/png", bytes: PNG });
+    const pageA = await service.pageOf(a.userId);
+    const pageB = await service.pageOf(b.userId);
+
+    expect(await service.makersOf([a.userId, b.userId, c])).toEqual(
+      new Map([
+        [a.userId, { handle: a.handle, name: pageA?.name, photoKey: pageA?.photoKey }],
+        [b.userId, { handle: b.handle, name: pageB?.name, photoKey: null }],
+      ]),
+    );
+    expect(pageA?.photoKey).not.toBeNull();
+    expect(await service.makersOf([])).toEqual(new Map());
+  });
 });
 
 // The first bytes of a PNG and a JPEG: all a photo is checked for, and all a test needs.
