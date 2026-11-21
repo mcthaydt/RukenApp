@@ -589,3 +589,12 @@ export async function giveStaffRole(
 export async function forgetAgeOf(number: string): Promise<void> {
   await db().user.update({ where: { phoneNumber: number }, data: { adultOn: null } });
 }
+
+/** The day this account turns 18 as `YYYY-MM-DD`, or null when no age is on file. */
+export async function adultOnOf(number: string): Promise<string | null> {
+  const row = await db().user.findUniqueOrThrow({
+    where: { phoneNumber: number },
+    select: { adultOn: true },
+  });
+  return row.adultOn === null ? null : row.adultOn.toISOString().slice(0, 10);
+}

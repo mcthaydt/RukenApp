@@ -160,6 +160,26 @@ describe("attachPhoneToAccount", () => {
     expect(await staffRolesOf(db(), userId)).toContain("owner");
   });
 
+  it("stores the 18th birthday it is given for an account with no age, and keeps one already on file", async () => {
+    const none = await oldAccount("old-age-none@example.test");
+    const known = await oldAccount("old-age-known@example.test");
+    await db().user.update({ where: { id: known }, data: { adultOn: new Date("2030-05-05T00:00:00Z") } });
+
+    expect(await attachPhoneToAccount(db(), "old-age-none@example.test", "+13125550311", "2000-01-02")).toBe(
+      "attached",
+    );
+    expect(await attachPhoneToAccount(db(), "old-age-known@example.test", "+13125550312", "2000-01-02")).toBe(
+      "attached",
+    );
+
+    expect((await db().user.findUniqueOrThrow({ where: { id: none } })).adultOn?.toISOString()).toBe(
+      "2000-01-02T00:00:00.000Z",
+    );
+    expect((await db().user.findUniqueOrThrow({ where: { id: known } })).adultOn?.toISOString()).toBe(
+      "2030-05-05T00:00:00.000Z",
+    );
+  });
+
   it("finds the account whatever the case of its email", async () => {
     await oldAccount("Old-Two@Example.test");
 

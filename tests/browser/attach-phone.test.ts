@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signInAs, signUpInItsOwnContext } from "./support/account.ts";
-import { makeItAnOldAccount } from "./support/database.ts";
+import { adultOnOf, forgetAgeOf, makeItAnOldAccount } from "./support/database.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -57,4 +57,27 @@ test("an account made by email gets a number and signs in by phone with its old 
   });
   expect(again.status()).toBe(409);
   expect(await again.json()).toEqual({ problem: "That account already has a phone number." });
+});
+
+test("gives the account its age when a birth date comes, so an 18+ game opens for it", async ({
+  request,
+  browser,
+}) => {
+  const { number } = await signUpInItsOwnContext(browser);
+  const email = await makeItAnOldAccount(number);
+  await forgetAgeOf(number);
+
+  const bad = await request.post("/jobs/attach-phone", {
+    headers: WITH_SECRET,
+    data: JSON.stringify({ email, phone: number, birthDate: { year: 2000, month: 2, day: 31 } }),
+  });
+  expect(bad.status()).toBe(400);
+  expect(await bad.json()).toEqual({ problem: "That is not a birth date we can use." });
+
+  const answer = await request.post("/jobs/attach-phone", {
+    headers: WITH_SECRET,
+    data: JSON.stringify({ email, phone: number, birthDate: { year: 1990, month: 6, day: 15 } }),
+  });
+  expect(await answer.json()).toEqual({ attached: true });
+  expect(await adultOnOf(number)).toBe("2008-06-15");
 });

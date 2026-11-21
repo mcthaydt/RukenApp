@@ -7,6 +7,7 @@ import {
   signUp,
   SITE_ANSWER_TIMEOUT,
 } from "./support/account.ts";
+import { makeItAnOldAccount } from "./support/database.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -116,4 +117,15 @@ test("everything on the screen works with the keyboard alone, and focus shows", 
   await expect(save).toHaveCSS("outline-style", /solid|auto/);
   await page.keyboard.press("Enter");
   await expect(page.getByText("Done. Your password is changed.")).toBeVisible();
+});
+
+test("an account with no phone number yet is told so, plainly, instead of getting a form", async ({
+  page,
+}) => {
+  const { number } = await signUp(page);
+  await makeItAnOldAccount(number);
+
+  await page.goto("/me/password");
+  await expect(page.getByText("Your account needs its phone number first.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save password" })).toHaveCount(0);
 });

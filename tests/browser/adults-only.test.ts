@@ -29,6 +29,8 @@ let handle: string;
 
 test.beforeAll(async ({ browser, request }) => {
   test.setTimeout(180_000);
+  // Two makers sign up here, before any beforeEach has cleared this worker's sign-up count.
+  await forgetRateLimits();
   adultsGame = await addGame(browser, request, { free: true });
   await changeGame(adultsGame.slug, { ageRating: "age_18", contentMarks: ["gore"] });
   // A 12+ game by the same maker, whose page lists the maker's other games.

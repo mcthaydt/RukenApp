@@ -1,21 +1,38 @@
 import { error } from "@sveltejs/kit";
 import { attachPhoneToAccount } from "../../../features/accounts/accounts.ts";
+import { ageCheck, type BirthDate } from "../../../features/accounts/age.ts";
+import { systemClock } from "../../../lib/clock.ts";
 import { prisma } from "../../../lib/server/db.ts";
 import { hasJobSecret } from "../../../lib/server/job-secret.ts";
 import type { RequestHandler } from "./$types";
 
-/** The email and phone of a JSON body, or null when the body is not JSON or holds no text there. */
-async function textsOf(request: Request): Promise<{ email: string; phone: string } | null> {
+/**
+ * The email and phone of a JSON body, and a birth date if one came ("birthDate": {"year","month","day"}), or null when
+ * the body is not JSON or holds no text there. A birth date that is not whole numbers is `bad_birth_date`.
+ */
+async function textsOf(
+  request: Request,
+): Promise<{ email: string; phone: string; birthDate: BirthDate | "bad_birth_date" | null } | null> {
   try {
     const body: unknown = await request.json();
     if (typeof body !== "object" || body === null) return null;
-    const { email, phone } = body as { email?: unknown; phone?: unknown };
-    return typeof email === "string" &&
-      email.trim() !== "" &&
-      typeof phone === "string" &&
-      phone.trim() !== ""
-      ? { email, phone }
-      : null;
+    const { email, phone, birthDate } = body as { email?: unknown; phone?: unknown; birthDate?: unknown };
+    if (typeof email !== "string" || email.trim() === "" || typeof phone !== "string" || phone.trim() === "")
+      return null;
+    if (birthDate === undefined) return { email, phone, birthDate: null };
+    const { year, month, day } = (typeof birthDate === "object" && birthDate !== null ? birthDate : {}) as {
+      year?: unknown;
+      month?: unknown;
+      day?: unknown;
+    };
+    return {
+      email,
+      phone,
+      birthDate:
+        Number.isInteger(year) && Number.isInteger(month) && Number.isInteger(day)
+          ? { year: year as number, month: month as number, day: day as number }
+          : "bad_birth_date",
+    };
   } catch {
     return null;
   }
@@ -29,7 +46,16 @@ export const POST: RequestHandler = async ({ request }) => {
   if (given === null)
     return Response.json({ problem: "Send the email of the account and the phone number." }, { status: 400 });
 
-  switch (await attachPhoneToAccount(prisma(), given.email, given.phone)) {
+  // An account made before the age question has no age on file; a birth date given here sets it (once, never over one).
+  let adultOn: string | undefined;
+  if (given.birthDate !== null) {
+    const age = given.birthDate === "bad_birth_date" ? null : ageCheck(given.birthDate, systemClock);
+    if (age === null || age.kind === "invalid" || age.kind === "under13")
+      return Response.json({ problem: "That is not a birth date we can use." }, { status: 400 });
+    adultOn = age.adultOn;
+  }
+
+  switch (await attachPhoneToAccount(prisma(), given.email, given.phone, adultOn)) {
     case "attached":
       return Response.json({ attached: true });
     case "no_account":

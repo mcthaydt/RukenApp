@@ -41,24 +41,37 @@ export type AttachPhoneOutcome = "attached" | "no_account" | "has_number" | "num
  * owner can sign in again and keeps what the account holds: staff role, games, password. Only for an account with no
  * number yet, and only for a number no other account has. The number is not proved by a code here (the command is run
  * with the jobs secret by the Owner), so `phoneConfirmedAt` stays empty; the first code typed at sign-up or reset sets it.
+ *
+ * An account made before the age question has no 18th birthday, so 18+ games stay hidden from it. When the command is
+ * given one (`adultOn`, as an ISO day worked out by `ageCheck`), it is stored, but only where the account has none: an
+ * age already on file is kept, never replaced.
  */
 export function attachPhoneToAccount(
   db: PrismaClient,
   email: string,
   phoneNumber: string,
+  adultOn?: string,
 ): Promise<AttachPhoneOutcome> {
   const number = toE164("+1", phoneNumber);
   if (number === null) return Promise.resolve("bad_number");
   return db.$transaction(async (tx): Promise<AttachPhoneOutcome> => {
     const user = await tx.user.findFirst({
       where: { email: { equals: email.trim(), mode: "insensitive" } },
-      select: { id: true, phoneNumber: true },
+      select: { id: true, phoneNumber: true, adultOn: true },
     });
     if (user === null) return "no_account";
     if (user.phoneNumber !== null) return "has_number";
     if ((await tx.user.findUnique({ where: { phoneNumber: number }, select: { id: true } })) !== null)
       return "number_taken";
-    await tx.user.update({ where: { id: user.id }, data: { phoneNumber: number } });
+    await tx.user.update({
+      where: { id: user.id },
+      data: {
+        phoneNumber: number,
+        ...(adultOn !== undefined && user.adultOn === null
+          ? { adultOn: new Date(`${adultOn}T00:00:00Z`) }
+          : {}),
+      },
+    });
     return "attached";
   });
 }
