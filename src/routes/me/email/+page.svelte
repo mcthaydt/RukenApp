@@ -28,7 +28,7 @@
       <p>
         <label>
           New email
-          <input type="email" name="email" autocomplete="email" />
+          <input type="email" name="email" autocomplete="email" value={form?.email ?? ""} />
         </label>
         {#if form?.field === "email"}
           <span class="problem" role="alert">{form.error}</span>

@@ -35,24 +35,21 @@ export const PUBLIC_ROUTE_HEADER = "x-ruken-public-route";
 /** Reached only by our own pages, never through the public /api/auth route. */
 const PAGE_ONLY_PATHS: ReadonlySet<string> = new Set(["/sign-up/email", "/change-email", "/change-password"]);
 
-/**
- * Whether a verification token (a signed JWT) is the one made for a change of email. The words of the mail depend on
- * it; nothing is decided by it, so the signature is not checked here (better-auth checks it when the link is opened).
- */
-function isEmailChangeToken(token: string): boolean {
+/** The claims of a signed token, read without checking the signature (better-auth checks it when the link is opened). */
+function tokenClaims(token: string): { requestType?: unknown; email?: unknown; iat?: unknown } | null {
   try {
     const payload = token.split(".")[1];
-    if (payload === undefined) return false;
+    if (payload === undefined) return null;
     const claims: unknown = JSON.parse(atob(payload.replaceAll("-", "+").replaceAll("_", "/")));
-    return (
-      typeof claims === "object" &&
-      claims !== null &&
-      "requestType" in claims &&
-      claims.requestType === "change-email-verification"
-    );
+    return typeof claims === "object" && claims !== null ? claims : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+/** Whether a verification token is the one made for a change of email. The words of the mail depend on it. */
+function isEmailChangeToken(token: string): boolean {
+  return tokenClaims(token)?.requestType === "change-email-verification";
 }
 
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
@@ -104,6 +101,27 @@ export function createAuth(options: AuthOptions) {
         log(`${what} not sent: ${mailFailureCode(error)}`);
       }
     });
+  }
+
+  /**
+   * A change-email link names the OLD address, not the account that asked. If that account has moved on and someone new
+   * signed up with the old address since, opening the link would change the new account's address and sign the opener
+   * in to it. So a link is refused when the account holding its old address was made after the link was. (better-auth
+   * answers a bad link the same way: INVALID_TOKEN.)
+   */
+  async function refuseStaleChangeLink(query: unknown): Promise<void> {
+    const token = (query as { token?: unknown } | undefined)?.token;
+    if (typeof token !== "string" || !isEmailChangeToken(token)) return;
+    const claims = tokenClaims(token);
+    if (typeof claims?.email !== "string" || typeof claims.iat !== "number") return;
+    const holder = await prisma.user.findUnique({
+      where: { email: claims.email },
+      select: { createdAt: true },
+    });
+    // `iat` is whole seconds, so an account made in the same second as the link is not counted as later.
+    if (holder !== null && holder.createdAt.getTime() >= (claims.iat + 1) * 1000) {
+      throw new APIError("BAD_REQUEST", { message: "Invalid token", code: "INVALID_TOKEN" });
+    }
   }
 
   return betterAuth({
@@ -260,10 +278,10 @@ export function createAuth(options: AuthOptions) {
       // The same goes for the two changes: they are made on /me/email and /me/password, which check the current
       // password first (credentials.ts). better-auth's own endpoints do not ask for it when the email changes, so a
       // stolen session cookie must not reach them through the public route.
-      before: createAuthMiddleware((ctx) => {
-        if (ctx.headers?.get(PUBLIC_ROUTE_HEADER) == null) return Promise.resolve();
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === "/verify-email") await refuseStaleChangeLink(ctx.query);
+        if (ctx.headers?.get(PUBLIC_ROUTE_HEADER) == null) return;
         if (PAGE_ONLY_PATHS.has(ctx.path)) throw new APIError("NOT_FOUND");
-        return Promise.resolve();
       }),
     },
 

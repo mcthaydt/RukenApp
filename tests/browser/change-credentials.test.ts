@@ -114,7 +114,9 @@ test("a wrong current password is refused beside the field on both screens, and 
   await page.getByLabel("Your password").fill("not the right password");
   await page.getByRole("button", { name: "Send the link" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page.getByText(WRONG_PASSWORD_WORDS)).toBeVisible();
-  await expect(page.getByLabel("New email")).toBeVisible();
+  // What was typed stays; the password does not.
+  await expect(page.getByLabel("New email")).toHaveValue(newEmail);
+  await expect(page.getByLabel("Your password")).toHaveValue("");
 
   await page.goto("/me/password");
   await page.getByLabel("Your password now").fill("not the right password");
@@ -147,4 +149,43 @@ test("a person who is not a member is not told about receipts", async ({ page })
   await page.goto("/me/email");
   await expect(page.getByRole("heading", { name: "Change your email" })).toBeVisible();
   await expect(page.getByText("payment receipts")).toHaveCount(0);
+});
+
+test("everything on both screens works with the keyboard alone, and focus shows", async ({ page }) => {
+  const { password } = await signUp(page);
+  await page.goto("/me");
+
+  // Tab to each of the two links on /me and press Enter on it.
+  for (const [name, heading] of [
+    ["Change email", "Change your email"],
+    ["Change password", "Change your password"],
+  ] as const) {
+    await page.goto("/me");
+    const link = page.getByRole("link", { name });
+    await link.focus();
+    await expect(link).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+  }
+
+  // On the password screen: fill the fields, Tab to the button, and press Enter on it.
+  await page.getByLabel("Your password now").fill(password);
+  await page.getByLabel("New password").fill(NEW_PASSWORD);
+  await page.keyboard.press("Tab");
+  const save = page.getByRole("button", { name: "Save password" });
+  await expect(save).toBeFocused();
+  await expect(save).toHaveCSS("outline-style", /solid|auto/);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Done. Your password is changed.")).toBeVisible();
+
+  // The same on the email screen.
+  await page.goto("/me/email");
+  await page.getByLabel("New email").fill(freshEmail());
+  await page.getByLabel("Your password").fill(NEW_PASSWORD);
+  await page.keyboard.press("Tab");
+  const send = page.getByRole("button", { name: "Send the link" });
+  await expect(send).toBeFocused();
+  await expect(send).toHaveCSS("outline-style", /solid|auto/);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(/^We sent a link to .+ Open it to finish\.$/)).toBeVisible();
 });

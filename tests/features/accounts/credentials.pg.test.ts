@@ -9,11 +9,13 @@ import {
 } from "../../../src/features/accounts/credentials.ts";
 import type { FormEvent } from "../../../src/features/accounts/forms.ts";
 import { FORM_MESSAGES } from "../../../src/features/accounts/forms.ts";
+import { purgeDueAccounts, requestDeletion } from "../../../src/features/accounts/deletion.ts";
 import { SIGN_IN_FAILURE_LIMIT } from "../../../src/features/accounts/sign-in-guard.ts";
 import { createRateLimiter } from "../../../src/lib/server/rate-limit.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createCaptureMailer } from "../../support/capture-mailer.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
+import { MemoryFileStore } from "../../support/memory-file-store.ts";
 import { TestClock } from "../../support/test-clock.ts";
 
 // Change email and change password, for real: better-auth on the real schema in a throwaway Postgres, with the
@@ -79,7 +81,12 @@ let made = 0;
 /** A new account, signed in once: its id, address and the session cookie a browser would hold. */
 async function accountWithSession(): Promise<{ userId: string; email: string; cookie: string }> {
   made += 1;
-  const email = `change${String(made)}@example.test`;
+  return signUpWith(`change${String(made)}@example.test`);
+}
+
+/** Signs up with this address, and answers the account and the cookie a browser would hold. */
+async function signUpWith(email: string): Promise<{ userId: string; email: string; cookie: string }> {
+  made += 1;
   const signUp = await theAuth().handler(
     new Request(`${ORIGIN}/api/auth/sign-up/email`, {
       method: "POST",
@@ -98,6 +105,16 @@ async function accountWithSession(): Promise<{ userId: string; email: string; co
     .map((line) => line.split(";")[0] ?? "")
     .join("; ");
   return { userId: body.user.id, email, cookie };
+}
+
+/** The link in the mail to this address (the one line that starts with http). */
+function linkTo(address: string): string {
+  const link = capture.sent
+    .findLast((mail) => mail.to === address)
+    ?.text.split("\n")
+    .find((line) => line.startsWith("http"));
+  if (link === undefined) throw new Error(`no mail with a link to ${address}`);
+  return link;
 }
 
 /** A form post as the route would hand it over. `jar` collects the cookies the answer sets. */
@@ -155,7 +172,9 @@ describe("change email", () => {
       { userId, email },
     );
     await settle();
+    // What was typed in "New email" comes back, so the person does not type it again.
     expect(problem(answer as { data: ChangeFormData })).toEqual({
+      email: "other@example.test",
       field: "password",
       error: FORM_MESSAGES.currentPasswordWrong,
     });
@@ -210,7 +229,7 @@ describe("change email", () => {
     expect(response.status).toBe(404);
   });
 
-  it("an open change link does nothing once the account is gone", async () => {
+  it("an open change link does nothing once the account is purged, and the row keeps its tombstone address", async () => {
     const { userId, email, cookie } = await accountWithSession();
     capture.sent.length = 0;
     await changeEmail(formEvent({ email: "late@example.test", password: PASSWORD }, cookie), deps(), {
@@ -218,17 +237,50 @@ describe("change email", () => {
       email,
     });
     await settle();
-    const link = capture.sent
-      .find((mail) => mail.to === "late@example.test")
-      ?.text.split("\n")
-      .find((line) => line.startsWith("http"));
-    if (link === undefined) throw new Error("the mail held no link");
-    // What the purge does to the address (deletion.ts): the row keeps a tombstone address.
-    await db().user.update({ where: { id: userId }, data: { email: `purged-${userId}@deleted.invalid` } });
-    await theAuth().handler(new Request(link, { headers: { origin: ORIGIN } }));
-    expect((await db().user.findUniqueOrThrow({ where: { id: userId } })).email).toBe(
-      `purged-${userId}@deleted.invalid`,
+    const link = linkTo("late@example.test");
+    // The real deletion: asked, 14 days wait, then the daily purge.
+    const deletionClock = new TestClock("2026-11-21T12:00:00Z");
+    await requestDeletion({ prisma: db(), clock: deletionClock }, userId);
+    deletionClock.advance(15 * 24 * 60 * 60 * 1000);
+    expect(await purgeDueAccounts({ prisma: db(), clock: deletionClock, files: new MemoryFileStore() })).toBe(
+      1,
     );
+
+    await theAuth().handler(new Request(link, { headers: { origin: ORIGIN } }));
+    const row = await db().user.findUniqueOrThrow({ where: { id: userId } });
+    expect(row.email).toBe(`deleted-${userId}@deleted.invalid`);
+    expect(await db().session.count({ where: { userId } })).toBe(0);
+  });
+
+  it("an old link does not take over the account of someone who signed up with the old address since", async () => {
+    const x = await accountWithSession();
+    capture.sent.length = 0;
+    const asked = (to: string, address: string): Promise<unknown> =>
+      changeEmail(formEvent({ email: to, password: PASSWORD }, x.cookie, address), deps(), x);
+    await asked("attacker-b@example.test", "203.0.113.8");
+    await settle();
+    const staleLink = linkTo("attacker-b@example.test");
+    await asked("attacker-c@example.test", "203.0.113.9");
+    await settle();
+    // X finishes the second change, which frees the old address.
+    await theAuth().handler(
+      new Request(linkTo("attacker-c@example.test"), { headers: { cookie: x.cookie, origin: ORIGIN } }),
+    );
+    expect(await db().user.findUnique({ where: { email: x.email } })).toBeNull();
+
+    // Someone new signs up with the freed address. The link's time is in whole seconds and the real clock runs here, so
+    // the new account is dated a moment later, as it would be if it signed up after the link was made.
+    const newcomer = await signUpWith(x.email);
+    await db().user.update({
+      where: { id: newcomer.userId },
+      data: { createdAt: new Date(Date.now() + 5000) },
+    });
+
+    await theAuth().handler(new Request(staleLink, { headers: { origin: ORIGIN } }));
+    const after = await db().user.findUniqueOrThrow({ where: { id: newcomer.userId } });
+    expect(after.email).toBe(x.email);
+    // Only the newcomer's own sign-up session: the opener was not signed in to their account.
+    expect(await db().session.count({ where: { userId: newcomer.userId } })).toBe(1);
   });
 });
 

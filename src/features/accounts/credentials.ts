@@ -35,6 +35,8 @@ export interface ChangeFormData {
   /** Which field the problem is beside. `form` is the whole form. */
   field?: "email" | "password" | "newPassword" | "form";
   error?: string;
+  /** Email: what was typed in "New email", kept when the form is refused. */
+  email?: string;
   /** Email: the link was sent to this address. */
   sentTo?: string;
   /** Password: it is changed. */
@@ -86,10 +88,15 @@ async function checkCurrentPassword(
 }
 
 /** The words for a password check that did not pass, beside the current-password field. */
-function refusedCheck(check: Exclude<PasswordCheck, "right">): ActionFailure<ChangeFormData> {
-  if (check === "wrong") return fail(400, { field: "password", error: FORM_MESSAGES.currentPasswordWrong });
-  if (check === "paused") return fail(429, { field: "password", error: FORM_MESSAGES.tooManyWrong });
-  return fail(429, { field: "form", error: FORM_MESSAGES.rateLimited });
+function refusedCheck(
+  check: Exclude<PasswordCheck, "right">,
+  kept: ChangeFormData = {},
+): ActionFailure<ChangeFormData> {
+  if (check === "wrong") {
+    return fail(400, { ...kept, field: "password", error: FORM_MESSAGES.currentPasswordWrong });
+  }
+  if (check === "paused") return fail(429, { ...kept, field: "password", error: FORM_MESSAGES.tooManyWrong });
+  return fail(429, { ...kept, field: "form", error: FORM_MESSAGES.rateLimited });
 }
 
 /**
@@ -104,10 +111,12 @@ export async function changeEmail(
 ): Promise<ChangeFormData | ActionFailure<ChangeFormData>> {
   const form = await readForm(event);
   const newEmail = form.email.toLowerCase();
-  if (newEmail === "") return fail(400, { field: "email", error: FORM_MESSAGES.emailMissing });
-  if (!EMAIL_SHAPE.test(newEmail)) return fail(400, { field: "email", error: FORM_MESSAGES.emailInvalid });
+  if (newEmail === "")
+    return fail(400, { email: form.email, field: "email", error: FORM_MESSAGES.emailMissing });
+  if (!EMAIL_SHAPE.test(newEmail))
+    return fail(400, { email: form.email, field: "email", error: FORM_MESSAGES.emailInvalid });
   if (newEmail === account.email.toLowerCase()) {
-    return fail(400, { field: "email", error: FORM_MESSAGES.sameEmail });
+    return fail(400, { email: form.email, field: "email", error: FORM_MESSAGES.sameEmail });
   }
 
   const check = await checkCurrentPassword(
@@ -115,12 +124,14 @@ export async function changeEmail(
     { ...account, clientAddress: event.getClientAddress() },
     form.password,
   );
-  if (check !== "right") return refusedCheck(check);
+  if (check !== "right") return refusedCheck(check, { email: form.email });
 
   const response = await callAuth(event, deps.formDeps, "/change-email", { newEmail, callbackURL: "/me" });
-  if (response.status === 429) return fail(429, { field: "form", error: FORM_MESSAGES.rateLimited });
-  if (response.status === 400) return fail(400, { field: "email", error: FORM_MESSAGES.emailInvalid });
-  if (!response.ok) return fail(500, { field: "form", error: FORM_MESSAGES.failed });
+  if (response.status === 429)
+    return fail(429, { email: form.email, field: "form", error: FORM_MESSAGES.rateLimited });
+  if (response.status === 400)
+    return fail(400, { email: form.email, field: "email", error: FORM_MESSAGES.emailInvalid });
+  if (!response.ok) return fail(500, { email: form.email, field: "form", error: FORM_MESSAGES.failed });
 
   const log =
     deps.log ??
