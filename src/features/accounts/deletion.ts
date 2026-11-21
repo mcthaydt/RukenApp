@@ -116,6 +116,13 @@ export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
     // not an error, so a run that comes back to an account an earlier run half finished is fine.
     const page = await prisma.makerPage.findUnique({ where: { userId }, select: { photoKey: true } });
     if (page !== null && page.photoKey !== null) await files.delete(page.photoKey);
+    // The person's games come off Ruken with them (the owner's decision, 2026-11-21): their files and videos go from
+    // the bucket first, for the same reason as the photo.
+    const games = await prisma.game.findMany({ where: { makerUserId: userId }, select: { publicId: true } });
+    for (const { publicId } of games) {
+      await files.deleteAll(`files/${publicId}/`);
+      await files.deleteAll(`clips/${publicId}/`);
+    }
 
     const done = await prisma.$transaction(async (tx) => {
       const claimed = await tx.deletionRequest.updateMany({
@@ -135,6 +142,7 @@ export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
       // The person's page, and its links with it, so the address is free for someone else. It stays up for the 14
       // days of the wait, and goes only here.
       await tx.makerPage.deleteMany({ where: { userId } });
+      await takeGamesOff(tx, userId);
       // A mail link is kept by address, or by the person's id (a password reset), so both are cleared.
       await tx.verification.deleteMany({
         where: { OR: [{ identifier: email }, { value: email }, { value: userId }] },
@@ -156,4 +164,42 @@ export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
     if (done) finished += 1;
   }
   return finished;
+}
+
+/**
+ * A leaving person's games come off Ruken, as their own Take off and Throw away do, so nobody can find or play them and
+ * staff are not asked to review them. A live or waiting game is taken off; a draft or sent-back game is thrown away,
+ * which frees its name (a draft may not have every answer a game that is off Ruken must keep). The rows stay, because
+ * money and records may point at a game. Their videos' rows go; the videos themselves were deleted just before.
+ */
+async function takeGamesOff(tx: Pick<PrismaClient, "game" | "gameClip">, userId: string): Promise<void> {
+  await tx.game.updateMany({
+    where: { makerUserId: userId, state: { in: ["live", "waiting"] } },
+    data: {
+      state: "taken_off",
+      stateReason: null,
+      livePullId: null,
+      pendingPullId: null,
+      pendingSince: null,
+      toFix: [],
+    },
+  });
+  // Each thrown-away game's address is made from its own public id, so they are changed one at a time.
+  const unsent = await tx.game.findMany({
+    where: { makerUserId: userId, state: { in: ["draft", "sent_back"] } },
+    select: { id: true, publicId: true },
+  });
+  for (const game of unsent) {
+    await tx.game.update({
+      where: { id: game.id },
+      data: {
+        state: "thrown_away",
+        slug: `x-${game.publicId}`,
+        pendingPullId: null,
+        pendingSince: null,
+        toFix: [],
+      },
+    });
+  }
+  await tx.gameClip.deleteMany({ where: { game: { makerUserId: userId } } });
 }

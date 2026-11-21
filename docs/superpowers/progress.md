@@ -6,6 +6,8 @@ Last updated: 2026-11-20 22:05 UTC (from `date`).
 
 - 2026-11-20: "The outcome I want: Finish Ruken." Run the work by the CLAUDE.md and skills the owner gave in the project's files (now in this repo); run the setup check in `release` first; then keep going within the brief, asking only the owner's own choices as decision cards with a recommendation.
 - 2026-11-20 22:27 UTC, on a card: "Ready to launch". Finishing Ruken means every roadmap slice up to Launch, in order: slice 2, the feed, submitting and admin, money, then the before-launch list. This is the owner's go for the slices the roadmap marks Later.
+- 2026-11-21 14:20 UTC: "At a minimum, our e2e tests should cover the CRUD operations; we didn't have a way to update." A standing rule: the browser journeys cover create, read, update and delete for everything, an update followed through to what players see. The audit of that is #267; its gaps are filled in the "Fill e2e CRUD test gaps" work.
+- 2026-11-21 14:26 UTC, on a card: "Games come off with the account." When a maker's account is finally deleted (after the 14-day wait), their games come off Ruken as Take off does: a live or waiting game is taken off, a draft or sent-back one thrown away, and their files and videos deleted. The rows stay for the money records.
 - 2026-11-20, the restart handoff: open items are deploying #238, phone sign-in (#209), Twilio's HELP reply, redoing the workflow, CI and CLAUDE.md, the slice units never built, a feed or some link to games on the site, and the leftover branch `claude/project-thread-2fgp7u`.
 
 ## Active milestone: setup and "Finish Ruken"
