@@ -215,10 +215,10 @@ Acceptance:
 
 Tasks:
 
-- [ ] 1. `liveGames` and the shared "first went live" helper, test first in `tests/features/games/service.pg.test.ts` (C1, C2).
+- [x] 1. `liveGames` and the shared "first went live" helper, test first in `tests/features/games/service.pg.test.ts` (C1, C2).
 - [ ] 2. `memberBeatsByGame`, test first in `tests/features/play/sessions.pg.test.ts` with `TestClock` (C3).
 - [ ] 3. `seededNumber` and `feedOrder`, test first in `tests/lib/random.test.ts` and `tests/features/feed/order.test.ts` (C4): newest first among the new; most played among the rest; a game stops being new at exactly seven days; ties the same whatever order they came in, and different across ten days' seeds; no games, no order.
-- [ ] 4. `makersOf`, test first in `tests/features/pages/service.pg.test.ts` (C5).
+- [x] 4. `makersOf`, test first in `tests/features/pages/service.pg.test.ts` (C5).
 - [ ] 5. The feed service, test first in `tests/features/feed/service.test.ts` with plain functions for its deps and `TestClock`, no database (C6): the order, whole addresses, the maker or null, no 18+ game, the `since` it asked for, one order across two clocks on one Chicago day, 60 games give 50.
 
 ### Unit F: the price card over the clip
