@@ -238,6 +238,106 @@ describe("the games tables", () => {
   });
 });
 
+/** A live game by plain SQL: a draft, its pull, then live on that pull. */
+async function insertLiveGame(makerUserId: string, publicId: string): Promise<string> {
+  const id = await insertGame(makerUserId, { publicId });
+  const pullId = await insertPull({ gameId: id });
+  await db().$executeRaw`UPDATE "Game" SET "state" = 'live', "livePullId" = ${pullId} WHERE "id" = ${id}`;
+  return id;
+}
+
+/**
+ * Holds a rating and marks on a game, by plain SQL. Like `setRatingAndMarks` the values are the test's own fixed words:
+ * Postgres will not take an array of enum labels as a parameter.
+ */
+async function holdRatingAndMarks(gameId: string, heldRating: string | null, marks: string[]): Promise<void> {
+  const rating = heldRating === null ? "NULL" : `'${heldRating}'::"AgeRating"`;
+  const list = marks.map((mark) => `'${mark}'`).join(", ");
+  await db().$executeRawUnsafe(
+    `UPDATE "Game" SET "heldAgeRating" = ${rating}, "heldContentMarks" = ARRAY[${list}]::"ContentMark"[] WHERE "id" = $1`,
+    gameId,
+  );
+}
+
+describe("a live game's held changes", () => {
+  it("hold a rating with no marks, or a rating that is not 18+ with none, on a live game", async () => {
+    const makerId = await newMaker();
+    const id = await insertLiveGame(makerId, "hhhhhhhhh2");
+    await holdRatingAndMarks(id, "age_7", []);
+    await holdRatingAndMarks(id, null, []);
+  });
+
+  it("are refused on a game that is not live", async () => {
+    const makerId = await newMaker();
+    const draft = await insertGame(makerId, { publicId: "hhhhhhhhh3" });
+    await expect(holdRatingAndMarks(draft, "age_7", [])).rejects.toThrow(/Game_held_check/);
+    const live = await insertLiveGame(makerId, "hhhhhhhhh4");
+    await holdRatingAndMarks(live, "age_7", []);
+    // Taking a game off must clear them in the same write.
+    await expect(db().$executeRaw`UPDATE "Game" SET "state" = 'taken_off' WHERE "id" = ${live}`).rejects.toThrow(
+      /Game_held_check/,
+    );
+  });
+
+  it("refuse marks without a held 18+, and a held 18+ without marks", async () => {
+    const makerId = await newMaker();
+    const id = await insertLiveGame(makerId, "hhhhhhhhh5");
+    await expect(holdRatingAndMarks(id, null, ["gore"])).rejects.toThrow(/Game_held_check/);
+    await expect(holdRatingAndMarks(id, "age_12", ["gore"])).rejects.toThrow(/Game_held_check/);
+    await expect(holdRatingAndMarks(id, "age_18", [])).rejects.toThrow(/Game_held_check/);
+    await holdRatingAndMarks(id, "age_18", ["gore"]);
+  });
+
+  it("let 'none' stand alone, as the live marks do", async () => {
+    const makerId = await newMaker();
+    const id = await insertLiveGame(makerId, "hhhhhhhhh6");
+    await expect(holdRatingAndMarks(id, "age_18", ["none", "gore"])).rejects.toThrow(/Game_held_check/);
+    await holdRatingAndMarks(id, "age_18", ["none"]);
+  });
+
+  it("keep a held 18+ with marks on a game that is already 18+ (only its marks changed)", async () => {
+    const makerId = await newMaker();
+    const id = await insertLiveGame(makerId, "hhhhhhhhh7");
+    await setRatingAndMarks(id, "age_18", ["gore"]);
+    await holdRatingAndMarks(id, "age_18", ["drugs"]);
+    const game = await db().game.findUniqueOrThrow({ where: { id } });
+    expect(game).toMatchObject({ ageRating: "age_18", heldAgeRating: "age_18", heldContentMarks: ["drugs"] });
+  });
+
+  describe("held clip", () => {
+    async function insertHeld(gameId: string, shape: "upright" | "wide", key: string): Promise<void> {
+      await db().$executeRaw`
+        INSERT INTO "GameHeldClip" ("id", "gameId", "shape", "key", "contentType", "bytes", "updatedAt")
+        VALUES (${randomUUID()}, ${gameId}, ${shape}::"ClipShape", ${key}, 'video/mp4', 1000, now())`;
+    }
+
+    it("is kept once per shape per game", async () => {
+      const makerId = await newMaker();
+      const id = await insertLiveGame(makerId, "hhhhhhhhha");
+      await insertHeld(id, "upright", "clips/hhhhhhhhha/upright-0000000000000001.mp4");
+      await insertHeld(id, "wide", "clips/hhhhhhhhha/wide-0000000000000002.mp4");
+      await expect(
+        insertHeld(id, "upright", "clips/hhhhhhhhha/upright-0000000000000003.mp4"),
+      ).rejects.toThrow(/GameHeldClip_gameId_shape_key/);
+    });
+
+    it("is refused a key that is not a clip's key, and takes a .mov key", async () => {
+      const makerId = await newMaker();
+      const id = await insertLiveGame(makerId, "hhhhhhhhhb");
+      for (const key of [
+        "clips/hhhhhhhhhb/upright.mp4",
+        "clips/hhhhhhhhhb/upright-ABCDEF0123456789.mp4",
+        "clips/hhhhhhhhhb/upright-0000000000000001.avi",
+        "clips/hhhhhhhhhb/../x/upright-0000000000000001.mp4",
+        "photos/0000000000000001.png",
+      ]) {
+        await expect(insertHeld(id, "upright", key)).rejects.toThrow(/GameHeldClip_key_check/);
+      }
+      await insertHeld(id, "upright", "clips/hhhhhhhhhb/upright-0000000000000009.mov");
+    });
+  });
+});
+
 /** A game with nothing answered but its name: no line, no place to play, no repository, no rating. */
 async function insertBareGame(makerUserId: string, publicId: string, state = "draft"): Promise<string> {
   counter += 1;
