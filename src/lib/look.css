@@ -2620,6 +2620,11 @@ main.gamepage {
   grid-column: 1 / -1;
 }
 
+/* The tiles beside the clip. Below a computer they are the grid's own tiles. */
+.gamepage .side {
+  display: contents;
+}
+
 .gamepage .more h2 {
   margin: 0;
   font: var(--text-statement);
@@ -2685,35 +2690,36 @@ main.gamepage {
   }
 }
 
-/* A computer: four columns, the clip over the left two, its tiles in the right two. */
+/* A computer: two halves, the clip on the left and its tiles on the right. The tiles are their own two-column grid, so
+   they line up edge to edge: Play across the top, the facts in pairs, and the clips picker, each row as tall as its
+   words. The one tile left alone in its row takes the whole row. */
 @media (min-width: 62.5rem) {
   .gamepage .bento {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: stretch;
   }
 
-  /* One other game: its panel is half the width, not a whole row with one small card in it. */
-  .gamepage .more[data-solo] {
-    grid-column: span 2;
+  .gamepage .hero {
+    grid-row: auto;
   }
 
-  .gamepage .hero {
-    grid-column: span 2;
-    grid-row: span 3;
+  .gamepage .side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    align-content: start;
   }
 
   .gamepage .playtile {
-    grid-row: span 2;
+    grid-column: span 2;
+  }
+
+  .gamepage .side > :last-child:nth-child(even) {
+    grid-column: span 2;
   }
 
   .gamepage .clipbox {
     min-height: clamp(20rem, 62dvh, 40rem);
     max-height: calc(100dvh - 2rem);
-  }
-
-  .gamepage .watch,
-  .gamepage .madeby {
-    grid-column: span 1;
   }
 }
 
