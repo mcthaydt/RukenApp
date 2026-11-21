@@ -26,10 +26,13 @@ let shown: { handle: string; linkIds: string[] };
 
 test.beforeAll(async ({ browser, request }) => {
   test.setTimeout(240_000);
+  await forgetRateLimits();
   maker = await addGame(browser, request);
   // Two more live games of the same maker, from rows; the second is 18+ and must stay off the page.
   // Each game is made by its own new account, in a browser context of its own (a signed-in context cannot sign up again).
   const liveGame = async (): Promise<{ slug: string; name: string }> => {
+    // The sign-ups share one client address's limit, so each starts with it forgotten.
+    await forgetRateLimits();
     const context = await browser.newContext({ baseURL: "http://localhost:4173" });
     try {
       return await gameWhere(await context.newPage(), { state: "live" });
