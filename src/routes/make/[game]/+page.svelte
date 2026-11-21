@@ -21,6 +21,7 @@
     changeAddress={data.changeAddress}
     filesProblem={data.filesProblem}
     filesAddress={data.filesAddress}
+    throwAway={data.throwAway}
   />
 {:else if data.view === "sent_back"}
   <SentBackScreen
@@ -53,6 +54,8 @@
     nextStep={data.nextStep}
     filesLeft={data.filesLeft}
     connectAddress={data.connectAddress}
+    game={data.game}
+    throwAway={data.throwAway}
     problem={form?.problem}
   />
 {:else}

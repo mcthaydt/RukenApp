@@ -18,7 +18,8 @@ import type { Actions, PageServerLoad } from "./$types";
 
 // A game's own address. A draft is not a screen of its own: it leads on to the first question not answered, or to the
 // last step when none is left. Every other state is a screen that says where the game stands: Waiting, Sent back, Live and Taken off
-// each have one (spec 5, 5b "Sent back, now", 5c); a game staff took down has only its headline.
+// each have one (spec 5, 5b "Sent back, now", 5c); a game staff took down has only its headline. Waiting and Taken off
+// can also throw the game away.
 
 /** The parts a game's answers are made of, as a count: the name, the line, the files, the two videos, who it is for and the websites. */
 const PARTS = ALL_PARTS.length;
@@ -123,6 +124,8 @@ export const load: PageServerLoad = async (event) => {
       game: laidOut(game, []),
       line: waitingLine(await gamesServices().service.decisionDayWordsFor(game.id)),
       changeAddress: `/make/${game.slug}/check`,
+      // Quiet, under "Change something": what waits is cleared, and a decision held for decision day lapses.
+      throwAway: `/make/${game.slug}/throw-away`,
       // A refused newest copy leaves the older one waiting, so the screen says so and leads to where it is mended.
       filesProblem: game.pullProblem,
       filesAddress: `/make/${game.slug}/files`,
@@ -183,6 +186,11 @@ export const load: PageServerLoad = async (event) => {
         wide: true,
       }),
       filesLeft: game.filesLeft,
+      // Laid out as Sent back is, with a Change on every part: nothing changed here reaches players unchecked, because
+      // putting the game back sends it for review.
+      game: laidOut(game, ALL_PARTS),
+      // Quiet, at the foot: the game and its videos are deleted for good, on the screen that asks first.
+      throwAway: `/make/${game.slug}/throw-away`,
     };
   }
 
