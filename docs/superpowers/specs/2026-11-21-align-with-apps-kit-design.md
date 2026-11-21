@@ -85,12 +85,14 @@ Measured against PR-R's head (`cdc520b`) and `main` (`fe5f5ee`), sentence by sen
   - `docs/superpowers/specs/2026-11-21-feed-and-makers-page-design.md` line 71: unit K, lane 3, merges "under the standing permission of 2026-11-20 in `history.md` ("Merge PRs yourself once CI, reviews and audits pass, without asking the owner")".
   - The same file, line 201: "**Lessons carried** (`history.md`)".
   - `docs/superpowers/specs/2026-11-21-sessions-merge-reviewed-prs-design.md` line 10: "**Standing permission** (`history.md`, 2026-11-20)", quoting the same wording.
+  - The same file, line 101: the owner step is "Recorded under "Standing permissions" in `history.md` with that scope".
 - Evidence: the owner deleted history.md (20:02 UTC) and asked for the "merge without asking" wording to go (19:59 UTC). Slice 3 is resuming, so a build session reads the slice 3 spec as live instructions.
 - Expected: no spec a session may act on points at history.md or quotes the removed wording.
 - Fix:
   - Slice 3 spec line 71: K "merges after its implementation audit passes, under the owner's standing permission of 2026-11-21 19:16 UTC recorded in `progress.md` History". No quote.
   - Slice 3 spec line 201: "**Lessons carried** (`progress.md` History)". The lessons themselves stay as written.
-  - Sessions-merge spec line 10: drop the quote and keep a dated pointer: "**Standing permission:** the owner's merge permission, recorded in `progress.md` History (2026-11-20, replaced by the 2026-11-21 19:16 UTC record)."
+  - Sessions-merge spec line 10: drop the quote and point only at the 19:16 record: "**Standing permission:** the owner's 2026-11-21 19:16 UTC standing permission, recorded in `progress.md` History."
+  - Sessions-merge spec line 101: "Recorded under "Standing permissions" in `history.md` with that scope" becomes "Recorded under "Standing permissions" in `progress.md` History with that scope". Nothing else in that line changes.
 - Not changed: `2026-11-21-everything-editable-design.md` and `2026-11-21-crud-journeys-rule-design.md` name history.md only in work that has merged (#269 onward and #278). They are history, and CLAUDE.md and the skills carry their rules now (criterion 6 checks those), so they stay as written, like the other dated specs and audits.
 
 ## Not changed here, reported instead
