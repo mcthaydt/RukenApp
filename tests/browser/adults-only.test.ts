@@ -124,6 +124,37 @@ test("a visitor who is not signed in cannot see or play an 18+ game, and is aske
   await expect(page).toHaveURL("/sign-in");
 });
 
+/** The feed has loaded (a clip, or its empty words) and the 18+ game is not among its clips, by name or by address. */
+async function expectNotInTheFeed(page: Page): Promise<void> {
+  await page.goto("/");
+  await expect(
+    page.locator("section[data-slug]").first().or(page.getByText("No games here yet.")),
+  ).toBeAttached();
+  await pageHasSettled(page);
+  await expect(page.locator(`section[data-slug="${adultsGame.slug}"]`)).toHaveCount(0);
+  await expect(page.getByText(adultsGame.name)).toHaveCount(0);
+}
+
+test("an 18+ game is not in the feed for a visitor, a person under 18, a person of unknown age, or an adult", async ({
+  page,
+  browser,
+}) => {
+  await expectNotInTheFeed(page);
+
+  // Each person has a browser of their own, so one's sign-in never carries to the next.
+  for (const years of [15, 30, 18]) {
+    const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+    try {
+      const person = await context.newPage();
+      const account = await signUpAged(person, years);
+      if (years === 30) await forgetAgeOf(account.email);
+      await expectNotInTheFeed(person);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 test("a person under 18 cannot see or play an 18+ game", async ({ page }, testInfo) => {
   await signUpAged(page, 15);
   const before = (await playOf(adultsGame.slug)).sessions.length;
