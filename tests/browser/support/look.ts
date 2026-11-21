@@ -288,7 +288,6 @@ export async function showTheOwner(page: Page, testInfo: TestInfo, screen: strin
 /** The five layouts the maker's screens are drawn in (spec 4). */
 export type Layout = "phone" | "phone-sideways" | "tablet" | "tablet-sideways" | "computer";
 
-/** Which of the five layouts this window gets. The same order as the stylesheet's queries. */
 /** A phone and an iPad held sideways. Every project is upright (or a computer), so a journey asks for these itself. */
 export const SIDEWAYS = { phone: { width: 915, height: 412 }, tablet: { width: 1080, height: 810 } } as const;
 
@@ -306,6 +305,7 @@ export function heldSideways(device: keyof typeof SIDEWAYS, define: () => void):
   });
 }
 
+/** Which of the five layouts this window gets. The same order as the stylesheet's queries. */
 export function layoutOf(page: Page): Layout {
   const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
   if (width < 500) return "phone";
