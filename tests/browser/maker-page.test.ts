@@ -28,13 +28,17 @@ test.beforeAll(async ({ browser, request }) => {
   test.setTimeout(240_000);
   maker = await addGame(browser, request);
   // Two more live games of the same maker, from rows; the second is 18+ and must stay off the page.
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
-  try {
-    second = await gameWhere(await context.newPage(), { state: "live" });
-    eighteen = await gameWhere(await context.newPage(), { state: "live" });
-  } finally {
-    await context.close();
-  }
+  // Each game is made by its own new account, in a browser context of its own (a signed-in context cannot sign up again).
+  const liveGame = async (): Promise<{ slug: string; name: string }> => {
+    const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+    try {
+      return await gameWhere(await context.newPage(), { state: "live" });
+    } finally {
+      await context.close();
+    }
+  };
+  second = await liveGame();
+  eighteen = await liveGame();
   await changeGame(second.slug, { makerUserId: maker.makerUserId });
   await changeGame(eighteen.slug, {
     makerUserId: maker.makerUserId,
