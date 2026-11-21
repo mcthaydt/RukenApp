@@ -41,15 +41,18 @@
 {#if data.backdrop !== null}
   <!-- The game they tapped, dimmed, behind the card. It takes no press and no focus, and a screen reader does not meet it. -->
   <div class="behindcard" aria-hidden="true">
-    <video
-      src={wide ? data.backdrop.wide : data.backdrop.upright}
-      preload="metadata"
-      tabindex="-1"
-      muted
-      loop
-      playsinline
-      use:quietVideo
-    ></video>
+    <!-- Remounted when the shape changes, so the new clip is started by quietVideo too. -->
+    {#key wide}
+      <video
+        src={wide ? data.backdrop.wide : data.backdrop.upright}
+        preload="metadata"
+        tabindex="-1"
+        muted
+        loop
+        playsinline
+        use:quietVideo
+      ></video>
+    {/key}
   </div>
 {/if}
 

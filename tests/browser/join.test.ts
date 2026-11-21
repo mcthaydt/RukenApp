@@ -182,6 +182,14 @@ test.describe("the card over a game's clip", () => {
     const clip = page.locator(".behindcard video");
     await expect(clip).toHaveCount(1);
     await expectFrame(clip);
+    // Where a video may move by itself (quiet-video.ts), the clip is playing, in the window's own shape.
+    const mayPlay = await page.evaluate(() => {
+      const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+      return !matchMedia("(prefers-reduced-motion: reduce)").matches && (memory === undefined || memory >= 4);
+    });
+    if (mayPlay) {
+      await expect.poll(() => clip.evaluate((video: HTMLVideoElement) => video.paused)).toBe(false);
+    }
     await expect(page.locator(".behindcard")).toHaveAttribute("aria-hidden", "true");
     await expect(clip).toHaveAttribute("tabindex", "-1");
     await expect(page.locator(".behindcard")).toHaveCSS("pointer-events", "none");
