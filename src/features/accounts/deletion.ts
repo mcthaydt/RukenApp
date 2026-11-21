@@ -116,6 +116,8 @@ export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
     try {
       if (await purgeOne(deps, id, userId, now)) finished += 1;
     } catch (error) {
+      // Each failure is logged with its account, since the run's own error carries only the counts.
+      console.error(`Deleting the account of user ${userId} failed; the next run tries again.`, error);
       failures.push(error);
     }
   }
