@@ -13,6 +13,7 @@ Reviews find problems and change nothing but their own audit file. The implement
 - A review (a model or a person reading the work) is real evidence of a different kind: it finds what no check encodes, such as missing requirements, confusing screens and wrong assumptions. Use both.
 - **The verdict line.** A review or audit of a pull request posts its verdict on the pull request as a comment whose first line is the commit it examined, then PASS or FAIL in capitals: `abc1234 PASS` or `abc1234 FAIL: 2 red`. Markup may wrap them (`**abc1234 PASS**`), but nothing else comes first and no number comes between the commit and the word. Any other comment is a status line and counts for nothing, so a builder's report never starts with the commit followed by PASS or FAIL. The rule hooks read only this line.
 - Review against the acceptance criteria in the brief, plus exploratory checks for what the criteria missed. A gap against a criterion is red; an improvement is a note, kept apart from the blocking defects.
+- **CRUD.** For each thing a user can make that the change adds or touches, find the journey in the browser tests that creates it, reads it back, updates it and deletes it; in a plan audit, find the plan step that writes it. Each one missing is red, unless the owner's recorded choice keeps that thing (CRUD in `build`).
 - A pull request that changes or deletes an existing test, golden or `verify` step names each one and why in its body. Read those first. When it edits `verify`, also run `verify` from `main` (Verification in `build`).
 
 ## Audits
