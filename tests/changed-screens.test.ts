@@ -1,3 +1,4 @@
+// Demo A3: a comment only.
 // The picker that says which screens a change reaches (tests/browser/support/changed-screens.ts), and the choice
 // `showTheOwner` makes from its answer. The output trees below have the shapes of a real `.svelte-kit/output/` (seen
 // on real builds): hashed client names, hash-only shared chunks, nodes naming their client and server files, manifests
