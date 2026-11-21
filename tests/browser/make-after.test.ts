@@ -223,8 +223,8 @@ test("a live game: Send a new version is the blue button, and a new version goes
 });
 
 // Spec 5c: beside the headline sit the game's one video (the shape of this window), its name and line, and where it plays;
-// the rating is added. The files and the websites are not drawn on Live, and neither is the other video.
-test("Live shows the one video for this window, the name, the line and two chips", async ({ page }) => {
+// the rating is added, and the files and websites, which she may change there. The other video is not drawn on Live.
+test("Live shows the one video for this window, the name, the line and three chips", async ({ page }) => {
   const { slug, name } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
@@ -238,12 +238,12 @@ test("Live shows the one video for this window, the name, the line and two chips
   );
   await expect(laid.getByRole("heading", { level: 2 })).toHaveText(name);
   await expect(laid.locator(".tagline")).toHaveText("A tiny game about tapping.");
-  await expect(laid.locator(".chip")).toHaveText(["12+"]);
+  await expect(laid.locator(".chip")).toHaveText(["ruken-test/tiny-game", "12+", "Uses no other websites"]);
 });
 
-// A live game's maker mends the files on GitHub, and a new version copies them. Its files question is a 404 for her, so
-// the card that says what is wrong is words only, and the copy that passes is what clears it.
-test("a live game's update sent back for its files: the card is not a link, and a new version clears it", async ({
+// A live game's maker mends the files on GitHub and a new version copies them, or she picks other files on the files
+// question the card leads to. The copy that passes is what clears it.
+test("a live game's update sent back for its files: the card leads to the files, and a new version clears it", async ({
   page,
 }) => {
   const { slug } = await answerEveryQuestion(page);
@@ -255,8 +255,7 @@ test("a live game's update sent back for its files: the card is not a link, and 
   const card = page.locator(".fix");
   await expect(card).toHaveCount(1);
   await expect(card).toContainText("Game files");
-  await expect(page.locator("a.fix")).toHaveCount(0);
-  await expect(card.getByText("Fix this")).toHaveCount(0);
+  await expect(page.locator("a.fix")).toHaveAttribute("href", `/make/${slug}/files`);
 
   await page.getByRole("button", { name: "Send a new version" }).click();
 
@@ -282,7 +281,7 @@ test("a live game's name changes and its address stays", async ({ page }, testIn
   await expect(page.locator(".laid .title")).toHaveText(renamed);
 });
 
-test("a live game offers no Change on its videos or its files, and posting one by hand is refused", async ({
+test("a live game offers no Change on its videos or its rating, and posting one by hand is refused", async ({
   page,
   baseURL,
 }) => {
@@ -290,7 +289,7 @@ test("a live game offers no Change on its videos or its files, and posting one b
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
 
-  for (const part of ["the upright video", "the wide video", "the game's files", "who it's for"]) {
+  for (const part of ["the upright video", "the wide video", "who it's for"]) {
     await expect(page.getByRole("link", { name: `Change ${part}` })).toHaveCount(0);
   }
   await expect(page.getByRole("link", { name: "Change the name" })).toBeVisible();

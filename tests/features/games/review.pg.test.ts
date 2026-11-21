@@ -681,6 +681,72 @@ describe("a live game's clips", () => {
   });
 });
 
+describe("a live game's files and websites", () => {
+  /** A game that is live on its first files, its maker connected. */
+  async function liveGame() {
+    const game = await readyGame();
+    await connect(game.makerUserId);
+    await service.sendForReview(game.id, game.makerUserId);
+    await service.accept(game.id, await createUser(db()));
+    return game;
+  }
+
+  it("are changed by their maker, copied and sent for review in the one save, and the old files stay live", async () => {
+    const game = await liveGame();
+    const { livePullId } = await stateOf(game.id);
+
+    await service.saveAnswer(game.id, game.makerUserId, {
+      question: "files",
+      repo: { fullName: "acme/game", branch: null, folder: "" },
+    });
+
+    const after = await stateOf(game.id);
+    expect(after).toMatchObject({ state: "live", livePullId, toFix: [] });
+    expect(after.pendingPullId).not.toBeNull();
+    expect(after.pendingPullId).not.toBe(livePullId);
+  });
+
+  it("sends a new websites list for review, and players keep the old list meanwhile", async () => {
+    const game = await liveGame();
+    const { livePullId } = await stateOf(game.id);
+
+    await service.saveAnswer(game.id, game.makerUserId, {
+      question: "websites",
+      connectHosts: ["api.example.com"],
+    });
+
+    const after = await stateOf(game.id);
+    expect(after).toMatchObject({ state: "live", livePullId });
+    const waiting = await db().gamePull.findUniqueOrThrow({ where: { id: after.pendingPullId ?? "" } });
+    expect(waiting.connectHosts).toEqual(["api.example.com"]);
+    const live = await db().gamePull.findUniqueOrThrow({ where: { id: livePullId ?? "" } });
+    expect(live.connectHosts).toEqual([]);
+  });
+
+  it("refuses files the maker can no longer reach, and changes nothing", async () => {
+    const game = await liveGame();
+    const before = await stateOf(game.id);
+    holding.delete("acme/game");
+
+    await expect(
+      service.saveAnswer(game.id, game.makerUserId, {
+        question: "files",
+        repo: { fullName: "acme/game", branch: null, folder: "" },
+      }),
+    ).rejects.toMatchObject({ code: "NOT_CONNECTED" });
+
+    expect(await stateOf(game.id)).toMatchObject({ state: "live", pendingPullId: before.pendingPullId });
+  });
+
+  it("still refuses a live game's rating", async () => {
+    const game = await liveGame();
+
+    await expect(
+      service.saveAnswer(game.id, game.makerUserId, { question: "age", ageRating: "age_3" }),
+    ).rejects.toMatchObject({ code: "NOT_READY" });
+  });
+});
+
 describe("waitingGames", () => {
   it("lists the games with files waiting, the oldest first, with their maker's address", async () => {
     const first = await readyGame();
