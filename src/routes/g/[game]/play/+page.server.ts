@@ -1,5 +1,5 @@
 import { error, redirect } from "@sveltejs/kit";
-import { GAME_STAFF_ROLES } from "../../../../features/accounts/accounts.ts";
+import { adultsOnlyRefusal, GAME_STAFF_ROLES } from "../../../../features/accounts/accounts.ts";
 import { gamesServices } from "../../../../features/games/games.ts";
 import { membershipServices } from "../../../../features/membership/membership.ts";
 import { pagesServices } from "../../../../features/pages/pages.ts";
@@ -16,6 +16,9 @@ import type { PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ params, locals, getClientAddress }) => {
   const game = await gamesServices().service.liveGameBySlug(params.game);
   if (game === null) error(404);
+  // Before a play is started, so no pass to an 18+ game's files is ever made for someone not known to be 18 or over.
+  const refusal = await adultsOnlyRefusal(game.ageRating, locals.caller);
+  if (refusal !== null) error(403, refusal);
 
   const caller = locals.caller;
   let viewer: PlayViewer | null = null;
