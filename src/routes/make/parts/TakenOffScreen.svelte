@@ -11,12 +11,15 @@
     name,
     nextStep,
     filesLeft,
+    connectAddress,
     problem,
   }: {
     name: string;
     nextStep: string | null;
     /** True when some of the game's files are still on Ruken. */
     filesLeft: boolean;
+    /** Where a maker chooses their games on GitHub, which mends a refusal that says to. */
+    connectAddress: string;
     problem: string | undefined;
   } = $props();
 
@@ -36,6 +39,10 @@
   {/if}
   {#if problem !== undefined}
     <p class="problem" role="alert">{problem}</p>
+    <!-- A refusal that says to choose the game on GitHub gets the way to do it, as the files question has. -->
+    {#if problem.includes("Choose it on GitHub")}
+      <p class="note"><a href={connectAddress} data-sveltekit-reload>Choose it on GitHub</a></p>
+    {/if}
   {/if}
   <form
     method="POST"

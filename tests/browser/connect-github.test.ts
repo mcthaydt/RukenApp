@@ -231,7 +231,9 @@ test("connected with nothing chosen, she is told, with one way to choose some", 
 
   await expect(page.getByText("Ruken can't see any of your games on GitHub yet.")).toBeVisible();
   await expect(page.getByRole("radio")).toHaveCount(0);
-  const choose = page.getByRole("link", { name: "Choose your games on GitHub" });
+  const choose = page.getByRole("link", { name: "Choose on GitHub" });
+  // One centred line like every other bar button, not two lines on a phone.
+  expect((await choose.boundingBox())?.height ?? 999).toBeLessThanOrEqual(64);
   await expect(choose).toHaveCSS("background-color", rgb(token("--pay")));
   await expect(choose).toHaveAttribute("href", `/make/github?choose=1&game=${slug}`);
   await showTheOwner(page, testInfo, "question 3, connected, nothing chosen on GitHub");

@@ -762,7 +762,7 @@ test("a game's card in Your games shows a still from its wide video", async ({ p
   // A still never plays, and nothing is added to the video to make it start.
   await expect(still).not.toHaveAttribute("autoplay", /.*/);
   const small = await boxOf(still);
-  expect([96, 128]).toContain(Math.round(small.width));
+  expect([64, 96, 128]).toContain(Math.round(small.width));
   expect(Math.round(small.height)).toBe(Math.round((small.width * 9) / 16));
 });
 

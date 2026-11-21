@@ -146,6 +146,16 @@ test("on an iPhone SE a game's name in Your games breaks only between words, bes
   expect(picture.width, "the picture leaves the name its room").toBeLessThanOrEqual(72);
 });
 
+test("on a 412-wide phone a long word in a game's name stays whole in Your games", async ({ page }) => {
+  test.skip(test.info().project.name !== "phone", "one Chromium project is enough for a window of its own");
+  await page.setViewportSize({ width: 412, height: 839 });
+  await startDraft(page, "The Extraordinary Long Adventures of Bartholomew");
+  await page.goto("/make");
+  await layoutHasSettled(page);
+
+  expect(await brokenWords(page.locator("a.game .statement"))).toEqual([]);
+});
+
 // ---- L8: a refused ring has air under it ---------------------------------------------------------------------------------
 
 /** The gap between the heavier edge round a refused set of choices and the line under it, in pixels. */
