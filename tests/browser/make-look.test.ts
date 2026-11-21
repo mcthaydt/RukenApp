@@ -15,7 +15,7 @@ import {
 import { boxOf, layoutOf, pipRed, showTheOwner, type Layout } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
-// How the maker's screens are laid out (spec 4, and the plan's table of sizes). A window is one of five layouts, and
+// How the maker's screens are laid out (spec 4). A window is one of five layouts, and
 // each is read from the window's own size, not the project's name: an iPad held upright and a Pixel 7 held upright are
 // different layouts, a phone held sideways is the sideways tablet made smaller.
 
@@ -221,7 +221,7 @@ test("the Needs fixing card is paper with a blue left edge, a plain label, and n
 });
 
 // The frame a video question draws is the biggest thing on the screen, in its real shape. Its size is read per layout
-// from the plan: an upright frame is a height, a wide frame a width.
+// from the design: an upright frame is a height, a wide frame a width.
 const UPRIGHT_HEIGHT: Record<Layout, number> = {
   computer: 540,
   "tablet-sideways": 540,

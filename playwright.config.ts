@@ -12,7 +12,6 @@ const GITHUB_APP_PRIVATE_KEY = generateKeyPairSync("rsa", {
 
 // Browser journeys (design section 8) run against the built app, served by `wrangler dev`: the Workers runtime
 // the real site runs in.
-// CI runs them on GitHub's runners only (CLAUDE.md: no session runs tests itself).
 export default defineConfig({
   testDir: "tests/browser",
   forbidOnly: true,

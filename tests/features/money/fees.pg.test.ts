@@ -141,7 +141,7 @@ describe("postFeeRows", () => {
   });
 
   it("does not take a fee Stripe's credits paid, or a returned fee", async () => {
-    // Owner, 2026-11-14: "No, skip them". That neither holds a month up is Task 23's test: a month is made final
+    // Owner, 2026-11-14: "No, skip them". That neither holds a month up is tested where months are made final: a month is made final
     // there, and these two kinds are never among what blocks it.
     const now = new TestClock("2027-07-20T12:00:00Z");
     await postedPayment("in_5", "2027-07-02T15:00:00Z", now);

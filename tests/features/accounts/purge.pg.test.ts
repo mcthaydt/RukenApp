@@ -307,7 +307,7 @@ describe("purgeDueAccounts", () => {
     expect(await db().wishlist.count({ where: { userId: staying.id } })).toBe(1);
   });
 
-  // Review Focus 6 of the plan: the money rows are the ledger, so they outlive the person's details. The purge only
+  // The money rows are the ledger, so they outlive the person's details. The purge only
   // turns the user row into a tombstone; these rows point at it and must all still be there, unchanged.
   it("leaves the payment, the membership start and the membership rows as they were", async () => {
     const { id } = await seedPerson();

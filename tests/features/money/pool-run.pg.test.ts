@@ -12,7 +12,7 @@ import { aMonth, balancesOf, expectBooksBalanced, type MonthMember } from "../..
 import { TestClock } from "../../support/test-clock.ts";
 
 // Sharing a month's pool, through the database. Each test works in a month of its own (the pool is the month's), and
-// the first one is Task 8's worked month: the same members, the same cents, now read from the rows the daily job left.
+// the first one is the worked month: the same members, the same cents, now read from the rows the daily job left.
 
 let database: TestDatabase | undefined;
 
@@ -54,7 +54,7 @@ describe("sharePool", () => {
     const own = await startTestDatabase();
     const prisma = own.prisma;
     try {
-      // Task 8's three members. A: monthly, brought by X, played X's game 1 for 2 hours and Y's game 2 for 1 hour. B:
+      // The worked month's three members. A: monthly, brought by X, played X's game 1 for 2 hours and Y's game 2 for 1 hour. B:
       // yearly, brought by nobody, played game 2 for half an hour. C: monthly, brought themselves, played nothing.
       const one = await addGame(prisma);
       const two = await addGame(prisma);
@@ -425,7 +425,7 @@ describe("a member's weight after refunds and disputes (Owner, 2026-11-14)", () 
   });
 
   it("shares a month without the play of a member who was refunded in full", async () => {
-    // Task 8's refund step, through the database, in a database of its own: posting reversals posts every one kept.
+    // The refund step, through the database, in a database of its own: posting reversals posts every one kept.
     // A (brought by X, played X's game) and B (nobody brought them, played Y's game) each put 469 in the pool. A is
     // refunded in full: the refund takes back A's 469 and half of what Stripe kept (the 61-cent card fee, 31 rounded
     // up) from the pool, which is then 469 + 469 − 469 − 31 = 438. A weighs nothing, so X has no bonus and no play

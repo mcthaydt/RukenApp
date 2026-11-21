@@ -1,4 +1,4 @@
-// The layer rule (CLAUDE.md, "Feature folders, and tests only in tests/"):
+// The layer rule (feature folders, and tests only in tests/):
 // - tests never sit in src/;
 // - a feature imports only from features below it, so features cannot form a cycle;
 // - another feature reaches a feature only through its entry file, src/features/<feature>/<feature>.ts;

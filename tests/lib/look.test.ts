@@ -52,7 +52,7 @@ describe("the tokens (design 5.8)", () => {
     expect(css).toMatch(/Matt DesLauriers/);
   });
 
-  // AGENTS.md: files from others keep their own licences beside them, as the fonts' do.
+  // Files from others keep their own licences beside them, as the fonts' do.
   it("keeps that data set's MIT licence beside the stylesheet, and the comment points at it", () => {
     const name = "dictionary-of-colour-combinations-LICENSE.txt";
     const licence = readFileSync(`src/lib/${name}`, "utf8");
@@ -406,8 +406,8 @@ describe("screens wear the look and nothing of their own", () => {
   });
 });
 
-// A game's clips and its frame (design 5.8, Task 19). Each class has its rule here and its first use in the staff page
-// (Task 30); a game's own screens (Task 21) add a rule for `frame` inside the play screen.
+// A game's clips and its frame (design 5.8). Each class has its rule here and its first use in the staff page;
+// a game's own screens add a rule for `frame` inside the play screen.
 describe("a game's clips and its frame", () => {
   /** The declarations of the rule whose whole selector is `.name`, with comments dropped so one cannot fake a rule. */
   const ruleOf = (name: string): string => {

@@ -223,7 +223,7 @@ test("a live game: Send a new version is the blue button, and a new version goes
 });
 
 // Spec 5c: beside the headline sit the game's one video (the shape of this window), its name and line, and where it plays;
-// the plan adds the rating. The files and the websites are not drawn on Live, and neither is the other video.
+// the rating is added. The files and the websites are not drawn on Live, and neither is the other video.
 test("Live shows the one video for this window, the name, the line and two chips", async ({ page }) => {
   const { slug, name } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}`);
