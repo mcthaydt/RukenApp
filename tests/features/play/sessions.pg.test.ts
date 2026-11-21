@@ -648,4 +648,13 @@ describe("memberBeatsByGame", () => {
 
     expect((await service.memberBeatsByGame(SINCE, NOW)).get(game.id)).toBe(1);
   });
+
+  it("does not count a beat of a session that started more than a day before the window", async () => {
+    const game = await newGame();
+    // A session lives one day, so one that started over a day before `since` cannot honestly have a beat inside the
+    // window; the read leaves it out, which is what keeps the query to recent sessions.
+    await addPlay(game, { startedAt: hoursAgo(7 * 24 + 30), beats: [{ at: hoursAgo(7 * 24 - 1) }] });
+
+    expect((await service.memberBeatsByGame(SINCE, NOW)).has(game.id)).toBe(false);
+  });
 });
