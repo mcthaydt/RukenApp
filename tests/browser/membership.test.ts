@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { payAsNewMember, signUp, subscriptionStatusAtStandIn } from "./support/account.ts";
+import { failCardAtStandIn, payAsNewMember, signUp, subscriptionStatusAtStandIn } from "./support/account.ts";
 import { failTheirCard } from "./support/database.ts";
 import { boxOf, expectOneCard, lineStarts, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -126,6 +126,31 @@ test("a member whose card failed more than a week ago is told, and sent to fix i
   // The one button opens the same Stripe page /me opens.
   await page.getByRole("button", { name: "Update card" }).click();
   await expect(page.getByRole("button", { name: "Cancel membership" })).toBeVisible();
+});
+
+// The other half of the one above: the paused member puts in a new card on Stripe's page, the missed payment goes
+// through, and they are a member again. The stand-in's card fails for real (Stripe tells the site); only the eight days
+// are moved in the database, since the site reads the real clock.
+test("a paused member who updates their card is a member again", async ({ page }) => {
+  const member = await payAsNewMember(page);
+  await failCardAtStandIn(member);
+  expect(await subscriptionStatusAtStandIn(member)).toBe("past_due");
+  await failTheirCard(member.email, 8);
+  await page.goto("/join?next=/me");
+  await expect(page.getByRole("heading", { name: "Your membership is paused" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Update card" }).click();
+  await page.getByRole("button", { name: "Update card" }).click();
+
+  await expect(page).toHaveURL("/me");
+  await expect(
+    page.getByText(/^You're a member\. \$9\.99 a month\. Renews on \w+, \w+ \d+\.$/),
+  ).toBeVisible();
+  expect(await subscriptionStatusAtStandIn(member)).toBe("active");
+  // The paywall is gone: the card says they are a member, with no button to press.
+  await page.goto("/join?next=/me");
+  await expect(page.getByRole("heading", { name: "You're already a member." })).toBeVisible();
+  await expect(page.getByRole("button")).toHaveCount(0);
 });
 
 test("a member who opens the card is told they are one", async ({ page }) => {
