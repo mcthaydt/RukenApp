@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { pageHasSettled, signInAs, signUp } from "./support/account.ts";
-import { fillAnswers, putGameWhereStaffLeaveIt, stateOf } from "./support/database.ts";
+import { fillAnswers, idsOf, putGameWhereStaffLeaveIt, stateOf } from "./support/database.ts";
 import {
   addDraft,
   addGame,
@@ -32,6 +32,11 @@ async function waitingSlugs(request: Request, browser: Browser): Promise<string[
   return list.waiting.map((one) => one.game);
 }
 
+/** A thrown-away game's state: its row is kept under an address made from its id, so its own address finds nothing. */
+async function stateAfterThrowAway(publicId: string): Promise<string> {
+  return stateOf(`x-${publicId}`);
+}
+
 /** What players see of a game: its upright video's address and its line, in a window of its own with no account. */
 async function playersSee(browser: Browser, slug: string) {
   const context = await browser.newContext({ baseURL: SITE });
@@ -39,12 +44,10 @@ async function playersSee(browser: Browser, slug: string) {
     const page = await context.newPage();
     await page.goto(`/g/${slug}`, { waitUntil: "domcontentloaded" });
     await pageHasSettled(page);
-    const src = await page
-      .locator('button[aria-label="Watch the upright video"] video')
-      .getAttribute("src");
+    const src = await page.locator('button[aria-label="Watch the upright video"] video').getAttribute("src");
     return {
       upright: (src ?? "").split("#")[0] ?? "",
-      line: (await page.locator(".tagline").first().textContent()) ?? "",
+      line: (await page.locator(".heroname p").first().textContent()) ?? "",
     };
   } finally {
     await context.close();
@@ -84,6 +87,7 @@ test("a waiting game is thrown away from its Waiting screen: it leaves Your game
   request,
 }) => {
   const { slug, name } = await gameWhere(page, { state: "waiting" });
+  const { publicId } = await idsOf(slug);
   expect(await waitingSlugs(request, browser)).toContain(slug);
 
   await page.goto(`/make/${slug}`);
@@ -109,7 +113,7 @@ test("a waiting game is thrown away from its Waiting screen: it leaves Your game
   await expect(page).toHaveURL("/make");
   await expect(page.getByText(`${name} was thrown away.`)).toBeVisible();
   await expect(page.locator(`a[href="/make/${slug}"]`)).toHaveCount(0);
-  expect(await stateOf(slug)).toBe("thrown_away");
+  expect(await stateAfterThrowAway(publicId)).toBe("thrown_away");
   expect(await waitingSlugs(request, browser)).not.toContain(slug);
 
   // Its name can be used for a new game, with the plain address.
@@ -199,6 +203,7 @@ test("a taken-off game is deleted for good: it leaves Your games, its address an
   const game = await addGame(browser, request);
   const live = await playersSee(browser, game.slug);
   expect(await gateAnswers(browser, live.upright)).toBe(200);
+  const { publicId } = await idsOf(game.slug);
   await signInAs(page, game.maker);
   await takeOff(page, game.slug);
 
@@ -215,7 +220,7 @@ test("a taken-off game is deleted for good: it leaves Your games, its address an
   await expect(page).toHaveURL("/make");
   await expect(page.getByText(`${game.name} was thrown away.`)).toBeVisible();
   await expect(page.locator(`a[href="/make/${game.slug}"]`)).toHaveCount(0);
-  expect(await stateOf(game.slug)).toBe("thrown_away");
+  expect(await stateAfterThrowAway(publicId)).toBe("thrown_away");
   expect(await statusOf(browser, `/g/${game.slug}`)).toBe(404);
   expect(await gateAnswers(browser, live.upright)).toBe(404);
   expect((await page.request.get(`/make/${game.slug}`)).status()).toBe(404);

@@ -68,14 +68,17 @@ function askedQuestion(word: string, game: MakerGame, madeEighteen: boolean): Bu
 }
 
 /**
- * True when a waiting, sent-back or live game that is not 18+ is being made 18+: its marks are asked before the rating is
+ * True when a waiting, sent-back, live or taken-off game that is not 18+ is being made 18+: its marks are asked before the rating is
  * kept, because the database holds an 18+ game that is past draft to having them. A draft is asked its marks next, as
  * always. `said` is the maker's own word that this is what she is doing (the address's `age=18`, or the form's hidden `age`).
  */
 function isBeingMadeEighteen(game: MakerGame, said: boolean): boolean {
   return (
     said &&
-    (game.state === "waiting" || game.state === "sent_back" || game.state === "live") &&
+    (game.state === "waiting" ||
+      game.state === "sent_back" ||
+      game.state === "live" ||
+      game.state === "taken_off") &&
     askedRating(game) !== "age_18"
   );
 }
@@ -125,6 +128,8 @@ async function filesScreen(url: URL, userId: string, game: MakerGame) {
     copiesAgain: game.state === "waiting",
     // A live game's save copies the files and sends them for review; players keep the old ones meanwhile.
     sendsForReview: game.state === "live",
+    // A game that is off Ruken keeps the choice and copies nothing: Put it back copies and sends.
+    keepsChoice: game.state === "taken_off",
   };
 }
 
@@ -194,6 +199,8 @@ export const load: PageServerLoad = async (event) => {
     // Set while a waiting or sent-back game is being made 18+: the marks form says so, so the rating and the marks are
     // kept together.
     madeEighteen,
+    // True for a game that is off Ruken: saving the websites copies nothing, and the hint says what does.
+    offRuken: game.state === "taken_off",
     // The address of a live game's page never changes, and the name's hint says so.
     addressStays: game.everLive,
     counter: firstTime && question !== "websites" ? counterOf(question, answers) : null,

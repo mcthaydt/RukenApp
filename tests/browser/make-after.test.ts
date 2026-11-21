@@ -489,16 +489,17 @@ test("a thrown-away game's name can be used again, with the plain address", asyn
   await expect(page).toHaveURL(`/make/${first.slug}/line`);
 });
 
-test("a game that is waiting or live has no way to be thrown away", async ({ page, baseURL }) => {
-  const waiting = await gameWhere(page, { state: "waiting" });
+test("a live game has no way to be thrown away", async ({ page, baseURL }) => {
+  await signUp(page);
   const live = await addDraft(page);
   await fillAnswers(live.slug, { files: true, videos: true, age: "age_12" });
   await putGameWhereStaffLeaveIt(live.slug, { state: "live" });
   const site = baseURL ?? "http://localhost:4173";
 
-  for (const { slug } of [waiting, live]) {
+  for (const { slug } of [live]) {
     await page.goto(`/make/${slug}`);
     await expect(page.getByRole("link", { name: "Throw this game away" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Throw it away" })).toHaveCount(0);
     expect((await page.request.get(`${site}/make/${slug}/throw-away`)).status(), slug).toBe(404);
     // A post by hand is answered with Your games, and the game is still there.
     const posted = await page.request.post(`${site}/make?/throwAway`, {

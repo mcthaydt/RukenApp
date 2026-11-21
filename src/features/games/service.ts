@@ -1211,7 +1211,8 @@ export function createGamesService(deps: GamesServiceDeps) {
    */
   async function throwAway(gameId: string, makerUserId: string): Promise<{ name: string }> {
     const game = await ownGame(gameId, makerUserId);
-    if (!MAY_BE_THROWN_AWAY.includes(game.state)) throw new GameError("NOT_READY", "This game can't be thrown away.");
+    if (!MAY_BE_THROWN_AWAY.includes(game.state))
+      throw new GameError("NOT_READY", "This game can't be thrown away.");
     await deps.db.$transaction(async (tx) => {
       // The same order a yes takes, decision lock then the game's row, so a yes being made finishes first and this sees
       // what it left: a game that has gone live is no longer waiting, and is refused below.

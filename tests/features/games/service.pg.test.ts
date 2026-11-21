@@ -678,20 +678,23 @@ describe("saveAnswer", () => {
 
 describe("saveClip on a game that is taken off", () => {
   it("replaces the video the game keeps, deletes the old file, and holds nothing", async () => {
-    const { makerUserId, id } = await begin();
+    const { id } = await begin();
     await service.saveClip(id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
-    const first = await db().gameClip.findUniqueOrThrow({ where: { gameId_shape: { gameId: id, shape: "upright" } } });
+    const first = await db().gameClip.findUniqueOrThrow({
+      where: { gameId_shape: { gameId: id, shape: "upright" } },
+    });
     await setState(id, "taken_off");
 
     await service.saveClip(id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
 
-    const second = await db().gameClip.findUniqueOrThrow({ where: { gameId_shape: { gameId: id, shape: "upright" } } });
+    const second = await db().gameClip.findUniqueOrThrow({
+      where: { gameId_shape: { gameId: id, shape: "upright" } },
+    });
     expect(second.key).not.toBe(first.key);
     expect(files.keys()).toContain(second.key);
     expect(files.keys()).not.toContain(first.key);
     expect(await db().gameHeldClip.count({ where: { gameId: id } })).toBe(0);
     expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({ state: "taken_off" });
-    void makerUserId;
   });
 });
 
@@ -806,14 +809,16 @@ describe("throwAway", () => {
   it.each(["draft", "waiting", "sent_back", "live", "taken_off", "taken_down"] as const)(
     "says another maker's %s game is not there, and changes nothing",
     async (state) => {
-      const { id } = state === "draft" ? await begin() : await gameIn(state === "sent_back" ? "waiting" : state);
+      const { id } =
+        state === "draft" ? await begin() : await gameIn(state === "sent_back" ? "waiting" : state);
       if (state === "sent_back") await setState(id, "sent_back");
 
-      await expect(service.throwAway(id, await createUser(db()))).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(service.throwAway(id, await createUser(db()))).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
       expect((await db().game.findUniqueOrThrow({ where: { id } })).state).toBe(state);
     },
   );
-
 });
 
 /** A pull row for a game, as a passing pull leaves it. */
