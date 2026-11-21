@@ -385,6 +385,40 @@ describe("the cloud setup script writes user settings (3.7, 6)", () => {
     expect(count(s.hooks.PreToolUse, MATCHER)).toBe(1);
   });
 
+  test("the user's own fail-closed hooks stay, and an older blocking entry is replaced", () => {
+    const h = newHome();
+    mkdirSync(join(h, ".claude"));
+    const guard = { type: "command", command: "/usr/local/bin/my-guard || exit 1", onFailure: "block" };
+    const old = {
+      type: "command",
+      command:
+        'for f in "$CLAUDE_PROJECT_DIR"/*/.claude/hooks/rules.mjs; do [ -f "$f" ] && exec node "$f" --find-repo; done; exit 1',
+      onFailure: "block",
+    };
+    writeFileSync(
+      settingsPath(h),
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [
+            { matcher: "Bash", hooks: [guard] },
+            { matcher: MATCHER, hooks: [old] },
+          ],
+        },
+      }),
+    );
+    expect(printSetup(h).status).toBe(0);
+    const s = read(h);
+    expect(
+      s.hooks.PreToolUse?.some(
+        (e) => e.matcher === "Bash" && e.hooks.some((x) => x.command === guard.command),
+      ),
+    ).toBe(true);
+    expect(count(s.hooks.PreToolUse, MATCHER)).toBe(1);
+    expect(JSON.stringify(s)).not.toContain(old.command);
+    expect(installUser(h).status).toBe(0);
+    expect(JSON.stringify(read(h))).toContain(guard.command);
+  });
+
   test("a file that is not JSON is left as it is", () => {
     const h = newHome();
     mkdirSync(join(h, ".claude"));
