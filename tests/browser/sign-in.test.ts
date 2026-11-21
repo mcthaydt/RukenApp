@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { freshEmail, JOURNEY_PASSWORD, signUp } from "./support/account.ts";
+import { freshEmail, JOURNEY_PASSWORD, signUp, SITE_ANSWER_TIMEOUT } from "./support/account.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -17,7 +17,7 @@ test("a person signs in with their password", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/");
 });
 

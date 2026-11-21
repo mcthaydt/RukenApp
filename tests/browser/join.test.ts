@@ -7,6 +7,7 @@ import {
   JOURNEY_PASSWORD,
   signUp,
   yearsAgo,
+  SITE_ANSWER_TIMEOUT,
 } from "./support/account.ts";
 import { boxOf, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -111,7 +112,7 @@ test("a signed-out person is asked to sign up only after pressing Continue, and 
   await page.getByLabel("Email").fill(freshEmail());
   await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
   await fillBirthDate(page, yearsAgo(30));
-  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByRole("button", { name: "Create account" }).click({ timeout: SITE_ANSWER_TIMEOUT });
 
   // Back on the same card, with the plan still chosen, and now the button that spends money.
   await expect(page).toHaveURL(/\/join\?/);

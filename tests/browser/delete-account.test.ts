@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
-import { pageHasSettled, signUp } from "./support/account.ts";
+import { pageHasSettled, signUp, SITE_ANSWER_TIMEOUT } from "./support/account.ts";
 import { expectOneCard, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -42,7 +42,7 @@ test("signing in again within the 14 days undoes it, and says so once", async ({
   await page.goto("/sign-in?next=%2Fme");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/me");
   await expect(page.getByText(WELCOME_BACK)).toBeVisible();
   // The line sits on the darker felt, as a panel above the card (design 5.8).

@@ -44,6 +44,9 @@ export async function pageHasSettled(page: Page): Promise<void> {
   await expect(page.locator("#svelte-announcer")).toBeAttached();
 }
 
+/** How long a press that sends a form waits for the site's answer: the same as the config's wait for an answer. */
+export const SITE_ANSWER_TIMEOUT = 15_000;
+
 /**
  * Makes a new account through the sign-up form, as a person would, and waits for the page it lands
  * on. The person is signed in afterwards. The address is new unless the journey gives one (a person coming back to
@@ -57,7 +60,9 @@ export async function signUp(
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
   await fillBirthDate(page, yearsAgo(30));
-  await page.getByRole("button", { name: "Create account" }).click();
+  // The press waits for the page the form sends her to, which is the site's answer: the same 15 seconds as any wait
+  // for the site (playwright.config.ts says why), not the 5 seconds for finding a button.
+  await page.getByRole("button", { name: "Create account" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/");
   await pageHasSettled(page);
   return { email, password: JOURNEY_PASSWORD };
@@ -68,7 +73,7 @@ export async function signInAs(page: Page, account: { email: string; password: s
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/");
   await pageHasSettled(page);
 }

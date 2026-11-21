@@ -268,10 +268,21 @@ export async function showTheOwner(page: Page, testInfo: TestInfo, screen: strin
       .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity);
     await Promise.all(ends.map((animation) => animation.finished));
   });
-  await testInfo.attach(`look: ${screen}`, {
-    body: await page.screenshot({ fullPage: true }),
-    contentType: "image/png",
-  });
+  let picture: Buffer;
+  try {
+    picture = await page.screenshot({ fullPage: true });
+  } catch (error) {
+    // Chromium sometimes cannot draw a frame for a full-page picture while the runner is busy ("Unable to capture
+    // screenshot", run 44793990472, on a 404 page whose checks had passed). The picture is for the Owner to look at
+    // and checks nothing, so its absence is written where the picture would be, and the journey's checks stand.
+    if (!String(error).includes("Unable to capture screenshot")) throw error;
+    await testInfo.attach(`look: ${screen} (no picture)`, {
+      body: `Chromium could not take this picture: ${String(error)}`,
+      contentType: "text/plain",
+    });
+    return;
+  }
+  await testInfo.attach(`look: ${screen}`, { body: picture, contentType: "image/png" });
 }
 
 /** The five layouts the maker's screens are drawn in (spec 4). */

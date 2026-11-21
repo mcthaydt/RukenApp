@@ -22,7 +22,11 @@
 
 ## Flaky tests
 
-None recorded.
+Each failed once and passed on its one rerun. Root causes and fixes are in pull request #242.
+
+- `tests/browser/make-design-pass.test.ts:284` "a 56-letter name in a question's heading › on an iPhone SE held sideways › the box is above the bar" [phone-landscape], run 44829777713 at `af7ec29`: "there is nothing on the page to measure" for `.acts`. Cause: `addDraft` waited only for the address to become `/line`, which changes a moment before the screen does, so the journey measured the name question's bar while it was being taken away. Fix: `addDraft` waits for question 2's box.
+- `tests/browser/look.test.ts:85` "a missing page: one paper card ..." [tablet-landscape], run 44793990472 at `3c907cf`: "Protocol error (Page.captureScreenshot): Unable to capture screenshot" in `showTheOwner`, after the screen's checks had passed. Cause: Chromium could not draw a full-page frame on a busy runner. Fix: that picture, which checks nothing, is replaced by a note saying it could not be taken; the journey's checks stand. Gap: the Owner's screens page can miss that one picture on such a run.
+- `tests/browser/connect-github.test.ts:23` and `:131` [tablet-landscape], run 44835171025 attempt 1 at `a8a4e08`: a 5-second click timeout on "Create account" (the sign-up had worked: the page was home, signed in), and an answer still "Saving…" after 5 seconds. Cause: the site in a journey is one `wrangler dev` process on a four-core runner; while the other worker's journey kept it busy, one answer took over 5 seconds. Fix: waits for the site's answer get 15 seconds (`expect` in `playwright.config.ts`, and every press of "Create account" or "Sign in" that waits for the next page); finding a button still fails in 5.
 
 ## Lessons
 

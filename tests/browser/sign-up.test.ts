@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { forgetRateLimits } from "./support/rate-limits.ts";
-import { fillBirthDate, freshEmail, JOURNEY_PASSWORD, signUp, yearsAgo } from "./support/account.ts";
+import {
+  fillBirthDate,
+  freshEmail,
+  JOURNEY_PASSWORD,
+  signUp,
+  SITE_ANSWER_TIMEOUT,
+  yearsAgo,
+} from "./support/account.ts";
 
 test.beforeEach(forgetRateLimits);
 
@@ -13,7 +20,7 @@ async function fillSignUp(
   await page.getByLabel("Email").fill(fields.email);
   await page.getByLabel("Password").fill(fields.password);
   await fillBirthDate(page, yearsAgo(fields.age));
-  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByRole("button", { name: "Create account" }).click({ timeout: SITE_ANSWER_TIMEOUT });
 }
 
 test("a stranger makes an account and lands signed in", async ({ page }) => {
