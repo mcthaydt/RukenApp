@@ -1,11 +1,11 @@
 # Plan audit 2: the journeys create, read, update and delete everything a user can make
 
-- Examined: PR #270, commit `5cc2ca8` (branch `claude/project-thread-hw0gcq`): `docs/superpowers/specs/2026-11-21-crud-journeys-rule-design.md` and the three new owner lines in `docs/superpowers/progress.md`. Compared against `main` at `ef720a9` (unchanged since audit 1) and the project's `rules/message.md`.
+- Examined: PR #270, commit `34ddf41` (first read at `5cc2ca8`, then rechecked after `bb4314e` and `34ddf41` changed one line each in spec 2.2 and 2.4 and added two lines to `progress.md`) (branch `claude/project-thread-hw0gcq`): `docs/superpowers/specs/2026-11-21-crud-journeys-rule-design.md` and the three new owner lines in `docs/superpowers/progress.md`. Compared against `main` at `ef720a9` (unchanged since audit 1) and the project's `rules/message.md`.
 - Lane: the plan is lane 3 (CLAUDE.md, shared skills `build` and `review`); this is the second plan audit.
 - Reviewer: fresh session, Opus 5.5, medium. Graphify not used: the change is rules text, no code.
 - Scope note from the coordinator: R3 of audit 1 (the PR body's Claude footer) is a cloud-proxy problem the owner has a command for and another thread is fixing in the hooks; it is not counted against the spec. It is still there at this commit (see "Still open").
 
-**Verdict: PASS, 0 red, 4 notes.**
+**Verdict at `34ddf41`: PASS, 0 red, 3 notes.** (At `5cc2ca8`: PASS, 0 red, 4 notes; that verdict is superseded.)
 
 ## Round 1 findings
 
@@ -23,16 +23,26 @@
 - No live-state file is on the branch (`docs/superpowers/live/` absent), as the spec stage's handoff needs.
 - Section 5 lists no blocking product decision; the file question changes only where criterion 4's edits land, and the spec says so.
 
+## Recheck at 34ddf41
+
+- `git diff 5cc2ca8 34ddf41`: the spec changes only the 2.2 build text ("recorded with its scope under \"Kept on purpose\" in `docs/superpowers/history.md`") and the 2.4 exception Call ("under a new \"Kept on purpose\" heading in `history.md`, which the first such choice creates"). `progress.md` gains the owner's 14:26 card ("Games come off with the account") and 14:31 decision. Nothing else changed apart from this audit file.
+- N1 below is fixed: the heading is named, and 2.4 says who creates it. `history.md` has no such heading yet (`grep -n "Kept on purpose"` finds nothing), which matches "the first such choice creates" it.
+- N4 below is fixed: both decisions are in `progress.md`, matching project memory (14:26 card; 14:31 "Keep them instant" and "Ask Ruken for help").
+- The 2.3 review text still says "the owner's recorded choice", which the new heading makes findable; the three texts still agree. Criterion 1's `grep -F` check covers the changed 2.2 sentence, since the build must copy it word for word.
+- New note N5 below.
+
 ## Notes (not blocking, recorded)
 
-- N1. "Recorded with its scope in `docs/superpowers/history.md`" names no section. `history.md` has Setup, Standing permissions, Flaky tests, Known issues and Lessons; an owner's "keep this" is a product decision, not a standing permission. The implementer can name a heading (for example "Kept on purpose") in the build text so reviewers know where to look. Files: the spec, then the three rules texts.
+- N1 (fixed at `34ddf41`). "Recorded with its scope in `docs/superpowers/history.md`" names no section. `history.md` has Setup, Standing permissions, Flaky tests, Known issues and Lessons; an owner's "keep this" is a product decision, not a standing permission. The implementer can name a heading (for example "Kept on purpose") in the build text so reviewers know where to look. Files: the spec, then the three rules texts.
 - N2. Once merged, the `build` line "A change that adds or changes something a user can make brings the missing ones in the same pull request" applies to every pull request that touches a game, a page or a video while the gaps listed in #267 are still open. Until the "Fill e2e CRUD test gaps" thread lands, such pull requests will be sent back for journeys that thread is already writing. That is the owner's rule working as asked; the coordinator may want to sequence the gap thread first. No spec change needed.
 - N3. Criterion 4 edits `rules/message.md` in the project's shared files, outside the pull request, and does not say when. Editing the owner's template is a rules change (lane 3); doing it only after the owner approves the merge (criterion 5), with the before-copy beside it, keeps it in step with the repo.
-- N4. Carried from audit 1 N2: today's owner decisions at 14:26 (a deleted maker's games come off with the account) and 14:31 (name and one line stay instant; a wrong birthday is fixed by asking Ruken) are not in `progress.md`. Coordinator's record, outside this spec.
+- N4 (fixed at `34ddf41`). Carried from audit 1 N2: today's owner decisions at 14:26 (a deleted maker's games come off with the account) and 14:31 (name and one line stay instant; a wrong birthday is fixed by asking Ruken) are not in `progress.md`. Coordinator's record, outside this spec.
+
+- N5. Spec 2.4's last bullet still says `progress.md` gains "today's three owner rules"; at `34ddf41` it gains five lines (14:20/14:32, 14:25, 14:29, 14:26, 14:31). A wording slip in the spec's own record; the plan's three edits are unaffected. Files: the spec only.
 
 ## Still open (outside the spec)
 
-- PR #270's body still ends "_Generated by [Claude Code](https://claude.ai/code)_" at this commit (`gh api repos/mcthaydt/RukenApp/pulls/270 --jq .body`; the `prBody` hook flagged it again). It needs the owner's command from their computer before merge.
+- PR #270's body still ends "_Generated by [Claude Code](https://claude.ai/code)_" at `34ddf41` (`gh api repos/mcthaydt/RukenApp/pulls/270 --jq .body`; the `prBody` hook flagged it again). It needs the owner's command from their computer before merge.
 
 ## Re-audit
 
