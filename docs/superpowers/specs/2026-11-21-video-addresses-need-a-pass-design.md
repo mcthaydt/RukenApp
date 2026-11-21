@@ -1,6 +1,6 @@
 # A video's address needs a pass
 
-- Status: spec and plan written; plan audit next. Lane 3 (the coordinator's call, 2026-11-21 21:08 UTC: it changes the game gate, which decides who may load a file).
+- Status: plan audit 1 at a83679f PASS (five notes, taken in below and in the build); building. Lane 3 (the coordinator's call, 2026-11-21 21:08 UTC: it changes the game gate, which decides who may load a file).
 - Brief: review note N2 of the 18+ gate's audit (`docs/superpowers/audits/2026-11-21-adults-only-gate-1-implementation-audit.md`), sent to a fix thread under the owner's words of 2026-11-21 19:16 UTC ("these are things that I should not need to intervene for"). The 18+ gate (#277) hides an 18+ game's pages from anyone not known to be 18 or over, but the game's video file still plays for anyone who has its address.
 - Where: one implementation pull request from `claude/project-thread-8400fx`, opened after this spec merges.
 - Open product decisions: none.
@@ -36,6 +36,8 @@ They stop working the moment the new gate is deployed, for every video, 18+ or n
 
 An adult who is handed a pass can pass the address on, and it plays for anyone until it runs out (at most 24 hours). They could as easily save the file. The play pass has the same limit and the same day.
 
+When a live game's rating rises to 18+, an address handed out under the old rating keeps playing until its pass runs out, at most 24 hours: the pass names the video and a time, not a rating. (Plan audit 1, N2.)
+
 ## How
 
 1. **`src/lib/files/media-pass.ts`** (new; plain helper, imports only `node:crypto`, so the gate can bundle it and the games feature, which sits below play, can use it).
@@ -60,17 +62,19 @@ pnpm run deploy && pnpm run deploy:games
 
 (with the `--route` the owner always gives the gate). Site first is safe: the old gate ignores the pass. Gate first would stop every video on the site until the site follows. Until the gate is deployed, the gap is still open on the live site; the report says so.
 
+Changing `PLAY_PASS_SECRET` now ends every video address as well as every play pass. Between the two `wrangler secret put` calls (site, then gate) videos are refused; the next page load after both heals them. (Plan audit 1, N4.)
+
 ## Acceptance criteria
 
 1. Unit (`tests/lib/files/media-pass.test.ts`): a pass made for a key checks for that key before its expiry; it is null at and after the expiry, for another key, with another secret, with any one character of the expiry or the mac changed, for a play pass, for `""`, and for 1,000 strings from a fixed seed (it never throws). Two times in one window give the same pass; times in two windows do not. A pass signed at any moment lasts at least 12 hours and at most 24.
 2. Unit (`tests/features/play/gate.test.ts`), on both forms of address (`/media/<key>` on the path host, and the `media.` name): a video with a good pass is 200 with `cache-control: private, max-age=<seconds left>` and a range request is 206; with no pass, a changed pass, a run-out pass and a pass for another video it is 403, `no-store`, with the words above, and the bucket is not read. A photo with no pass is still 200, `public, max-age=31536000, immutable`. The existing media tests that fetched a video with no pass change to carry one: each is named in the pull request body.
-3. Unit (`tests/features/games/services.test.ts`): `media` of a clip key ends `?pass=` with a pass the gate's check accepts at the injected time; `media` of a photo key has no query; a missing `PLAY_PASS_SECRET` throws "Missing setting PLAY_PASS_SECRET".
+3. Unit (`tests/features/games/services.test.ts`): `media` of a clip key ends `?pass=` with a pass the gate's check accepts at the injected time; `media` of a photo key has no query; a missing `PLAY_PASS_SECRET` throws "Missing setting PLAY_PASS_SECRET". The clip case uses a key of the real shape and the other case a photo key (plan audit 1, N5).
 4. Journey (`tests/browser/adults-only.test.ts`, against the real gate the journeys already start): someone known to be 18 or over opens the 18+ game's page; the video element's address is fetched and answers 200 or 206 with a video type; the same address with the pass taken off answers 403; with one character of the pass changed, 403. The first of these fails on the code before the change (it answers 200 with no pass).
 5. Journey, same file: for someone signed out and someone under 18, the refusal page's HTML contains no `/clips/` address and no `pass=` (the existing "nothing names the game" checks stay).
 6. Journey (`tests/browser/game-gate.test.ts` or `game-page.test.ts`): a game for everyone's video plays on its page for someone signed out (the video element reaches `readyState >= 2`), and its bare address answers 403.
-7. CRUD stays whole: the journeys that create, read, replace and remove a video (`make-game-crud`, `make-live-changes`, `make-questions`, `maker-page`, `join`, `review-job`) pass unchanged in what they assert, with the maker's own screens and staff's review link playing the video through a pass. Any assertion that compared a video address to an exact string is named in the pull request body with its change.
+7. CRUD stays whole: the journeys that create, read, replace and remove a video (`make-game-crud`, `make-live-changes`, `make-questions`, `maker-page`, `join`, `review-job`) pass unchanged in what they assert, with the maker's own screens and staff's review link playing the video through a pass. Any assertion that compared a video address to an exact string is named in the pull request body with its change, and compares the address without its `?pass=`, so a window that turns over between two reads cannot fail it (plan audit 1, N3: `make-questions.test.ts:598,603`).
 8. The page that plays a video does so with the keyboard alone as before; no screen's words or layout change (no `look:` picture differs except through the address). The 403 line is plain words with one thing to do.
-9. A unit test reads `src/features/play/gate.ts` and `cloudflare/games/worker.ts` and fails if either contains `caches.` or a call to `fetch(`, so the gate's answers stay out of Cloudflare's cache.
+9. A unit test reads `src/features/play/gate.ts` and `cloudflare/games/worker.ts` and fails if either contains `caches.` or a call to `fetch(`, so the gate's answers stay out of Cloudflare's cache. The Worker's own handler, `fetch(request: Request, env: Env)`, is not an outgoing call and is allowed; the test says so. (Plan audit 1, N1.)
 10. `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:pg`, `pnpm test:browser` and `pnpm build` pass; `tests/architecture.test.ts` passes (the helper is in `src/lib/`, which imports no feature).
 11. Run like a person (`verify`): an adult opens an 18+ game and sees its video play; the copied video address, opened in a private window with the pass removed, shows the 403 line.
 
