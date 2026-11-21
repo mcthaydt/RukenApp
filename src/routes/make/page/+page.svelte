@@ -15,6 +15,9 @@
 </svelte:head>
 
 {#if data.rooms === null}
+  {#if data.saved !== null}
+    <p class="note" role="status">{data.saved}</p>
+  {/if}
   <QuestionScreen
     title="Your page · Ruken"
     heading="Pick your page's address"
@@ -62,5 +65,6 @@
     <div class="acts">
       <a class="button safe" href="/make">Back to your games</a>
     </div>
+    <p class="note"><a href="/make/page/take-down">Take my page down</a></p>
   </main>
 {/if}

@@ -27,6 +27,7 @@
         <span class="note">{link.taps}{link.hidden ? " · Hidden" : ""}</span>
       </p>
       <p class="row">
+        <a class="quiet" href={`/make/page/links/${link.id}`}>Change</a>
         {#if !link.first}<button class="quiet" formaction="?/up">Up</button>{/if}
         {#if !link.last}<button class="quiet" formaction="?/down">Down</button>{/if}
         {#if link.hidden}

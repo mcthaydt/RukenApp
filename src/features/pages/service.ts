@@ -172,6 +172,26 @@ export function createPagesService(deps: PagesServiceDeps) {
     });
   }
 
+  /**
+   * Changes a link's kind, words and address where it sits: its place, its tap count and whether it is hidden stay.
+   * It is refused in the same words as a new link, and only the page's own maker can.
+   */
+  async function updateLink(
+    userId: string,
+    linkId: string,
+    input: { kind: PageLinkKind; title: string; url: string },
+  ): Promise<void> {
+    const problem = linkProblem(input);
+    if (problem !== null) throw new PageError("INVALID", problem);
+    const url = cleanLinkUrl(input.url);
+    if (url === null) throw new PageError("INVALID", "A link starts with https://");
+    const changed = await db.pageLink.updateMany({
+      where: { id: linkId, page: { userId } },
+      data: { kind: input.kind, title: input.title.trim(), url },
+    });
+    if (changed.count === 0) throw new PageError("NOT_FOUND", "We can't find that link.");
+  }
+
   /** Hides a link from visitors, or shows it again. Only the page's own maker can. */
   async function setHidden(userId: string, linkId: string, hidden: boolean): Promise<void> {
     const changed = await db.pageLink.updateMany({
@@ -327,7 +347,20 @@ export function createPagesService(deps: PagesServiceDeps) {
     await files.delete(page.photoKey);
   }
 
+  /**
+   * Takes the person's page down: its links go with it (the database cascades them), the address is free again, and the
+   * photo's file goes after the rows, so a failure part way leaves at worst a file nobody points at. Games stay.
+   */
+  async function removePage(userId: string): Promise<void> {
+    const page = await db.makerPage.findUnique({ where: { userId }, select: { id: true, photoKey: true } });
+    if (page === null) throw new PageError("NOT_FOUND", "You don't have a page yet.");
+    await db.makerPage.delete({ where: { id: page.id } });
+    if (page.photoKey !== null) await files.delete(page.photoKey);
+  }
+
   return {
+    removePage,
+    updateLink,
     savePhoto,
     removePhoto,
     savePage,
