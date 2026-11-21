@@ -1,15 +1,11 @@
-- Current task: slice 2 design review, round 1 (words-and-design check). Findings written; waiting for the builder's fixes.
-- Last commit: 9d6663e (the commit reviewed; this file is the only change on the branch)
-- Next step: the builder fixes reds 1 to 6 on this pull request; this reviewer shoots those screens again and checks each fix.
-- Open decisions: none.
-
 # Slice 2 design review, round 1
 
 - Commit examined: `main` at `9d6663e`, built fresh in a cloud container (Node 24, Postgres 16, the four stand-ins and the game gate, started as `verify` says). Written 2026-11-21 03:40 UTC by a fresh session that did not build slice 2.
 - Step: `visual-check` step 1, the words-and-design check, read beside the slice-end walk (`2026-11-21-slice-2-e2e-walk.md`, 126 of 126 steps pass).
 - How: the repo's own browser journeys were run with a local, uncommitted patch that saved a picture of every screen they show, plus 27 extra states the journeys do not show. 294 pictures: phone (412 by 839), tablet (810 by 1080) and computer (1280 by 720), each as the first view and, where the page is taller, the whole page. Every picture was looked at one by one. The pictures and the patch are not kept.
 - Measured by a program on every screen at all three sizes: the height of everything that can be pressed, every text size, and the contrast of every text against its background. The Live screen's backdrop was measured from the picture's pixels.
-- Result: **6 red**, 9 notes. No screen is a dead end and no word of jargon was found outside the notes.
+- Result at `9d6663e`: **6 red**, 9 notes. No screen is a dead end and no word of jargon was found outside the notes.
+- Result after the fixes, at `3850c1d`: **PASS, 0 red.** All six fixes hold (see "Fix check" at the end). One note added.
 
 ## What was measured (all pass)
 
@@ -98,3 +94,23 @@
 - Safari's engine was not shot: the three sizes ran in Chromium. The repo's journeys cover WebKit in CI.
 - Real videos were used where a journey supplies them; some journeys use a 1 KB stand-in clip, which shows as a flat box.
 - The 18+ marks, a refused file, a wrong video and the taken-off states were shot; the decision-day wait was not.
+
+## Fix check
+
+- Commit examined: `3850c1d` on this pull request's branch (the fixes are in `fa1db4a`), built fresh the same way. Checked 2026-11-21 04:22 UTC by the same reviewer session.
+- How: the journeys that show the changed screens, plus the extra states, ran again at the three sizes with the same local patch: 534 passed, 72 skipped (tests written for other sizes), none failed. That run includes the builder's new checks. The changed screens were looked at one by one and measured again. Chromium only; CI and Safari's engine had not run on the branch when this was written.
+
+| Red | Verdict | What was seen at `3850c1d` |
+|---|---|---|
+| 1 | fixed | Live shows "See it on Ruken" above "Back to your games" on phone, tablet and computer, also while an update is sent back. It is 44 px tall. The blue button is still "Send a new version". |
+| 2 | fixed | On the 412-wide phone "Extraordinary" is whole; the name wraps between words only. A new journey checks it. |
+| 3 | fixed | The button reads "Choose on GitHub", one centred line beside "Back" on the phone. |
+| 4 | fixed | Under the refusal on Taken off there is a "Choose it on GitHub" link, 48 px tall, at all three sizes. |
+| 5 | fixed | While "Copying your game…" shows there is no "press Enter" beside it. The hint is back when the button can be pressed. |
+| 6 | fixed | On computer the hint sits the same distance under the heading in all four states of the upright question, and under the frame in both states of the wide one. |
+
+- No press target under 44 px, no text under 14 px and no contrast under 4.5 to 1 on the changed screens (the "Join" link of note 1 aside).
+- Outside the FIX lines, named by the builder and looked at: reds 1 and 4 also touch `src/routes/make/[game]/+page.server.ts` and `+page.svelte` to pass an address to the screen; reds 2 and 6 are in `src/lib/look.css`, not the screens' own files. The changes are what the findings asked for and nothing else on screen moved. `src/lib/look.css` makes the pull request lane 2.
+- Side effect of red 2, seen and accepted: every phone's Your games card now has the small picture (64 by 36), which before only phones under 360 wide had.
+
+Note 10 (new). On computer the upright question's hint sits close under the heading, closer than on the wide question where the frame is between them. It is now the same in every state, which is what red 6 asked for.
