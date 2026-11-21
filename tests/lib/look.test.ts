@@ -370,6 +370,7 @@ describe("screens wear the look and nothing of their own", () => {
     "menu",
     "menusheet",
     "menupanel",
+    "agreement",
   ];
   const ROUTES = "src/routes";
 
