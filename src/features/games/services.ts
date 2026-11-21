@@ -1,9 +1,11 @@
 import { systemClock, type Clock } from "../../lib/clock.ts";
+import { makeMediaPass, mediaPassExpiry } from "../../lib/files/media-pass.ts";
 import type { FileStore } from "../../lib/files/store.ts";
 import { prisma, type PrismaClient } from "../../lib/server/db.ts";
 import { isThisMachine } from "../../lib/this-machine.ts";
 import { optionalEnv, requireEnv } from "../../lib/server/env.ts";
 import { fileStore } from "../../lib/server/files.ts";
+import { isClipKey } from "./clips.ts";
 import { checkAddressPattern, gameAddress } from "./addresses.ts";
 import {
   connectionOf,
@@ -92,6 +94,7 @@ export function createGamesServices(
   const appSlug = requireEnv("GITHUB_APP_SLUG", source);
   // The site's own secret, as for the arrival cookie: never the play pass secret, which the gate holds too.
   const stateSecret = requireEnv("BETTER_AUTH_SECRET", source);
+  const passSecret = requireEnv("PLAY_PASS_SECRET", source);
 
   const github = createGitHub({
     appId,
@@ -122,7 +125,13 @@ export function createGamesServices(
     service,
     connect,
     address: (name) => gameAddress(pattern, name),
-    media: (key) => `${gameAddress(pattern, "media")}/${key}`,
+    media: (key) => {
+      const address = `${gameAddress(pattern, "media")}/${key}`;
+      if (!isClipKey(key)) return address;
+      // A video's address carries a pass the gate checks. Whoever is handed this address was already let in by the
+      // caller (an 18+ game's page refuses first), so the pass is signed here, once, for everyone in the same window.
+      return `${address}?pass=${makeMediaPass(key, mediaPassExpiry(parts.clock.epochMs()), passSecret)}`;
+    },
   };
 }
 

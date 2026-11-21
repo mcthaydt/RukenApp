@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { makeMediaPass, mediaPassExpiry } from "../../src/lib/files/media-pass.ts";
 import { pageHasSettled, signInAs, signUp } from "./support/account.ts";
 import { changeGame, givePage, makerEmailOf } from "./support/database.ts";
 import { answerAge, chooseVideo, gameWhere, realClip, reviewJob } from "./support/game.ts";
@@ -30,7 +31,7 @@ async function playersSee(browser: Browser, slug: string) {
     const address = async (shape: Shape) =>
       (
         (await page.locator(`button[aria-label="Watch the ${shape} video"] video`).getAttribute("src")) ?? ""
-      ).split("#")[0] ?? "";
+      ).split(/[#?]/)[0] ?? "";
     return {
       upright: await address("upright"),
       wide: await address("wide"),
@@ -46,9 +47,13 @@ async function playersSee(browser: Browser, slug: string) {
  * of its own each time, since a video the gate said yes to once is kept by the browser's own cache.
  */
 async function gateAnswers(browser: Browser, address: string): Promise<number> {
+  // The addresses here are kept without their pass (it changes with the window), so one is signed for the asking, with
+  // the secret the journeys' gate holds: a file that is gone answers 404 only once the pass is good.
+  const key = new URL(address).pathname.slice(1);
+  const pass = makeMediaPass(key, mediaPassExpiry(Date.now()), "test-only-play-pass-secret");
   const context = await browser.newContext({ baseURL: SITE });
   try {
-    return (await (await context.newPage()).goto(address))?.status() ?? 0;
+    return (await (await context.newPage()).goto(`${address}?pass=${pass}`))?.status() ?? 0;
   } finally {
     await context.close();
   }
@@ -98,12 +103,15 @@ async function changeVideo(page: Page, slug: string, shape: Shape): Promise<void
   await pageHasSettled(page);
 }
 
-/** The video a video question shows in its frame (a live game's frame shows the one that waits). */
+/**
+ * The video a video question shows in its frame (a live game's frame shows the one that waits), without `#…` and
+ * `?pass=…`: the path is unique to each upload, and the pass changes when a 12-hour window turns over.
+ */
 async function videoInFrame(page: Page, slug: string, shape: Shape): Promise<string> {
   await page.goto(`/make/${slug}/${shape}`);
   await pageHasSettled(page);
   const src = await page.locator(`[data-frame="${shape}"] video`).getAttribute("src");
-  return (src ?? "").split("#")[0] ?? "";
+  return (src ?? "").split(/[#?]/)[0] ?? "";
 }
 
 const WAITING = "Your update is waiting for review.";
@@ -137,7 +145,12 @@ for (const shape of ["upright", "wide"] as const) {
     // Staff look, and say yes for that look.
     const looked = await lookAt(request, browser, slug);
     // The look names the video players see now and the one that waits, as the addresses they are served from.
-    expect(looked.changes).toEqual([{ part: `${shape}_video`, now: before[shape], waiting: held }]);
+    // Staff's look carries a pass on each address so its link plays; compared without it, as the others are.
+    const bare = (address: string | null | undefined): string | null | undefined => address?.split("?")[0];
+    expect(looked.changes?.map((c) => ({ ...c, now: bare(c.now), waiting: bare(c.waiting) }))).toEqual([
+      { part: `${shape}_video`, now: before[shape], waiting: held },
+    ]);
+    expect(looked.changes?.[0]?.waiting).toContain("?pass=");
     const yes = await reviewJob(request, { do: "accept", game: slug, seen: looked.seen }, browser);
     expect(yes.status()).toBe(200);
 

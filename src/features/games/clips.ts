@@ -2,7 +2,8 @@ import type { ClipShape } from "../../lib/server/db.ts";
 import { VIDEO_MAX_BYTES, wholeMegabytes } from "../../lib/video-choice.ts";
 
 // The two clips every game has: one upright (for a phone held upright) and one wide, short videos that play without
-// sound. They are stored in the bucket under a key made here, and served to anyone from the media address.
+// sound. They are stored in the bucket under a key made here, and served from the media address only under a pass
+// the site signs for each video: the gate refuses a clip without one.
 
 /** 30 MB: a short loop fits easily, and two of them are saved one request at a time. The browser checks the same. */
 export const CLIP_MAX_BYTES = VIDEO_MAX_BYTES;

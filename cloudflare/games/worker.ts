@@ -1,5 +1,7 @@
 // What Cloudflare runs as the game gate: a Worker of its own, on addresses of its own, so a game never runs on
-// Ruken's address. It holds no logic; the gate is src/features/play/gate.ts and the bucket is the site's.
+// Ruken's address. It holds no logic; the gate is src/features/play/gate.ts and the bucket is the site's. A game's
+// files and a game's videos are served only under a pass the site signed, so nothing here asks Cloudflare's cache to
+// keep an answer (no `caches`, no outgoing `fetch`): a pass that has run out must stop working at once.
 //
 // It imports those two files directly and nothing else. `play.ts`, the play feature's entry, brings the database
 // with it, and this Worker has none.
@@ -9,7 +11,7 @@ import { r2FileStore } from "../../src/lib/files/r2-store.ts";
 interface Env {
   /** The bucket the site writes games and clips to. The gate only reads it. */
   GAME_FILES: R2Bucket;
-  /** The secret the site signs play passes with, set on this Worker too. */
+  /** The secret the site signs play passes and video passes with, set on this Worker too. */
   PLAY_PASS_SECRET: string;
   /** Ruken's own address, the only one allowed to put a game in a frame. */
   SITE_ORIGIN: string;

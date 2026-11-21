@@ -1,12 +1,13 @@
 import { matchesEtag, parseRange } from "../../lib/files/byte-range.ts";
 import { servedTypeFor } from "../../lib/files/content-types.ts";
+import { checkMediaPass } from "../../lib/files/media-pass.ts";
 import { normalizePath } from "../../lib/files/safe-path.ts";
 import type { FileStore } from "../../lib/files/store.ts";
 import { checkPass } from "./pass.ts";
 
 // The game gate, as one function: Cloudflare's request in, an answer out. It serves two kinds of thing from one
-// bucket. A game's files, under a play pass that Ruken's app signed and this checks on every request; and the media
-// (a game's clips and a maker's photo), to anyone. It runs as its own Worker on addresses of its own, so a game never
+// bucket. A game's files, under a play pass that Ruken's app signed and this checks on every request; and the media:
+// a game's clips, each under a media pass the site signed for that one video, and a maker's photo, to anyone. It runs as its own Worker on addresses of its own, so a game never
 // runs on Ruken's address, and it imports only plain helpers (no feature entry, no database, no SvelteKit): the Worker
 // has none of them.
 //
@@ -30,6 +31,7 @@ export interface GateDeps {
 
 // The words a person may see, inside the game's frame under Ruken's bar. One line each, saying what to do.
 const RUN_OUT = "This game's link has run out. Go back and press Play again.";
+const VIDEO_RUN_OUT = "This video's link has run out. Go back and open the page again.";
 const NOT_FOUND = "Not found.";
 const UNREADABLE = "We could not read that address.";
 const NOT_ALLOWED = "Not allowed.";
@@ -116,16 +118,27 @@ async function serveFile(request: Request, deps: GateDeps, key: string, headers:
 }
 
 /**
- * A clip or a photo: shown on pages before anyone plays, so anyone may have it, and a browser keeps it for a year.
+ * A clip or a photo. A photo is shown on pages before anyone plays, so anyone may have it and a browser keeps it for a
+ * year. A clip is served only under a media pass for that clip (`?pass=`), which the site signs only for someone who
+ * may see the game's page; the gate has no database and cannot tell an 18+ clip from its key, so every clip needs one.
  * The key must be exactly the shape of one or the other, so nothing else in the bucket is ever served from here.
  */
-function serveMedia(request: Request, key: string, deps: GateDeps): Promise<Response> | Response {
-  if (!CLIP_KEY.test(key) && !PHOTO_KEY.test(key)) return plain(404, NOT_FOUND, deps);
+function serveMedia(request: Request, url: URL, key: string, deps: GateDeps): Promise<Response> | Response {
+  const isClip = CLIP_KEY.test(key);
+  if (!isClip && !PHOTO_KEY.test(key)) return plain(404, NOT_FOUND, deps);
   const headers = commonHeaders();
   headers.set("content-security-policy", `frame-ancestors ${deps.siteOrigin}`);
-  // A new upload gets a new address, so an old file is never the one a browser still holds under the new name.
-  headers.set("cache-control", "public, max-age=31536000, immutable");
   headers.set("cross-origin-resource-policy", "cross-origin");
+  if (isClip) {
+    const expiresAtMs = checkMediaPass(url.searchParams.get("pass"), key, deps.passSecret, deps.nowMs);
+    if (expiresAtMs === null) return plain(403, VIDEO_RUN_OUT, deps);
+    // The browser keeps a clip for exactly as long as its address works, and never past it.
+    const secondsLeft = Math.max(0, Math.floor((expiresAtMs - deps.nowMs) / 1000));
+    headers.set("cache-control", `private, max-age=${String(secondsLeft)}`);
+  } else {
+    // A new upload gets a new address, so an old file is never the one a browser still holds under the new name.
+    headers.set("cache-control", "public, max-age=31536000, immutable");
+  }
   return serveFile(request, deps, key, headers);
 }
 
@@ -176,7 +189,7 @@ function serveGameFile(
 /** The one free address: the game, or `media`, is the first folder of the path and the host says nothing. */
 function handlePathRequest(request: Request, url: URL, deps: GateDeps): Promise<Response> | Response {
   if (url.pathname.startsWith(MEDIA_FOLDER)) {
-    return serveMedia(request, url.pathname.slice(MEDIA_FOLDER.length), deps);
+    return serveMedia(request, url, url.pathname.slice(MEDIA_FOLDER.length), deps);
   }
   const match = GAME_FOLDER.exec(url.pathname);
   const game = match?.[1];
@@ -199,7 +212,7 @@ export async function handleGameRequest(request: Request, deps: GateDeps): Promi
   if (deps.pathHost !== undefined && url.host === deps.pathHost) return handlePathRequest(request, url, deps);
 
   const label = url.hostname.split(".")[0] ?? "";
-  if (label === "media") return serveMedia(request, url.pathname.slice(1), deps);
+  if (label === "media") return serveMedia(request, url, url.pathname.slice(1), deps);
   const game = GAME_HOST.exec(label)?.[1];
   if (game === undefined) return plain(404, NOT_FOUND, deps);
   return serveGameFile(request, url.pathname.slice(1), game, "", deps);

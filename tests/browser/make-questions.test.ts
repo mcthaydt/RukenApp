@@ -588,19 +588,21 @@ for (const shape of ["upright", "wide"] as const) {
     const video = page.locator(`[data-frame="${shape}"] video`);
     await chooseVideo(page, videoFile(`first-${shape}.mp4`));
     await expect(video).toHaveAttribute("src", /\/clips\//);
-    const first = await video.getAttribute("src");
+    // Compared without `?pass=`: the path is unique to each upload, and the pass changes when a 12-hour window turns over.
+    const withoutPass = (address: string | null): string => (address ?? "").split("?")[0] ?? "";
+    const first = withoutPass(await video.getAttribute("src"));
 
     await page.getByRole("link", { name: "Choose a different video" }).click();
     await expect(page).toHaveURL(`/make/${slug}/${shape}?again=1`);
     await pageHasSettled(page);
     await chooseVideo(page, videoFile(`second-${shape}.mp4`));
     await expect(video).toHaveAttribute("src", /\/clips\//);
-    await expect(video).not.toHaveAttribute("src", first ?? "");
-    const second = await video.getAttribute("src");
+    await expect.poll(async () => withoutPass(await video.getAttribute("src"))).not.toBe(first);
+    const second = withoutPass(await video.getAttribute("src"));
 
     await page.goto(`/make/${slug}/${shape}`);
     await pageHasSettled(page);
-    await expect(video).toHaveAttribute("src", second ?? "");
+    await expect.poll(async () => withoutPass(await video.getAttribute("src"))).toBe(second);
   });
 }
 

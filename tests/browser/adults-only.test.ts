@@ -79,6 +79,10 @@ async function expectRefusedEverywhere(page: Page, words: string): Promise<void>
   await expect(page.getByText(words)).toBeVisible();
   await expect(page.getByText(adultsGame.name)).toHaveCount(0);
   await expect(page.locator("video")).toHaveCount(0);
+  // Nothing in the page's own words carries a video's address or a pass either.
+  const html = await page.content();
+  expect(html).not.toContain("/clips/");
+  expect(html).not.toContain("pass=");
 
   // Play is refused before a play is started, so no pass to the game's files is ever made.
   const played = await page.goto(`/g/${adultsGame.slug}/play`, { waitUntil: "domcontentloaded" });
@@ -151,6 +155,24 @@ test("a person of 18 sees and plays an 18+ game, and finds it among its maker's 
 
   await page.goto(`/g/${everyonesGame.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.locator(`.more a[href="/g/${adultsGame.slug}"]`)).toHaveCount(1);
+
+  // The video plays through its pass: its address answers as a video, and the same address with the pass taken off
+  // (or one character of it changed) is refused by the gate, so a copied link cannot be shared.
+  const address = (await page.locator(".clipbox video").getAttribute("src")) ?? "";
+  const [bare = "", pass = ""] = address.replace(/#.*$/, "").split("?pass=");
+  expect(pass).toBeTruthy();
+  // Opened by the browser itself in a second tab: `media.localhost` only resolves there.
+  const other = await page.context().newPage();
+  const withPass = await other.goto(`${bare}?pass=${pass}`);
+  expect([200, 206]).toContain(withPass?.status());
+  expect(withPass?.headers()["content-type"]).toMatch(/^video\//);
+  expect((await other.goto(bare))?.status()).toBe(403);
+  const first = pass.startsWith("v1.1") ? "2" : "1";
+  const changed = pass.replace(/^v1\.\d/, `v1.${first}`);
+  expect((await other.goto(`${bare}?pass=${changed}`))?.status()).toBe(403);
+  const macChanged = `${pass.slice(0, -4)}AAAA`;
+  expect((await other.goto(`${bare}?pass=${macChanged}`))?.status()).toBe(403);
+  await other.close();
 
   const played = await page.goto(`/g/${adultsGame.slug}/play`, { waitUntil: "domcontentloaded" });
   expect(played?.status()).toBe(200);

@@ -4,7 +4,7 @@
   "name": "ruken-games",
   "main": "worker.ts",
   "compatibility_date": "2026-10-01",
-  // Node's crypto, for checking a play pass.
+  // Node's crypto, for checking a play pass and a video's media pass.
   "compatibility_flags": ["nodejs_compat"],
   // The gate answers only on the games domain's route, every name under that domain, so each game has a name of its
   // own. The route is not written here, because this repository is public and never names the domain: the Owner

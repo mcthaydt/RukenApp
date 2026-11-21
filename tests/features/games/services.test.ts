@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { createGamesServices } from "../../../src/features/games/services.ts";
+import { checkMediaPass, mediaPassExpiry } from "../../../src/lib/files/media-pass.ts";
 import { createPrismaClient } from "../../../src/lib/server/db.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
 import { TestClock } from "../../support/test-clock.ts";
@@ -15,6 +16,7 @@ const SETTINGS = {
   GITHUB_APP_CLIENT_SECRET: "test-only-client-secret",
   GITHUB_APP_SLUG: "ruken-test-app",
   BETTER_AUTH_SECRET: "test-only-secret-not-used-anywhere-real",
+  PLAY_PASS_SECRET: "test-only-play-pass-secret",
 };
 
 const db = createPrismaClient("postgresql://postgres:x@127.0.0.1:1/ruken");
@@ -35,9 +37,29 @@ describe("createGamesServices", () => {
     expect(build().address("g-aaaaaaaaaa")).toBe("https://g-aaaaaaaaaa.games.test");
   });
 
-  // A clip is played from the media address, so a maker's page can show the videos they added.
-  it("gives a clip's address: the media address, a slash, then the key in the bucket", () => {
-    expect(build().media("clips/x/wide-1.mp4")).toBe("https://media.games.test/clips/x/wide-1.mp4");
+  // A clip is played from the media address, so a maker's page can show the videos they added. The address carries a
+  // pass the gate accepts for that one video, for 12 to 24 hours from the clock.
+  it("gives a clip's address: the media address, the key, then a pass the gate accepts", () => {
+    const key = "clips/aaaaaaaaaa/wide-0123456789abcdef.mp4";
+    const address = build().media(key);
+    const [path, pass] = address.split("?pass=");
+    expect(path).toBe(`https://media.games.test/${key}`);
+    const now = Date.parse("2026-11-14T12:00:00Z");
+    expect(checkMediaPass(pass ?? null, key, SETTINGS.PLAY_PASS_SECRET, now)).toBe(mediaPassExpiry(now));
+    expect(
+      checkMediaPass(
+        pass ?? null,
+        "clips/aaaaaaaaaa/wide-ffffffffffffffff.mp4",
+        SETTINGS.PLAY_PASS_SECRET,
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it("gives a photo's address with no query: a photo is for everyone", () => {
+    expect(build().media("photos/0123456789abcdef.png")).toBe(
+      "https://media.games.test/photos/0123456789abcdef.png",
+    );
   });
 
   it.each([
@@ -48,6 +70,7 @@ describe("createGamesServices", () => {
     "GITHUB_APP_CLIENT_SECRET",
     "GITHUB_APP_SLUG",
     "BETTER_AUTH_SECRET",
+    "PLAY_PASS_SECRET",
   ])("stops with the name of %s when it is missing", (name) => {
     expect(() => build({ [name]: undefined })).toThrow(`Missing setting ${name}`);
   });

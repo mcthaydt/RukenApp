@@ -50,6 +50,17 @@ test("the clip's address answers anyone, as video", async ({ page }) => {
   // The clip is on its own address, which a visitor with no account reaches: the browser decodes it as a video.
   await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await expectFrame(page.locator(".clipbox video"));
+  // It plays because its address carries a pass. The bare address, with the pass taken off, is refused.
+  const video = page.locator(".clipbox video");
+  await expect
+    .poll(() => video.evaluate((element: HTMLVideoElement) => element.readyState))
+    .toBeGreaterThanOrEqual(2);
+  const address = (await video.getAttribute("src")) ?? "";
+  expect(address).toContain("?pass=");
+  // Opened by the browser itself: `media.localhost` only resolves there.
+  const other = await page.context().newPage();
+  expect((await other.goto(address.split("?")[0] ?? ""))?.status()).toBe(403);
+  await other.close();
 });
 
 test("pressing a tile shows that clip, and pressing the clip opens it with sound", async ({ page }) => {

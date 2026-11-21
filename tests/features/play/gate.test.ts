@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 import { isPhotoKey } from "../../../src/features/pages/photo.ts";
 import { handleGameRequest } from "../../../src/features/play/gate.ts";
 import { makePass, type PassClaims } from "../../../src/features/play/pass.ts";
+import { makeMediaPass } from "../../../src/lib/files/media-pass.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
 
 const SECRET = "test-play-pass-secret";
@@ -19,6 +21,9 @@ const claims: PassClaims = {
 };
 const pass = makePass(claims, SECRET);
 
+/** What the site signs for a clip: good for one hour from NOW, as a pass for a video lasts at least that long. */
+const clipPass = (key: string, expiresAtMs = EXPIRES_AT) => makeMediaPass(key, expiresAtMs, SECRET);
+const VIDEO_RAN_OUT = "This video's link has run out. Go back and open the page again.";
 const RAN_OUT = "This game's link has run out. Go back and press Play again.";
 const PAGE = "<html>page</html>";
 const MAIN = "console.log(1);";
@@ -241,12 +246,12 @@ describe("a game's files", () => {
 });
 
 describe("a game's clips", () => {
-  // Clips are shown on pages before anyone plays, so anyone may have them.
-  it("sends a clip to anyone, to keep for a year", async () => {
-    const response = await get(`/${CLIP_KEY}`, { host: "media.games.test" });
+  // A clip plays only under a media pass for that one clip, which the site signs for someone who may see the page.
+  it("sends a clip under a good pass, to keep until the pass runs out", async () => {
+    const response = await get(`/${CLIP_KEY}?pass=${clipPass(CLIP_KEY)}`, { host: "media.games.test" });
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("video/mp4");
-    expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+    expect(response.headers.get("cache-control")).toBe("private, max-age=3600");
     expect(response.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
     expect(response.headers.get("accept-ranges")).toBe("bytes");
@@ -254,15 +259,46 @@ describe("a game's clips", () => {
 
   // A Mac saves its screen recordings as QuickTime, and the Owner said Ruken takes them.
   it("sends a QuickTime clip as video/quicktime", async () => {
-    const response = await get(`/${MOV_CLIP_KEY}`, { host: "media.games.test" });
+    const response = await get(`/${MOV_CLIP_KEY}?pass=${clipPass(MOV_CLIP_KEY)}`, {
+      host: "media.games.test",
+    });
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("video/quicktime");
   });
 
   it("answers a byte range of a clip, so a video can be skipped through", async () => {
-    const response = await get(`/${CLIP_KEY}`, { host: "media.games.test", headers: { range: "bytes=4-7" } });
+    const response = await get(`/${CLIP_KEY}?pass=${clipPass(CLIP_KEY)}`, {
+      host: "media.games.test",
+      headers: { range: "bytes=4-7" },
+    });
     expect(response.status).toBe(206);
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([0x66, 0x74, 0x79, 0x70]));
+  });
+
+  // No pass, a changed one, one that ran out and one for another video: each is refused before the bucket is read.
+  it.each([
+    ["no pass", ""],
+    ["an empty pass", "?pass="],
+    ["a changed pass", `?pass=${clipPass(CLIP_KEY).slice(0, -2)}AA`],
+    ["a pass that ran out", `?pass=${clipPass(CLIP_KEY, NOW)}`],
+    ["a pass for another video", `?pass=${clipPass(MOV_CLIP_KEY)}`],
+  ])("refuses a clip with %s", async (_name, query) => {
+    for (const [host, path] of [
+      ["media.games.test", `/${CLIP_KEY}${query}`],
+      ["games.test", `/media/${CLIP_KEY}${query}`],
+    ] as const) {
+      const response = await get(path, { host, pathHost: "games.test" });
+      expect(response.status).toBe(403);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(await response.text()).toBe(VIDEO_RAN_OUT);
+    }
+    expect(files.reads).toEqual([]);
+  });
+
+  it("refuses a range request with no pass too", async () => {
+    const response = await get(`/${CLIP_KEY}`, { host: "media.games.test", headers: { range: "bytes=0-3" } });
+    expect(response.status).toBe(403);
+    expect(files.reads).toEqual([]);
   });
 
   it("serves nothing else from the media name", async () => {
@@ -279,7 +315,8 @@ describe("a game's clips", () => {
   });
 
   it("says a clip is not found when it is not there", async () => {
-    const response = await get("/clips/aaaaaaaaaa/wide-0123456789abcdef.mp4", { host: "media.games.test" });
+    const missing = "clips/aaaaaaaaaa/wide-0123456789abcdef.mp4";
+    const response = await get(`/${missing}?pass=${clipPass(missing)}`, { host: "media.games.test" });
     expect(response.status).toBe(404);
   });
 });
@@ -340,6 +377,21 @@ describe("a maker's photo", () => {
       expect(response.status, key).toBe(isPhotoKey(key) ? 200 : 404);
     }
   });
+});
+
+// Cloudflare's own cache keeps an answer only when the Worker's code puts it there. If the gate ever did, an address
+// that has run out could go on playing from the edge, and a purge would be needed.
+describe("the gate's answers stay out of Cloudflare's cache", () => {
+  it.each(["src/features/play/gate.ts", "cloudflare/games/worker.ts"])(
+    "%s uses no cache and no outgoing fetch",
+    (path) => {
+      const source = readFileSync(path, "utf8");
+      expect(source).not.toMatch(/\bcaches\./);
+      // The Worker's own handler, `fetch(request: Request, env: Env)`, is a definition, not an outgoing call: allowed.
+      expect(source).not.toMatch(/(?<![\w.])fetch\((?!request: Request)/);
+      expect(source).not.toMatch(/globalThis\.fetch/);
+    },
+  );
 });
 
 describe("the gate as a whole", () => {
@@ -440,12 +492,13 @@ describe("on the one free address", () => {
     expect(files.reads).toEqual([]);
   });
 
-  it("sends a clip and a photo to anyone", async () => {
-    for (const key of [CLIP_KEY, PHOTO_KEY]) {
-      const response = await here(`/media/${key}`);
-      expect(response.status).toBe(200);
-      expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
-    }
+  it("sends a clip under a pass and a photo to anyone", async () => {
+    const clip = await here(`/media/${CLIP_KEY}?pass=${clipPass(CLIP_KEY)}`);
+    expect(clip.status).toBe(200);
+    expect(clip.headers.get("cache-control")).toBe("private, max-age=3600");
+    const photo = await here(`/media/${PHOTO_KEY}`);
+    expect(photo.status).toBe(200);
+    expect(photo.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
   });
 
   it("serves nothing else from /media", async () => {
