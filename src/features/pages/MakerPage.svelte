@@ -83,7 +83,7 @@
           href={`/${handle}/out/${link.id}`}
           rel="nofollow ugc noopener"
         >
-          <span class="title">{link.title}</span>
+          <span class="linktitle">{link.title}</span>
           {#if link.kind === "game_elsewhere"}
             <span class="site">A game on {link.site}</span>
           {/if}
@@ -209,9 +209,17 @@
     text-decoration: none;
     overflow-wrap: anywhere;
   }
+  /* A column that centres its items sizes a long unbroken title to its full length, so the title is held to the
+     button's width instead and breaks inside it. */
   .links a {
     width: 100%;
+    align-items: stretch;
     text-align: center;
+    font-size: 1.125rem;
+  }
+  .links .linktitle,
+  .links .site {
+    max-width: 100%;
   }
   .links .elsewhere .site {
     font-weight: 400;
