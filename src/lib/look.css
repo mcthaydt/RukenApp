@@ -917,9 +917,13 @@ form > * + button:not(.quiet) {
 }
 
 /* On a phone Remove has less padding, so the box has room for a whole address such as "cdn.example.com" (it was cut at
-   375 wide). The button stays 48px tall. */
+   375 wide), and so does the box itself. The button stays 48px tall. */
 @media (max-width: 499px) {
   .line > button {
+    padding-inline: 0.75rem;
+  }
+
+  .screen .line > .answer {
     padding-inline: 0.75rem;
   }
 }

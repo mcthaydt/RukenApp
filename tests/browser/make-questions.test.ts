@@ -785,10 +785,14 @@ test("each website is its own line: add, remove, five at most, two kept, and a b
   if (test.info().project.name === "phone") {
     await page.setViewportSize({ width: 375, height: 812 });
     const fits = () => boxes.first().evaluate((box: HTMLInputElement) => box.scrollWidth <= box.clientWidth);
-    await boxes.first().focus();
-    expect(await fits(), "api.example.com fits its box while it has focus").toBe(true);
-    await page.getByRole("button", { name: "Add another website" }).focus();
-    expect(await fits(), "api.example.com fits its box without focus").toBe(true);
+    for (const address of ["api.example.com", "cdn.example.com"]) {
+      await boxes.first().fill(address);
+      await boxes.first().focus();
+      expect(await fits(), `${address} fits its box while it has focus`).toBe(true);
+      await page.getByRole("button", { name: "Add another website" }).focus();
+      expect(await fits(), `${address} fits its box without focus`).toBe(true);
+    }
+    await boxes.first().fill("api.example.com");
     expect((await boxOf(page.getByRole("button", { name: "Remove line 1" }))).height).toBeGreaterThanOrEqual(
       44,
     );
