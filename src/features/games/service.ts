@@ -375,8 +375,8 @@ export function createGamesService(deps: GamesServiceDeps) {
     if (game?.repoFullName != null) await checkReachable(game.makerUserId, game.repoFullName);
     // A refused copy throws here, so what follows happens only for a copy that passed.
     const pull = await pullGame(deps, gameId);
-    // A passing copy is the fix for files staff sent back. A live game's maker has no files question to answer (it is a
-    // 404 for her): she mends the files on GitHub and presses "Send a new version", which comes through here.
+    // A passing copy is the fix for files staff sent back, whether it came from the files question or from a live
+    // game's "Send a new version".
     await takeOutOfToFix(gameId, "files");
     await markChanged(gameId);
     // Files are waiting for a person's yes: the new ones take their place, so staff always review the newest.
@@ -727,8 +727,12 @@ export function createGamesService(deps: GamesServiceDeps) {
     return game;
   }
 
-  /** The answers a live game may still change by itself: the rest go through staff again (slice 4). */
-  const LIVE_MAY_CHANGE: Answer["question"][] = ["name", "line"];
+  /**
+   * The answers a live game may still change by itself. Its files and websites are part of a copy, so a change to them
+   * is copied and sent for review while players keep the old one. Its videos and rating would reach players with no
+   * review, so they go through staff again (slice 4).
+   */
+  const LIVE_MAY_CHANGE: Answer["question"][] = ["name", "line", "files", "websites"];
 
   /**
    * Keeps one answer. A draft, a waiting game and a sent-back game take every answer; a live game takes only its name
@@ -852,12 +856,26 @@ export function createGamesService(deps: GamesServiceDeps) {
     // refusal. A copy that passes takes the files off the list of what to fix (pullLatest).
     if (answer.question === "files") {
       await pullLatest(gameId);
+      await sendLiveUpdate(gameId, makerUserId, game.state);
     } else if (answer.question === "websites" && game.repoFullName !== null) {
       // The list is part of a copy: staff review it with the files, and the database never changes a copy once it is
       // made (GamePull is add-only). So a new list is a new copy, and the websites question says it copies again.
       await pullLatest(gameId);
+      await sendLiveUpdate(gameId, makerUserId, game.state);
     }
     return { slug };
+  }
+
+  /**
+   * A live game's new copy goes for review in the same save, as "Send a new version" does: a copy left unsent would
+   * change nothing for players and would have to be sent again by hand. While something staff sent back is still to fix,
+   * it is not sent: Live says what is left, and the send follows once it is mended.
+   */
+  async function sendLiveUpdate(gameId: string, makerUserId: string, state: GameState): Promise<void> {
+    if (state !== "live") return;
+    const fresh = await deps.db.game.findUnique({ where: { id: gameId }, select: { toFix: true } });
+    if (fresh === null || stillToFix(fresh.toFix).length > 0) return;
+    await sendForReview(gameId, makerUserId);
   }
 
   /**

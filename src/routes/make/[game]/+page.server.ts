@@ -23,18 +23,18 @@ import type { Actions, PageServerLoad } from "./$types";
 /** The parts a game's answers are made of, as a count: the name, the line, the files, the two videos, who it is for and the websites. */
 const PARTS = ALL_PARTS.length;
 
-/** The answers a live game's maker may still change by herself (the rest go through staff again): the same two the service allows. */
-const LIVE_CHANGEABLE: readonly ChangePart[] = ["name", "one_line"];
-
 /**
- * The facts Live draws beside the game: who it is for (spec 5c, and the plan's rating chip). Its files
- * and websites are not for a player-facing screen, and a maker cannot change either from here.
+ * The answers a live game's maker may still change by herself, the same ones the service allows. A change to the files
+ * or the websites is copied and sent for review in the one save; the videos and rating go through staff again.
  */
-const LIVE_CHIPS: readonly string[] = ["age_rating"];
+const LIVE_CHANGEABLE: readonly ChangePart[] = ["name", "one_line", "files", "other_websites"];
+
+/** The facts Live draws beside the game: who it is for, and the two she may change (where its files are, its websites). */
+const LIVE_CHIPS: readonly string[] = ["files", "age_rating", "other_websites"];
 
 /**
  * One thing sent back, as its card shows it: where it is fixed and, for a video, the video itself. A live game's card for
- * a part its maker cannot answer (its files, mended on GitHub and sent as a new version) has no link: its question is a 404.
+ * a part its maker cannot answer has no link: its question is a 404.
  */
 function fixCards(game: MakerGame): FixCardData[] {
   // Not taken apart: a detached method loses its owner (the lint rule unbound-method).
