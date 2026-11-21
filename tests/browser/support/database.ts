@@ -514,3 +514,8 @@ export async function giveStaffRole(
 ): Promise<void> {
   await db().staffAssignment.create({ data: { userId: await userIdOf(account.email), role } });
 }
+
+/** Leaves an account with no known age, as an account made before the age question was asked would be. */
+export async function forgetAgeOf(email: string): Promise<void> {
+  await db().user.update({ where: { email }, data: { adultOn: null } });
+}

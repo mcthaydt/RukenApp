@@ -1,5 +1,9 @@
 import { error } from "@sveltejs/kit";
-import { GAME_STAFF_ROLES } from "../../../features/accounts/accounts.ts";
+import {
+  adultsOnlyRefusal,
+  GAME_STAFF_ROLES,
+  isKnownAdultCaller,
+} from "../../../features/accounts/accounts.ts";
 import {
   gamesServices,
   ratingLine,
@@ -25,6 +29,9 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
   const games = gamesServices();
   const game = await games.service.liveGameBySlug(params.game);
   if (game === null) error(404);
+  // An 18+ game is for people known to be 18 or over: anyone else learns nothing about it, not even that it is here.
+  const refusal = await adultsOnlyRefusal(game.ageRating, locals.caller);
+  if (refusal !== null) error(403, refusal);
 
   // Landing here is an arrival through this maker's link (design 6): the last one a visitor made is who brought them.
   membershipServices().arrival.remember(cookies, { makerUserId: game.makerUserId, path: url.pathname });
@@ -44,7 +51,10 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
   const players = game.showsPlayerCount
     ? playersWords(await playServices().service.playersThisWeek(game.id, new Date()))
     : null;
-  const more = makerPage === null ? [] : await games.service.moreLiveGamesBy(game.makerUserId, game.slug);
+  const others = makerPage === null ? [] : await games.service.moreLiveGamesBy(game.makerUserId, game.slug);
+  // The maker's other games show their videos: an 18+ one only to someone known to be 18 or over.
+  const adult = others.some((one) => one.ageRating === "age_18") && (await isKnownAdultCaller(caller));
+  const more = others.filter((one) => adult || one.ageRating !== "age_18");
 
   return {
     name: game.name,
