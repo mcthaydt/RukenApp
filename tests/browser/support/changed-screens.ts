@@ -307,7 +307,13 @@ function pathOf(address: string): string {
  * Whether `showTheOwner` takes a picture: a pure choice from the addresses the page loaded, the answer text
  * (`LOOK_CHANGED`) and the journey's own file, relative to the repository root. Any doubt shoots.
  */
-export function shouldShoot(input: { loaded: string[]; answer: string | undefined; journey: string }): {
+export function shouldShoot(input: {
+  loaded: string[];
+  /** How many entries the browser holds in its raw list of loaded files, repeats and other origins included. */
+  entryCount: number;
+  answer: string | undefined;
+  journey: string;
+}): {
   shoot: boolean;
   why: string;
 } {
@@ -334,7 +340,8 @@ export function shouldShoot(input: { loaded: string[]; answer: string | undefine
     return { shoot: true, why: "the answer could not be read" };
   }
   if (answer.changedJourneys.includes(input.journey)) return { shoot: true, why: "this journey changed" };
-  if (input.loaded.length >= RESOURCE_BUFFER_SIZE) {
+  // The browser drops new entries silently once its raw list is full, so the raw count is what is compared.
+  if (input.entryCount >= RESOURCE_BUFFER_SIZE) {
     return { shoot: true, why: "the browser's list of loaded files may be full" };
   }
   const loaded = input.loaded.map(pathOf);

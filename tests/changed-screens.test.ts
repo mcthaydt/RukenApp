@@ -333,9 +333,11 @@ describe("showTheOwner's choice", () => {
     loaded: string[],
     answer: Answer | string | undefined,
     journey = "tests/browser/home.test.ts",
+    entryCount = loaded.length,
   ) =>
     shouldShoot({
       loaded,
+      entryCount,
       answer: typeof answer === "string" || answer === undefined ? answer : JSON.stringify(answer),
       journey,
     });
@@ -368,12 +370,12 @@ describe("showTheOwner's choice", () => {
     expect(choose([], "{not json").shoot).toBe(true);
   });
 
-  test("shoots when the resource list may be full (250 entries)", () => {
-    const loaded = Array.from({ length: 250 }, (_, i) => `/other/${String(i)}.js`);
-    const verdict = choose(loaded, changeOne);
+  test("shoots when the browser's raw list may be full (250 entries), though few addresses are different", () => {
+    // join-done loads one address over and over: the raw list is full while the list without repeats has one.
+    const verdict = choose(["/favicon.ico"], changeOne, undefined, 250);
     expect(verdict.shoot).toBe(true);
     expect(verdict.why).toContain("full");
-    expect(choose(loaded.slice(1), changeOne).shoot).toBe(false);
+    expect(choose(["/favicon.ico"], changeOne, undefined, 249).shoot).toBe(false);
   });
 
   test("shoots on its own changed journey, and only for that journey", () => {

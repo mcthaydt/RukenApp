@@ -256,16 +256,17 @@ export async function expectOneCard(page: Page, options: { red?: string[] } = {}
  * The addresses (path only) of the files this page loaded: what the browser fetched for it, plus the scripts and
  * stylesheets named in the document itself (a file served from cache is still listed by the document).
  */
-async function filesTheScreenLoaded(page: Page): Promise<string[]> {
+async function filesTheScreenLoaded(page: Page): Promise<{ loaded: string[]; entryCount: number }> {
   return page.evaluate(() => {
+    const entries = performance.getEntriesByType("resource");
     const addresses = [
-      ...performance.getEntriesByType("resource").map((entry) => entry.name),
+      ...entries.map((entry) => entry.name),
       ...[...document.querySelectorAll<HTMLScriptElement>("script[src]")].map((script) => script.src),
       ...[
         ...document.querySelectorAll<HTMLLinkElement>("link[rel~=modulepreload], link[rel~=stylesheet]"),
       ].map((link) => link.href),
     ];
-    return [
+    const loaded = [
       ...new Set(
         addresses
           .map((address) => new URL(address, location.href))
@@ -273,6 +274,8 @@ async function filesTheScreenLoaded(page: Page): Promise<string[]> {
           .map((url) => url.pathname),
       ),
     ];
+    // The raw count, not the list without repeats: the browser's buffer fills with repeats too.
+    return { loaded, entryCount: entries.length };
   });
 }
 
@@ -287,7 +290,7 @@ async function filesTheScreenLoaded(page: Page): Promise<string[]> {
  */
 export async function showTheOwner(page: Page, testInfo: TestInfo, screen: string): Promise<void> {
   const verdict = shouldShoot({
-    loaded: await filesTheScreenLoaded(page),
+    ...(await filesTheScreenLoaded(page)),
     answer: process.env.LOOK_CHANGED,
     journey: relative(process.cwd(), testInfo.file).split("\\").join("/"),
   });
