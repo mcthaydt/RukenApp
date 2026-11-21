@@ -23,9 +23,11 @@ export const ALL_PARTS: readonly ChangePart[] = [
 
 /** The three facts shown as chips, in the order they are shown, each with its words when the game has an answer. */
 function chipsOf(game: MakerGame): { part: ChipPart; words: string }[] {
+  // A live game's rating that waits for a yes is the one its maker asked for, so it is the one laid out.
+  const rating = game.held ?? { ageRating: game.ageRating, contentMarks: game.contentMarks };
   const facts: [ChipPart, string | null][] = [
     ["files", game.repoFullName],
-    ["age_rating", ratingWords(game.ageRating, game.contentMarks)],
+    ["age_rating", ratingWords(rating.ageRating, rating.contentMarks)],
     ["other_websites", websitesWords(game.connectHosts)],
   ];
   return facts.flatMap(([part, words]) => (words === null ? [] : [{ part, words }]));
@@ -37,12 +39,25 @@ export function laidOut(game: MakerGame, changeable: readonly ChangePart[]): Lai
   const services = gamesServices();
   const changes: Partial<Record<ChangePart, string>> = {};
   for (const part of changeable) changes[part] = `/make/${game.slug}/${questionOf(part)}`;
+  // A live game's new video that waits for a yes is the one its maker chose, so it is the one laid out.
+  const upright = game.heldClips.upright ?? game.clips.upright;
+  const wide = game.heldClips.wide ?? game.clips.wide;
+  const sentBack = game.toFix.map((one) => one.part);
+  const held: ChangePart[] = [
+    ...(game.heldClips.upright === null ? [] : (["upright_video"] as const)),
+    ...(game.heldClips.wide === null ? [] : (["wide_video"] as const)),
+    ...(game.held === null ? [] : (["age_rating"] as const)),
+  ].filter((part) => !sentBack.some((one) => one === part));
   return {
     name: game.name,
     line: game.oneLine ?? "",
-    upright: game.clips.upright === null ? null : services.media(game.clips.upright.key),
-    wide: game.clips.wide === null ? null : services.media(game.clips.wide.key),
+    upright: upright === null ? null : services.media(upright.key),
+    wide: wide === null ? null : services.media(wide.key),
     chips: chipsOf(game),
+    // A part staff sent back says so on its own card, so it carries no mark here; one that nobody is reviewing yet
+    // says that, since "Waiting for review" would promise a yes that cannot come.
+    waiting: game.hasPending ? held : [],
+    notSent: game.hasPending ? [] : held,
     changes,
   };
 }

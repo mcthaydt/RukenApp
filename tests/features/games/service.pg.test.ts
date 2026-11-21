@@ -569,7 +569,7 @@ describe("saveAnswer", () => {
     expect((await db().game.findUniqueOrThrow({ where: { id } })).contentMarks).toEqual(["none"]);
   });
 
-  it("lets a live game change its name and its line, and nothing else", async () => {
+  it("lets a live game change its name and its line, and holds its rating for a yes", async () => {
     const { makerUserId, id } = await begin();
     const pulling = serviceFor(GOOD_FILES);
     await pulling.saveAnswer(id, makerUserId, FILES_ANSWER);
@@ -588,9 +588,16 @@ describe("saveAnswer", () => {
       } as unknown as Answer),
     ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
     expect((await db().game.findUniqueOrThrow({ where: { id } })).playsOn).toBe("computer_only");
-    await expect(
-      service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_16" }),
-    ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
+    // The rating is held apart for a yes and sent with the game's videos, so what players see does not move.
+    for (const shape of ["upright", "wide"] as const)
+      await db().gameClip.create({
+        data: { gameId: id, shape, key: `clips/x/${shape}.mp4`, contentType: "video/mp4", bytes: 3 },
+      });
+    await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_16" });
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      ageRating: "age_12",
+      heldAgeRating: "age_16",
+    });
   });
 
   it("takes every answer of a draft, a waiting game and a sent-back game alike", async () => {

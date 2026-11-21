@@ -27,6 +27,18 @@ describe("readReviewOrder", () => {
     expect(readReviewOrder(body)).toEqual(order);
   });
 
+  it("carries the time of a look with an accept, and only when it is text", () => {
+    expect(readReviewOrder({ do: "accept", game: "tiny-game", seen: "2026-11-21T12:00:00.000Z" })).toEqual({
+      do: "accept",
+      game: "tiny-game",
+      seen: "2026-11-21T12:00:00.000Z",
+    });
+    expect(readReviewOrder({ do: "accept", game: "tiny-game", seen: 7 })).toEqual({
+      do: "accept",
+      game: "tiny-game",
+    });
+  });
+
   it.each([null, "list", {}, { do: "delete" }, { do: 7 }])("asks what to do for %j", (body) => {
     expect(readReviewOrder(body)).toEqual({ problem: WHAT_TO_DO });
   });

@@ -10,6 +10,7 @@ description: Use when writing a brief's acceptance criteria, or writing or chang
 The least every brief's acceptance criteria cover, where they apply:
 
 - Every core journey works end to end, with its loading, empty, error and recovery states.
+- **CRUD in the journeys.** For everything anyone can make in the product, staff included (an account, a game, a page, a video, anything they save), the browser journeys create it, read it back where people see it, update it, and delete it or take it off, each checked in the running product. A change that adds or changes something a user can make brings the missing ones in the same pull request. Only the owner can keep a thing from being updated or deleted (a payment record, say): asked as a decision card and recorded with its scope under "Kept on purpose" in `docs/superpowers/progress.md`; its journey then checks what the person is told instead.
 - Everything works with the keyboard alone, and focus is always visible.
 - Where there are users, users cannot access data outside their permissions.
 - The supported browsers named in the brief pass.

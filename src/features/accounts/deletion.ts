@@ -192,7 +192,14 @@ async function purgeOne(deps: PurgeDeps, id: string, userId: string, now: Date):
  * which frees its name (a draft may not have every answer a game that is off Ruken must keep). The rows stay, because
  * money and records may point at a game. Their videos' rows go; the videos themselves were deleted just before.
  */
-async function takeGamesOff(tx: Pick<PrismaClient, "game" | "gameClip">, userId: string): Promise<void> {
+async function takeGamesOff(
+  tx: Pick<PrismaClient, "game" | "gameClip" | "gameHeldClip">,
+  userId: string,
+): Promise<void> {
+  // A live game's change that waited for a yes goes with it: the database holds such a change to a live game, so the
+  // columns are cleared in the same write that takes the game off. The held videos' files share the game's folder of
+  // clips, which was deleted just before. The games come first and their held rows after, the order staff's yes takes
+  // its locks in (the game, then the held rows); the other way round, the two can wait on each other.
   await tx.game.updateMany({
     where: { makerUserId: userId, state: { in: ["live", "waiting"] } },
     data: {
@@ -201,9 +208,12 @@ async function takeGamesOff(tx: Pick<PrismaClient, "game" | "gameClip">, userId:
       livePullId: null,
       pendingPullId: null,
       pendingSince: null,
+      heldAgeRating: null,
+      heldContentMarks: [],
       toFix: [],
     },
   });
+  await tx.gameHeldClip.deleteMany({ where: { game: { makerUserId: userId } } });
   // Each thrown-away game's address is made from its own public id, so they are changed one at a time.
   const unsent = await tx.game.findMany({
     where: { makerUserId: userId, state: { in: ["draft", "sent_back"] } },

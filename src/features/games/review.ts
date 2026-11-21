@@ -1,4 +1,4 @@
-import type { GameState } from "../../lib/server/db.ts";
+import type { GamePart, GameState } from "../../lib/server/db.ts";
 import type { QuestionId } from "./questions.ts";
 
 // A game's state in the maker's plain words (design 5.4): short sentences, and when something went wrong, what to fix.
@@ -37,6 +37,39 @@ export function stateParts(game: StateInput): { headline: string; reason: string
     case "thrown_away":
       return { headline: "Thrown away", reason: null };
   }
+}
+
+/**
+ * The parts of a live game that wait for staff's yes before players see them: a maker changes them, staff send back a
+ * change, never what is already live. Every one of them can be mended by keeping the old one.
+ */
+export const HELD_PARTS: readonly GamePart[] = ["upright_video", "wide_video", "age_rating"];
+
+/**
+ * Whether staff's newest word on a game is a send back that is still open. A live game whose update was sent back only
+ * for held parts, where the maker kept the old one for each, is plain live again: nothing is held, nothing is left to
+ * fix, and the newest copy is the one it is live on, so there is nothing to send. A send back that named the name, the
+ * line or the files is mended in place and sent again, so it stays open.
+ */
+export function sentBackStillOpen(game: {
+  state: GameState;
+  newestDecision: "accepted" | "sent_back" | undefined;
+  newestParts: readonly GamePart[];
+  hasHeld: boolean;
+  toFixCount: number;
+  pullProblem: string | null;
+  newestPullIsLive: boolean;
+}): boolean {
+  if (game.newestDecision !== "sent_back") return false;
+  const plainLiveAgain =
+    game.state === "live" &&
+    game.newestParts.length > 0 &&
+    game.newestParts.every((part) => HELD_PARTS.includes(part)) &&
+    !game.hasHeld &&
+    game.toFixCount === 0 &&
+    game.pullProblem === null &&
+    game.newestPullIsLive;
+  return !plainLiveAgain;
 }
 
 /** The state in one line, with the reason after a colon when there is one: "Sent back: Fix the sound." */

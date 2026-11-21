@@ -50,7 +50,7 @@ The owner stays informed throughout, and updates never wait for an answer: conti
 
 ## Verification
 
-Checks let work be handed off; the owner reads the evidence. A change that alters the product is run like a person, through the `verify` skill, before it is called done. The test hardest to fool comes first. A test that fails once and passes on retry is a defect: record it under "Flaky tests" in `docs/superpowers/progress.md`. A change does not quietly edit its own check. Lessons carry a trigger, and each retrospective prunes. The full rules are in `build`.
+Checks let work be handed off; the owner reads the evidence. A change that alters the product is run like a person, through the `verify` skill, before it is called done. The test hardest to fool comes first. The journeys create, read, update and delete everything a user can make, and a review or audit fails a change that leaves one of the four out (CRUD in `build`). A test that fails once and passes on retry is a defect: record it under "Flaky tests" in `docs/superpowers/progress.md`. A change does not quietly edit its own check. Lessons carry a trigger, and each retrospective prunes. The full rules are in `build`.
 
 ## Risk
 
