@@ -9,11 +9,17 @@
 # the full suite before merge, and to six browser pieces instead of three; then "Cache installs and browsers",
 # "Skip the slow picture checks on drafts", "Cancel stale runs" and "Stop at the first failure while working"):
 # - A DRAFT pull request gets the quick run: lint, typecheck and the build as always, but only the tests the change
-#   reaches, the first failure stops the run, and the screenshots are taken only when something visual changed or the
-#   pull request carries the `screenshots` label (read on the next push). Its checks carry different names, so they
-#   never stand in for the required ones.
+#   reaches, and the first failure stops the run. Its checks carry different names, so they never stand in for the
+#   required ones.
 # - A pull request that is ready for review, and every push to main, gets the full run: `verify`, `postgres` and
 #   `browser`, summed up by the required check `gate`. Marking a draft ready starts it. Nothing merges without it.
+#
+# Screenshots (Owner, 2026-11-21 06:05 UTC, "Yes, start it" to taking pictures of only the screens a change touches):
+# every run, draft or full, on a pull request or on main, attaches a `look:` picture only for the screens its change
+# reaches. The `screens` job builds the base and the change, asks the picker (tests/browser/support/changed-screens.ts,
+# built in the next pull request) which pages differ, and hands the answer to the browser pieces as LOOK_CHANGED. Any
+# doubt (the `screenshots` label, a path in SHOOT_EVERYTHING_WHEN, a build that fails, no picker yet) answers
+# {"all":true,...} and every screen is shot. Every journey still runs and checks as before: only the pictures change.
 #
 # A pull request that changes only .md files has nothing to test (Owner, 2026-11-15: "when a PR only touches .md
 # files, skip the tests and allow the merge, in all repos."). The `changes` job spots it, and `verify`, `postgres`
@@ -49,6 +55,10 @@ env:
   # A change to any of these can break tests that do not import it (the database, the Workers, the tooling), so
   # it makes even a draft run everything.
   RUN_EVERYTHING_WHEN: '^(prisma|cloudflare|tests/fixtures)/|^(pnpm-lock\.yaml|package\.json|vite\.config\.ts|playwright\.config\.ts)$'
+  # Read by the `screens` job alone. A change to any of these can change how every screen looks (or the picker itself,
+  # the stand-in servers and the helpers the journeys import), so it shoots every screen. RUN_EVERYTHING_WHEN above
+  # is a different list and stays as it is, so a draft's choice of tests does not change.
+  SHOOT_EVERYTHING_WHEN: '^(prisma|cloudflare|tests/fixtures|tests/browser/support|tests/support)/|^(pnpm-lock\.yaml|package\.json|vite\.config\.ts|playwright\.config\.ts|wrangler\.jsonc|\.github/workflows/ci\.yml)$'
 
 jobs:
   # Says whether the pull request changes only .md files. The jobs below read its answer and, when it is "true",
@@ -182,12 +192,114 @@ jobs:
             pnpm test:pg
           fi
 
+  # Works out which screens the change reaches, once per run, and hands the answer (one line of JSON, LOOK_CHANGED)
+  # to the browser pieces. The picker is tests/browser/support/changed-screens.ts, run as
+  #   node tests/browser/support/changed-screens.ts <change build output> <base build output> <file with the changed paths>
+  # and it prints the answer on one line. A root file it expects (such as server/entries/params.js, which is written
+  # only while the app has a route matcher) that is missing from both builds is nothing to follow, not a crash; one
+  # present in only one build counts as changed. Until that file exists this job answers "all" straight after the checkout,
+  # before it installs or builds anything. It never fails the run: whatever goes wrong, it answers "all", so a doubt
+  # shoots every screen, as a doubt never skips a test. A docs-only pull request skips it, as it skips the pieces.
+  screens:
+    name: which screens changed
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      look_changed: ${{ steps.decide.outputs.look_changed || steps.compare.outputs.look_changed }}
+    env:
+      PICKER: tests/browser/support/changed-screens.ts
+      PULL_REQUEST_LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # Answers "all" at once, with no build, when it can already tell. Otherwise says to go on and build.
+      - name: See whether a comparison is needed
+        id: decide
+        run: |
+          shoot_all() {
+            answer=$(node -p 'JSON.stringify({ all: true, reason: process.argv[1] })' "$1")
+            echo "Every screen is shot: $1"
+            echo "look_changed=$answer" >> "$GITHUB_OUTPUT"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          if [ ! -f "$PICKER" ]; then shoot_all "no picker yet"; fi
+          case " $PULL_REQUEST_LABELS " in *" screenshots "*) shoot_all "the pull request carries the screenshots label" ;; esac
+          head=$(git rev-parse HEAD)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base=$(git merge-base origin/main "$head") || shoot_all "no base to compare with"
+          else
+            # A push to main: the merge commit of a pull request is compared with its first parent.
+            base=$(git rev-parse "$head^1") || shoot_all "no base to compare with"
+          fi
+          echo "Comparing $head with $base"
+          git diff --name-only --no-renames "$base" "$head" > "$RUNNER_TEMP/changed-paths.txt"
+          cat "$RUNNER_TEMP/changed-paths.txt"
+          if grep -Eq "$SHOOT_EVERYTHING_WHEN" "$RUNNER_TEMP/changed-paths.txt"; then
+            shoot_all "a changed file is one that can change every screen ($(grep -E "$SHOOT_EVERYTHING_WHEN" "$RUNNER_TEMP/changed-paths.txt" | head -n 1))"
+          fi
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "build=true" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: steps.decide.outputs.build == 'true'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.decide.outputs.build == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      # A failed install is not a failed run: the next step reads the outcome and answers "all".
+      - name: Install
+        id: install
+        if: steps.decide.outputs.build == 'true'
+        continue-on-error: true
+        run: pnpm install --frozen-lockfile
+      # Builds the change, then the base in the same checkout with the same packages (the lockfile and package.json are
+      # in SHOOT_EVERYTHING_WHEN, so the packages are the same for both), and asks the picker.
+      - name: Build both and compare
+        id: compare
+        if: steps.decide.outputs.build == 'true'
+        env:
+          HEAD_SHA: ${{ steps.decide.outputs.head }}
+          BASE_SHA: ${{ steps.decide.outputs.base }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+        run: |
+          shoot_all() {
+            # Back on the change, whatever happened.
+            git checkout --quiet --detach "$HEAD_SHA" || true
+            answer=$(node -p 'JSON.stringify({ all: true, reason: process.argv[1] })' "$1")
+            echo "Every screen is shot: $1"
+            echo "look_changed=$answer" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          [ "$INSTALL_OUTCOME" = "success" ] || shoot_all "the install failed"
+          out="$RUNNER_TEMP/look"
+          rm -rf "$out"; mkdir -p "$out"
+          pnpm build || shoot_all "the change did not build"
+          cp -r .svelte-kit/output "$out/change"
+          git checkout --quiet --detach "$BASE_SHA" || shoot_all "the base could not be checked out"
+          rm -rf .svelte-kit/output
+          pnpm build || shoot_all "the base did not build"
+          cp -r .svelte-kit/output "$out/base"
+          git checkout --quiet --detach "$HEAD_SHA"
+          answer=$(node "$PICKER" "$out/change" "$out/base" "$RUNNER_TEMP/changed-paths.txt" | head -n 1) || shoot_all "the picker failed"
+          [ -n "$answer" ] || shoot_all "the picker gave no answer"
+          # A job output is capped at 1 MB and an environment variable at about 128 KB, so a longer answer is not passed on.
+          [ "${#answer}" -le 100000 ] || shoot_all "the answer was too long to pass on"
+          echo "$answer" | node -e 'JSON.parse(require("fs").readFileSync(0, "utf8"))' || shoot_all "the picker's answer could not be read"
+          printf '%s\n' "$answer" | cut -c 1-2000
+          echo "look_changed=$answer" >> "$GITHUB_OUTPUT"
+
   # The journeys are split across six runners, side by side, each with its own database and its own site, so a run
   # stays short as the journeys grow. Playwright deals the test files out among the pieces. On a draft only the
   # journeys the change reaches run, and the first failure stops every piece.
   browser-shard:
     name: browser shard ${{ matrix.shard }} of 6${{ github.event.pull_request.draft && ' (quick, draft)' || '' }}
-    needs: changes
+    needs: [changes, screens]
     # The pieces are not required checks, so a docs-only pull request skips them whole. The `browser` check below
     # accepts that. As with `verify`, a failed `changes` job still runs them.
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
@@ -214,6 +326,8 @@ jobs:
           - 5432:5432
     env:
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      # The `screens` job's answer: which screens to photograph. Empty (that job failed or was skipped) shoots every screen.
+      LOOK_CHANGED: ${{ needs.screens.outputs.look_changed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -247,22 +361,6 @@ jobs:
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
           echo "args=$args" >> "$GITHUB_OUTPUT"
-      # The journeys attach a screenshot of each screen for the Owner to look at. A draft takes them only when
-      # something visual changed, or when the pull request carries the `screenshots` label.
-      - name: Decide whether to take the screenshots
-        if: steps.pick.outputs.run == 'true'
-        env:
-          PULL_REQUEST_LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
-        run: |
-          shots=on
-          if [ "$CHANGED_ONLY" = "true" ]; then
-            shots=off
-            if git diff --name-only origin/main | grep -Eq '\.(svelte|css)$|^static/|^tests/browser/(support/)?look'; then
-              shots=on
-            fi
-            case " $PULL_REQUEST_LABELS " in *" screenshots "*) shots=on ;; esac
-          fi
-          echo "LOOK_SHOTS=$shots" >> "$GITHUB_ENV"
       # The browsers are kept between runs, keyed by Playwright's version (pinned exactly in package.json). The
       # install below still adds the system libraries, and downloads a browser only when the cache has none.
       - name: Find Playwright's version
