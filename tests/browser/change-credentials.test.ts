@@ -3,6 +3,7 @@ import {
   JOURNEY_PASSWORD,
   freshEmail,
   pageHasSettled,
+  payAsNewMember,
   signInAs,
   signUp,
   SITE_ANSWER_TIMEOUT,
@@ -133,4 +134,17 @@ test("a signed-out person is sent to sign in from both screens", async ({ page }
   await expect(page).toHaveURL("/sign-in?next=%2Fme%2Femail");
   await page.goto("/me/password");
   await expect(page).toHaveURL("/sign-in?next=%2Fme%2Fpassword");
+});
+
+test("a member is told their payment receipts still go to the old address", async ({ page }) => {
+  const { email } = await payAsNewMember(page);
+  await page.goto("/me/email");
+  await expect(page.getByText(`Your payment receipts will still go to ${email} for now.`)).toBeVisible();
+});
+
+test("a person who is not a member is not told about receipts", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/me/email");
+  await expect(page.getByRole("heading", { name: "Change your email" })).toBeVisible();
+  await expect(page.getByText("payment receipts")).toHaveCount(0);
 });
