@@ -23,7 +23,14 @@ test.beforeEach(forgetRateLimits);
 async function openRoom(page: Page, room: string): Promise<void> {
   await page.goto("/make/page");
   await pageHasSettled(page);
-  await page.getByRole("link", { name: new RegExp(`^${room}`) }).click();
+  const link = page.getByRole("link", { name: new RegExp(`^${room}`) });
+  const address = await link.getAttribute("href");
+  expect(address).not.toBeNull();
+  await link.click();
+  // The rooms list's heading is "Your page", so another heading (and the room's own address) means the tapped room is
+  // open, not the list it is leaving, which stays on screen until the step between them ends.
+  await expect(page).toHaveURL(new RegExp(`${address ?? ""}$`));
+  await expect(page.getByRole("heading", { level: 1 })).not.toHaveText("Your page");
   await pageHasSettled(page);
 }
 
