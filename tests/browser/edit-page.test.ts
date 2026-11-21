@@ -410,3 +410,39 @@ test("a game named like one of the maker's screens gets an address of its own", 
   await page.goto(`/make/${slug}/line`);
   await expect(page.getByLabel(/about, in one line\?$/)).toBeVisible();
 });
+
+test("a colour tapped before the screen's scripts arrive is still the one picked, and is saved", async ({
+  page,
+}) => {
+  const maker = await signUp(page);
+  const { handle } = await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
+  // A slow connection: the words and the tiles are on the screen, the scripts that make it live are still coming.
+  await page.route(/_app\/immutable\/.*\.js/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await route.continue();
+  });
+  await page.goto("/make/page/colours", { waitUntil: "commit" });
+  await page.waitForSelector("label.swatch input", { state: "attached" });
+  const picked = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll<HTMLInputElement>("label.swatch input")].map((tile) => tile.checked),
+    );
+  const own = 0;
+  const tapped = 2;
+  await page.locator("label.swatch").nth(tapped).click({ noWaitAfter: true });
+  expect((await picked())[tapped]).toBe(true);
+  // The scripts arrive and make the screen live: the tap must not be undone.
+  // Each script that needs another waits its own 3 seconds, so the screen is live only once the network is quiet.
+  await page.waitForLoadState("networkidle", { timeout: 30_000 });
+  await page.waitForTimeout(1000);
+  const after = await picked();
+  expect(after[tapped]).toBe(true);
+  expect(after[own]).toBe(false);
+  const tappedId = Number(await page.locator("label.swatch input").nth(tapped).getAttribute("value"));
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("link", { name: /^Colours/ })).toContainText(`Colours ${String(tappedId)}`);
+  await page.goto(`/${handle}`);
+  const chosen = THEMES.find((entry) => entry.id === tappedId);
+  expect(chosen).toBeDefined();
+  await expect(page.locator("main")).toHaveCSS("background-color", rgb(chosen?.ground ?? ""));
+});

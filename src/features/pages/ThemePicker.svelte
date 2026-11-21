@@ -49,7 +49,7 @@
         type="radio"
         name="theme"
         value={swatch.id}
-        checked={swatch.id === chosen}
+        defaultChecked={swatch.id === chosen}
         aria-label={nameOf(swatch.id)}
       />
       <span class="aa" aria-hidden="true">Aa</span>
