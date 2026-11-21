@@ -19,6 +19,7 @@ export {
 export { OPEN_COUNTRIES, shownAs } from "./phone.ts";
 export { setPaperEmail } from "./paper.ts";
 export { setMoneyCheck } from "./changed-hands.ts";
+export { ageCheck, type BirthDate } from "./age.ts";
 export { signedInOnly, signedInRedirect } from "./pages.ts";
 export {
   attachPhoneToAccount,

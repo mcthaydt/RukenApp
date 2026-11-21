@@ -1,6 +1,5 @@
 import { error } from "@sveltejs/kit";
-import { attachPhoneToAccount } from "../../../features/accounts/accounts.ts";
-import { ageCheck, type BirthDate } from "../../../features/accounts/age.ts";
+import { ageCheck, attachPhoneToAccount, type BirthDate } from "../../../features/accounts/accounts.ts";
 import { systemClock } from "../../../lib/clock.ts";
 import { prisma } from "../../../lib/server/db.ts";
 import { hasJobSecret } from "../../../lib/server/job-secret.ts";
