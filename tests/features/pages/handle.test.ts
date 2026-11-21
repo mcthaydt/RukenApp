@@ -58,7 +58,7 @@ describe("a maker's address", () => {
   });
 
   it("keeps every address Ruken itself uses", () => {
-    // Review Focus 3. `g` and `me` are too short to be anyone's, so only names with a handle's shape count.
+    // `g` and `me` are too short to be anyone's, so only names with a handle's shape count.
     for (const name of routeAndStaticNames()) {
       if (isHandleShape(name)) expect(RESERVED_HANDLES.has(name), name).toBe(true);
     }

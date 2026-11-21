@@ -117,7 +117,6 @@ describe("reversals", () => {
   });
 
   it("cancels a yearly payment's unreleased months first", async () => {
-    // Review Focus 5
     await pay("a2", "2030-01-02T15:00:00Z", YEARLY);
     stripe.addRefund(refund("a2", "2030-01-10T15:00:00Z", 10_810n));
     const moved = await movedBy(db(), async () => {
@@ -132,7 +131,6 @@ describe("reversals", () => {
   });
 
   it("stores a refund once however many runs see it", async () => {
-    // Review Focus 9
     await pay("a3", "2032-01-02T15:00:00Z");
     stripe.addRefund(refund("a3", "2032-01-10T15:00:00Z", 500n));
     expect(await reverse("2032-01-11T12:00:00Z")).toEqual({ stored: 1, posted: 1 });
@@ -181,7 +179,7 @@ describe("reversals", () => {
   });
 
   it("sees a dispute won long after it opened, whatever came since", async () => {
-    // Review Focus 23. Opened on 5 March; a newer refund is stored on 13 May; Stripe says won on 14 May, 70 days on.
+    // Opened on 5 March; a newer refund is stored on 13 May; Stripe says won on 14 May, 70 days on.
     // The list since 40 days before the newest reversal starts after the dispute, so only reading it by its id sees it.
     await pay("a6", "2038-03-02T15:00:00Z");
     await pay("a7", "2038-05-02T15:00:00Z");

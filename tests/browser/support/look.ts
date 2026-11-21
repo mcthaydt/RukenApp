@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { rgb, token } from "../../support/look-tokens.ts";
 
 // Helpers for the journeys that check the look (tests/browser/look.test.ts). CI checks values (a colour, a
@@ -287,6 +287,23 @@ export async function showTheOwner(page: Page, testInfo: TestInfo, screen: strin
 
 /** The five layouts the maker's screens are drawn in (spec 4). */
 export type Layout = "phone" | "phone-sideways" | "tablet" | "tablet-sideways" | "computer";
+
+/** A phone and an iPad held sideways. Every project is upright (or a computer), so a journey asks for these itself. */
+export const SIDEWAYS = { phone: { width: 915, height: 412 }, tablet: { width: 1080, height: 810 } } as const;
+
+/**
+ * Defines journeys again in a phone's or an iPad's window held sideways, run in that device's project only: the
+ * window is the same whichever project is asked, so one run is enough.
+ */
+export function heldSideways(device: keyof typeof SIDEWAYS, define: () => void): void {
+  test.describe(`on ${device === "phone" ? "a phone" : "an iPad"} held sideways`, () => {
+    test.use({ viewport: SIDEWAYS[device] });
+    test.beforeEach(() => {
+      test.skip(test.info().project.name !== device, "one project is enough for a window of its own");
+    });
+    define();
+  });
+}
 
 /** Which of the five layouts this window gets. The same order as the stylesheet's queries. */
 export function layoutOf(page: Page): Layout {

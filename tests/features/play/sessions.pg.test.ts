@@ -155,7 +155,6 @@ describe("startPlay", () => {
     ]);
   });
 
-  // Review Focus 21.
   it("gives the same member the same address for that game all day", async () => {
     const game = await newGame();
     const member = await newViewer();
@@ -307,7 +306,6 @@ async function startedPlay() {
 }
 
 describe("recordBeat", () => {
-  // Review Focus 7.
   it("takes a beat from the session's own token only", async () => {
     const a = await startedPlay();
     const b = await startedPlay();
@@ -330,7 +328,7 @@ describe("recordBeat", () => {
     expect(beat.attentive).toBe(true);
   });
 
-  // Review Focus 24: the first beat is never too soon.
+  // The first beat is never too soon.
   it("takes the first beat at once, and drops one that comes too soon after the last", async () => {
     const play = await startedPlay();
 

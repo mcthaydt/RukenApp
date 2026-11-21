@@ -27,8 +27,8 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the design pass of the submission screens found (docs/superpowers/audits/2026-11-15-submission-screens-design-pass.md),
 // one journey for each thing that was wrong. Each measures the page in the window it runs in, as the journeys of the screen
-// review do. The few that need an iPhone SE's window (320 by 568, or 568 by 320 sideways), which no project has, give
-// themselves that window and run in the one Chromium project of the same shape.
+// review do. The few that need an iPhone SE's window held a set way (320 by 568, or 568 by 320 sideways) give themselves
+// that window and run in the phone project only.
 
 test.beforeEach(forgetRateLimits);
 
@@ -41,8 +41,8 @@ const LONG_LINE =
   "Tap the wobbly buttons before the tide comes in and the harbour lights go out, one by one, tonight.";
 
 /** Runs a journey in one project only: the window it sets for itself is the same whichever project is asked. */
-function onlyIn(project: "phone" | "phone-landscape"): void {
-  test.skip(test.info().project.name !== project, `one Chromium project is enough for a window of its own`);
+function onlyIn(project: "phone"): void {
+  test.skip(test.info().project.name !== project, `one project is enough for a window of its own`);
 }
 
 /** A new maker's game with the longest name and line, at Check and send. */
@@ -210,7 +210,7 @@ test.describe("on an iPhone SE held sideways", () => {
   test.use({ viewport: IPHONE_SE_SIDEWAYS });
 
   test("a refusal of the first answer is read above the bar", async ({ page }) => {
-    onlyIn("phone-landscape");
+    onlyIn("phone");
     const { slug } = await startDraft(page);
     await page.goto(`/make/${slug}/name`);
     await pageHasSettled(page);
@@ -222,7 +222,7 @@ test.describe("on an iPhone SE held sideways", () => {
   // ---- M5: the wide video's question has room for its words ---------------------------------------------------------
 
   test("the wide video question's heading is not crushed beside its frame", async ({ page }) => {
-    onlyIn("phone-landscape");
+    onlyIn("phone");
     await startAtVideo(page, "wide");
     // Only the words are measured, and the upright video this game has is a stand-in that never loads.
     await wordsHaveSettled(page);
@@ -282,7 +282,7 @@ test.describe("a 56-letter name in a question's heading", () => {
     test.use({ viewport: IPHONE_SE_SIDEWAYS });
 
     test("the box is above the bar", async ({ page }) => {
-      onlyIn("phone-landscape");
+      onlyIn("phone");
       await draftWithLongName(page);
       await pageHasSettled(page);
 

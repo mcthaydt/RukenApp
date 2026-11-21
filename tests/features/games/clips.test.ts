@@ -83,7 +83,7 @@ describe("looksLikeVideo", () => {
     );
   });
 
-  // Review Focus 13: a page named as a video is refused by its first bytes.
+  // A page named as a video is refused by its first bytes.
   it("refuses bytes of the other format, of something else, or too short to tell", () => {
     const page = new TextEncoder().encode("<script>alert(1)</script>");
     expect(looksLikeVideo(WEBM, "video/mp4")).toBe(false);

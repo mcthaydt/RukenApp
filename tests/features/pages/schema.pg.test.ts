@@ -112,7 +112,6 @@ describe("the pages tables", () => {
   });
 
   it("refuses a link that is not https", async () => {
-    // Review Focus 5
     const page = await insertPage(await newUser());
     await expect(insertLink(page, { url: "http://x.test" })).rejects.toThrow();
     await expect(insertLink(page, { url: "javascript:alert(1)" })).rejects.toThrow();

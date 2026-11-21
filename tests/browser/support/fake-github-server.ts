@@ -163,7 +163,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
     }
   }
 
-  // ---- The app's own calls (task 8): the installation, a token, a commit and the files ----
+  // ---- The app's own calls: the installation, a token, a commit and the files ----
   if (parts[0] === "repos") {
     const repository = repositoryIn(parts);
     if (token === null) return sendJson(response, 401, { message: "Requires authentication" });

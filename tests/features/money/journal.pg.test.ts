@@ -148,7 +148,7 @@ describe("postEntry", () => {
   });
 });
 
-// Review Focus 3: a fact that arrives after its month closed is posted into the month that is open.
+// A fact that arrives after its month closed is posted into the month that is open.
 describe("postingPeriod", () => {
   const NOVEMBER_FACT = Date.parse("2026-11-15T18:00:00Z");
   const DECEMBER_9TH = Date.parse("2026-12-09T09:17:00Z");
@@ -205,7 +205,7 @@ async function until(ready: () => Promise<boolean>, what: string): Promise<void>
   }
 }
 
-// Review Focus 9: the daily job run twice at once. The second run waits for the first, then sees what it posted.
+// The daily job run twice at once. The second run waits for the first, then sees what it posted.
 describe("lockLedger", () => {
   it("makes two posters take turns", async () => {
     const watcher = new pg.Client({ connectionString: database?.url ?? "" });

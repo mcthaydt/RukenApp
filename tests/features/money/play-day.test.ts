@@ -66,7 +66,6 @@ describe("countedIntervals", () => {
 
 describe("playSecondsOnDay", () => {
   it("counts a moment once when two tabs are open", () => {
-    // Review Focus 6
     const start = at("2026-12-05T18:00:00Z");
     const one = { startedAtMs: start, beats: beats(start, 40) }; // ten minutes
     const two = { startedAtMs: start + 300_000, beats: beats(start + 300_000, 40) }; // ten minutes, starting five in
@@ -87,7 +86,7 @@ describe("playSecondsOnDay", () => {
   });
 
   it("treats the 23-hour and the 25-hour day as whole days", () => {
-    // Review Focus 6. On 14 March 2027 the clocks go forward at 02:00: 01:30 local is 07:30 UTC and 03:30 local is
+    // On 14 March 2027 the clocks go forward at 02:00: 01:30 local is 07:30 UTC and 03:30 local is
     // 08:30 UTC, so a session "from 01:30 to 03:30" is one real hour.
     const springStart = at("2027-03-14T07:30:00Z");
     const spring = { startedAtMs: springStart, beats: beats(springStart, 240) };

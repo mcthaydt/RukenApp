@@ -16,7 +16,7 @@ import {
   startDraft,
   TINY_GAME,
 } from "./support/game.ts";
-import { boxOf, expectFrame, layoutHasSettled, layoutOf, lineCount } from "./support/look.ts";
+import { boxOf, expectFrame, heldSideways, layoutHasSettled, layoutOf, lineCount } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the screen review of the rebuilt maker screens found (docs/superpowers/audits/2026-11-15-maker-screens-rebuild-
@@ -196,19 +196,23 @@ test("the Choose video button fills the bar wherever the buttons are in a bar", 
   expect(choose.x + choose.width).toBeGreaterThanOrEqual(bar.x + bar.width - padding - 1);
 });
 
-test("on a sideways phone the answer box is in view above the bar, under a two-line heading", async ({
-  page,
-}) => {
-  test.skip(layoutOf(page) !== "phone-sideways", "only a sideways phone is this short");
-  const { slug } = await startDraft(page);
-  await page.goto(`/make/${slug}/line`);
-  await pageHasSettled(page);
+function answerBoxAboveTheBar(): void {
+  test("on a sideways phone the answer box is in view above the bar, under a two-line heading", async ({
+    page,
+  }) => {
+    test.skip(layoutOf(page) !== "phone-sideways", "only a sideways phone is this short");
+    const { slug } = await startDraft(page);
+    await page.goto(`/make/${slug}/line`);
+    await pageHasSettled(page);
 
-  // The line's box is a growing box (a textarea), so it is found by its class alone.
-  const box = await boxOf(page.locator(".answer"));
-  const bar = await boxOf(page.locator(".acts"));
-  expect(box.y + box.height).toBeLessThanOrEqual(bar.y);
-});
+    // The line's box is a growing box (a textarea), so it is found by its class alone.
+    const box = await boxOf(page.locator(".answer"));
+    const bar = await boxOf(page.locator(".acts"));
+    expect(box.y + box.height).toBeLessThanOrEqual(bar.y);
+  });
+}
+
+heldSideways("phone", answerBoxAboveTheBar);
 
 // ---- The files question -------------------------------------------------------------------------------------------
 

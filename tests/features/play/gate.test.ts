@@ -114,7 +114,7 @@ describe("a game's files", () => {
     expect(files.reads).toEqual([]);
   });
 
-  // Review Focus 20: the pass says which servers the game may reach; the browser enforces it.
+  // The pass says which servers the game may reach; the browser enforces it.
   it("lets the game reach its own files and the servers in its pass, and nothing else", async () => {
     expect((await get(`/${pass}/`)).headers.get("content-security-policy")).toBe(
       "frame-ancestors https://ruken.test; connect-src 'self' blob: data: https://api.example.com wss://api.example.com",
@@ -131,14 +131,13 @@ describe("a game's files", () => {
     expect(early.headers.get("cache-control")).toBe("private, max-age=86400");
   });
 
-  // Review Focus 22: a service worker could go on serving the game after its pass ran out.
+  // A service worker could go on serving the game after its pass ran out.
   it("refuses to hand out a service worker", async () => {
     const response = await get(`/${pass}/main.js`, { headers: { "service-worker": "script" } });
     expect(response.status).toBe(403);
     expect(files.reads).toEqual([]);
   });
 
-  // Review Focus 1
   it("refuses a pass made for another game", async () => {
     const other = makePass({ ...claims, game: "bbbbbbbbbb" }, SECRET);
     const response = await get(`/${other}/index.html`);
@@ -153,7 +152,6 @@ describe("a game's files", () => {
     expect(files.reads).toEqual([]);
   });
 
-  // Review Focus 3
   it("refuses a pass that has run out, in words a person can act on", async () => {
     const response = await get(`/${pass}/main.js`, { nowMs: EXPIRES_AT });
     expect(response.status).toBe(403);
@@ -166,7 +164,7 @@ describe("a game's files", () => {
     expect(files.reads).toEqual([]);
   });
 
-  // Review Focus 2. A browser's address parser folds `..` and `%2e%2e` away before a request is sent, and so does
+  // A browser's address parser folds `..` and `%2e%2e` away before a request is sent, and so does
   // `new Request` here, so those two reach the gate as a different path and fail the pass; the other three still
   // reach it as they are. Whichever way, nothing is served and the bucket is never asked.
   it.each(["../p2/index.html", "..%2fp2/index.html", "a//b", "a%5cb", "%2e%2e/%2e%2e/clips/x"])(
@@ -192,7 +190,6 @@ describe("a game's files", () => {
     expect(await response.text()).toBe("Not found.");
   });
 
-  // Review Focus 11
   it("serves a file it does not know as plain bytes", async () => {
     for (const path of ["data/level.bin", "LICENSE"]) {
       const response = await get(`/${pass}/${path}`);
@@ -299,7 +296,7 @@ describe("a maker's photo", () => {
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(PNG_BYTES);
   });
 
-  // Review Focus 13: the media name serves a clip or a photo and nothing else, and never reaches the store to find out.
+  // The media name serves a clip or a photo and nothing else, and never reaches the store to find out.
   it("serves nothing from the media name that is not a clip or a photo", async () => {
     for (const path of [
       "/photos/0123456789abcdef.svg",
@@ -355,7 +352,6 @@ describe("the gate as a whole", () => {
     expect(await robots.text()).toBe("User-agent: *\nDisallow: /\n");
   });
 
-  // Review Focus 14
   it("never sets a cookie and never reads one", async () => {
     const paths = [
       `/${pass}/`,
@@ -418,7 +414,7 @@ describe("on the one free address", () => {
     expect(response.headers.get("location")).toBe(`/g-aaaaaaaaaa/${pass}/`);
   });
 
-  // Review Focus 1: a pass made for one game, used under another game's folder.
+  // A pass made for one game, used under another game's folder.
   it("refuses a pass made for another game", async () => {
     expect((await here(`/g-bbbbbbbbbb/${pass}/`)).status).toBe(403);
     expect((await here(`/g-aaaaaaaaaa/${other}/`)).status).toBe(403);
@@ -428,7 +424,7 @@ describe("on the one free address", () => {
     expect((await here(`/g-aaaaaaaaaa/${otherPass}/index.html`)).status).toBe(404);
   });
 
-  // Review Focus 2: a path that climbs out of the game's folder into another's.
+  // A path that climbs out of the game's folder into another's.
   it("refuses a path that climbs into another game's folder", async () => {
     const encoded = await here(`/g-aaaaaaaaaa/${pass}/..%2f..%2fbbbbbbbbbb/p1/index.html`);
     expect(encoded.status).toBe(400);
@@ -476,7 +472,7 @@ describe("on the one free address", () => {
     expect(response.status).toBe(200);
   });
 
-  // Review Focus 3: a request that looks like the free address's, on any other name.
+  // A request that looks like the free address's, on any other name.
   it("answers no path as a game on any other host", async () => {
     expect((await get(`/g-aaaaaaaaaa/${pass}/`, { host: "other.test", pathHost: FREE })).status).toBe(404);
     expect((await get(`/g-aaaaaaaaaa/${pass}/`, { host: FREE })).status).toBe(404);

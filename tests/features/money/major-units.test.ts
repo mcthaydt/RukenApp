@@ -16,7 +16,6 @@ describe("microCentsOf (Stripe's decimal dollars as whole millionths of a cent)"
     expect(microCentsOf("-0.07")).toBe(-7_000_000n);
   });
 
-  // Review Focus 4
   it.each(["", "--0.07", "0.07-", "0.123456789", "1e-3", "0,07", "abc", "1.2.3", " 0.07", ".5", "1."])(
     "cannot read %j",
     (text) => {

@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import Stripe from "stripe";
 
-// What Stripe sends to the site, and what the site does with a delivery that is not Stripe's (Review Focus 4).
+// What Stripe sends to the site, and what the site does with a delivery that is not Stripe's.
 // The stand-in Stripe signs with this secret, and so does the site's check.
 const SECRET = "whsec_test_fake";
 const stripe = new Stripe("sk_test_fake");

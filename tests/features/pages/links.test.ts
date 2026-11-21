@@ -12,7 +12,6 @@ describe("the address of a link", () => {
     "",
     "https://" + "a".repeat(500) + ".com",
   ])("refuses %j", (url) => {
-    // Review Focus 5
     expect(cleanLinkUrl(url)).toBeNull();
   });
 

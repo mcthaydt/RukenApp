@@ -12,7 +12,7 @@ import { aMonth, balancesOf, expectBooksBalanced, type MonthMember } from "../..
 import { TestClock } from "../../support/test-clock.ts";
 
 // Sharing a month's pool, through the database. Each test works in a month of its own (the pool is the month's), and
-// the first one is Task 8's worked month: the same members, the same cents, now read from the rows the daily job left.
+// the first one is the worked month: the same members, the same cents, now read from the rows the daily job left.
 
 let database: TestDatabase | undefined;
 
@@ -54,7 +54,7 @@ describe("sharePool", () => {
     const own = await startTestDatabase();
     const prisma = own.prisma;
     try {
-      // Task 8's three members. A: monthly, brought by X, played X's game 1 for 2 hours and Y's game 2 for 1 hour. B:
+      // The worked month's three members. A: monthly, brought by X, played X's game 1 for 2 hours and Y's game 2 for 1 hour. B:
       // yearly, brought by nobody, played game 2 for half an hour. C: monthly, brought themselves, played nothing.
       const one = await addGame(prisma);
       const two = await addGame(prisma);
@@ -113,7 +113,7 @@ describe("sharePool", () => {
     }
   });
   it("pays the bringer only in a member's first twelve months, and never for bringing yourself", async () => {
-    // Review Focus 7. In March 2027: M1 joined December 2026 (month four of twelve), M2 joined March 2026 (month
+    // In March 2027: M1 joined December 2026 (month four of twelve), M2 joined March 2026 (month
     // thirteen), M3 brought themselves, M4's first join had no maker and a later one named Y.
     const x = await addGame(db());
     const y = await addGame(db());
@@ -178,7 +178,7 @@ describe("sharePool", () => {
   });
 
   it("pays bonuses and carries the rest when nobody played, and shares the carry by play next month", async () => {
-    // Review Focus 8 and 19. May 2027: one member paid, was brought by X, and nobody played anything.
+    // May 2027: one member paid, was brought by X, and nobody played anything.
     const x = await addGame(db());
     const may = new TestClock("2027-05-20T12:00:00Z");
     await aMonth(db(), stripe, may, [
@@ -214,7 +214,6 @@ describe("sharePool", () => {
   });
 
   it("still works out the share of a game whose maker's account was deleted", async () => {
-    // Review Focus 10
     const game = await addGame(db());
     const clock = new TestClock("2027-08-20T12:00:00Z");
     await aMonth(db(), stripe, clock, [
@@ -258,7 +257,6 @@ describe("sharePool", () => {
   });
 
   it("never takes from Ruken's half, and shows the same numbers before the month is shared as after", async () => {
-    // Review Focus 17
     const game = await addGame(db());
     const clock = new TestClock("2027-12-20T12:00:00Z");
     await aMonth(db(), stripe, clock, [
@@ -425,7 +423,7 @@ describe("a member's weight after refunds and disputes (Owner, 2026-11-14)", () 
   });
 
   it("shares a month without the play of a member who was refunded in full", async () => {
-    // Task 8's refund step, through the database, in a database of its own: posting reversals posts every one kept.
+    // The refund step, through the database, in a database of its own: posting reversals posts every one kept.
     // A (brought by X, played X's game) and B (nobody brought them, played Y's game) each put 469 in the pool. A is
     // refunded in full: the refund takes back A's 469 and half of what Stripe kept (the 61-cent card fee, 31 rounded
     // up) from the pool, which is then 469 + 469 − 469 − 31 = 438. A weighs nothing, so X has no bonus and no play

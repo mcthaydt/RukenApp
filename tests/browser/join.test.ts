@@ -136,7 +136,7 @@ test("next pointing off the site is ignored", async ({ page }) => {
   await expect(page.locator('input[name="next"]')).toHaveValue("/");
 });
 
-// Review Focus 16, as the Owner changed it (2026-11-14, "I want it to stand out, but red seems bad", then "go with D"):
+// As the Owner changed it (2026-11-14, "I want it to stand out, but red seems bad", then "go with D"):
 // the paid button is Blue with white words, and no button is red. The pip mark is not built yet, so nothing is.
 test("Continue to payment is Blue with white words, and nothing on the card is red", async ({
   page,

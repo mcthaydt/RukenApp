@@ -20,7 +20,7 @@ describe("countedMs", () => {
     ).toBe(15_000);
   });
 
-  // Review Focus 7: two lost beats are forgiven, and no more.
+  // Two lost beats are forgiven, and no more.
   it("forgives two lost beats and no more", () => {
     expect(countedMs(0, [{ atMs: 45_000, attentive: true }])).toBe(45_000);
     expect(countedMs(0, [{ atMs: 600_000, attentive: true }])).toBe(45_000);
@@ -31,7 +31,6 @@ describe("countedMs", () => {
     expect(countedMs(0, flood)).toBe(10_000);
   });
 
-  // Review Focus 15.
   it("counts nothing with no beats", () => {
     expect(countedMs(0, [])).toBe(0);
   });

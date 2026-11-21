@@ -74,7 +74,6 @@ describe("finalizePeriod", () => {
   });
 
   it("takes no entry into a final month, and a later fee does not move its statement", async () => {
-    // Review Focus 3
     await inOwnDatabase(async (prisma) => {
       const maker = await closedNovember(prisma);
       const clock = new TestClock("2026-12-10T06:00:00Z");
@@ -143,7 +142,6 @@ describe("finalizePeriod", () => {
   });
 
   it("will not make a month final while a fee of that month cannot be read", async () => {
-    // Review Focus 4
     await inOwnDatabase(async (prisma) => {
       await closedNovember(prisma);
       const clock = new TestClock("2026-12-10T06:00:00Z");

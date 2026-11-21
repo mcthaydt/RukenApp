@@ -65,7 +65,6 @@ describe("runMoneyJob", () => {
   });
 
   it("does nothing the second time", async () => {
-    // Review Focus 9
     await addMembershipPayment(db(), stripe, { ...PAYMENT, invoice: "in_2", paidAt: "2026-11-03T15:00:00Z" });
     const clock = new TestClock("2026-11-25T13:00:00Z");
     const first = await runMoneyJob({ db: db(), clock, stripe });
