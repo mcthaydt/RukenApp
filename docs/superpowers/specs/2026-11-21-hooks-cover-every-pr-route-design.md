@@ -1,6 +1,6 @@
 # Every way to open or edit a pull request goes through the same hook checks
 
-Date: 2026-11-21. Status: **spec, waiting on plan audit 1.** Lane 3: it changes `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json` and `.github/workflows/commit-authors.yml`, which decide what needs the owner.
+Date: 2026-11-21. Status: **spec, revised after plan audit 1 (40631f9 FAIL, 9 red); waiting on plan audit 2.** Lane 3: it changes `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.claude/settings.json`, `.github/workflows/commit-authors.yml` and CLAUDE.md, which decide what needs the owner.
 
 Lines marked **Owner** are the owner's words. Lines marked **Call** are this spec's choices; the owner can overrule any of them.
 
@@ -27,42 +27,47 @@ Each was run against a scratch copy of `.claude/hooks/` at `ef720a9`, with a stu
 
 ## 2. The outcome
 
-Whichever tool a session uses, opening a pull request meets the same checks (lane, acceptance criteria, draft, open limit), and writing a body meets the same body check, judged on the text that will be sent. The proxy's footer no longer fails a pull request or sends a command to the owner. A session no longer hands the owner a command it could run itself.
+Every route the hook can read that opens, reopens or edits a pull request meets the same checks: lane, acceptance criteria, draft, the open limit, the body's last line, and no base change. Routes it cannot read are refused where that is cheap, and the rest are named in section 5 and governed by the CLAUDE.md rule in 3.7. When the hook cannot read what it needs (the open count, the body, the head branch), it refuses instead of letting the call through. The proxy's footer no longer fails a pull request or sends a command to the owner. A session no longer hands the owner a pull request write it could run itself.
 
 ## 3. The change
 
-### 3.1 One create check for every route (F1)
+### 3.1 One create check for every route (F1; audit R1, R3, R5, N3)
 
-`checkPrFlowBash` treats a non-GET `gh api` call whose path is `repos/<o>/<r>/pulls` (exactly, no number) as a create: it reads `body` and `draft` from the fields (`-f`, `-F`, `--field`, `--raw-field`, `--input`), and calls `checkPrCreate` with that repo. `draft` counts as true for `true` (string or boolean). The MCP and `gh pr create` routes keep calling the same function. Nothing else about `checkPrCreate` changes, except 3.5.
+- **Field forms (R1).** `ghApi` reads every gh field spelling: `-f k=v`, `-F k=v`, `--field k=v`, `--raw-field k=v`, `--field=k=v`, `--raw-field=k=v`, `-fk=v`, `-Fk=v`. A call with any field and no `-X` is a POST, as gh treats it.
+- **Path (N3).** `repos/<o>/<r>/pulls`, `pulls/` and `pulls?<query>` are the same path; `{owner}/{repo}` and `:owner/:repo` resolve as today.
+- **Create.** `checkPrFlowBash` treats a non-GET `gh api` on that path as a create and calls `checkPrCreate` with its `body`, `draft` (true for `true`, string or boolean) and `head`. The `gh pr create` (`--head`, else the current branch) and MCP (`head`) routes pass `head` too.
+- **The head branch (R5).** `changesBeyondDocs` and `onlyRulesAndDocs` take the head and diff `origin/<default>...origin/<head>`, fetching `origin/<head>` first (bounded, as `outgoingCommits` fetches). If it cannot be read, the branch counts as changing more than docs and as not exempt.
+- **Reopen (R3).** `gh pr reopen`, a non-GET `gh api .../pulls/<n>` with `state=open`, and `mcp__github__update_pull_request` with `state: "open"` run the open-limit part of `checkPrCreate`.
+- **Unreadable count (R6).** When the open list cannot be read, the create or reopen is refused: "the open pull request count could not be read; try again".
 
-### 3.2 Body files (F3)
+### 3.2 Bodies the hook cannot read (F3; audit R4)
 
-When a body comes from a file (`--body-file`, `-F` on `gh pr`, `@file` in a `gh api` field, `--input`) and the file cannot be read when the hook runs, the hook refuses with what happened and what to do: "the body file `<path>` does not exist yet; write it in its own call first, then run this". It never judges the literal `@path` as the body. A file that can be read is judged as today.
+- A body file (`--body-file`, `-F` on `gh pr`, `@file` in a `gh api` field, `--input <file>`) that does not exist when the hook runs is refused: "the body file `<path>` does not exist yet; write it in its own call first, then run this". The literal `@path` is never judged as a body.
+- On a **create** (any route), a body the hook cannot resolve is refused: `$(...)`, `$VAR`, backticks, `--input -` or `@-` not fed by a heredoc. "Write the body to a file in its own call, then pass it with `--body-file` or `-F body=@file`."
+- On an **edit**, an unresolvable body keeps today's behaviour (the after-the-fact check judges what GitHub has), since lane and criteria are judged at create and at ready.
 
-**Call:** refuse rather than let it through. Letting it through would skip the open-limit and body checks for any session that writes the file in the same command.
+### 3.3 The proxy's footer (F4; audit R7, N6)
 
-### 3.3 The proxy's footer (F4)
+**Owner, 2026-11-21 14:43 UTC, on a card:** "Yes, ignore that exact footer" (to "Let the PR check ignore the footer GitHub's cloud tool keeps adding?").
 
-**Owner, 2026-11-21 14:43 UTC, on a card:** "Yes, ignore that exact footer" (to "Let the PR check ignore the footer GitHub's cloud tool keeps adding?"). `commit-authors` tolerates exactly the proxy's footer and nothing else. Before it judges the body, it removes one trailing block that is, line for line after trailing blank lines are dropped: a `---` line followed by `_Generated by [Claude Code](https://claude.ai/code)_` as the last line. Any other "Generated by/with" line anywhere, or the same line not in that exact trailing position, still fails, and the last line before the block must still be "Requested by **McThayDT**". `rules.json` sets `prBody.footerStrippedByCi: true`, so the hook's own after-the-fact check (`verifyBody`, which already has `stripFooter`) agrees with CI. The pre-call body check stays strict: a session may not write the footer itself.
-
-Why not the other routes:
-- **Strip it in the hook:** the hook runs before the call and the proxy adds the footer after, so the hook never sees it.
-- **Strip it in CI by rewriting the body:** needs a write token on pull requests in a workflow that runs on `pull_request` events, and the rewrite is itself an `edited` event; tolerating is a read-only change.
-- **Always follow with an MCP update:** tried and measured in #267: the proxy re-adds the footer on that write too.
+- The footer is one string in `rules.json`, `prBody.proxyFooter`: the two lines `---` and `_Generated by [Claude Code](https://claude.ai/code)_`.
+- `commit-authors` drops trailing blank lines, then removes that exact two-line block once if the body ends with it, then judges as today: the last line must be "Requested by **McThayDT**" and no "Generated by/with" line may remain. The workflow quotes the same two lines with a comment naming `rules.json` as the source.
+- `stripFooter` in the hook is narrowed to the same exact block (R7): it no longer strips `🤖 Generated with …`, session links, or a footer one character off. `rules.json` sets `prBody.footerStrippedByCi: true` so `verifyBody` uses it. The pre-call body check stays strict: a session never writes the footer itself.
+- Why not the other routes: the hook runs before the proxy adds the footer, so it never sees it; rewriting the body in CI needs a write token and causes another `edited` run; following each write with an MCP update was measured in #267 and the proxy re-adds the footer there too.
 
 ### 3.4 Reads are not writes (F5)
 
-The PostToolUse body check runs only for a `gh api` call that is not a GET, and for `gh pr create`/`gh pr edit`. A read never reports.
+The PostToolUse body check runs only for a non-GET `gh api` call on a pulls path (create or `pulls/<n>`) and for `gh pr create` and `gh pr edit`. A read never reports.
 
-### 3.5 Docs-only branches and the limit (F7)
+### 3.5 Docs-only branches and the limit (F7; audit N5)
 
-**Open decision for the owner** (the exemption is in the owner's own rules text; CLAUDE.md says otherwise). Recommended: drop the exemption so the hook matches CLAUDE.md: 3 open, counting every pull request. If the owner keeps it, CLAUDE.md Settings gains "docs-only pull requests do not count" in the same pull request, so the two agree.
+**Open decision for the owner** (the exemption is in the owner's own rules text; CLAUDE.md says otherwise). **Call, recommended:** drop the exemption so the hook matches CLAUDE.md: 3 open, counting every pull request. That needs no CLAUDE.md change. If the owner keeps it, CLAUDE.md Settings gains "docs-only pull requests do not count toward this" in PR-R when the answer comes before PR-R opens, otherwise in a third rules-only pull request after PR-R.
 
-### 3.6 Commands handed to the owner (F6)
+### 3.6 Commands handed to the owner (F6; audit R8, N2)
 
-`ownerCommands.tools` lists `mcp__hearthbot__post_message` (field `text`) and `mcp__hearthbot__request_decision` (fields `question`, `options`). In fenced blocks, besides today's two checks, the hook refuses any `gh` command that writes a pull request (`gh pr edit|ready|merge|close`, or `gh api` on `repos/<o>/<r>/pulls...` that is not a GET), with "run it yourself; with 3.3 the footer no longer needs the owner". Commands that need what only the owner has (a Keychain secret, `wrangler` on their account, branch protection) are still allowed, as `release` asks.
-
-**Call:** refuse only the pull request writes, the commands sessions handed over today and can run themselves. A wider ban would block the setup batch `release` requires.
+- `ownerCommands.tools` lists `^mcp__hearthbot__(post_message|edit_message|request_decision|post_widget)$`. Every string inside the call's input is read: arrays and objects are walked (R8), so a decision card's options are checked.
+- Fenced blocks and inline code spans are both read. Besides today's two checks, the hook refuses any command that writes a pull request: `gh pr create|edit|ready|merge|close|reopen`, or a non-GET `gh api` on `repos/<o>/<r>/pulls…` or `graphql`. "Run it yourself; the footer no longer needs the owner (3.3)."
+- **Call:** only pull request writes are refused. Commands that need what only the owner has (a Keychain secret, `wrangler` on their account, branch protection) are still allowed, as `release` asks.
 
 ### 3.7 The rule in CLAUDE.md (Owner)
 
@@ -70,41 +75,63 @@ A new bullet, the first under "Rules that never bend", before **Identity**:
 
 > - **Hooks.** Every session follows the hooks, the coordinator included. A hook's refusal is the rule speaking: never route around it, not with another tool, another API path, a reworded command or another session. Every pull request create and edit goes through a route the hooks check. A route found unchecked is reported to the owner and not used until a hook covers it. A refusal that looks wrong is reported, not worked around.
 
+### 3.8 Routes closed by refusal (audit R2, R9, N1, N4)
+
+- **GraphQL (R2).** A `gh api graphql` call whose query (from `-f`/`-F query=`, `query=@file`, or `--input`) names `createPullRequest`, `updatePullRequest`, `reopenPullRequest`, `markPullRequestReadyForReview`, `mergePullRequest`, `enablePullRequestAutoMerge` or `closePullRequest` is refused, with the REST or `gh pr` command to use instead. An unreadable query on `gh api graphql` that is not a GET is refused too.
+- **Outside gh (R9).** A Bash command with an `api.github.com` URL containing `/pulls` or `/graphql`, run by anything but `gh` (`curl`, `wget`, an interpreter's inline script), is refused: "use `gh api`, which the hook reads".
+- **Aliases (R9).** `gh alias set` and `gh alias import` are refused: an alias could hide a pull request write. Running an existing alias is section 5's residual.
+- **Base changes (N1).** `gh pr edit --base` and a non-GET `gh api .../pulls/<n>` with `base` are refused, as the MCP route already is.
+- **Fail closed (N4).** `.claude/settings.json`'s fail-closed entry adds `create_pull_request`, so a create through the MCP tool is blocked if the hook cannot run. The same line in the owner's cloud setup script (project files, `owner-steps/cloud-setup-script.sh`) is reported to the coordinator, not changed here.
+
 ## 4. Acceptance criteria
 
-Each is a Vitest case in `tests/rules-pr-routes.test.ts`, driving the real hook against a scratch copy with a stub `gh`, like `tests/rules-merge-permission.test.ts`. The suite exits 0 and `pnpm lint` and `pnpm typecheck` pass.
+Each is a Vitest case in `tests/rules-pr-routes.test.ts` (PR-H), driving the real hook against a scratch copy with a stub `gh`, like `tests/rules-merge-permission.test.ts`, unless it says otherwise. The suite exits 0 and `pnpm lint` and `pnpm typecheck` pass.
 
-1. With 3 open, a non-GET `gh api repos/mcthaydt/RukenApp/pulls` with a correct body is refused with the open-limit reason; with 2 open it is allowed. Same for `{owner}/{repo}` in the path.
-2. With 2 open, that call without `draft=true` on a lane 2 body is refused with the draft reason; a body with no lane is refused with the lane reason.
-3. `gh pr create` and `mcp__github__create_pull_request` give the same answers as 1 and 2 (no change in behaviour).
-4. `printf ... > new.md && gh api -X PATCH .../pulls/5 -F body=@new.md` is refused with a reason naming `new.md` and "does not exist yet"; with `new.md` already present and correct, it is allowed; with it present and lacking the last line, it is refused with the body reason.
-5. A GET `gh api repos/mcthaydt/RukenApp/pulls/270` produces no PostToolUse body report, whatever the stubbed body.
-6. PostToolUse after a body write reports nothing when the stubbed body ends with "Requested by **McThayDT**" plus exactly the proxy's footer, and reports when the footer differs by one character or when another "Generated by" line appears above it.
-7. `commit-authors`' body step, read out of the workflow file and run with `bash` against a stub `gh`, passes the body of item 6's good case and fails each bad case (run by the same test file with `bash`).
-8. `mcp__hearthbot__post_message` with a fenced `gh pr edit 270 --body-file b.md` is refused; with a fenced `wrangler secret put JOBS_SECRET --name ruken` it is allowed.
-9. If the owner drops the docs exemption (3.5): with 3 open, a docs-only branch's create is refused. If kept: it is allowed and CLAUDE.md says so.
-10. CLAUDE.md carries the **Hooks** bullet of 3.7 word for word (a test greps it).
-11. The existing `tests/rules-merge-permission.test.ts` still passes unchanged.
+1. With 3 open, a create through `gh api` with a correct body is refused with the open-limit reason, for each field spelling in 3.1, for `pulls`, `pulls/` and `pulls?x=1`, and for `{owner}/{repo}`. With 2 open each is allowed.
+2. With 2 open, that create without `draft=true` on a lane 2 body is refused with the draft reason; a body with no lane is refused with the lane reason.
+3. `gh pr create` and `mcp__github__create_pull_request` give the same answers as 1 and 2.
+4. With 3 open, `gh pr reopen 5`, `gh api -X PATCH .../pulls/5 -f state=open` and `mcp__github__update_pull_request` with `state: "open"` are refused with the open-limit reason; with 2 open, allowed.
+5. With the open list failing in the stub, a create on each route is refused with "could not be read".
+6. With the local HEAD on a docs-only branch and `head` naming a branch that changes `src/x.ts`, a create whose body has no acceptance criteria is refused; with `origin/<head>` unreadable, it is refused the same way.
+7. `printf … > new.md && gh api -X PATCH .../pulls/5 -F body=@new.md` is refused naming `new.md` and "does not exist yet"; with `new.md` present and correct, allowed; present without the last line, refused with the body reason.
+8. A create with `-f body="$(cat b.md)"`, `-f body="$B"`, or `cat b.json | gh api .../pulls --input -` is refused with the "write the body to a file" reason; a heredoc `--input -` with a correct body is allowed.
+9. A GET `gh api repos/mcthaydt/RukenApp/pulls/270` produces no PostToolUse report, whatever the stubbed body.
+10. PostToolUse after a body write reports nothing when the stubbed body ends with "Requested by **McThayDT**" plus exactly `rules.json`'s `proxyFooter`; it reports when the footer differs by one character, when another "Generated by" line appears above it, and for `🤖 Generated with [Claude Code](https://claude.com/claude-code)` plus a session link.
+11. `commit-authors`' body step, read out of the workflow file and run with `bash` against a stub `gh`, passes and fails exactly the bodies of criterion 10.
+12. `gh api graphql` with each mutation in 3.8 is refused; a GraphQL query (no mutation) is allowed.
+13. `curl -X POST https://api.github.com/repos/mcthaydt/RukenApp/pulls …` and `gh alias set pc 'pr create'` are refused.
+14. `gh pr edit 5 --base other` and `gh api -X PATCH .../pulls/5 -f base=other` are refused.
+15. `mcp__hearthbot__post_message` with a fenced `gh pr edit 270 --body-file b.md` is refused, and so is the same command as inline code; `request_decision` with that command inside an option's `consequence` is refused; a fenced `wrangler secret put JOBS_SECRET --name ruken` is allowed.
+16. Per the owner's 3.5 answer: dropped, with 3 open a docs-only create is refused; kept, it is allowed and CLAUDE.md says so.
+17. `.claude/settings.json`'s fail-closed matcher includes `create_pull_request` (read by the test).
+18. CLAUDE.md's first rule under "Rules that never bend" is the **Hooks** bullet of 3.7, word for word.
+19. `tests/rules-merge-permission.test.ts` still passes unchanged.
+20. **PR-R's own run (N6):** PR-R's body, written through the proxy, ends with "Requested by **McThayDT**" plus the proxy footer, and its `commit-authors` run passes; after a one-time edit adding a `🤖 Generated with` line above the footer, the next run fails, and the body is then put back. Both run links and the commit are in PR-R's body.
 
 ## 5. Boundaries
 
-- Files: `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.github/workflows/commit-authors.yml`, `tests/rules-pr-routes.test.ts` (new), and CLAUDE.md (3.7, and 3.5 if the exemption is kept).
-- Two pull requests, because `ruleMix` refuses a branch that mixes rules files (CLAUDE.md, workflows) with tests: **PR-R** CLAUDE.md and `commit-authors.yml` only; **PR-H** the hook, `rules.json` and the test file. PR-R merges first; PR-H's criterion 7 runs the workflow's body step, read out of the merged `commit-authors.yml`, with `bash`. Both lane 3; one opens only when a place under the limit is free.
-- No new dependency, tool, environment or spend. Expected duration: build 2 hours, audits and fixes 2 hours.
-- Merge: lane 3, so the implementation audit plus the owner's approval of the finished result. The workflow change quotes the owner's words in its commit, as its header asks.
+- Files: `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.claude/settings.json`, `.github/workflows/commit-authors.yml`, CLAUDE.md, `tests/rules-pr-routes.test.ts` (new).
+- Two pull requests, because `ruleMix` refuses a branch that mixes rules files (CLAUDE.md, workflows) with tests: **PR-R**, CLAUDE.md and `commit-authors.yml` only; **PR-H**, the hook, `rules.json`, `settings.json` and the test file. PR-R merges first. Both lane 3; each opens only when a place under the limit is free.
+- No new dependency, tool, environment or spend. Expected duration: build 3 hours, audits and fixes 2 hours.
+- **Routes the hook does not see.** A script in a file (a `.mjs`, `.py` or `.sh` the session wrote) that calls GitHub, a `gh` extension, or an alias made before this change. The hook cannot read inside them. The 3.7 rule governs them: a session never uses one to write a pull request.
 
 ## 6. Plan
 
 | Unit | Waits on | Files | Check |
 |---|---|---|---|
-| U1 create route (3.1) and body files (3.2) | none | `rules.mjs` | criteria 1 to 4 |
-| U2 reads (3.4) and footer tolerance in the hook (3.3, `rules.json`) | U1 (same file) | `rules.mjs`, `rules.json` | criteria 5, 6 |
-| U0 CLAUDE.md rule (3.7) and CI tolerance (3.3), PR-R | none (owner decided 3.3 at 14:43 UTC) | `CLAUDE.md`, `commit-authors.yml` | criteria 7 (run by hand on PR-R, then in PR-H), 10 |
-| U4 owner commands (3.6) and docs exemption (3.5) | U2 (same file); 3.5 waits on the owner | `rules.mjs`, `rules.json`, maybe CLAUDE.md | criteria 8, 9 |
+| U0 CLAUDE.md rule (3.7) and CI footer (3.3), PR-R | 3.5's answer only if the exemption is kept | `CLAUDE.md`, `commit-authors.yml` | criteria 18 (grep), 20 |
+| U1 field forms, create, head, reopen, unreadable count (3.1) and bodies (3.2) | none | `rules.mjs` | criteria 1 to 8 |
+| U2 reads (3.4) and the narrowed footer (3.3) | U1 (same file) | `rules.mjs`, `rules.json` | criteria 9, 10, and 11 once PR-R is on `main` |
+| U3 refusals (3.8) | U2 (same file) | `rules.mjs`, `settings.json` | criteria 12 to 14, 17 |
+| U4 owner commands (3.6) and the docs exemption (3.5) | U3 (same file); 3.5 waits on the owner | `rules.mjs`, `rules.json` | criteria 15, 16 |
 
-PR-R holds U0; PR-H holds U1, U2 and U4 in that order on one branch. Tests are written first, each failing on `main` before its unit lands.
+PR-R holds U0; PR-H holds U1 to U4 in that order on one branch, from a `main` that has PR-R. Tests are written first, each failing on `main` before its unit lands. Criteria 18 and 19 run in PR-H too.
 
 ## 7. Open decisions for the owner
 
 1. ~~The footer route in 3.3~~: decided 14:43 UTC, CI ignores the exact proxy footer.
 2. The docs-only exemption in 3.5 (recommended: drop it).
+
+## 8. Plan audit 1 answers
+
+R1 to R9 are fixed in 3.1, 3.2, 3.3, 3.6 and 3.8, with criteria 1 to 15. N1, N2, N3, N4 (settings only; the setup script is reported) and N6 are taken in; N5 is answered in 3.5; N7 needs nothing.
