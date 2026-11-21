@@ -2,8 +2,10 @@ import { systemClock, type Clock } from "../../lib/clock.ts";
 import { prisma as requestPrisma, type PrismaClient } from "../../lib/server/db.ts";
 import { optionalEnv, requireEnv } from "../../lib/server/env.ts";
 import { createResendMailer, type Mailer } from "../../lib/server/mail.ts";
+import { createRateLimiter } from "../../lib/server/rate-limit.ts";
 import { setBirthDate } from "./age.ts";
 import { createAuth, sessionInfo, type Auth } from "./auth.ts";
+import type { CredentialDeps } from "./credentials.ts";
 import { cookiePolicy, type CookiePolicy } from "./cookies.ts";
 import type { FormDeps, SignUpDeps } from "./forms.ts";
 import type { HandleDeps } from "./handle.ts";
@@ -37,6 +39,7 @@ export interface AuthServices {
   handleDeps: HandleDeps;
   formDeps: FormDeps;
   signUpDeps: SignUpDeps;
+  credentialDeps: CredentialDeps;
 }
 
 /**
@@ -73,7 +76,15 @@ export function createAuthServices(source: Settings, db?: PrismaClient): AuthSer
     clock,
     setBirthDate: (userId, date) => setBirthDate(prisma, clock, { userId, date }),
   };
-  return { prisma, clock, cookies, mailer, auth, handleDeps, formDeps, signUpDeps };
+  const credentialDeps: CredentialDeps = {
+    formDeps,
+    prisma,
+    mailer,
+    auth,
+    limiter: createRateLimiter(prisma, clock),
+    guards: { db: prisma, clock, secret },
+  };
+  return { prisma, clock, cookies, mailer, auth, handleDeps, formDeps, signUpDeps, credentialDeps };
 }
 
 let shared: AuthServices | undefined;

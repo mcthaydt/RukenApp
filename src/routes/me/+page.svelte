@@ -23,6 +23,7 @@
 <main class="card">
   <h1>Your account</h1>
   <p>{data.email}</p>
+  <p class="note"><a href="/me/email">Change email</a> · <a href="/me/password">Change password</a></p>
   {#if !data.emailVerified}
     {#if form?.resent}
       <p role="status">Sent. Check your email.</p>

@@ -38,7 +38,7 @@ const fail = (m) => { process.stderr.write(m); process.exit(1); };
 if (/\\/contents\\//.test(path)) fail("gh: Not Found (HTTP 404)");
 if (/\\/pulls\\/999\\/files/.test(path)) { if (s.files === null) fail("boom"); out(s.files.map((f) => ({ filename: f }))); }
 if (/\\/pulls\\/999\\/reviews/.test(path)) out([]);
-if (/\\/issues\\/999\\/comments/.test(path)) out(s.comments.map((b, i) => ({ body: b, created_at: "2026-11-21T00:0" + i + ":00Z" })));
+if (/\\/issues\\/999\\/comments/.test(path)) out(s.comments.map((b, i) => ({ body: b, user: { login: "mcthaydt" }, created_at: "2026-11-21T00:0" + i + ":00Z" })));
 if (/\\/pulls\\/999$/.test(path)) out({ number: 999, body: s.body, head: { sha: process.env.STUB_HEAD, ref: "feature" }, changed_files: (s.files ?? []).length });
 fail("stub: unknown path " + path);
 `;
@@ -231,8 +231,8 @@ describe("settings (g)", () => {
   });
   test("a second PreToolUse entry blocks on failure and today's entry is unchanged", () => {
     const entries = settings.hooks.PreToolUse;
-    expect(entries).toHaveLength(2);
-    const [first, second] = entries as [Entry, Entry];
+    expect(entries).toHaveLength(3);
+    const [first, second] = entries as [Entry, Entry, Entry];
     expect(first.matcher).toBe("Bash|Write|Edit|MultiEdit|Agent|Workflow|mcp__.*");
     expect(first.hooks[0]?.onFailure).toBeUndefined();
     expect(second.matcher).toBe(

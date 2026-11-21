@@ -42,6 +42,7 @@
       folderHowToAddress: string;
       changeAddress: string;
       copiesAgain: boolean;
+      sendsForReview: boolean;
     };
     counter: { n: number; of: number } | null;
     back: string;
@@ -177,7 +178,11 @@
         problem={problems?.repo}
       />
     </div>
-    {#if files.copiesAgain}
+    {#if files.sendsForReview}
+      <p class="note">
+        Save copies your game from GitHub and sends it for review. Players can still play it while you wait.
+      </p>
+    {:else if files.copiesAgain}
       <p class="note">Next copies your game from GitHub again.</p>
     {/if}
     {@render connectionFailedUnderList()}

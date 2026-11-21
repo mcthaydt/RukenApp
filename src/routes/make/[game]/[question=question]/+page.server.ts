@@ -49,27 +49,35 @@ function isBuilt(word: string): word is BuiltQuestion {
   return built.includes(word);
 }
 
-/** The questions a live game's maker may still answer by herself; the rest go through staff again (slice 4). */
-const LIVE_MAY_ANSWER: readonly BuiltQuestion[] = ["name", "line"];
+/**
+ * The rating a game is being asked about: for a live game, the one that waits for a yes when there is one, since that
+ * is the one its maker is working from; otherwise the one it has.
+ */
+function askedRating(game: MakerGame): AgeRating | null {
+  return game.held?.ageRating ?? game.ageRating;
+}
 
 /**
- * The question this address asks of this game, or a 404: a word with no screen, marks for a game that is not 18+, or a
- * question a live game is not asked (its videos, files, rating and websites are not changed under the players).
+ * The question this address asks of this game, or a 404: a word with no screen, or marks for a game that is not 18+. A
+ * live game is asked every question: what players would see waits for staff's yes.
  */
 function askedQuestion(word: string, game: MakerGame, madeEighteen: boolean): BuiltQuestion {
   if (!isQuestionAddress(word) || !isBuilt(word)) error(404, "Not found");
-  if (word === "marks" && game.ageRating !== "age_18" && !madeEighteen) error(404, "Not found");
-  if (game.state === "live" && !LIVE_MAY_ANSWER.includes(word)) error(404, "Not found");
+  if (word === "marks" && askedRating(game) !== "age_18" && !madeEighteen) error(404, "Not found");
   return word;
 }
 
 /**
- * True when a waiting or sent-back game that is not 18+ is being made 18+: its marks are asked before the rating is kept,
- * because the database holds an 18+ game that is past draft to having them. A draft is asked its marks next, as always.
- * `said` is the maker's own word that this is what she is doing (the address's `age=18`, or the form's hidden `age`).
+ * True when a waiting, sent-back or live game that is not 18+ is being made 18+: its marks are asked before the rating is
+ * kept, because the database holds an 18+ game that is past draft to having them. A draft is asked its marks next, as
+ * always. `said` is the maker's own word that this is what she is doing (the address's `age=18`, or the form's hidden `age`).
  */
 function isBeingMadeEighteen(game: MakerGame, said: boolean): boolean {
-  return said && (game.state === "waiting" || game.state === "sent_back") && game.ageRating !== "age_18";
+  return (
+    said &&
+    (game.state === "waiting" || game.state === "sent_back" || game.state === "live") &&
+    askedRating(game) !== "age_18"
+  );
 }
 
 /**
@@ -115,18 +123,26 @@ async function filesScreen(url: URL, userId: string, game: MakerGame) {
     changeAddress: `${folder}?change=1`,
     // A waiting game has been copied already: Next copies it again, and staff go on with the newest copy.
     copiesAgain: game.state === "waiting",
+    // A live game's save copies the files and sends them for review; players keep the old ones meanwhile.
+    sendsForReview: game.state === "live",
   };
 }
 
 /** The video question's own part of the page: the video that is in (none until one is), and whether it is being changed. */
 function videoScreen(url: URL, game: MakerGame, shape: VideoQuestion) {
-  const clip = game.clips[shape];
+  // A live game's new video that waits for a yes is the one its maker chose, so it is the one in the frame.
+  const held = game.heldClips[shape];
+  const clip = held ?? game.clips[shape];
   const howToRecord = `/help/record-screen?from=${encodeURIComponent(`/make/${game.slug}/${shape}`)}`;
   return {
     src: clip === null ? null : gamesServices().media(clip.key),
     // Set by "Choose a different video": the picker is open and the video that is there stays in its frame.
     replacing: clip !== null && url.searchParams.get("again") === "1",
     replaceAddress: `/make/${game.slug}/${shape}?again=1`,
+    // True for a live game's video that waits for a yes: the screen says so, and offers to keep the old one.
+    waiting: held !== null,
+    // Whether staff have it: a change nobody is reviewing yet (something is still to fix, or the copy was refused) says so.
+    withStaff: game.hasPending,
     // The how-to's way back is this question.
     howToRecord,
     // The same how-to, at its part for a video that is too big.
@@ -149,6 +165,10 @@ export const load: PageServerLoad = async (event) => {
   }
 
   const before = question === "websites" ? null : questionBefore(question, answers);
+  // A live game shows what its maker last chose, which is the held change when there is one.
+  const shownRating = game.held ?? { ageRating: game.ageRating, contentMarks: game.contentMarks };
+  const shownUpright = game.heldClips.upright ?? game.clips.upright;
+  const shownWide = game.heldClips.wide ?? game.clips.wide;
   return {
     question,
     name: game.name,
@@ -156,17 +176,21 @@ export const load: PageServerLoad = async (event) => {
     preview: {
       name: game.name,
       oneLine: game.oneLine ?? "",
-      rating: ratingWords(game.ageRating, game.contentMarks),
-      video: game.clips.upright === null ? null : gamesServices().media(game.clips.upright.key),
-      wideVideo: game.clips.wide === null ? null : gamesServices().media(game.clips.wide.key),
+      rating: ratingWords(shownRating.ageRating, shownRating.contentMarks),
+      video: shownUpright === null ? null : gamesServices().media(shownUpright.key),
+      wideVideo: shownWide === null ? null : gamesServices().media(shownWide.key),
+      // The card shows what waits for a yes, so it says it is how the game will look, not how it looks now.
+      waits:
+        game.state === "live" &&
+        (game.held !== null || game.heldClips.upright !== null || game.heldClips.wide !== null),
     },
     // One website to a line, as the game's list was typed.
     servers: game.connectHosts.join("\n"),
     oneLine: game.oneLine ?? "",
     // The five ratings and their plain lines: one list, shared with a game's own page (`ratingLine`).
     ageLines: RATING_LINE_LIST.map(({ value, title, line }) => ({ value, title, line })),
-    ageRating: game.ageRating === null ? [] : [game.ageRating],
-    contentMarks: game.contentMarks,
+    ageRating: shownRating.ageRating === null ? [] : [shownRating.ageRating],
+    contentMarks: shownRating.contentMarks,
     // Set while a waiting or sent-back game is being made 18+: the marks form says so, so the rating and the marks are
     // kept together.
     madeEighteen,
@@ -188,8 +212,21 @@ export const load: PageServerLoad = async (event) => {
       game.state === "draft" || game.state === "sent_back" ? `/make/${game.slug}/throw-away` : undefined,
     files: question === "files" ? await filesScreen(event.url, userId, game) : null,
     video: isVideoQuestion(question) ? videoScreen(event.url, game, question) : null,
+    // What players see while a live game's new rating waits for a yes, in the words of a rating; null when none waits.
+    ratingPlayersSee:
+      game.state === "live" && game.held !== null ? ratingWords(game.ageRating, game.contentMarks) : null,
+    ratingWithStaff: game.hasPending,
+    // A live game's change that waits for a yes can be dropped from the question it was made in.
+    keepOld: game.state === "live" && waitsForYes(game, question),
   };
 };
+
+/** Whether a live game holds a change to what this question asks: its video, or its rating with its marks. */
+function waitsForYes(game: MakerGame, question: BuiltQuestion): boolean {
+  if (question === "upright" || question === "wide") return game.heldClips[question] !== null;
+  if (question === "age" || question === "marks") return game.held !== null;
+  return false;
+}
 
 /** A text field of the form, or "" when it is missing or is a file. */
 function textOf(form: FormData, name: string): string {
@@ -377,6 +414,30 @@ export const actions: Actions = {
       if (problem instanceof GameError) return fail(400, { problem: problem.message, value: "" });
       throw problem;
     }
-    redirect(303, `/make/${game.slug}/${shape}`);
+    // A live game's video is sent for review in the same save, so what is left to see is Live, with it marked as waiting.
+    redirect(303, game.state === "live" ? `/make/${game.slug}` : `/make/${game.slug}/${shape}`);
+  },
+
+  // "Keep the old one": a live game's change that waits for a yes is dropped, and players keep what they see. Nothing is
+  // asked twice: a second press finds nothing waiting and changes nothing.
+  keepOld: async (event) => {
+    const { userId, game } = await ownGame(event);
+    const question = askedQuestion(event.params.question, game, true);
+    const part =
+      question === "upright"
+        ? "upright_video"
+        : question === "wide"
+          ? "wide_video"
+          : question === "age" || question === "marks"
+            ? "age_rating"
+            : null;
+    if (part === null || game.state !== "live") error(404, "Not found");
+    try {
+      await gamesServices().service.keepTheOldOne(game.id, userId, part);
+    } catch (problem) {
+      if (problem instanceof GameError) return fail(400, { problem: problem.message, value: "" });
+      throw problem;
+    }
+    redirect(303, `/make/${game.slug}`);
   },
 };

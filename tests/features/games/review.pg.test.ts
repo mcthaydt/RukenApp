@@ -590,8 +590,8 @@ describe("a live game's update that was sent back", () => {
     expect((await stateOf(game.id)).toFix).toEqual(["one_line"]);
   });
 
-  // These a live game's maker cannot change by herself (slice 4), so sending its update back for one would leave
-  // it stuck for good.
+  // A part with nothing held can only be sent back as what is already live, which would leave the game stuck for good:
+  // a video or the rating can be sent back only while a change to it waits for a yes.
   it.each(["plays_on", "upright_video", "wide_video", "age_rating", "other_websites"] as const)(
     "refuses to send an update back for %s, and changes nothing",
     async (part) => {
@@ -605,7 +605,8 @@ describe("a live game's update that was sent back", () => {
         service.sendBack(game.id, await createUser(db()), [{ part, reason: "something_else", note: "No." }]),
       ).rejects.toMatchObject({
         code: "INVALID",
-        message: "A live game can only be sent back for its name, its line or its files.",
+        message:
+          "A live game can only be sent back for its name, its line, its files, or a video or rating that is waiting.",
       });
 
       expect((await stateOf(game.id)).pendingPullId).not.toBeNull();
@@ -666,18 +667,97 @@ describe("pulling again", () => {
 });
 
 describe("a live game's clips", () => {
-  it("cannot be changed yet, and the old clip stays", async () => {
+  it("are held apart when changed: players keep the old clip, and the update goes for review", async () => {
     const game = await readyGame();
     await service.sendForReview(game.id, game.makerUserId);
     await service.accept(game.id, await createUser(db()));
-    const before = files.keys();
+    const live = await db().gameClip.findUniqueOrThrow({
+      where: { gameId_shape: { gameId: game.id, shape: "wide" } },
+    });
+
+    await service.saveClip(game.id, "wide", { contentType: "video/mp4", bytes: mp4Bytes() });
+
+    expect(await db().gameClip.findUniqueOrThrow({ where: { id: live.id } })).toMatchObject({
+      key: live.key,
+    });
+    const held = await db().gameHeldClip.findUniqueOrThrow({
+      where: { gameId_shape: { gameId: game.id, shape: "wide" } },
+    });
+    expect(held.key).not.toBe(live.key);
+    expect(files.keys()).toEqual(expect.arrayContaining([live.key, held.key]));
+    expect(await stateOf(game.id)).toMatchObject({ state: "live" });
+    expect((await stateOf(game.id)).pendingPullId).not.toBeNull();
+    expect(await db().gameClip.count({ where: { gameId: game.id } })).toBe(2);
+  });
+});
+
+describe("a live game's files and websites", () => {
+  /** A game that is live on its first files, its maker connected. */
+  async function liveGame() {
+    const game = await readyGame();
+    await connect(game.makerUserId);
+    await service.sendForReview(game.id, game.makerUserId);
+    await service.accept(game.id, await createUser(db()));
+    return game;
+  }
+
+  it("are changed by their maker, copied and sent for review in the one save, and the old files stay live", async () => {
+    const game = await liveGame();
+    const { livePullId } = await stateOf(game.id);
+
+    await service.saveAnswer(game.id, game.makerUserId, {
+      question: "files",
+      repo: { fullName: "acme/game", branch: null, folder: "" },
+    });
+
+    const after = await stateOf(game.id);
+    expect(after).toMatchObject({ state: "live", livePullId, toFix: [] });
+    expect(after.pendingPullId).not.toBeNull();
+    expect(after.pendingPullId).not.toBe(livePullId);
+  });
+
+  it("sends a new websites list for review, and players keep the old list meanwhile", async () => {
+    const game = await liveGame();
+    const { livePullId } = await stateOf(game.id);
+
+    await service.saveAnswer(game.id, game.makerUserId, {
+      question: "websites",
+      connectHosts: ["api.example.com"],
+    });
+
+    const after = await stateOf(game.id);
+    expect(after).toMatchObject({ state: "live", livePullId });
+    const waiting = await db().gamePull.findUniqueOrThrow({ where: { id: after.pendingPullId ?? "" } });
+    expect(waiting.connectHosts).toEqual(["api.example.com"]);
+    const live = await db().gamePull.findUniqueOrThrow({ where: { id: livePullId ?? "" } });
+    expect(live.connectHosts).toEqual([]);
+  });
+
+  it("refuses files the maker can no longer reach, and changes nothing", async () => {
+    const game = await liveGame();
+    const before = await stateOf(game.id);
+    holding.delete("acme/game");
 
     await expect(
-      service.saveClip(game.id, "wide", { contentType: "video/mp4", bytes: mp4Bytes() }),
-    ).rejects.toMatchObject({ code: "NOT_READY", message: "A live game's videos can't be changed yet." });
+      service.saveAnswer(game.id, game.makerUserId, {
+        question: "files",
+        repo: { fullName: "acme/game", branch: null, folder: "" },
+      }),
+    ).rejects.toMatchObject({ code: "NOT_CONNECTED" });
 
-    expect(files.keys()).toEqual(before);
-    expect(await db().gameClip.count({ where: { gameId: game.id } })).toBe(2);
+    expect(await stateOf(game.id)).toMatchObject({ state: "live", pendingPullId: before.pendingPullId });
+  });
+
+  it("holds a live game's rating apart, and players keep the one staff said yes to", async () => {
+    const game = await liveGame();
+
+    await service.saveAnswer(game.id, game.makerUserId, { question: "age", ageRating: "age_3" });
+
+    expect(await stateOf(game.id)).toMatchObject({
+      state: "live",
+      ageRating: "age_12",
+      heldAgeRating: "age_3",
+    });
   });
 });
 

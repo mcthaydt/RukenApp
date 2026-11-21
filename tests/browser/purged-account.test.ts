@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { JOURNEY_PASSWORD, signUp } from "./support/account.ts";
-import { makeDeletionDue } from "./support/database.ts";
+import { JOURNEY_PASSWORD, signInAs, signUp } from "./support/account.ts";
+import { makeDeletionDue, stateOf } from "./support/database.ts";
+import { addGame } from "./support/game.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -33,7 +34,9 @@ test("after the 14 days the account is gone: sign-in is refused, and the address
   await askToBeDeleted(page, email);
   await makeDeletionDue(email);
 
-  expect(await runTheDailyJob(page)).toBeGreaterThanOrEqual(1);
+  // Not "it finished one": journeys run side by side, and another one's run of the job may finish this account first.
+  // What follows shows it was finished.
+  await runTheDailyJob(page);
 
   // The old password opens nothing, and the page says what it says to anyone with the wrong password.
   await page.goto("/sign-in");
@@ -67,4 +70,34 @@ test("the daily job does not finish an account whose 14 days are not over", asyn
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL("/me");
   await expect(page.getByText("Welcome back. Your account will not be deleted.")).toBeVisible();
+});
+
+// The owner's decision (2026-11-21): a maker's games come off Ruken with their account. They stay up for the 14 days,
+// so a maker who changes their mind loses nothing, and are gone from their page and from Play once the job has run.
+test("a maker's live game stays up for the 14 days, then comes off Ruken with the account", async ({
+  page,
+  browser,
+  request,
+}) => {
+  test.setTimeout(120_000);
+  const game = await addGame(browser, request, { free: true });
+  await signInAs(page, game.maker);
+  await page.goto("/me");
+  await page.getByRole("link", { name: "Delete my account" }).click();
+  await page.getByRole("button", { name: "Delete my account" }).click();
+  await expect(page.getByRole("heading", { name: "Your account will be deleted." })).toBeVisible();
+
+  // During the wait the game is still there for players.
+  expect((await page.request.get(`/g/${game.slug}`)).status()).toBe(200);
+  await runTheDailyJob(page);
+  expect((await page.request.get(`/g/${game.slug}`)).status()).toBe(200);
+
+  await makeDeletionDue(game.maker.email);
+  await runTheDailyJob(page);
+
+  expect(await stateOf(game.slug)).toBe("taken_off");
+  const gone = await page.goto(`/g/${game.slug}`);
+  expect(gone?.status()).toBe(404);
+  const play = await page.goto(`/g/${game.slug}/play`);
+  expect(play?.status()).toBe(404);
 });

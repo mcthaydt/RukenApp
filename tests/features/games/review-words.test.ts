@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   acceptSays,
   failureStatus,
+  heldChanges,
   listSays,
   sendBackSays,
 } from "../../../src/features/games/review-words.ts";
@@ -43,5 +44,59 @@ describe("what the review command says", () => {
     expect(failureStatus("CONFLICT")).toBe(409);
     expect(failureStatus("INVALID")).toBe(400);
     expect(failureStatus("NOT_READY")).toBe(400);
+  });
+});
+
+// What staff's look shows of an update that holds a video or the rating (unit A).
+describe("heldChanges", () => {
+  const media = (key: string) => `/media/${key}`;
+  const nothingHeld = {
+    held: null,
+    heldClips: { upright: null, wide: null },
+    clips: { upright: { key: "clips/x/upright-a.mp4" }, wide: { key: "clips/x/wide-a.mp4" } },
+    ageRating: "age_12" as const,
+    contentMarks: [],
+  };
+
+  it("is empty when nothing is held, so the look answers as it always did", () => {
+    expect(heldChanges(nothingHeld, media)).toEqual([]);
+  });
+
+  it("gives the video players see now and the one that waits, for each held video", () => {
+    expect(
+      heldChanges(
+        {
+          ...nothingHeld,
+          heldClips: { upright: null, wide: { key: "clips/x/wide-b.mp4" } },
+        },
+        media,
+      ),
+    ).toEqual([
+      { part: "wide_video", now: "/media/clips/x/wide-a.mp4", waiting: "/media/clips/x/wide-b.mp4" },
+    ]);
+  });
+
+  it("gives the rating players see now and the one that waits, in words, with its marks", () => {
+    const [change, ...rest] = heldChanges(
+      { ...nothingHeld, held: { ageRating: "age_18", contentMarks: ["gore"] } },
+      media,
+    );
+    expect(rest).toEqual([]);
+    expect(change).toMatchObject({ part: "age_rating" });
+    expect(change?.now).toMatch(/12/);
+    expect(change?.waiting).toMatch(/18/);
+    expect(change?.waiting).toMatch(/[Gg]ore/);
+  });
+
+  it("lists a video and the rating together, the videos first", () => {
+    const changes = heldChanges(
+      {
+        ...nothingHeld,
+        heldClips: { upright: { key: "clips/x/upright-b.mp4" }, wide: null },
+        held: { ageRating: "age_16", contentMarks: [] },
+      },
+      media,
+    );
+    expect(changes.map((one) => one.part)).toEqual(["upright_video", "age_rating"]);
   });
 });
