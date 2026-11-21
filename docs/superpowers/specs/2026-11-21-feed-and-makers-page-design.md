@@ -1,6 +1,6 @@
 # The feed and the maker's page: the rest of slice 3
 
-Date: 2026-11-21. Status: spec and plan in one, for the plan audit (unit K is lane 3). Nothing here is built.
+Date: 2026-11-21. Status: spec and plan in one, for the plan audit (unit K is lane 3); changed after plan audit 1 (`docs/superpowers/audits/2026-11-21-feed-and-makers-page-1-plan-audit.md`). Nothing here is built.
 
 This is slice 3's remaining work, planned again against `main` at `e7e2577`. It replaces the old plan (`git show 2f1bde5^:docs/superpowers/plans/2026-11-14-slice-3-feed-maker-page.md`), which was written against `main` at `00d616d`, before slice 2's game page, play shell and player count existed. The old plan's branches A (themes), B (the page's rules) and G (the photo) are on `main` and are not planned again. What is left is its branches C to F (the feed's order, the feed, its controls, the price card over a clip) and H and I (the maker's page and editing it).
 
@@ -47,15 +47,16 @@ Found on the way, reported and not fixed here:
 1. Nothing outside `src/features/launch/` asks the launch switch (`isOpen`, `launchServices`). The wishlist spec says Play is refused before launch and a Wishlist button stands in its place; today Play is offered and played whatever the date. That is "Before launch", item 1, part 2 on the roadmap. This plan leaves Play's place in the feed and on the maker's page as one link, so that work swaps it in one spot per screen.
 2. A game named "New" or "Github" gets the address `new` or `github`, which `/make/new` and `/make/github` shadow, so its maker cannot open it. Unit I adds `/make/page` and guards all three in one constant (it has to guard `page`, and the same line and the same test cover the other two).
 3. The feed takes turns between a game's videos (game facts spec, 2.9) only once a game can have more than one of each shape. Today it has one; the feed shows that one.
+4. A game's page lists its maker's 18+ games in "More from" (`moreLiveGamesBy` answers them and the page's load does not filter). The Call below covers the feed and `/<handle>` only; that row is slice 2's and is left as it is.
 
 ## 3. What is built, and what is not
 
 Built: the feed's order and service (C); the price card over the clip (F); a maker's page at `/<handle>` (H); the feed screen, the bar, Share, sound and the two first-open hints (D, with the old E folded in); editing your page (I); social icons (K).
 
-Not built, because each needs its own approval, data or slice:
+Not built here, because each needs its own approval, data, spec or slice:
 
 - Follow, Like, Save, Repost, Comment, the "For you" and "Following" tabs (**Owner:** "not that we're there yet"; the private feed design says likes, saves and reposts need the Owner's yes as features). The feed's right side holds Share alone; the others have room above it.
-- The learned feed (roadmap, slice 3, item 5), nearby servers in the order (unit N of the servers spec), and taking turns between videos. Unit C's order is the main design's simple one, behind one pure function, so the learned feed replaces that function and nothing else.
+- The learned feed. It is approved (roadmap, slice 3, item 5: "the feed algorithm (approved): a learned feed, play time first") and it is in this slice, but it is not in this spec: it gets its own spec, and its rules and numbers are kept privately on the Owner's words. Nearby servers in the order (unit N of the servers spec) and taking turns between videos go with it. **Unit C's order is an interim order.** It is main design 5.1's simple one, and it differs from the approved feed rules, so it ships only on the Owner's yes (**Open 3**). It sits behind one pure function, so the learned feed replaces that function and nothing around it.
 - Wishlist in place of Play before launch (found 1, above).
 - Report on a clip and on a page; a page taken down; a new maker's first steps (slice 4).
 - The "Your page" builder: a banner, sections to show and hide, layouts, a song, seven-day numbers (roadmap, slice 3, item 6; it waits for the Owner's "fine" on its board).
@@ -67,7 +68,7 @@ Not built, because each needs its own approval, data or slice:
 
 - **Dependencies:** none added. Two data files are copied in, as the colour data was: the social marks' path data from the CC0 `simple-icons` package (unit K), with its licence and its source record beside it.
 - **Tools and environments:** cloud containers and CI only. Nothing runs on the Owner's computer (the repo is public). No new setting, secret, bucket or address.
-- **Migrations:** one, in unit K (`ALTER TYPE "PageLinkKind" ADD VALUE 'social'`). It reaches the site's database when the Owner next runs `pnpm run deploy`. Undoing it is leaving the value unused; Postgres cannot drop an enum value without rebuilding the type.
+- **Migrations:** one, in unit K (`ALTER TYPE "PageLinkKind" ADD VALUE 'social'`). It reaches the site's database when the Owner next runs `pnpm run deploy`. Undoing it is leaving the value unused; Postgres cannot drop an enum value without rebuilding the type. K is lane 3: it merges after its implementation audit passes, under the standing permission of 2026-11-20 in `history.md` ("Merge PRs yourself once CI, reviews and audits pass, without asking the owner"); the merge itself changes no database.
 - **CI:** `.github/workflows/` does not change.
 - **Spend:** none.
 - **Expected duration** (estimates, for the overrun rule): C 3 hours, F 2, H 5, D 9, I 7, K 3, each plus its review. With the waves in section 6, about a day and a half of wall time before the slice's end.
@@ -188,14 +189,14 @@ Six units. Each is one pull request from its own branch, built by one session wi
 
 | Unit | Waits on | Files it owns | Output | Check | Lane | Model |
 |---|---|---|---|---|---|---|
-| C, the order and the feed service | nothing | `src/features/games/service.ts`, `games.ts`; `src/features/play/sessions.ts`; `src/features/pages/service.ts`, `pages.ts`; `src/lib/random.ts`; `src/features/feed/` (`order.ts`, `service.ts`, `services.ts`, `feed.ts`); their tests | `feedServices().service.feed()` answers the clips in order | C1 to C6 | 2 | Sonnet 5.5, medium |
+| C, the order and the feed service | nothing; tasks 2, 3 and 5 wait on **Open 3** | `src/features/games/service.ts`, `games.ts`; `src/features/play/sessions.ts`; `src/features/pages/service.ts`, `pages.ts`; `src/lib/random.ts`; `src/features/feed/` (`order.ts`, `service.ts`, `services.ts`, `feed.ts`); their tests | `feedServices().service.feed()` answers the clips in order | C1 to C6 | 2 | Sonnet 5.5, medium |
 | F, the price card over the clip | nothing | `src/features/play/may-play.ts`; `src/routes/join/`; `src/lib/look.css`, `tests/lib/look.test.ts` (one class); `tests/browser/join.test.ts` | the clip behind the card | F1 to F5 | 2 | Sonnet 5.5, medium |
-| H, a maker's page | C (it reads `liveGames`) | `src/features/pages/MakerPage.svelte`, `pages.browser.ts`; `src/params/handle.ts`; `src/routes/[handle=handle]/`; `src/routes/g/[game]/` (the "Made by" link); `tests/browser/support/database.ts` (`givePage`); `tests/browser/maker-page.test.ts`, one case in `pay.test.ts` | `/<handle>` and `/<handle>/out/<link>` | H1 to H10 | 2 | Sonnet 5.5, medium |
-| D, the feed screen | C; F (both edit `look.css` and `look.test.ts`); H (the feed links to `/<handle>`, and both edit `src/routes/g/[game]/`) | `src/features/feed/` (`Feed.svelte`, `Bar.svelte`, `feed.browser.ts`, `share.ts`, `current.ts`); `src/routes/+page.server.ts`, `+page.svelte`, `+layout.svelte`; `src/routes/g/[game]/+page.svelte` (the way back); `src/lib/look.css` (the game page's room for the bar); `tests/architecture.test.ts`; `.claude/skills/verify/SKILL.md`; the journeys in D's task 6 | the feed at `/`, the bar on three screens | D1 to D14 | 2 | Sonnet 5.5, high: video, snap scrolling and autoplay behave differently in Chromium and WebKit |
+| H, a maker's page | C (it reads `liveGames`) | `src/features/pages/MakerPage.svelte`, `pages.browser.ts`; `src/params/handle.ts` and `src/params/index.ts` (where SvelteKit reads its matchers); `src/routes/[handle=handle]/`; `src/routes/+layout.svelte` (the one condition that hides the wordmark on a maker's page); `src/routes/g/[game]/` (the "Made by" link); `tests/browser/support/database.ts` (`givePage`); `tests/browser/maker-page.test.ts`, one case in `pay.test.ts` | `/<handle>` and `/<handle>/out/<link>` | H1 to H10 | 2 | Sonnet 5.5, medium |
+| D, the feed screen | C; F (both edit `look.css` and `look.test.ts`); H (the feed links to `/<handle>`, and both edit `src/routes/g/[game]/` and `src/routes/+layout.svelte`: D builds on H's change to the layout). **Open 3** | `src/features/feed/` (`Feed.svelte`, `Bar.svelte`, `feed.browser.ts`, `share.ts`, `current.ts`); `src/routes/+page.server.ts`, `+page.svelte`, `+layout.svelte`; `src/routes/g/[game]/+page.svelte` (the way back); `src/lib/look.css` (the game page's room for the bar); `tests/architecture.test.ts`; `.claude/skills/verify/SKILL.md`; the journeys in D's task 6 | the feed at `/`, the bar on three screens | D1 to D14 | 2 | Sonnet 5.5, high: video, snap scrolling and autoplay behave differently in Chromium and WebKit |
 | I, editing your page | H (its screens open `/<handle>`). **Open 2** | `src/routes/make/page/`; `src/routes/make/+page.svelte`, `+page.server.ts`; `src/features/pages/ThemePicker.svelte`, `words.ts`, `pages.ts`, `pages.browser.ts`; `src/features/games/service.ts` (the reserved words); `src/lib/look.css` and `tests/lib/look.test.ts` if a room needs a class the look lacks; `tests/browser/edit-page.test.ts` | `/make/page` and its rooms | I1 to I11 | 2 | Sonnet 5.5, medium |
 | K, social icons | H and I (it adds to `MakerPage.svelte` and to I's links room) | `prisma/schema/pages.prisma`, one migration; `src/features/pages/links.ts`, `service.ts`, `library/social-icons*`; `MakerPage.svelte`; `src/routes/make/page/links/`; their tests | a row of marks on a page | K1 to K6 | 3 | Sonnet 5.5, medium |
 
-**Why this order.** C and F share no file and no output, so they start together. H reads C's `liveGames`. D reads C's service, links to H's route, and edits files F and H edit, so it starts from a `main` that holds all three. I's journeys open H's page. D and I share only `look.css` and `look.test.ts`, and only if a room needs a new class: then I waits on D; otherwise they run side by side. K adds to what H and I made. So: C and F; then H; then D and I; then K. At most three write at once.
+**Why this order.** C and F share no file and no output, so they start together. H reads C's `liveGames`. D reads C's service, links to H's route, and edits files F and H edit (the layout among them), so it starts from a `main` that holds all three. I's journeys open H's page. D and I share only `look.css` and `look.test.ts`, and only if a room needs a new class: then I waits on D; otherwise they run side by side. K adds to what H and I made. So: C and F; then H; then D and I; then K. At most three write at once.
 
 **Lessons carried** (`history.md`): a session that waits on CI watches the run in the foreground and never ends its turn only to wait. A journey waits for the thing it is about to measure, not for the address to change (the flaky `addDraft` fix). A press that waits for the site's answer gets `SITE_ANSWER_TIMEOUT`; finding a button still fails in 5 seconds.
 
@@ -207,7 +208,7 @@ Acceptance:
 
 - **C1.** `liveGames(filter?: { makerUserId?: string })` on the games service lists every live game (of one maker only, with the filter) as `ListedGame`: a `LiveGame` plus `liveSince: Date`. A draft, a waiting, a sent-back and a taken-off game are not listed.
 - **C2.** `liveSince` is the moment the game's first accepted review took effect: when it was decided, or for a held yes when its decision day went out; with no such review, when its live copy was made. It does not move when an update is accepted or the game is taken off and put back. `moreLiveGamesBy` uses the same helper, and its existing tests pass unchanged (old against new).
-- **C3.** `memberBeatsByGame(since: Date, now: Date)` on the play service answers, per game, the number of attentive beats received from `since` to `now` in sessions whose basis is `member`. A free game's, staff's and a maker's own beats are not counted. One query, added up by the database; a game with none is not in the map.
+- **C3.** `memberBeatsByGame(since: Date, now: Date)` on the play service answers, per game, the number of attentive beats received from `since` to `now` in sessions whose basis is `member`. A free game's, staff's and a maker's own beats are not counted. One query, added up by the database, that reads only sessions started at or after `since` less `PLAY_SESSION_LIFE_MS` (as the money roll-up bounds its own read, so the index on a session's game and start is used); a game with none is not in the map.
 - **C4.** `seededNumber(seed, key)` in `src/lib/random.ts` is the 32-bit FNV-1a hash of `seed + "\n" + key`: the same two words give the same whole number from 0 to 4,294,967,295. `feedOrder(games, nowMs, seed)` in `src/features/feed/order.ts` puts games that went live under seven days ago first, newest first; then the rest, most played first; ties go by `seededNumber(seed, id)`, then by `id`. The same input in any order gives the same output, and tied games change places between days.
 - **C5.** `makersOf(userIds)` on the pages service answers, for each account that has a page, its `handle`, `name` and `photoKey`. `handlesOf` stays.
 - **C6.** `feedServices().service.feed()` answers `FeedClip[]`: `{ slug, name, oneLine, upright, wide, maker: { handle, name, photo } | null }`, the clips and the photo as whole addresses (`gamesServices().media`), in `feedOrder` (beats since seven days ago; the seed is `chicagoDayOf` the injected clock's time), without games rated `age_18`, and 50 at most (`FEED_MAX`). No live game: an empty list. `feed` imports `games`, `play` and `pages` only through their entry files; the layer test passes.
@@ -235,7 +236,7 @@ Tasks:
 - [ ] 1. The journey first, in `tests/browser/join.test.ts`: a stranger presses Play on a game's page and meets the card over that game's clip (F3, F4), `showTheOwner` "the price card over a clip"; the three addresses of F5.
 - [ ] 2. `backFromPaywall`, test first (F1).
 - [ ] 3. The load, the video and the `backdrop` rule (F2, F3).
-- [ ] 4. **Open 1, only if the Owner says keep the mark:** one empty `<span class="pip" aria-hidden="true">` on the price card (not on the member's or the paused card), a 12px diamond 1.25rem from the card's top and right; `look.test.ts`'s "red is only the danger button" becomes "the danger button and the pip mark", named in the pull request. Otherwise this task is struck and nothing red is added.
+- [ ] 4. **Open 1, only if the Owner says keep the mark:** one empty `<span class="pip" aria-hidden="true">` on the price card (not on the member's or the paused card), a 12px diamond 1.25rem from the card's top and right; the `.pip` rule sits with the card's rules, above `main.gamepage` in `look.css`, so the game page's "uses no pip (red) anywhere" (`tests/lib/look.test.ts:556`) stands unchanged; "red is only the danger button" (`tests/lib/look.test.ts:103`) becomes "the danger button and the pip mark", named in the pull request. Otherwise this task is struck and nothing red is added.
 
 ### Unit H: a maker's page
 
@@ -256,7 +257,7 @@ Tasks:
 
 - [ ] 1. `givePage` in `tests/browser/support/database.ts` takes an address, a theme and links, and answers the address and the links' ids; `pageCounts(handle)` reads the two counts. (The rooms arrive in unit I, so H's journeys write rows.)
 - [ ] 2. The journeys first, in `tests/browser/maker-page.test.ts` (H2 to H9), each screen shown: "a maker's page", "a maker's page, Ruken's colours", "a maker's page with no games".
-- [ ] 3. The matcher and its unit test in `tests/params/handle.test.ts` (H1).
+- [ ] 3. The matcher, registered in `src/params/index.ts` beside `question`, and its unit test in `tests/params/handle.test.ts` (H1). The layout's condition that hides the wordmark on `/[handle=handle]` (H2).
 - [ ] 4. `MakerPage.svelte`, re-exported from `pages.browser.ts`, and the page's route and load (H2 to H4, H7, H8).
 - [ ] 5. The out route (H5, H6).
 - [ ] 6. The "Made by" link and its case in `tests/browser/game-page.test.ts` (H10).
@@ -283,12 +284,12 @@ Acceptance:
 Tasks:
 
 - [ ] 1. The journey first, in `tests/browser/feed.test.ts`: "Ruken opens straight into the feed, with the right clip for the screen" (D1, D2, D4), shown as "the feed".
-- [ ] 2. `Feed.svelte`, `feed.browser.ts`, the route and its load (`feed()`), the layout's list of screens with no wordmark (D1 to D5, D13).
+- [ ] 2. `Feed.svelte`, `feed.browser.ts`, the route and its load (`feed()`), the layout's condition for screens with no wordmark, building on H's (D1 to D5, D13).
 - [ ] 3. `Bar.svelte`, drawn by the root layout for the three routes; the game page's way back and its room at the foot (D11), shown as "a game's page with the bar" and "a maker's page with the bar".
 - [ ] 4. `current.ts`, playing and sound, test first (D6, D7), in `tests/features/feed/current.test.ts` and `tests/browser/feed-controls.test.ts`.
 - [ ] 5. `share.ts` and the Share mark, test first (D8).
 - [ ] 6. The hints, test first (D9), shown as "the feed on a first open". The empty feed (D12), shown as "the feed with no games".
-- [ ] 7. The placeholder home page goes, and with it `tests/browser/home.test.ts` and the home page's cases in `tests/browser/look.test.ts` and `tests/browser/look-layout.test.ts`. Every journey that opened `/` for the placeholder (`sign-in`, `sign-up`, `me`, `mailed-links`, `connect-github`, `make-questions`, `make-walk`, `pay`, `play`, `support/account.ts`: found by searching for `goto("/")`, `toHaveURL("/")` and "Coming soon") is read and changed only where it named the placeholder's own words; each change is named in the pull request. A screen replaced is not a test loosened.
+- [ ] 7. The placeholder home page goes, and with it `tests/browser/home.test.ts` and the home page's cases in `tests/browser/look.test.ts` and `tests/browser/look-layout.test.ts`. Every journey that opened `/` for the placeholder (the builder searches `tests/browser/` for `goto("/")`, `toHaveURL("/")`, "Coming soon", "Your games" and "Back to Ruken"; `sign-in`, `sign-up`, `me`, `mailed-links`, `make-walk` and `support/account.ts` are a hint of where, not a boundary) is read and changed only where it named the placeholder's own words; each change is named in the pull request. A screen replaced is not a test loosened.
 - [ ] 8. The architecture case and `verify` (D14); the request count (D3); the keys (D10).
 
 ### Unit I: editing your page (Open 2)
@@ -305,7 +306,7 @@ Acceptance:
 - **I8.** Links: the list shows each link as it will appear, with "tapped `<n>` times", and Up, Down, Hide or Show, and Remove (no Up on the first, no Down on the last). Adding is two questions, the words then the address, with "A game somewhere else" as a choice on the first. A link that is not `https` is refused with "A link starts with https://". Thirty is the most.
 - **I9.** Nobody changes another maker's page or links: a posted id that is not hers is the missing page and nothing changes.
 - **I10.** "Your games" has one link, "Your page".
-- **I11.** A game cannot take the address `new`, `github` or `page`: `freeSlug` treats them as taken, and a test reads the first-level folders of `src/routes/make/` and fails when one that has an address's shape is not on the list.
+- **I11.** A game cannot take the address `new`, `github` or `page`: `freeSlug` treats them as taken, and a test reads the first-level folders of `src/routes/make/` that hold a route (a `+page` or `+server` file anywhere inside; `parts` holds none and is skipped) and fails when one that has an address's shape is not on the list.
 
 Tasks:
 
@@ -322,7 +323,7 @@ Acceptance:
 
 - **K1.** `src/features/pages/library/social-icons.json` holds one path (`d`, drawn in a 24 by 24 box) per site id and no other key; each path starts with `M` and holds only path letters, digits, spaces, commas, dots and minus signs. `social-icons-LICENSE.txt` is the package's licence and says CC0; `social-icons-source.json` names the package, its version, its tarball and its integrity, measured from the download. The package is not in `package.json`. If the licence is not CC0, or a mark is missing from the package, stop and report; a missing mark's site is left out.
 - **K2.** `SOCIAL_SITES` and `socialSiteOf(url)` in `links.ts`: YouTube, Twitch, Discord, X, Bluesky, Instagram, TikTok, Steam, itch.io and GitHub, each found from its hosts; anything else is null.
-- **K3.** The migration adds `social` to `PageLinkKind` and nothing else; the drift test passes.
+- **K3.** The migration adds `social` to `PageLinkKind` and nothing else. Two checks that fail by themselves: a case in `tests/features/pages/schema.pg.test.ts` reads `enum_range(NULL::"PageLinkKind")` from the migrated test database and expects exactly `link`, `game_elsewhere`, `social`; and the migration file's statements, comments aside, are exactly the one `ALTER TYPE`.
 - **K4.** `addLink` with kind `social` on a known site is stored; on any other it is refused with "We don't have an icon for that site yet. Add it as a link." `pageByHandle`'s links gain `social: { id, name } | null`.
 - **K5.** On the page, social links sit after the links in `<nav aria-label="Elsewhere">`, each a 48px round link named for its site, through `/out/`, and are not among "Links".
 - **K6.** The links room's first question gains the choice "A small icon, for YouTube, Discord and the like".
@@ -330,7 +331,7 @@ Acceptance:
 Tasks:
 
 - [ ] 1. The data files and their test, `tests/features/pages/social-icons.test.ts` (K1).
-- [ ] 2. `socialSiteOf`, test first (K2). The migration and the service, test first (K3, K4).
+- [ ] 2. `socialSiteOf`, test first (K2). The migration, with its two checks in `tests/features/pages/schema.pg.test.ts` first (K3). The service, test first (K4).
 - [ ] 3. The page's row and the room's choice, journeys first (K5, K6), shown as "a maker's page with social icons".
 
 ## 7. The quality bar, for the slice
@@ -347,13 +348,16 @@ Beyond each unit's criteria (`build`, "Quality bar"):
 
 1. **The red mark on the price card.** Owner, 2026-11-14: "Keep it". Owner, 2026-11-15: red is only for acts that cannot be undone, and the look's test now holds that. Asked as a card on 2026-11-21, with "leave it off" recommended. Only F's task 4 waits.
 2. **Editing your page now, or with the builder.** Asked as a card on 2026-11-21, with "simple editing now" recommended. Only unit I waits; if the Owner says wait, unit K loses K6 and nothing else changes.
+3. **The interim order.** Unit C's order (C3, C4) is not the feed the Owner approved on 2026-11-15; it is the main design's earlier, simpler one. Asked as a card on 2026-11-21, with "simple order first" recommended: it lets the feed's screens be built and seen while the learned feed is planned. C's tasks 2, 3 and 5 and unit D wait. If the Owner says wait for the learned feed, C3, C4 and tasks 2 and 3 are struck, C6's order comes from the learned feed's spec, and D waits on that spec's order.
+
+**What follows this spec inside slice 3.** The learned feed (roadmap item 5) gets its own spec, started by the coordinator, with its rules in the private repository. The slice's end (the walk, the design review rounds, the screens page, the Owner's walk) comes after it, so they show the feed that launches. "Your page" (item 6) still waits for the Owner's "fine" on its board.
 
 Everything else is decided: the Owner's words in section 0, or a Call the Owner can overrule.
 
 ## 9. Risks, and what is not checked
 
 - **Video in two engines.** Autoplay, `<source media>` and snap scrolling differ between Chromium and WebKit, and a CI runner may refuse to play a video at all. The journeys assert what Ruken decides, not that pixels move; the walk at the slice's end and the Owner's own phone are where playing is seen.
-- **The feed adds up a week of members' beats on every open.** One indexed sum. If the site's numbers ever show it slow, the first thing to try is a sum kept per day. Not measured against a large table.
-- **The simple order is replaced.** The learned feed (roadmap item 5) throws away `feedOrder` and keeps everything around it. That is the roadmap's order, not waste found late.
+- **The feed adds up a week of members' beats on every open.** One sum, bounded by when a session started (C3). If the site's numbers ever show it slow, the first thing to try is the sum the money roll-up already keeps per day (`PlayDay`), with today's beats added. Not measured against a large table.
+- **The interim order is replaced.** The learned feed (roadmap item 5, approved) throws away `feedOrder` and `memberBeatsByGame` and keeps everything around them. Until then the feed's order is not the approved one; that is Open 3's question.
 - **Counts include programs.** A page's views and a link's taps count every visitor that is not the maker, crawlers included, with no record of who.
 - **A photo sent with no script** is stored as the camera wrote it, details and all; nothing on the server redraws a picture.
