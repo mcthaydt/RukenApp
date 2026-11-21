@@ -102,8 +102,11 @@ describe("the layer rule", () => {
         if (to.inside.startsWith("library/")) {
           broken.push(`${where}: ${to.feature}'s library/ is read only by ${to.feature}`);
         } else if (isPageScript(file)) {
-          // A page's own script is downloaded by every visitor, so it reaches a feature only through its browser entry.
-          if (to.inside !== `${to.feature}.browser.ts`)
+          // A page's own script is downloaded by every visitor, so it reaches a feature only through its browser entry,
+          // or a screen the feature draws (a .svelte file, which imports no server code). A route matcher is built by
+          // Node, which cannot load a .svelte file, so a matcher takes the browser entry alone.
+          const isScreen = to.inside.endsWith(".svelte") && file.endsWith(".svelte");
+          if (to.inside !== `${to.feature}.browser.ts` && !isScreen)
             broken.push(`${where}: a page's script imports ${to.feature} through ${to.feature}.browser.ts`);
         } else if (to.inside.replace(/\.ts$/, "") !== to.feature) {
           broken.push(`${where}: import ${to.feature} through ${to.feature}.ts`);
