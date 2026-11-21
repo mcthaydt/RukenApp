@@ -42,6 +42,7 @@
       </span>
     </a>
   {/each}
+  <p class="note"><a href="/make/page">Your page</a></p>
   <!-- The agreement a maker accepted before their first game: kept where they can read it again. -->
   <p class="note"><a href="/legal/maker-agreement">Maker agreement</a></p>
 </main>
