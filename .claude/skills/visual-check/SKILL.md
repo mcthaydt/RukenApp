@@ -23,11 +23,11 @@ Do not move to the next slice without a design review loop on the screens comple
 
 ## Screens page
 
-The coordinator shows the screens page twice at the end of every slice: after the design review rounds before the owner's first look, and again after the round on the owner's notes, before the owner's walk. Each time it shows all of the slice's screens in one organized artifact: grouped by flow, in the order a person meets them, each screen at each size it was shot at (see "Shoot what the change touches"), labeled with its name and the commit it shows. Screens the owner already approved are included and marked as approved. Share it as one link, not as screenshots scattered across messages. It is for viewing, not keeping: once the owner has looked at it, its pictures are no longer needed, nothing keeps a copy of them, and the coordinator deletes the page where the runtime can (or lists it for the owner to delete). Approvals in `history.md` name each screen and the commit it shows, never a picture, and a later look shoots the screens again.
+The coordinator shows the screens page twice at the end of every slice: after the design review rounds before the owner's first look, and again after the round on the owner's notes, before the owner's walk. Each time it shows all of the slice's screens in one organized artifact: grouped by flow, in the order a person meets them, each screen at each size it was shot at (see "Shoot what the change touches"), labeled with its name and the commit it shows. Screens the owner already approved are included and marked as approved. Share it as one link, not as screenshots scattered across messages. It is for viewing, not keeping: once the owner has looked at it, its pictures are no longer needed, nothing keeps a copy of them, and the coordinator deletes the page where the runtime can (or lists it for the owner to delete). Approvals in `progress.md` name each screen and the commit it shows, never a picture, and a later look shoots the screens again.
 
 ## Skip what is already approved
 
-- Each step looks only at screens the owner has not approved yet. The coordinator records each approval under "Approved screens" in `docs/superpowers/history.md`. A screen's approval ends when anything that affects it changes: its own files, shared styles, shared components or behavior.
+- Each step looks only at screens the owner has not approved yet. The coordinator records each approval under "Approved screens" in `docs/superpowers/progress.md`. A screen's approval ends when anything that affects it changes: its own files, shared styles, shared components or behavior.
 - The full review runs once per set of screens. Later rounds check only the screens whose approval ended.
 
 ## Reviews in batches

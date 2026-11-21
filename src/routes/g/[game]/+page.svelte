@@ -106,102 +106,104 @@
       </div>
     </div>
 
-    <div class="card cell playtile">
-      <a class="button" href={`/g/${data.slug}/play`}>Play</a>
-      <div class="costrow">
-        {#if data.cost === "join"}
-          <p class="costline">
-            Members play every game. {data.price} a month.&nbsp;<a class="joinlink" href={joinAt}>Join</a>
-          </p>
-          <p class="costline">Tax is added where it applies.</p>
-        {:else}
-          <p class="costline">{COST_WORDS[data.cost]}</p>
+    <div class="side">
+      <div class="card cell playtile">
+        <a class="button" href={`/g/${data.slug}/play`}>Play</a>
+        <div class="costrow">
+          {#if data.cost === "join"}
+            <p class="costline">
+              Members play every game. {data.price} a month.&nbsp;<a class="joinlink" href={joinAt}>Join</a>
+            </p>
+            <p class="costline">Tax is added where it applies.</p>
+          {:else}
+            <p class="costline">{COST_WORDS[data.cost]}</p>
+          {/if}
+        </div>
+        <button type="button" class="outline" onclick={share}>Share</button>
+        {#if sharedNote !== ""}
+          <p class="note" role="status">{sharedNote}</p>
         {/if}
       </div>
-      <button type="button" class="outline" onclick={share}>Share</button>
-      {#if sharedNote !== ""}
-        <p class="note" role="status">{sharedNote}</p>
+
+      <div class="card cell fact">
+        <p class="note">Age</p>
+        <p><span class="chip">{data.rating.chip}</span></p>
+        <p class="note">{data.rating.line}</p>
+      </div>
+
+      <div class="card cell fact">
+        <p class="note">Where it plays</p>
+        <p>Plays on this {device}. Nothing to install.</p>
+      </div>
+
+      {#if data.sitting !== null}
+        <div class="card cell fact">
+          <p class="note">Play time</p>
+          <p>Most people play {data.sitting} at a time.</p>
+        </div>
+      {/if}
+
+      {#if data.players !== null}
+        <div class="card cell fact">
+          <p class="note">Players</p>
+          <p>{data.players}</p>
+        </div>
+      {/if}
+
+      {#if enhanced}
+        <div class="card cell watch">
+          <p class="note">Watch it two ways</p>
+          <div class="pickers">
+            <button
+              type="button"
+              aria-pressed={shape === "upright"}
+              onclick={() => (picked = "upright")}
+              aria-label="Watch the upright video"
+            >
+              <video
+                class="tile"
+                src={`${data.clips.upright}#t=0.001`}
+                preload="metadata"
+                tabindex="-1"
+                muted
+                playsinline
+                aria-hidden="true"
+              ></video>
+            </button>
+            <button
+              type="button"
+              aria-pressed={shape === "wide"}
+              onclick={() => (picked = "wide")}
+              aria-label="Watch the wide video"
+            >
+              <video
+                class="tile"
+                src={`${data.clips.wide}#t=0.001`}
+                preload="metadata"
+                tabindex="-1"
+                muted
+                playsinline
+                aria-hidden="true"
+              ></video>
+            </button>
+          </div>
+        </div>
+      {/if}
+
+      {#if data.maker !== null}
+        <div class="card cell madeby">
+          {#if data.maker.photo !== null}
+            <img src={data.maker.photo} alt="" width="48" height="48" />
+          {/if}
+          <span
+            >Made by <a data-sveltekit-preload-data="off" href={`/${data.maker.handle}`}
+              ><strong>{data.maker.name}</strong></a
+            >{#if data.maker.oneLine !== ""}
+              <q>{data.maker.oneLine}</q>{/if}</span
+          >
+        </div>
       {/if}
     </div>
-
-    <div class="card cell fact">
-      <p class="note">Age</p>
-      <p><span class="chip">{data.rating.chip}</span></p>
-      <p class="note">{data.rating.line}</p>
-    </div>
-
-    <div class="card cell fact">
-      <p class="note">Where it plays</p>
-      <p>Plays on this {device}. Nothing to install.</p>
-    </div>
-
-    {#if data.sitting !== null}
-      <div class="card cell fact">
-        <p class="note">Play time</p>
-        <p>Most people play {data.sitting} at a time.</p>
-      </div>
-    {/if}
-
-    {#if data.players !== null}
-      <div class="card cell fact">
-        <p class="note">Players</p>
-        <p>{data.players}</p>
-      </div>
-    {/if}
-
-    {#if enhanced}
-      <div class="card cell watch">
-        <p class="note">Watch it two ways</p>
-        <div class="pickers">
-          <button
-            type="button"
-            aria-pressed={shape === "upright"}
-            onclick={() => (picked = "upright")}
-            aria-label="Watch the upright video"
-          >
-            <video
-              class="tile"
-              src={`${data.clips.upright}#t=0.001`}
-              preload="metadata"
-              tabindex="-1"
-              muted
-              playsinline
-              aria-hidden="true"
-            ></video>
-          </button>
-          <button
-            type="button"
-            aria-pressed={shape === "wide"}
-            onclick={() => (picked = "wide")}
-            aria-label="Watch the wide video"
-          >
-            <video
-              class="tile"
-              src={`${data.clips.wide}#t=0.001`}
-              preload="metadata"
-              tabindex="-1"
-              muted
-              playsinline
-              aria-hidden="true"
-            ></video>
-          </button>
-        </div>
-      </div>
-    {/if}
-
-    {#if data.maker !== null}
-      <div class="card cell madeby">
-        {#if data.maker.photo !== null}
-          <img src={data.maker.photo} alt="" width="48" height="48" />
-        {/if}
-        <span
-          >Made by <a data-sveltekit-preload-data="off" href={`/${data.maker.handle}`}
-            ><strong>{data.maker.name}</strong></a
-          >{#if data.maker.oneLine !== ""}
-            <q>{data.maker.oneLine}</q>{/if}</span
-        >
-      </div>
-    {/if}
 
     {#if data.maker !== null && data.more.length > 0}
       <section class="card cell more" data-solo={data.more.length === 1 ? "" : undefined}>

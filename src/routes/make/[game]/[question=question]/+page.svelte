@@ -40,6 +40,9 @@
 
   const WEBSITES_HINT =
     "One website in each box, like api.example.com. Leave it empty if your game runs on its own. Saving copies your game from GitHub again.";
+  // A game that is off Ruken copies nothing when it is saved; Put it back does.
+  const WEBSITES_HINT_OFF =
+    "One website in each box, like api.example.com. Leave it empty if your game runs on its own. Put it back on Ruken copies your game from GitHub.";
   const NAME_HINT = "The name players see. Like: Floor Fifty.";
   const ADDRESS_STAYS = " Its link on Ruken stays the same, so links you've shared keep working.";
 </script>
@@ -94,6 +97,7 @@
       back={data.back}
       throwAway={data.throwAway}
       {problem}
+      keepOld={data.keepOld}
     />
   {:else if data.question === "websites"}
     <QuestionScreen
@@ -103,7 +107,12 @@
       throwAway={data.throwAway}
       enterHint={false}
     >
-      <WebsiteLines name="servers" value={form?.value ?? data.servers} hint={WEBSITES_HINT} {problem} />
+      <WebsiteLines
+        name="servers"
+        value={form?.value ?? data.servers}
+        hint={data.offRuken ? WEBSITES_HINT_OFF : WEBSITES_HINT}
+        {problem}
+      />
     </QuestionScreen>
   {:else if data.question === "age"}
     <QuestionScreen
@@ -111,6 +120,7 @@
       counter={ageCounter}
       back={data.back}
       throwAway={data.throwAway}
+      keepOld={data.keepOld}
     >
       <Picks
         name="ageRating"
@@ -120,6 +130,13 @@
         hint="We check this when we look at your game."
         {problem}
       />
+      {#if data.ratingPlayersSee !== null}
+        <p class="note" role="status">
+          {data.ratingWithStaff
+            ? `Waiting for review. Players see ${data.ratingPlayersSee} until we say yes.`
+            : `Not sent yet. Players see ${data.ratingPlayersSee}.`}
+        </p>
+      {/if}
     </QuestionScreen>
   {:else}
     <QuestionScreen
@@ -127,6 +144,7 @@
       counter={data.counter}
       back={data.back}
       throwAway={data.throwAway}
+      keepOld={data.keepOld}
     >
       {#if data.madeEighteen}
         <!-- The game is being made 18+: the rating is kept with its marks, in one answer. -->
@@ -140,6 +158,13 @@
         hint="Only adults will see this game. Sex or nudity is fine here. No game may have pornography or gambling."
         {problem}
       />
+      {#if data.ratingPlayersSee !== null}
+        <p class="note" role="status">
+          {data.ratingWithStaff
+            ? `Waiting for review. Players see ${data.ratingPlayersSee} until we say yes.`
+            : `Not sent yet. Players see ${data.ratingPlayersSee}.`}
+        </p>
+      {/if}
     </QuestionScreen>
   {/if}
 {/key}

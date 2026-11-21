@@ -1,6 +1,6 @@
 import type { MailMessage } from "../../lib/server/mail.ts";
 
-// The words of the four mails Ruken sends. Each says what it is, gives the one link, says how long
+// The words of the mails Ruken sends. Each says what it is, gives the one link, says how long
 // it lasts, and says what to do if it was not expected. Each link sits on a line of its own so a
 // mail program makes it clickable.
 
@@ -64,6 +64,40 @@ export function signInPausedMessage(to: string): MailMessage {
       'You can still choose a new password with "Forgot your password?" on the sign-in page.',
       "",
       "If that was you, wait an hour and try again. If it wasn't, we suggest you choose a new password.",
+    ].join("\n"),
+  };
+}
+
+/** The mail to the NEW address when a signed-in person asks to change their email: its link finishes the change. */
+export function emailChangeMessage(to: string, url: string): MailMessage {
+  return {
+    to,
+    subject: "Confirm your new email for Ruken",
+    text: [
+      "Someone asked to use this email address for a Ruken account. To finish, open this link:",
+      "",
+      url,
+      "",
+      "The link expires in 24 hours.",
+      "",
+      "If that wasn't you, you can ignore this email. Nothing changes until the link is opened.",
+    ].join("\n"),
+  };
+}
+
+/** The notice to the OLD address, so a person whose account someone else is changing hears about it. */
+export function emailChangeAskedMessage(to: string, newAddress: string): MailMessage {
+  return {
+    to,
+    subject: "A new email was asked for on your Ruken account",
+    text: [
+      `Someone asked to change the email on your Ruken account to ${newAddress}.`,
+      "",
+      "Nothing has changed yet. It only changes when the link we sent to that new address is opened.",
+      "",
+      "If that was you, there's nothing to do. Until then, you sign in with this address.",
+      "",
+      "If it wasn't, change your password right away, then check that no one else can get into your email.",
     ].join("\n"),
   };
 }

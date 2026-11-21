@@ -133,6 +133,15 @@ export async function showsPlayerCountOf(slug: string): Promise<boolean> {
     .showsPlayerCount;
 }
 
+/** The email of the account that made a game: what a journey gives a page or a sign-in to. */
+export async function makerEmailOf(slug: string): Promise<string> {
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { maker: { select: { email: true } } },
+  });
+  return game.maker.email;
+}
+
 /** A game's own ids, read from its row: what a journey needs to look inside the game. */
 export async function idsOf(slug: string): Promise<{ id: string; publicId: string; makerUserId: string }> {
   return db().game.findUniqueOrThrow({
@@ -214,6 +223,29 @@ export async function fillAnswers(
       });
     }
   }
+}
+
+/**
+ * Leaves a new copy of a live game's files waiting for review beside the copy that is live, as the maker's "Send a new
+ * version" does (`updateWaiting` leaves the live copy itself as the waiting one).
+ */
+export async function leaveNewCopyWaiting(slug: string): Promise<void> {
+  const game = await db().game.findUniqueOrThrow({ where: { slug }, select: { id: true } });
+  const pull = await db().gamePull.create({
+    data: {
+      id: crypto.randomUUID(),
+      gameId: game.id,
+      commitSha: STAND_IN_COMMIT,
+      fileCount: 3,
+      totalBytes: 1000n,
+      connectHosts: [],
+      pulledAt: new Date(),
+    },
+  });
+  await db().game.update({
+    where: { id: game.id },
+    data: { pendingPullId: pull.id, pendingSince: new Date() },
+  });
 }
 
 /** A part staff sent back, with the reason they chose (a code from library/send-back-reasons.json) and their own line. */
@@ -481,4 +513,9 @@ export async function giveStaffRole(
   role: "owner" | "head_curator" | "curator",
 ): Promise<void> {
   await db().staffAssignment.create({ data: { userId: await userIdOf(account.email), role } });
+}
+
+/** Leaves an account with no known age, as an account made before the age question was asked would be. */
+export async function forgetAgeOf(email: string): Promise<void> {
+  await db().user.update({ where: { email }, data: { adultOn: null } });
 }

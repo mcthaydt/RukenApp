@@ -18,11 +18,12 @@
 // setting and never adds an entry twice. `node rules.mjs --print-setup` prints the same
 // installer as a cloud environment setup script that needs no repo and never fails.
 
-import { readFileSync, writeFileSync, existsSync, statSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync, readdirSync, openSync, readSync, closeSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve, relative, isAbsolute, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { beyondDocs, byCreation, globToRegExp, hasCriteria, laneOf, laneOfNames, matchesAny, onlyCleanMerges, ownBranchPrs, reviewPasses } from './pr-rules-lib.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const FOOTER = 'If this refusal is wrong, say so in your report. Do not reword the command to get past it.';
@@ -39,8 +40,6 @@ const readText = (path, max = 1024 * 1024) => {
   try { const s = statSync(path); if (!s.isFile() || s.size > max) return null; return readFileSync(path, 'utf8'); } catch { return null; }
 };
 const isPlaceholder = (v) => typeof v === 'string' && PLACEHOLDER.test(v);
-const globToRegExp = (glob) => new RegExp('^' + glob.split('**').map((part) => part.split('*').map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('[^/]*')).join('.*') + '$');
-const matchesAny = (path, globs = []) => globs.some((g) => globToRegExp(g).test(path));
 const lines = (s) => String(s ?? '').split('\n');
 const lastLine = (s) => lines(s).map((l) => l.trim()).filter(Boolean).at(-1) ?? '';
 const addedLines = (before, after) => {
@@ -118,11 +117,11 @@ function parseShell(src) {
   // Parses until the end or, when inParen, the matching ')'. Returns the commands made.
   const parseList = (inParen) => {
     const out = [];
-    let cmd = { words: [], heredoc: null, raw: '' };
+    let cmd = { words: [], heredoc: null, raw: '', redirects: [] };
     let word = null;
     const start = () => { if (word === null) word = ''; };
     const endWord = () => { if (word !== null) { cmd.words.push(word); word = null; } };
-    const endCmd = () => { endWord(); if (cmd.words.length || cmd.heredoc !== null) out.push(cmd); cmd = { words: [], heredoc: null, raw: '' }; };
+    const endCmd = () => { endWord(); if (cmd.words.length || cmd.heredoc !== null) out.push(cmd); cmd = { words: [], heredoc: null, raw: '', redirects: [] }; };
 
     const readSubst = () => { // at '$(' : returns text of the substitution, records its commands
       i += 2;
@@ -199,11 +198,17 @@ function parseShell(src) {
       }
       if (ch === '<' && src[i + 1] === '<' && src[i + 2] === '<') { endWord(); i += 3; continue; } // here-string: next word is data
       if (ch === ' ' || ch === '\t') { endWord(); i++; continue; }
-      if ((ch === '>' || ch === '<') && word === null) { // redirection: skip its target word
+      if ((ch === '>' || ch === '<') && word === null) { // redirection: its target word is kept for an output file
+        const output = ch === '>';
+        let dup = false;
         i++;
-        if (src[i] === '>' || src[i] === '&') i++;
+        if (src[i] === '>') i++; else if (src[i] === '&') { dup = true; i++; }
         while (src[i] === ' ') i++;
-        while (i < src.length && !/[\s;&|()]/.test(src[i])) i++;
+        let target = '';
+        while (i < src.length && !/[\s;&|()]/.test(src[i])) {
+          if (src[i] === "'" || src[i] === '"') { const q = src[i]; const end = src.indexOf(q, i + 1); target += src.slice(i + 1, end === -1 ? src.length : end); i = end === -1 ? src.length : end + 1; } else { target += src[i]; i++; }
+        }
+        if (output && !dup && target) cmd.redirects.push(target);
         continue;
       }
       if (/^[0-9]$/.test(ch) && word === null && (src[i + 1] === '>' || (src[i + 1] === '<' && src[i + 2] !== '<'))) { i++; continue; }
@@ -228,6 +233,16 @@ function parseShell(src) {
 }
 
 const ENV_WORD = /^[A-Za-z_][A-Za-z0-9_]*=/;
+// Shells whose -c string is read again as a command line (the hook reads every one the same way).
+const SHELLS = new Set(['bash', 'sh', 'zsh', 'dash', 'fish', 'ksh', 'ash', 'csh', 'tcsh']);
+// The index of the -c flag, alone or bundled ("-lc", "-ec"), before the first word that is not a flag.
+const shellCFlag = (words) => {
+  for (let k = 1; k < words.length; k++) {
+    if (!words[k].startsWith('-')) return -1;
+    if (/^-[A-Za-z]*c[A-Za-z]*$/.test(words[k])) return k;
+  }
+  return -1;
+};
 const PNPM_OWN = new Set(['add', 'install', 'i', 'remove', 'rm', 'update', 'up', 'outdated', 'list', 'ls', 'why', 'audit', 'store', 'config', 'init', 'link', 'unlink', 'prune', 'publish', 'pack', 'rebuild', 'root', 'bin', 'env', 'setup', 'import', 'fetch', 'patch', 'patch-commit', 'deploy', 'licenses', 'server', 'help', 'create', 'recursive', 'run', 'exec', 'dlx', 'test', 't', 'start']);
 
 // Turns parsed commands into checkable ones: wrappers peeled, inline env split off,
@@ -239,17 +254,19 @@ function simpleCommands(src, baseCwd, depth = 0) {
   for (const c of parseShell(src)) {
     let words = [...c.words];
     const env = { ...exported };
+    const via = []; // wrappers peeled whose arguments the hook cannot fully see (xargs)
     while (words.length && ENV_WORD.test(words[0])) { const [k, ...v] = words.shift().split('='); env[k] = v.join('='); }
     // Peel wrappers.
     for (let guard = 0; guard < 10 && words.length; guard++) {
       const w = words[0];
+      if (/^(do|then|else|elif|if|while|until|!|\{)$/.test(w)) { words.shift(); continue; } // a loop or block keyword in front of a command
       if (w === 'sudo' || w === 'doas') { words.shift(); while (words[0]?.startsWith('-')) { const f = words.shift(); if (f === '--') break; if (/^-[ugpChDrtURC]$/.test(f) || /^--(user|group|host|prompt|chdir|close-from|role|type|other-user)$/.test(f)) words.shift(); } continue; }
       if (w === 'flock') { const ci = words.findIndex((x, k) => k > 0 && (x === '-c' || x === '--command')); if (ci !== -1 && words[ci + 1] !== undefined) { result.push(...simpleCommands(words[ci + 1], cwd, depth + 1).map((x) => ({ ...x, env: { ...env, ...x.env } }))); words.length = 0; break; } words.shift(); while (words[0]?.startsWith('-')) { const f = words.shift(); if (/^(-w|--timeout|-E|--conflict-exit-code)$/.test(f)) words.shift(); } words.shift(); continue; }
       if (w === 'nohup' || w === 'time' || w === 'command' || w === 'exec' || w === 'stdbuf' || w === 'setsid' || w === 'unbuffer') { words.shift(); while (words[0]?.startsWith('-')) words.shift(); continue; }
       if (w === 'script') { const ci = words.findIndex((x, k) => k > 0 && (/^-\w*c$/.test(x) || x === '--command')); const eq = words.find((x) => x.startsWith('--command=')); if (eq) { result.push(...simpleCommands(eq.slice(10), cwd, depth + 1).map((x) => ({ ...x, env: { ...env, ...x.env } }))); words.length = 0; break; } if (ci !== -1 && words[ci + 1] !== undefined) { result.push(...simpleCommands(words[ci + 1], cwd, depth + 1).map((x) => ({ ...x, env: { ...env, ...x.env } }))); words.length = 0; break; } }
       if (w === 'env') { words.shift(); while (words.length && (words[0].startsWith('-') || ENV_WORD.test(words[0]))) { const x = words.shift(); if (ENV_WORD.test(x)) { const [k, ...v] = x.split('='); env[k] = v.join('='); } } continue; }
       if (w === 'timeout') { words.shift(); while (words[0]?.startsWith('-')) words.shift(); words.shift(); continue; }
-      if (w === 'xargs') { words.shift(); while (words[0]?.startsWith('-')) { const f = words.shift(); if (/^-[IdLnPsE]$/.test(f)) words.shift(); } continue; }
+      if (w === 'xargs') { via.push('xargs'); words.shift(); while (words[0]?.startsWith('-')) { const f = words.shift(); if (/^-[IdLnPsE]$/.test(f)) words.shift(); } continue; }
       // Wrappers that run the rest of the line: a display server, priority, CPU or session.
       if (w === 'xvfb-run') { words.shift(); while (words[0]?.startsWith('-')) { const f = words.shift(); if (/^(-n|-s|-e|-f|-p|-w|--server-num|--server-args|--error-file|--auth-file|--xauth-protocol|--wait)$/.test(f)) words.shift(); } continue; }
       if (w === 'nice') { words.shift(); while (words[0]?.startsWith('-')) { const f = words.shift(); if (f === '-n' || f === '--adjustment') words.shift(); } continue; }
@@ -274,15 +291,16 @@ function simpleCommands(src, baseCwd, depth = 0) {
     if (!words.length) continue;
     const prog = words[0].split('/').at(-1);
     // Nested shells are read again.
-    if ((prog === 'bash' || prog === 'sh' || prog === 'zsh') && depth < 4) {
-      const ci = words.indexOf('-c');
-      if (ci !== -1 && words[ci + 1] !== undefined) { result.push(...simpleCommands(words[ci + 1], cwd, depth + 1)); continue; }
-      if (c.heredoc !== null && words.length === 1) { result.push(...simpleCommands(c.heredoc, cwd, depth + 1)); continue; }
+    if (SHELLS.has(prog) && depth < 4) {
+      const ci = shellCFlag(words);
+      const inner = (text) => simpleCommands(text, cwd, depth + 1).map((x) => ({ ...x, via: [...via, ...(x.via ?? [])] }));
+      if (ci !== -1 && words[ci + 1] !== undefined) { result.push(...inner(words[ci + 1])); continue; }
+      if (c.heredoc !== null && words.length === 1) { result.push(...inner(c.heredoc)); continue; }
     }
     if (prog === 'eval' && depth < 4) { result.push(...simpleCommands(words.slice(1).join(' '), cwd, depth + 1)); continue; }
     if (prog === 'cd' && !c.nested) { const to = words[1]; if (to && !to.startsWith('-')) cwd = isAbsolute(to) ? to : resolve(cwd, to.replace(/^~(?=\/|$)/, process.env.HOME ?? '~')); continue; }
     if (prog === 'export' && !c.nested) { for (const w of words.slice(1)) if (ENV_WORD.test(w)) { const [k, ...v] = w.split('='); exported[k] = v.join('='); } continue; }
-    result.push({ prog, path: words[0], args: words.slice(1), env, cwd, heredoc: c.heredoc });
+    result.push({ prog, path: words[0], args: words.slice(1), env, cwd, heredoc: c.heredoc, writes: c.redirects ?? [], via });
   }
   return result;
 }
@@ -373,38 +391,52 @@ function flagValues(args, names) {
   return out;
 }
 const hasFlag = (args, names) => args.some((w) => names.some((n) => w === n || (n.startsWith('--') && w.startsWith(n + '='))));
-// gh api: method, path and fields.
+// gh api: method, path and fields. Every way gh spells a field is read: -f, -F, --field and
+// --raw-field, with a space, with =, or joined (-fk=v); --input and --input=. A call with
+// fields or an input and no -X is a POST. The path has its query and trailing slash taken off.
+const FIELD_FLAGS = new Set(['-f', '-F', '--field', '--raw-field']);
+const normPath = (p) => String(p ?? '').replace(/^https?:\/\/api\.github\.com\//i, '').replace(/^\//, '').replace(/[?#].*$/, '').replace(/\/+$/, '');
 function ghApi(cmd, config = {}) {
   const { sub, rest } = ghParts(cmd);
   if (sub !== 'api') return null;
   let path = null, method = null;
   const fields = {};
   let input = null;
+  const addField = (kv) => { const k = kv.split('=')[0]; fields[k] = kv.slice(k.length + 1); };
   for (let i = 0; i < rest.length; i++) {
     const w = rest[i];
     if (w === '-X' || w === '--method') { method = (rest[++i] ?? '').toUpperCase(); continue; }
     if (w.startsWith('--method=')) { method = w.slice(9).toUpperCase(); continue; }
     if (w.startsWith('-X') && w.length > 2) { method = w.slice(2).toUpperCase(); continue; }
-    if (['-f', '-F', '--field', '--raw-field'].includes(w)) { const kv = rest[++i] ?? ''; const k = kv.split('=')[0]; fields[k] = kv.slice(k.length + 1); continue; }
+    if (FIELD_FLAGS.has(w)) { addField(rest[++i] ?? ''); continue; }
+    if (/^--(field|raw-field)=/.test(w)) { addField(w.slice(w.indexOf('=') + 1)); continue; }
+    if (/^-[fF]./.test(w)) { addField(w.slice(2).replace(/^=/, '')); continue; }
     if (w === '--input') { input = rest[++i]; continue; }
+    if (w.startsWith('--input=')) { input = w.slice(8); continue; }
     if (['-H', '--header', '-q', '--jq', '-t', '--template', '--cache', '--hostname', '-p', '--preview'].includes(w)) { i++; continue; }
-    if (!w.startsWith('-') && path === null) path = w.replace(/^https?:\/\/api\.github\.com\//i, '').replace(/^\//, '');
+    if (!w.startsWith('-') && path === null) path = w;
   }
+  path = path === null ? null : normPath(path);
   // gh fills {owner}/{repo} from GH_REPO or this folder's repo: judge the path as that repo's.
   if (path && /^repos\/(?:\{owner\}|:owner)\/(?:\{repo\}|:repo)(?=\/|$)/.test(path)) {
     const slug = ghParts(cmd).repo ?? repoSlug(config, cmd.cwd);
     if (slug) path = path.replace(/^repos\/[^/]+\/[^/]+/, `repos/${slug}`);
   }
+  // A body or input file is read before the command runs. One that is not there yet, or
+  // that an earlier part of the same command writes, cannot be judged: it is reported.
+  const files = [];
+  if (input && input !== '-') files.push(resolve(cmd.cwd, input));
   if (input) {
     const text = input === '-' ? cmd.heredoc : readText(resolve(cmd.cwd, input));
     try { Object.assign(fields, JSON.parse(text ?? '')); } catch { /* not JSON */ }
   }
   for (const [k, v] of Object.entries(fields)) if (typeof v === 'string' && v.startsWith('@')) {
     const t = v === '@-' ? cmd.heredoc : readText(resolve(cmd.cwd, v.slice(1)));
-    if (t !== null && t !== undefined) fields[k] = t;
+    if (v !== '@-') files.push(resolve(cmd.cwd, v.slice(1)));
+    if (t !== null && t !== undefined) fields[k] = t; else fields[k] = null;
   }
   if (!method) method = Object.keys(fields).length || input ? 'POST' : 'GET';
-  return { path: path ?? '', method, fields };
+  return { path: path ?? '', method, fields, files };
 }
 
 // ---------- refusals ----------
@@ -623,7 +655,7 @@ function checkBypassFlags(cmd, config, deny) {
   if (hasFlag(cmd.args, ['--passWithNoTests', '--pass-with-no-tests'])) deny(refusal(rule, `${cmd.prog} --passWithNoTests`, 'run the tests that exist; a run with no tests is a failure'));
   if (RUNNERS.test(cmd.prog)) {
     const n = flagValues(cmd.args, ['--retries', '--retry']).map(Number).find((x) => x > 0);
-    if (n) deny(refusal(rule, `${cmd.prog} --retries ${n}`, 'run once; a test that passes only on retry is a flaky-test defect to record in history.md'));
+    if (n) deny(refusal(rule, `${cmd.prog} --retries ${n}`, 'run once; a test that passes only on retry is a flaky-test defect to record in progress.md'));
   }
 }
 
@@ -837,39 +869,57 @@ function ruleMixFiles(files, config, deny) {
 function judgeBody(body, config, allowFooter) {
   const want = prLastLineOf(config);
   let text = String(body ?? '');
-  if (allowFooter) text = stripFooter(text);
+  if (allowFooter) text = stripFooter(text, config.prBody?.proxyFooter);
   const problems = [];
   const hits = attributionHits(text, config);
   if (hits.length) problems.push(`it has the line "${hits[0].trim()}"`);
   if (want && !lastLine(text).endsWith(want)) problems.push(`its last line is "${lastLine(text).slice(0, 80)}", not "${want}"`);
   return problems;
 }
-function stripFooter(body) {
-  const ls = body.split('\n');
-  let i = ls.length - 1, generated = 0;
-  const gen = /^[\s>*_]*(?:🤖\s*)?Generated (?:by|with)\b/;
-  for (; i >= 0; i--) {
-    const l = ls[i].trim();
-    if (l === '' || l.startsWith('https://claude.ai/code/session_')) continue;
-    if (gen.test(l)) generated++; else break;
-  }
-  if (!generated || i < 0 || ls[i].trim() !== '---') return body;
-  return ls.slice(0, i).join('\n').trimEnd();
+// The cloud proxy appends one exact two-line block to every body written through it
+// (rules.json, prBody.proxyFooter). Only that exact block, once, at the very end, is taken
+// off; any other "Generated by" line is still a violation.
+function stripFooter(body, footer) {
+  if (!footer) return body;
+  const text = String(body).replace(/\s+$/, '');
+  const f = String(footer).replace(/\s+$/, '');
+  if (text === f) return '';
+  return text.endsWith('\n' + f) ? text.slice(0, text.length - f.length).trimEnd() : text;
 }
 const PR_RULE = 'Pull request bodies end with the owner\'s "Requested by" line and carry no Claude attribution (CLAUDE.md, Identity; release).';
-function checkPrBodyBash(cmd, config, deny) {
+// A body file is read before the command runs. One that is not there yet, or that an earlier
+// part of the same command writes, cannot be judged, so it is refused (never read as the literal "@path").
+function bodyFileProblem(files, ctx) {
+  for (const f of files) {
+    if (ctx.written?.has(f)) return `the body file ${f} is written earlier in the same command, so what is judged is not what is sent`;
+    if (readText(f) === null) return `the body file ${f} is not there yet`;
+  }
+  return null;
+}
+const OWN_CALL = 'write the body file in its own call first, then run this command';
+const bodyFilesOf = (cmd, a) => {
+  const out = flagValues(a, ['--body-file', '-F']).filter((f) => f !== '-').map((f) => resolve(cmd.cwd, f));
+  for (const d of flagValues(a, ['--body', '-b'])) { const m = /^\s*\$\(\s*cat\s+(['"]?)([^'"()\s]+)\1\s*\)\s*$/.exec(d); if (m) out.push(resolve(cmd.cwd, m[2])); }
+  return out;
+};
+function checkPrBodyBash(cmd, config, deny, ctx = {}) {
   if (cmd.prog !== 'gh' || !on(config, 'prBody')) return;
   const p = ghParts(cmd);
   let body;
   if (p.sub === 'pr' && (p.sub2 === 'create' || p.sub2 === 'edit')) {
     const a = p.rest.slice(1);
-    const given = flagValues(a, ['--body', '-b', '--body-file', '-F']).length > 0;
+    const given = flagValues(a, ['--body', '--body-file', '-b', '-F']).length > 0;
+    const problem = bodyFileProblem(bodyFilesOf(cmd, a), ctx);
+    if (problem) { deny(refusal(PR_RULE, problem, OWN_CALL)); return; }
     if (given) body = ghBody(cmd, a);
     else if (p.sub2 === 'create') { deny(refusal(PR_RULE, hasFlag(a, ['--fill', '--fill-first', '--fill-verbose', '-f']) ? 'gh pr create --fill (the body would come from commit messages)' : 'gh pr create with no body', 'write the body to a file and pass --body-file <file>')); return; }
     else return;
   } else {
     const api = ghApi(cmd, config);
-    if (!api || !/pulls(\/\d+)?$/.test(api.path) || api.method === 'GET' || api.fields.body === undefined) return;
+    if (!api || !/pulls(\/\d+)?$/.test(api.path) || api.method === 'GET') return;
+    const problem = bodyFileProblem(api.files, ctx);
+    if (problem) { deny(refusal(PR_RULE, problem, OWN_CALL)); return; }
+    if (api.fields.body === undefined) return;
     body = api.fields.body;
   }
   if (body === null || body === undefined || /\$\{?[A-Za-z_(]|`/.test(body)) return; // cannot resolve: prBodyVerify judges the result
@@ -880,61 +930,22 @@ function checkPrBodyBash(cmd, config, deny) {
 // The pull request flow (release): a lane in the body, acceptance criteria for a change
 // that is not only docs, a draft until the lane's reviews are done, an open-PR limit,
 // and, for lane 2 and 3, a passing review that names the head commit before ready or merge.
-const LANE = /\blane\s*([123])\b/gi;
-const laneOf = (body) => { const all = [...String(body ?? '').matchAll(LANE)].map((m) => Number(m[1])); return all.length ? Math.max(...all) : null; }; // the highest lane named wins
-// A verdict is a comment or review whose first line starts with a commit (7+ hex
-// characters) followed by PASS or FAIL, e.g. "79ef366 FAIL: 5 red" or "**abc1234 PASS**".
-function verdicts(items, f) {
-  const pass = new RegExp(f.passPattern ?? '^(PASS|PASSED)$');
-  const fail = new RegExp(f.failPattern ?? '^(FAIL|FAILED)$');
-  const out = [];
-  for (const c of items) {
-    const raw = String(c.body ?? '').split('\n').map((l) => l.trim()).find(Boolean) ?? '';
-    if (raw.startsWith('>')) continue; // a quote is not a verdict
-    const first = raw.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1'); // [abc1234](link) reads as abc1234
-    const m = /^[^0-9a-z>]*([0-9a-f]{7,40})\b(.*)$/i.exec(first);
-    if (!m) continue;
-    // Strict: the first word after the commit, before any number, is the verdict, and it
-    // must be exactly PASS/PASSED or FAIL/FAILED ("abc1234 PASS: 0 failed" passes). Anything
-    // else ("abc1234: 828 passed", "abc1234: tests PASS", "abc1234: 0 failed") is a status
-    // line, not a verdict, so it neither clears a FAIL nor blocks a PASS.
-    const word = (/^[^A-Za-z0-9]*([A-Za-z]+)/.exec(m[2]) ?? [])[1] ?? '';
-    const verdict = fail.test(word) ? 'fail' : pass.test(word) ? 'pass' : null;
-    if (verdict) out.push({ sha: m[1].slice(0, 7).toLowerCase(), verdict, at: c.submitted_at ?? c.created_at ?? '' });
-  }
-  return out.sort((a, b) => String(a.at).localeCompare(String(b.at)));
-}
-// Commits between a reviewed commit and the head that are only clean merges of the
-// default branch keep the review (release: "a clean merge of current main keeps the review").
-function onlyCleanMerges(config, cwd, from, head) {
-  if (git(cwd, ['merge-base', '--is-ancestor', from, head]).ok !== true) return false;
-  const r = git(cwd, ['rev-list', '--parents', `${from}..${head}`, '--not', `origin/${defaultBranch(config)}`]);
-  if (!r.ok) return false;
-  for (const line of r.out.split('\n').filter(Boolean)) {
-    const [c, p1, p2, ...more] = line.split(' ');
-    if (!p2 || more.length) return false;
-    const fromMain = git(cwd, ['merge-base', '--is-ancestor', p2, `origin/${defaultBranch(config)}`]).ok;
-    const merged = git(cwd, ['merge-tree', '--write-tree', p1, p2]);
-    const tree = git(cwd, ['rev-parse', `${c}^{tree}`]);
-    if (!fromMain || !merged.ok || !tree.ok || merged.out.split('\n')[0] !== tree.out) return false;
-  }
-  return true;
-}
 const FLOW_RULE = 'Pull requests follow release: the body names the lane and the acceptance criteria, it opens as a draft, and a lane 2 or 3 pull request is marked ready or merged only after a passing review that names its head commit.';
 function changesBeyondDocs(config, cwd) {
   const r = git(cwd, ['diff', '--name-only', `origin/${defaultBranch(config)}...HEAD`]);
   if (!r.ok) return true;
-  const docs = config.ruleMix?.docPaths ?? ['docs/**', '*.md', '**/*.md', '.claude/**'];
-  return r.out.split('\n').filter(Boolean).some((f) => !matchesAny(f, docs));
+  return beyondDocs(r.out.split('\n').filter(Boolean), config.ruleMix?.docPaths);
 }
-// A branch that changes only rules files and docs (the owner's rule requests keep their
-// own pull requests) is not held back by the open pull request limit.
-function onlyRulesAndDocs(config, cwd) {
-  const r = git(cwd, ['diff', '--name-only', `origin/${defaultBranch(config)}...HEAD`]);
-  if (!r.ok) return false;
-  const files = r.out.split('\n').filter(Boolean);
-  const keep = [...(config.ruleMix?.rulePaths ?? []), ...(config.ruleMix?.docPaths ?? ['docs/**', '*.md', '**/*.md'])];
-  return files.length > 0 && files.every((x) => matchesAny(x, keep) && !x.startsWith('.claude/hooks/') && x !== '.claude/settings.json' && !x.startsWith('.github/'));
+// Every page of a list read through gh api, to the last; null when any page cannot be read.
+function ghPages(path, cwd) {
+  const out = [];
+  for (let page = 1; page <= 30; page++) {
+    const got = ghJson(`${path}${path.includes('?') ? '&' : '?'}per_page=100&page=${page}`, cwd);
+    if (!Array.isArray(got)) return null;
+    out.push(...got);
+    if (got.length < 100) return out;
+  }
+  return null;
 }
 function checkPrCreate(config, cwd, repo, body, draft, deny) {
   const f = config.prFlow;
@@ -942,14 +953,18 @@ function checkPrCreate(config, cwd, repo, body, draft, deny) {
   const known = body !== null && body !== undefined && !/\$\{?[A-Za-z_(]|`/.test(body);
   const lane = known ? laneOf(body) : null;
   if (known && f.requireLane !== false && !lane) { deny(refusal(FLOW_RULE, 'the body names no lane', 'add a "## Lane" section that says "Lane 1", "Lane 2" or "Lane 3" and why')); return; }
-  if (known && f.requireCriteria !== false && !/acceptance criteria/i.test(body) && changesBeyondDocs(config, cwd)) deny(refusal(FLOW_RULE, 'the body has no acceptance criteria and the branch changes more than docs', 'add an "## Acceptance criteria" section: what done looks like, as checks a program or a person can observe (build)'));
+  if (known && f.requireCriteria !== false && !hasCriteria(body) && changesBeyondDocs(config, cwd)) deny(refusal(FLOW_RULE, 'the body has no "Acceptance criteria" heading and the branch changes more than docs', 'add an "## Acceptance criteria" section: what done looks like, as checks a program or a person can observe (build)'));
   if (f.draft !== false && !draft) {
     const info = repo ? ghJson(`repos/${repo}`, cwd) : null;
     if (!(lane === 1 && info?.private === true)) deny(refusal(FLOW_RULE, `lane ${lane ?? '(unread)'} pull request opened ready${lane === 1 ? ' on a repo that is not known to be private' : ''}`, 'open it as a draft (gh pr create --draft, or draft: true)'));
   }
-  if (f.maxOpenPrs && repo && !onlyRulesAndDocs(config, cwd)) {
-    const open = ghJson(`repos/${repo}/pulls?state=open&per_page=100`, cwd);
-    if (Array.isArray(open) && open.length >= f.maxOpenPrs) deny(refusal(`Pull requests open: ${f.maxOpenPrs} at most (CLAUDE.md, Settings).`, `${open.length} are open now (${open.slice(0, 5).map((x) => `#${x.number}`).join(', ')})`, 'merge or close one first, or report to the coordinator and wait for a free place'));
+  // Every pull request from this repo's own branches counts, docs included; forks never do.
+  // A count that cannot be read refuses the create.
+  if (f.maxOpenPrs && repo) {
+    const all = ghPages(`repos/${repo}/pulls?state=open`, cwd);
+    if (!all) { deny(refusal(`Pull requests open: ${f.maxOpenPrs} at most (CLAUDE.md, Settings).`, 'the list of open pull requests could not be read', 'read it yourself (gh pr list) and open the pull request only when fewer than the limit are open')); return; }
+    const open = byCreation(ownBranchPrs(all, repo));
+    if (open.length >= f.maxOpenPrs) deny(refusal(`Pull requests open: ${f.maxOpenPrs} at most (CLAUDE.md, Settings).`, `${open.length} are open now (${open.slice(0, 5).map((x) => `#${x.number}`).join(', ')})`, 'merge or close one first, or report to the coordinator and wait for a free place'));
   }
 }
 // The lane of a pull request's files (CLAUDE.md, Risk: the highest lane wins). Every page
@@ -957,24 +972,9 @@ function checkPrCreate(config, cwd, repo, body, draft, deny) {
 function laneOfFiles(config, cwd, repo, n, pr) {
   const paths = config.prFlow?.lanePaths;
   if (!paths) return null;
-  const except3 = config.prFlow?.lanePathsExcept?.['3'] ?? [];
-  const files = [];
-  for (let page = 1; page <= 30; page++) {
-    const got = ghJson(`repos/${repo}/pulls/${n}/files?per_page=100&page=${page}`, cwd);
-    if (!Array.isArray(got)) return 3;
-    files.push(...got);
-    if (got.length < 100) break;
-  }
-  if (files.length !== pr.changed_files) return 3;
-  let lane = 1;
-  for (const f of files) {
-    for (const name of [f.filename, f.previous_filename]) {
-      if (!name) continue;
-      if (matchesAny(name, paths['3']) && !matchesAny(name, except3)) return 3;
-      if (matchesAny(name, paths['2'])) lane = 2;
-    }
-  }
-  return lane;
+  const files = ghPages(`repos/${repo}/pulls/${n}/files`, cwd);
+  if (!files || files.length !== pr.changed_files) return 3;
+  return laneOfNames(files.flatMap((x) => [x.filename, x.previous_filename]), paths, config.prFlow?.lanePathsExcept?.['3'] ?? []);
 }
 const PIN_RULE = 'A merge lands only on the head commit that was checked (release; the merge permission rule).';
 // pin: { sha } makes a merge name the head it was checked on (expectedHeadSha); it holds
@@ -998,16 +998,12 @@ function checkReviewed(config, cwd, repo, number, what, deny, pin = null) {
   lane = Math.max(lane, laneOfFiles(config, cwd, repo, n, pr) ?? 0);
   if (lane < 2) return;
   const sha = String(pr.head?.sha ?? '').slice(0, 7);
-  const comments = ghJson(`repos/${repo}/issues/${n}/comments?per_page=100`, cwd) ?? [];
-  const reviews = ghJson(`repos/${repo}/pulls/${n}/reviews?per_page=100`, cwd) ?? [];
+  const comments = ghPages(`repos/${repo}/issues/${n}/comments`, cwd) ?? [];
+  const reviews = ghPages(`repos/${repo}/pulls/${n}/reviews`, cwd) ?? [];
   // The latest verdict on a commit stands; a passing one covers the head when it is the
-  // head or only clean merges of the default branch lie between them.
-  // Every verdict on a commit that is the head, or reaches it through clean merges of the
-  // default branch only, counts; the newest of them decides.
-  const reaches = new Map();
-  const covers = (at) => { if (!reaches.has(at)) reaches.set(at, at === sha || onlyCleanMerges(config, cwd, at, pr.head.sha)); return reaches.get(at); };
-  const counted = verdicts([...comments, ...reviews], f).filter((v) => sha && covers(v.sha));
-  const ok = counted.length > 0 && counted.at(-1).verdict === 'pass';
+  // head or only clean merges of the default branch lie between them. Only the owner's
+  // account writes verdicts that count (rules.json, prFlow.verdictAuthor).
+  const { ok } = reviewPasses([...comments, ...reviews], f, pr.head.sha, (at) => onlyCleanMerges(cwd, at, pr.head.sha, defaultBranch(config)));
   if (!ok) deny(refusal(FLOW_RULE, `${what}: lane ${lane} pull request #${n} has no passing review that names its head ${sha}`, `have the coordinator start the ${lane === 3 ? 'implementation audit' : 'fresh review'} of ${sha}; it posts its verdict on the pull request with "${sha} PASS" or "${sha} FAIL" as the first line`));
 }
 
@@ -1089,12 +1085,61 @@ function checkPrFlowBash(cmd, config, deny) {
   }
   const api = ghApi(cmd, config);
   if (!api) return;
+  const made = /^repos\/([^/]+\/[^/]+)\/pulls$/.exec(api.path);
+  if (made && api.method === 'POST') { checkPrCreate(config, cmd.cwd, made[1], typeof api.fields.body === 'string' ? api.fields.body : null, String(api.fields.draft) === 'true', deny); return; }
   const m = /repos\/([^/]+\/[^/]+)\/pulls\/(\d+)\/(merge|ccr\/ready_for_review|ccr\/auto_merge)$/.exec(api.path);
   if (m && api.method !== 'GET' && api.method !== 'DELETE') {
     checkLiveState(config, cmd.cwd, m[1], m[2], `gh api ${m[3]}`, deny);
     checkReviewed(config, cmd.cwd, m[1], m[2], `gh api ${m[3]}`, deny);
     if (m[3] === 'merge') checkMergeGreen(config, cmd.cwd, m[1], m[2], deny);
   }
+}
+
+// ---------- the allowlist: pull request and repository writes go through plain gh or the MCP tools ----------
+// The hook cannot read every command a shell can build, so it keeps the honest routes fast and refuses
+// the odd ones it can see. What it cannot see is caught on GitHub's side by pr-rules. This list is a
+// floor, not a closed set of command shapes.
+const NET_CLIENTS = new Set(['curl', 'wget', 'http', 'https', 'httpie', 'xh', 'nc', 'ncat', 'socat', 'aria2c']);
+const INTERPRETERS = new Set(['python', 'python2', 'python3', 'node', 'nodejs', 'deno', 'bun', 'perl', 'ruby', 'php', 'lua', 'pwsh', 'powershell', 'osascript']);
+// Programs that run the words after them as a command the hook sees only as arguments.
+const RUNS_ARGS = new Set(['find', 'parallel', 'watch', 'xargs', 'entr', 'at', 'batch', 'su', 'runuser', 'sg', 'systemd-run', 'busybox', 'strace', 'ltrace', 'nsenter', 'unshare', 'chroot', 'ssh', 'rlwrap', 'chronic', 'cronic', 'dtach', 'tmux', 'screen', '{', 'function']);
+const GH_WORD = /(?<![\w./-])gh(?![\w-])/;
+const LAUNCHES_OR_REQUESTS = /\b(subprocess|os\.system|os\.popen|[Pp]open\d?|exec(?:Sync|File|FileSync|v|vp|le|lp)?|spawn(?:Sync)?|child_process|system|shell_exec|passthru|check_output|check_call|Open3|execa|urlopen|requests\.(?:post|put|patch|delete|request)|urllib|fetch|https?\.request|Net::HTTP|HTTParty|curl)\b|`/;
+const GH_SUBCOMMAND =/\b(pr|api|alias|workflow|ruleset|repo|issue|release|run)\b/;
+const looksLikeWrite = (prog, args) => {
+  if (prog === 'curl') return args.some((a, i) => /^(-X|--request)$/.test(a) ? !/^(GET|HEAD)$/i.test(args[i + 1] ?? '') : /^(-X|--request=)/.test(a) ? !/^(GET|HEAD)$/i.test(a.replace(/^(-X|--request=)/, '')) : /^(-d|--data|--data-\w+|--json|-F|--form|--form-string|-T|--upload-file)(=|$)/.test(a) || /^-d./.test(a));
+  if (prog === 'wget') return args.some((a) => /^--(post-data|post-file|body-data|body-file)(=|$)/.test(a) || (/^--method=/.test(a) && !/^--method=(GET|HEAD)$/i.test(a)));
+  if (prog === 'http' || prog === 'https' || prog === 'httpie' || prog === 'xh') return args.some((a) => /^(POST|PUT|PATCH|DELETE)$/i.test(a) || /^[\w.-]+(:?=)[^=]/.test(a));
+  return true;
+};
+const isRead = (api) => api.method === 'GET' || api.method === 'HEAD';
+function checkPrRoutes(cmd, config, deny) {
+  if (!on(config, 'prRoutes')) return;
+  const rule = 'Pull request and repository writes go through plain gh or the GitHub MCP tools, which the hooks check (CLAUDE.md, Hooks).';
+  const instead = 'use gh directly, or the GitHub MCP tools';
+  const text = [...cmd.args, cmd.heredoc ?? ''].join('\n');
+  if (cmd.prog !== 'gh') {
+    if (/^\$\{?\w+\}?$/.test(cmd.path) || cmd.path.startsWith('$(') || cmd.path.startsWith('`')) { deny(refusal(rule, `the program word ${cmd.path} is a variable or a substitution, so the command cannot be read`, instead)); return; }
+    if (NET_CLIENTS.has(cmd.prog) && /api\.github\.com/i.test(text) && looksLikeWrite(cmd.prog, cmd.args)) { deny(refusal(rule, `${cmd.prog} writes to api.github.com`, instead)); return; }
+    // An inline or heredoc script is refused when it launches gh (a process-launching call beside gh and one of its
+    // subcommands) or names api.github.com beside a request call. A script that only edits a file holding such text is not.
+    if (INTERPRETERS.has(cmd.prog) && ((/api\.github\.com/i.test(text) && LAUNCHES_OR_REQUESTS.test(text)) || (GH_WORD.test(text) && GH_SUBCOMMAND.test(text) && LAUNCHES_OR_REQUESTS.test(text)))) { deny(refusal(rule, `${cmd.prog} runs a script that calls gh or api.github.com`, instead)); return; }
+    if (RUNS_ARGS.has(cmd.prog) && cmd.args.some((a) => a === 'gh' || /^gh\s/.test(a))) { deny(refusal(rule, `gh is run from the arguments of ${cmd.prog}`, instead)); return; }
+    return;
+  }
+  if (cmd.via?.includes('xargs')) { deny(refusal(rule, 'gh is run by xargs, whose arguments come from input the hook cannot see', instead)); return; }
+  const p = ghParts(cmd);
+  if (p.sub === 'alias' && ['set', 'import'].includes(p.sub2)) { deny(refusal(rule, `gh alias ${p.sub2} (an alias hides what a later command does)`, instead)); return; }
+  if (p.sub === 'pr' && p.sub2 === 'revert') { deny(refusal(rule, 'gh pr revert (it opens a pull request the hooks do not read)', 'git revert, then open the pull request with gh pr create')); return; }
+  if (p.sub === 'workflow' && ['disable', 'enable'].includes(p.sub2)) { deny(refusal(rule, `gh workflow ${p.sub2} changes a repository setting`, 'ask the owner')); return; }
+  if (p.sub === 'ruleset' && !['list', 'view', 'check'].includes(p.sub2)) { deny(refusal(rule, `gh ruleset ${p.sub2 ?? ''} changes a repository setting`.trim(), 'ask the owner')); return; }
+  if (p.sub === 'repo' && p.sub2 === 'edit') { deny(refusal(rule, 'gh repo edit changes a repository setting', 'ask the owner')); return; }
+  const api = ghApi(cmd, config);
+  if (!api) return;
+  if (api.path === 'graphql' && /\bmutation\b/i.test([...Object.values(api.fields), cmd.heredoc ?? ''].filter((v) => typeof v === 'string').join('\n'))) { deny(refusal(rule, 'gh api graphql with a mutation', 'gh pr ... or the GitHub MCP tools')); return; }
+  if (isRead(api)) return;
+  if (/^repos\/[^/]+\/[^/]+\/(statuses\/|check-runs|check-suites)/.test(api.path)) { deny(refusal(rule, `gh api ${api.method} ${api.path}: a session never writes a status or a check (pr-rules writes its own)`, 'wait for the checks GitHub runs')); return; }
+  if (/^repos\/[^/]+\/[^/]+\/(branches\/.+\/protection|rulesets|actions\/permissions|actions\/workflows\/[^/]+\/(disable|enable))(\/|$)/.test(api.path) || /^repos\/[^/]+\/[^/]+$/.test(api.path)) deny(refusal(rule, `gh api ${api.method} ${api.path} changes a repository setting`, 'ask the owner: what is required on main is the owner\'s choice'));
 }
 
 // ---------- the checks: files written ----------
@@ -1174,17 +1219,12 @@ function checkMcp(name, input, config, root, deny, ctx) {
     const problems = judgeBody(input.body, config, false);
     if (problems.length) deny(refusal(PR_RULE, `the body: ${problems.join('; ')}`, `end the body with "${prLastLineOf(config)}" on its own last line`));
   }
-  // Commands handed to the owner.
+  // Commands handed to the owner: the strings of the call and each attached file are read.
   for (const t of config.ownerCommands?.tools ?? []) {
     if (config.ownerCommands.enabled === false || !new RegExp(t.tool).test(name)) continue;
-    const text = (t.fields ?? ['text']).map((f) => rel(input[f])).join('\n');
-    let fenced = false;
-    for (const l of lines(text)) {
-      if (/^\s*(```|~~~)/.test(l)) { fenced = !fenced; continue; }
-      if (!fenced) continue;
-      const s = l.trim().replace(/^\$\s+/, '');
-      if (/^git\s/.test(s)) { deny(refusal('Every command handed to the owner uses gh, never plain git (Owner).', `"${s.slice(0, 80)}"`, 'the gh equivalent (gh repo clone, gh pr checkout, gh api ...)')); break; }
-      if (/\bgh api\b/.test(s) && !/^GH_PAGER=cat\s/.test(s)) { deny(refusal('Every gh api command handed to the owner starts with GH_PAGER=cat (Owner).', `"${s.slice(0, 80)}"`, `GH_PAGER=cat ${s}`)); break; }
+    for (const text of ownerTexts(input)) {
+      const found = ownerCommandProblem(text);
+      if (found) { deny(found); break; }
     }
   }
   // Session tools: effort cap, model and effort named, the full rule list in the brief.
@@ -1207,6 +1247,46 @@ function checkMcp(name, input, config, root, deny, ctx) {
   }
 }
 
+// Every string in a call's input (arrays and objects walked), then the first 256 KB of each attached file.
+function ownerTexts(input) {
+  const out = [];
+  const walk = (v, depth) => { if (depth > 8) return; if (typeof v === 'string') out.push(v); else if (Array.isArray(v)) v.forEach((x) => walk(x, depth + 1)); else if (v && typeof v === 'object') Object.values(v).forEach((x) => walk(x, depth + 1)); };
+  walk(input, 0);
+  for (const f of Array.isArray(input?.attached_outputs) ? input.attached_outputs : []) {
+    if (f?.kind !== 'file' || typeof f.ref !== 'string') continue;
+    try { const fd = openSync(f.ref, 'r'); try { const buf = Buffer.alloc(256 * 1024); const n = readSync(fd, buf, 0, buf.length, 0); out.push(buf.subarray(0, n).toString('utf8')); } finally { closeSync(fd); } } catch { /* an unreadable file is not judged */ }
+  }
+  return out;
+}
+// A pull request write named in a command the owner is handed (the owner's account is not where a
+// session's pull requests are written), in a fenced block or inline code, never in plain prose.
+function prWriteIn(command) {
+  for (const c of simpleCommands(command.trim().replace(/^\$\s+/, ''), process.cwd())) {
+    if (c.prog !== 'gh') continue;
+    const p = ghParts(c);
+    if (p.sub === 'pr' && ['create', 'edit', 'ready', 'merge', 'close', 'reopen'].includes(p.sub2)) return `gh pr ${p.sub2}`;
+    const api = ghApi(c);
+    if (api && api.method !== 'GET' && /^(repos\/[^/]+\/[^/]+\/(pulls|issues)(\/|$)|graphql$)/.test(api.path)) return `gh api ${api.method} ${api.path}`;
+  }
+  return null;
+}
+function ownerCommandProblem(text) {
+  let fenced = false;
+  const prRefusal = (s, what) => refusal('A pull request is written by the session that owns it, never handed to the owner (the proxy footer no longer needs the owner: CLAUDE.md, Hooks).', `"${s.slice(0, 80)}" (${what})`, 'run it yourself');
+  for (const l of lines(text)) {
+    if (/^\s*(```|~~~)/.test(l)) { fenced = !fenced; continue; }
+    if (!fenced) {
+      for (const m of l.matchAll(/`([^`\n]+)`/g)) { const w = prWriteIn(m[1]); if (w) return prRefusal(m[1], w); }
+      continue;
+    }
+    const s = l.trim().replace(/^\$\s+/, '');
+    const w = prWriteIn(s);
+    if (w) return prRefusal(s, w);
+    if (/^git\s/.test(s)) return refusal('Every command handed to the owner uses gh, never plain git (Owner).', `"${s.slice(0, 80)}"`, 'the gh equivalent (gh repo clone, gh pr checkout, gh api ...)');
+    if (/\bgh api\b/.test(s) && !/^GH_PAGER=cat\s/.test(s)) return refusal('Every gh api command handed to the owner starts with GH_PAGER=cat (Owner).', `"${s.slice(0, 80)}"`, `GH_PAGER=cat ${s}`);
+  }
+  return null;
+}
 const ruleLine = (r) => (typeof r === 'object' && r ? `[${r.id}] ${r.text}` : String(r));
 
 // ---------- events ----------
@@ -1302,7 +1382,9 @@ function postToolUse(root, config, input) {
         if (hits.length) problems.push(`Commit ${sha} carries "${hits[0].trim()}". Reword it before pushing (git commit --amend).`);
       }
     }
-    const prCall = cmds.find((c) => c.prog === 'gh' && ((ghParts(c).sub === 'pr' && ['create', 'edit'].includes(ghParts(c).sub2)) || /pulls(\/\d+)?$/.test(ghApi(c)?.path ?? '')));
+    // Only a write is reported: a read of a pull request (a GET) says nothing about a body just written.
+    const isPrWrite = (c) => { const a = ghApi(c); return !!a && a.method !== 'GET' && /pulls(\/\d+)?$/.test(a.path); };
+    const prCall = cmds.find((c) => c.prog === 'gh' && ((ghParts(c).sub === 'pr' && ['create', 'edit'].includes(ghParts(c).sub2)) || isPrWrite(c)));
     const pScope = prCall ? scopeFor(root, config, prCall.cwd, ghParts(prCall).repo) : null;
     if (prCall && pScope && on(pScope.config, 'prBodyVerify') && pScope.config.prBodyVerify?.enabled !== false) {
       const p = ghParts(prCall);
@@ -1337,12 +1419,18 @@ function preToolUse(root, config, input, ctx) {
   const name = input.tool_name;
   const ti = input.tool_input ?? {};
   if (name === 'Bash') {
+    const written = new Set(); // files an earlier part of this same command writes
     for (const cmd of simpleCommands(String(ti.command ?? ''), input.cwd ?? root)) {
+      const earlier = new Set(written);
+      for (const w of cmd.writes ?? []) written.add(resolve(cmd.cwd, w));
+      if (cmd.prog === 'tee') for (const w of cmd.args.filter((a) => !a.startsWith('-'))) written.add(resolve(cmd.cwd, w));
+      // The allowlist holds for every repo and every program: where a write goes is not scoped to one repo.
+      if (!reasons.length) checkPrRoutes(cmd, base, deny);
       const scope = cmd.prog === 'git' ? scopeFor(root, config, gitParts(cmd).cwd, null) : cmd.prog === 'gh' ? scopeFor(root, config, cmd.cwd, ghParts(cmd).repo) : { root, config: base };
       if (!scope) continue;
       for (const check of [checkIdentity, checkAttribution, checkForcePush, checkDefaultBranchPush, checkMergeMethod, checkBypassFlags, checkGpu, checkBanned, checkHostedRunnersOnPush, checkRuleMix, checkPrBodyBash, checkPrFlowBash]) {
         if (reasons.length) break;
-        check(cmd, scope.config, deny, { ...ctx, root: scope.root });
+        check(cmd, scope.config, deny, { ...ctx, root: scope.root, written: earlier });
       }
     }
   } else if (/^(Write|Edit|MultiEdit)$/.test(name)) {
@@ -1479,7 +1567,7 @@ function installUser() {
 // The tools the merge permission rule allows are never passed unchecked: when the hook cannot
 // run its checks for one of them, it exits 1, and the settings entry for them blocks the call
 // (onFailure: "block"). Every other tool keeps the exit 0 and the notice.
-const GUARDED = /^mcp__github__(merge_pull_request|disable_pr_auto_merge|update_pull_request)$/;
+const GUARDED = /^mcp__github__(merge_pull_request|disable_pr_auto_merge|update_pull_request|create_pull_request)$/;
 let toolInCall;
 function failClosed(why) { process.stderr.write(`rules hook: ${why}; the call is blocked because this check did not run.\n`); process.exit(1); }
 

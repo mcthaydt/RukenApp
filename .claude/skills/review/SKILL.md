@@ -13,6 +13,7 @@ Reviews find problems and change nothing but their own audit file. The implement
 - A review (a model or a person reading the work) is real evidence of a different kind: it finds what no check encodes, such as missing requirements, confusing screens and wrong assumptions. Use both.
 - **The verdict line.** A review or audit of a pull request posts its verdict on the pull request as a comment whose first line is the commit it examined, then PASS or FAIL in capitals: `abc1234 PASS` or `abc1234 FAIL: 2 red`. Markup may wrap them (`**abc1234 PASS**`), but nothing else comes first and no number comes between the commit and the word. Any other comment is a status line and counts for nothing, so a builder's report never starts with the commit followed by PASS or FAIL. The rule hooks read only this line.
 - Review against the acceptance criteria in the brief, plus exploratory checks for what the criteria missed. A gap against a criterion is red; an improvement is a note, kept apart from the blocking defects.
+- **CRUD.** For each thing a user can make that the change adds or touches, find the journey in the browser tests that creates it, reads it back, updates it and deletes it; in a plan audit, find the plan step that writes it. Each one missing is red, unless the owner's recorded choice keeps that thing (CRUD in `build`).
 - A pull request that changes or deletes an existing test, golden or `verify` step names each one and why in its body. Read those first. When it edits `verify`, also run `verify` from `main` (Verification in `build`).
 
 ## Audits
@@ -52,8 +53,8 @@ UNIT: the file or piece the finding is in. VERDICT: red (violates a requirement,
 
 ## Lessons
 
-A confirmed failure gets a regression test first. A lesson is written down only when no test can catch it: one line under "Lessons" in `docs/superpowers/history.md` naming its trigger (the paths, or the kind of change, a diff shows), what to look for and the failure behind it, which the coordinator (or short-path implementer) adds when the work is archived. A merge with nothing to learn leaves none.
+A confirmed failure gets a regression test first. A lesson is written down only when no test can catch it: one line under "Lessons" in `docs/superpowers/progress.md` naming its trigger (the paths, or the kind of change, a diff shows), what to look for and the failure behind it, which the coordinator (or short-path implementer) adds when the work is archived. A merge with nothing to learn leaves none.
 
 ACCEPTED: a pull request sat green and unmerged for hours because the wake that says CI is done never came. DERIVED: watch CI in the foreground. TRIGGER: a session that waits on CI. LOOK FOR: it never ends its turn only to wait. LANDS IN: the plan's brief when its trigger matches.
 
-A lesson lands in the plan's brief when its trigger matches the plan's work, not in a worker's instructions. The retrospective after the slice moves into CLAUDE.md, through its rule-change pull request, only a lesson that holds for every change (one with no narrower trigger), and keeps the rest in `history.md`, pruning them as Verification in `build` says.
+A lesson lands in the plan's brief when its trigger matches the plan's work, not in a worker's instructions. The retrospective after the slice moves into CLAUDE.md, through its rule-change pull request, only a lesson that holds for every change (one with no narrower trigger), and keeps the rest in `progress.md`, pruning them as Verification in `build` says.

@@ -26,6 +26,10 @@
       {
         "matcher": "^mcp__github__(merge_pull_request|disable_pr_auto_merge|update_pull_request)$",
         "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/rules.mjs\"", "timeout": 30, "onFailure": "block" }]
+      },
+      {
+        "matcher": "^mcp__github__create_pull_request$",
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/rules.mjs\"", "timeout": 30, "onFailure": "block" }]
       }
     ],
     "PostToolUse": [

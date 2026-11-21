@@ -95,3 +95,20 @@ export async function setBirthDate(
   if (written.count === 0) throw new AgeError("AGE_ALREADY_SET");
   return { minor: age.kind === "minor" };
 }
+
+/**
+ * Whether a person with this stored 18th birthday is 18 or over today, in Chicago. An unknown age (`null`) is not:
+ * every under-18 rule applies to it, as the schema says.
+ */
+export function isAdultOn(adultOn: Date | null, clock: Clock): boolean {
+  if (adultOn === null) return false;
+  // The DATE column reads back as UTC midnight of that day, so its ISO date is the day itself.
+  const eighteenth = Temporal.PlainDate.from(adultOn.toISOString().slice(0, 10));
+  return Temporal.PlainDate.compare(todayInChicago(clock), eighteenth) >= 0;
+}
+
+/** Whether this signed-in person is known to be 18 or over today. */
+export async function isKnownAdult(db: PrismaClient, clock: Clock, userId: string): Promise<boolean> {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { adultOn: true } });
+  return isAdultOn(user?.adultOn ?? null, clock);
+}

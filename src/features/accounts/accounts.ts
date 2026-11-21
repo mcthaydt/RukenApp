@@ -3,6 +3,7 @@
 export type { Caller } from "./caller.ts";
 export { createHandle } from "./handle.ts";
 export { forwardToAuth } from "./forward.ts";
+export { changeEmail, changePassword, type ChangeFormData } from "./credentials.ts";
 export {
   FORM_MESSAGES,
   readForm,
@@ -31,3 +32,4 @@ export {
   type PurgeDeps,
 } from "./deletion.ts";
 export { WELCOME_BACK_COOKIE } from "./cookies.ts";
+export { ADULTS_ONLY, adultsOnlyRefusal, isKnownAdultCaller } from "./adults.ts";

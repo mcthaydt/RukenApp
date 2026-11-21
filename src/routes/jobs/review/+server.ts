@@ -6,7 +6,9 @@ import {
   failureStatus,
   GameError,
   gamesServices,
+  heldChanges,
   listSays,
+  LOOK_SAYS_SEEN,
   megabytes,
   ratingWords,
   readReviewOrder,
@@ -79,8 +81,11 @@ export const POST: RequestHandler = async ({ request }) => {
         staffUserId,
       });
       const played = await play.playSummary(game.id);
+      // A held video or rating is accepted only with the time of this look, so what goes live is what was looked at.
+      const changes = heldChanges(game, (key) => games.media(key));
+      const says = "Open the look link in a private window. It works for a day.";
       return answer({
-        says: "Open the look link in a private window. It works for a day.",
+        says: changes.length === 0 ? says : `${says} ${LOOK_SAYS_SEEN}`,
         game: game.slug,
         name: game.name,
         kind,
@@ -93,10 +98,11 @@ export const POST: RequestHandler = async ({ request }) => {
         websites: websitesWords(game.pending.connectHosts),
         files: `${String(game.pending.fileCount)} files, ${megabytes(game.pending.totalBytes)}`,
         playedSeconds: played.countedSeconds,
+        ...(changes.length === 0 ? {} : { changes, seen: game.changedAt?.toISOString() ?? null }),
       });
     }
     if (order.do === "accept") {
-      const made = await games.service.accept(game.id, staffUserId);
+      const made = await games.service.accept(game.id, staffUserId, order.seen);
       return answer({ says: acceptSays(game.name, kind, made, dayWords) });
     }
     const made = await games.service.sendBack(

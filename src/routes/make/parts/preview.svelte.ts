@@ -13,6 +13,8 @@ export interface SavedPreview {
   video: string | null;
   /** The wide video's address, or null before there is one. */
   wideVideo: string | null;
+  /** True for a live game whose card shows a change that waits for staff's yes: players see the old one until then. */
+  waits: boolean;
 }
 
 const KEY = Symbol("preview");
@@ -48,6 +50,10 @@ export class Preview {
 
   get wideVideo(): string | null {
     return this.#saved().wideVideo;
+  }
+
+  get waits(): boolean {
+    return this.#saved().waits;
   }
 
   typeName(words: string): void {

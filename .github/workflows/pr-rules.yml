@@ -1,0 +1,47 @@
+# The pull request rules, enforced on GitHub where no tool or shell trick reaches (design:
+# docs/superpowers/specs/2026-11-21-hooks-cover-every-pr-route-design.md, 3.1). Owner, 2026-11-21 14:38 UTC:
+# "What was the point of us adding hooks if you won't follow them?" and 14:41 UTC: "ALL SESSIONS NEED TO FOLLOW THE
+# HOOKS". This file changes only on the Owner's words, quoted in the commit (CLAUDE.md).
+#
+# It runs only on events that use main's copy of this file (pull_request_target and issue_comment), never on
+# pull_request or pull_request_review, so a pull request cannot change the check that judges it. It checks out
+# main only, installs nothing, and runs .claude/hooks/pr-rules.mjs, which reads the pull request through the API and
+# fetches refs/pull/<n>/head as git objects only (never checked out, never run). The script writes the commit status
+# `pr-rules` on the head commit it read, and closes a pull request that is over the open limit on opened or reopened.
+name: pr-rules
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize, ready_for_review, converted_to_draft]
+  issue_comment:
+    types: [created, edited, deleted]
+
+concurrency:
+  group: pr-rules-${{ github.event.pull_request.number || github.event.issue.number }}
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  statuses: write
+
+jobs:
+  pr-rules-run:
+    name: pr-rules-run
+    if: github.event.pull_request || github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Judge the pull request
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: node .claude/hooks/pr-rules.mjs

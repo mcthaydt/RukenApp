@@ -1279,6 +1279,15 @@ label.vframe {
   }
 }
 
+/* A live game's video that waits for a yes has a line above it and "Keep the old one" under the buttons, about 120px more
+   than a question without them: on a computer the wide frame gives that back, so Save and Keep the old one still fit in the
+   window (1280 by 800). Taller windows keep the usual 640. */
+@media (min-width: 1200px) and (orientation: landscape) {
+  .vframe[data-frame="wide"][data-waiting] {
+    width: min(640px, 100%, calc((100dvh - 565px) * 16 / 9));
+  }
+}
+
 /* The question beside its upright frame, on a computer and on a tablet or phone held sideways; a wide frame is beside
    it on a phone held sideways only, and everywhere else it is under it. */
 @media (min-width: 1200px) and (orientation: landscape) {
@@ -1772,6 +1781,47 @@ a.foot {
   font: var(--text-small);
   text-decoration: underline;
   /* One word, never cut: where there is no room beside the words it belongs to, it drops to the next line whole. */
+  white-space: nowrap;
+}
+
+/* The video Live does not draw: one link in words on a line of its own under the facts, with its mark after it. */
+.laid .other {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  margin-top: 0.5rem;
+  color: var(--sage);
+  font: var(--text-small);
+}
+
+.laid .other a {
+  margin-block: 0;
+  color: var(--sage);
+}
+
+/* On a phone the mark wraps under its link: close to it, so it reads as the link's. */
+@media (max-width: 499px) {
+  .laid .other {
+    row-gap: 0;
+  }
+
+  .laid .other .waits {
+    margin-top: -0.5rem;
+  }
+}
+
+/* "Keep the old one" on a question: under the buttons, not in them, so the bar keeps one main action. It comes after the
+   Save button in the form, so Enter still saves. */
+.asks .keep {
+  margin-top: 1.5rem;
+}
+
+/* What a live game's maker changed and staff have not said yes to yet: a quiet label beside it, so nobody reads it as
+   what players see. */
+.laid .waits {
+  color: var(--sage);
+  font: var(--text-small);
   white-space: nowrap;
 }
 
@@ -2630,6 +2680,11 @@ main.gamepage {
   grid-column: 1 / -1;
 }
 
+/* The tiles beside the clip. Below a computer they are the grid's own tiles. */
+.gamepage .side {
+  display: contents;
+}
+
 .gamepage .more h2 {
   margin: 0;
   font: var(--text-statement);
@@ -2695,35 +2750,36 @@ main.gamepage {
   }
 }
 
-/* A computer: four columns, the clip over the left two, its tiles in the right two. */
+/* A computer: two halves, the clip on the left and its tiles on the right. The tiles are their own two-column grid, so
+   they line up edge to edge: Play across the top, the facts in pairs, and the clips picker, each row as tall as its
+   words. The one tile left alone in its row takes the whole row. */
 @media (min-width: 62.5rem) {
   .gamepage .bento {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: stretch;
   }
 
-  /* One other game: its panel is half the width, not a whole row with one small card in it. */
-  .gamepage .more[data-solo] {
-    grid-column: span 2;
+  .gamepage .hero {
+    grid-row: auto;
   }
 
-  .gamepage .hero {
-    grid-column: span 2;
-    grid-row: span 3;
+  .gamepage .side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    align-content: start;
   }
 
   .gamepage .playtile {
-    grid-row: span 2;
+    grid-column: span 2;
+  }
+
+  .gamepage .side > :last-child:nth-child(even) {
+    grid-column: span 2;
   }
 
   .gamepage .clipbox {
     min-height: clamp(20rem, 62dvh, 40rem);
     max-height: calc(100dvh - 2rem);
-  }
-
-  .gamepage .watch,
-  .gamepage .madeby {
-    grid-column: span 1;
   }
 }
 
@@ -2850,6 +2906,15 @@ main.playing {
   visibility: hidden;
 }
 
+/* While it is carried, the tab's rounded edge points to the side it will snap to, not the side it came from. */
+.playing .menu[data-dragging][data-lean="right"] > summary {
+  border-radius: var(--radius-button) 0 0 var(--radius-button);
+}
+
+.playing .menu[data-dragging][data-lean="left"] > summary {
+  border-radius: 0 var(--radius-button) var(--radius-button) 0;
+}
+
 .playing .menu[data-dragging] > summary {
   top: var(--drag-top);
   transform: translateX(var(--drag-x));
@@ -2883,8 +2948,24 @@ main.playing {
   animation: menu-in-right 200ms ease-out;
 }
 
+/* The panel comes in from the side the tab rests on. */
 .playing .menusheet {
   justify-content: flex-end;
+}
+
+.playing .menu[data-side="left"] .menusheet {
+  justify-content: flex-start;
+}
+
+.playing .menu[data-side="left"] .menupanel {
+  animation-name: menu-in-left;
+}
+
+@keyframes menu-in-left {
+  from {
+    transform: translateX(-1.5rem);
+    opacity: 0;
+  }
 }
 
 .playing .menupanel h2 {
@@ -2915,7 +2996,8 @@ main.playing {
     align-items: flex-end;
   }
 
-  .playing .menupanel {
+  .playing .menupanel,
+  .playing .menu[data-side] .menupanel {
     width: 100%;
     border-radius: var(--radius-card) var(--radius-card) 0 0;
     animation-name: menu-up;

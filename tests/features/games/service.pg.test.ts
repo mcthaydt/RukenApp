@@ -569,7 +569,7 @@ describe("saveAnswer", () => {
     expect((await db().game.findUniqueOrThrow({ where: { id } })).contentMarks).toEqual(["none"]);
   });
 
-  it("lets a live game change its name and its line, and nothing else", async () => {
+  it("lets a live game change its name and its line, and holds its rating for a yes", async () => {
     const { makerUserId, id } = await begin();
     const pulling = serviceFor(GOOD_FILES);
     await pulling.saveAnswer(id, makerUserId, FILES_ANSWER);
@@ -588,9 +588,16 @@ describe("saveAnswer", () => {
       } as unknown as Answer),
     ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
     expect((await db().game.findUniqueOrThrow({ where: { id } })).playsOn).toBe("computer_only");
-    await expect(
-      service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_16" }),
-    ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
+    // The rating is held apart for a yes and sent with the game's videos, so what players see does not move.
+    for (const shape of ["upright", "wide"] as const)
+      await db().gameClip.create({
+        data: { gameId: id, shape, key: `clips/x/${shape}.mp4`, contentType: "video/mp4", bytes: 3 },
+      });
+    await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_16" });
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      ageRating: "age_12",
+      heldAgeRating: "age_16",
+    });
   });
 
   it("takes every answer of a draft, a waiting game and a sent-back game alike", async () => {
@@ -601,13 +608,93 @@ describe("saveAnswer", () => {
     }
   });
 
-  it("refuses a game that is taken off or down", async () => {
+  it("takes every answer of a game that is taken off, and holds nothing for a yes", async () => {
     const { makerUserId, id } = await begin();
+    const pulling = serviceFor(GOOD_FILES);
+    await pulling.saveAnswer(id, makerUserId, FILES_ANSWER);
+    await db().game.update({ where: { id }, data: { ageRating: "age_12" } });
     await setState(id, "taken_off");
+
+    await service.saveAnswer(id, makerUserId, { question: "line", oneLine: "A line, off Ruken." });
+    await service.saveAnswer(id, makerUserId, { question: "name", name: "A new name" });
+    await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_16" });
+    await service.saveAnswer(id, makerUserId, {
+      question: "age",
+      ageRating: "age_18",
+      contentMarks: ["gore"],
+    });
+    await service.saveAnswer(id, makerUserId, { question: "marks", contentMarks: ["drugs"] });
+
+    // The rating is the game's own, not a held one: nobody is reviewing it, and Put it back sends it all.
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      state: "taken_off",
+      oneLine: "A line, off Ruken.",
+      name: "A new name",
+      ageRating: "age_18",
+      contentMarks: ["drugs"],
+      heldAgeRating: null,
+      pendingPullId: null,
+    });
+  });
+
+  it("keeps the files and the websites a taken-off game points at, and copies nothing", async () => {
+    const { makerUserId, id } = await begin();
+    const pulling = serviceFor(GOOD_FILES);
+    await pulling.saveAnswer(id, makerUserId, FILES_ANSWER);
+    const publicId = (await db().game.findUniqueOrThrow({ where: { id } })).publicId;
+    await setState(id, "taken_off");
+    // What taking a game off leaves: no files in the bucket.
+    await files.deleteAll(`files/${publicId}/`);
+    const pulls = await db().gamePull.count({ where: { gameId: id } });
+
+    await pulling.saveAnswer(id, makerUserId, {
+      question: "websites",
+      connectHosts: ["api.example.com"],
+    });
+    await pulling.saveAnswer(id, makerUserId, FILES_ANSWER);
+
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      state: "taken_off",
+      connectHosts: ["api.example.com"],
+      pendingPullId: null,
+    });
+    expect(await db().gamePull.count({ where: { gameId: id } })).toBe(pulls);
+    expect(files.keys().filter((key) => key.includes(publicId) && key.includes("files/"))).toEqual([]);
+  });
+
+  it("refuses a game that staff took down", async () => {
+    const { makerUserId, id } = await begin();
+    await setState(id, "taken_down");
 
     await expect(
       service.saveAnswer(id, makerUserId, { question: "line", oneLine: "x" }),
     ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
+    await expect(
+      service.saveClip(id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() }),
+    ).rejects.toMatchObject({ code: "NOT_READY", message: "That can't be changed right now." });
+    expect(await db().gameClip.count({ where: { gameId: id } })).toBe(0);
+  });
+});
+
+describe("saveClip on a game that is taken off", () => {
+  it("replaces the video the game keeps, deletes the old file, and holds nothing", async () => {
+    const { id } = await begin();
+    await service.saveClip(id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
+    const first = await db().gameClip.findUniqueOrThrow({
+      where: { gameId_shape: { gameId: id, shape: "upright" } },
+    });
+    await setState(id, "taken_off");
+
+    await service.saveClip(id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
+
+    const second = await db().gameClip.findUniqueOrThrow({
+      where: { gameId_shape: { gameId: id, shape: "upright" } },
+    });
+    expect(second.key).not.toBe(first.key);
+    expect(files.keys()).toContain(second.key);
+    expect(files.keys()).not.toContain(first.key);
+    expect(await db().gameHeldClip.count({ where: { gameId: id } })).toBe(0);
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({ state: "taken_off" });
   });
 });
 
@@ -642,30 +729,96 @@ describe("throwAway", () => {
     await expect(service.throwAway(id, makerUserId)).resolves.toEqual({ name: "Short Draft" });
   });
 
-  it("refuses a waiting game and a live game, and changes nothing", async () => {
-    for (const state of ["waiting", "live"]) {
-      const { makerUserId, id } = await begin();
-      await db().$executeRawUnsafe(`UPDATE "Game" SET "state" = 'draft' WHERE "id" = $1`, id);
-      const pullId = await addPull(id);
-      await db().game.update({
-        where: { id },
-        data: { ageRating: "age_12", oneLine: "x", playsOn: "computer_only", repoFullName: "acme/game" },
+  /** A game in `state` with its files and clips, the answers a game past draft has, and a pull. */
+  async function gameIn(state: "waiting" | "live" | "taken_off" | "taken_down") {
+    const { makerUserId, id } = await begin();
+    await db().$executeRawUnsafe(`UPDATE "Game" SET "state" = 'draft' WHERE "id" = $1`, id);
+    const pullId = await addPull(id);
+    await db().game.update({
+      where: { id },
+      data: { ageRating: "age_12", oneLine: "x", playsOn: "computer_only", repoFullName: "acme/game" },
+    });
+    for (const shape of ["upright", "wide"] as const)
+      await db().gameClip.create({
+        data: { gameId: id, shape, key: `clips/${id}/${shape}.mp4`, contentType: "video/mp4", bytes: 3 },
       });
-      if (state === "live") await makeLive(id, pullId);
-      else await db().game.update({ where: { id }, data: { state: "waiting", pendingPullId: pullId } });
+    if (state === "live") await makeLive(id, pullId);
+    else if (state === "waiting")
+      await db().game.update({ where: { id }, data: { state: "waiting", pendingPullId: pullId } });
+    else await setState(id, state);
+    return { makerUserId, id, publicId: (await db().game.findUniqueOrThrow({ where: { id } })).publicId };
+  }
+
+  it("throws a waiting game away: what waits is cleared, its files and videos go, and its name is free", async () => {
+    const { makerUserId, id, publicId } = await gameIn("waiting");
+    await files.put(`files/${publicId}/index.html`, new Uint8Array([1]));
+    await files.put(`clips/${publicId}/upright-a.mp4`, new Uint8Array([1]));
+    const before = (await db().game.findUniqueOrThrow({ where: { id } })).changedAt;
+
+    await expect(service.throwAway(id, makerUserId)).resolves.toMatchObject({});
+
+    const row = await db().game.findUniqueOrThrow({ where: { id } });
+    expect(row).toMatchObject({
+      state: "thrown_away",
+      slug: `x-${publicId}`,
+      pendingPullId: null,
+      pendingSince: null,
+      toFix: [],
+    });
+    // A decision held for decision day lapses on its day by the game having changed (spec 2).
+    expect(row.changedAt?.getTime() ?? 0).toBeGreaterThan(before?.getTime() ?? 0);
+    expect(files.keys().filter((key) => key.includes(publicId))).toEqual([]);
+    expect(await db().gameClip.count({ where: { gameId: id } })).toBe(0);
+    expect(await service.gameForMaker(row.slug, makerUserId)).toBeNull();
+  });
+
+  it("throws a game away that is off Ruken: leftover files, both videos, and the name is free", async () => {
+    const { makerUserId, id, publicId } = await gameIn("taken_off");
+    await files.put(`files/${publicId}/index.html`, new Uint8Array([1]));
+    await files.put(`clips/${publicId}/upright-a.mp4`, new Uint8Array([1]));
+
+    await service.throwAway(id, makerUserId);
+
+    expect((await db().game.findUniqueOrThrow({ where: { id } })).state).toBe("thrown_away");
+    expect(files.keys().filter((key) => key.includes(publicId))).toEqual([]);
+    expect(await db().gameClip.count({ where: { gameId: id } })).toBe(0);
+    expect((await service.gamesOf(makerUserId)).map((row) => row.name)).toEqual([]);
+  });
+
+  it.each(["live", "taken_down"] as const)(
+    "still refuses a game that is %s, and changes nothing",
+    async (state) => {
+      const { makerUserId, id } = await gameIn(state);
 
       await expect(service.throwAway(id, makerUserId), state).rejects.toMatchObject({
         code: "NOT_READY",
         message: "This game can't be thrown away.",
       });
       expect((await db().game.findUniqueOrThrow({ where: { id } })).state).toBe(state);
-    }
+      expect(await db().gameClip.count({ where: { gameId: id } })).toBe(2);
+    },
+  );
+
+  it("says a game already thrown away is not there", async () => {
+    const { makerUserId, id } = await gameIn("waiting");
+    await service.throwAway(id, makerUserId);
+
+    await expect(service.throwAway(id, makerUserId)).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
-  it("says another maker's game is not there", async () => {
-    const { id } = await begin();
-    await expect(service.throwAway(id, await createUser(db()))).rejects.toMatchObject({ code: "NOT_FOUND" });
-  });
+  it.each(["draft", "waiting", "sent_back", "live", "taken_off", "taken_down"] as const)(
+    "says another maker's %s game is not there, and changes nothing",
+    async (state) => {
+      const { id } =
+        state === "draft" ? await begin() : await gameIn(state === "sent_back" ? "waiting" : state);
+      if (state === "sent_back") await setState(id, "sent_back");
+
+      await expect(service.throwAway(id, await createUser(db()))).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+      expect((await db().game.findUniqueOrThrow({ where: { id } })).state).toBe(state);
+    },
+  );
 });
 
 /** A pull row for a game, as a passing pull leaves it. */

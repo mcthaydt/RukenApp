@@ -335,6 +335,9 @@ describe("screens wear the look and nothing of their own", () => {
     "tagline",
     "chip",
     "change",
+    "waits",
+    "other",
+    "keep",
     "after",
     "fixgo",
     "accepted",
@@ -372,6 +375,7 @@ describe("screens wear the look and nothing of their own", () => {
     "menusheet",
     "menupanel",
     "agreement",
+    "side",
   ];
   const ROUTES = "src/routes";
 
@@ -470,6 +474,9 @@ describe("the maker's screens", () => {
     "tagline",
     "chip",
     "change",
+    "waits",
+    "other",
+    "keep",
     "after",
     "fixgo",
     "accepted",

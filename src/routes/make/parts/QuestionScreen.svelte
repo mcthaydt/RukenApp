@@ -21,6 +21,7 @@
     back,
     throwAway,
     enterHint = true,
+    keepOld = false,
     busyWords = "Saving…",
     busyLine,
     forward,
@@ -36,6 +37,8 @@
     throwAway?: string | undefined;
     /** Enter presses the blue button, except where the blue button opens a file picker. */
     enterHint?: boolean;
+    /** A live game's change that waits for a yes: a quiet button drops it, and players keep what they see. */
+    keepOld?: boolean;
     /** What the blue button says from the press until the answer comes. */
     busyWords?: string;
     /** A line shown under the answer while it waits, for an answer that can take a minute. */
@@ -102,6 +105,14 @@
           <span class="key">press Enter <kbd>↵</kbd></span>
         {/if}
       </div>
+      {#if keepOld}
+        <!-- After the Save button, never before it: Enter in the form presses the first button, which must be Save. -->
+        <p class="keep">
+          <button class="quiet" formaction="?/keepOld" formnovalidate disabled={saving}
+            >Keep the old one</button
+          >
+        </p>
+      {/if}
     </form>
   </main>
   <GamePreview />
