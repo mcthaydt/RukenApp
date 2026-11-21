@@ -18,3 +18,7 @@ FIX: wrap the `<video>` in `{#key wide}` (or key on the chosen src), so `quietVi
 
 - The journey asserts the dim and Tab, but nothing proves the clip sits visibly above the page background (z-index -1 over `body { background }`). It works because the body's background reaches the page canvas, so it is fine today; a screenshot in `showTheOwner` on the CI run is the evidence to read.
 - WebKit journeys: wait for CI.
+
+## Re-check at c632ce6
+
+Finding 1: fixed. The video is inside `{#key wide}`, so `quietVideo` runs on the shown clip, as on the game page and the make backdrop. The journey now polls `paused === false` where the quiet rules allow autoplay. Diff since 6ecc8db touches only `src/routes/join/+page.svelte` and `tests/browser/join.test.ts`. Browser shards were still running in CI when this was written; the verdict covers the code read, and CI is the gate.
