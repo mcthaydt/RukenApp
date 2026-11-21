@@ -48,6 +48,8 @@ How to read each list: **Done** is merged and green. **Now** is what is being bu
 
 ## Slice 3: The feed and the maker's page
 
+Parked 2026-11-21 03:12 UTC, on the Owner's word: "Let's park slice 3 until we confirm slice 2 is perfect". Nothing in it runs until slice 2's slice end is done and the Owner says so.
+
 1. Done: the colour themes, the page rules, the maker's photo (branches A, B and G).
 2. Later: the feed order, the feed, its controls, the paywall over a clip (branches C to F).
 3. Later: the maker's page and editing it (branches H and I).
