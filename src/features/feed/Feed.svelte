@@ -233,7 +233,7 @@
         <div class="lower">
           <div class="band">
             {#if clip.maker !== null}
-              <a class="maker" href={`/${clip.maker.handle}`}>
+              <a class="maker" data-sveltekit-preload-data="off" href={`/${clip.maker.handle}`}>
                 {#if clip.maker.photo !== null}
                   <img src={clip.maker.photo} alt="" width="40" height="40" loading="lazy" />
                 {:else}

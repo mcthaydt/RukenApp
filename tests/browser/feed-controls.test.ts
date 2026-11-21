@@ -290,21 +290,26 @@ test.describe("the first open's hints", () => {
     try {
       const page = await context.newPage();
       await openFeed(page);
+      // Every position the feed passes through on its way is written down. A glide passes through many; with reduced
+      // motion the feed goes straight to the next clip.
+      await page.evaluate(() => {
+        const feed = document.querySelector("main") as HTMLElement;
+        const seen: number[] = [];
+        (window as unknown as { seen: number[] }).seen = seen;
+        feed.addEventListener("scroll", () => seen.push(feed.scrollTop));
+      });
       await page.keyboard.press("ArrowDown");
-      // Two frames later the window has already arrived: nothing glided.
-      const arrived = await page.evaluate(
-        () =>
-          new Promise<boolean>((resolve) => {
-            requestAnimationFrame(() =>
-              requestAnimationFrame(() => {
-                const feed = document.querySelector("main");
-                const second = document.querySelectorAll("section")[1];
-                resolve(feed !== null && second !== undefined && feed.scrollTop === second.offsetTop);
-              }),
-            );
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const feed = document.querySelector("main") as HTMLElement;
+            const second = document.querySelectorAll("section")[1] as HTMLElement;
+            return feed.scrollTop === second.offsetTop;
           }),
-      );
-      expect(arrived).toBe(true);
+        )
+        .toBe(true);
+      const seen = await page.evaluate(() => (window as unknown as { seen: number[] }).seen);
+      expect(seen.length).toBeLessThanOrEqual(1);
       await expect(page.getByText(/for the next game$/)).toHaveCount(0);
     } finally {
       await context.close();

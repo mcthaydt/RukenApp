@@ -78,13 +78,13 @@ for (const [branch, words] of [
 
 // ---- E3: a way on from the feed and from the error page ----------------------------------------------------------------------
 
-test("a signed-in maker gets from the feed to Your games: You, then Your games", async ({ page }) => {
+test("a new maker gets from the feed to the maker area: You, then Add yours to Ruken", async ({ page }) => {
   await signUp(page);
   await page.goto("/");
   await page.getByRole("navigation", { name: "Ruken" }).getByRole("link", { name: "You" }).click();
 
   await expect(page).toHaveURL("/me");
-  await expect(page.getByRole("link", { name: "Your games" })).toHaveAttribute("href", "/make");
+  await expect(page.getByRole("link", { name: "Add yours to Ruken." })).toHaveAttribute("href", "/make");
 });
 
 test("the error page inside the maker's area goes back to Your games", async ({ page }) => {

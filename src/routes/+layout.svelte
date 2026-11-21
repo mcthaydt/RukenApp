@@ -26,9 +26,11 @@
 {/if}
 
 {#if data.welcomeBack}
-  <p role="status" class="panel" class:over={page.route.id === "/"}>
-    Welcome back. Your account will not be deleted.
-  </p>
+  {#if page.route.id === "/"}
+    <p role="status" class="panel over">Welcome back. Your account will not be deleted.</p>
+  {:else}
+    <p role="status" class="panel">Welcome back. Your account will not be deleted.</p>
+  {/if}
 {/if}
 
 {#if browsing}
@@ -36,15 +38,3 @@
 {/if}
 
 {@render children()}
-
-<style>
-  /* On the feed the clips fill the whole window, so the line floats above them. */
-  .panel.over {
-    position: fixed;
-    top: 0.5rem;
-    left: 50%;
-    z-index: 20;
-    translate: -50% 0;
-    margin: 0;
-  }
-</style>
