@@ -3,3 +3,4 @@
 export { DEFAULT_THEME, THEMES, type Theme } from "./themes.ts";
 export { isHandleShape } from "./handle.ts";
 export { cropSquare, PHOTO_SIDE } from "./photo-crop.ts";
+export { default as MakerPage } from "./MakerPage.svelte";

@@ -147,7 +147,14 @@ const STAND_IN_COMMIT = "a".repeat(40);
 /** Changes a game's name straight in the database, as a journey's setup. */
 export async function changeGame(
   slug: string,
-  changes: { name?: string; freeToPlay?: boolean; makerUserId?: string },
+  changes: {
+    name?: string;
+    freeToPlay?: boolean;
+    makerUserId?: string;
+    /** An 18+ rating brings its marks with it, as the database holds a past-draft 18+ game to. */
+    ageRating?: AgeRating;
+    contentMarks?: ("sex_or_nudity" | "gore" | "drugs" | "none")[];
+  },
 ): Promise<void> {
   await db().game.update({ where: { slug }, data: changes });
 }
@@ -332,15 +339,59 @@ export async function signUpsCountedFrom(clientAddress: string): Promise<number>
   return row?.count ?? 0;
 }
 
-/** Gives an account a maker's page (name and one line), as the page editor would have saved it. */
+/** A link to put on a page: its words and where it goes, hidden or not, and a game somewhere else or a plain link. */
+export interface GivenLink {
+  title: string;
+  url: string;
+  kind?: "link" | "game_elsewhere";
+  hidden?: boolean;
+}
+
+/**
+ * Gives an account a maker's page, as the page editor would have saved it: a name and a line, and as options its
+ * address (a made-up one otherwise), a colour combination (0, Ruken's own, otherwise), a photo's key and links in
+ * the order given. It answers the address and the links' ids in that order.
+ */
 export async function givePage(
   account: { email: string },
-  page: { name: string; oneLine: string },
-): Promise<void> {
+  page: {
+    name: string;
+    oneLine: string;
+    handle?: string;
+    themeId?: number;
+    photoKey?: string;
+    links?: GivenLink[];
+  },
+): Promise<{ handle: string; linkIds: string[] }> {
   const userId = await userIdOf(account.email);
-  await db().makerPage.create({
-    data: { userId, handle: `m${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`, ...page },
+  const { links = [], handle = `m${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`, ...rest } = page;
+  const made = await db().makerPage.create({
+    data: {
+      userId,
+      handle,
+      ...rest,
+      links: {
+        create: links.map((link, position) => ({
+          position,
+          title: link.title,
+          url: link.url,
+          kind: link.kind ?? "link",
+          hidden: link.hidden ?? false,
+        })),
+      },
+    },
+    select: { links: { orderBy: { position: "asc" }, select: { id: true } } },
   });
+  return { handle, linkIds: made.links.map((link) => link.id) };
+}
+
+/** How many times a page was opened by a visitor, and how many times each of its links was tapped, in the page's order. */
+export async function pageCounts(handle: string): Promise<{ views: number; taps: number[] }> {
+  const page = await db().makerPage.findUniqueOrThrow({
+    where: { handle },
+    select: { views: true, links: { orderBy: { position: "asc" }, select: { taps: true } } },
+  });
+  return { views: page.views, taps: page.links.map((link) => link.taps) };
 }
 
 /**

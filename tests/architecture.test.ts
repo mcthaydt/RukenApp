@@ -59,8 +59,9 @@ function featureOf(path: string): { feature: string; inside: string } | null {
 
 const sourceFiles = filesUnder(SRC);
 
-/** A file whose code is sent to a visitor's browser: a screen's own script, or a +page.ts that runs there too. */
-const isPageScript = (file: string): boolean => file.endsWith(".svelte") || /\+page\.ts$/.test(file);
+/** A file whose code is sent to a visitor's browser: a screen's own script, a +page.ts that runs there too, or a route matcher. */
+const isPageScript = (file: string): boolean =>
+  file.endsWith(".svelte") || /\+page\.ts$/.test(file) || file.startsWith(join(SRC, "params") + sep);
 
 describe("the layer rule", () => {
   test("no test sits in src/", () => {
