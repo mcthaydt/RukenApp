@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { relative } from "node:path";
 import { rgb, token } from "../../support/look-tokens.ts";
+import { shouldShoot } from "./changed-screens.ts";
 
 // Helpers for the journeys that check the look (tests/browser/look.test.ts). CI checks values (a colour, a
 // size, a font, a request), not taste. A screenshot is attached for a person to look at; nothing compares it.
@@ -251,14 +253,52 @@ export async function expectOneCard(page: Page, options: { red?: string[] } = {}
 }
 
 /**
- * Attaches a full-page screenshot to the journey as `look: <screen>`. Playwright runs each journey on a
- * phone and on a computer, so each screen gets both. It compares nothing: it is there for the Owner to look
- * at ("Screenshots on the board", Owner, 2026-11-13).
+ * The addresses (path only) of the files this page loaded: what the browser fetched for it, plus the scripts and
+ * stylesheets named in the document itself (a file served from cache is still listed by the document).
+ */
+async function filesTheScreenLoaded(page: Page): Promise<{ loaded: string[]; entryCount: number }> {
+  return page.evaluate(() => {
+    const entries = performance.getEntriesByType("resource");
+    const addresses = [
+      ...entries.map((entry) => entry.name),
+      ...[...document.querySelectorAll<HTMLScriptElement>("script[src]")].map((script) => script.src),
+      ...[
+        ...document.querySelectorAll<HTMLLinkElement>("link[rel~=modulepreload], link[rel~=stylesheet]"),
+      ].map((link) => link.href),
+    ];
+    const loaded = [
+      ...new Set(
+        addresses
+          .map((address) => new URL(address, location.href))
+          .filter((url) => url.origin === location.origin)
+          .map((url) => url.pathname),
+      ),
+    ];
+    // The raw count, not the list without repeats: the browser's buffer fills with repeats too.
+    return { loaded, entryCount: entries.length };
+  });
+}
+
+/**
+ * Attaches a full-page screenshot to the journey as `look: <screen>`, on each of the three devices the journeys run
+ * on. It compares nothing: it is there for the Owner to look at ("Screenshots on the board", Owner, 2026-11-13).
+ *
+ * CI takes the picture only when the screen is one the change reaches: the `screens` job (ci.yml) works out which
+ * files the change changed and passes the answer in `LOOK_CHANGED`; the screen is shot when the page loaded one of
+ * them. With no answer (a person running the journeys on their own computer) every screen is shot. Every check the
+ * journey makes still runs; only the picture, and the wait that only serves it, are left out. See changed-screens.ts.
  */
 export async function showTheOwner(page: Page, testInfo: TestInfo, screen: string): Promise<void> {
-  // A draft's quick CI run turns the pictures off (LOOK_SHOTS=off) unless something visual changed: a full-page
-  // picture on nine devices is slow, and nobody is looking at it yet. No journey checks the pictures.
-  if (process.env.LOOK_SHOTS === "off") return;
+  const verdict = shouldShoot({
+    ...(await filesTheScreenLoaded(page)),
+    answer: process.env.LOOK_CHANGED,
+    journey: relative(process.cwd(), testInfo.file).split("\\").join("/"),
+  });
+  if (!verdict.shoot) return;
+  // The name says why when the picker could not be sure, so a person reading the report is not misled.
+  const doubt = /did not match|may be full|could not be read|no answer/.test(verdict.why)
+    ? ` (${verdict.why})`
+    : "";
   // The screen as it rests: the fonts are in and every entrance has finished, so the picture is not a half-faded one.
   await page.evaluate(async () => {
     await document.fonts.ready;
@@ -276,13 +316,13 @@ export async function showTheOwner(page: Page, testInfo: TestInfo, screen: strin
     // screenshot", run 44793990472, on a 404 page whose checks had passed). The picture is for the Owner to look at
     // and checks nothing, so its absence is written where the picture would be, and the journey's checks stand.
     if (!String(error).includes("Unable to capture screenshot")) throw error;
-    await testInfo.attach(`look: ${screen} (no picture)`, {
+    await testInfo.attach(`look: ${screen}${doubt} (no picture)`, {
       body: `Chromium could not take this picture: ${String(error)}`,
       contentType: "text/plain",
     });
     return;
   }
-  await testInfo.attach(`look: ${screen}`, { body: picture, contentType: "image/png" });
+  await testInfo.attach(`look: ${screen}${doubt}`, { body: picture, contentType: "image/png" });
 }
 
 /** The five layouts the maker's screens are drawn in (spec 4). */

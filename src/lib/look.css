@@ -2620,6 +2620,11 @@ main.gamepage {
   grid-column: 1 / -1;
 }
 
+/* The tiles beside the clip. Below a computer they are the grid's own tiles. */
+.gamepage .side {
+  display: contents;
+}
+
 .gamepage .more h2 {
   margin: 0;
   font: var(--text-statement);
@@ -2685,35 +2690,36 @@ main.gamepage {
   }
 }
 
-/* A computer: four columns, the clip over the left two, its tiles in the right two. */
+/* A computer: two halves, the clip on the left and its tiles on the right. The tiles are their own two-column grid, so
+   they line up edge to edge: Play across the top, the facts in pairs, and the clips picker, each row as tall as its
+   words. The one tile left alone in its row takes the whole row. */
 @media (min-width: 62.5rem) {
   .gamepage .bento {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: stretch;
   }
 
-  /* One other game: its panel is half the width, not a whole row with one small card in it. */
-  .gamepage .more[data-solo] {
-    grid-column: span 2;
+  .gamepage .hero {
+    grid-row: auto;
   }
 
-  .gamepage .hero {
-    grid-column: span 2;
-    grid-row: span 3;
+  .gamepage .side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    align-content: start;
   }
 
   .gamepage .playtile {
-    grid-row: span 2;
+    grid-column: span 2;
+  }
+
+  .gamepage .side > :last-child:nth-child(even) {
+    grid-column: span 2;
   }
 
   .gamepage .clipbox {
     min-height: clamp(20rem, 62dvh, 40rem);
     max-height: calc(100dvh - 2rem);
-  }
-
-  .gamepage .watch,
-  .gamepage .madeby {
-    grid-column: span 1;
   }
 }
 
@@ -2840,6 +2846,15 @@ main.playing {
   visibility: hidden;
 }
 
+/* While it is carried, the tab's rounded edge points to the side it will snap to, not the side it came from. */
+.playing .menu[data-dragging][data-lean="right"] > summary {
+  border-radius: var(--radius-button) 0 0 var(--radius-button);
+}
+
+.playing .menu[data-dragging][data-lean="left"] > summary {
+  border-radius: 0 var(--radius-button) var(--radius-button) 0;
+}
+
 .playing .menu[data-dragging] > summary {
   top: var(--drag-top);
   transform: translateX(var(--drag-x));
@@ -2873,8 +2888,24 @@ main.playing {
   animation: menu-in-right 200ms ease-out;
 }
 
+/* The panel comes in from the side the tab rests on. */
 .playing .menusheet {
   justify-content: flex-end;
+}
+
+.playing .menu[data-side="left"] .menusheet {
+  justify-content: flex-start;
+}
+
+.playing .menu[data-side="left"] .menupanel {
+  animation-name: menu-in-left;
+}
+
+@keyframes menu-in-left {
+  from {
+    transform: translateX(-1.5rem);
+    opacity: 0;
+  }
 }
 
 .playing .menupanel h2 {
@@ -2905,7 +2936,8 @@ main.playing {
     align-items: flex-end;
   }
 
-  .playing .menupanel {
+  .playing .menupanel,
+  .playing .menu[data-side] .menupanel {
     width: 100%;
     border-radius: var(--radius-card) var(--radius-card) 0 0;
     animation-name: menu-up;
