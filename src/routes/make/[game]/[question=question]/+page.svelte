@@ -40,6 +40,9 @@
 
   const WEBSITES_HINT =
     "One website in each box, like api.example.com. Leave it empty if your game runs on its own. Saving copies your game from GitHub again.";
+  // A game that is off Ruken copies nothing when it is saved; Put it back does.
+  const WEBSITES_HINT_OFF =
+    "One website in each box, like api.example.com. Leave it empty if your game runs on its own. Put it back on Ruken copies your game from GitHub.";
   const NAME_HINT = "The name players see. Like: Floor Fifty.";
   const ADDRESS_STAYS = " Its link on Ruken stays the same, so links you've shared keep working.";
 </script>
@@ -104,7 +107,12 @@
       throwAway={data.throwAway}
       enterHint={false}
     >
-      <WebsiteLines name="servers" value={form?.value ?? data.servers} hint={WEBSITES_HINT} {problem} />
+      <WebsiteLines
+        name="servers"
+        value={form?.value ?? data.servers}
+        hint={data.offRuken ? WEBSITES_HINT_OFF : WEBSITES_HINT}
+        {problem}
+      />
     </QuestionScreen>
   {:else if data.question === "age"}
     <QuestionScreen

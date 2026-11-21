@@ -43,6 +43,7 @@
       changeAddress: string;
       copiesAgain: boolean;
       sendsForReview: boolean;
+      keepsChoice: boolean;
     };
     counter: { n: number; of: number } | null;
     back: string;
@@ -184,6 +185,8 @@
       </p>
     {:else if files.copiesAgain}
       <p class="note">Next copies your game from GitHub again.</p>
+    {:else if files.keepsChoice}
+      <p class="note">Save keeps your choice. Put it back on Ruken copies your game from GitHub.</p>
     {/if}
     {@render connectionFailedUnderList()}
     <p class="note">

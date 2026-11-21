@@ -1,3 +1,4 @@
+import pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { GitHub } from "../../../src/features/games/github.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
@@ -245,6 +246,99 @@ describe("holding a new game's decision", () => {
     clock.set(FRIDAY_NOON);
 
     expect(await service.accept(game.id, await createUser(db()))).toMatchObject({ day: "2026-12-04" });
+  });
+});
+
+describe("throwing away a waiting game that holds a decision", () => {
+  it("frees its seat at once, and the day lapses it instead of making it live (B2)", async () => {
+    const game = await waitingGame();
+    const other = await waitingGame();
+    const staff = await createUser(db());
+    await service.accept(game.id, staff);
+    await service.accept(other.id, staff);
+    expect((await service.thisWeek())?.taken).toBe(2);
+    clock.advance(60_000);
+
+    await service.throwAway(game.id, game.makerUserId);
+
+    // Its seat is free as for any lapsed yes: a third game can take it.
+    expect((await service.thisWeek())?.taken).toBe(1);
+    await expect(service.accept((await waitingGame()).id, staff)).resolves.toMatchObject({ held: true });
+
+    clock.set(FRIDAY_NOON);
+    const says = await service.sendOutDecisionDays();
+
+    expect(says).toEqual(["Friday 27 November went out: 2 got in, 0 went back."]);
+    expect(await row(game.id)).toMatchObject({ state: "thrown_away", livePullId: null, pendingPullId: null });
+    expect(await row(other.id)).toMatchObject({ state: "live", livePullId: other.pullId });
+    const outcome = await db().decisionOutcome.findFirstOrThrow({
+      where: { review: { gameId: game.id } },
+    });
+    expect(outcome.result).toBe("lapsed");
+  });
+
+  it("is refused when a yes makes the game live while it waits for the game's row, and the game stays live", async () => {
+    if (database === undefined) throw new Error("the database did not start");
+    const game = await waitingGame();
+    // A connection of its own holds the game's row, as a yes being made does, and the throw-away is started against it.
+    const staff = new pg.Client({ connectionString: database.url });
+    await staff.connect();
+    try {
+      await staff.query("BEGIN");
+      await staff.query('SELECT "id" FROM "Game" WHERE "id" = $1 FOR UPDATE', [game.id]);
+      const racer = service.throwAway(game.id, game.makerUserId);
+      const settled = racer.then(
+        () => "thrown away",
+        (problem: unknown) => problem,
+      );
+      // Readiness, not a guess: the throw-away is stuck on a lock when the server shows it.
+      for (let tries = 0; ; tries += 1) {
+        const stuck = await staff.query<{ n: string }>(
+          "SELECT count(*) AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()",
+        );
+        if (Number(stuck.rows[0]?.n ?? 0) > 0) break;
+        if (tries > 400) throw new Error("nothing is waiting for the game's lock");
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      // What a yes does to a game that was live before: its waiting files go live.
+      await staff.query(
+        `UPDATE "Game" SET "state" = 'live', "livePullId" = "pendingPullId", "pendingPullId" = NULL, "pendingSince" = NULL WHERE "id" = $1`,
+        [game.id],
+      );
+      await staff.query("COMMIT");
+
+      expect(await settled).toMatchObject({ code: "NOT_READY", message: "This game can't be thrown away." });
+    } finally {
+      await staff.end();
+    }
+    expect(await row(game.id)).toMatchObject({ state: "live", livePullId: game.pullId });
+  });
+
+  it("is refused a yes after it, and a throw-away after a yes that took effect at once", async () => {
+    const thrown = await waitingGame();
+    await service.throwAway(thrown.id, thrown.makerUserId);
+    await expect(service.accept(thrown.id, await createUser(db()))).rejects.toMatchObject({
+      code: "NOT_READY",
+      message: "Nothing is waiting for review.",
+    });
+
+    // A game that was live before is decided at once: once it is live it is not waiting, so it cannot be thrown away.
+    const back = await waitingGame();
+    await db().gameReview.create({
+      data: {
+        gameId: back.id,
+        pullId: back.pullId,
+        staffUserId: await createUser(db()),
+        decision: "accepted",
+        decidedAt: new Date(clock.epochMs()),
+      },
+    });
+    await service.accept(back.id, await createUser(db()));
+    await expect(service.throwAway(back.id, back.makerUserId)).rejects.toMatchObject({
+      code: "NOT_READY",
+      message: "This game can't be thrown away.",
+    });
+    expect((await row(back.id)).state).toBe("live");
   });
 });
 
