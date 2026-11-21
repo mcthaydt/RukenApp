@@ -1,6 +1,6 @@
 # Every way to open or edit a pull request goes through the same hook checks
 
-Date: 2026-11-21. Status: **spec, revised after plan audit 1 (40631f9 FAIL, 9 red) and plan audit 2 (ae8bfa9 FAIL, 8 red); waiting on plan audit 3.** Lane 3: it changes `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.claude/settings.json`, `.github/workflows/commit-authors.yml` and CLAUDE.md, which decide what needs the owner.
+Date: 2026-11-21. Status: **spec, revised after plan audit 1 (40631f9 FAIL, 9 red) and plan audit 2 (ae8bfa9 FAIL, 8 red), then rebuilt around a check on GitHub's side; waiting on plan audit 3.** Lane 3: it changes `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.claude/settings.json`, `.github/workflows/commit-authors.yml` and CLAUDE.md, which decide what needs the owner.
 
 Lines marked **Owner** are the owner's words. Lines marked **Call** are this spec's choices; the owner can overrule any of them.
 
@@ -27,53 +27,62 @@ Each was run against a scratch copy of `.claude/hooks/` at `ef720a9`, with a stu
 
 ## 2. The outcome
 
-Every route the hook can read that opens, reopens or edits a pull request meets the same checks: lane, acceptance criteria, draft, the open limit, the body's last line, and no base change. Routes it cannot read are refused where that is cheap, and the rest are named in section 5 and governed by the CLAUDE.md rule in 3.7. When the hook cannot read what it needs (the open count, the body, the head branch), it refuses instead of letting the call through.
+The pull request rules are enforced on GitHub, where no tool or shell trick reaches: a required check, `pr-rules`, runs on every pull request event and judges the pull request as GitHub has it. Whatever route opened, reopened or edited it, a pull request that breaks a rule fails `pr-rules` (so it cannot merge), and one that takes the open count past 3 is closed with a comment. The client hook stays as the early warning on the routes it can read, plus a narrow allowlist: pull request writes go through plain `gh` or the GitHub MCP tools, nothing else. The CLAUDE.md rule (3.7) is the behavioural backstop.
 
-**Call, after two audits (approach reassessed):** listing routes to refuse keeps missing some (9 found, then 8 more), so the hook works in three layers. (A) It parses the routes it knows and runs the full checks (3.1 to 3.4). (B) A tripwire refuses any Bash command that names `gh`, `api.github.com` or a pull request GraphQL mutation in a way (A) did not parse as a plain `gh` call (3.9). (C) A detective check after every call that could have reached GitHub blocks the session when more than 3 pull requests are open, whatever route opened them (3.10). (A) and (B) prevent; (C) catches what both miss. The proxy's footer no longer fails a pull request or sends a command to the owner. A session no longer hands the owner a pull request write it could run itself.
+**Call, after two plan audits (approach reassessed, as the coordinator advised):** two rounds of route-by-route refusals found 9 and then 8 more ways past the hook. A list of command shapes does not converge, because a shell can always build a command the hook cannot read. GitHub sees every pull request, however it was made, so the guard that must hold lives there.
 
 ## 3. The change
 
-### 3.1 One create check for every route (F1; audit R1, R3, R5, N3)
+### 3.1 `pr-rules`, the check on GitHub (the guard)
 
-- **Field forms (R1).** `ghApi` reads every gh field spelling: `-f k=v`, `-F k=v`, `--field k=v`, `--raw-field k=v`, `--field=k=v`, `--raw-field=k=v`, `-fk=v`, `-Fk=v`. A call with any field and no `-X` is a POST, as gh treats it.
-- **Path (N3; audit 2 R3).** One normaliser, used by every pulls match in the hook (list, `pulls/<n>`, `pulls/<n>/merge`, `pulls/<n>/ccr/...`): strip `?…` and a trailing `/`. `{owner}/{repo}` and `:owner/:repo` resolve as today. `--input=<file>` is read like `--input <file>`.
-- **Issues paths (audit 2 R2).** A non-GET `gh api` on `repos/<o>/<r>/issues/<n>` with `body`, `title` or `state`, and `gh issue edit|reopen|close <n>`, read `pulls/<n>`; when it is a pull request, or the read fails, the call is judged as the matching pull request edit or reopen.
-- **Create.** `checkPrFlowBash` treats a non-GET `gh api` on that path as a create and calls `checkPrCreate` with its `body`, `draft` (true for `true`, string or boolean) and `head`. The `gh pr create` (`--head`, else the current branch) and MCP (`head`) routes pass `head` too. An `owner:` prefix naming this repo's owner is stripped (audit 2 N1).
-- **The head branch (R5).** `changesBeyondDocs` and `onlyRulesAndDocs` take the head and diff `origin/<default>...origin/<head>`, fetching `origin/<head>` first (bounded, as `outgoingCommits` fetches). If it cannot be read, the branch counts as changing more than docs and as not exempt.
-- **Reopen (R3).** `gh pr reopen`, a non-GET `gh api .../pulls/<n>` with `state=open`, and `mcp__github__update_pull_request` with `state: "open"` run the open-limit part of `checkPrCreate`.
-- **Revert (audit 2 R5).** `gh pr revert` is refused: "open the revert with `gh pr create`, which the hook checks".
-- **Unreadable count (R6).** When the open list cannot be read, the create or reopen is refused: "the open pull request count could not be read; try again".
+A workflow `.github/workflows/pr-rules.yml`, on `pull_request_target` (`opened`, `reopened`, `edited`, `synchronize`, `ready_for_review`, `converted_to_draft`), `pull_request_review` (`submitted`) and `issue_comment` (`created`, on pull requests). It checks out the **base** branch only, never the pull request's code, and runs `node scripts/pr-rules.mjs` with the event's pull request number. Permissions: `contents: read`, `pull-requests: write` (to close and comment), `issues: write` (comments).
 
-### 3.2 Bodies the hook cannot read (F3; audit R4)
+`scripts/pr-rules.mjs` reads the pull request, its files and its comments and reviews through the REST API, and fails (exit 1, with one `::error::` line per rule) when:
 
-- A body file (`--body-file`, `-F` on `gh pr`, `@file` in a `gh api` field, `--input <file>`) that does not exist when the hook runs is refused: "the body file `<path>` does not exist yet; write it in its own call first, then run this". The literal `@path` is never judged as a body.
-- A create or edit whose body file (or `--input` file) is written earlier in the same Bash command is refused with the same message, whether the file exists or not (audit 2 R4): a `>`/`>>` redirect to it, `tee`, `cp`/`mv`/`install` to it, or `sed -i` on it.
-- On a **create** (any route), a body the hook cannot resolve is refused: `$(...)`, `$VAR`, backticks, `--input -` or `@-` not fed by a heredoc. "Write the body to a file in its own call, then pass it with `--body-file` or `-F body=@file`."
-- On an **edit**, an unresolvable body keeps today's behaviour (the after-the-fact check judges what GitHub has), since lane and criteria are judged at create and at ready; the builder adds no lane or criteria check to edits (audit 2 N4).
+1. **Open limit.** More than `maxOpenPrs` (3, read from `.claude/hooks/rules.json`) pull requests are open. Ordered by creation time, the pull requests beyond the third are over the limit. On `opened` or `reopened` of an over-limit pull request, the script also closes it, with the comment "Closed: 3 pull requests are already open (#a, #b, #c). Reopen this when one merges or closes." Every pull request counts, docs included (Owner, 3.5).
+2. **Lane.** The body names no lane, or names a lane lower than its files' lane (the same `lanePaths` and `lanePathsExcept` from `rules.json` the hook uses).
+3. **Acceptance criteria.** The body has no "Acceptance criteria" heading and the files go beyond docs (`ruleMix.docPaths`).
+4. **Draft.** A lane 2 or 3 pull request that is not a draft has no passing verdict naming its head commit, by the verdict format the hook's `verdicts` reads ("<7+ hex> PASS" as the first line of a comment or review, the latest verdict for that commit wins). A clean merge of `main` after the verdict keeps it, as `onlyCleanMerges` does in the hook.
 
-### 3.3 The proxy's footer (F4; audit R7, N6)
+The lane, criteria and verdict functions move out of `rules.mjs` into `scripts/pr-rules-lib.mjs`, imported by both the hook and `scripts/pr-rules.mjs`, so the client and GitHub judge by one piece of code.
 
-**Owner, 2026-11-21 14:43 UTC, on a card:** "Yes, ignore that exact footer" (to "Let the PR check ignore the footer GitHub's cloud tool keeps adding?").
+**Call:** close over-limit pull requests, rather than only failing them. Failing alone stops a merge but leaves the overrun open, which is what the owner objected to. Closing is undone by reopening, and a reopen meets the same check.
+
+**Owner step, one command, after `pr-rules.yml` is on `main`:** add `pr-rules` to the required checks on `main` (with `gate` and `commit-authors`). Only the owner's account can change branch protection; it goes to the owner as one `gh api` command in the coordinator's report, and until it runs the check is reported as "runs but is not required".
+
+### 3.2 The proxy's footer (F4; unchanged since plan audit 2)
+
+**Owner, 2026-11-21 14:43 UTC, on a card:** "Yes, ignore that exact footer".
 
 - The footer is one string in `rules.json`, `prBody.proxyFooter`: the two lines `---` and `_Generated by [Claude Code](https://claude.ai/code)_`.
-- `commit-authors` drops trailing blank lines, then removes that exact two-line block once if the body ends with it, then judges as today: the last line must be "Requested by **McThayDT**" and no "Generated by/with" line may remain. The workflow quotes the same two lines with a comment naming `rules.json` as the source.
-- `stripFooter` in the hook is narrowed to the same exact block (R7): it no longer strips `🤖 Generated with …`, session links, or a footer one character off. `rules.json` sets `prBody.footerStrippedByCi: true` so `verifyBody` uses it. The pre-call body check stays strict: a session never writes the footer itself.
-- Why not the other routes: the hook runs before the proxy adds the footer, so it never sees it; rewriting the body in CI needs a write token and causes another `edited` run; following each write with an MCP update was measured in #267 and the proxy re-adds the footer there too.
+- `commit-authors` drops trailing blank lines, removes that exact two-line block once if the body ends with it, then judges as today: last line "Requested by **McThayDT**", no other "Generated by/with" line. It quotes the same two lines, with a comment naming `rules.json` as the source.
+- `stripFooter` in the hook is narrowed to the same exact block, and `prBody.footerStrippedByCi` is set to `true`. The pre-call body check stays strict: a session never writes the footer itself.
+- Why: the hook runs before the proxy adds the footer; rewriting the body in CI causes another `edited` run; following each write with an MCP update was measured in #267 and the proxy re-adds it there too.
 
-### 3.4 Reads are not writes (F5)
+### 3.3 The client hook: early warning on the routes it reads
 
-The PostToolUse body check runs only for a non-GET `gh api` call on a pulls path (create or `pulls/<n>`) and for `gh pr create` and `gh pr edit`. A read never reports.
+Kept narrow. Each item is cheap and fixes a measured false answer:
 
-### 3.5 Docs-only branches and the limit (F7; audit N5)
+- **Create through `gh api` (F1).** A non-GET `gh api` on `repos/<o>/<r>/pulls` calls `checkPrCreate`, as `gh pr create` and the MCP tool already do. `ghApi` reads every field spelling (`-f`, `-F`, `--field`, `--raw-field`, with a space, with `=`, joined), `--input` and `--input=`, and treats a call with fields and no `-X` as a POST. One path normaliser (strip `?…` and a trailing `/`) is used by every pulls match.
+- **Unreadable count.** An open count the hook cannot read refuses the create instead of allowing it.
+- **Body files (F3).** A body file that does not exist yet, or that is written earlier in the same command, is refused with "write the body file in its own call first, then run this", never judged as the literal `@path`.
+- **Reads (F5).** The PostToolUse body check runs only for writes (non-GET `gh api` on a pulls path, `gh pr create`, `gh pr edit`).
+- **Docs exemption (F7).** `onlyRulesAndDocs` is removed from the limit check (Owner, 3.5).
+- **Fail closed.** `create_pull_request` joins `GUARDED` and `MERGE_TOOLS_MATCHER` in `rules.mjs` and the fail-closed entry in `.claude/settings.json`.
 
-**Owner, 2026-11-21 14:48 UTC, on a card:** "Yes, count every one" (to "Should pull requests that only change docs count toward the limit of 3?"). The exemption (`onlyRulesAndDocs` in the limit check) is removed so the hook matches CLAUDE.md: 3 open, counting every pull request. No CLAUDE.md change.
+### 3.4 The allowlist (replaces the round 2 tripwire and detective check)
 
-### 3.6 Commands handed to the owner (F6; audit R8, N2)
+A Bash command that writes to GitHub's API by any program other than a plain `gh` command is refused: "use `gh` directly, or the GitHub MCP tools". The hook refuses a command when its text contains `api.github.com` (any program but `gh`), `gh` anywhere but a program position, a program word that is a variable expansion, `gh alias set|import`, `gh pr revert`, or `gh api graphql` with a `mutation`. Anything it still cannot read is caught by `pr-rules` on GitHub (3.1). The client does not try to be complete; it only keeps the honest routes fast and the odd ones refused.
 
-- `ownerCommands.tools` lists `^mcp__hearthbot__(post_message|edit_message|request_decision|post_widget)$`. Every string inside the call's input is read: arrays and objects are walked (R8), so a decision card's options are checked.
-- Each `attached_outputs` entry of kind `file` is read too (its local path, first 256 KB), with the same checks (audit 2 R8).
-- Fenced blocks and inline code spans are both read; a command written as plain prose is not (audit 2 N3). Besides today's two checks, the hook refuses any command that writes a pull request: `gh pr create|edit|ready|merge|close|reopen`, or a non-GET `gh api` on `repos/<o>/<r>/pulls…` or `graphql`. "Run it yourself; the footer no longer needs the owner (3.3)."
-- **Call:** only pull request writes are refused. Commands that need what only the owner has (a Keychain secret, `wrangler` on their account, branch protection) are still allowed, as `release` asks.
+### 3.5 Docs-only branches and the limit (F7)
+
+**Owner, 2026-11-21 14:48 UTC, on a card:** "Yes, count every one". Every pull request counts, in the hook (3.3) and in `pr-rules` (3.1). No CLAUDE.md change.
+
+### 3.6 Commands handed to the owner (F6)
+
+- `ownerCommands.tools` lists `^mcp__hearthbot__(post_message|edit_message|request_decision|post_widget)$`. Every string in the call's input is read (arrays and objects walked), and each attached file's text (first 256 KB).
+- In fenced blocks and inline code (not plain prose), besides today's two checks, a pull request write is refused (`gh pr create|edit|ready|merge|close|reopen`, a non-GET `gh api` on a pulls, issues or graphql path): "run it yourself; the footer no longer needs the owner (3.2)".
+- **Call:** only pull request writes are refused. Commands that need what only the owner has (a Keychain secret, `wrangler` on their account, branch protection, as in 3.1) are allowed, as `release` asks.
 
 ### 3.7 The rule in CLAUDE.md (Owner)
 
@@ -81,81 +90,64 @@ A new bullet, the first under "Rules that never bend", before **Identity**:
 
 > - **Hooks.** Every session follows the hooks, the coordinator included. A hook's refusal is the rule speaking: never route around it, not with another tool, another API path, a reworded command or another session. Every pull request create and edit goes through a route the hooks check. A route found unchecked is reported to the owner and not used until a hook covers it. A refusal that looks wrong is reported, not worked around.
 
-### 3.8 Routes closed by refusal (audit R2, R9, N1, N4)
-
-- **GraphQL (R2).** A `gh api graphql` call whose query (from `-f`/`-F query=`, `query=@file`, or `--input`) has a `mutation` that names `PullRequest` or `mergeQueue` (case-insensitive; this covers create, update, reopen, ready, merge, auto-merge, close, revert and enqueue, and names added later) is refused, with the REST or `gh pr` command to use instead. An unreadable query on `gh api graphql` that is not a GET is refused too.
-- **Outside gh (R9).** A Bash command with an `api.github.com` URL containing `/pulls` or `/graphql`, run by anything but `gh` (`curl`, `wget`, an interpreter's inline script), is refused: "use `gh api`, which the hook reads".
-- **Aliases (R9).** `gh alias set` and `gh alias import` are refused: an alias could hide a pull request write. Running an existing alias is section 5's residual.
-- **Base changes (N1).** `gh pr edit --base` and a non-GET `gh api .../pulls/<n>` with `base` are refused, as the MCP route already is.
-- **Fail closed (N4; audit 2 R6).** `create_pull_request` joins `GUARDED` and `MERGE_TOOLS_MATCHER` in `rules.mjs` (so a hook crash or missing config blocks it, and `installJs` writes it into user settings) and the fail-closed entry in `.claude/settings.json`. The owner's cloud setup script (project files, `owner-steps/cloud-setup-script.sh`) is reported to the coordinator if it hard-codes the matcher.
-
-### 3.9 The tripwire (layer B; audit 2 R1)
-
-After (A) has parsed a Bash command, the hook refuses it when its raw text still names a GitHub write it did not account for: the word `gh` anywhere but a program position (an `xargs`, `find -exec`, `parallel` or `env` argument, a `-c`/`-e` inline script of `bash`/`sh`/`python`/`node`/`perl`/`ruby`, a function definition), a program word that is a variable expansion, or `api.github.com` together with `pulls`, `issues` or `graphql` anywhere in the command (a URL built from variables included when those words appear). "Run `gh` directly, as its own command, so the hook can check it." Read-only `gh` uses through `xargs` and the like are refused too: the cost is a rewrite, never a missed check.
-
-### 3.10 The detective check (layer C; audit 2 N2)
-
-PostToolUse, after any Bash call whose text names `gh`, `github` or `pulls`, any `mcp__github__` call, and any call to a script the session ran (`node`, `python`, `bash`, `sh` with a file), reads the open count. Over `maxOpenPrs`, it blocks with "more than 3 pull requests are open (#…): close the one you just opened, then report it". Reads are bounded by the same 8 s timeout; a failed read reports that the count could not be checked.
-
 ## 4. Acceptance criteria
 
-Each is a Vitest case in `tests/rules-pr-routes.test.ts` (PR-H), driving the real hook against a scratch copy with a stub `gh`, like `tests/rules-merge-permission.test.ts`, unless it says otherwise. The suite exits 0 and `pnpm lint` and `pnpm typecheck` pass.
+PR-H criteria are Vitest cases: `tests/pr-rules.test.ts` drives `scripts/pr-rules.mjs` against a stub GitHub API (a local fixture server or an injected fetch), and `tests/rules-pr-routes.test.ts` drives the real hook against a scratch copy with a stub `gh`, like `tests/rules-merge-permission.test.ts`. The suites exit 0; `pnpm lint` and `pnpm typecheck` pass.
 
-1. With 3 open, a create through `gh api` with a correct body is refused with the open-limit reason, for each field spelling in 3.1, for `pulls`, `pulls/` and `pulls?x=1`, and for `{owner}/{repo}`. With 2 open each is allowed.
-2. With 2 open, that create without `draft=true` on a lane 2 body is refused with the draft reason; a body with no lane is refused with the lane reason.
-3. `gh pr create` and `mcp__github__create_pull_request` give the same answers as 1 and 2.
-4. With 3 open, `gh pr reopen 5`, `gh api -X PATCH .../pulls/5 -f state=open` and `mcp__github__update_pull_request` with `state: "open"` are refused with the open-limit reason; with 2 open, allowed.
-5. With the open list failing in the stub, a create on each route is refused with "could not be read".
-6. With the local HEAD on a docs-only branch and `head` naming a branch that changes `src/x.ts`, a create whose body has no acceptance criteria is refused; with `origin/<head>` unreadable, it is refused the same way.
-7. `printf … > new.md && gh api -X PATCH .../pulls/5 -F body=@new.md` is refused naming `new.md` and "does not exist yet"; with `new.md` present and correct, allowed; present without the last line, refused with the body reason.
-8. A create with `-f body="$(cat b.md)"`, `-f body="$B"`, or `cat b.json | gh api .../pulls --input -` is refused with the "write the body to a file" reason; a heredoc `--input -` with a correct body is allowed.
-9. A GET `gh api repos/mcthaydt/RukenApp/pulls/270` produces no PostToolUse report, whatever the stubbed body.
-10. PostToolUse after a body write reports nothing when the stubbed body ends with "Requested by **McThayDT**" plus exactly `rules.json`'s `proxyFooter`; it reports when the footer differs by one character, when another "Generated by" line appears above it, and for `🤖 Generated with [Claude Code](https://claude.com/claude-code)` plus a session link.
-11. `commit-authors`' body step, read out of the workflow file and run with `bash` against a stub `gh`, passes and fails exactly the bodies of criterion 10.
-12. `gh api graphql` with `createPullRequest`, `updatePullRequest`, `mergePullRequest`, `revertPullRequest` and `enqueuePullRequest` is refused; a GraphQL query (no mutation) is allowed; `gh pr revert 5` is refused.
-13. `curl -X POST https://api.github.com/repos/mcthaydt/RukenApp/pulls …`, `U=https://api.github.com/repos/x/y/pulls; curl -X POST $U`, `gh alias set pc 'pr create'`, `f(){ gh pr create …; }; f`, `G=gh; $G pr create …`, `echo 5 | xargs gh pr reopen`, `find . -exec gh pr create \;` and `python -c "import subprocess; subprocess.run(['gh','pr','create'])"` are refused (3.9).
-14. `gh pr edit 5 --base other` and `gh api -X PATCH .../pulls/5 -f base=other` are refused.
-15. `mcp__hearthbot__post_message` with a fenced `gh pr edit 270 --body-file b.md` is refused, and so is the same command as inline code; `request_decision` with that command inside an option's `consequence` is refused; a fenced `wrangler secret put JOBS_SECRET --name ruken` is allowed.
-16. With 3 open, a docs-only create is refused with the open-limit reason (owner, 14:48 UTC).
-17. `.claude/settings.json`'s fail-closed matcher includes `create_pull_request`; with `rules.json` unreadable, the hook exits 1 for `mcp__github__create_pull_request`.
-18. CLAUDE.md's first rule under "Rules that never bend" is the **Hooks** bullet of 3.7, word for word.
-19. `tests/rules-merge-permission.test.ts` still passes unchanged.
-20. **PR-R's own run (N6; audit 2 R7):** PR-R's body, written through the proxy, ends with "Requested by **McThayDT**" plus the proxy footer, and its `commit-authors` run passes; the run link and the commit are in PR-R's body. The failing cases are criterion 11's, against a stub: no criterion needs a write a hook refuses.
-21. Issues paths: `gh api -X PATCH .../issues/5 -f body=nolastline` (5 a pull request in the stub) is refused with the body reason; `-f state=open` with 3 open is refused with the open-limit reason; `gh issue reopen 5` likewise.
-22. Path forms: `PATCH .../pulls/5?x=1` and `.../pulls/5/` with a bad body are refused; `PUT .../pulls/5/merge/` and `.../merge?x=1` meet the review check; `--input=b.json` is read.
-23. A body file rewritten in the same command (`printf 'no lane' > b.md && gh api .../pulls -F body=@b.md`, with `b.md` already holding a good body) is refused.
-24. `post_message` with an attached `.md` holding a fenced `gh pr edit 5 --body-file b.md` is refused.
-25. Layer C: after a Bash call naming `gh`, with the stub reporting 4 open, PostToolUse blocks with the over-limit message; with 3, it says nothing; after a `node script.mjs` call, the same.
+**`pr-rules` (the guard):**
+1. With 3 open, a 4th pull request's `opened` event fails the check and closes it with the comment naming the 3; its `reopened` event does the same. With 2 open, a 3rd passes this rule. A docs-only 4th is treated the same.
+2. With 4 open (one opened before the check existed), the newest fails and the three oldest pass this rule; nothing is closed on a `synchronize` or `edited` event.
+3. A body with no lane fails; a body naming lane 1 on a pull request that changes `.claude/hooks/rules.mjs` fails (files are lane 3); lane 3 passes.
+4. A body without "Acceptance criteria" fails when a file outside `docPaths` changes, and passes for docs only.
+5. A lane 2 pull request that is not a draft fails with no verdict, fails with "<head> FAIL" as the latest verdict, fails with a PASS naming an older commit that is not a clean merge of `main`, and passes with "<head> PASS"; a draft passes this rule.
+6. The workflow file checks out the base ref, never `github.event.pull_request.head`, and its permissions are exactly those in 3.1 (read by the test).
+7. The hook and `scripts/pr-rules.mjs` import lane, criteria and verdict logic from `scripts/pr-rules-lib.mjs` (the test checks the imports and that `rules.mjs` no longer defines them).
+
+**Footer:**
+8. The hook's PostToolUse check after a body write reports nothing when the body ends with "Requested by **McThayDT**" plus exactly `rules.json`'s `proxyFooter`; it reports when the footer differs by one character, when another "Generated by" line appears above it, and for `🤖 Generated with [Claude Code](https://claude.com/claude-code)` plus a session link.
+9. `commit-authors`' body step, read out of the workflow and run with `bash` against a stub `gh`, passes and fails exactly criterion 8's bodies (PR-R; run in PR-H's test file once PR-R's workflow is on `main` is not possible, since PR-H merges first, so PR-R's own test is this bash run, recorded in its body with the commit).
+
+**Client hook:**
+10. With 3 open, a create through `gh api` is refused for every field spelling, for `pulls`, `pulls/` and `pulls?x=1`, and for `{owner}/{repo}`; with 2 open, allowed; with the open list failing, refused with "could not be read".
+11. A body file that does not exist yet, or is rewritten earlier in the same command, is refused with the "own call first" reason; a file already present and correct is allowed.
+12. A GET of `pulls/270` gives no PostToolUse report.
+13. With 3 open, a docs-only create is refused.
+14. With `rules.json` unreadable, the hook exits 1 for `mcp__github__create_pull_request`; `settings.json`'s fail-closed matcher includes it.
+15. Allowlist: `curl -X POST https://api.github.com/repos/x/y/pulls`, `G=gh; $G pr create`, `echo 5 | xargs gh pr reopen`, `python -c "...'gh'..."`, `gh alias set pc 'pr create'`, `gh pr revert 5` and `gh api graphql -f query='mutation {…}'` are refused; `gh api graphql -f query='query {…}'` and `gh pr view 5` are allowed.
+16. `post_message` with a fenced or inline `gh pr edit 270 --body-file b.md`, `request_decision` with it inside an option, and `post_message` with an attached `.md` holding it are refused; a fenced `wrangler secret put JOBS_SECRET --name ruken` is allowed.
+17. `tests/rules-merge-permission.test.ts` passes unchanged.
+
+**PR-R:**
+18. CLAUDE.md's first rule under "Rules that never bend" is the **Hooks** bullet of 3.7, word for word (grep).
+19. PR-R's own `commit-authors` run passes with its real body ending in "Requested by **McThayDT**" plus the proxy footer; PR-R's own `pr-rules` run passes; both links and the commit are in its body.
+20. After the owner's step, `gh api repos/mcthaydt/RukenApp/branches/main/protection/required_status_checks` lists `pr-rules` (checked by the coordinator; reported as not required until then).
 
 ## 5. Boundaries
 
-- Files: `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.claude/settings.json`, `.github/workflows/commit-authors.yml`, CLAUDE.md, `tests/rules-pr-routes.test.ts` (new).
-- Two pull requests, because `ruleMix` refuses a branch that mixes rules files (CLAUDE.md, workflows) with tests: **PR-R**, CLAUDE.md and `commit-authors.yml` only; **PR-H**, the hook, `rules.json`, `settings.json` and the test file. PR-R merges first. Both lane 3; each opens only when a place under the limit is free.
-- No new dependency, tool, environment or spend. Expected duration: build 4 hours, audits and fixes 2 hours.
-- **Routes the hook does not see before the call.** A script in a file (a `.mjs`, `.py` or `.sh` the session wrote) that calls GitHub; a `gh` extension; an alias made before this change; a URL assembled from variables none of which spells `api.github.com`; a command written in plain prose to the owner. Layer C still catches an open count over 3 after any of them, but not a bad body or a missing review. The 3.7 rule governs them by name: a session never uses one to write a pull request.
+- Files: `scripts/pr-rules.mjs`, `scripts/pr-rules-lib.mjs` (new), `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.claude/settings.json`, `tests/pr-rules.test.ts`, `tests/rules-pr-routes.test.ts` (new) in **PR-H**; `.github/workflows/pr-rules.yml` (new), `.github/workflows/commit-authors.yml`, `CLAUDE.md` in **PR-R**. Two pull requests because `ruleMix` refuses a branch mixing rules files (workflows, CLAUDE.md) with code or tests. PR-H merges first, since `pr-rules.yml` runs the script from `main`.
+- One owner step (3.1, branch protection), handed over as one `gh api` command because only the owner's account can change branch protection.
+- No new dependency, tool, environment or spend: `pr-rules` runs on GitHub's hosted runners like `commit-authors`, under a minute per event. Expected duration: build 4 hours, audits and fixes 2 hours.
+- **What still is not seen before a call.** Scripts in files, `gh` extensions, old aliases, URLs built from variables, and commands in plain prose. `pr-rules` catches every pull request they make or change, after the fact; the 3.7 rule forbids using them.
 
 ## 6. Plan
 
 | Unit | Waits on | Files | Check |
 |---|---|---|---|
-| U0 CLAUDE.md rule (3.7) and CI footer (3.3), PR-R | none | `CLAUDE.md`, `commit-authors.yml` | criteria 18 (grep), 20 |
-| U1 field forms, paths, issues, create, head, reopen, revert, unreadable count (3.1) and bodies (3.2) | none | `rules.mjs` | criteria 1 to 8, 21 to 23 |
-| U2 reads (3.4) and the narrowed footer (3.3) | U1 (same file) | `rules.mjs`, `rules.json` | criteria 9, 10, and 11 once PR-R is on `main` |
-| U3 refusals (3.8) and the tripwire (3.9) | U2 (same file) | `rules.mjs`, `settings.json` | criteria 12 to 14, 17 |
-| U5 detective check (3.10) | U4 (same file) | `rules.mjs` | criterion 25 |
-| U4 owner commands (3.6) and the docs exemption (3.5) | U3 (same file) | `rules.mjs`, `rules.json` | criteria 15, 16, 24 |
+| U1 shared library and `pr-rules` script (3.1) | none | `scripts/pr-rules-lib.mjs`, `scripts/pr-rules.mjs`, `tests/pr-rules.test.ts` | criteria 1 to 5, 7 |
+| U2 hook uses the library; create, body file, reads, docs, fail closed (3.3); footer (3.2) | U1 (imports it) | `rules.mjs`, `rules.json`, `settings.json`, `tests/rules-pr-routes.test.ts` | criteria 8, 10 to 14, 17 |
+| U3 allowlist (3.4) and owner commands (3.6) | U2 (same file) | `rules.mjs`, `rules.json`, the hook test | criteria 15, 16 |
+| U4 PR-R: `pr-rules.yml`, `commit-authors.yml`, CLAUDE.md (3.1, 3.2, 3.7) | PR-H on `main` | the three files | criteria 6 (in PR-H's test, reading the workflow from PR-R's branch is not possible, so criterion 6 runs in PR-R as a bash check recorded in its body), 9, 18, 19 |
+| U5 owner step | U4 on `main` | branch protection | criterion 20 |
 
-PR-R holds U0; PR-H holds U1 to U5 in that order on one branch, from a `main` that has PR-R. Tests are written first, each failing on `main` before its unit lands. Criteria 18 and 19 run in PR-H too.
+PR-H holds U1 to U3 on one branch, in that order; PR-R holds U4. Tests are written first, each failing on `main` before its unit lands.
 
 ## 7. Open decisions for the owner
 
-1. ~~The footer route in 3.3~~: decided 14:43 UTC, CI ignores the exact proxy footer.
-2. ~~The docs-only exemption in 3.5~~: decided 14:48 UTC, every pull request counts.
+1. ~~The footer route~~: decided 14:43 UTC, CI ignores the exact proxy footer.
+2. ~~The docs-only exemption~~: decided 14:48 UTC, every pull request counts.
 
-## 8. Plan audit 1 answers
+None open. 3.1's "close over-limit pull requests" is a **Call** the owner can overrule.
 
-R1 to R9 are fixed in 3.1, 3.2, 3.3, 3.6 and 3.8, with criteria 1 to 15. N1, N2, N3, N4 (settings only; the setup script is reported) and N6 are taken in; N5 is answered in 3.5; N7 needs nothing.
+## 8. Audit history
 
-## 9. Plan audit 2 answers
-
-R1 in 3.9 and section 5; R2, R3 and R5 in 3.1 and 3.8; R4 in 3.2; R6 in 3.8; R7 in criterion 20; R8 in 3.6; criteria 21 to 25 are new. N1 in 3.1, N2 is layer C (3.10), N3 and N4 are stated in 3.6 and 3.2, N5 is refreshed in this commit.
+- Plan audit 1 (40631f9, 9 red) and plan audit 2 (ae8bfa9, 8 red) found routes past a client-only design. Their findings are answered by moving the guard to GitHub (3.1): every route they list (`gh api` field forms, GraphQL, reopen, issues paths, `curl`, aliases, shell indirection, rewritten body files, revert) ends in a pull request event that `pr-rules` judges. The client fixes kept (3.3, 3.4, 3.6) are the ones that fix a false answer or keep honest routes fast; route-by-route coverage is no longer a goal of the hook.
