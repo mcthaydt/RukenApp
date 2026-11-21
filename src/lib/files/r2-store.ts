@@ -9,7 +9,30 @@ function describe(object: R2Object): StoredFile {
   return { size: object.size, etag: object.httpEtag };
 }
 
-export function r2FileStore(bucket: R2Bucket): FileStore {
+/** How many times a put is tried before its error is thrown. */
+const PUT_TRIES = 3;
+
+/**
+ * Whether an R2 error is one that passes. The local R2 the journeys run on is a Durable Object inside workerd, and on a
+ * busy machine the call to it can drop with "Network connection lost." (run 44922343233 lost a clip so); Cloudflare
+ * marks such errors `retryable`, and asks that an `overloaded` one is not tried again, since that adds to the load.
+ */
+function passes(problem: unknown): boolean {
+  if (!(problem instanceof Error)) return false;
+  const marks = problem as Error & { retryable?: boolean; overloaded?: boolean };
+  if (marks.overloaded === true) return false;
+  return marks.retryable === true || problem.message.startsWith("Network connection lost");
+}
+
+const pause = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
+
+/** `wait` is how a retry pauses; tests pass one that does not. */
+export function r2FileStore(
+  bucket: R2Bucket,
+  options: { wait?: (ms: number) => Promise<void> } = {},
+): FileStore {
+  const wait = options.wait ?? pause;
+
   return {
     async head(key) {
       const object = await bucket.head(key);
@@ -25,7 +48,17 @@ export function r2FileStore(bucket: R2Bucket): FileStore {
     },
     async put(key, bytes) {
       // R2 refuses a stream of unknown length, which is why a file is held whole, in bytes, before it is stored.
-      await bucket.put(key, bytes);
+      // Holding the bytes also makes a retry safe: the same bytes go to the same key, and a second write of them
+      // changes nothing. A maker's clip is not lost to a moment's failure; one that keeps failing still throws.
+      for (let attempt = 1; ; attempt++) {
+        try {
+          await bucket.put(key, bytes);
+          return;
+        } catch (problem) {
+          if (attempt >= PUT_TRIES || !passes(problem)) throw problem;
+          await wait(100 * 2 ** (attempt - 1));
+        }
+      }
     },
     async delete(key) {
       await bucket.delete(key);
