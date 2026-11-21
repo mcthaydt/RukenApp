@@ -284,6 +284,17 @@ export function createPagesService(deps: PagesServiceDeps) {
     return new Map(pages.map((page) => [page.userId, page.handle]));
   }
 
+  /** The address, name and photo's key of each of these accounts that has a page. */
+  async function makersOf(
+    userIds: readonly string[],
+  ): Promise<Map<string, { handle: string; name: string; photoKey: string | null }>> {
+    const pages = await db.makerPage.findMany({
+      where: { userId: { in: [...userIds] } },
+      select: { userId: true, handle: true, name: true, photoKey: true },
+    });
+    return new Map(pages.map(({ userId, ...maker }) => [userId, maker] as const));
+  }
+
   /**
    * Keeps a photo for the person's page, in place of the one it had. A photo that breaks the photo rules is refused
    * before anything is stored. The new file is stored and the page points at it before the old file is deleted, so a
@@ -330,5 +341,6 @@ export function createPagesService(deps: PagesServiceDeps) {
     countView,
     tapLink,
     handlesOf,
+    makersOf,
   };
 }

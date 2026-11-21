@@ -829,6 +829,127 @@ describe("moreLiveGamesBy", () => {
   });
 });
 
+describe("liveGames", () => {
+  /** A live game for this maker, with both clips. */
+  async function liveGameOf(makerUserId: string) {
+    const game = await db().game.create({
+      data: {
+        publicId: newPublicId(),
+        slug: `listed-${String((made += 1))}`,
+        makerUserId,
+        name: "Listed",
+        oneLine: "x",
+        playsOn: "phone_and_computer",
+        repoFullName: "acme/game",
+        ageRating: "age_7",
+      },
+    });
+    await addBothClips(game.id);
+    await makeLive(game.id, await addPull(game.id, []));
+    return game;
+  }
+
+  /** An accepted review that took effect at once, as a decision on the given day leaves it. */
+  async function accept(gameId: string, decidedAt: Date, staffUserId: string, held?: Date) {
+    const goesOutOn = held === undefined ? null : new Date(held.toISOString().slice(0, 10));
+    const review = await db().gameReview.create({
+      data: {
+        gameId,
+        pullId: await addPull(gameId, []),
+        staffUserId,
+        decision: "accepted",
+        decidedAt,
+        goesOutOn,
+      },
+    });
+    if (held !== undefined && goesOutOn !== null) {
+      await db().decisionDay.upsert({
+        where: { day: goesOutOn },
+        update: {},
+        create: { day: goesOutOn, seats: 10, wentOutAt: held },
+      });
+      await db().decisionOutcome.create({ data: { reviewId: review.id, result: "applied" } });
+    }
+  }
+
+  const day = 86_400_000;
+  const ago = (days: number) => new Date(Date.now() - days * day);
+
+  it("lists every live game of one maker as a live game plus when it went live, and no other", async () => {
+    const maker = await createUser(db());
+    const live = await liveGameOf(maker);
+    await liveGameOf(await createUser(db()));
+    await db().game.create({
+      data: {
+        publicId: newPublicId(),
+        slug: `listed-${String((made += 1))}`,
+        makerUserId: maker,
+        name: "Draft",
+      },
+    });
+
+    const listed = await service.liveGames({ makerUserId: maker });
+
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({ ...(await service.liveGameBySlug(live.slug)) });
+    expect(listed[0]?.liveSince).toBeInstanceOf(Date);
+  });
+
+  it("lists the games of every maker when no maker is named", async () => {
+    const one = await liveGameOf(await createUser(db()));
+    const other = await liveGameOf(await createUser(db()));
+
+    const slugs = (await service.liveGames()).map((game) => game.slug);
+
+    expect(slugs).toEqual(expect.arrayContaining([one.slug, other.slug]));
+  });
+
+  it("leaves out a game that is waiting, sent back or taken off", async () => {
+    const maker = await createUser(db());
+    const live = await liveGameOf(maker);
+    for (const state of ["waiting", "sent_back", "taken_off"] as const) {
+      const game = await liveGameOf(maker);
+      await db().game.update({ where: { id: game.id }, data: { state } });
+    }
+
+    expect((await service.liveGames({ makerUserId: maker })).map((game) => game.slug)).toEqual([live.slug]);
+  });
+
+  it("dates a game by its first accepted review, a held yes by its decision day, and a later yes moves nothing", async () => {
+    const maker = await createUser(db());
+    const first = await liveGameOf(maker);
+    const held = await liveGameOf(maker);
+    const setByHand = await liveGameOf(maker);
+    const decidedAt = ago(10);
+    await accept(first.id, decidedAt, maker);
+    await accept(first.id, ago(0), maker);
+    // A day of its own: decision days are one row per date, and the "More from" tests above use the date two days back.
+    const wentOutAt = ago(7);
+    await accept(held.id, ago(20), maker, wentOutAt);
+
+    const listed = await service.liveGames({ makerUserId: maker });
+    const since = (slug: string) => listed.find((game) => game.slug === slug)?.liveSince;
+    const copy = await db().gamePull.findFirstOrThrow({ where: { gameId: setByHand.id } });
+
+    expect(since(first.slug)).toEqual(decidedAt);
+    expect(since(held.slug)).toEqual(wentOutAt);
+    expect(since(setByHand.slug)).toEqual(copy.createdAt);
+  });
+
+  it("does not move a game's date when it is taken off and put back", async () => {
+    const maker = await createUser(db());
+    const game = await liveGameOf(maker);
+    const decidedAt = ago(6);
+    await accept(game.id, decidedAt, maker);
+    await db().game.update({ where: { id: game.id }, data: { state: "taken_off" } });
+    await db().game.update({ where: { id: game.id }, data: { state: "live" } });
+
+    const [listed] = await service.liveGames({ makerUserId: maker });
+
+    expect(listed?.liveSince).toEqual(decidedAt);
+  });
+});
+
 describe("pullLatest", () => {
   it("pulls with the service's own GitHub and bucket", async () => {
     const sha = "0123456789abcdef0123456789abcdef01234567";
