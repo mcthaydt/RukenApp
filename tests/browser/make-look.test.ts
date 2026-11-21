@@ -6,6 +6,7 @@ import {
   BROKEN_GAME,
   connectGitHubFromFiles,
   freshName,
+  holdAnswersTo,
   nextButton,
   startAtCheck,
   startAtFiles,
@@ -86,6 +87,22 @@ test("press Enter shows only where there is a mouse", async ({ page }, testInfo)
   const hint = page.getByText("press Enter");
   if (testInfo.project.name === "computer") await expect(hint).toBeVisible();
   else await expect(hint).toBeHidden();
+});
+
+test("press Enter goes while the blue button is off, as it saves", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "computer", "the hint shows only where there is a mouse");
+  await signUp(page);
+  await page.goto("/make/new");
+  await pageHasSettled(page);
+  const held = await holdAnswersTo(page, /\/make\/new\?\/answer$/);
+  await page.getByLabel("What's your game called?").fill(freshName());
+  await nextButton(page).click();
+
+  await expect(page.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  await expect(page.getByText("press Enter")).toBeHidden();
+
+  held.release();
+  await expect(page).toHaveURL(/\/line$/);
 });
 
 test("Enter presses the blue button", async ({ page }) => {

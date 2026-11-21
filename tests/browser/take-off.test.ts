@@ -83,7 +83,12 @@ test("a copy GitHub refuses leaves it off, and says why", async ({ page }) => {
 
   await page.getByRole("button", { name: "Put it back on Ruken" }).click();
 
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("Choose it on GitHub");
+  // The message says to choose the game on GitHub, so the way to do it is right there.
+  await expect(page.getByRole("link", { name: "Choose it on GitHub" })).toHaveAttribute(
+    "href",
+    `/make/github?choose=1&game=${slug}`,
+  );
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Taken off Ruken");
   await expect(page.getByRole("button", { name: "Put it back on Ruken" })).toBeVisible();
   expect(await stateOf(slug)).toBe("taken_off");

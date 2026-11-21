@@ -114,15 +114,15 @@ test("a live game whose last copy was refused offers a new version, which copies
   ).toBeVisible();
 });
 
-// ---- E5: no dead link on Live ----------------------------------------------------------------------------------------------
+// ---- E5: a way to the game's page from Live ----------------------------------------------------------------------------------------------
 
-test("Live has no See it on Ruken until the game's page exists", async ({ page }) => {
+test("Live has See it on Ruken, which opens the game's page", async ({ page }) => {
   const { slug } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
 
   await expect(page.getByRole("button", { name: "Send a new version" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "See it on Ruken" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "See it on Ruken" })).toHaveAttribute("href", `/g/${slug}`);
 });
 
 // ---- E6: GitHub taking a long time ------------------------------------------------------------------------------------------
