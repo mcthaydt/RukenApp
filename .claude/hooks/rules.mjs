@@ -952,15 +952,50 @@ function checkPrCreate(config, cwd, repo, body, draft, deny) {
     if (Array.isArray(open) && open.length >= f.maxOpenPrs) deny(refusal(`Pull requests open: ${f.maxOpenPrs} at most (CLAUDE.md, Settings).`, `${open.length} are open now (${open.slice(0, 5).map((x) => `#${x.number}`).join(', ')})`, 'merge or close one first, or report to the coordinator and wait for a free place'));
   }
 }
-function checkReviewed(config, cwd, repo, number, what, deny) {
+// The lane of a pull request's files (CLAUDE.md, Risk: the highest lane wins). Every page
+// of its file list is read; a failed read, or a count that differs from changed_files, is lane 3.
+function laneOfFiles(config, cwd, repo, n, pr) {
+  const paths = config.prFlow?.lanePaths;
+  if (!paths) return null;
+  const except3 = config.prFlow?.lanePathsExcept?.['3'] ?? [];
+  const files = [];
+  for (let page = 1; page <= 30; page++) {
+    const got = ghJson(`repos/${repo}/pulls/${n}/files?per_page=100&page=${page}`, cwd);
+    if (!Array.isArray(got)) return 3;
+    files.push(...got);
+    if (got.length < 100) break;
+  }
+  if (files.length !== pr.changed_files) return 3;
+  let lane = 1;
+  for (const f of files) {
+    for (const name of [f.filename, f.previous_filename]) {
+      if (!name) continue;
+      if (matchesAny(name, paths['3']) && !matchesAny(name, except3)) return 3;
+      if (matchesAny(name, paths['2'])) lane = 2;
+    }
+  }
+  return lane;
+}
+const PIN_RULE = 'A merge lands only on the head commit that was checked (release; the merge permission rule).';
+// pin: { sha } makes a merge name the head it was checked on (expectedHeadSha); it holds
+// even when review checks are switched off, and uses the same pull request read.
+function checkReviewed(config, cwd, repo, number, what, deny, pin = null) {
   const f = config.prFlow;
-  if (!f || f.enabled === false || f.requireReview === false || !repo) return;
+  const reviewOn = !!f && f.enabled !== false && f.requireReview !== false;
+  if (!repo || (!reviewOn && !pin)) return;
   let n = number;
   if (!n) { const b = currentBranch(cwd); const list = ghJson(`repos/${repo}/pulls?head=${repo.split('/')[0]}:${b}`, cwd); n = list?.[0]?.number; }
   const pr = n ? ghJson(`repos/${repo}/pulls/${n}`, cwd) : null;
   if (!pr) { deny(refusal(FLOW_RULE, `pull request ${n ?? '(unknown)'} could not be read`, 'read it yourself, check its lane and reviews, then retry')); return; }
-  const lane = laneOf(pr.body);
+  if (pin) {
+    const head = String(pr.head?.sha ?? '').toLowerCase();
+    const got = String(pin.sha ?? '').toLowerCase();
+    if (!head || got !== head) { deny(refusal(PIN_RULE, `${what} on #${n} with expectedHeadSha ${pin.sha ? `"${pin.sha}"` : '(missing)'}, not its head ${head.slice(0, 7)}`, 'Pass expectedHeadSha: the full head commit the review names.')); return; }
+  }
+  if (!reviewOn) return;
+  let lane = laneOf(pr.body);
   if (!lane) { deny(refusal(FLOW_RULE, `${what}: the body of #${n} names no lane`, 'add the lane to the body (gh pr edit --body-file), then retry')); return; }
+  lane = Math.max(lane, laneOfFiles(config, cwd, repo, n, pr) ?? 0);
   if (lane < 2) return;
   const sha = String(pr.head?.sha ?? '').slice(0, 7);
   const comments = ghJson(`repos/${repo}/issues/${n}/comments?per_page=100`, cwd) ?? [];
@@ -1118,8 +1153,20 @@ function checkMcp(name, input, config, root, deny, ctx) {
   else if (on(config, 'mergeMethod') && (isMerge || isAuto) && method && String(method).toLowerCase() !== 'merge') deny(refusal('Merge with a merge commit, never a squash or a rebase (CLAUDE.md, Identity).', `${name} with merge_method ${method}`, 'merge_method "merge"'));
   const number = input.pullNumber ?? input.pull_number ?? input.number;
   const readyCall = toolMatches(name, config.mcp?.updatePrTools ?? ['update_pull_request$']) && input.draft === false;
+  // The merge permission rule: this repo only, no base changes, a merge names its head.
+  const thisRepo = String(ctx.thisRepo ?? config.repo ?? '').toLowerCase();
+  const guardedNow = isMerge || toolMatches(name, config.mcp?.disableAutoMergeTools ?? ['disable_pr_auto_merge$']) || readyCall;
+  if (guardedNow && thisRepo && String(repo ?? '').toLowerCase() !== thisRepo) {
+    deny(refusal(`This permission covers ${ctx.thisRepo ?? config.repo} only; the owner merges pull requests elsewhere.`, `${name} on ${repo ?? '(unknown repo)'}`, 'ask the owner to do it'));
+    return;
+  }
+  if (toolMatches(name, config.mcp?.updatePrTools ?? ['update_pull_request$']) && input.base !== undefined) {
+    deny(refusal('A pull request\'s base is changed by the owner: a review covers the diff against its base.', `${name} with base "${input.base}"`, 'ask the owner to change the base'));
+    return;
+  }
+  const pin = isMerge ? { sha: input.expectedHeadSha } : null;
   if (isMerge || isAuto || readyCall) checkLiveState(config, root, repo, number, readyCall ? 'marking it ready' : name, deny);
-  if (isMerge || isAuto || readyCall) checkReviewed(config, root, repo, number, readyCall ? 'marking it ready' : name, deny);
+  if (isMerge || isAuto || readyCall) checkReviewed(config, root, repo, number, readyCall ? 'marking it ready' : name, deny, pin);
   if (toolMatches(name, config.mcp?.createPrTools ?? ['create_pull_request$'])) checkPrCreate(config, root, repo, typeof input.body === 'string' ? input.body : '', input.draft === true, deny);
   if (isMerge) checkMergeGreen(config, root, repo, number, deny);
   // Pull request bodies.
@@ -1304,7 +1351,7 @@ function preToolUse(root, config, input, ctx) {
     const slug = ti.owner && ti.repo ? `${ti.owner}/${ti.repo}` : null;
     const scope = config.detached && !slug ? { root, config: base } : scopeFor(root, config, root, slug);
     const cfg = scope?.config ?? { ...config, identity: { enabled: false }, mergeMethod: { enabled: false }, prBody: { enabled: false }, liveState: { enabled: false }, mergeGreen: { enabled: false } };
-    checkMcp(name, ti, cfg, scope?.root ?? root, deny, ctx);
+    checkMcp(name, ti, cfg, scope?.root ?? root, deny, { ...ctx, thisRepo: config.repo });
   }
   if (!reasons.length) return null;
   return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reasons.join('\n\n') } };
@@ -1403,6 +1450,13 @@ function installUser() {
   if (r.status !== 0) { if (!r.stderr) console.error('Rule hooks not added. Nothing was changed.'); process.exit(1); }
 }
 
+// The tools the merge permission rule allows are never passed unchecked: when the hook cannot
+// run its checks for one of them, it exits 1, and the settings entry for them blocks the call
+// (onFailure: "block"). Every other tool keeps the exit 0 and the notice.
+const GUARDED = /^mcp__github__(merge_pull_request|disable_pr_auto_merge|update_pull_request)$/;
+let toolInCall;
+function failClosed(why) { process.stderr.write(`rules hook: ${why}; the call is blocked because this check did not run.\n`); process.exit(1); }
+
 function main() {
   const argv = process.argv.slice(2);
   if (argv.includes('--install-user')) { installUser(); return; }
@@ -1420,8 +1474,10 @@ function main() {
   }
   let raw = '';
   try { raw = readFileSync(0, 'utf8'); } catch { raw = ''; }
-  const input = JSON.parse(raw);
+  let input;
+  try { input = JSON.parse(raw); } catch (e) { failClosed(`the hook input did not parse (${e.message})`); }
   const event = input.hook_event_name;
+  toolInCall = event === 'PreToolUse' ? input.tool_name : undefined;
   if (findRepo && process.env.CLAUDE_PROJECT_DIR && existsSync(join(process.env.CLAUDE_PROJECT_DIR, '.claude', 'hooks', 'rules.mjs'))) return; // the repo's own settings run it
   let roots;
   let detached = false;
@@ -1432,7 +1488,7 @@ function main() {
   }
   else roots = [process.env.CLAUDE_PROJECT_DIR || resolve(SCRIPT_DIR, '..', '..')];
   roots = [...new Set(roots)];
-  if (!roots.length) return;
+  if (!roots.length) { if (GUARDED.test(toolInCall ?? '')) failClosed('no repo with rules.json was found'); return; }
   const ctx = { sessionId: input.session_id, root: roots[0] };
   if (event === 'SessionStart') {
     const texts = [];
@@ -1446,7 +1502,7 @@ function main() {
   const root = roots[0];
   const loaded = loadConfig(root);
   const { error } = loaded;
-  if (error) { emit({ systemMessage: `rules hook: ${error}; no rule check ran` }); return; }
+  if (error) { if (GUARDED.test(toolInCall ?? '')) failClosed(`${error}; no rule check ran`); emit({ systemMessage: `rules hook: ${error}; no rule check ran` }); return; }
   const config = detached ? { ...loaded.config, detached: true } : loaded.config; // repo checks still guard a repo the call names
   if (event === 'PreToolUse') emit(preToolUse(root, config, input, ctx));
   else if (event === 'PostToolUse') emit(postToolUse(root, config, input));
@@ -1454,6 +1510,6 @@ function main() {
 }
 
 try { main(); } catch (e) {
+  if (GUARDED.test(toolInCall ?? '')) failClosed(`the hook crashed: ${e?.message ?? e}`);
   emit({ systemMessage: `rules hook crashed: ${e?.message ?? e}; this check did not run` });
 }
-process.exitCode = 0;
