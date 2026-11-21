@@ -146,6 +146,8 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await page.goto(`/${address}`);
   await expect(page.locator("main")).toHaveCSS("background-color", rgb(theme.ground));
   await openRoom(page, "Colours");
+  await expect(page).toHaveURL(/\/make\/page\/colours$/);
+  await expect(page.getByRole("radio", { name: `Colours ${String(theme.id)}`, exact: true })).toBeChecked();
   await page.evaluate(async () => {
     const form = new FormData();
     form.set("theme", "999999");
