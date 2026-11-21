@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-11-21 21:35 UTC (from `date`).
+Last updated: 2026-11-21 21:43 UTC (from `date`).
 
 ## The owner's instructions
 
@@ -54,7 +54,7 @@ Each entry is dated and quotes the owner where the source does; "(paraphrase)" m
 - 2026-11-21 20:02 UTC, hooks fix thread: "Delete the hisory.md". Done (#279; its records are in History below).
 - 2026-11-21 20:09 UTC: "I won't restart" (the project is not restarted).
 - 2026-11-21 20:19 UTC: "Remove ANYTHING that contradicts from the workflow that we established in mcthaydt-website apps". The source of truth is the owner's apps kit (https://mcthaydt.com/prompts/claude-md-apps/) plus the three owner rules in mcthaydt-website #99. Work: spec `2026-11-21-align-with-apps-kit-design.md` (#280) and the pull request that builds it. **RukenApp is a public repo, so, by the kit's rule, no session runs on the owner's computer for Ruken: no test, build, app, command or measurement. What only the owner can run goes to the owner as CLI commands.** This supersedes the 22:32 UTC 2026-11-20, 16:54 UTC and 19:16 UTC Mac-session records above.
-- 2026-11-21 20:38 UTC, on a card (#209): "Keep password, drop Change email". With sign-in by phone, #274's Change email goes; Change password stays (keyed by the phone number). Change email or Change phone number may come back later as their own decision. Waits on #209.
+- 2026-11-21 20:39 UTC, on a card (#209): "Keep password, drop Change email". With sign-in by phone, #274's Change email goes; Change password stays (keyed by the phone number). Change email or Change phone number may come back later as their own decision. Waits on #209.
 
 ## Active milestone: "Finish Ruken"
 
@@ -74,7 +74,7 @@ Remaining:
 - Merge #209, #283 and the apps-kit alignment pull request.
 - Slice 3's remaining units, then slices 4 to 6 and the before-launch list, in roadmap order.
 - Hook follow-ups (see History, Known issues).
-- Open follow-ups from the 18+ gate: clip file URLs on the game gate stay open (`cloudflare/`, lane 3); the feed route's journey must assert 18+ games are absent when it ships.
+- Open follow-ups from the 18+ gate: clip file URLs on the game gate stay open until the video addresses unit (below) merges; the feed route's journey must assert 18+ games are absent when it ships.
 
 Blockers: none.
 
@@ -90,6 +90,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Phone sign-in, branch B (lane 3) | #209 | audit PASS at `628803f`, waiting on its full run | not measured |
 | Adults-only sign-in returns (lane 2) | #283 | draft, review PASS at `9c0ed5f` | short path, no plan |
 | Slice 3: unit K (social icons on the maker's page, lane 3), unit I (page editing), the learned feed's spec | none yet | no pull request open; resuming under the owner's 14:32 UTC word | not measured |
+| A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f`; building, then its pull request after the spec merges | not measured |
 | Hook follow-ups (the lane reading, the launcher-word refusal) | none yet | not started; lane 3 hooks changes, each its own pull request | not measured |
 | Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
 
@@ -99,7 +100,7 @@ Done. Unit G (a real game, Floor Fifty, sent, accepted and played on ruken.io) w
 
 ## Everything editable
 
-Spec `2026-11-21-everything-editable-design.md`: merged (#269, 2d00e7e, 15:15 UTC). Its units are merged: unit A (#276, 20:00 UTC, a live game's videos and rating held for review), unit B (#282, 21:31 UTC, a waiting game can be thrown away and a taken-off game changed and deleted), unit D (#274, 19:16 UTC, change email and password on `/me`; the owner's 20:38 UTC card has #209 drop Change email), and the purge row (#268, 16:00 UTC, a deleted maker's games and videos come off). The 18+ gate (#277, 20:07 UTC) and its repair (#281, 20:53 UTC) are merged. Known limit: Stripe receipts keep going to the old address until slice 5, and the screen says so.
+Spec `2026-11-21-everything-editable-design.md`: merged (#269, 2d00e7e, 15:15 UTC). Its units are merged: unit A (#276, 20:00 UTC, a live game's videos and rating held for review), unit B (#282, 21:31 UTC, a waiting game can be thrown away and a taken-off game changed and deleted), unit D (#274, 19:16 UTC, change email and password on `/me`; the owner's 20:39 UTC card has #209 drop Change email), and the purge row (#268, 16:00 UTC, a deleted maker's games and videos come off). The 18+ gate (#277, 20:07 UTC) and its repair (#281, 20:53 UTC) are merged. Known limit: Stripe receipts keep going to the old address until slice 5, and the screen says so.
 
 ## Slice 3
 
