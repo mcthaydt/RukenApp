@@ -80,7 +80,7 @@ Later. These are approved. Each is built after the slices above, in this order.
 3. The help chat by text: Claude Haiku writes, Jev checks (approved). Needs texts and the slice 4 admin first.
 4. Beta builds.
 5. The apps: iPhone, Android, Windows, Mac and Linux, on Ruken's own download, the App Store and Google Play. Includes age ratings (3+, 7+, 12+, 16+, 18+) and the mature content rules. The test copy (part 1) was closed on 2026-11-15 (pull request #111, last commit `17e4c3f`); it is rebuilt from its plan, `plans/2026-11-14-apps-a-test-copy.md`, when its turn comes.
-6. The legal pages. Pull request #104 was closed on 2026-11-15 (last commit `bd3ac86`); its drafts are kept in the private repository and the pages are rebuilt from them when their turn comes.
+6. The legal pages. Pull request #104 was closed on 2026-11-15 (last commit `bd3ac86`); its drafts are kept in the owner's Ruken page in Notion (Library, the "Legal draft" pages) and the pages are rebuilt from them when their turn comes.
 7. The real domain, connected.
 
 ## Launch
