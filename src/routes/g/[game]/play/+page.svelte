@@ -212,6 +212,8 @@
     dragged = true;
     const spot = spotUnder(event, dragFrom);
     menu.setAttribute("data-dragging", "");
+    // The tab faces the way it will snap, so its rounded edge turns as soon as it passes the middle.
+    menu.setAttribute("data-lean", spot.left + TAB_WIDTH / 2 > innerWidth / 2 ? "right" : "left");
     menu.style.setProperty("--drag-x", `${String(spot.left)}px`);
     menu.style.setProperty("--drag-top", `${String(spot.top)}px`);
   }
@@ -246,6 +248,7 @@
       }),
     );
     menu.removeAttribute("data-dragging");
+    menu.removeAttribute("data-lean");
   }
 
   // A click that ends a drag must not open the menu.
