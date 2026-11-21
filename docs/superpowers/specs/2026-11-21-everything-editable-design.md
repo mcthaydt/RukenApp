@@ -1,6 +1,6 @@
 # Everything is editable
 
-Date: 2026-11-21. Status: **spec and plan, revised after plan audit 1 (f6d9167 FAIL, 6 red); unit C struck by the owner 14:41 UTC; waiting on plan audit 2.** Read against `main` at 583661f.
+Date: 2026-11-21. Status: **spec and plan, revised after plan audit 1 (f6d9167 FAIL, 6 red) and plan audit 2 (073359c FAIL, 3 red); unit C struck by the owner 14:41 UTC; waiting on plan audit 3.** Read against `main` at 583661f.
 
 Lane 3 as a whole (unit A adds a migration). Each unit's own lane is in section 6.
 
@@ -62,14 +62,14 @@ These are facts about what happened, not settings, and nobody edits them. Each i
 - Nothing runs on the owner's computer. No owner step is needed for any unit. Deploying is the owner's as always (`pnpm run deploy`), after unit A's migration is applied.
 - Not touched: the feed, the maker's page, `src/features/money/`, `src/features/membership/`, `cloudflare/`, `.github/`, CLAUDE.md and the skills.
 - Browsers and devices: the three profiles in Settings (small phone, tablet, computer). Emulation evidence.
-- Expected duration, as session time (estimates): A 4 hours, B 2 hours, D 3 hours, E under 1 hour.
+- Expected duration, as session time (estimates): A 4 hours, B 2 hours, D 3 hours.
 - Slice: A and B finish slice 2's game screens ("confirm slice 2 is perfect"); D adds to slice 1's account page. Each goes through a design review round with its screens before the owner's look (`visual-check`).
 
 ## 5. The changes
 
 ### 5.1 Unit A: a live game's videos and rating, checked before players see them
 
-**What the maker sees.** On Live, the video and the rating chip each get a "Change", like the name and line have. It opens the same question screen a draft uses. Saving there does not change what players see. Live then shows the new video or rating marked "Not sent yet", with one blue button, "Send for review". After the press the line reads "Your update is waiting for review." as it does today for new files. When staff say yes, players see the change. When staff send it back, the fix card shows their words and leads to the same question.
+**What the maker sees.** On Live, the video and the rating chip each get a "Change", like the name and line have. It opens the same question screen a draft uses, showing the waiting value when there is one. Saving there does not change what players see: the save sends the change for review in the same press, the way a live game's new files and websites are sent (`sendLiveUpdate` on `claude/project-thread-u1uamt`; plan audit 2, R1). Live shows the new video or rating marked "Waiting for review" and the line "Your update is waiting for review." There is no second button to press. When staff say yes, players see the change. When staff send it back, the fix card shows their words and leads to the same question.
 
 On the question screen of a live game with a change waiting, a quiet button "Keep the old one" drops the change.
 
@@ -80,24 +80,24 @@ Making a live game 18+ asks the marks before anything is kept, as a waiting game
 - A new table `GameHeldClip` (`gameId`, `shape`, `key`, `contentType`, `bytes`, times; unique on `gameId` and `shape`; `onDelete: Restrict`). **Call:** a table of its own, not a flag on `GameClip`. Every read of `GameClip` on `main` is a read of what players see, and stays so with no change; a flag would make every read that forgets the filter show an unchecked video.
 - `Game.heldAgeRating AgeRating?` and `Game.heldContentMarks ContentMark[] @default([])`.
 - The rating and the marks are held as a pair (plan audit 1, R2): either `heldAgeRating` is set, with the marks that go with it, or nothing is held. Changing only the marks of a live 18+ game holds `heldAgeRating = age_18` with the new marks, though the rating equals the live one.
-- CHECK `Game_held_check`: `heldAgeRating` is null and `heldContentMarks` is empty unless `state` is `live`; `heldContentMarks` is empty unless `heldAgeRating` is `age_18`; when `heldAgeRating` is `age_18`, `heldContentMarks` is not empty.
+- CHECK `Game_held_check`: `heldAgeRating` is null and `heldContentMarks` is empty unless `state` is `live`; `heldContentMarks` is empty unless `heldAgeRating` is `age_18`; when `heldAgeRating` is `age_18`, `heldContentMarks` is not empty; and `none` stands alone in `heldContentMarks`, as `Game_marks_check` holds it in `contentMarks`, so a held pair is always one the yes can copy (plan audit 2, N1).
 - A held clip's key is made by the same `clipKeyFor(publicId, shape, random 16 hex, contentType)` every clip uses (`src/features/games/clips.ts`), so it is `clips/<publicId>/<shape>-<16 hex>.<mp4|webm|mov>`: the media gate (`src/features/play/gate.ts`) already serves it, it is unguessable as a waiting game's clips are today, and the random part keeps it apart from the live one. The yes moves no file. (plan audit 1, R1)
 - CHECK `GameHeldClip_key_check`, written out in the migration: `key ~ '^clips/[a-z2-7]{10}/(upright|wide)-[0-9a-f]{16}\.(mp4|webm|mov)$'`. `GameClip` has no such check today and gets none here. (N1)
 - The migration only adds: two columns, one table, the checks. Undone by dropping them.
 
-**Saving.** For a live game, `saveClip` writes the file and upserts `GameHeldClip` (deleting the held file it replaces, after the row points at the new one). `saveAnswer` for `age` and `marks` writes `heldAgeRating` and `heldContentMarks` together. The marks question of a live game reads the held rating when there is one, and the live rating otherwise, so a held move to 18+ reaches it. The held pair is dropped only when both the rating and the marks equal the live pair; a held clip is never equal to the live one (a new upload is a new file). Each takes its part off `toFix`. For every other state both behave as today.
+**Saving.** For a live game, `saveClip` writes the file and upserts `GameHeldClip` (deleting the held file it replaces, after the row points at the new one). `saveAnswer` for `age` and `marks` writes `heldAgeRating` and `heldContentMarks` together. The marks question of a live game reads the held rating when there is one, and the live rating otherwise, so a held move to 18+ reaches it. The held pair is dropped only when both the rating and the marks equal the live pair; a held clip is never equal to the live one (a new upload is a new file). Each takes its part off `toFix`. For every other state both behave as today. Answering "18+" again on a live 18+ game keeps the marks that wait (plan audit 2, N4).
 
-**Sending.** `sendForReview` on a live game with a held value and no new copy sends the copy the game is live on (`pendingPullId` = `livePullId`), the way "Send it again" sends the held copy today. The Live screen's send (`liveSend`) offers "Send for review" when a held value exists and nothing is left to fix. The exact button wiring follows what `claude/project-thread-u1uamt` merged for files and websites; plan step A1 reads it first.
+**Sending.** A held save on a live game ends in the same `sendLiveUpdate` the files and websites use: when nothing is left to fix it calls `sendForReview`, which with no new copy sends the copy the game is live on (`pendingPullId` = `livePullId`), the way "Send it again" does today. While something staff sent back is still to fix, the change is kept and goes with the send that follows the last fix. When the newest copy from GitHub was refused (`pullProblem`), `sendForReview` refuses as today; the change is kept, Live keeps its line "Your last copy from GitHub didn't work. Fix it there, then send a new version.", and the new version carries the held change with it (plan audit 2, N3). "Keep the old one" drops a held part; when that leaves nothing waiting (no held value, and the waiting copy is the live one) it clears `pendingPullId` and `pendingSince`, so staff are not asked to check nothing.
 
-**A change after the send takes the send back** (plan audit 1, R3). Saving or dropping any held part while the game's update waits clears `pendingPullId` and `pendingSince` in the same write: Live shows "Not sent yet" and "Send for review" again, and `/jobs/review` no longer lists the game. So what staff say yes to is what they could look at. (The same gap exists today for new files sent twice and for a waiting game's answers; that is slice 4's, not changed here.)
+**What goes live is what staff looked at** (plan audit 1, R3; plan audit 2, R1 and N2). Every held save and every "Keep the old one" sets `changedAt`, as every answer does today. `/jobs/review` `look` answers the game's `changedAt` as `seen`. To accept an update that holds a video or a rating, the order must carry that `seen` back (`{"do":"accept","game":…,"seen":…}`); `accept` compares it with `changedAt` inside its transaction, on the row it locks (`SELECT … FOR UPDATE` before the held rows are read), and refuses with CONFLICT, "It changed since you looked. Look again.", when it is missing or has moved. An update with nothing held is accepted as today, with or without `seen`. The `look` answer's `says` tells the Owner to pass `seen` when something is held. (The same gap for new files sent twice and for a waiting game's answers is slice 4's, not changed here.)
 
-**What staff see.** `/jobs/review` `look` on an update adds `changes`: for each held part, the value players see now and the value waiting (video addresses, rating words). `list` is unchanged.
+**What staff see.** `/jobs/review` `look` on an update adds `seen` and `changes`: for each held part, the value players see now and the value waiting (video addresses, rating words). `list` is unchanged.
 
 **Yes.** Accepting an update, in the transaction that moves `livePullId`: copy `heldAgeRating` and `heldContentMarks` to `ageRating` and `contentMarks` and clear them; for each `GameHeldClip`, point the game's `GameClip` of that shape at the held key and delete the held row. After the transaction, delete the replaced clip files from the bucket. A failure after the transaction leaves a file nobody points at, never a game without its clip (the order `saveClip` already keeps).
 
 **No.** `LIVE_MAY_BE_SENT_BACK` gains `upright_video`, `wide_video` and `age_rating`, each allowed only when that part has a held value: staff send back a change, never what is already live (taking a live game down is slice 4). The held value stays so the fix card can show the refused video; the maker's next save replaces it.
 
-**Leaving.** `takeOff` and "Keep the old one" delete held clip files and clear the held columns. The account purge does not touch games on `main`; another thread is making it take a maker's games off, and unit E checks held values go with them (5.5). `throwAway` never meets one (the check holds held values to live games).
+**Leaving.** `takeOff` and "Keep the old one" delete held clip files and clear the held columns and rows. So does the account purge's game step, in the same pull request that first puts `Game_held_check` and that step on `main` together (section 6; plan audit 2, R2). `throwAway` never meets one (the check holds held values to live games).
 
 **Players.** `/g/<game>`, Play, the feed's reads and the 18+ gate read only `GameClip`, `ageRating` and `contentMarks`, as today.
 
@@ -121,22 +121,22 @@ A renamed game's address moving with its name was planned here. The owner chose 
 - An account waiting to be deleted is signed out as today and reaches neither screen. A change-email link still open when its account is purged no longer works (N3; criterion D7).
 - A member's Stripe customer keeps the address it was made with (`stripe.customers.create({ email })` in `src/features/membership/`), so Stripe's receipts keep going to the old address after a change. That is not fixed here (section 7); the change-email screen says so to a member: "Your payment receipts still go to <old address> for now."
 
-### 5.5 Unit E: a purged maker's held changes go with their games
+### 5.5 Unit E: struck, folded into unit A
 
-**Owner, 2026-11-21 14:26 UTC, on a card:** "Games come off with the account". Not on `main`: `purgeDueAccounts` (`src/features/accounts/deletion.ts`) leaves every game as it is. The thread "Fill e2e CRUD test gaps" is building it, with its journey; this spec does not.
+**Owner, 2026-11-21 14:26 UTC, on a card:** "Games come off with the account". The thread "Fill e2e CRUD test gaps" is building it (`claude/project-thread-vhfmo8`): its purge sets a maker's live games to `taken_off` in one write that knows nothing of held values. With `Game_held_check` on `main` that write would be refused for any maker with a held rating, and the day's purge would stop there. So `main` must never hold the check and the purge without the clearing (plan audit 2, R2):
 
-What is left for here is one check: once that work and unit A are both on `main`, a purged maker's live game with a held video and a held rating must leave no held row, column or file. If the purge takes games off through `takeOff`, unit A already makes that true and unit E is the test alone; if it does not, unit E adds the clearing to the purge's game step.
+- If the purge is on `main` when unit A is built, unit A makes the purge's game step clear `heldAgeRating`, `heldContentMarks` and the game's `GameHeldClip` rows in the same write, and carries criterion A11.
+- If unit A reaches `main` first, the coordinator tells the purge thread before it merges, and the clearing and A11 go in that pull request.
 
 ## 6. The plan
 
 | Unit | Lane | Waits on | Files it owns | Output | Check |
 |---|---|---|---|---|---|
-| A. Live videos and rating | 3 (migration) | this spec merged; the pull request of `claude/project-thread-u1uamt` merged (it reads that Live flow and edits the same files) | `prisma/schema/games.prisma`, one new folder in `prisma/migrations/`, `src/features/games/` (service, clips, laid-out, review words), `src/routes/make/[game]/` and `src/routes/make/parts/LiveScreen.svelte`, `src/routes/jobs/review/+server.ts`, tests under `tests/features/games/`, `tests/browser/` | 5.1 | criteria A1 to A10 |
+| A. Live videos and rating | 3 (migration) | this spec merged; the pull request of `claude/project-thread-u1uamt` merged (it reads that Live flow and edits the same files) | `prisma/schema/games.prisma`, one new folder in `prisma/migrations/`, `src/features/games/` (service, clips, laid-out, review words), `src/routes/make/[game]/` and `src/routes/make/parts/LiveScreen.svelte`, `src/routes/jobs/review/+server.ts`, the game step of the purge in `src/features/accounts/deletion.ts` (only if the purge is on `main`, 5.5), tests under `tests/features/games/`, `tests/browser/` | 5.1 | criteria A1 to A11 |
 | B. Waiting and taken-off games | 2 | A merged (same service file and make screens) | `src/features/games/service.ts`, `src/routes/make/[game]/`, `src/routes/make/parts/` (Waiting, Taken off), tests | 5.2 | criteria B1 to B5 |
-| D. Email and password | 2 (sign-in) | this spec merged; nothing else: it shares no file with A, B or E | `src/features/accounts/` (auth, forms, mails), `src/routes/me/`, tests | 5.4 | criteria D1 to D7 |
-| E. A purged maker's held changes | 1 (a test); 3 if the purge's game step must change (it removes real data) | A merged; the purge work of the thread "Fill e2e CRUD test gaps" merged | one pg test under `tests/features/`; only if it fails, the purge's game step that thread added | 5.5 | criterion E1 |
+| D. Email and password | 2 (sign-in) | this spec merged; nothing else: it shares no file with A or B | `src/features/accounts/` (auth, forms, mails), `src/routes/me/`, tests | 5.4 | criteria D1 to D7 |
 
-- A and D run side by side. B follows A: they edit the same functions. E is last and small.
+- A and D run side by side. B follows A: they edit the same functions.
 - Unit D changes how a sign-in is changed. The lane lists name "credentials" under lane 3; D's paths are lane 2. **Call:** D is audited as lane 3 (a fresh implementation audit on Opus 5.5 medium), since a mistake here locks a person out or lets one in (plan audit 1, N4).
 - Each unit is one branch and one pull request: build, then the audit its lane calls for (lane 2: one fresh review; lane 3: a fresh implementation audit), fixes on the same branch, then merge. Lane 3 units merge under the owner's standing permission in `history.md` ("Merge PRs yourself once CI, reviews and audits pass"); if the coordinator finds that permission does not cover a migration, it asks the owner by name before the merge.
 - Builders: Sonnet 5.5, medium (Settings: execution against a spec). Unit A is marked hard, so high, because it changes what an accept does inside the money-adjacent review transaction. Audits: lane 3 on Opus 5.5 medium; lane 2 on the builder's model, medium.
@@ -148,8 +148,8 @@ What is left for here is one check: once that work and unit A are both on `main`
 2. Journey first (failing): criterion A1.
 3. Schema, migration and `tests/features/games/schema.pg.test.ts` cases for the checks (A6).
 4. `saveClip`, `saveAnswer` and "Keep the old one" for a live game, with unit and pg tests (A3, A5).
-5. Send, accept, send back, with pg tests of the accept transaction (A2, A4, A7).
-6. Taking off clears held values (A8); a save while an update waits takes the send back (A10).
+5. Send in the save, `seen` on look and accept, send back, with pg tests of the accept transaction (A2, A4, A7, A10).
+6. Taking off clears held values (A8); the purge's game step clears them if it is on `main` (A11).
 7. Live screen, question screens, review `look` (A1, A9). Screens shot for the design round.
 
 ### Unit B steps
@@ -163,10 +163,6 @@ What is left for here is one check: once that work and unit A are both on `main`
 1. Read the installed better-auth's change-email and change-password documentation and types; report and stop if they need a schema change.
 2. Journeys first (failing): D1, D2.
 3. Auth settings and the two mails; the two screens and the links on `/me`.
-
-### Unit E steps
-
-1. Write the pg test E1 against `main`. If it passes, that is the unit. If it fails, clear held values in the purge's game step and say so in the pull request body, which then is lane 3.
 
 ## 7. What waits, and on what
 
@@ -188,22 +184,23 @@ A gap against any of these blocks the unit. All journeys are Playwright tests in
 - G2. Every new screen and button works with the keyboard alone, with focus visible; a journey tabs to and presses each new button.
 - G3. Every action finds the game or account among the signed-in person's own: a journey or pg test shows another person's game, held change or account is a 404 or a refusal for each new action.
 - G4. Each new screen has one blue button, words a person says out loud, and its refusal shown beside what caused it with what was typed kept. Checked by the design round's fresh reviewer.
-- G5. The pull request body names every existing test it changes and why. Expected: the tests that assert a live game's videos and rating are refused (`make-after`), the 404 for a live game's questions, `throwAway`'s refusals for waiting and taken-off games, and nothing else.
+- G5. The pull request body names every existing test it changes and why. Expected: the tests that assert a live game's videos and rating are refused (`make-after`), the 404 for a live game's questions, `throwAway`'s refusals for waiting and taken-off games; and three that unit A changes rather than removes, since staff still cannot send back a part with no held value (plan audit 2, R3): `tests/browser/review-job.test.ts` (a live update sent back for `wide_video`, about lines 109 to 117), `tests/features/games/review.pg.test.ts` (the `it.each` over `upright_video`, `wide_video`, `age_rating`, about lines 595 to 615, and "A live game's videos can't be changed yet.", about line 677). A test not on this list that must change is named in the pull request body with its reason, as `build` asks.
 - G6. No file outside the unit's row in section 6 changes, but for the live-state file (deleted before the audit) and this spec's ticked steps.
 
 **Unit A**
 
-- A1. Journey, upright video: on a live game the maker opens Change on the video, picks a new one, sees "Not sent yet"; `/g/<game>` still serves the old video; she presses "Send for review" and Live says "Your update is waiting for review."; staff accept through `/jobs/review`; `/g/<game>` serves the new video and the media gate answers 404 for the old file's address (a browser may still hold its own copy; the journey asks the gate).
+- A1. Journey, upright video: on a live game the maker opens Change on the video, picks a new one, and Live says "Your update is waiting for review." with the new video marked "Waiting for review"; `/g/<game>` still serves the old video; staff look and accept through `/jobs/review`, passing `seen`; `/g/<game>` serves the new video and the media gate answers 404 for the old file's address (a browser may still hold its own copy; the journey asks the gate).
 - A2. The same journey for the wide video, and for the rating (7+ to 12+: the chip on `/g/<game>` changes only after the yes).
 - A3. Journey: a live game made 18+ is asked its marks before anything is kept; leaving the marks screen keeps nothing. After the yes, a signed-in under-18 account is refused the game as any 18+ game refuses it. A second journey changes only the marks of a live 18+ game: players see the old marks until the yes, then the new ones.
-- A4. Journey: staff send a held video back with a reason; Live shows the fix card with the words and the refused video; the maker picks another, sends, staff accept, players see it. A pg test shows staff cannot send back `upright_video`, `wide_video` or `age_rating` on a live game with no held value for that part.
-- A5. Journey: "Keep the old one" drops a held video and a held rating; Live shows no "Not sent yet"; the gate answers 404 for the held file's address.
-- A6. pg tests: `Game_held_check` refuses a held rating on a game not live, marks without a held 18+, and a held 18+ without marks; a held 18+ with marks on a live game that is already 18+ is kept (the marks-only change); `GameHeldClip` refuses a second row for one game and shape and a key outside `GameHeldClip_key_check`, and takes a `.mov` key.
+- A4. Journey: staff send a held video back with a reason; Live shows the fix card with the words and the refused video; the maker picks another (which sends it), staff look and accept, players see it. A pg test shows staff cannot send back `upright_video`, `wide_video` or `age_rating` on a live game with no held value for that part.
+- A5. Journey: "Keep the old one" drops a held video and a held rating; Live shows nothing marked "Waiting for review" and its line is "Players can find it on Ruken."; `/jobs/review` `list` does not name the game; the gate answers 404 for the held file's address.
+- A6. pg tests: `Game_held_check` refuses a held rating on a game not live, marks without a held 18+, and a held 18+ without marks; `none` beside another mark in `heldContentMarks`; a held 18+ with marks on a live game that is already 18+ is kept (the marks-only change); `GameHeldClip` refuses a second row for one game and shape and a key outside `GameHeldClip_key_check`, and takes a `.mov` key.
 - A7. pg test: an accept that fails inside its transaction leaves the live video, rating, held values and `livePullId` exactly as they were.
-- A8. pg test: taking a live game off leaves no `GameHeldClip` row, no held column set and no held file in the stand-in bucket. (The purge is checked by unit E, E1.)
+- A8. pg test: taking a live game off leaves no `GameHeldClip` row, no held column set and no held file in the stand-in bucket. (The purge: A11.)
 - A9. `/jobs/review` `look` on an update with a held video and rating answers `changes` with the current and the waiting value of each; with none held it answers as today. Unit-tested on the handler.
 
-- A10. pg test and journey step: with an update waiting, saving a new held video, saving a held rating, and "Keep the old one" each clear `pendingPullId`; `/jobs/review` `accept` then answers "Nothing is waiting for review."; Live shows "Send for review" again. After the new send and a yes, what is live is the last value saved.
+- A10. pg tests and a journey step: staff look at an update holding a video; the maker saves another video; `accept` with the `seen` of that look answers CONFLICT, "It changed since you looked. Look again.", and nothing goes live; `accept` with no `seen` answers the same; a second look and an accept with its `seen` make the last video live. An update with nothing held is accepted without `seen`, as today. With a refused newest copy (`pullProblem`), a held save is kept and not sent, and Live shows the GitHub line.
+- A11. Only if the purge of a maker's games is on `main` when unit A is built: a pg test where a maker with a live game holding a video and a rating is purged; the purge finishes, and the game has no `GameHeldClip` row, no held column set and no held file in the stand-in bucket. Otherwise this criterion is passed to the purge's pull request by the coordinator (5.5).
 
 **Unit B**
 
@@ -224,15 +221,12 @@ A gap against any of these blocks the unit. All journeys are Playwright tests in
 
 - D7. pg test: an account with a change-email link still open is purged; opening the link afterwards changes nothing and the purged row keeps its tombstone address. A member (an account with a `BillingCustomer`) sees the receipts line on `/me/email`; an account without one does not.
 
-**Unit E**
-
-- E1. pg test: a maker with a live game holding a held video and a held rating is purged; afterwards there is no `GameHeldClip` row for the game, no held column set, and no held file in the stand-in bucket.
-
 ## 9. Risks, and what is not checked
 
 - **Receipts go to the old address** after a member changes their email, until slice 5 (section 7).
 - **Unit A has no start date.** At plan audit 1 no pull request existed for `claude/project-thread-u1uamt`; A waits on its merge.
-- **The other thread's Live flow is not merged yet.** Unit A's send is written against today's `sendForReview`; if that thread changes how a live save is sent, step A1 follows it, and a difference that changes section 5.1 comes back as a spec amendment before code.
+- **The other thread's Live flow is not merged yet.** Unit A's send is written against `sendLiveUpdate` as it stood on `claude/project-thread-u1uamt` at 3981563; if it merges in another shape, step A1 follows it, and a difference that changes section 5.1 comes back as a spec amendment before code.
+- **The Owner's accept command gains `seen`** for an update that holds a video or rating. The review command the Owner runs today keeps working for everything else.
 - **Old clip files.** A failure after an accept can leave a replaced file in the bucket. Nothing points at it and its address is unguessable; no sweep is built.
 - **Real phones are not measured.** Device results are emulation.
 - **Not fixed here, reported before:** games named "New" or "Github" are shadowed by `/make` routes; the launch switch is checked only in `src/features/launch`.
