@@ -51,6 +51,28 @@ async function signUpAged(page: Page, years: number): Promise<{ email: string; p
   return { email, password: JOURNEY_PASSWORD };
 }
 
+/** Makes an account of this age in a browser of its own and closes it, so the journey's own browser stays signed out. */
+async function signUpAgedElsewhere(
+  browser: Browser,
+  years: number,
+): Promise<{ email: string; password: string }> {
+  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  try {
+    return await signUpAged(await context.newPage(), years);
+  } finally {
+    await context.close();
+  }
+}
+
+/** On the refusal, presses "Sign in" and signs in there with this account. */
+async function signInFromTheRefusal(page: Page, account: { email: string; password: string }): Promise<void> {
+  await page.getByRole("link", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sign in");
+  await page.getByLabel("Email").fill(account.email);
+  await page.getByLabel("Password").fill(account.password);
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+}
+
 /** The maker, signed in in a browser of its own, takes the game off Ruken with the real button. */
 async function takeOffAsMaker(
   browser: Browser,
@@ -121,7 +143,56 @@ test("a visitor who is not signed in cannot see or play an 18+ game, and is aske
   await expect(signIn).toBeFocused();
   expect(await signIn.evaluate((link) => getComputedStyle(link).outlineStyle)).not.toBe("none");
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL("/sign-in");
+  await expect(page).toHaveURL(`/sign-in?next=${encodeURIComponent(`/g/${adultsGame.slug}`)}`);
+});
+
+test("an adult who signs in from the refusal lands back on the 18+ game, on its page or its play screen", async ({
+  page,
+  browser,
+}) => {
+  const adult = await signUpAgedElsewhere(browser, 30);
+
+  await page.goto(`/g/${adultsGame.slug}`, { waitUntil: "domcontentloaded" });
+  await pageHasSettled(page);
+  await signInFromTheRefusal(page, adult);
+  await expect(page).toHaveURL(`/g/${adultsGame.slug}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(adultsGame.name);
+
+  // Signed out again, the play screen's refusal sends them back to the play screen, and the game starts.
+  await page.context().clearCookies();
+  await page.goto(`/g/${adultsGame.slug}/play`, { waitUntil: "domcontentloaded" });
+  await pageHasSettled(page);
+  await signInFromTheRefusal(page, adult);
+  await expect(page).toHaveURL(`/g/${adultsGame.slug}/play`);
+  await expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");
+
+  // An address on another site is never followed: signing in from it lands on Ruken's front page.
+  await page.context().clearCookies();
+  await page.goto(`/sign-in?next=${encodeURIComponent("https://evil.example/")}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await pageHasSettled(page);
+  await page.getByLabel("Email").fill(adult.email);
+  await page.getByLabel("Password").fill(adult.password);
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+  await expect(page).toHaveURL("/");
+});
+
+test("a person under 18 who signs in from the refusal lands on the same refusal, with one way out", async ({
+  page,
+  browser,
+}) => {
+  const young = await signUpAgedElsewhere(browser, 15);
+
+  await page.goto(`/g/${adultsGame.slug}`, { waitUntil: "domcontentloaded" });
+  await pageHasSettled(page);
+  await signInFromTheRefusal(page, young);
+  await expect(page).toHaveURL(`/g/${adultsGame.slug}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("This game is only for adults.");
+  await expect(page.getByText(TOO_YOUNG)).toBeVisible();
+  // No "Sign in" to go round again: the one way out is back to Ruken.
+  await expect(page.getByRole("link", { name: "Sign in" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Back to Ruken" })).toHaveAttribute("href", "/");
 });
 
 test("a person under 18 cannot see or play an 18+ game", async ({ page }, testInfo) => {
