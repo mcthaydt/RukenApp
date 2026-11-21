@@ -9,5 +9,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
   const viewer = locals.caller.kind === "user" ? locals.caller.userId : null;
   const address = await pagesServices().service.tapLink(params.handle, params.link, viewer);
   if (address === null || !address.startsWith("https://")) error(404);
-  redirect(303, address);
+  // A maker's link leads to another site on purpose; SvelteKit asks for that to be said.
+  redirect(303, address, { external: true });
 };
