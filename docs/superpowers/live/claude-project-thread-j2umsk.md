@@ -1,6 +1,6 @@
 # Live state: claude/project-thread-j2umsk
 
 - Task: spec for hooks covering every pull request route (lane 3, staged path)
-- Last commit: d4cf419 at 2026-11-21T14:47:31Z
-- Next step: plan audit 2 in a fresh session; owner answer on the docs-only exemption
+- Last commit: 3afa214 at 2026-11-21T14:48:14Z
+- Next step: plan audit 2 in a fresh session
 - Open decisions: spec section 7

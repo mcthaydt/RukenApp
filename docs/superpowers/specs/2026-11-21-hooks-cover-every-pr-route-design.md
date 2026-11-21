@@ -61,7 +61,7 @@ The PostToolUse body check runs only for a non-GET `gh api` call on a pulls path
 
 ### 3.5 Docs-only branches and the limit (F7; audit N5)
 
-**Open decision for the owner** (the exemption is in the owner's own rules text; CLAUDE.md says otherwise). **Call, recommended:** drop the exemption so the hook matches CLAUDE.md: 3 open, counting every pull request. That needs no CLAUDE.md change. If the owner keeps it, CLAUDE.md Settings gains "docs-only pull requests do not count toward this" in PR-R when the answer comes before PR-R opens, otherwise in a third rules-only pull request after PR-R.
+**Owner, 2026-11-21 14:48 UTC, on a card:** "Yes, count every one" (to "Should pull requests that only change docs count toward the limit of 3?"). The exemption (`onlyRulesAndDocs` in the limit check) is removed so the hook matches CLAUDE.md: 3 open, counting every pull request. No CLAUDE.md change.
 
 ### 3.6 Commands handed to the owner (F6; audit R8, N2)
 
@@ -102,7 +102,7 @@ Each is a Vitest case in `tests/rules-pr-routes.test.ts` (PR-H), driving the rea
 13. `curl -X POST https://api.github.com/repos/mcthaydt/RukenApp/pulls …` and `gh alias set pc 'pr create'` are refused.
 14. `gh pr edit 5 --base other` and `gh api -X PATCH .../pulls/5 -f base=other` are refused.
 15. `mcp__hearthbot__post_message` with a fenced `gh pr edit 270 --body-file b.md` is refused, and so is the same command as inline code; `request_decision` with that command inside an option's `consequence` is refused; a fenced `wrangler secret put JOBS_SECRET --name ruken` is allowed.
-16. Per the owner's 3.5 answer: dropped, with 3 open a docs-only create is refused; kept, it is allowed and CLAUDE.md says so.
+16. With 3 open, a docs-only create is refused with the open-limit reason (owner, 14:48 UTC).
 17. `.claude/settings.json`'s fail-closed matcher includes `create_pull_request` (read by the test).
 18. CLAUDE.md's first rule under "Rules that never bend" is the **Hooks** bullet of 3.7, word for word.
 19. `tests/rules-merge-permission.test.ts` still passes unchanged.
@@ -119,18 +119,18 @@ Each is a Vitest case in `tests/rules-pr-routes.test.ts` (PR-H), driving the rea
 
 | Unit | Waits on | Files | Check |
 |---|---|---|---|
-| U0 CLAUDE.md rule (3.7) and CI footer (3.3), PR-R | 3.5's answer only if the exemption is kept | `CLAUDE.md`, `commit-authors.yml` | criteria 18 (grep), 20 |
+| U0 CLAUDE.md rule (3.7) and CI footer (3.3), PR-R | none | `CLAUDE.md`, `commit-authors.yml` | criteria 18 (grep), 20 |
 | U1 field forms, create, head, reopen, unreadable count (3.1) and bodies (3.2) | none | `rules.mjs` | criteria 1 to 8 |
 | U2 reads (3.4) and the narrowed footer (3.3) | U1 (same file) | `rules.mjs`, `rules.json` | criteria 9, 10, and 11 once PR-R is on `main` |
 | U3 refusals (3.8) | U2 (same file) | `rules.mjs`, `settings.json` | criteria 12 to 14, 17 |
-| U4 owner commands (3.6) and the docs exemption (3.5) | U3 (same file); 3.5 waits on the owner | `rules.mjs`, `rules.json` | criteria 15, 16 |
+| U4 owner commands (3.6) and the docs exemption (3.5) | U3 (same file) | `rules.mjs`, `rules.json` | criteria 15, 16 |
 
 PR-R holds U0; PR-H holds U1 to U4 in that order on one branch, from a `main` that has PR-R. Tests are written first, each failing on `main` before its unit lands. Criteria 18 and 19 run in PR-H too.
 
 ## 7. Open decisions for the owner
 
 1. ~~The footer route in 3.3~~: decided 14:43 UTC, CI ignores the exact proxy footer.
-2. The docs-only exemption in 3.5 (recommended: drop it).
+2. ~~The docs-only exemption in 3.5~~: decided 14:48 UTC, every pull request counts.
 
 ## 8. Plan audit 1 answers
 
