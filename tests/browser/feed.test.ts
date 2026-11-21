@@ -56,6 +56,8 @@ test("Ruken opens straight into the feed, with the right clip for the screen", a
   await expect(clip).toHaveAttribute("aria-label", withPage.name);
 
   // The clip of the window's shape is the one shown, and turning the window changes it (D2).
+  // A clip has an address once it is the one on screen or the next, so the game's own clip is brought to the screen.
+  await clip.scrollIntoViewIfNeeded();
   const video = clip.locator("video");
   const first = isUpright(page) ? "upright" : "wide";
   const other = first === "upright" ? "wide" : "upright";

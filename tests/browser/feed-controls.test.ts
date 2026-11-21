@@ -30,6 +30,8 @@ async function openFeed(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.locator("section[data-slug]").nth(2)).toBeAttached();
   await expect(current(page)).toHaveCount(1);
+  // The page's script has started: until it has, a key is not heard and nothing is watching the scroll.
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
   await wordsHaveSettled(page);
 }
 
@@ -48,7 +50,14 @@ test("only the clip on screen and the next are fetched before a person scrolls",
   await expect(current(page).locator("video"))
     .toHaveJSProperty("readyState", 4, { timeout: 15_000 })
     .catch(() => undefined);
-  await page.waitForLoadState("networkidle");
+  // The next clip has read its size too. (The network never goes quiet in WebKit while a clip loads, so "idle" is not
+  // the thing to wait for.) A third clip, if the page wanted one, would have asked by now: it is asked for together
+  // with the next.
+  await expect
+    .poll(() =>
+      page.locator("section video").evaluateAll((videos) => (videos[1] as HTMLVideoElement).readyState >= 1),
+    )
+    .toBe(true);
   expect(asked.size).toBeGreaterThanOrEqual(1);
   expect(asked.size).toBeLessThanOrEqual(2);
   const preloads = await page
@@ -71,17 +80,20 @@ test("the clip that fills the window is the current one, and only one is; the ot
   await expect(clips.nth(1)).toHaveAttribute("data-current", "true");
   await expect(current(page)).toHaveCount(1);
   await expect(clips.nth(0)).toHaveAttribute("data-current", "false");
-  // A clip that is not the one on screen is paused, whatever the device lets move.
-  expect(
-    await clips.evaluateAll((sections) =>
-      sections
-        .filter((section) => section.getAttribute("data-current") === "false")
-        .every((section) => {
-          const video = section.querySelector("video");
-          return video !== null && video.paused;
-        }),
-    ),
-  ).toBe(true);
+  // A clip that is not the one on screen is paused, whatever the device lets move. The pause follows the move by a
+  // moment in some engines, so the journey waits for it.
+  await expect
+    .poll(() =>
+      clips.evaluateAll((sections) =>
+        sections
+          .filter((section) => section.getAttribute("data-current") === "false")
+          .every((section) => {
+            const video = section.querySelector("video");
+            return video !== null && video.paused;
+          }),
+      ),
+    )
+    .toBe(true);
 });
 
 test("each key moves one clip, never past either end", async ({ page }) => {

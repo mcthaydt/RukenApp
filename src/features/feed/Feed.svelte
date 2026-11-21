@@ -42,6 +42,9 @@
   const clipAddress = (clip: FeedClip): string =>
     `${ready && shape === "wide" ? clip.wide : clip.upright}#t=0.001`;
   // The clip on screen and the next are fetched; every other clip waits until a person is close.
+  // A clip has no address at all until it is the one on screen or the next: WebKit fetches a clip that has an address
+  // whatever its preload says, which would fetch the whole feed on the first open.
+  const fetches = (index: number): boolean => warm && index <= current + 1;
   const preloads = (index: number): "metadata" | "none" =>
     warm && index <= current + 1 ? "metadata" : "none";
 
@@ -95,12 +98,21 @@
       video.muted = !soundOn;
       const slug = clips[index]?.slug ?? "";
       if (index === current && (autoplay || started.includes(slug))) {
-        video.play().catch(() => {
-          // The browser would not play with sound: the quiet answer is to play without it, and the mark says so.
-          if (soundOn) soundOn = false;
-          video.muted = true;
-          video.play().catch(() => undefined);
-        });
+        video
+          .play()
+          .then(() => {
+            // The start finished after a person moved on: the clip that is not on screen waits at its start.
+            if (index !== current) video.pause();
+          })
+          .catch(() => {
+            // A person moved on while the clip was starting: that is our own pause cutting the start short, and the
+            // clip must stay paused (a retry here would play a clip nobody is looking at).
+            if (index !== current) return;
+            // The browser would not play with sound: the quiet answer is to play without it, and the mark says so.
+            if (soundOn) soundOn = false;
+            video.muted = true;
+            video.play().catch(() => undefined);
+          });
       } else if (index !== current) {
         video.pause();
         if (video.currentTime > 0) video.currentTime = 0;
@@ -174,7 +186,7 @@
     <p class="statement">No games here yet.</p>
   </main>
 {:else}
-  <main class="feed" bind:this={feed} onscroll={forgetHints}>
+  <main class="feed" data-ready={ready ? "true" : "false"} bind:this={feed} onscroll={forgetHints}>
     {#each clips as clip, index (clip.slug)}
       <section
         bind:this={sections[index]}
@@ -184,7 +196,7 @@
       >
         <video
           bind:this={videos[index]}
-          src={clipAddress(clip)}
+          src={fetches(index) ? clipAddress(clip) : undefined}
           preload={preloads(index)}
           muted
           loop
@@ -192,6 +204,17 @@
           tabindex="-1"
           aria-hidden="true"
         ></video>
+        <noscript>
+          <video
+            src={`${clip.upright}#t=0.001`}
+            preload="none"
+            muted
+            loop
+            playsinline
+            tabindex="-1"
+            aria-hidden="true"
+          ></video>
+        </noscript>
         <button
           type="button"
           class="sound"
