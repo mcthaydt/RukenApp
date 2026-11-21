@@ -88,13 +88,18 @@ test.describe("sign up", () => {
 });
 
 test.describe("your account", () => {
-  test("the number is printed once, and the membership line follows a rem under it", async ({ page }) => {
+  test("the number is printed once, with Change password under it and the membership line a rem under that", async ({
+    page,
+  }) => {
     const { number } = await signUp(page);
     await visit(page, "/me");
     const shown = page.getByText(shownAs(number), { exact: true });
     await expect(shown).toHaveCount(1);
+    const change = page.locator("p.note", { has: page.getByRole("link", { name: "Change password" }) });
+    // A note sits close under what it is about: its own margin is 0.375rem (6px).
+    closeTo((await boxOf(change)).y - bottomOf(await boxOf(shown)), 6);
     const membership = await boxOf(page.getByText("You're not a member.", { exact: true }));
-    closeTo(membership.y - bottomOf(await boxOf(shown)), 16);
+    closeTo(membership.y - bottomOf(await boxOf(change)), 16);
   });
 
   // The Owner, 2026-11-14, "All six": two tap targets that overlap are one wrong tap from deleting an account.

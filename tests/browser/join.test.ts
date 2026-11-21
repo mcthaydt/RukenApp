@@ -1,6 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
-import { continueToPayment, finishSignUpForm, freshNumber, signUp } from "./support/account.ts";
+import {
+  continueToPayment,
+  finishSignUpForm,
+  freshNumber,
+  pageHasSettled,
+  signUp,
+} from "./support/account.ts";
 import { addGame } from "./support/game.ts";
 import { boxOf, expectFrame, expectOneCard, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -164,6 +170,8 @@ test.describe("the card over a game's clip", () => {
 
   test("a stranger who presses Play meets the card over that game's clip", async ({ page }, testInfo) => {
     await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
+    // A press while the page is still coming alive can be lost (seen in WebKit, run 44951754611, phone).
+    await pageHasSettled(page);
     await page.getByRole("link", { name: "Play" }).click();
     await expect(page.getByRole("heading", { name: "Join Ruken to play" })).toBeVisible();
     await expect(page).toHaveURL(/\/join\?next=/);
