@@ -41,3 +41,15 @@
 - Safari's engine was not shot: the container has no WebKit, so the phone ran in Chromium at the iPhone SE size. CI runs the phone in WebKit.
 - Some journeys use a 1 KB stand-in clip, which shows as a flat sage box.
 - Sign-up, sign-in, Your account, Join and the payment pages are slice 1 and were dropped from the pictures.
+
+## Fix check
+
+- Commit examined: `f10d63b` on pull request #255 (the fixes are in `5e875f0`), built fresh the same way. Checked 2026-11-21 06:00 UTC by the same reviewer session.
+- How: a local, uncommitted journey typed "api.example.com" and "cdn.example.com" into two website boxes and opened the agreement, at the three sizes and at 667 by 375, 1080 by 810, 1366 by 1024, 1280 by 720 and 1440 by 900. It measured each box's text width against its inside width, and where "I agree" and Back sit against the window. The builder's changed checks (`each website is its own line…`, the agreement checks in `make-second-look.test.ts`) ran beside it: 9 passed, none failed. Chromium only.
+
+| Red | Verdict | What was seen at `f10d63b` |
+|---|---|---|
+| 1 | **still red** | On the 375-wide phone "api.example.com" now just fits (text 189 px in a 189 px inside width, nothing to spare), but "cdn.example.com" does not: 196 px of text in 189 px, shown as "cdn.example.com" cut at the "m" without focus and as "dn.example.com" with it. The new check types only "api.example.com", so it passes. Remove is 98 by 64. |
+| 2 | fixed | At 1280 by 720 "I agree" ends at 696 px of 720, and at 1080 by 810 at 782 of 810, with Back beside it; the seven points scroll inside the sheet (1123 px in 500 on the computer) and the last point is reachable. At 1440 by 900 and 1366 by 1024 the same. The page itself scrolls 8 px at 1280 by 720, which moves nothing out of view. Phone, sideways phone and upright tablet keep their bottom bar with "I agree" in it. |
+
+- FIX for red 1, bounded: on a phone also take padding off the box's sides (`.screen .line > .answer { padding-inline: 0.75rem }` below 500 wide gives back 16 px), and have the phone check type "cdn.example.com" as well as "api.example.com". Files: `src/lib/look.css`, `tests/browser/make-questions.test.ts`.
