@@ -3,6 +3,7 @@
 export type { Caller } from "./caller.ts";
 export { createHandle } from "./handle.ts";
 export { forwardToAuth } from "./forward.ts";
+export { changeEmail, changePassword, type ChangeFormData } from "./credentials.ts";
 export {
   FORM_MESSAGES,
   readForm,

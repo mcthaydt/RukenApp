@@ -27,6 +27,10 @@ export const FORM_MESSAGES = {
   accountExists: "There's already an account with that email. Sign in instead.",
   birthDateInvalid: "Enter your date of birth as a month, day and year.",
   passwordsDiffer: "The two passwords don't match. Type the same one twice.",
+  currentPasswordWrong: "That isn't your password. Try again.",
+  tooManyWrong: "Too many wrong passwords. Wait an hour, then try again.",
+  emailInvalid: "That doesn't look like an email address. Check it and try again.",
+  sameEmail: "That's the email you already use.",
 } as const;
 
 export interface FormDeps {
@@ -209,6 +213,7 @@ export interface FormFields {
   next: string;
   token: string;
   confirm: string;
+  newPassword: string;
   month: string;
   day: string;
   year: string;
@@ -226,6 +231,7 @@ export async function readForm(event: FormEvent): Promise<FormFields> {
     next: text("next"),
     token: text("token").trim(),
     confirm: text("confirm"),
+    newPassword: text("newPassword"),
     month: text("month"),
     day: text("day"),
     year: text("year"),
