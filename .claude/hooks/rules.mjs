@@ -655,7 +655,7 @@ function checkBypassFlags(cmd, config, deny) {
   if (hasFlag(cmd.args, ['--passWithNoTests', '--pass-with-no-tests'])) deny(refusal(rule, `${cmd.prog} --passWithNoTests`, 'run the tests that exist; a run with no tests is a failure'));
   if (RUNNERS.test(cmd.prog)) {
     const n = flagValues(cmd.args, ['--retries', '--retry']).map(Number).find((x) => x > 0);
-    if (n) deny(refusal(rule, `${cmd.prog} --retries ${n}`, 'run once; a test that passes only on retry is a flaky-test defect to record in history.md'));
+    if (n) deny(refusal(rule, `${cmd.prog} --retries ${n}`, 'run once; a test that passes only on retry is a flaky-test defect to record in progress.md'));
   }
 }
 
