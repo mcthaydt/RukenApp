@@ -338,6 +338,7 @@ describe("screens wear the look and nothing of their own", () => {
     "fixgo",
     "accepted",
     "backdrop",
+    "behindcard",
     "live",
     "drift",
     "asks",

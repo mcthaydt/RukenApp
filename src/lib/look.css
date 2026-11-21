@@ -2134,6 +2134,31 @@ a.sheet.fix {
   background: var(--pay);
 }
 
+/* The price card's backdrop: the clip of the game the person tapped, behind the card, under one flat layer of the darkest
+   felt at 62% (the play menu's dim). It sits under the page's own content, takes no press, and is not blurred. */
+.behindcard {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.behindcard video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.behindcard::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--felt-deep);
+  opacity: 0.62;
+}
+
 /* The statement piece, only on Live (spec 5c): the game's own video fills the screen behind everything, blurred, dimmed and
    under a black layer. Everything else sits above it. */
 .backdrop {

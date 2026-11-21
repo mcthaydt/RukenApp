@@ -29,3 +29,4 @@ Preview: https://ruken.io (deployed by the owner; `main` is not deployed on merg
 ## Decisions
 
 - Agent-selected: CI is the workflow kept from before the cleanup (`2f1bde5^`), restored as the restart handoff says, with `commit-authors` still its own workflow so a pull request text edit does not rerun every test. Easy to change.
+- 2026-11-21 01:16 UTC, the owner's answers on three cards for the feed and the maker's page (spec `2026-11-21-feed-and-makers-page-design.md`, section 8): Open 1, leave the red mark off the price card (unit F task 4 struck); Open 2, simple page editing now (unit I as planned); Open 3, the simple feed order first, with the learned feed to follow (unit C tasks 2, 3 and 5 and unit D go ahead on the interim order).

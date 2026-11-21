@@ -40,13 +40,19 @@ export function deviceOf(userAgent: string | null): "phone" | "tablet" | "comput
 }
 
 /** A game's page address ends in a slug: lower-case letters and digits in runs joined by hyphens, 3 to 40 characters. */
-const PLAY_ADDRESS = /^\/g\/([a-z0-9]+(?:-[a-z0-9]+)*)\/play$/;
+const GAME_ADDRESS = /^\/g\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/play)?$/;
 
 /**
- * Where "Not now" on the paywall goes: back to the game's page when the person came from that game's Play address, and
- * to the front page for anything else, since the address comes from a link and is not believed.
+ * The game a paywall's `next` names, when it is that game's page or its Play address and nothing else, or null. The address
+ * comes from a link and is not believed, so a slug outside the shape a game's address can have is no game.
  */
+export function gameSlugOfNext(next: string): string | null {
+  const slug = GAME_ADDRESS.exec(next)?.[1];
+  return slug !== undefined && slug.length >= 3 && slug.length <= 40 ? slug : null;
+}
+
+/** Where "Not now" on the paywall goes: back to the game's page when the person came from that game, else the front page. */
 export function backFromPaywall(next: string): string {
-  const slug = PLAY_ADDRESS.exec(next)?.[1];
-  return slug !== undefined && slug.length >= 3 && slug.length <= 40 ? `/g/${slug}` : "/";
+  const slug = gameSlugOfNext(next);
+  return slug === null ? "/" : `/g/${slug}`;
 }
