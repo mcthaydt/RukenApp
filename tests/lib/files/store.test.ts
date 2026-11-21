@@ -197,6 +197,69 @@ describe("r2FileStore", () => {
     ]);
   });
 
+  // Local R2 in the journeys is a Durable Object behind workerd, and a busy runner can drop the call to it: run
+  // 44922343233 lost a clip that way ("Network connection lost."). Real R2 can fail a write for a moment too.
+  describe("a put that fails for a moment", () => {
+    function flakyBucket(failures: Error[]) {
+      const tries: unknown[][] = [];
+      const waits: number[] = [];
+      const bucket = {
+        put: (...args: unknown[]) => {
+          tries.push(args);
+          const failure = failures.shift();
+          return failure === undefined ? Promise.resolve(null) : Promise.reject(failure);
+        },
+      };
+      const store = r2FileStore(bucket as unknown as R2Bucket, {
+        wait: (ms) => Promise.resolve(void waits.push(ms)),
+      });
+      return { store, tries, waits };
+    }
+    const lost = () => new Error("Network connection lost.");
+    const markedRetryable = () => Object.assign(new Error("Internal error"), { retryable: true });
+
+    it("is tried again after a dropped connection, with the same key and bytes", async () => {
+      const { store, tries, waits } = flakyBucket([lost(), lost()]);
+      const bytes = bytesOf(1, 2);
+
+      await store.put("k", bytes);
+
+      expect(tries).toEqual([
+        ["k", bytes],
+        ["k", bytes],
+        ["k", bytes],
+      ]);
+      expect(waits).toEqual([100, 200]);
+    });
+
+    it("is tried again when Cloudflare marks the error as one to retry", async () => {
+      const { store, tries } = flakyBucket([markedRetryable()]);
+
+      await store.put("k", bytesOf(1));
+
+      expect(tries).toHaveLength(2);
+    });
+
+    it("gives up after three tries and throws the last error", async () => {
+      const { store, tries } = flakyBucket([lost(), lost(), lost(), lost()]);
+
+      await expect(store.put("k", bytesOf(1))).rejects.toThrow("Network connection lost.");
+
+      expect(tries).toHaveLength(3);
+    });
+
+    it("is not tried again for an error that does not pass, or when R2 is overloaded", async () => {
+      const refused = flakyBucket([new Error("The key is too long.")]);
+      const overloaded = flakyBucket([Object.assign(lost(), { retryable: true, overloaded: true })]);
+
+      await expect(refused.store.put("k", bytesOf(1))).rejects.toThrow("The key is too long.");
+      await expect(overloaded.store.put("k", bytesOf(1))).rejects.toThrow("Network connection lost.");
+
+      expect(refused.tries).toHaveLength(1);
+      expect(overloaded.tries).toHaveLength(1);
+    });
+  });
+
   it("lists a page at a time and deletes each page's keys in one call", async () => {
     const { store, calls } = standIn();
 
