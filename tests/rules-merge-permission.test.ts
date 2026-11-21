@@ -2,7 +2,16 @@
 // the rule hook answers for the three GitHub tools the settings allow. It runs the real hook
 // against a scratch copy of .claude/ with a stub `gh` on PATH, so nothing touches the network.
 import { spawnSync } from "node:child_process";
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
@@ -283,5 +292,184 @@ describe("the lane lists match CLAUDE.md (3.4, h)", () => {
     const changed = claudeMd.replace(/(- \*\*Lane 2\*\*[^\n]*?)`src\/lib\/`/, "$1`src/newlib/`, `src/lib/`");
     expect(changed).not.toBe(claudeMd);
     expect(laneListProblems(changed, lanePaths).join("\n")).toContain("src/newlib/");
+  });
+});
+
+// The cloud setup script (3.7): cloud sessions never read the repo's settings, so it writes the allow
+// list and a blocking hook entry into user settings, next to the four launcher entries.
+type Hook = { command: string; onFailure?: string; timeout?: number };
+type UserSettings = {
+  permissions?: { allow?: string[] };
+  hooks: Record<string, { matcher?: string; hooks: Hook[] }[]>;
+};
+const HOOKS_FILE = join(ROOT, ".claude", "hooks", "rules.mjs");
+const MATCHER = "^mcp__github__(merge_pull_request|disable_pr_auto_merge|update_pull_request)$";
+const ALLOW = [
+  "mcp__github__merge_pull_request",
+  "mcp__github__disable_pr_auto_merge",
+  "mcp__github__update_pull_request",
+];
+
+describe("the cloud setup script writes user settings (3.7, 6)", () => {
+  const homes: string[] = [];
+  const newHome = () => {
+    const h = mkdtempSync(join(tmpdir(), "rules-home-"));
+    homes.push(h);
+    return h;
+  };
+  afterAll(() => {
+    for (const h of homes) rmSync(h, { recursive: true, force: true });
+  });
+  const settingsPath = (h: string) => join(h, ".claude", "settings.json");
+  const read = (h: string) => JSON.parse(readFileSync(settingsPath(h), "utf8")) as UserSettings;
+  const setup = spawnSync(process.execPath, [HOOKS_FILE, "--print-setup"], { encoding: "utf8" }).stdout;
+  const printSetup = (h: string) =>
+    spawnSync("bash", ["-c", setup], { encoding: "utf8", env: { ...process.env, HOME: h } });
+  const installUser = (h: string) =>
+    spawnSync(process.execPath, [HOOKS_FILE, "--install-user"], {
+      encoding: "utf8",
+      env: { ...process.env, HOME: h },
+    });
+  const count = (list: { matcher?: string }[] | undefined, matcher: string | undefined) =>
+    (list ?? []).filter((e) => e.matcher === matcher).length;
+
+  test("from no file: three allow names, four launcher entries, the blocking entry, each once", () => {
+    const h = newHome();
+    expect(printSetup(h).status).toBe(0);
+    const s = read(h);
+    expect(s.permissions?.allow).toEqual(ALLOW);
+    const launcher = newHome();
+    expect(installUser(launcher).status).toBe(0);
+    const l = read(launcher);
+    expect(Object.keys(s.hooks).sort()).toEqual(["PostToolUse", "PreToolUse", "SessionStart", "Stop"]);
+    for (const ev of ["SessionStart", "PostToolUse", "Stop"]) expect(s.hooks[ev]).toEqual(l.hooks[ev]);
+    expect(s.hooks.PreToolUse).toHaveLength(2);
+    expect(s.hooks.PreToolUse?.[0]).toEqual(l.hooks.PreToolUse?.[0]);
+    expect(count(s.hooks.PreToolUse, "Bash|Write|Edit|MultiEdit|Agent|Workflow|mcp__.*")).toBe(1);
+    const block = s.hooks.PreToolUse?.[1];
+    expect(block?.matcher).toBe(MATCHER);
+    expect(block?.hooks).toHaveLength(1);
+    expect(block?.hooks[0]?.onFailure).toBe("block");
+    expect(block?.hooks[0]?.timeout).toBe(30);
+    expect(block?.hooks[0]?.command.trim().endsWith("exit 1")).toBe(true);
+    // --install-user alone writes neither the allow names nor the blocking entry.
+    expect(l.permissions).toBeUndefined();
+    expect(count(l.hooks.PreToolUse, MATCHER)).toBe(0);
+  });
+
+  test("run twice it changes nothing the second time", () => {
+    const h = newHome();
+    printSetup(h);
+    const first = readFileSync(settingsPath(h), "utf8");
+    expect(printSetup(h).status).toBe(0);
+    expect(readFileSync(settingsPath(h), "utf8")).toBe(first);
+  });
+
+  test("the user's own allow entries and hooks stay", () => {
+    const h = newHome();
+    mkdirSync(join(h, ".claude"));
+    writeFileSync(
+      settingsPath(h),
+      JSON.stringify({
+        theme: "dark",
+        permissions: { allow: ["Bash(ls)", ALLOW[0]], deny: ["Bash(rm *)"] },
+        hooks: { PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo mine" }] }] },
+      }),
+    );
+    expect(printSetup(h).status).toBe(0);
+    const s = read(h) as UserSettings & { theme: string; permissions: { allow: string[]; deny: string[] } };
+    expect(s.theme).toBe("dark");
+    expect(s.permissions.deny).toEqual(["Bash(rm *)"]);
+    expect(s.permissions.allow).toEqual(["Bash(ls)", ...ALLOW]);
+    expect(s.hooks.PreToolUse?.some((e) => e.hooks.some((x) => x.command === "echo mine"))).toBe(true);
+    expect(count(s.hooks.PreToolUse, MATCHER)).toBe(1);
+  });
+
+  test("a file that is not JSON is left as it is", () => {
+    const h = newHome();
+    mkdirSync(join(h, ".claude"));
+    writeFileSync(settingsPath(h), "{ nope");
+    expect(printSetup(h).status).toBe(0);
+    expect(readFileSync(settingsPath(h), "utf8")).toBe("{ nope");
+    expect(installUser(h).status).toBe(1);
+    expect(readFileSync(settingsPath(h), "utf8")).toBe("{ nope");
+  });
+
+  test("--install-user after the setup script keeps the allow names and the blocking entry", () => {
+    const h = newHome();
+    printSetup(h);
+    expect(installUser(h).status).toBe(0);
+    const s = read(h);
+    expect(s.permissions?.allow).toEqual(ALLOW);
+    expect(count(s.hooks.PreToolUse, MATCHER)).toBe(1);
+    expect(count(s.hooks.PreToolUse, "Bash|Write|Edit|MultiEdit|Agent|Workflow|mcp__.*")).toBe(1);
+  });
+
+  describe("the written blocking command, run as a shell command", () => {
+    const command = () => {
+      const h = newHome();
+      printSetup(h);
+      return read(h).hooks.PreToolUse?.[1]?.hooks[0]?.command ?? "";
+    };
+    const input = (cwd: string, tool = "mcp__github__merge_pull_request") =>
+      JSON.stringify({
+        hook_event_name: "PreToolUse",
+        tool_name: tool,
+        tool_input: { ...APP, merge_method: "merge", expectedHeadSha: HEAD },
+        cwd,
+      });
+    const runIn = (projectDir: string, cwd: string, tool?: string) =>
+      spawnSync("bash", ["-c", command()], {
+        input: input(cwd, tool),
+        encoding: "utf8",
+        cwd,
+        env: {
+          ...process.env,
+          CLAUDE_PROJECT_DIR: projectDir,
+          PATH: `${join(scratch, "bin")}:${process.env.PATH ?? ""}`,
+          STUB_STATE: stateFile,
+          STUB_HEAD: HEAD,
+        },
+      });
+
+    test("a folder with no repo blocks", () => {
+      const empty = newHome();
+      expect(runIn(empty, empty).status).toBe(1);
+    });
+    test("one folder above a repo that has no rules.json blocks", () => {
+      const up = newHome();
+      cpSync(join(ROOT, ".claude", "hooks"), join(up, "repo", ".claude", "hooks"), { recursive: true });
+      rmSync(join(up, "repo", ".claude", "hooks", "rules.json"));
+      expect(runIn(up, up).status).toBe(1);
+    });
+    test("one folder above the repo judges the call", () => {
+      setState({ body: "Lane 3", files: ["docs/x.md"] });
+      const up = newHome();
+      cpSync(scratch, join(up, "repo"), { recursive: true });
+      const r = runIn(up, join(up, "repo"));
+      expect(r.status).toBe(0);
+      expect(r.stdout).toContain(NO_REVIEW);
+    });
+    test("a session in the repo folder itself is judged, not blocked", () => {
+      setState({ body: "Lane 3", files: ["docs/x.md"] });
+      const r = runIn(scratch, scratch);
+      expect(r.status).toBe(0);
+      expect(r.stdout).toContain(NO_REVIEW);
+      expect(existsSync(join(scratch, ".claude", "hooks", "rules.mjs"))).toBe(true);
+    });
+    test("a Bash call from the repo folder still returns quietly", () => {
+      const r = spawnSync(process.execPath, [join(scratch, ".claude", "hooks", "rules.mjs"), "--find-repo"], {
+        input: JSON.stringify({
+          hook_event_name: "PreToolUse",
+          tool_name: "Bash",
+          tool_input: { command: "ls" },
+          cwd: scratch,
+        }),
+        encoding: "utf8",
+        env: { ...process.env, CLAUDE_PROJECT_DIR: scratch },
+      });
+      expect(r.status).toBe(0);
+      expect(r.stdout.trim()).toBe("");
+    });
   });
 });

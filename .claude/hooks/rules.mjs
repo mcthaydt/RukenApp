@@ -1406,7 +1406,13 @@ const LAUNCH_NOTE = '[ -f "$CLAUDE_PROJECT_DIR/.claude/hooks/rules.mjs" ] || ech
 const LAUNCH_EVENTS = [['SessionStart', null, LAUNCH_RUN + LAUNCH_NOTE + 'true'], ['PreToolUse', 'Bash|Write|Edit|MultiEdit|Agent|Workflow|mcp__.*', LAUNCH_RUN + 'true'], ['PostToolUse', 'Bash|Write|Edit|MultiEdit|mcp__.*', LAUNCH_RUN + 'true'], ['Stop', null, LAUNCH_RUN + 'true']];
 // One installer, used two ways: `--install-user` runs it (a failure exits 1), and `--print-setup`
 // prints it as a cloud setup script that needs no repo and never stops a session from starting.
-const INSTALL_JS = [
+// The cloud setup script also writes, into user settings, what a cloud session needs because it starts
+// in /home/user with trust off and never reads the repo's settings: the allow list of the merge
+// permission rule and a blocking hook entry for those three tools (exit 1 when no repo hook is found).
+const MERGE_TOOLS_ALLOW = ['mcp__github__merge_pull_request', 'mcp__github__disable_pr_auto_merge', 'mcp__github__update_pull_request'];
+const MERGE_TOOLS_MATCHER = '^mcp__github__(merge_pull_request|disable_pr_auto_merge|update_pull_request)$';
+const BLOCK_RUN = 'for f in "$CLAUDE_PROJECT_DIR"/.claude/hooks/rules.mjs "$CLAUDE_PROJECT_DIR"/*/.claude/hooks/rules.mjs; do [ -f "$f" ] && exec node "$f" --find-repo; done; exit 1';
+const installJs = (cloud) => [
   "const fs = require('fs'), path = require('path'), os = require('os');",
   "const p = path.join(process.env.HOME || os.homedir(), '.claude', 'settings.json');",
   "const quit = (why) => { console.error(`Rule hooks not added: ${p} ${why}. Nothing was changed.`); process.exit(process.env.RULES_INSTALL_STRICT ? 1 : 0); };",
@@ -1415,12 +1421,19 @@ const INSTALL_JS = [
   `const E = [["SessionStart", null, R + N + "true"], ["PreToolUse", ${JSON.stringify(LAUNCH_EVENTS[1][1])}, R + "true"],`,
   `  ["PostToolUse", ${JSON.stringify(LAUNCH_EVENTS[2][1])}, R + "true"], ["Stop", null, R + "true"]];`,
   "const ok = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);",
-  "const ours = (h) => ok(h) && /\\/\\.claude\\/hooks\\/rules\\.mjs\"?;? do /.test(String(h.command ?? ''));",
+  `const B = ${JSON.stringify(BLOCK_RUN)};`,
+  "const isBlocking = (h) => ok(h) && h.onFailure === 'block' && String(h.command ?? '').trim().endsWith('exit 1');",
+  "const ours = (h) => ok(h) && !isBlocking(h) && /\\/\\.claude\\/hooks\\/rules\\.mjs\"?;? do /.test(String(h.command ?? ''));",
   "let text = null;",
   "try { if (fs.existsSync(p)) text = fs.readFileSync(p, 'utf8'); } catch (e) { quit(`could not be read (${e.code})`); }",
   "let s = {};",
   "try { if (text !== null) s = JSON.parse(text); } catch { quit('is not valid JSON'); }",
   "if (!ok(s) || (s.hooks !== undefined && !ok(s.hooks))) quit('is not in the usual shape');",
+  ...(cloud ? [
+    "if (s.permissions !== undefined && (!ok(s.permissions) || (s.permissions.allow !== undefined && !Array.isArray(s.permissions.allow)))) quit('is not in the usual shape at permissions');",
+    `const ALLOW = ${JSON.stringify(MERGE_TOOLS_ALLOW)};`,
+    "const permissions = { ...s.permissions, allow: [...(s.permissions?.allow ?? []), ...ALLOW.filter((a) => !(s.permissions?.allow ?? []).includes(a))] };",
+  ] : []),
   "const hooks = { ...s.hooks };",
   "for (const [ev, m, c] of E) {",
   "  const list = hooks[ev] ?? [];",
@@ -1434,7 +1447,18 @@ const INSTALL_JS = [
   "  }",
   "  hooks[ev] = [...kept, { ...(m ? { matcher: m } : {}), hooks: [{ type: 'command', command: c }] }];",
   "}",
-  "const next = JSON.stringify({ ...s, hooks }, null, 2) + '\\n';",
+  ...(cloud ? [
+    `const BM = ${JSON.stringify(MERGE_TOOLS_MATCHER)};`,
+    "{",
+    "  const kept = [];",
+    "  for (const e of hooks.PreToolUse) {",
+    "    const all = e.hooks ?? [], own = all.filter((h) => !isBlocking(h));",
+    "    if (own.length || own.length === all.length) kept.push(own.length === all.length ? e : { ...e, hooks: own });",
+    "  }",
+    "  hooks.PreToolUse = [...kept, { matcher: BM, hooks: [{ type: 'command', command: B, timeout: 30, onFailure: 'block' }] }];",
+    "}",
+  ] : []),
+  "const next = JSON.stringify({ ...s, ...(" + (cloud ? "{ permissions }" : "{}") + "), hooks }, null, 2) + '\\n';",
   "if (text !== null && JSON.stringify(JSON.parse(text)) === JSON.stringify(JSON.parse(next))) {",
   "  console.log(`Rule hooks already in ${p}.`); process.exit(0);",
   "}",
@@ -1442,7 +1466,8 @@ const INSTALL_JS = [
   "catch (e) { quit(`could not be written (${e.code})`); }",
   "console.log(`Rule hooks added to ${p}: sessions started one folder above a repo now load its hooks.`);",
 ].join('\n');
-const SETUP_SCRIPT = `# Rule hooks for sessions that start one folder above a repo. Needs no repo; never fails.\nnode - <<'RULES_HOOKS_JS' || true\n${INSTALL_JS}\nRULES_HOOKS_JS\n`;
+const INSTALL_JS = installJs(false);
+const SETUP_SCRIPT = `# Rule hooks for sessions that start one folder above a repo. Needs no repo; never fails.\nnode - <<'RULES_HOOKS_JS' || true\n${installJs(true)}\nRULES_HOOKS_JS\n`;
 function installUser() {
   const r = spawnSync(process.execPath, ['-'], { input: INSTALL_JS, env: { ...process.env, RULES_INSTALL_STRICT: '1' }, encoding: 'utf8' });
   process.stdout.write(r.stdout ?? '');
@@ -1478,7 +1503,7 @@ function main() {
   try { input = JSON.parse(raw); } catch (e) { failClosed(`the hook input did not parse (${e.message})`); }
   const event = input.hook_event_name;
   toolInCall = event === 'PreToolUse' ? input.tool_name : undefined;
-  if (findRepo && process.env.CLAUDE_PROJECT_DIR && existsSync(join(process.env.CLAUDE_PROJECT_DIR, '.claude', 'hooks', 'rules.mjs'))) return; // the repo's own settings run it
+  if (findRepo && process.env.CLAUDE_PROJECT_DIR && existsSync(join(process.env.CLAUDE_PROJECT_DIR, '.claude', 'hooks', 'rules.mjs')) && !(event === 'PreToolUse' && GUARDED.test(input.tool_name ?? ''))) return; // the repo's own settings run it
   let roots;
   let detached = false;
   if (findRepo) {
