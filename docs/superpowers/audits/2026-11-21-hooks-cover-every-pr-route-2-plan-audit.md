@@ -121,7 +121,7 @@ Not run against real GitHub (no writes outside the repo): that GitHub accepts a 
 - VERDICT: red.
 - REQUIREMENT: section 2.
 - REASON: 3.6 reads strings inside the call's input. Commands for the owner are often written to a file under `/mnt/project-files/owner-steps/` and attached through `attached_outputs`; the file's text is never read, and the Write check skips paths outside the repo (`checkFileWrite`, `rel.startsWith('..')`).
-- EVIDENCE: `rules.mjs` line 1121; the project's own `owner-steps/` folder holds handed-over commands.
+- EVIDENCE: `rules.mjs` line 1119; the project's own `owner-steps/` folder holds handed-over commands.
 - EXPECTED: a pull request write is refused whichever way it reaches the owner, or the spec names the gap.
 - FIX: 3.6 also reads the text of each `attached_outputs` entry of kind `file` (a local path, size-bounded) with the same checks; one criterion with a fenced `gh pr edit` in an attached `.md`. If not, section 5 names attached files as unseen. Files: the spec, later `rules.mjs` and the test file.
 
