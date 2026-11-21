@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-11-21 14:39 UTC (from `date`).
+Last updated: 2026-11-21 16:00 UTC (from `date`).
 
 ## The owner's instructions
 
@@ -35,6 +35,12 @@ Preview: https://ruken.io (deployed by the owner; `main` is not deployed on merg
 
 - **Unit G (Task 24), a real game sent, accepted and played on the test site: done, 2026-11-21 03:10 UTC.** Game used: Floor Fifty (ruken.io). The Owner played it and tried all three play checks. Step 1 passed (media.ruken.dev health ok; a game with no pass is refused). Step 4 passed on Floor Fifty: its folder without a pass gives the run-out line, both clips are served as video/mp4, and ruken.io/g-<id>/index.html returns 404. The review job showed nothing waiting, which is expected because no new version was queued. Step 5 (the GitHub repo-change return) was not checked by us; the Owner said "I did all of those, move on", so it is done on their word, not seen by a program. This closes red 1 in the slice 2 implementation audit.
 - Slice end (walk, design rounds, screens page, Owner's walk, retrospective): in progress, branch `claude/project-thread-7wmhqn`.
+
+## Everything editable
+
+- Spec `2026-11-21-everything-editable-design.md`: complete, merged to `main` (2d00e7e, #269).
+- Unit D (change email and password on `/me`): built on `claude/project-thread-evc10x`, waiting for a pull request slot and its lane 3 audit. Known limit: Stripe receipts keep going to the old address until slice 5, and the screen says so.
+- Purge row (#268, a deleted maker's games and videos come off): if unit A (a live game's videos and rating held for review) merged first, the purge must clear held values and carry criterion A11.
 
 ## Slice 3 parked
 

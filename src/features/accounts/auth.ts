@@ -9,7 +9,12 @@ import { createRateLimiter } from "../../lib/server/rate-limit.ts";
 import { authLimitsPlugin } from "./auth-limits-plugin.ts";
 import { WELCOME_BACK_COOKIE, WELCOME_BACK_MAX_AGE_SECONDS, type CookiePolicy } from "./cookies.ts";
 import { restoreOnSignIn } from "./deletion.ts";
-import { passwordChangedMessage, passwordResetMessage, verificationMessage } from "./mails.ts";
+import {
+  emailChangeMessage,
+  passwordChangedMessage,
+  passwordResetMessage,
+  verificationMessage,
+} from "./mails.ts";
 import { signInPausePlugin } from "./sign-in-pause-plugin.ts";
 import { clearSignInFailures } from "./sign-in-guards.ts";
 
@@ -26,6 +31,29 @@ export const CLIENT_IP_HEADER = "x-ruken-client-ip";
  * tell a sign-up that came through the form (with its age step) from one that did not.
  */
 export const PUBLIC_ROUTE_HEADER = "x-ruken-public-route";
+
+/** Reached only by our own pages, never through the public /api/auth route. */
+const PAGE_ONLY_PATHS: ReadonlySet<string> = new Set(["/sign-up/email", "/change-email", "/change-password"]);
+
+/**
+ * Whether a verification token (a signed JWT) is the one made for a change of email. The words of the mail depend on
+ * it; nothing is decided by it, so the signature is not checked here (better-auth checks it when the link is opened).
+ */
+function isEmailChangeToken(token: string): boolean {
+  try {
+    const payload = token.split(".")[1];
+    if (payload === undefined) return false;
+    const claims: unknown = JSON.parse(atob(payload.replaceAll("-", "+").replaceAll("_", "/")));
+    return (
+      typeof claims === "object" &&
+      claims !== null &&
+      "requestType" in claims &&
+      claims.requestType === "change-email-verification"
+    );
+  } catch {
+    return false;
+  }
+}
 
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 const ONE_DAY_SECONDS = 60 * 60 * 24;
@@ -136,7 +164,15 @@ export function createAuth(options: AuthOptions) {
       // Waited for, unlike the mails above: sign-up already says the account is new. A failure is
       // logged here by its code, because better-auth would log the raw error, which can hold the
       // address; better-auth ignores the failure either way.
-      sendVerificationEmail: async ({ user, url }) => {
+      sendVerificationEmail: async ({ user, url, token }) => {
+        // A change of email also goes through here, with the NEW address as `user.email`. Its mail says what it is,
+        // and is sent after the answer like the other mails to a possibly unknown address: an address another
+        // account already has gets no mail at all (better-auth sends none), so waiting for the mail server would
+        // show the person which addresses are taken.
+        if (isEmailChangeToken(token)) {
+          mailLater("email change mail", () => mailer.send(emailChangeMessage(user.email, url)));
+          return;
+        }
         try {
           await mailer.send(verificationMessage(user.email, url));
         } catch (error) {
@@ -146,6 +182,10 @@ export function createAuth(options: AuthOptions) {
     },
 
     user: {
+      // Changing the email asks the NEW address to confirm, and nobody else: better-auth's other two ways (asking
+      // the old address first, or changing an unconfirmed address at once) stay off. They are off by leaving
+      // sendChangeEmailConfirmation and updateEmailWithoutVerification out.
+      changeEmail: { enabled: true },
       additionalFields: {
         // Read so the request hook can treat an account that is waiting to be deleted, or gone, as
         // signed out (sessionInfo). Never set by a request. Without this field every account would
@@ -178,6 +218,10 @@ export function createAuth(options: AuthOptions) {
         "/send-verification-email": { window: 15 * 60, max: 3 },
         // Keep it to what a person retyping a password needs.
         "/reset-password": { window: 15 * 60, max: 10 },
+        // The two account-page changes also check the current password first (credentials.ts, with the per-address
+        // limits); these are the per-client backstop under them.
+        "/change-email": { window: 15 * 60, max: 10 },
+        "/change-password": { window: 15 * 60, max: 10 },
       },
     },
 
@@ -213,9 +257,12 @@ export function createAuth(options: AuthOptions) {
       // Accounts are made only by the sign-up page, which asks the age first. Its action calls
       // better-auth on the server, so an email sign-up reached through the public route is refused
       // as if it did not exist.
+      // The same goes for the two changes: they are made on /me/email and /me/password, which check the current
+      // password first (credentials.ts). better-auth's own endpoints do not ask for it when the email changes, so a
+      // stolen session cookie must not reach them through the public route.
       before: createAuthMiddleware((ctx) => {
         if (ctx.headers?.get(PUBLIC_ROUTE_HEADER) == null) return Promise.resolve();
-        if (ctx.path === "/sign-up/email") throw new APIError("NOT_FOUND");
+        if (PAGE_ONLY_PATHS.has(ctx.path)) throw new APIError("NOT_FOUND");
         return Promise.resolve();
       }),
     },
