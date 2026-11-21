@@ -1,6 +1,6 @@
 # A deleted maker's games come off Ruken
 
-- Status: plan, for plan audit 2 (audit 1 at 2ffdcd1: one red, R1, fixed in How step 3 and criterion 3). Lane 3 (the coordinator's call, 2026-11-21 14:48 UTC: the daily job permanently deletes real makers' files and videos).
+- Status: built. Plan audit 1 at 2ffdcd1 FAIL (R1, fixed); plan audit 2 at 152e877 PASS; implementation audit 1 at 6a9cb8d PASS. Waits on the owner's OK. Lane 3 (the coordinator's call, 2026-11-21 14:48 UTC: the daily job permanently deletes real makers' files and videos).
 - Brief: the owner's decision on a card, 2026-11-21 14:26 UTC: "Games come off with the account." The CRUD audit (#267, finding 3) found that `purgeDueAccounts` leaves a deleted maker's games live and playable.
 - Where: pull request #268, branch `claude/project-thread-vhfmo8`. The rest of #268 (journeys and the stand-in Stripe) is lane 1 and 2 and is not part of this plan.
 
