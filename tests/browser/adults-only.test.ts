@@ -73,6 +73,16 @@ async function signInFromTheRefusal(page: Page, account: { email: string; passwo
   await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
 }
 
+/**
+ * Opens an address and waits until that page has settled before answering its status. Opening the next address while
+ * this one still loads can interrupt it in WebKit ("Frame load interrupted": run 44952978631, `pageHasSettled`).
+ */
+async function statusOf(page: Page, path: string): Promise<number | undefined> {
+  const response = await page.goto(path, { waitUntil: "domcontentloaded" });
+  await pageHasSettled(page);
+  return response?.status();
+}
+
 /** The maker, signed in in a browser of its own, takes the game off Ruken with the real button. */
 async function takeOffAsMaker(
   browser: Browser,
@@ -239,26 +249,26 @@ test("changing a game's rating opens it to under-18s and closes it again, and ta
   await signUpAged(page, 15);
 
   // Made: a 12+ game is open to a person under 18.
-  expect((await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+  expect(await statusOf(page, `/g/${game.slug}`)).toBe(200);
   // Changed to 18+: closed to them, at once.
   await changeGame(game.slug, { ageRating: "age_18", contentMarks: ["none"] });
-  expect((await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" }))?.status()).toBe(403);
-  expect((await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" }))?.status()).toBe(403);
+  expect(await statusOf(page, `/g/${game.slug}`)).toBe(403);
+  expect(await statusOf(page, `/g/${game.slug}/play`)).toBe(403);
   // Changed back to 12+: open again.
   await changeGame(game.slug, { ageRating: "age_12", contentMarks: [] });
-  expect((await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
-  expect((await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" }))?.status()).toBe(200);
+  expect(await statusOf(page, `/g/${game.slug}`)).toBe(200);
+  expect(await statusOf(page, `/g/${game.slug}/play`)).toBe(200);
 
   // Taken off: missing for everyone, whatever their age.
   await changeGame(game.slug, { ageRating: "age_18", contentMarks: ["none"] });
   await takeOffAsMaker(browser, game.maker, game.slug);
   expect(await stateOf(game.slug)).toBe("taken_off");
-  expect((await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" }))?.status()).toBe(404);
+  expect(await statusOf(page, `/g/${game.slug}`)).toBe(404);
   const adult = await browser.newContext({ baseURL: "http://localhost:4173" });
   try {
     const adultPage = await adult.newPage();
     await signUpAged(adultPage, 30);
-    expect((await adultPage.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" }))?.status()).toBe(404);
+    expect(await statusOf(adultPage, `/g/${game.slug}`)).toBe(404);
   } finally {
     await adult.close();
   }
