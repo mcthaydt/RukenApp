@@ -17,10 +17,12 @@
 
   let {
     heading,
+    title = "Your game · Ruken",
     counter,
     back,
     throwAway,
     enterHint = true,
+    primary,
     busyWords = "Saving…",
     busyLine,
     forward,
@@ -28,6 +30,8 @@
     children,
   }: {
     heading: string;
+    /** The tab's title: a question of the maker's page is not about a game. */
+    title?: string;
     /** Where this question is among the game's questions, or null when an answer is being changed. */
     counter: { n: number; of: number } | null;
     /** Where Back goes: the question before, or the game, or Your games. */
@@ -36,6 +40,8 @@
     throwAway?: string | undefined;
     /** Enter presses the blue button, except where the blue button opens a file picker. */
     enterHint?: boolean;
+    /** What the blue button says when it is not "Next" or "Save": a question that leads to another question of its own. */
+    primary?: string;
     /** What the blue button says from the press until the answer comes. */
     busyWords?: string;
     /** A line shown under the answer while it waits, for an answer that can take a minute. */
@@ -49,7 +55,7 @@
 </script>
 
 <svelte:head>
-  <title>Your game · Ruken</title>
+  <title>{title}</title>
 </svelte:head>
 
 {#if counter !== null}
@@ -95,7 +101,7 @@
           {@render forward()}
         {:else}
           <button disabled={saving} aria-busy={saving ? "true" : undefined}>
-            {saving ? busyWords : counter === null ? "Save" : "Next"}
+            {saving ? busyWords : (primary ?? (counter === null ? "Save" : "Next"))}
           </button>
         {/if}
         {#if enterHint && forward === undefined}

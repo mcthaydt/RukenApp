@@ -343,6 +343,10 @@ describe("screens wear the look and nothing of their own", () => {
     "drift",
     "asks",
     "preview",
+    // Your page's rooms: the links with their buttons, the photo on show, and a quiet way out.
+    "mylinks",
+    "yourphoto",
+    "quiet",
     "checking",
     // The maker's On/Off switch on Live.
     "countswitch",

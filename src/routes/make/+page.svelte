@@ -31,6 +31,7 @@
   {/if}
   <div class="acts">
     <a class="button" href="/make/new">Add a game</a>
+    <a class="button safe" href="/make/page">Your page</a>
   </div>
   {#each data.games as game (game.slug)}
     <a class="game" href={`/make/${game.slug}`}>

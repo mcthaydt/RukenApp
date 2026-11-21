@@ -122,6 +122,18 @@ export function createPagesService(deps: PagesServiceDeps) {
     throw new PageError("INVALID", "We couldn't save that. Try again.");
   }
 
+  /**
+   * Makes the person's page from one answer, its address, which is its name until they change it. A person who has a
+   * page already is refused: the rooms are where it is changed.
+   */
+  async function startPage(userId: string, handleTyped: string): Promise<{ handle: string }> {
+    if ((await db.makerPage.findUnique({ where: { userId }, select: { id: true } })) !== null) {
+      throw new PageError("INVALID", "You already have a page.");
+    }
+    const handle = cleanHandle(handleTyped);
+    return savePage(userId, { handle, name: handle, oneLine: "" });
+  }
+
   /** Gives the page one of the offered colours, or Ruken's own (0). Anything else is refused and nothing changes. */
   async function saveTheme(userId: string, themeId: number): Promise<void> {
     if (themeId !== 0 && offeredTheme(themeId) === null) {
@@ -331,6 +343,7 @@ export function createPagesService(deps: PagesServiceDeps) {
     savePhoto,
     removePhoto,
     savePage,
+    startPage,
     saveTheme,
     addLink,
     moveLinkOf,

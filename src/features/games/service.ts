@@ -26,6 +26,7 @@ import { NOT_VISIBLE, type GitHub } from "./github.ts";
 import { newPublicId, slugOf } from "./ids.ts";
 import { pullGame, type Pull } from "./pull.ts";
 import { counterOf, firstUnanswered, type Answers } from "./questions.ts";
+import { RESERVED_GAME_SLUGS } from "./reserved.ts";
 import { listWords, stateParts, stateWords } from "./review.ts";
 import { isReasonFor, makerWords, partTitle } from "./send-back.ts";
 import {
@@ -356,7 +357,8 @@ export function createGamesService(deps: GamesServiceDeps) {
       },
       select: { slug: true },
     });
-    const taken = new Set(rows.map((row) => row.slug));
+    // A word a screen of `/make/` has is taken, so a game named "New" is `new-2`, which opens.
+    const taken = new Set([...rows.map((row) => row.slug), ...RESERVED_GAME_SLUGS]);
     const free = candidates.find((candidate) => !taken.has(candidate));
     if (free === undefined) throw new GameError("INVALID", "That name is taken. Pick another.", "name");
     return free;

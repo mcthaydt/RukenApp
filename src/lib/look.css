@@ -2571,7 +2571,7 @@ main.gamepage {
 
 .gamepage .madeby img {
   flex: none;
-  border-radius: 50%;
+  border-radius: var(--radius-card);
   object-fit: cover;
 }
 
@@ -2939,4 +2939,131 @@ main.playing {
   .playing .menupanel {
     animation: none;
   }
+}
+
+/* Your page's colours: one paper tile for each combination, 48px tall at least. The tile is that page's ground with
+   "Aa" in its text colour and a bar in its button colours, over the name. The real radio button lies over the whole tile. */
+.themes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.theme {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  min-height: 3rem;
+  padding: 0.5rem 0.75rem;
+  border: 4px solid var(--paper);
+  border-radius: var(--radius-button);
+  background: var(--ground);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.theme > input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.theme > .aa {
+  font: var(--text-card-title);
+}
+
+.theme > i {
+  display: block;
+  height: 0.75rem;
+  border-radius: var(--radius-button);
+}
+
+.theme > .name {
+  grid-column: 1 / -1;
+  font: var(--text-small);
+}
+
+.theme:has(input:checked) {
+  border-color: var(--pay);
+}
+
+.theme:has(:focus-visible) {
+  outline: 3px solid var(--paper);
+  outline-offset: 3px;
+}
+
+/* A photo already on the page, above the question's hint. */
+.yourphoto {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin-top: 1.5rem;
+  border-radius: var(--radius-card);
+  object-fit: cover;
+}
+
+/* A quiet way out: a button that reads as a line of words, the size of a thing to press. */
+.screen button.quiet {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sage);
+  font: var(--text-small);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Your links: one paper card to a link, its words and what it is, and its buttons in a row under it. */
+.mylinks {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mylinks > li {
+  padding: 1rem;
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.mylinks > li[data-hidden] {
+  opacity: 0.7;
+}
+
+.mylinks p {
+  margin: 0;
+}
+
+.mylinks .note {
+  color: var(--ink-soft);
+}
+
+.mylinks form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.mylinks form button {
+  min-height: 44px;
+  min-width: 44px;
 }

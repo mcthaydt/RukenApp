@@ -275,6 +275,16 @@ describe("startGame", () => {
     expect(second.slug).toBe("cloud-nine-2");
   });
 
+  // `/make/new`, `/make/github` and `/make/page` are screens of their own, so a game with one of these addresses could
+  // not be opened by its maker.
+  it.each(["New", "GitHub", "Page"])(
+    "gives a game named %s an address a screen does not have",
+    async (name) => {
+      const made = await service.startGame({ makerUserId: await createUser(db()), name });
+      expect(made.slug).toBe(`${name.toLowerCase()}-2`);
+    },
+  );
+
   it("takes a name of 60 characters", async () => {
     await expect(
       service.startGame({ makerUserId: await createUser(db()), name: `Sixty ${"z".repeat(54)}` }),

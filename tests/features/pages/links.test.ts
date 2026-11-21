@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cleanLinkUrl, linkProblem, moveLink, siteNameOf } from "../../../src/features/pages/links.ts";
+import {
+  cleanLinkUrl,
+  linkProblem,
+  linkTitleProblem,
+  moveLink,
+  siteNameOf,
+} from "../../../src/features/pages/links.ts";
 
 describe("the address of a link", () => {
   it.each([
@@ -60,6 +66,21 @@ describe("what is wrong with a link", () => {
 
   it("says nothing about a good link", () => {
     expect(linkProblem({ title: "Steam", url: "https://store.steampowered.com/app/1" })).toBeNull();
+  });
+});
+
+describe("the words of a link", () => {
+  it.each([
+    ["", "Give the link a name."],
+    ["   ", "Give the link a name."],
+    ["x".repeat(61), "A link's name can be up to 60 characters."],
+  ])("says what is wrong with %j", (title, words) => {
+    expect(linkTitleProblem(title)).toBe(words);
+  });
+
+  it("says nothing about good words", () => {
+    expect(linkTitleProblem("My Discord")).toBeNull();
+    expect(linkTitleProblem("x".repeat(60))).toBeNull();
   });
 });
 

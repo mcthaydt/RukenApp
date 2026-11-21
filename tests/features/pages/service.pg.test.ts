@@ -66,6 +66,27 @@ describe("a maker's page", () => {
     });
   });
 
+  it("starts a page from one address, which is its name until it is changed", async () => {
+    const userId = await createUser(db());
+    expect(await service.startPage(userId, "  Start-Owl ")).toEqual({ handle: "start-owl" });
+    expect(await service.pageOf(userId)).toMatchObject({
+      handle: "start-owl",
+      name: "start-owl",
+      oneLine: "",
+    });
+  });
+
+  it("starts no second page, and refuses an address that is not good or is taken", async () => {
+    const userId = await createUser(db());
+    await service.startPage(userId, "first-start");
+    await expect(service.startPage(userId, "other-start")).rejects.toMatchObject({ code: "INVALID" });
+    await expect(service.startPage(await createUser(db()), "first-start")).rejects.toMatchObject({
+      code: "TAKEN",
+    });
+    await expect(service.startPage(await createUser(db()), "ab")).rejects.toMatchObject({ code: "INVALID" });
+    await expect(service.startPage(await createUser(db()), "admin")).rejects.toMatchObject({ code: "TAKEN" });
+  });
+
   it("answers the address it kept, cleaned", async () => {
     const userId = await createUser(db());
     expect(await service.savePage(userId, { handle: " @Night-Owl ", name: "N", oneLine: "" })).toEqual({

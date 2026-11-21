@@ -34,12 +34,19 @@ export function cleanLinkUrl(raw: string): string | null {
   return address !== null && address.length <= LINK_URL_MAX ? address : null;
 }
 
-/** What is wrong with a link a maker typed, in a person's words, or null when it is fine. First problem found wins. */
-export function linkProblem(input: { title: string; url: string }): string | null {
-  const title = input.title.trim();
+/** What is wrong with the words a link says, in a person's words, or null when they are fine. */
+export function linkTitleProblem(raw: string): string | null {
+  const title = raw.trim();
   if (title === "") return "Give the link a name.";
   if (title.length > LINK_TITLE_MAX)
     return `A link's name can be up to ${String(LINK_TITLE_MAX)} characters.`;
+  return null;
+}
+
+/** What is wrong with a link a maker typed, in a person's words, or null when it is fine. First problem found wins. */
+export function linkProblem(input: { title: string; url: string }): string | null {
+  const titleProblem = linkTitleProblem(input.title);
+  if (titleProblem !== null) return titleProblem;
   // Measured twice: as typed (so a huge paste is refused before it is parsed) and as kept (a short address with
   // non-ASCII characters grows once they are written out).
   if (input.url.trim().length > LINK_URL_MAX) return "That address is too long.";
