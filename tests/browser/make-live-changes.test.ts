@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { pageHasSettled, signUp } from "./support/account.ts";
+import { pageHasSettled, signInAs, signUp } from "./support/account.ts";
 import { changeGame, givePage, makerEmailOf } from "./support/database.ts";
 import { answerAge, chooseVideo, gameWhere, realClip, reviewJob } from "./support/game.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -16,10 +16,15 @@ const SITE = "http://localhost:4173";
 type Shape = "upright" | "wide";
 
 /** What players see of a game: its two clips' addresses and its rating chip, in a window of its own with no account. */
+/** One adult player per worker, made on first use: an 18+ game shows only to someone known to be 18 or over. */
+let adultPlayer: { email: string; password: string } | undefined;
+
 async function playersSee(browser: Browser, slug: string) {
   const context = await browser.newContext({ baseURL: SITE });
   try {
     const page = await context.newPage();
+    if (adultPlayer === undefined) adultPlayer = await signUp(page);
+    else await signInAs(page, adultPlayer);
     await page.goto(`/g/${slug}`, { waitUntil: "domcontentloaded" });
     await pageHasSettled(page);
     const address = async (shape: Shape) =>
