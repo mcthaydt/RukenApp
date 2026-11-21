@@ -781,6 +781,18 @@ test("each website is its own line: add, remove, five at most, two kept, and a b
   // A new game starts with one empty line to type in.
   await expect(boxes).toHaveCount(1);
   await boxes.first().fill("api.example.com");
+  // On a phone 375 wide a whole address shows in its box, with the keyboard in it and without, and Remove is still 44 tall.
+  if (test.info().project.name === "phone") {
+    await page.setViewportSize({ width: 375, height: 812 });
+    const fits = () => boxes.first().evaluate((box: HTMLInputElement) => box.scrollWidth <= box.clientWidth);
+    await boxes.first().focus();
+    expect(await fits(), "api.example.com fits its box while it has focus").toBe(true);
+    await page.getByRole("button", { name: "Add another website" }).focus();
+    expect(await fits(), "api.example.com fits its box without focus").toBe(true);
+    expect((await boxOf(page.getByRole("button", { name: "Remove line 1" }))).height).toBeGreaterThanOrEqual(
+      44,
+    );
+  }
   await add.click();
   // The keyboard is in the new line, so typing goes on without a click.
   await expect(boxes.nth(1)).toBeFocused();

@@ -354,10 +354,13 @@ test.describe("on an iPhone SE held sideways, a refusal", () => {
   });
 });
 
-// ---- L23: on the agreement, "I agree" comes after the last point ---------------------------------------------------------------
+// ---- L23: on the agreement, "I agree" is in view, under a sheet that scrolls inside itself ---------------------------------
+// Changed on purpose in the slice 2 design round 2 fix: this used to assert that the buttons were below the last point,
+// which on a 1280 by 720 window put "I agree" below the fold. The spec (4.2, 5a note 2) says the button is always in view and the
+// sheet scrolls inside itself, so the check now says that, and that every point can still be read.
 
-function agreeAfterTheLastPoint(): void {
-  test("on a wide window the agreement's buttons are after the last point, not beside the first", async ({
+function agreeInViewUnderTheSheet(): void {
+  test("on a wide window I agree and Back are in view, under a sheet that scrolls inside itself", async ({
     page,
   }) => {
     test.skip(
@@ -369,19 +372,30 @@ function agreeAfterTheLastPoint(): void {
     await page.goto(`/make/${slug}/agreement`);
     await wordsHaveSettled(page);
 
-    const last = await boxOf(page.locator(".sheet li").last());
+    const height = page.viewportSize()?.height ?? 0;
     const agree = await boxOf(page.getByRole("button", { name: "I agree" }));
-    expect(agree.y, "I agree is under the last point").toBeGreaterThanOrEqual(last.y + last.height);
+    const back = await boxOf(page.getByRole("link", { name: "Back", exact: true }));
+    expect(agree.y + agree.height, "I agree is in the first view").toBeLessThanOrEqual(height);
+    expect(back.y + back.height, "Back is in the first view").toBeLessThanOrEqual(height);
+    // The buttons are still after the reading: under the sheet, not beside point 1.
+    const sheet = await boxOf(page.locator(".sheet"));
+    expect(agree.y, "I agree is under the sheet").toBeGreaterThanOrEqual(sheet.y + sheet.height);
+    // All seven points can be read: scrolling the sheet brings the last one into view.
+    await page.locator(".sheet").evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    const last = await boxOf(page.locator(".sheet li").last());
+    expect(last.y + last.height, "the last point can be scrolled into view").toBeLessThanOrEqual(
+      sheet.y + sheet.height + 1,
+    );
     // A way back that does not wait at the foot of seven points.
     const way = await boxOf(page.getByRole("link", { name: "Back to the last question" }));
-    expect(way.y + way.height, "a way back on the first screen").toBeLessThanOrEqual(
-      page.viewportSize()?.height ?? 0,
-    );
+    expect(way.y + way.height, "a way back on the first screen").toBeLessThanOrEqual(height);
   });
 }
 
-agreeAfterTheLastPoint();
-heldSideways("tablet", agreeAfterTheLastPoint);
+agreeInViewUnderTheSheet();
+heldSideways("tablet", agreeInViewUnderTheSheet);
 
 // ---- L17: Check and send's two captions sit at one height --------------------------------------------------------------------
 

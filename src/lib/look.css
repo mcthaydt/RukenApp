@@ -916,6 +916,14 @@ form > * + button:not(.quiet) {
   margin: 0;
 }
 
+/* On a phone Remove has less padding, so the box has room for a whole address such as "cdn.example.com" (it was cut at
+   375 wide). The button stays 48px tall. */
+@media (max-width: 499px) {
+  .line > button {
+    padding-inline: 0.75rem;
+  }
+}
+
 /* A choice is a paper card the whole card is the target of: its real radio button or checkbox lies over it, clear. The
    edge is always there, paper while it is not picked, so picking one moves nothing. */
 .picks {
@@ -1489,6 +1497,25 @@ a.foot {
   .halves > :first-child {
     position: sticky;
     top: 1.5rem;
+  }
+}
+
+/* The maker agreement on a wide window: the points are on the right and the sheet scrolls inside itself when the window is
+   short, so "I agree" and Back are always in view under it, and agreeing still comes after the reading (spec 4.2, 5a note 2). */
+@media (orientation: landscape) and (min-width: 700px) {
+  .halves > form.agreement {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 8rem);
+  }
+
+  form.agreement > .sheet {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  form.agreement > .acts {
+    flex: none;
   }
 }
 
