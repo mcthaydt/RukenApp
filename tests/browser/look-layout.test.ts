@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
-import { signUp } from "./support/account.ts";
+import { shownAs } from "../../src/features/accounts/phone.ts";
+import { freshNumber, nationalOf, signUp } from "./support/account.ts";
 import { boxOf, CARD_SCREENS, startsWithFamily, wordsHaveSettled, type Box } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -54,9 +55,9 @@ test.describe("sign up", () => {
     page,
   }) => {
     await visit(page, "/sign-up");
-    const email = await boxOf(page.getByLabel("Email"));
-    const legend = page.getByText("When were you born?");
-    closeTo(await textLeft(legend), email.x, 0.5);
+    const field = await boxOf(page.getByLabel("Phone number"));
+    const legend = page.getByText("Date of birth", { exact: true });
+    closeTo(await textLeft(legend), field.x, 0.5);
     const passwordNote = await boxOf(page.getByText("At least 10 characters."));
     closeTo((await boxOf(legend)).y - bottomOf(passwordNote), 16);
   });
@@ -73,7 +74,7 @@ test.describe("sign up", () => {
 
   test("the question has half a rem of air above Month, Day and Year", async ({ page }) => {
     await visit(page, "/sign-up");
-    const legend = await boxOf(page.getByText("When were you born?"));
+    const legend = await boxOf(page.getByText("Date of birth", { exact: true }));
     const row = await boxOf(page.locator(".row"));
     closeTo(row.y - bottomOf(legend), 8);
   });
@@ -87,29 +88,13 @@ test.describe("sign up", () => {
 });
 
 test.describe("your account", () => {
-  test("the address is printed once, and the line under it says what to do", async ({ page }) => {
-    const { email } = await signUp(page);
+  test("the number is printed once, and the membership line follows a rem under it", async ({ page }) => {
+    const { number } = await signUp(page);
     await visit(page, "/me");
-    await expect(page.getByText(email)).toHaveCount(1);
-    await expect(page.getByText("Confirm your email. We sent you a link.", { exact: true })).toBeVisible();
-  });
-
-  test("'Send it again' starts where the words above it start, and sits a rem under them", async ({
-    page,
-  }) => {
-    await signUp(page);
-    await visit(page, "/me");
-    const heading = await boxOf(page.getByRole("heading", { name: "Your account" }));
-    const again = page.getByRole("button", { name: "Send it again" });
-    const box = await boxOf(again);
-    closeTo(box.x, heading.x, 0.5);
-    expect(box.height).toBeGreaterThanOrEqual(48);
-    const air = await airAround(again);
-    const line = await boxOf(page.getByText("Confirm your email. We sent you a link.", { exact: true }));
-    closeTo(box.y + air - bottomOf(line), 16);
-    // And what follows it, now the membership line, comes at the same rhythm: no hole below the button.
+    const shown = page.getByText(shownAs(number), { exact: true });
+    await expect(shown).toHaveCount(1);
     const membership = await boxOf(page.getByText("You're not a member.", { exact: true }));
-    closeTo(membership.y - (bottomOf(box) - air), 16);
+    closeTo(membership.y - bottomOf(await boxOf(shown)), 16);
   });
 
   // The Owner, 2026-11-14, "All six": two tap targets that overlap are one wrong tap from deleting an account.
@@ -129,8 +114,8 @@ test.describe("your account", () => {
     await signUp(page);
     await visit(page, "/me");
     const card = await boxOf(page.locator("main.card"));
-    const again = await boxOf(page.getByRole("button", { name: "Send it again" }));
-    expect(again.width).toBeLessThan(card.width / 2);
+    const quiet = await boxOf(page.getByRole("button", { name: "Sign out" }));
+    expect(quiet.width).toBeLessThan(card.width / 2);
   });
 });
 
@@ -140,7 +125,6 @@ test.describe("a link on its own line", () => {
     { screen: "/sign-in", name: "Create an account" },
     { screen: "/sign-up", name: "Sign in" },
     { screen: "/forgot-password", name: "Back to sign in" },
-    { screen: "/reset-password?token=nope", name: "Back to sign in" },
   ];
 
   for (const { screen, name } of LINKS) {
@@ -167,7 +151,10 @@ test.describe("a link on its own line", () => {
 
 test.describe("new password", () => {
   test("says how long it must be, and has a way back to sign in", async ({ page }) => {
-    await visit(page, "/reset-password?token=nope");
+    await visit(page, "/forgot-password");
+    await page.getByLabel("Phone number").fill(nationalOf(freshNumber()));
+    await page.getByRole("button", { name: "Text me a code" }).click();
+    await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
     await expect(page.getByText("At least 10 characters.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Back to sign in" })).toHaveAttribute("href", "/sign-in");
   });
@@ -214,17 +201,12 @@ test.describe("every card screen has a way home", () => {
 });
 
 test.describe("a link that looks like a button", () => {
-  for (const path of ["/no-such-page", "/reset-password?token=nope"]) {
+  for (const path of ["/no-such-page"]) {
     test(`${path}: spans the card on a phone, and is only as wide as its words on a computer`, async ({
       page,
     }) => {
       // The missing page's button, like the main button of every form on a phone (Owner, 2026-11-14).
       await visit(page, path);
-      if (path.startsWith("/reset")) {
-        await page.getByLabel("New password").fill("a long enough password");
-        await page.getByLabel("Type it again").fill("a long enough password");
-        await page.getByRole("button", { name: "Save password" }).click();
-      }
       const button = page.locator("main.card a.button");
       await expect(button).toBeVisible();
       const heading = await boxOf(page.getByRole("heading", { level: 1 }));
@@ -264,7 +246,7 @@ test.describe("home", () => {
 test.describe("the card", () => {
   test("a heading breaks into even lines", async ({ page }) => {
     await visit(page, "/sign-up");
-    await expect(page.getByRole("heading", { name: "Create your account" })).toHaveCSS(
+    await expect(page.getByRole("heading", { name: "Join Ruken", exact: true })).toHaveCSS(
       "text-wrap-style",
       "balance",
     );
@@ -294,6 +276,6 @@ test.describe("the card", () => {
 
   test("a field has an edge in ink, easy to see on paper", async ({ page }) => {
     await visit(page, "/sign-in");
-    await expect(page.getByLabel("Email")).toHaveCSS("border-top-color", rgb(token("--ink")));
+    await expect(page.getByLabel("Phone number")).toHaveCSS("border-top-color", rgb(token("--ink")));
   });
 });

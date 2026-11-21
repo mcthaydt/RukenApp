@@ -946,7 +946,8 @@ export function createGamesService(deps: GamesServiceDeps) {
 
   /**
    * Games with files waiting for a person's yes, the oldest first. `kind` says whether it is a first send, a game that
-   * was live before, or the new files of a game that is live; `decided` says what the Owner held on it, if anything.
+   * was live before, or the new files of a game that is live; `decided` says what the Owner held on it, if anything. No maker's address: it would now be a stand-in nobody can
+   * read.
    */
   async function waitingGames(): Promise<
     {
@@ -954,7 +955,6 @@ export function createGamesService(deps: GamesServiceDeps) {
       name: string;
       kind: ReviewKind;
       decided: "yes" | "sent back" | null;
-      makerEmail: string;
       sentAt: Date;
     }[]
   > {
@@ -969,7 +969,6 @@ export function createGamesService(deps: GamesServiceDeps) {
         pendingPullId: true,
         changedAt: true,
         pendingSince: true,
-        maker: { select: { email: true } },
       },
     });
     const standings = await standingsOf(deps.db, rows);
@@ -980,7 +979,6 @@ export function createGamesService(deps: GamesServiceDeps) {
         name: row.name,
         kind: standing?.kind ?? "game",
         decided: decidedWords(standing),
-        makerEmail: row.maker.email,
         // `pendingSince` is set with `pendingPullId`, so a waiting game always has it.
         sentAt: row.pendingSince ?? new Date(0),
       };

@@ -1,9 +1,10 @@
 <!--
-  Sign in with an email and a password. A plain HTML form, so it works before any script loads.
+  Sign in with a phone number and a password. A plain HTML form, so it works before any script loads.
   Every way out of a failure is on the page: the refusal sits above the button and "Forgot your
   password?" is the next step.
 -->
 <script lang="ts">
+  import PhoneFields from "../../lib/phone-fields.svelte";
   import type { PageProps } from "./$types";
 
   // `value` is left undefined on a first visit, not "": Svelte writes any value it is given onto the
@@ -24,12 +25,7 @@
   {/if}
   <form method="POST">
     <input type="hidden" name="next" value={data.next} />
-    <p>
-      <label>
-        Email
-        <input type="email" name="email" autocomplete="email" value={form?.email} />
-      </label>
-    </p>
+    <PhoneFields countries={data.countries} country={form?.country} phone={form?.phone} />
     <p>
       <label>
         Password

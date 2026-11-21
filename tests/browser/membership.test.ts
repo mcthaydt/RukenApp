@@ -110,8 +110,8 @@ test("someone who is not a member is not told their membership ends", async ({ p
 test("a member whose card failed more than a week ago is told, and sent to fix it", async ({
   page,
 }, testInfo) => {
-  const { email } = await payAsNewMember(page);
-  await failTheirCard(email, 8);
+  const { number } = await payAsNewMember(page);
+  await failTheirCard(number, 8);
   await page.goto("/join?next=/me");
   await expect(page.getByRole("heading", { name: "Your membership is paused" })).toBeVisible();
   await expect(

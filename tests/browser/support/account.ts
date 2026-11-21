@@ -1,10 +1,26 @@
 import { expect, type Browser, type Locator, type Page } from "@playwright/test";
 import { checkoutIdOfPaymentUrl, STAND_IN_URL } from "./stand-in-payment.ts";
+import { codeTo } from "./texts.ts";
 
 /** The password every journey's new account uses. */
 export const JOURNEY_PASSWORD = "a long enough password";
 
-/** An address no other journey has used, so journeys can run side by side on one database. */
+/**
+ * A number no other journey has used, so journeys can run side by side on one database: +1, a random area code, 555 and
+ * four random digits outside 01·· (those are kept for fiction, and the site never texts them).
+ */
+export function freshNumber(): string {
+  const area = 200 + Math.floor(Math.random() * 800);
+  const last = 200 + Math.floor(Math.random() * 7800);
+  return `+1${String(area)}555${String(last).padStart(4, "0")}`;
+}
+
+/** The number as a person types it into the box beside "United States (+1)": ten digits, no "+1". */
+export function nationalOf(number: string): string {
+  return number.replace(/^\+1/, "");
+}
+
+/** An email address no other journey has used (a member's legal address, and only one: nobody signs up with it). */
 export function freshEmail(): string {
   return `journey+${crypto.randomUUID().slice(0, 12)}@ruken.test`;
 }
@@ -48,31 +64,74 @@ export async function pageHasSettled(page: Page): Promise<void> {
 export const SITE_ANSWER_TIMEOUT = 15_000;
 
 /**
- * Makes a new account through the sign-up form, as a person would, and waits for the page it lands
- * on. The person is signed in afterwards. The address is new unless the journey gives one (a person coming back to
- * an address they used before).
+ * Presses "Text it again" on a code screen. The button shows 30 seconds after the screen does, so the journey installs
+ * the page's clock before it opens the screen (`page.clock.install()`) and moves it on here instead of waiting.
+ */
+export async function textItAgain(page: Page): Promise<void> {
+  await pageHasSettled(page);
+  await page.clock.fastForward(30_000);
+  await page.getByRole("button", { name: "Text it again" }).click();
+}
+
+/**
+ * Fills the sign-up form that is on the page with this number and password and asks for the code, and waits for the
+ * code screen. The country stays on its first choice, the United States.
+ */
+export async function startSignUpForm(
+  page: Page,
+  number: string,
+  password: string = JOURNEY_PASSWORD,
+  scriptRuns: boolean = true,
+): Promise<void> {
+  await page.getByLabel("Phone number").fill(nationalOf(number));
+  await page.getByLabel("Password").fill(password);
+  await fillBirthDate(page, yearsAgo(30));
+  await page.getByRole("button", { name: "Text me a code" }).click();
+  await expect(page.getByRole("heading", { name: "We texted you a code" })).toBeVisible();
+  // The code screen can be on the page before it is alive; a press while it comes alive is lost (seen in WebKit).
+  // A browser with no script never comes alive, so it passes `scriptRuns: false` and does not wait.
+  if (scriptRuns) await pageHasSettled(page);
+}
+
+/**
+ * Fills the sign-up form that is on the page, asks for the code, types the code the stand-in Twilio kept and presses
+ * "Join Ruken". It leaves the browser wherever the site sends it next.
+ */
+export async function finishSignUpForm(
+  page: Page,
+  number: string,
+  password: string = JOURNEY_PASSWORD,
+): Promise<void> {
+  await startSignUpForm(page, number, password);
+  await page.getByLabel("The code we texted you").fill(await codeTo(number));
+  await page.getByRole("button", { name: "Join Ruken" }).click();
+}
+
+/**
+ * Makes a new account through the sign-up form, as a person would: the number, a password and a date of birth, then the
+ * code the stand-in Twilio kept. It waits for the page it lands on; the person is signed in afterwards. The number is
+ * new unless the journey gives one (a person coming back to a number they used before).
  */
 export async function signUp(
   page: Page,
-  email: string = freshEmail(),
-): Promise<{ email: string; password: string }> {
+  number: string = freshNumber(),
+): Promise<{ number: string; password: string }> {
   await page.goto("/sign-up");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
-  await fillBirthDate(page, yearsAgo(30));
-  // The press waits for the page the form sends her to, which is the site's answer: the same 15 seconds as any wait
-  // for the site (playwright.config.ts says why), not the 5 seconds for finding a button.
-  await page.getByRole("button", { name: "Create account" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+  await finishSignUpForm(page, number);
   await expect(page).toHaveURL("/");
   await pageHasSettled(page);
-  return { email, password: JOURNEY_PASSWORD };
+  return { number, password: JOURNEY_PASSWORD };
 }
 
-/** Signs in with the sign-in form, as a person fills it, and waits for the page it lands on. */
-export async function signInAs(page: Page, account: { email: string; password: string }): Promise<void> {
+/** Signs a person in through the sign-in form, as a person would, and waits for `/me`'s sign-in to settle. */
+export async function signInAs(
+  page: Page,
+  number: string,
+  password: string = JOURNEY_PASSWORD,
+): Promise<void> {
   await page.goto("/sign-in");
-  await page.getByLabel("Email").fill(account.email);
-  await page.getByLabel("Password").fill(account.password);
+  await page.getByLabel("Phone number").fill(nationalOf(number));
+  await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/");
   await pageHasSettled(page);
@@ -85,7 +144,7 @@ const SITE_URL = "http://localhost:4173";
  * Makes an account in a browser of its own and closes it, for a journey that needs a second person (a maker, standing
  * in until the maker's own pages exist). The first person's cookies are untouched.
  */
-export async function signUpInItsOwnContext(browser: Browser): Promise<{ email: string; password: string }> {
+export async function signUpInItsOwnContext(browser: Browser): Promise<{ number: string; password: string }> {
   const context = await browser.newContext({ baseURL: SITE_URL });
   try {
     return await signUp(await context.newPage());
@@ -121,14 +180,14 @@ export async function continueToPayment(page: Page): Promise<string> {
  * them. `checkoutSessionId` is the stand-in's name for what was paid, read from its page's address, so a journey
  * can ask the stand-in what it thinks later.
  */
-export async function payAsNewMember(page: Page): Promise<{ email: string; checkoutSessionId: string }> {
-  const { email } = await signUp(page);
+export async function payAsNewMember(page: Page): Promise<{ number: string; checkoutSessionId: string }> {
+  const { number } = await signUp(page);
   await page.goto("/join?next=/me");
   const checkoutSessionId = await continueToPayment(page);
   await standInPayButton(page).click();
   await expect(page).toHaveURL("/me");
   await pageHasSettled(page);
-  return { email, checkoutSessionId };
+  return { number, checkoutSessionId };
 }
 
 /** What the stand-in Stripe says the status of a paid checkout's subscription is: "active", "canceled", or "none". */

@@ -1,4 +1,5 @@
 import { PrismaPg } from "@prisma/adapter-pg";
+import { hashNumber } from "../../../src/features/accounts/phone.ts";
 import { sealState } from "../../../src/features/games/github-connect.ts";
 import type { AgeRating, GamePart } from "../../../src/lib/server/db.ts";
 import { PrismaClient, type MembershipStart } from "../../support/generated/prisma/client.ts";
@@ -21,8 +22,55 @@ function db(): PrismaClient {
   return client;
 }
 
-export async function userIdOf(email: string): Promise<string> {
-  return (await db().user.findUniqueOrThrow({ where: { email }, select: { id: true } })).id;
+/** The person's id, by the phone number they signed up with (E.164, as the journeys' `signUp` answers it). */
+export async function userIdOf(number: string): Promise<string> {
+  return (await db().user.findUniqueOrThrow({ where: { phoneNumber: number }, select: { id: true } })).id;
+}
+
+/**
+ * Makes an account look as one made by email did, before sign-in moved to phone numbers: its number is taken off and
+ * its email (the stand-in one sign-up made) is answered, for the command that gives such an account its number.
+ */
+export async function makeItAnOldAccount(number: string): Promise<string> {
+  const user = await db().user.findUniqueOrThrow({
+    where: { phoneNumber: number },
+    select: { id: true, email: true },
+  });
+  await db().user.update({ where: { id: user.id }, data: { phoneNumber: null } });
+  return user.email;
+}
+
+/** The email a person paid with (kept for legal papers and for a reset code), or null when none was kept. */
+export async function paperEmailOf(number: string): Promise<string | null> {
+  return (await db().user.findUniqueOrThrow({ where: { phoneNumber: number }, select: { paperEmail: true } }))
+    .paperEmail;
+}
+
+/**
+ * The number as the site keeps it after the person's account is purged: nothing. The tombstone row holds no number, so
+ * a journey that wants to know it was cleared asks for the account by id.
+ */
+export async function numberOfId(userId: string): Promise<string | null> {
+  return (await db().user.findUniqueOrThrow({ where: { id: userId }, select: { phoneNumber: true } }))
+    .phoneNumber;
+}
+
+/**
+ * Makes the person's sign-up older than it was, so the code screen is past its ten minutes: the site reads its own
+ * clock and a browser cannot move it, so the kept sign-up's expiry moves instead.
+ */
+export async function expireKeptSignUps(): Promise<void> {
+  await db().pendingSignUp.updateMany({ data: { expiresAt: new Date(Date.now() - 1000) } });
+}
+
+/** Everything a journey can see of a sign-in pause for this number: the guesses counted and when it ends. */
+export async function pauseOf(
+  number: string,
+): Promise<{ failures: number; pausedUntil: Date | null } | null> {
+  return db().signInGuard.findUnique({
+    where: { numberHash: hashNumber(number, APP_SECRET) },
+    select: { failures: true, pausedUntil: true },
+  });
 }
 
 /**
@@ -30,10 +78,10 @@ export async function userIdOf(email: string): Promise<string> {
  * stand-in Stripe has no failing card, so a journey cannot get there by paying; this is the only way to see that
  * screen.
  */
-export async function failTheirCard(email: string, daysAgo: number): Promise<void> {
+export async function failTheirCard(number: string, daysAgo: number): Promise<void> {
   const failedAt = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
   await db().premiumMembership.updateMany({
-    where: { user: { email } },
+    where: { user: { phoneNumber: number } },
     data: { state: "past_due", pastDueSince: failedAt },
   });
 }
@@ -43,20 +91,23 @@ export async function failTheirCard(email: string, daysAgo: number): Promise<voi
  * the real clock in a running site, and nothing in a browser can change that, so the dates move instead; the job
  * compares only `purgeAfter` with now, so the account is finished exactly as it is 14 days on.
  */
-export async function makeDeletionDue(email: string): Promise<void> {
+export async function makeDeletionDue(number: string): Promise<void> {
   const day = 24 * 60 * 60 * 1000;
   const now = Date.now();
   const moved = await db().deletionRequest.updateMany({
-    where: { user: { email }, cancelledAt: null, purgedAt: null },
+    where: { user: { phoneNumber: number }, cancelledAt: null, purgedAt: null },
     data: { requestedAt: new Date(now - 15 * day), purgeAfter: new Date(now - day) },
   });
   if (moved.count !== 1)
-    throw new Error(`expected one waiting deletion for ${email}, found ${String(moved.count)}`);
+    throw new Error(`expected one waiting deletion for ${number}, found ${String(moved.count)}`);
 }
 
-/** The staff roles the account with this address has, by name. */
-export async function staffRolesOfEmail(email: string): Promise<string[]> {
-  const rows = await db().staffAssignment.findMany({ where: { user: { email } }, select: { role: true } });
+/** The staff roles the account with this number has, by name. */
+export async function staffRolesOfNumber(number: string): Promise<string[]> {
+  const rows = await db().staffAssignment.findMany({
+    where: { user: { phoneNumber: number } },
+    select: { role: true },
+  });
   return rows.map((row) => row.role);
 }
 
@@ -64,9 +115,9 @@ export async function staffRolesOfEmail(email: string): Promise<string[]> {
  * What the site remembers a person can reach on GitHub: each installation with its repositories' names, in a fixed
  * order. Nothing on a screen shows it yet, so a journey reads the rows.
  */
-export async function githubConnectionOf(email: string) {
+export async function githubConnectionOf(number: string) {
   const rows = await db().gitHubInstallation.findMany({
-    where: { user: { email } },
+    where: { user: { phoneNumber: number } },
     orderBy: { installationId: "asc" },
     include: { repositories: { orderBy: { fullName: "asc" } } },
   });
@@ -85,17 +136,20 @@ export function connectStateFor(userId: string, game: string | null = null): str
   return sealState(userId, Date.now(), APP_SECRET, game);
 }
 
-export function membershipStartsOf(email: string): Promise<MembershipStart[]> {
-  return db().membershipStart.findMany({ where: { user: { email } }, orderBy: { startedAt: "asc" } });
+export function membershipStartsOf(number: string): Promise<MembershipStart[]> {
+  return db().membershipStart.findMany({
+    where: { user: { phoneNumber: number } },
+    orderBy: { startedAt: "asc" },
+  });
 }
 
 /** The secret `playwright.config.ts` gives the app, which seals the connect state. */
 const APP_SECRET = "test-only-secret-not-used-anywhere-real";
 
 /** The posting of the payment a member made, or null while the daily money job has not posted it. */
-export async function paymentPostingOf(email: string): Promise<{ stripeInvoiceId: string } | null> {
+export async function paymentPostingOf(number: string): Promise<{ stripeInvoiceId: string } | null> {
   return db().paymentPosting.findFirst({
-    where: { payment: { user: { email } } },
+    where: { payment: { user: { phoneNumber: number } } },
     select: { stripeInvoiceId: true },
   });
 }
@@ -109,8 +163,8 @@ export function feeRowsKept(product: string): Promise<number> {
  * Leaves a maker connected to GitHub with no repository listed for them, as when they connected and chose none. The
  * stand-in always lists two, so this is the only way to see that screen.
  */
-export async function forgetTheirRepositories(email: string): Promise<void> {
-  await db().gitHubRepository.deleteMany({ where: { connection: { user: { email } } } });
+export async function forgetTheirRepositories(number: string): Promise<void> {
+  await db().gitHubRepository.deleteMany({ where: { connection: { user: { phoneNumber: number } } } });
 }
 
 /** Where a game's files are, and how many times they were copied, read from its rows. */
@@ -329,14 +383,29 @@ export async function letDecisionDayIn(slug: string): Promise<void> {
   });
 }
 
-/** The sign-up counter the site keeps for one client address: how many sign-ups it has counted, or 0 when none. */
+/** The sign-up counter the site keeps for one client address: how many codes it has counted, or 0 when none. */
 export async function signUpsCountedFrom(clientAddress: string): Promise<number> {
-  // better-auth keys its per-address counters as "<address>|<path>".
+  // better-auth keys its per-address counters as "<address>|<path>"; a sign-up starts by asking for a code.
   const row = await db().rateLimit.findUnique({
-    where: { key: `${clientAddress}|/sign-up/email` },
+    where: { key: `${clientAddress}|/phone-number/send-otp` },
     select: { count: true },
   });
   return row?.count ?? 0;
+}
+
+/**
+ * Forgets what the site counted about codes for one number, apart from its wrong codes: the thirty seconds between two
+ * codes and the three an hour. A journey that presses "Text it again" more than the limits allow clears them so the
+ * limits are not what it is about. The limits themselves are not changed.
+ */
+export async function forgetCodeLimits(number: string): Promise<void> {
+  const hash = hashNumber(number, APP_SECRET);
+  await db().rateLimit.deleteMany({
+    where: {
+      OR: [{ key: { endsWith: hash } }, { key: { endsWith: `${hash}:soon` } }],
+      NOT: { key: { startsWith: "api:auth:wrong-code:" } },
+    },
+  });
 }
 
 /** A link to put on a page: its words and where it goes, hidden or not, and a game somewhere else or a plain link. */
@@ -353,7 +422,7 @@ export interface GivenLink {
  * the order given. It answers the address and the links' ids in that order.
  */
 export async function givePage(
-  account: { email: string },
+  account: { number: string },
   page: {
     name: string;
     oneLine: string;
@@ -363,7 +432,7 @@ export async function givePage(
     links?: GivenLink[];
   },
 ): Promise<{ handle: string; linkIds: string[] }> {
-  const userId = await userIdOf(account.email);
+  const userId = await userIdOf(account.number);
   const { links = [], handle = `m${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`, ...rest } = page;
   const made = await db().makerPage.create({
     data: {
@@ -440,12 +509,12 @@ export async function addPlays(slug: string, count: number, minutes: number): Pr
 }
 
 /** Ends a member's membership at once: the stand-in Stripe ends one only at its period's end. */
-export async function endMembershipOf(account: { email: string }): Promise<void> {
+export async function endMembershipOf(account: { number: string }): Promise<void> {
   const ended = await db().premiumMembership.updateMany({
-    where: { user: { email: account.email } },
+    where: { user: { phoneNumber: account.number } },
     data: { state: "ended" },
   });
-  if (ended.count !== 1) throw new Error(`expected one membership for ${account.email}`);
+  if (ended.count !== 1) throw new Error(`expected one membership for ${account.number}`);
 }
 
 /**
@@ -477,8 +546,8 @@ export async function playOf(slug: string): Promise<{
 
 /** Makes an account staff who check games, as the first-owner command or a later promotion would. */
 export async function giveStaffRole(
-  account: { email: string },
+  account: { number: string },
   role: "owner" | "head_curator" | "curator",
 ): Promise<void> {
-  await db().staffAssignment.create({ data: { userId: await userIdOf(account.email), role } });
+  await db().staffAssignment.create({ data: { userId: await userIdOf(account.number), role } });
 }

@@ -65,7 +65,7 @@ test("the Owner looks at a waiting game, accepts it, and its maker sees it Live"
   expect(await asJson(yes)).toEqual({ says: `${game.name} is live.` });
   expect(await stateOf(game.slug)).toBe("live");
 
-  await signInAs(page, game.maker);
+  await signInAs(page, game.maker.number, game.maker.password);
   await page.goto(`/make/${game.slug}`);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Live");
 });
