@@ -7,6 +7,7 @@ Last updated: 2026-11-20 22:05 UTC (from `date`).
 - 2026-11-20: "The outcome I want: Finish Ruken." Run the work by the CLAUDE.md and skills the owner gave in the project's files (now in this repo); run the setup check in `release` first; then keep going within the brief, asking only the owner's own choices as decision cards with a recommendation.
 - 2026-11-20 22:27 UTC, on a card: "Ready to launch". Finishing Ruken means every roadmap slice up to Launch, in order: slice 2, the feed, submitting and admin, money, then the before-launch list. This is the owner's go for the slices the roadmap marks Later.
 - 2026-11-20, the restart handoff: open items are deploying #238, phone sign-in (#209), Twilio's HELP reply, redoing the workflow, CI and CLAUDE.md, the slice units never built, a feed or some link to games on the site, and the leftover branch `claude/project-thread-2fgp7u`.
+- 2026-11-21 14:41 UTC, the Owner: "add to the claude.md the patch for the not following hooks, that is a negotiable" (read as non-negotiable). Sessions never route around a hook; every pull request create and edit goes through a checked route. Spec `2026-11-21-hooks-cover-every-pr-route-design.md`, section 3.7.
 
 ## Active milestone: setup and "Finish Ruken"
 
