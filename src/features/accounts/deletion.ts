@@ -95,13 +95,14 @@ export async function restoreOnSignIn(prisma: PrismaClient, clock: Clock, userId
 /**
  * The daily job: finishes every deletion whose 14 days are over, and answers how many it finished.
  *
- * Each account is finished in a transaction of its own, so one that fails leaves the others done. The request is
+ * Each account is finished on its own: one that fails stays open for the next run, the others are still finished, and
+ * the run then throws, naming how many failed. Each is finished in a transaction of its own. The request is
  * claimed first (only the run that marks it purged goes on), so two runs at once never both finish the same
  * account. The `User` row stays, as a tombstone with nothing of the person in it, so the payment rows that point
  * at it stay true. A later slice that stores more of a person adds its own removal here, with a test.
  */
 export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
-  const { prisma, clock, files } = deps;
+  const { prisma, clock } = deps;
   const now = new Date(clock.epochMs());
   const due = await prisma.deletionRequest.findMany({
     where: { cancelledAt: null, purgedAt: null, purgeAfter: { lte: now } },
@@ -109,51 +110,116 @@ export async function purgeDueAccounts(deps: PurgeDeps): Promise<number> {
   });
 
   let finished = 0;
+  const failures: unknown[] = [];
   for (const { id, userId } of due) {
-    // A photo is served to anyone who has its address, so it goes before the page that points at it. It goes first
-    // and not after: if the bucket fails, the account is not yet marked done and tomorrow's run tries again, where a
-    // photo left behind once the page is gone would have nothing pointing at it to be found by. A missing file is
-    // not an error, so a run that comes back to an account an earlier run half finished is fine.
-    const page = await prisma.makerPage.findUnique({ where: { userId }, select: { photoKey: true } });
-    if (page !== null && page.photoKey !== null) await files.delete(page.photoKey);
-
-    const done = await prisma.$transaction(async (tx) => {
-      const claimed = await tx.deletionRequest.updateMany({
-        where: { id, cancelledAt: null, purgedAt: null },
-        data: { purgedAt: now },
-      });
-      if (claimed.count === 0) return false;
-
-      const { email } = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
-      await tx.session.deleteMany({ where: { userId } });
-      await tx.account.deleteMany({ where: { userId } });
-      // What GitHub said the person can reach is theirs; their repositories go with their installations.
-      await tx.gitHubInstallation.deleteMany({ where: { userId } });
-      // The games a person wanted are theirs. The launch email's row (`WishlistMail`) is left: it holds only the
-      // tombstone's id and when a mail went, and is add-only, so the job still finds it and never mails twice.
-      await tx.wishlist.deleteMany({ where: { userId } });
-      // The person's page, and its links with it, so the address is free for someone else. It stays up for the 14
-      // days of the wait, and goes only here.
-      await tx.makerPage.deleteMany({ where: { userId } });
-      // A mail link is kept by address, or by the person's id (a password reset), so both are cleared.
-      await tx.verification.deleteMany({
-        where: { OR: [{ identifier: email }, { value: email }, { value: userId }] },
-      });
-      await tx.user.update({
-        where: { id: userId },
-        data: {
-          status: "deleted",
-          // `.invalid` can never be a real address (RFC 2606), and the person's own address is free to sign up again.
-          email: `deleted-${userId}@deleted.invalid`,
-          name: "Deleted",
-          emailVerified: false,
-          image: null,
-          adultOn: null,
-        },
-      });
-      return true;
-    });
-    if (done) finished += 1;
+    // One account that fails (the bucket, or the database) is left open for tomorrow's run and does not stop the rest.
+    try {
+      if (await purgeOne(deps, id, userId, now)) finished += 1;
+    } catch (error) {
+      // Each failure is logged with its account, since the run's own error carries only the counts.
+      console.error(`Deleting the account of user ${userId} failed; the next run tries again.`, error);
+      failures.push(error);
+    }
   }
+  // The run still fails loudly, so the daily job's address answers an error and Cloudflare shows the run as failed.
+  if (failures.length > 0)
+    throw new AggregateError(
+      failures,
+      `${String(failures.length)} account(s) could not be deleted; ${String(finished)} were.`,
+    );
   return finished;
+}
+
+/** Finishes one person's deletion. Answers false when another run claimed it first. */
+async function purgeOne(deps: PurgeDeps, id: string, userId: string, now: Date): Promise<boolean> {
+  const { prisma, files } = deps;
+  // A photo is served to anyone who has its address, so it goes before the page that points at it. It goes first
+  // and not after: if the bucket fails, the account is not yet marked done and tomorrow's run tries again, where a
+  // photo left behind once the page is gone would have nothing pointing at it to be found by. A missing file is
+  // not an error, so a run that comes back to an account an earlier run half finished is fine.
+  const page = await prisma.makerPage.findUnique({ where: { userId }, select: { photoKey: true } });
+  if (page !== null && page.photoKey !== null) await files.delete(page.photoKey);
+  // The person's games come off Ruken with them (the owner's decision, 2026-11-21): their files and videos go from
+  // the bucket first, for the same reason as the photo.
+  const games = await prisma.game.findMany({ where: { makerUserId: userId }, select: { publicId: true } });
+  for (const { publicId } of games) {
+    await files.deleteAll(`files/${publicId}/`);
+    await files.deleteAll(`clips/${publicId}/`);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const claimed = await tx.deletionRequest.updateMany({
+      where: { id, cancelledAt: null, purgedAt: null },
+      data: { purgedAt: now },
+    });
+    if (claimed.count === 0) return false;
+
+    const { email } = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
+    await tx.session.deleteMany({ where: { userId } });
+    await tx.account.deleteMany({ where: { userId } });
+    // What GitHub said the person can reach is theirs; their repositories go with their installations.
+    await tx.gitHubInstallation.deleteMany({ where: { userId } });
+    // The games a person wanted are theirs. The launch email's row (`WishlistMail`) is left: it holds only the
+    // tombstone's id and when a mail went, and is add-only, so the job still finds it and never mails twice.
+    await tx.wishlist.deleteMany({ where: { userId } });
+    // The person's page, and its links with it, so the address is free for someone else. It stays up for the 14
+    // days of the wait, and goes only here.
+    await tx.makerPage.deleteMany({ where: { userId } });
+    await takeGamesOff(tx, userId);
+    // A mail link is kept by address, or by the person's id (a password reset), so both are cleared.
+    await tx.verification.deleteMany({
+      where: { OR: [{ identifier: email }, { value: email }, { value: userId }] },
+    });
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        status: "deleted",
+        // `.invalid` can never be a real address (RFC 2606), and the person's own address is free to sign up again.
+        email: `deleted-${userId}@deleted.invalid`,
+        name: "Deleted",
+        emailVerified: false,
+        image: null,
+        adultOn: null,
+      },
+    });
+    return true;
+  });
+}
+
+/**
+ * A leaving person's games come off Ruken, as their own Take off and Throw away do, so nobody can find or play them and
+ * staff are not asked to review them. A live or waiting game is taken off; a draft or sent-back game is thrown away,
+ * which frees its name (a draft may not have every answer a game that is off Ruken must keep). The rows stay, because
+ * money and records may point at a game. Their videos' rows go; the videos themselves were deleted just before.
+ */
+async function takeGamesOff(tx: Pick<PrismaClient, "game" | "gameClip">, userId: string): Promise<void> {
+  await tx.game.updateMany({
+    where: { makerUserId: userId, state: { in: ["live", "waiting"] } },
+    data: {
+      state: "taken_off",
+      stateReason: null,
+      livePullId: null,
+      pendingPullId: null,
+      pendingSince: null,
+      toFix: [],
+    },
+  });
+  // Each thrown-away game's address is made from its own public id, so they are changed one at a time.
+  const unsent = await tx.game.findMany({
+    where: { makerUserId: userId, state: { in: ["draft", "sent_back"] } },
+    select: { id: true, publicId: true },
+  });
+  for (const game of unsent) {
+    await tx.game.update({
+      where: { id: game.id },
+      data: {
+        state: "thrown_away",
+        slug: `x-${game.publicId}`,
+        pendingPullId: null,
+        pendingSince: null,
+        toFix: [],
+      },
+    });
+  }
+  await tx.gameClip.deleteMany({ where: { game: { makerUserId: userId } } });
 }

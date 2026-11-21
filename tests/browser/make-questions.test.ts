@@ -579,6 +579,31 @@ test("the wide question follows, and after it the age question", async ({ page }
   await expect(page).toHaveURL(`/make/${slug}/age`);
 });
 
+// A draft's video can be swapped as often as the maker likes: the new one takes the old one's place and stays.
+for (const shape of ["upright", "wide"] as const) {
+  test(`a draft's ${shape} video is swapped through Choose a different video, and the new one stays after a reload`, async ({
+    page,
+  }) => {
+    const { slug } = await startAtVideo(page, shape);
+    const video = page.locator(`[data-frame="${shape}"] video`);
+    await chooseVideo(page, videoFile(`first-${shape}.mp4`));
+    await expect(video).toHaveAttribute("src", /\/clips\//);
+    const first = await video.getAttribute("src");
+
+    await page.getByRole("link", { name: "Choose a different video" }).click();
+    await expect(page).toHaveURL(`/make/${slug}/${shape}?again=1`);
+    await pageHasSettled(page);
+    await chooseVideo(page, videoFile(`second-${shape}.mp4`));
+    await expect(video).toHaveAttribute("src", /\/clips\//);
+    await expect(video).not.toHaveAttribute("src", first ?? "");
+    const second = await video.getAttribute("src");
+
+    await page.goto(`/make/${slug}/${shape}`);
+    await pageHasSettled(page);
+    await expect(video).toHaveAttribute("src", second ?? "");
+  });
+}
+
 // ---- Recording the screen -----------------------------------------------------------------------------------------
 
 // One journey for each question: each makes its own maker and game, so a second sign-up is never made in a signed-in browser.
