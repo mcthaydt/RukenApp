@@ -28,7 +28,7 @@ The accounts feature writes the `Game` and `GameClip` tables directly (it is bel
 ## What cannot be undone, and why it is acceptable
 
 - The bucket deletes are permanent: R2 keeps no copy. This is the owner's decision. The files can still be pulled from the maker's GitHub repository, but only by the maker, whose account is gone.
-- **Videos are deleted, which Take off does not do.** Take off keeps a game's videos so it can be put back. Nobody can put back a deleted person's game, and a video is the person's own recording, so it goes with the rest of their data. This is an agent-selected choice and the one point the owner may want to change (keep the videos and their rows instead). It is put to the owner on a card.
+- **Videos are deleted, which Take off does not do.** Take off keeps a game's videos so it can be put back. Nobody can put back a deleted person's game. The owner chose this on a card, 2026-11-21 14:58 UTC: "Delete the videos too".
 - An account whose deletion was cancelled (signed in within the 14 days) is never touched: the job only reads requests that are due and not cancelled.
 
 ## Depends on, and affects
