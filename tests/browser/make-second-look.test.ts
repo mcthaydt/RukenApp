@@ -25,7 +25,7 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the second look at the submission screens found (docs/superpowers/audits/2026-11-15-submission-screens-second-look.md),
 // one journey for each thing that was wrong and can be measured. Each measures the page in the window it runs in. The one
-// that needs an iPhone SE's window (320 wide), which no project has, gives itself that window and runs in one project.
+// that needs an iPhone SE's window held a set way gives itself that window and runs in the phone project only.
 
 test.beforeEach(forgetRateLimits);
 
@@ -135,7 +135,7 @@ test("every device link on the record-your-screen page is at least 44 by 44", as
 test("on an iPhone SE a game's name in Your games breaks only between words, beside a small picture", async ({
   page,
 }) => {
-  test.skip(test.info().project.name !== "phone", "one Chromium project is enough for a window of its own");
+  test.skip(test.info().project.name !== "phone", "one project is enough for a window of its own");
   await page.setViewportSize(IPHONE_SE);
   await startDraft(page);
   await page.goto("/make");
@@ -221,10 +221,7 @@ test.describe("on an iPhone SE held upright", () => {
 
   for (const screen of ["take-off", "throw-away"] as const) {
     test(`the ${screen} heading is at most three lines, with its words whole`, async ({ page }) => {
-      test.skip(
-        test.info().project.name !== "phone",
-        "one Chromium project is enough for a window of its own",
-      );
+      test.skip(test.info().project.name !== "phone", "one project is enough for a window of its own");
       const slug = await aGameFor(page, screen);
       await page.goto(`/make/${slug}/${screen}`);
       await wordsHaveSettled(page);
@@ -318,7 +315,7 @@ test.describe("on an iPhone SE held sideways, a refusal", () => {
   test.use({ viewport: IPHONE_SE_SIDEWAYS });
 
   test("of the first answer is read with its heading and its box", async ({ page }) => {
-    test.skip(test.info().project.name !== "phone", "one Chromium project is enough for a window of its own");
+    test.skip(test.info().project.name !== "phone", "one project is enough for a window of its own");
     const { slug } = await startDraft(page);
     await page.goto(`/make/${slug}/name`);
     await wordsHaveSettled(page);
@@ -445,7 +442,7 @@ test("staff's own line on a Sent back card is at least 18px", async ({ page }) =
 
 /** Runs a journey in one project only: the window it sets for itself is the same whichever project is asked. */
 function onlyInPhone(): void {
-  test.skip(test.info().project.name !== "phone", "one Chromium project is enough for a window of its own");
+  test.skip(test.info().project.name !== "phone", "one project is enough for a window of its own");
 }
 
 test("on a phone Check and send shows the name, the line and every fact above the bar, and the videos after them", async ({
