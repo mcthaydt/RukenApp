@@ -8,6 +8,7 @@ Lines marked **Owner** are the owner's words. Lines marked **Call** are this spe
 
 - **Owner, 2026-11-21 14:38 UTC:** "What was the point of us adding hooks if you won't follow them?", after pull requests kept opening past the limit of 3 and a footer the hooks forbid kept landing on pull request bodies.
 - **Owner, 2026-11-21 14:41 UTC:** "add to the claude.md the patch for the not following hooks, that is a negotiable". **Call:** read as *non-negotiable* (the coordinator read it the same way): a rule in CLAUDE.md, "Rules that never bend", that sessions never route around a hook (3.7).
+- **Owner, 2026-11-21 14:41 UTC:** "ALL SESSIONS NEED TO FOLLOW THE HOOKS". So the rule in 3.7 is the first bullet of "Rules that never bend" and names every session.
 - The coordinator's brief (same time) asks for: every create and edit route (`gh pr`, `gh api`, the GitHub MCP tools) through the same checks; body files read correctly; a durable answer to the footer; and a recommendation on the pull requests open now.
 
 ## 1. What is wrong today (measured)
@@ -65,9 +66,9 @@ The PostToolUse body check runs only for a `gh api` call that is not a GET, and 
 
 ### 3.7 The rule in CLAUDE.md (Owner)
 
-A new bullet under "Rules that never bend", after **Identity**:
+A new bullet, the first under "Rules that never bend", before **Identity**:
 
-> - **Hooks.** A hook's refusal is the rule speaking: never route around it, not with another tool, another API path, a reworded command or another session. Every pull request create and edit goes through a route the hooks check. A route found unchecked is reported to the owner and not used until a hook covers it. A refusal that looks wrong is reported, not worked around.
+> - **Hooks.** Every session follows the hooks, the coordinator included. A hook's refusal is the rule speaking: never route around it, not with another tool, another API path, a reworded command or another session. Every pull request create and edit goes through a route the hooks check. A route found unchecked is reported to the owner and not used until a hook covers it. A refusal that looks wrong is reported, not worked around.
 
 ## 4. Acceptance criteria
 
