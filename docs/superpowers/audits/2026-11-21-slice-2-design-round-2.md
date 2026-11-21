@@ -53,3 +53,15 @@
 | 2 | fixed | At 1280 by 720 "I agree" ends at 696 px of 720, and at 1080 by 810 at 782 of 810, with Back beside it; the seven points scroll inside the sheet (1123 px in 500 on the computer) and the last point is reachable. At 1440 by 900 and 1366 by 1024 the same. The page itself scrolls 8 px at 1280 by 720, which moves nothing out of view. Phone, sideways phone and upright tablet keep their bottom bar with "I agree" in it. |
 
 - FIX for red 1, bounded: on a phone also take padding off the box's sides (`.screen .line > .answer { padding-inline: 0.75rem }` below 500 wide gives back 16 px), and have the phone check type "cdn.example.com" as well as "api.example.com". Files: `src/lib/look.css`, `tests/browser/make-questions.test.ts`.
+
+## Second fix check
+
+- Commit examined: `e0d4e8f` on pull request #255, built fresh the same way. Checked 2026-11-21 08:53 UTC by the same reviewer session.
+- How: the same kind of local, uncommitted journey typed "api.example.com" and "cdn.example.com" into two website boxes. It measured each box with and without focus at 375 by 667, 320 by 568, 667 by 375, 810 by 1080, 1080 by 810 and 1280 by 720, and took a picture at each size. The builder's changed checks (`each website is its own line…` and the agreement checks in `make-second-look.test.ts`) ran in all three projects: 6 passed, none failed. Chromium only.
+
+| Red | Verdict | What was seen at `e0d4e8f` |
+|---|---|---|
+| 1 | fixed | On the 375-wide phone both addresses show whole, with and without focus. The box is 205 px wide with 12 px padding, its scroll width equals its width, and with focus it does not scroll (scroll left 0). The picture shows "api.example.com" and "cdn.example.com" whole. Remove is 98 by 64. The phone check now types both addresses, with and without focus. Tablet, computer and the sideways phone show both whole too. |
+| 2 | still fixed | Nothing on the agreement changed after `f10d63b`: the new CSS is only `.screen .line > .answer` below 500 wide. The agreement checks passed again. |
+
+- New note, not a red: on the old 320-wide iPhone SE both addresses are still cut ("api.example.c", "cdn.example.") in a 150 px box. Round 2's red and its EXPECTED named the 375-wide phone, which is the small phone in Settings, so this is left for the owner to see.
