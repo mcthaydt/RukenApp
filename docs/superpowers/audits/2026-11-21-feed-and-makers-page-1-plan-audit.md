@@ -65,3 +65,15 @@ Each read at `771d13d`:
 
 - N3 above.
 - Found 1 in the spec (Play works before launch; no Wishlist button) stands as the spec reports it.
+
+## Cycle 2
+
+Commit examined: `29a7be9` (the fixes are `8b35cc8`; `29a7be9` only deletes the planner's live-state file). Read as the diff `dfcfd97..29a7be9` of the spec, against the code at `771d13d`.
+
+**Verdict: PASS, 0 red, 1 note.**
+
+- R1, fixed. Section 3 now says the learned feed is approved and in this slice with its own spec, and calls unit C's order an interim order that ships only on the Owner's yes (Open 3, section 8). C's tasks 2, 3 and 5 and unit D wait on it; if the Owner says wait, the struck parts are named. Section 8 puts the learned feed's spec before the slice's end. The spec still holds none of the private design's rules or numbers (a search for them finds nothing).
+- R2, fixed. H owns `src/params/index.ts` and the layout's one condition (table row and task 3); D's row and task 2 build on it.
+- R3, fixed. K3 names two checks that fail by themselves: an `enum_range(NULL::"PageLinkKind")` case expecting exactly `link`, `game_elsewhere`, `social`, and the migration being exactly the one `ALTER TYPE`. K task 2 writes them first.
+- N1, fixed: the `.pip` rule goes with the card's rules (`.card` is at `look.css:241`, `main.gamepage` at `look.css:2318`), so `look.test.ts:556` stands. N2, fixed: I11 skips folders with no route. N3: reported as found 4. N5, fixed: K's merge names the standing permission of 2026-11-20. N6, fixed: D task 7's list is a hint and the search words are named.
+- N4, partly. Section 9 now names `PlayDay`. C3 now bounds sessions by `startedAt >= since - PLAY_SESSION_LIFE_MS`, which is right, but its reason, "so the index on a session's game and start is used", is not backed: `PlaySession`'s indexes are `(userId, startedAt)` and `(gameId, startedAt)`, and a range on `startedAt` alone, across every game, does not lead either one. Note, not red: the clause is a reason, not something a check observes, and section 9 already says the sum is not measured. The builder should drop the clause or add an index in a later unit with its own lane, not assume it.
