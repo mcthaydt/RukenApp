@@ -7,7 +7,7 @@ Lines marked **Owner** are the owner's words. Lines marked **Call** are this spe
 ## 0. The owner's direction
 
 - **Owner, 2026-11-21 06:54 UTC:** "add a permission rule", after the auto-mode classifier refused `gh pr ready` and `gh pr merge` in every session, so the owner had to run the ready and merge for #256 by hand.
-- **Standing permission** (`history.md`, 2026-11-20): "Merge PRs yourself once CI, reviews and audits pass, without asking the owner. Live Cloudflare and console switches still need the owner." This spec adds no new permission; it lets sessions act on that one, in `mcthaydt/RukenApp` only.
+- **Standing permission:** the owner's 2026-11-21 19:16 UTC standing permission, recorded in `progress.md` History. This spec adds no new permission; it lets sessions act on that one, in `mcthaydt/RukenApp` only.
 
 ## 1. The outcome
 
@@ -98,7 +98,7 @@ Cloud sessions for this project start in `/home/user` with `CLAUDE_CODE_IGNORE_P
 - **No early return for these tools.** Today `--find-repo` returns without checking when `$CLAUDE_PROJECT_DIR` has its own `rules.mjs` ("the repo's own settings run it"). With trust off those repo settings do not run, so for the three tools in 3.5 that return is skipped and the hook judges the call. Running a check twice is harmless.
 - **Quiet failure stays quiet.** As today, an unreadable, non-JSON or oddly shaped `~/.claude/settings.json` changes nothing and the script still exits 0 (`--install-user` exits 1).
 
-**Owner step (named, outside the repo, needs the owner's go by name):** the cloud environment's setup script has to be replaced with the new output of `node .claude/hooks/rules.mjs --print-setup` (once this merges the coordinator asks the owner on a card, recommended: let the coordinator replace it with the environment update tool, and records the answer before changing anything; or the owner runs `node .claude/hooks/rules.mjs --print-setup` and pastes it in the environment's setup script). It runs when a container starts, so only sessions started afterwards get it. Recorded under "Standing permissions" in `history.md` with that scope. **Known reach (plan audit 6, N1):** "this repo" is the repo whose `rules.json` the hook picked; if RukenPrivate ever gains its own `rules.json`, the user-level allow would also cover merges there, judged by that repo's config. A follow-up when that happens, not this change.
+**Owner step (named, outside the repo, needs the owner's go by name):** the cloud environment's setup script has to be replaced with the new output of `node .claude/hooks/rules.mjs --print-setup` (once this merges the coordinator asks the owner on a card, recommended: let the coordinator replace it with the environment update tool, and records the answer before changing anything; or the owner runs `node .claude/hooks/rules.mjs --print-setup` and pastes it in the environment's setup script). It runs when a container starts, so only sessions started afterwards get it. Recorded under "Standing permissions" in `progress.md` History with that scope. **Known reach (plan audit 6, N1):** "this repo" is the repo whose `rules.json` the hook picked; if RukenPrivate ever gains its own `rules.json`, the user-level allow would also cover merges there, judged by that repo's config. A follow-up when that happens, not this change.
 
 ## 4. Acceptance criteria
 

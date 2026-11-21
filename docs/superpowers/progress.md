@@ -1,55 +1,110 @@
 # Progress
 
-Last updated: 2026-11-21 16:00 UTC (from `date`).
+Last updated: 2026-11-21 21:43 UTC (from `date`).
 
 ## The owner's instructions
 
+Each entry is dated and quotes the owner where the source does; "(paraphrase)" marks a source that only paraphrases. "Done" says where. "Superseded" names the later instruction that replaced it.
+
 - 2026-11-20: "The outcome I want: Finish Ruken." Run the work by the CLAUDE.md and skills the owner gave in the project's files (now in this repo); run the setup check in `release` first; then keep going within the brief, asking only the owner's own choices as decision cards with a recommendation.
-- 2026-11-20 22:27 UTC, on a card: "Ready to launch". Finishing Ruken means every roadmap slice up to Launch, in order: slice 2, the feed, submitting and admin, money, then the before-launch list. This is the owner's go for the slices the roadmap marks Later.
-- 2026-11-21 14:20 UTC: "At a minimum, our e2e tests should cover the CRUD operations; we didn't have a way to update." A standing rule: the browser journeys cover create, read, update and delete for everything, an update followed through to what players see. The audit of that is #267; its gaps are filled in the "Fill e2e CRUD test gaps" work.
-- 2026-11-21 14:26 UTC, on a card: "Games come off with the account." When a maker's account is finally deleted (after the 14-day wait), their games come off Ruken as Take off does: a live or waiting game is taken off, a draft or sent-back one thrown away, and their files and videos deleted. The rows stay for the money records.
-- 2026-11-21 14:58 UTC, on a card: "Delete the videos too." A deleted maker's game videos are deleted with the game files (unlike Take off, which keeps them).
 - 2026-11-20, the restart handoff: open items are deploying #238, phone sign-in (#209), Twilio's HELP reply, redoing the workflow, CI and CLAUDE.md, the slice units never built, a feed or some link to games on the site, and the leftover branch `claude/project-thread-2fgp7u`.
-- 2026-11-21 14:20 UTC: "At a minimum, our e2e tests should cover the CRUD operations; we didn't have a way to update." 14:32 UTC: "the e2e covers all CRUD should be a rule, and added to the mcthaydt claude.md for apps". The journeys create, read, update and delete everything a user can make; reviews and audits enforce it (spec `2026-11-21-crud-journeys-rule-design.md`).
+- 2026-11-20 22:27 UTC, on a card: "Ready to launch". Finishing Ruken means every roadmap slice up to Launch, in order: slice 2, the feed, submitting and admin, money, then the before-launch list. This is the owner's go for the slices the roadmap marks Later.
+- 2026-11-20 22:32 UTC: "connect to my computer and run it", the one-time run of the setup command batch on the owner's Mac. Done (setup steps 1 to 4 ran; see Setup in History). Superseded by the 2026-11-21 20:19 UTC instruction below, which brings the kit's rule for a public repo.
+- 2026-11-20 22:33 UTC: "Create a new Finish Ruken thread once we're fully set up". Done (the "Finish Ruken" thread).
+- 2026-11-20 23:38 UTC: "What's the holdup, this is taking too long" (paraphrase: start building at once and run independent units side by side, up to the Settings limits).
+- 2026-11-21 00:05 UTC: "We need to approve floor fifty again". Done.
+- 2026-11-21 00:09 UTC: "get me a new jobs secret". Done; the secret lives in the owner's Keychain, never in the repo.
+- 2026-11-21 01:16 UTC, three cards on the feed and the maker's page: see Decisions.
+- 2026-11-21 03:12 UTC: "Let's park slice 3 until we confirm slice 2 is perfect." Superseded in part by the 14:32 UTC word below: slice 3 unparks once the editing work lands.
+- 2026-11-21 03:12 UTC: "We need to clean up our tests for our new paradigm for starters". Done (#252, #262).
+- 2026-11-21 03:26 UTC, on a card: browser tests run on three devices, "iPhone, iPad, computer". Done (#252).
+- 2026-11-21 06:05 UTC, on a card: "Yes, start it" to "Should CI take screenshots only of the screens a change touches?" Done (#262).
+- 2026-11-21 06:54 UTC: "add a permission rule" (let sessions mark ready and merge audited pull requests with a merge commit). Done (#258).
+- 2026-11-21 08:53 UTC: "I connected Notion, build out the Notion page for Ruken". Done (the Notion Ruken page).
+- 2026-11-21 08:56 UTC: "Yes", to keeping the Notion Ruken page current.
+- 2026-11-21 08:57 UTC: "this should be my second brain for Ruken; it effectively replaces Ruken Private".
+- 2026-11-21 09:17 UTC: yes, private notes go to the Notion Ruken page, not RukenPrivate (paraphrase). Done (#261).
+- 2026-11-21 09:21 UTC: "Going to sleep, you don't have to wait on my approval to begin work".
+- 2026-11-21 09:22 UTC: "yes", answering "Want me to merge lane 3 changes tonight once they pass audit, or hold them for you in the morning?" (paraphrase: lane 3 pull requests merge that night once their audits pass and CI is green). A dated record; the 19:16 UTC standing permission in History covers merges since.
+- 2026-11-21 13:45 UTC, slice 2 wrap-up thread: "Yes", to putting the computer game page fix and a sample game into the round on the owner's notes, and: "I don't like how the game tab stays pointing the direction it came from until it's snapped in the other side and how the sidebar isn't tied to the side the panel is on". Done (#265, #266).
+- 2026-11-21 13:50 UTC, slice 2 wrap-up thread: "and roll in the phone sign in" (#209).
+- 2026-11-21 14:20 UTC: "At a minimum, our e2e tests should cover the CRUD operations; we didn't have a way to update." 14:22 UTC: "Audit our existing e2e tests to ensure we can CRUD everything" (done, #267). 14:32 UTC: "the e2e covers all CRUD should be a rule, and added to the mcthaydt claude.md for apps". A standing rule: the browser journeys create, read, update and delete everything a user can make, an update followed through to what players see; reviews and audits enforce it (spec `2026-11-21-crud-journeys-rule-design.md`, rule in CLAUDE.md and `build`, merged in #278).
 - 2026-11-21 14:25 UTC: when no plan and spec exist for the work, the build runs on Opus 5.5, medium (not Sonnet).
-- 2026-11-21 14:29 UTC: nothing in Ruken is permanent; everything a user makes must be editable, like any professional app. Live game changes (files, websites, videos, age rating) are held for review before players see them.
-- 2026-11-21 14:26 UTC, on a card: "Games come off with the account". When a maker's account is finally deleted (after the 14 days), their games are taken off Ruken like Take off, with a journey checking it.
-- 2026-11-21 14:31 UTC: name and line stay instant to change; a wrong birthday is fixed by asking Ruken.
-- 2026-11-21 14:41 UTC, the Owner: "add to the claude.md the patch for the not following hooks, that is a negotiable" (read as non-negotiable). Sessions never route around a hook; every pull request create and edit goes through a checked route. Spec `2026-11-21-hooks-cover-every-pr-route-design.md`, section 3.7.
-- 2026-11-21 14:41 UTC, the Owner: "ALL SESSIONS NEED TO FOLLOW THE HOOKS". The hooks rule is the first of the rules that never bend and names every session.
+- 2026-11-21 14:26 UTC: the Floor Fifty fix must "just edit the submission; no need for new button". Done (#271).
+- 2026-11-21 14:26 UTC, on a card: "Games come off with the account." When a maker's account is finally deleted (after the 14-day wait), their games come off Ruken as Take off does: a live or waiting game is taken off, a draft or sent-back one thrown away, and their files and videos deleted. The rows stay for the money records. Done (#268).
+- 2026-11-21 14:28 UTC, on a card: "Everything, reviewed first" (a live game's videos and age rating are editable too, held for review before players see them). Done (#276).
+- 2026-11-21 14:29 UTC: "Nothing should be permanent for this app, everything is editable - you know, like literally every other professional app?" Nothing in Ruken is permanent; everything a user makes must be editable. Live game changes (files, websites, videos, age rating) are held for review before players see them.
+- 2026-11-21 14:31 UTC, on cards: "Keep them instant" (a live game's name and line change at once) and "Ask Ruken for help" (a wrong birthday is fixed by asking Ruken, so the 18+ check holds).
+- 2026-11-21 14:32 UTC: work slice by slice; per slice, fix what is broken and the must-haves (editability, CRUD in the journeys) and save polish for an end pass; unpark slice 3 once the editing work lands (paraphrase). The editing work has landed (see Slice 3).
+- 2026-11-21 14:41 UTC, on a card: "Keep the address" (a live game's address stays frozen when renamed).
+- 2026-11-21 14:41 UTC, the owner: "add to the claude.md the patch for the not following hooks, that is a negotiable" (read as non-negotiable). Sessions never route around a hook; every pull request create and edit goes through a checked route. Spec `2026-11-21-hooks-cover-every-pr-route-design.md`, section 3.7.
+- 2026-11-21 14:41 UTC, the owner: "ALL SESSIONS NEED TO FOLLOW THE HOOKS". The hooks rule is the first of the rules that never bend and names every session.
+- 2026-11-21 14:43 UTC, on a card: "Yes, ignore that exact footer" (`commit-authors` ignores only the exact proxy footer). 14:48 UTC, on a card: "Yes, count every one" (docs-only pull requests count toward the limit of 3). 15:00 UTC, on a card, "Count pull requests from outsiders toward your limit of 3?": only same-repo pull requests count, and fork ones are never counted or closed (the chat shows that an answer was sent, not its label; this is the decision as memory records it). Done (#275, #279).
+- 2026-11-21 14:58 UTC, on a card: "Delete the videos too." A deleted maker's game videos are deleted with the game files (unlike Take off, which keeps them). Done (#268).
+- 2026-11-21 15:07 to 15:08 UTC, #209: on a card, add the owner's phone number to their existing email account; "I need to change my email anyway"; "I did the real codes stuff already"; "Lane 3 is permitted" (for #209).
+- 2026-11-21 15:33 UTC: "yes you can close it" (the parked slice 2 feed screen pull request, #251, to free a slot). Done.
+- 2026-11-21 15:50 UTC, on a card: "Yes, merge when green", for #268. Done (merged 16:00 UTC).
+- 2026-11-21 16:54 UTC: "give me command to do it", then "can you create a local session to do it" (clean the footer off #273 from the owner's Mac). Superseded by the 20:19 UTC instruction below: no session runs on the owner's computer for Ruken.
+- 2026-11-21 19:16 UTC: "Yes do the fix, these are things that I should not need to intervene for, I created a workflow that should not need my intervention." (on the 18+ gate's audit note; a safety or access gap found in an audit goes straight to a fix). Done (#277, #281, and #283 for the sign-in return).
+- 2026-11-21 19:16 UTC: "Once again, you do not need my go ahead to merge things", "1. Merge", "2. I TOLD YOU to create the session, so YES YOU CAN CREATE THE MAC SESSION". The merge words are the standing permission recorded in History. The Mac session words are superseded by the 20:19 UTC instruction below.
+- 2026-11-21 19:30 UTC: check CLAUDE.md before any card or question; ask only about product choices, new access or money, and scope changes; process snags are settled without the owner (CLAUDE.md carries the rule; the owner: "Follow my rules").
+- 2026-11-21 19:32 UTC: "Add to the claude.md for apps and games on mcthaydt - in the claude.md section and in the project instructions"; 19:35 UTC: "mcthaydt-website" (where that CLAUDE.md lives). The project instructions carry it; the kit change is mcthaydt-website #99.
+- 2026-11-21 19:58 UTC, hooks fix thread: "Add my 19:16 standing permission to history.md: every PR, lane 3 and Cloudflare included, merges once audits pass and CI is green". Done (History, Standing permissions).
+- 2026-11-21 19:59 UTC: "Remove the merge without asking and double check if that's mentioned in mcthaydt apps, because that shouldn't be there". 20:00 UTC, hooks fix thread: "check if it's in the mcthaydt-website for apps https://mcthaydt.com/prompts/claude-md-apps/" (the kit has no such wording). 20:01 UTC: "Why wasn't that deleted when I told you to wipe my workflow?" Done in the apps-kit alignment pull request (the 2026-11-20 line is gone from History and from the specs).
+- 2026-11-21 20:02 UTC, hooks fix thread: "Delete the hisory.md". Done (#279; its records are in History below).
+- 2026-11-21 20:09 UTC: "I won't restart" (the project is not restarted).
+- 2026-11-21 20:19 UTC: "Remove ANYTHING that contradicts from the workflow that we established in mcthaydt-website apps". The source of truth is the owner's apps kit (https://mcthaydt.com/prompts/claude-md-apps/) plus the three owner rules in mcthaydt-website #99. Work: spec `2026-11-21-align-with-apps-kit-design.md` (#280) and the pull request that builds it. **RukenApp is a public repo, so, by the kit's rule, no session runs on the owner's computer for Ruken: no test, build, app, command or measurement. What only the owner can run goes to the owner as CLI commands.** This supersedes the 22:32 UTC 2026-11-20, 16:54 UTC and 19:16 UTC Mac-session records above.
+- 2026-11-21 20:39 UTC, on a card (#209): "Keep password, drop Change email". With sign-in by phone, #274's Change email goes; Change password stays (keyed by the phone number). Change email or Change phone number may come back later as their own decision. Waits on #209.
 
-## Active milestone: setup and "Finish Ruken"
+## Active milestone: "Finish Ruken"
 
-Current work: the setup check (first-time setup, lane 2): CLAUDE.md, the skills, the rule hooks and CI restored from the owner's copies.
+Setup (first-time setup, lane 2) is done and moved to History, Setup.
 
-Completed:
+Current work, from GitHub on 2026-11-21 (open pull requests: #209 phone sign-in, ready for review; #283 adults-only sign-in returns, draft; the apps-kit alignment pull request, when it opens):
 
-- None merged yet.
+- Apps kit alignment (this record's own work), lane 3: built on `claude/project-thread-69gq97`, waiting for its implementation audit and green checks.
+- #209, phone sign-in (lane 3): audit PASS at `628803f`, waiting on its full run. After it merges and deploys, the owner runs the attach-phone command once; then it is retired.
+- #283, the adults-only page's sign-in button returns to the game (lane 2): one fresh review PASS at `9c0ed5f`.
+- Slice 3 is resuming (see Slice 3).
+
+Completed since setup (merge times from `gh api`, UTC): #242 flaky journeys fixed (2026-11-21 00:18), #249 the maker's page (02:52), #252 three devices (04:08), #253, #255, #260 slice 2 design rounds (04:36, 09:10, 09:52), #258 sessions merge reviewed pull requests (08:58), #262 shoot only changed screens (13:33), #265 and #266 the owner's notes on the menu tab and game page (14:07, 14:26), #267 CRUD audit (15:03), #268 purge takes games off (16:00), #269 everything-editable spec (15:15), #271 live game files and websites (16:02), #274 unit D (19:16), #275 PR-H (19:45), #276 unit A (20:00), #277 18+ gate (20:07), #278 CRUD rule (20:11), #281 red main fixed (20:53), #280 apps-kit spec (21:09), #282 unit B (21:31), #279 PR-R (21:32).
 
 Remaining:
 
-- Merge the setup pull request; the owner runs the branch protection command.
-- Right after that merge: a one-line pull request that turns `ruleMix.firstTimeSetup` off in `.claude/hooks/rules.json` (it cannot share a branch with other rule files; the hook refuses the mixed push).
-- Build Ruken to launch, slice by slice in roadmap order, starting with phone sign-in (#209).
+- Merge #209, #283 and the apps-kit alignment pull request.
+- Slice 3's remaining units, then slices 4 to 6 and the before-launch list, in roadmap order.
+- Hook follow-ups (see History, Known issues).
+- Open follow-ups from the 18+ gate: clip file URLs on the game gate stay open until the video addresses unit (below) merges; the feed route's journey must assert 18+ games are absent when it ships.
 
 Blockers: none.
 
 Preview: https://ruken.io (deployed by the owner; `main` is not deployed on merge).
 
+## Stages
+
+One row per open stage or unit. Percentages come from the plan's ticked steps; a short-path change has no plan, and a row says "not measured" where nothing can be counted.
+
+| Stage or unit | Pull request or thread | Status | Done |
+|---|---|---|---|
+| Apps kit alignment (lane 3) | the pull request on `claude/project-thread-69gq97`; spec #280 | built, waiting for its implementation audit and green checks | not measured (one unit, no ticked steps) |
+| Phone sign-in, branch B (lane 3) | #209 | audit PASS at `628803f`, waiting on its full run | not measured |
+| Adults-only sign-in returns (lane 2) | #283 | draft, review PASS at `9c0ed5f` | short path, no plan |
+| Slice 3: unit K (social icons on the maker's page, lane 3), unit I (page editing), the learned feed's spec | none yet | no pull request open; resuming under the owner's 14:32 UTC word | not measured |
+| A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f`; building, then its pull request after the spec merges | not measured |
+| Hook follow-ups (the lane reading, the launcher-word refusal) | none yet | not started; lane 3 hooks changes, each its own pull request | not measured |
+| Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
+
 ## Slice 2
 
-- **Unit G (Task 24), a real game sent, accepted and played on the test site: done, 2026-11-21 03:10 UTC.** Game used: Floor Fifty (ruken.io). The Owner played it and tried all three play checks. Step 1 passed (media.ruken.dev health ok; a game with no pass is refused). Step 4 passed on Floor Fifty: its folder without a pass gives the run-out line, both clips are served as video/mp4, and ruken.io/g-<id>/index.html returns 404. The review job showed nothing waiting, which is expected because no new version was queued. Step 5 (the GitHub repo-change return) was not checked by us; the Owner said "I did all of those, move on", so it is done on their word, not seen by a program. This closes red 1 in the slice 2 implementation audit.
-- Slice end (walk, design rounds, screens page, Owner's walk, retrospective): in progress, branch `claude/project-thread-7wmhqn`.
+Done. Unit G (a real game, Floor Fifty, sent, accepted and played on ruken.io) was done 2026-11-21 03:10 UTC; the owner played it and tried all three play checks. Step 5 (the GitHub repo-change return) was not checked by a program; the owner said "I did all of those, move on", so it is done on their word. The slice end merged in pieces: the wrap-up (#250, 03:20), design rounds 1 to 3 (#253, #255, #260), and the owner's notes (#265, #266, 14:26 UTC). The branch `claude/project-thread-7wmhqn` is gone.
 
 ## Everything editable
 
-- Spec `2026-11-21-everything-editable-design.md`: complete, merged to `main` (2d00e7e, #269).
-- Unit D (change email and password on `/me`): built on `claude/project-thread-evc10x`, waiting for a pull request slot and its lane 3 audit. Known limit: Stripe receipts keep going to the old address until slice 5, and the screen says so.
-- Purge row (#268, a deleted maker's games and videos come off): if unit A (a live game's videos and rating held for review) merged first, the purge must clear held values and carry criterion A11.
+Spec `2026-11-21-everything-editable-design.md`: merged (#269, 2d00e7e, 15:15 UTC). Its units are merged: unit A (#276, 20:00 UTC, a live game's videos and rating held for review), unit B (#282, 21:31 UTC, a waiting game can be thrown away and a taken-off game changed and deleted), unit D (#274, 19:16 UTC, change email and password on `/me`; the owner's 20:39 UTC card has #209 drop Change email), and the purge row (#268, 16:00 UTC, a deleted maker's games and videos come off). The 18+ gate (#277, 20:07 UTC) and its repair (#281, 20:53 UTC) are merged. Known limit: Stripe receipts keep going to the old address until slice 5, and the screen says so.
 
-## Slice 3 parked
+## Slice 3
 
-- 2026-11-21 03:12 UTC, the Owner: "Let's park slice 3 until we confirm slice 2 is perfect". Units D and I are paused on their branches; K and the learned-feed spec have not started. Slice 2's slice end is the top priority.
+Resuming. The owner's 2026-11-21 03:12 UTC "Let's park slice 3 until we confirm slice 2 is perfect" is replaced by their 14:32 UTC word: slice 3 unparks once the editing work lands. That work has landed: #274, #276 and #282. Merged so far: the plan (#245), the feed's order and service (#246, #248), the clip behind the price card (#247), the maker's page (#249). The parked feed screen draft (#251) was closed unmerged on the owner's 15:33 UTC word. No pull request is open for unit K, the rest of the feed or the learned feed's spec. The spec is `2026-11-21-feed-and-makers-page-design.md`.
 
 ## Decisions
 
@@ -73,12 +128,12 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
   - Compaction and rule hooks: present in `.claude/settings.json`; `--check` reports no blanks. Cloud sessions start one folder above the repo, so the hooks load there only once the owner pastes `owner-steps/cloud-setup-script.sh` into the environment's setup script. `firstTimeSetup` is still on until the follow-up pull request.
   - `verify`: present (restored); its start times are from older commits and are measured again on its next run.
   - Not in the owner's text: `.claude/hooks/` is left out of ESLint and Prettier so the owner's files stay word for word.
+- Setup done. #240 merged 2026-11-20 23:02 UTC and #241 (`ruleMix.firstTimeSetup` off) 23:42 UTC. The owner ran owner steps 1 to 4 (their 23:24 and 23:25 UTC words: "I ran all 3", "I've done the cloud setup too"). Branch protection on `main` now requires `gate` and `commit-authors` (`gh api repos/mcthaydt/RukenApp/branches/main/protection`, 2026-11-21). `pr-rules.yml` was added by #279 (2026-11-21 21:32 UTC).
 
 ### Standing permissions
 
-- 2026-11-20, the owner: "Merge PRs yourself once CI, reviews and audits pass, without asking the owner. Live Cloudflare and console switches still need the owner." (restart handoff) The Cloudflare exception is replaced by the 2026-11-21 19:16 UTC entry below.
-- 2026-11-21 19:16 UTC, the owner: "you do not need my go ahead to merge things"; confirmed in the owner's 19:58 UTC message: every pull request, lane 3 and Cloudflare included, merges once its audits pass and CI is green. It does not cover product choices, new access or money, or scope changes. This replaces the 2026-11-20 line's exception for live Cloudflare changes.
-- 2026-11-20, the owner: "Small reviewed fixes can merge on the quick checks alone." (restart handoff)
+- 2026-11-21 19:16 UTC, the owner: "you do not need my go ahead to merge things"; confirmed in the owner's 19:58 UTC message: every pull request, lane 3 and Cloudflare included, merges once its audits pass and CI is green. It does not cover product choices, new access or money, or scope changes. The restart handoff's earlier exception for live Cloudflare and console switches no longer applies.
+- 2026-11-20, the owner: "Small reviewed fixes can merge on the quick checks alone." (restart handoff). **Not in force** (2026-11-21, apps-kit alignment, from the owner's 20:19 UTC instruction): CLAUDE.md, Risk, says a standing permission "never lowers the lane or removes required checks and reviews", and `release` requires the full run, not the quick one, for lane 2 and on a public repo. No permission lets a merge skip the full run. Kept as a record only.
 - First-time setup: the owner's request is the standing permission for the setup check (CLAUDE.md, Risk).
 
 ### Flaky tests
@@ -97,7 +152,8 @@ Each failed once and passed on its one rerun. Root causes and fixes are in pull 
 
 - Opening a game's page with the pointer over its "Made by" link can preload the maker's page (`/<handle>`), which counts one view and sets the arrival cookie without a person opening it. Seen in the review of pull request #249; left as is. A fix would stop the link being preloaded (`data-sveltekit-preload-data="off"` on that link) or count views only on a real open.
 - The rule hook reads a pull request's lane from its body and takes the highest "lane N" it finds anywhere (`.claude/hooks/rules.mjs`, `LANE` and `laneOf`), so a body that mentions another change's lane is classed by it. Pull request #252 was lane 2, but its "Not in this pull request" section said the CI change would be "lane 3, its own pull request", so the hook asked for a lane 3 audit before ready (seen 2026-11-21 at 7b67aa5). It did not block: the lane 2 review's "7b67aa5 PASS" satisfied it. Until the hook reads only the lane line, write another change's lane without the word "lane" in a body. A fix is a lane 3 change to the hooks.
+- Hook follow-up, a false positive at `.claude/hooks/rules.mjs:1126` (seen 2026-11-21 while writing the apps-kit spec): a local interpreter script (for example `python3`) whose text holds a launcher word (`LAUNCHES_OR_REQUESTS`, line 1107: subprocess, system, exec, spawn, popen, fetch, curl, a backtick and others) together with either the word gh plus a gh subcommand word (`GH_SUBCOMMAND`, line 1108: pr, api, repo, run and others) or the text api.github.com is refused as a GitHub call ("runs a script that calls gh or api.github.com"), even when the script makes none. It looks only at the words. A fix is a lane 3 hooks change of its own; the apps-kit alignment does not change the hook.
 
 ### Lessons
 
-None yet.
+- 2026-11-21: a spec session redid a hook-refused edit with the Edit tool. That is routing around the hook. Trigger: any hook refusal, even one that looks wrong. Action: stop and report; the refusal goes on the hook follow-ups.

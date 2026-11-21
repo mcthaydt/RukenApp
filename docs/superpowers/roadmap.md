@@ -40,7 +40,7 @@ How to read each list: **Done** is merged and green. **Now** is what is being bu
 7. Done: the GitHub App is set up on ruken.io, and the games run on ruken.dev.
 8. Done: a real game (Floor Fifty) sent, accepted and played on ruken.io (unit G, plan Task 24), 2026-11-21.
 9. Done: the slice 2 audit (`audits/2026-11-20-slice-2-1-implementation-audit.md`) and its code fix (#243). Its other red, unit G, is closed.
-10. Now: the slice end (the walk, the design rounds, the screens page, the Owner's walk).
+10. Done: the slice end (the walk, three design rounds, and the Owner's notes, merged by 2026-11-21 14:26 UTC in #250, #253, #255, #260, #265 and #266).
 
 ---
 
@@ -48,7 +48,7 @@ How to read each list: **Done** is merged and green. **Now** is what is being bu
 
 ## Slice 3: The feed and the maker's page
 
-Parked 2026-11-21 03:12 UTC, on the Owner's word: "Let's park slice 3 until we confirm slice 2 is perfect". Nothing in it runs until slice 2's slice end is done and the Owner says so.
+Now: resuming. Parked 2026-11-21 03:12 UTC, on the Owner's word: "Let's park slice 3 until we confirm slice 2 is perfect". The Owner's 14:32 UTC word is that it unparks once the editing work lands; that work has merged (#274, #276, #282), so slice 3 is being built again.
 
 1. Done: the colour themes, the page rules, the maker's photo (branches A, B and G).
 2. Later: the feed order, the feed, its controls, the paywall over a clip (branches C to F).
