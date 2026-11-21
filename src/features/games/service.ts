@@ -26,7 +26,7 @@ import { NOT_VISIBLE, type GitHub } from "./github.ts";
 import { newPublicId, slugOf } from "./ids.ts";
 import { pullGame, type Pull } from "./pull.ts";
 import { counterOf, firstUnanswered, type Answers } from "./questions.ts";
-import { listWords, stateParts, stateWords } from "./review.ts";
+import { listWords, sentBackStillOpen, stateParts, stateWords } from "./review.ts";
 import { isReasonFor, makerWords, partTitle } from "./send-back.ts";
 import {
   dayWords,
@@ -132,6 +132,8 @@ export interface MakerGame {
   reason: string | null;
   /** True while an update waits for a person's yes. */
   hasPending: boolean;
+  /** True while a new copy of a live game's files waits for a yes (a waiting video or rating alone is not one). */
+  newCopyWaits: boolean;
   /** Null until the maker answers it. */
   oneLine: string | null;
   ageRating: AgeRating | null;
@@ -150,6 +152,13 @@ export interface MakerGame {
   newestPull: { id: string; fileCount: number; totalBytes: number } | null;
   /** Each video that was added, with its size measured when it was saved, or null when it was not added. */
   clips: { upright: ClipFile | null; wide: ClipFile | null };
+  /**
+   * A live game's change that waits for staff's yes: a new rating with the marks that go with it, or null. Players still
+   * see `ageRating` and `contentMarks`, which stay what staff last said yes to.
+   */
+  held: { ageRating: AgeRating; contentMarks: ContentMark[] } | null;
+  /** A live game's new videos that wait for staff's yes. Players still see `clips`. */
+  heldClips: { upright: ClipFile | null; wide: ClipFile | null };
   /** What staff sent back that is still to fix, from their newest sent-back review. */
   toFix: PartToFix[];
   /**
@@ -170,6 +179,8 @@ export interface ReviewGame extends MakerGame {
   heldDay: string | null;
   pending: { id: string; fileCount: number; totalBytes: number; connectHosts: string[] } | null;
   clipKeys: { upright: string | null; wide: string | null };
+  /** When the maker last changed the game: what staff's look is stamped with, so an accept can tell it moved. */
+  changedAt: Date | null;
 }
 
 /**
@@ -269,7 +280,8 @@ export function createGamesService(deps: GamesServiceDeps) {
   /**
    * Keeps a clip for a game, in place of the one of that shape it had. A clip that fails the clip rules is refused
    * before anything is stored. The new file is stored and the row points at it before the old file is deleted, so a
-   * failure part way leaves the game with its old clip, and at worst a file nobody points at.
+   * failure part way leaves the game with its old clip, and at worst a file nobody points at. A live game's new clip is
+   * not shown to players: it is held apart and sent for review in the same save (`saveHeldClip`).
    */
   async function saveClip(
     gameId: string,
@@ -283,11 +295,10 @@ export function createGamesService(deps: GamesServiceDeps) {
 
     const game = await deps.db.game.findUnique({
       where: { id: gameId },
-      select: { publicId: true, state: true },
+      select: { publicId: true, state: true, makerUserId: true },
     });
     if (game === null) throw new GameError("NOT_FOUND", "We can't find that game.");
-    // A new clip would go live without a person's yes. Changing a live game's clips through review comes in slice 4.
-    if (game.state === "live") throw new GameError("NOT_READY", "A live game's videos can't be changed yet.");
+    if (game.state === "live") return saveHeldClip(gameId, game, shape, contentType, upload.bytes);
 
     const key = clipKeyFor(game.publicId, shape, randomHex16(), contentType);
     const replaced = await deps.db.gameClip.findUnique({ where: { gameId_shape: { gameId, shape } } });
@@ -303,16 +314,60 @@ export function createGamesService(deps: GamesServiceDeps) {
     if (replaced !== null) await deps.files.delete(replaced.key);
   }
 
+  /**
+   * A live game's new clip. Players read only `GameClip`, so the new file waits in `GameHeldClip` until staff say yes.
+   * The file is stored first and the row points at it before the one it replaces is deleted, as for any clip. `changedAt`
+   * moves in the same transaction as the held row, never before it: a look of staff's that `accept` is told about is
+   * then out of date exactly when the held video is not the one they looked at.
+   */
+  async function saveHeldClip(
+    gameId: string,
+    game: { publicId: string; makerUserId: string },
+    shape: ClipShape,
+    contentType: ClipContentType,
+    bytes: Uint8Array,
+  ): Promise<void> {
+    const key = clipKeyFor(game.publicId, shape, randomHex16(), contentType);
+    await deps.files.put(key, bytes);
+    // Set inside the transaction, deleted after it.
+    const replaced: { key: string | null } = { key: null };
+    await deps.db.$transaction(async (tx) => {
+      // Only a live game holds anything (Game_held_check holds the columns to it; this holds the rows). The update also
+      // takes the game's row lock, so a yes that is being made waits here, and what is read below is what it left.
+      const live = await tx.game.updateMany({
+        where: { id: gameId, state: "live" },
+        data: { changedAt: now() },
+      });
+      if (live.count === 0) throw new GameError("NOT_READY", "That can't be changed right now.");
+      // The file to delete is decided here, never earlier: a yes between an earlier read and this write would have made
+      // that file the one players see.
+      const before = await tx.gameHeldClip.findUnique({ where: { gameId_shape: { gameId, shape } } });
+      replaced.key = before?.key ?? null;
+      await tx.gameHeldClip.upsert({
+        where: { gameId_shape: { gameId, shape } },
+        create: { gameId, shape, key, contentType, bytes: bytes.length },
+        update: { key, contentType, bytes: bytes.length },
+      });
+      await takeOutOfToFix(gameId, shape === "upright" ? "upright_video" : "wide_video", tx);
+    });
+    if (replaced.key !== null) await deps.files.delete(replaced.key);
+    await settleLive(gameId, game.makerUserId, { dropped: false });
+  }
+
   /** Every maker write to a game says so, so a decision held on it lapses (spec 2). */
   async function markChanged(gameId: string): Promise<void> {
     await deps.db.game.update({ where: { id: gameId }, data: { changedAt: new Date(deps.clock.epochMs()) } });
   }
 
   /** The maker changed a part that staff sent back: it is no longer to fix. */
-  async function takeOutOfToFix(gameId: string, part: GamePart): Promise<void> {
-    const game = await deps.db.game.findUnique({ where: { id: gameId }, select: { toFix: true } });
+  async function takeOutOfToFix(
+    gameId: string,
+    part: GamePart,
+    db: Pick<PrismaClient, "game"> = deps.db,
+  ): Promise<void> {
+    const game = await db.game.findUnique({ where: { id: gameId }, select: { toFix: true } });
     if (game === null || !game.toFix.includes(part)) return;
-    await deps.db.game.update({
+    await db.game.update({
       where: { id: gameId },
       data: { toFix: game.toFix.filter((one) => one !== part) },
     });
@@ -564,6 +619,17 @@ export function createGamesService(deps: GamesServiceDeps) {
     };
   }
 
+  /**
+   * Staff's yes on a live game's update that holds a video or the rating asks for the time of the look it came from, so
+   * what goes live is what staff looked at: a maker's save after the look moves `changedAt`. A missing time, one that is
+   * not a time, or one that moved is a clash, and nothing goes live.
+   */
+  function checkLookIsCurrent(seen: string | undefined, changedAt: Date | null): void {
+    const looked = seen === undefined ? Number.NaN : Date.parse(seen);
+    if (Number.isNaN(looked) || changedAt === null || looked !== changedAt.getTime())
+      throw new GameError("CONFLICT", "It changed since you looked. Look again.");
+  }
+
   /** What a yes does to a game: its waiting files go live. The release does the same thing on decision day. */
   function becomesLive(pullId: string) {
     return {
@@ -579,20 +645,52 @@ export function createGamesService(deps: GamesServiceDeps) {
   /**
    * Staff's yes. For a new game while the ritual is on, a seat is taken and the yes is held for decision day: the game
    * stays as it is and nothing a maker sees changes. Otherwise (an update, a game that was live before) the waiting
-   * files go live now. One transaction, so a game is never live without its record.
+   * files go live now, with the video or rating the maker changed, if the look the yes is for is still the latest
+   * (`seen`). One transaction, so a game is never live without its record; the files it replaced are deleted after it.
    */
-  async function accept(gameId: string, staffUserId: string): Promise<DecisionMade> {
-    return deps.db.$transaction(async (tx) => {
+  async function accept(gameId: string, staffUserId: string, seen?: string): Promise<DecisionMade> {
+    const replacedKeys: string[] = [];
+    const made = await deps.db.$transaction(async (tx) => {
       // The lock comes before anything is read, so what is read is what a release that ran first left behind.
       if (schedule().firstDay !== null) await takeDecisionLock(tx);
+      // A maker's save to this game waits here until the yes is done, so the values read below are the ones that go live.
+      await tx.$queryRaw`SELECT "id" FROM "Game" WHERE "id" = ${gameId} FOR UPDATE`;
       const waiting = await waitingOf(tx, gameId);
+      const held = await tx.game.findUniqueOrThrow({
+        where: { id: gameId },
+        select: { heldAgeRating: true, heldContentMarks: true, heldClips: true },
+      });
+      const holdsSomething = held.heldAgeRating !== null || held.heldClips.length > 0;
+      if (holdsSomething) checkLookIsCurrent(seen, waiting.changedAt);
       const { goesOutOn, made } = await holdOrNot(tx, gameId, waiting, true);
       const decidedAt = now();
       if (goesOutOn === null) {
         await tx.game.update({
           where: { id: gameId },
-          data: becomesLive(waiting.pullId),
+          data: {
+            ...becomesLive(waiting.pullId),
+            // The rating and its marks go together, as they were held.
+            ...(held.heldAgeRating === null
+              ? {}
+              : {
+                  ageRating: held.heldAgeRating,
+                  contentMarks: held.heldContentMarks,
+                  heldAgeRating: null,
+                  heldContentMarks: [],
+                }),
+          },
         });
+        for (const clip of held.heldClips) {
+          const replaced = await tx.gameClip.findUnique({
+            where: { gameId_shape: { gameId, shape: clip.shape } },
+          });
+          if (replaced !== null) replacedKeys.push(replaced.key);
+          await tx.gameHeldClip.delete({ where: { id: clip.id } });
+          await tx.gameClip.update({
+            where: { gameId_shape: { gameId, shape: clip.shape } },
+            data: { key: clip.key, contentType: clip.contentType, bytes: clip.bytes },
+          });
+        }
         await tx.game.updateMany({
           where: { id: gameId, acceptedSeenAt: null },
           data: { acceptedSeenAt: decidedAt },
@@ -603,14 +701,30 @@ export function createGamesService(deps: GamesServiceDeps) {
       });
       return made;
     });
+    // After the yes has been kept. A delete that fails leaves a file no row points at, never a game without its video.
+    for (const key of replacedKeys) await deps.files.delete(key).catch(() => undefined);
+    return made;
   }
 
   /**
    * The parts a live game's update may be sent back for: the ones its maker can fix (her name and line, by the
-   * questions she may still answer) and the files (she mends them on GitHub and sends a new version). Its videos,
-   * rating and websites go through staff again only in slice 4, so an update sent back for one would be stuck for good.
+   * questions she may still answer) and the files (she mends them on GitHub and sends a new version). A video or the
+   * rating only when that part waits for a yes: staff send back a change, never what is already live (taking a live game
+   * down is slice 4).
    */
   const LIVE_MAY_BE_SENT_BACK: GamePart[] = ["name", "one_line", "files"];
+
+  /** The parts of a live game that hold a change waiting for a yes: its videos that wait, and its rating. */
+  async function heldPartsOf(tx: Pick<PrismaClient, "game">, gameId: string): Promise<GamePart[]> {
+    const game = await tx.game.findUniqueOrThrow({
+      where: { id: gameId },
+      select: { heldAgeRating: true, heldClips: { select: { shape: true } } },
+    });
+    return [
+      ...game.heldClips.map((clip): GamePart => (clip.shape === "upright" ? "upright_video" : "wide_video")),
+      ...(game.heldAgeRating === null ? [] : (["age_rating"] as const)),
+    ];
+  }
 
   /**
    * Staff's no, part by part: each part with a reason from that part's list, and for "Something else" their own line
@@ -640,11 +754,14 @@ export function createGamesService(deps: GamesServiceDeps) {
       if (schedule().firstDay !== null) await takeDecisionLock(tx);
       const waiting = await waitingOf(tx, gameId);
       const { state, pullId } = waiting;
-      if (state === "live" && kept.some((one) => !LIVE_MAY_BE_SENT_BACK.includes(one.part))) {
-        throw new GameError(
-          "INVALID",
-          "A live game can only be sent back for its name, its line or its files.",
-        );
+      if (state === "live") {
+        const held = await heldPartsOf(tx, gameId);
+        if (kept.some((one) => !LIVE_MAY_BE_SENT_BACK.includes(one.part) && !held.includes(one.part))) {
+          throw new GameError(
+            "INVALID",
+            "A live game can only be sent back for its name, its line, its files, or a video or rating that is waiting.",
+          );
+        }
       }
       const { goesOutOn, made } = await holdOrNot(tx, gameId, waiting, false);
       const decidedAt = now();
@@ -716,6 +833,9 @@ export function createGamesService(deps: GamesServiceDeps) {
         slug: true,
         state: true,
         ageRating: true,
+        contentMarks: true,
+        heldAgeRating: true,
+        heldContentMarks: true,
         toFix: true,
         publicId: true,
         name: true,
@@ -727,17 +847,14 @@ export function createGamesService(deps: GamesServiceDeps) {
     return game;
   }
 
-  /**
-   * The answers a live game may still change by itself. Its files and websites are part of a copy, so a change to them
-   * is copied and sent for review while players keep the old one. Its videos and rating would reach players with no
-   * review, so they go through staff again (slice 4).
-   */
-  const LIVE_MAY_CHANGE: Answer["question"][] = ["name", "line", "files", "websites"];
+  /** The questions a live game's maker may answer: the rating and its marks are held for a yes, never changed under players. */
+  const LIVE_MAY_CHANGE: Answer["question"][] = ["name", "line", "files", "websites", "age", "marks"];
 
   /**
-   * Keeps one answer. A draft, a waiting game and a sent-back game take every answer; a live game takes only its name
-   * and its line; anything else is not the maker's to change. Answers the game's address, which a new
-   * name may have changed.
+   * Keeps one answer. A draft, a waiting game, a sent-back game and a live game take every answer a game asks; anything else is not
+   * the maker's to change. A live game's name and line show to players at once. Its files and websites are part of a
+   * copy, which is copied and sent for review while players keep the old one. Its rating (with its marks) is held apart
+   * and sent for review in the same save. Answers the game's address, which a new name may have changed.
    */
   async function saveAnswer(gameId: string, makerUserId: string, answer: Answer): Promise<{ slug: string }> {
     const game = await ownGame(gameId, makerUserId);
@@ -748,12 +865,21 @@ export function createGamesService(deps: GamesServiceDeps) {
       (game.state === "live" && LIVE_MAY_CHANGE.includes(answer.question));
     if (!changeable) throw new GameError("NOT_READY", "That can't be changed right now.");
 
+    // A live game's rating and marks are held as a pair, and the one the maker is working from is the held one when
+    // there is one: she may change only its marks, or answer 18+ again, and the marks that wait are kept.
+    const holds = game.state === "live" && (answer.question === "age" || answer.question === "marks");
+    const heldNow = game.heldAgeRating !== null;
+    const currentRating = game.heldAgeRating ?? game.ageRating;
+    const currentMarks = heldNow ? game.heldContentMarks : game.contentMarks;
+    let heldPair: { ageRating: AgeRating; contentMarks: ContentMark[] } | null = null;
     const data: {
       name?: string;
       slug?: string;
       oneLine?: string;
       ageRating?: AgeRating;
       contentMarks?: ContentMark[];
+      heldAgeRating?: AgeRating | null;
+      heldContentMarks?: ContentMark[];
       connectHosts?: string[];
       repoFullName?: string;
       repoBranch?: string | null;
@@ -803,20 +929,26 @@ export function createGamesService(deps: GamesServiceDeps) {
       case "age": {
         const problem = AGE_RATINGS.includes(answer.ageRating) ? undefined : ageProblem(null);
         if (problem !== undefined) throw new GameError("INVALID", problem);
-        data.ageRating = answer.ageRating;
         // Marks belong to an 18+ game only: a game made younger has none (Game_marks_check).
+        let marks: ContentMark[] | undefined;
         if (answer.ageRating !== "age_18") {
-          data.contentMarks = [];
+          marks = [];
         } else if (
           answer.contentMarks !== undefined ||
-          (game.state !== "draft" && game.ageRating !== "age_18")
+          (game.state !== "draft" && currentRating !== "age_18")
         ) {
-          // A draft is asked its marks next, but a waiting or sent-back game made 18+ must have them now: the database
-          // refuses an 18+ game that is past draft without, and the maker would be told nothing.
+          // A draft is asked its marks next, but a waiting, sent-back or live game made 18+ must have them now: the
+          // database refuses an 18+ game that is past draft without, and the maker would be told nothing.
           const known = (answer.contentMarks ?? []).filter((mark) => CONTENT_MARKS.includes(mark));
           const problem = marksProblem(known);
           if (problem !== undefined) throw new GameError("INVALID", problem);
-          data.contentMarks = known.includes("none") ? ["none"] : [...new Set(known)];
+          marks = known.includes("none") ? ["none"] : [...new Set(known)];
+        }
+        if (holds) {
+          heldPair = { ageRating: answer.ageRating, contentMarks: marks ?? currentMarks };
+        } else {
+          data.ageRating = answer.ageRating;
+          if (marks !== undefined) data.contentMarks = marks;
         }
         part = "age_rating";
         break;
@@ -825,10 +957,12 @@ export function createGamesService(deps: GamesServiceDeps) {
         const known = answer.contentMarks.filter((mark) => CONTENT_MARKS.includes(mark));
         const problem = marksProblem(known);
         if (problem !== undefined) throw new GameError("INVALID", problem);
-        if (game.ageRating !== "age_18")
+        if (currentRating !== "age_18")
           throw new GameError("NOT_READY", "This question is only for games that are 18+.");
         // "None of these" stands alone.
-        data.contentMarks = known.includes("none") ? ["none"] : [...new Set(known)];
+        const marks: ContentMark[] = known.includes("none") ? ["none"] : [...new Set(known)];
+        if (holds) heldPair = { ageRating: "age_18", contentMarks: marks };
+        else data.contentMarks = marks;
         part = "age_rating";
         break;
       }
@@ -842,6 +976,18 @@ export function createGamesService(deps: GamesServiceDeps) {
       }
     }
 
+    // A live game's rating and marks are held, and held as a pair: the pair is kept only while it differs from what is
+    // live. Answering with what is live drops what waited, which is keeping the old one.
+    let dropped = false;
+    if (holds && heldPair !== null) {
+      const sameAsLive = samePair(heldPair, { ageRating: game.ageRating, contentMarks: game.contentMarks });
+      // Nothing waited and nothing is asked: not a change at all, so nothing moves (not even `changedAt`).
+      if (sameAsLive && !heldNow) return { slug };
+      dropped = sameAsLive;
+      data.heldAgeRating = sameAsLive ? null : heldPair.ageRating;
+      data.heldContentMarks = sameAsLive ? [] : heldPair.contentMarks;
+    }
+
     // The files are the one answer whose part comes off the list only when the pull passes, so it is not in this write.
     await deps.db.game.update({
       where: { id: gameId },
@@ -851,6 +997,7 @@ export function createGamesService(deps: GamesServiceDeps) {
         ...(part === "files" ? {} : { toFix: game.toFix.filter((one) => one !== part) }),
       },
     });
+    if (holds) await settleLive(gameId, makerUserId, { dropped });
 
     // The files are the answer that copies: a refused copy leaves the choice kept, and the screen that asked shows the
     // refusal. A copy that passes takes the files off the list of what to fix (pullLatest).
@@ -866,16 +1013,110 @@ export function createGamesService(deps: GamesServiceDeps) {
     return { slug };
   }
 
+  /** Whether two ratings, each with its marks, are the same pair. The order of the marks does not matter. */
+  function samePair(
+    one: { ageRating: AgeRating | null; contentMarks: readonly ContentMark[] },
+    other: { ageRating: AgeRating | null; contentMarks: readonly ContentMark[] },
+  ): boolean {
+    return (
+      one.ageRating === other.ageRating &&
+      one.contentMarks.length === other.contentMarks.length &&
+      one.contentMarks.every((mark) => other.contentMarks.includes(mark))
+    );
+  }
+
   /**
-   * A live game's new copy goes for review in the same save, as "Send a new version" does: a copy left unsent would
-   * change nothing for players and would have to be sent again by hand. While something staff sent back is still to fix,
-   * it is not sent: Live says what is left, and the send follows once it is mended.
+   * A live game's new copy, or its held video or rating, goes for review in the same save, as "Send a new version" does:
+   * a change left unsent would change nothing for players and would have to be sent again by hand. While something staff
+   * sent back is still to fix, nothing is sent: Live says what is left, and the send follows the last fix. A copy GitHub
+   * refused is not what the maker now points at, so a change kept beside it waits for the new version that fixes it.
    */
   async function sendLiveUpdate(gameId: string, makerUserId: string, state: GameState): Promise<void> {
     if (state !== "live") return;
-    const fresh = await deps.db.game.findUnique({ where: { id: gameId }, select: { toFix: true } });
-    if (fresh === null || stillToFix(fresh.toFix).length > 0) return;
+    const fresh = await deps.db.game.findUnique({
+      where: { id: gameId },
+      select: { toFix: true, pullProblem: true },
+    });
+    if (fresh === null || stillToFix(fresh.toFix).length > 0 || fresh.pullProblem !== null) return;
     await sendForReview(gameId, makerUserId);
+  }
+
+  /**
+   * What happens after a live game's held video or rating was saved or dropped. Something still held, or a new copy
+   * waiting, goes for review (`sendLiveUpdate`, which holds back while something is still to fix). When a part was dropped
+   * and nothing is left waiting (no held value, and the waiting copy is the one the game is live on), nothing is sent
+   * and the waiting send is withdrawn, so staff are not asked to look at nothing.
+   */
+  async function settleLive(gameId: string, makerUserId: string, after: { dropped: boolean }): Promise<void> {
+    const game = await deps.db.game.findUnique({
+      where: { id: gameId },
+      select: {
+        state: true,
+        heldAgeRating: true,
+        pendingPullId: true,
+        livePullId: true,
+        heldClips: { select: { id: true } },
+      },
+    });
+    if (game?.state !== "live") return;
+    const somethingHeld = game.heldAgeRating !== null || game.heldClips.length > 0;
+    const newCopyWaits = game.pendingPullId !== null && game.pendingPullId !== game.livePullId;
+    if (somethingHeld || newCopyWaits) {
+      await sendLiveUpdate(gameId, makerUserId, "live");
+      return;
+    }
+    if (after.dropped && game.pendingPullId !== null) {
+      await deps.db.game.update({ where: { id: gameId }, data: { pendingPullId: null, pendingSince: null } });
+    }
+  }
+
+  /**
+   * "Keep the old one": drops what a live game's maker changed in a video or the rating, so players keep what staff
+   * already said yes to. What is live was approved, so nothing is left to fix on that part, whatever staff sent back.
+   * The held file is deleted after the row is gone. Asked twice, the second does nothing.
+   */
+  async function keepTheOldOne(
+    gameId: string,
+    makerUserId: string,
+    part: "upright_video" | "wide_video" | "age_rating",
+  ): Promise<void> {
+    const game = await ownGame(gameId, makerUserId);
+    if (game.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
+    const shape: ClipShape = part === "upright_video" ? "upright" : "wide";
+    // Set inside the transaction, deleted after it.
+    const held: { key: string | null } = { key: null };
+    const outcome = await deps.db.$transaction(async (tx) => {
+      // Locked first: a yes being made finishes before anything is read, so a held row it already made live is not "dropped".
+      await tx.$queryRaw`SELECT "id" FROM "Game" WHERE "id" = ${gameId} FOR UPDATE`;
+      const row = await tx.game.findUniqueOrThrow({
+        where: { id: gameId },
+        select: { toFix: true, heldAgeRating: true },
+      });
+      let wasHeld = false;
+      if (part === "age_rating") {
+        wasHeld = row.heldAgeRating !== null;
+      } else {
+        const clip = await tx.gameHeldClip.findUnique({ where: { gameId_shape: { gameId, shape } } });
+        if (clip !== null) {
+          wasHeld = true;
+          held.key = clip.key;
+          await tx.gameHeldClip.delete({ where: { id: clip.id } });
+        }
+      }
+      const fixing = row.toFix.includes(part);
+      if (!wasHeld && !fixing) return null;
+      await tx.game.update({
+        where: { id: gameId },
+        data: {
+          changedAt: now(),
+          toFix: row.toFix.filter((one) => one !== part),
+          ...(part === "age_rating" ? { heldAgeRating: null, heldContentMarks: [] } : {}),
+        },
+      });
+      return { dropped: wasHeld };
+    });
+    if (held.key !== null) await deps.files.delete(held.key);
+    if (outcome !== null) await settleLive(gameId, makerUserId, outcome);
   }
 
   /**
@@ -883,23 +1124,38 @@ export function createGamesService(deps: GamesServiceDeps) {
    * there, and an update that was waiting for review is dropped with it. The database goes first: if deleting the files
    * stops halfway, the game is already off its page and no new pass is given, and `filesLeft` says some are still there.
    * Only a live game is taken off: every other state has its own way out (a draft or a sent-back game is thrown away, a
-   * waiting one is with staff). Its two videos stay, because putting it back needs them.
+   * waiting one is with staff). Its two videos stay, because putting it back needs them; a video that was waiting for a
+   * yes does not.
    */
   async function takeOff(gameId: string, makerUserId: string): Promise<{ name: string }> {
     const game = await ownGame(gameId, makerUserId);
     if (game.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
-    await deps.db.game.update({
-      where: { id: gameId },
-      data: {
-        state: "taken_off",
-        stateReason: null,
-        livePullId: null,
-        pendingPullId: null,
-        pendingSince: null,
-        toFix: [],
-      },
+    // What waited for a yes goes with the game: nothing is left to review, and only a live game may hold a change.
+    const held = await deps.db.$transaction(async (tx) => {
+      // The game's row is locked first, so a yes being made finishes before the held files are read: a file that yes made
+      // the live video is no longer held, and is kept for "Put it back".
+      await tx.$queryRaw`SELECT "id" FROM "Game" WHERE "id" = ${gameId} FOR UPDATE`;
+      const current = await tx.game.findUniqueOrThrow({ where: { id: gameId }, select: { state: true } });
+      if (current.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
+      const keys = await tx.gameHeldClip.findMany({ where: { gameId }, select: { key: true } });
+      await tx.gameHeldClip.deleteMany({ where: { gameId } });
+      await tx.game.update({
+        where: { id: gameId },
+        data: {
+          state: "taken_off",
+          stateReason: null,
+          livePullId: null,
+          pendingPullId: null,
+          pendingSince: null,
+          heldAgeRating: null,
+          heldContentMarks: [],
+          toFix: [],
+        },
+      });
+      return keys;
     });
     await deps.files.deleteAll(`files/${game.publicId}/`);
+    for (const clip of held) await deps.files.delete(clip.key);
     return { name: game.name };
   }
 
@@ -1138,9 +1394,13 @@ export function createGamesService(deps: GamesServiceDeps) {
     showsPlayerCount: true,
     ageRating: true,
     contentMarks: true,
+    heldAgeRating: true,
+    heldContentMarks: true,
+    livePullId: true,
     toFix: true,
     pulls: { orderBy: NEWEST_FIRST, take: 1, select: { id: true, fileCount: true, totalBytes: true } },
     clips: { select: { shape: true, key: true, bytes: true } },
+    heldClips: { select: { shape: true, key: true, bytes: true } },
     // Newest first: the first sent-back review is what the maker still has to fix, and any accepted one means the
     // game has been live.
     reviews: {
@@ -1177,9 +1437,13 @@ export function createGamesService(deps: GamesServiceDeps) {
     showsPlayerCount: boolean;
     ageRating: AgeRating | null;
     contentMarks: ContentMark[];
+    heldAgeRating: AgeRating | null;
+    heldContentMarks: ContentMark[];
+    livePullId: string | null;
     toFix: GamePart[];
     pulls: { id: string; fileCount: number; totalBytes: bigint }[];
     clips: { shape: ClipShape; key: string; bytes: number }[];
+    heldClips: { shape: ClipShape; key: string; bytes: number }[];
     reviews: {
       decision: "accepted" | "sent_back";
       parts: { part: GamePart; reason: string; note: string | null }[];
@@ -1197,6 +1461,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       headline: stateParts(state).headline,
       reason: stateParts(state).reason,
       hasPending: state.hasPending,
+      newCopyWaits: row.pendingPullId !== null && row.pendingPullId !== row.livePullId,
       oneLine: row.oneLine,
       showsPlayerCount: row.showsPlayerCount,
       ageRating: row.ageRating,
@@ -1215,9 +1480,25 @@ export function createGamesService(deps: GamesServiceDeps) {
         upright: clipFile(row.clips, "upright"),
         wide: clipFile(row.clips, "wide"),
       },
+      held:
+        row.heldAgeRating === null
+          ? null
+          : { ageRating: row.heldAgeRating, contentMarks: row.heldContentMarks },
+      heldClips: {
+        upright: clipFile(row.heldClips, "upright"),
+        wide: clipFile(row.heldClips, "wide"),
+      },
       toFix: partsToFix(row),
       // Newest first (see `gameSelect`), so the first review is staff's latest word.
-      sentBackLast: row.reviews[0]?.decision === "sent_back",
+      sentBackLast: sentBackStillOpen({
+        state: row.state,
+        newestDecision: row.reviews[0]?.decision,
+        newestParts: row.reviews[0]?.parts.map((one) => one.part) ?? [],
+        hasHeld: row.heldAgeRating !== null || row.heldClips.length > 0,
+        toFixCount: stillToFix(row.toFix).length,
+        pullProblem: row.pullProblem,
+        newestPullIsLive: row.livePullId !== null && newest?.id === row.livePullId,
+      }),
       // Asking the bucket is `withFilesLeft`'s job, and only for a game that is off.
       filesLeft: false,
     };
@@ -1266,10 +1547,19 @@ export function createGamesService(deps: GamesServiceDeps) {
         oneLine: true,
         ageRating: true,
         contentMarks: true,
+        heldAgeRating: true,
+        livePullId: true,
         toFix: true,
         clips: { select: { shape: true, key: true } },
+        heldClips: { select: { id: true } },
+        pulls: { orderBy: NEWEST_FIRST, take: 1, select: { id: true } },
         _count: { select: { pulls: true } },
-        reviews: { where: tookEffect, orderBy: { decidedAt: "desc" }, take: 1, select: { decision: true } },
+        reviews: {
+          where: tookEffect,
+          orderBy: { decidedAt: "desc" },
+          take: 1,
+          select: { decision: true, parts: { select: { part: true } } },
+        },
       },
     });
     return rows.map((row) => {
@@ -1292,7 +1582,15 @@ export function createGamesService(deps: GamesServiceDeps) {
           toFix: stillToFix(row.toFix).length,
           firstUnanswered: next,
           questionNumber: next === null ? null : counterOf(next, answers).n,
-          sentBackLast: row.reviews[0]?.decision === "sent_back",
+          sentBackLast: sentBackStillOpen({
+            state: row.state,
+            newestDecision: row.reviews[0]?.decision,
+            newestParts: row.reviews[0]?.parts.map((one) => one.part) ?? [],
+            hasHeld: row.heldAgeRating !== null || row.heldClips.length > 0,
+            toFixCount: stillToFix(row.toFix).length,
+            pullProblem: row.pullProblem,
+            newestPullIsLive: row.livePullId !== null && row.pulls[0]?.id === row.livePullId,
+          }),
         }),
       };
     });
@@ -1343,6 +1641,7 @@ export function createGamesService(deps: GamesServiceDeps) {
         upright: row.clips.find((clip) => clip.shape === "upright")?.key ?? null,
         wide: row.clips.find((clip) => clip.shape === "wide")?.key ?? null,
       },
+      changedAt: row.changedAt,
     });
   }
 
@@ -1569,6 +1868,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     putBack,
     pullLatest,
     sendForReview,
+    keepTheOldOne,
     accept,
     sendBack,
     waitingGames,

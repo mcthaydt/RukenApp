@@ -64,7 +64,7 @@ enum ClipShape {
 /// A game is answered one question at a time, so each answer is null until the maker gives it; Game_answered_check
 /// holds every game past `draft` to having them all.
 /// CHECKs: Game_publicId_check, Game_slug_check, Game_repoFolder_check, Game_live_check, Game_marks_check,
-/// Game_answered_check.
+/// Game_answered_check, Game_held_check.
 model Game {
   id            String        @id @default(cuid(2))
   publicId      String        @unique
@@ -93,6 +93,12 @@ model Game {
   ageRating     AgeRating?
   /// What an 18+ game contains. Empty for any other rating, and until the maker answers.
   contentMarks  ContentMark[] @default([])
+  /// A live game's new rating, waiting for staff's yes before players see it. Held together with `heldContentMarks`:
+  /// either a rating is held with the marks that go with it, or nothing is. Null while nothing waits, and for any
+  /// game that is not live (Game_held_check).
+  heldAgeRating AgeRating?
+  /// The marks that go with `heldAgeRating`: not empty when it is 18+, and empty otherwise.
+  heldContentMarks ContentMark[] @default([])
   /// The parts staff sent back that the maker has not changed yet. Empty when nothing is waiting to be fixed.
   toFix         GamePart[]    @default([])
   /// The pull the game is live on. Set only while `state` is live.
@@ -117,6 +123,7 @@ model Game {
   pendingPull GamePull?    @relation("GamePendingPull", fields: [pendingPullId], references: [id], onDelete: Restrict)
   pulls       GamePull[]   @relation("GamePulls")
   clips       GameClip[]
+  heldClips   GameHeldClip[]
   reviews     GameReview[]
 
   // The play feature's tables point at a game; they are declared in play.prisma.
@@ -170,6 +177,26 @@ model GameClip {
   gameId      String
   shape       ClipShape
   /// Where the video lives in the bucket: `clips/<publicId>/<shape>-<16 hex>.<mp4|webm>`.
+  key         String    @unique
+  contentType String
+  bytes       Int
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @db.Timestamptz
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+
+  @@unique([gameId, shape])
+}
+
+/// A live game's new video, waiting for staff's yes before players see it. Players read only `GameClip`, so a held
+/// video is never shown by a read that forgot a filter; the yes points the game's clip at this key and deletes the row.
+/// A key is made as every clip's is, so it is unguessable and the media gate serves it as it serves a waiting game's.
+/// CHECKs: GameHeldClip_key_check.
+model GameHeldClip {
+  id          String    @id @default(cuid(2))
+  gameId      String
+  shape       ClipShape
+  /// Where the video lives in the bucket: `clips/<publicId>/<shape>-<16 hex>.<mp4|webm|mov>`.
   key         String    @unique
   contentType String
   bytes       Int

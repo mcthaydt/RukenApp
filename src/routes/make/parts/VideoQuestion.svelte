@@ -20,6 +20,7 @@
     back,
     throwAway,
     problem,
+    keepOld = false,
   }: {
     shape: "upright" | "wide";
     /** Where the video stands: its address (none until one is in), and whether a different one is being chosen. */
@@ -30,23 +31,30 @@
       howToRecord: string;
       /** The how-to's part for a video that is over the limit. */
       howToTooBig: string;
+      /** A live game's new video that waits for a yes is in the frame. */
+      waiting: boolean;
+      /** True while staff have the change; false while nobody is reviewing it yet. */
+      withStaff: boolean;
     };
     counter: { n: number; of: number } | null;
     back: string;
     throwAway: string | undefined;
     /** The server's refusal of the video that was sent, if any. */
     problem: string | undefined;
+    /** Offers to drop the video that waits for a yes. */
+    keepOld?: boolean;
   } = $props();
 
   const words = $derived(
     shape === "upright"
       ? {
-          heading: "Add your upright video",
+          heading:
+            video.src !== null && counter === null ? "Change your upright video" : "Add your upright video",
           frame: "Taller than wide",
           note: "For phones: taller than wide. MP4, WebM or MOV, up to 30 MB.",
         }
       : {
-          heading: "Add your wide video",
+          heading: video.src !== null && counter === null ? "Change your wide video" : "Add your wide video",
           frame: "Wider than tall",
           note: "For computers: wider than tall. MP4, WebM or MOV, up to 30 MB.",
         },
@@ -103,14 +111,24 @@
   {back}
   {throwAway}
   enterHint={!choosing}
+  {keepOld}
   busyWords="Saving…"
   bind:saving
   forward={choosing ? picker : undefined}
 >
+  {#if video.waiting}
+    <p class="note" role="status">
+      {video.withStaff
+        ? "Waiting for review. Players see the old one until we say yes."
+        : "Not sent yet. Players see the old one."}
+    </p>
+  {/if}
   {#if video.src === null}
-    <label class="vframe" data-frame={shape} for="clip-file"><span>{words.frame}</span></label>
+    <label class="vframe" data-frame={shape} data-waiting={video.waiting ? "" : undefined} for="clip-file"
+      ><span>{words.frame}</span></label
+    >
   {:else}
-    <div class="vframe" data-frame={shape}>
+    <div class="vframe" data-frame={shape} data-waiting={video.waiting ? "" : undefined}>
       <VideoTile src={video.src} {shape} />
     </div>
   {/if}

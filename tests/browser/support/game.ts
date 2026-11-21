@@ -142,6 +142,10 @@ export function MAKER_ADDRESSES(slug: string): { path: string; form?: Record<str
     // A video is sent by its own action, one request to a video.
     { path: `/make/${slug}/upright?/clip`, form: {} },
     { path: `/make/${slug}/wide?/clip`, form: {} },
+    // A live game's change that waits for a yes is dropped by "Keep the old one".
+    { path: `/make/${slug}/upright?/keepOld`, form: {} },
+    { path: `/make/${slug}/wide?/keepOld`, form: {} },
+    { path: `/make/${slug}/age?/keepOld`, form: {} },
     { path: `/make/${slug}/throw-away` },
     // Taking a live game off, putting it back, and deleting what a stopped delete left.
     { path: `/make/${slug}/take-off` },
