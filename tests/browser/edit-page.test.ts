@@ -52,7 +52,7 @@ async function statusOf(page: Page, address: string | null): Promise<number> {
   const context = await page.context().browser()?.newContext();
   if (context === undefined) throw new Error("the page has no browser");
   try {
-    return (await (await context.newPage()).goto(address ?? ""))?.status() ?? 0;
+    return (await (await context.newPage()).goto(new URL(address ?? "", page.url()).href))?.status() ?? 0;
   } finally {
     await context.close();
   }
@@ -158,7 +158,7 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await openRoom(page, "Address");
   await answerRoom(page, "Pick your page's address", moved);
   await expect(page.getByRole("link", { name: /^Address/ })).toContainText(`/${moved}`);
-  expect((await page.goto(`/${address}`))?.status()).toBe(404);
+  expect(await statusOf(page, `/${address}`)).toBe(404);
   await page.goto(`/${moved}`);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Night Owl");
 
@@ -275,13 +275,13 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await showTheOwner(page, testInfo, "your page, take it down");
   await page.getByRole("link", { name: "Keep my page" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your page");
-  expect((await page.goto(`/${moved}`))?.status()).toBe(200);
+  expect(await statusOf(page, `/${moved}`)).toBe(200);
   await openRoom(page, "Address");
   await page.goto("/make/page/take-down");
   await page.getByRole("button", { name: "Take my page down" }).click();
   await expect(page.getByRole("status")).toHaveText("Your page is down.");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Pick your page's address");
-  expect((await page.goto(`/${moved}`))?.status()).toBe(404);
+  expect(await statusOf(page, `/${moved}`)).toBe(404);
   // Nothing is left to take down, and the account is as it was; she can make a page again at the same address.
   expect((await page.goto("/make/page/name"))?.url()).toContain("/make/page");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Pick your page's address");
@@ -300,21 +300,21 @@ test("a page goes when its account is deleted, after the 14 days", async ({ page
     oneLine: "",
     links: [{ title: "A link", url: "https://gone.example.com/x" }],
   });
-  expect((await page.goto(`/${handle}`))?.status()).toBe(200);
+  expect(await statusOf(page, `/${handle}`)).toBe(200);
 
   await page.goto("/me");
   await page.getByRole("link", { name: "Delete my account" }).click();
   await page.getByRole("button", { name: "Delete my account" }).click();
   await expect(page.getByRole("heading", { name: "Your account will be deleted." })).toBeVisible();
   // For the 14 days the page stays, so a maker who changes their mind loses nothing.
-  expect((await page.goto(`/${handle}`))?.status()).toBe(200);
+  expect(await statusOf(page, `/${handle}`)).toBe(200);
 
   await makeDeletionDue(maker.email);
   const answer = await page.request.post("/jobs/purge-accounts", {
     headers: { "content-type": "application/json", authorization: "Bearer test-only-jobs-secret" },
   });
   expect(answer.status()).toBe(200);
-  expect((await page.goto(`/${handle}`))?.status()).toBe(404);
+  expect(await statusOf(page, `/${handle}`)).toBe(404);
 });
 
 test("nobody changes another maker's links, and thirty is the most", async ({ page, browser }) => {
