@@ -103,11 +103,13 @@ describe("the layer rule", () => {
           broken.push(`${where}: ${to.feature}'s library/ is read only by ${to.feature}`);
         } else if (isPageScript(file)) {
           // A page's own script is downloaded by every visitor, so it reaches a feature only through its browser entry,
-          // or, from a route, a screen the feature draws (a .svelte file, which imports no server code). A route matcher is built by
-          // Node, which cannot load a .svelte file, so a matcher takes the browser entry alone.
-          const isScreen = to.inside.endsWith(".svelte") && file.startsWith(join(SRC, "routes") + sep);
-          if (to.inside !== `${to.feature}.browser.ts` && !isScreen)
-            broken.push(`${where}: a page's script imports ${to.feature} through ${to.feature}.browser.ts`);
+          // or, from a screen or a route, through the entry that draws the feature's screens (`<feature>.screens.ts`,
+          // used where the browser entry is also loaded by a route matcher, which Node builds and which cannot load a
+          // .svelte file).
+          const entries = [`${to.feature}.browser.ts`];
+          if (!file.startsWith(join(SRC, "params") + sep)) entries.push(`${to.feature}.screens.ts`);
+          if (!entries.includes(to.inside))
+            broken.push(`${where}: a page's script imports ${to.feature} through ${entries.join(" or ")}`);
         } else if (to.inside.replace(/\.ts$/, "") !== to.feature) {
           broken.push(`${where}: import ${to.feature} through ${to.feature}.ts`);
         }
@@ -118,10 +120,32 @@ describe("the layer rule", () => {
   });
 });
 
+describe("a screen a feature draws", () => {
+  test("is imported from outside its feature only through that feature's browser entry (or its screens entry)", () => {
+    const broken: string[] = [];
+    for (const file of sourceFiles) {
+      const from = featureOf(file);
+      for (const target of importsOf(file)) {
+        if (!target.endsWith(".svelte")) continue;
+        const path = resolveImport(file, target);
+        const to = path === null ? null : featureOf(path);
+        if (to === null) continue;
+        if (from === null || from.feature !== to.feature) {
+          broken.push(
+            `${relative(ROOT, file)} imports "${target}": import ${to.feature}.browser.ts (or ${to.feature}.screens.ts) instead`,
+          );
+        }
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+});
+
 describe("what a browser entry may reach", () => {
-  // `<feature>.browser.ts` is what a page's own script may import from a feature. Nothing it reaches may carry the
-  // database, a Node module or server code into the visitor's download.
-  const entries = sourceFiles.filter((file) => /features\/[^/]+\/[^/]+\.browser\.ts$/.test(file));
+  // `<feature>.browser.ts` is what a page's own script may import from a feature, and `<feature>.screens.ts` what a
+  // screen or a route may. Nothing either reaches may carry the database, a Node module or server code into the
+  // visitor's download.
+  const entries = sourceFiles.filter((file) => /features\/[^/]+\/[^/]+\.(browser|screens)\.ts$/.test(file));
 
   /** Every file a browser entry reaches by relative imports, itself included. */
   function reachedFrom(entry: string): string[] {
