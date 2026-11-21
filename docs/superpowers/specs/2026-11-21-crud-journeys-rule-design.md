@@ -26,7 +26,7 @@ Add one sentence after "The test hardest to fool comes first.":
 
 Add after "Every core journey works end to end, …":
 
-> - **CRUD in the journeys.** For everything anyone can make in the product, staff included (an account, a game, a page, a video, anything they save), the browser journeys create it, read it back where people see it, update it, and delete it or take it off, each checked in the running product. A change that adds or changes something a user can make brings the missing ones in the same pull request. Only the owner can keep a thing from being updated or deleted (a payment record, say): asked as a decision card and recorded with its scope in `docs/superpowers/history.md`; its journey then checks what the person is told instead.
+> - **CRUD in the journeys.** For everything anyone can make in the product, staff included (an account, a game, a page, a video, anything they save), the browser journeys create it, read it back where people see it, update it, and delete it or take it off, each checked in the running product. A change that adds or changes something a user can make brings the missing ones in the same pull request. Only the owner can keep a thing from being updated or deleted (a payment record, say): asked as a decision card and recorded with its scope under "Kept on purpose" in `docs/superpowers/history.md`; its journey then checks what the person is told instead.
 
 ### 2.3 `.claude/skills/review/SKILL.md`, Checks and reviews
 
@@ -38,7 +38,7 @@ Add after "Review against the acceptance criteria in the brief, …":
 
 - **Call:** no new check program. Finding "everything a user can make" needs judgment, which is a review's job (CLAUDE.md, Findings carry evidence: "a review finds what no check encodes").
 - **Call:** existing gaps are not this change's. The CRUD audit (#267, `docs/superpowers/audits/2026-11-21-e2e-crud-1-audit.md`) lists them, and the "Fill e2e CRUD test gaps" thread fills them.
-- **Call:** the exception exists because some records may have to stay (a payment, a refund). Only the owner grants it, on a decision card, recorded in `history.md` with its scope; a brief or a reviewer cannot. The owner's "everything is editable" holds for everything else.
+- **Call:** the exception exists because some records may have to stay (a payment, a refund). Only the owner grants it, on a decision card, recorded with its scope under a new "Kept on purpose" heading in `history.md`, which the first such choice creates; a brief or a reviewer cannot. The owner's "everything is editable" holds for everything else.
 - **Call:** "the mcthaydt claude.md for apps" is read as the rules template in the project's files, `rules/message.md`: it is the owner's own CLAUDE.md and skills text with `[PROJECT]` blanks, which every new app starts from, and the owner's GitHub repos (`mcthaydt/mcthaydt`, `claude-skills`) hold no CLAUDE.md. The coordinator is asking the owner to confirm; if they name another file, the same three edits go there instead. In the template, the examples are general ("an account, a post, a file, anything they save"; "a payment record"), not Ruken's.
 - **Call:** "anyone who can make something" includes staff (a send-back reason, an accepted version), not only players and makers.
 - `progress.md` gains today's three owner rules (CRUD in the journeys; nothing permanent, everything editable; Opus 5.5 medium when no plan or spec exists) in the spec's pull request, since it is a doc.

@@ -10,6 +10,8 @@ Last updated: 2026-11-21 14:39 UTC (from `date`).
 - 2026-11-21 14:20 UTC: "At a minimum, our e2e tests should cover the CRUD operations; we didn't have a way to update." 14:32 UTC: "the e2e covers all CRUD should be a rule, and added to the mcthaydt claude.md for apps". The journeys create, read, update and delete everything a user can make; reviews and audits enforce it (spec `2026-11-21-crud-journeys-rule-design.md`).
 - 2026-11-21 14:25 UTC: when no plan and spec exist for the work, the build runs on Opus 5.5, medium (not Sonnet).
 - 2026-11-21 14:29 UTC: nothing in Ruken is permanent; everything a user makes must be editable, like any professional app. Live game changes (files, websites, videos, age rating) are held for review before players see them.
+- 2026-11-21 14:26 UTC, on a card: "Games come off with the account". When a maker's account is finally deleted (after the 14 days), their games are taken off Ruken like Take off, with a journey checking it.
+- 2026-11-21 14:31 UTC: a person's name and line stay instant to change; a wrong birthday is fixed by asking Ruken.
 
 ## Active milestone: setup and "Finish Ruken"
 
