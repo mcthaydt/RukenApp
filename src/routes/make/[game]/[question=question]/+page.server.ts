@@ -141,6 +141,8 @@ function videoScreen(url: URL, game: MakerGame, shape: VideoQuestion) {
     replaceAddress: `/make/${game.slug}/${shape}?again=1`,
     // True for a live game's video that waits for a yes: the screen says so, and offers to keep the old one.
     waiting: held !== null,
+    // Whether staff have it: a change nobody is reviewing yet (something is still to fix, or the copy was refused) says so.
+    withStaff: game.hasPending,
     // The how-to's way back is this question.
     howToRecord,
     // The same how-to, at its part for a video that is too big.
@@ -213,6 +215,7 @@ export const load: PageServerLoad = async (event) => {
     // What players see while a live game's new rating waits for a yes, in the words of a rating; null when none waits.
     ratingPlayersSee:
       game.state === "live" && game.held !== null ? ratingWords(game.ageRating, game.contentMarks) : null,
+    ratingWithStaff: game.hasPending,
     // A live game's change that waits for a yes can be dropped from the question it was made in.
     keepOld: game.state === "live" && waitsForYes(game, question),
   };

@@ -517,6 +517,14 @@ test("a video sent back while the rating waits: the rating says it is not sent y
   await expect(page.locator("a.fix")).toHaveCount(1);
   await expect(page.locator(".laid .waits")).toHaveText("Not sent yet");
   await expect(page.locator(".laid").getByText("Waiting for review")).toHaveCount(0);
+
+  // The question screens say the same: nobody has it yet.
+  await page.goto(`/make/${slug}/age`);
+  await expect(page.getByText("Not sent yet. Players see 12+.")).toBeVisible();
+  await expect(page.getByText("Waiting for review")).toHaveCount(0);
+  await page.goto(`/make/${slug}/wide?again=1`);
+  await expect(page.getByText("Not sent yet. Players see the old one.")).toBeVisible();
+  await expect(page.getByText("Waiting for review")).toHaveCount(0);
 });
 
 test("the question screens say what waits, and Keep the old one is under the buttons, never before Save", async ({

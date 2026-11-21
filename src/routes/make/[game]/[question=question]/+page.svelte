@@ -124,7 +124,9 @@
       />
       {#if data.ratingPlayersSee !== null}
         <p class="note" role="status">
-          Waiting for review. Players see {data.ratingPlayersSee} until we say yes.
+          {data.ratingWithStaff
+            ? `Waiting for review. Players see ${data.ratingPlayersSee} until we say yes.`
+            : `Not sent yet. Players see ${data.ratingPlayersSee}.`}
         </p>
       {/if}
     </QuestionScreen>
@@ -150,7 +152,9 @@
       />
       {#if data.ratingPlayersSee !== null}
         <p class="note" role="status">
-          Waiting for review. Players see {data.ratingPlayersSee} until we say yes.
+          {data.ratingWithStaff
+            ? `Waiting for review. Players see ${data.ratingPlayersSee} until we say yes.`
+            : `Not sent yet. Players see ${data.ratingPlayersSee}.`}
         </p>
       {/if}
     </QuestionScreen>

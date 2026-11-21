@@ -33,6 +33,8 @@
       howToTooBig: string;
       /** A live game's new video that waits for a yes is in the frame. */
       waiting: boolean;
+      /** True while staff have the change; false while nobody is reviewing it yet. */
+      withStaff: boolean;
     };
     counter: { n: number; of: number } | null;
     back: string;
@@ -115,7 +117,11 @@
   forward={choosing ? picker : undefined}
 >
   {#if video.waiting}
-    <p class="note" role="status">Waiting for review. Players see the old one until we say yes.</p>
+    <p class="note" role="status">
+      {video.withStaff
+        ? "Waiting for review. Players see the old one until we say yes."
+        : "Not sent yet. Players see the old one."}
+    </p>
   {/if}
   {#if video.src === null}
     <label class="vframe" data-frame={shape} data-waiting={video.waiting ? "" : undefined} for="clip-file"
