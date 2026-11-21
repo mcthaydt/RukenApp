@@ -1765,6 +1765,14 @@ a.foot {
   white-space: nowrap;
 }
 
+/* What a live game's maker changed and staff have not said yes to yet: a quiet label beside it, so nobody reads it as
+   what players see. */
+.laid .waits {
+  color: var(--sage);
+  font: var(--text-small);
+  white-space: nowrap;
+}
+
 /* Your games on a computer or a tablet held sideways: the heading and Add a game are one line, and the games are under them. */
 @media (min-width: 700px) and (min-height: 450px) and (orientation: landscape) {
   .screen main.games {

@@ -192,7 +192,14 @@ async function purgeOne(deps: PurgeDeps, id: string, userId: string, now: Date):
  * which frees its name (a draft may not have every answer a game that is off Ruken must keep). The rows stay, because
  * money and records may point at a game. Their videos' rows go; the videos themselves were deleted just before.
  */
-async function takeGamesOff(tx: Pick<PrismaClient, "game" | "gameClip">, userId: string): Promise<void> {
+async function takeGamesOff(
+  tx: Pick<PrismaClient, "game" | "gameClip" | "gameHeldClip">,
+  userId: string,
+): Promise<void> {
+  // A live game's change that waited for a yes goes with it: the database holds such a change to a live game, so the
+  // columns are cleared in the same write that takes the game off. The held videos' files share the game's folder of
+  // clips, which was deleted just before.
+  await tx.gameHeldClip.deleteMany({ where: { game: { makerUserId: userId } } });
   await tx.game.updateMany({
     where: { makerUserId: userId, state: { in: ["live", "waiting"] } },
     data: {
@@ -201,6 +208,8 @@ async function takeGamesOff(tx: Pick<PrismaClient, "game" | "gameClip">, userId:
       livePullId: null,
       pendingPullId: null,
       pendingSince: null,
+      heldAgeRating: null,
+      heldContentMarks: [],
       toFix: [],
     },
   });

@@ -94,6 +94,7 @@
       back={data.back}
       throwAway={data.throwAway}
       {problem}
+      keepOld={data.keepOld}
     />
   {:else if data.question === "websites"}
     <QuestionScreen
@@ -111,6 +112,7 @@
       counter={ageCounter}
       back={data.back}
       throwAway={data.throwAway}
+      keepOld={data.keepOld}
     >
       <Picks
         name="ageRating"
@@ -127,6 +129,7 @@
       counter={data.counter}
       back={data.back}
       throwAway={data.throwAway}
+      keepOld={data.keepOld}
     >
       {#if data.madeEighteen}
         <!-- The game is being made 18+: the rating is kept with its marks, in one answer. -->

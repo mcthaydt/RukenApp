@@ -274,9 +274,9 @@ describe("a live game's held changes", () => {
     const live = await insertLiveGame(makerId, "hhhhhhhhh4");
     await holdRatingAndMarks(live, "age_7", []);
     // Taking a game off must clear them in the same write.
-    await expect(db().$executeRaw`UPDATE "Game" SET "state" = 'taken_off' WHERE "id" = ${live}`).rejects.toThrow(
-      /Game_held_check/,
-    );
+    await expect(
+      db().$executeRaw`UPDATE "Game" SET "state" = 'taken_off' WHERE "id" = ${live}`,
+    ).rejects.toThrow(/Game_held_check/);
   });
 
   it("refuse marks without a held 18+, and a held 18+ without marks", async () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   listWords,
   nextStepWords,
+  sentBackStillOpen,
   stateParts,
   stateWords,
   toFixWords,
@@ -209,5 +210,48 @@ describe("nextStepWords", () => {
   it("has no next step for a game that was taken down or thrown away", () => {
     expect(nextStepWords({ ...base, state: "taken_down", stateReason: "It broke a rule." })).toBeNull();
     expect(nextStepWords({ ...base, state: "thrown_away" })).toBeNull();
+  });
+});
+
+// A live game whose update was sent back only for a video or the rating, where the maker kept the old one, is plain
+// live again (audit 5, note N1); a send back for a line or the files stays open.
+describe("sentBackStillOpen", () => {
+  const plain = {
+    state: "live" as const,
+    newestDecision: "sent_back" as const,
+    newestParts: ["wide_video" as const],
+    hasHeld: false,
+    toFixCount: 0,
+    pullProblem: null,
+    newestPullIsLive: true,
+  };
+
+  it("is open for a send back that nothing has mended yet", () => {
+    expect(sentBackStillOpen({ ...plain, toFixCount: 1 })).toBe(true);
+    expect(sentBackStillOpen({ ...plain, hasHeld: true })).toBe(true);
+  });
+
+  it("is closed when the only part sent back was a held one, nothing is held, and nothing is left to fix", () => {
+    expect(sentBackStillOpen(plain)).toBe(false);
+    expect(sentBackStillOpen({ ...plain, newestParts: ["wide_video", "age_rating"] })).toBe(false);
+  });
+
+  it("stays open for a send back that named a line or the files", () => {
+    expect(sentBackStillOpen({ ...plain, newestParts: ["one_line"] })).toBe(true);
+    expect(sentBackStillOpen({ ...plain, newestParts: ["wide_video", "files"] })).toBe(true);
+  });
+
+  it("stays open while GitHub refused the newest copy, or a newer copy than the live one waits", () => {
+    expect(sentBackStillOpen({ ...plain, pullProblem: "No index.html." })).toBe(true);
+    expect(sentBackStillOpen({ ...plain, newestPullIsLive: false })).toBe(true);
+  });
+
+  it("is false when staff's newest word was a yes, or there is none", () => {
+    expect(sentBackStillOpen({ ...plain, newestDecision: "accepted" })).toBe(false);
+    expect(sentBackStillOpen({ ...plain, newestDecision: undefined })).toBe(false);
+  });
+
+  it("does not apply to a game that is not live", () => {
+    expect(sentBackStillOpen({ ...plain, state: "sent_back" })).toBe(true);
   });
 });

@@ -133,6 +133,15 @@ export async function showsPlayerCountOf(slug: string): Promise<boolean> {
     .showsPlayerCount;
 }
 
+/** The email of the account that made a game: what a journey gives a page or a sign-in to. */
+export async function makerEmailOf(slug: string): Promise<string> {
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { maker: { select: { email: true } } },
+  });
+  return game.maker.email;
+}
+
 /** A game's own ids, read from its row: what a journey needs to look inside the game. */
 export async function idsOf(slug: string): Promise<{ id: string; publicId: string; makerUserId: string }> {
   return db().game.findUniqueOrThrow({

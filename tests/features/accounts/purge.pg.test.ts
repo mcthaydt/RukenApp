@@ -441,6 +441,35 @@ describe("purgeDueAccounts", () => {
     expect(await db().gameClip.count({ where: { gameId: made.others.id } })).toBe(1);
   });
 
+  // A live game's change that waits for a yes goes with the game (unit A): the database holds such a change to a live
+  // game, so the purge must clear it in the same write that takes the game off, or it could not finish.
+  it("finishes for a maker whose live game holds a new video and rating, and leaves nothing of them behind", async () => {
+    const leaving = await seedPerson();
+    const live = await seedGame(leaving.id, "live");
+    const heldKey = `clips/${live.publicId}/wide-${"1".repeat(16)}.mp4`;
+    await files.put(heldKey, new Uint8Array([4, 5, 6]));
+    await db().gameHeldClip.create({
+      data: { gameId: live.id, shape: "wide", key: heldKey, contentType: "video/mp4", bytes: 3 },
+    });
+    await db().game.update({
+      where: { id: live.id },
+      data: { heldAgeRating: "age_18", heldContentMarks: ["gore"] },
+    });
+    const clock = await askToBeDeleted(leaving.id);
+
+    clock.advance(15 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
+
+    expect(await stateOf(live.id)).toMatchObject({ state: "taken_off" });
+    expect(await db().gameHeldClip.count({ where: { gameId: live.id } })).toBe(0);
+    expect(await db().game.findUniqueOrThrow({ where: { id: live.id } })).toMatchObject({
+      heldAgeRating: null,
+      heldContentMarks: [],
+    });
+    expect(await files.head(heldKey)).toBeNull();
+    expect(await files.hasAny(`clips/${live.publicId}/`)).toBe(false);
+  });
+
   // One account the bucket fails on must not stop everyone else's deletion, today or on any later day.
   it("finishes the other accounts when one fails, reports the failure, and finishes that one on the next run", async () => {
     const failing = await seedPerson();

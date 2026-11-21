@@ -94,7 +94,7 @@ test("the Owner sends a game back, and its maker reads the Owner's words", async
   await expect(page.getByText("It's sideways. Turn it the right way up.")).toBeVisible();
 });
 
-test("a live game's update can't be sent back for what its maker can't fix", async ({
+test("a live game's update can't be sent back for a video or rating that holds no change", async ({
   request,
   page,
   browser,
@@ -113,7 +113,8 @@ test("a live game's update can't be sent back for what its maker can't fix", asy
   );
   expect(refused.status()).toBe(400);
   expect(await asJson(refused)).toEqual({
-    problem: "A live game can only be sent back for its name, its line or its files.",
+    problem:
+      "A live game can only be sent back for its name, its line, its files, or a video or rating that is waiting.",
   });
   // The update still waits.
   const again = (await asJson(await reviewJob(request, { do: "list" }, browser))) as {

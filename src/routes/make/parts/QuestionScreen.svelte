@@ -21,6 +21,7 @@
     back,
     throwAway,
     enterHint = true,
+    keepOld = false,
     busyWords = "Saving…",
     busyLine,
     forward,
@@ -36,6 +37,8 @@
     throwAway?: string | undefined;
     /** Enter presses the blue button, except where the blue button opens a file picker. */
     enterHint?: boolean;
+    /** A live game's change that waits for a yes: a quiet button drops it, and players keep what they see. */
+    keepOld?: boolean;
     /** What the blue button says from the press until the answer comes. */
     busyWords?: string;
     /** A line shown under the answer while it waits, for an answer that can take a minute. */
@@ -97,6 +100,11 @@
           <button disabled={saving} aria-busy={saving ? "true" : undefined}>
             {saving ? busyWords : counter === null ? "Save" : "Next"}
           </button>
+        {/if}
+        {#if keepOld}
+          <button class="quiet" formaction="?/keepOld" formnovalidate disabled={saving}
+            >Keep the old one</button
+          >
         {/if}
         {#if enterHint && forward === undefined && !saving}
           <span class="key">press Enter <kbd>↵</kbd></span>

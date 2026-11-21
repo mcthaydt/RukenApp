@@ -20,6 +20,7 @@
     back,
     throwAway,
     problem,
+    keepOld = false,
   }: {
     shape: "upright" | "wide";
     /** Where the video stands: its address (none until one is in), and whether a different one is being chosen. */
@@ -30,12 +31,16 @@
       howToRecord: string;
       /** The how-to's part for a video that is over the limit. */
       howToTooBig: string;
+      /** A live game's new video that waits for a yes is in the frame. */
+      waiting: boolean;
     };
     counter: { n: number; of: number } | null;
     back: string;
     throwAway: string | undefined;
     /** The server's refusal of the video that was sent, if any. */
     problem: string | undefined;
+    /** Offers to drop the video that waits for a yes. */
+    keepOld?: boolean;
   } = $props();
 
   const words = $derived(
@@ -103,6 +108,7 @@
   {back}
   {throwAway}
   enterHint={!choosing}
+  {keepOld}
   busyWords="Saving…"
   bind:saving
   forward={choosing ? picker : undefined}
@@ -113,6 +119,9 @@
     <div class="vframe" data-frame={shape}>
       <VideoTile src={video.src} {shape} />
     </div>
+  {/if}
+  {#if video.waiting}
+    <p class="note" role="status">Waiting for review. Players see the old one until it is a yes.</p>
   {/if}
   <p class="note" id="hint">
     Record your screen while you play for 10 to 30 seconds. Players see it in the feed before they play.
