@@ -141,11 +141,12 @@ export default defineConfig({
   // The Chromium projects keep the Android phone's and the iPad's windows. The "-webkit" projects run the same journeys
   // in Safari's engine, the one an iPhone or iPad really uses, with the iPhone's and iPad's own windows, pixel density
   // and touch. The computer stays on Chromium.
-  // The three devices the owner chose (2026-11-21): the smallest iPhone in Safari's engine, an iPad in Chrome's, and a
-  // computer. Both engines stay checked, and each journey runs three times, not nine. A journey that needs another
+  // The three devices the owner chose (2026-11-21): a small iPhone in Safari's engine, an iPad in Chrome's, and a
+  // computer. The small iPhone is today's iPhone SE (375 wide); the old 320-wide iPhone SE is a window the journeys
+  // written for it set themselves. Both engines stay checked, and each journey runs three times, not nine. A journey that needs another
   // window, such as a phone held sideways, sets that window itself.
   projects: [
-    { name: "phone", use: { ...devices["iPhone SE"] } },
+    { name: "phone", use: { ...devices["iPhone SE (3rd gen)"] } },
     { name: "tablet", use: { ...devices["iPad (gen 7)"], defaultBrowserType: "chromium" } },
     { name: "computer", use: { ...devices["Desktop Chrome"] } },
   ],
