@@ -9,7 +9,8 @@ import {
   yearsAgo,
   SITE_ANSWER_TIMEOUT,
 } from "./support/account.ts";
-import { boxOf, pipRed, showTheOwner } from "./support/look.ts";
+import { addGame } from "./support/game.ts";
+import { boxOf, expectFrame, expectOneCard, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -161,4 +162,74 @@ test("Not now goes back to the game the person came from, and to the front page 
   await expect(page.getByRole("link", { name: "Not now" })).toHaveAttribute("href", "/g/some-game");
   await page.goto("/join?next=/me");
   await expect(page.getByRole("link", { name: "Not now" })).toHaveAttribute("href", "/");
+});
+
+// The card over the clip (design 5.3): a stranger who presses Play on a game meets the card with that game's clip, dimmed,
+// behind it. The card itself does not change.
+test.describe("the card over a game's clip", () => {
+  let game: Awaited<ReturnType<typeof addGame>>;
+  test.beforeAll(async ({ browser, request }) => {
+    test.setTimeout(120_000);
+    game = await addGame(browser, request);
+  });
+
+  test("a stranger who presses Play meets the card over that game's clip", async ({ page }, testInfo) => {
+    await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("link", { name: "Play" }).click();
+    await expect(page.getByRole("heading", { name: "Join Ruken to play" })).toBeVisible();
+    await expect(page).toHaveURL(/\/join\?next=/);
+
+    const clip = page.locator(".behindcard video");
+    await expect(clip).toHaveCount(1);
+    await expectFrame(clip);
+    // Where a video may move by itself (quiet-video.ts), the clip is playing, in the window's own shape.
+    const mayPlay = await page.evaluate(() => {
+      const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+      return !matchMedia("(prefers-reduced-motion: reduce)").matches && (memory === undefined || memory >= 4);
+    });
+    if (mayPlay) {
+      await expect.poll(() => clip.evaluate((video: HTMLVideoElement) => video.paused)).toBe(false);
+    }
+    await expect(page.locator(".behindcard")).toHaveAttribute("aria-hidden", "true");
+    await expect(clip).toHaveAttribute("tabindex", "-1");
+    await expect(page.locator(".behindcard")).toHaveCSS("pointer-events", "none");
+    // One flat layer of the darkest felt at 62% over it.
+    const dim = await page
+      .locator(".behindcard")
+      .evaluate(
+        (node) =>
+          getComputedStyle(node, "::after").backgroundColor + "|" + getComputedStyle(node, "::after").opacity,
+      );
+    expect(dim).toBe(`${rgb(token("--felt-deep"))}|0.62`);
+
+    // The card is the same card, above the clip.
+    await expectOneCard(page);
+    await expect(page.getByRole("button")).toHaveCount(1);
+    // Tab goes to the card's own controls, never to the clip.
+    await page.keyboard.press("Tab");
+    expect(await page.evaluate(() => document.activeElement?.closest(".behindcard") ?? null)).toBeNull();
+    await showTheOwner(page, testInfo, "the price card over a clip");
+
+    await page.getByRole("link", { name: "Not now" }).click();
+    await expect(page).toHaveURL(new RegExp(`/g/${game.slug}$`));
+  });
+
+  test("the game's own page address puts the same clip behind the card", async ({ page }) => {
+    await page.goto(`/join?next=${encodeURIComponent(`/g/${game.slug}`)}`);
+    await expect(page.locator(".behindcard video")).toHaveCount(1);
+    await page.getByRole("link", { name: "Not now" }).click();
+    await expect(page).toHaveURL(new RegExp(`/g/${game.slug}$`));
+  });
+
+  test.describe("any other address has no clip", () => {
+    for (const next of ["/me", "/g/no-such-game/play", "/g/x/play/beat"]) {
+      test(`next=${next}`, async ({ page }) => {
+        const answer = await page.goto(`/join?next=${encodeURIComponent(next)}`);
+        expect(answer?.status()).toBe(200);
+        await expect(page.getByRole("heading", { name: "Join Ruken to play" })).toBeVisible();
+        await expect(page.locator("video")).toHaveCount(0);
+        await expectOneCard(page);
+      });
+    }
+  });
 });
