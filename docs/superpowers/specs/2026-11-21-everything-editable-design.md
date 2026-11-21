@@ -1,8 +1,8 @@
 # Everything is editable
 
-Date: 2026-11-21. Status: **spec and plan, revised after plan audit 1 (f6d9167 FAIL, 6 red); waiting on plan audit 2.** Read against `main` at 583661f.
+Date: 2026-11-21. Status: **spec and plan, revised after plan audit 1 (f6d9167 FAIL, 6 red); unit C struck by the owner 14:41 UTC; waiting on plan audit 2.** Read against `main` at 583661f.
 
-Lane 3 as a whole (units A and C add migrations; unit E removes real data). Each unit's own lane is in section 6.
+Lane 3 as a whole (unit A adds a migration; unit E removes real data). Each unit's own lane is in section 6.
 
 Lines marked **Owner** are the owner's words. Lines marked **Call** are this spec's choices; the owner can overrule any of them.
 
@@ -13,6 +13,7 @@ Lines marked **Owner** are the owner's words. Lines marked **Call** are this spe
 - **Owner, 2026-11-21 14:29 UTC:** "Nothing should be permanent for this app, everything is editable - you know, like literally every other professional app?"
 - **Owner, 2026-11-21 14:31 UTC, on a card:** "Keep them instant": a live game's new name or one line shows to players right away, as today. Videos, rating, files and websites wait for review.
 - **Owner, 2026-11-21 14:31 UTC, on a card:** "Ask Ruken for help": a wrong birthday is fixed by staff, never by the person alone, so the 18+ check holds.
+- **Owner, 2026-11-21 14:41 UTC, on a card:** "Keep the address": a live game keeps its address when it is renamed, as decided on 2026-11-14. Unit C is struck.
 - **Owner, 2026-11-21 03:12 UTC:** slice 3 is parked. This spec lists the maker's page and builds none of it.
 
 ## 1. The outcome
@@ -31,7 +32,7 @@ Read from the code at 583661f. "Locked" means the app has no screen or refuses t
 | 4 | Waiting game: throw it away | Locked | `throwAway` takes only `draft` and `sent_back` | Unit B |
 | 5 | Game taken off Ruken: change any answer | Locked | `saveAnswer` refuses `taken_off`; the screen offers only "Put it back" | Unit B |
 | 6 | Game taken off Ruken: delete it for good | Locked | `throwAway` refuses `taken_off` | Unit B |
-| 7 | Game address after the first yes | Frozen, even when the game is renamed | `saveAnswer`, case `name`: the slug moves only while `game.reviews.length === 0` | Unit C |
+| 7 | Game address after the first yes | Frozen, even when the game is renamed | `saveAnswer`, case `name`: the slug moves only while `game.reviews.length === 0` | Stays frozen: the owner's decision, 2026-11-14 and again 2026-11-21 14:41 UTC |
 | 8 | Account email | No screen | `/me` shows it and offers no change | Unit D |
 | 9 | Account password while signed in | Only by the "forgot password" mail | no screen | Unit D |
 | 10 | Birthday | Worked out once at sign-up (`User.adultOn`) | no screen | Waits (section 7) |
@@ -58,11 +59,11 @@ These are facts about what happened, not settings, and nobody edits them. Each i
 ## 4. Boundaries
 
 - No new dependency, tool, environment or spend.
-- Nothing runs on the owner's computer. No owner step is needed for units A to D. Deploying is the owner's as always (`pnpm run deploy`), after the migrations in A and C are applied.
+- Nothing runs on the owner's computer. No owner step is needed for units A, B, D and E. Deploying is the owner's as always (`pnpm run deploy`), after unit A's migration is applied.
 - Not touched: the feed, the maker's page, `src/features/money/`, `src/features/membership/`, `cloudflare/`, `.github/`, CLAUDE.md and the skills.
 - Browsers and devices: the three profiles in Settings (small phone, tablet, computer). Emulation evidence.
-- Expected duration, as session time (estimates): A 4 hours, B 2 hours, C 2 hours, D 3 hours, E 2 hours.
-- Slice: A, B and C finish slice 2's game screens ("confirm slice 2 is perfect"); D adds to slice 1's account page. Each goes through a design review round with its screens before the owner's look (`visual-check`).
+- Expected duration, as session time (estimates): A 4 hours, B 2 hours, D 3 hours, E 2 hours.
+- Slice: A, B and E finish slice 2's game screens ("confirm slice 2 is perfect"); D adds to slice 1's account page. Each goes through a design review round with its screens before the owner's look (`visual-check`).
 
 ## 5. The changes
 
@@ -107,17 +108,9 @@ Making a live game 18+ asks the marks before anything is kept, as a waiting game
 - `saveAnswer` and `saveClip` take `taken_off`. The Taken off screen lays the game out as Sent back does, with a "Change" on every part, above "Put it back on Ruken", and a quiet "Delete it for good" leading to the throw-away screen. Putting it back sends it for review as today, so nothing changed here reaches players unchecked.
 - A game staff took down (`taken_down`) is not changed here: no staff screen exists to take one down or let it back (slice 4).
 
-### 5.3 Unit C: a renamed game's address follows its name, and the old address still works
+### 5.3 Unit C: struck
 
-**Open decision, the owner's (plan audit 1, R5). Unit C is not built until the owner answers the card in section 7.** The frozen address is the owner's own decision: `2026-11-14-maker-screens-redesign-design.md`, "Owner, 2026-11-14: 'B'", with the screen words "Its address on Ruken stays the same, so links you've shared keep working." The new fact since then is the owner's "Nothing should be permanent". If the owner chooses to move the address, this is what is built:
-
-- The words `ADDRESS_STAYS` on the name question (`src/routes/make/[game]/[question=question]/+page.svelte`) change to "Its address changes with the name. Old links still work.", with the test that reads them.
-
-- New table `GameAddress` (`slug` unique, `gameId`, `createdAt`): a game's former addresses. CHECK on `slug` in the form of `Game_slug_check`.
-- `saveAnswer`, case `name`, for a game with a yes: the new slug is the first free one for the name, where free means no game and no other game's former address has it. The old slug is written to `GameAddress` in the same transaction. Renaming back to a former name takes that address back and removes its row.
-- `/g/<old>`, `/g/<old>/play` and `/make/<old>` (and what is under it) answer 308 to the same path at the new address. A former address that belongs to a game not live is a 404 on `/g/`, as that game's own address is.
-- A game keeps its 5 newest former addresses; an older one is freed. Throwing a game away and the account purge free them all.
-- The migration only adds the table.
+A renamed game's address moving with its name was planned here. The owner chose "Keep the address" (2026-11-21 14:41 UTC), so nothing is built and the letter C is not reused.
 
 ### 5.4 Unit D: change your email and your password on the account page
 
@@ -143,11 +136,10 @@ Making a live game 18+ asks the marks before anything is kept, as a waiting game
 |---|---|---|---|---|---|
 | A. Live videos and rating | 3 (migration) | this spec merged; the pull request of `claude/project-thread-u1uamt` merged (it reads that Live flow and edits the same files) | `prisma/schema/games.prisma`, one new folder in `prisma/migrations/`, `src/features/games/` (service, clips, laid-out, review words), `src/routes/make/[game]/` and `src/routes/make/parts/LiveScreen.svelte`, `src/routes/jobs/review/+server.ts`, tests under `tests/features/games/`, `tests/browser/` | 5.1 | criteria A1 to A10 |
 | B. Waiting and taken-off games | 2 | A merged (same service file and make screens) | `src/features/games/service.ts`, `src/routes/make/[game]/`, `src/routes/make/parts/` (Waiting, Taken off), tests | 5.2 | criteria B1 to B5 |
-| C. Address follows the name | 3 (migration) | **the owner's answer to the card in section 7**; then B merged (same `saveAnswer`, same schema file as A) | `prisma/schema/games.prisma`, one migration, `src/features/games/service.ts`, `src/routes/g/[game]/`, `src/routes/make/own-game.server.ts`, `src/routes/make/[game]/[question=question]/+page.svelte` (the `ADDRESS_STAYS` words), tests | 5.3 | criteria C1 to C6 |
-| D. Email and password | 2 (sign-in) | this spec merged; nothing else: it shares no file with A to C | `src/features/accounts/` (auth, forms, mails), `src/routes/me/`, tests | 5.4 | criteria D1 to D7 |
+| D. Email and password | 2 (sign-in) | this spec merged; nothing else: it shares no file with A, B or E | `src/features/accounts/` (auth, forms, mails), `src/routes/me/`, tests | 5.4 | criteria D1 to D7 |
 | E. Games come off with the account | 3 (removes real data) | B merged (it uses `throwAway` for a waiting game, and A's `takeOff`) | `src/features/accounts/deletion.ts`, where the purge job is put together (`src/routes/jobs/purge-accounts/+server.ts` and the accounts services), `src/features/games/service.ts` (only if a repeat-safe entry is needed), tests | 5.5 | criteria E1 to E4 |
 
-- A and D run side by side. B follows A; C (if the owner says yes) and E follow B: they edit the same functions. C and E share only `service.ts`; the one that starts second starts from a `main` that holds the first.
+- A and D run side by side. B follows A and E follows B: they edit the same functions.
 - Unit D changes how a sign-in is changed. The lane lists name "credentials" under lane 3; D's paths are lane 2. **Call:** D is audited as lane 3 (a fresh implementation audit on Opus 5.5 medium), since a mistake here locks a person out or lets one in (plan audit 1, N4).
 - Each unit is one branch and one pull request: build, then the audit its lane calls for (lane 2: one fresh review; lane 3: a fresh implementation audit), fixes on the same branch, then merge. Lane 3 units merge under the owner's standing permission in `history.md` ("Merge PRs yourself once CI, reviews and audits pass"); if the coordinator finds that permission does not cover a migration, it asks the owner by name before the merge.
 - Builders: Sonnet 5.5, medium (Settings: execution against a spec). Unit A is marked hard, so high, because it changes what an accept does inside the money-adjacent review transaction. Audits: lane 3 on Opus 5.5 medium; lane 2 on the builder's model, medium.
@@ -169,12 +161,6 @@ Making a live game 18+ asks the marks before anything is kept, as a waiting game
 2. Journeys first (failing): B1, B3, B4.
 3. `throwAway`, `saveAnswer`, `saveClip` state rules; Waiting and Taken off screens.
 
-### Unit C steps
-
-1. Journey first (failing): C1.
-2. Schema, migration, pg tests (C4).
-3. `saveAnswer` and `freeSlug`; the forwards on `/g/` and `/make/`; freeing on throw-away and purge.
-
 ### Unit D steps
 
 1. Read the installed better-auth's change-email and change-password documentation and types; report and stop if they need a schema change.
@@ -188,7 +174,6 @@ Making a live game 18+ asks the marks before anything is kept, as a waiting game
 
 ## 7. What waits, and on what
 
-- **Open decision: the game's address (unit C).** Asked of the owner on a card, 2026-11-21: "When a live game is renamed, should its address change too?" Options: "Keep the address" (as decided 2026-11-14; nothing is built) or "Change it, old links still work" (unit C). Recommended: keep the address. It is the one thing in section 2 that is frozen to protect the maker's own shared links, and moving it adds a table and forwards for a small gain. Unit C waits on the answer; nothing else does.
 - **A member's receipts after an email change (plan audit 1, R6).** Stripe keeps the address the customer was made with. Updating it is a change to `src/features/membership/` (lane 3) and belongs with slice 5, which decides what Stripe is told and when. Until then receipts go to the old address, and the change-email screen says so (5.4).
 
 - **Birthday (row 10).** The owner chose "Ask Ruken for help". Ruken has no way to be written to today (no address, no form; the help chat is roadmap "before launch" and needs slice 4's admin). It waits for those two: then the account page says how to ask, and a staff screen changes `adultOn`. Until then a wrong birthday cannot be fixed. Nothing is built here.
@@ -207,7 +192,7 @@ A gap against any of these blocks the unit. All journeys are Playwright tests in
 - G2. Every new screen and button works with the keyboard alone, with focus visible; a journey tabs to and presses each new button.
 - G3. Every action finds the game or account among the signed-in person's own: a journey or pg test shows another person's game, held change or account is a 404 or a refusal for each new action.
 - G4. Each new screen has one blue button, words a person says out loud, and its refusal shown beside what caused it with what was typed kept. Checked by the design round's fresh reviewer.
-- G5. The pull request body names every existing test it changes and why. Expected: the tests that assert a live game's videos and rating are refused (`make-after`), the 404 for a live game's questions, `throwAway`'s refusals for waiting and taken-off games, and the test that a renamed accepted game keeps its address.
+- G5. The pull request body names every existing test it changes and why. Expected: the tests that assert a live game's videos and rating are refused (`make-after`), the 404 for a live game's questions, `throwAway`'s refusals for waiting and taken-off games, and nothing else.
 - G6. No file outside the unit's row in section 6 changes, but for the live-state file (deleted before the audit) and this spec's ticked steps.
 
 **Unit A**
@@ -231,16 +216,6 @@ A gap against any of these blocks the unit. All journeys are Playwright tests in
 - B3. Journey: a taken-off game's line and upright video are changed from the Taken off screen; "Put it back on Ruken" sends it; staff accept; `/g/<game>` shows the new line and video.
 - B4. Journey: a taken-off game is deleted for good; it leaves Your games; its address is a 404; its clip addresses answer 404.
 - B5. pg test: `throwAway` still refuses `live`, `taken_down` and a game already thrown away; another maker's game is "not found" in every state.
-
-**Unit C**
-
-- C1. Journey: a live game is renamed; `/g/<new>` shows it; `/g/<old>` and `/g/<old>/play` forward to the new address and the game plays with the save it had (same `publicId` in the play address); `/make/<old>` forwards to `/make/<new>`.
-- C2. Journey: renamed back, the game is at its first address again and the middle address forwards to it.
-- C3. pg test: a new game cannot take a name whose address is another game's former address; after that game is thrown away it can.
-- C4. pg tests: `GameAddress.slug` is unique and held to its form; a sixth former address frees the oldest.
-- C5. A former address of a game that is not live answers 404 on `/g/`.
-
-- C6. The name question of a game that has had a yes says "Its address changes with the name. Old links still work."; the test that read the old words reads these.
 
 **Unit D**
 
@@ -266,6 +241,5 @@ A gap against any of these blocks the unit. All journeys are Playwright tests in
 - **Unit A has no start date.** At plan audit 1 no pull request existed for `claude/project-thread-u1uamt`; A waits on its merge.
 - **The other thread's Live flow is not merged yet.** Unit A's send is written against today's `sendForReview`; if that thread changes how a live save is sent, step A1 follows it, and a difference that changes section 5.1 comes back as a spec amendment before code.
 - **Old clip files.** A failure after an accept can leave a replaced file in the bucket. Nothing points at it and its address is unguessable; no sweep is built.
-- **Address forwards are kept for 5 names.** A link to a sixth-oldest name stops working and could later lead to another game of that name.
 - **Real phones are not measured.** Device results are emulation.
 - **Not fixed here, reported before:** games named "New" or "Github" are shadowed by `/make` routes; the launch switch is checked only in `src/features/launch`.
