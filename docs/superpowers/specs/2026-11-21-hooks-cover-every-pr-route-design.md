@@ -1,6 +1,6 @@
 # Every way to open or edit a pull request goes through the same hook checks
 
-Date: 2026-11-21. Status: **spec, revised after plan audit 1 (40631f9 FAIL, 9 red) and plan audit 2 (ae8bfa9 FAIL, 8 red), then rebuilt around a check on GitHub's side; waiting on plan audit 3.** Lane 3: it changes `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.claude/settings.json`, `.github/workflows/commit-authors.yml` and CLAUDE.md, which decide what needs the owner.
+Date: 2026-11-21. Status: **spec, revised after plan audit 1 (40631f9 FAIL, 9 red) and plan audit 2 (ae8bfa9 FAIL, 8 red), then rebuilt around a check on GitHub's side; revised after plan audit 3 (30ed0ef FAIL, 7 red); waiting on plan audit 4.** Lane 3: it changes `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.claude/settings.json`, `.github/workflows/commit-authors.yml` and CLAUDE.md, which decide what needs the owner.
 
 Lines marked **Owner** are the owner's words. Lines marked **Call** are this spec's choices; the owner can overrule any of them.
 
@@ -35,20 +35,25 @@ The pull request rules are enforced on GitHub, where no tool or shell trick reac
 
 ### 3.1 `pr-rules`, the check on GitHub (the guard)
 
-A workflow `.github/workflows/pr-rules.yml`, on `pull_request_target` (`opened`, `reopened`, `edited`, `synchronize`, `ready_for_review`, `converted_to_draft`), `pull_request_review` (`submitted`) and `issue_comment` (`created`, on pull requests). It checks out the **base** branch only, never the pull request's code, and runs `node scripts/pr-rules.mjs` with the event's pull request number. Permissions: `contents: read`, `pull-requests: write` (to close and comment), `issues: write` (comments).
+A workflow `.github/workflows/pr-rules.yml`, whose job is named `pr-rules-run`. It runs only on events that use `main`'s copy of the workflow (audit 3 R1): `pull_request_target` (`opened`, `reopened`, `edited`, `synchronize`, `ready_for_review`, `converted_to_draft`) and `issue_comment` (`created`, `edited`, `deleted`, on pull requests; audit 3 N1). It has no `pull_request` or `pull_request_review` trigger: reviewers post verdicts as comments, which the `review` skill already allows. It checks out `main` only (`actions/checkout` pinned by sha, `ref: main`, `persist-credentials: false`), installs nothing, and runs `node scripts/pr-rules.mjs` with only the pull request number passed in through `env:` (audit 3 R6). Permissions: `contents: read`, `pull-requests: write` (close), `issues: write` (comment), `statuses: write`. Concurrency: one group per pull request, no `cancel-in-progress` (audit 3 N3).
+
+**The required result is a commit status the script writes (audit 3 R2).** Whatever event started it, the script writes a commit status named `pr-rules` on the head commit it read for that pull request (`success` or `failure`, with the first failing rule as the description), so a comment verdict turns the pull request's check green or red. The job's own name, `pr-rules-run`, never collides with it.
 
 `scripts/pr-rules.mjs` reads the pull request, its files and its comments and reviews through the REST API, and fails (exit 1, with one `::error::` line per rule) when:
 
 1. **Open limit.** More than `maxOpenPrs` (3, read from `.claude/hooks/rules.json`) pull requests are open. Ordered by creation time, the pull requests beyond the third are over the limit. On `opened` or `reopened` of an over-limit pull request, the script also closes it, with the comment "Closed: 3 pull requests are already open (#a, #b, #c). Reopen this when one merges or closes." Every pull request counts, docs included (Owner, 3.5).
 2. **Lane.** The body names no lane, or names a lane lower than its files' lane (the same `lanePaths` and `lanePathsExcept` from `rules.json` the hook uses).
 3. **Acceptance criteria.** The body has no "Acceptance criteria" heading and the files go beyond docs (`ruleMix.docPaths`).
-4. **Draft.** A lane 2 or 3 pull request that is not a draft has no passing verdict naming its head commit, by the verdict format the hook's `verdicts` reads ("<7+ hex> PASS" as the first line of a comment or review, the latest verdict for that commit wins). A clean merge of `main` after the verdict keeps it, as `onlyCleanMerges` does in the hook.
+4. **Workflows.** A pull request that changes `.github/workflows/**` fails unless its body names lane 3 (audit 3 R1).
+5. **Draft.** A lane 2 or 3 pull request that is not a draft has no passing verdict naming its head commit, by the verdict format the hook's `verdicts` reads ("<7+ hex> PASS" as the first line of a comment or review, the latest verdict for that commit wins). A clean merge of `main` after the verdict keeps it, as `onlyCleanMerges` does in the hook.
+
+Rule 3 judges "beyond docs" with a docs list that leaves out `.claude/**`, so a hook-only change needs criteria (audit 3 N5). An over-limit pull request left open from before is re-judged on its next event; a `closed` event on another one does not re-judge it, so it stays red until touched, which is safe (audit 3 N2).
 
 The lane, criteria and verdict functions move out of `rules.mjs` into `scripts/pr-rules-lib.mjs`, imported by both the hook and `scripts/pr-rules.mjs`, so the client and GitHub judge by one piece of code.
 
 **Call:** close over-limit pull requests, rather than only failing them. Failing alone stops a merge but leaves the overrun open, which is what the owner objected to. Closing is undone by reopening, and a reopen meets the same check.
 
-**Owner step, one command, after `pr-rules.yml` is on `main`:** add `pr-rules` to the required checks on `main` (with `gate` and `commit-authors`). Only the owner's account can change branch protection; it goes to the owner as one `gh api` command in the coordinator's report, and until it runs the check is reported as "runs but is not required".
+**Owner step, one command, after `pr-rules.yml` is on `main`:** add `pr-rules` to the required checks on `main` (with `gate` and `commit-authors`), with no app pin unless criterion 20's measurement shows a `GITHUB_TOKEN` status carries the pinned app id. Sessions' tokens can change branch protection (audit 3 R5), but what is required is the owner's choice, so it stays the owner's command and the hook refuses it for sessions (3.4). Until it runs, the check is reported as "runs but is not required".
 
 ### 3.2 The proxy's footer (F4; unchanged since plan audit 2)
 
@@ -72,7 +77,7 @@ Kept narrow. Each item is cheap and fixes a measured false answer:
 
 ### 3.4 The allowlist (replaces the round 2 tripwire and detective check)
 
-A Bash command that writes to GitHub's API by any program other than a plain `gh` command is refused: "use `gh` directly, or the GitHub MCP tools". The hook refuses a command when its text contains `api.github.com` (any program but `gh`), `gh` anywhere but a program position, a program word that is a variable expansion, `gh alias set|import`, `gh pr revert`, or `gh api graphql` with a `mutation`. Anything it still cannot read is caught by `pr-rules` on GitHub (3.1). The client does not try to be complete; it only keeps the honest routes fast and the odd ones refused.
+A Bash command that writes to GitHub's API by any program other than a plain `gh` command is refused: "use `gh` directly, or the GitHub MCP tools". The hook refuses a command when its text contains `api.github.com` (any program but `gh`), `gh` anywhere but a program position, a program word that is a variable expansion, `gh alias set|import`, `gh pr revert`, or `gh api graphql` with a `mutation`. It also refuses repository settings writes (audit 3 R5): a non-GET `gh api` on `branches/*/protection*`, `rulesets*`, `actions/workflows/*/(disable|enable)`, `actions/permissions*`, or `repos/<o>/<r>` itself, and `gh workflow disable|enable`, `gh ruleset` writes and `gh repo edit`. Anything it still cannot read is caught by `pr-rules` on GitHub (3.1). The client does not try to be complete; it only keeps the honest routes fast and the odd ones refused.
 
 ### 3.5 Docs-only branches and the limit (F7)
 
@@ -88,7 +93,7 @@ A Bash command that writes to GitHub's API by any program other than a plain `gh
 
 A new bullet, the first under "Rules that never bend", before **Identity**:
 
-> - **Hooks.** Every session follows the hooks, the coordinator included. A hook's refusal is the rule speaking: never route around it, not with another tool, another API path, a reworded command or another session. Every pull request create and edit goes through a route the hooks check. A route found unchecked is reported to the owner and not used until a hook covers it. A refusal that looks wrong is reported, not worked around.
+> - **Hooks.** Every session follows the hooks, the coordinator included. A hook's refusal is the rule speaking: never route around it, not with another tool, another API path, a reworded command or another session. Every pull request create and edit goes through a route the hooks check. A route found unchecked is reported to the owner and not used until a hook covers it. Posting a review verdict you did not earn is routing around a hook. A refusal that looks wrong is reported, not worked around.
 
 ## 4. Acceptance criteria
 
@@ -100,7 +105,9 @@ PR-H criteria are Vitest cases: `tests/pr-rules.test.ts` drives `scripts/pr-rule
 3. A body with no lane fails; a body naming lane 1 on a pull request that changes `.claude/hooks/rules.mjs` fails (files are lane 3); lane 3 passes.
 4. A body without "Acceptance criteria" fails when a file outside `docPaths` changes, and passes for docs only.
 5. A lane 2 pull request that is not a draft fails with no verdict, fails with "<head> FAIL" as the latest verdict, fails with a PASS naming an older commit that is not a clean merge of `main`, and passes with "<head> PASS"; a draft passes this rule.
-6. (PR-R) `pr-rules.yml` checks out the base ref, never `github.event.pull_request.head`, and its permissions are exactly those in 3.1: a `grep`/`yq` check run on PR-R's commit, its output in PR-R's body.
+6. (PR-R) A `grep` check on PR-R's commit, output in its body: `pr-rules.yml` has no `pull_request` or `pull_request_review` trigger; no `${{ github.event.* }}` other than `pull_request.number` and `issue.number`, and those only under `env:`; no `run:` line containing `${{`; `actions/checkout` pinned by sha with `ref: main` and `persist-credentials: false`; no `npm`/`pnpm install`; permissions exactly those in 3.1; a per-pull-request concurrency group without `cancel-in-progress`.
+6a. The script's status call names the head sha it read for that pull request, on every event type including `issue_comment` (stubbed API records the call).
+6b. A pull request changing `.github/workflows/x.yml` fails with a lane 1 body and passes rule 4 with lane 3; one changing `scripts/pr-rules-lib.mjs` is judged lane 3; one changing only `.claude/hooks/rules.mjs` without criteria fails rule 3.
 7. The hook and `scripts/pr-rules.mjs` import lane, criteria and verdict logic from `scripts/pr-rules-lib.mjs` (the test checks the imports and that `rules.mjs` no longer defines them).
 
 **Footer:**
@@ -114,20 +121,23 @@ PR-H criteria are Vitest cases: `tests/pr-rules.test.ts` drives `scripts/pr-rule
 13. With 3 open, a docs-only create is refused.
 14. With `rules.json` unreadable, the hook exits 1 for `mcp__github__create_pull_request`; `settings.json`'s fail-closed matcher includes it.
 15. Allowlist: `curl -X POST https://api.github.com/repos/x/y/pulls`, `G=gh; $G pr create`, `echo 5 | xargs gh pr reopen`, `python -c "...'gh'..."`, `gh alias set pc 'pr create'`, `gh pr revert 5` and `gh api graphql -f query='mutation {…}'` are refused; `gh api graphql -f query='query {…}'` and `gh pr view 5` are allowed.
+15a. Non-GET `gh api` on `repos/x/y/branches/main/protection/required_status_checks`, `repos/x/y/rulesets`, `repos/x/y/actions/workflows/1/disable` and `repos/x/y/actions/permissions`, `gh api -X PATCH repos/x/y`, `gh workflow disable ci.yml`, `gh ruleset create` and `gh repo edit` are refused; the GET forms are allowed.
 16. `post_message` with a fenced or inline `gh pr edit 270 --body-file b.md`, `request_decision` with it inside an option, and `post_message` with an attached `.md` holding it are refused; a fenced `wrangler secret put JOBS_SECRET --name ruken` is allowed.
 17. `tests/rules-merge-permission.test.ts` passes unchanged.
 
 **PR-R:**
 18. CLAUDE.md's first rule under "Rules that never bend" is the **Hooks** bullet of 3.7, word for word (grep).
-19. PR-R's own `commit-authors` run passes with its real body ending in "Requested by **McThayDT**" plus the proxy footer; PR-R's own `pr-rules` run passes; both links and the commit are in its body.
-20. After the owner's step, `gh api repos/mcthaydt/RukenApp/branches/main/protection/required_status_checks` lists `pr-rules` (checked by the coordinator; reported as not required until then).
+19. PR-R's own `commit-authors` run passes with its real body ending in "Requested by **McThayDT**" plus the proxy footer; the link and the commit are in its body. (`pr-rules` cannot run on PR-R itself, since its file is not on `main` yet; audit 3 R3.)
+20. (Coordinator, on the first pull request after PR-R merges) a `pr-rules` status appears on its head commit (`gh api repos/mcthaydt/RukenApp/commits/<head>/status`), failing before a verdict comment and passing after a `<head> PASS` comment on a lane 2 ready pull request (or the equivalent for its lane); the status's creator and app are recorded to settle the app pin. After the owner's step, `required_status_checks` lists `pr-rules`; until then it is reported as not required.
 
 ## 5. Boundaries
 
-- Files: `scripts/pr-rules.mjs`, `scripts/pr-rules-lib.mjs` (new), `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.claude/settings.json`, `tests/pr-rules.test.ts`, `tests/rules-pr-routes.test.ts` (new) in **PR-H**; `.github/workflows/pr-rules.yml` (new), `.github/workflows/commit-authors.yml`, `CLAUDE.md` in **PR-R**. Two pull requests because `ruleMix` refuses a branch mixing rules files (workflows, CLAUDE.md) with code or tests. PR-H merges first, since `pr-rules.yml` runs the script from `main`.
+- Files: `scripts/pr-rules.mjs`, `scripts/pr-rules-lib.mjs` (new; both added to `lanePaths` lane 3 in `rules.json`, and to CLAUDE.md Risk lane 3 in PR-R; audit 3 R4), `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.claude/settings.json`, `tests/pr-rules.test.ts`, `tests/rules-pr-routes.test.ts` (new) in **PR-H**; `.github/workflows/pr-rules.yml` (new), `.github/workflows/commit-authors.yml`, `CLAUDE.md` in **PR-R**. Two pull requests because `ruleMix` refuses a branch mixing rules files (workflows, CLAUDE.md) with code or tests. PR-H merges first, since `pr-rules.yml` runs the script from `main`.
 - One owner step (3.1, branch protection), handed over as one `gh api` command because only the owner's account can change branch protection.
 - No new dependency, tool, environment or spend: `pr-rules` runs on GitHub's hosted runners like `commit-authors`, under a minute per event. Expected duration: build 4 hours, audits and fixes 2 hours.
 - **What still is not seen before a call.** Scripts in files, `gh` extensions, old aliases, URLs built from variables, and commands in plain prose. `pr-rules` catches every pull request they make or change, after the fact; the 3.7 rule forbids using them.
+- **What neither the hook nor `pr-rules` sees (audit 3 R1, R5, R7).** A session posting a PASS verdict it did not earn (every comment is written as mcthaydt); a branch that adds a workflow publishing a status named `pr-rules` (rule 4 makes it lane 3, so it waits for the owner's approval); a settings change made through a route the hook cannot read. The 3.7 rule alone guards these. A verdict that carries the reviewer's session link, recorded by the coordinator, would guard the first; it is a separate change, not asked for here.
+- **Merge queue (audit 3 N6).** The repo has none. If one is added, `pr-rules` needs a `merge_group` trigger, or the queue waits forever.
 
 ## 6. Plan
 
@@ -139,15 +149,18 @@ PR-H criteria are Vitest cases: `tests/pr-rules.test.ts` drives `scripts/pr-rule
 | U4 PR-R: `pr-rules.yml`, `commit-authors.yml`, CLAUDE.md (3.1, 3.2, 3.7) | PR-H on `main` | the three files | criteria 6, 9, 18, 19 |
 | U5 owner step | U4 on `main` | branch protection | criterion 20 |
 
-PR-H holds U1 to U3 on one branch, in that order; PR-R holds U4. Tests are written first, each failing on `main` before its unit lands.
+Criteria 6a and 6b belong to U1; 15a to U3. PR-H holds U1 to U3 on one branch, in that order; PR-R holds U4. Tests are written first, each failing on `main` before its unit lands.
 
 ## 7. Open decisions for the owner
 
 1. ~~The footer route~~: decided 14:43 UTC, CI ignores the exact proxy footer.
 2. ~~The docs-only exemption~~: decided 14:48 UTC, every pull request counts.
 
-None open. 3.1's "close over-limit pull requests" is a **Call** the owner can overrule.
+3. Whether pull requests from forks (outsiders) count toward the limit (audit 3 N4). The repo is public, so three outsider pull requests could make `pr-rules` close every session's new one. **Recommended:** count only pull requests whose branch is in this repo. Until answered, the builder counts every pull request, as the owner said at 14:48.
+
+3.1's "close over-limit pull requests" is a **Call** the owner can overrule.
 
 ## 8. Audit history
 
 - Plan audit 1 (40631f9, 9 red) and plan audit 2 (ae8bfa9, 8 red) found routes past a client-only design. Their findings are answered by moving the guard to GitHub (3.1): every route they list (`gh api` field forms, GraphQL, reopen, issues paths, `curl`, aliases, shell indirection, rewritten body files, revert) ends in a pull request event that `pr-rules` judges. The client fixes kept (3.3, 3.4, 3.6) are the ones that fix a false answer or keep honest routes fast; route-by-route coverage is no longer a goal of the hook.
+- Plan audit 3 (30ed0ef, 7 red): R1 and R2 in 3.1 (main's workflow only, status on the head commit), R3 in criteria 19 and 20, R4 in section 5 and `rules.json`, R5 in 3.1 and 3.4 with criterion 15a, R6 in criterion 6, R7 in 3.7 and section 5. N1, N2, N3, N5, N6 taken in; N4 is open decision 3; N7 refreshed in this commit.
