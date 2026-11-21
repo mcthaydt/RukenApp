@@ -14,7 +14,7 @@
 
 {#if preview !== undefined}
   <aside class="preview">
-    <p>What players will see</p>
+    <p>{preview.waits ? "What players will see after we say yes" : "What players will see"}</p>
     <div class="card">
       <div>
         <VideoTile src={preview.video} shape="upright" still />

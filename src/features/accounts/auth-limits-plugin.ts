@@ -120,6 +120,20 @@ export function codesPausedError(): APIError {
   });
 }
 
+/**
+ * The limit on the password change on the account page. It starts by checking the current password, so it gets the
+ * same 5 a minute per client address and number as password sign-in. The pause after ten wrong passwords
+ * (sign-in-guards.ts) counts these guesses too. Answers false when the limit is used up.
+ */
+export async function hitPasswordChangeLimit(
+  deps: WrongCodeDeps,
+  number: string,
+  clientAddress: string,
+): Promise<boolean> {
+  const key = `api:auth:/account/change:${clientAddress}:${hashNumber(number, deps.secret)}`;
+  return (await deps.limiter.hit(key, { max: 5, windowMs: ONE_MINUTE_MS })).allowed;
+}
+
 export interface AuthLimitsOptions extends WrongCodeDeps {
   /** The header auth.ts trusts for the client address. Every route overwrites it. */
   clientIpHeader: string;

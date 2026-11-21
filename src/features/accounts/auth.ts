@@ -221,6 +221,9 @@ export function createAuth(options: AuthOptions) {
         // counts every code typed per client itself (forms.ts), so a number with an account and one without are
         // refused at the same try.
         "/phone-number/reset-password": { window: 15 * 60, max: 10 },
+        // The password change on the account page checks the current password first (credentials.ts, with the
+        // per-number limits); this is the per-client backstop under it.
+        "/change-password": { window: 15 * 60, max: 10 },
       },
     },
 

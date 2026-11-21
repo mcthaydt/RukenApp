@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageCheck } from "../../../src/features/accounts/age.ts";
+import { ageCheck, isAdultOn } from "../../../src/features/accounts/age.ts";
 import { TestClock } from "../../support/test-clock.ts";
 
 // Ages are worked out once, at sign-up, in America/Chicago, from the injected Clock.
@@ -70,5 +70,24 @@ describe("ageCheck", () => {
   it("calls a date after today invalid, and today itself under 13", () => {
     expect(ageCheck({ year: 2026, month: 10, day: 15 }, atMidnight)).toEqual({ kind: "invalid" });
     expect(ageCheck({ year: 2026, month: 10, day: 14 }, atMidnight)).toEqual({ kind: "under13" });
+  });
+});
+
+describe("isAdultOn", () => {
+  // adultOn is stored as a DATE, which Prisma reads as UTC midnight of that day.
+  const eighteenOn = (day: string) => new Date(`${day}T00:00:00Z`);
+
+  it("counts a person as an adult from Chicago midnight on their 18th birthday", () => {
+    expect(isAdultOn(eighteenOn("2026-10-14"), justBeforeMidnight)).toBe(false);
+    expect(isAdultOn(eighteenOn("2026-10-14"), atMidnight)).toBe(true);
+  });
+
+  it("counts a later 18th birthday as not yet, and an earlier one as an adult", () => {
+    expect(isAdultOn(eighteenOn("2031-10-14"), atMidnight)).toBe(false);
+    expect(isAdultOn(eighteenOn("1990-01-01"), atMidnight)).toBe(true);
+  });
+
+  it("counts an unknown age as not an adult", () => {
+    expect(isAdultOn(null, atMidnight)).toBe(false);
   });
 });

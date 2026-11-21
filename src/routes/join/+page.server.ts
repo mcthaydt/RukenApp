@@ -7,6 +7,7 @@ import {
   PREMIUM_PRICES_CENTS,
   type PremiumPlan,
 } from "../../features/membership/membership.ts";
+import { adultsOnlyRefusal } from "../../features/accounts/accounts.ts";
 import { gamesServices } from "../../features/games/games.ts";
 import { backFromPaywall, gameSlugOfNext } from "../../features/play/play.ts";
 import { safeNextPath } from "../../lib/safe-next.ts";
@@ -36,7 +37,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   if (slug !== null) {
     const games = gamesServices();
     const game = await games.service.liveGameBySlug(slug);
-    if (game !== null)
+    // An 18+ game's video plays behind the card only for someone known to be 18 or over.
+    if (game !== null && (await adultsOnlyRefusal(game.ageRating, caller)) === null)
       backdrop = { upright: games.media(game.clips.upright), wide: games.media(game.clips.wide) };
   }
   return {

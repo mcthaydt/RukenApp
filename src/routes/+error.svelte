@@ -8,6 +8,9 @@
   import { page } from "$app/state";
 
   const inMakersArea = $derived(page.url.pathname === "/make" || page.url.pathname.startsWith("/make/"));
+  // An 18+ game refused: the route throws one of two codes (accounts/adults.ts), never words for a person.
+  const adultsOnly = $derived(page.status === 403 && page.error?.message.startsWith("adults-only:") === true);
+  const signedOut = $derived(page.error?.message === "adults-only:signed-out");
 </script>
 
 <svelte:head>
@@ -15,7 +18,14 @@
 </svelte:head>
 
 <main class="card">
-  {#if page.status === 404}
+  {#if adultsOnly}
+    <h1>This game is only for adults.</h1>
+    {#if signedOut}
+      <p>Sign in to play it.</p>
+    {:else}
+      <p>You need to be 18 or older to play it.</p>
+    {/if}
+  {:else if page.status === 404}
     <h1>We can't find that page.</h1>
   {:else if page.status === 429}
     <h1>You've opened a lot of games just now.</h1>
@@ -24,7 +34,9 @@
     <h1>Something went wrong on our side.</h1>
     <p>Try again in a moment.</p>
   {/if}
-  {#if inMakersArea}
+  {#if adultsOnly && signedOut}
+    <p><a class="button" href="/sign-in">Sign in</a></p>
+  {:else if inMakersArea}
     <p><a class="button" href="/make">Back to your games</a></p>
   {:else}
     <p><a class="button" href="/">Back to Ruken</a></p>

@@ -210,9 +210,9 @@ test("a live game: Send a new version is the blue button, and a new version goes
   const again = page.getByRole("button", { name: "Send a new version" });
   // A send waiting on the maker is what to do next, so it is the blue button, as on Sent back (the design pass, S8).
   await expect(again).toHaveCSS("background-color", rgb(token("--pay")));
-  // The rating chip is the rating staff set, and it has no Change.
+  // The rating chip is the rating players see, and a change to it waits for staff's yes.
   await expect(page.locator(".chip", { hasText: "12+" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Change who it's for" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Change who it's for" })).toHaveCount(1);
   await showTheOwner(page, testInfo, "Live");
 
   await again.click();
@@ -223,8 +223,8 @@ test("a live game: Send a new version is the blue button, and a new version goes
 });
 
 // Spec 5c: beside the headline sit the game's one video (the shape of this window), its name and line, and where it plays;
-// the rating is added. The files and the websites are not drawn on Live, and neither is the other video.
-test("Live shows the one video for this window, the name, the line and two chips", async ({ page }) => {
+// the rating is added, and the files and websites, which she may change there. The other video is not drawn on Live.
+test("Live shows the one video for this window, the name, the line and three chips", async ({ page }) => {
   const { slug, name } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
@@ -238,12 +238,12 @@ test("Live shows the one video for this window, the name, the line and two chips
   );
   await expect(laid.getByRole("heading", { level: 2 })).toHaveText(name);
   await expect(laid.locator(".tagline")).toHaveText("A tiny game about tapping.");
-  await expect(laid.locator(".chip")).toHaveText(["12+"]);
+  await expect(laid.locator(".chip")).toHaveText(["ruken-test/tiny-game", "12+", "Uses no other websites"]);
 });
 
-// A live game's maker mends the files on GitHub, and a new version copies them. Its files question is a 404 for her, so
-// the card that says what is wrong is words only, and the copy that passes is what clears it.
-test("a live game's update sent back for its files: the card is not a link, and a new version clears it", async ({
+// A live game's maker mends the files on GitHub and a new version copies them, or she picks other files on the files
+// question the card leads to. The copy that passes is what clears it.
+test("a live game's update sent back for its files: the card leads to the files, and a new version clears it", async ({
   page,
 }) => {
   const { slug } = await answerEveryQuestion(page);
@@ -255,8 +255,7 @@ test("a live game's update sent back for its files: the card is not a link, and 
   const card = page.locator(".fix");
   await expect(card).toHaveCount(1);
   await expect(card).toContainText("Game files");
-  await expect(page.locator("a.fix")).toHaveCount(0);
-  await expect(card.getByText("Fix this")).toHaveCount(0);
+  await expect(page.locator("a.fix")).toHaveAttribute("href", `/make/${slug}/files`);
 
   await page.getByRole("button", { name: "Send a new version" }).click();
 
@@ -282,7 +281,7 @@ test("a live game's name changes and its address stays", async ({ page }, testIn
   await expect(page.locator(".laid .title")).toHaveText(renamed);
 });
 
-test("a live game offers no Change on its videos or its files, and posting one by hand is refused", async ({
+test("a live game offers Change on its videos and its rating, and a hand-made rating is refused", async ({
   page,
   baseURL,
 }) => {
@@ -290,21 +289,37 @@ test("a live game offers no Change on its videos or its files, and posting one b
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
 
-  for (const part of ["the upright video", "the wide video", "the game's files", "who it's for"]) {
-    await expect(page.getByRole("link", { name: `Change ${part}` })).toHaveCount(0);
+  // The video the window does not draw is still reached: from the list under the game.
+  for (const part of ["who it's for", "the name"]) {
+    await expect(page.getByRole("link", { name: `Change ${part}` })).toHaveCount(1);
   }
-  await expect(page.getByRole("link", { name: "Change the name" })).toBeVisible();
+  // One video has a bare Change (heard as "Change the wide video"), the other a link in words ("Change the video for
+  // phones"); which is which depends on the window.
+  for (const [shape, others] of [
+    ["upright", "phones"],
+    ["wide", "computers"],
+  ] as const) {
+    await expect(
+      page.getByRole("link", { name: new RegExp(`^Change the (${shape} video|video for ${others})$`) }),
+    ).toHaveCount(1);
+  }
   const site = baseURL ?? "http://localhost:4173";
-  expect((await page.request.get(`${site}/make/${slug}/upright`)).status()).toBe(404);
+  expect((await page.request.get(`${site}/make/${slug}/upright`)).status()).toBe(200);
+  expect((await page.request.get(`${site}/make/${slug}/wide`)).status()).toBe(200);
+  // A rating that is not one of the five is refused with words, and nothing is held.
   const posted = await page.request.post(`${site}/make/${slug}/age?/answer`, {
-    form: { ageRating: "age_3" },
+    form: { ageRating: "age_99" },
     headers: { origin: site },
   });
-  expect(posted.status()).toBe(404);
+  expect(posted.status()).toBe(400);
+  await page.goto(`/make/${slug}`);
+  await expect(page.locator(".laid .waits")).toHaveCount(0);
+  // Where a game plays is not a question, so a made-up address for it is a missing page.
+  expect((await page.request.get(`${site}/make/${slug}/plays-on`)).status()).toBe(404);
 });
 
 test("a live game's update that was sent back says what to fix", async ({ page }, testInfo) => {
-  // A live game's videos and files are not changed by its maker (slice 4), so what is sent back here is a line.
+  // What is sent back here is a line: videos and the rating are sent back only while a change to them waits.
   const { slug } = await gameWhere(page, {
     state: "live",
     toFix: [{ part: "one_line", reason: "not_this_game" }],
@@ -494,7 +509,7 @@ test("a game that is waiting or live has no way to be thrown away", async ({ pag
     await page.goto("/make");
     await expect(page.locator(`a[href="/make/${slug}"]`), slug).toHaveCount(1);
   }
-  // The questions a live game may still answer have no such link either.
+  // The questions of a live game have no such link either.
   await page.goto(`/make/${live.slug}/line`);
   await expect(page.getByRole("link", { name: "Throw this game away" })).toHaveCount(0);
 });

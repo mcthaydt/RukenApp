@@ -34,6 +34,8 @@ export const FORM_MESSAGES = {
   codesPaused: "Too many wrong codes. Codes are paused for an hour for this number.",
   closedCountry: "Ruken isn't in your country yet.",
   signUpExpired: "That took too long. Start again with your number.",
+  currentPasswordWrong: "That isn't your password. Try again.",
+  tooManyWrong: "Too many wrong passwords. Wait an hour, then try again.",
 } as const;
 
 /**
@@ -438,6 +440,7 @@ export interface FormFields {
   password: string;
   next: string;
   confirm: string;
+  newPassword: string;
   month: string;
   day: string;
   year: string;
@@ -459,6 +462,7 @@ export async function readForm(event: FormEvent): Promise<FormFields> {
     password: text("password"),
     next: text("next"),
     confirm: text("confirm"),
+    newPassword: text("newPassword"),
     month: text("month"),
     day: text("day"),
     year: text("year"),

@@ -22,6 +22,7 @@
 <main class="card">
   <h1>Your account</h1>
   <p>{data.phone}</p>
+  <p class="note"><a href="/me/password">Change password</a></p>
   <p>{data.membership.line}</p>
   {#if data.membership.button === "join"}
     <p><a class="button" href="/join?next=/me">Join Ruken</a></p>

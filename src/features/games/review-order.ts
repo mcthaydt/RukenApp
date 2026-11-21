@@ -6,7 +6,8 @@ import type { GamePart } from "../../lib/server/db.ts";
 export type ReviewOrder =
   | { do: "list" }
   | { do: "look"; game: string }
-  | { do: "accept"; game: string }
+  /** `seen` is the time a look answered; an update that holds a video or rating is accepted only with it. */
+  | { do: "accept"; game: string; seen?: string }
   | { do: "send-back"; game: string; parts: { part: GamePart; words: string }[] };
 
 const GAME_PARTS: readonly GamePart[] = [
@@ -37,7 +38,11 @@ export function readReviewOrder(body: unknown): ReviewOrder | { problem: string 
 
   const game = body.game;
   if (typeof game !== "string" || game.trim() === "") return { problem: WHICH_GAME };
-  if (action !== "send-back") return { do: action, game };
+  if (action === "accept") {
+    // Only its shape is judged here. Whether it is a time, and the time of the latest look, is for the accept to judge.
+    return typeof body.seen === "string" ? { do: "accept", game, seen: body.seen } : { do: "accept", game };
+  }
+  if (action === "look") return { do: "look", game };
 
   const { parts } = body;
   if (!Array.isArray(parts) || parts.length === 0) return { problem: WHAT_IS_WRONG };

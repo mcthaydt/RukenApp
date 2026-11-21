@@ -94,6 +94,7 @@
       back={data.back}
       throwAway={data.throwAway}
       {problem}
+      keepOld={data.keepOld}
     />
   {:else if data.question === "websites"}
     <QuestionScreen
@@ -111,6 +112,7 @@
       counter={ageCounter}
       back={data.back}
       throwAway={data.throwAway}
+      keepOld={data.keepOld}
     >
       <Picks
         name="ageRating"
@@ -120,6 +122,13 @@
         hint="We check this when we look at your game."
         {problem}
       />
+      {#if data.ratingPlayersSee !== null}
+        <p class="note" role="status">
+          {data.ratingWithStaff
+            ? `Waiting for review. Players see ${data.ratingPlayersSee} until we say yes.`
+            : `Not sent yet. Players see ${data.ratingPlayersSee}.`}
+        </p>
+      {/if}
     </QuestionScreen>
   {:else}
     <QuestionScreen
@@ -127,6 +136,7 @@
       counter={data.counter}
       back={data.back}
       throwAway={data.throwAway}
+      keepOld={data.keepOld}
     >
       {#if data.madeEighteen}
         <!-- The game is being made 18+: the rating is kept with its marks, in one answer. -->
@@ -140,6 +150,13 @@
         hint="Only adults will see this game. Sex or nudity is fine here. No game may have pornography or gambling."
         {problem}
       />
+      {#if data.ratingPlayersSee !== null}
+        <p class="note" role="status">
+          {data.ratingWithStaff
+            ? `Waiting for review. Players see ${data.ratingPlayersSee} until we say yes.`
+            : `Not sent yet. Players see ${data.ratingPlayersSee}.`}
+        </p>
+      {/if}
     </QuestionScreen>
   {/if}
 {/key}

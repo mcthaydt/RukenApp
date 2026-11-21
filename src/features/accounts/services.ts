@@ -8,6 +8,7 @@ import { createRateLimiter } from "../../lib/server/rate-limit.ts";
 import { createTwilioTexter, type Texter } from "../../lib/server/text.ts";
 import { createAuth, sessionInfo, type Auth } from "./auth.ts";
 import { codesPausedFor, countWrongCode } from "./auth-limits-plugin.ts";
+import type { CredentialDeps } from "./credentials.ts";
 import { cookiePolicy, type CookiePolicy } from "./cookies.ts";
 import type { FormDeps, ResetDeps, SignUpDeps } from "./forms.ts";
 import type { HandleDeps } from "./handle.ts";
@@ -50,6 +51,7 @@ export interface AuthServices {
   formDeps: FormDeps;
   resetDeps: ResetDeps;
   signUpDeps: SignUpDeps;
+  credentialDeps: CredentialDeps;
 }
 
 /**
@@ -138,6 +140,14 @@ export function createAuthServices(source: Settings, db?: PrismaClient): AuthSer
     makeAccount: (input) => makeAccount({ db: prisma, clock, secret }, input),
     removeHalfMadeAccount: (userId) => removeHalfMadeAccount(prisma, userId),
   };
+  const credentialDeps: CredentialDeps = {
+    formDeps,
+    prisma,
+    auth,
+    secret,
+    limiter: createRateLimiter(prisma, clock),
+    guards: { db: prisma, clock, secret },
+  };
   return {
     prisma,
     clock,
@@ -150,6 +160,7 @@ export function createAuthServices(source: Settings, db?: PrismaClient): AuthSer
     formDeps,
     resetDeps,
     signUpDeps,
+    credentialDeps,
   };
 }
 

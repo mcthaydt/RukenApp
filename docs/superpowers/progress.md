@@ -1,12 +1,22 @@
 # Progress
 
-Last updated: 2026-11-20 22:05 UTC (from `date`).
+Last updated: 2026-11-21 16:00 UTC (from `date`).
 
 ## The owner's instructions
 
 - 2026-11-20: "The outcome I want: Finish Ruken." Run the work by the CLAUDE.md and skills the owner gave in the project's files (now in this repo); run the setup check in `release` first; then keep going within the brief, asking only the owner's own choices as decision cards with a recommendation.
 - 2026-11-20 22:27 UTC, on a card: "Ready to launch". Finishing Ruken means every roadmap slice up to Launch, in order: slice 2, the feed, submitting and admin, money, then the before-launch list. This is the owner's go for the slices the roadmap marks Later.
+- 2026-11-21 14:20 UTC: "At a minimum, our e2e tests should cover the CRUD operations; we didn't have a way to update." A standing rule: the browser journeys cover create, read, update and delete for everything, an update followed through to what players see. The audit of that is #267; its gaps are filled in the "Fill e2e CRUD test gaps" work.
+- 2026-11-21 14:26 UTC, on a card: "Games come off with the account." When a maker's account is finally deleted (after the 14-day wait), their games come off Ruken as Take off does: a live or waiting game is taken off, a draft or sent-back one thrown away, and their files and videos deleted. The rows stay for the money records.
+- 2026-11-21 14:58 UTC, on a card: "Delete the videos too." A deleted maker's game videos are deleted with the game files (unlike Take off, which keeps them).
 - 2026-11-20, the restart handoff: open items are deploying #238, phone sign-in (#209), Twilio's HELP reply, redoing the workflow, CI and CLAUDE.md, the slice units never built, a feed or some link to games on the site, and the leftover branch `claude/project-thread-2fgp7u`.
+- 2026-11-21 14:20 UTC: "At a minimum, our e2e tests should cover the CRUD operations; we didn't have a way to update." 14:32 UTC: "the e2e covers all CRUD should be a rule, and added to the mcthaydt claude.md for apps". The journeys create, read, update and delete everything a user can make; reviews and audits enforce it (spec `2026-11-21-crud-journeys-rule-design.md`).
+- 2026-11-21 14:25 UTC: when no plan and spec exist for the work, the build runs on Opus 5.5, medium (not Sonnet).
+- 2026-11-21 14:29 UTC: nothing in Ruken is permanent; everything a user makes must be editable, like any professional app. Live game changes (files, websites, videos, age rating) are held for review before players see them.
+- 2026-11-21 14:26 UTC, on a card: "Games come off with the account". When a maker's account is finally deleted (after the 14 days), their games are taken off Ruken like Take off, with a journey checking it.
+- 2026-11-21 14:31 UTC: name and line stay instant to change; a wrong birthday is fixed by asking Ruken.
+- 2026-11-21 14:41 UTC, the Owner: "add to the claude.md the patch for the not following hooks, that is a negotiable" (read as non-negotiable). Sessions never route around a hook; every pull request create and edit goes through a checked route. Spec `2026-11-21-hooks-cover-every-pr-route-design.md`, section 3.7.
+- 2026-11-21 14:41 UTC, the Owner: "ALL SESSIONS NEED TO FOLLOW THE HOOKS". The hooks rule is the first of the rules that never bend and names every session.
 
 ## Active milestone: setup and "Finish Ruken"
 
@@ -30,6 +40,12 @@ Preview: https://ruken.io (deployed by the owner; `main` is not deployed on merg
 
 - **Unit G (Task 24), a real game sent, accepted and played on the test site: done, 2026-11-21 03:10 UTC.** Game used: Floor Fifty (ruken.io). The Owner played it and tried all three play checks. Step 1 passed (media.ruken.dev health ok; a game with no pass is refused). Step 4 passed on Floor Fifty: its folder without a pass gives the run-out line, both clips are served as video/mp4, and ruken.io/g-<id>/index.html returns 404. The review job showed nothing waiting, which is expected because no new version was queued. Step 5 (the GitHub repo-change return) was not checked by us; the Owner said "I did all of those, move on", so it is done on their word, not seen by a program. This closes red 1 in the slice 2 implementation audit.
 - Slice end (walk, design rounds, screens page, Owner's walk, retrospective): in progress, branch `claude/project-thread-7wmhqn`.
+
+## Everything editable
+
+- Spec `2026-11-21-everything-editable-design.md`: complete, merged to `main` (2d00e7e, #269).
+- Unit D (change email and password on `/me`): built on `claude/project-thread-evc10x`, waiting for a pull request slot and its lane 3 audit. Known limit: Stripe receipts keep going to the old address until slice 5, and the screen says so.
+- Purge row (#268, a deleted maker's games and videos come off): if unit A (a live game's videos and rating held for review) merged first, the purge must clear held values and carry criterion A11.
 
 ## Slice 3 parked
 

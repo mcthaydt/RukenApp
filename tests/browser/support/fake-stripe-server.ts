@@ -14,10 +14,12 @@ import { FEE_COLUMNS, FEE_REPORT_TYPE } from "../../../src/features/money/fee-ro
 //   /pay/<session>?events=later redirects first and holds the events back until POST /test/release/<session>,
 //   as Stripe's news is sometimes late. A journey lets it go when it has looked at the page that waits, so
 //   no timer is raced.
-// - /portal/<session>: one "Cancel membership" button, which sets the subscription to end with its period, tells
-//   the site with a signed event, and sends the browser back.
-// And /state/<checkout session> answers the subscription's status, for a journey that asks what Stripe thinks, and
-// POST /test/end/<checkout session> lets the paid time run out.
+// - /portal/<session>: an "Update card" button, which takes a payment the card had missed (the subscription is active
+//   again, with a paid invoice, and the site hears both), and a "Cancel membership" button, which sets the subscription
+//   to end with its period and tells the site. Each sends the browser back.
+// And /state/<checkout session> answers the subscription's status, for a journey that asks what Stripe thinks,
+// POST /test/end/<checkout session> lets the paid time run out, and POST /test/fail-card/<checkout session> makes the
+// next payment fail, as a card that has run out does.
 //
 // For the money feature (src/features/money/stripe-port.ts) it also answers Stripe's Reporting API for the Fees report:
 // a report run finishes at once, and its file (served at /files/<run>.csv, to a request that carries the secret key)
@@ -53,7 +55,7 @@ interface Subscription {
   id: string;
   customerId: string;
   priceId: string;
-  status: "active" | "canceled";
+  status: "active" | "past_due" | "canceled";
   cancelAtPeriodEnd: boolean;
   cancelAt: number | null;
   endedAt: number | null;
@@ -382,6 +384,42 @@ function page(response: ServerResponse, title: string, button: string, email?: s
   );
 }
 
+/** The billing portal's page: a form per button, so each press is its own POST. */
+function portalPageHtml(response: ServerResponse): void {
+  const title = "Stand-in billing portal";
+  response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+  response.end(
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title></head>` +
+      `<body><h1>${title}</h1>` +
+      `<form method="POST" action="?do=card"><button>Update card</button></form>` +
+      `<form method="POST"><button>Cancel membership</button></form></body></html>`,
+  );
+}
+
+/** The card works again: the subscription is active and the missed payment is a paid invoice, as Stripe makes them. */
+function payAgain(subscription: Subscription): [string, Json][] {
+  const price = requirePrice(subscription.priceId);
+  const paidAt = nowSeconds();
+  subscription.status = "active";
+  const money = MADE_UP[price.interval];
+  const invoice: Invoice = {
+    id: nextId("in"),
+    subscriptionId: subscription.id,
+    paidAt,
+    periodStart: paidAt,
+    priceId: price.id,
+    net: price.unitAmount,
+    tax: money.tax,
+    fee: money.fee,
+    metadata: subscription.metadata,
+  };
+  invoices.set(invoice.id, invoice);
+  return [
+    ["customer.subscription.updated", subscriptionJson(subscription)],
+    ["invoice.paid", invoiceJson(invoice)],
+  ];
+}
+
 function redirect(response: ServerResponse, to: string): void {
   response.writeHead(303, { location: to });
   response.end();
@@ -644,7 +682,16 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       return;
     }
     if (method === "GET") {
-      page(response, "Stand-in billing portal", "Cancel membership");
+      portalPageHtml(response);
+      return;
+    }
+    if (url.searchParams.get("do") === "card") {
+      // A new card: the payment that failed goes through, so the subscription is active again and the site hears it.
+      const failing = [...subscriptions.values()].find(
+        (candidate) => candidate.customerId === portal.customerId && candidate.status === "past_due",
+      );
+      if (failing !== undefined) await sendAll(payAgain(failing));
+      redirect(response, portal.returnUrl);
       return;
     }
     const subscription = [...subscriptions.values()].find(
@@ -656,6 +703,25 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       await sendEvent("customer.subscription.updated", subscriptionJson(subscription));
     }
     redirect(response, portal.returnUrl);
+    return;
+  }
+
+  // A card stops working: POST /test/fail-card/<checkout session> makes the subscription that checkout made past due, as
+  // Stripe does when a renewal is refused, and tells the site with the signed event. It answers once the site has heard.
+  const failCard = /^\/test\/fail-card\/([^/]+)$/.exec(path);
+  if (failCard !== null && method === "POST") {
+    const subscription = subscriptions.get(sessions.get(failCard[1] ?? "")?.subscriptionId ?? "");
+    if (subscription === undefined) {
+      plain(response, 404, "No subscription was made by that checkout.");
+      return;
+    }
+    subscription.status = "past_due";
+    await sendEvent("invoice.payment_failed", {
+      id: nextId("in"),
+      object: "invoice",
+      parent: { subscription_details: { subscription: subscription.id, metadata: subscription.metadata } },
+    });
+    plain(response, 200, "failed");
     return;
   }
 

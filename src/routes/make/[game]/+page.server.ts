@@ -23,18 +23,27 @@ import type { Actions, PageServerLoad } from "./$types";
 /** The parts a game's answers are made of, as a count: the name, the line, the files, the two videos, who it is for and the websites. */
 const PARTS = ALL_PARTS.length;
 
-/** The answers a live game's maker may still change by herself (the rest go through staff again): the same two the service allows. */
-const LIVE_CHANGEABLE: readonly ChangePart[] = ["name", "one_line"];
-
 /**
- * The facts Live draws beside the game: who it is for (spec 5c, and the plan's rating chip). Its files
- * and websites are not for a player-facing screen, and a maker cannot change either from here.
+ * The answers a live game's maker may change, the same ones the service allows. The name and the line show to players
+ * at once. A change to the files or the websites is copied, and a new video or rating is held apart, each sent for
+ * review in the one save, while players keep what staff last said yes to.
  */
-const LIVE_CHIPS: readonly string[] = ["age_rating"];
+const LIVE_CHANGEABLE: readonly ChangePart[] = [
+  "name",
+  "one_line",
+  "files",
+  "upright_video",
+  "wide_video",
+  "age_rating",
+  "other_websites",
+];
+
+/** The facts Live draws beside the game: who it is for, and the two she may change (where its files are, its websites). */
+const LIVE_CHIPS: readonly string[] = ["files", "age_rating", "other_websites"];
 
 /**
- * One thing sent back, as its card shows it: where it is fixed and, for a video, the video itself. A live game's card for
- * a part its maker cannot answer (its files, mended on GitHub and sent as a new version) has no link: its question is a 404.
+ * One thing sent back, as its card shows it: where it is fixed and, for a video, the video itself. A live game's card
+ * shows the video that was refused, which is the one that waited for a yes.
  */
 function fixCards(game: MakerGame): FixCardData[] {
   // Not taken apart: a detached method loses its owner (the lint rule unbound-method).
@@ -45,19 +54,24 @@ function fixCards(game: MakerGame): FixCardData[] {
     words: one.words,
     note: one.note,
     // A video that was sent back opens its picker at once: the old video stays in its frame, and nothing is pressed first.
-    href:
-      game.state === "live" && !LIVE_CHANGEABLE.some((part) => part === one.part)
-        ? null
-        : `/make/${game.slug}/${questionOf(one.part)}${one.part === "upright_video" || one.part === "wide_video" ? "?again=1" : ""}`,
-    video:
-      one.part === "upright_video" && game.clips.upright !== null
-        ? { src: services.media(game.clips.upright.key), shape: "upright" as const }
-        : one.part === "wide_video" && game.clips.wide !== null
-          ? { src: services.media(game.clips.wide.key), shape: "wide" as const }
-          : null,
+    href: `/make/${game.slug}/${questionOf(one.part)}${one.part === "upright_video" || one.part === "wide_video" ? "?again=1" : ""}`,
+    video: videoOfCard(game, one.part, (key) => services.media(key)),
     // What the button above the cards says when this is the first thing to fix.
     fixWords: `Fix ${partNoun(one.part)}`,
   }));
+}
+
+/** The video a card for a sent-back video shows: the one that waited if there is one, else the one in the frame. */
+function videoOfCard(game: MakerGame, part: string, media: (key: string) => string): FixCardData["video"] {
+  if (part === "upright_video") {
+    const clip = game.heldClips.upright ?? game.clips.upright;
+    return clip === null ? null : { src: media(clip.key), shape: "upright" };
+  }
+  if (part === "wide_video") {
+    const clip = game.heldClips.wide ?? game.clips.wide;
+    return clip === null ? null : { src: media(clip.key), shape: "wide" };
+  }
+  return null;
 }
 
 /** The game as Live lays it out: its name, line and the chip, with a Change on the two it may still change. */
@@ -143,8 +157,8 @@ export const load: PageServerLoad = async (event) => {
       view: "live" as const,
       line: liveLine(game, send),
       send,
-      // An update waiting for review is replaced by the one sent now, which the note under the button says.
-      updateWaiting: game.hasPending,
+      // A new copy of the files waiting for review is replaced by the one sent now, which the note under the button says.
+      updateWaiting: game.newCopyWaits,
       fixes,
       // Asked on a screen of its own, because it cannot be undone.
       takeOffAddress: `/make/${game.slug}/take-off`,
