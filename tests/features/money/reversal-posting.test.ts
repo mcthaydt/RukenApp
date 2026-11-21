@@ -328,7 +328,7 @@ describe("postRefund", () => {
   });
 
   it("refunds a yearly payment in its fourth month: the unreleased months first", () => {
-    // Review Focus 5. Eight months are not yet released (2544). The pool's part of the refund comes from
+    // Eight months are not yet released (2544). The pool's part of the refund comes from
     // premium:deferred up to that, and the rest (1272) from the pool month that is open.
     expect(
       postRefund({

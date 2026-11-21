@@ -112,7 +112,7 @@ describe("photoProblem", () => {
     );
   });
 
-  // Review Focus 13: a page or a script stored under a picture's name would be served to the public.
+  // A page or a script stored under a picture's name would be served to the public.
   it.each([
     ["a web page", "<!doctype html><script>alert(1)</script>"],
     ["an SVG", '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'],

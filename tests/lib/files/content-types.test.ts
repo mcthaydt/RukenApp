@@ -34,7 +34,7 @@ describe("servedTypeFor", () => {
     expect(servedTypeFor("game.wasm.gz")).toEqual({ contentType: "application/wasm", encoding: "gzip" });
   });
 
-  // Review Focus 11: a file Ruken does not know is plain bytes, which a browser will not run, and the type
+  // A file Ruken does not know is plain bytes, which a browser will not run, and the type
   // never comes from the file's contents.
   it.each(["LICENSE", ".htaccess", "setup.exe", "shell.php", "main.exe.gz", "x.br"])(
     "serves %s as plain bytes",

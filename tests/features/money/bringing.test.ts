@@ -17,7 +17,6 @@ describe("bringerOf", () => {
   });
 
   it("counts only the first join, however the later ones arrived", () => {
-    // Review Focus 7
     const later = {
       userId: "member",
       startedAtMs: Date.parse("2027-02-01T18:00:00Z"),
@@ -28,7 +27,6 @@ describe("bringerOf", () => {
   });
 
   it("gives no bonus for bringing yourself", () => {
-    // Review Focus 7
     expect(bringerOf([{ ...first, broughtByUserId: "member" }], "2026-11" as Period)).toBeNull();
   });
 

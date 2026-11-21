@@ -32,7 +32,7 @@ test("a person asks to be deleted, is signed out, and is told the date", async (
   await expect(page.getByText(/^We'll delete it on \w+, \w+ \d+\. You're signed out now\.$/)).toBeVisible();
   await expectOneCard(page);
   await showTheOwner(page, testInfo, "signed out, to be deleted");
-  // Review Focus 7: the old session cookie of an account that is waiting to be deleted works no more.
+  // The old session cookie of an account that is waiting to be deleted works no more.
   await page.goto("/me");
   await expect(page).toHaveURL(/\/sign-in/);
 });

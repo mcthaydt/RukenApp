@@ -151,7 +151,6 @@ describe("pullGame", () => {
     });
   });
 
-  // Review Focus 6
   it("stores nothing when the files are refused, and leaves the live game alone", async () => {
     const game = await newGame();
     const pullA = await pullGame(depsFor(fakeGitHub(GOOD).github), game.id);
@@ -185,7 +184,6 @@ describe("pullGame", () => {
     expect((await db().game.findUniqueOrThrow({ where: { id: game.id } })).pullProblem).toBeNull();
   });
 
-  // Review Focus 5
   it("refuses a pointer to Git LFS by name", async () => {
     const game = await newGame();
     const pointer = "version https://git-lfs.github.com/spec/v1\noid sha256:0123abcd\nsize 123456\n";

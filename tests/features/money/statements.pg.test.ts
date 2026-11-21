@@ -104,7 +104,7 @@ describe("writeStatements", () => {
   });
 
   it("gives a maker owed $24.99 a statement, whatever they earned this month", async () => {
-    // Review Focus 11. They earned nothing from the pool; a correction credits them 2,499.
+    // They earned nothing from the pool; a correction credits them 2,499.
     const maker = await addGame(db());
     await db().$transaction(async (tx) => {
       await lockLedger(tx);
@@ -153,7 +153,6 @@ describe("writeStatements", () => {
   });
 
   it("gives a maker whose account was deleted a statement too", async () => {
-    // Review Focus 10
     const game = await addGame(db());
     const clock = new TestClock("2028-09-20T12:00:00Z");
     await aMonth(db(), stripe, clock, [

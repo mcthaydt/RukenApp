@@ -176,7 +176,7 @@ test("a rude name is fixed on the name question, and the address follows the new
   await page.getByLabel("What's your game called?").fill(renamed);
   await nextButton(page).click();
 
-  // Not live yet, so the address follows the name (Review Focus 3), and the screen follows the address.
+  // Not live yet, so the address follows the name, and the screen follows the address.
   await expect(page).toHaveURL(/\/make\/floor-fifty-[a-z0-9]+$/);
   await expect(page.getByText("Fixed. Send it again when you're ready.")).toBeVisible();
   await expect(page.locator("p.count")).toHaveText(renamed);
@@ -470,7 +470,7 @@ test("a thrown-away game's name can be used again, with the plain address", asyn
   await pageHasSettled(page);
   await answerName(page, first.name);
 
-  // Review Focus 8: the address the name made before is free again, not a "-2".
+  // The address the name made before is free again, not a "-2".
   await expect(page).toHaveURL(`/make/${first.slug}/line`);
 });
 

@@ -75,7 +75,7 @@ describe("postFeeRows", () => {
       "platform:revenue:premium": 6n,
     });
     const again = await movedBy(db(), async () => {
-      expect(await postFeeRows(deps)).toMatchObject({ payment: 0 }); // Review Focus 9
+      expect(await postFeeRows(deps)).toMatchObject({ payment: 0 });
     });
     expect(again).toEqual({});
     const fees = await db().journalEntry.count({ where: { stripeInvoiceId: "in_1", kind: "payment_fee" } });
@@ -83,7 +83,6 @@ describe("postFeeRows", () => {
   });
 
   it("does not take the card fee a second time", async () => {
-    // Review Focus 2
     const now = new TestClock("2027-01-20T12:00:00Z");
     await postedPayment("in_2", "2027-01-02T15:00:00Z", now);
     // The same fee, seen again in the report: it sits in the payment's own balance transaction.
@@ -99,7 +98,6 @@ describe("postFeeRows", () => {
   });
 
   it("posts a fee that arrives after the month closed into the open month's pool", async () => {
-    // Review Focus 3
     const early = new TestClock("2027-03-03T12:00:00Z");
     await postedPayment("in_3", "2027-03-02T15:00:00Z", early);
     const late = new TestClock("2027-04-09T12:00:00Z");
@@ -171,7 +169,6 @@ describe("postFeeRows", () => {
   });
 
   it("leaves a row it cannot read unposted, and says so every run", async () => {
-    // Review Focus 4
     const now = new TestClock("2027-11-20T12:00:00Z");
     await storedRows([{ incurredBy: "in_1", amountText: "n/a" }], "2027-11-20T11:00:00Z");
     const before = await db().feePosting.count();

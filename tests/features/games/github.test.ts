@@ -53,7 +53,7 @@ function gitHubWith(responses: Response[]) {
 }
 
 describe("appToken", () => {
-  // Review Focus 12: GitHub downloads PKCS#1; OpenSSL and Web Crypto's own export write PKCS#8.
+  // GitHub downloads PKCS#1; OpenSSL and Web Crypto's own export write PKCS#8.
   it.each(["pkcs1Pem", "pkcs8Pem"] as const)(
     "signs with a %s key, and the public key agrees",
     async (form) => {
@@ -289,7 +289,7 @@ describe("tarball", () => {
 });
 
 describe("what a person typed", () => {
-  // Review Focus 17: nothing typed is put into a GitHub address before it is checked.
+  // Nothing typed is put into a GitHub address before it is checked.
   it.each(["acme", "acme/game/extra", "acme/ga me", "../x", "acme/..", "/game", "acme/"])(
     "refuses the repository name %j before asking GitHub",
     async (repo) => {

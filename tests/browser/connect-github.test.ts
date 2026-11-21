@@ -185,7 +185,7 @@ test("a failed reconnect says so to a maker whose connection holds no repositori
   await expect(page.getByText("GitHub didn't connect. Try again.")).toBeVisible();
 });
 
-// Review Focus 7: the state travels through GitHub in an address.
+// The state travels through GitHub in an address.
 test("a state that someone changed lands on Your games, and says GitHub didn't connect", async ({ page }) => {
   await startDraft(page);
 

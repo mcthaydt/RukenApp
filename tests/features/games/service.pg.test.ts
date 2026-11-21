@@ -141,7 +141,7 @@ describe("saveClip", () => {
     expect(shapes.sort()).toEqual(["upright", "wide"]);
   });
 
-  // Review Focus 13: a page's bytes under a video's name never reach the bucket, so never the public.
+  // A page's bytes under a video's name never reach the bucket, so never the public.
   it("refuses a page named as a video and stores nothing", async () => {
     const game = await newGame();
     const before = files.keys();
@@ -410,7 +410,7 @@ describe("saveAnswer", () => {
     expect((await db().game.findUniqueOrThrow({ where: { id } })).connectHosts).toEqual(["new.example.com"]);
   });
 
-  // Review Focus 2: someone else's game is simply not there, at every answer.
+  // Someone else's game is simply not there, at every answer.
   it("says another maker's game is not there, for every answer", async () => {
     const { id } = await begin();
     const stranger = await createUser(db());
@@ -431,7 +431,7 @@ describe("saveAnswer", () => {
     }
   });
 
-  // Review Focus 3: before a game was ever live, its address follows its name.
+  // Before a game was ever live, its address follows its name.
   it("moves a draft's address to its new name, and a name already taken gets a number", async () => {
     const { makerUserId, id, slug } = await begin("Tower");
     expect(slug).toBe("tower");
@@ -495,7 +495,7 @@ describe("saveAnswer", () => {
     expect(NO_INDEX_WORDS).toContain("index.html");
   });
 
-  // Review Focus 5: a 12+ game has no marks, and the counter goes back to seven.
+  // A 12+ game has no marks, and the counter goes back to seven.
   it("clears an 18+ game's marks when it is made younger", async () => {
     const { makerUserId, id } = await begin();
     await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_18" });
@@ -624,7 +624,6 @@ describe("throwAway", () => {
     return { makerUserId, id, publicId: game.publicId };
   }
 
-  // Review Focus 8.
   it("deletes the files and both videos, drops the game from every list and frees its name", async () => {
     const { makerUserId, id, publicId } = await sentBackGame();
     expect(files.keys().some((key) => key.includes(publicId))).toBe(true);

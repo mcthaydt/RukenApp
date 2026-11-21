@@ -81,7 +81,6 @@ describe("rollUpPlayDays", () => {
   });
 
   it("counts two tabs once and stops at three hours", async () => {
-    // Review Focus 6
     const twoTabs = await createUser(db());
     const long = await createUser(db());
     const game = await addGame(db());
@@ -137,7 +136,6 @@ describe("rollUpPlayDays", () => {
   });
 
   it("marks a day done even when nobody played, and never adds a day up twice", async () => {
-    // Review Focus 9
     expect(await roll("2026-12-12T12:00:00Z")).toEqual({ days: ["2026-12-11"] });
     expect(await db().playDayRun.count({ where: { day: new Date("2026-12-11T00:00:00Z") } })).toBe(1);
     expect(await roll("2026-12-12T13:00:00Z")).toEqual({ days: [] });
@@ -173,7 +171,7 @@ describe("rollUpPlayDays", () => {
 
 describe("the day the clocks change", () => {
   it("counts a session started in the first hour of a 25-hour day", async () => {
-    // Review Focus 6 and 22. 7 November 2027 is 25 hours long in Chicago: 00:30 is 05:30 UTC, and the day began at
+    // 7 November 2027 is 25 hours long in Chicago: 00:30 is 05:30 UTC, and the day began at
     // 05:00 UTC. The day's own first hour is not lost to a window measured back from its end.
     const own = await startTestDatabase();
     try {

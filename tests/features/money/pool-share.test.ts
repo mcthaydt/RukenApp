@@ -93,7 +93,6 @@ describe("poolContributions (how a payment feeds the makers' pool)", () => {
   });
 
   it("gives nothing, never less, when the fees are more than what is left", () => {
-    // Review Focus 1
     expect(poolContributions({ ...monthly, fees: 2000n })).toEqual([{ period: "2026-11", amount: 0n }]);
   });
 

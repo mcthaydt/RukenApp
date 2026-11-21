@@ -17,6 +17,7 @@ import {
   boxOf,
   brokenWords,
   layoutHasSettled,
+  heldSideways,
   layoutOf,
   lineCount,
   wordsHaveSettled,
@@ -201,18 +202,25 @@ for (const screen of ["take-off", "throw-away"] as const) {
     const { keep, red } = await theTwoButtons(page);
     expect(red.y - (keep.y + keep.height)).toBeGreaterThanOrEqual(40);
   });
-
-  test(`on ${screen}, the two buttons are the same width on a tablet or a computer`, async ({ page }) => {
-    test.skip(
-      !["tablet", "tablet-sideways", "computer"].includes(layoutOf(page)),
-      "a phone's buttons span the card",
-    );
-    const slug = await aGameFor(page, screen);
-    await page.goto(`/make/${slug}/${screen}`);
-    const { keep, red } = await theTwoButtons(page);
-    expect(Math.abs(keep.width - red.width)).toBeLessThanOrEqual(1);
-  });
 }
+
+function buttonsSameWidth(): void {
+  for (const screen of ["take-off", "throw-away"] as const) {
+    test(`on ${screen}, the two buttons are the same width on a tablet or a computer`, async ({ page }) => {
+      test.skip(
+        !["tablet", "tablet-sideways", "computer"].includes(layoutOf(page)),
+        "a phone's buttons span the card",
+      );
+      const slug = await aGameFor(page, screen);
+      await page.goto(`/make/${slug}/${screen}`);
+      const { keep, red } = await theTwoButtons(page);
+      expect(Math.abs(keep.width - red.width)).toBeLessThanOrEqual(1);
+    });
+  }
+}
+
+buttonsSameWidth();
+heldSideways("tablet", buttonsSameWidth);
 
 // ---- L12: on an iPhone SE the two can't-be-undone headings are no more than three lines -------------------------------------
 
@@ -235,41 +243,51 @@ test.describe("on an iPhone SE held upright", () => {
 
 // ---- L16: on Live, held sideways or on a computer, a card above the video is as wide as the video -----------------------------
 
-test("on Live a card for a part sent back ends where the video under it ends, in a window held sideways", async ({
-  page,
-}) => {
-  test.skip(
-    !["computer", "tablet-sideways", "phone-sideways"].includes(layoutOf(page)),
-    "only a window held sideways shows the wide video",
-  );
-  const { slug } = await gameWhere(page, {
-    state: "live",
-    toFix: [{ part: "one_line", reason: "not_this_game" }],
-  });
-  await page.goto(`/make/${slug}`);
-  await wordsHaveSettled(page);
+function cardEndsWhereTheVideoEnds(): void {
+  test("on Live a card for a part sent back ends where the video under it ends, in a window held sideways", async ({
+    page,
+  }) => {
+    test.skip(
+      !["computer", "tablet-sideways", "phone-sideways"].includes(layoutOf(page)),
+      "only a window held sideways shows the wide video",
+    );
+    const { slug } = await gameWhere(page, {
+      state: "live",
+      toFix: [{ part: "one_line", reason: "not_this_game" }],
+    });
+    await page.goto(`/make/${slug}`);
+    await wordsHaveSettled(page);
 
-  const card = await boxOf(page.locator("a.sheet.fix"));
-  const video = await boxOf(page.locator(".after .tiles figure > div"));
-  expect(Math.abs(card.x + card.width - (video.x + video.width)), "right edges").toBeLessThanOrEqual(2);
-  expect(Math.abs(card.x - video.x), "left edges").toBeLessThanOrEqual(1);
-});
+    const card = await boxOf(page.locator("a.sheet.fix"));
+    const video = await boxOf(page.locator(".after .tiles figure > div"));
+    expect(Math.abs(card.x + card.width - (video.x + video.width)), "right edges").toBeLessThanOrEqual(2);
+    expect(Math.abs(card.x - video.x), "left edges").toBeLessThanOrEqual(1);
+  });
+}
+
+cardEndsWhereTheVideoEnds();
+heldSideways("tablet", cardEndsWhereTheVideoEnds);
+heldSideways("phone", cardEndsWhereTheVideoEnds);
 
 // ---- L24: Your games, empty ------------------------------------------------------------------------------------------------
 
-test("on a tablet held sideways, as on a computer, 'Add a game' is on the heading's line", async ({
-  page,
-}) => {
-  test.skip(layoutOf(page) !== "tablet-sideways", "the computer's journey is in make-screen-review");
-  await signUp(page);
-  await page.goto("/make");
-  await pageHasSettled(page);
+function addAGameOnTheHeadingsLine(): void {
+  test("on a tablet held sideways, as on a computer, 'Add a game' is on the heading's line", async ({
+    page,
+  }) => {
+    test.skip(layoutOf(page) !== "tablet-sideways", "the computer's journey is in make-screen-review");
+    await signUp(page);
+    await page.goto("/make");
+    await pageHasSettled(page);
 
-  const heading = await boxOf(page.getByRole("heading", { level: 1 }));
-  const add = await boxOf(page.getByRole("link", { name: "Add a game" }));
-  expect(add.y).toBeLessThan(heading.y + heading.height);
-  expect(add.x).toBeGreaterThan(heading.x + heading.width);
-});
+    const heading = await boxOf(page.getByRole("heading", { level: 1 }));
+    const add = await boxOf(page.getByRole("link", { name: "Add a game" }));
+    expect(add.y).toBeLessThan(heading.y + heading.height);
+    expect(add.x).toBeGreaterThan(heading.x + heading.width);
+  });
+}
+
+heldSideways("tablet", addAGameOnTheHeadingsLine);
 
 test("the Maker agreement link has a line's room above it", async ({ page }) => {
   await signUp(page);
@@ -328,27 +346,32 @@ test.describe("on an iPhone SE held sideways, a refusal", () => {
 
 // ---- L23: on the agreement, "I agree" comes after the last point ---------------------------------------------------------------
 
-test("on a wide window the agreement's buttons are after the last point, not beside the first", async ({
-  page,
-}) => {
-  test.skip(
-    !["computer", "tablet-sideways"].includes(layoutOf(page)),
-    "a narrow window has the buttons in its bar, under the points",
-  );
-  const { slug } = await startDraft(page);
-  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
-  await page.goto(`/make/${slug}/agreement`);
-  await wordsHaveSettled(page);
+function agreeAfterTheLastPoint(): void {
+  test("on a wide window the agreement's buttons are after the last point, not beside the first", async ({
+    page,
+  }) => {
+    test.skip(
+      !["computer", "tablet-sideways"].includes(layoutOf(page)),
+      "a narrow window has the buttons in its bar, under the points",
+    );
+    const { slug } = await startDraft(page);
+    await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+    await page.goto(`/make/${slug}/agreement`);
+    await wordsHaveSettled(page);
 
-  const last = await boxOf(page.locator(".sheet li").last());
-  const agree = await boxOf(page.getByRole("button", { name: "I agree" }));
-  expect(agree.y, "I agree is under the last point").toBeGreaterThanOrEqual(last.y + last.height);
-  // A way back that does not wait at the foot of seven points.
-  const way = await boxOf(page.getByRole("link", { name: "Back to the last question" }));
-  expect(way.y + way.height, "a way back on the first screen").toBeLessThanOrEqual(
-    page.viewportSize()?.height ?? 0,
-  );
-});
+    const last = await boxOf(page.locator(".sheet li").last());
+    const agree = await boxOf(page.getByRole("button", { name: "I agree" }));
+    expect(agree.y, "I agree is under the last point").toBeGreaterThanOrEqual(last.y + last.height);
+    // A way back that does not wait at the foot of seven points.
+    const way = await boxOf(page.getByRole("link", { name: "Back to the last question" }));
+    expect(way.y + way.height, "a way back on the first screen").toBeLessThanOrEqual(
+      page.viewportSize()?.height ?? 0,
+    );
+  });
+}
+
+agreeAfterTheLastPoint();
+heldSideways("tablet", agreeAfterTheLastPoint);
 
 // ---- L17: Check and send's two captions sit at one height --------------------------------------------------------------------
 
@@ -377,34 +400,39 @@ test("after a game is taken off Ruken, the screen says players can't find it and
   await expect(page.getByRole("button", { name: "Put it back on Ruken" })).toBeVisible();
 });
 
-test("on a wide window the screen after taking a game off starts at the top left, where Waiting starts, not in the middle", async ({
-  page,
-}) => {
-  test.skip(!["computer", "tablet-sideways"].includes(layoutOf(page)), "a window held sideways, with room");
-  const waiting = await gameWhere(page, { state: "waiting" });
-  await page.goto(`/make/${waiting.slug}`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Waiting for review");
-  await wordsHaveSettled(page);
-  const whereWaitingStarts = await boxOf(page.locator("main :is(.count, h1)").first());
+function takenOffStartsTopLeft(): void {
+  test("on a wide window the screen after taking a game off starts at the top left, where Waiting starts, not in the middle", async ({
+    page,
+  }) => {
+    test.skip(!["computer", "tablet-sideways"].includes(layoutOf(page)), "a window held sideways, with room");
+    const waiting = await gameWhere(page, { state: "waiting" });
+    await page.goto(`/make/${waiting.slug}`);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Waiting for review");
+    await wordsHaveSettled(page);
+    const whereWaitingStarts = await boxOf(page.locator("main :is(.count, h1)").first());
 
-  // The same maker's second game: signing up again while signed in would find no sign-up form.
-  const live = await addDraft(page);
-  await fillAnswers(live.slug, { files: true, videos: true, age: "age_12" });
-  await giveRealClips(page, live.slug);
-  await putGameWhereStaffLeaveIt(live.slug, { state: "live" });
-  await page.goto(`/make/${live.slug}/take-off`);
-  await page.getByRole("button", { name: "Take it off Ruken" }).click();
-  await expect(page).toHaveURL(`/make/${live.slug}`);
-  // The address changes a moment before the new screen replaces the question's card, so the screen itself is waited for:
-  // measured at once, the first match can be the card as it leaves, with no box (the flake on main, run 44024056397).
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Taken off Ruken");
-  await wordsHaveSettled(page);
-  const whereThisStarts = await boxOf(page.locator("main :is(.count, h1)").first());
+    // The same maker's second game: signing up again while signed in would find no sign-up form.
+    const live = await addDraft(page);
+    await fillAnswers(live.slug, { files: true, videos: true, age: "age_12" });
+    await giveRealClips(page, live.slug);
+    await putGameWhereStaffLeaveIt(live.slug, { state: "live" });
+    await page.goto(`/make/${live.slug}/take-off`);
+    await page.getByRole("button", { name: "Take it off Ruken" }).click();
+    await expect(page).toHaveURL(`/make/${live.slug}`);
+    // The address changes a moment before the new screen replaces the question's card, so the screen itself is waited for:
+    // measured at once, the first match can be the card as it leaves, with no box (the flake on main, run 44024056397).
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Taken off Ruken");
+    await wordsHaveSettled(page);
+    const whereThisStarts = await boxOf(page.locator("main :is(.count, h1)").first());
 
-  expect(Math.abs(whereThisStarts.x - whereWaitingStarts.x), "left").toBeLessThanOrEqual(1);
-  // Under the bar, at the top: the screen's own padding is 32px under the bar (about 70px tall), nowhere near the middle.
-  expect(whereThisStarts.y, "top").toBeLessThan(150);
-});
+    expect(Math.abs(whereThisStarts.x - whereWaitingStarts.x), "left").toBeLessThanOrEqual(1);
+    // Under the bar, at the top: the screen's own padding is 32px under the bar (about 70px tall), nowhere near the middle.
+    expect(whereThisStarts.y, "top").toBeLessThan(150);
+  });
+}
+
+takenOffStartsTopLeft();
+heldSideways("tablet", takenOffStartsTopLeft);
 
 // ---- L20: changing a live game's name has nothing to finish ------------------------------------------------------------------------
 
@@ -654,10 +682,14 @@ test.describe("on an iPhone SE held sideways", () => {
   });
 });
 
-test("on a phone held sideways the upright video's frame is whole above the bar", async ({ page }) => {
-  test.skip(layoutOf(page) !== "phone-sideways", "a phone held sideways, in the projects that have one");
-  await expectFrameWholeAboveTheBar(page);
-});
+function uprightFrameWhole(): void {
+  test("on a phone held sideways the upright video's frame is whole above the bar", async ({ page }) => {
+    test.skip(layoutOf(page) !== "phone-sideways", "a phone held sideways, in the projects that have one");
+    await expectFrameWholeAboveTheBar(page);
+  });
+}
+
+heldSideways("phone", uprightFrameWhole);
 
 // ---- L13: Waiting and Live show the game's name once -------------------------------------------------------------------------------
 
@@ -747,31 +779,36 @@ test("picking 18+ on the age question says Question 6 of 7 at once, and picking 
 
 // ---- L9: the card of what players will see shows both videos, across its whole width -----------------------------------
 
-test("beside a question the card of what players will see shows the upright and the wide video, filling its width", async ({
-  page,
-}) => {
-  const layout = layoutOf(page);
-  test.skip(layout !== "computer" && layout !== "tablet-sideways", "only a wide window has the card");
-  const { slug } = await startDraft(page);
-  await fillAnswers(slug, { files: true, videos: true });
-  await page.goto(`/make/${slug}/age`);
-  await wordsHaveSettled(page);
+function previewShowsBothVideos(): void {
+  test("beside a question the card of what players will see shows the upright and the wide video, filling its width", async ({
+    page,
+  }) => {
+    const layout = layoutOf(page);
+    test.skip(layout !== "computer" && layout !== "tablet-sideways", "only a wide window has the card");
+    const { slug } = await startDraft(page);
+    await fillAnswers(slug, { files: true, videos: true });
+    await page.goto(`/make/${slug}/age`);
+    await wordsHaveSettled(page);
 
-  const row = await page.locator(".preview .card").evaluate((card) => {
-    const style = getComputedStyle(card);
-    const box = card.getBoundingClientRect();
-    const inner = box.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-    const tiles = [...card.querySelectorAll("[data-shape]")].map((tile) => ({
-      shape: tile.getAttribute("data-shape"),
-      box: tile.getBoundingClientRect(),
-    }));
-    const used =
-      Math.max(...tiles.map((tile) => tile.box.right)) - Math.min(...tiles.map((tile) => tile.box.left));
-    return { inner, used, shapes: tiles.map((tile) => tile.shape) };
+    const row = await page.locator(".preview .card").evaluate((card) => {
+      const style = getComputedStyle(card);
+      const box = card.getBoundingClientRect();
+      const inner = box.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const tiles = [...card.querySelectorAll("[data-shape]")].map((tile) => ({
+        shape: tile.getAttribute("data-shape"),
+        box: tile.getBoundingClientRect(),
+      }));
+      const used =
+        Math.max(...tiles.map((tile) => tile.box.right)) - Math.min(...tiles.map((tile) => tile.box.left));
+      return { inner, used, shapes: tiles.map((tile) => tile.shape) };
+    });
+    expect(row.shapes).toEqual(["upright", "wide"]);
+    expect(row.used, "the two videos use the card's whole width").toBeGreaterThanOrEqual(row.inner - 2);
   });
-  expect(row.shapes).toEqual(["upright", "wide"]);
-  expect(row.used, "the two videos use the card's whole width").toBeGreaterThanOrEqual(row.inner - 2);
-});
+}
+
+previewShowsBothVideos();
+heldSideways("tablet", previewShowsBothVideos);
 
 // ---- L10: a Needs fixing card's upright video is beside its words --------------------------------------------------------
 

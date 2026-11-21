@@ -191,7 +191,6 @@ describe("purgeDueAccounts", () => {
 
   // A maker's page is a person's data (slice 3): it stays up while the 14 days run, and goes with the person.
   it("keeps a person's page up for the 14 days, then removes it and its links, and frees the address", async () => {
-    // Review Focus 14
     const leaving = await seedPerson();
     const staying = await seedPerson();
     for (const [userId, handle] of [
@@ -236,7 +235,7 @@ describe("purgeDueAccounts", () => {
     expect(await db().pageLink.count({ where: { page: { userId: staying.id } } })).toBe(2);
   });
 
-  // Review Focus 14: a photo is a person's data too, and is public by its address until it is deleted.
+  // A photo is a person's data too, and is public by its address until it is deleted.
   it("removes a person's photo from the store with their page, and leaves everyone else's", async () => {
     const leaving = await seedPerson();
     const staying = await seedPerson();
@@ -270,7 +269,6 @@ describe("purgeDueAccounts", () => {
   // The games a person wanted are theirs (the wishlist, before launch). The launch email's row holds only an id and a
   // time, and is add-only, so it stays.
   it("keeps a person's wishlist for the 14 days, then removes it, and keeps the launch email's row", async () => {
-    // Review Focus 14
     const leaving = await seedPerson();
     const staying = await seedPerson();
     const maker = await seedPerson();

@@ -220,7 +220,7 @@ test("an 18+ game is asked one more question, and a 12+ game is not", async ({ p
   await expect(page.getByLabel("None of these")).not.toBeChecked();
   await showTheOwner(page, testInfo, "question 7, what an 18+ game has");
 
-  // Back, and a younger rating: the marks are cleared and the question is not asked (Review Focus 5).
+  // Back, and a younger rating: the marks are cleared and the question is not asked.
   await page.getByRole("link", { name: "Back" }).click();
   await expect(page).toHaveURL(`/make/${slug}/age`);
   await answerAge(page, "12+");
@@ -466,7 +466,7 @@ test("another maker cannot open or answer this game's questions", async ({ page,
     const other = await stranger.newPage();
     await signUp(other);
 
-    // Review Focus 2: a 404 that says nothing, for every address and every answer.
+    // A 404 that says nothing, for every address and every answer.
     for (const { path, form } of MAKER_ADDRESSES(slug)) {
       expect((await other.goto(path))?.status(), `GET ${path}`).toBe(404);
       if (form !== undefined) {

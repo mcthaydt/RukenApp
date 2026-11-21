@@ -66,7 +66,6 @@ describe("postPaymentPaid", () => {
   });
 
   it("gives the pool nothing when the fees eat what is left, and Ruken carries the loss", () => {
-    // Review Focus 1
     expect(
       postPaymentPaid({ plan: "monthly", firstPeriod: november, gross: 100n, tax: 0n, fees: 150n }),
     ).toEqual([
@@ -182,7 +181,6 @@ describe("a fee that arrives after the payment", () => {
   });
 
   it("takes nothing more from makers once their half is nothing", () => {
-    // Review Focus 1
     expect(feeParts({ ...paid, fees: 2000n }, 5n)).toEqual({ months: [], ruken: 5n });
   });
 

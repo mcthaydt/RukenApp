@@ -57,7 +57,7 @@ describe("the offered themes", () => {
     }
   });
 
-  // Review Focus 8: every offered combination, not a sample.
+  // Every offered combination, not a sample.
   it("is readable in every one: its text, and its button's label", () => {
     for (const theme of THEMES) {
       expect(contrast(theme.text, theme.ground), `combination ${String(theme.id)}`).toBeGreaterThanOrEqual(
@@ -98,7 +98,7 @@ describe("the offered themes", () => {
 });
 
 describe("choosing a theme", () => {
-  // Review Focus 7: a number posted by hand that is not offered.
+  // A number posted by hand that is not offered.
   it("refuses a number that is not offered", () => {
     for (const id of [0, -1, 349, 1.5, Number.NaN]) expect(offeredTheme(id), String(id)).toBeNull();
     expect(themeById(349)).toBe(DEFAULT_THEME);

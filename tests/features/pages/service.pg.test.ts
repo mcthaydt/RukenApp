@@ -100,7 +100,6 @@ describe("a maker's page", () => {
   });
 
   it("gives an address to one person only", async () => {
-    // Review Focus 4
     const a = await createUser(db());
     const b = await createUser(db());
     await service.savePage(a, { handle: "maker-one", name: "A", oneLine: "" });
@@ -155,7 +154,6 @@ describe("a maker's page", () => {
 
 describe("a page's colours", () => {
   it("keeps a page's colours when a number that is not offered is sent", async () => {
-    // Review Focus 7
     const { userId } = await makerWithPage();
     const offered = THEMES[0];
     if (offered === undefined) throw new Error("no theme is offered");
@@ -226,7 +224,6 @@ describe("a page's links", () => {
   });
 
   it("refuses a link that is not https and stores nothing", async () => {
-    // Review Focus 5
     const { userId, pageId } = await makerWithPage();
     await expect(
       service.addLink(userId, { kind: "link", title: "Bad", url: "javascript:alert(1)" }),
@@ -322,7 +319,6 @@ describe("what a visitor sees and counts", () => {
   });
 
   it("counts a visitor's view and tap, and not the maker's own", async () => {
-    // Review Focus 9
     const { userId, handle, pageId } = await makerWithPage();
     const visitor = await createUser(db());
     await service.addLink(userId, { kind: "link", title: "X", url: "https://example.com/x" });
@@ -337,7 +333,6 @@ describe("what a visitor sees and counts", () => {
   });
 
   it("sends nobody on from a hidden link, another page's link or a made-up one", async () => {
-    // Review Focus 6
     const a = await makerWithPage();
     const b = await makerWithPage();
     await service.addLink(a.userId, { kind: "link", title: "Hidden", url: "https://example.com/h" });
