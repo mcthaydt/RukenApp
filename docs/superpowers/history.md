@@ -32,6 +32,7 @@ Each failed once and passed on its one rerun. Root causes and fixes are in pull 
 ## Known issues
 
 - Opening a game's page with the pointer over its "Made by" link can preload the maker's page (`/<handle>`), which counts one view and sets the arrival cookie without a person opening it. Seen in the review of pull request #249; left as is. A fix would stop the link being preloaded (`data-sveltekit-preload-data="off"` on that link) or count views only on a real open.
+- The rule hook reads a pull request's lane from its body and takes the highest "lane N" it finds anywhere (`.claude/hooks/rules.mjs`, `LANE` and `laneOf`), so a body that mentions another change's lane is classed by it. Pull request #252 was lane 2, but its "Not in this pull request" section said the CI change would be "lane 3, its own pull request", so the hook asked for a lane 3 audit before ready (seen 2026-11-21 at 7b67aa5). It did not block: the lane 2 review's "7b67aa5 PASS" satisfied it. Until the hook reads only the lane line, write another change's lane without the word "lane" in a body. A fix is a lane 3 change to the hooks.
 
 ## Lessons
 
