@@ -15,6 +15,8 @@ Last updated: 2026-11-21 14:39 UTC (from `date`).
 - 2026-11-21 14:29 UTC: nothing in Ruken is permanent; everything a user makes must be editable, like any professional app. Live game changes (files, websites, videos, age rating) are held for review before players see them.
 - 2026-11-21 14:26 UTC, on a card: "Games come off with the account". When a maker's account is finally deleted (after the 14 days), their games are taken off Ruken like Take off, with a journey checking it.
 - 2026-11-21 14:31 UTC: name and line stay instant to change; a wrong birthday is fixed by asking Ruken.
+- 2026-11-21 14:41 UTC, the Owner: "add to the claude.md the patch for the not following hooks, that is a negotiable" (read as non-negotiable). Sessions never route around a hook; every pull request create and edit goes through a checked route. Spec `2026-11-21-hooks-cover-every-pr-route-design.md`, section 3.7.
+- 2026-11-21 14:41 UTC, the Owner: "ALL SESSIONS NEED TO FOLLOW THE HOOKS". The hooks rule is the first of the rules that never bend and names every session.
 
 ## Active milestone: setup and "Finish Ruken"
 
