@@ -34,6 +34,35 @@ export function grantFirstOwner(db: PrismaClient, phoneNumber: string): Promise<
   });
 }
 
+export type AttachPhoneOutcome = "attached" | "no_account" | "has_number" | "number_taken" | "bad_number";
+
+/**
+ * Gives an account made before sign-in moved to phone numbers (it has an email and no number) its number, so its
+ * owner can sign in again and keeps what the account holds: staff role, games, password. Only for an account with no
+ * number yet, and only for a number no other account has. The number is not proved by a code here (the command is run
+ * with the jobs secret by the Owner), so `phoneConfirmedAt` stays empty; the first code typed at sign-up or reset sets it.
+ */
+export function attachPhoneToAccount(
+  db: PrismaClient,
+  email: string,
+  phoneNumber: string,
+): Promise<AttachPhoneOutcome> {
+  const number = toE164("+1", phoneNumber);
+  if (number === null) return Promise.resolve("bad_number");
+  return db.$transaction(async (tx): Promise<AttachPhoneOutcome> => {
+    const user = await tx.user.findFirst({
+      where: { email: { equals: email.trim(), mode: "insensitive" } },
+      select: { id: true, phoneNumber: true },
+    });
+    if (user === null) return "no_account";
+    if (user.phoneNumber !== null) return "has_number";
+    if ((await tx.user.findUnique({ where: { phoneNumber: number }, select: { id: true } })) !== null)
+      return "number_taken";
+    await tx.user.update({ where: { id: user.id }, data: { phoneNumber: number } });
+    return "attached";
+  });
+}
+
 /** The staff who check games: they accept a game or send it back, and play any game without paying. */
 export const GAME_STAFF_ROLES: readonly StaffRole[] = ["owner", "head_curator", "curator"];
 

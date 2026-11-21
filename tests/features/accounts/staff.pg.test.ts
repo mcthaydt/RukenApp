@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
+  attachPhoneToAccount,
   firstGameStaff,
   GAME_STAFF_ROLES,
   grantFirstOwner,
@@ -138,5 +139,61 @@ describe("firstGameStaff", () => {
     await grantFirstOwner(db(), "+13125550205");
 
     expect(await firstGameStaff(db())).toBe(userId);
+  });
+});
+
+describe("attachPhoneToAccount", () => {
+  /** An account made by email before sign-in moved to phone numbers: an email and no number. */
+  async function oldAccount(email: string): Promise<string> {
+    return (await db().user.create({ data: { name: "Old", email } })).id;
+  }
+
+  it("gives an account with no number its number, and changes nothing else about it", async () => {
+    const userId = await oldAccount("old-one@example.test");
+    await db().staffAssignment.create({ data: { userId, role: "owner" } });
+
+    expect(await attachPhoneToAccount(db(), "old-one@example.test", "+1 (312) 555-0301")).toBe("attached");
+
+    const user = await db().user.findUniqueOrThrow({ where: { id: userId } });
+    expect(user.phoneNumber).toBe("+13125550301");
+    expect(user.email).toBe("old-one@example.test");
+    expect(await staffRolesOf(db(), userId)).toContain("owner");
+  });
+
+  it("finds the account whatever the case of its email", async () => {
+    await oldAccount("Old-Two@Example.test");
+
+    expect(await attachPhoneToAccount(db(), " old-two@example.test ", "+13125550302")).toBe("attached");
+  });
+
+  it("says so when there is no account with that email, and adds no number", async () => {
+    expect(await attachPhoneToAccount(db(), "nobody@example.test", "+13125550303")).toBe("no_account");
+    expect(await db().user.count({ where: { phoneNumber: "+13125550303" } })).toBe(0);
+  });
+
+  it("will not replace a number the account already has", async () => {
+    await newUser("+13125550304");
+    const user = await db().user.findFirstOrThrow({ where: { phoneNumber: "+13125550304" } });
+
+    expect(await attachPhoneToAccount(db(), user.email, "+13125550305")).toBe("has_number");
+
+    expect((await db().user.findUniqueOrThrow({ where: { id: user.id } })).phoneNumber).toBe("+13125550304");
+  });
+
+  it("will not give a number another account already has", async () => {
+    await newUser("+13125550306");
+    const old = await oldAccount("old-three@example.test");
+
+    expect(await attachPhoneToAccount(db(), "old-three@example.test", "+13125550306")).toBe("number_taken");
+
+    expect((await db().user.findUniqueOrThrow({ where: { id: old } })).phoneNumber).toBeNull();
+  });
+
+  it("refuses a number that is not a phone number", async () => {
+    const old = await oldAccount("old-four@example.test");
+
+    expect(await attachPhoneToAccount(db(), "old-four@example.test", "banana")).toBe("bad_number");
+
+    expect((await db().user.findUniqueOrThrow({ where: { id: old } })).phoneNumber).toBeNull();
   });
 });

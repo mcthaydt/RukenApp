@@ -27,6 +27,19 @@ export async function userIdOf(number: string): Promise<string> {
   return (await db().user.findUniqueOrThrow({ where: { phoneNumber: number }, select: { id: true } })).id;
 }
 
+/**
+ * Makes an account look as one made by email did, before sign-in moved to phone numbers: its number is taken off and
+ * its email (the stand-in one sign-up made) is answered, for the command that gives such an account its number.
+ */
+export async function makeItAnOldAccount(number: string): Promise<string> {
+  const user = await db().user.findUniqueOrThrow({
+    where: { phoneNumber: number },
+    select: { id: true, email: true },
+  });
+  await db().user.update({ where: { id: user.id }, data: { phoneNumber: null } });
+  return user.email;
+}
+
 /** The email a person paid with (kept for legal papers and for a reset code), or null when none was kept. */
 export async function paperEmailOf(number: string): Promise<string | null> {
   return (await db().user.findUniqueOrThrow({ where: { phoneNumber: number }, select: { paperEmail: true } }))

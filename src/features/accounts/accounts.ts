@@ -20,10 +20,12 @@ export { setPaperEmail } from "./paper.ts";
 export { setMoneyCheck } from "./changed-hands.ts";
 export { signedInOnly, signedInRedirect } from "./pages.ts";
 export {
+  attachPhoneToAccount,
   firstGameStaff,
   GAME_STAFF_ROLES,
   grantFirstOwner,
   staffRolesOf,
+  type AttachPhoneOutcome,
   type FirstOwnerOutcome,
 } from "./staff.ts";
 export { authServices } from "./services.ts";

@@ -14,7 +14,7 @@ type Settings = Readonly<Record<string, string | undefined>>;
 export interface MoneyServices {
   /** Runs the daily money job once. */
   runJob(): Promise<MoneyJobReport>;
-  /** Whether any money has been booked for this person (a journal line names them), as a maker or a member's pool. */
+  /** Whether any money has been booked for this person (a journal line names them as a maker). */
   hasBeenPaid(userId: string): Promise<boolean>;
 }
 
