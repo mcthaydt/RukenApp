@@ -66,6 +66,17 @@ Measured against PR-R's head (`cdc520b`) and `main` (`fe5f5ee`), sentence by sen
 - Expected: `this-repo` names the required checks as they are and every workflow.
 - Fix: replace the stale sentence with the measured required checks; add one line for `pr-rules.yml` saying what it checks.
 
+**F6. CLAUDE.md's owner-questions line changes the owner's words.**
+- Where: `CLAUDE.md`, How work goes, "Owner questions are checked against this file first": "If something outside this list is brought to the owner, say so."
+- Evidence: the owner's rule (2026-11-21 19:30 UTC), as the Project instructions carry it: "If you bring the owner something outside those three, they will call it out." The line in CLAUDE.md tells the session to say so; the owner's words say the owner will call it out.
+- Expected: the line carries the owner's meaning.
+- Fix: replace that sentence with "If something outside this list is brought to the owner, the owner will call it out." Nothing else in CLAUDE.md changes.
+
+**F7. A hook refusal that looks wrong goes on the hook follow-ups.**
+- Where: `progress.md`, History, Known issues.
+- Evidence: while writing this spec (2026-11-21, round 2), the Bash hook refused a local `python3` script that only edited this spec, because the script's text contained the words "gh api" as prose ("Matched: python3 runs a script that calls gh or api.github.com"). The script made no GitHub call. The spec session then made the same edit with the Edit tool. Under the hooks rule that was routing around a refusal, even one that looks wrong; the right step was to stop and report. It is recorded so the audits see it.
+- Expected and fix: one Known issues line naming the false positive (prose containing "gh api" inside a local script is read as a GitHub call) as a hook follow-up, a lane 3 hooks change of its own. This spec does not change the hook.
+
 ## Not changed here, reported instead
 
 - Lines in the Ruken project's instructions that differ from the kit (the session cannot edit them) go to the coordinator in the report.
@@ -73,11 +84,11 @@ Measured against PR-R's head (`cdc520b`) and `main` (`fe5f5ee`), sentence by sen
 
 ## Acceptance criteria
 
-1. F1 to F5 are fixed as written, and no other file changes except this spec and the audit files.
+1. F1 to F7 are fixed as written, and no other file changes except this spec and the audit files.
 2. Every owner entry in project memory at build time is in `progress.md` with its date (Appendix A as a floor).
 3. No section above History names a branch that does not exist or a merged pull request as open, and "Last updated" comes from `date`.
 4. `progress.md` has a "Stages" table with a row, a status and a percentage (or "short path, no plan", or "not measured") for each open stage or unit.
-5. `git diff main --stat` on the implementation branch lists only `docs/superpowers/progress.md` and `.claude/skills/this-repo/SKILL.md` (plus the live-state file, deleted before the audit).
+5. `git diff main --stat` on the implementation branch lists only `CLAUDE.md` (one sentence, F6), `docs/superpowers/progress.md` and `.claude/skills/this-repo/SKILL.md` (plus the live-state file, deleted before the audit).
 6. `grep -rn "history.md" CLAUDE.md .claude/` finds nothing.
 7. No hook file, `settings.json` or workflow changes: `git diff main -- .claude/hooks .claude/settings.json .github` is empty.
 8. Every fact added is measured: each merge time comes from `gh api`, each time from `date`.
@@ -87,7 +98,7 @@ Measured against PR-R's head (`cdc520b`) and `main` (`fe5f5ee`), sentence by sen
 
 | Unit | Waits on | Files | Output | Check |
 |---|---|---|---|---|
-| 1. Fix F1 to F5 | #279 merged; this spec merged; the comparison rerun on that `main` ("What was compared" was measured on PR-R's head) | `docs/superpowers/progress.md`, `.claude/skills/this-repo/SKILL.md` | one pull request, lane 3 | criteria 1 to 9 |
+| 1. Fix F1 to F7 | #279 merged; this spec merged; the comparison rerun on that `main` ("What was compared" was measured on PR-R's head) | `CLAUDE.md`, `docs/superpowers/progress.md`, `.claude/skills/this-repo/SKILL.md` | one pull request, lane 3 | criteria 1 to 9 |
 
 Expected duration: 1 hour of work after #279 merges, plus the audits and CI.
 
