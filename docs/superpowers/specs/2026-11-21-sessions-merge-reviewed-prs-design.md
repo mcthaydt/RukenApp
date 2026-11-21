@@ -1,6 +1,6 @@
 # Sessions mark ready and merge reviewed pull requests
 
-Date: 2026-11-21. Status: **spec, revised after plan audits 1 (5 red at 8ce7b7a) and 2 (4 red at e16e6e6); waiting on plan audit 3.** Lane 3 (it changes `.claude/settings.json`, `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json` and what needs the owner).
+Date: 2026-11-21. Status: **spec, revised after plan audits 1 (5 red at 8ce7b7a), 2 (4 red at e16e6e6) and 3 (2 red at cd5d64c); waiting on plan audit 4.** Lane 3 (it changes `.claude/settings.json`, `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json` and what needs the owner).
 
 Lines marked **Owner** are the owner's words. Lines marked **Call** are this spec's choices; the owner can overrule any of them.
 
@@ -51,8 +51,8 @@ What the hook checks (`checkMcp`, `.claude/hooks/rules.mjs`, configured by `rule
 
 | Tool | Hook checks |
 |---|---|
-| `merge_pull_request` | this repo only (3.2); method is `merge`; live state gone; passing review on the head when the lane is 2 or 3 (3.4); required statuses green |
-| `update_pull_request` with `draft: false` | this repo only; live state; review (3.4) |
+| `merge_pull_request` | this repo only (3.2); method is `merge`; `expectedHeadSha` is the head the hook checked (3.6); live state gone; passing review on the head when the lane is 2 or 3 (3.4). Required checks green is GitHub's job: `main`'s branch protection requires `gate` and `commit-authors` with admins enforced (the hook's `mergeGreen.statuses` is empty) |
+| `update_pull_request` with `draft` present and not `true` | this repo only; live state; review (3.4) |
 | `update_pull_request` with `base` | refused on this repo (3.3); on other repos, refused by 3.2 only when it also has `draft: false` |
 | `disable_pr_auto_merge` | this repo only |
 
@@ -71,18 +71,23 @@ A passing review names the head commit, and a base change keeps the head, so the
 Today `checkReviewed` takes the lane only from the body (`laneOf(pr.body)`), and the allowed `update_pull_request` can rewrite the body. CLAUDE.md, Risk: "Classify it from the paths its diff touches … The highest lane wins."
 
 - `rules.json` gains `prFlow.lanePaths`: `{ "2": [...], "3": [...] }`, globs in the hook's existing `matchesAny` form, copied from CLAUDE.md's Risk lists:
-  - **3:** `tests/golden/**`, `prisma/migrations/**`, `cloudflare/**`, `.github/**`, `src/features/money/**`, `src/features/membership/**`, `CLAUDE.md`, `.claude/settings.json`, `.claude/hooks/**`, and `.claude/skills/**` except `.claude/skills/verify/**` and `.claude/skills/this-repo/**` (a repo's own skills take the lane of the change they describe, so the body's lane and the other files decide).
+  - **3:** `tests/golden/**`, `prisma/migrations/**`, `cloudflare/**`, `.github/**`, `src/features/money/**`, `src/features/membership/**`, `**/CLAUDE.md`, and `.claude/**` (settings, hooks, `after-compaction.md`, the shared skills).
+  - **Not lane 3 by path:** `prFlow.lanePathsExcept.3`: `.claude/skills/verify/**` and `.claude/skills/this-repo/**`. A file matching one of these is not counted as lane 3 by its path (it still counts for lane 2 if a lane 2 glob matches, which none does); a repo's own skills take the lane of the change they describe, so the body's lane and the other files decide. `matchesAny` has no negation, so the exception is its own list (plan audit 3, N2); both lists fail safe.
   - **2:** `src/lib/**`, `src/hooks.server.ts`, `src/app.html`, `prisma/schema/**`, `package.json`, `pnpm-lock.yaml`, `vite.config.ts`, `playwright.config.ts`, `wrangler.jsonc`, `tests/support/**`, `tests/fixtures/**`.
-- `checkReviewed` reads every page of `repos/<repo>/pulls/<n>/files` (100 per page, with the same timeout its other reads use). The lane is the highest of the body's lane and every changed file's lane (`filename`, and `previous_filename` for a rename). If the read fails, or the list is cut short (GitHub stops at 3000 files), the lane is 3.
-- The lists stay in `rules.json` so a later rule change edits one place; a comment there names CLAUDE.md Risk as their source. Lane 3 rule paths in CLAUDE.md that are not file paths (credentials, real data, device actions) stay with the body and the reviewer.
+- `checkReviewed` reads every page of `repos/<repo>/pulls/<n>/files` (100 per page, with the same timeout its other reads use). The lane is the highest of the body's lane and every changed file's lane (`filename`, and `previous_filename` for a rename). If the read fails, or the count read differs from the pull request's `changed_files` (GitHub stops at 3000 files), the lane is 3. A very long list can take past the hook's 30 s timeout; with `onFailure: "block"` that is a refusal, which also fails safe.
+- The lists live in `rules.json`, beside a key `"lanePathsSource": "CLAUDE.md, Risk"` (JSON takes no comments). CLAUDE.md stays the rule; a later rule change edits both, and criterion 2 h fails `pnpm test` when they differ (plan audit 3, R2). Lane 3 rule paths in CLAUDE.md that are not file paths (credentials, real data, device actions) stay with the body and the reviewer.
 
 This applies to every route `checkReviewed` guards (`gh pr ready`, `gh pr merge`, the REST routes and the MCP tools), so all of them get stricter, none looser.
 
 ### 3.5 The hook never passes these tools unchecked (plan audit 1, N1; plan audit 2, R1)
 
 - **A second `PreToolUse` entry** in `.claude/settings.json`, matcher `^mcp__github__(merge_pull_request|disable_pr_auto_merge|update_pull_request)$`, running the same command with `"onFailure": "block"`. The first entry stays as it is, so every other tool keeps today's non-blocking behaviour.
-- **Every "did not run" path exits non-zero on these tools.** In `main()`, on PreToolUse: when the input does not parse (the tool name is then unknown), exit 1; when the tool name matches the second entry's matcher and no root is found or `loadConfig` returns an error, exit 1 with the reason on stderr; and when the hook throws after the tool name is known and it matches, exit 1. Every other case keeps today's exit 0 with its `systemMessage`. With the second entry's `onFailure: "block"`, each of these blocks the call. (The first entry also runs and fails the same way; without `onFailure` that is only a notice.)
+- **Every "did not run" path exits non-zero on these tools.** In `main()`, on PreToolUse: when the input does not parse (the tool name is then unknown), exit 1; when the tool name matches the second entry's matcher and no root is found or `loadConfig` returns an error, exit 1 with the reason on stderr; and when the hook throws after the tool name is known and it matches, exit 1. Exit with `process.exit(1)`, or remove today's trailing `process.exitCode = 0`, which would otherwise turn a set `exitCode` back to 0 (plan audit 3, N1). Every other case keeps today's exit 0 with its `systemMessage`. With the second entry's `onFailure: "block"`, each of these blocks the call. (The first entry also runs and fails the same way; without `onFailure` that is only a notice.)
 - The implementer reads https://code.claude.com/docs/en/hooks before writing this and uses `onFailure` exactly as documented; if it does not behave as described, stop and report, and do not ship 3.1 without it.
+
+### 3.6 The merge lands only on the head that was checked (plan audit 3, R1)
+
+The hook reads the head, finds a PASS on it, and allows; a push in the seconds before the merge call lands would merge a head no review named. `merge_pull_request` takes `expectedHeadSha` (GitHub's merge `sha`, which answers 409 when the head moved). On this repo the hook refuses a `merge_pull_request` whose `expectedHeadSha` is missing or is not the full `pr.head.sha` the hook read: "Pass expectedHeadSha: the full head commit the review names." This holds on every lane, since it costs nothing and lane 1's green checks are tied to a head too.
 
 ## 4. Acceptance criteria
 
@@ -95,6 +100,9 @@ This applies to every route `checkReviewed` guards (`gh pr ready`, `gh pr merge`
    e. **Review still holds:** body "Lane 3", files `["docs/x.md"]`, no PASS: deny; then the stub adds a comment "abc1234 PASS": no review deny.
    f. **Fail closed (3.5):** with `rules.json` holding `{ broken`, with `rules.json` removed, and with input `not json`, a `merge_pull_request` PreToolUse exits non-zero. With `rules.json` broken, a `Read` PreToolUse still exits 0.
    g. **Settings:** criterion 1, checked by reading the file.
+   h. **Lane lists match CLAUDE.md (3.4):** read `CLAUDE.md`, take every backticked path in the "**Lane 2**" and "**Lane 3**" bullets under `## Risk` (a trailing `/` read as `/**`), and assert each is matched by that lane's `lanePaths`; and assert every `lanePaths` entry is either one of those paths or in a short named list in the test (`**/CLAUDE.md`, `.claude/**`). Then edit a copy of CLAUDE.md to add a lane 2 path and show the check fails on it (once, in the test, against the copy).
+   i. **Head pinned (3.6):** lane 3 body, files `["docs/x.md"]`, a PASS on `abc1234`, stub head `abc1234` followed by 33 more hex digits: `merge_pull_request` with no `expectedHeadSha`: deny; with another commit's SHA: deny; with the stub's full head: no deny.
+   j. **Draft field:** `update_pull_request` with `draft: false` on RukenPrivate is denied by 3.2; with only `title`, not.
 3. A recorded run in the implementation pull request's body (commands and answers, at its head commit, against the real GitHub): on an open lane 3 pull request with no PASS on its head, `merge_pull_request` (method `merge`) and `update_pull_request` `draft: false` are each denied for "no passing review that names its head"; and a check that `onFailure: "block"` really blocks: with the second entry pointing at a command that exits 1 (in a scratch copy of the repo, not committed), a `disable_pr_auto_merge` call is blocked.
 4. No file changes outside `.claude/settings.json`, `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, the new test, this spec, its audits and the implementer's live-state file (deleted before the implementation audit). `pnpm lint`, `pnpm typecheck` and `pnpm test` pass, and `node .claude/hooks/rules.mjs --check` reports the config valid.
 5. After the merge, the first session that marks a reviewed pull request ready or merges it with these tools reports whether the classifier stayed out. If it refused, the coordinator tells the owner plainly, and the fallback stays: the owner runs the command.
