@@ -47,6 +47,15 @@ function tokenClaims(token: string): { requestType?: unknown; email?: unknown; i
   }
 }
 
+const CHANGE_LINK_PREFIX = "change-email:";
+
+/** The Verification row that ties a change link to its account: a hash of the token, never the token. */
+async function changeLinkIdentifier(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${CHANGE_LINK_PREFIX}${hex}`;
+}
+
 /** Whether a verification token is the one made for a change of email. The words of the mail depend on it. */
 function isEmailChangeToken(token: string): boolean {
   return tokenClaims(token)?.requestType === "change-email-verification";
@@ -104,24 +113,31 @@ export function createAuth(options: AuthOptions) {
   }
 
   /**
-   * A change-email link names the OLD address, not the account that asked. If that account has moved on and someone new
-   * signed up with the old address since, opening the link would change the new account's address and sign the opener
-   * in to it. So a link is refused when the account holding its old address was made after the link was. (better-auth
-   * answers a bad link the same way: INVALID_TOKEN.)
+   * A change-email link names the OLD address, not the account that asked. So when someone else holds that address by the
+   * time the link is opened (it was freed and taken again, even by an older account), the link would change THEIR
+   * address and sign the opener in to their account. Each link is therefore tied to the account that asked, in
+   * better-auth's own Verification table (a hash of the token, so a copy of the table holds no usable link), and is
+   * refused unless the account holding the old address is that one. It is refused the way better-auth refuses any bad
+   * link: a redirect to /me with INVALID_TOKEN. The place is fixed here, never the query's callbackURL, because this
+   * runs before better-auth checks that one.
    */
-  async function refuseStaleChangeLink(query: unknown): Promise<void> {
+  async function refuseUnlessLinkIsTheirs(query: unknown, redirect: (url: string) => Error): Promise<void> {
     const token = (query as { token?: unknown } | undefined)?.token;
     if (typeof token !== "string" || !isEmailChangeToken(token)) return;
     const claims = tokenClaims(token);
-    if (typeof claims?.email !== "string" || typeof claims.iat !== "number") return;
-    const holder = await prisma.user.findUnique({
-      where: { email: claims.email },
-      select: { createdAt: true },
+    if (typeof claims?.email !== "string") return;
+    const holder = await prisma.user.findUnique({ where: { email: claims.email }, select: { id: true } });
+    // No holder: better-auth answers its own "user not found". With one, the row must say they asked.
+    if (holder === null) return;
+    const asked = await prisma.verification.findFirst({
+      where: {
+        identifier: await changeLinkIdentifier(token),
+        value: holder.id,
+        expiresAt: { gt: new Date(clock.epochMs()) },
+      },
+      select: { id: true },
     });
-    // `iat` is whole seconds, so an account made in the same second as the link is not counted as later.
-    if (holder !== null && holder.createdAt.getTime() >= (claims.iat + 1) * 1000) {
-      throw new APIError("BAD_REQUEST", { message: "Invalid token", code: "INVALID_TOKEN" });
-    }
+    if (asked === null) throw redirect("/me?error=INVALID_TOKEN");
   }
 
   return betterAuth({
@@ -179,6 +195,15 @@ export function createAuth(options: AuthOptions) {
       sendOnSignUp: true,
       autoSignInAfterVerification: true,
       expiresIn: ONE_DAY_SECONDS,
+      // A finished change ends every other change link the account has open (an older one would move it to an
+      // address it has already left).
+      afterEmailVerification: async (user, request) => {
+        const token = request === undefined ? null : new URL(request.url).searchParams.get("token");
+        if (token === null || !isEmailChangeToken(token)) return;
+        await prisma.verification.deleteMany({
+          where: { identifier: { startsWith: CHANGE_LINK_PREFIX }, value: user.id },
+        });
+      },
       // Waited for, unlike the mails above: sign-up already says the account is new. A failure is
       // logged here by its code, because better-auth would log the raw error, which can hold the
       // address; better-auth ignores the failure either way.
@@ -188,7 +213,18 @@ export function createAuth(options: AuthOptions) {
         // account already has gets no mail at all (better-auth sends none), so waiting for the mail server would
         // show the person which addresses are taken.
         if (isEmailChangeToken(token)) {
-          mailLater("email change mail", () => mailer.send(emailChangeMessage(user.email, url)));
+          mailLater("email change mail", async () => {
+            // Stored before the mail goes, so a link cannot be opened before it is tied to its account. Both happen after
+            // the answer: a taken address gets neither, and the answer's timing must not show which is which.
+            await prisma.verification.create({
+              data: {
+                identifier: await changeLinkIdentifier(token),
+                value: user.id,
+                expiresAt: new Date(clock.epochMs() + ONE_DAY_SECONDS * 1000),
+              },
+            });
+            await mailer.send(emailChangeMessage(user.email, url));
+          });
           return;
         }
         try {
@@ -279,7 +315,8 @@ export function createAuth(options: AuthOptions) {
       // password first (credentials.ts). better-auth's own endpoints do not ask for it when the email changes, so a
       // stolen session cookie must not reach them through the public route.
       before: createAuthMiddleware(async (ctx) => {
-        if (ctx.path === "/verify-email") await refuseStaleChangeLink(ctx.query);
+        if (ctx.path === "/verify-email")
+          await refuseUnlessLinkIsTheirs(ctx.query, (url) => ctx.redirect(url));
         if (ctx.headers?.get(PUBLIC_ROUTE_HEADER) == null) return;
         if (PAGE_ONLY_PATHS.has(ctx.path)) throw new APIError("NOT_FOUND");
       }),

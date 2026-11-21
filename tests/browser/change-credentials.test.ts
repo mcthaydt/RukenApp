@@ -155,15 +155,23 @@ test("everything on both screens works with the keyboard alone, and focus shows"
   const { password } = await signUp(page);
   await page.goto("/me");
 
-  // Tab to each of the two links on /me and press Enter on it.
+  // Tab from the top of /me to each of the two links, check its focus ring shows, and press Enter on it.
   for (const [name, heading] of [
     ["Change email", "Change your email"],
     ["Change password", "Change your password"],
   ] as const) {
     await page.goto("/me");
     const link = page.getByRole("link", { name });
-    await link.focus();
+    // A bounded walk: the link is a few presses from the top, and the journey fails if it is never reached.
+    for (
+      let presses = 0;
+      presses < 12 && !(await link.evaluate((el) => el === document.activeElement));
+      presses += 1
+    ) {
+      await page.keyboard.press("Tab");
+    }
     await expect(link).toBeFocused();
+    await expect(link).toHaveCSS("outline-style", /solid|auto/);
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { name: heading })).toBeVisible();
   }

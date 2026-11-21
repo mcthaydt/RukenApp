@@ -268,19 +268,62 @@ describe("change email", () => {
     );
     expect(await db().user.findUnique({ where: { email: x.email } })).toBeNull();
 
-    // Someone new signs up with the freed address. The link's time is in whole seconds and the real clock runs here, so
-    // the new account is dated a moment later, as it would be if it signed up after the link was made.
+    // Someone new signs up with the freed address.
     const newcomer = await signUpWith(x.email);
-    await db().user.update({
-      where: { id: newcomer.userId },
-      data: { createdAt: new Date(Date.now() + 5000) },
-    });
-
-    await theAuth().handler(new Request(staleLink, { headers: { origin: ORIGIN } }));
+    const refused = await theAuth().handler(new Request(staleLink, { headers: { origin: ORIGIN } }));
+    expect(refused.status).toBe(302);
+    expect(refused.headers.get("location")).toBe("/me?error=INVALID_TOKEN");
     const after = await db().user.findUniqueOrThrow({ where: { id: newcomer.userId } });
     expect(after.email).toBe(x.email);
     // Only the newcomer's own sign-up session: the opener was not signed in to their account.
     expect(await db().session.count({ where: { userId: newcomer.userId } })).toBe(1);
+  });
+
+  it("an old link does not take over an OLDER account that moved to the freed address", async () => {
+    const y = await accountWithSession();
+    const x = await accountWithSession();
+    capture.sent.length = 0;
+    const asked = (who: typeof x, to: string, address: string): Promise<unknown> =>
+      changeEmail(formEvent({ email: to, password: PASSWORD }, who.cookie, address), deps(), who);
+    await asked(x, "older-b@example.test", "203.0.113.18");
+    await settle();
+    const staleLink = linkTo("older-b@example.test");
+    await asked(x, "older-c@example.test", "203.0.113.19");
+    await settle();
+    await theAuth().handler(
+      new Request(linkTo("older-c@example.test"), { headers: { cookie: x.cookie, origin: ORIGIN } }),
+    );
+    // Y, made before the link, moves to the address X freed.
+    await asked(y, x.email, "203.0.113.20");
+    await settle();
+    await theAuth().handler(new Request(linkTo(x.email), { headers: { cookie: y.cookie, origin: ORIGIN } }));
+    expect((await db().user.findUniqueOrThrow({ where: { id: y.userId } })).email).toBe(x.email);
+
+    const sessionsBefore = await db().session.count({ where: { userId: y.userId } });
+    const refused = await theAuth().handler(new Request(staleLink, { headers: { origin: ORIGIN } }));
+    expect(refused.headers.get("location")).toBe("/me?error=INVALID_TOKEN");
+    expect((await db().user.findUniqueOrThrow({ where: { id: y.userId } })).email).toBe(x.email);
+    expect(await db().session.count({ where: { userId: y.userId } })).toBe(sessionsBefore);
+  });
+
+  it("a finished change ends the account's other open links", async () => {
+    const x = await accountWithSession();
+    capture.sent.length = 0;
+    const asked = (to: string, address: string): Promise<unknown> =>
+      changeEmail(formEvent({ email: to, password: PASSWORD }, x.cookie, address), deps(), x);
+    await asked("twice-b@example.test", "203.0.113.28");
+    await settle();
+    const older = linkTo("twice-b@example.test");
+    await asked("twice-c@example.test", "203.0.113.29");
+    await settle();
+    await theAuth().handler(
+      new Request(linkTo("twice-c@example.test"), { headers: { cookie: x.cookie, origin: ORIGIN } }),
+    );
+    // Back to the first address by hand, as a later change would; the older link must still be dead.
+    await db().user.update({ where: { id: x.userId }, data: { email: x.email } });
+    const refused = await theAuth().handler(new Request(older, { headers: { origin: ORIGIN } }));
+    expect(refused.headers.get("location")).toBe("/me?error=INVALID_TOKEN");
+    expect((await db().user.findUniqueOrThrow({ where: { id: x.userId } })).email).toBe(x.email);
   });
 });
 
