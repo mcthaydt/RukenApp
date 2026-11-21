@@ -16,7 +16,7 @@
 
 ## Standing permissions
 
-- 2026-11-20, the owner: "Merge PRs yourself once CI, reviews and audits pass, without asking the owner. Live Cloudflare and console switches still need the owner." (restart handoff)
+- 2026-11-20, the owner: "Merge PRs yourself once CI, reviews and audits pass, without asking the owner. Live Cloudflare and console switches still need the owner." (restart handoff) The Cloudflare exception is replaced by the 2026-11-21 19:16 UTC entry below.
 - 2026-11-21 19:16 UTC, the owner: "you do not need my go ahead to merge things"; confirmed in the owner's 19:58 UTC message: every pull request, lane 3 and Cloudflare included, merges once its audits pass and CI is green. It does not cover product choices, new access or money, or scope changes. This replaces the 2026-11-20 line's exception for live Cloudflare changes.
 - 2026-11-20, the owner: "Small reviewed fixes can merge on the quick checks alone." (restart handoff)
 - First-time setup: the owner's request is the standing permission for the setup check (CLAUDE.md, Risk).
