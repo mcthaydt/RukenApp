@@ -38,15 +38,17 @@ How to read each list: **Done** is merged and green. **Now** is what is being bu
 5. Done: the Owner accepts a game or sends it back by a command, and a maker takes their own game off Ruken and puts it back (unit S). The staff screens wait for slice 4.
 6. Done: every game plays on phones and computers (unit R), a game's page, playing it and play time (unit F), and the maker's player count switch (unit P).
 7. Done: the GitHub App is set up on ruken.io, and the games run on ruken.dev.
-8. Now: a real game sent, accepted and played on ruken.io (unit G, plan Task 24). The Owner's steps.
-9. Done: the slice 2 audit (`audits/2026-11-20-slice-2-1-implementation-audit.md`) and its code fix (#243). Its other red is unit G, above.
-10. Next: the slice end (the walk, the design rounds, the screens page, the Owner's walk), after unit G.
+8. Done: a real game (Floor Fifty) sent, accepted and played on ruken.io (unit G, plan Task 24), 2026-11-21.
+9. Done: the slice 2 audit (`audits/2026-11-20-slice-2-1-implementation-audit.md`) and its code fix (#243). Its other red, unit G, is closed.
+10. Now: the slice end (the walk, the design rounds, the screens page, the Owner's walk).
 
 ---
 
 # Later: after slice 2
 
 ## Slice 3: The feed and the maker's page
+
+Parked 2026-11-21 03:12 UTC, on the Owner's word: "Let's park slice 3 until we confirm slice 2 is perfect". Nothing in it runs until slice 2's slice end is done and the Owner says so.
 
 1. Done: the colour themes, the page rules, the maker's photo (branches A, B and G).
 2. Later: the feed order, the feed, its controls, the paywall over a clip (branches C to F).
