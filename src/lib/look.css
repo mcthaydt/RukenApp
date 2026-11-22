@@ -438,19 +438,26 @@ textarea {
 /* A fold-out ("Change the branch or folder") is a quiet button (below) that opens what is under it. It has an arrow where
    the browser draws its own triangle: pointing right while it is shut, and down while it is open, the usual sign for
    "opens here" (a plus read as "add"). */
-details:not(.menu, .accepted) > summary {
+summary {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  width: fit-content;
   min-height: var(--size-target);
+  /* The height the target adds is taken back from the margins, as for a link, so one rem separates its words from the
+     line above and not two. */
+  margin-block: calc((var(--size-target) - 1lh) / -2);
+  list-style: none;
+  cursor: pointer;
+}
+
+details:not(.menu, .accepted) > summary {
+  width: fit-content;
+  margin-block: 0;
   padding: 0.5rem 1.25rem;
   border-radius: var(--radius-button);
   background: var(--felt-raised);
   color: var(--chalk);
   font: var(--text-button);
-  list-style: none;
-  cursor: pointer;
   transition: transform var(--press-time);
 }
 
@@ -463,12 +470,8 @@ details:not(.menu, .accepted) > summary:active {
   transform: scale(var(--press-scale));
 }
 
-/* The play screen's RKN tab and the folded "accepted" card draw their own summary; nothing above reaches them. */
-.menu > summary,
-.accepted > summary {
-  list-style: none;
-}
-
+/* The play screen's RKN tab and the folded "accepted" card draw their own summary: only the base rule above reaches
+   them, as before. */
 summary::-webkit-details-marker {
   display: none;
 }

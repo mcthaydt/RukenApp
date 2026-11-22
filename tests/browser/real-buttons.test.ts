@@ -24,6 +24,7 @@ interface Action {
 /**
  * Every visible link, button and fold-out on the page that stands on its own: its line holds no other words. The
  * wordmark, a picture or video someone taps, and a whole card that opens something are left out: they are not words.
+ * Nor is the bottom bar's row of tabs.
  */
 function standaloneActions(page: Page): Promise<Action[]> {
   return page.evaluate(() => {
@@ -32,7 +33,8 @@ function standaloneActions(page: Page): Promise<Action[]> {
       const box = element.getBoundingClientRect();
       const style = getComputedStyle(element);
       if (box.width === 0 || box.height === 0 || style.visibility === "hidden") continue;
-      if (element.closest(".wordmark, .sr-only")) continue;
+      // The bottom bar is a row of tabs, not buttons: the bottom bar thread gives it its own look.
+      if (element.closest(".wordmark, .sr-only, nav.bar")) continue;
       if (element.querySelector("img, video, canvas, .statement")) continue;
       const words = element.textContent.replace(/\s+/g, " ").trim();
       if (words === "") continue;
