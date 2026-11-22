@@ -91,6 +91,31 @@ Two pull requests, because `build` says a CI workflow changes in a pull request 
 - Six pieces stay (Settings in CLAUDE.md). More pieces mean more jobs against the 20-runner limit.
 - Lint, typecheck and the unit and database tests are untouched: they are off the path to the result.
 
+### 3.4 Unit F: the pieces read main's times (lane 3, follow-up)
+
+Found on #302's full run (run 44989252655): every piece logged "Split by Playwright (no planner or no recorded times)" and "Cache not found", although `main` had saved `ci-test-times-7e6c8ee…` at 05:06 UTC. `test-times` runs on the host runner, where `actions/cache` packs with zstd (its log: `tar … --use-compress-program zstdmt`, `cache.tzst`). The pieces run in Playwright's image, which has no zstd, so `actions/cache` there packs and unpacks with gzip (`cache.tgz`). The two count as different cache versions, so a piece never finds a time `main` saved, and the planner (unit T) never runs.
+
+`actions/cache` names a cache's version from the compression method and the `path` strings as written, so both have to match between a save and its restore (plan audit 3, R1).
+
+1. **Packed where it is read.** Every times cache is saved and restored from inside the pinned image, so all of them use gzip. Only `actions/cache/save` and `actions/cache/restore`, already pinned, are used: no new action, tool or secret.
+   - On a push to `main`, after "Run the journeys" passes, each piece sums its own times from its Playwright JSON report. It uses the rule `test-times` uses today: seconds per `<device profile>|<file>`. It writes them to `piece-times-${{ matrix.shard }}.json` and saves that exact path under the key `ci-piece-times-${{ github.sha }}-${{ matrix.shard }}`.
+   - `test-times` runs in the same image, by the same digest. It has six restore steps, step n with `path: piece-times-<n>.json` (the literal, n from 1 to 6), `key: ci-piece-times-${{ github.sha }}-<n>` and `fail-on-cache-miss: true`. A missing piece therefore fails `test-times`, which nothing waits on, and partial times are never saved. It adds up the six, logs "joined 6 of 6 pieces, P file and device pairs", and saves `path: ci-test-times.json` under `ci-test-times-${{ github.sha }}`.
+   - `gh run download` leaves `test-times`; the `ran-*` artifacts and the gate are unchanged.
+   - Entries `main` saved on the host before F stay in the cache until they are evicted. No lookup from inside the image can see them, so they need no step.
+2. **One times file for all six, chosen before the run began.** Every piece must deal the same plan. Any lookup whose answer can change while the six pieces start would race, and they start minutes apart under load: 5 min 14 s apart on run 44989252655. That rules out the newest key by prefix, an exact key for the base commit, and falling back to `--shard` on a miss, since the base's times can land between two pieces' lookups. So each piece picks from a set that cannot change once the run exists: the `ci-test-times-` entries on `refs/heads/main` created at least 2 minutes before this run was created.
+   - The run's creation time is the same for all six and for re-runs. The 2-minute margin covers a save that was reserved but not yet visible.
+   - The piece asks GitHub's cache list for those entries: `GET /repos/{repo}/actions/caches?ref=refs/heads/main&key=ci-test-times-&sort=created_at&direction=desc`. It uses Node's `fetch` with the job's own token, so the job gains `actions: read`. It reads the run's `created_at` from `GET /repos/{repo}/actions/runs/{run_id}`.
+   - It takes the newest entry in that set and restores exactly that key with `path: ci-test-times.json`, logging the key.
+   - When the set is empty, the listing fails, or the restore misses, the piece splits with `--shard=<n>/6`. That happens to all six alike, because they share the same set.
+   - The one way left for pieces to differ is if the chosen entry is evicted between two pieces' restores. It is the newest times entry and every run reads it, so it is the last one an oldest-used-first eviction removes.
+   - Each piece adds its chosen key to its `ran-*` artifact as `ran/times-key.txt`. On a full run, the gate checks that all six keys are equal before the union check, and if they are not, it fails naming the keys. Such a failure is recorded under "Flaky tests", like any other.
+
+Acceptance:
+
+- F1. On the first push to `main` after F merges, `test-times` logs "joined 6 of 6 pieces, 159 file and device pairs" (53 journey files × 3 devices at 7b34a98, or that run's count) and saves `ci-test-times-<sha>`.
+- F2. On the first full pull request run after that, every piece logs "Split by main's recorded times" and the same key, the gate's key check passes, and A9 holds (the union check passes).
+- A7, and then A8, are measured from that point, as in section 4.
+
 ## 4. Acceptance criteria
 
 - A1. On a ready pull request, the run's jobs are `verify`, `postgres`, `browser shard 1..6 of 6` and `gate` (plus `test-times` on `main`); none of the first eight lists a `needs`. Checked by reading the run's job list.
@@ -109,11 +134,12 @@ Two pull requests, because `build` says a CI workflow changes in a pull request 
 | Unit | Waits on | Owns | Output | Check | Lane |
 |---|---|---|---|---|---|
 | W | this spec merged | `.github/workflows/ci.yml`, `.github/scripts/docs-only.sh`, `.github/scripts/ci-times.mjs` | one PR | A1 to A6, A9 on real runs; A10 after merge | 3 |
-| T | W merged | `tests/browser/support/shard-plan.ts`, `tests/browser/support/shard-plan.test.ts`, `playwright.config.ts` | one PR | its unit test, A7, A9; A8 after merge | 2 |
+| T | W merged | `tests/browser/support/shard-plan.ts`, `tests/browser/support/shard-plan.test.ts`, `playwright.config.ts` | one PR | its unit test, A9; A7 and A8 after F | 2 |
+| F | T merged | `.github/workflows/ci.yml` | one PR | F1, F2, then A7; A8 after merge | 3 |
 
-- Expected duration: W about 3 hours including measuring runs; T about 2 hours.
+- Expected duration: W about 3 hours including measuring runs; T about 2 hours; F about 2 hours.
 - Budget: GitHub's free runners only. No new dependency, service or secret. The Playwright image is Microsoft's public image of the version already pinned.
-- Audits: W, plan audit (this spec) and implementation audit; T, one fresh review. Merge under the standing permission in `progress.md` (History, Standing permissions) once audits pass and CI is green.
+- Audits: W, plan audit (this spec) and implementation audit; T, one fresh review; F, a plan audit of section 3.4 and an implementation audit. Merge under the standing permission in `progress.md` (History, Standing permissions) once audits pass and CI is green.
 
 ## 6. Open product decisions
 

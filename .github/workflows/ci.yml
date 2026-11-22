@@ -110,6 +110,36 @@ env:
     };
     for (const suite of report.suites ?? []) walk(suite, []);
     process.stdout.write(lines.sort().join("\n") + (lines.length ? "\n" : ""));
+  # Seconds per device profile and file in Playwright JSON reports, or the sum of such times files, run as
+  # `node --input-type=module -e "$TEST_TIMES" <reports|times> <file>...`. The planner fills the browser pieces from
+  # these (tests/browser/support/shard-plan.ts; docs/superpowers/specs/2026-11-22-faster-ci-design.md, 3.4).
+  TEST_TIMES: |
+    // node test-times.js <reports|times> <file>...
+    // Prints {"<device profile>|<file>": seconds}, summed over every result in the reports (or every times file),
+    // sorted by key.
+    import { readFileSync } from "node:fs";
+
+    const [mode, ...files] = process.argv.slice(1);
+    if (mode !== "reports" && mode !== "times") throw new Error(`mode must be reports or times, not ${mode}`);
+    const times = {};
+    const add = (key, seconds) => (times[key] = (times[key] ?? 0) + seconds);
+    const walk = (suite) => {
+      for (const spec of suite.specs ?? [])
+        for (const t of spec.tests ?? [])
+          add(`${t.projectName}|${spec.file}`, (t.results ?? []).reduce((sum, r) => sum + (r.duration ?? 0), 0) / 1000);
+      for (const child of suite.suites ?? []) walk(child);
+    };
+    for (const file of files) {
+      const data = JSON.parse(readFileSync(file, "utf8"));
+      if (mode === "reports") for (const suite of data.suites ?? []) walk(suite);
+      else for (const [key, seconds] of Object.entries(data)) add(key, seconds);
+    }
+    const sorted = Object.fromEntries(
+      Object.keys(times)
+        .sort()
+        .map((k) => [k, Math.round(times[k] * 10) / 10]),
+    );
+    process.stdout.write(JSON.stringify(sorted, null, 2) + "\n");
 
 jobs:
   verify:
@@ -211,6 +241,10 @@ jobs:
     name: browser shard ${{ matrix.shard }} of 6${{ github.event.pull_request.draft && ' (quick, draft)' || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # `actions: read` lists main's saved test times ("Choose main's test times").
+    permissions:
+      contents: read
+      actions: read
     # Playwright's own image for the version package.json pins, by digest: the browsers and their system libraries
     # are already in it, so nothing is installed for them. --ipc=host is what Playwright asks for Chromium in Docker.
     container:
@@ -260,14 +294,51 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
         if: steps.docs.outputs.docs_only != 'true'
-      # The seconds each journey file took on each device in main's last full run. The newest one is taken.
-      - name: Fetch main's test times
+      # The seconds each journey file took on each device in a full run on main. All six pieces must deal the same
+      # plan, and they start minutes apart, so each picks from a set that cannot change once this run exists: the
+      # newest times main saved at least 2 minutes before the run was created (spec 3.4 item 2). No times, a failed
+      # lookup or a missed restore means Playwright's own split, for all six alike.
+      - name: Choose main's test times
+        id: times
         if: steps.docs.outputs.docs_only != 'true'
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from "node:fs";
+
+          const { GITHUB_API_URL: api, GITHUB_REPOSITORY: repo, GITHUB_RUN_ID: run, GITHUB_OUTPUT: output, TOKEN: token } =
+            process.env;
+          const get = async (path) => {
+            const response = await fetch(`${api}/repos/${repo}/${path}`, {
+              headers: { authorization: `Bearer ${token}`, accept: "application/vnd.github+json" },
+            });
+            if (!response.ok) throw new Error(`${path} answered ${response.status}`);
+            return response.json();
+          };
+          let key = "";
+          try {
+            const { created_at } = await get(`actions/runs/${run}`);
+            const latest = Date.parse(created_at) - 2 * 60 * 1000;
+            const { actions_caches: caches } = await get(
+              "actions/caches?ref=refs/heads/main&key=ci-test-times-&sort=created_at&direction=desc&per_page=100",
+            );
+            const chosen = caches
+              .filter((c) => c.key.startsWith("ci-test-times-") && Date.parse(c.created_at) <= latest)
+              .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || a.key.localeCompare(b.key))[0];
+            key = chosen?.key ?? "";
+            console.log(chosen ? `Chose ${chosen.key}, saved ${chosen.created_at}.` : "main saved no times before this run.");
+          } catch (error) {
+            console.log(`Could not list main's times (${error.message}).`);
+          }
+          appendFileSync(output, `key=${key}\n`);
+          JS
+      - name: Fetch main's test times
+        if: steps.docs.outputs.docs_only != 'true' && steps.times.outputs.key != ''
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ci-test-times.json
-          key: ci-test-times-${{ github.sha }}
-          restore-keys: ci-test-times-
+          key: ${{ steps.times.outputs.key }}
       # Asks Playwright which journeys this piece would run, before anything slow starts. A draft piece that has
       # none skips the rest, so it finishes in a minute. Only Playwright's own empty answers skip: "No tests found"
       # with an error, or "Total: 0 tests in 0 files" with none (Playwright 1.63 lists an empty piece that way).
@@ -276,7 +347,17 @@ jobs:
       - name: Pick the journeys
         id: pick
         if: steps.docs.outputs.docs_only != 'true'
+        env:
+          TIMES_KEY: ${{ steps.times.outputs.key }}
         run: |
+          # The gate checks on a full run that all six pieces read the same times (spec 3.4 item 2).
+          mkdir -p ran
+          if [ -f ci-test-times.json ]; then
+            echo "$TIMES_KEY" > ran/times-key.txt
+          else
+            echo "none: split by count" > ran/times-key.txt
+          fi
+          echo "Times read: $(cat ran/times-key.txt)"
           if [ -f "$PLANNER" ] && [ -f ci-test-times.json ]; then
             echo "RUKEN_SHARD=${{ matrix.shard }}/6" >> "$GITHUB_ENV"
             echo "RUKEN_SHARD_TIMES=$GITHUB_WORKSPACE/ci-test-times.json" >> "$GITHUB_ENV"
@@ -374,10 +455,24 @@ jobs:
           echo "look_changed=$answer" >> "$GITHUB_OUTPUT"
       # The JSON report beside the usual two records what this piece really ran, for the gate's check and main's times.
       - name: Run the journeys
+        id: journeys
         if: steps.pick.outputs.run == 'true'
         env:
           LOOK_CHANGED: ${{ steps.decide.outputs.look_changed || steps.compare.outputs.look_changed }}
         run: pnpm test:browser ${{ steps.pick.outputs.args }} --reporter=list,html,json
+      # On main, this piece's times, saved from inside this image so the cache is packed as the pieces unpack it
+      # (gzip, not the host's zstd; spec 3.4 item 1). `test-times` joins the six.
+      - name: Sum this piece's times
+        if: github.event_name == 'push' && steps.journeys.outcome == 'success'
+        run: |
+          node --input-type=module -e "$TEST_TIMES" reports "$PLAYWRIGHT_JSON_OUTPUT_NAME" > piece-times-${{ matrix.shard }}.json
+          echo "$(grep -c '|' piece-times-${{ matrix.shard }}.json) file and device pairs in this piece."
+      - name: Keep this piece's times
+        if: github.event_name == 'push' && steps.journeys.outcome == 'success'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-${{ matrix.shard }}.json
+          key: ci-piece-times-${{ github.sha }}-${{ matrix.shard }}
       - name: List the journeys this piece ran
         if: always() && steps.pick.outputs.run == 'true'
         run: |
@@ -419,52 +514,53 @@ jobs:
           retention-days: 7
 
   # After a full run on main, the seconds each journey file took on each device, for the next runs' pieces. Nothing
-  # waits for it. A plain `needs` skips it when a piece failed, so a broken run records no times.
+  # waits for it. A plain `needs` skips it when a piece failed, so a broken run records no times. It runs in the
+  # pieces' image so its cache is packed as the pieces unpack it (gzip, not the host's zstd; spec 3.4 item 1), and it
+  # joins the six pieces' own times by exact key and path. A missing piece fails it, so partial times are never saved.
   test-times:
     name: record the journeys' times
     needs: browser-shard
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      contents: read
-      actions: read
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          persist-credentials: false
-      - name: Sum the times from every piece's report
-        env:
-          GH_TOKEN: ${{ github.token }}
+          path: piece-times-1.json
+          key: ci-piece-times-${{ github.sha }}-1
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-2.json
+          key: ci-piece-times-${{ github.sha }}-2
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-3.json
+          key: ci-piece-times-${{ github.sha }}-3
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-4.json
+          key: ci-piece-times-${{ github.sha }}-4
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-5.json
+          key: ci-piece-times-${{ github.sha }}-5
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-6.json
+          key: ci-piece-times-${{ github.sha }}-6
+          fail-on-cache-miss: true
+      - name: Join the six pieces' times
         run: |
-          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'ran-*' --dir pieces
-          node --input-type=module - pieces/*/playwright-json/report.json > ci-test-times.json <<'JS'
-          // node test-times.js <Playwright JSON report>...
-          // Prints {"<device profile>|<file>": seconds} summed over every result in the reports, sorted by key.
-          // The planner fills the browser pieces from these times (docs/superpowers/specs/2026-11-22-faster-ci-design.md).
-          import { readFileSync } from "node:fs";
-
-          const times = {};
-          const walk = (suite) => {
-            for (const spec of suite.specs ?? []) {
-              for (const t of spec.tests ?? []) {
-                const key = `${t.projectName}|${spec.file}`;
-                const ms = (t.results ?? []).reduce((sum, r) => sum + (r.duration ?? 0), 0);
-                times[key] = (times[key] ?? 0) + ms / 1000;
-              }
-            }
-            for (const child of suite.suites ?? []) walk(child);
-          };
-          for (const file of process.argv.slice(2))
-            for (const suite of JSON.parse(readFileSync(file, "utf8")).suites ?? []) walk(suite);
-          const sorted = Object.fromEntries(
-            Object.keys(times)
-              .sort()
-              .map((k) => [k, Math.round(times[k] * 10) / 10]),
-          );
-          process.stdout.write(JSON.stringify(sorted, null, 2) + "\n");
-          JS
-          echo "$(grep -c '|' ci-test-times.json) file and device pairs recorded."
+          node --input-type=module -e "$TEST_TIMES" times piece-times-1.json piece-times-2.json piece-times-3.json \
+            piece-times-4.json piece-times-5.json piece-times-6.json > ci-test-times.json
+          echo "joined 6 of 6 pieces, $(grep -c '|' ci-test-times.json) file and device pairs"
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ci-test-times.json
@@ -507,12 +603,19 @@ jobs:
             exit 0
           fi
           test "$VERIFY" = "success" && test "$POSTGRES" = "success" && test "$BROWSER" = "success"
+      # Skipped when only .md files changed, as the pieces then run nothing and read no times.
       - name: The pieces ran every journey exactly once
         if: steps.docs.outputs.docs_only != 'true' && env.CHANGED_ONLY != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'ran-*' --dir pieces
+          # Pieces that read different times deal different plans, so that is said first, by name (spec 3.4 item 2).
+          for file in pieces/ran-*/ran/times-key.txt; do echo "${file%%/ran/*}: $(cat "$file")"; done
+          if [ "$(cat pieces/ran-*/ran/times-key.txt | sort -u | wc -l)" -ne 1 ]; then
+            echo "::error::The pieces read different times, so they split the journeys differently (keys above)."
+            exit 1
+          fi
           node --input-type=module - pieces/ran-1/ran/listed.txt pieces/ran-*/ran/ran-*.txt <<'JS'
           // node every-test-ran.js <listed.txt> <ran file>...
           // Fails when the pieces together did not run every listed test exactly once, naming each test missing or run twice.
