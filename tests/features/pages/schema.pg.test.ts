@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
@@ -144,5 +145,31 @@ describe("the pages tables", () => {
     const owner = await newUser();
     await insertPage(owner);
     await expect(db().$executeRaw`DELETE FROM "User" WHERE "id" = ${owner}`).rejects.toThrow();
+  });
+
+  it("knows exactly three kinds of link: a link, a game elsewhere and a social icon", async () => {
+    const rows = await db().$queryRaw<{ value: string }[]>`
+      SELECT unnest(enum_range(NULL::"PageLinkKind"))::text AS value`;
+    expect(rows.map((row) => row.value)).toEqual(["link", "game_elsewhere", "social"]);
+  });
+
+  it("adds the social kind with one ALTER TYPE and nothing else", () => {
+    const folder = readdirSync(new URL("../../../prisma/migrations/", import.meta.url)).find((name) =>
+      name.endsWith("_social_links"),
+    );
+    expect(folder).toBeDefined();
+    const sql = readFileSync(
+      new URL(`../../../prisma/migrations/${folder ?? ""}/migration.sql`, import.meta.url),
+      "utf8",
+    );
+    // Comments aside, the file's statements are exactly this one.
+    const statements = sql
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("--"))
+      .join("\n")
+      .split(";")
+      .map((statement) => statement.trim())
+      .filter((statement) => statement !== "");
+    expect(statements).toEqual([`ALTER TYPE "PageLinkKind" ADD VALUE 'social'`]);
   });
 });

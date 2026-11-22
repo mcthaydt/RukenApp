@@ -1,7 +1,7 @@
 import type { FileStore } from "../../lib/files/store.ts";
 import type { PageLinkKind, PrismaClient } from "../../lib/server/db.ts";
 import { cleanHandle, HANDLE_TAKEN, handleProblem } from "./handle.ts";
-import { cleanLinkUrl, linkProblem, MAX_LINKS, moveLink, siteNameOf } from "./links.ts";
+import { cleanLinkUrl, linkProblem, MAX_LINKS, moveLink, siteNameOf, socialSiteOf } from "./links.ts";
 import { photoKeyFor, photoProblem, type PhotoContentType } from "./photo.ts";
 import { offeredTheme, themeById, type Theme } from "./themes.ts";
 
@@ -10,6 +10,7 @@ import { offeredTheme, themeById, type Theme } from "./themes.ts";
 
 const NAME_MAX = 40;
 const ONE_LINE_MAX = 100;
+const NO_ICON = "We don't have an icon for that site yet. Add it as a link.";
 
 export type PageErrorCode = "INVALID" | "TAKEN" | "NOT_FOUND";
 
@@ -50,7 +51,14 @@ export interface PublicPage {
   oneLine: string;
   theme: Theme;
   photoKey: string | null;
-  links: { id: string; kind: PageLinkKind; title: string; site: string }[];
+  /** `social` is the site's icon when the link is a social one, else null. */
+  links: {
+    id: string;
+    kind: PageLinkKind;
+    title: string;
+    site: string;
+    social: { id: string; name: string } | null;
+  }[];
 }
 
 export type PagesService = ReturnType<typeof createPagesService>;
@@ -131,6 +139,13 @@ export function createPagesService(deps: PagesServiceDeps) {
     if (changed.count === 0) throw new PageError("NOT_FOUND", "You don't have a page yet.");
   }
 
+  /** A social link is only kept for a site Ruken has a mark for. */
+  function checkSocial(input: { kind: PageLinkKind; url: string }): void {
+    if (input.kind === "social" && socialSiteOf(input.url) === null) {
+      throw new PageError("INVALID", NO_ICON);
+    }
+  }
+
   /** Adds a link at the end of the page. Its address is kept as `cleanLinkUrl` read it. */
   async function addLink(
     userId: string,
@@ -141,6 +156,7 @@ export function createPagesService(deps: PagesServiceDeps) {
     const url = cleanLinkUrl(input.url);
     // `linkProblem` already said null, so the address is good; this is for the compiler.
     if (url === null) throw new PageError("INVALID", "A link starts with https://");
+    checkSocial({ kind: input.kind, url });
     const pageId = await pageIdOf(userId);
 
     const count = await db.pageLink.count({ where: { pageId } });
@@ -185,6 +201,7 @@ export function createPagesService(deps: PagesServiceDeps) {
     if (problem !== null) throw new PageError("INVALID", problem);
     const url = cleanLinkUrl(input.url);
     if (url === null) throw new PageError("INVALID", "A link starts with https://");
+    checkSocial({ kind: input.kind, url });
     const changed = await db.pageLink.updateMany({
       where: { id: linkId, page: { userId } },
       data: { kind: input.kind, title: input.title.trim(), url },
@@ -262,6 +279,7 @@ export function createPagesService(deps: PagesServiceDeps) {
         kind: link.kind,
         title: link.title,
         site: siteNameOf(link.url),
+        social: link.kind === "social" ? socialSiteOf(link.url) : null,
       })),
     };
   }

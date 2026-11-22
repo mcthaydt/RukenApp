@@ -265,7 +265,7 @@ describe("what a visitor sees and counts", () => {
 
     const page = await service.pageByHandle(handle);
     expect(page?.links).toHaveLength(1);
-    expect(Object.keys(page?.links[0] ?? {}).sort()).toEqual(["id", "kind", "site", "title"]);
+    expect(Object.keys(page?.links[0] ?? {}).sort()).toEqual(["id", "kind", "site", "social", "title"]);
     expect(page?.links[0]).toMatchObject({ kind: "game_elsewhere", title: "On Steam", site: "Steam" });
     expect(page).toMatchObject({ handle, name: "A maker", oneLine: "", photoKey: null });
     expect(page?.theme.id).toBe(0);
@@ -480,3 +480,51 @@ describe("taking a page down", () => {
     expect(await service.pageOf(other.userId)).not.toBeNull();
   });
 });
+
+describe("a small icon for a site", () => {
+  const NO_ICON = "We don't have an icon for that site yet. Add it as a link.";
+
+  it("keeps a social link for a site that has an icon, and tells visitors which site", async () => {
+    const { userId, handle } = await makerWithPage();
+    await service.addLink(userId, { kind: "social", title: "My videos", url: "https://www.youtube.com/@maker" });
+    await service.addLink(userId, { kind: "link", title: "Plain", url: "https://www.youtube.com/@maker" });
+    const page = await service.pageByHandle(handle);
+    expect(page?.links.map((link) => [link.title, link.kind, link.social])).toEqual([
+      ["My videos", "social", { id: "youtube", name: "YouTube" }],
+      ["Plain", "link", null],
+    ]);
+  });
+
+  it("refuses a social link for any other site, and stores nothing", async () => {
+    const { userId } = await makerWithPage();
+    await expect(
+      service.addLink(userId, { kind: "social", title: "Mine", url: "https://example.com/me" }),
+    ).rejects.toMatchObject({ code: "INVALID", message: NO_ICON });
+    expect(await titlesOf(userId)).toEqual([]);
+  });
+
+  it("holds a changed link to the same rule, and lets a social link become a plain one", async () => {
+    const { userId } = await makerWithPage();
+    await service.addLink(userId, { kind: "link", title: "Chat", url: "https://example.com/chat" });
+    const id = await idOf(userId, "Chat");
+    await expect(
+      service.updateLink(userId, id, { kind: "social", title: "Chat", url: "https://example.com/chat" }),
+    ).rejects.toMatchObject({ code: "INVALID", message: NO_ICON });
+    await service.updateLink(userId, id, { kind: "social", title: "Chat", url: "https://discord.gg/abc" });
+    expect((await service.pageOf(userId))?.links[0]).toMatchObject({ kind: "social" });
+    await service.updateLink(userId, id, { kind: "link", title: "Chat", url: "https://discord.gg/abc" });
+    expect((await service.pageOf(userId))?.links[0]).toMatchObject({ kind: "link" });
+  });
+
+  it("shows no icon for a hidden social link, and counts a tap on one like any other", async () => {
+    const { userId, handle } = await makerWithPage();
+    await service.addLink(userId, { kind: "social", title: "Chat", url: "https://discord.gg/abc" });
+    const id = await idOf(userId, "Chat");
+    await service.setHidden(userId, id, true);
+    expect((await service.pageByHandle(handle))?.links).toEqual([]);
+    await service.setHidden(userId, id, false);
+    expect(await service.tapLink(handle, id, null)).toBe("https://discord.gg/abc");
+    expect((await service.pageOf(userId))?.links[0]?.taps).toBe(1);
+  });
+});
+

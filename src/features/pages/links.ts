@@ -74,6 +74,39 @@ export function siteNameOf(url: string): string {
   return SITE_NAMES.get(host) ?? host.replace(/^www\./, "");
 }
 
+/** A site that has a small icon on a maker's page: the id its mark is kept under, its name, and the hosts it lives at. */
+export const SOCIAL_SITES: readonly { id: string; name: string; hosts: readonly string[] }[] = [
+  { id: "youtube", name: "YouTube", hosts: ["youtube.com", "youtu.be"] },
+  { id: "twitch", name: "Twitch", hosts: ["twitch.tv"] },
+  { id: "discord", name: "Discord", hosts: ["discord.com", "discord.gg"] },
+  { id: "x", name: "X", hosts: ["x.com", "twitter.com"] },
+  { id: "bluesky", name: "Bluesky", hosts: ["bsky.app"] },
+  { id: "instagram", name: "Instagram", hosts: ["instagram.com"] },
+  { id: "tiktok", name: "TikTok", hosts: ["tiktok.com"] },
+  { id: "steam", name: "Steam", hosts: ["store.steampowered.com", "steamcommunity.com"] },
+  { id: "itchio", name: "itch.io", hosts: ["itch.io"] },
+  { id: "github", name: "GitHub", hosts: ["github.com"] },
+];
+
+/**
+ * The site an address belongs to, when it has an icon, else null. A host matches when it is a listed host or a
+ * subdomain of one ("www.youtube.com", "maker.itch.io"); "notyoutube.com" and "youtube.com.evil.example" do not.
+ */
+export function socialSiteOf(url: string): { id: string; name: string } | null {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+  for (const site of SOCIAL_SITES) {
+    if (site.hosts.some((known) => host === known || host.endsWith(`.${known}`))) {
+      return { id: site.id, name: site.name };
+    }
+  }
+  return null;
+}
+
 /** The list with `id` swapped with its neighbour; unchanged at either end or for an id that is not in it. */
 export function moveLink(ids: readonly string[], id: string, direction: "up" | "down"): string[] {
   const moved = [...ids];

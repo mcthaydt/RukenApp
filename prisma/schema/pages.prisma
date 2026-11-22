@@ -4,10 +4,12 @@
 // tests/features/pages/schema.pg.test.ts. These rows are a maker's to change, so there is no add-only trigger;
 // the two counts (`views`, `taps`) only ever rise by one, in code.
 
-/// What a link on a page is: a button with words, or a card for a game that lives somewhere else.
+/// What a link on a page is: a button with words, a card for a game that lives somewhere else, or a small icon for a
+/// site Ruken has a mark for.
 enum PageLinkKind {
   link
   game_elsewhere
+  social
 }
 
 /// A maker's page, at `/<handle>`. One per account, made when the maker first saves it.

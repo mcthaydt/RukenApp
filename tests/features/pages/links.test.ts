@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { cleanLinkUrl, linkProblem, moveLink, siteNameOf } from "../../../src/features/pages/links.ts";
+import {
+  cleanLinkUrl,
+  linkProblem,
+  moveLink,
+  siteNameOf,
+  SOCIAL_SITES,
+  socialSiteOf,
+} from "../../../src/features/pages/links.ts";
 
 describe("the address of a link", () => {
   it.each([
@@ -91,5 +98,54 @@ describe("moving a link", () => {
     const ids = ["a", "b"];
     moveLink(ids, "b", "up");
     expect(ids).toEqual(["a", "b"]);
+  });
+});
+
+describe("the sites that have an icon", () => {
+  it.each([
+    ["https://www.youtube.com/@floorfifty", "youtube", "YouTube"],
+    ["https://youtu.be/abc", "youtube", "YouTube"],
+    ["https://twitch.tv/maker", "twitch", "Twitch"],
+    ["https://discord.gg/abc123", "discord", "Discord"],
+    ["https://discord.com/invite/abc123", "discord", "Discord"],
+    ["https://x.com/maker", "x", "X"],
+    ["https://twitter.com/maker", "x", "X"],
+    ["https://bsky.app/profile/maker.bsky.social", "bluesky", "Bluesky"],
+    ["https://www.instagram.com/maker", "instagram", "Instagram"],
+    ["https://www.tiktok.com/@maker", "tiktok", "TikTok"],
+    ["https://store.steampowered.com/app/10", "steam", "Steam"],
+    ["https://steamcommunity.com/id/maker", "steam", "Steam"],
+    ["https://maker.itch.io/floor-fifty", "itchio", "itch.io"],
+    ["https://itch.io/profile/maker", "itchio", "itch.io"],
+    ["https://github.com/maker", "github", "GitHub"],
+  ])("knows %s", (url, id, name) => {
+    expect(socialSiteOf(url)).toEqual({ id, name });
+  });
+
+  it.each([
+    "https://example.com/youtube.com",
+    "https://notyoutube.com/x",
+    "https://youtube.com.evil.example/x",
+    "https://evilitch.io/x",
+    "https://maker.example.com",
+    "not an address",
+    "",
+  ])("does not know %j", (url) => {
+    expect(socialSiteOf(url)).toBeNull();
+  });
+
+  it("lists the ten sites, each once", () => {
+    expect(SOCIAL_SITES.map((site) => site.id)).toEqual([
+      "youtube",
+      "twitch",
+      "discord",
+      "x",
+      "bluesky",
+      "instagram",
+      "tiktok",
+      "steam",
+      "itchio",
+      "github",
+    ]);
   });
 });
