@@ -197,7 +197,7 @@ Nothing else changes: same image, journeys, devices and workers (2 per piece), a
 
 Each run's longest piece wait, run:seconds: 45048481725:322 45048223174:307 45047289955:486 45046407543:912 45046384959:882 45046312899:633 45045644992:377 45045594639:573 45045376129:233 45045231715:37. A7: the slowest piece's "Run the journeys" step over the mean was 1.16 to 1.30, median 1.21 (goal 1.15).
 
-The pieces' work shrank as 3.5 estimated, but the wait for a runner grew far more: the account was busy with many threads' runs, and twelve pieces are twelve chances of a late start (the risk 3.5 named). Six pieces held a p50 wait of 2 s over the same day. So R goes back to six on every run, the state that `main` ran before P-b. The six-piece "before" p95 of 24.5 min is set by four re-runs, which `ci-times.js` times to their last attempt; the four plain first-attempt full runs took 8.8, 9.5, 10.6 and 10.9 min.
+The pieces' work shrank as 3.5 estimated, but the wait for a runner grew far more: the account was busy with many threads' runs, and twelve pieces are twelve chances of a late start (the risk 3.5 named). That window was busy for every job, not only the pieces: against the six-piece runs from 08:06 UTC, the p50 wait rose from 1 s to 90 s for `verify` and from 1 s to 100 s for `postgres` on full runs, and from 2 s to 87 s for the six pieces of draft runs in the same window. Even so, the twelve pieces of full runs waited about 3 times as long as the six draft pieces beside them (p50 271 s against 87 s). So load raised every wait, and twelve pieces raised the pieces' wait further. R goes back to six on every run, the state that `main` ran before P-b. The six-piece "before" p95 of 24.5 min is set by four re-runs, which `ci-times.js` times to their last attempt; the four plain first-attempt full runs took 8.8, 9.5, 10.6 and 10.9 min.
 
 **What changes.** One pull request; `ci.yml`, `CLAUDE.md` Settings and the `this-repo` skill are rule files, so `ruleMix` lets them go with this doc.
 
@@ -207,6 +207,7 @@ The pieces' work shrank as 3.5 estimated, but the wait for a runner grew far mor
 - [ ] `ci-times.js` (P-a) stays: it groups any piece count.
 - [ ] R1. This pull request's ready run has `browser shard 1 of 6` to `6 of 6` and a green gate; its draft run has `browser shard 1 of 6 (quick, draft)` to `6 of 6`.
 - [ ] R2. The first push to `main` after R logs "joined 6 of 6 pieces" in `test-times`.
+- [ ] R3. A8 and A10 over the first 10 full and 10 draft runs after R merges, by `ci-times.js` since R's merge commit, each run's id and its longest piece wait listed, with the `verify` and `postgres` waits beside them so load can be told apart from the piece count. Reported with numbers, never rounded.
 
 Nothing else changes, and no new action, tool, secret or money. The times file holds seconds per file and device, so six pieces read the times twelve saved. A8 stays open, reported with numbers; a faster CI now needs something other than more pieces.
 
@@ -232,7 +233,7 @@ Nothing else changes, and no new action, tool, secret or money. The times file h
 | F | T merged | `.github/workflows/ci.yml` | one PR | F1, F2, then A7; A8 after merge | 3 |
 | P-a | F merged | `.github/scripts/ci-times.js` | one PR | its checklist line in 3.5 | 3 |
 | P-b | P-a merged | `.github/workflows/ci.yml`, `CLAUDE.md` (Settings), `.claude/skills/this-repo/SKILL.md` | one PR | P1 to P4, then A7, A8 and A10 after merge | 3 |
-| R | P-b measured | `.github/workflows/ci.yml`, `CLAUDE.md` (Settings), `.claude/skills/this-repo/SKILL.md`, this spec | one PR | its checklist in 3.6, R1 and R2 | 3 |
+| R | P-b measured | `.github/workflows/ci.yml`, `CLAUDE.md` (Settings), `.claude/skills/this-repo/SKILL.md`, this spec | one PR | its checklist in 3.6, R1 and R2; R3 after merge | 3 |
 
 - Expected duration: W about 3 hours including measuring runs; T about 2 hours; F about 2 hours; P-a about 30 minutes; P-b about 2 hours, plus the 10 measuring runs. R about 1 hour.
 - Budget: GitHub's free runners only. No new dependency, service or secret. The Playwright image is Microsoft's public image of the version already pinned.
