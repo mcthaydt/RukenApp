@@ -2355,6 +2355,11 @@ a.sheet.fix {
   background: none;
 }
 
+/* With no top behind it, the paper half has all four of the card's corners. */
+.behindcard ~ main.card.bold .cardbody {
+  border-radius: var(--radius-card);
+}
+
 header ~ .behindcard + main.card.bold {
   margin-top: 1rem;
 }
