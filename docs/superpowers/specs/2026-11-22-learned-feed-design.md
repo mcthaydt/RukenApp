@@ -14,6 +14,7 @@ Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** a
 - **Owner, 2026-11-21, on a card:** "simple order first". The interim order shipped so the feed's screens could be built; this spec replaces it.
 - **Owner, 2026-11-22 15:57 UTC:** "We'll park after slice 3 to refine what we have so far; that's technically our MVP".
 - **Owner, 2026-11-22 16:06 UTC, on a card** ("Which parts of the approved feed design ship before we park slice 3?"): **"Everything in the design"**.
+- **Owner, 2026-11-22 16:24 UTC, on a card** ("Add Like, Save and Repost buttons on clips, as the high-taste boost needs?"): **"Yes, all three"**.
 - **Owner, 2026-11-22:** the feed is endless (thread "Make the feed infinite"). The learned order pages without end (4.6).
 - **Owner rules that touch every screen here:** "EVERYTHING should be custom" (no built-in browser controls); frosted glass for anything see-through, copied from the Automata editors; spinners for everything that loads; "it should feel like we're using a real app inside the browser"; tapping a feed video opens the game's page; the drunk-grandma test.
 
@@ -126,7 +127,7 @@ Every screen follows the Owner's rules in section 0. Words are the ones below; a
 ```
 
 - **•••** opens a frosted sheet with two big buttons, **More like this** and **Less like this**, and Cancel. Pressing one closes the sheet and shows "Got it." for 2 seconds. **Call:** the private design says "On each clip"; they sit behind ••• on each clip, as Instagram does, so the clip's right side stays short. Nothing on a clip ever says why it was shown.
-- Like, Save, Repost (unit G, Open 1) sit above Share, each a custom icon with its word under it.
+- Like, Save, Repost (unit G) sit above Share, each a custom icon with its word under it.
 - **"You're all caught up"**: one frosted line between rounds; the feed keeps going under it.
 - **"Good pick?"** (unit D): a frosted card at `ask.index`: the game's name, "Good pick?", and two big buttons, **Yes** and **No**. Either answer moves on; swiping past it counts for nothing.
 
@@ -168,7 +169,7 @@ The teen presses **Ask a parent**, types the parent's phone number, presses **Te
 
 ### 6.6 How the feed works (`/help/how-the-feed-works`)
 
-The approved public page draft's words, without its "Questions for the Owner on this page" section, linked from Your feed and the help list. If unit G is not built, the line "Watching and liking help a little" becomes "Watching helps a little".
+The approved public page draft's words, without its "Questions for the Owner on this page" section, linked from Your feed and the help list.
 
 ## 7. The plan
 
@@ -182,11 +183,11 @@ Each unit is one pull request on its own branch, built test first (journeys firs
 | C, mood and genre | B, F | migration `Game.mood`, `Game.genre`; `games/questions.ts`; two question screens; Check and send; `/make/<game>`; `signals/mood.ts` | every game can have a mood and a genre; the feed reads them | 3 |
 | E, test videos | C | migration `GameClip.slot`, `GameHeldClip.slot`; `/make/<game>`; staff review of an added pair; the slot pick in `service.ts` | up to three pairs; the feed shows the best | 3 |
 | D, Your feed | C | migration `FeedTaste`, `User.feedResetAt`, `GoodPickAsked`; `signals/taste.ts` (the "more"/"less" part); `/me/feed`; `Feed.svelte` (the ••• sheet, the Good pick card); `service.ts` (`ask`) | the player sees and changes what the feed thinks; Start over | 3 |
-| G, Like, Save, Repost | Open 1, D | migration `ClipLike`, `ClipSave`, `ClipRepost`; `Feed.svelte` (the buttons); Saved on You; the purge | real counts; each made and taken back by the person | 3 |
+| G, Like, Save, Repost | D | migration `ClipLike`, `ClipSave`, `ClipRepost`; `Feed.svelte` (the buttons); Saved on You; the purge | real counts; each made and taken back by the person | 3 |
 | H, the sky layer | Open 2, C | `src/lib/sky.ts`; `signals/sky.ts`; `docs/feed-sky.md` | hidden, switch off by default | 2 |
 | I, a parent's yes | Opens 2 and 3, D | migration `ParentYes`; `/me/feed` (the ask); `/parent/<token>`; the text | an under-18 with a parent's yes gets the full feed | 3 |
-| K, high-taste players | Opens 1 and 2, G | migration `HighTaste`; `signals/highTaste.ts`; `src/routes/jobs/high-taste/`; the earned mark in the daily job (`cloudflare/crons.js` if a new job address is needed) | hidden, switch off by default | 3 |
-| L, How the feed works | D, E, and G or Open 1 answered without it | `src/routes/help/how-the-feed-works/`, the help list | the public page | 1 |
+| K, high-taste players | Open 2, G | migration `HighTaste`; `signals/highTaste.ts`; `src/routes/jobs/high-taste/`; the earned mark in the daily job (`cloudflare/crons.js` if a new job address is needed) | hidden, switch off by default | 3 |
+| L, How the feed works | D, E, G | `src/routes/help/how-the-feed-works/`, the help list | the public page | 1 |
 | J1, the private settings | nothing | RukenPrivate `feed/settings.json`, `feed/settings.md` (PR #18) | the real values | 1 |
 | J2, the settings workflow | A, Open 4, a hook covering RukenPrivate pull requests | RukenPrivate `.github/workflows/feed-settings.yml`, `scripts/check-feed-settings.mjs` and its test | the real values loaded on every change | 3 |
 
@@ -290,9 +291,9 @@ Steps:
 - [ ] 6. Good pick, `ask` in `service.ts`, test first.
 - [ ] 7. `verify`; shots.
 
-### Unit G: Like, Save, Repost (Open 1)
+### Unit G: Like, Save, Repost
 
-Built as the Owner answers Open 1: all three, Like only, or not at all.
+**Owner, 2026-11-22, on a card:** "Yes, all three" ("Each clip gets Like, Save and Repost. Saves show on You. Reposts show on your page.").
 
 - **G1.** One row per person and game for each; pressing again takes it back. A count on screen is a count of rows, nothing else.
 - **G2.** Saved games list on You ("Saved"). Reposts show on You until players' pages are built (approved, not built).
@@ -337,9 +338,9 @@ Steps:
 - [ ] 5. The full feed follows the yes (A5's rule with a yes), test first.
 - [ ] 6. `verify`; shots.
 
-### Unit K: high-taste players (hidden; Opens 1 and 2)
+### Unit K: high-taste players (hidden; Open 2)
 
-Built as specced only if Open 1 is "Yes, all three"; with "Like only" it counts likes alone; with "None for now" it is specced again. Player reviews are not built, so the like-and-review and all-three tiers stay dormant until reviews exist.
+Open 1 is answered "Yes, all three", so K counts likes and reposts as designed. Player reviews are not built, so the like-and-review and all-three tiers stay dormant until reviews exist.
 
 - **K1.** `HighTaste`: `userId` (cascade), `source` (`picked`/`earned`), `since`. `POST /jobs/high-taste` with the jobs secret: `{"do":"add"|"remove","handle":…}`. The daily job marks as earned the players who were among a game's first members and whose games went on to the top of standing, at most `highTasteEarnedMax` at once, and unmarks those who no longer qualify.
 - **K2.** `signals/highTaste.ts`, with `highTaste` on: a marked player's like counts as `highTasteLike` members' standing (like and review `highTasteLikeReview`, all three `highTasteAll`); capped per game at `highTasteCapPerGame`; never for a game they made or earn from; reach only, never pay.
@@ -382,7 +383,7 @@ Steps:
 
 ## 8. Open, and what waits
 
-1. **Open 1, likes, saves and reposts** (private design 9, 13.3). Asked as a card on 2026-11-22. Units G, K and L wait.
+1. **Open 1, likes, saves and reposts** (private design 9, 13.3). **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Yes, all three".** Unit G builds all three; K counts like, review and repost as designed; L keeps "Watching and liking help a little".
 2. **Open 2, the lawyer's read** (private design 13.1): New York and California laws on feeds that learn from a child, and whether hidden boosts need saying in the terms. Asked as a card on 2026-11-22 ("Build now, switches off" recommended). Units H, I and K wait, since their code and migrations cannot be taken back once merged and one of the card's answers is not to build them yet.
 3. **Open 3, how a parent says yes.** Asked as a card on 2026-11-22 ("Text the parent a code" recommended). Unit I waits.
 4. **Open 4, the Cloudflare token on RukenPrivate** (section 5). New access for a second repository, so it is the Owner's: asked once, inside the "Deploy automatically from main" work's batch of Owner commands (the same token). Unit J2 waits.
