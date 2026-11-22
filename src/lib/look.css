@@ -2707,8 +2707,6 @@ main.helpdesk {
   margin-top: 0;
 }
 
-/* A short window (a small phone, a laptop with its bars) packs the card tighter, so the blue button is in view without
-   scrolling. */
 /* On a computer the plans grow to the size of their half. */
 @media (min-width: 60rem) {
   .card.bold .plan {
@@ -2720,6 +2718,8 @@ main.helpdesk {
   }
 }
 
+/* A short window (a small phone, a tablet held sideways) packs the card tighter, so the blue button is in view without
+   scrolling. On a computer the halves sit side by side and have room. */
 @media (max-height: 740px) and (max-width: 59.99rem) {
   .card.bold .gets {
     gap: 0.25rem;

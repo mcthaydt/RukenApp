@@ -191,8 +191,13 @@ test.describe("the paywall card over the game's clip", () => {
     await expect(top).toHaveCSS("color", rgb(token("--chalk")));
 
     // Behind the title, away from its words (the top's lower right).
-    await page.locator(".behindcard video").evaluate((video: HTMLVideoElement) => {
-      video.pause();
+    // The clip is paused only once it has a frame, and both readings wait for that frame to be drawn: paused at once, the
+    // first reading could be taken before any frame was on screen (lane 2 audit 1, R1).
+    const video = page.locator(".behindcard video");
+    await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThanOrEqual(2);
+    await video.evaluate(async (v: HTMLVideoElement) => {
+      v.pause();
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
     });
     // The same patch is read again with the card hidden: the clip varies across the screen, so only the same place is a fair
     // comparison. With no surface on the top, the two are the same.
