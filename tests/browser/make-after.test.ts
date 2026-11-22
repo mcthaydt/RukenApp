@@ -444,10 +444,13 @@ test("another maker cannot open any of these", async ({ page, browser, baseURL }
     await signUp(other);
 
     for (const { path, form } of MAKER_ADDRESSES(slug)) {
-      expect((await other.goto(path))?.status(), `GET ${path}`).toBe(404);
+      // Each failure names where the answer landed: a 200 here can only be another page (a redirect's end), since
+      // this game is not live and the route is a 404 for its own maker too (run 44988313305, phone, a 200 on take-off).
+      const opened = await other.goto(path);
+      expect(opened?.status(), `GET ${path}, landed on ${other.url()}`).toBe(404);
       if (form !== undefined) {
         const posted = await stranger.request.post(path, { form, headers: { origin: site } });
-        expect(posted.status(), `POST ${path}`).toBe(404);
+        expect(posted.status(), `POST ${path}, landed on ${posted.url()}`).toBe(404);
       }
     }
     const sent = await stranger.request.post(`${site}/make/${slug}?/send`, {
