@@ -39,6 +39,6 @@ test("deleting an account: green keeps, red deletes, and nothing is blue", async
 test("Your account has a door to the maker's area", async ({ page }) => {
   await signUp(page);
   await page.goto("/me");
-  await page.getByRole("link", { name: "Add yours to Ruken." }).click();
+  await page.getByRole("link", { name: "Add yours to Ruken" }).click();
   await expect(page).toHaveURL(/\/make$/);
 });

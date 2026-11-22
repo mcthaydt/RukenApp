@@ -84,7 +84,7 @@ test("a new maker gets from the feed to the maker area: You, then Add yours to R
   await page.getByRole("navigation", { name: "Ruken" }).getByRole("link", { name: "You" }).click();
 
   await expect(page).toHaveURL("/me");
-  await expect(page.getByRole("link", { name: "Add yours to Ruken." })).toHaveAttribute("href", "/make");
+  await expect(page.getByRole("link", { name: "Add yours to Ruken" })).toHaveAttribute("href", "/make");
 });
 
 test("the error page inside the maker's area goes back to Your games", async ({ page }) => {
@@ -290,7 +290,7 @@ test("Your account leads a maker who has games to Your games", async ({ page }) 
   await pageHasSettled(page);
 
   await expect(page.getByRole("link", { name: "Your games", exact: true })).toHaveAttribute("href", "/make");
-  await expect(page.getByRole("link", { name: "Add yours to Ruken." })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Add yours to Ruken" })).toHaveCount(0);
 });
 
 test("Your account invites a person with no games to add theirs", async ({ page }) => {
@@ -298,7 +298,7 @@ test("Your account invites a person with no games to add theirs", async ({ page 
   await page.goto("/me");
   await pageHasSettled(page);
 
-  await expect(page.getByRole("link", { name: "Add yours to Ruken." })).toHaveAttribute("href", "/make");
+  await expect(page.getByRole("link", { name: "Add yours to Ruken" })).toHaveAttribute("href", "/make");
 });
 
 // ---- Taking a live game off Ruken (the agreement's first point, the Owner's choice) -------------------------------------------

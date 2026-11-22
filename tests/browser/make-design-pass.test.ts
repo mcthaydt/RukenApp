@@ -361,8 +361,11 @@ test("the two links under a chosen video are one look, a line each, with the act
   const change = page.getByRole("link", { name: "Choose a different video" });
   const howTo = page.getByRole("link", { name: "How do I record my screen?" });
   for (const link of [change, howTo]) {
-    await expect(link).toHaveCSS("font-size", "14px");
-    await expect(link).toHaveCSS("color", rgb(token("--sage")));
+    // Real buttons, not underlined words (the owner, 2026-11-22): chalk words on Dusky Green, no line under them.
+    await expect(link).toHaveCSS("font-size", "16px");
+    await expect(link).toHaveCSS("color", rgb(token("--chalk")));
+    await expect(link).toHaveCSS("background-color", rgb(token("--felt-raised")));
+    await expect(link).toHaveCSS("text-decoration-line", "none");
   }
   const first = await boxOf(change);
   const second = await boxOf(howTo);

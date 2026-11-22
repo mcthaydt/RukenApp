@@ -338,6 +338,10 @@ strong {
   list-style: none;
 }
 
+.card nav li + li {
+  margin-top: 0;
+}
+
 /* A step and a half between the title and what it introduces. */
 .card h1 + * {
   margin-top: 1.5rem;
@@ -1886,8 +1890,9 @@ a.foot:active {
   min-width: 44px;
   min-height: 44px;
   padding: 0 0.875rem;
+  /* A chalk edge and no fill, the outline look on the felt: the chips it sits beside are filled, so it is not read as one. */
+  border: 2px solid var(--chalk);
   border-radius: var(--radius-button);
-  background: var(--felt-raised);
   color: var(--chalk);
   font: var(--text-button);
   font-size: 0.875rem;
@@ -1908,11 +1913,13 @@ a.foot:active {
 }
 
 .laid .other a {
+  display: inline-flex;
+  align-items: center;
   min-height: 44px;
   margin-block: 0;
   padding: 0.25rem 1rem;
+  border: 2px solid var(--chalk);
   border-radius: var(--radius-button);
-  background: var(--felt-raised);
   color: var(--chalk);
   font: var(--text-button);
   font-size: 1rem;

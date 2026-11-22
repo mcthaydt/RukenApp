@@ -13,15 +13,6 @@ test.beforeEach(forgetRateLimits);
 
 const bottomOf = (box: Box): number => box.y + box.height;
 
-/**
- * The air a 48px target adds above and below its words. A link or a quiet button is as tall as a button, but
- * its words are one line, so the rest is split above and below them.
- */
-async function airAround(target: Locator): Promise<number> {
-  const lineHeight = await target.evaluate((element) => parseFloat(getComputedStyle(element).lineHeight));
-  return ((await boxOf(target)).height - lineHeight) / 2;
-}
-
 /** The text of an element only, from its first letter's edge: an element's own box may start earlier. */
 function textLeft(thing: Locator): Promise<number> {
   return thing.evaluate((element) => {
@@ -141,16 +132,19 @@ test.describe("a link on its own line", () => {
     });
   }
 
-  test("a bigger target does not open holes: the words keep a rem between lines", async ({ page }) => {
+  // Each is a real button now (the owner, 2026-11-22: no underlined words as buttons), so its line is the button's own
+  // height: a rem from the form, and a rem from the next line, with nothing overlapping.
+  test("a bigger target does not open holes: a rem between each line", async ({ page }) => {
     await visit(page, "/sign-in");
     const form = await boxOf(page.locator("main.card form"));
-    const forgot = page.getByRole("link", { name: "Forgot your password?" });
-    const create = page.getByRole("link", { name: "Create an account" });
-    const air = await airAround(forgot);
-    const forgotBox = await boxOf(forgot);
-    closeTo(forgotBox.y + air - bottomOf(form), 16);
-    const createBox = await boxOf(create);
-    closeTo(createBox.y + (await airAround(create)) - (bottomOf(forgotBox) - air), 16);
+    const forgotLine = await boxOf(
+      page.locator("p", { has: page.getByRole("link", { name: "Forgot your password?" }) }),
+    );
+    const createLine = await boxOf(
+      page.locator("p", { has: page.getByRole("link", { name: "Create an account" }) }),
+    );
+    closeTo(forgotLine.y - bottomOf(form), 16);
+    closeTo(createLine.y - bottomOf(forgotLine), 16);
   });
 });
 

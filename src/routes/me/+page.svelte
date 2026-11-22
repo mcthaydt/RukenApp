@@ -37,7 +37,7 @@
   {#if data.makesGames}
     <p class="apart"><a class="quiet" href="/make">Your games</a></p>
   {:else}
-    <p class="apart">Make games? <a class="quiet" href="/make">Add yours to Ruken.</a></p>
+    <p class="apart">Make games? <a class="quiet" href="/make">Add yours to Ruken</a></p>
   {/if}
   <p class="note"><a class="quiet" href="/me/delete">Delete my account</a></p>
 </main>
