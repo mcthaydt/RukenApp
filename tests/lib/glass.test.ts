@@ -42,7 +42,7 @@ const isTokenBlock = (path: string, selector: string) =>
 
 /** A colour that lets what is behind show through: an alpha in any notation, or a mix with anything see-through. */
 const SEE_THROUGH_COLOUR =
-  /(?:rgba|hsla)\(|(?:rgb|hsl)\([^)]*\/|#(?:[0-9a-f]{4}|[0-9a-f]{8})\b|color-mix\([^;]*\btransparent\b/i;
+  /(?:rgba|hsla)\(|(?:rgb|hsl|hwb|lab|lch|oklab|oklch|color)\([^)]*\/|#(?:[0-9a-f]{4}|[0-9a-f]{8})\b|color-mix\([^;]*\btransparent\b/i;
 
 /** A share between 0 and 1 (not 0, which hides, and not 1, which is solid), written as a number or a percentage. */
 const isPartial = (value: string): boolean => {
@@ -52,8 +52,8 @@ const isPartial = (value: string): boolean => {
 
 /** Why a rule is a see-through surface of its own making, or null when it is not one. */
 function seeThrough(selector: string, body: string): string | null {
-  const backgrounds = [...body.matchAll(/(?:^|[;\s])background(?:-color)?\s*:\s*([^;]+)/g)].map((match) =>
-    (match[1] ?? "").trim(),
+  const backgrounds = [...body.matchAll(/(?:^|[;\s])background(?:-color|-image)?\s*:\s*([^;]+)/g)].map(
+    (match) => (match[1] ?? "").trim(),
   );
   const colour = backgrounds.find((value) => SEE_THROUGH_COLOUR.test(value));
   if (colour !== undefined) return colour;
@@ -108,6 +108,11 @@ describe("frosted glass", () => {
     ["background: var(--felt-deep); filter: opacity(0.6);"],
     ["background: var(--felt-deep); filter: blur(2px) opacity(60%);"],
     ["color: red; background: var(--felt-deep); background-color: rgb(0 0 0 / 0.4);"],
+    ["background: oklch(0 0 0 / 0.5);"],
+    ["background: lab(0 0 0 / 50%);"],
+    ["background: hwb(0 0% 100% / 0.5);"],
+    ["background: color(srgb 0 0 0 / 0.5);"],
+    ["background-image: linear-gradient(rgb(0 0 0 / 0.5), rgb(0 0 0 / 0.5));"],
   ])("catches %s", (body) => {
     expect(seeThrough(".m", body)).not.toBeNull();
   });
