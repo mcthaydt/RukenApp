@@ -11,10 +11,6 @@
   let { data, form }: PageProps = $props();
 </script>
 
-<svelte:head>
-  <title>Forgot your password? · Ruken</title>
-</svelte:head>
-
 <main class="card">
   {#if form?.step === "code"}
     <h1>Choose a new password</h1>

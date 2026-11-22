@@ -184,10 +184,6 @@
   }
 </script>
 
-<svelte:head>
-  <title>Ruken</title>
-</svelte:head>
-
 <svelte:window onkeydown={onKey} onpointerdown={forgetHints} />
 
 {#if clips.length === 0}
@@ -366,8 +362,9 @@
     box-sizing: content-box;
     padding: 10px;
     border-radius: 50%;
-    background: var(--felt-deep);
-    opacity: 0.8;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
   }
   .sound:focus-visible,
   .share:focus-visible {
@@ -419,15 +416,16 @@
     border-radius: var(--radius-button);
     color: var(--chalk);
   }
-  /* A flat band of ink at 60%: chalk on it is 4.5 to 1 or more over even a white clip. */
+  /* Frosted glass under the words (look.css): chalk on it is 4.5 to 1 or more over even a white clip. */
   .band::before {
     content: "";
     position: absolute;
     inset: 0;
     z-index: -1;
     border-radius: inherit;
-    background: var(--ink);
-    opacity: 0.6;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
   }
   .band a,
   .side button {

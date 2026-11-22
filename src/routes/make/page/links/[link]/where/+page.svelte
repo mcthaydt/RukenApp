@@ -11,7 +11,6 @@
 </script>
 
 <QuestionScreen
-  title="Change a link · Ruken"
   heading="Where does it go?"
   counter={null}
   back={`/make/page/links/${data.id}`}

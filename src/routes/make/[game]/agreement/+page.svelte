@@ -25,10 +25,6 @@
   let saving = $state(false);
 </script>
 
-<svelte:head>
-  <title>Maker agreement · Ruken</title>
-</svelte:head>
-
 <main class="halves">
   <div>
     <p class="count">Almost done</p>

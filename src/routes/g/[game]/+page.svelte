@@ -6,6 +6,7 @@
   sound, and a coarse pointer makes "computer" read "tablet".
 -->
 <script lang="ts">
+  import { gameTitle } from "../../../lib/titles.ts";
   import { loads } from "../../../lib/loads.ts";
   import { onMount } from "svelte";
   import { quietVideo } from "../../../lib/quiet-video.ts";
@@ -71,7 +72,7 @@
 </script>
 
 <svelte:head>
-  <title>{data.name} · Ruken</title>
+  <title>{gameTitle(data.name)}</title>
 </svelte:head>
 
 <main class="gamepage">
