@@ -141,7 +141,7 @@ export const MORE: readonly Section[] = [
     points: [
       "Games run apart from Ruken. A game never sees your sign-in.",
       "Ruken is for people 13 and up. Games marked 18+ are for adults only.",
-      "No game may have pornography or gambling.",
+      "No game may have pornography, gambling or ads.",
     ],
     links: [{ words: "Watch the feed", href: "/" }],
     picture: {
@@ -174,10 +174,33 @@ export const SPLIT = {
 } as const;
 
 /** The two cards at the foot, one per audience, each with its one button. */
-export const CLOSING: readonly { heading: string; button: Link }[] = [
-  { heading: "Want to play?", button: { words: "Watch the feed", href: "/" } },
-  { heading: "Made a game?", button: { words: "Put your game on Ruken", href: "/make" } },
+/** Each closing card sits on a still from Floor Fifty, blurred and dimmed, as Live sits on its own clip. */
+export const CLOSING: readonly { heading: string; button: Link; glow: string }[] = [
+  { heading: "Want to play?", button: { words: "Watch the feed", href: "/" }, glow: "/about/play-glow.jpg" },
+  {
+    heading: "Made a game?",
+    button: { words: "Put your game on Ruken", href: "/make" },
+    glow: "/about/make-glow.jpg",
+  },
 ];
+
+/**
+ * Under the closing cards: Ruken's code is public (the owner, 2026-11-22 19:56 UTC: "a section under want to play/made a
+ * game mentioning how it's open source and include github link"). The licence is the Functional Source License with an
+ * Apache 2.0 future (LICENSE.md): readable by anyone now, fully open source two years after each version, and the words
+ * say exactly that.
+ */
+export const OPEN_CODE = {
+  heading: "Open code. Nothing hidden.",
+  lines: [
+    "Every line of Ruken is on GitHub for anyone to read: how the feed picks games, how makers are paid, all of it.",
+    "Each version becomes fully open source two years after it comes out.",
+  ],
+  button: { words: "See the code on GitHub", href: "https://github.com/mcthaydt/RukenApp" },
+} as const;
+
+/** The button that stays in a corner, back to the feed from anywhere on the page. */
+export const TO_FEED: Link = { words: "Back to the feed", href: "/" };
 
 export const FOOTER: readonly { heading: string; links: readonly Link[] }[] = [
   {

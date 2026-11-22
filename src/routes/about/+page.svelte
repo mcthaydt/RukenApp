@@ -5,6 +5,8 @@
   and the links at the foot. Every word comes from sections.ts.
 -->
 <script lang="ts">
+  import { afterNavigate, onNavigate } from "$app/navigation";
+  import { onMount } from "svelte";
   import { loads } from "../../lib/loads.ts";
   import { playOnScreen } from "../../lib/on-screen-video.ts";
   import {
@@ -15,17 +17,42 @@
     MEMBERSHIP,
     MORE,
     NEWS,
+    OPEN_CODE,
     SIGN_IN,
     SPLIT,
     STEPS,
     TOP_LINKS,
+    TO_FEED,
   } from "./sections.ts";
+  import { arrive, leave, startMotion } from "./motion.ts";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
+  let page: HTMLElement;
+
+  let pastHero = $state(false);
+
+  onMount(() => {
+    const stop = startMotion(page);
+    // The corner button shows once the first screen (with its own "Watch the feed") is out of sight.
+    const hero = page.querySelector(".hero");
+    const watcher = new IntersectionObserver(([entry]) => {
+      pastHero = entry !== undefined && !entry.isIntersecting;
+    });
+    if (hero !== null) watcher.observe(hero);
+    return () => {
+      watcher.disconnect();
+      stop();
+    };
+  });
+  // From another screen of Ruken the page settles in; leaving for another, it lifts away first. A fresh load just shows.
+  afterNavigate((navigation) => {
+    if (navigation.type !== "enter") arrive(page);
+  });
+  onNavigate((navigation) => (navigation.to?.url.pathname === "/about" ? undefined : leave(page)));
 </script>
 
-<main class="about">
+<main class="about" bind:this={page}>
   <nav class="ways" aria-label="On this page">
     {#each TOP_LINKS as link (link.href)}
       <a href={link.href}>{link.words}</a>
@@ -177,14 +204,54 @@
     </section>
   {/each}
 
-  <div class="pair">
+  <div class="pair closing">
     {#each CLOSING as closing (closing.heading)}
       <section class="card">
+        <!-- A still from Floor Fifty behind the card, blurred, dimmed and drifting slowly: it only decorates. -->
+        <img class="glow" use:loads src={closing.glow} alt="" aria-hidden="true" loading="lazy" />
         <h2>{closing.heading}</h2>
         <p><a class="button outline" href={closing.button.href}>{closing.button.words}</a></p>
       </section>
     {/each}
   </div>
+
+  <section class="plain band opencode" aria-labelledby="opencode-title">
+    <div>
+      <h2 id="opencode-title">{OPEN_CODE.heading}</h2>
+      {#each OPEN_CODE.lines as line (line)}
+        <p>{line}</p>
+      {/each}
+      <p><a class="button outline" href={OPEN_CODE.button.href}>{OPEN_CODE.button.words}</a></p>
+    </div>
+  </section>
+
+  <!-- Back to the feed from anywhere below the first screen (which has its own blue button): a phone with a fingertip
+       swiping up it, in the corner. It slides in once the first screen has gone by. -->
+  <a
+    class="tofeed"
+    href={TO_FEED.href}
+    aria-label={TO_FEED.words}
+    title={TO_FEED.words}
+    data-away={pastHero ? undefined : ""}
+    inert={!pastHero}
+  >
+    <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+      <rect
+        x="6"
+        y="2.5"
+        width="12"
+        height="19"
+        rx="2.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+      />
+      <g class="swipe">
+        <path d="M12 17.5v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        <circle cx="12" cy="10.5" r="2" fill="currentColor" />
+      </g>
+    </svg>
+  </a>
 
   <footer class="sitefoot">
     {#each FOOTER as column (column.heading)}

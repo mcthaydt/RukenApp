@@ -398,6 +398,11 @@ describe("screens wear the look and nothing of their own", () => {
     "device",
     "split",
     "splitbar",
+    "closing",
+    "glow",
+    "tofeed",
+    "swipe",
+    "opencode",
     // Words only a screen reader meets: the layout's "Sending…" (src/lib/busy-forms.ts).
     "hidden-words",
     // A list of short points on a reading page (privacy, terms).

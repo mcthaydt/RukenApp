@@ -3427,7 +3427,12 @@ header:has(+ main.about) {
   color: var(--chalk);
 }
 
+/* The button and the link beside it keep a clear gap, side by side or, on a narrow phone, one above the other. */
 .about .pair .links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem 1.75rem;
   margin-top: auto;
   padding-top: 2rem;
 }
@@ -3973,4 +3978,156 @@ video[data-loading] {
     background-image: var(--spinner-still);
     animation: none;
   }
+}
+
+/* The closing cards sit on a still from Floor Fifty, blurred, dimmed and drifting very slowly, as Live sits on its own clip
+   (the owner, 2026-11-22: "a background image for these, dimmed, boked like how we do for Live", with "a very subtle
+   animation"). Both cards are dark then, so both take the dark card's words and buttons. */
+.about .closing .card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--felt-deep);
+  color: var(--chalk);
+  color-scheme: dark;
+}
+
+.about .closing .glow {
+  position: absolute;
+  inset: -2rem;
+  z-index: -1;
+  width: calc(100% + 4rem);
+  height: calc(100% + 4rem);
+  object-fit: cover;
+  filter: blur(18px) brightness(0.55);
+}
+
+.about .closing .card .outline {
+  border-color: var(--chalk);
+  color: var(--chalk);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .about .closing .glow {
+    animation: glow-drift 24s ease-in-out infinite alternate;
+  }
+
+  .about .closing .card + .card .glow {
+    animation-delay: -12s;
+  }
+}
+
+@keyframes glow-drift {
+  from {
+    transform: scale(1.05) translate(-2%, -1%);
+  }
+
+  to {
+    transform: scale(1.15) translate(2%, 1%);
+  }
+}
+
+/* The way back to the feed, in the bottom corner wherever the page is scrolled: a phone with a swipe going up it, in
+   the main button's blue. */
+.about .tofeed {
+  position: fixed;
+  right: 1rem;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--radius-button);
+  background: var(--pay);
+  color: var(--chalk);
+  transition: transform var(--press-time);
+}
+
+/* Over the first screen it waits below the window's edge, and slides up into the corner once that screen has gone by. */
+.about .tofeed[data-away] {
+  transform: translateY(calc(100% + 2rem));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .about .tofeed {
+    transition: transform 360ms var(--ease);
+  }
+}
+
+.about .tofeed:hover {
+  transform: translateY(-2px);
+}
+
+.about .tofeed:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .about .tofeed .swipe {
+    animation: swipe-up 2.4s var(--ease) infinite;
+  }
+}
+
+/* The finger's swipe: up the phone and back, then a rest, so it reads as a hint and never as a flicker. */
+@keyframes swipe-up {
+  0%,
+  45%,
+  100% {
+    transform: translateY(0);
+  }
+
+  20% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Smooth scrolling (Lenis) needs the page to scroll as one block; these are its own rules. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* On the landing page the scrollbar is Ruken's own: a thin Glaucous Green thumb on black (the owner, 2026-11-22:
+   "a custom scrollbar for this page"). */
+html:has(main.about) {
+  scrollbar-color: var(--sage) var(--felt-deep);
+  scrollbar-width: thin;
+}
+
+html:has(main.about)::-webkit-scrollbar {
+  width: 10px;
+}
+
+html:has(main.about)::-webkit-scrollbar-track {
+  background: var(--felt-deep);
+}
+
+html:has(main.about)::-webkit-scrollbar-thumb {
+  border: 2px solid var(--felt-deep);
+  border-radius: var(--radius-button);
+  background: var(--sage);
+}
+
+/* And the pointer is Ruken's own too, shaped like the usual arrow so nobody has to learn it: black with a white edge,
+   turning the main button's blue over anything that can be pressed. */
+html:has(main.about),
+html:has(main.about) body {
+  cursor:
+    url("/about/cursor.svg") 5 3,
+    auto;
+}
+
+html:has(main.about) :is(a, button, summary, label) {
+  cursor:
+    url("/about/cursor-press.svg") 5 3,
+    pointer;
 }

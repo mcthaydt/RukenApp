@@ -22,6 +22,7 @@ const SECTIONS = [
   "Makers' pay, in the open",
   "Want to play?",
   "Made a game?",
+  "Open code. Nothing hidden.",
 ];
 
 /** The page is there and says what Ruken is, with its one blue button first. */
@@ -120,6 +121,25 @@ test("the landing page's foot leads to the terms and the privacy pages, with no 
     await expect(page).toHaveURL(`/${name.toLowerCase()}`);
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   }
+});
+
+test("the landing page links to Ruken's code on GitHub", async ({ page }) => {
+  await page.goto("/about");
+  await expectTheLandingPage(page);
+  await expect(page.getByRole("link", { name: "See the code on GitHub" })).toHaveAttribute(
+    "href",
+    "https://github.com/mcthaydt/RukenApp",
+  );
+});
+
+test("the corner button goes back to the feed from anywhere on the landing page", async ({ page }) => {
+  await page.goto("/about");
+  await expectTheLandingPage(page);
+  await page.locator(".sitefoot").scrollIntoViewIfNeeded();
+  const back = page.getByRole("link", { name: "Back to the feed" });
+  await expect(back).toBeInViewport();
+  await back.click();
+  await expect(page).toHaveURL("/");
 });
 
 test("the price card and the sign-in screen lead to the landing page", async ({ page }) => {
