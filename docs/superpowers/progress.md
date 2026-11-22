@@ -102,7 +102,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Flaky root causes, `play.test.ts:41` and `pay.test.ts:41` | #293 | merged as `e172f2a` (with the typed-before-alive fix); the follow-up for three more flaky journeys is on `claude/project-thread-4625xg` | not measured (short path, no plan) |
 | A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f` | not measured |
 | Hook follow-ups (the lane reading, the launcher-word refusal) | none yet | not started; lane 3 hooks changes, each its own pull request | not measured |
-| Panels feel like an app: swipes stay in the feed, no zoom, no highlight (lane 2) | `claude/project-thread-9hbbq0` | built, journeys pass in the cloud; waiting on its lane 2 review | not measured (short path, no plan) |
+| Panels feel like an app: swipes stay in the feed, no zoom, no highlight (lane 2) | #323 | lane 2 review PASS at `7c6b49a` (audit `2a463cf`); full run, then merge | not measured (short path, no plan) |
 | Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
 
 ## Slice 2
