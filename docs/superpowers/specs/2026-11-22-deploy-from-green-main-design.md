@@ -27,11 +27,11 @@ Every push to `main` whose CI run passes is deployed to ruken.io by GitHub Actio
 
 - **Trigger.** `on: workflow_run` with `workflows: [CI]`, `types: [completed]`, `branches: [main]`. The one job runs only when `github.event.workflow_run.event == 'push'`, `github.event.workflow_run.conclusion == 'success'` and `github.event.workflow_run.head_repository.full_name == github.repository`. The `event == 'push'` test is what keeps pull request runs out (a fork's branch named `main` passes the `branches` filter); the repository test is a second lock.
   - **Call:** a separate workflow, not a job in `ci.yml`. `ci.yml` stays read-only with no secrets (its header says so, and forks run it), and #326 is changing `ci.yml` now. `workflow_run` always runs the default branch's copy of `deploy.yml`, so a pull request cannot change what deploys.
-  - **Call:** the whole CI run must succeed, not only `gate`. Stricter, and it needs no extra code. If `test-times` (a cache step, not a test) fails, nothing deploys; the target step's message links the CI run so its failed job is one click away. The implementer reads `ci.yml` on `main` after #326 merges.
+  - **Call:** the whole CI run must succeed, not only `gate`. Stricter, and it needs no extra code. If `test-times` (a cache step, not a test) fails, nothing deploys; the target step's message links the CI run so its failed job is one click away. The implementer reads `ci.yml` on `main` again at build time (#326 is changing it).
 - **Who can reach the key.** The job uses `environment: production`. The owner creates that environment with a branch rule that allows only `main`, and the key lives there. A `workflow_run` job always runs as `main`, so that rule does not guard this job (the `if` above does); it stops a workflow on any other branch from naming `production` and reading the key. Permissions: `contents: read` and `actions: read` (to read the tip's CI run), nothing else.
 - **Secrets only where they are used.** No workflow-level or job-level `env` exists. `DIRECT_DATABASE_URL` is in the `env` of the deploy step only. `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are in the `env` of the deploy step and the live-check step only. `GH_TOKEN: ${{ github.token }}` is on the target step only. So `pnpm install` (every dependency's install scripts) and `pnpm build` (every Vite plugin) never see the database password or the Cloudflare key.
 - **One at a time.** `concurrency: { group: deploy-production, cancel-in-progress: false }`. A deploy is never stopped halfway. GitHub keeps only one *pending* job in a group, so a queued job can be cancelled by a later one; the target step makes that harmless.
-- **Deploy the newest green commit, never an older one.** The first step, `.github/scripts/deploy-target.sh`, picks the target. It reads the tip of `main` (`gh api repos/$REPO/commits/main --jq .sha`). If the tip is `workflow_run.head_sha`, the target is that commit. Otherwise it reads the tip's newest `CI` push run (`gh api "repos/$REPO/actions/runs?head_sha=$TIP&event=push"`, the newest attempt of the workflow named `CI`): if it concluded `success`, the target is the tip; if it failed, is still running or does not exist yet, the job ends green without deploying and says which ("the newer commit's own run decides"). Checkout uses the target sha. So when a newer green commit's queued job is cancelled by an older one, the older one deploys the newer commit. A newer red `main` deploys nothing: the live site stays at the last green. Re-running a failed CI run on `main` that then passes deploys it if it is still the tip; that is how a flaky red `main` is recovered (`this-repo` says so).
+- **Deploy the newest green commit, never an older one.** The first step, `.github/scripts/deploy-target.sh`, picks the target. It reads the tip of `main` (`gh api repos/$REPO/commits/main --jq .sha`). If the tip is `workflow_run.head_sha`, the target is that commit. Otherwise it reads the tip's newest `CI` push run (`gh api "repos/$REPO/actions/runs?head_sha=$TIP&event=push"`, the newest attempt of the workflow named `CI`): if it concluded `success`, the target is the tip; if it failed, is still running or does not exist yet, the job ends green without deploying and says which ("the newer commit's own run decides"); its "deploy" output is then `false` and every later step skips. Checkout uses the target sha. So when a newer green commit's queued job is cancelled by an older one, the older one deploys the newer commit. A newer red `main` deploys nothing: the live site stays at the last green. Re-running a failed CI run on `main` that then passes deploys it if it is still the tip; that is how a flaky red `main` is recovered (`this-repo` says so).
 - **Steps**, on the target sha, with `persist-credentials: false`, the same pinned `actions/checkout`, `pnpm/action-setup` and `actions/setup-node` (Node 24, `cache: pnpm`) that `ci.yml` uses:
   1. `pnpm install --frozen-lockfile`
   2. `pnpm build`
@@ -51,7 +51,7 @@ Each address is tried every 5 seconds for at most 60 seconds, because a new vers
 
 ### 3.3 Docs in the same pull request
 
-- `.claude/skills/this-repo/SKILL.md`, "Outside the repo": a green `main` deploys itself through `deploy.yml` (migrations, the site, the live check); the owner no longer runs `pnpm run deploy` for the site; a flaky red `main` is recovered by re-running its CI run; rolling back is `pnpm exec wrangler rollback`; the games Worker is still by hand. Named in the pull request body.
+- `.claude/skills/this-repo/SKILL.md`, "Outside the repo": a green `main` deploys itself through `deploy.yml` (migrations, the site, the live check); the owner no longer runs `pnpm run deploy` for the site; a flaky red `main` is recovered by re-running its CI run; a grey "cancelled" Deploy run is normal (a newer one took its place); rolling back is `pnpm exec wrangler rollback`; the games Worker is still by hand. Named in the pull request body.
 - `docs/superpowers/progress.md`: "Preview" line.
 
 ### 3.4 Before the build: the docs fix now (in this spec's pull request, lane 1)
@@ -63,15 +63,17 @@ Each address is tried every 5 seconds for at most 60 seconds, because a new vers
 Everything is a command except creating the key (Cloudflare can only create a first API token in its dashboard) and step 3 (wrangler has no command for it).
 
 1. Create the key at https://dash.cloudflare.com/profile/api-tokens with "Create Custom Token": permissions Account, Workers Scripts, Edit and Account, Hyperdrive, Read; Account Resources set to the one Ruken account; no zone permission (`wrangler.jsonc` has no routes; the custom domain is set in the dashboard). Copy it once. **Call:** not the "Edit Cloudflare Workers" template, which also grants account-wide R2 and KV edit. If the first deploy reports a missing permission, the implementer names it and the owner adds only that one.
-2. In the RukenApp folder. First find the exact database the live site uses, so migrations run on it and nowhere else: the site reads its database through Hyperdrive `eb64483c638e4f5eab2ce9dd1b7ea081` (`wrangler.jsonc`).
+2. In the RukenApp folder. First find the exact database the live site uses, so migrations run on it and nowhere else: the site reads its database through Hyperdrive `eb64483c638e4f5eab2ce9dd1b7ea081` (`wrangler.jsonc`). The first `neonctl` command opens your browser once to sign you in to Neon.
 
 ```sh
 npx -y wrangler whoami                                              # note the Account ID of the Ruken account
-npx -y wrangler hyperdrive get eb64483c638e4f5eab2ce9dd1b7ea081     # note the origin host and database
+npx -y wrangler hyperdrive get eb64483c638e4f5eab2ce9dd1b7ea081     # note the origin host, database and user
 npx -y neonctl projects list                                        # note the id of the project with that host
-npx -y neonctl connection-string --project-id <project id> --database-name <database>
-# check: its host is the Hyperdrive origin host, with any "-pooler" removed
+npx -y neonctl branches list --project-id <project id>              # note the branch whose endpoint is that host
+ORIGIN_HOST=<origin host>; HOST=$(npx -y neonctl connection-string <branch> --project-id <project id> --database-name <database> --role-name <user> | sed -E 's#^[^@]*@([^/:?]*).*#\1#'); [ "$HOST" = "${ORIGIN_HOST/-pooler/}" ] && echo "same database" || echo "STOP: different database ($HOST)"
 ```
+
+Go on only if it printed "same database".
 
 Then, with those values:
 
@@ -80,7 +82,7 @@ GH_PAGER=cat gh api -X PUT repos/mcthaydt/RukenApp/environments/production \
   -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true'
 GH_PAGER=cat gh api -X POST repos/mcthaydt/RukenApp/environments/production/deployment-branch-policies -f name=main -f type=branch
 gh secret set CLOUDFLARE_API_TOKEN --env production --repo mcthaydt/RukenApp   # paste the key when asked
-npx -y neonctl connection-string --project-id <project id> --database-name <database> | gh secret set DIRECT_DATABASE_URL --env production --repo mcthaydt/RukenApp
+npx -y neonctl connection-string <branch> --project-id <project id> --database-name <database> --role-name <user> | gh secret set DIRECT_DATABASE_URL --env production --repo mcthaydt/RukenApp
 gh variable set CLOUDFLARE_ACCOUNT_ID --env production --repo mcthaydt/RukenApp --body <Account ID of the Ruken account>
 ```
 
@@ -89,7 +91,7 @@ gh variable set CLOUDFLARE_ACCOUNT_ID --env production --repo mcthaydt/RukenApp 
 ## 5. Acceptance criteria
 
 1. `deploy.yml` passes `actionlint` (run in the implementer's container) and `pnpm lint`.
-2. A test (`tests/deploy-workflow.test.ts`) reads `deploy.yml` and fails unless: the trigger is `workflow_run` on `CI`, `completed`, `main`; the job's `if` requires `event == 'push'`, `conclusion == 'success'` and the same repository; it uses `environment: production`; permissions are exactly `contents: read` and `actions: read`; concurrency is `deploy-production` with `cancel-in-progress: false`; no `pull_request` or `pull_request_target` trigger exists; checkout uses the target step's sha with `persist-credentials: false`; the steps run target, checkout, install, build, deploy, live check, in that order; no workflow-level or job-level `env` exists; `secrets.` appears only in the `env` of the deploy and live-check steps; `DIRECT_DATABASE_URL` only in the deploy step's. It fails by itself on `main` (no file yet).
+2. A test (`tests/deploy-workflow.test.ts`) reads `deploy.yml` and fails unless: the trigger is `workflow_run` on `CI`, `completed`, `main`; the job's `if` requires `event == 'push'`, `conclusion == 'success'` and the same repository; it uses `environment: production`; permissions are exactly `contents: read` and `actions: read`; concurrency is `deploy-production` with `cancel-in-progress: false`; no `pull_request` or `pull_request_target` trigger exists; checkout uses the target step's sha with `persist-credentials: false`; the steps run target, checkout, install, build, deploy, live check, in that order, and every step after the target has an `if` on the target step's "deploy" output, so a run with nothing to deploy skips them; no workflow-level or job-level `env` exists; `secrets.` appears only in the `env` of the deploy and live-check steps; `DIRECT_DATABASE_URL` only in the deploy step's. It fails by itself on `main` (no file yet).
 3. `deploy-target.sh` is tested with stubbed `gh` answers (`tests/deploy-target.test.ts`): the tip is the run's commit, deploy it; the tip is newer and its CI run is green, deploy the tip; newer and red, deploy nothing; newer and still running, deploy nothing; newer with no CI run yet, deploy nothing. Each case checks the printed reason.
 4. `live-check.sh` is tested against a local stand-in server (`tests/live-check.test.ts`): passes on 200 with the title and a correct 308; fails with its reason on a 200 for http, a 308 to the wrong place, a 500, a page without the title, and a server that never answers (within the 60-second cap, with the wait injected so the test is fast).
 5. CI green on the pull request; plan audit PASS on this spec; implementation audit PASS on the pull request's head.
