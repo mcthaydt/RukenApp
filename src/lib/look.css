@@ -366,6 +366,12 @@ form > * + * {
   color: var(--ink-soft);
 }
 
+/* A note that is a quiet button (Change password, Delete my account) keeps a rem from the button above it, so two
+   buttons never sit a few pixels apart. */
+.card p.note:has(> .quiet) {
+  margin-top: 1rem;
+}
+
 /* The acceptance label on Your games is read, not skimmed past: chalk on the felt, not the dimmer sage of a note. It is
    not a `.note`: the Maker agreement's own note is the one `.note` that main holds. */
 .games [data-acceptance] {
