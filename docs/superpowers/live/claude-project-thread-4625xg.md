@@ -1,8 +1,8 @@
 # Live state: claude/project-thread-4625xg
 
 - Current task: fix the root causes of the flaky play.test.ts:41 and pay.test.ts:41 (lane 2: tests/browser/support/account.ts is shared by many journeys).
-- Last commit: a34c368 (2026-11-22 01:39 UTC)
-- Next step: push, open the draft pull request, CI quick run, fresh lane 2 review.
+- Last commit: fdba697 (2026-11-22 01:40 UTC)
+- Next step: open the draft pull request (body in project files pr-drafts/flaky-pay-play-pr-body.md) once a pull request place is free; the hook refused at 3 open (#209, #285, #288).
 - Open decisions: none.
 
 ## Plan
