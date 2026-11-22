@@ -76,7 +76,7 @@ describe("deploy-target.sh", () => {
     const r = decide({ runSha: "aaa", tip: "bbb", runs: [run({ conclusion: "failure" })] });
     expect(r.status).toBe(0);
     expect(r.output).toEqual({ deploy: "false" });
-    expect(r.text).toMatch(/failed/i);
+    expect(r.text).toMatch(/ended failure/i);
     expect(r.text).toMatch(/newer commit's own run decides/i);
   });
 
@@ -99,6 +99,12 @@ describe("deploy-target.sh", () => {
       runs: [run({ conclusion: "failure", run_attempt: 1 }), run({ conclusion: "success", run_attempt: 2 })],
     });
     expect(r.output).toEqual({ deploy: "true", sha: "bbb" });
+  });
+
+  it("names the conclusion when the newer run was cancelled", () => {
+    const r = decide({ runSha: "aaa", tip: "bbb", runs: [run({ conclusion: "cancelled" })] });
+    expect(r.output).toEqual({ deploy: "false" });
+    expect(r.text).toMatch(/ended cancelled/i);
   });
 
   it("ignores workflows that are not CI", () => {

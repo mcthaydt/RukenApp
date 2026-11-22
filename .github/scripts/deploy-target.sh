@@ -27,7 +27,7 @@ status=$(jq -r .status <<<"$latest")
 conclusion=$(jq -r '.conclusion // ""' <<<"$latest")
 url=$(jq -r .html_url <<<"$latest")
 if [ "$status" != "completed" ]; then skip "main moved on to $tip and its CI run is still running ($url)."; fi
-if [ "$conclusion" != "success" ]; then skip "main moved on to $tip and its CI run failed ($url)."; fi
+if [ "$conclusion" != "success" ]; then skip "main moved on to $tip and its CI run ended $conclusion ($url)."; fi
 
 echo "Deploying newer commit $tip: its CI run is green ($url)."
 printf 'deploy=true\nsha=%s\n' "$tip" >>"$GITHUB_OUTPUT"

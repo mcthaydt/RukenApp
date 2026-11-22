@@ -12,12 +12,16 @@ const script = join(process.cwd(), ".github/scripts/live-check.sh");
 const VERSION = "11111111-2222-3333-4444-555555555555";
 
 type Reply = { status: number; body?: string; location?: string } | "silent";
+// A reply can change with time, to stand in for a new version still spreading to every Cloudflare location.
+type Answer = Reply | ((sinceStart: number) => Reply);
 let server: Server | undefined;
 afterEach(() => server?.close());
 
-async function check(opts: { home: Reply; http: Reply; wranglerSays?: string }) {
+async function check(opts: { home: Answer; http: Answer; wranglerSays?: string; versionId?: string }) {
+  const startedAt = Date.now();
   const srv = createServer((req, res) => {
-    const reply = req.url === "/sign-in" ? opts.http : opts.home;
+    const answer = req.url === "/sign-in" ? opts.http : opts.home;
+    const reply = typeof answer === "function" ? answer(Date.now() - startedAt) : answer;
     if (reply === "silent") return; // never answers
     res.writeHead(reply.status, reply.location ? { location: reply.location } : {});
     res.end(reply.body ?? "");
@@ -27,13 +31,17 @@ async function check(opts: { home: Reply; http: Reply; wranglerSays?: string }) 
   const port = (srv.address() as { port: number }).port;
   const dir = mkdtempSync(join(tmpdir(), "live-check-"));
   const wrangler = join(dir, "wrangler");
-  writeFileSync(wrangler, `#!/usr/bin/env bash\necho "${opts.wranglerSays ?? `(100%) ${VERSION}`}"\n`);
+  // Answers only to `deployments status`, so a script that asks wrangler something else fails.
+  writeFileSync(
+    wrangler,
+    `#!/usr/bin/env bash\n[ "$*" = "deployments status" ] || exit 1\nprintf '%s\\n' "${opts.wranglerSays ?? `(100%) ${VERSION}`}"\n`,
+  );
   chmodSync(wrangler, 0o755);
   return await new Promise<{ status: number | null; text: string }>((done) => {
     const p = spawn("bash", [script], {
       env: {
         PATH: process.env.PATH,
-        VERSION_ID: VERSION,
+        VERSION_ID: opts.versionId ?? VERSION,
         SITE_URL: `http://127.0.0.1:${String(port)}`,
         HTTP_URL: `http://127.0.0.1:${String(port)}/sign-in`,
         EXPECTED_LOCATION: "https://ruken.io/sign-in",
@@ -69,6 +77,31 @@ describe("live-check.sh", () => {
     const r = await check({ home: good, http: redirect, wranglerSays: "(50%) other-version" });
     expect(r.status).not.toBe(0);
     expect(r.text).toMatch(/::error::.*version.*100%/i);
+  });
+
+  it("fails when our version is only at 50%", async () => {
+    const r = await check({
+      home: good,
+      http: redirect,
+      wranglerSays: `(50%) ${VERSION}\\n(50%) 99999999-old`,
+    });
+    expect(r.status).not.toBe(0);
+    expect(r.text).toMatch(/::error::.*100%/i);
+  });
+
+  it("fails at once when the deploy gave no version id", async () => {
+    const r = await check({ home: good, http: redirect, versionId: "", wranglerSays: "(100%) 99999999-old" });
+    expect(r.status).not.toBe(0);
+    expect(r.text).toMatch(/::error::.*no version id/i);
+  });
+
+  it("waits for a new version to arrive: wrong at first, right a moment later", async () => {
+    const r = await check({
+      home: (since) => (since < 800 ? { status: 500 } : good),
+      http: (since) => (since < 800 ? { status: 200 } : redirect),
+    });
+    expect(r.status).toBe(0);
+    expect(r.text).toMatch(/Live check passed/);
   });
 
   it("fails on an http address that answers 200 instead of redirecting", async () => {

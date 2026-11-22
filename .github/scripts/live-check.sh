@@ -3,7 +3,7 @@
 # Needs VERSION_ID (from the deploy). The rest has live defaults and is set only by the test.
 # Each check is tried every INTERVAL seconds for up to WAIT_SECONDS: that waits for a new version to reach every
 # Cloudflare location, and is not a retry of a wrong answer, which still fails once the wait is over.
-set -uo pipefail
+set -euo pipefail
 
 SITE_URL=${SITE_URL:-https://ruken.io}
 HTTP_URL=${HTTP_URL:-http://ruken.io/sign-in}
@@ -12,6 +12,11 @@ WRANGLER_CMD=${WRANGLER_CMD:-pnpm exec wrangler}
 WAIT_SECONDS=${WAIT_SECONDS:-60}
 INTERVAL=${INTERVAL:-5}
 CURL_MAX_TIME=${CURL_MAX_TIME:-10}
+
+if [ -z "${VERSION_ID:-}" ]; then
+  echo "::error::Live check failed: no version id from the deploy"
+  exit 1
+fi
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
