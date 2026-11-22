@@ -35,6 +35,67 @@ async function openFeed(page: Page): Promise<void> {
   await wordsHaveSettled(page);
 }
 
+/**
+ * Keeps, in the page, every start and pause of a clip: the calls the feed makes, what each call's promise did, and the
+ * events the browser sends. A journey that finds a clip playing off screen shows it (`clipLogOf`), so the log says
+ * which clip, and who started it.
+ */
+function keepClipLog(): void {
+  const log: string[] = [];
+  Object.assign(window, { clipLog: log });
+  const at = () => performance.now().toFixed(0);
+  const clipOf = (video: HTMLMediaElement) => {
+    const section = video.closest("section");
+    return `${section?.getAttribute("data-slug") ?? "?"} current=${section?.getAttribute("data-current") ?? "?"}`;
+  };
+  const stateOf = (video: HTMLMediaElement) =>
+    `paused=${String(video.paused)} ready=${String(video.readyState)} net=${String(video.networkState)}`;
+  const original = (name: "play" | "pause") =>
+    Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, name)?.value as (
+      this: HTMLMediaElement,
+    ) => unknown;
+  const play = original("play") as (this: HTMLMediaElement) => Promise<void>;
+  HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+    log.push(`${at()} play() ${clipOf(this)} ${stateOf(this)}`);
+    const started = play.call(this);
+    started.then(
+      () => log.push(`${at()} play() kept ${clipOf(this)} ${stateOf(this)}`),
+      (error: unknown) =>
+        log.push(
+          `${at()} play() refused ${error instanceof Error ? error.name : String(error)} ${clipOf(this)}`,
+        ),
+    );
+    return started;
+  };
+  const pause = original("pause");
+  HTMLMediaElement.prototype.pause = function (this: HTMLMediaElement) {
+    pause.call(this);
+    log.push(`${at()} pause() ${clipOf(this)} ${stateOf(this)}`);
+  };
+  for (const name of ["play", "playing", "pause", "emptied", "abort"]) {
+    document.addEventListener(
+      name,
+      (event) => {
+        if (event.target instanceof HTMLMediaElement)
+          log.push(`${at()} event ${name} ${clipOf(event.target)} ${stateOf(event.target)}`);
+      },
+      true,
+    );
+  }
+}
+
+/** The page's clip log, and every clip as it is now. */
+async function clipLogOf(page: Page): Promise<string> {
+  return await page.evaluate(() => {
+    const now = Array.from(document.querySelectorAll("section[data-slug]"), (section, index) => {
+      const video = section.querySelector("video");
+      return `#${String(index)} ${section.getAttribute("data-slug") ?? "?"} current=${section.getAttribute("data-current") ?? "?"} paused=${String(video?.paused)} ready=${String(video?.readyState)} src=${video?.getAttribute("src") ?? "none"}`;
+    });
+    const log = (window as Window & { clipLog?: string[] }).clipLog ?? [];
+    return ["clip log:", ...log, "clips now:", ...now].join("\n");
+  });
+}
+
 /** The slug of the clip a person is on. */
 const currentSlug = async (page: Page): Promise<string | null> =>
   await current(page).first().getAttribute("data-slug");
@@ -71,6 +132,7 @@ test("only the clip on screen and the next are fetched before a person scrolls",
 test("the clip that fills the window is the current one, and only one is; the others wait at their start", async ({
   page,
 }) => {
+  await page.addInitScript(keepClipLog);
   await openFeed(page);
   const first = await currentSlug(page);
   const clips = page.locator("section[data-slug]");
@@ -83,17 +145,22 @@ test("the clip that fills the window is the current one, and only one is; the ot
   // A clip that is not the one on screen is paused, whatever the device lets move. The pause follows the move by a
   // moment in some engines, so the journey waits for it.
   await expect
-    .poll(() =>
-      clips.evaluateAll((sections) =>
-        sections
-          .filter((section) => section.getAttribute("data-current") === "false")
-          .every((section) => {
-            const video = section.querySelector("video");
-            return video !== null && video.paused;
-          }),
-      ),
+    .poll(
+      () =>
+        clips.evaluateAll((sections) =>
+          sections
+            .filter((section) => section.getAttribute("data-current") === "false")
+            .every((section) => {
+              const video = section.querySelector("video");
+              return video !== null && video.paused;
+            }),
+        ),
+      { message: "a clip that is not on screen is still playing" },
     )
-    .toBe(true);
+    .toBe(true)
+    .catch(async (error: unknown) => {
+      throw new Error(`${String(error)}\n${await clipLogOf(page)}`);
+    });
 });
 
 test("each key moves one clip, never past either end", async ({ page }) => {
