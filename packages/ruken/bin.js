@@ -2,6 +2,7 @@
 import { spawn } from "node:child_process";
 import { readFile, stat } from "node:fs/promises";
 import { hostname } from "node:os";
+import { createInterface } from "node:readline";
 import { main } from "./cli.js";
 
 /** @type {import("./lib/types.js").Ctx} */
@@ -16,6 +17,16 @@ const ctx = {
   computerName: () => hostname(),
   readFile: (file) => readFile(file),
   sizeOf: async (file) => (await stat(file)).size,
+  prompt: (question) =>
+    new Promise((resolve) => {
+      const lines = createInterface({ input: process.stdin, output: process.stderr });
+      // A closed input (a pipe with nothing left) is an empty answer, which is a no.
+      lines.once("close", () => resolve(""));
+      lines.question(`${question} `, (answer) => {
+        resolve(answer);
+        lines.close();
+      });
+    }),
   openBrowser: (address) => {
     const [command, ...args] =
       process.platform === "darwin"

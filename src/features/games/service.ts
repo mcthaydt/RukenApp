@@ -949,7 +949,7 @@ export function createGamesService(deps: GamesServiceDeps) {
           // database refuses an 18+ game that is past draft without, and the maker would be told nothing.
           const known = (answer.contentMarks ?? []).filter((mark) => CONTENT_MARKS.includes(mark));
           const problem = marksProblem(known);
-          if (problem !== undefined) throw new GameError("INVALID", problem);
+          if (problem !== undefined) throw new GameError("INVALID", problem, "marks");
           marks = known.includes("none") ? ["none"] : [...new Set(known)];
         }
         if (holds) {
@@ -1175,7 +1175,8 @@ export function createGamesService(deps: GamesServiceDeps) {
    * else's game it is the same "not found" as every other change.
    */
   async function setShowsPlayerCount(gameId: string, makerUserId: string, on: boolean): Promise<void> {
-    await ownGame(gameId, makerUserId);
+    const game = await ownGame(gameId, makerUserId);
+    if (game.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
     await deps.db.game.update({ where: { id: gameId }, data: { showsPlayerCount: on } });
   }
 

@@ -6,7 +6,7 @@ export type GameErrorCode =
 export class GameError extends Error {
   readonly code: GameErrorCode;
   /** The box of the new-game form the words are about, when they are about one: the form shows them under it. */
-  readonly field: "name" | "oneLine" | "repo" | "branch" | "folder" | undefined;
+  readonly field: "name" | "oneLine" | "repo" | "branch" | "folder" | "marks" | undefined;
 
   constructor(code: GameErrorCode, message: string, field?: GameError["field"]) {
     super(message);
