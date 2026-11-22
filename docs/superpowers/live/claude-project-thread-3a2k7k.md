@@ -1,6 +1,6 @@
 # Live state: claude/project-thread-3a2k7k
 
-- Current task: add the end-of-slice Notion update to `this-repo` and record the owner's instruction in `progress.md` (lane 1).
-- Last commit: e172f2a (from `git rev-parse --short HEAD`, 2026-11-22 04:56 UTC)
-- Next step: edit the skill and progress.md, push, open the pull request.
+- Current task: the end-of-slice Notion step in `this-repo` (the hook classes the file lane 3).
+- Last commit: d971c39 (from `git rev-parse --short HEAD`, 2026-11-22 04:56 UTC)
+- Next step: push, open the draft pull request, ask the coordinator for the plan audit and the implementation audit.
 - Open decisions: none.
