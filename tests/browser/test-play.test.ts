@@ -45,7 +45,12 @@ test("a maker test-plays a draft from Check and send, and goes back to it", asyn
   const { slug, name } = await answerEveryQuestion(page);
   await agreeToTheAgreement(page, slug);
 
-  await page.getByRole("link", { name: "Test play" }).click();
+  // Loading a test play hands out a play pass, so a hover never loads it ahead: only a press does.
+  await expect(page.getByRole("link", { name: "Test play" }).first()).toHaveAttribute(
+    "data-sveltekit-preload-data",
+    "off",
+  );
+  await page.getByRole("link", { name: "Test play" }).first().click();
   await expect(page).toHaveURL(`/make/${slug}/play`);
   await expect(page.locator(".teststrip")).toHaveText(STRIP);
   await expect(page).toHaveTitle(`Ruken - ${name}`);
@@ -94,7 +99,9 @@ test("a game waiting for review is test-played from Your games and from Waiting"
 
   await page.goto("/make");
   await pageHasSettled(page);
-  await page.getByRole("link", { name: `Test play ${name}` }).click();
+  const fromList = page.getByRole("link", { name: `Test play ${name}` });
+  await expect(fromList).toHaveAttribute("data-sveltekit-preload-data", "off");
+  await fromList.click();
   await expect(page).toHaveURL(`/make/${slug}/play`);
   await expect(page.locator(".teststrip")).toHaveText(STRIP);
   await gameLoaded(page);
@@ -103,6 +110,10 @@ test("a game waiting for review is test-played from Your games and from Waiting"
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
   await expect(page.getByRole("heading", { name: "Waiting for review" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Test play" })).toHaveAttribute(
+    "data-sveltekit-preload-data",
+    "off",
+  );
   await page.getByRole("link", { name: "Test play" }).click();
   await expect(page).toHaveURL(`/make/${slug}/play`);
   await gameLoaded(page);

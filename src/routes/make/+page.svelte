@@ -41,9 +41,11 @@
     </a>
     {#if game.testPlay}
       <!-- Beside the card, never inside it: the card is one link to the game. The name is in the label for a screen
-           reader, since every game's button says the same words. -->
+           reader, since every game's button says the same words. It is not loaded ahead on hover: loading it hands out a
+           play pass, so only a press should. -->
       <a
         class="button outline testplay"
+        data-sveltekit-preload-data="off"
         href={`/make/${game.slug}/play`}
         aria-label={`Test play ${game.name}`}>Test play</a
       >

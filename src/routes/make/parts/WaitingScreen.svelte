@@ -47,7 +47,7 @@
     <div class="acts">
       <a class="button" href="/make">Back to your games</a>
       {#if testPlay !== null}
-        <a class="button outline" href={testPlay}>Test play</a>
+        <a class="button outline" data-sveltekit-preload-data="off" href={testPlay}>Test play</a>
       {/if}
     </div>
     <a class="foot" href={changeAddress}>Change something</a>

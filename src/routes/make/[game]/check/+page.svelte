@@ -26,7 +26,7 @@
       <div class="acts">
         <a class="button" href={data.doneAddress}>Done</a>
         {#if data.testPlay !== null}
-          <a class="button outline" href={data.testPlay}>Test play</a>
+          <a class="button outline" data-sveltekit-preload-data="off" href={data.testPlay}>Test play</a>
         {/if}
       </div>
     </div>
@@ -55,7 +55,7 @@
           {sending ? "Sending your game…" : "Send for review"}
         </button>
         {#if data.testPlay !== null}
-          <a class="button outline" href={data.testPlay}>Test play</a>
+          <a class="button outline" data-sveltekit-preload-data="off" href={data.testPlay}>Test play</a>
         {/if}
       </div>
     </form>
