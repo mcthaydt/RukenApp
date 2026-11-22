@@ -201,13 +201,13 @@ The pieces' work shrank as 3.5 estimated, but the wait for a runner grew far mor
 
 **What changes.** One pull request; `ci.yml`, `CLAUDE.md` Settings and the `this-repo` skill are rule files, so `ruleMix` lets them go with this doc.
 
-- [ ] `.github/workflows/ci.yml` is exactly as it was at `5bbea3e` (before P-b): the matrix `[1, 2, 3, 4, 5, 6]`, names `browser shard <n> of 6`, `RUKEN_SHARD=<n>/6` and `--shard=<n>/6`, six restore steps in `test-times`, and no `PIECES`. Checked by `git diff 5bbea3e -- .github/workflows/ci.yml` printing nothing.
-- [ ] `CLAUDE.md` Settings: "Browser test pieces in CI: 6."
-- [ ] `.claude/skills/this-repo/SKILL.md` line 33: the browser pieces are `browser shard <n> of 6` (a draft's say "(quick, draft)").
-- [ ] `ci-times.js` (P-a) stays: it groups any piece count.
+- [x] `.github/workflows/ci.yml` is exactly as it was at `5bbea3e` (before P-b): the matrix `[1, 2, 3, 4, 5, 6]`, names `browser shard <n> of 6`, `RUKEN_SHARD=<n>/6` and `--shard=<n>/6`, six restore steps in `test-times`, and no `PIECES`. Checked by `git diff 5bbea3e -- .github/workflows/ci.yml` printing nothing.
+- [x] `CLAUDE.md` Settings: "Browser test pieces in CI: 6."
+- [x] `.claude/skills/this-repo/SKILL.md` line 33: the browser pieces are `browser shard <n> of 6` (a draft's say "(quick, draft)").
+- [x] `ci-times.js` (P-a) stays: it groups any piece count.
 - [ ] R1. This pull request's ready run has `browser shard 1 of 6` to `6 of 6` and a green gate; its draft run has `browser shard 1 of 6 (quick, draft)` to `6 of 6`.
 - [ ] R2. The first push to `main` after R logs "joined 6 of 6 pieces" in `test-times`.
-- [ ] R3. A8 and A10 over the first 10 full and 10 draft runs after R merges, by `ci-times.js` since R's merge commit, each run's id and its longest piece wait listed, with the `verify` and `postgres` waits beside them so load can be told apart from the piece count. Reported with numbers, never rounded.
+- [ ] R3. A8 and A10 over the first 10 full and 10 draft runs after R merges, by `ci-times.js` since R's merge commit, each run's id and its longest piece wait listed, with the p50/p95 waits of `verify` and `postgres` in the same window beside them, so load can be told apart from the piece count. Reported with numbers, never rounded.
 
 Nothing else changes, and no new action, tool, secret or money. The times file holds seconds per file and device, so six pieces read the times twelve saved. A8 stays open, reported with numbers; a faster CI now needs something other than more pieces.
 
