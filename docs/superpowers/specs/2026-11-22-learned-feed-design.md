@@ -6,7 +6,7 @@ This replaces the feed's interim order (unit C of `2026-11-21-feed-and-makers-pa
 
 Read this with `CLAUDE.md`, the `build`, `this-repo`, `verify` and `visual-check` skills, the main design (sections 5.1 and 5.8) and the feed spec of 2026-11-21 (sections 5.1, 5.2 and unit D). If the repo is indexed in Graphify, use it to find callers and tests before changing a file.
 
-Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** are this spec's choices; the Owner can overrule any of them. Lines marked **Open** waited for the Owner; Opens 1 to 3 are answered, and Open 4 (access) and Open 5 (a lawyer) still wait.
+Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** are this spec's choices; the Owner can overrule any of them. Lines marked **Open** waited for the Owner; Opens 1 to 3 are answered, and only Open 4 (access) still waits; Open 5 is answered.
 
 ## 0. The Owner's direction
 
@@ -389,7 +389,7 @@ Steps:
 1. **Open 1, likes, saves and reposts** (private design 9, 13.3). **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Yes, all three".** Unit G builds all three; K counts like, review and repost as designed; L keeps "Watching and liking help a little".
 2. **Open 2, the lawyer's read** (private design 13.1): New York and California laws on feeds that learn from a child, and whether hidden boosts need saying in the terms. **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Build now, switches on"** (the card said: "They go live as soon as they merge. New York and California feed laws for children are still in court."). Units H, I and K wait on nothing but their units; the private file turns `sky`, `highTaste` and `parentYes` on.
 3. **Open 3, how a parent says yes.** **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Text the parent a code".** Unit I waits on nothing but D.
-4. **Open 5, a lawyer's read** (section 10.3). Asked as a card on 2026-11-22. Only `teenPersonal` waits.
+4. **Open 5, a lawyer's read** (section 10.3). Answered 2026-11-22 16:40 UTC: no lawyer now, `teenPersonal` on. Nothing waits.
 5. **Open 4, the Cloudflare token on RukenPrivate** (section 5). New access for a second repository, so it is the Owner's: asked once, inside the "Deploy automatically from main" work's batch of Owner commands (the same token). Unit J2 waits.
 6. **Not the Owner's: a hook for RukenPrivate pull requests.** In a repository without `rules.json`, creating a pull request is not checked (`progress.md`, hook follow-ups). J2 is a lane 3 pull request there, so it waits until a hook covers that route.
 
@@ -400,6 +400,7 @@ Steps:
 - Ranking on every page request may outgrow its budget as the catalogue grows; A10 measures it and names the cache.
 - The viewer floor in 4.3 starts only with unit B; until then a first showing ends on members or days alone.
 - Device profiles are emulation, not proof of how a phone performs.
+- The legal questions in 10.3 are not answered: the Owner chose to build and turn everything on without a lawyer's read. If a law or a lawyer says otherwise, `teenPersonal`, `highTaste` and `sky` each turn off in one change to the private file.
 - Found, not fixed: Ruken has no privacy policy or terms page. The feed adds data people should be told about (10.3, item 3). Reported to the coordinator for its own thread.
 
 ## 10. The law, and what needs a lawyer
@@ -427,15 +428,15 @@ Each is in `FEED_SETTINGS`, so it can be turned off without a rebuild, and each 
 | `sky` | the sky layer | the order equals the order on a date with no sky lift |
 | `learned` | all personalising, for everyone | every viewer gets standing alone |
 
-**Call:** `teenPersonal` is a new switch; it is **off** in the public defaults and stays off in the private file until Open 5 is answered. The Owner's "switches on" stands for `sky`, `highTaste` and `parentYes` (the asking can be built and tried); a teen's yes only changes their feed once `teenPersonal` is on.
+`teenPersonal` is off in the public defaults. **Owner, 2026-11-22 16:40 UTC, on a card** ("Get a lawyer to check the teen feed and hidden ranking before teens get it?"): **"No, turn it on anyway"** (the card said: "A parent's yes turns on the learning feed for teens as soon as it is built. New York and California laws on this are in court."). So it is on in the private file, and a teen's yes turns on their full feed once unit I merges. The switch stays, so it can be turned off in one change if the law or the Owner says so.
 
 ### 10.3 Open (lawyer)
 
 These are questions, not answers. Each names what it would change.
 
-1. **A parent's yes.** Whether a yes given by tapping a link texted to a number the teen typed is enough consent for a feed that learns from a minor, under New York's and California's laws on feeds for minors and any like them. If not, unit I changes how a parent proves who they are. Until then `teenPersonal` stays off.
+1. **A parent's yes.** Whether a yes given by tapping a link texted to a number the teen typed is enough consent for a feed that learns from a minor, under New York's and California's laws on feeds for minors and any like them. If not, unit I changes how a parent proves who they are. The Owner chose to turn it on without this read (Open 5).
 2. **Hidden ranking parts.** Whether the high-taste boost and the sky layer need saying more plainly than "a few touches of our own" (US consumer-protection rules on deception and endorsements; the EU Digital Services Act's rules on explaining recommender systems, if Ruken is offered in the EU). If so, the public page and the terms change; the switches stay.
 3. **Which privacy laws apply, and the papers they need.** Ruken has no privacy policy or terms page today (`src/routes/legal/` holds only the maker agreement). Whether California's privacy law (and its opt-out of profiling), the EU's and the UK's rules (including the UK Children's Code) apply to Ruken at its size, and what its privacy policy must say about watching, likes and taste. Writing those pages is not in this spec; it is reported (section 9).
 4. **Under-13s found later.** What Ruken must do when it learns an account belongs to someone under 13, despite the age check.
 
-**Open 5 (the Owner): get a lawyer's read on 10.3.** It is spend, so it is the Owner's; it is asked as a card. Until it is answered, everything else in this spec is built and on as the Owner chose, and only `teenPersonal` waits.
+**Open 5 (the Owner): get a lawyer's read on 10.3.** **Answered 2026-11-22 16:40 UTC: no lawyer now; turn it on anyway.** The four questions above stay unanswered and are carried as risks (section 9). Nothing in this spec waits on them.
