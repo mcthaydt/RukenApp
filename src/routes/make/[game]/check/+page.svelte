@@ -17,10 +17,6 @@
   let sending = $state(false);
 </script>
 
-<svelte:head>
-  <title>{data.changing ? "Change something" : "Check it, then send"} · Ruken</title>
-</svelte:head>
-
 <main class="halves checking">
   {#if data.changing}
     <div>

@@ -12,7 +12,9 @@
 #   reaches, and the first failure stops the run. Its checks carry different names, so they never stand in for the
 #   required ones.
 # - A pull request that is ready for review, and every push to main, gets the full run: `verify`, `postgres` and
-#   the six browser pieces, summed up by the required check `gate`. Marking a draft ready starts it.
+#   the browser pieces (twelve; a draft's quick run has six), summed up by the required check `gate`. Marking a
+#   draft ready starts it. Twelve on a full run: Owner, 2026-11-22 13:39 UTC: "we are using public free gh runners,
+#   so we can get more runners" (spec 3.5, unit P).
 #
 # Fast (Owner, 2026-11-22 01:20 UTC: "how can we speed up our CI? We don't have enough built in the app for it to take
 # this long"; docs/superpowers/specs/2026-11-22-faster-ci-design.md). Every job but `gate` starts at once, so a run
@@ -235,10 +237,11 @@ jobs:
             pnpm test:pg
           fi
 
-  # The journeys are split across six runners, side by side, each with its own database and its own site. On a draft
-  # only the journeys the change reaches run, and the first failure stops every piece.
+  # The journeys are split across twelve runners on a full run, side by side, each with its own database and its own
+  # site (spec 3.5). On a draft only the journeys the change reaches run, on six runners, and the first failure stops
+  # every piece. The count is written in three places that must agree: the name, PIECES and the matrix.
   browser-shard:
-    name: browser shard ${{ matrix.shard }} of 6${{ github.event.pull_request.draft && ' (quick, draft)' || '' }}
+    name: browser shard ${{ matrix.shard }} of ${{ github.event.pull_request.draft && 6 || 12 }}${{ github.event.pull_request.draft && ' (quick, draft)' || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # `actions: read` lists main's saved test times ("Choose main's test times").
@@ -255,7 +258,7 @@ jobs:
       # of the first failure at once.
       fail-fast: ${{ github.event.pull_request.draft == true }}
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: ${{ fromJSON(github.event.pull_request.draft && '[1, 2, 3, 4, 5, 6]' || '[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]') }}
     services:
       postgres:
         image: postgres:16
@@ -274,6 +277,8 @@ jobs:
       PLANNER: tests/browser/support/shard-plan.ts
       PULL_REQUEST_LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
       PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-json/report.json
+      # How many pieces this run has: six on a draft, twelve otherwise (spec 3.5). The matrix and the name agree.
+      PIECES: ${{ github.event.pull_request.draft && 6 || 12 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -294,10 +299,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
         if: steps.docs.outputs.docs_only != 'true'
-      # The seconds each journey file took on each device in a full run on main. All six pieces must deal the same
+      # The seconds each journey file took on each device in a full run on main. All the pieces must deal the same
       # plan, and they start minutes apart, so each picks from a set that cannot change once this run exists: the
       # newest times main saved at least 2 minutes before the run was created (spec 3.4 item 2). No times, a failed
-      # lookup or a missed restore means Playwright's own split, for all six alike.
+      # lookup or a missed restore means Playwright's own split, for all the pieces alike.
       - name: Choose main's test times
         id: times
         if: steps.docs.outputs.docs_only != 'true'
@@ -368,7 +373,7 @@ jobs:
         env:
           TIMES_KEY: ${{ steps.times.outputs.key }}
         run: |
-          # The gate checks on a full run that all six pieces read the same times (spec 3.4 item 2).
+          # The gate checks on a full run that all the pieces read the same times (spec 3.4 item 2).
           mkdir -p ran
           if [ -f ci-test-times.json ]; then
             echo "$TIMES_KEY" > ran/times-key.txt
@@ -377,14 +382,14 @@ jobs:
           fi
           echo "Times read: $(cat ran/times-key.txt)"
           if [ -f "$PLANNER" ] && [ -f ci-test-times.json ]; then
-            echo "RUKEN_SHARD=${{ matrix.shard }}/6" >> "$GITHUB_ENV"
+            echo "RUKEN_SHARD=${{ matrix.shard }}/$PIECES" >> "$GITHUB_ENV"
             echo "RUKEN_SHARD_TIMES=$GITHUB_WORKSPACE/ci-test-times.json" >> "$GITHUB_ENV"
-            export RUKEN_SHARD="${{ matrix.shard }}/6" RUKEN_SHARD_TIMES="$GITHUB_WORKSPACE/ci-test-times.json"
+            export RUKEN_SHARD="${{ matrix.shard }}/$PIECES" RUKEN_SHARD_TIMES="$GITHUB_WORKSPACE/ci-test-times.json"
             echo "Split by main's recorded times."
             args=""
           else
             echo "Split by Playwright (no planner or no recorded times)."
-            args="--shard=${{ matrix.shard }}/6"
+            args="--shard=${{ matrix.shard }}/$PIECES"
           fi
           if [ "$CHANGED_ONLY" = "true" ]; then
             args="$args --max-failures=1"
@@ -479,7 +484,7 @@ jobs:
           LOOK_CHANGED: ${{ steps.decide.outputs.look_changed || steps.compare.outputs.look_changed }}
         run: pnpm test:browser ${{ steps.pick.outputs.args }} --reporter=list,html,json
       # On main, this piece's times, saved from inside this image so the cache is packed as the pieces unpack it
-      # (gzip, not the host's zstd; spec 3.4 item 1). `test-times` joins the six.
+      # (gzip, not the host's zstd; spec 3.4 item 1). `test-times` joins the twelve.
       - name: Sum this piece's times
         if: github.event_name == 'push' && steps.journeys.outcome == 'success'
         run: |
@@ -534,7 +539,8 @@ jobs:
   # After a full run on main, the seconds each journey file took on each device, for the next runs' pieces. Nothing
   # waits for it. A plain `needs` skips it when a piece failed, so a broken run records no times. It runs in the
   # pieces' image so its cache is packed as the pieces unpack it (gzip, not the host's zstd; spec 3.4 item 1), and it
-  # joins the six pieces' own times by exact key and path. A missing piece fails it, so partial times are never saved.
+  # joins the twelve pieces' own times by exact key and path (a push to main is always a full run, so twelve; spec
+  # 3.5). A missing piece fails it, so partial times are never saved.
   test-times:
     name: record the journeys' times
     needs: browser-shard
@@ -574,11 +580,42 @@ jobs:
           path: piece-times-6.json
           key: ci-piece-times-${{ github.sha }}-6
           fail-on-cache-miss: true
-      - name: Join the six pieces' times
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-7.json
+          key: ci-piece-times-${{ github.sha }}-7
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-8.json
+          key: ci-piece-times-${{ github.sha }}-8
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-9.json
+          key: ci-piece-times-${{ github.sha }}-9
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-10.json
+          key: ci-piece-times-${{ github.sha }}-10
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-11.json
+          key: ci-piece-times-${{ github.sha }}-11
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: piece-times-12.json
+          key: ci-piece-times-${{ github.sha }}-12
+          fail-on-cache-miss: true
+      - name: Join the twelve pieces' times
         run: |
           node --input-type=module -e "$TEST_TIMES" times piece-times-1.json piece-times-2.json piece-times-3.json \
-            piece-times-4.json piece-times-5.json piece-times-6.json > ci-test-times.json
-          echo "joined 6 of 6 pieces, $(grep -c '|' ci-test-times.json) file and device pairs"
+            piece-times-4.json piece-times-5.json piece-times-6.json piece-times-7.json piece-times-8.json \
+            piece-times-9.json piece-times-10.json piece-times-11.json piece-times-12.json > ci-test-times.json
+          echo "joined 12 of 12 pieces, $(grep -c '|' ci-test-times.json) file and device pairs"
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ci-test-times.json

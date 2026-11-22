@@ -37,10 +37,6 @@
   let sending = $state(false);
 </script>
 
-<svelte:head>
-  <title>Your game · Ruken</title>
-</svelte:head>
-
 <main class="halves">
   <div>
     <p class="count">{name}</p>

@@ -269,6 +269,12 @@ test("pressing the speaker flips sound for every clip, and it stays as set from 
   expect(box.width).toBeGreaterThanOrEqual(44);
   expect(box.height).toBeGreaterThanOrEqual(44);
   expect(box.width).toBeLessThan((page.viewportSize()?.width ?? 0) / 2);
+  // It is frosted glass, as every see-through surface is (look.css).
+  const filter = await first.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return style.backdropFilter || style.getPropertyValue("-webkit-backdrop-filter");
+  });
+  expect(filter).toMatch(/blur\(/);
 
   await first.click();
   for (const button of await soundButtons(page).all())

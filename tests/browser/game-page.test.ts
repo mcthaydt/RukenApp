@@ -39,7 +39,7 @@ test("a game's page shows its clip, its name, its line, its rating and Play", as
   await expect(page.getByRole("link", { name: "Play" })).toHaveAttribute("href", `/g/${game.slug}/play`);
   await expect(page.getByText("Members play every game. $9.99 a month.")).toBeVisible();
   await expect(page.getByText("Tax is added where it applies.")).toBeVisible();
-  await expect(page).toHaveTitle(`${game.name} · Ruken`);
+  await expect(page).toHaveTitle(`Ruken - ${game.name}`);
   await expect(page.getByRole("button", { name: "Watch the upright video" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Watch the wide video" })).toBeVisible();
   expect(await noSideways(page)).toBe(true);

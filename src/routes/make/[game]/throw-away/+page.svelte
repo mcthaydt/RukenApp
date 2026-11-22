@@ -15,10 +15,6 @@
   onMount(() => keep?.focus());
 </script>
 
-<svelte:head>
-  <title>Throw it away? · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <h1>Throw {data.name} away?</h1>
   <p>Its files and videos are deleted from Ruken. Nothing changes on GitHub.</p>
