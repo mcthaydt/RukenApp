@@ -116,6 +116,7 @@ export const load: PageServerLoad = async (event) => {
       // A refused newest copy leaves the older one waiting, so the screen says so and leads to where it is mended.
       filesProblem: game.pullProblem,
       filesAddress: `/make/${game.slug}/files`,
+      testPlay: game.testPlay ? `/make/${game.slug}/play` : null,
     };
   }
 

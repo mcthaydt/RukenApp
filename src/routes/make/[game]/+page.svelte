@@ -22,6 +22,7 @@
     filesProblem={data.filesProblem}
     filesAddress={data.filesAddress}
     throwAway={data.throwAway}
+    testPlay={data.testPlay}
   />
 {:else if data.view === "sent_back"}
   <SentBackScreen
