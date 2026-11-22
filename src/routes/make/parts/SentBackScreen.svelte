@@ -33,10 +33,6 @@
   const first = $derived(fixes[0]);
 </script>
 
-<svelte:head>
-  <title>Sent back · Ruken</title>
-</svelte:head>
-
 <main class="halves">
   <div>
     <p class="count">{name}</p>

@@ -32,10 +32,6 @@
   } = $props();
 </script>
 
-<svelte:head>
-  <title>Waiting for review · Ruken</title>
-</svelte:head>
-
 <main class="halves">
   <div>
     <h1>Waiting for review</h1>

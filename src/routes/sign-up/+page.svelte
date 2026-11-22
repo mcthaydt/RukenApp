@@ -17,10 +17,6 @@
   let nextPath = $derived(form?.next ?? data.next);
 </script>
 
-<svelte:head>
-  <title>Join Ruken</title>
-</svelte:head>
-
 <main class="card">
   {#if form?.tooYoung}
     <h1>Ruken isn't for you yet.</h1>

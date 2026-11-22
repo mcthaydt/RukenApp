@@ -23,7 +23,6 @@
     enterHint = true,
     keepOld = false,
     busyWords = "Saving…",
-    title = "Your game · Ruken",
     action = "?/answer",
     enctype,
     submit,
@@ -46,8 +45,6 @@
     keepOld?: boolean;
     /** What the blue button says from the press until the answer comes. */
     busyWords?: string;
-    /** The tab's title: a game's question by default, a page's own room for the page editor. */
-    title?: string;
     /** Where the form posts. */
     action?: string;
     /** `multipart/form-data` for a question that sends a file. */
@@ -65,10 +62,6 @@
     children: Snippet;
   } = $props();
 </script>
-
-<svelte:head>
-  <title>{title}</title>
-</svelte:head>
 
 {#if counter !== null}
   <div class="track" aria-hidden="true">
