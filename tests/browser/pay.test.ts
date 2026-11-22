@@ -3,10 +3,11 @@ import {
   continueToPayment,
   finishSignUpForm,
   freshNumber,
+  pageHasSettled,
   payAsNewMember,
   releaseLateNews,
   signUpInItsOwnContext,
-  standInPayButton,
+  pressPay,
 } from "./support/account.ts";
 import { changeGame, givePage, idsOf, membershipStartsOf, userIdOf } from "./support/database.ts";
 import { gameWhere } from "./support/game.ts";
@@ -22,13 +23,17 @@ async function signUpFromTheCard(page: Page): Promise<string> {
   await page.getByRole("button", { name: "Continue" }).click();
   await finishSignUpForm(page, number);
   await expect(page.getByRole("button", { name: "Continue to payment" })).toBeVisible();
+  // The card shows before its page has come alive, and SvelteKit's start rewrites the history entry of the address it
+  // opened on. A goto sent before that can be interrupted by it (WebKit, run 44889391086: "interrupted by another
+  // navigation to /join?plan=monthly&next=%2Fme", the card's own address), so the journey waits for the page to settle.
+  await pageHasSettled(page);
   return number;
 }
 
 test("a stranger signs up, pays, and lands where they were going as a member", async ({ page }) => {
   await signUpFromTheCard(page);
   await page.getByRole("button", { name: "Continue to payment" }).click();
-  await standInPayButton(page).click();
+  await pressPay(page);
   await expect(page).toHaveURL("/me");
 });
 
@@ -45,7 +50,7 @@ test("when Stripe's news is late, the page says so and goes on by itself", async
   const checkoutSessionId = await continueToPayment(page);
   // The stand-in's own page, asked to hold its news back until this journey lets it go.
   await page.goto(`${page.url()}?events=later`);
-  await standInPayButton(page).click();
+  await pressPay(page);
   await expect(page.getByRole("heading", { name: "Finishing up…" })).toBeVisible();
   // Looked at while the news is still held, and with values only: the page moves on to /me by itself once it
   // arrives (design 5.8).
