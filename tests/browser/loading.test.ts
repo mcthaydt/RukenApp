@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { freshNumber, nationalOf, pageHasSettled } from "./support/account.ts";
+import { freshNumber, nationalOf, pageHasSettled, signInAs } from "./support/account.ts";
 import { addGame, connectGitHubFromFiles, holdAnswersTo, startAtFiles } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -67,7 +67,12 @@ test("a plain form shows its button busy while it sends, and a second press send
   await expect(page.getByRole("button", { name: "Sign in" })).not.toHaveAttribute("aria-busy", "true");
 });
 
-test("a video shimmers until it has loaded", async ({ page, browser, request, browserName }, testInfo) => {
+test("a video shimmers, with a spinner, until it has loaded", async ({
+  page,
+  browser,
+  request,
+  browserName,
+}, testInfo) => {
   test.setTimeout(180_000);
   const game = await addGame(browser, request);
   await page.goto(`/g/${game.slug}`);
@@ -80,9 +85,53 @@ test("a video shimmers until it has loaded", async ({ page, browser, request, br
 
   const loading = page.locator("video[data-loading]");
   await expect(loading.first()).toBeVisible();
+  // Owner, 2026-11-22: "The videos don't have a spinner before they load in the panel": a spinner turns in it too.
+  await expect(loading.first()).toHaveCSS(
+    "background-image",
+    /^url\("data:image\/svg\+xml.*animateTransform/,
+  );
   // The picture waits for the page's fonts, and WebKit says its fonts are ready only once the held clips have come, so
   // the phone would wait for ever. The tablet and the computer still take it.
   if (browserName !== "webkit") await showTheOwner(page, testInfo, "a video while it loads");
+  held.release();
+  await expect(loading).toHaveCount(0);
+});
+
+test("a clip in the feed shows the spinner until it has loaded", async ({ page, browser, request }) => {
+  test.setTimeout(180_000);
+  const game = await addGame(browser, request);
+  const held = await holdAnswersTo(page, /\/\/media\./);
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await pageHasSettled(page);
+
+  const clip = page.locator(`section[data-slug="${game.slug}"] video`).first();
+  await clip.scrollIntoViewIfNeeded();
+  await expect(clip).toHaveAttribute("data-loading", "");
+  await expect(clip).toHaveCSS("background-image", /^url\("data:image\/svg\+xml.*animateTransform/);
+  held.release();
+  await expect(clip).not.toHaveAttribute("data-loading");
+});
+
+// Owner, 2026-11-22, on "Change your upright video": "The videos don't have a spinner before they load in the panel".
+test("the maker's upright video panel, and what players will see, show the spinner until the videos load", async ({
+  page,
+  browser,
+  request,
+}) => {
+  test.setTimeout(180_000);
+  const game = await addGame(browser, request);
+  await signInAs(page, game.maker.number, game.maker.password);
+  const held = await holdAnswersTo(page, /\/\/media\./);
+  await page.goto(`/make/${game.slug}/upright?again=1`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Change your upright video");
+
+  const panel = page.locator(".vframe video");
+  await expect(panel).toHaveAttribute("data-loading", "");
+  await expect(panel).toHaveCSS("background-image", /^url\("data:image\/svg\+xml.*animateTransform/);
+  const loading = page.locator("video[data-loading]");
+  for (const video of await loading.all()) {
+    await expect(video).toHaveCSS("background-image", /^url\("data:image\/svg\+xml.*animateTransform/);
+  }
   held.release();
   await expect(loading).toHaveCount(0);
 });
