@@ -65,7 +65,11 @@
     const html = document.documentElement;
     delete html.dataset.step;
     delete html.dataset.move;
-    if (slid || !("startViewTransition" in document) || matchMedia("(prefers-reduced-motion: reduce)").matches)
+    if (
+      slid ||
+      !("startViewTransition" in document) ||
+      matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
       return;
     // The mark stays until the next move: while it is on, the maker area's rising lines keep still, so a page that
     // slides in does not also rise (look.css).

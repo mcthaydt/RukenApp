@@ -94,6 +94,8 @@ describe("every wait shows it", () => {
     expect(layout).toContain("<PageLoading />");
     // Every sent form is marked busy first, then sent from inside the page (src/lib/stay-in-app.ts).
     expect(layout).toContain("onsubmit={sent}");
-    expect(layout).toMatch(/function sent\(event: SubmitEvent\): void \{\s*markSending\(event\);\s*sendInApp\(event\);/);
+    expect(layout).toMatch(
+      /function sent\(event: SubmitEvent\): void \{\s*markSending\(event\);\s*sendInApp\(event\);/,
+    );
   });
 });

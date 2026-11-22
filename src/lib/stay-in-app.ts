@@ -31,11 +31,12 @@ export function sendInApp(event: SubmitEvent): void {
     return async ({ result, update }) => {
       try {
         await update();
-        // An answer on the same page (a refusal, or the next step) is shown as a fresh page would show it: from the top,
-        // with no password left in its box.
+        // An answer on the same page leaves no password in its box, as a fresh page would. A next step (the form
+        // gave way to another screen) starts at its top; an answer in place (a refusal, a line moved up) keeps the
+        // person where they pressed, as an app does.
         if (result.type === "success" || result.type === "failure") {
           for (const box of form.querySelectorAll<HTMLInputElement>("input[type='password']")) box.value = "";
-          window.scrollTo(0, 0);
+          if (!form.isConnected) window.scrollTo(0, 0);
         }
       } finally {
         clearSending(form);
