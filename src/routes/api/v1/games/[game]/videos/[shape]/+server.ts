@@ -5,7 +5,7 @@ import {
   type ClipShape,
 } from "../../../../../../../features/games/games.ts";
 import { bodyTooBig } from "../../../../../../../lib/server/body-size.ts";
-import { api, countUpload, gameProblem, maker, problem } from "../../../../api.server.ts";
+import { Answered, api, countUpload, gameProblem, maker, problem } from "../../../../api.server.ts";
 import { gameView } from "../../../game-view.server.ts";
 import type { RequestHandler } from "./$types";
 
@@ -37,7 +37,7 @@ export const PUT: RequestHandler = api(async (event) => {
     await service.saveClip(game.id, shape, { contentType, bytes });
     return Response.json(gameView(await ownGameOr404(service, game.slug, userId)));
   } catch (error) {
-    if (error instanceof Response) return error;
+    if (error instanceof Answered) return error.response;
     return gameProblem(error);
   }
 });

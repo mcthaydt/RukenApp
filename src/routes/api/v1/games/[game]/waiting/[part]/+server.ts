@@ -1,5 +1,5 @@
 import { gamesServices, ownGameOr404 } from "../../../../../../../features/games/games.ts";
-import { api, gameProblem, maker, problem } from "../../../../api.server.ts";
+import { Answered, api, gameProblem, maker, problem } from "../../../../api.server.ts";
 import { gameView } from "../../../game-view.server.ts";
 import type { RequestHandler } from "./$types";
 
@@ -18,7 +18,7 @@ export const DELETE: RequestHandler = api(async (event) => {
     await service.keepTheOldOne(game.id, userId, PARTS[part as keyof typeof PARTS]);
     return Response.json(gameView(await ownGameOr404(service, game.slug, userId)));
   } catch (error) {
-    if (error instanceof Response) return error;
+    if (error instanceof Answered) return error.response;
     return gameProblem(error);
   }
 });

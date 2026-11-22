@@ -11,8 +11,18 @@ const UPLOADS_PER_HOUR = { max: 30, windowMs: 60 * 60_000 } as const;
 /** The most a JSON body may be: nothing the maker's API takes in JSON is longer than a few lines of words. */
 const JSON_MAX_BYTES = 20_000;
 
+/** An answer that ends the request from deep inside a helper: `maker` throws a 401 or a 429 as one. */
+export class Answered extends Error {
+  readonly response: Response;
+  constructor(response: Response) {
+    super(`answered ${String(response.status)}`);
+    this.name = "Answered";
+    this.response = response;
+  }
+}
+
 /**
- * Wraps an endpoint so a Response thrown from inside it (a 401 from `maker`, a 429) is the answer, and anything else that
+ * Wraps an endpoint so an `Answered` thrown from inside it (a 401 from `maker`, a 429) is the answer, and anything else that
  * goes wrong is a plain-words 500 that carries no detail: never a request header, never the key.
  */
 export function api<Event extends RequestEvent>(handler: (event: Event) => Promise<Response>) {
@@ -20,7 +30,7 @@ export function api<Event extends RequestEvent>(handler: (event: Event) => Promi
     try {
       return await handler(event);
     } catch (thrown) {
-      if (thrown instanceof Response) return thrown;
+      if (thrown instanceof Answered) return thrown.response;
       console.error(
         `api ${event.request.method} ${event.url.pathname} failed: ${thrown instanceof Error ? thrown.name : "unknown"}`,
       );
@@ -42,23 +52,23 @@ export function gameProblem(error: unknown): Response {
 
 /**
  * The maker a request's key belongs to. A request with no working key is a 401, and a maker's 121st request in a
- * minute (all their keys together) is a 429. Throws the Response, so a route reads `const userId = await maker(event)`.
+ * minute (all their keys together) is a 429. Throws an `Answered`, so a route reads `const userId = await maker(event)`.
  */
 export async function maker(event: Pick<RequestEvent, "locals">): Promise<string> {
   const { caller } = event.locals;
-  if (caller.kind !== "computer") throw problem(401, COMPUTER_WORDS.signInAgain);
+  if (caller.kind !== "computer") throw new Answered(problem(401, COMPUTER_WORDS.signInAgain));
   const { limiter } = authServices().computerDeps;
   if (!(await limiter.hit(`api:v1:${caller.userId}`, REQUESTS_PER_MINUTE)).allowed) {
-    throw problem(429, "Wait a minute and try again.");
+    throw new Answered(problem(429, "Wait a minute and try again."));
   }
   return caller.userId;
 }
 
-/** Counts one upload against the maker's 30 an hour; throws the 429 when it is the 31st. */
+/** Counts one upload against the maker's 30 an hour; throws the 429 the same way when it is the 31st. */
 export async function countUpload(userId: string): Promise<void> {
   const { limiter } = authServices().computerDeps;
   if (!(await limiter.hit(`api:v1-upload:${userId}`, UPLOADS_PER_HOUR)).allowed) {
-    throw problem(429, "Wait a minute and try again.");
+    throw new Answered(problem(429, "Wait a minute and try again."));
   }
 }
 
