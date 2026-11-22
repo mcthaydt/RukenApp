@@ -2306,6 +2306,374 @@ a.sheet.fix {
   backdrop-filter: var(--dim-filter);
 }
 
+/* The bold card: the paywall (src/routes/join). The owner, 2026-11-22, on the plain card: "boring". It is the same paper
+   card in the same place, in two tones: a band of Dusky Green across its top holds a big chalk title, what a member
+   gets and the close mark; the paper under it holds the plans, the one blue button and the small print. The band
+   reaches the card's edges, so the card's padding is a token the band can undo. */
+.card.bold {
+  --card-pad: 1.5rem;
+
+  padding: var(--card-pad);
+}
+
+@media (min-width: 48rem) {
+  .card.bold {
+    --card-pad: 2rem;
+  }
+}
+
+.card.bold .cardtop {
+  position: relative;
+  margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) 0;
+  padding: var(--card-pad);
+  padding-bottom: calc(var(--card-pad) + 0.25rem);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: var(--felt-raised);
+  color: var(--chalk);
+}
+
+/* The title is the size of a section heading and more: the first thing anyone sees, two or three words a line. It keeps
+   clear of the close mark in the corner. */
+.card.bold h1 {
+  padding-right: 3.5rem;
+  font: 400 clamp(2.75rem, 11vw, 4.5rem) / 0.95 var(--font-display);
+}
+
+/* What a member gets: short chalk lines at the buttons' weight, each after a tick drawn in Glaucous Green. */
+.card.bold .gets {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  font: var(--text-button);
+}
+
+.card.bold .gets li {
+  display: flex;
+  margin: 0;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* The tick: two edges of a small box, turned, so no picture and no font is needed. */
+.card.bold .gets li::before {
+  content: "";
+  flex: none;
+  width: 0.5rem;
+  height: 0.9rem;
+  margin: 0 0.3rem 0.2rem 0.4rem;
+  border: solid var(--sage);
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+
+/* Not now, as the close mark: a square the size of a button in the band's top corner, a tone darker than the band. */
+.card.bold .close {
+  position: absolute;
+  top: calc(var(--card-pad) - 0.5rem);
+  right: calc(var(--card-pad) - 0.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-target);
+  height: var(--size-target);
+  margin: 0;
+  border-radius: var(--radius-button);
+  background: var(--felt);
+  color: var(--chalk);
+  text-decoration: none;
+  transition: transform var(--press-time);
+}
+
+.card.bold .close:active {
+  transform: scale(var(--press-scale));
+}
+
+.card.bold .close svg,
+.helpdesk svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* On the Dusky Green band the ring is chalk, as it is on the felt. */
+.card.bold .cardtop :focus-visible {
+  outline-color: var(--chalk);
+}
+
+.card.bold .cardtop + * {
+  margin-top: 1.75rem;
+}
+
+/* The two plans: big rows, a gap apart, the price in the display face. The chosen row turns ink with chalk words, so it
+   is seen at a glance and without colour. The circle is Ruken's own, drawn on the real radio button. */
+.card.bold .plans {
+  display: grid;
+  gap: 1rem;
+}
+
+.card.bold .plan {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 4.5rem;
+  padding: 0.75rem clamp(1rem, 4vw, 1.25rem);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-field);
+  cursor: pointer;
+  transition: transform var(--press-time);
+}
+
+.card.bold .plan:active {
+  transform: scale(var(--press-scale));
+}
+
+.card.bold .plan:has(input:checked) {
+  background: var(--ink);
+  color: var(--chalk);
+}
+
+.card.bold .plan:has(:focus-visible) {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* The real radio button lies over the whole row, unseen, so a press anywhere on the row is a press on it and the
+   keyboard and a reader still use it; the row's mark is Ruken's own: an empty rounded square, and a Glaucous Green
+   one with an ink tick when the row is chosen. */
+.card.bold .plan input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.card.bold .mark {
+  position: relative;
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 2px solid currentColor;
+  border-radius: 8px;
+}
+
+.card.bold .plan:has(input:checked) .mark {
+  border-color: var(--sage);
+  background: var(--sage);
+}
+
+.card.bold .plan:has(input:checked) .mark::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  left: 0.5rem;
+  width: 0.45rem;
+  height: 0.85rem;
+  border: solid var(--ink);
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+
+/* A price never breaks inside itself, and on the smallest phone it is a little smaller so "a month" fits beside it. */
+.card.bold .price {
+  flex: none;
+  font: 400 clamp(1.625rem, 8vw, 2rem) / 1 var(--font-display);
+  white-space: nowrap;
+}
+
+/* What the yearly plan saves: a tab on the row's top edge, Glaucous Green with ink words on paper and on ink alike. */
+.card.bold .saves {
+  position: absolute;
+  top: -0.8rem;
+  right: 1rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 8px;
+  background: var(--sage);
+  color: var(--ink);
+  font: var(--text-button);
+  font-size: 0.875rem;
+}
+
+/* The one blue button spans the card at every size and stands a little taller: it is the card's only action. */
+.card.bold form > button {
+  width: 100%;
+  min-height: 3.5rem;
+  font-size: 1.25rem;
+}
+
+.card.bold .small p {
+  margin-top: 0.25rem;
+  color: var(--ink-soft);
+  font: var(--text-small);
+}
+
+.card.bold .small p:first-child {
+  margin-top: 0;
+}
+
+/* Help for makers (src/routes/help): no sheet. A huge chalk title on the felt and three numbered tiles, one tone each,
+   wider than the reading column so the three sit side by side on a computer. The wordmark above keeps to the same
+   width, so it still starts where the page starts. */
+main.helpdesk,
+header:has(~ main.helpdesk) {
+  width: min(100% - 2rem, 72rem);
+}
+
+.helpdesk .back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-target);
+  height: var(--size-target);
+  margin: 0;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  text-decoration: none;
+  transition: transform var(--press-time);
+}
+
+.helpdesk .back:active {
+  transform: scale(var(--press-scale));
+}
+
+.helpdesk h1 {
+  margin-top: 1.5rem;
+  font: 400 clamp(3rem, 12vw, 7rem) / 0.92 var(--font-display);
+  text-wrap: balance;
+}
+
+.helpdesk .lead {
+  margin-top: 1.25rem;
+  color: var(--sage);
+  font: var(--text-statement);
+}
+
+.helpdesk ol {
+  display: grid;
+  gap: 1rem;
+  margin: 2.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 60rem) {
+  .helpdesk ol {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+/* A tile: the whole of it is the guide's link (its name's link stretches over it), pressed like a button. Paper, then
+   Glaucous Green, then Dusky Green: the first guide is the brightest, as it is the one to start with. */
+.helpdesk .guide {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  color: var(--ink);
+  transition: transform var(--press-time);
+}
+
+.helpdesk .guide:nth-child(2) {
+  background: var(--sage);
+}
+
+.helpdesk .guide:nth-child(3) {
+  background: var(--felt-raised);
+  color: var(--chalk);
+}
+
+.helpdesk .guide:active {
+  transform: scale(var(--press-scale));
+}
+
+@media (min-width: 60rem) {
+  .helpdesk .guide {
+    min-height: 19rem;
+    padding: 2rem;
+  }
+}
+
+.helpdesk .number {
+  font: 400 4.5rem/0.9 var(--font-display);
+}
+
+.helpdesk .guide:nth-child(1) .number {
+  color: var(--pay);
+}
+
+.helpdesk .guide:nth-child(2) .number {
+  color: var(--felt-raised);
+}
+
+.helpdesk .guide:nth-child(3) .number {
+  color: var(--sage);
+}
+
+.helpdesk .guide h2 {
+  margin-top: 1.5rem;
+  font: 400 1.75rem/1.1 var(--font-display);
+  text-wrap: balance;
+}
+
+@media (min-width: 60rem) {
+  .helpdesk .guide h2 {
+    margin-top: auto;
+    padding-top: 2rem;
+  }
+}
+
+.helpdesk .guide a {
+  display: inline;
+  min-height: 0;
+  margin: 0;
+  text-decoration: none;
+}
+
+.helpdesk .guide a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+}
+
+.helpdesk .guide a:focus-visible {
+  outline: none;
+}
+
+.helpdesk .guide:has(a:focus-visible) {
+  outline: 3px solid var(--paper);
+  outline-offset: 3px;
+}
+
+.helpdesk .guide p {
+  margin-top: 0.5rem;
+}
+
+.helpdesk .arrow {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+}
+
+@media (min-width: 60rem) {
+  .helpdesk .arrow {
+    top: 2rem;
+    right: 2rem;
+  }
+}
+
 /* The statement piece, only on Live (spec 5c): the game's own video fills the screen behind everything, blurred, dimmed and
    under a black layer. Everything else sits above it. */
 .backdrop {

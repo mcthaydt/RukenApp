@@ -251,7 +251,15 @@ export async function expectOneCard(page: Page, options: { red?: string[] } = {}
   await expect(card).toHaveCSS("border-top-left-radius", "20px");
   await expect(card).toHaveCSS("border-top-width", "0px");
   await expect(card).toHaveCSS("box-shadow", "none");
-  await expect(card.getByRole("heading", { level: 1 })).toHaveCSS("font-size", "32px");
+  // The paywall is the one bold card (the owner, 2026-11-22: the plain one was "boring"): its title is 44px or more.
+  // Every other card's title is the card title's 32px.
+  const title = card.getByRole("heading", { level: 1 });
+  if (await card.evaluate((node) => node.classList.contains("bold"))) {
+    const size = await title.evaluate((node) => parseFloat(getComputedStyle(node).fontSize));
+    expect(size).toBeGreaterThanOrEqual(44);
+  } else {
+    await expect(title).toHaveCSS("font-size", "32px");
+  }
   expect(await filledButtons(page).count()).toBeLessThanOrEqual(1);
   expect(await pipRed(page)).toEqual(options.red ?? []);
   expect(

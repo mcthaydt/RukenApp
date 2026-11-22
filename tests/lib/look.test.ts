@@ -379,6 +379,23 @@ describe("screens wear the look and nothing of their own", () => {
     "side",
     // Words only a screen reader meets: the layout's "Sending…" (src/lib/busy-forms.ts).
     "hidden-words",
+    // The bold paywall card (src/routes/join): its Dusky Green top, what a member gets, the close mark, the plans.
+    "bold",
+    "cardtop",
+    "gets",
+    "close",
+    "plans",
+    "plan",
+    "mark",
+    "price",
+    "saves",
+    "small",
+    // Help for makers (src/routes/help): the felt page, its way back, its lead line and its numbered guides.
+    "helpdesk",
+    "lead",
+    "guide",
+    "number",
+    "arrow",
   ];
   const ROUTES = "src/routes";
 
