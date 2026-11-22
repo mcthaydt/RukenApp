@@ -196,7 +196,8 @@ describe("the fonts", () => {
   });
 
   it("ask nothing of another site, and add no package", () => {
-    expect(css).not.toMatch(/https?:|@import/);
+    // The loading spinner is an SVG picture, which must name the SVG namespace; naming it fetches nothing.
+    expect(css.replaceAll("xmlns='http://www.w3.org/2000/svg'", "")).not.toMatch(/https?:|@import/);
     expect(readFileSync("package.json", "utf8")).not.toContain("fontsource");
   });
 });
@@ -599,5 +600,51 @@ describe("the play screen", () => {
     expect(tab).toMatch(/var\(--radius-button\)/);
     const start = withoutComments.indexOf("main.playing");
     expect(withoutComments.slice(start)).not.toMatch(/--pip/);
+  });
+});
+
+// Owner, 2026-11-22: "The videos don't have a spinner before they load in the panel, I said do it everywhere".
+describe("a picture or a video while it loads", () => {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const loadingRule = /img\[data-loading\],\s*video\[data-loading\]\s*\{([^}]*)\}/g;
+
+  it("shimmers with a turning spinner in its middle", () => {
+    const rule = loadingRule.exec(withoutComments)?.[1] ?? "";
+    loadingRule.lastIndex = 0;
+    expect(rule).toMatch(/background:\s*var\(--spinner-turning\) center/);
+    expect(rule).toMatch(/animation:\s*media-loading/);
+  });
+
+  it("the turning spinner is chalk and turns; the still one does not", () => {
+    const turning = /--spinner-turning:\s*url\("([^"]*)"\)/.exec(withoutComments)?.[1] ?? "";
+    const still = /--spinner-still:\s*url\("([^"]*)"\)/.exec(withoutComments)?.[1] ?? "";
+    const chalk = token("--chalk").toLowerCase().replace("#", "%23");
+    expect(turning).toContain(`stroke='${chalk}'`);
+    expect(turning).toContain("animateTransform");
+    expect(still).toContain(`stroke='${chalk}'`);
+    expect(still).not.toContain("animate");
+  });
+
+  // Review of the video spinner, round 1: `.sheet.fix video { background: var(--sage) }` wiped the spinner off the
+  // Needs fixing card. Only the loading rules may draw a picture's or a video's background picture.
+  it("no other rule on a picture or a video sets its background picture, or the background shorthand", () => {
+    const rules = [...withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+    const others = rules
+      .filter(([, selector = "", body = ""]) => {
+        const media = /(^|[\s,>+~(])(img|video)\b/.test(selector);
+        const loading = /img\[data-loading\],\s*video\[data-loading\]/.test(selector);
+        return media && !loading && /background(-image)?\s*:/.test(body);
+      })
+      .map(([, selector = ""]) => selector.trim());
+    expect(others).toEqual([]);
+  });
+
+  it("under reduced motion, the spinner stands still and the shimmer stops", () => {
+    // The last such rule in the sheet is the one inside the closing reduced-motion block.
+    const rules = [...withoutComments.matchAll(loadingRule)];
+    expect(rules.length).toBe(2);
+    const rule = rules.at(-1)?.[1] ?? "";
+    expect(rule).toMatch(/background-image:\s*var\(--spinner-still\)/);
+    expect(rule).toMatch(/animation:\s*none/);
   });
 });
