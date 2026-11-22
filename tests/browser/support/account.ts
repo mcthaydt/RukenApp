@@ -5,22 +5,33 @@ import { codeTo } from "./texts.ts";
 /** The password every journey's new account uses. */
 export const JOURNEY_PASSWORD = "a long enough password";
 
-/** The numbers this worker has handed out, so it never hands one out twice. */
+/** The numbers this worker process has handed out, so it never hands one out twice. */
 const numbersHandedOut = new Set<string>();
+
+/** Area codes each worker process owns: 10 × 7,800 lines is 78,000 numbers, and 800 area codes serve 80 workers. */
+const AREA_CODES_PER_WORKER = 10;
+const LINES = 7_800;
 
 /**
  * A number no other journey has used, so journeys can run side by side on one database: +1, an area code, 555 and four
  * random digits outside 01·· (those are kept for fiction, and the site never texts them). A number that already has an
- * account gets no code, so a sign-up that drew one fails at "no code waiting". Drawn at random from all 6.24 million,
- * 600 sign-ups on one database share a number about 3 times in 100 (600² ÷ 2 ÷ 6.24 million). So each worker
- * (Playwright's `TEST_PARALLEL_INDEX`) draws from its own hundred area codes and never draws the same number twice. A
- * database kept from run to run still holds the numbers earlier runs drew.
+ * account gets no code, so a sign-up that drew one fails at "no code waiting".
+ *
+ * Each worker process draws from area codes of its own and never draws the same number twice. The process is told
+ * apart by Playwright's `TEST_WORKER_INDEX`, never by `TEST_PARALLEL_INDEX`: Playwright starts a new process for each
+ * device profile and after a failure, and the new one takes the same parallel index with nothing remembered, so area
+ * codes shared by parallel index were drawn again by the next profile's process (runs 44997563759 and 45001251809,
+ * "no code waiting" on the third profile). The 81st process of a run shares the first one's area codes. A database
+ * kept from run to run still holds the numbers earlier runs drew.
  */
 export function freshNumber(): string {
-  const worker = Number(process.env.TEST_PARALLEL_INDEX ?? "0") % 8;
+  const worker = Number(process.env.TEST_WORKER_INDEX ?? "0") % (800 / AREA_CODES_PER_WORKER);
+  if (numbersHandedOut.size >= AREA_CODES_PER_WORKER * LINES) {
+    throw new Error(`this worker has used up its ${String(AREA_CODES_PER_WORKER * LINES)} fresh numbers`);
+  }
   for (;;) {
-    const area = 200 + worker * 100 + Math.floor(Math.random() * 100);
-    const last = 200 + Math.floor(Math.random() * 7800);
+    const area = 200 + worker * AREA_CODES_PER_WORKER + Math.floor(Math.random() * AREA_CODES_PER_WORKER);
+    const last = 200 + Math.floor(Math.random() * LINES);
     const number = `+1${String(area)}555${String(last).padStart(4, "0")}`;
     if (numbersHandedOut.has(number)) continue;
     numbersHandedOut.add(number);

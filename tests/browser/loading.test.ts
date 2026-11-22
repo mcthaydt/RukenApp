@@ -59,7 +59,9 @@ test("a plain form shows its button busy while it sends, and a second press send
   await page.getByRole("button", { name: "Sign in" }).click({ noWaitAfter: true });
 
   await expect.poll(() => seen).toEqual(["busy=true", "second press stopped=true"]);
-  expect(held.requestsSoFar()).toBe(1);
+  // The page's words and the held post reach the journey by separate messages, in either order, so the post is waited
+  // for too (run on #315: read at once, it was still 0 while a recording slowed the browser).
+  await expect.poll(() => held.requestsSoFar()).toBe(1);
   held.release();
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in" })).not.toHaveAttribute("aria-busy", "true");
