@@ -515,8 +515,8 @@ describe("at the same moment", () => {
       if (!started.ok) throw new Error("refused");
       asks.push(started);
     }
-    // The count is slow, so every Yes would see room if they did not take turns.
-    const slow = { ...d, prisma: slowKeys("computerSignIn", "count") };
+    // The count of keys is slow, so every Yes would see room if they did not take turns.
+    const slow = { ...d, prisma: slowKeys("computerKey", "count") };
     const answers = await Promise.all(
       asks.map((ask) => answerSignIn(slow, { code: ask.code, userId, yes: true })),
     );
