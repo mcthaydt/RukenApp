@@ -19,7 +19,7 @@
       <input type="hidden" name="link" value={link.id} />
       <p>
         <strong>{link.title}</strong>
-        {#if link.elsewhere}<span class="note">A game somewhere else</span>{/if}
+        {#if link.note !== null}<span class="note">{link.note}</span>{/if}
         <span class="note">{link.taps}{link.hidden ? " · Hidden" : ""}</span>
       </p>
       <p class="row">

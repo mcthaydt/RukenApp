@@ -486,7 +486,11 @@ describe("a small icon for a site", () => {
 
   it("keeps a social link for a site that has an icon, and tells visitors which site", async () => {
     const { userId, handle } = await makerWithPage();
-    await service.addLink(userId, { kind: "social", title: "My videos", url: "https://www.youtube.com/@maker" });
+    await service.addLink(userId, {
+      kind: "social",
+      title: "My videos",
+      url: "https://www.youtube.com/@maker",
+    });
     await service.addLink(userId, { kind: "link", title: "Plain", url: "https://www.youtube.com/@maker" });
     const page = await service.pageByHandle(handle);
     expect(page?.links.map((link) => [link.title, link.kind, link.social])).toEqual([
@@ -527,4 +531,3 @@ describe("a small icon for a site", () => {
     expect((await service.pageOf(userId))?.links[0]?.taps).toBe(1);
   });
 });
-

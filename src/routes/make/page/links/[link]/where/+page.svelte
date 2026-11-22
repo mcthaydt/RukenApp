@@ -7,14 +7,14 @@
   let { data, form }: PageProps = $props();
 
   const title = $derived(form?.title ?? data.title);
-  const game = $derived(form?.game ?? data.game);
+  const kind = $derived(form?.kind ?? data.kind);
 </script>
 
 <QuestionScreen
   heading="Where does it go?"
   counter={null}
   back={`/make/page/links/${data.id}`}
-  action={`?/save&title=${encodeURIComponent(title)}${game ? "&game=1" : ""}`}
+  action={`?/save&title=${encodeURIComponent(title)}${kind === "link" ? "" : `&kind=${kind}`}`}
 >
   <TextAnswer
     name="url"

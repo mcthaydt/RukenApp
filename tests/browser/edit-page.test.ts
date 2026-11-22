@@ -228,8 +228,9 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your links");
   await page.getByRole("link", { name: "Add a link" }).click();
   await page.getByLabel("What should the link say?").fill("My other game");
-  await page.locator("label.pick").click();
-  await expect(page.getByLabel("A game somewhere else")).toBeChecked();
+  await expect(page.getByRole("radio", { name: "A plain link" })).toBeChecked();
+  await page.locator("label.pick", { hasText: "A game somewhere else" }).click();
+  await expect(page.getByRole("radio", { name: "A game somewhere else" })).toBeChecked();
   await page.getByRole("button", { name: "Save" }).click();
   await answerRoom(page, "Where does it go?", "https://store.steampowered.com/app/1");
   const rows = page.locator("form[data-link]");
@@ -327,6 +328,92 @@ test("a page goes when its account is deleted, after the 14 days", async ({ page
   });
   expect(answer.status()).toBe(200);
   expect(await statusOf(page, `/${handle}`)).toBe(404);
+});
+
+test("a maker adds a small icon, changes it, hides it and takes it off", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  const mine = await signUp(page);
+  const { handle } = await givePage(mine, {
+    name: "Icon Maker",
+    oneLine: "",
+    links: [{ title: "My Discord", url: "https://discord.example.com/invite/abc" }],
+  });
+  const rows = page.locator("form[data-link]");
+  const icons = page.getByRole("navigation", { name: "Elsewhere" }).getByRole("link");
+
+  // Create: the first question has the choice; an address that has no icon is refused in plain words.
+  await page.goto("/make/page/links");
+  await pageHasSettled(page);
+  await page.getByRole("link", { name: "Add a link" }).click();
+  await page.getByLabel("What should the link say?").fill("My videos");
+  await page.locator("label.pick", { hasText: "A small icon, for YouTube, Discord and the like" }).click();
+  await expect(page.getByRole("radio", { name: /^A small icon/ })).toBeChecked();
+  await showTheOwner(page, testInfo, "your links, adding a small icon");
+  await page.getByRole("button", { name: "Save" }).click();
+  await answerRoom(page, "Where does it go?", "https://example.com/me");
+  await expect(page.getByRole("alert")).toHaveText(
+    "We don't have an icon for that site yet. Add it as a link.",
+  );
+  await expect(page.getByLabel("Where does it go?")).toHaveValue("https://example.com/me");
+  await answerRoom(page, "Where does it go?", "https://www.youtube.com/@iconmaker");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your links");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(1)).toContainText("My videos");
+  await expect(rows.nth(1)).toContainText("A small icon");
+
+  // Read: it is on the page as an icon named for its site, and not among the links.
+  await page.goto(`/${handle}`);
+  await expect(page.getByRole("navigation", { name: "Links" }).getByRole("link")).toHaveCount(1);
+  await expect(icons).toHaveCount(1);
+  await expect(icons.first()).toHaveAccessibleName("YouTube");
+
+  // Update: its address moves to another site and the icon follows; the question is filled in as it is now.
+  await page.goto("/make/page/links");
+  await rows.nth(1).getByRole("link", { name: "Change" }).click();
+  await expect(page.getByRole("radio", { name: /^A small icon/ })).toBeChecked();
+  await answerRoom(page, "What should the link say?", "Our chat");
+  await expect(page.getByLabel("Where does it go?")).toHaveValue("https://www.youtube.com/@iconmaker");
+  await answerRoom(page, "Where does it go?", "https://example.com/chat");
+  await expect(page.getByRole("alert")).toHaveText(
+    "We don't have an icon for that site yet. Add it as a link.",
+  );
+  await answerRoom(page, "Where does it go?", "https://discord.gg/abc123");
+  await expect(rows.nth(1)).toContainText("Our chat");
+  await page.goto(`/${handle}`);
+  await expect(icons.first()).toHaveAccessibleName("Discord");
+
+  // Update: made a plain link, it moves into the links.
+  await page.goto("/make/page/links");
+  await rows.nth(1).getByRole("link", { name: "Change" }).click();
+  await page.locator("label.pick", { hasText: "A plain link" }).click();
+  await page.getByRole("button", { name: "Save" }).click();
+  await answerRoom(page, "Where does it go?", "https://discord.gg/abc123");
+  await expect(rows.nth(1)).not.toContainText("A small icon");
+  await page.goto(`/${handle}`);
+  await expect(page.getByRole("navigation", { name: "Links" }).getByRole("link")).toHaveCount(2);
+  await expect(icons).toHaveCount(0);
+
+  // Update back to an icon, then hide it, show it again and remove it.
+  await page.goto("/make/page/links");
+  await rows.nth(1).getByRole("link", { name: "Change" }).click();
+  await page.locator("label.pick", { hasText: "A small icon" }).click();
+  await page.getByRole("button", { name: "Save" }).click();
+  await answerRoom(page, "Where does it go?", "https://discord.gg/abc123");
+  await expect(rows.nth(1)).toContainText("A small icon");
+  await rows.nth(1).getByRole("button", { name: "Hide" }).click();
+  await expect(rows.nth(1)).toContainText("Hidden");
+  await page.goto(`/${handle}`);
+  await expect(icons).toHaveCount(0);
+  await page.goto("/make/page/links");
+  await rows.nth(1).getByRole("button", { name: "Show" }).click();
+  await expect(rows.nth(1)).not.toContainText("Hidden");
+  await page.goto(`/${handle}`);
+  await expect(icons).toHaveCount(1);
+  await page.goto("/make/page/links");
+  await rows.nth(1).getByRole("button", { name: "Remove" }).click();
+  await expect(rows).toHaveCount(1);
+  await page.goto(`/${handle}`);
+  await expect(page.getByRole("navigation", { name: "Elsewhere" })).toHaveCount(0);
 });
 
 test("nobody changes another maker's links, and thirty is the most", async ({ page, browser }) => {

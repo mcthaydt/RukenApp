@@ -49,6 +49,20 @@ export function linkProblem(input: { title: string; url: string }): string | nul
   return null;
 }
 
+export type LinkKind = "link" | "game_elsewhere" | "social";
+
+/** The kind a maker's answer names: anything but the two special ones is a plain link. */
+export function linkKindOf(answer: unknown): LinkKind {
+  return answer === "game_elsewhere" || answer === "social" ? answer : "link";
+}
+
+/** The three choices for a link, in the words a maker sees. */
+export const LINK_KIND_CHOICES: readonly { value: LinkKind; title: string }[] = [
+  { value: "link", title: "A plain link" },
+  { value: "game_elsewhere", title: "A game somewhere else" },
+  { value: "social", title: "A small icon, for YouTube, Discord and the like" },
+];
+
 /** Where a game somewhere else lives, by the host of its address, for its card. */
 const SITE_NAMES: ReadonlyMap<string, string> = new Map([
   ["store.steampowered.com", "Steam"],

@@ -6,6 +6,7 @@
 <script lang="ts">
   import { loads } from "../../lib/loads.ts";
   import { quietVideo } from "../../lib/quiet-video.ts";
+  import marks from "./library/social-icons.json" with { type: "json" };
 
   interface Props {
     name: string;
@@ -16,12 +17,29 @@
     /** The four jobs the colours do, and every colour of the combination for the row of dots. */
     colours: { ground: string; text: string; button: string; buttonText: string; all: string[] };
     games: { slug: string; name: string; upright: string }[];
-    links: { id: string; kind: "link" | "game_elsewhere"; title: string; site: string }[];
+    links: {
+      id: string;
+      kind: "link" | "game_elsewhere" | "social";
+      title: string;
+      site: string;
+      social: { id: string; name: string } | null;
+    }[];
   }
 
   let { name, handle, oneLine, photo, colours, games, links }: Props = $props();
 
   // The first letter of the name, for a page with no photo. A name is never empty (the pages service refuses one).
+  // Social links are small icons in a row of their own, after the links; a link with no mark we know is left out.
+  const markOf = (id: string): string | undefined => (marks as Record<string, string>)[id];
+  const plainLinks = $derived(links.filter((link) => link.kind !== "social"));
+  const icons = $derived(
+    links.flatMap((link) => {
+      const path = link.social === null ? undefined : markOf(link.social.id);
+      return link.social === null || path === undefined
+        ? []
+        : [{ id: link.id, name: link.social.name, path }];
+    }),
+  );
   const initial = $derived(Array.from(name.trim())[0]?.toUpperCase() ?? "");
 </script>
 
@@ -72,9 +90,9 @@
     </section>
   {/if}
 
-  {#if links.length > 0}
+  {#if plainLinks.length > 0}
     <nav class="links" aria-label="Links">
-      {#each links as link (link.id)}
+      {#each plainLinks as link (link.id)}
         <!-- A made-up address would still be a link to somewhere: the visitor always goes through ours, which sends on only an address that was checked as https. -->
         <a
           class={link.kind === "game_elsewhere" ? "elsewhere" : "button"}
@@ -85,6 +103,18 @@
           {#if link.kind === "game_elsewhere"}
             <span class="site">A game on {link.site}</span>
           {/if}
+        </a>
+      {/each}
+    </nav>
+  {/if}
+
+  {#if icons.length > 0}
+    <nav class="social" aria-label="Elsewhere">
+      {#each icons as icon (icon.id)}
+        <a href={`/${handle}/out/${icon.id}`} rel="nofollow ugc noopener" aria-label={icon.name}>
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+            <path d={icon.path} />
+          </svg>
         </a>
       {/each}
     </nav>
@@ -223,8 +253,27 @@
     font-weight: 400;
     font-size: 0.875rem;
   }
+  .social {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+  .social a {
+    box-sizing: border-box;
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--button);
+  }
+  .social svg {
+    fill: var(--button-text);
+  }
   .play:focus-visible,
   .links a:focus-visible,
+  .social a:focus-visible,
   .game h2 a:focus-visible {
     outline: 3px solid var(--text);
     outline-offset: 3px;

@@ -441,11 +441,11 @@ export async function forgetCodeLimits(number: string): Promise<void> {
   });
 }
 
-/** A link to put on a page: its words and where it goes, hidden or not, and a game somewhere else or a plain link. */
+/** A link to put on a page: its words and where it goes, hidden or not, and a game somewhere else, a small icon or a plain link. */
 export interface GivenLink {
   title: string;
   url: string;
-  kind?: "link" | "game_elsewhere";
+  kind?: "link" | "game_elsewhere" | "social";
   hidden?: boolean;
 }
 

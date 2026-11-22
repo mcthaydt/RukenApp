@@ -1,5 +1,6 @@
-<!-- A new link, question one of two: what it should say, and whether it is a game somewhere else. -->
+<!-- A new link, question one of two: what it should say, and what kind it is. -->
 <script lang="ts">
+  import { LINK_KIND_CHOICES } from "../../../../../features/pages/pages.ts";
   import Picks from "../../../parts/Picks.svelte";
   import QuestionScreen from "../../../parts/QuestionScreen.svelte";
   import TextAnswer from "../../../parts/TextAnswer.svelte";
@@ -18,11 +19,10 @@
   <TextAnswer name="title" value={form?.title ?? ""} hint="Like: My Discord." problem={form?.problem} />
   <Picks
     name="kind"
-    several
-    legend="Is it a game?"
+    legend="What kind is it?"
     plain
-    options={[{ value: "game_elsewhere", title: "A game somewhere else" }]}
-    chosen={form?.game === true ? ["game_elsewhere"] : []}
+    options={LINK_KIND_CHOICES.map(({ value, title }) => ({ value, title }))}
+    chosen={[form?.kind ?? "link"]}
     problem={undefined}
   />
 </QuestionScreen>

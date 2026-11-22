@@ -1,5 +1,5 @@
 import { error, fail, redirect } from "@sveltejs/kit";
-import { PageError, pagesServices } from "../../../../../../features/pages/pages.ts";
+import { linkKindOf, PageError, pagesServices } from "../../../../../../features/pages/pages.ts";
 import { ownPage } from "../../../own-page.server";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -13,7 +13,7 @@ export const load: PageServerLoad = async (event) => {
   const title = event.url.searchParams.get("title") ?? "";
   // Nothing was said yet, so the first question is the way in.
   if (title.trim() === "") redirect(303, `/make/page/links/${link.id}`);
-  return { id: link.id, title, game: event.url.searchParams.get("game") === "1", url: link.url };
+  return { id: link.id, title, kind: linkKindOf(event.url.searchParams.get("kind")), url: link.url };
 };
 
 export const actions: Actions = {
@@ -26,17 +26,17 @@ export const actions: Actions = {
     };
     const title = event.url.searchParams.get("title") ?? text("title");
     const url = text("url");
-    const game = (event.url.searchParams.get("game") ?? text("game")) === "1";
+    const kind = linkKindOf(event.url.searchParams.get("kind"));
     try {
       await pagesServices().service.updateLink(userId, event.params.link, {
-        kind: game ? "game_elsewhere" : "link",
+        kind,
         title,
         url,
       });
     } catch (problem) {
       if (!(problem instanceof PageError)) throw problem;
       if (problem.code === "NOT_FOUND") error(404, "Not found");
-      return fail(400, { problem: problem.message, title, game, url });
+      return fail(400, { problem: problem.message, title, kind, url });
     }
     redirect(303, "/make/page/links");
   },

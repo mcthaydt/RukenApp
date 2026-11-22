@@ -14,7 +14,12 @@ export const load: PageServerLoad = async (event) => {
     links: page.links.map((link, index) => ({
       id: link.id,
       title: link.title,
-      elsewhere: link.kind === "game_elsewhere",
+      note:
+        link.kind === "game_elsewhere"
+          ? "A game somewhere else"
+          : link.kind === "social"
+            ? "A small icon"
+            : null,
       hidden: link.hidden,
       taps: `Tapped ${timesWords(link.taps)}`,
       first: index === 0,

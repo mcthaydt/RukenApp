@@ -114,6 +114,60 @@ test("a maker's page shows who they are, their games and their links, in their c
   await showTheOwner(page, testInfo, "a maker's page");
 });
 
+test("small icons sit after the links, one round link for each site, and are not among the links", async ({
+  page,
+  request,
+  browser,
+}, testInfo) => {
+  const { handle, linkIds } = await givePage(await signUpInItsOwnContext(browser), {
+    name: "Icon Maker",
+    oneLine: "Find me elsewhere.",
+    themeId: theme.id,
+    links: [
+      DISCORD,
+      { title: "My videos", url: "https://www.youtube.com/@iconmaker", kind: "social" },
+      { title: "Chat", url: "https://discord.gg/abc123", kind: "social" },
+      { title: "Hidden icon", url: "https://github.com/iconmaker", kind: "social", hidden: true },
+    ],
+  });
+  await page.goto(`/${handle}`, { waitUntil: "domcontentloaded" });
+  await pageHasSettled(page);
+
+  // The icons are not among "Links": only the plain link is there.
+  await expect(page.getByRole("navigation", { name: "Links" }).getByRole("link")).toHaveCount(1);
+  // They sit after it, in their order, each named for its site; a hidden one is not there.
+  const elsewhere = page.getByRole("navigation", { name: "Elsewhere" });
+  const icons = elsewhere.getByRole("link");
+  await expect(icons).toHaveCount(2);
+  await expect(icons.nth(0)).toHaveAccessibleName("YouTube");
+  await expect(icons.nth(1)).toHaveAccessibleName("Discord");
+  await expect(elsewhere.getByRole("link", { name: "GitHub" })).toHaveCount(0);
+  const [, youtubeLink = ""] = linkIds;
+  await expect(icons.nth(0)).toHaveAttribute("href", `/${handle}/out/${youtubeLink}`);
+  await expect(icons.nth(0)).toHaveAttribute("rel", "nofollow ugc noopener");
+  const links = await page.getByRole("navigation", { name: "Links" }).boundingBox();
+  const row = await elsewhere.boundingBox();
+  expect(row?.y ?? 0).toBeGreaterThan((links?.y ?? 0) + (links?.height ?? 0) - 1);
+
+  // Each is a 48px round link wearing the page's button colours, with its mark drawn inside.
+  for (const icon of await icons.all()) {
+    const box = await icon.boundingBox();
+    expect(box?.width).toBe(48);
+    expect(box?.height).toBe(48);
+    await expect(icon).toHaveCSS("border-radius", "24px");
+    await expect(icon).toHaveCSS("background-color", rgb(theme.button));
+    await expect(icon.locator("svg path")).toHaveCount(1);
+    await expect(icon.locator("svg")).toHaveCSS("fill", rgb(theme.buttonText));
+  }
+  expect(await noSideways(page)).toBe(true);
+
+  // A tap goes through ours, which counts it and sends the visitor on.
+  const sent = await request.get(`/${handle}/out/${youtubeLink}`, { maxRedirects: 0 });
+  expect(sent.status()).toBe(303);
+  expect(sent.headers()["location"]).toBe("https://www.youtube.com/@iconmaker");
+  await showTheOwner(page, testInfo, "a maker's page with social icons");
+});
+
 test("a page with no games and no links has neither section", async ({ page, browser }, testInfo) => {
   const { handle } = await givePage(await signUpInItsOwnContext(browser), {
     name: "Quiet Maker",
