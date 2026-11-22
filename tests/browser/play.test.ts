@@ -7,7 +7,7 @@ import {
   pageHasSettled,
   payAsNewMember,
   signInAs,
-  standInPayButton,
+  pressPay,
   yearsAgo,
   SITE_ANSWER_TIMEOUT,
 } from "./support/account.ts";
@@ -84,7 +84,7 @@ test("a stranger signs up, pays, and is in the game they chose", async ({ page }
   await fillBirthDate(page, yearsAgo(30));
   await page.getByRole("button", { name: "Create account" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await continueToPayment(page);
-  await standInPayButton(page).click();
+  await pressPay(page);
   await expect(page).toHaveURL(`/g/${game.slug}/play`);
   await loaded(page);
 });
