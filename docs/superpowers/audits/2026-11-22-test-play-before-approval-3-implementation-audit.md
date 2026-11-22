@@ -1,0 +1,27 @@
+# Test play before approval: implementation audit 3 (after the main merge)
+
+Reviewed head: `574763d` (`574763dd0f448ac33c96dd2659487909dd678941`), PR #340, which merges `main` at `a097084` (Wishlist before launch, the endless feed, the flaky-test fix) into `ce29dab`. Lane 2. Reviewer: a fresh session, Opus 5.5, medium.
+
+Audit all of your work for completeness, consistency, cohesion, and harmony, both within itself and relative to the spec and relative to the codebase. Assume nothing. Verify everything. Investigate any incomplete implementations or incomplete integrations. Do your best work.
+
+## Verdict
+
+PASS, 0 red, on the code. Notes below.
+
+## What was checked
+
+1. **The merge.** `git show --cc 574763d` shows two hand resolutions: `src/features/games/games.ts`, where the type export now carries both `GamesService` (from `main`) and `TestPlay` (from this change), and `docs/superpowers/progress.md`, where `main`'s 16:03 Wishlist line and this change's 16:04 test-play line are both kept. Nothing else was resolved by hand. `main` between the merge base `d51c3db` and `a097084` touched no file under `src/features/play/` or `src/routes/g/[game]/play/`, so moving the play screen into `PlayScreen.svelte` lost none of `main`'s work. `main`'s other source changes that touch the same files as this change (`games/service.ts`, `make/[game]/+page.server.ts`, `make/[game]/check/+page.server.ts`, `+layout.svelte`, `look.css`) merged without conflict, and the diff `a097084..574763d` holds only this change's own lines.
+2. **Only the maker can test-play.** `testPlayOf` (`src/features/games/service.ts`) finds the game by `{ slug, makerUserId }`, so another person's game reads as missing; `/make/[game]/play/+page.server.ts` runs `signedInOnly` first, answers 404 for no game or nothing to test, and keeps the 18+ refusal. `testPlayPullId` returns null for taken off, taken down and thrown away games, and for a live game whose waiting change carries no new files. The pass is made for that pull and that person; `testPlay` in `sessions.ts` records no session and no beats.
+3. **No leak of unapproved games.** The address sits under `/make`, never `/g`. The journey "nobody but the maker can test-play a draft, and players never see it" checks 404 for a stranger on `/make/<game>/play`, `/g/<game>` and `/g/<game>/play`, 404 signed out on the `/g` addresses, and the sign-in page signed out on `/make/<game>/play`. The tab title names the game only on the maker's own page.
+4. **CRUD.** Test play makes nothing a person keeps: no new table, column or saved record (no session, no beat). The games it plays are created, read, changed and deleted by the existing journeys (`make-game-crud.test.ts` and the maker journeys); this change adds no thing a user makes, so no new CRUD journey is owed.
+5. **Owner rules.** The three Test play links are `class="button outline"` (buttons, not underlined text links), with preload off. No "Loading..." text: the play screen keeps its "Starting…" screen as before. The test strip is solid Ruken dark, not see-through, so the frosted-glass rule does not apply. No ads, gambling or porn content is added.
+6. **Checks run on `574763d`, in a cloud container:** `pnpm lint` exit 0; `pnpm typecheck` 0 errors over 2137 files; `pnpm test` 137 files, 1991 tests passed; journeys `test-play`, `wishlist`, `feed`, `play` on tablet and computer: 66 passed. CI on `574763d`: `postgres (quick, draft)` and `verify (quick, draft)` passed. The phone (WebKit) is not in the container.
+
+## CI on this head
+
+`browser shard 6 of 6 (quick, draft)` failed once on `[phone] tests/browser/feed.test.ts:47` "Ruken opens straight into the feed, with the right clip for the screen": after the window was turned, the clip's `video` had no `src` within 15 s (job 137371744425). This change touches no feed code; the same journey passed on `main` at `a097084` (full run 45074864056, gate green), and it passes here on tablet and computer. While its re-run was going, the builder pushed `1dd42ca` (`574763d` plus `main` at `846c2b0`), whose only difference from `574763d` is `docs/superpowers/progress.md` (`git diff 574763d 1dd42ca --stat`: 1 file). Its CI run 45076378396 passed every job, `gate (quick, draft)` included. So the phone failure is a flaky test, failed once and passed on the next run of the same code: it belongs under "Flaky tests" in `progress.md` (`tests/browser/feed.test.ts:47` [phone], run 45075514920 attempt 1, job 137371744425, after the window turned the clip's `src` stayed empty for 15 s). The code reviewed here is the code at `1dd42ca`, so the verdict holds for it too.
+
+## Notes (not blocking, not fixed here)
+
+- N-body. UNIT: PR #340 body. VERDICT: note (paperwork the builder or coordinator fixes, not code). REQUIREMENT: kit practice, the body has a "## Lane" heading and ends with "Requested by **McThayDT**". REASON: the lane is stated inside "## What" with no "## Lane" heading, and the body ends with a "Generated by Claude Code" footer after the Requested-by line. EVIDENCE: the PR body read at `574763d`. EXPECTED: a "## Lane" section, and "Requested by **McThayDT**" as the last line. FIX: edit the PR body only (`mcp__github__update_pull_request`), then read back the last line.
+- Notes N1, N2, N4, N5 from audit 1 stay open as recorded there.
