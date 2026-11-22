@@ -127,9 +127,17 @@
       if (!response.ok) throw new Error(`the feed's next page answered ${String(response.status)}`);
       const page = await response.json<FeedPage>();
       const have = new Set(clips.map((clip) => clip.key));
+      const had = clips.length;
+      // Whether the person is on the spinner. The browser keeps a snapped screen in view when what is above it grows, so
+      // without a move they would stay on the spinner as it went down the page, and it would ask again and again.
+      const waiting = current >= had;
       clips = [...clips, ...page.clips.filter((clip) => !have.has(clip.key))];
       next = page.next;
       more = "idle";
+      if (waiting) {
+        await tick();
+        sections[had]?.scrollIntoView({ block: "start" });
+      }
     } catch {
       more = "failed";
     }

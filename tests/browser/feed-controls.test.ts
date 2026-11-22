@@ -448,6 +448,9 @@ test("the feed never ends: a spinner past the last clip, then more, then the sam
   await expect(page.locator("section.more")).toHaveAttribute("aria-busy", "true");
   release();
   await expect.poll(() => clips.count()).toBeGreaterThan(before);
+  // The person who waited is on the first clip that came, not left on the spinner as it moves down.
+  await expect(clips.nth(before)).toHaveAttribute("data-current", "true");
+  await expect(clips.nth(before)).toBeInViewport({ ratio: 0.9 });
 
   // Every live game came first; a game coming round again means the feed went round. With more than a page of games
   // in the shared database it can take more than one page.
@@ -464,7 +467,9 @@ test("the feed never ends: a spinner past the last clip, then more, then the sam
   }
   expect(await repeats()).toBeGreaterThan(0);
   // One game is never shown twice in a row while two or more are live.
-  const slugs = await clips.evaluateAll((sections) => sections.map((section) => section.getAttribute("data-slug")));
+  const slugs = await clips.evaluateAll((sections) =>
+    sections.map((section) => section.getAttribute("data-slug")),
+  );
   if (new Set(slugs).size > 1) {
     for (let index = 1; index < slugs.length; index += 1) expect(slugs[index]).not.toBe(slugs[index - 1]);
   }
