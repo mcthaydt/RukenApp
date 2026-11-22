@@ -33,6 +33,7 @@
       </li>
       <li>A maker playing their own game adds nothing. Neither does Ruken's staff playing it.</li>
       <li>Games that are level swap places from day to day.</li>
+      <li>The feed never ends. When you have seen every game, it goes round again.</li>
       <li>Games made for adults aren't in the feed.</li>
     </ul>
   </section>
