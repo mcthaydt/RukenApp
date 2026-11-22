@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { letInTerminal, terminal } from "./support/computers.ts";
-import { showsPlayerCountOf, stateOf } from "./support/database.ts";
+import { addPlays, filesOf, showsPlayerCountOf, stateOf } from "./support/database.ts";
 import { freshName, realClip, reviewJob, TINY_GAME } from "./support/game.ts";
 import { forgetRateLimits, journeyClientHeaders } from "./support/rate-limits.ts";
 
@@ -83,10 +83,31 @@ test("a maker's games, from the first command to throwing one away", async ({ pa
   expect((await run(computer, "branches", "ruken-test/not-yours")).code).toBe(1);
 
   // Create and read: the list, the new game, the list again.
-  const name = freshName();
-  expect((await run(computer, "games")).said).not.toContain(name);
-  const slug = await answerAll(page, computer, name);
+  const first = freshName();
+  expect((await run(computer, "games")).said).not.toContain(first);
+  const started = await answerAll(page, computer, first);
+  expect((await run(computer, "games")).said).toContain(first);
+
+  // Rename: before staff say yes the address follows the name, so the game moves to its new address.
+  const name = freshName("Renamed");
+  const renamed = await run(computer, "set", started, "name", name);
+  expect(renamed.code).toBe(0);
+  const slug = /npx ruken game ([a-z0-9-]+)/.exec(renamed.said)?.[1] ?? "";
+  expect(slug).not.toBe(started);
+  expect((await run(computer, "game", started)).code).toBe(1);
   expect((await run(computer, "games")).said).toContain(name);
+  expect((await run(computer, "games")).said).not.toContain(first);
+
+  // A folder that holds no game is refused in the browser's words, the choice is kept, and the way back is the same command.
+  const wrongFolder = await run(computer, "files", slug, TINY_GAME, "--branch", "main", "--folder", "img");
+  expect(wrongFolder.code).toBe(1);
+  const kept = (await run(computer, "game", slug)).said;
+  expect(kept).toContain(`Files: ${TINY_GAME}, branch main, folder img`);
+  expect(kept).toContain("Last copy from GitHub:");
+  expect((await run(computer, "files", slug, TINY_GAME, "--branch", "main")).code).toBe(0);
+  const mended = (await run(computer, "game", slug)).said;
+  expect(mended).toContain(`Files: ${TINY_GAME}, branch main`);
+  expect(mended).not.toContain("Last copy from GitHub:");
   const draft = (await run(computer, "game", slug)).said;
   expect(draft).toContain("Climb. Fall. Climb again.");
   expect(draft).toContain(`Files: ${TINY_GAME}`);
@@ -114,18 +135,40 @@ test("a maker's games, from the first command to throwing one away", async ({ pa
   expect(sent.code).toBe(0);
   expect(await stateOf(slug)).toBe("waiting");
 
-  // Staff say yes; it is live on its page.
+  // Staff send the files back; sending again waits until they are fixed, and then goes.
+  await staffSays(browser, page, {
+    do: "send-back",
+    game: slug,
+    parts: [{ part: "files", words: "The files need another look." }],
+  });
+  expect(await stateOf(slug)).toBe("sent_back");
+  expect((await run(computer, "game", slug)).said).toContain("The files need another look.");
+  const tooSoon = await run(computer, "send", slug);
+  expect(tooSoon.code).toBe(1);
+  expect(tooSoon.said).toContain("Fix what was sent back first.");
+  expect((await run(computer, "files", slug, TINY_GAME)).code).toBe(0);
+  expect((await run(computer, "send", slug)).code).toBe(0);
+  expect(await stateOf(slug)).toBe("waiting");
+
+  // Staff say yes; it is live on its page and on the feed.
   await staffSays(browser, page, { do: "accept", game: slug });
   expect(await stateOf(slug)).toBe("live");
   await page.goto(`/g/${slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { level: 1 })).toContainText(name);
+  await page.goto("/");
+  await expect(page.locator(`section[data-slug="${slug}"]`)).toHaveCount(1);
 
   // The player count, on and then off.
+  await addPlays(slug, 1, 1);
   expect((await run(computer, "player-count", slug, "on")).code).toBe(0);
   expect(await showsPlayerCountOf(slug)).toBe(true);
   expect((await run(computer, "game", slug)).said).toContain("Player count on its page: on");
+  await page.goto(`/g/${slug}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("1 person played it this week.")).toBeVisible();
   expect((await run(computer, "player-count", slug, "off")).code).toBe(0);
   expect(await showsPlayerCountOf(slug)).toBe(false);
+  await page.goto(`/g/${slug}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText(/played it this week\./)).toHaveCount(0);
   expect((await run(computer, "player-count", slug, "maybe")).code).toBe(1);
 
   // A new video of a live game waits for review; players keep the old one; keeping the old one drops the change.
@@ -153,6 +196,26 @@ test("a maker's games, from the first command to throwing one away", async ({ pa
   expect((await run(computer, "files", slug, TINY_GAME, "--branch", "main")).code).toBe(0);
   expect((await run(computer, "update", slug)).said).toContain("new version waits for review");
 
+  // Staff send its line back. A new version is not on offer then (nothing is copied from GitHub), and once the line is
+  // fixed the way on is to send what is held again.
+  await staffSays(browser, page, {
+    do: "send-back",
+    game: slug,
+    parts: [{ part: "one_line", words: "Say it shorter." }],
+  });
+  const pulls = (await filesOf(slug)).pulls;
+  const blocked = await run(computer, "update", slug);
+  expect(blocked.code).toBe(1);
+  expect(blocked.said).toContain("That game can't be sent right now.");
+  expect((await run(computer, "send", slug)).code).toBe(1);
+  expect((await run(computer, "set", slug, "line", "Climb. Fall. Climb.")).code).toBe(0);
+  const again = await run(computer, "update", slug);
+  expect(again.code).toBe(1);
+  expect(again.said).toContain(`npx ruken send ${slug}`);
+  expect((await filesOf(slug)).pulls).toBe(pulls);
+  expect((await run(computer, "send", slug)).code).toBe(0);
+  expect((await filesOf(slug)).pulls).toBe(pulls);
+
   // Take it off, put it back, take it off again, delete what it left, and throw a second game away.
   await staffSays(browser, page, { do: "accept", game: slug });
   computer.typed.push("wrong name");
@@ -161,13 +224,20 @@ test("a maker's games, from the first command to throwing one away", async ({ pa
   computer.typed.push(name);
   expect((await run(computer, "take-off", slug)).code).toBe(0);
   expect(await stateOf(slug)).toBe("taken_off");
+  await page.goto("/");
+  await expect(page.locator(`section[data-slug="${slug}"]`)).toHaveCount(0);
   expect((await run(computer, "put-back", slug)).said).toContain("waits for review");
   expect(await stateOf(slug)).toBe("waiting");
   await staffSays(browser, page, { do: "accept", game: slug });
+  await page.goto("/");
+  await expect(page.locator(`section[data-slug="${slug}"]`)).toHaveCount(1);
   computer.typed.push(slug);
   expect((await run(computer, "take-off", slug)).code).toBe(0);
   computer.typed.push(name);
   expect((await run(computer, "delete-files", slug)).said).toContain("Deleted the files");
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+  await expect(page.getByText("Some of its files are still on Ruken.")).toHaveCount(0);
 
   const second = freshName("Second game");
   const secondSlug = /address is ([a-z0-9-]+)\./.exec((await run(computer, "new", second)).said)?.[1] ?? "";
@@ -266,6 +336,14 @@ test("another maker's key finds none of a maker's games, for any method, and cha
   expect((await request.get(`/api/v1/github/repos/${TINY_GAME}/branches`, { headers: own })).status()).toBe(
     200,
   );
+  // A body with two kinds of change is refused whole: nothing is saved.
+  const two = await request.fetch(`/api/v1/games/${slug}`, {
+    method: "PATCH",
+    headers: { ...own, "content-type": "application/json" },
+    data: '{"name":"Half done","oneLine":"Half done."}',
+  });
+  expect(two.status()).toBe(400);
+  expect(await two.json()).toEqual({ problem: "Change one thing at a time." });
   expect((await run(owner, "game", slug)).said).toBe(before);
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);

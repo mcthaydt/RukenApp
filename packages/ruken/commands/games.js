@@ -5,6 +5,7 @@ import { Told } from "../lib/told.js";
 import { agreement } from "../words/agreement.js";
 import { games as words } from "../words/games.js";
 import { general } from "../words/general.js";
+import { PREFIX } from "../words/prefix.js";
 
 /** @typedef {import("../lib/types.js").Ctx} Ctx */
 
@@ -225,6 +226,9 @@ async function send([name], ctx) {
   }
   const problem = typeof body?.problem === "string" ? body.problem : general.strangeAnswer;
   if (body?.agreement === true) throw new Told(words.agreeFirst(problem, decodeURIComponent(game)));
+  if (body?.next === "update") {
+    throw new Told(`${problem} Send its newest files with: ${PREFIX} update ${decodeURIComponent(game)}`);
+  }
   if (typeof body?.question === "string") {
     throw new Told(words.openQuestion(problem, decodeURIComponent(game), body.question));
   }
@@ -233,8 +237,14 @@ async function send([name], ctx) {
 
 /** @param {string[]} args @param {Ctx} ctx */
 async function update([name], ctx) {
-  const game = await askOrTell(ctx, "POST", `/api/v1/games/${needGame(name)}/new-version`);
-  ctx.out(words.sentNewVersion(game.name, game.game));
+  const game = needGame(name);
+  const { status, body } = await ask(ctx, "POST", `/api/v1/games/${game}/new-version`);
+  if (status >= 200 && status < 300) {
+    ctx.out(words.sentNewVersion(body.name, body.game));
+    return;
+  }
+  const problem = typeof body?.problem === "string" ? body.problem : general.strangeAnswer;
+  throw new Told(body?.next === "send" ? words.sendAgainInstead(problem, decodeURIComponent(game)) : problem);
 }
 
 /** @param {string[]} args @param {Ctx} ctx */

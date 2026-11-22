@@ -20,9 +20,10 @@ const strings = (value: unknown): value is string[] =>
 export const GET: RequestHandler = api((event) => onGame(event, () => Promise.resolve()));
 
 /**
- * Answers for a game, in one body: any of `name`, `oneLine`, `files`, `websites`, `ageRating` (with its `contentMarks`
- * in the same body, as the browser's 18+ answer keeps them together), `contentMarks` alone, and `playerCount`. Each goes
- * through the same save the browser's question calls, in this order, so a refusal reads as the screen's own.
+ * One change to a game: `name`, `oneLine`, `files`, `websites`, `ageRating` (with its `contentMarks` in the same body, as
+ * the browser's 18+ answer keeps them together), `contentMarks` alone, or `playerCount`. It goes through the same save the
+ * browser's question calls, so a refusal reads as the screen's own. Two kinds of change in one body are refused whole:
+ * the browser saves one answer per press, and a refusal part way would leave the first saved.
  */
 export const PATCH: RequestHandler = api(async (event) => {
   const body = await readJson(event.request);
@@ -70,7 +71,9 @@ export const PATCH: RequestHandler = api(async (event) => {
   }
   const count = body.playerCount;
   if (count !== undefined && typeof count !== "boolean") return problem(400, BAD);
-  if (answers.length === 0 && count === undefined) return problem(400, BAD);
+  const changes = answers.length + (count === undefined ? 0 : 1);
+  if (changes === 0) return problem(400, BAD);
+  if (changes > 1) return problem(400, "Change one thing at a time.");
 
   return onGame(event, async ({ service, game, userId }) => {
     let slug = game.slug;

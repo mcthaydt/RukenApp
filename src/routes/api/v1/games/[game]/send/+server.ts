@@ -14,8 +14,13 @@ export const POST: RequestHandler = api((event) =>
       else if (game.state === "sent_back") await service.sendForReview(game.id, userId);
       else if (game.state === "live" && liveSendOf(game) === "again")
         await service.sendForReview(game.id, userId);
-      else if (game.state === "live") return problem(400, "That game can't be sent again right now.");
-      else return problem(400, "That game can't be sent right now.");
+      else if (game.state === "live") {
+        // Where the way on is a new version, say so: the command line points to it.
+        const words = "That game can't be sent again right now.";
+        return liveSendOf(game) === "new_version"
+          ? Response.json({ problem: words, next: "update" }, { status: 400 })
+          : problem(400, words);
+      } else return problem(400, "That game can't be sent right now.");
     } catch (error) {
       if (!(error instanceof GameError)) throw error;
       // A refusal that has a next step says it: which question is open, or that the agreement is what is missing.

@@ -90,6 +90,8 @@ export const games = {
   sentNewVersion: (name, game) =>
     `Sent. ${name}'s new version waits for review. See it with: ${PREFIX} game ${game}`,
   /** @param {string} problem @param {string} game */
+  sendAgainInstead: (problem, game) => `${problem} Send what you have again with: ${PREFIX} send ${game}`,
+  /** @param {string} problem @param {string} game */
   agreeFirst: (problem, game) => `${problem} Read it and agree with: ${PREFIX} agree ${game}`,
   /** @param {string} problem @param {string} game @param {string} question */
   openQuestion: (problem, game, question) => {
@@ -112,8 +114,6 @@ export const games = {
   /** @param {string} name */
   typeName: (name) => `Type the game's name (${name}) to go on:`,
   notConfirmed: "That wasn't the name, so nothing was done.",
-  /** @param {string} name */
-  nothingDone: (name) => `Nothing was done to ${name}.`,
   /** @param {string} name */
   keepNothing: (name) => `Nothing was waiting for ${name}.`,
 };
