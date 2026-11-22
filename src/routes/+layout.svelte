@@ -81,11 +81,19 @@
     // The mark stays until the next move: while it is on, the maker area's rising lines keep still, so a page that
     // slides in does not also rise (look.css).
     html.dataset.move = move;
+    // The new page must come whatever the browser does with the slide: a slide it skips (Safari skipped one leaving
+    // the play screen in CI) lets the move go on, and so does a slide that never starts.
     return new Promise<void>((resolve) => {
-      document.startViewTransition(async () => {
+      const slide = document.startViewTransition(async () => {
         resolve();
         await navigation.complete;
       });
+      slide.ready.catch(() => {
+        resolve();
+      });
+      setTimeout(() => {
+        resolve();
+      }, 1000);
     });
   });
 </script>

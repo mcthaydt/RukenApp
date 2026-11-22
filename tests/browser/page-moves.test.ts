@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { addGame } from "./support/game.ts";
 import { boxOf, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import {
@@ -138,5 +139,32 @@ test("with less motion asked for, a move does not slide", async ({ page, browser
   await place(page, "You").click();
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
   expect(await lastSlide(page)).toBeUndefined();
+  await expectNoNewPageLoad(page);
+});
+
+test("a browser that skips the slide still shows the new page", async ({ page, browser, request }) => {
+  // Safari in CI once left Back from the play screen on the old page: the address changed and the page never did.
+  // Here the browser's slide never starts at all, the worst it can do.
+  const free = await addGame(browser, request, { free: true });
+  await page.addInitScript(() => {
+    const never = new Promise<never>(() => {});
+    const refused = Promise.reject(new DOMException("Skipped", "AbortError"));
+    refused.catch(() => {});
+    (document as unknown as { startViewTransition: () => unknown }).startViewTransition = () => ({
+      ready: refused,
+      finished: never,
+      updateCallbackDone: never,
+      skipTransition: () => {},
+    });
+  });
+  await page.goto(`/g/${free.slug}`);
+  await markThePage(page);
+  await page.getByRole("link", { name: "Play" }).click();
+  await expect(page).toHaveURL(`/g/${free.slug}/play`);
+  // The address changes before the page does, so wait for the game's page to go.
+  await expect(page.getByRole("link", { name: "Play" })).toHaveCount(0);
+  await page.goBack();
+  await expect(page).toHaveURL(`/g/${free.slug}`);
+  await expect(page.getByRole("link", { name: "Play" })).toBeVisible();
   await expectNoNewPageLoad(page);
 });
