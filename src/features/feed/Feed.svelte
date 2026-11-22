@@ -633,9 +633,14 @@
     width: 100%;
     margin: 0;
   }
+  /* A column of round glass buttons at the right of the clip, starting with Share. */
   .side {
     position: relative;
     flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
   }
   .share {
     display: grid;
@@ -644,8 +649,10 @@
     min-height: var(--size-target);
     padding: 0;
     border-radius: 50%;
-    background: var(--felt-deep);
+    background: var(--glass-bg);
     color: var(--chalk);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
   }
   .sharenote {
     position: absolute;
@@ -666,7 +673,7 @@
     padding: 0.5rem 0.75rem;
   }
   /* A phone held sideways: the window is short, so the words take one corner and the clip the rest. The bar stands
-     along the right edge (Bar.svelte), so the band sits at the bottom with Play beside the game's name, Share left of
+     along the right edge (Bar.svelte), so the band sits at the bottom with Play beside the game's name, Share under
      the bar, and the first open's hints at the top, where the band cannot cover them. */
   @media (orientation: landscape) and (max-height: 449px) {
     .lower {
@@ -698,6 +705,18 @@
     }
     .sound {
       left: max(0.75rem, env(safe-area-inset-left));
+    }
+    /* The round buttons stand in the bar's column, under it, centred on it. */
+    .side {
+      position: absolute;
+      right: calc(max(0.75rem, env(safe-area-inset-right)) + 0.5rem);
+      bottom: 0;
+    }
+    .sharenote {
+      top: 50%;
+      right: calc(100% + 0.5rem);
+      bottom: auto;
+      translate: 0 -50%;
     }
   }
   .maker:focus-visible,
