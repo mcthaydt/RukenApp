@@ -131,6 +131,33 @@ test("a wrong current password is refused beside the field on both screens, and 
   expect(await signInWorks(page, email, JOURNEY_PASSWORD)).toBe(true);
 });
 
+// A journey failed once in CI (run 44975154513, tablet): the new email typed on /me/email was gone when "Send the link"
+// was pressed, and the site answered "Enter your email address." The field's value was written as `form?.email ?? ""`,
+// and when the page came alive Svelte set that "" over what had been typed a moment before. A person on a slow phone
+// can do the same. This holds the page's scripts back, types on the page as the server sent it, lets the scripts run,
+// and checks the address is still there and still sent.
+test("an email typed before the page has come alive is kept when it does", async ({ page }) => {
+  await signUp(page);
+  const newEmail = freshEmail();
+  let release: () => void = () => undefined;
+  const scriptsMayRun = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(/\.m?js(\?.*)?$/, async (route) => {
+    await scriptsMayRun;
+    await route.continue();
+  });
+  // The scripts are held, so the page never finishes loading: the server's page is all there is to wait for.
+  await page.goto("/me/email", { waitUntil: "commit" });
+  await page.getByLabel("New email").fill(newEmail);
+  release();
+  await pageHasSettled(page);
+  await expect(page.getByLabel("New email")).toHaveValue(newEmail);
+  await page.getByLabel("Your password").fill(JOURNEY_PASSWORD);
+  await page.getByRole("button", { name: "Send the link" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+  await expect(page.getByText(`We sent a link to ${newEmail}. Open it to finish.`)).toBeVisible();
+});
+
 test("a signed-out person is sent to sign in from both screens", async ({ page }) => {
   await page.goto("/me/email");
   await expect(page).toHaveURL("/sign-in?next=%2Fme%2Femail");

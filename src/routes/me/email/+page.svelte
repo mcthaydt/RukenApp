@@ -28,7 +28,9 @@
       <p>
         <label>
           New email
-          <input type="email" name="email" autocomplete="email" value={form?.email ?? ""} />
+          <!-- `form?.email`, never `?? ""`: an empty value written here is set over what a person typed before the page
+               came alive (Svelte leaves the field alone only when the value is missing). -->
+          <input type="email" name="email" autocomplete="email" value={form?.email} />
         </label>
         {#if form?.field === "email"}
           <span class="problem" role="alert">{form.error}</span>
