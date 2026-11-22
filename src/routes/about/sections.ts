@@ -74,12 +74,14 @@ export const AUDIENCES: readonly Section[] = [
     forWhom: "For players",
     heading: "Find your next game in a swipe.",
     // The owner, 2026-11-22 18:02 UTC: play anywhere, no ads, a console-like experience, no slop because it's vetted.
+    // 19:36 UTC: the console line names the comforts Ruken already has (a controller, the home-screen app), and "No slop."
     lines: ["Watch a few seconds of a game first. Play the ones you like."],
     points: [
       "Play anywhere: your phone, tablet or computer. Nothing to install.",
       "No ads. Not before a game, not during one.",
-      "Full screen, like a console.",
-      "No junk. A person checks every game before it goes live.",
+      "Pick up a controller. Games can use it, the way they do on a console.",
+      "Put Ruken on your home screen. It opens full screen, like an app.",
+      "No slop. A person checks every game before it goes live.",
     ],
     links: [
       { words: "Watch the feed", href: "/" },
