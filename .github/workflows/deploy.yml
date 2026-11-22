@@ -97,6 +97,8 @@ jobs:
             fi
           done
           pnpm run deploy 2>&1 | tee deploy.log
+          # From here a new version is live, so a later failure is worth a rollback hint.
+          echo "shipped=true" >>"$GITHUB_OUTPUT"
           version=$(grep -oE 'Current Version ID: [0-9a-f-]{36}' deploy.log | tail -1 | awk '{print $NF}') || true
           if [ -z "$version" ]; then
             echo "::error::The deploy finished but printed no version id, so the live check cannot run."
@@ -114,7 +116,7 @@ jobs:
 
       # A migration may already have run, so nothing rolls back by itself. This says how to do it by hand.
       - name: how to roll back
-        if: failure() && steps.target.outputs.deploy == 'true'
+        if: failure() && steps.deploy.outputs.shipped == 'true'
         run: |
-          echo "::error::The deploy or its live check failed. To put the previous version back, run: pnpm exec wrangler rollback"
+          echo "::error::A new version went live but then something failed. To put the previous version back, run: pnpm exec wrangler rollback"
           echo "A migration may already have run, so look at the database before rolling back code that expects the old schema."
