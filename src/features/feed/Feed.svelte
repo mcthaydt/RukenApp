@@ -445,7 +445,7 @@
     margin: 0;
     overflow-y: auto;
     scroll-snap-type: y mandatory;
-    overscroll-behavior: contain;
+    overscroll-behavior: none;
     background: var(--felt-deep);
   }
   .empty {
