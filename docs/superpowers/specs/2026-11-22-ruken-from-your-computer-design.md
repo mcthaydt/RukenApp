@@ -1,6 +1,6 @@
 # Ruken from your computer: a command line and an MCP for makers
 
-Date: 2026-11-22. Status: **spec, waiting on its plan audit and two owner decisions (section 9).** Lane 3 overall: pull request 1 adds a migration and a new way to sign in. The other pull requests are lane 2.
+Date: 2026-11-22. Status: **spec, waiting on its plan audit and one owner decision (D2, section 9).** Lane 3 overall: pull request 1 adds a migration and a new way to sign in. The other pull requests are lane 2.
 
 Lines marked **Owner** are the owner's words. Lines marked **Call** are this spec's choices; the owner can overrule any of them.
 
@@ -96,7 +96,7 @@ Every action in the browser's maker screens today (`src/routes/make/**`, invento
 
 ## 4. Signing a computer in
 
-### 4.1 What the maker sees (pending decision D1; this is the recommended option)
+### 4.1 What the maker sees (owner's decision D1)
 
 1. In the terminal: `npx ruken sign-in`. It prints, in plain words:
    `Open ruken.io/link and press Yes. Your code is KBTR-WMPQ.` and opens that page in the browser for them, with the code already in it (`ruken.io/link?code=KBTR-WMPQ`).
@@ -179,7 +179,7 @@ Each row is a unit. Units in one pull request run in this order on its branch. P
 
 | PR | Unit | Lane | Waits on | Owns | Output | Check |
 |---|---|---|---|---|---|---|
-| 1 | Keys and sign-in | 3 | spec merged, D1 | `prisma/schema/`, `prisma/migrations/`, `src/features/accounts/computer-keys.ts`, `src/routes/link/`, `src/routes/me/computers/`, `src/routes/api/v1/sign-in/`, `src/routes/api/v1/me/` | sign-in and Your computers | A2, A3, A4, A11 |
+| 1 | Keys and sign-in | 3 | spec merged | `prisma/schema/`, `prisma/migrations/`, `src/features/accounts/computer-keys.ts`, `src/routes/link/`, `src/routes/me/computers/`, `src/routes/api/v1/sign-in/`, `src/routes/api/v1/me/` | sign-in and Your computers | A2, A3, A4, A11 |
 | 1 | Videos first | 3 | the unit above | `src/routes/api/v1/games/` (list, show, videos, waiting), `src/features/games/` (shared ownership), `packages/ruken/` (sign-in, whoami, sign-out, games, game, video, keep-old), `pnpm-workspace.yaml` | the owner can send Floor Fifty's videos | A5 (games read), A9, A14 |
 | 2 | Games, the rest | 2 | PR 1 | the rest of `src/routes/api/v1/games/`, `src/routes/api/v1/github/`, `src/routes/api/v1/agreement/`, their commands | every row of 3.2 and 3.3 | A1 (games part), A5, A6, A7 |
 | 3 | Your page | 2 | PR 1 | `src/routes/api/v1/page/`, `src/features/pages/` (shared ownership), their commands | every row of 3.4 | A1 (page part), A5, A8 |
@@ -222,7 +222,7 @@ The implementer ticks each step below on its branch and the coordinator copies t
 
 ## 9. Decisions for the owner
 
-- **D1: How a computer signs in.** Recommended: **press Yes on Ruken** (4.1): nothing to copy, and a key never passes through the maker's clipboard or chat with an agent. Other option: a **"Make a key"** button on Your computers that shows a key once to paste into the terminal (simpler to build by about a screen, but makers copy secrets into config files and agent chats).
+- **D1: How a computer signs in. Decided. Owner, 2026-11-22 13:55 UTC, on a card: "Press Yes on Ruken".** It was recommended: **press Yes on Ruken** (4.1): nothing to copy, and a key never passes through the maker's clipboard or chat with an agent. Other option: a **"Make a key"** button on Your computers that shows a key once to paste into the terminal (simpler to build by about a screen, but makers copy secrets into config files and agent chats).
 - **D2: The package name and who publishes it.** Recommended: **`ruken` on npm** (free on 2026-11-22: `registry.npmjs.org/ruken` answers 404), published from the owner's npm account; makers type `npx ruken`. That needs the owner's npm account and, for CI publishing, an npm token saved as a GitHub secret (new access). Other option: no npm; ruken.io serves the package file and makers type `npx https://ruken.io/ruken.tgz` (no new account, longer to type, and every command a maker copies carries the long address).
 
 ## 10. Boundaries
