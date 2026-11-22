@@ -1,5 +1,6 @@
 import { error } from "@sveltejs/kit";
 import { gamesServices } from "../../features/games/games.ts";
+import { launchServices } from "../../features/launch/launch.ts";
 import { membershipServices } from "../../features/membership/membership.ts";
 import { pagesServices } from "../../features/pages/pages.ts";
 import type { PageServerLoad } from "./$types";
@@ -43,5 +44,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url }) => 
       upright: games.media(game.clips.upright),
     })),
     links: page.links,
+    // Before launch each game shows Wishlist where Play goes.
+    launch: await launchServices().screenFor(viewer, cookies),
   };
 };

@@ -5,4 +5,4 @@
   let { data }: PageProps = $props();
 </script>
 
-<Feed clips={data.clips} />
+<Feed clips={data.clips} launch={data.launch} />

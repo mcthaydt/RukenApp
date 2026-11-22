@@ -16,6 +16,7 @@ import {
   membershipServices,
   PREMIUM_PRICES_CENTS,
 } from "../../../features/membership/membership.ts";
+import { launchServices } from "../../../features/launch/launch.ts";
 import { pagesServices } from "../../../features/pages/pages.ts";
 import { deviceOf, playServices } from "../../../features/play/play.ts";
 import type { PageServerLoad } from "./$types";
@@ -46,6 +47,8 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
     cost = "member";
 
   const makerPage = await pagesServices().service.pageOf(game.makerUserId);
+  // Before launch, Wishlist stands where Play goes (the play address itself stays open, on the owner's word).
+  const launch = await launchServices().screenFor(caller.kind === "user" ? caller.userId : null, cookies);
   const sitting = await playServices().service.sittingOf(game.id, new Date());
   // Asked only while the maker has turned the count on, so a game that has it off costs nothing and shows nothing.
   const players = game.showsPlayerCount
@@ -65,6 +68,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
     // The server knows a phone from its User-Agent; the page's script says "tablet" where the pointer is coarse.
     device: deviceOf(request.headers.get("user-agent")),
     cost,
+    launch,
     price: dollars(PREMIUM_PRICES_CENTS.monthly),
     sitting: sitting === null ? null : sittingWords(sitting),
     players,

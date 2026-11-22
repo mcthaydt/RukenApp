@@ -12,8 +12,16 @@
   import { clampClip, currentOf, stepFor } from "./current.ts";
   import { shareLink, type ShareTools } from "./share.ts";
   import type { FeedClip } from "./service.ts";
+  import { WishlistButton } from "../launch/launch.browser.ts";
 
-  let { clips }: { clips: FeedClip[] } = $props();
+  let {
+    clips,
+    launch,
+  }: {
+    clips: FeedClip[];
+    /** Before launch: Wishlist where Play goes, the day it opens and the person's list. */
+    launch: { before: false } | { before: true; opens: string; wished: string[] };
+  } = $props();
 
   /** Where a first open's hints are remembered, so they show once on a device and never again. */
   const SEEN_HINTS = "rk_seen_hints";
@@ -278,7 +286,17 @@
               <h2>{clip.name}</h2>
               <p>{clip.oneLine}</p>
             </a>
-            <a class="button play" href={`/g/${clip.slug}/play`}>Play</a>
+            {#if launch.before}
+              <WishlistButton
+                slug={clip.slug}
+                wished={launch.wished.includes(clip.slug)}
+                opens={launch.opens}
+                back="/"
+                buttonClass="button play"
+              />
+            {:else}
+              <a class="button play" href={`/g/${clip.slug}/play`}>Play</a>
+            {/if}
           </div>
           <div class="side">
             <p class="sharenote" role="status">{note?.slug === clip.slug ? note.words : ""}</p>
@@ -472,7 +490,8 @@
     margin: 0.25rem 0 0;
     overflow-wrap: anywhere;
   }
-  .play {
+  .play,
+  .band :global(.wish .play) {
     width: 100%;
     margin: 0;
   }
@@ -510,7 +529,8 @@
   }
   .maker:focus-visible,
   .gamelink:focus-visible,
-  .play:focus-visible {
+  .play:focus-visible,
+  .band :global(.wish .play:focus-visible) {
     outline-color: var(--chalk);
   }
 </style>
