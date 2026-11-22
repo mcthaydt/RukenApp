@@ -221,6 +221,11 @@
     text-decoration: none;
     overflow-wrap: anywhere;
   }
+  /* The heart sits beside the word, as on the other screens. */
+  .game :global(.wish .play) {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
   /* A column that centres its items sizes a long unbroken title to its full length, so the title is held to the
      button's width instead and breaks inside it. */
   .links a {
