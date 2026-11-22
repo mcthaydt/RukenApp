@@ -241,7 +241,7 @@ test("a live game GitHub stopped showing: the refusal points to Change, and savi
   const { slug, maker } = await answerEveryQuestion(page);
   if (maker === undefined) throw new Error("a new maker was signed up, so there is an account");
   await putGameWhereStaffLeaveIt(slug, { state: "live" });
-  await forgetTheirRepositories(maker.email);
+  await forgetTheirRepositories(maker.number);
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
 
