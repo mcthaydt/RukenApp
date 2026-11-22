@@ -27,6 +27,7 @@ import {
   videoFile,
 } from "./support/game.ts";
 import { boxOf, showTheOwner } from "./support/look.ts";
+import { holdNextScreen } from "./support/hold.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The maker's questions, one to a screen, and Your games (spec 3, 4, 10.1 and 15.2). A game is asked its name first on
@@ -199,25 +200,17 @@ test("a choice tapped before the question has come alive is kept when it does, a
   page,
 }) => {
   // The same moment as run 44977261003 on a box of words: a choice made before the screen came alive was taken away
-  // as it did. Holding the scripts back makes that moment as long as it needs to be.
+  // as it did. Holding the screen back makes that moment as long as it needs to be.
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { files: true, videos: true });
-  let release: () => void = () => undefined;
-  const scriptsMayRun = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  await page.route(/\.m?js(\?.*)?$/, async (route) => {
-    await scriptsMayRun;
-    await route.continue();
-  });
+  const screen = await holdNextScreen(page);
   await page.goto(`/make/${slug}/age`, { waitUntil: "commit" });
   await page.getByRole("radio", { name: /^7\+/ }).check();
-  release();
+  await screen.release();
   await pageHasSettled(page);
   await expect(page.getByRole("radio", { name: /^7\+/ })).toBeChecked();
   await nextButton(page).click();
   await expect(page).not.toHaveURL(`/make/${slug}/age`);
-  await page.unrouteAll({ behavior: "wait" });
   await page.goto(`/make/${slug}/age`);
   await pageHasSettled(page);
   await expect(page.getByRole("radio", { name: /^7\+/ })).toBeChecked();
