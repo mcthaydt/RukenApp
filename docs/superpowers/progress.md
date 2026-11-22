@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-11-22 02:41 UTC (from `date`), by the apps-kit practice thread for the coordinator, which cannot write to the repo.
+Last updated: 2026-11-22 13:54 UTC (from `date`), by the Ruken-from-your-computer spec thread for the coordinator, which cannot write to the repo.
 
 ## The owner's instructions
 
@@ -62,6 +62,7 @@ Each entry is dated and quotes the owner where the source does; "(paraphrase)" m
 - 2026-11-22 04:53 UTC: 'update our notion at the end of our slice, and create a prompt to send automata framework so the notion setup can be replicated'. The Ruken page in Notion was brought up to date for slice 2's close, and the update is a standing step at the end of every slice (this-repo, Private notes go to Notion, #303). The prompt is in the project's files, handoff/notion-setup-prompt.md.
 - 2026-11-22 05:52 UTC: "Make sure we have async loaders for everything that loads, now and in the future"; 05:53 UTC: "images and videos too"; 06:36 UTC: "let's use a spinner too, or at least some obvious indication that something is loading". Built in #309 (merged at `f5296bd`); the standing rule is "Every wait shows it" in the `this-repo` skill. 13:38 UTC: "We don't need the Loading... text": the page-load spinner shows with no words.
 - 2026-11-22 13:41 UTC: "Also we have another major issue: the page scrolls when we swipe, it should scroll within the static panel". 13:42 UTC: "also double check that holding the screen doesn't highlight the entire panel, we should only be able to highlight anything OUTSIDE the game as well; double check various expected quality of life things like that". 13:43 UTC: "We should also not be able to zoom in to the panel, it should feel like we're using a real app inside the browser". 13:46 UTC: "\"double check various expected quality of life things like that\" was mostly referring to things that will break the illusion that we're doing this inside a browser, should feel like an app at all times" (the same message's frosted-glass ask is its own thread). Work: the "Keep swipes inside the feed panel" thread, branch `claude/project-thread-9hbbq0`.
+- 2026-11-22 13:50 UTC: "Also, are we able to create an MCP? It'd be great if makers could do all the things we do in the browser, but through their IDE; we're creating a new video for vertical and horizontal for floor fifty, I'd like it if we should just have it send it via. CLI". 13:51 UTC: "Do everything from the CLI, not just new videos, that's just what prompted the question". Spec: `specs/2026-11-22-ruken-from-your-computer-design.md` (full parity; videos ship first). Waits on its plan audit and the owner's D2 (package name and publishing). 13:55 UTC, on a card: "Press Yes on Ruken" (D1: a computer signs in by the maker pressing Yes on Ruken). 14:10 UTC, on a card: "No, only the person (terminal)" (D3: an AI agent cannot throw a game away or take a page down; only the person, in the terminal).
 
 ## Active milestone: "Finish Ruken"
 
@@ -167,6 +168,8 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 - `tests/browser/make-design-pass.test.ts:239` "two things sent back are two cards, with space between them" [computer], CI full run on #309 at `04c7c66` (browser shard 6 of 6, job 137143091976): "no code waiting for +12785552015" at line 240, while signing up. Passed on its one rerun. Cause not found yet.
 
 - `tests/browser/adults-only.test.ts:148` "a visitor who is not signed in cannot see or play an 18+ game, and is asked to sign in" [tablet], the same run (browser shard 5 of 6, job 137143092018): after "Text me a code", the heading "We texted you a code" did not show within 15 seconds (`tests/browser/support/account.ts:103`, inside `addGame`). Passed on its one rerun. Both failures in this run were on the sign-up code step; cause not found yet.
+
+- `tests/browser/feed-controls.test.ts:71` "the clip that fills the window is the current one, and only one is; the others wait at their start" [phone], again: main's gate after #313 merged, at `16dee78` (browser shard 2): failed once, passed on rerun. And on #317's full run at `a4e2133` (browser shard 2, job 137232087398), the same 15-second wait; #317 changes only the page loader's chip, not the feed. Third time this journey has failed this way (first on #305). Cause not found yet.
 
 Each failed once and passed on its one rerun. Root causes and fixes are in pull request #242.
 
