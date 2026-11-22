@@ -265,6 +265,9 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(visitors.first()).toContainText("Our Discord");
   await openRoom(page, "Links");
   await rows.nth(0).getByRole("button", { name: "Show" }).click();
+  // The press is a form post; the goto waits for its answer (the row no longer says Hidden), or it can cut the post off
+  // and find the link still hidden (WebKit, run 44979912306: 1 link where 2 were expected).
+  await expect(rows.nth(0)).not.toContainText("Hidden");
   await page.goto(`/${moved}`);
   await expect(visitors).toHaveCount(2);
   await expect(visitors.nth(0)).toContainText("My other game");

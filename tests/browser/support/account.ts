@@ -5,14 +5,27 @@ import { codeTo } from "./texts.ts";
 /** The password every journey's new account uses. */
 export const JOURNEY_PASSWORD = "a long enough password";
 
+/** The numbers this worker has handed out, so it never hands one out twice. */
+const numbersHandedOut = new Set<string>();
+
 /**
- * A number no other journey has used, so journeys can run side by side on one database: +1, a random area code, 555 and
- * four random digits outside 01·· (those are kept for fiction, and the site never texts them).
+ * A number no other journey has used, so journeys can run side by side on one database: +1, an area code, 555 and four
+ * random digits outside 01·· (those are kept for fiction, and the site never texts them). A number that already has an
+ * account gets no code, so a sign-up that drew one fails at "no code waiting". Drawn at random from all 6.24 million,
+ * 600 sign-ups on one database share a number about 3 times in 100 (600² ÷ 2 ÷ 6.24 million). So each worker
+ * (Playwright's `TEST_PARALLEL_INDEX`) draws from its own hundred area codes and never draws the same number twice. A
+ * database kept from run to run still holds the numbers earlier runs drew.
  */
 export function freshNumber(): string {
-  const area = 200 + Math.floor(Math.random() * 800);
-  const last = 200 + Math.floor(Math.random() * 7800);
-  return `+1${String(area)}555${String(last).padStart(4, "0")}`;
+  const worker = Number(process.env.TEST_PARALLEL_INDEX ?? "0") % 8;
+  for (;;) {
+    const area = 200 + worker * 100 + Math.floor(Math.random() * 100);
+    const last = 200 + Math.floor(Math.random() * 7800);
+    const number = `+1${String(area)}555${String(last).padStart(4, "0")}`;
+    if (numbersHandedOut.has(number)) continue;
+    numbersHandedOut.add(number);
+    return number;
+  }
 }
 
 /** The number as a person types it into the box beside "United States (+1)": ten digits, no "+1". */
