@@ -144,6 +144,9 @@ test("ten wrong codes pause codes for the number, in the same words as for a num
     for (let guess = 0; guess < tries; guess += 1) {
       await page.getByLabel("The code we texted you").fill("000000");
       await page.getByRole("button", { name: "Join Ruken" }).click();
+      // The answer comes into the same page, so the last try's words are still there: the button coming free is
+      // what says this try was answered.
+      await expect(page.getByRole("button", { name: "Join Ruken" })).not.toHaveAttribute("aria-busy", /.*/);
       await expect(page.getByText(/That code isn't right|Too many wrong codes/)).toBeVisible();
     }
   }

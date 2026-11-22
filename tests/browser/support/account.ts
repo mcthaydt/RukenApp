@@ -95,6 +95,8 @@ export async function textItAgain(page: Page): Promise<void> {
   await pageHasSettled(page);
   await page.clock.fastForward(30_000);
   await page.getByRole("button", { name: "Text it again" }).click();
+  // The answer comes into the same page: the form coming free is what says the new code was sent.
+  await expect(page.locator("form[aria-busy='true']")).toHaveCount(0);
 }
 
 /**

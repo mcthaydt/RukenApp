@@ -19,13 +19,29 @@ export function sendInApp(event: SubmitEvent): void {
   // `enhance` listens for the form's own submit, so it is put on for this one send and the form is sent again,
   // through it. It stops that second send itself, so the plain one never happens. The browser ignores a send asked
   // for while it is still telling everyone about this one, so the second send waits a turn.
-  const enhanced = enhance(form, () => async ({ update }) => {
-    try {
-      await update();
-    } finally {
-      clearSending(form);
-      enhanced.destroy();
+  // While this send is out, `enhance` would take a second press as a send of its own, before the layout's busy mark
+  // could stop it; so it sends once and stops any press after.
+  let alreadySent = false;
+  const enhanced = enhance(form, ({ cancel }) => {
+    if (alreadySent) {
+      cancel();
+      return;
     }
+    alreadySent = true;
+    return async ({ result, update }) => {
+      try {
+        await update();
+        // An answer on the same page (a refusal, or the next step) is shown as a fresh page would show it: from the top,
+        // with no password left in its box.
+        if (result.type === "success" || result.type === "failure") {
+          for (const box of form.querySelectorAll<HTMLInputElement>("input[type='password']")) box.value = "";
+          window.scrollTo(0, 0);
+        }
+      } finally {
+        clearSending(form);
+        enhanced.destroy();
+      }
+    };
   });
   setTimeout(() => {
     form.requestSubmit(submitter);

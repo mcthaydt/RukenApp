@@ -58,7 +58,11 @@ test("a plain form shows its button busy while it sends, and a second press send
   // The press leaves the page, and the answer is held, so the click does not wait for the page to load.
   await page.getByRole("button", { name: "Sign in" }).click({ noWaitAfter: true });
 
-  await expect.poll(() => seen).toEqual(["busy=true", "second press stopped=true"]);
+  // The form is sent from inside the page (src/lib/stay-in-app.ts), which sends it once more through SvelteKit's own
+  // sender; that send and the second press are each stopped from going out as a plain page load.
+  await expect.poll(() => seen.length).toBeGreaterThanOrEqual(3);
+  expect(seen[0]).toBe("busy=true");
+  expect(new Set(seen.slice(1))).toEqual(new Set(["second press stopped=true"]));
   // The page's words and the held post reach the journey by separate messages, in either order, so the post is waited
   // for too (run on #315: read at once, it was still 0 while a recording slowed the browser).
   await expect.poll(() => held.requestsSoFar()).toBe(1);
