@@ -1,5 +1,5 @@
-// A picture or a video shows a placeholder that shimmers until it has loaded (look.css, `[data-loading]`), so a
-// person on a slow line sees something is coming instead of an empty box. Every <img> and <video> takes this action;
+// A picture or a video shows a placeholder that shimmers, with a spinner turning in its middle, until it has loaded
+// (look.css, `[data-loading]`), so a person on a slow line sees something is coming instead of an empty box. Every <img> and <video> takes this action;
 // tests/loading-states.test.ts fails on one that does not.
 
 /** Whether a video is still fetching what it needs to show its first frame. */
