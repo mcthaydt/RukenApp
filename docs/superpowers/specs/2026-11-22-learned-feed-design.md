@@ -43,7 +43,8 @@ Read on `main` at `74bd185`.
 
 - **Dependencies:** none new. The sky sums are written by hand from published low-precision formulas, checked against reference dates (unit H). No property-test library: invariants are checked with seeded loops over `seededNumber`.
 - **Environments and spend:** the site Worker and its database, as today. One new Worker secret, `FEED_SETTINGS`, loaded by a workflow in RukenPrivate, never by hand (section 5). Texts to parents (unit I) use the existing text provider, at most three per teen a day.
-- **Data:** every new table holds a person's data and goes with the account purge; every row that points at a game or a maker goes when that game or maker's account is removed, for every player (cascading foreign keys, section 7). Watching rows are kept for `windowDays`, then deleted by the daily job. Nothing is recorded about a signed-out visitor, or about an under-18 without a parent's yes.
+- **Data:** every new table holds a person's data and goes with the account purge; every row that points at a game or a maker goes when that game or maker's account is removed, for every player (cascading foreign keys, section 7). Watching rows are kept for `windowDays`, then deleted by the daily job. Nothing is recorded about a signed-out visitor, about an under-18 without a parent's yes, or about anyone whose browser has not said "I agree" to cookies (4.1).
+- **Waits on the cookie consent work** (spec `docs/superpowers/specs/2026-11-22-cookie-consent-design.md`, branch `claude/project-thread-rnuc8p`, Owner 2026-11-22 16:41 UTC: "do NOT collect ANY data until the cookies is accepted"). Every unit that writes a row a person causes (B, D, G, I, K) builds on its write guard (`NoConsentWrite`), its `hasConsent(cookies)` and its notice, and waits for it to merge. Without consent this spec writes nothing and falls back to the crowd feed; it adds no consent code of its own.
 - **Expected duration:** about five working days of build sessions across the units, plus audits.
 - **Not in this spec:** player reviews, follows, comments, search, a player's own sign from a birthday, a maker's sign on their page (the private design 8, "after launch"). A lawyer's read of the feed laws for children and of hidden boosts: the Owner chose to build and switch on without one (Open 2, answered).
 
@@ -53,6 +54,7 @@ Read on `main` at `74bd185`.
 
 ### 4.1 Who is looking
 
+- **No "I agree" yet** (no `rk_consent` cookie): the consent work does not read the session, so the caller is `none` and the viewer is signed out, whatever cookie they hold. They get the crowd feed below, nothing is read about them and nothing is written (section 3).
 - **Signed out:** the crowd feed (standing, first showing, surprises, spacing). One order for every signed-out visitor on a Chicago day.
 - **Signed in, under 18 or no known birthday, no parent's yes:** the crowd feed, its surprises drawn by their own seed. Nothing personal is read or recorded (private design 10).
 - **Signed in adult, or under 18 with a parent's yes:** the full feed: the crowd feed blended with what they play, watch and say.
@@ -181,21 +183,21 @@ Each unit is one pull request on its own branch, built test first (journeys firs
 |---|---|---|---|---|
 | A, the learned order | the infinite feed merged | `src/features/feed/` (`learned.ts`, `signals/*` as no-change modules, `settings.ts`, `cursor.ts`, `service.ts`; `order.ts` deleted); `src/features/play/` (one new read; `memberBeatsByGame` deleted); `src/routes/+page.server.ts`; `src/routes/api/feed/`; `src/routes/healthz/feed/`; `Feed.svelte` (the caught-up line only); tests | `page(viewer, after)` answers `{ clips, next, caughtUpAt, ask: null }` in the learned order | 2 |
 | F, the few-plays note | A | `src/features/feed/first-showing-note.ts`; `/make/<game>` | the line of 6.4 | 2 |
-| B, watching signals | A | migration `ClipView`; `signals/quiet.ts`; `cursor.ts` (put-in clips); `src/features/feed/views.ts`; `src/routes/api/feed/seen/`; `Feed.svelte` (sends views); `cloudflare/crons.js` if a new job address is needed; the account purge | interest, quick no, echo, second try, free watchers, viewer counts | 3 |
+| B, watching signals | A, the consent work merged | migration `ClipView`; `signals/quiet.ts`; `cursor.ts` (put-in clips); `src/features/feed/views.ts`; `src/routes/api/feed/seen/`; `Feed.svelte` (sends views); `cloudflare/crons.js` if a new job address is needed; the account purge | interest, quick no, echo, second try, free watchers, viewer counts | 3 |
 | C, mood and genre | B, F | migration `Game.mood`, `Game.genre`; `games/questions.ts`; two question screens; Check and send; `/make/<game>`; `signals/mood.ts` | every game can have a mood and a genre; the feed reads them | 3 |
 | E, test videos | C | migration `GameClip.slot`, `GameHeldClip.slot`; `/make/<game>`; staff review of an added pair; the slot pick in `service.ts` | up to three pairs; the feed shows the best | 3 |
-| D, Your feed | C | migration `FeedTaste`, `User.feedResetAt`, `GoodPickAsked`; `signals/taste.ts` (the "more"/"less" part); `/me/feed`; `Feed.svelte` (the ••• sheet, the Good pick card); `service.ts` (`ask`) | the player sees and changes what the feed thinks; Start over | 3 |
-| G, Like, Save, Repost | D | migration `ClipLike`, `ClipSave`, `ClipRepost`; `Feed.svelte` (the buttons); Saved on You; the purge | real counts; each made and taken back by the person | 3 |
+| D, Your feed | C, the consent work merged | migration `FeedTaste`, `User.feedResetAt`, `GoodPickAsked`; `signals/taste.ts` (the "more"/"less" part); `/me/feed`; `Feed.svelte` (the ••• sheet, the Good pick card); `service.ts` (`ask`) | the player sees and changes what the feed thinks; Start over | 3 |
+| G, Like, Save, Repost | D, the consent work merged | migration `ClipLike`, `ClipSave`, `ClipRepost`; `Feed.svelte` (the buttons); Saved on You; the purge | real counts; each made and taken back by the person | 3 |
 | H, the sky layer | C | `src/lib/sky.ts`; `signals/sky.ts`; `docs/feed-sky.md` | hidden; on through the private file | 2 |
-| I, a parent's yes | D | migration `ParentYes`; `/me/feed` (the ask); `/parent/<token>`; the text | an under-18 with a parent's yes gets the full feed | 3 |
-| K, high-taste players | G | migration `HighTaste`; `signals/highTaste.ts`; `src/routes/jobs/high-taste/`; the earned mark in the daily job (`cloudflare/crons.js` if a new job address is needed) | hidden; on through the private file | 3 |
+| I, a parent's yes | D, the consent work merged | migration `ParentYes`; `/me/feed` (the ask); `/parent/<token>`; the text | an under-18 with a parent's yes gets the full feed | 3 |
+| K, high-taste players | G, the consent work merged | migration `HighTaste`; `signals/highTaste.ts`; `src/routes/jobs/high-taste/`; the earned mark in the daily job (`cloudflare/crons.js` if a new job address is needed) | hidden; on through the private file | 3 |
 | L, How the feed works | D, E, G | `src/routes/help/how-the-feed-works/`, the help list | the public page | 1 |
 | J1, the private settings | nothing | RukenPrivate `feed/settings.json`, `feed/settings.md` (PR #18) | the real values | 1 |
 | J2, the settings workflow | A, Open 4, a hook covering RukenPrivate pull requests | RukenPrivate `.github/workflows/feed-settings.yml`, `scripts/check-feed-settings.mjs` and its test | the real values loaded on every change | 3 |
 
 **Why this order, and what runs side by side.** Every unit after A adds a signal module A made, so none edits another's module. The files that more than one unit edits are `Feed.svelte` (A, B, D, G), `/make/<game>` (F, C, E), `service.ts` (A, E, D) and `cursor.ts` (A, B); the units that touch each run one after another in the order above. So: A first. Then F and B side by side (F owns only its rule file and `/make/<game>`; B owns no file F touches). Then C (after both). Then E and D one after the other (both touch `service.ts`): E, then D. Then G after D, and H after C (H owns only `src/lib/sky.ts`, its module and its doc, so it may run beside E, D or G). I after D, K after G. L last. J1 is done; J2 runs when its waits clear, beside anything.
 
-**For every unit.** Every journey starts with `test.beforeEach(forgetRateLimits)` and shows each new or changed screen with `showTheOwner`. The journeys share one database, so they find their own game by `data-slug` and assert order only in unit and database tests. Every new thing a person makes has create, read, update (where it can change) and delete in a journey (CRUD in `build`). Every new table's `userId` and `gameId` is a foreign key with `onDelete: Cascade`, and a `FeedTaste` row of kind `maker` or `game` holds the user's or game's id (never a handle or slug), with the same cascade; the account purge test covers every new table and shows that another player's chip for a deleted maker is gone. A pull request that changes or deletes an existing test names each one and why. Lessons in `progress.md` whose trigger the diff matches are carried. No unit puts a value from `feed/settings.json` in RukenApp.
+**For every unit.** Every journey starts with `test.beforeEach(forgetRateLimits)` and shows each new or changed screen with `showTheOwner`. The journeys share one database, so they find their own game by `data-slug` and assert order only in unit and database tests. Every new thing a person makes has create, read, update (where it can change) and delete in a journey (CRUD in `build`). Every new table's `userId` and `gameId` is a foreign key with `onDelete: Cascade`, and a `FeedTaste` row of kind `maker` or `game` holds the user's or game's id (never a handle or slug), with the same cascade; the account purge test covers every new table and shows that another player's chip for a deleted maker is gone. A pull request that changes or deletes an existing test names each one and why. Lessons in `progress.md` whose trigger the diff matches are carried. No unit puts a value from `feed/settings.json` in RukenApp. **Consent:** every new route is either consent-gated or named in `consent/machine-routes.ts` with its reason (the consent work's route test enforces it); every new write runs behind its write guard, never around it; and each unit that writes has a test that the same press without `rk_consent` writes nothing. A crowd-feed test (unit A, or unit B if A merges before the consent work) shows a browser without consent gets the same order as a signed-out visitor, even holding a valid sign-in cookie.
 
 ### Unit A: the learned order
 
@@ -233,10 +235,11 @@ Steps:
 ### Unit B: watching signals
 
 - **B1.** `ClipView`: `id`, `userId`, `gameId` (both cascade), `clipSlot` (1 until unit E adds slots), `shownAt`, `watchedMs`, `ends` (times watched to the end), `playTapped`, `createdAt`. Index `[userId, shownAt]`, `[gameId, shownAt]`.
-- **B2.** `POST /api/feed/seen` takes one clip's view when it leaves the screen (and on page hide, by `sendBeacon`): signed in only; an under-18 without a parent's yes gets 204 and nothing is stored; rate-limited like other posts; `watchedMs` capped at three times the clip's length.
+- **B2.** `POST /api/feed/seen` takes one clip's view when it leaves the screen (and on page hide, by `sendBeacon`): consent-gated (not on the machine list) and signed in only; without `rk_consent` the screen sends nothing at all (no beacon, no `POST`, as the consent journey requires) and the route answers 204 without touching the database; an under-18 without a parent's yes gets 204 and nothing is stored; rate-limited like other posts; `watchedMs` capped at three times the clip's length.
 - **B3.** `signals/quiet.ts` reads, for the viewer, interest (`ends ≥ 1`), a second look (`ends ≥ 2`) and quick no (`watchedMs < quickNoMs`, no Play); per game, views (for 4.3) and free watchers (for 4.2), counting only accounts with `phoneNumberVerified`: a test shows an unconfirmed account adds nothing.
 - **B4.** The echo and second try go into later pages by 4.6's rule, kept in the cursor's `x`: a test shows the echo at the first slot at least `echoAfter` after its view, the second try first on the next page, each put in once, their keys unique, and the base order otherwise unchanged.
 - **B5.** The daily job deletes `ClipView` rows older than `windowDays`; the account purge and a game's removal delete their rows. Tested against Postgres.
+- **B7.** Without consent: a unit test shows the route writes nothing and returns 204 without `rk_consent`; the consent journey's check (no `POST`, no beacon before "I agree") stays green with the feed scrolled past several clips.
 - **B6.** Journey: watch a clip to the end without Play, scroll on, and the game comes back later in the same scroll; swipe a clip away at once, open the feed again, and its game is not in round 0's first half.
 
 Steps:
@@ -282,6 +285,7 @@ Steps:
 - **D2.** The ••• sheet's buttons write a `game` row; Less also keeps that game out of round 0 for `lessDays` (4.4), from the next open.
 - **D3.** `/me/feed` (6.2): learned chips are the viewer's top moods, genres and makers by taste; suggestions are the next best not yet chosen; Add lists all moods, all genres, and the makers of games the viewer played; × deletes; Start over deletes their `FeedTaste`, `ClipView` and `GoodPickAsked` rows and sets `feedResetAt`.
 - **D4.** Good pick? (4.5) comes through `FeedPage.ask` only on its rule; yes adds a `more` row for the game's mood, no a `less` row.
+- **D7.** Without consent, More like this, Less like this and Good pick are not offered (the viewer is signed out, so `ask` is null), and pressing ••• shows only **How the feed works**; `/me/feed` asks them to sign in, which opens the consent notice first. A test shows no `FeedTaste` or `GoodPickAsked` row is written without consent.
 - **D6.** **Learn from what I do** (10.1): `User.feedPersonal`; off gives the crowd feed, stores no views and hides the chips; on again starts fresh; locked off for a teen without a parent's yes. The ••• sheet also holds **How the feed works**.
 - **D5.** Journey (CRUD): turn Learn from what I do off and on, add a chip, read it back, remove it, add a less chip, press More and Less on a clip and see the chips change, answer a Good pick, Start over and see the empty state; a second account cannot read or change the first's chips.
 
@@ -300,6 +304,7 @@ Steps:
 
 - **G1.** One row per person and game for each; pressing again takes it back. A count on screen is a count of rows, nothing else.
 - **G2.** Saved games list on You ("Saved"). Reposts show on You until players' pages are built (approved, not built).
+- **G5.** Without consent, pressing Like, Save or Repost opens the consent sheet ("To save this game" for Save, the same wording pattern for Like and Repost); "I agree" carries on to sign in or to the press. A test shows no row is written without consent.
 - **G3.** A like is quiet interest for the order. Nobody can like, save or repost their own game.
 - **G4.** Journey (CRUD) for each, and the purge test.
 
@@ -330,6 +335,7 @@ Steps:
 
 - **I1.** `ParentYes`: `teenUserId` (cascade), `phoneHash`, `tokenHash`, `askedAt`, `answeredAt`, `answer`, `revokedAt`. One open ask per teen; three texts per teen a day; an ask unanswered after 5 days ends.
 - **I2.** The flow of 6.5. A yes changes the teen's feed only while `teenPersonal` is on (section 10); with it off, the parent's page still records the answer and says "Thanks. We'll turn it on when we can." The parent's page needs no account. Yes turns on the full feed at once; Turn it off returns the calm feed and stops recording; the teen can cancel an ask.
+- **I5.** The parent's page (`/parent/<token>`) is a page a person's browser opens, so it is consent-gated: without `rk_consent` it shows the consent notice first and records the answer only after "I agree". A test shows no `ParentYes` change without consent. Asking a parent needs the teen signed in, so it already has consent.
 - **I3.** With `parentYes` off, Ask a parent is not shown and the parent's page says the link has ended.
 - **I4.** Journey (CRUD): ask, see it waiting, the parent says yes (test texts as in the sign-up journeys), the full feed starts, the parent turns it off, the teen asks again and cancels; an ended ask's link says so.
 
@@ -347,6 +353,7 @@ Open 1 is answered "Yes, all three", so K counts likes and reposts as designed. 
 
 - **K1.** `HighTaste`: `userId` (cascade), `source` (`picked`/`earned`), `since`. `POST /jobs/high-taste` with the jobs secret: `{"do":"add"|"remove","handle":…}`. The daily job marks as earned the players who were among a game's first members and whose games went on to the top of standing, at most `highTasteEarnedMax` at once, and unmarks those who no longer qualify.
 - **K2.** `signals/highTaste.ts`, with `highTaste` on: a marked player's like counts as `highTasteLike` members' standing (like and review `highTasteLikeReview`, all three `highTasteAll`); capped per game at `highTasteCapPerGame`; never for a game they made or earn from; reach only, never pay.
+- **K5.** `/jobs/high-taste` is a machine route: it goes on `consent/machine-routes.ts` with its reason (secret-signed, no browser). The earned mark reads likes, which exist only with consent.
 - **K3.** Nothing tells anyone they are marked: no screen, no response, no count.
 - **K4.** No made-up likes or saves, ever (private design 9).
 
@@ -391,7 +398,8 @@ Steps:
 3. **Open 3, how a parent says yes.** **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Text the parent a code".** Unit I waits on nothing but D.
 4. **Open 5, a lawyer's read** (section 10.3). Answered 2026-11-22 16:40 UTC: no lawyer now, `teenPersonal` on. Nothing waits.
 5. **Open 4, the Cloudflare token on RukenPrivate** (section 5). New access for a second repository, so it is the Owner's: asked once, inside the "Deploy automatically from main" work's batch of Owner commands (the same token). Unit J2 waits.
-6. **Not the Owner's: a hook for RukenPrivate pull requests.** In a repository without `rules.json`, creating a pull request is not checked (`progress.md`, hook follow-ups). J2 is a lane 3 pull request there, so it waits until a hook covers that route.
+6. **Not the Owner's: the cookie consent work** (thread "Block data collection until cookies accepted", branch `claude/project-thread-rnuc8p`). Units B, D, G, I and K wait for it to merge (section 3). A and F do not: they only read, and the consent work's guards keep them honest.
+7. **Not the Owner's: a hook for RukenPrivate pull requests.** In a repository without `rules.json`, creating a pull request is not checked (`progress.md`, hook follow-ups). J2 is a lane 3 pull request there, so it waits until a hook covers that route.
 
 ## 9. Risks, and what is not checked
 
@@ -401,7 +409,8 @@ Steps:
 - The viewer floor in 4.3 starts only with unit B; until then a first showing ends on members or days alone.
 - Device profiles are emulation, not proof of how a phone performs.
 - The legal questions in 10.3 are not answered: the Owner chose to build and turn everything on without a lawyer's read. If a law or a lawyer says otherwise, `teenPersonal`, `highTaste` and `sky` each turn off in one change to the private file.
-- Found, not fixed: Ruken has no privacy policy or terms page. The feed adds data people should be told about (10.3, item 3). Reported to the coordinator for its own thread.
+- Ruken has no privacy policy or terms page yet. The feed adds data people should be told about (10.3, item 3). Their own work is the thread "Add privacy policy and terms pages" (branch `claude/project-thread-xa97zr`); this spec does not write them. Its privacy page should name watching, More/Less, likes, saves, reposts and taste.
+- If the consent work slips, units B, D, G, I and K slip with it; A, F, C, E, H and L can go ahead.
 
 ## 10. The law, and what needs a lawyer
 
@@ -415,6 +424,7 @@ Steps:
 - **Plain disclosure.** "How the feed works" (unit L, the Owner-approved words) says what the feed ranks on, that it learns from what you play and watch, how to change it, that teens' feeds do not learn without a parent, that nobody can pay to move a game, and that Ruken adds "a few touches of our own". It is linked from every clip's ••• sheet ("How the feed works"), from Your feed and from the help list, so it is one tap from where the feed is used.
 - **No fake engagement, no paid ranking.** Every count on screen is a count of rows people made (G1); high-taste players change reach only, never pay, and never add a like (K2, K4). An architecture test (K, step 6) keeps the money code from reading any ranking signal, and a second one keeps ranking from reading payments beyond membership status.
 - **Nothing hidden makes a claim.** The sky layer and high-taste players show nothing, promise nothing and name nothing in the app (H3, K3). The sky layer is a ranking input like any other, described on GitHub (`docs/feed-sky.md`) without its strength.
+- **Nothing before "I agree".** The Owner's consent rule (16:41 UTC) comes first: without `rk_consent` the feed reads nothing personal and writes nothing, and the consent work's write guard makes a missed write fail loudly (section 3, "For every unit").
 - **Least data, kept short.** Watching rows hold no device, place or address, are deleted after `windowDays`, and go with the account; "Start over" and the switch above delete them at once. A parent's phone is kept only as a hash.
 
 ### 10.2 The switches for the risky parts
@@ -436,7 +446,7 @@ These are questions, not answers. Each names what it would change.
 
 1. **A parent's yes.** Whether a yes given by tapping a link texted to a number the teen typed is enough consent for a feed that learns from a minor, under New York's and California's laws on feeds for minors and any like them. If not, unit I changes how a parent proves who they are. The Owner chose to turn it on without this read (Open 5).
 2. **Hidden ranking parts.** Whether the high-taste boost and the sky layer need saying more plainly than "a few touches of our own" (US consumer-protection rules on deception and endorsements; the EU Digital Services Act's rules on explaining recommender systems, if Ruken is offered in the EU). If so, the public page and the terms change; the switches stay.
-3. **Which privacy laws apply, and the papers they need.** Ruken has no privacy policy or terms page today (`src/routes/legal/` holds only the maker agreement). Whether California's privacy law (and its opt-out of profiling), the EU's and the UK's rules (including the UK Children's Code) apply to Ruken at its size, and what its privacy policy must say about watching, likes and taste. Writing those pages is not in this spec; it is reported (section 9).
+3. **Which privacy laws apply, and the papers they need.** Ruken has no privacy policy or terms page today (`src/routes/legal/` holds only the maker agreement). Whether California's privacy law (and its opt-out of profiling), the EU's and the UK's rules (including the UK Children's Code) apply to Ruken at its size, and what its privacy policy must say about watching, likes and taste. Writing those pages is not in this spec; it is the thread "Add privacy policy and terms pages" (section 9).
 4. **Under-13s found later.** What Ruken must do when it learns an account belongs to someone under 13, despite the age check.
 
 **Open 5 (the Owner): get a lawyer's read on 10.3.** **Answered 2026-11-22 16:40 UTC: no lawyer now; turn it on anyway.** The four questions above stay unanswered and are carried as risks (section 9). Nothing in this spec waits on them.
