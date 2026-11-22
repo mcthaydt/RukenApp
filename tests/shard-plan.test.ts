@@ -9,6 +9,7 @@ import {
   exactly,
   listJourneyFiles,
   parseShard,
+  pieceFromEnv,
   planFromEnv,
   planShards,
   readTimes,
@@ -166,6 +167,45 @@ describe("planFromEnv", () => {
   test("reads a times file and a piece number", () => {
     expect(readTimes(testDir().times)).toEqual({ "phone|a.test.ts": 30, "computer|nested/c.spec.ts": 5 });
     expect(parseShard("3/6")).toEqual({ piece: 3, of: 6 });
+  });
+
+  // Audit R1 (docs/superpowers/audits/2026-11-22-faster-ci-t-1-implementation-audit.md): CI drops `--shard` once a
+  // times file is there, so a times file that cannot be read must still split the journeys, never run them all six times.
+  test("times that cannot be read fall back to Playwright's split, so six pieces still run everything once", () => {
+    const { dir, times } = testDir();
+    const bad = {
+      "cut off": '{"phone|a.test.ts": 3',
+      "a blank value": JSON.stringify({ "phone|a.test.ts": null }),
+      "a list": "[1, 2]",
+      empty: "",
+    };
+    for (const [name, text] of Object.entries(bad)) {
+      const path = join(dir, `${name}.json`);
+      writeFileSync(path, text);
+      const pieces = [1, 2, 3, 4, 5, 6].map((n) =>
+        pieceFromEnv({ RUKEN_SHARD: `${String(n)}/6`, RUKEN_SHARD_TIMES: path }, dir, PROJECTS),
+      );
+      expect(pieces, name).toEqual([1, 2, 3, 4, 5, 6].map((current) => ({ shard: { current, total: 6 } })));
+    }
+    const missing = { RUKEN_SHARD: "2/6", RUKEN_SHARD_TIMES: join(dir, "missing.json") };
+    expect(pieceFromEnv(missing, dir, PROJECTS)).toEqual({ shard: { current: 2, total: 6 } });
+    expect(pieceFromEnv({ RUKEN_SHARD: "2/6" }, dir, PROJECTS)).toEqual({ shard: { current: 2, total: 6 } });
+    expect(
+      pieceFromEnv({ RUKEN_SHARD: "2/6", RUKEN_SHARD_TIMES: times }, join(dir, "gone"), PROJECTS),
+    ).toEqual({ shard: { current: 2, total: 6 } });
+  });
+
+  test("good times give files; no piece number leaves the config alone", () => {
+    const { dir, times } = testDir();
+    const piece = pieceFromEnv({ RUKEN_SHARD: "1/1", RUKEN_SHARD_TIMES: times }, dir, PROJECTS);
+    const all = ["a.test.ts", "b.test.ts", "nested/c.spec.ts"];
+    expect(piece).toEqual({ files: { phone: all, tablet: all, computer: all } });
+    for (const env of [
+      {},
+      { RUKEN_SHARD: "", RUKEN_SHARD_TIMES: times },
+      { RUKEN_SHARD: "7/6", RUKEN_SHARD_TIMES: times },
+    ])
+      expect(pieceFromEnv(env, dir, PROJECTS)).toBeNull();
   });
 });
 

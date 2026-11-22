@@ -2,7 +2,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
 import { resolve } from "node:path";
 import { journeyClientHeaders } from "./tests/browser/support/rate-limits.ts";
-import { exactly, planFromEnv } from "./tests/browser/support/shard-plan.ts";
+import { exactly, pieceFromEnv } from "./tests/browser/support/shard-plan.ts";
 
 // The Ruken GitHub App's private key, made here each time the config loads and never written to a file. GitHub hands
 // out an app's key as PKCS#1, so the stand-in's journeys use that form too.
@@ -14,14 +14,17 @@ const GITHUB_APP_PRIVATE_KEY = generateKeyPairSync("rsa", {
 
 const TEST_DIR = resolve(import.meta.dirname, "tests/browser");
 // In CI each browser piece runs the files the planner gives it (tests/browser/support/shard-plan.ts), filled by main's
-// recorded times; with no plan, the config is as it always was and CI splits with `--shard`.
-const plan = planFromEnv(process.env, TEST_DIR, ["phone", "tablet", "computer"]);
-const planned = (project: string) => (plan ? { testMatch: exactly(TEST_DIR, plan[project] ?? []) } : {});
+// recorded times. If the times cannot be read, the piece takes Playwright's own split by count instead. Outside CI's
+// pieces the config is as it always was.
+const piece = pieceFromEnv(process.env, TEST_DIR, ["phone", "tablet", "computer"]);
+const planned = (project: string) =>
+  piece && "files" in piece ? { testMatch: exactly(TEST_DIR, piece.files[project] ?? []) } : {};
 
 // Browser journeys (design section 8) run against the built app, served by `wrangler dev`: the Workers runtime
 // the real site runs in.
 export default defineConfig({
   testDir: TEST_DIR,
+  ...(piece && "shard" in piece ? { shard: piece.shard } : {}),
   forbidOnly: true,
   retries: 0,
   reporter: [["list"], ["html", { open: "never" }]],

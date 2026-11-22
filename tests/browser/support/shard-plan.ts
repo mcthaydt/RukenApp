@@ -7,8 +7,10 @@
 // pieces make the same plan from the same times, whatever order the disk or the file gives them.
 //
 // The times come from `main` (ci.yml, the `test-times` job): {"<device profile>|<file>": seconds}, the file relative
-// to the test folder. playwright.config.ts asks `planFromEnv` for this piece's files; any doubt answers `null`, and the
-// config then runs as if the planner were not there. A doubt never runs fewer journeys.
+// to the test folder. playwright.config.ts asks `pieceFromEnv` what this piece runs. When the piece number can be read
+// but the times cannot, the piece falls back to Playwright's own split by count, which CI no longer passes as `--shard`
+// once a times file is there; so with good times or bad, the six pieces together run every journey once. With no piece
+// number at all, the config is as if the planner were not there.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, posix, relative, sep } from "node:path";
 
@@ -109,6 +111,22 @@ export function planFromEnv(
   return Object.fromEntries(
     projects.map((project) => [project, mine.filter((p) => p.project === project).map((p) => p.file)]),
   );
+}
+
+/**
+ * What this piece runs: `files` (each device profile's journey files) when the planner can deal; `shard` (Playwright's
+ * own split by count) when RUKEN_SHARD can be read but the times or the test folder cannot; nothing when RUKEN_SHARD
+ * cannot be read, which leaves the config as it always was.
+ */
+export function pieceFromEnv(
+  env: Record<string, string | undefined>,
+  testDir: string,
+  projects: string[],
+): { files: Record<string, string[]> } | { shard: { current: number; total: number } } | null {
+  const files = planFromEnv(env, testDir, projects);
+  if (files) return { files };
+  const shard = parseShard(env.RUKEN_SHARD);
+  return shard ? { shard: { current: shard.piece, total: shard.of } } : null;
 }
 
 /** A test match that takes exactly these files under `testDir`, and no others. */
