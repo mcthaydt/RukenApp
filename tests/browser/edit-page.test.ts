@@ -432,9 +432,8 @@ test("a colour tapped before the screen's scripts arrive is still the one picked
   await page.locator("label.swatch").nth(tapped).click({ noWaitAfter: true });
   expect((await picked())[tapped]).toBe(true);
   // The scripts arrive and make the screen live: the tap must not be undone.
-  // Each script that needs another waits its own 3 seconds, so the screen is live only once the network is quiet.
-  await page.waitForLoadState("networkidle", { timeout: 30_000 });
-  await page.waitForTimeout(1000);
+  // The screen is live once SvelteKit has started in the browser: its announcer is on the page.
+  await expect(page.locator("#svelte-announcer")).toBeAttached({ timeout: 30_000 });
   const after = await picked();
   expect(after[tapped]).toBe(true);
   expect(after[own]).toBe(false);
