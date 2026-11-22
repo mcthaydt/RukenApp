@@ -23,7 +23,7 @@ Code from the archived RukenAppFailed is copied on purpose, file by file, with i
 
 ## Layout
 
-- `src/features/<feature>/` holds each feature (accounts, games, launch, make, membership, money, pages, play); `src/lib/` and `src/lib/server/` hold shared helpers; `src/routes/` is SvelteKit's pages and endpoints.
+- `src/features/<feature>/` holds each feature (accounts, feed, games, launch, make, membership, money, pages, play); `src/lib/` and `src/lib/server/` hold shared helpers; `src/routes/` is SvelteKit's pages and endpoints.
 - `prisma/schema/` is the schema, `prisma/migrations/` the migrations; `cloudflare/` the Workers (the site and the games' own address).
 - `tests/` mirrors `src/`; `tests/browser/` holds the Playwright journeys, `tests/support/` the stand-ins and helpers, `tests/architecture.test.ts` the layer rule.
 

@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-11-21 21:43 UTC (from `date`).
+Last updated: 2026-11-22 01:26 UTC (from `date`), by the apps-kit practice thread for the coordinator, which cannot write to the repo.
 
 ## The owner's instructions
 
@@ -55,23 +55,28 @@ Each entry is dated and quotes the owner where the source does; "(paraphrase)" m
 - 2026-11-21 20:09 UTC: "I won't restart" (the project is not restarted).
 - 2026-11-21 20:19 UTC: "Remove ANYTHING that contradicts from the workflow that we established in mcthaydt-website apps". The source of truth is the owner's apps kit (https://mcthaydt.com/prompts/claude-md-apps/) plus the three owner rules in mcthaydt-website #99. Work: spec `2026-11-21-align-with-apps-kit-design.md` (#280) and the pull request that builds it. **RukenApp is a public repo, so, by the kit's rule, no session runs on the owner's computer for Ruken: no test, build, app, command or measurement. What only the owner can run goes to the owner as CLI commands.** This supersedes the 22:32 UTC 2026-11-20, 16:54 UTC and 19:16 UTC Mac-session records above.
 - 2026-11-21 20:39 UTC, on a card (#209): "Keep password, drop Change email". With sign-in by phone, #274's Change email goes; Change password stays (keyed by the phone number). Change email or Change phone number may come back later as their own decision. Waits on #209.
+- 2026-11-22 00:36 UTC: "lets bump to 6": the open pull request limit goes from 3 to 6. Its own thread (#288 is part 1).
+- 2026-11-22 01:20 UTC, "Speed up CI" thread: "We should have primarily e2e tests". New coverage goes in browser journeys; that thread owns the rule change and the pruning.
+- 2026-11-22 01:21 UTC: "okay, get us aligned with our workflow; all of our issues is you not following the workflow". Gap list: `audits/2026-11-22-apps-kit-practice-1-audit.md`; its fixes are in the pull request that carries it and in every thread prompt from now on (its P8).
 
 ## Active milestone: "Finish Ruken"
 
 Setup (first-time setup, lane 2) is done and moved to History, Setup.
 
-Current work, from GitHub on 2026-11-21 (open pull requests: #209 phone sign-in, ready for review; #283 adults-only sign-in returns, draft; the apps-kit alignment pull request, when it opens):
+Current work, from GitHub on 2026-11-22 01:26 UTC (open pull requests: #209 phone sign-in, ready; #285 the feed screen, ready; #288 the open-limit hook tests, draft):
 
-- Apps kit alignment (this record's own work), lane 3: built on `claude/project-thread-69gq97`, waiting for its implementation audit and green checks.
 - #209, phone sign-in (lane 3): audit PASS at `628803f`, waiting on its full run. After it merges and deploys, the owner runs the attach-phone command once; then it is retired.
-- #283, the adults-only page's sign-in button returns to the game (lane 2): one fresh review PASS at `9c0ed5f`.
-- Slice 3 is resuming (see Slice 3).
+- #285, slice 3 unit D, the feed screen (lane 2): review PASS at `6429568`.
+- #288, the open pull request limit to 6, part 1 (draft).
+- Apps-kit practice alignment: the gap list and its fixes, on `claude/project-thread-iexvtj`.
+- "Speed up CI": its own thread.
 
-Completed since setup (merge times from `gh api`, UTC): #242 flaky journeys fixed (2026-11-21 00:18), #249 the maker's page (02:52), #252 three devices (04:08), #253, #255, #260 slice 2 design rounds (04:36, 09:10, 09:52), #258 sessions merge reviewed pull requests (08:58), #262 shoot only changed screens (13:33), #265 and #266 the owner's notes on the menu tab and game page (14:07, 14:26), #267 CRUD audit (15:03), #268 purge takes games off (16:00), #269 everything-editable spec (15:15), #271 live game files and websites (16:02), #274 unit D (19:16), #275 PR-H (19:45), #276 unit A (20:00), #277 18+ gate (20:07), #278 CRUD rule (20:11), #281 red main fixed (20:53), #280 apps-kit spec (21:09), #282 unit B (21:31), #279 PR-R (21:32).
+Completed since setup (merge times from `gh api`, UTC): #242 flaky journeys fixed (2026-11-21 00:18), #249 the maker's page (02:52), #252 three devices (04:08), #253, #255, #260 slice 2 design rounds (04:36, 09:10, 09:52), #258 sessions merge reviewed pull requests (08:58), #262 shoot only changed screens (13:33), #265 and #266 the owner's notes on the menu tab and game page (14:07, 14:26), #267 CRUD audit (15:03), #268 purge takes games off (16:00), #269 everything-editable spec (15:15), #271 live game files and websites (16:02), #274 unit D (19:16), #275 PR-H (19:45), #276 unit A (20:00), #277 18+ gate (20:07), #278 CRUD rule (20:11), #281 red main fixed (20:53), #280 apps-kit spec (21:09), #282 unit B (21:31), #279 PR-R (21:32), #284 apps-kit rules alignment (21:58), #283 adults-only sign-in returns (22:53), #286 unit I, editing your page (2026-11-22 00:30), #287 the test Stripe's ids (01:09).
 
 Remaining:
 
-- Merge #209, #283 and the apps-kit alignment pull request.
+- Merge #209, #285 and #288.
+- The slice 2 retrospective, owed since slice 2 closed (gap P5), and the root causes of the two open flaky tests (gap P9): each its own thread.
 - Slice 3's remaining units, then slices 4 to 6 and the before-launch list, in roadmap order.
 - Hook follow-ups (see History, Known issues).
 - Open follow-ups from the 18+ gate: clip file URLs on the game gate stay open until the video addresses unit (below) merges; the feed route's journey must assert 18+ games are absent when it ships.
@@ -86,11 +91,13 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 
 | Stage or unit | Pull request or thread | Status | Done |
 |---|---|---|---|
-| Apps kit alignment (lane 3) | the pull request on `claude/project-thread-69gq97`; spec #280 | built, waiting for its implementation audit and green checks | not measured (one unit, no ticked steps) |
-| Phone sign-in, branch B (lane 3) | #209 | audit PASS at `628803f`, waiting on its full run | not measured |
-| Adults-only sign-in returns (lane 2) | #283 | draft, review PASS at `9c0ed5f` | short path, no plan |
-| Slice 3: unit K (social icons on the maker's page, lane 3), unit I (page editing), the learned feed's spec | none yet | no pull request open; resuming under the owner's 14:32 UTC word | not measured |
-| A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f`; building, then its pull request after the spec merges | not measured |
+| Apps-kit practice alignment (lane 1) | `claude/project-thread-iexvtj` | gap list written; fixes on the branch | not measured (short path, no plan) |
+| Phone sign-in, branch B (lane 3) | #209 | audit PASS at `628803f`, waiting on its full run | not measured (no plan checklist) |
+| Slice 3, the feed and the maker's page | #285 (unit D); unit K not started | units C, F, H and I merged (#246, #248, #247, #249, #286); D in review | 65% (20 of 31 plan steps ticked; one struck) |
+| Open pull request limit to 6 | #288 | draft, part 1 | not measured |
+| Slice 2 retrospective | none yet | owed (gap P5) | not started |
+| Flaky root causes, `play.test.ts:41` and `pay.test.ts:41` | none yet | owed (gap P9) | not started |
+| A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f` | not measured |
 | Hook follow-ups (the lane reading, the launcher-word refusal) | none yet | not started; lane 3 hooks changes, each its own pull request | not measured |
 | Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
 
@@ -104,7 +111,15 @@ Spec `2026-11-21-everything-editable-design.md`: merged (#269, 2d00e7e, 15:15 UT
 
 ## Slice 3
 
-Resuming. The owner's 2026-11-21 03:12 UTC "Let's park slice 3 until we confirm slice 2 is perfect" is replaced by their 14:32 UTC word: slice 3 unparks once the editing work lands. That work has landed: #274, #276 and #282. Merged so far: the plan (#245), the feed's order and service (#246, #248), the clip behind the price card (#247), the maker's page (#249). The parked feed screen draft (#251) was closed unmerged on the owner's 15:33 UTC word. No pull request is open for unit K, the rest of the feed or the learned feed's spec. The spec is `2026-11-21-feed-and-makers-page-design.md`.
+Resuming. The owner's 2026-11-21 03:12 UTC "Let's park slice 3 until we confirm slice 2 is perfect" is replaced by their 14:32 UTC word: slice 3 unparks once the editing work lands. That work has landed: #274, #276 and #282. Merged so far: the plan (#245), the feed's order and service (#246, #248), the clip behind the price card (#247), the maker's page (#249), editing your page, unit I (#286, 2026-11-22 00:30 UTC). The parked feed screen draft (#251) was closed unmerged on the owner's 15:33 UTC word. The feed screen, unit D, is #285. No pull request is open for unit K or the learned feed's spec. The spec is `2026-11-21-feed-and-makers-page-design.md`.
+
+## Approved screens
+
+Each approval names the screen and the commit it shows (`visual-check`, Skip what is already approved). None is recorded by screen and commit yet: slice 2's screens were approved on the owner's word without that record, so slice 3's end shoots and records them.
+
+## Kept on purpose
+
+Things the owner keeps from being updated or deleted, each with its scope (`build`, CRUD in the journeys). None yet.
 
 ## Decisions
 

@@ -233,9 +233,9 @@ Acceptance:
 
 Tasks:
 
-- [ ] 1. The journey first, in `tests/browser/join.test.ts`: a stranger presses Play on a game's page and meets the card over that game's clip (F3, F4), `showTheOwner` "the price card over a clip"; the three addresses of F5.
-- [ ] 2. `backFromPaywall`, test first (F1).
-- [ ] 3. The load, the video and the `backdrop` rule (F2, F3).
+- [x] 1. The journey first, in `tests/browser/join.test.ts`: a stranger presses Play on a game's page and meets the card over that game's clip (F3, F4), `showTheOwner` "the price card over a clip"; the three addresses of F5.
+- [x] 2. `backFromPaywall`, test first (F1).
+- [x] 3. The load, the video and the `backdrop` rule (F2, F3).
 - [ ] 4. ~~**Open 1, only if the Owner says keep the mark:** one empty `<span class="pip" aria-hidden="true">` on the price card (not on the member's or the paused card), a 12px diamond 1.25rem from the card's top and right; the `.pip` rule sits with the card's rules, above `main.gamepage` in `look.css`, so the game page's "uses no pip (red) anywhere" (`tests/lib/look.test.ts:556`) stands unchanged; "red is only the danger button" (`tests/lib/look.test.ts:103`) becomes "the danger button and the pip mark", named in the pull request. Otherwise this task is struck and nothing red is added.~~ Struck: the Owner said leave it off (2026-11-21).
 
 ### Unit H: a maker's page
@@ -255,12 +255,12 @@ Acceptance:
 
 Tasks:
 
-- [ ] 1. `givePage` in `tests/browser/support/database.ts` takes an address, a theme and links, and answers the address and the links' ids; `pageCounts(handle)` reads the two counts. (The rooms arrive in unit I, so H's journeys write rows.)
-- [ ] 2. The journeys first, in `tests/browser/maker-page.test.ts` (H2 to H9), each screen shown: "a maker's page", "a maker's page, Ruken's colours", "a maker's page with no games".
-- [ ] 3. The matcher, registered in `src/params/index.ts` beside `question`, and its unit test in `tests/params/handle.test.ts` (H1). The layout's condition that hides the wordmark on `/[handle=handle]` (H2).
-- [ ] 4. `MakerPage.svelte`, re-exported from `pages.browser.ts`, and the page's route and load (H2 to H4, H7, H8).
-- [ ] 5. The out route (H5, H6).
-- [ ] 6. The "Made by" link and its case in `tests/browser/game-page.test.ts` (H10).
+- [x] 1. `givePage` in `tests/browser/support/database.ts` takes an address, a theme and links, and answers the address and the links' ids; `pageCounts(handle)` reads the two counts. (The rooms arrive in unit I, so H's journeys write rows.)
+- [x] 2. The journeys first, in `tests/browser/maker-page.test.ts` (H2 to H9), each screen shown: "a maker's page", "a maker's page, Ruken's colours", "a maker's page with no games".
+- [x] 3. The matcher, registered in `src/params/index.ts` beside `question`, and its unit test in `tests/params/handle.test.ts` (H1). The layout's condition that hides the wordmark on `/[handle=handle]` (H2).
+- [x] 4. `MakerPage.svelte`, re-exported from `pages.browser.ts`, and the page's route and load (H2 to H4, H7, H8).
+- [x] 5. The out route (H5, H6).
+- [x] 6. The "Made by" link and its case in `tests/browser/game-page.test.ts` (H10).
 
 ### Unit D: the feed screen
 
@@ -310,12 +310,12 @@ Acceptance:
 
 Tasks:
 
-- [ ] 1. The journey first, in `tests/browser/edit-page.test.ts`: a maker makes her page from nothing and sees it live (I1 to I3), each screen shown.
-- [ ] 2. The reserved words (I11) and the "Your page" link (I10).
-- [ ] 3. Address, Name and About you (I2, I4, I5); `timesWords`, test first.
-- [ ] 4. Colours, with `ThemePicker.svelte` (I6).
-- [ ] 5. Photo (I7).
-- [ ] 6. Links (I8, I9).
+- [x] 1. The journey first, in `tests/browser/edit-page.test.ts`: a maker makes her page from nothing and sees it live (I1 to I3), each screen shown.
+- [x] 2. The reserved words (I11) and the "Your page" link (I10).
+- [x] 3. Address, Name and About you (I2, I4, I5); `timesWords`, test first.
+- [x] 4. Colours, with `ThemePicker.svelte` (I6).
+- [x] 5. Photo (I7).
+- [x] 6. Links (I8, I9).
 
 ### Unit K: social icons (lane 3)
 
