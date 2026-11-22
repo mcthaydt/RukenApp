@@ -137,7 +137,7 @@ test("a maker's games, from the first command to throwing one away", async ({ pa
   expect((await run(computer, "game", slug)).said).not.toContain("waiting for review");
 
   // A rating waits too, and the old one can be kept. 18+ alone is refused with what to type instead.
-  expect((await run(computer, "set", slug, "age", "16")).said).toContain("waits for review");
+  expect((await run(computer, "set", slug, "age", "16")).said).toContain("waiting for review");
   expect((await run(computer, "game", slug)).said).toContain("Waiting for review: ");
   expect((await run(computer, "keep-old", slug, "age")).code).toBe(0);
   expect((await run(computer, "game", slug)).said).not.toContain("Waiting for review: ");
@@ -146,7 +146,7 @@ test("a maker's games, from the first command to throwing one away", async ({ pa
   expect(alone.said).toContain(`Choose its 18+ marks too: npx ruken set ${slug} age 18 --marks <marks>`);
   const eighteen = await run(computer, "set", slug, "age", "18", "--marks", "gore");
   expect(eighteen.code).toBe(0);
-  expect(eighteen.said).toContain("waits for review");
+  expect(eighteen.said).toContain("waiting for review");
   expect((await run(computer, "keep-old", slug, "age")).code).toBe(0);
 
   // New files of a live game, sent as a new version.
@@ -260,6 +260,12 @@ test("another maker's key finds none of a maker's games, for any method, and cha
   } finally {
     await context.close();
   }
+  // The same calls are not 404 for the game's own maker, so the 404s above are about whose it is and nothing else.
+  const own = { authorization: `Bearer ${owner.key() ?? ""}`, ...journeyClientHeaders() };
+  expect((await request.get(`/api/v1/games/${slug}`, { headers: own })).status()).toBe(200);
+  expect((await request.get(`/api/v1/github/repos/${TINY_GAME}/branches`, { headers: own })).status()).toBe(
+    200,
+  );
   expect((await run(owner, "game", slug)).said).toBe(before);
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
