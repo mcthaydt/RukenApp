@@ -2309,7 +2309,7 @@ a.sheet.fix {
 /* The bold card: the paywall (src/routes/join). The owner, 2026-11-22, on the plain card: "boring". It is one card in
    the same place, in two halves: a top of Dusky Green holds a big chalk title, what a member gets and the close mark;
    the paper half holds the plans, the one blue button and the small print. When the game the person tapped plays
-   behind the card, the top is frosted glass, so the game moves behind the title. On a computer the halves sit side by
+   behind the card, the top has no surface of its own, so the game moves behind the title. On a computer the halves sit side by
    side and the card takes the width of the window's middle, so it is not a narrow sheet on empty felt. */
 .card.bold {
   --card-pad: 1.5rem;
@@ -2347,12 +2347,12 @@ a.sheet.fix {
   margin-top: 1rem;
 }
 
-/* Over the game's clip the top is the glass every see-through surface is (the owner, 2026-11-22), and the card sits as
-   close under the wordmark as it does on its own. */
+/* Over the game's clip the top has no surface of its own: the title and its lines sit straight on the clip's dim, which is
+   already the frosted glass every see-through surface is (the owner, 2026-11-22), so the game plays behind the title.
+   A second layer of glass on the dim made a near-black slab that hid the game (design round 2). White on the dim is
+   5.9 to 1 at the brightest clip measured. The card sits as close under the wordmark as it does on its own. */
 .behindcard ~ main.card.bold .cardtop {
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: var(--glass-filter);
-  backdrop-filter: var(--glass-filter);
+  background: none;
 }
 
 header ~ .behindcard + main.card.bold {
@@ -2371,8 +2371,9 @@ header ~ .behindcard + main.card.bold {
     width: min(100% - 4rem, 64rem);
   }
 
+  /* Two even halves: a long title word never widens its half. */
   .card.bold {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .card.bold .cardtop {

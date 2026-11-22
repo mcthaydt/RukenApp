@@ -1,6 +1,6 @@
 <!--
   The paywall card: a bold card in two halves. Its top is a band of Dusky Green with a big title and what a member gets
-  (frosted glass when the game the person tapped plays behind it, so the game shows through); the other half, on
+  (with no surface of its own when the game the person tapped plays behind it, so the game shows through the dim); the other half, on
   paper, holds the two plans as big rows, the one blue button and the small print (what it costs and what happens
   next). On a computer the two halves sit side by side. Signed out the button leads to sign-up; signed in it is "Continue to payment". "Not now" is the way
   back: a close mark in the band's corner, as an app's sheet has, with its words for a screen reader (the owner,

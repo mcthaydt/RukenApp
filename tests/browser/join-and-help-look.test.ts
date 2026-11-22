@@ -168,19 +168,33 @@ test.describe("the paywall card over the game's clip", () => {
     slug = (await addGame(browser, request)).slug;
   });
 
-  test("its top is frosted glass, so the game shows through behind the title", async ({ page }, testInfo) => {
+  // Design round 2 (R6): glass on top of the clip's dim made a near-black slab that hid the game.
+  test("its top has no surface of its own, so the game shows behind the title as clearly as around the card", async ({
+    page,
+  }, testInfo) => {
     await page.goto(`/join?next=${encodeURIComponent(`/g/${slug}/play`)}`);
     await expect(page.locator(".behindcard video")).toHaveCount(1);
     const top = page.locator(".cardtop");
-    const glass = await top.evaluate((node) => {
+    const surface = await top.evaluate((node) => {
       const style = getComputedStyle(node);
       return {
         background: style.backgroundColor,
-        filter: style.backdropFilter || style.getPropertyValue("-webkit-backdrop-filter"),
+        filter: style.backdropFilter || style.getPropertyValue("-webkit-backdrop-filter") || "none",
       };
     });
-    expect(glass.background).toBe("rgba(17, 19, 20, 0.12)");
-    expect(glass.filter).toContain("blur(24px)");
+    expect(surface).toEqual({ background: "rgba(0, 0, 0, 0)", filter: "none" });
+    await expect(top).toHaveCSS("color", rgb(token("--chalk")));
+
+    // Behind the title, away from its words (the top's lower right), against the clip beside the card at that height.
+    await page.locator(".behindcard video").evaluate((video: HTMLVideoElement) => {
+      video.pause();
+    });
+    const box = await boxOf(top);
+    const card = await boxOf(page.locator("main.card"));
+    const strip = { y: box.y + box.height - 40, height: 30 };
+    const behindTitle = await meanLuminance(page, { x: box.x + box.width - 60, width: 40, ...strip });
+    const besideCard = await meanLuminance(page, { x: Math.max(0, card.x - 14), width: 10, ...strip });
+    expect(behindTitle).toBeGreaterThanOrEqual(besideCard * 0.9);
     await showTheOwner(page, testInfo, "the bold paywall card over a clip");
   });
 
@@ -198,6 +212,38 @@ test.describe("the paywall card over the game's clip", () => {
     });
   }
 });
+
+/** The mean relative luminance (0 to 1) of a part of the window, read from a screenshot drawn on a canvas in the page. */
+async function meanLuminance(
+  page: Page,
+  clip: { x: number; y: number; width: number; height: number },
+): Promise<number> {
+  const picture = (await page.screenshot({ clip })).toString("base64");
+  return page.evaluate(async (data) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${data}`;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext("2d");
+    if (context === null) throw new Error("no canvas");
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(0, 0, image.width, image.height).data;
+    const linear = (value: number) => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    };
+    let total = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      total +=
+        0.2126 * linear(pixels[index] ?? 0) +
+        0.7152 * linear(pixels[index + 1] ?? 0) +
+        0.0722 * linear(pixels[index + 2] ?? 0);
+    }
+    return total / (pixels.length / 4);
+  }, picture);
+}
 
 async function buttonInViewOver(page: Page): Promise<void> {
   await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeInViewport({ ratio: 1 });
