@@ -63,7 +63,7 @@ const setState = (s: Partial<State> = {}) => {
   );
 };
 const pr = (n: number, kind: object = OWN): PrItem =>
-  ({ number: n, created_at: "2026-11-21T09:0" + String(n % 10) + ":00Z", ...kind }) as PrItem;
+  ({ number: n, created_at: "2026-11-21T09:" + String(n % 60).padStart(2, "0") + ":00Z", ...kind }) as PrItem;
 const prs = (count: number, kind: object = OWN, from = 1) =>
   Array.from({ length: count }, (_, i) => pr(from + i, kind));
 
