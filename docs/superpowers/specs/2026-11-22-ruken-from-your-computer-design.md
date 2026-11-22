@@ -1,6 +1,6 @@
 # Ruken from your computer: a command line and an MCP for makers
 
-Date: 2026-11-22. Status: **spec, waiting on its plan audit and one owner decision (D2, section 9).** Lane 3 overall: pull request 1 adds a migration and a new way to sign in. The other pull requests are lane 2.
+Date: 2026-11-22. Status: **spec, reworked after plan audit 1 (FAIL, 9 red, `audits/2026-11-22-ruken-from-your-computer-1-plan-audit.md`); waiting on plan audit 2 and the owner's D2 and D3 (section 9).** Lane 3 overall: pull request 1 adds a migration and a new way to sign in. The other pull requests are lane 2.
 
 Lines marked **Owner** are the owner's words. Lines marked **Call** are this spec's choices; the owner can overrule any of them.
 
@@ -32,7 +32,9 @@ The first thing shipped (pull request 1): `npx ruken video floor-fifty upright f
 - **Call: one HTTP API, one program.** The command line and the MCP are one npm package with no dependencies of its own. `npx ruken mcp` runs it as a local MCP server over stdio; every MCP tool is a command line command underneath. **Why local, not a hosted MCP:** a video is up to 30 MB on the maker's disk, and a local program can read it and send it as a plain upload; a hosted MCP would need the agent to pass 30 MB through its tool arguments.
 - **Call: no MCP library.** The MCP's stdio protocol (`initialize`, `tools/list`, `tools/call`) is small enough to write in the package (about 150 lines), so a published package that holds a maker's key pulls in nothing it doesn't need. If the plan audit finds the protocol needs more than that, the plan names `@modelcontextprotocol/sdk` and its exact version, and it goes to the owner as a new dependency before the build uses it.
 - **Call: the API calls the services, never the screens.** Each endpoint is a thin route under `src/routes/api/v1/` that reads the key, then calls the same `gamesServices()` and `pagesServices()` functions the browser's form actions call. A rule that today lives only in a form action (section 5.3) moves into the service, or into one shared helper both call, in the same pull request, so the two can never say different things.
-- **Where the package lives:** `packages/ruken/` in this repo, a pnpm workspace package (`pnpm-workspace.yaml` is new). Its version and its name follow decision D2.
+- **Where the package lives:** `packages/ruken/` in this repo. `pnpm-workspace.yaml` exists today and says "One app, no workspaces"; PR 1 edits it to add `packages: [".", "packages/*"]` and changes its comment. Its version and its name follow decision D2.
+- **Plain JavaScript, no build step (audit 1, R6).** Node refuses to strip types from files under `node_modules`, which is where `npx` puts a package, so the package is written in JavaScript (ES modules, JSDoc types checked by `svelte-check`'s TypeScript through `// @ts-check`). `engines.node` is `>=20`, the oldest Node still supported upstream on 2026-11-22. A test packs it (`pnpm pack`), installs the tarball in a temp folder outside the repo, and runs `npx ruken --help` there (A16).
+- **One file per command group (audit 1, R7).** `packages/ruken/commands/{account,games,github,page}.js`, words in `packages/ruken/words/{account,games,github,page}.js`, the command prefix (`npx ruken`, or the D2 alternative) in one place, `words/prefix.js`, so the help guide, the MCP line and every message change together.
 
 ## 3. Parity: every maker action, and its command
 
@@ -64,7 +66,7 @@ Every action in the browser's maker screens today (`src/routes/make/**`, invento
 | Take a game off Ruken (`take-off`) | `ruken take-off <game>` (asks to type the game's name) | `take_off` (needs `confirm: "<game>"`) | `POST /api/v1/games/<game>/take-off` |
 | Put it back (`putBack`) | `ruken put-back <game>` | `put_back` | `POST /api/v1/games/<game>/put-back` |
 | Delete the files a taken-off game left (`deleteLeft`) | `ruken delete-files <game>` (asks to type the name) | `delete_left_files` (needs `confirm`) | `DELETE /api/v1/games/<game>/files` |
-| Throw a game away (`throwAway`) | `ruken throw-away <game>` (asks to type the name) | `throw_away` (needs `confirm`) | `DELETE /api/v1/games/<game>` |
+| Throw a game away (`throwAway`) | `ruken throw-away <game>` (asks to type the name) | `throw_away` (needs `confirm`; none under D3's recommended option) | `DELETE /api/v1/games/<game>` |
 
 **Call:** the "seen" press on the accepted screen is not carried over. It only closes a screen that the command line never shows.
 
@@ -85,14 +87,14 @@ Every action in the browser's maker screens today (`src/routes/make/**`, invento
 | Its colours (theme room) | `ruken page colours` lists them, `ruken page set colours <number>` | `set_page` | `PATCH /api/v1/page` (`theme`) |
 | Your photo (`answer` with a photo, `removePhoto`) | `ruken page photo <file>`, `ruken page photo --remove` | `set_photo`, `remove_photo` | `PUT /api/v1/page/photo`, `DELETE /api/v1/page/photo` |
 | Links: list, add, change words, change where it goes, hide, move up and down, remove (`/make/page/links/**`) | `ruken links`, `ruken links add "<title>" <url>`, `ruken links set <n> title\|url <value>`, `ruken links hide\|show\|up\|down\|remove <n>` | `list_links`, `add_link`, `change_link`, `remove_link` | `GET`/`POST /api/v1/page/links`, `PATCH`/`DELETE /api/v1/page/links/<id>` |
-| Take your page down (`take-down`) | `ruken page take-down` (asks to type the address) | `take_down_page` (needs `confirm`) | `DELETE /api/v1/page` |
+| Take your page down (`take-down`) | `ruken page take-down` (asks to type the address) | `take_down_page` (needs `confirm`; none under D3's recommended option) | `DELETE /api/v1/page` |
 
 ### 3.5 Not carried over
 
 - **Call:** the account screens (`/me`: membership and its payment portal, change password, delete my account) stay browser only. They are not maker work, and a key that can change a password or delete an account turns a lost laptop into a lost account. The command line says where to go: `ruken account` prints `ruken.io/me`.
 - **Call:** staff commands (`/jobs/*`) are not part of this. They keep their own secret.
 
-**A check that fails by itself (criterion A1):** a test lists every named form action and every `+server.ts` handler under `src/routes/make/` and fails if one is in neither the parity table in `packages/ruken/parity.json` nor its "not carried over" list. A new maker screen added later without a command fails that test.
+**A check that fails by itself (criterion A1):** a test lists every named form action and every `+server.ts` handler under `src/routes/make/` and fails if one is in neither the parity table in `packages/ruken/parity.json` nor its "not carried over" list. A new maker screen added later without a command fails that test. PR 1 writes `parity.json` in full: every row of section 3, each with `"pr": 1|2|3|4`. Each row also has `"built": false` until its PR sets it to `true` on that row only; the test needs a command, endpoint and tool to exist only for built rows, and fails when a row's `pr` is 1 and it is not built. So every PR is green on its own, and PRs 2 and 3 change only their own rows (audit 1, R7).
 
 ## 4. Signing a computer in
 
@@ -100,23 +102,30 @@ Every action in the browser's maker screens today (`src/routes/make/**`, invento
 
 1. In the terminal: `npx ruken sign-in`. It prints, in plain words:
    `Open ruken.io/link and press Yes. Your code is KBTR-WMPQ.` and opens that page in the browser for them, with the code already in it (`ruken.io/link?code=KBTR-WMPQ`).
-2. In the browser, signed in as usual (sign in first if not): one screen, **"Let this computer use your Ruken?"**, the code in big letters, the computer's name, one big **Yes** button and a plain **No** link. The page says: "Only press Yes if you just typed `ruken sign-in` and the code matches."
+2. In the browser, signed in as usual (sign in first if not): one screen, **"Let this computer use your Ruken?"**, the code in big letters, one big **Yes** button and a plain **No** link. Above the button, facts a stranger cannot choose (audit 1, R1): **where it was asked from and when**, from Cloudflare's city and country for the `start` request ("Asked from Lisbon, Portugal, 40 seconds ago"), and the name the computer gives itself, labelled as such ("It calls itself: Dana's MacBook"). The page says: "Only press Yes if you just typed `npx ruken sign-in` yourself."
+   - When the place of the `start` request and the place of this browser differ (city or country, by Cloudflare's own lookup of each), a warning sits above the button in the warning colour: "This was asked from Lisbon, Portugal. You're in Chicago, United States. If you didn't just type `npx ruken sign-in`, press No." Yes stays, since a maker on a VPN or a second network is real; No is then shown as the bigger button.
+   - The code is prefilled from the address (D1); without one, the screen asks for it, and Yes works only on a code within 10 minutes of its `start`.
 3. The terminal says `Signed in as @<handle>. You can close the browser.` and stores the key.
 
 ### 4.2 Your computers (browser)
 
-A new screen, **Your computers**, linked from the account page (`/me`): one row per computer (its name, when it was let in, when it was last used), each with **Rename** and **Remove**. Remove takes effect on the next request that computer makes. With none, it says "No computers can use your Ruken." and how to add one (`npx ruken sign-in`).
+A new screen, **Your computers**, linked from the account page (`/me`): at most 20 computers per maker (a 21st Yes says "You have 20 computers. Remove one first."); one row per computer (its name, when it was let in, when it was last used), each with **Rename** and **Remove**. Remove takes effect on the next request that computer makes. With none, it says "No computers can use your Ruken." and how to add one (`npx ruken sign-in`).
 
 ### 4.3 The key
 
 - A random 32-byte key, written `rk_` plus base32, shown to the terminal once and stored on the server only as its SHA-256. The terminal keeps it in `~/.config/ruken/key` (Windows: `%APPDATA%\ruken\key`) with owner-only permissions; `RUKEN_KEY` in the environment wins over the file, for CI.
-- A sign-in code: 8 letters from an alphabet with no look-alikes, good for 10 minutes and for one Yes. `finish` is polled by the terminal at most every 5 seconds; faster polling gets a "slow down" answer. A code that is wrong 5 times in a row from one address is refused for 10 minutes (the same counting the existing sign-in limits use, `auth-limits-plugin.ts`, or the plan names why it can't).
-- **Call:** a key stops working when the maker removes it, signs out on that computer, changes their password, deletes their account, or has not used it for 90 days. A paused sign-in (`sign-in-pause-plugin.ts`) pauses keys too.
-- **Call:** a key can do the maker actions in section 3 and nothing else. `/api/v1/*` is the only place a key is read; every other route ignores the `Authorization` header as it does today, so a key can never open `/me`, money or membership.
+- A sign-in code: 8 letters from an alphabet with no look-alikes, good for 10 minutes and for one Yes. `start` also returns a random device secret, kept only in the terminal; `finish` needs the code and that secret (stored as `deviceSecretHash`), so knowing the code alone never collects the key (audit 1, N5).
+- **Limits (audit 1, R4), all with the existing `createRateLimiter` (`src/lib/server/rate-limit.ts`, `api:` keys; its rows are kept 24 hours, longer than any window here), so no new table:** `start` at most 10 an hour per address; `finish` at most once every 5 seconds per code (faster gets "slow down"); a typed code that is wrong 5 times from one address refused for 10 minutes; Yes at most 20 an hour per maker.
+- **Call:** a key stops working when the maker removes it, signs out on that computer, changes their password (`changePassword`, `credentials.ts`), resets it by text (the reset in `auth.ts`, which already ends sessions), asks to delete their account (`requestDeletion`, `deletion.ts`: keys are deleted at once, as sessions end), or has not used it for 90 days (audit 1, R2, R3).
+- **A key follows the account as a session does (audit 1, R2).** On every request a key gives a `user` caller only when the account's status is `active`, the same test `handle.ts` makes for a session; a key on a `pending_deletion` account answers 401. Using a key is not a sign-in: it never calls `restoreOnSignIn`, so a key cannot undo a deletion.
+- **Call:** the sign-in pause (`sign-in-pause-plugin.ts`) does **not** touch keys. It is per phone number and started by anyone's wrong guesses, so tying keys to it would let a stranger switch off a maker's computers (audit 1, R3).
+- **Call:** a key can do the maker actions in section 3 and nothing else. `/api/v1/*` is the only place a key is read, and there it is the only thing read: `/api/v1` ignores the session cookie, so a browser tab can never act through it. Every other route ignores the `Authorization` header as it does today, so a key can never open `/me`, money or membership (audit 1, N8).
+- No log line, error report or problem answer holds the `Authorization` header or a key; a test sends a key that fails and searches the captured log for it (audit 1, N6).
+- `lastUsedAt` is written at most once an hour per key, not on every request (audit 1, N4).
 
 ### 4.4 The data (lane 3: migration)
 
-One new table, `ComputerKey`: `id`, `userId` (cascade on account delete), `name` (up to 60 characters), `keyHash` (unique), `createdAt`, `lastUsedAt`, plus `ComputerSignIn` for the 10-minute codes: `code` (unique), `deviceSecretHash`, `name`, `userId` (null until Yes), `expiresAt`, `tries`. Expired codes are deleted by the existing hourly job, or on read. No change to any existing table.
+One new table, `ComputerKey`: `id`, `userId` (cascade on account delete), `name` (up to 60 characters), `keyHash` (unique), `createdAt`, `lastUsedAt`, plus `ComputerSignIn` for the 10-minute codes: `code` (unique), `deviceSecretHash`, `name`, `startedFrom` (Cloudflare's city and country for `start`, as words), `userId` (null until Yes), `answer` (`yes`, `no` or null), `expiresAt`. Wrong tries are counted by the rate limiter, not here. Expired codes are deleted when read and when `start` runs (the 10 oldest expired each time), so `cloudflare/crons.js` is not touched (audit 1, N3). No change to any existing table.
 
 ## 5. Rules that must hold server-side
 
@@ -124,26 +133,37 @@ One new table, `ComputerKey`: `id`, `userId` (cascade on account delete), `name`
 
 - Answers `401 {"problem":"Sign in again: npx ruken sign-in"}` without a working key, and `404` for a game, link or page the key's maker does not own (never `403`: it does not say the thing exists).
 - Calls the same service function the browser's action calls, inside the same rules. Every problem comes back as `{"problem": "<the same words the screen shows>"}` with the same 4xx status family.
-- HTTPS only, as the rest of the site (`https-only.ts`).
-- At most 120 requests a minute per key, and 30 uploads an hour per key; over that, `429` with "Wait a minute and try again."
+- HTTPS only. `/api/v1` answers a plain-HTTP request with `400 {"problem":"Use https://ruken.io."}` and no redirect, since the key has already crossed the wire and a redirect invites it again; `https-only.ts` keeps redirecting every other route. The CLI refuses any Ruken address that is not `https://`, except `http://localhost` for tests (audit 1, R9).
+- At most 120 requests a minute and 30 uploads an hour **per maker**, counted across all their keys (audit 1, R4); over that, `429` with "Wait a minute and try again."
 
 ### 5.2 Uploads
 
-- A video is the raw file as the request body, with its `Content-Type`; refused before the body is read when `Content-Length` is over the clip limit (30 MB, `CLIP_MAX_BYTES`), as the `clip` action does. `clipProblem` then checks type, size and first bytes. The photo upload does the same with `photoProblem`.
+- A video is the raw file as the request body, with its `Content-Type`; refused before the body is read when `Content-Length` is over the clip limit (30 MB, `CLIP_MAX_BYTES`), as the `clip` action does, and with `411 {"problem":"Send the video again."}` when there is no `Content-Length` at all (audit 1, R4). The body is then read once with `arrayBuffer()`, as the browser path does, within the Worker's 128 MB (audit 1, N7). `clipProblem` then checks type, size and first bytes. The photo upload does the same with `photoProblem`.
+- The CLI and the MCP check a file's extension (`.mp4`, `.webm`, `.mov`; for a photo the extensions `photoProblem` takes) and its size before reading it, and never print a file's contents in a message (audit 1, N2).
 - A live game's new video is held for review (`saveHeldClip`), exactly as from the browser; players keep the old one until it is accepted.
 
-### 5.3 Rules that live in form actions today, to move or share (the plan names each one's new home)
+### 5.3 Rules that live in form actions today, and their new homes (audit 1, R5)
 
-- Ownership (`own-game.server.ts`, `own-page.server.ts`).
-- Which questions a game is asked in its state (`askedQuestion`), including that "marks" exists only for an 18+ game (`questionsFor`).
-- `deleteLeft` only for a taken-off game; `newVersion`, `keepOld` only for a live one; `send` versus `sendAgain` by state.
-- The body-size refusal before reading.
-- Anything else the plan session finds by reading every action under `src/routes/make/` at the plan's commit.
+Each moves into the games or pages service (or a helper both the form action and the endpoint call). The form action then calls the same thing, and its existing journeys stay green unchanged.
+
+| Rule, where it is today | New home | PR |
+|---|---|---|
+| Ownership: `own-game.server.ts`, `own-page.server.ts` (404 for anyone else's) | `ownGame(slug, userId)` in the games service (it exists: `service.ts` `ownGame`, by id; a by-slug wrapper added) and `pageOf` in the pages service; one `ownGameOr404` helper in `src/features/games/` both callers use | 1 |
+| A video only for `upright` or `wide`, and only in a state where the game is asked it (`askedQuestion`, `[question]/+page.server.ts`) | `saveClip` refuses a shape the game's state does not ask, with the screen's words | 1 |
+| The body-size refusal before reading (`CLIP_REQUEST_MAX_BYTES`, same file) | one `bodyTooBig(request, max)` helper in `src/lib/server/`, used by the `clip` action, the video endpoint and the photo endpoint; a missing `Content-Length` counts as too big on the API (the form action keeps today's behaviour) | 1 |
+| `keepOld` only for a live game, and which part (`[question]/+page.server.ts:437-447`) | `keepTheOldOne` refuses a game that is not live, and a part that is not `upright_video`, `wide_video` or `age_rating` | 1 |
+| The agreement before send: `hasAgreed` in `check/+page.server.ts:25` and `send` | `sendForReview` refuses with "You need to agree to Ruken's maker agreement first." when the maker has not agreed | 2 |
+| Every question answered before send (`firstUnanswered`, `check/+page.server.ts`) | `sendForReview` refuses with the first open question's words | 2 |
+| `liveSend` (`make/[game]/+page.server.ts`): whether a live game offers a new version, a send again, or nothing | a `liveSendOf(game)` helper in `src/features/games/`, read by the screen and by `send` and `new-version` endpoints | 2 |
+| `isBeingMadeEighteen` (`[question]/+page.server.ts`): marks asked before a past-draft game becomes 18+ | `saveAnswer` refuses an 18+ age on a past-draft game without marks in the same answer, with the screen's words | 2 |
+| `playerCount`, `putBack`, `deleteLeft` (`make/[game]/+page.server.ts`), `take-off`, `throw-away` (`throw-away/+page.server.ts:11`) state checks | the service functions (`setShowsPlayerCount`, `putBack`, `deleteLeftFiles`, `takeOff`, `throwAway`) refuse a state the screen would not offer | 2 |
+| A page's rooms, link edits and take-down (`make/page/**`) | already in the pages service (`savePage`, `saveTheme`, `addLink`, `updateLink`, `moveLinkOf`, `setHidden`, `removeLink`, `savePhoto`, `removePhoto`, `removePage`); PR 3 checks each action for any other route-only rule and adds a row here if it finds one | 3 |
 
 ### 5.4 What an agent may not do alone
 
 - **Call:** an AI agent cannot accept the maker agreement. The MCP has no tool for it; when the agreement is what blocks sending, `send_for_review` answers "You need to agree to Ruken's maker agreement first. Run `npx ruken agree <game>` in your terminal, or open ruken.io/make/<game>/agreement." A person reads and agrees.
-- **Call:** the MCP tools that cannot be undone (take off, delete the files left, throw away, take the page down) need `confirm` set to the game's address word (or the page's address), and the tool description says to ask the person first. The command line asks the person to type it.
+- **Call:** the MCP tools that are hard to undo (take off, delete the files left) need `confirm` set to the game's address word, and the tool description says to ask the person first. The command line asks the person to type it.
+- **Pending D3 (audit 1, N1):** `confirm` is not a person's check, since an agent knows the address word and a prompt hidden in a repository could supply it. Recommended: **throw away** and **take the page down**, which cannot be undone, have no MCP tool; the agent is told the terminal command, as for the agreement. The other option keeps them as tools behind `confirm`.
 - Sending for review never accepts. Review stays staff's (`/jobs/review` and later slice 4).
 
 ## 6. Words (the drunk-grandma test)
@@ -158,80 +178,90 @@ One new table, `ComputerKey`: `id`, `userId` (cascade on account delete), `name`
 Each is observed by a program unless it says otherwise. "The CLI" is `node packages/ruken/bin.js`, run by the Playwright journeys against the test server, so the journeys use it like a person does.
 
 1. **A1 parity:** the parity test in section 3.5 passes, and fails when an action is added under `src/routes/make/` with no entry.
-2. **A2 sign-in:** a journey runs `sign-in`, presses Yes in the browser as the same maker, and `whoami` prints their handle. Pressing No, a code older than 10 minutes, and a code already used each leave the CLI saying so and holding no key. The code entered 5 times wrong is refused.
+2. **A2 sign-in:** a journey runs `sign-in`, presses Yes in the browser as the same maker, and `whoami` prints their handle. Pressing No, a code older than 10 minutes, a code already used, and `finish` with the right code but the wrong device secret each leave the CLI saying so and holding no key. The code entered 5 times wrong is refused. A code started from another place (the test sets Cloudflare's city and country for `start` and for the browser differently) shows the warning above Yes, with No as the bigger button.
 3. **A3 your computers, CRUD:** the journey sees the computer on Your computers (read), renames it (update), removes it (delete), and the CLI's next command then answers "Sign in again". Sign-in is the create.
-4. **A4 keys only reach section 3:** with a valid key in `Authorization`, `/me`, `/me/password`, `/me/delete`, `/join`, the Stripe webhook and every `/jobs/*` answer exactly as they do with no header. A removed key, an expired key (clock moved 91 days), and a key after a password change each get 401 from every `/api/v1` route.
+4. **A4 keys only reach section 3:** with a valid key in `Authorization`, `/me`, `/me/password`, `/me/delete`, `/join`, the Stripe webhook and every `/jobs/*` answer exactly as they do with no header. A removed key, an expired key (clock moved 91 days), a key after a password change, a key after a password reset by text, and a key after Delete my account (the account is `pending_deletion`) each get 401 from every `/api/v1` route, and that 401 does not restore the account. A sign-in pause on the maker's number leaves their key working. `/api/v1` with a session cookie and no key gets 401. A plain-HTTP request to `/api/v1` gets 400 with no `Location`. A key that fails is not in the captured log.
 5. **A5 no one else's things:** maker B's key gets 404 from every `/api/v1/games/<A's game>/*`, `/api/v1/page/links/<A's link>` route, for every method, and A's game is unchanged after.
-6. **A6 games CRUD through the CLI:** a journey makes a game (`new`), answers every question including both videos and the files, agrees, sends it, staff accept it by the existing review command, and the game is then live on the feed and its page in the browser (read). It then sends a new upright video (update), which waits for review while players still see the old one; keeps the old one; takes the game off (it leaves the feed), puts it back, and throws a second game away (delete). Every step's state is read back with `game <game>` and in the browser.
+6. **A6 games CRUD through the CLI (audit 1, R8: every row of 3.2 and 3.3 is a step that reads its effect back with `game <game>` and in the browser):**
+   1. `github` (not connected, prints the connect line); the journey connects GitHub the way the existing journeys do; `github` (connected); `repos`; `branches <repo>`.
+   2. `new`, then `set name`, `set line`, `files` (with branch and folder), `video upright`, `video wide`, `set age 12`, `set websites`.
+   3. `send` before agreeing: refused with the agreement words. `agree` (typing `yes`), then `send`. Staff send the files back by the existing review command; `send` again after `files` is fixed (send again).
+   4. Staff accept; the game is live on the feed and its page (read).
+   5. `player-count <game> on`, then `off`: the count shows, then not, on the game's page.
+   6. `video <game> upright` (update): waits for review, players still see the old one; `keep-old <game> upright`: players' video unchanged, nothing waits. `set age 16` on the live game waits; `keep-old <game> age`: the old rating stays. `files` change on the live game, then `update <game>` (new version): waits for review.
+   7. `take-off` (leaves the feed), `put-back` (returns), `take-off` again, `delete-files` (the files screen says they are gone), and `throw-away` on a second game (delete).
 7. **A7 18+:** a game whose age is set to 18+ through the CLI asks "marks"; sending without marks is refused with the browser's words; once live, a signed-out browser gets the adults-only screen for it, as for a game made in the browser.
-8. **A8 page CRUD through the CLI:** a journey makes the page, sets its name, line, colours and photo, adds two links, renames one, moves it, hides it, removes one, removes the photo, and reads each change back on `ruken.io/<handle>` in the browser; then takes the page down and the address shows the missing page.
+8. **A8 page CRUD through the CLI (audit 1, R8):** a journey makes the page (`page set address`), sets its name and line, lists `page colours` and sets one, sets the photo, adds two links, sets one's title and url, moves it `up` and `down`, `hide`s and `show`s it, removes one, removes the photo, changes the address with `page set address` (the old address shows the missing page, the new one the page), and reads each change back on `ruken.io/<handle>` in the browser; then takes the page down and the address shows the missing page.
 9. **A9 uploads:** a 31 MB file, a `.txt` renamed `.mp4`, and a GIF each get the browser's own refusal words, and nothing is stored (the bucket's key count is unchanged).
-10. **A10 MCP:** a test drives `bin.js mcp` over stdio with `initialize`, `tools/list` and one `tools/call` per tool; each tool's result matches its command's. The tools in 5.4 refuse without `confirm`, and no tool accepts the agreement.
-11. **A11 limits:** the 121st request in a minute and the 31st upload in an hour get 429 with the plain words.
-12. **A12 words:** every message the CLI prints is in `packages/ruken/words.ts`, and a test fails on any of the words "slug", "clip", "submit", "token", "API", "endpoint", "auth" in it. A fresh reviewer reads `npx ruken` and `npx ruken help` output and the two new screens against the drunk-grandma test (a person's check, recorded in the audit).
+10. **A10 MCP:** a test drives `bin.js mcp` over stdio with `initialize`, `tools/list` and one `tools/call` per tool, each against state prepared so the call succeeds, and reads its effect back through the API (audit 1, R8); each tool's result matches its command's. The tools in 5.4 refuse without `confirm`; no tool accepts the agreement; under D3's recommended option, no tool throws a game away or takes a page down.
+11. **A11 limits:** the 121st request in a minute and the 31st upload in an hour get 429 with the plain words, also when spread over two keys of one maker; the 11th `start` in an hour from one address gets 429; a video `PUT` with no `Content-Length` gets 411 and nothing is stored; the 21st computer is refused.
+12. **A12 words:** every message the CLI prints is in `packages/ruken/words/`, and a test fails on any of the words "slug", "clip", "submit", "token", "API", "endpoint", "auth" in it. A fresh reviewer reads `npx ruken` and `npx ruken help` output and the two new screens against the drunk-grandma test (a person's check, recorded in the audit).
 13. **A13 screens:** the Yes screen and Your computers pass the visual check (`visual-check`) on the three device profiles, keyboard alone included.
 14. **A14 Floor Fifty (the owner's ask, by the owner):** after pull request 1 is deployed, the owner sends the two new Floor Fifty videos with two commands, and `npx ruken game floor-fifty` says both wait for review. Run by the owner, since it uses the owner's account and files.
-15. `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:pg`, `pnpm test:browser` and `pnpm build` exit 0 on each pull request's head, and CI is green.
+15. **A15 checks:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:pg`, `pnpm test:browser` and `pnpm build` exit 0 on each pull request's head, and CI is green.
+16. **A16 the package runs from npm's place (audit 1, R6):** the pack test in section 2 passes: `pnpm pack`, install in a temp folder outside the repo, `npx ruken --help` exits 0 and prints the help.
 
 ## 8. Plan: four pull requests
 
-Each row is a unit. Units in one pull request run in this order on its branch. Pull requests 2 and 3 share no files and run side by side once pull request 1 is on `main`; pull request 4 waits on 2 and 3 because it wraps their commands.
+Each row is a unit. Units in one pull request run in this order on its branch. Pull requests 2 and 3 share no files (PR 1 lays out one file per command group and a `parity.json` that already holds every row, so each fills only its own) and run side by side once pull request 1 is on `main`; pull request 4 waits on 2 and 3 because it wraps their commands.
 
 | PR | Unit | Lane | Waits on | Owns | Output | Check |
 |---|---|---|---|---|---|---|
 | 1 | Keys and sign-in | 3 | spec merged | `prisma/schema/`, `prisma/migrations/`, `src/features/accounts/computer-keys.ts`, `src/routes/link/`, `src/routes/me/computers/`, `src/routes/api/v1/sign-in/`, `src/routes/api/v1/me/` | sign-in and Your computers | A2, A3, A4, A11 |
-| 1 | Videos first | 3 | the unit above | `src/routes/api/v1/games/` (list, show, videos, waiting), `src/features/games/` (shared ownership), `packages/ruken/` (sign-in, whoami, sign-out, games, game, video, keep-old), `pnpm-workspace.yaml` | the owner can send Floor Fifty's videos | A5 (games read), A9, A14 |
-| 2 | Games, the rest | 2 | PR 1 | the rest of `src/routes/api/v1/games/`, `src/routes/api/v1/github/`, `src/routes/api/v1/agreement/`, their commands | every row of 3.2 and 3.3 | A1 (games part), A5, A6, A7 |
-| 3 | Your page | 2 | PR 1 | `src/routes/api/v1/page/`, `src/features/pages/` (shared ownership), their commands | every row of 3.4 | A1 (page part), A5, A8 |
-| 4 | MCP and the guide | 2 | PRs 2, 3 | `packages/ruken/mcp.ts`, `src/routes/help/use-ruken-from-your-computer/`, the agent prompt line | `npx ruken mcp`, the help guide | A1 full, A10, A12, A13 |
+| 1 | Videos first | 3 | the unit above | `src/routes/api/v1/games/` (list, show, videos, waiting), `src/features/games/` (the PR 1 rows of 5.3), `src/lib/server/body-size.ts`, `packages/ruken/` (the layout, `parity.json` in full, `commands/account.js`, the PR 1 part of `commands/games.js` and `words/`), `pnpm-workspace.yaml` | the owner can send Floor Fifty's videos | A5 (games read), A9, A14, A16 |
+| 2 | Games, the rest | 2 | PR 1 | the rest of `src/routes/api/v1/games/`, `src/routes/api/v1/github/`, `src/routes/api/v1/agreement/`, the PR 2 rows of 5.3, `commands/games.js`, `commands/github.js`, `words/games.js`, `words/github.js` | every row of 3.2 and 3.3 | A1 (rows up to 2), A5, A6, A7 |
+| 3 | Your page | 2 | PR 1 | `src/routes/api/v1/page/`, `src/features/pages/` (PR 3 rows of 5.3), `commands/page.js`, `words/page.js` | every row of 3.4 | A1 (rows up to 3), A5, A8 |
+| 4 | MCP and the guide | 2 | PRs 2, 3 | `packages/ruken/mcp.js`, `src/routes/help/use-ruken-from-your-computer/`, the agent prompt line | `npx ruken mcp`, the help guide | A1 full, A10, A12, A13 |
 
 The implementer ticks each step below on its branch and the coordinator copies the percentage into `progress.md`.
 
 ### Pull request 1
 - [ ] Live-state file `docs/superpowers/live/<branch>.md` written.
 - [ ] Failing journeys first: A2, A3, A4, A9 and the CLI part of A14 (against the test server) written and red.
-- [ ] `ComputerKey` and `ComputerSignIn` in the schema; migration generated by `prisma migrate dev`, never written by hand.
-- [ ] `computer-keys.ts`: make a code, say Yes or No, finish, read a key (hash, expiry, pause, last used), remove, rename; key removal on password change hooked where the password change happens.
-- [ ] `/link` Yes screen and `/me/computers` (list, rename, remove), each wait showing it; link from `/me`.
-- [ ] `/api/v1/sign-in/*`, `/api/v1/me`, `DELETE /api/v1/me/key`; the key read only under `/api/v1`.
-- [ ] Ownership shared between `own-game.server.ts` and the API (5.3).
+- [ ] `ComputerKey` and `ComputerSignIn` (with `startedFrom`) in the schema; migration generated by `prisma migrate dev`, never written by hand.
+- [ ] `computer-keys.ts`: make a code (with device secret and `startedFrom`), say Yes or No, finish (code plus device secret), read a key (hash, 90-day expiry, account `active`, `lastUsedAt` at most hourly), remove, rename, the 20-computer limit; keys removed in `changePassword`, in the reset by text, and in `requestDeletion`.
+- [ ] `/link` Yes screen (where and when it was asked, the name it calls itself, the different-place warning) and `/me/computers` (list, rename, remove), each wait showing it; link from `/me`.
+- [ ] `/api/v1/sign-in/*`, `/api/v1/me`, `DELETE /api/v1/me/key`; the key read only under `/api/v1`, the cookie ignored there, plain HTTP answered 400 there, no key in any log.
+- [ ] The PR 1 rows of 5.3 moved, the form actions calling the same code, their journeys unchanged and green.
 - [ ] `GET /api/v1/games`, `GET /api/v1/games/<game>`, `PUT .../videos/<shape>`, `DELETE .../waiting/<part>`.
-- [ ] Per-key limits (A11).
-- [ ] `packages/ruken/`: `bin.js`, `words.ts`, the commands in the "Owns" cell; `pnpm-workspace.yaml`.
+- [ ] Limits per maker and on `start` with `createRateLimiter`; 411 for no `Content-Length` (A11).
+- [ ] `packages/ruken/` in JavaScript: `bin.js`, the per-group layout, `words/prefix.js`, `parity.json` with every row, the PR 1 commands; the HTTPS-only address check; the extension and size check before reading a file; `pnpm-workspace.yaml` edited; the pack test (A16).
 - [ ] All A-checks for this PR green locally; visual check of the two screens; live-state file deleted; handed to the implementation audit by commit.
 
 ### Pull request 2
 - [ ] Live-state file; failing journeys A6, A7 and A5 for every new route.
-- [ ] Each rule in 5.3 moved into the games service or a shared helper, the form actions calling the same thing (their existing journeys stay green unchanged).
-- [ ] Endpoints and commands for every row of 3.2 and 3.3; the parity test (A1) with the games part.
+- [ ] The PR 2 rows of 5.3 moved into the games service or their helper, the form actions calling the same thing (their existing journeys stay green unchanged).
+- [ ] Endpoints and commands for every row of 3.2 and 3.3, their `parity.json` rows set built.
 - [ ] Green; live-state file deleted; handed to the audit.
 
 ### Pull request 3
 - [ ] Live-state file; failing journeys A8 and A5 for the page routes.
-- [ ] Endpoints and commands for every row of 3.4; A1 page part.
+- [ ] PR 3 rows of 5.3 checked; endpoints and commands for every row of 3.4, their `parity.json` rows set built.
 - [ ] Green; live-state file deleted; handed to the audit.
 
 ### Pull request 4
 - [ ] Live-state file; failing A10 and A12.
-- [ ] `mcp.ts` over stdio; tools mapped to commands; the 5.4 refusals.
+- [ ] `mcp.js` over stdio; tools mapped to commands; the 5.4 refusals and D3's answer.
 - [ ] The help guide and its line on `/help`; the agent-prompt line.
 - [ ] Words review and visual check (A12, A13); green; live-state file deleted; handed to the audit.
 
 ### After pull request 1 merges (outside the repo, needs the owner)
-- The owner deploys (`pnpm run deploy`, which runs the migration) and, per D2, the package is published. Until it is published, the owner runs it from a checkout: `pnpm --filter ruken exec ruken video floor-fifty upright <file>`.
+- The owner deploys (`pnpm run deploy`, which runs the migration).
+- Publishing (audit 1, R9). Under D2 option A, the first publishes are by hand from the owner's computer, which needs no secret: `npm login` once, then `pnpm --filter ruken publish --access public`. Publishing from CI (npm's trusted publishing from GitHub Actions, so no npm token is saved) would change `.github/workflows/`, a rule path the rule-mix hook keeps apart, so it would be its own lane 3 pull request, and it is not part of this spec. Until the first publish, the owner runs it from a checkout: `node packages/ruken/bin.js video floor-fifty upright <file>`.
 
 ## 9. Decisions for the owner
 
 - **D1: How a computer signs in. Decided. Owner, 2026-11-22 13:55 UTC, on a card: "Press Yes on Ruken".** It was recommended: **press Yes on Ruken** (4.1): nothing to copy, and a key never passes through the maker's clipboard or chat with an agent. Other option: a **"Make a key"** button on Your computers that shows a key once to paste into the terminal (simpler to build by about a screen, but makers copy secrets into config files and agent chats).
-- **D2: The package name and who publishes it.** Recommended: **`ruken` on npm** (free on 2026-11-22: `registry.npmjs.org/ruken` answers 404), published from the owner's npm account; makers type `npx ruken`. That needs the owner's npm account and, for CI publishing, an npm token saved as a GitHub secret (new access). Other option: no npm; ruken.io serves the package file and makers type `npx https://ruken.io/ruken.tgz` (no new account, longer to type, and every command a maker copies carries the long address).
+- **D2: The package name and who publishes it.** Recommended: **`ruken` on npm** (free on 2026-11-22: `registry.npmjs.org/ruken` answers 404), published by hand from the owner's npm account (section 8); makers type `npx ruken`. That needs the owner's npm account (new access) with two-step sign-in on. Other option: no npm; ruken.io serves the package file and makers type `npx https://ruken.io/ruken.tgz` (no new account, longer to type). With that option the name `ruken` stays free on npm for anyone to take, and makers or agents who type `npx ruken` from habit would run a stranger's code beside their key, so the owner should still reserve the name, which needs the npm account anyway (audit 1).
+- **D3: Can an AI agent throw a game away or take a page down?** Recommended: **no**; the MCP has no tool for those two, and tells the agent the terminal command for the person to run. Other option: they are tools behind `confirm` (section 5.4).
 
 ## 10. Boundaries
 
-- New: one npm package with no dependencies (pending D2), two tables, two screens, one help guide. No new paid service, no new Cloudflare product, no spend.
+- New: one npm package with no dependencies (pending D2), two tables, two screens, one help guide. No CI or workflow change. No new paid service, no new Cloudflare product, no spend.
 - Not in this: hosted MCP, OAuth for agents, staff commands, account screens, anything from slices 3 to 5 that is not built yet. When a new maker screen ships later, A1 makes it bring its command.
 - Expected duration (estimate): pull request 1 about half a day including its audits; all four about two days.
 
-## 11. Open questions for the plan audit
+## 11. Answered by plan audit 1
 
-- Whether `auth-limits-plugin.ts`'s counting can be reused for per-key limits, or a small counter table is needed (it would join `ComputerKey` in the same migration).
-- Whether the Worker can stream a 30 MB `PUT` body into the bucket without holding it twice (the browser path holds it once via `arrayBuffer()`; that is the floor).
+- Per-key and per-maker limits reuse `createRateLimiter` (`src/lib/server/rate-limit.ts`); no counter table (R4).
+- A 30 MB `PUT` is read once with `arrayBuffer()` after the length check, as the browser path is; no streaming (N7).
