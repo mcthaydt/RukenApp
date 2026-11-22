@@ -55,8 +55,8 @@ test("a stranger reads what Ruken is, in order, and goes to the feed", async ({
   expect(order.every((at) => at >= 0)).toBe(true);
   expect(order).toEqual([...order].sort((a, b) => a - b));
 
-  // The top game's clip is the picture of the product.
-  await expect(page.locator(".phone video")).toHaveCount(1);
+  // The live games' clips are the first screen, as a wall of the feed's own clips.
+  await expect(page.locator(".hero .wall video")).toHaveCount(6);
   // The price is the paywall card's, from the rules.
   const monthly = dollars(PREMIUM_PRICES_CENTS.monthly);
   const annual = dollars(PREMIUM_PRICES_CENTS.annual);

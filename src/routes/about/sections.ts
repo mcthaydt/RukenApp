@@ -33,7 +33,7 @@ export const SIGN_IN: Link = { words: "Sign in", href: "/sign-in?next=%2Fabout" 
 
 /** One line of news above the headline: the newest thing worth a look. */
 export const NEWS: Link = {
-  words: "New: how to get your game on Ruken, step by step",
+  words: "New: put your game on Ruken, step by step",
   href: "/help/get-your-game-on-ruken",
 };
 

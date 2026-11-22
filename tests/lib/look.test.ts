@@ -379,7 +379,6 @@ describe("screens wear the look and nothing of their own", () => {
     "about",
     "ways",
     "news",
-    "phone",
     "pair",
     "forwhom",
     "links",
@@ -388,9 +387,11 @@ describe("screens wear the look and nothing of their own", () => {
     "steps",
     "sitefoot",
     "band",
+    "wall",
+    "column",
+    "words",
+    "say",
     "still",
-    "reel",
-    "reel-track",
     // Words only a screen reader meets: the layout's "Sending…" (src/lib/busy-forms.ts).
     "hidden-words",
   ];

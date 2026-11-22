@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { loads } from "../../lib/loads.ts";
-  import { quietVideo } from "../../lib/quiet-video.ts";
+  import { playOnScreen } from "../../lib/on-screen-video.ts";
   import {
     AUDIENCES,
     CLOSING,
@@ -35,57 +35,45 @@
     {/if}
   </nav>
 
-  <p class="news"><a href={NEWS.href}>{NEWS.words}</a></p>
-
   <section class="hero" aria-labelledby="about-title">
-    <div>
-      <h1 id="about-title"><span>{HERO.heading[0]}</span> <span>{HERO.heading[1]}</span></h1>
-      {#each HERO.lines as line (line)}
-        <p>{line}</p>
-      {/each}
-      <p><a class="button" href={HERO.button.href}>{HERO.button.words}</a></p>
-    </div>
-    {#if data.clip !== null}
-      <!-- The top game in the feed, as the picture of what Ruken is. It is the feed's own clip, so it is never a mock-up. -->
-      <figure class="phone">
-        <video
-          use:loads
-          src={data.clip.upright}
-          preload="metadata"
-          muted
-          loop
-          playsinline
-          aria-label={`A clip of ${data.clip.name}`}
-          use:quietVideo
-        ></video>
-        <figcaption><a class="more" href={`/g/${data.clip.slug}`}>{data.clip.name}</a></figcaption>
-      </figure>
-    {/if}
-  </section>
-
-  {#if data.reel.length > 0}
-    <!-- Live games running past, as the feed shows them. It only decorates: the clips are not links and a reader skips
-         it. It is shown twice in a row so the loop has no seam, and it stands still for a person who asked for less
-         motion. -->
-    <div class="reel" aria-hidden="true">
-      <div class="reel-track">
-        {#each [0, 1] as copy (copy)}
-          {#each data.reel as clip, index (`${String(copy)}-${String(index)}`)}
-            <video
-              use:loads
-              src={`${clip.upright}#t=${String(clip.at)}`}
-              preload="metadata"
-              muted
-              loop
-              playsinline
-              tabindex="-1"
-              use:quietVideo
-            ></video>
-          {/each}
+    {#if data.wall.length > 0}
+      <!-- The first screen: the feed's own clips as a wall, drifting slowly, so the first thing anyone sees is games
+           playing. It only decorates (a reader skips it); each clip plays only while it is on screen, and the wall stands
+           still for a person who asked for less motion. -->
+      <div class="wall" aria-hidden="true">
+        {#each data.wall as column, columnAt (columnAt)}
+          <div class="column">
+            {#each column as clip, rowAt (rowAt)}
+              <video
+                use:loads
+                src={`${clip.upright}#t=${String(clip.at)}`}
+                preload="none"
+                muted
+                loop
+                playsinline
+                tabindex="-1"
+                use:playOnScreen
+              ></video>
+            {/each}
+          </div>
         {/each}
       </div>
+    {/if}
+    <div class="words">
+      <!-- Each sentence is a line of its own, set in a solid box so it reads over the clips. -->
+      <h1 id="about-title">
+        <span><span>{HERO.heading[0]}</span></span>
+        <span><span>{HERO.heading[1]}</span></span>
+      </h1>
+      <div class="say">
+        {#each HERO.lines as line (line)}
+          <p>{line}</p>
+        {/each}
+      </div>
+      <p><a class="button" href={HERO.button.href}>{HERO.button.words}</a></p>
+      <p class="news"><a href={NEWS.href}>{NEWS.words}</a></p>
     </div>
-  {/if}
+  </section>
 
   <div class="pair">
     {#each AUDIENCES as audience (audience.id)}
@@ -154,18 +142,18 @@
         {/each}
       </div>
       {#if still !== null}
-        <!-- A live game's clip, playing where a video may play by itself: what the section is about, never a mock-up. -->
+        <!-- A live game's clip, playing while it is on screen: what the section is about, never a mock-up. -->
         <figure class="still">
           <video
             use:loads
             src={`${still.wide}#t=${String(still.at)}`}
-            preload="metadata"
+            preload="none"
             muted
             loop
             playsinline
             tabindex="-1"
             aria-label={`A clip of ${still.name}`}
-            use:quietVideo
+            use:playOnScreen
           ></video>
         </figure>
       {/if}

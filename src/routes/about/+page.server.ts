@@ -7,26 +7,30 @@ import type { PageServerLoad } from "./$types";
 // thing that changes by itself (the clip at the top of the feed, as the picture of the product) and the price, from the
 // rules (plans.ts), never typed on the page.
 //
-// Under the headline a reel of live games' clips runs past, the feed's own, at least six of them (a short feed repeats,
-// each repeat starting at another moment). The short sections lower down each play a live game's clip too: the next
-// games in the feed's order, one each, starting again from the top when the feed has fewer. With no live game the page
-// has no clips at all.
-/** The reel shows at least this many clips, repeating a short feed, and at most this many. */
-const REEL_LEAST = 6;
-const REEL_MOST = 10;
+// The first screen is a wall of live games' clips: three columns of two, the feed's own clips in its order along the
+// top row first, so every live game shows before any repeats. A short feed fills the rest with the same games, each
+// repeat starting at another moment. The short sections lower down each play a live game's clip too: the next games in
+// the feed's order, one each, starting again from the top when the feed has fewer. With no live game the page has no
+// clips at all.
+/** The wall's columns, and the clips in each. */
+const WALL_COLUMNS = 3;
+const WALL_ROWS = 2;
 
 export const load: PageServerLoad = async ({ locals }) => {
   const clips = await feedServices().service.feed();
   const [top] = clips;
   return {
-    clip: top === undefined ? null : { slug: top.slug, name: top.name, upright: top.upright },
-    reel:
+    wall:
       top === undefined
         ? []
-        : Array.from({ length: Math.max(REEL_LEAST, Math.min(clips.length, REEL_MOST)) }, (_, index) => {
-            const game = clips[index % clips.length] ?? top;
-            return { name: game.name, upright: game.upright, at: Math.floor(index / clips.length) * 3 };
-          }),
+        : Array.from({ length: WALL_COLUMNS }, (_, column) =>
+            Array.from({ length: WALL_ROWS }, (_, row) => {
+              // Along the top row first, so a feed of three shows all three before any repeats.
+              const slot = row * WALL_COLUMNS + column;
+              const game = clips[slot % clips.length] ?? top;
+              return { upright: game.upright, at: 2 + Math.floor(slot / clips.length) * 4 };
+            }),
+          ),
     stills: MORE.map((_, index) => {
       const game = clips.length === 0 ? undefined : clips[(index + 1) % clips.length];
       // Each starts at a different moment (3, 7 and 11 seconds in), so one game in the feed still gives three pictures.
