@@ -54,10 +54,15 @@
     return { value: sent.value, start, end, direction: direction ?? "none" };
   }
 
+  // Put back once the box has come alive. A one-line box is put back a moment later than this, in a task Svelte queues
+  // as the page comes alive (`remove_input_defaults`: it takes the `value` the server wrote off the box and sets the
+  // words again, which moves the cursor to the end), so the selection goes back in the task after that one.
   onMount(() => {
-    if (selectedBefore === undefined || answerBox === undefined || answerBox.value !== selectedBefore.value)
-      return;
-    answerBox.setSelectionRange(selectedBefore.start, selectedBefore.end, selectedBefore.direction);
+    queueMicrotask(() => {
+      if (selectedBefore === undefined || answerBox === undefined || answerBox.value !== selectedBefore.value)
+        return;
+      answerBox.setSelectionRange(selectedBefore.start, selectedBefore.end, selectedBefore.direction);
+    });
   });
 
   // What the box holds: what came from the server, until it is typed over. Bound, never set, because a set value is
