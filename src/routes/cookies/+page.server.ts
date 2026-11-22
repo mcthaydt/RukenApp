@@ -21,11 +21,24 @@ const FOR = [
   "account",
 ] as const satisfies readonly GatedAction[];
 
-export const load: PageServerLoad = ({ cookies, url }) => {
+/** The page a person came from, when it is on this site: the screen whose button sent them here. */
+function cameFrom(referer: string | null, url: URL): string | null {
+  try {
+    const from = new URL(referer ?? "");
+    return from.origin === url.origin ? from.pathname : null;
+  } catch {
+    return null;
+  }
+}
+
+export const load: PageServerLoad = ({ cookies, request, url }) => {
   const asked = url.searchParams.get("for");
   const day = consentDay(cookies);
+  const next = safeNextPath(url.searchParams.get("next"));
   return {
-    next: safeNextPath(url.searchParams.get("next")),
+    next,
+    // The game's page or the maker's page a button on it sent the person here from, so a yes still thanks that maker.
+    from: cameFrom(request.headers.get("referer"), url) ?? next,
     reason: FOR.find((one) => one === asked) ?? null,
     // A yes from before the day was written into the cookie still says yes, with no date.
     day: day === null ? null : longDay(day),

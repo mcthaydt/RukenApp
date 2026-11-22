@@ -44,5 +44,5 @@
   {#if form?.done}
     <p role="status" class="panel">Done. Ruken keeps nothing on this browser now.</p>
   {/if}
-  <Notice reason={data.reason} next={data.next} from={data.next} onNotNow={() => undefined} />
+  <Notice reason={data.reason} next={data.next} from={data.from} onNotNow={() => undefined} />
 {/if}

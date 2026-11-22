@@ -14,7 +14,7 @@ import { addGame } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
 import { codeTo } from "./support/texts.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
-import { consented } from "./support/consent.ts";
+import { clearCookiesKeepingConsent, consented } from "./support/consent.ts";
 
 // An 18+ game is only for people Ruken knows are 18 or over. Everyone else (signed out, under 18, or with no age on
 // their account) meets the same refusal on every address that shows or plays it: its page, its play screen, the price
@@ -179,7 +179,7 @@ test("an adult who signs in from the refusal lands back on the 18+ game, on its 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(adultsGame.name);
 
   // Signed out again, the play screen's refusal sends them back to the play screen, and the game starts.
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   await page.goto(`/g/${adultsGame.slug}/play`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   await signInFromTheRefusal(page, adult);
@@ -187,7 +187,7 @@ test("an adult who signs in from the refusal lands back on the 18+ game, on its 
   await expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");
 
   // An address on another site is never followed: signing in from it lands on Ruken's front page.
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   await page.goto(`/sign-in?next=${encodeURIComponent("https://evil.example/")}`, {
     waitUntil: "domcontentloaded",
   });

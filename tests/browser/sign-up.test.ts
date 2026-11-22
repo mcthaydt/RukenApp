@@ -14,7 +14,7 @@ import {
 import { forgetCodeLimits, userIdOf } from "./support/database.ts";
 import { forgetAddressCounters, forgetRateLimits } from "./support/rate-limits.ts";
 import { codesKept, codeTo, countCodesTo, failNextTextTo } from "./support/texts.ts";
-import { consented } from "./support/consent.ts";
+import { clearCookiesKeepingConsent, consented } from "./support/consent.ts";
 
 test.beforeEach(forgetRateLimits);
 
@@ -54,7 +54,7 @@ test("a number typed with brackets and dashes is the same account as +1 and spac
   await expect(page).toHaveURL("/");
   await pageHasSettled(page);
   // Found again at sign-in whichever way it is typed.
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   await page.goto("/sign-in");
   await page
     .getByLabel("Phone number")
@@ -285,7 +285,7 @@ test("a second browser cannot choose the password, even when it has the code", a
   await page.getByLabel("The code we texted you").fill(await codeTo(number));
   await page.getByRole("button", { name: "Join Ruken" }).click();
   await expect(page).toHaveURL("/");
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   await page.goto("/sign-in");
   await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill("a stranger's long password");

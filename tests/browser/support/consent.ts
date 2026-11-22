@@ -3,7 +3,7 @@
 // tests/browser/cookie-consent.test.ts, opens a browser that has not (`test.use({ storageState: NOT_CONSENTED })`).
 // Playwright's own `page` and `request` get this from playwright.config.ts; a browser a journey opens itself with
 // `browser.newContext(...)` takes `...consented` (they do not inherit it).
-import type { BrowserContextOptions } from "@playwright/test";
+import type { BrowserContext, BrowserContextOptions } from "@playwright/test";
 
 type State = NonNullable<Exclude<BrowserContextOptions["storageState"], string>>;
 
@@ -28,3 +28,9 @@ export const CONSENTED_STATE: State = {
 export const NOT_CONSENTED: State = { cookies: [], origins: [] };
 
 export const consented = { storageState: CONSENTED_STATE } as const;
+
+/** What a journey means by "this browser is signed out": every cookie gone, the yes to cookies kept. */
+export async function clearCookiesKeepingConsent(context: BrowserContext): Promise<void> {
+  await context.clearCookies();
+  await context.addCookies(CONSENTED_STATE.cookies);
+}

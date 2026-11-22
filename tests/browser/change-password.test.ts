@@ -9,7 +9,7 @@ import {
 } from "./support/account.ts";
 import { makeItAnOldAccount } from "./support/database.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
-import { consented } from "./support/consent.ts";
+import { clearCookiesKeepingConsent, consented } from "./support/consent.ts";
 
 test.beforeEach(forgetRateLimits);
 
@@ -60,7 +60,7 @@ test("a person changes their password: other devices are signed out", async ({ p
   await other.goto("/me");
   await expect(other).toHaveURL(/\/sign-in/);
 
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   expect(await signInWorks(page, number, JOURNEY_PASSWORD)).toBe(false);
   expect(await signInWorks(page, number, NEW_PASSWORD)).toBe(true);
   await other.context().close();
@@ -76,7 +76,7 @@ test("a wrong current password is refused beside the field, and nothing changes"
   await expect(page.getByText(WRONG_PASSWORD_WORDS)).toBeVisible();
 
   // Nothing changed: the old password still signs in.
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   expect(await signInWorks(page, number, JOURNEY_PASSWORD)).toBe(true);
 });
 
