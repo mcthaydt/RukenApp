@@ -1,7 +1,8 @@
 <!--
-  The paywall card: a bold card in two tones. Its top is a band of Dusky Green with a big title and what a member gets;
-  under it, on paper, the two plans as big rows, the one blue button and the small print (what it costs and what
-  happens next). Signed out the button leads to sign-up; signed in it is "Continue to payment". "Not now" is the way
+  The paywall card: a bold card in two halves. Its top is a band of Dusky Green with a big title and what a member gets
+  (frosted glass when the game the person tapped plays behind it, so the game shows through); the other half, on
+  paper, holds the two plans as big rows, the one blue button and the small print (what it costs and what happens
+  next). On a computer the two halves sit side by side. Signed out the button leads to sign-up; signed in it is "Continue to payment". "Not now" is the way
   back: a close mark in the band's corner, as an app's sheet has, with its words for a screen reader (the owner,
   2026-11-22: an icon on its own wherever people understand it, and no underlined words as buttons). A member who opens
   the card is told so and sent on. Someone whose card failed more than seven days ago is told so, with one "Update card"
@@ -70,17 +71,21 @@
     <div class="cardtop">
       <h1>You're already a member.</h1>
     </div>
-    <p><a class="button" href={data.next}>Keep playing</a></p>
+    <div class="cardbody">
+      <p><a class="button" href={data.next}>Keep playing</a></p>
+    </div>
   {:else if data.card.kind === "paused"}
     <div class="cardtop">
       {@render close()}
       <h1>Your membership is paused</h1>
     </div>
-    <p>{data.card.line}</p>
-    <!-- The same Stripe page /me opens, where the member changes their card. -->
-    <form method="POST" action="/me?/portal">
-      <button>Update card</button>
-    </form>
+    <div class="cardbody">
+      <p>{data.card.line}</p>
+      <!-- The same Stripe page /me opens, where the member changes their card. -->
+      <form method="POST" action="/me?/portal">
+        <button>Update card</button>
+      </form>
+    </div>
   {:else}
     <div class="cardtop">
       {@render close()}
@@ -92,51 +97,53 @@
         <li>On your phone or computer</li>
       </ul>
     </div>
-    <form method="POST" action="?/join">
-      <input type="hidden" name="next" value={data.next} />
-      <!-- Two big rows, each a real radio button (hidden from sight, with Ruken's own mark beside it) in a label the width of the card, so the whole row is the target. The
-           price is in the display face, the size of a heading, so it is the first thing read. -->
-      <div role="radiogroup" aria-label="Plan" class="plans">
-        <label class="plan">
-          <input type="radio" name="plan" value="monthly" bind:group={chosen.plan} />
-          <span class="mark" aria-hidden="true"></span>
-          <span class="price">{data.prices.monthly}</span> a month
-        </label>
-        <label class="plan">
-          <input
-            type="radio"
-            name="plan"
-            value="annual"
-            bind:group={chosen.plan}
-            aria-describedby={data.prices.annualSaves === null ? undefined : "yearly-saves"}
-          />
-          <span class="mark" aria-hidden="true"></span>
-          <span class="price">{data.prices.annual}</span> a year
-          {#if data.prices.annualSaves !== null}
-            <!-- Read once, as the yearly row's description, so the row's name stays its price. -->
-            <span class="saves" id="yearly-saves" aria-hidden="true">Save {data.prices.annualSaves}</span>
-          {/if}
-        </label>
+    <div class="cardbody">
+      <form method="POST" action="?/join">
+        <input type="hidden" name="next" value={data.next} />
+        <!-- Two big rows, each a real radio button (hidden from sight, with Ruken's own mark beside it) in a label the width of the card, so the whole row is the target. The
+             price is in the display face, the size of a heading, so it is the first thing read. -->
+        <div role="radiogroup" aria-label="Plan" class="plans">
+          <label class="plan">
+            <input type="radio" name="plan" value="monthly" bind:group={chosen.plan} />
+            <span class="mark" aria-hidden="true"></span>
+            <span class="price">{data.prices.monthly}</span> a month
+          </label>
+          <label class="plan">
+            <input
+              type="radio"
+              name="plan"
+              value="annual"
+              bind:group={chosen.plan}
+              aria-describedby={data.prices.annualSaves === null ? undefined : "yearly-saves"}
+            />
+            <span class="mark" aria-hidden="true"></span>
+            <span class="price">{data.prices.annual}</span> a year
+            {#if data.prices.annualSaves !== null}
+              <!-- Read once, as the yearly row's description, so the row's name stays its price. -->
+              <span class="saves" id="yearly-saves" aria-hidden="true">Save {data.prices.annualSaves}</span>
+            {/if}
+          </label>
+        </div>
+        {#if form?.error}
+          <p class="problem" role="alert">{form.error}</p>
+        {/if}
+        {#if data.signedIn}
+          <button>Continue to payment</button>
+        {:else}
+          <button>Continue</button>
+        {/if}
+      </form>
+      <div class="small">
+        <p>Tax is added where it applies.</p>
+        <p>Renews until you cancel. You can cancel any time from your account.</p>
+        {#if data.signedIn}
+          <p>You pay on the next page, then come straight back.</p>
+        {:else}
+          <!-- Signed out, the next page is sign-up, so the steps are said in the order they happen. -->
+          <p>First you make an account, then you pay. Then you come straight back.</p>
+        {/if}
       </div>
-      {#if form?.error}
-        <p class="problem" role="alert">{form.error}</p>
-      {/if}
-      {#if data.signedIn}
-        <button>Continue to payment</button>
-      {:else}
-        <button>Continue</button>
-      {/if}
-    </form>
-    <div class="small">
-      <p>Tax is added where it applies.</p>
-      <p>Renews until you cancel. You can cancel any time from your account.</p>
-      {#if data.signedIn}
-        <p>You pay on the next page, then come straight back.</p>
-      {:else}
-        <!-- Signed out, the next page is sign-up, so the steps are said in the order they happen. -->
-        <p>First you make an account, then you pay. Then you come straight back.</p>
-      {/if}
+      <!-- What is Ruken? (the landing page's link goes here once /about is on main) -->
     </div>
-    <!-- What is Ruken? (the landing page's link goes here once /about is on main) -->
   {/if}
 </main>

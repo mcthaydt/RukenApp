@@ -1,5 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
+import { payAsNewMember, signUp } from "./support/account.ts";
+import { failTheirCard } from "./support/database.ts";
+import { addGame } from "./support/game.ts";
 import { boxOf, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -100,11 +103,105 @@ test.describe("the paywall card", () => {
     await expect(page.locator("label", { has: annual })).toHaveCSS("outline-style", "solid");
   });
 
-  test("the one blue button can be seen without scrolling", async ({ page }) => {
-    await page.goto("/join");
-    await expect(page.getByRole("button", { name: "Continue" })).toBeInViewport({ ratio: 1 });
+  /** The card's one blue button is whole in the window, its words on one line. */
+  async function buttonInView(page: Page, name: string): Promise<void> {
+    const button = page.getByRole("button", { name, exact: true });
+    await expect(button).toBeInViewport({ ratio: 1 });
+    const lineHeight = await button.evaluate((node) => parseFloat(getComputedStyle(node).lineHeight));
+    const words = await button.evaluate((node) => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      return range.getBoundingClientRect().height;
+    });
+    expect(words).toBeLessThan(lineHeight * 1.5);
+  }
+
+  // Design round 1 (R1): at 320 by 640 the button was cut off by the window's foot.
+  for (const size of [
+    { width: 320, height: 640 },
+    { width: 1280, height: 720 },
+  ]) {
+    test(`the one blue button can be seen without scrolling at ${String(size.width)} by ${String(size.height)}, signed out and signed in`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(size);
+      await page.goto("/join");
+      await buttonInView(page, "Continue");
+      await signUp(page);
+      await page.goto("/join");
+      await buttonInView(page, "Continue to payment");
+    });
+  }
+
+  test("no word of a title is broken across two lines, on the smallest phones", async ({ page }) => {
+    const { number } = await payAsNewMember(page);
+    await failTheirCard(number, 8);
+    for (const width of [320, 375]) {
+      await page.setViewportSize({ width, height: 640 });
+      await page.goto("/join?next=/me");
+      const title = page.getByRole("heading", { level: 1, name: "Your membership is paused" });
+      await expect(title).toBeVisible();
+      // Each word, measured on its own, sits on one line.
+      const broken = await title.evaluate((node) => {
+        const text = node.firstChild;
+        if (text === null) return ["no words"];
+        const words: string[] = [];
+        const range = document.createRange();
+        let start = 0;
+        for (const word of node.textContent.split(" ")) {
+          range.setStart(text, start);
+          range.setEnd(text, start + word.length);
+          if (range.getClientRects().length > 1) words.push(word);
+          start += word.length + 1;
+        }
+        return words;
+      });
+      expect(broken).toEqual([]);
+    }
   });
 });
+
+test.describe("the paywall card over the game's clip", () => {
+  let slug: string;
+  test.beforeAll(async ({ browser, request }) => {
+    test.setTimeout(120_000);
+    slug = (await addGame(browser, request)).slug;
+  });
+
+  test("its top is frosted glass, so the game shows through behind the title", async ({ page }, testInfo) => {
+    await page.goto(`/join?next=${encodeURIComponent(`/g/${slug}/play`)}`);
+    await expect(page.locator(".behindcard video")).toHaveCount(1);
+    const top = page.locator(".cardtop");
+    const glass = await top.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return {
+        background: style.backgroundColor,
+        filter: style.backdropFilter || style.getPropertyValue("-webkit-backdrop-filter"),
+      };
+    });
+    expect(glass.background).toBe("rgba(17, 19, 20, 0.12)");
+    expect(glass.filter).toContain("blur(24px)");
+    await showTheOwner(page, testInfo, "the bold paywall card over a clip");
+  });
+
+  for (const size of [
+    { width: 320, height: 640 },
+    { width: 1280, height: 720 },
+  ]) {
+    test(`the one blue button can be seen without scrolling at ${String(size.width)} by ${String(size.height)}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(size);
+      await page.goto(`/join?next=${encodeURIComponent(`/g/${slug}/play`)}`);
+      await expect(page.locator(".behindcard video")).toHaveCount(1);
+      await buttonInViewOver(page);
+    });
+  }
+});
+
+async function buttonInViewOver(page: Page): Promise<void> {
+  await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeInViewport({ ratio: 1 });
+}
 
 test.describe("help for makers", () => {
   test("is bold: a huge title on the felt and three numbered tiles", async ({ page }, testInfo) => {

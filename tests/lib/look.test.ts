@@ -379,9 +379,10 @@ describe("screens wear the look and nothing of their own", () => {
     "side",
     // Words only a screen reader meets: the layout's "Sending…" (src/lib/busy-forms.ts).
     "hidden-words",
-    // The bold paywall card (src/routes/join): its Dusky Green top, what a member gets, the close mark, the plans.
+    // The bold paywall card (src/routes/join): its Dusky Green top and paper half, what a member gets, the close mark, the plans.
     "bold",
     "cardtop",
+    "cardbody",
     "gets",
     "close",
     "plans",

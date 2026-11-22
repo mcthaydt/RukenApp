@@ -2306,14 +2306,17 @@ a.sheet.fix {
   backdrop-filter: var(--dim-filter);
 }
 
-/* The bold card: the paywall (src/routes/join). The owner, 2026-11-22, on the plain card: "boring". It is the same paper
-   card in the same place, in two tones: a band of Dusky Green across its top holds a big chalk title, what a member
-   gets and the close mark; the paper under it holds the plans, the one blue button and the small print. The band
-   reaches the card's edges, so the card's padding is a token the band can undo. */
+/* The bold card: the paywall (src/routes/join). The owner, 2026-11-22, on the plain card: "boring". It is one card in
+   the same place, in two halves: a top of Dusky Green holds a big chalk title, what a member gets and the close mark;
+   the paper half holds the plans, the one blue button and the small print. When the game the person tapped plays
+   behind the card, the top is frosted glass, so the game moves behind the title. On a computer the halves sit side by
+   side and the card takes the width of the window's middle, so it is not a narrow sheet on empty felt. */
 .card.bold {
   --card-pad: 1.5rem;
 
-  padding: var(--card-pad);
+  display: grid;
+  padding: 0;
+  background: none;
 }
 
 @media (min-width: 48rem) {
@@ -2322,21 +2325,79 @@ a.sheet.fix {
   }
 }
 
+/* The space between the halves is their own padding, not the card's one-rem rhythm. */
+.card.bold > * + * {
+  margin-top: 0;
+}
+
 .card.bold .cardtop {
-  position: relative;
-  margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) 0;
   padding: var(--card-pad);
-  padding-bottom: calc(var(--card-pad) + 0.25rem);
   border-radius: var(--radius-card) var(--radius-card) 0 0;
   background: var(--felt-raised);
   color: var(--chalk);
 }
 
-/* The title is the size of a section heading and more: the first thing anyone sees, two or three words a line. It keeps
-   clear of the close mark in the corner. */
+.card.bold .cardbody {
+  padding: var(--card-pad);
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+  background: var(--paper);
+}
+
+.card.bold .cardbody > * + * {
+  margin-top: 1rem;
+}
+
+/* Over the game's clip the top is the glass every see-through surface is (the owner, 2026-11-22), and the card sits as
+   close under the wordmark as it does on its own. */
+.behindcard ~ main.card.bold .cardtop {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+}
+
+header ~ .behindcard + main.card.bold {
+  margin-top: 1rem;
+}
+
+@media (min-width: 48rem) {
+  header ~ .behindcard + main.card.bold {
+    margin-top: 1.5rem;
+  }
+}
+
+@media (min-width: 60rem) {
+  main.card.bold,
+  header:has(~ main.card.bold) {
+    width: min(100% - 4rem, 64rem);
+  }
+
+  .card.bold {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .card.bold .cardtop {
+    border-radius: var(--radius-card) 0 0 var(--radius-card);
+  }
+
+  .card.bold .cardbody {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 0 var(--radius-card) var(--radius-card) 0;
+  }
+}
+
+/* The title is the size of a section heading and more: the first thing anyone sees. Whole words only: a card's long
+   addresses may wrap anywhere, a title never does. On the smallest phone it is small enough for "membership". */
 .card.bold h1 {
-  padding-right: 3.5rem;
-  font: 400 clamp(2.75rem, 11vw, 4.5rem) / 0.95 var(--font-display);
+  font: 400 clamp(2.25rem, 12vw, 4.5rem) / 0.95 var(--font-display);
+  overflow-wrap: normal;
+}
+
+@media (min-width: 60rem) {
+  .card.bold h1 {
+    font-size: clamp(3.5rem, 6vw, 5rem);
+  }
 }
 
 /* What a member gets: short chalk lines at the buttons' weight, each after a tick drawn in Glaucous Green. */
@@ -2351,9 +2412,9 @@ a.sheet.fix {
 
 .card.bold .gets li {
   display: flex;
-  margin: 0;
   align-items: center;
   gap: 0.75rem;
+  margin: 0;
 }
 
 /* The tick: two edges of a small box, turned, so no picture and no font is needed. */
@@ -2368,17 +2429,16 @@ a.sheet.fix {
   transform: rotate(45deg);
 }
 
-/* Not now, as the close mark: a square the size of a button in the band's top corner, a tone darker than the band. */
+/* Not now, as the close mark: a square the size of a button in the top's corner, a tone darker than the top. It
+   floats, so only the title's first line makes room for it and the lines under it use the whole width. */
 .card.bold .close {
-  position: absolute;
-  top: calc(var(--card-pad) - 0.5rem);
-  right: calc(var(--card-pad) - 0.5rem);
+  float: right;
   display: flex;
   align-items: center;
   justify-content: center;
   width: var(--size-target);
   height: var(--size-target);
-  margin: 0;
+  margin: -0.5rem -0.5rem 0.5rem 0.75rem;
   border-radius: var(--radius-button);
   background: var(--felt);
   color: var(--chalk);
@@ -2399,17 +2459,13 @@ a.sheet.fix {
   stroke-linejoin: round;
 }
 
-/* On the Dusky Green band the ring is chalk, as it is on the felt. */
+/* On the Dusky Green top the ring is chalk, as it is on the felt. */
 .card.bold .cardtop :focus-visible {
   outline-color: var(--chalk);
 }
 
-.card.bold .cardtop + * {
-  margin-top: 1.75rem;
-}
-
 /* The two plans: big rows, a gap apart, the price in the display face. The chosen row turns ink with chalk words, so it
-   is seen at a glance and without colour. The circle is Ruken's own, drawn on the real radio button. */
+   is seen at a glance and without colour. */
 .card.bold .plans {
   display: grid;
   gap: 1rem;
@@ -2502,11 +2558,20 @@ a.sheet.fix {
   font-size: 0.875rem;
 }
 
-/* The one blue button spans the card at every size and stands a little taller: it is the card's only action. */
-.card.bold form > button {
+/* The one blue button, a form's or a link's, spans the card at every size and stands a little taller: it is the
+   card's only action. On the smallest phone its words are a little smaller, so "Continue to payment" is one line. */
+.card.bold form > button,
+.card.bold p > a.button:only-child {
   width: 100%;
   min-height: 3.5rem;
   font-size: 1.25rem;
+}
+
+@media (max-width: 359px) {
+  .card.bold form > button,
+  .card.bold p > a.button:only-child {
+    font-size: 1.125rem;
+  }
 }
 
 .card.bold .small p {
@@ -2519,12 +2584,45 @@ a.sheet.fix {
   margin-top: 0;
 }
 
+/* A short window (a small phone, a laptop with its bars) packs the card tighter, so the blue button is in view without
+   scrolling. */
+@media (max-height: 740px) {
+  .card.bold .gets {
+    gap: 0.25rem;
+    margin-top: 1rem;
+  }
+
+  .card.bold .plans {
+    gap: 0.75rem;
+  }
+
+  .card.bold .plan {
+    min-height: 3.75rem;
+    padding-block: 0.5rem;
+  }
+
+  .card.bold .cardbody > * + * {
+    margin-top: 0.75rem;
+  }
+
+  .card.bold form > button {
+    margin-top: 1rem;
+  }
+}
+
 /* Help for makers (src/routes/help): no sheet. A huge chalk title on the felt and three numbered tiles, one tone each,
    wider than the reading column so the three sit side by side on a computer. The wordmark above keeps to the same
    width, so it still starts where the page starts. */
 main.helpdesk,
 header:has(~ main.helpdesk) {
   width: min(100% - 2rem, 72rem);
+}
+
+@media (min-width: 48rem) {
+  main.helpdesk,
+  header:has(~ main.helpdesk) {
+    width: min(100% - 4rem, 72rem);
+  }
 }
 
 .helpdesk .back {
@@ -2565,7 +2663,7 @@ header:has(~ main.helpdesk) {
   list-style: none;
 }
 
-@media (min-width: 60rem) {
+@media (min-width: 48rem) {
   .helpdesk ol {
     grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem;
@@ -2598,7 +2696,7 @@ header:has(~ main.helpdesk) {
   transform: scale(var(--press-scale));
 }
 
-@media (min-width: 60rem) {
+@media (min-width: 48rem) {
   .helpdesk .guide {
     min-height: 19rem;
     padding: 2rem;
@@ -2627,7 +2725,7 @@ header:has(~ main.helpdesk) {
   text-wrap: balance;
 }
 
-@media (min-width: 60rem) {
+@media (min-width: 48rem) {
   .helpdesk .guide h2 {
     margin-top: auto;
     padding-top: 2rem;
@@ -2667,7 +2765,7 @@ header:has(~ main.helpdesk) {
   right: 1.5rem;
 }
 
-@media (min-width: 60rem) {
+@media (min-width: 48rem) {
   .helpdesk .arrow {
     top: 2rem;
     right: 2rem;
