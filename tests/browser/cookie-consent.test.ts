@@ -34,7 +34,7 @@ async function whatIsKept(page: Page, context: BrowserContext) {
     // The page's own sessionStorage is a stand-in until a yes; a blank frame of the same origin shows the real one.
     const realSessionKeys = () => {
       const frame = document.createElement("iframe");
-      document.body.append(frame);
+      (document.documentElement as unknown as { appendChild(node: unknown): void }).appendChild(frame);
       const keys = Object.keys(frame.contentWindow?.sessionStorage ?? {});
       frame.remove();
       return keys;

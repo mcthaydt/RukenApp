@@ -23,8 +23,10 @@ const OPEN: readonly string[] = [
  * - /webhooks/stripe: Stripe, signed.
  * - /jobs/*: the cron jobs and the owner's own calls, signed with a secret.
  * - /healthz: writes nothing.
+ * - /api/v1/*: the `ruken` command on a person's own computer, which has no browser to say yes in; its keys are the
+ *   person's own asking, and the privacy page says what is kept.
  */
-const MACHINE: readonly string[] = ["/webhooks/stripe", "/healthz", "/jobs"];
+const MACHINE: readonly string[] = ["/webhooks/stripe", "/healthz", "/jobs", "/api/v1"];
 
 /**
  * Gated: shows the notice or refuses without a yes. A path matches itself and everything under it. A route in none of
