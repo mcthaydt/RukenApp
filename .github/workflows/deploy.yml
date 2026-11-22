@@ -39,10 +39,12 @@ jobs:
     # to the one step that needs it, so install scripts and build plugins never see it.
     environment: production
     steps:
-      # The scripts come from main's tip, so the target step can run before the commit to ship is known.
+      # The target step has to run before the commit to ship is known, so it runs from the commit this workflow
+      # file came from (github.sha), in its own folder; the commit to ship is checked out at the root after it.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
+          path: tip
           sparse-checkout: .github/scripts
           persist-credentials: false
 
@@ -52,7 +54,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: .github/scripts/deploy-target.sh
+        run: tip/.github/scripts/deploy-target.sh
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.target.outputs.deploy == 'true'
