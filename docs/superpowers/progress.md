@@ -158,4 +158,11 @@ Each failed once and passed on its one rerun. Root causes and fixes are in pull 
 
 ### Lessons
 
-- 2026-11-21: a spec session redid a hook-refused edit with the Edit tool. That is routing around the hook. Trigger: any hook refusal, even one that looks wrong. Action: stop and report; the refusal goes on the hook follow-ups.
+From the slice 2 retrospective (`docs/superpowers/audits/2026-11-22-slice-2-retrospective.md`, L1 and L5 to L9). Each names its trigger, what to look for and the failure behind it.
+
+- L1. Trigger: merging a pull request when another has merged since its last full run. Look for: its last full run included the current `main`, and its body's "Commits:" line names that `main`. Failure: #276 and #277 merged seven minutes apart, each tested without the other, and `main` went red (#281). Prune once branch protection requires up-to-date branches.
+- L5. Trigger: a browser journey that opens an address or follows a link straight after another page. Look for: it waits for the page to settle first (`pageHasSettled`). Failure: `pay.test.ts:41`, `adults-only.test.ts:233` and `edit-page.test.ts:80` flaked on an interrupted navigation. Prune once journeys open addresses through one settling helper.
+- L6. Trigger: a design round or visual check on a screen that moves (a drag, a swipe, a panel that opens or turns). Look for: the move is checked part way through, in pictures taken during it or a short recording, not only at rest. Failure: the Menu tab pointed the old way mid-drag and the menu opened on the wrong side; three design rounds of still pictures passed it and the owner found it (#265).
+- L7. Trigger: a change to a rule's wording (CLAUDE.md, `.claude/skills/`, a spec, `progress.md`). Look for: the brief names the old wording as a search, and its check is that the search finds it nowhere outside History. Failure: old wording left in other files was five of the eight red verdicts on the hooks and apps kit work.
+- L8. Trigger: handing a planned unit's branch to its audit. Look for: `git diff --name-only origin/main...HEAD` lists only the files in the unit's row. Failure: unit A failed two audits for files outside its row (G6).
+- L9. Trigger: starting any unit of the next slice. Look for: the slice before it has closed, with its retrospective's pull request open or its "nothing to learn" report. Failure: slice 3's plan and four units started while slice 2's walk and design rounds were open, and the owner parked slice 3.
