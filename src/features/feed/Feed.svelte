@@ -310,7 +310,9 @@
                 <span class="makername">{clip.maker.name}</span>
               </a>
             {/if}
-            <a class="gamelink" href={`/g/${clip.slug}`}>
+            <!-- A swipe can start on the name too, so it never loads the game's page (and who brought this person)
+                 ahead of a press. -->
+            <a class="gamelink" data-sveltekit-preload-data="off" href={`/g/${clip.slug}`}>
               <h2>{clip.name}</h2>
               <p>{clip.oneLine}</p>
             </a>

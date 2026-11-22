@@ -194,7 +194,7 @@ test("pressing the clip opens the game's page", async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/g/${slug ?? "?"}$`));
 });
 
-test("a swipe or a pointer resting on a clip asks the server for nothing; only the press that opens the game does", async ({
+test("a swipe or a pointer resting on a clip or its name asks the server for nothing; only the press that opens the game does", async ({
   page,
   context,
 }) => {
@@ -218,6 +218,14 @@ test("a swipe or a pointer resting on a clip asks the server for nothing; only t
       link.dispatchEvent(new Event("touchend", { bubbles: true }));
       link.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     });
+  // The same on the game's name on the band, where a swipe can start too.
+  const name = current(page).locator("a.gamelink");
+  await name.hover();
+  await name.evaluate((link) => {
+    link.dispatchEvent(new Event("touchstart", { bubbles: true }));
+    link.dispatchEvent(new Event("touchend", { bubbles: true }));
+    link.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  });
   await page.keyboard.press("ArrowDown");
   await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
   const second = (await current(page).getAttribute("data-slug")) ?? "?";
