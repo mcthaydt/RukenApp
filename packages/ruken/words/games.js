@@ -92,6 +92,8 @@ export const games = {
   /** @param {string} problem @param {string} game */
   sendAgainInstead: (problem, game) => `${problem} Send what you have again with: ${PREFIX} send ${game}`,
   /** @param {string} problem @param {string} game */
+  sendNewestInstead: (problem, game) => `${problem} Send its newest files with: ${PREFIX} update ${game}`,
+  /** @param {string} problem @param {string} game */
   agreeFirst: (problem, game) => `${problem} Read it and agree with: ${PREFIX} agree ${game}`,
   /** @param {string} problem @param {string} game @param {string} question */
   openQuestion: (problem, game, question) => {

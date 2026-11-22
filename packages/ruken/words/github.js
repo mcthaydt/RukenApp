@@ -10,7 +10,7 @@ export const github = {
   waiting: "Waiting for you to finish on GitHub...",
   /** @param {number} repos */
   nowConnected: (repos) =>
-    `Connected. Ruken can see ${String(repos)} on GitHub. See them with: ${PREFIX} repos`,
+    `Connected. Ruken can see ${repos === 1 ? "1 game folder" : `${String(repos)} game folders`} on GitHub. See them with: ${PREFIX} repos`,
   /** @param {string} address */
   alreadyConnected: (address) =>
     `GitHub is already connected. To choose other game folders, open ${address}?choose=1`,

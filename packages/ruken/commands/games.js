@@ -5,7 +5,6 @@ import { Told } from "../lib/told.js";
 import { agreement } from "../words/agreement.js";
 import { games as words } from "../words/games.js";
 import { general } from "../words/general.js";
-import { PREFIX } from "../words/prefix.js";
 
 /** @typedef {import("../lib/types.js").Ctx} Ctx */
 
@@ -227,7 +226,7 @@ async function send([name], ctx) {
   const problem = typeof body?.problem === "string" ? body.problem : general.strangeAnswer;
   if (body?.agreement === true) throw new Told(words.agreeFirst(problem, decodeURIComponent(game)));
   if (body?.next === "update") {
-    throw new Told(`${problem} Send its newest files with: ${PREFIX} update ${decodeURIComponent(game)}`);
+    throw new Told(words.sendNewestInstead(problem, decodeURIComponent(game)));
   }
   if (typeof body?.question === "string") {
     throw new Told(words.openQuestion(problem, decodeURIComponent(game), body.question));
