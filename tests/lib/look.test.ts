@@ -376,6 +376,18 @@ describe("screens wear the look and nothing of their own", () => {
     "menupanel",
     "agreement",
     "side",
+    // The landing page (/about): its parts, from the ways in at the top to the links at the foot.
+    "about",
+    "ways",
+    "news",
+    "phone",
+    "pair",
+    "forwhom",
+    "links",
+    "plain",
+    "perks",
+    "steps",
+    "sitefoot",
     // Words only a screen reader meets: the layout's "Sending…" (src/lib/busy-forms.ts).
     "hidden-words",
   ];

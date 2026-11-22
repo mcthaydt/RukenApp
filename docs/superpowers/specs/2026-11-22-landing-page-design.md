@@ -105,13 +105,13 @@ CRUD: the page makes nothing a person can save, so it adds no create, update or 
 ## Plan (ticked as it goes)
 
 - [x] 1. Research Lyft's structure and YC pages; write this brief.
-- [ ] 2. Failing journey `tests/browser/about.test.ts` (criteria 1 to 6, 11).
-- [ ] 3. `src/routes/about/sections.ts`, `+page.server.ts`, `+page.svelte`.
-- [ ] 4. Styles in `look.css`.
-- [ ] 5. Links from `/join`, `/sign-in`, `/me`, `/help`.
-- [ ] 6. `this-repo` rule.
+- [x] 2. Failing journey `tests/browser/about.test.ts` (criteria 1 to 6, 11).
+- [x] 3. `src/routes/about/sections.ts`, `+page.server.ts`, `+page.svelte`.
+- [x] 4. Styles in `look.css`.
+- [x] 5. Links from `/join`, `/sign-in`, `/me`, `/help`.
+- [x] 6. `this-repo` rule.
 - [ ] 7. Lint, typecheck, unit tests, the journeys reached; run it like a person (`verify`).
 - [ ] 8. Screenshots in one artifact (`visual-check` step 1); fix what it finds.
 - [ ] 9. Delete the live-state file; open the pull request; fresh lane 2 review.
 
-Progress: 1 of 9 (11%).
+Progress: 6 of 9 (67%).

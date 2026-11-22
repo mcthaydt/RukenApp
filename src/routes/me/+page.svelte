@@ -43,5 +43,6 @@
   {:else}
     <p class="apart">Make games? <a href="/make">Add yours to Ruken.</a></p>
   {/if}
+  <p><a href="/about">What is Ruken?</a></p>
   <p class="note"><a href="/me/delete">Delete my account</a></p>
 </main>

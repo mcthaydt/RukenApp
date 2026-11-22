@@ -103,5 +103,6 @@
       {/if}
     </form>
     <p><a href={data.notNow}>Not now</a></p>
+    <p><a href="/about">What is Ruken?</a></p>
   {/if}
 </main>

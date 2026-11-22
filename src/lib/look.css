@@ -3068,6 +3068,167 @@ main.playing {
   }
 }
 
+/* The landing page (/about): what Ruken is, for players and makers (src/routes/about/). It is wider than a card
+   screen, so a computer can lay the two audiences side by side. Sections on the felt are plain words; the two
+   audiences and the two closing blocks are paper cards. There is no see-through surface on it. */
+main.about {
+  width: min(100% - 2rem, 72rem);
+  margin-bottom: 4rem;
+}
+
+/* The wordmark above it lines up with the wider page, not with a card's column. */
+header:has(+ main.about) {
+  width: min(100% - 2rem, 72rem);
+}
+
+.about .ways {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.5rem;
+}
+
+.about .news {
+  margin-top: 1.5rem;
+  color: var(--sage);
+}
+
+.about h2 {
+  margin: 0;
+  font: var(--text-card-title);
+  text-wrap: balance;
+}
+
+.about .forwhom {
+  margin: 0 0 0.5rem;
+  color: var(--sage);
+  font: var(--text-button);
+}
+
+.about .card .forwhom {
+  color: var(--ink-soft);
+}
+
+.about ul,
+.about ol {
+  margin: 1rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.about li + li {
+  margin-top: 0.5rem;
+}
+
+.about .hero {
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+.about .hero h1 {
+  text-wrap: balance;
+}
+
+/* The top game's clip in a phone's shape, so it reads as "this is what you swipe". */
+.about .phone {
+  justify-self: center;
+  width: min(100%, 18rem);
+  margin: 0;
+}
+
+.about .phone video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  border-radius: var(--radius-card);
+  background: var(--felt-deep);
+}
+
+.about .phone figcaption {
+  text-align: center;
+}
+
+.about .pair {
+  display: grid;
+  gap: 1rem;
+  margin-top: 3rem;
+}
+
+.about .pair .card {
+  margin: 0;
+}
+
+.about .links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.about .plain {
+  max-width: var(--width-read);
+  margin-top: 3rem;
+}
+
+/* The membership's four points, each a small panel on the felt. */
+.about .perks {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.about .perks li {
+  margin: 0;
+  padding: 1.25rem;
+  border-radius: var(--radius-card);
+  background: var(--felt-deep);
+  font: var(--text-statement);
+}
+
+.about .steps li > strong,
+.about .steps li > span {
+  display: block;
+}
+
+.about .sitefoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem 4rem;
+  margin-top: 4rem;
+  padding-top: 2rem;
+}
+
+.about .sitefoot h2 {
+  font: var(--text-button);
+}
+
+.about .sitefoot ul {
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 48rem) {
+  .about .hero {
+    grid-template-columns: 3fr 2fr;
+  }
+
+  .about .pair {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .about .perks {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-width: none;
+  }
+
+  .about .plain:has(.perks) {
+    max-width: none;
+  }
+}
+
 /* Every wait shows it. A move between pages runs a Blue line across the top of the window and shows a turning
    spinner under it, with no words (src/lib/page-loading.svelte); a button whose form is out shows the spinner after
    its words and cannot be pressed again (src/lib/busy-forms.ts); a picture or a video is a box that slowly brightens

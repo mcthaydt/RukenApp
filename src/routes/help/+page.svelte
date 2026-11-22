@@ -16,4 +16,5 @@
       <li><a href="/help/record-screen?from=%2Fhelp">Record your screen</a></li>
     </ul>
   </nav>
+  <p><a href="/about">What is Ruken?</a></p>
 </main>
