@@ -60,7 +60,7 @@ What the repeated reds had in common:
 
 - **Old wording left behind when a rule changed.** Hooks audits 3 and 4 ("Lane 3 merge lines still say the owner approves", "The owner-questions bullet still says merges go without the owner"); apps kit plan audits 1, 2 and 4 (stale sections, live specs still pointing at `history.md`). Five of the eight red verdicts on rule work.
 - **Files changed outside the unit's row.** Unit A, audits 1 and 4 (G6 twice).
-- **Main moved under a branch.** #209's merge audits 1 and 2 (journeys red after `main` moved); #281, red `main` after #276 (20:00) and #277 (20:07) merged seven minutes apart, each tested against a `main` without the other.
+- **Main moved under a branch.** #209's merge audits 1 and 2 (journeys red after `main` moved); #281, red `main` after #276 (20:00) and #277 (20:07) merged seven minutes apart, each tested against a `main` without the other: the by-hand merge queue in `release` was skipped.
 
 ### Escaped defects
 
@@ -79,7 +79,7 @@ Each lesson is turned into a check where one can catch it. The rest go under Les
 
 | # | Lesson | Check that can catch it | Where |
 |---|---|---|---|
-| L1 | A merge needs a full run that included the current `main` | Branch protection on `main` set to require branches to be up to date (`strict`). Today it is off (`progress.md`, Setup) | Owner command in this pull request's body; a lesson until it is on |
+| L1 | The session that merges runs the queue by hand: merge current `main` in, rerun the checks, one pull request at a time (`release`, Lanes and merging) | None new: `release` keeps branch protection from requiring up-to-date branches, and the body's "Commits:" line (L3) records the integration and `main` commits the queue tested | Lesson |
 | L2 | A live-state file is kept, not only deleted | The `liveState` hook refuses ready when the branch's history never held `docs/superpowers/live/<branch>.md` | Its own hooks thread (lane 3) |
 | L3 | A lane 2 or 3 body records its three commits | The `prBody` hook refuses a lane 2 or 3 body with no "Commits:" line | The same hooks thread |
 | L4 | The reviewer's audit file is on the branch it reviewed | A review's PASS line counts only when its audit file is in the branch's diff under `docs/superpowers/audits/` | The same hooks thread |
