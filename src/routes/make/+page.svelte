@@ -47,6 +47,6 @@
        guides. One note, so the links have a line's room above them. -->
   <p class="note">
     <a href="/make/page">Your page</a> · <a href="/legal/maker-agreement">Maker agreement</a> ·
-    <a href="/help">Help</a>
+    <a href="/help">Help for makers</a>
   </p>
 </main>

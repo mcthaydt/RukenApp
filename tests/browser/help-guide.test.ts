@@ -142,7 +142,7 @@ test("Your games always links to help", async ({ page }) => {
   await signUp(page);
   await page.goto("/make");
 
-  await page.getByRole("link", { name: "Help", exact: true }).click();
+  await page.getByRole("link", { name: "Help for makers" }).click();
 
   await expect(page).toHaveURL("/help");
 });
