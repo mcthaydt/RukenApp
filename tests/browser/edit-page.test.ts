@@ -3,6 +3,7 @@ import { pageHasSettled, signUp, signUpInItsOwnContext, signInAs } from "./suppo
 import { givePage, makeDeletionDue } from "./support/database.ts";
 import { addDraft } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
+import { holdNextScreen } from "./support/hold.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { rgb } from "../support/look-tokens.ts";
 import { THEMES } from "../../src/features/pages/themes.ts";
@@ -414,16 +415,13 @@ test("a game named like one of the maker's screens gets an address of its own", 
   await expect(page.getByLabel(/about, in one line\?$/)).toBeVisible();
 });
 
-test("a colour tapped before the screen's scripts arrive is still the one picked, and is saved", async ({
+test("a colour tapped before the screen has come alive is still the one picked, and is saved", async ({
   page,
 }) => {
   const maker = await signUp(page);
   const { handle } = await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
-  // A slow connection: the words and the tiles are on the screen, the scripts that make it live are still coming.
-  await page.route(/_app\/immutable\/.*\.js/, async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    await route.continue();
-  });
+  // A slow connection: the words and the tiles are on the screen, and it has not come alive yet.
+  const screen = await holdNextScreen(page);
   await page.goto("/make/page/colours", { waitUntil: "commit" });
   await page.waitForSelector("label.swatch input", { state: "attached" });
   const picked = () =>
@@ -434,9 +432,10 @@ test("a colour tapped before the screen's scripts arrive is still the one picked
   const tapped = 2;
   await page.locator("label.swatch").nth(tapped).click({ noWaitAfter: true });
   expect((await picked())[tapped]).toBe(true);
-  // The scripts arrive and make the screen live: the tap must not be undone.
+  // The screen comes alive: the tap must not be undone.
+  await screen.release();
   // The screen is live once SvelteKit has started in the browser: its announcer is on the page.
-  await expect(page.locator("#svelte-announcer")).toBeAttached({ timeout: 30_000 });
+  await expect(page.locator("#svelte-announcer")).toBeAttached();
   const after = await picked();
   expect(after[tapped]).toBe(true);
   expect(after[own]).toBe(false);
@@ -448,44 +447,6 @@ test("a colour tapped before the screen's scripts arrive is still the one picked
   expect(chosen).toBeDefined();
   await expect(page.locator("main")).toHaveCSS("background-color", rgb(chosen?.ground ?? ""));
 });
-
-/**
- * Holds the next screen back from coming alive, so a journey can act on it first, for as long as it needs. The screen's
- * own start script waits for `release`: the page is passed on with that script told to wait inside the page, so nothing
- * depends on which script requests the browser lets a route see. Holding the script requests did not hold in Safari's
- * engine: after the first page, its script requests never reached the route (run 45041123880), and the screen came
- * alive unheld. `release` fails if the screen it was given was not held.
- */
-async function holdNextScreen(page: Page): Promise<{ release: () => Promise<void> }> {
-  const waitHere = ".then(async (kit) => {";
-  let held = false;
-  await page.route(
-    (address) => !held && !address.pathname.startsWith("/_app/"),
-    async (route) => {
-      if (held || !route.request().isNavigationRequest()) {
-        await route.fallback();
-        return;
-      }
-      const response = await route.fetch();
-      const html = await response.text();
-      expect(html, "the screen has a start script to hold").toContain(waitHere);
-      held = true;
-      await route.fulfill({
-        response,
-        body: html.replace(waitHere, `${waitHere} await new Promise((go) => { window.__letItStart = go; });`),
-      });
-    },
-  );
-  return {
-    async release() {
-      await page.waitForFunction(() => "__letItStart" in window, undefined, { timeout: 15_000 });
-      await page.evaluate(() => {
-        (window as unknown as { __letItStart: () => void }).__letItStart();
-      });
-      await page.unrouteAll({ behavior: "wait" });
-    },
-  };
-}
 
 test("words typed over a saved answer before the screen has come alive are kept when it does, and are saved", async ({
   page,
@@ -536,4 +497,24 @@ test("words selected in a saved answer before the screen has come alive stay sel
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
   await expect(page.getByRole("link", { name: /^About you/ })).toContainText("I make quick games.");
+});
+
+test("a saved name selected before the screen has come alive stays selected, so typing replaces it", async ({
+  page,
+}) => {
+  // #332's review: the one-line box lost its selection the same way, so "Quick Owl" typed over a selected "Slow Owl"
+  // ended as "Slow OwlQuick Owl".
+  const maker = await signUp(page);
+  await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
+  const screen = await holdNextScreen(page);
+  await page.goto("/make/page/name", { waitUntil: "commit" });
+  const box = page.getByLabel("What should your page call you?");
+  await box.selectText();
+  await screen.release();
+  await pageHasSettled(page);
+  await page.keyboard.type("Quick Owl");
+  await expect(box).toHaveValue("Quick Owl");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await expect(page.getByRole("link", { name: /^Name/ })).toContainText("Quick Owl");
 });
