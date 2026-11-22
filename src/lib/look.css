@@ -3358,7 +3358,7 @@ header:has(+ main.about) {
 
 @media (prefers-reduced-motion: no-preference) {
   .about .wall .column {
-    animation: drift 40s ease-in-out infinite alternate;
+    animation: wall-drift 40s ease-in-out infinite alternate;
   }
 
   .about .wall .column:nth-child(even) {
@@ -3366,7 +3366,7 @@ header:has(+ main.about) {
   }
 }
 
-@keyframes drift {
+@keyframes wall-drift {
   to {
     transform: translateY(-10%);
   }

@@ -109,6 +109,12 @@ describe("the tokens (design 5.8)", () => {
     expect(css).toMatch(/:root\s*\{[^}]*color-scheme:\s*dark;/);
     expect(css).not.toMatch(/gradient\(|box-shadow|text-shadow|text-transform|letter-spacing/);
   });
+
+  it("names each @keyframes once, so one screen's motion never overrides another's", () => {
+    const names = [...css.matchAll(/@keyframes\s+([\w-]+)/g)].map(([, name]) => name);
+    const twice = names.filter((name, at) => names.indexOf(name) !== at);
+    expect(twice).toEqual([]);
+  });
 });
 
 describe("contrast, measured from the tokens (WCAG AA)", () => {
