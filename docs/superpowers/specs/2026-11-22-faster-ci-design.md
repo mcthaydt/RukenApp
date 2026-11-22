@@ -88,7 +88,7 @@ Two pull requests, because `build` says a CI workflow changes in a pull request 
 ### 3.3 Not changed, and why
 
 - Workers stay at 2 per piece: the four-core runner also runs two browsers' worth of pages, `wrangler dev` for the site and the game gate, and Postgres, and `playwright.config.ts` records answers taking over 5 s at today's load (run 44835171025). Raising it is a separate measured change.
-- Six pieces stay (Settings in CLAUDE.md). More pieces mean more jobs against the 20-runner limit.
+- Six pieces stay (Settings in CLAUDE.md). More pieces mean more jobs against the 20-runner limit. (Changed by unit P, section 3.5: ten pieces, on the owner's word that more free runners are fine.)
 - Lint, typecheck and the unit and database tests are untouched: they are off the path to the result.
 
 ### 3.4 Unit F: the pieces read main's times (lane 3, follow-up)
@@ -109,6 +109,39 @@ Found on #302's full run (run 44989252655): every piece logged "Split by Playwri
    - When the set is empty or the restore misses, the piece splits with `--shard=<n>/6`. That happens to all six alike, because they share the same set.
    - A failed lookup is the one case that can hit one piece and not the others, and the key check then fails the run (implementation audit F-1, follow-up). So each of the two API calls is tried up to 3 times, 2 s and then 5 s apart. Every try has a time limit of 10 s (`AbortSignal.timeout(10000)`). A try is retried when `fetch` throws, for any reason: it could not connect, the connection was reset, or the 10 s ran out. It is also retried when it answers 429 or 5xx. Each failed try logs its number and reason, for example "try 2 of 3: answered 503". The worst case adds 3 × 10 s + 2 s + 5 s = 37 s per call. This retries the network, not a test. Any other answer splits by count at once. A piece whose call still fails after three tries splits by count too. That run is red: the key check fails and names the piece. Its pieces mixed two splits, so some journeys may have run twice and others not at all, but a red run cannot merge, so no journey is skipped unseen; a full re-run reads the times again. Such a run is recorded under "Flaky tests".
    - The one way left for pieces to differ is if the chosen entry is evicted between two pieces' restores. It is the newest times entry and every run reads it, so it is the last one an oldest-used-first eviction removes.
+
+### 3.5 Unit P: ten browser pieces (lane 3, follow-up)
+
+- **Owner, 2026-11-22 13:39 UTC:** "we are using public free gh runners, so we can get more runners"
+
+With the planner working (F2 on run 44999849245), six pieces cannot reach the 8-minute p50. Measured over the 6 full runs after #312 merged (`ci-times.js` since 2026-11-22T07:57:54Z: 45001251809, 45002767457, 45006700371, 45007516224, 45010214545, 45011227560):
+
+- Each run took 8.5 to 10.6 min counted per attempt (p50 10.6, p95 24.5 by `ci-times.js`, which counts a re-run from the first attempt's start).
+- The slowest piece's Playwright time was 1.07 to 1.17 times the mean (A7 met on 4 of 6).
+- On run 45011227560, the pieces' Playwright times were 5.6, 6.1, 7.7, 7.5, 5.3 and 5.6 min, 37.8 min in all (41.5 and 37.0 on 45010214545 and 45007516224). Outside Playwright, a piece's job took about 72 s more (piece 3: 534 s job, 7.7 min Playwright): starting the container (32 s), Node and pnpm (18 s), picking the journeys (9 s), and keeping its reports. The gate and the waits for runners added about 1 to 2.5 min more.
+- The pairs' recorded times leave room to split further: 165 file and device pairs and 3,870 test-seconds; the largest pair is 174 s (`phone|make-live-changes.test.ts`), well under any piece's share at 10 pieces.
+
+So a full run is about 2.5 min of fixed cost plus the slowest piece's Playwright time. Reaching 8 min needs that piece at about 5.5 min or less. At about 1.15 times the mean, that is 38 to 42 min over N pieces at ≤ 5.5 min: N ≥ 8, with no margin at 8. **Call:** 10 pieces, which puts the slowest piece near 4.4 min and a full run near 7 min.
+
+The change, in `.github/workflows/ci.yml`:
+
+1. The matrix is `shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]`, the job is named `browser shard <n> of 10`, and `RUKEN_SHARD` and `--shard` read `<n>/10`. The planner (`shard-plan.ts`) already takes the count from `RUKEN_SHARD`, so it does not change.
+2. `test-times` has ten restore steps, step n with `path: piece-times-<n>.json` and `key: ci-piece-times-${{ github.sha }}-<n>` (n from 1 to 10), each with `fail-on-cache-miss: true`, and joins the ten, logging "joined 10 of 10 pieces, P file and device pairs". As in 3.4, a missing piece fails `test-times`, so partial times are never saved.
+3. The comments that say "six" say "ten". The gate needs no change: it reads every `ran-*` artifact the run has and checks every piece's times key.
+4. Nothing else changes: same image, same journeys, devices and workers (2 per piece), no new action, tool or secret.
+
+Also changed, because they name the count: CLAUDE.md Settings ("Browser test pieces in CI: 6" becomes 10), the `this-repo` skill ("six browser pieces"), section 3.3 of this spec, and `.github/scripts/ci-times.js`, whose job grouping reads `shard \d of 6` and would miss "shard 10 of 10" (it becomes `shard \d+ of \d+`).
+
+The cost is runners, which the owner allowed: a full run is 12 jobs at once (`test-times` on `main` starts only after the pieces end), against the free plan's 20 at once for the repository. Two full runs at the same moment need 24, so the later one's last pieces wait for a runner, about one piece's length. That wait counts in A8, as every run is counted as it comes.
+
+The first full runs after P cannot split by times saved for ten pieces, and need not: the times file holds seconds per file and device, whatever the count. `main` keeps saving one per push.
+
+Acceptance:
+
+- P1. A ready pull request's run has `verify`, `postgres`, `browser shard 1 of 10` to `browser shard 10 of 10` and `gate`, every piece logging "Split by main's recorded times" with the same key, the key check passing, and A9 holding ("listed N, ran N in 10 pieces").
+- P2. The first push to `main` after P logs "joined 10 of 10 pieces, P file and device pairs" in `test-times` and saves `ci-test-times-<sha>`.
+- P3. `ci-times.js` groups "browser shard 10 of 10" with the other pieces: checked by running it on P1's run.
+- A7 and A8 are measured again over the first 10 full runs after P merges, by `ci-times.js` since P's merge commit, each run's id listed. If A8 is still not met, the gap is reported with numbers, never rounded.
    - Each piece adds its chosen key to its `ran-*` artifact as `ran/times-key.txt`. On a full run, the gate checks that all six keys are equal before the union check, and if they are not, it fails naming the keys. Such a failure is recorded under "Flaky tests", like any other.
 
 Acceptance:
@@ -137,10 +170,11 @@ Acceptance:
 | W | this spec merged | `.github/workflows/ci.yml`, `.github/scripts/docs-only.sh`, `.github/scripts/ci-times.mjs` | one PR | A1 to A6, A9 on real runs; A10 after merge | 3 |
 | T | W merged | `tests/browser/support/shard-plan.ts`, `tests/browser/support/shard-plan.test.ts`, `playwright.config.ts` | one PR | its unit test, A9; A7 and A8 after F | 2 |
 | F | T merged | `.github/workflows/ci.yml` | one PR | F1, F2, then A7; A8 after merge | 3 |
+| P | F merged | `.github/workflows/ci.yml`, `.github/scripts/ci-times.js`, `CLAUDE.md` (Settings), `.claude/skills/this-repo/SKILL.md` | one PR | P1 to P3, then A7 and A8 after merge | 3 |
 
-- Expected duration: W about 3 hours including measuring runs; T about 2 hours; F about 2 hours.
+- Expected duration: W about 3 hours including measuring runs; T about 2 hours; F about 2 hours; P about 2 hours, plus the 10 measuring runs.
 - Budget: GitHub's free runners only. No new dependency, service or secret. The Playwright image is Microsoft's public image of the version already pinned.
-- Audits: W, plan audit (this spec) and implementation audit; T, one fresh review; F, a plan audit of section 3.4 and an implementation audit. Merge under the standing permission in `progress.md` (History, Standing permissions) once audits pass and CI is green.
+- Audits: W, plan audit (this spec) and implementation audit; T, one fresh review; F, a plan audit of section 3.4 and an implementation audit; P, a plan audit of section 3.5 and an implementation audit. Merge under the standing permission in `progress.md` (History, Standing permissions) once audits pass and CI is green.
 
 ## 6. Open product decisions
 
