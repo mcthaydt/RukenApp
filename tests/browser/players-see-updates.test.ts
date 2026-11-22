@@ -54,7 +54,7 @@ test("a live game's new name is what players see on its page and in Play", async
     await stranger.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
     await pageHasSettled(stranger);
     await expect(stranger.getByRole("heading", { level: 1 })).toHaveText(renamed);
-    await expect(stranger).toHaveTitle(`${renamed} · Ruken`);
+    await expect(stranger).toHaveTitle(`Ruken - ${renamed}`);
     await expect(stranger.getByText(game.name)).toHaveCount(0);
 
     // Play's menu names the game too.

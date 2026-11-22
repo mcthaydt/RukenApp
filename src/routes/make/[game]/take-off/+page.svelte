@@ -19,10 +19,6 @@
   onMount(() => keep?.focus());
 </script>
 
-<svelte:head>
-  <title>Take it off Ruken? · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <h1>Take {data.name} off Ruken?</h1>
   <p>Players won't be able to find it or play it any more. Nothing changes on GitHub.</p>
