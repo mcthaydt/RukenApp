@@ -5,7 +5,7 @@
 - Owner decisions: D1 decided ("Press Yes on Ruken"). D2 (npm) and D3 (agent destructive actions) are open; this audit assumes neither.
 - Prompt: Audit all of your work for completeness, consistency, cohesion, and harmony, both within itself and relative to the spec and relative to the codebase. Assume nothing. Verify everything. Investigate any incomplete implementations or incomplete integrations. Do your best work.
 
-**Verdict: FAIL, 2 red, 4 notes.** All five of audit 2's reds are fixed as asked, and its six notes were taken. Two new reds come from checking the fixes against the code: the agreement rule's new home breaks the feature layer rule and changes two browser paths, and some test files named or touched by PR 1 are in the wrong test project or not owned. Both are spec-only fixes.
+**Verdict: FAIL, 2 red, 5 notes.** All five of audit 2's reds are fixed as asked, and its six notes were taken. Two new reds come from checking the fixes against the code: the agreement rule's new home breaks the feature layer rule and changes two browser paths, and some test files named or touched by PR 1 are in the wrong test project or not owned. Both are spec-only fixes.
 
 ## Audit 2's reds, checked one by one
 
@@ -47,6 +47,7 @@ Audit 2's notes: N2-1 (`>=22`), N2-2 (try/catch in `onPasswordReset`, with a tes
 - N3-2. 5.1's HTTPS bullet has a clause out of place: "...as the redirect does nothing; since the key has already crossed the wire and a redirect invites it again; `https-only.ts` keeps redirecting...". The reason for answering 400 and not redirecting should follow the 400 sentence.
 - N3-3. A1 says every built row has "its command and its endpoint". The `github connect` row has a command and no endpoint (browser only, 3.3). Say how a parity row marks that (for example `"endpoint": null` with `"browserOnly": true`) so A1 neither fails nor pushes a made-up endpoint.
 - N3-4. A1 in section 7 says "the parity test in section 3.5"; the test is described at the end of section 3, after 3.5. Point to "section 3" instead.
+- N3-5. The owner decided D3 after this audit started (relayed 2026-11-22 14:10 UTC): no MCP tool for throwing a game away or taking the page down; only the person, in the terminal. The spec at `2b55c74` still lists D3 as pending (status line, 3.2 and 3.4 rows, 5.4, A10, 9). The builder records the decision and removes the other option. This does not fail the plan.
 
 ## Fix check
 
