@@ -194,6 +194,58 @@ test("pressing the clip opens the game's page", async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/g/${slug ?? "?"}$`));
 });
 
+test("a swipe or a pointer resting on a clip asks the server for nothing; only the press that opens the game does", async ({
+  page,
+  context,
+}) => {
+  // Opening a game's page records who brought this person (the arrival cookie), so a clip a finger or pointer only
+  // passed over must not load that page ahead of time.
+  const asked: string[] = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith("/g/")) asked.push(path);
+  });
+  await openFeed(page);
+  const first = (await current(page).getAttribute("data-slug")) ?? "?";
+  const box = await boxOf(current(page));
+  // A pointer comes to rest on the clip, a finger lands on it and lifts, a press starts on it, and then the feed moves.
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height * 0.4);
+  await page.mouse.move(box.x + box.width / 2 + 2, box.y + box.height * 0.4 + 2);
+  await current(page)
+    .locator("a.open")
+    .evaluate((link) => {
+      link.dispatchEvent(new Event("touchstart", { bubbles: true }));
+      link.dispatchEvent(new Event("touchend", { bubbles: true }));
+      link.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    });
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
+  const second = (await current(page).getAttribute("data-slug")) ?? "?";
+  expect((await context.cookies()).map((cookie) => cookie.name)).not.toContain("rk_arrival");
+
+  // The press that opens the second game. Its page loads the same code a load ahead of time for the first would have,
+  // so by the time it shows, any such load for the first would have been asked for.
+  const next = await boxOf(current(page));
+  await page.mouse.click(next.x + next.width / 2, next.y + next.height * 0.4);
+  await expect(page).toHaveURL(new RegExp(`/g/${second}$`));
+  await expect(page.locator("h1").first()).toBeVisible();
+  expect(asked.filter((path) => path.startsWith(`/g/${first}/`) || path === `/g/${first}`)).toEqual([]);
+});
+
+test("Back from a game's page comes back to the clip it was opened from", async ({ page }) => {
+  await openFeed(page);
+  await page.keyboard.press("ArrowDown");
+  const clips = page.locator("section[data-slug]");
+  await expect(clips.nth(1)).toHaveAttribute("data-current", "true");
+  const second = (await clips.nth(1).getAttribute("data-slug")) ?? "?";
+  const box = await boxOf(clips.nth(1));
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.4);
+  await expect(page).toHaveURL(new RegExp(`/g/${second}$`));
+  await page.goBack();
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await expect(current(page)).toHaveAttribute("data-slug", second);
+});
+
 test("pressing the speaker flips sound for every clip, and it stays as set from one game to the next", async ({
   page,
 }) => {
@@ -401,6 +453,12 @@ test.describe("the first open's hints", () => {
       const seen = await page.evaluate(() => (window as unknown as { seen: number[] }).seen);
       expect(seen.length).toBeLessThanOrEqual(1);
       await expect(page.getByText(/for the next game$/)).toHaveCount(0);
+      // A clip that may not move by itself waits at its first frame, and the speaker starts it without leaving the feed.
+      const video = current(page).locator("video");
+      await expect.poll(() => video.evaluate((clip: HTMLVideoElement) => clip.paused)).toBe(true);
+      await current(page).getByRole("button", { name: "Sound" }).click();
+      await expect(page).toHaveURL(/\/$/);
+      await expect.poll(() => video.evaluate((clip: HTMLVideoElement) => clip.paused)).toBe(false);
     } finally {
       await context.close();
     }

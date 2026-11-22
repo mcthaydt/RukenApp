@@ -8,6 +8,7 @@
 <script lang="ts">
   import { loads } from "../../lib/loads.ts";
   import { onMount, tick } from "svelte";
+  import { snapshot } from "$app/navigation";
   import { mayMove } from "../../lib/quiet-video.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
   import { shareLink, type ShareTools } from "./share.ts";
@@ -80,6 +81,8 @@
     for (const section of sections) watcher.observe(section);
 
     ready = true;
+    mounted = true;
+    if (returning !== undefined) returnTo(returning);
     void tick().then(() => {
       warm = true;
     });
@@ -144,6 +147,25 @@
     if (!started.includes(slug)) started = [...started, slug];
     forgetHints();
   }
+
+  // The feed scrolls inside itself, which the browser's own Back does not keep, so the clip on screen is kept as the page's
+  // snapshot and put back on screen at once when a person comes back to it.
+  let mounted = false;
+  let returning: string | undefined;
+  function returnTo(slug: string): void {
+    const index = clips.findIndex((clip) => clip.slug === slug);
+    if (index <= 0) return;
+    current = index;
+    sections[index]?.scrollIntoView({ behavior: "auto", block: "start" });
+  }
+  snapshot<string | undefined>({
+    capture: () => clips[current]?.slug,
+    restore: (slug) => {
+      if (slug === undefined) return;
+      if (mounted) returnTo(slug);
+      else returning = slug;
+    },
+  });
 
   function goTo(index: number): void {
     // With less motion the next clip is simply there, not slid to.
@@ -229,11 +251,12 @@
           ></video>
         </noscript>
         <!-- The whole clip opens its game's page, like the game's name on the band. It is left out of Tab and of what a
-             screen reader reads because the name on the band is the same link. -->
+             screen reader reads because the name on the band is the same link. Every swipe starts on it, and opening a
+             game's page records who brought this person, so it never loads that page ahead of a press. -->
         <a
           class="open"
           href={`/g/${clip.slug}`}
-          data-sveltekit-preload-data="tap"
+          data-sveltekit-preload-data="off"
           tabindex="-1"
           aria-hidden="true"
         ></a>
