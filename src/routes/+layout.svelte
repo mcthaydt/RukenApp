@@ -12,6 +12,7 @@
   import { Bar } from "../features/feed/feed.browser.ts";
   import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
   import PageLoading from "../lib/page-loading.svelte";
+  import { BASE_TITLE } from "../lib/titles.ts";
   import type { LayoutProps } from "./$types";
 
   let { data, children }: LayoutProps = $props();
@@ -23,10 +24,22 @@
       (page.route.id === "/" || page.route.id === "/g/[game]" || page.route.id === "/[handle=handle]"),
   );
 
+  // A game's own page and its play screen name the game in the tab; every other screen, a missing page included,
+  // has the base title.
+  const gameScreen = $derived(
+    page.status < 400 && (page.route.id === "/g/[game]" || page.route.id === "/g/[game]/play"),
+  );
+
   function cameBack(event: PageTransitionEvent): void {
     if (event.persisted) clearSending();
   }
 </script>
+
+<svelte:head>
+  {#if !gameScreen}
+    <title>{BASE_TITLE}</title>
+  {/if}
+</svelte:head>
 
 <svelte:document onsubmit={markSending} />
 <svelte:window onpageshow={cameBack} />

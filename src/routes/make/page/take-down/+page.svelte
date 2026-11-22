@@ -15,10 +15,6 @@
   onMount(() => keep?.focus());
 </script>
 
-<svelte:head>
-  <title>Take your page down? · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <h1>Take {data.name} down?</h1>
   <p>Nobody will be able to open /{data.handle} any more. Its links, photo and counts go too.</p>

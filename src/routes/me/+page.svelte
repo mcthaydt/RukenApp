@@ -15,10 +15,6 @@
   } as const;
 </script>
 
-<svelte:head>
-  <title>Your account · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <h1>Your account</h1>
   <p>{data.phone}</p>

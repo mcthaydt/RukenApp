@@ -9,7 +9,6 @@
 </script>
 
 <QuestionScreen
-  title="Add a link · Ruken"
   heading="What should the link say?"
   counter={null}
   back="/make/page/links"
