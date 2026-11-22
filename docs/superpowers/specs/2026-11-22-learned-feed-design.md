@@ -6,7 +6,7 @@ This replaces the feed's interim order (unit C of `2026-11-21-feed-and-makers-pa
 
 Read this with `CLAUDE.md`, the `build`, `this-repo`, `verify` and `visual-check` skills, the main design (sections 5.1 and 5.8) and the feed spec of 2026-11-21 (sections 5.1, 5.2 and unit D). If the repo is indexed in Graphify, use it to find callers and tests before changing a file.
 
-Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** are this spec's choices; the Owner can overrule any of them. Lines marked **Open** waited for the Owner; Opens 1 to 3 are answered, and only Open 4 (access) still waits.
+Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** are this spec's choices; the Owner can overrule any of them. Lines marked **Open** waited for the Owner; Opens 1 to 3 are answered, and Open 4 (access) and Open 5 (a lawyer) still wait.
 
 ## 0. The Owner's direction
 
@@ -108,7 +108,7 @@ Left out of the feed, as today, until the 18+ rules are built.
 - **Owner** (private design 11): one list, every number in it, an off switch for each part, changeable without a rebuild; the real numbers and the marked players never in the public repository.
 - `src/features/feed/settings.ts` holds the list's shape and public defaults. **Call:** the public defaults are placeholders that behave sensibly and **differ from every private value** (J2's check fails a run when any public default equals its private value; switches excepted). Every hidden part is off by default. A missing secret, bad JSON or an unknown key falls back to the default for that key and logs one line naming the key, never a value.
 - **The keys:** `windowDays`, `halfLifeDays`, `dailyCapMinutes`, `comebackWeight`, `freeShareMax`, `firstShowingMembers`, `firstShowingViewers`, `firstShowingDays`, `firstShowingEvery`, `learnFromPlayers`, `quickNoMs`, `lessDays`, `surpriseRate`, `sameCrowd`, `echoAfter`, `goodPickMinutes`, `goodPickDays`, `roundShake`, `testClipViews`, `testClipPriorTaps`, `testClipPriorViews`, `fewPlayTapShare`, `moodLearnPlayers`, `genreWeight`, `skyLiftMax`, `skyMoodShare`, `surpriseRange`, `skyElementStep`, `newMoonFirstShowingEvery`, `fullMoonStandingWeight`, `retrogradeIdleDays`, `highTasteLike`, `highTasteLikeReview`, `highTasteAll`, `highTasteCapPerGame`, `highTasteEarnedMax`.
-- **The switches** (`true`/`false`): `learned`, `comeback`, `freeWatchers`, `firstShowing`, `surprises`, `quietSignals`, `echo`, `spacing`, `goodPick`, `testClips`, `learnedMood`, `sky`, `highTaste`, `parentYes`. `learned: false` gives standing alone. `sky`, `highTaste` and `parentYes` are off in the public defaults and on in the private file (Open 2, answered: "Build now, switches on").
+- **The switches** (`true`/`false`): `learned`, `comeback`, `freeWatchers`, `firstShowing`, `surprises`, `quietSignals`, `echo`, `spacing`, `goodPick`, `testClips`, `learnedMood`, `sky`, `highTaste`, `parentYes`, `teenPersonal` (section 10). `learned: false` gives standing alone. `sky`, `highTaste` and `parentYes` are off in the public defaults and on in the private file (Open 2, answered: "Build now, switches on").
 - **Loaded automatically, never by hand.** A workflow in RukenPrivate (unit J2) runs on every push to its `main` that changes `feed/settings.json`, and on demand: it checks the file, loads it into the Worker with `wrangler secret put FEED_SETTINGS --name ruken`, and then asks `/healthz/feed` until it answers `private`. A failed run is a red check on RukenPrivate's `main`. The Owner changes a number by changing the file in a pull request; nothing else.
 - **`/healthz/feed`** (unit A) answers plain text: `private` when `FEED_SETTINGS` parsed with no fallback, `partial` when any key fell back, `defaults` when it is missing. It never names a key or a value. `/healthz` itself is unchanged.
 - **The one access it needs** (Open 4): the Cloudflare token the "Deploy automatically from main" work already asks the Owner for, also set as a secret on RukenPrivate. Until it is set, the feed runs on the public defaults and `/healthz/feed` says `defaults`.
@@ -282,7 +282,8 @@ Steps:
 - **D2.** The ••• sheet's buttons write a `game` row; Less also keeps that game out of round 0 for `lessDays` (4.4), from the next open.
 - **D3.** `/me/feed` (6.2): learned chips are the viewer's top moods, genres and makers by taste; suggestions are the next best not yet chosen; Add lists all moods, all genres, and the makers of games the viewer played; × deletes; Start over deletes their `FeedTaste`, `ClipView` and `GoodPickAsked` rows and sets `feedResetAt`.
 - **D4.** Good pick? (4.5) comes through `FeedPage.ask` only on its rule; yes adds a `more` row for the game's mood, no a `less` row.
-- **D5.** Journey (CRUD): add a chip, read it back, remove it, add a less chip, press More and Less on a clip and see the chips change, answer a Good pick, Start over and see the empty state; a second account cannot read or change the first's chips.
+- **D6.** **Learn from what I do** (10.1): `User.feedPersonal`; off gives the crowd feed, stores no views and hides the chips; on again starts fresh; locked off for a teen without a parent's yes. The ••• sheet also holds **How the feed works**.
+- **D5.** Journey (CRUD): turn Learn from what I do off and on, add a chip, read it back, remove it, add a less chip, press More and Less on a clip and see the chips change, answer a Good pick, Start over and see the empty state; a second account cannot read or change the first's chips.
 
 Steps:
 - [ ] 1. Journey D5, failing.
@@ -328,7 +329,7 @@ Steps:
 **Owner, 2026-11-22, on a card:** "Text the parent a code" ("The teen types a parent's phone number. Ruken texts that phone a code and a yes link. One tap from the parent turns on the full feed. Parent can undo it."). The code is the one-time part of the link, so the parent never types it.
 
 - **I1.** `ParentYes`: `teenUserId` (cascade), `phoneHash`, `tokenHash`, `askedAt`, `answeredAt`, `answer`, `revokedAt`. One open ask per teen; three texts per teen a day; an ask unanswered after 5 days ends.
-- **I2.** The flow of 6.5. The parent's page needs no account. Yes turns on the full feed at once; Turn it off returns the calm feed and stops recording; the teen can cancel an ask.
+- **I2.** The flow of 6.5. A yes changes the teen's feed only while `teenPersonal` is on (section 10); with it off, the parent's page still records the answer and says "Thanks. We'll turn it on when we can." The parent's page needs no account. Yes turns on the full feed at once; Turn it off returns the calm feed and stops recording; the teen can cancel an ask.
 - **I3.** With `parentYes` off, Ask a parent is not shown and the parent's page says the link has ended.
 - **I4.** Journey (CRUD): ask, see it waiting, the parent says yes (test texts as in the sign-up journeys), the full feed starts, the parent turns it off, the teen asks again and cancels; an ended ask's link says so.
 
@@ -388,8 +389,9 @@ Steps:
 1. **Open 1, likes, saves and reposts** (private design 9, 13.3). **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Yes, all three".** Unit G builds all three; K counts like, review and repost as designed; L keeps "Watching and liking help a little".
 2. **Open 2, the lawyer's read** (private design 13.1): New York and California laws on feeds that learn from a child, and whether hidden boosts need saying in the terms. **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Build now, switches on"** (the card said: "They go live as soon as they merge. New York and California feed laws for children are still in court."). Units H, I and K wait on nothing but their units; the private file turns `sky`, `highTaste` and `parentYes` on.
 3. **Open 3, how a parent says yes.** **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Text the parent a code".** Unit I waits on nothing but D.
-4. **Open 4, the Cloudflare token on RukenPrivate** (section 5). New access for a second repository, so it is the Owner's: asked once, inside the "Deploy automatically from main" work's batch of Owner commands (the same token). Unit J2 waits.
-5. **Not the Owner's: a hook for RukenPrivate pull requests.** In a repository without `rules.json`, creating a pull request is not checked (`progress.md`, hook follow-ups). J2 is a lane 3 pull request there, so it waits until a hook covers that route.
+4. **Open 5, a lawyer's read** (section 10.3). Asked as a card on 2026-11-22. Only `teenPersonal` waits.
+5. **Open 4, the Cloudflare token on RukenPrivate** (section 5). New access for a second repository, so it is the Owner's: asked once, inside the "Deploy automatically from main" work's batch of Owner commands (the same token). Unit J2 waits.
+6. **Not the Owner's: a hook for RukenPrivate pull requests.** In a repository without `rules.json`, creating a pull request is not checked (`progress.md`, hook follow-ups). J2 is a lane 3 pull request there, so it waits until a hook covers that route.
 
 ## 9. Risks, and what is not checked
 
@@ -398,3 +400,42 @@ Steps:
 - Ranking on every page request may outgrow its budget as the catalogue grows; A10 measures it and names the cache.
 - The viewer floor in 4.3 starts only with unit B; until then a first showing ends on members or days alone.
 - Device profiles are emulation, not proof of how a phone performs.
+- Found, not fixed: Ruken has no privacy policy or terms page. The feed adds data people should be told about (10.3, item 3). Reported to the coordinator for its own thread.
+
+## 10. The law, and what needs a lawyer
+
+**Owner, 2026-11-22 16:24 UTC:** "Make sure we build it in a way that the law will be okay with" (straight after choosing "Build now, switches on"). This spec does not say what any law requires; nobody on this work is a lawyer, and the laws named below were not read in full. It builds the most careful version that keeps the Owner's design, makes every risky part one switch away from off, and lists as **Open (lawyer)** each question only a lawyer can answer. The plan auditor checks this section.
+
+### 10.1 What is built in, whatever a lawyer says
+
+- **No one under 13.** Accounts are 13 and up today (`adultOn`, sign-up's age check), so the feed never holds data about a child under 13. No unit changes that.
+- **Teens get a calm feed by default.** An under-18, or anyone whose birthday is not known, gets the crowd feed: nothing personal is read, and no watching is recorded (4.1, B2). The full feed needs a parent's yes (unit I) **and** the switch `teenPersonal` (below).
+- **Anyone can turn personalising off.** Your feed (unit D) gains a switch, **Learn from what I do** (on by default for adults, off and locked for a teen without a parent's yes). Off gives the crowd feed, stops recording views, and keeps chips hidden; on again starts fresh. `User.feedPersonal` (Boolean, default true) holds it; journey D5 covers it both ways.
+- **Plain disclosure.** "How the feed works" (unit L, the Owner-approved words) says what the feed ranks on, that it learns from what you play and watch, how to change it, that teens' feeds do not learn without a parent, that nobody can pay to move a game, and that Ruken adds "a few touches of our own". It is linked from every clip's ••• sheet ("How the feed works"), from Your feed and from the help list, so it is one tap from where the feed is used.
+- **No fake engagement, no paid ranking.** Every count on screen is a count of rows people made (G1); high-taste players change reach only, never pay, and never add a like (K2, K4). An architecture test (K, step 6) keeps the money code from reading any ranking signal, and a second one keeps ranking from reading payments beyond membership status.
+- **Nothing hidden makes a claim.** The sky layer and high-taste players show nothing, promise nothing and name nothing in the app (H3, K3). The sky layer is a ranking input like any other, described on GitHub (`docs/feed-sky.md`) without its strength.
+- **Least data, kept short.** Watching rows hold no device, place or address, are deleted after `windowDays`, and go with the account; "Start over" and the switch above delete them at once. A parent's phone is kept only as a hash.
+
+### 10.2 The switches for the risky parts
+
+Each is in `FEED_SETTINGS`, so it can be turned off without a rebuild, and each has a test that off means off:
+
+| Switch | Turns off | Test |
+|---|---|---|
+| `teenPersonal` | the full feed for every under-18, parent's yes or not | a teen with a yes gets the crowd feed and no view is stored |
+| `highTaste` | the high-taste boost | the order equals the order with no marked players |
+| `sky` | the sky layer | the order equals the order on a date with no sky lift |
+| `learned` | all personalising, for everyone | every viewer gets standing alone |
+
+**Call:** `teenPersonal` is a new switch; it is **off** in the public defaults and stays off in the private file until Open 5 is answered. The Owner's "switches on" stands for `sky`, `highTaste` and `parentYes` (the asking can be built and tried); a teen's yes only changes their feed once `teenPersonal` is on.
+
+### 10.3 Open (lawyer)
+
+These are questions, not answers. Each names what it would change.
+
+1. **A parent's yes.** Whether a yes given by tapping a link texted to a number the teen typed is enough consent for a feed that learns from a minor, under New York's and California's laws on feeds for minors and any like them. If not, unit I changes how a parent proves who they are. Until then `teenPersonal` stays off.
+2. **Hidden ranking parts.** Whether the high-taste boost and the sky layer need saying more plainly than "a few touches of our own" (US consumer-protection rules on deception and endorsements; the EU Digital Services Act's rules on explaining recommender systems, if Ruken is offered in the EU). If so, the public page and the terms change; the switches stay.
+3. **Which privacy laws apply, and the papers they need.** Ruken has no privacy policy or terms page today (`src/routes/legal/` holds only the maker agreement). Whether California's privacy law (and its opt-out of profiling), the EU's and the UK's rules (including the UK Children's Code) apply to Ruken at its size, and what its privacy policy must say about watching, likes and taste. Writing those pages is not in this spec; it is reported (section 9).
+4. **Under-13s found later.** What Ruken must do when it learns an account belongs to someone under 13, despite the age check.
+
+**Open 5 (the Owner): get a lawyer's read on 10.3.** It is spend, so it is the Owner's; it is asked as a card. Until it is answered, everything else in this spec is built and on as the Owner chose, and only `teenPersonal` waits.
