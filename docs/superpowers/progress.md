@@ -118,7 +118,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Deploy from a green `main` (lane 3) | spec `2026-11-22-deploy-from-green-main-design.md` on `claude/project-thread-mqcz6h` | spec written, waiting on its plan audit | 0% (0 of 8 plan steps ticked) |
 | Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
 | Private move, P0: hooks in RukenPrivate (lane 3) | RukenPrivate #19 | merged at `018ccc9` (head `a52d930`, implementation audit PASS `2bc2b5f`); hooks load only in a session started in a RukenPrivate checkout | 100% |
-| Private move, P1: the spec; the learned spec trimmed, the full one to RukenPrivate (lane 1) | branch `claude/project-thread-t02epm` | plan audit 3 PASS, re-pointed to `05e6bfc`; waiting for a pull request slot; the trim and the RukenPrivate copy after P0 | not measured |
+| Private move, P1: the spec; the learned spec trimmed, the full one to RukenPrivate (lane 1) | branch `claude/project-thread-t02epm` | plan audit 3 PASS at `05e6bfc`; the public learned spec trimmed on the branch; waiting for a pull request slot; the full copy to RukenPrivate `feed/` waits on a session started in a RukenPrivate checkout | 66% (2 of 3 parts) |
 | Private move, P2: the `Ranker` seam and the public ranker (lane 2) | none yet | waits on #329 | not started |
 | Private move, P3: the private Worker `ruken-private` (lane 3) | none yet | waits on P0, P2; its deploy on the Cloudflare token on RukenPrivate | not started |
 | Private move, P4: the binding, deploy-only (lane 3) | none yet | waits on P3 deployed | not started |
