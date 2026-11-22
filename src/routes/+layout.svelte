@@ -24,10 +24,13 @@
       (page.route.id === "/" || page.route.id === "/g/[game]" || page.route.id === "/[handle=handle]"),
   );
 
-  // A game's own page and its play screen name the game in the tab; every other screen, a missing page included,
-  // has the base title.
+  // A game's own page, its play screen and its maker's test play name the game in the tab; every other screen, a
+  // missing page included, has the base title.
   const gameScreen = $derived(
-    page.status < 400 && (page.route.id === "/g/[game]" || page.route.id === "/g/[game]/play"),
+    page.status < 400 &&
+      (page.route.id === "/g/[game]" ||
+        page.route.id === "/g/[game]/play" ||
+        page.route.id === "/make/[game]/play"),
   );
 
   function cameBack(event: PageTransitionEvent): void {

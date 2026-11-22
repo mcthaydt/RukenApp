@@ -14,3 +14,4 @@ export {
 } from "./menu-tab.ts";
 export { createAttention, type Look } from "./attention.ts";
 export { BEAT_EVERY_MS } from "./time.ts";
+export { default as PlayScreen } from "./PlayScreen.svelte";
