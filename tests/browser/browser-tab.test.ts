@@ -78,6 +78,9 @@ test("a game's page and its play screen name the game, and the tab goes back to 
   // Back in the browser, then forward to a screen that is not a game: the base title again.
   await page.goBack();
   await expect(page).toHaveURL(`/g/${free.slug}`);
+  // The address changes before the page does, so wait for what only the game's page shows.
+  await expect(page.getByRole("link", { name: "Play" })).toBeVisible();
+  await pageHasSettled(page);
   await expect(page).toHaveTitle(`Ruken - ${free.name}`);
   await page.goto("/help", { waitUntil: "domcontentloaded" });
   await expect(page).toHaveTitle(BASE);
