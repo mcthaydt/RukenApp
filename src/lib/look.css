@@ -2616,9 +2616,17 @@ main.helpdesk {
   color: var(--chalk);
 }
 
-.card.bold .plan:has(:focus-visible) {
+/* The keyboard's ring goes round the whole row. It is drawn by the price's own layer laid over the row, after the radio
+   in the row, not by the row asking what it holds: WebKit did not redraw a ring set with :has(:focus-visible) (CI, the
+   phone, #348). */
+.card.bold .plan input:focus-visible ~ .price::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: var(--radius-field);
   outline: 3px solid var(--ink);
   outline-offset: 3px;
+  pointer-events: none;
 }
 
 /* The real radio button lies over the whole row, unseen, so a press anywhere on the row is a press on it and the
@@ -2906,11 +2914,13 @@ main.helpdesk {
   border-radius: var(--radius-card);
 }
 
+/* The keyboard's ring goes round the whole tile: the link's own layer covers the tile, so the ring is drawn on it (not
+   with :has(), which WebKit did not redraw). */
 .helpdesk .guide a:focus-visible {
   outline: none;
 }
 
-.helpdesk .guide:has(a:focus-visible) {
+.helpdesk .guide a:focus-visible::after {
   outline: 3px solid var(--paper);
   outline-offset: 3px;
 }

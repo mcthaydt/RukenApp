@@ -105,7 +105,13 @@ test.describe("the paywall card", () => {
     const annual = page.getByRole("radio", { name: "$99 a year", exact: true });
     await expect(annual).toBeChecked();
     await expect(annual).toBeFocused();
-    await expect(page.locator("label", { has: annual })).toHaveCSS("outline-style", "solid");
+    // The ring is the row-sized layer the price draws over the row.
+    const ring = page.locator("label", { has: annual }).locator(".price");
+    await expect
+      .poll(() => ring.evaluate((price) => getComputedStyle(price, "::before").outlineStyle))
+      .toBe("solid");
+    // It is laid over the row (the row is its containing block), not round the price alone.
+    expect(await ring.evaluate((price) => getComputedStyle(price, "::before").position)).toBe("absolute");
   });
 
   /** The card's one blue button is whole in the window, its words on one line. */
@@ -318,7 +324,7 @@ test.describe("help for makers", () => {
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab");
     await expect(first).toBeFocused();
-    await expect(page.locator(".guide").first()).toHaveCSS("outline-style", "solid");
+    await expect.poll(() => first.evaluate((link) => getComputedStyle(link, "::after").outlineStyle)).toBe("solid");
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { level: 1, name: "Get your game on Ruken" })).toBeVisible();
   });
