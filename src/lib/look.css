@@ -1535,6 +1535,36 @@ label.vframe {
   }
 }
 
+/* A phone held sideways, on a step (no bar of places): the window is too short to give a row of buttons across its
+   foot, so Back and the blue button stand in a column at the right edge, where the bar of places stands on the other
+   screens, and the question, its hint and its links have the whole height to the left of them (slice 2 design round
+   3, note 3). The blue button is on top, Back under it. */
+@media (orientation: landscape) and (max-height: 449px) {
+  :root:not(:has(nav.bar)) .screen {
+    --steps: calc(10rem + 1rem);
+    padding-right: calc(var(--steps) + max(0.75rem, env(safe-area-inset-right, 0px)));
+    padding-bottom: 1rem;
+  }
+
+  :root:not(:has(nav.bar)) .screen .acts {
+    top: 50%;
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+    bottom: auto;
+    left: auto;
+    translate: 0 -50%;
+    flex-direction: column-reverse;
+    align-items: stretch;
+    width: 10rem;
+    padding: 0.5rem;
+    border-radius: calc(var(--radius-button) + 0.5rem);
+  }
+
+  :root:not(:has(nav.bar)) .screen .acts > * {
+    flex: none;
+    width: 100%;
+  }
+}
+
 /* A video opened full size: the window's own, on black, with the browser's controls and a green Close at the top right. */
 dialog.viewer {
   width: 100vw;

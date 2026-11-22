@@ -31,8 +31,9 @@
 
   // The bar is on every screen (the owner, 2026-11-22: "every page excluding the landing pages") but three kinds:
   // the landing page, the play screen (the game has the whole window), and the maker's step-by-step screens, which pin
-  // their own Back and Save across the bottom (src/lib/look.css, .screen .acts), so a second bar would leave a phone
-  // held sideways little room for the question. Each of those has its own way back.
+  // their own Back and Save (src/lib/look.css, .screen .acts: across the bottom, or along the right edge of a phone
+  // held sideways), so a second bar would leave little room for the question. Each of those has its own way back.
+  // Your page is a step too while there is no page yet: it asks the first question, the address.
   const NO_BAR: readonly string[] = [
     "/about",
     "/g/[game]/play",
@@ -46,7 +47,9 @@
     "/make/page/links/[link]",
     "/make/page/links/[link]/where",
   ];
-  const barShown = $derived(!NO_BAR.includes(page.route.id ?? ""));
+  const barShown = $derived(
+    !NO_BAR.includes(page.route.id ?? "") && !(page.route.id === "/make/page" && page.data.rooms === null),
+  );
 
   // A game's own page and its play screen name the game in the tab; every other screen, a missing page included,
   // has the base title.
