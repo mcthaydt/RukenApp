@@ -6,6 +6,7 @@
   the window's shape of clip, and moves a clip at a time on the arrow keys, Page Up, Page Down and Space.
 -->
 <script lang="ts">
+  import { loads } from "../../lib/loads.ts";
   import { onMount, tick } from "svelte";
   import { mayMove } from "../../lib/quiet-video.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
@@ -195,6 +196,7 @@
         aria-label={clip.name}
       >
         <video
+          use:loads
           bind:this={videos[index]}
           src={fetches(index) ? clipAddress(clip) : undefined}
           preload={preloads(index)}
@@ -258,7 +260,7 @@
             {#if clip.maker !== null}
               <a class="maker" data-sveltekit-preload-data="off" href={`/${clip.maker.handle}`}>
                 {#if clip.maker.photo !== null}
-                  <img src={clip.maker.photo} alt="" width="40" height="40" loading="lazy" />
+                  <img use:loads src={clip.maker.photo} alt="" width="40" height="40" loading="lazy" />
                 {:else}
                   <span class="initial" aria-hidden="true">{initialOf(clip.maker.name)}</span>
                 {/if}

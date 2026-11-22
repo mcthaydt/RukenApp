@@ -3067,3 +3067,117 @@ main.playing {
     animation: none;
   }
 }
+
+/* Every wait shows it. A move between pages runs a Blue line across the top of the window and shows a turning
+   spinner with "Loading…" under it (src/lib/page-loading.svelte); a button whose form is out shows the spinner after
+   its words and cannot be pressed again (src/lib/busy-forms.ts); a picture or a video is a box that slowly brightens
+   and dims until it has loaded (src/lib/loads.ts). With reduced motion nothing turns or runs: the line is drawn
+   whole, the spinner stands still and the words stay. */
+.page-loading {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 100;
+  height: 4px;
+  overflow: hidden;
+  background: var(--felt-raised);
+}
+
+.page-loading::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--pay);
+  animation: running-line 1.1s var(--ease) infinite;
+}
+
+.page-loading-words {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  margin: 0;
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-deep);
+  color: var(--chalk);
+  font: var(--text-button);
+  transform: translateX(-50%);
+}
+
+/* The spinner. Owner, 2026-11-22: "let's use a spinner too, or at least some obvious indication that something is
+   loading". It is the one round thing besides the circles behind Live and a person's photo. */
+.spinner,
+:is(button, .button)[aria-busy="true"]::after {
+  content: "";
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+  border: 3px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spinner 0.8s linear infinite;
+}
+
+:is(button, .button)[aria-busy="true"] {
+  gap: 0.6em;
+  cursor: progress;
+}
+
+@keyframes spinner {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes running-line {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* Words for a screen reader only: kept on the page, drawn nowhere. */
+.hidden-words {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+img[data-loading],
+video[data-loading] {
+  background-color: var(--felt-raised);
+  animation: media-loading 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes media-loading {
+  to {
+    background-color: var(--felt);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-loading::before {
+    width: 100%;
+    animation: none;
+  }
+
+  .spinner,
+  :is(button, .button)[aria-busy="true"]::after {
+    animation: none;
+  }
+
+  img[data-loading],
+  video[data-loading] {
+    animation: none;
+  }
+}

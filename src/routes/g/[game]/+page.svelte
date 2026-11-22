@@ -6,6 +6,7 @@
   sound, and a coarse pointer makes "computer" read "tablet".
 -->
 <script lang="ts">
+  import { loads } from "../../../lib/loads.ts";
   import { onMount } from "svelte";
   import { quietVideo } from "../../../lib/quiet-video.ts";
   import type { PageProps } from "./$types";
@@ -79,6 +80,7 @@
       <div class="clipbox" data-shape={shape}>
         {#key shape}
           <video
+            use:loads
             src={`${data.clips[shape]}#t=0.001`}
             preload="metadata"
             tabindex={enhanced ? -1 : undefined}
@@ -161,6 +163,7 @@
               aria-label="Watch the upright video"
             >
               <video
+                use:loads
                 class="tile"
                 src={`${data.clips.upright}#t=0.001`}
                 preload="metadata"
@@ -177,6 +180,7 @@
               aria-label="Watch the wide video"
             >
               <video
+                use:loads
                 class="tile"
                 src={`${data.clips.wide}#t=0.001`}
                 preload="metadata"
@@ -193,7 +197,7 @@
       {#if data.maker !== null}
         <div class="card cell madeby">
           {#if data.maker.photo !== null}
-            <img src={data.maker.photo} alt="" width="48" height="48" />
+            <img use:loads src={data.maker.photo} alt="" width="48" height="48" />
           {/if}
           <span
             >Made by <a data-sveltekit-preload-data="off" href={`/${data.maker.handle}`}
@@ -213,6 +217,7 @@
             <li>
               <a href={`/g/${game.slug}`}>
                 <video
+                  use:loads
                   class="tile"
                   src={`${game.wideClip}#t=0.001`}
                   preload="metadata"
@@ -235,7 +240,7 @@
   {#if opened}
     <!-- A game's videos are silent, so there is nothing to caption. -->
     <!-- svelte-ignore a11y_media_has_caption -->
-    <video src={data.clips[shape]} controls autoplay playsinline></video>
+    <video use:loads src={data.clips[shape]} controls autoplay playsinline></video>
   {/if}
   <button type="button" class="safe" onclick={() => viewer?.close()}>Close</button>
 </dialog>

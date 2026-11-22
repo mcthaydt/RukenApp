@@ -36,6 +36,8 @@
       };
     }}
   >
-    <button class="danger" disabled={sending}>Take my page down</button>
+    <button class="danger" disabled={sending} aria-busy={sending ? "true" : undefined}>
+      {sending ? "Taking it down…" : "Take my page down"}
+    </button>
   </form>
 </main>
