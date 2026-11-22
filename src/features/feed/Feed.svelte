@@ -215,22 +215,35 @@
     forgetHints();
   }
 
-  // The feed scrolls inside itself, which the browser's own Back does not keep, so the clip on screen is kept as the page's
-  // snapshot and put back on screen at once when a person comes back to it.
-  let mounted = false;
-  let returning: string | undefined;
-  function returnTo(slug: string): void {
-    const index = clips.findIndex((clip) => clip.slug === slug);
-    if (index <= 0) return;
-    current = index;
-    sections[index]?.scrollIntoView({ behavior: "auto", block: "start" });
+  // The feed scrolls inside itself, which the browser's own Back does not keep, so where a person was is kept as the
+  // page's snapshot and put back at once when they come back to it. The feed goes round and a game can be on it twice,
+  // so the snapshot keeps every clip the feed had (later pages too) and the place by its key, not by the game.
+  interface Place {
+    clips: FeedClip[];
+    next: string | null;
+    key: string;
   }
-  snapshot<string | undefined>({
-    capture: () => clips[current]?.slug,
-    restore: (slug) => {
-      if (slug === undefined) return;
-      if (mounted) returnTo(slug);
-      else returning = slug;
+  let mounted = false;
+  let returning: Place | undefined;
+  function returnTo(place: Place): void {
+    clips = place.clips;
+    next = place.next;
+    void tick().then(() => {
+      const index = clips.findIndex((clip) => clip.key === place.key);
+      if (index <= 0) return;
+      current = index;
+      sections[index]?.scrollIntoView({ behavior: "auto", block: "start" });
+    });
+  }
+  snapshot<Place | undefined>({
+    capture: () => {
+      const key = clips[current]?.key;
+      return key === undefined ? undefined : { clips, next, key };
+    },
+    restore: (place) => {
+      if (place === undefined) return;
+      if (mounted) returnTo(place);
+      else returning = place;
     },
   });
 

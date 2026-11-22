@@ -258,6 +258,32 @@ test("Back from a game's page comes back to the clip it was opened from", async 
   await expect(current(page)).toHaveAttribute("data-slug", second);
 });
 
+test("Back from a game opened past the first page comes back to that very clip, not an earlier showing of it", async ({
+  page,
+}) => {
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  const before = await clips.count();
+  // Past the first page: the feed goes round, so this game was shown once already on the first page.
+  await page.locator("section.more").scrollIntoViewIfNeeded();
+  await expect.poll(() => clips.count()).toBeGreaterThan(before);
+  await expect(clips.nth(before)).toHaveAttribute("data-current", "true");
+  const slug = (await clips.nth(before).getAttribute("data-slug")) ?? "?";
+  const box = await boxOf(clips.nth(before));
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.4);
+  await expect(page).toHaveURL(new RegExp(`/g/${slug}$`));
+
+  await page.goBack();
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await expect(current(page)).toHaveAttribute("data-slug", slug);
+  // The very place: the clips that came on later pages are back, and the one on screen is the one that was opened.
+  expect(
+    await clips.evaluateAll((sections) =>
+      sections.findIndex((section) => section.getAttribute("data-current") === "true"),
+    ),
+  ).toBe(before);
+});
+
 test("pressing the speaker flips sound for every clip, and it stays as set from one game to the next", async ({
   page,
 }) => {
