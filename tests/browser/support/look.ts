@@ -329,7 +329,10 @@ export async function showTheOwner(page: Page, testInfo: TestInfo, screen: strin
     const ends = document
       .getAnimations()
       .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity);
-    await Promise.all(ends.map((animation) => animation.finished));
+    // A cancelled animation (a pressed button's transition, cut short as the button turns busy) rejects its `finished`
+    // with "AbortError: The user aborted a request" (make-questions.test.ts:388, runs on #309 and #319 and #323): it
+    // has stopped, which is all the picture waits for, so it counts as finished.
+    await Promise.all(ends.map((animation) => animation.finished.catch(() => undefined)));
   });
   let picture: Buffer;
   try {
