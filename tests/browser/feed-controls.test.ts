@@ -163,7 +163,7 @@ test("the clip that fills the window is the current one, and only one is; the ot
     });
 });
 
-test("each key moves one clip, never past either end", async ({ page }) => {
+test("each key moves one clip, never before the first", async ({ page }) => {
   await openFeed(page);
   const clips = page.locator("section[data-slug]");
   await page.keyboard.press("ArrowUp");
@@ -421,4 +421,79 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   expect(names[play + 1]).toBe("Share");
   expect(names[play + 2]).toBe("Sound");
   for (const outline of outlines) expect(outline).not.toMatch(/^none/);
+});
+
+// The feed never ends (owner, 2026-11-22: "the feed should be infinite"). Near the end of what it has, it asks for the next
+// page; past the last clip a spinner waits for it; when every game has been shown it goes round again.
+test("the feed never ends: a spinner past the last clip, then more, then the same games again", async ({
+  page,
+}) => {
+  // The next page is held until the spinner has been seen, so the journey waits on what is on screen, not on a clock.
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/feed?*", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  const before = await clips.count();
+
+  // A fast swipe to the bottom: past the last clip is the spinner, and it says what it is waiting for.
+  await page.locator("section.more").scrollIntoViewIfNeeded();
+  const spinner = page.getByRole("progressbar", { name: "Loading more games" });
+  await expect(spinner).toBeVisible();
+  await expect(page.locator("section.more")).toHaveAttribute("aria-busy", "true");
+  release();
+  await expect.poll(() => clips.count()).toBeGreaterThan(before);
+
+  // Every live game came first; a game coming round again means the feed went round. With more than a page of games
+  // in the shared database it can take more than one page.
+  const repeats = async () => {
+    const slugs = await clips.evaluateAll((sections) =>
+      sections.map((section) => section.getAttribute("data-slug")),
+    );
+    return slugs.length - new Set(slugs).size;
+  };
+  for (let pages = 0; pages < 4 && (await repeats()) === 0; pages += 1) {
+    const had = await clips.count();
+    await page.locator("section.more").scrollIntoViewIfNeeded();
+    await expect.poll(() => clips.count()).toBeGreaterThan(had);
+  }
+  expect(await repeats()).toBeGreaterThan(0);
+  // One game is never shown twice in a row while two or more are live.
+  const slugs = await clips.evaluateAll((sections) => sections.map((section) => section.getAttribute("data-slug")));
+  if (new Set(slugs).size > 1) {
+    for (let index = 1; index < slugs.length; index += 1) expect(slugs[index]).not.toBe(slugs[index - 1]);
+  }
+
+  // The keys go on past where the first page ended.
+  await clips.nth(before).scrollIntoViewIfNeeded();
+  await expect(clips.nth(before)).toHaveAttribute("data-current", "true");
+  await page.keyboard.press("ArrowDown");
+  await expect(clips.nth(before + 1)).toHaveAttribute("data-current", "true");
+});
+
+test("when more games do not come, the feed says so and Try again brings them", async ({ page }) => {
+  let refuse = true;
+  await page.route("**/api/feed?*", async (route) => {
+    if (refuse) await route.fulfill({ status: 500, body: "" });
+    else await route.continue();
+  });
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  const before = await clips.count();
+
+  await page.locator("section.more").scrollIntoViewIfNeeded();
+  await expect(page.getByText("Couldn't load more games.")).toBeVisible();
+  const again = page.getByRole("button", { name: "Try again" });
+  await expect(again).toBeVisible();
+  expect((await boxOf(again)).height).toBeGreaterThanOrEqual(48);
+
+  refuse = false;
+  await again.click();
+  await expect.poll(() => clips.count()).toBeGreaterThan(before);
+  await expect(page.getByText("Couldn't load more games.")).toHaveCount(0);
 });

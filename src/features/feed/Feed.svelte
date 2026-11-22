@@ -4,6 +4,8 @@
   right. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
   With script it fetches only the clip on screen and the next, plays the one on screen where a video may move, shows
   the window's shape of clip, and moves a clip at a time on the arrow keys, Page Up, Page Down and Space.
+  The feed never ends: a few clips before the end of what it has, it asks for the next page, and a spinner fills the
+  screen past the last clip until that page comes. When every game has been shown it goes round again in a new order.
 -->
 <script lang="ts">
   import { loads } from "../../lib/loads.ts";
@@ -11,9 +13,19 @@
   import { mayMove } from "../../lib/quiet-video.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
   import { shareLink, type ShareTools } from "./share.ts";
-  import type { FeedClip } from "./service.ts";
+  import type { FeedClip, FeedPage } from "./service.ts";
 
-  let { clips }: { clips: FeedClip[] } = $props();
+  let { first }: { first: FeedPage } = $props();
+
+  /** How many clips before the end of what the feed has it asks for the next page, so a person rarely meets the spinner. */
+  const ASK_AHEAD = 3;
+
+  // The feed starts from its first page; the route makes a new feed for a new first page.
+  // svelte-ignore state_referenced_locally
+  let clips = $state<FeedClip[]>(first.clips);
+  // svelte-ignore state_referenced_locally
+  let next = $state<string | null>(first.next);
+  let more = $state<"idle" | "loading" | "failed">("idle");
 
   /** Where a first open's hints are remembered, so they show once on a device and never again. */
   const SEEN_HINTS = "rk_seen_hints";
@@ -21,7 +33,7 @@
   const NOTE_MS = 4000;
 
   let feed = $state<HTMLElement>();
-  let sections = $state<HTMLElement[]>([]);
+  let sections = $state<(HTMLElement | undefined)[]>([]);
   let videos = $state<(HTMLVideoElement | undefined)[]>([]);
   // Whether the script has started. Before it, every clip is the upright one and none is fetched until the window's
   // shape is known, so a wide window never fetches a clip it will not show.
@@ -36,7 +48,10 @@
   let started = $state<string[]>([]);
   let autoplay = $state(false);
   let hint = $state<"touch" | "pointer" | null>(null);
-  let note = $state<{ slug: string; words: string } | null>(null);
+  let note = $state<{ key: string; words: string } | null>(null);
+  let watcher = $state.raw<IntersectionObserver>();
+  // The screen past the last clip, while there is a next page: the spinner, or "Try again".
+  let moreScreen = $state<HTMLElement>();
   let noteTimer: ReturnType<typeof setTimeout> | undefined;
 
   const initialOf = (name: string): string => Array.from(name.trim())[0]?.toUpperCase() ?? "";
@@ -68,7 +83,7 @@
     if (!seen && clips.length > 0) hint = matchMedia("(pointer: coarse)").matches ? "touch" : "pointer";
 
     const ratios: (number | undefined)[] = [];
-    const watcher = new IntersectionObserver(
+    watcher = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           ratios[sections.indexOf(entry.target as HTMLElement)] = entry.intersectionRatio;
@@ -77,7 +92,6 @@
       },
       { root: feed ?? null, threshold: Array.from({ length: 21 }, (_, step) => step / 20) },
     );
-    for (const section of sections) watcher.observe(section);
 
     ready = true;
     void tick().then(() => {
@@ -85,10 +99,38 @@
     });
     return () => {
       wide.removeEventListener("change", follow);
-      watcher.disconnect();
+      watcher?.disconnect();
       clearTimeout(noteTimer);
     };
   });
+
+  // Every clip is watched for how much of it is in the window, the ones a later page adds as well. Watching one twice
+  // does nothing, so all of them are handed over each time.
+  $effect(() => {
+    if (watcher === undefined) return;
+    for (const section of sections) if (section !== undefined) watcher.observe(section);
+  });
+
+  // A few clips before the end of what the feed has, it asks for the next page. A page that failed waits for "Try again".
+  $effect(() => {
+    if (warm && next !== null && more === "idle" && current >= clips.length - ASK_AHEAD) void loadMore();
+  });
+
+  async function loadMore(): Promise<void> {
+    if (next === null) return;
+    more = "loading";
+    try {
+      const response = await fetch(`/api/feed?after=${encodeURIComponent(next)}`);
+      if (!response.ok) throw new Error(`the feed's next page answered ${String(response.status)}`);
+      const page = await response.json<FeedPage>();
+      const have = new Set(clips.map((clip) => clip.key));
+      clips = [...clips, ...page.clips.filter((clip) => !have.has(clip.key))];
+      next = page.next;
+      more = "idle";
+    } catch {
+      more = "failed";
+    }
+  }
 
   // The clip on screen plays (where a video may move, or once pressed), every other clip waits at its start, and sound is
   // one setting for all of them.
@@ -147,7 +189,12 @@
 
   function goTo(index: number): void {
     // With less motion the next clip is simply there, not slid to.
-    sections[clampClip(index, clips.length)]?.scrollIntoView({
+    // Past the last clip is the screen that waits for the next page, so a key can go on to it.
+    const target =
+      index >= clips.length && moreScreen !== undefined
+        ? moreScreen
+        : sections[clampClip(index, clips.length)];
+    target?.scrollIntoView({
       behavior: mayMove() ? "smooth" : "auto",
       block: "start",
     });
@@ -177,7 +224,7 @@
     if (result !== "copied" && result !== "manual") return;
     clearTimeout(noteTimer);
     note = {
-      slug: clip.slug,
+      key: clip.key,
       words: result === "copied" ? "Link copied." : "Copy the address from the bar at the top.",
     };
     noteTimer = setTimeout(() => (note = null), NOTE_MS);
@@ -192,7 +239,7 @@
   </main>
 {:else}
   <main class="feed" data-ready={ready ? "true" : "false"} bind:this={feed} onscroll={forgetHints}>
-    {#each clips as clip, index (clip.slug)}
+    {#each clips as clip, index (clip.key)}
       <section
         bind:this={sections[index]}
         data-slug={clip.slug}
@@ -281,7 +328,7 @@
             <a class="button play" href={`/g/${clip.slug}/play`}>Play</a>
           </div>
           <div class="side">
-            <p class="sharenote" role="status">{note?.slug === clip.slug ? note.words : ""}</p>
+            <p class="sharenote" role="status">{note?.key === clip.key ? note.words : ""}</p>
             <button
               type="button"
               class="share"
@@ -298,6 +345,23 @@
         </div>
       </section>
     {/each}
+    {#if next !== null}
+      <!-- Past the last clip: the spinner while the next page comes, or what to do when it did not. -->
+      <section bind:this={moreScreen} class="more" aria-busy={more === "failed" ? "false" : "true"}>
+        {#if more === "failed"}
+          <p>Couldn't load more games.</p>
+          <button
+            type="button"
+            class="button"
+            onclick={() => {
+              void loadMore();
+            }}>Try again</button
+          >
+        {:else}
+          <span class="spinner" role="progressbar" aria-label="Loading more games"></span>
+        {/if}
+      </section>
+    {/if}
   </main>
 {/if}
 
@@ -331,6 +395,22 @@
     scroll-snap-align: start;
     scroll-snap-stop: always;
     background: var(--felt-deep);
+  }
+  .more {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 1rem;
+    padding: 1rem 1rem 6rem;
+    color: var(--chalk);
+    text-align: center;
+  }
+  .more p {
+    margin: 0;
+  }
+  .more .spinner {
+    width: 2.5rem;
+    height: 2.5rem;
   }
   video {
     position: absolute;

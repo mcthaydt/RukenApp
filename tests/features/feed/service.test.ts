@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { ListedGame } from "../../../src/features/games/games.ts";
-import { createFeedService, FEED_MAX, type FeedServiceDeps } from "../../../src/features/feed/service.ts";
+import {
+  createFeedService,
+  FEED_MAX,
+  MORE_AT_LEAST,
+  type FeedServiceDeps,
+} from "../../../src/features/feed/service.ts";
 import { TestClock } from "../../support/test-clock.ts";
 
 const DAY = 86_400_000;
@@ -57,9 +62,14 @@ function depsFor(
   return { service: createFeedService(deps), asked };
 }
 
+/** The first page's clips. */
+async function firstPage(service: ReturnType<typeof depsFor>["service"]) {
+  return (await service.page(null)).clips;
+}
+
 describe("feed", () => {
   it("answers no clips when no game is live", async () => {
-    expect(await depsFor([]).service.feed()).toEqual([]);
+    expect(await depsFor([]).service.page(null)).toEqual({ clips: [], next: null });
   });
 
   it("answers the clips in the feed's order: new games newest first, then the most played", async () => {
@@ -68,7 +78,7 @@ describe("feed", () => {
       { beats: { "id-old-busy": 50, "id-old-quiet": 2 } },
     );
 
-    expect((await service.feed()).map((clip) => clip.slug)).toEqual([
+    expect((await firstPage(service)).map((clip) => clip.slug)).toEqual([
       "new-new",
       "new-old",
       "old-busy",
@@ -81,9 +91,10 @@ describe("feed", () => {
       makers: { "maker-with": { handle: "night-owl", name: "Night Owl", photoKey: "photos/owl.png" } },
     });
 
-    const clips = await service.feed();
+    const clips = await firstPage(service);
 
     expect(clips[0]).toEqual({
+      key: "0~with",
       slug: "with",
       name: "Game with",
       oneLine: "About with.",
@@ -99,19 +110,19 @@ describe("feed", () => {
       makers: { "maker-one": { handle: "h", name: "N", photoKey: null } },
     });
 
-    expect((await service.feed())[0]?.maker).toEqual({ handle: "h", name: "N", photo: null });
+    expect((await firstPage(service))[0]?.maker).toEqual({ handle: "h", name: "N", photo: null });
   });
 
   it("leaves out games rated 18+", async () => {
     const { service } = depsFor([listed("kids", 1), listed("adults", 1, { ageRating: "age_18" })]);
 
-    expect((await service.feed()).map((clip) => clip.slug)).toEqual(["kids"]);
+    expect((await firstPage(service)).map((clip) => clip.slug)).toEqual(["kids"]);
   });
 
   it("asks for the week's beats up to now", async () => {
     const { service, asked } = depsFor([listed("one", 1)]);
 
-    await service.feed();
+    await firstPage(service);
 
     expect(asked.since).toEqual([new Date(NOW - 7 * DAY)]);
     expect(asked.now).toEqual([new Date(NOW)]);
@@ -123,19 +134,151 @@ describe("feed", () => {
     const morning = depsFor(games, {}, new TestClock("2026-11-21T14:00:00Z"));
     const evening = depsFor(games, {}, new TestClock("2026-11-22T03:00:00Z"));
 
-    const slugs = async (service: typeof morning.service) => (await service.feed()).map((clip) => clip.slug);
+    const slugs = async (service: typeof morning.service) =>
+      (await firstPage(service)).map((clip) => clip.slug);
 
     expect(await slugs(evening.service)).toEqual(await slugs(morning.service));
   });
 
-  it("gives at most 50 clips, and asks for the makers of those only", async () => {
+  it("gives at most 50 clips on the first page, and asks for the makers of those only", async () => {
     const games = Array.from({ length: 60 }, (_, index) => listed(`g${String(index)}`, 20 + index));
     const { service, asked } = depsFor(games);
 
-    const clips = await service.feed();
+    const clips = await firstPage(service);
 
     expect(clips).toHaveLength(FEED_MAX);
     expect(FEED_MAX).toBe(50);
     expect(asked.makerIds[0]).toHaveLength(50);
+  });
+
+  it("answers no next page when no game is live", async () => {
+    expect((await depsFor([]).service.page(null)).next).toBeNull();
+  });
+});
+
+/** Walks the feed from the first page for `count` clips, the way the screen does: each page's `next` asks for the one after. */
+async function walk(service: ReturnType<typeof depsFor>["service"], count: number): Promise<string[]> {
+  const slugs: string[] = [];
+  const keys = new Set<string>();
+  let page = await service.page(null);
+  for (let pages = 0; slugs.length < count; pages += 1) {
+    for (const clip of page.clips) {
+      // Every clip in one feed has its own key, so the screen can tell two showings of one game apart.
+      expect(keys.has(clip.key)).toBe(false);
+      keys.add(clip.key);
+      slugs.push(clip.slug);
+    }
+    if (page.next === null) break;
+    expect(pages).toBeLessThan(10_000);
+    const next = await service.page(page.next);
+    if (next === null) throw new Error("a next page from the service is always one it reads");
+    page = next;
+  }
+  return slugs;
+}
+
+describe("the feed never ends", () => {
+  it("shows every game once, then goes round again, for as long as a person scrolls", async () => {
+    const games = Array.from({ length: 7 }, (_, index) => listed(`g${String(index)}`, 20 + index));
+    const { service } = depsFor(games);
+
+    const slugs = await walk(service, 7 * 6);
+
+    expect(slugs.length).toBeGreaterThanOrEqual(7 * 6);
+    for (let round = 0; round < 6; round += 1) {
+      expect(new Set(slugs.slice(round * 7, round * 7 + 7)).size).toBe(7);
+    }
+  });
+
+  it("the first page is the feed's order, with no game twice", async () => {
+    const games = Array.from({ length: 4 }, (_, index) => listed(`g${String(index)}`, 20 + index));
+    const { service } = depsFor(games, { beats: { "id-g2": 9, "id-g0": 5 } });
+
+    const first = await service.page(null);
+
+    expect(first.clips.map((clip) => clip.slug)).toEqual(["g2", "g0", "g1", "g3"]);
+    expect(first.next).not.toBeNull();
+  });
+
+  it("goes round in a new order, and never shows one game twice in a row", async () => {
+    const games = Array.from({ length: 5 }, (_, index) => listed(`g${String(index)}`, 20 + index));
+    const { service } = depsFor(games);
+
+    const slugs = await walk(service, 5 * 40);
+    const rounds = Array.from({ length: 40 }, (_, round) => slugs.slice(round * 5, round * 5 + 5).join(","));
+
+    expect(new Set(rounds).size).toBeGreaterThan(1);
+    for (let index = 1; index < slugs.length; index += 1) expect(slugs[index]).not.toBe(slugs[index - 1]);
+  });
+
+  it("with two games, takes turns", async () => {
+    const { service } = depsFor([listed("a", 20), listed("b", 21)]);
+
+    const slugs = await walk(service, 20);
+
+    for (let index = 1; index < slugs.length; index += 1) expect(slugs[index]).not.toBe(slugs[index - 1]);
+  });
+
+  it("with one game, shows it again and again", async () => {
+    const { service } = depsFor([listed("only", 20)]);
+
+    const slugs = await walk(service, 25);
+
+    expect(slugs.length).toBeGreaterThanOrEqual(25);
+    expect(new Set(slugs)).toEqual(new Set(["only"]));
+  });
+
+  it("a later page holds enough clips that the screen asks rarely", async () => {
+    const { service } = depsFor([listed("a", 20), listed("b", 21), listed("c", 22)]);
+
+    const first = await service.page(null);
+    const second = await service.page(first.next ?? "");
+
+    expect(second?.clips.length).toBeGreaterThanOrEqual(MORE_AT_LEAST);
+    expect(second?.clips.length).toBeLessThanOrEqual(FEED_MAX);
+  });
+
+  it("goes past 50 games: the rest of the first round comes next, then the round again", async () => {
+    const games = Array.from({ length: 60 }, (_, index) => listed(`g${String(index)}`, 20 + index));
+    const { service } = depsFor(games);
+
+    const slugs = await walk(service, 120);
+
+    expect(new Set(slugs.slice(0, 60)).size).toBe(60);
+    expect(new Set(slugs.slice(60, 120)).size).toBe(60);
+  });
+
+  it("keeps 18+ games out of every page", async () => {
+    const { service } = depsFor([listed("kids", 20), listed("adults", 20, { ageRating: "age_18" })]);
+
+    expect(new Set(await walk(service, 30))).toEqual(new Set(["kids"]));
+  });
+
+  it("answers null for an address it did not make", async () => {
+    const { service } = depsFor([listed("a", 20)]);
+
+    for (const bad of [
+      "",
+      "x",
+      "2026-11-21~1",
+      "2026-11-21~-1~0",
+      "2026-11-21~1~0~9",
+      "nope~1~0",
+      "2026-11-21~9999999~0",
+    ]) {
+      expect(await service.page(bad)).toBeNull();
+    }
+  });
+
+  it("goes on in one order across midnight, from the day the feed was opened", async () => {
+    const games = Array.from({ length: 6 }, (_, index) => listed(`t${String(index)}`, 20));
+    const before = depsFor(games, {}, new TestClock("2026-11-22T05:00:00Z"));
+    const after = depsFor(games, {}, new TestClock("2026-11-22T07:00:00Z"));
+
+    const first = await before.service.page(null);
+    const fromBefore = await before.service.page(first.next ?? "");
+    const fromAfter = await after.service.page(first.next ?? "");
+
+    expect(fromAfter?.clips.map((clip) => clip.key)).toEqual(fromBefore?.clips.map((clip) => clip.key));
   });
 });
