@@ -23,8 +23,14 @@ export function loads(node: HTMLImageElement | HTMLVideoElement): { destroy(): v
     mark(!node.complete);
     node.addEventListener("load", done);
     node.addEventListener("error", done);
+    // A new address on the same picture (a maker's new photo) loads again, so it shimmers again.
+    const newAddress = new MutationObserver(() => {
+      mark(!node.complete);
+    });
+    newAddress.observe(node, { attributes: true, attributeFilter: ["src", "srcset"] });
     return {
       destroy() {
+        newAddress.disconnect();
         node.removeEventListener("load", done);
         node.removeEventListener("error", done);
       },

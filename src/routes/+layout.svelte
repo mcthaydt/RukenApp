@@ -10,7 +10,7 @@
   import "../lib/look.css";
   import { page } from "$app/state";
   import { Bar } from "../features/feed/feed.browser.ts";
-  import { clearSending, markSending } from "../lib/busy-forms.ts";
+  import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
   import PageLoading from "../lib/page-loading.svelte";
   import type { LayoutProps } from "./$types";
 
@@ -32,6 +32,8 @@
 <svelte:window onpageshow={cameBack} />
 
 <PageLoading />
+<!-- Says "Sending…" to a screen reader when a plain form is sent (src/lib/busy-forms.ts). -->
+<p class="hidden-words" id={SENDING_NEWS} aria-live="polite"></p>
 
 {#if page.url.pathname !== "/" && !page.url.pathname.startsWith("/make") && !page.url.pathname.startsWith("/g/") && !(page.route.id === "/[handle=handle]" && page.status < 400)}
   <header><a class="wordmark" href="/">Ruken</a></header>

@@ -376,6 +376,8 @@ describe("screens wear the look and nothing of their own", () => {
     "menupanel",
     "agreement",
     "side",
+    // Words only a screen reader meets: the layout's "Sending…" (src/lib/busy-forms.ts).
+    "hidden-words",
   ];
   const ROUTES = "src/routes";
 
@@ -510,9 +512,11 @@ describe("the maker's screens", () => {
 
   // Owner, 2026-11-15: "we don't do super rounded anything here". The only round thing is a person's photo.
   // Owner, 2026-11-15, on a card: the five drifting circles behind a live game are allowed, there and nowhere else.
-  it("has no pill or circle shape, except the drifting circles behind Live", () => {
+  // Owner, 2026-11-22: "let's use a spinner too": the loading spinner is round as well.
+  it("has no pill or circle shape, except the drifting circles behind Live and the loading spinner", () => {
     const withoutDrift = withoutComments
       .replace(/\.drift\s*\{[^}]*\}/, "")
+      .replace(/\.spinner,\s*:is\(button, \.button\)\[aria-busy="true"\]::after\s*\{[^}]*\}/, "")
       // A maker's photo on a game's page is round, as people's photos are (spec 3.2).
       .replace(/\.gamepage \.madeby img\s*\{[^}]*\}/, "");
     expect(withoutDrift).not.toMatch(/border-radius:\s*(999|9999|50%|100%)/);
