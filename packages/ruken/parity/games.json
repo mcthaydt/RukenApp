@@ -1,0 +1,137 @@
+[
+  {
+    "id": "games",
+    "browser": "Your games list",
+    "command": "games",
+    "mcp": "list_games",
+    "endpoint": "GET /api/v1/games",
+    "actions": [],
+    "built": true
+  },
+  {
+    "id": "new",
+    "browser": "Start a game",
+    "command": "new",
+    "mcp": "start_game",
+    "endpoint": "POST /api/v1/games",
+    "actions": ["make/new#answer"],
+    "built": false
+  },
+  {
+    "id": "game",
+    "browser": "A game's screen",
+    "command": "game",
+    "mcp": "show_game",
+    "endpoint": "GET /api/v1/games/<game>",
+    "actions": [],
+    "built": true
+  },
+  {
+    "id": "set",
+    "browser": "Answer name, one line, age, marks, websites",
+    "command": "set",
+    "mcp": "set_answer",
+    "endpoint": "PATCH /api/v1/games/<game>",
+    "actions": ["make/[game]/[question=question]#answer"],
+    "built": false
+  },
+  {
+    "id": "files",
+    "browser": "Files: repository, branch, folder",
+    "command": "files",
+    "mcp": "set_files",
+    "endpoint": "PATCH /api/v1/games/<game>",
+    "actions": [],
+    "built": false
+  },
+  {
+    "id": "video",
+    "browser": "Upright and wide video",
+    "command": "video",
+    "mcp": "send_video",
+    "endpoint": "PUT /api/v1/games/<game>/videos/<upright|wide>",
+    "actions": ["make/[game]/[question=question]#clip"],
+    "built": true
+  },
+  {
+    "id": "keep-old",
+    "browser": "Keep the old one",
+    "command": "keep-old",
+    "mcp": "keep_old",
+    "endpoint": "DELETE /api/v1/games/<game>/waiting/<part>",
+    "actions": ["make/[game]/[question=question]#keepOld"],
+    "built": true
+  },
+  {
+    "id": "agree",
+    "browser": "The maker agreement",
+    "command": "agree",
+    "mcp": null,
+    "endpoint": "POST /api/v1/agreement",
+    "actions": ["make/[game]/agreement#default"],
+    "built": false
+  },
+  {
+    "id": "send",
+    "browser": "Check and send, and send again",
+    "command": "send",
+    "mcp": "send_for_review",
+    "endpoint": "POST /api/v1/games/<game>/send",
+    "actions": ["make/[game]/check#send", "make/[game]#send", "make/[game]#sendAgain"],
+    "built": false
+  },
+  {
+    "id": "update",
+    "browser": "Send a new version of a live game",
+    "command": "update",
+    "mcp": "send_new_version",
+    "endpoint": "POST /api/v1/games/<game>/new-version",
+    "actions": ["make/[game]#newVersion"],
+    "built": false
+  },
+  {
+    "id": "player-count",
+    "browser": "Show the player count on or off",
+    "command": "player-count",
+    "mcp": "set_player_count",
+    "endpoint": "PATCH /api/v1/games/<game>",
+    "actions": ["make/[game]#playerCount"],
+    "built": false
+  },
+  {
+    "id": "take-off",
+    "browser": "Take a game off Ruken",
+    "command": "take-off",
+    "mcp": "take_off",
+    "endpoint": "POST /api/v1/games/<game>/take-off",
+    "actions": ["make/[game]/take-off#takeOff"],
+    "built": false
+  },
+  {
+    "id": "put-back",
+    "browser": "Put it back",
+    "command": "put-back",
+    "mcp": "put_back",
+    "endpoint": "POST /api/v1/games/<game>/put-back",
+    "actions": ["make/[game]#putBack"],
+    "built": false
+  },
+  {
+    "id": "delete-files",
+    "browser": "Delete the files a taken-off game left",
+    "command": "delete-files",
+    "mcp": "delete_left_files",
+    "endpoint": "DELETE /api/v1/games/<game>/files",
+    "actions": ["make/[game]#deleteLeft"],
+    "built": false
+  },
+  {
+    "id": "throw-away",
+    "browser": "Throw a game away",
+    "command": "throw-away",
+    "mcp": null,
+    "endpoint": "DELETE /api/v1/games/<game>",
+    "actions": ["make#throwAway"],
+    "built": false
+  }
+]

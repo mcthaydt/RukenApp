@@ -282,6 +282,8 @@ describe("what the browser would draw itself", () => {
 describe("screens wear the look and nothing of their own", () => {
   const CLASSES = [
     "card",
+    "code",
+    "computers",
     "statement",
     "note",
     "row",
@@ -398,6 +400,8 @@ describe("screens wear the look and nothing of their own", () => {
     "splitbar",
     // Words only a screen reader meets: the layout's "Sending…" (src/lib/busy-forms.ts).
     "hidden-words",
+    // A list of short points on a reading page (privacy, terms).
+    "bullets",
   ];
   const ROUTES = "src/routes";
 

@@ -6,4 +6,7 @@ import type { StaffRole } from "../../lib/server/db.ts";
  * whose account is waiting to be deleted, is `none`.
  */
 export type Caller =
-  { kind: "user"; userId: string; sessionId: string; staffRoles: StaffRole[] } | { kind: "none" };
+  | { kind: "user"; userId: string; sessionId: string; staffRoles: StaffRole[] }
+  /** A computer's key under /api/v1 and nowhere else: the maker's actions in the maker's area, never staff's or money's. */
+  | { kind: "computer"; userId: string; keyId: string }
+  | { kind: "none" };

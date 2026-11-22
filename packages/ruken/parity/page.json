@@ -1,0 +1,80 @@
+[
+  {
+    "id": "page",
+    "browser": "See your page",
+    "command": "page",
+    "mcp": "show_page",
+    "endpoint": "GET /api/v1/page",
+    "actions": [],
+    "built": false
+  },
+  {
+    "id": "page-set",
+    "browser": "Make your page, change its address, name, one line, colours",
+    "command": "page set",
+    "mcp": "set_page",
+    "endpoint": "PUT /api/v1/page, PATCH /api/v1/page",
+    "actions": ["make/page#make", "make/page/[room]#answer"],
+    "built": false
+  },
+  {
+    "id": "page-photo",
+    "browser": "Your photo",
+    "command": "page photo",
+    "mcp": "set_photo",
+    "endpoint": "PUT /api/v1/page/photo, DELETE /api/v1/page/photo",
+    "actions": ["make/page/[room]#removePhoto"],
+    "built": false
+  },
+  {
+    "id": "links",
+    "browser": "Links: list",
+    "command": "links",
+    "mcp": "list_links",
+    "endpoint": "GET /api/v1/page/links",
+    "actions": [],
+    "built": false
+  },
+  {
+    "id": "links-add",
+    "browser": "Add a link",
+    "command": "links add",
+    "mcp": "add_link",
+    "endpoint": "POST /api/v1/page/links",
+    "actions": ["make/page/links/add#words", "make/page/links/add/where#add"],
+    "built": false
+  },
+  {
+    "id": "links-set",
+    "browser": "Change a link's words or where it goes",
+    "command": "links set",
+    "mcp": "change_link",
+    "endpoint": "PATCH /api/v1/page/links/<id>",
+    "actions": ["make/page/links/[link]#words", "make/page/links/[link]/where#save"],
+    "built": false
+  },
+  {
+    "id": "links-order",
+    "browser": "Hide, show, move or remove a link",
+    "command": "links hide",
+    "mcp": "remove_link",
+    "endpoint": "DELETE /api/v1/page/links/<id>",
+    "actions": [
+      "make/page/links#up",
+      "make/page/links#down",
+      "make/page/links#hide",
+      "make/page/links#show",
+      "make/page/links#remove"
+    ],
+    "built": false
+  },
+  {
+    "id": "page-take-down",
+    "browser": "Take your page down",
+    "command": "page take-down",
+    "mcp": null,
+    "endpoint": "DELETE /api/v1/page",
+    "actions": ["make/page/take-down#takeDown"],
+    "built": false
+  }
+]

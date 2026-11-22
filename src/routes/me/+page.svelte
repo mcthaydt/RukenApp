@@ -40,6 +40,7 @@
     <p class="apart">Make games? <a href="/make">Add yours to Ruken.</a></p>
   {/if}
   <p><a href="/about">What is Ruken?</a></p>
-  <!-- A full line of air above it, so a thumb meant for "What is Ruken?" never lands on Delete. -->
+  <p class="note"><a href="/me/computers">Your computers</a></p>
+  <!-- A full line of air above it, so a thumb meant for another link never lands on Delete. -->
   <p class="note apart"><a href="/me/delete">Delete my account</a></p>
 </main>
