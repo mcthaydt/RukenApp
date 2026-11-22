@@ -15,8 +15,16 @@
   import { clampClip, currentOf, stepFor } from "./current.ts";
   import { shareLink, type ShareTools } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
+  import { WishlistButton } from "../launch/launch.browser.ts";
 
-  let { first }: { first: FeedPage } = $props();
+  let {
+    first,
+    launch,
+  }: {
+    first: FeedPage;
+    /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
+    launch: { before: false } | { before: true; opens: string; wished: string[] };
+  } = $props();
 
   /** How many clips before the end of what the feed has it asks for the next page, so a person rarely meets the spinner. */
   const ASK_AHEAD = 3;
@@ -399,8 +407,18 @@
               <h2>{clip.name}</h2>
               <p>{clip.oneLine}</p>
             </a>
-            <!-- Opening the game counts a play, so it never loads ahead of a press. -->
-            <a class="button play" data-sveltekit-preload-data="off" href={`/g/${clip.slug}/play`}>Play</a>
+            {#if launch.before}
+              <WishlistButton
+                slug={clip.slug}
+                wished={launch.wished.includes(clip.slug)}
+                opens={launch.opens}
+                back="/"
+                buttonClass="button play"
+              />
+            {:else}
+              <!-- Opening the game counts a play, so it never loads ahead of a press. -->
+              <a class="button play" data-sveltekit-preload-data="off" href={`/g/${clip.slug}/play`}>Play</a>
+            {/if}
           </div>
           <div class="side">
             <p class="sharenote" role="status">{note?.key === clip.key ? note.words : ""}</p>
@@ -629,7 +647,8 @@
     margin: 0.25rem 0 0;
     overflow-wrap: anywhere;
   }
-  .play {
+  .play,
+  .band :global(.wish .play) {
     width: 100%;
     margin: 0;
   }
@@ -667,7 +686,8 @@
   }
   .maker:focus-visible,
   .gamelink:focus-visible,
-  .play:focus-visible {
+  .play:focus-visible,
+  .band :global(.wish .play:focus-visible) {
     outline-color: var(--chalk);
   }
 </style>
