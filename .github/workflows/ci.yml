@@ -309,12 +309,30 @@ jobs:
 
           const { GITHUB_API_URL: api, GITHUB_REPOSITORY: repo, GITHUB_RUN_ID: run, GITHUB_OUTPUT: output, TOKEN: token } =
             process.env;
+          // Up to 3 tries, 2 s and then 5 s apart, each limited to 10 s (spec 3.4 item 2). A thrown fetch (no
+          // connection, a reset, the time-out) or a 429 or 5xx answer is tried again; any other answer is not.
+          const waits = [2000, 5000];
           const get = async (path) => {
-            const response = await fetch(`${api}/repos/${repo}/${path}`, {
-              headers: { authorization: `Bearer ${token}`, accept: "application/vnd.github+json" },
-            });
-            if (!response.ok) throw new Error(`${path} answered ${response.status}`);
-            return response.json();
+            for (let tried = 1; ; tried += 1) {
+              let reason;
+              try {
+                const response = await fetch(`${api}/repos/${repo}/${path}`, {
+                  headers: { authorization: `Bearer ${token}`, accept: "application/vnd.github+json" },
+                  signal: AbortSignal.timeout(10_000),
+                });
+                if (response.ok) return await response.json();
+                if (response.status !== 429 && response.status < 500) {
+                  throw Object.assign(new Error(`${path} answered ${response.status}`), { final: true });
+                }
+                reason = `answered ${response.status}`;
+              } catch (error) {
+                if (error.final) throw error;
+                reason = error.name === "TimeoutError" ? "no answer in 10 s" : `${error.message} ${error.cause?.code ?? ""}`.trim();
+              }
+              console.log(`${path}: try ${tried} of 3: ${reason}`);
+              if (tried === 3) throw new Error(`${path} failed 3 tries, last: ${reason}`);
+              await new Promise((done) => setTimeout(done, waits[tried - 1]));
+            }
           };
           let key = "";
           try {
