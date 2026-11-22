@@ -190,14 +190,14 @@ test.describe("the card over a game's clip", () => {
     await expect(page.locator(".behindcard")).toHaveAttribute("aria-hidden", "true");
     await expect(clip).toHaveAttribute("tabindex", "-1");
     await expect(page.locator(".behindcard")).toHaveCSS("pointer-events", "none");
-    // One flat layer of the darkest felt at 62% over it.
-    const dim = await page
-      .locator(".behindcard")
-      .evaluate(
-        (node) =>
-          getComputedStyle(node, "::after").backgroundColor + "|" + getComputedStyle(node, "::after").opacity,
-      );
-    expect(dim).toBe(`${rgb(token("--felt-deep"))}|0.62`);
+    // The play menu's dim over it, frosted: the darkest felt at 62%, and what is behind a little blurred.
+    const dim = await page.locator(".behindcard").evaluate((node) => {
+      const after = getComputedStyle(node, "::after");
+      return `${after.backgroundColor}|${after.backdropFilter || after.getPropertyValue("-webkit-backdrop-filter")}`;
+    });
+    expect(dim).toBe(
+      `${rgb(token("--felt-deep")).replace("rgb(", "rgba(").replace(")", ", 0.62)")}|blur(6px)`,
+    );
 
     // The card is the same card, above the clip.
     await expectOneCard(page);
