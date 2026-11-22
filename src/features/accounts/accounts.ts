@@ -2,6 +2,7 @@
 // Anything not exported here is internal to the feature.
 export type { Caller } from "./caller.ts";
 export { createHandle } from "./handle.ts";
+export { httpsOnly } from "./https-only.ts";
 export { forwardToAuth } from "./forward.ts";
 export { changePassword, type ChangeFormData } from "./credentials.ts";
 export {
