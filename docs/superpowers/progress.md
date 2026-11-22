@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-11-22 14:58 UTC (from `date`), by the Ruken-from-your-computer PR 1 thread for the coordinator, which cannot write to the repo.
+Last updated: 2026-11-22 17:31 UTC (from `date`), by the Ruken-from-your-computer PR 2 thread for the coordinator, which cannot write to the repo.
 
 ## The owner's instructions
 
@@ -105,6 +105,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Phone sign-in, branch B (lane 3) | #209 | audit PASS at `628803f`, waiting on its full run | not measured (no plan checklist) |
 | Slice 3, the feed and the maker's page | unit K not started | units C, F, H, I and D merged (#246, #248, #247, #249, #286, #285) | 90% (28 of 31 plan steps ticked; one struck) |
 | Ruken from your computer, PR 1 (lane 3: computer keys, press-Yes sign-in, videos by command line) | branch `claude/project-thread-ps17ej` | built; all checks green locally; waiting for the implementation audit | 100% (12 of 12 PR 1 steps ticked) |
+| Ruken from your computer, PR 2 (lane 2: games and GitHub by command line, `sendWhenAgreed`) | branch `claude/project-thread-ii8h7y` | built on main 5f1e0c7; unit, pg and journeys A5 to A7 green locally; waiting for the fresh review and a pull request slot | 100% (5 of 5 PR 2 steps ticked) |
 | Slice 2 retrospective | none yet | owed (gap P5) | not started |
 | Flaky root causes, `play.test.ts:41` and `pay.test.ts:41` | #293 | merged as `e172f2a` (with the typed-before-alive fix); the follow-up for three more flaky journeys is on `claude/project-thread-4625xg` | not measured (short path, no plan) |
 | A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f` | not measured |

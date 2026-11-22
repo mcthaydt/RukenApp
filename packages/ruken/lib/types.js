@@ -13,6 +13,7 @@
  * @property {(file: string) => Promise<Uint8Array>} readFile
  * @property {(file: string) => Promise<number>} sizeOf
  * @property {(address: string) => void} [openBrowser]
+ * @property {(question: string) => Promise<string>} prompt Asks the person at the terminal one thing and answers what they typed.
  *
  * @typedef {object} Command
  * @property {string} name

@@ -4,6 +4,8 @@ import {
   firstUnanswered,
   GameError,
   gamesServices,
+  liveSendOf,
+  type LiveSend,
   nextStepWords,
   waitingLine,
   partNoun,
@@ -81,22 +83,6 @@ function liveLaidOut(game: MakerGame) {
   return { ...laid, chips: laid.chips.filter((chip) => LIVE_CHIPS.includes(chip.part)) };
 }
 
-/**
- * Which send a live game offers (spec 5c, and the Owner's "Send it again"). While an update waits, or nothing was sent
- * back, it is a new version, copied from GitHub. When staff sent files back it is still a new version: the files are
- * mended on GitHub and copied again. When they sent back a name or a line, nothing on GitHub changes, so
- * there is nothing to send until it is mended, and then the copy Ruken already holds is sent again.
- */
-type LiveSend = "new_version" | "again" | "none";
-
-function liveSend(game: MakerGame): LiveSend {
-  // A copy GitHub refused leaves no new copy to send again, so the way on is a new copy: "Send it again" would be
-  // refused with nothing to fix it (spec E4).
-  if (game.hasPending || !game.sentBackLast || game.pullProblem !== null) return "new_version";
-  if (game.toFix.some((one) => one.part === "files")) return "new_version";
-  return game.toFix.length === 0 ? "again" : "none";
-}
-
 /** The line under "Live": what is wrong, or what to do next. */
 function liveLine(game: MakerGame, send: LiveSend): string {
   if (game.hasPending) return "Your update is waiting for review.";
@@ -154,7 +140,7 @@ export const load: PageServerLoad = async (event) => {
     // The first look at a game a decision day let in is the Accepted screen, once.
     const accepted = await gamesServices().service.acceptedScreenFor(game.id);
     if (accepted !== null) return { ...base, view: "accepted" as const, count: accepted.count, backdrop };
-    const send = liveSend(game);
+    const send = liveSendOf(game);
     return {
       ...base,
       view: "live" as const,
@@ -245,7 +231,8 @@ export const actions: Actions = {
   sendAgain: async (event) => {
     const { userId, game } = await ownGame(event);
     if (game.state !== "live") error(404, "Not found");
-    if (liveSend(game) !== "again") return fail(400, { problem: "That game can't be sent again right now." });
+    if (liveSendOf(game) !== "again")
+      return fail(400, { problem: "That game can't be sent again right now." });
     try {
       await gamesServices().service.sendForReview(game.id, userId);
     } catch (problem) {
