@@ -81,10 +81,11 @@ for (const phone of PHONES) {
       page,
     }, testInfo) => {
       await page.goto("/");
-      const clip = page.locator(`section[data-slug="${game.slug}"]`);
+      // The first clip, whichever game it is: other journeys add games to the same feed.
+      const clip = page.locator("section[data-slug]").first();
       await expect(clip).toBeVisible();
       const { x } = await expectBarOnTheRight(page);
-      await expectClearOfTheBar(page, `section[data-slug="${game.slug}"] :is(.band, .share)`, x);
+      await expectClearOfTheBar(page, "section[data-slug]:first-of-type :is(.band, .share)", x);
       // The words sit at the foot and take at most half the window's height, so the clip shows above them.
       const band = await boxOf(clip.locator(".band"));
       const window = page.viewportSize() ?? { width: 0, height: 0 };

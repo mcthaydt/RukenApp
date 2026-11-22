@@ -122,6 +122,7 @@
   {/if}
 {/if}
 
+<!-- Before the screen, so Tab reaches it first: the feed never ends, so after it Tab would never get there. -->
 {#if barShown}
   <Bar on={place} />
 {/if}

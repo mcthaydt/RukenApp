@@ -46,7 +46,8 @@ test("the switch works by keyboard, shows its focus and is at least 44 by 44", a
   await pageHasSettled(page);
 
   let reached = false;
-  for (let tabs = 0; tabs < 15 && !reached; tabs += 1) {
+  // The bar of places comes first, three stops.
+  for (let tabs = 0; tabs < 18 && !reached; tabs += 1) {
     await page.keyboard.press("Tab");
     reached = await switchButton(page).evaluate((button) => button === document.activeElement);
   }
