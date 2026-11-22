@@ -95,7 +95,7 @@ A game is **new** from going live until `firstShowingMembers` distinct members h
 - **Round 0** is every game the viewer has not played, in base order. **Round 1 and later** are every game: those not played and those the viewer came back to first, then the rest, each round with a seeded shake of size `roundShake` on the scores, so rounds differ but one round never differs between two loads.
 - **The first page** is round 0, and when round 0 has fewer than `MORE_AT_LEAST` clips (a viewer who has played nearly everything) it goes on into round 1, so a first page always has clips while any game is live. Later pages walk rounds as the infinite feed's do (at least 10, at most 50). A fresh open always starts at round 0, so new games come first.
 - **What a later page reads after `at`:** only the viewer's views and plays since `at`, and only to put in echo and second-try clips: the echo at the first slot of the page being built that is at least `echoAfter` clips after the view that caused it; the second try at the first slot of the next page. Everything else a person does after `at` (quick no, More, Less, Good pick answers, new plays) changes their next open, never the cursor's later pages.
-- **The cursor** is base64url JSON `{ v: 1, at, r, o, x, w }`: `r` the round, `o` the offset in the base order, `x` the put-in clips so far (at most 20, each with its game and slot, so they are not put in twice), `w` a short hash of the viewer. A cursor that does not parse is a 400, as today. A cursor in the infinite feed's old `day~round~offset` form, one whose `at` is in the future or more than 24 hours old, or one whose `w` is not this viewer (they signed in or out while scrolling) answers a fresh first page.
+- **The cursor** is base64url JSON `{ v: 1, at, r, o, x, w }`: `r` the round, `o` the offset in the base order, `x` the put-in clips so far (at most 20, each with its game and slot, so they are not put in twice; at 20 the cursor puts in nothing more until the next open), `w` a short hash of the viewer. A cursor that does not parse is a 400, as today. A cursor in the infinite feed's old `day~round~offset` form, one whose `at` is in the future or more than 24 hours old, or one whose `w` is not this viewer (they signed in or out while scrolling) answers a fresh first page.
 - **Keys:** a base clip's `key` is `<round>~<slug>`; a put-in clip's is `<round>~<slug>~x<slot>`, so every key in one feed read is unique.
 - **The caught-up line:** `FeedPage` gains `caughtUpAt: number | null`, the index in this page's `clips` before which "You're all caught up" shows (0 when round 0 is empty); null when round 0 does not end on this page.
 - **Good pick:** `FeedPage` gains `ask: { index: number; slug: string } | null` (unit D; always null before it), the place in this page's clips where the "Good pick?" card shows. It is written to `GoodPickAsked` when served, so it is asked once.
@@ -184,20 +184,20 @@ Each unit is one pull request on its own branch, built test first (journeys firs
 | A, the learned order | the infinite feed merged | `src/features/feed/` (`learned.ts`, `signals/*` as no-change modules, `settings.ts`, `cursor.ts`, `service.ts`; `order.ts` deleted); `src/features/play/` (one new read; `memberBeatsByGame` deleted); `src/routes/+page.server.ts`; `src/routes/api/feed/`; `src/routes/healthz/feed/`; `Feed.svelte` (the caught-up line only); tests | `page(viewer, after)` answers `{ clips, next, caughtUpAt, ask: null }` in the learned order | 2 |
 | F, the few-plays note | A | `src/features/feed/first-showing-note.ts`; `/make/<game>` | the line of 6.4 | 2 |
 | B, watching signals | A, the consent work merged | migration `ClipView`; `signals/quiet.ts`; `cursor.ts` (put-in clips); `src/features/feed/views.ts`; `src/routes/api/feed/seen/`; `Feed.svelte` (sends views); `cloudflare/crons.js` if a new job address is needed; the account purge | interest, quick no, echo, second try, free watchers, viewer counts | 3 |
-| C, mood and genre | B, F | migration `Game.mood`, `Game.genre`; `games/questions.ts`; two question screens; Check and send; `/make/<game>`; `signals/mood.ts` | every game can have a mood and a genre; the feed reads them | 3 |
+| C, mood and genre | F | migration `Game.mood`, `Game.genre`; `games/questions.ts`; two question screens; Check and send; `/make/<game>`; `signals/mood.ts` | every game can have a mood and a genre; the feed reads them | 3 |
 | E, test videos | C | migration `GameClip.slot`, `GameHeldClip.slot`; `/make/<game>`; staff review of an added pair; the slot pick in `service.ts` | up to three pairs; the feed shows the best | 3 |
-| D, Your feed | C, the consent work merged | migration `FeedTaste`, `User.feedResetAt`, `GoodPickAsked`; `signals/taste.ts` (the "more"/"less" part); `/me/feed`; `Feed.svelte` (the ••• sheet, the Good pick card); `service.ts` (`ask`) | the player sees and changes what the feed thinks; Start over | 3 |
-| G, Like, Save, Repost | D, the consent work merged | migration `ClipLike`, `ClipSave`, `ClipRepost`; `Feed.svelte` (the buttons); Saved on You; the purge | real counts; each made and taken back by the person | 3 |
+| D, Your feed | C, E, the consent work merged | migration `FeedTaste`, `User.feedResetAt`, `User.feedPersonal`, `GoodPickAsked`; `signals/taste.ts` (the "more"/"less" part); `/me/feed`; `Feed.svelte` (the ••• sheet, the Good pick card); `service.ts` (`ask`) | the player sees and changes what the feed thinks; Start over | 3 |
+| G, Like, Save, Repost | D, the consent work merged | migration `ClipLike`, `ClipSave`, `ClipRepost`; `Feed.svelte` (the buttons); `signals/quiet.ts` (likes as interest; B owns it and has merged by then); Saved on You; the purge | real counts; each made and taken back by the person | 3 |
 | H, the sky layer | C | `src/lib/sky.ts`; `signals/sky.ts`; `docs/feed-sky.md` | hidden; on through the private file | 2 |
 | I, a parent's yes | D, the consent work merged | migration `ParentYes`; `/me/feed` (the ask); `/parent/<token>`; the text | an under-18 with a parent's yes gets the full feed | 3 |
 | K, high-taste players | G, the consent work merged | migration `HighTaste`; `signals/highTaste.ts`; `src/routes/jobs/high-taste/`; the earned mark in the daily job (`cloudflare/crons.js` if a new job address is needed) | hidden; on through the private file | 3 |
-| L, How the feed works | D, E, G | `src/routes/help/how-the-feed-works/`, the help list | the public page | 1 |
+| L, How the feed works | D, E, G | `src/routes/help/how-the-feed-works/`, the help list; `Feed.svelte` (How the feed works in the ••• sheet); `/me/feed` (its link) | the public page | 1 |
 | J1, the private settings | nothing | RukenPrivate `feed/settings.json`, `feed/settings.md` (PR #18) | the real values | 1 |
 | J2, the settings workflow | A, Open 4, a hook covering RukenPrivate pull requests | RukenPrivate `.github/workflows/feed-settings.yml`, `scripts/check-feed-settings.mjs` and its test | the real values loaded on every change | 3 |
 
-**Why this order, and what runs side by side.** Every unit after A adds a signal module A made, so none edits another's module. The files that more than one unit edits are `Feed.svelte` (A, B, D, G), `/make/<game>` (F, C, E), `service.ts` (A, E, D) and `cursor.ts` (A, B); the units that touch each run one after another in the order above. So: A first. Then F and B side by side (F owns only its rule file and `/make/<game>`; B owns no file F touches). Then C (after both). Then E and D one after the other (both touch `service.ts`): E, then D. Then G after D, and H after C (H owns only `src/lib/sky.ts`, its module and its doc, so it may run beside E, D or G). I after D, K after G. L last. J1 is done; J2 runs when its waits clear, beside anything.
+**Why this order, and what runs side by side.** Every unit after A adds a signal module A made, so none edits another's module. The files that more than one unit edits are `Feed.svelte` (A, B, D, G, L), `/make/<game>` (F, C, E), `service.ts` (A, E, D) and `cursor.ts` (A, B); the units that touch each run one after another in the order above. So: A first. Then F and B side by side (F owns only its rule file and `/make/<game>`; B owns no file F touches). Then C after F (C touches none of B's files, so it may run beside B). Then E and D one after the other (both touch `service.ts`): E, then D. Then G after D, and H after C (H owns only `src/lib/sky.ts`, its module and its doc, so it may run beside E, D or G). I after D, K after G. L last (it edits `Feed.svelte` and `/me/feed` after G and D). Only B, D, G, I, K and L wait on the consent work, directly or through a chain; A, F, C, E and H do not. J1 is done; J2 runs when its waits clear, beside anything.
 
-**For every unit.** Every journey starts with `test.beforeEach(forgetRateLimits)` and shows each new or changed screen with `showTheOwner`. The journeys share one database, so they find their own game by `data-slug` and assert order only in unit and database tests. Every new thing a person makes has create, read, update (where it can change) and delete in a journey (CRUD in `build`). Every new table's `userId` and `gameId` is a foreign key with `onDelete: Cascade`, and a `FeedTaste` row of kind `maker` or `game` holds the user's or game's id (never a handle or slug), with the same cascade; the account purge test covers every new table and shows that another player's chip for a deleted maker is gone. A pull request that changes or deletes an existing test names each one and why. Lessons in `progress.md` whose trigger the diff matches are carried. No unit puts a value from `feed/settings.json` in RukenApp. **Consent:** every new route is either consent-gated or named in `consent/machine-routes.ts` with its reason (the consent work's route test enforces it); every new write runs behind its write guard, never around it; and each unit that writes has a test that the same press without `rk_consent` writes nothing. A crowd-feed test (unit A, or unit B if A merges before the consent work) shows a browser without consent gets the same order as a signed-out visitor, even holding a valid sign-in cookie.
+**For every unit.** Every journey starts with `test.beforeEach(forgetRateLimits)` and shows each new or changed screen with `showTheOwner`. The journeys share one database, so they find their own game by `data-slug` and assert order only in unit and database tests. Every new thing a person makes has create, read, update (where it can change) and delete in a journey (CRUD in `build`). Every new table's `userId` and `gameId` is a foreign key with `onDelete: Cascade`, and a `FeedTaste` row of kind `maker` or `game` holds the user's or game's id (never a handle or slug), with the same cascade; the account purge test covers every new table and shows that another player's chip for a deleted maker is gone. A pull request that changes or deletes an existing test names each one and why. Lessons in `progress.md` whose trigger the diff matches are carried. No unit puts a value from `feed/settings.json` in RukenApp. **Consent:** every new route is placed in the consent work's `consent/routes.ts` as exactly one of its three kinds (Open, Machine or Gated; its route test enforces it), by path or by a pattern it already lists: `/api/feed/seen` Gated (403 in plain words without consent, the refusal its gated test accepts); Like, Save, Repost, More/Less and Good pick routes, under `/api/feed/`, Gated the same way; `/me/feed` Gated by `/me/*`; `/parent/[token]` Gated (the notice); `/healthz/feed` Machine (writes nothing); `/jobs/high-taste` Machine by `/jobs/*`, nothing to add; `/help/how-the-feed-works` Open by `/help/*`; the existing `GET /api/feed` stays Open. C's and E's writes under `/make/*` are Gated by that pattern; if C or E merges before the consent work, the consent work's gated `/make/*` test covers them then, and they carry no consent test of their own; every new write runs behind its write guard, never around it; and each unit that writes has a test that the same press without `rk_consent` writes nothing. A crowd-feed test (unit A, or unit B if A merges before the consent work) shows a browser without consent gets the same order as a signed-out visitor, even holding a valid sign-in cookie.
 
 ### Unit A: the learned order
 
@@ -208,7 +208,8 @@ Each unit is one pull request on its own branch, built test first (journeys firs
 - **A5.** Crowd viewers (4.1): a signed-out visitor and an under-18 without a parent's yes get no taste term: their order equals the order with every personal signal removed.
 - **A6.** Surprises and spacing (4.5): over 1,000 seeded slots the share of surprises is within 2 points of `surpriseRate`; no two clips in a row share a maker when another game could go there; with `spacing` off, the same game is still never twice in a row, across a round's end too.
 - **A7.** Paging (4.6), as invariants over seeded worlds: reading round 0 page by page gives each unplayed game exactly once; plays added between pages change no later page of that cursor; a game going live after `at` changes no later page; a game taken down after `at` is missing from its page and no other game is skipped or repeated; an unparsable cursor is a 400; an old-form, future, day-old or other-viewer cursor gives a fresh first page; every `key` in a feed read is unique; round 1 holds every game; rounds 1 and 2 differ for a catalogue of 10; a viewer who has played every game gets a full first page from round 1 with `caughtUpAt` 0; a viewer with one unplayed game gets it first, then round 1, `caughtUpAt` 1; `caughtUpAt` is null when round 0 does not end on the page; no games gives `{ clips: [], next: null, caughtUpAt: null, ask: null }`.
-- **A8.** Settings (5): no secret gives the defaults; a partial secret overrides only its keys; a bad key logs its name and not its value; `learned: false` gives standing alone; `/healthz/feed` answers `defaults`, `partial` and `private` in turn, each tested, and never a key or value; `/healthz` and its test are unchanged.
+- **A8.** Settings (5): no secret gives the defaults; a partial secret overrides only its keys; a bad key logs its name and not its value; `learned: false` gives standing alone; `/healthz/feed` answers `defaults`, `partial` and `private` in turn, each tested, and never a key or value; `/healthz` and its test are unchanged. `/healthz/feed` is not skipped by `handle.ts` or `https-only.ts` (both match `/healthz` exactly), so A8's test calls it over https through the same hooks a real request passes. The list holds every switch of section 5, `teenPersonal` included, each off by default where 5 says so.
+- **A13.** An architecture test: nothing under `src/features/feed/` imports from `src/features/money/`, and from `src/features/membership/` only the membership status read (10.1).
 - **A9.** The play read: one query answers per user, game and Chicago day the attentive beats and basis over the window, tested against Postgres (`*.pg.test.ts`), including a session that crosses midnight.
 - **A10.** Budget: one page in under 300 ms in the Postgres test with 250 games, 1,000 players and 20,000 play days, measured and printed. If it fails, cache the play read per Worker for `at` rounded to 5 minutes, and say so.
 - **A11.** Journey: a viewer seeded as having played all but two journey games opens the feed, sees those two, then "You're all caught up", and keeps going into round 1; the screen asks for the next page with the `next` it was given.
@@ -216,12 +217,13 @@ Each unit is one pull request on its own branch, built test first (journeys firs
 
 Steps:
 - [ ] 1. Journey A11, failing.
-- [ ] 2. `settings.ts`, `/healthz/feed` and their tests (A8).
+- [ ] 2. `settings.ts` (every key and switch, `teenPersonal` included), `/healthz/feed` and their tests (A8).
 - [ ] 3. The play read and its Postgres test (A9).
 - [ ] 4. `learned.ts` and the `signals/` list, test first, in the order A1, A2, A3, A4, A5, A6.
 - [ ] 5. Re-read the infinite feed's merged contract; `cursor.ts` and the service's paging (A7); the route; the caught-up line.
 - [ ] 6. The budget test (A10).
-- [ ] 7. Remove the interim order (A12); `verify` on the three devices; the journey green.
+- [ ] 7. The architecture test (A13).
+- [ ] 8. Remove the interim order (A12); `verify` on the three devices; the journey green.
 
 ### Unit F: the few-plays note
 
@@ -235,11 +237,11 @@ Steps:
 ### Unit B: watching signals
 
 - **B1.** `ClipView`: `id`, `userId`, `gameId` (both cascade), `clipSlot` (1 until unit E adds slots), `shownAt`, `watchedMs`, `ends` (times watched to the end), `playTapped`, `createdAt`. Index `[userId, shownAt]`, `[gameId, shownAt]`.
-- **B2.** `POST /api/feed/seen` takes one clip's view when it leaves the screen (and on page hide, by `sendBeacon`): consent-gated (not on the machine list) and signed in only; without `rk_consent` the screen sends nothing at all (no beacon, no `POST`, as the consent journey requires) and the route answers 204 without touching the database; an under-18 without a parent's yes gets 204 and nothing is stored; rate-limited like other posts; `watchedMs` capped at three times the clip's length.
+- **B2.** `POST /api/feed/seen` takes one clip's view when it leaves the screen (and on page hide, by `sendBeacon`): Gated in `consent/routes.ts` and signed in only; without `rk_consent` the screen sends nothing at all (no beacon, no `POST`, as the consent journey requires), and the route refuses with 403 in plain words without touching the database; an under-18 without a parent's yes gets 204 and nothing is stored; rate-limited like other posts; `watchedMs` capped at three times the clip's length.
 - **B3.** `signals/quiet.ts` reads, for the viewer, interest (`ends ≥ 1`), a second look (`ends ≥ 2`) and quick no (`watchedMs < quickNoMs`, no Play); per game, views (for 4.3) and free watchers (for 4.2), counting only accounts with `phoneNumberVerified`: a test shows an unconfirmed account adds nothing.
 - **B4.** The echo and second try go into later pages by 4.6's rule, kept in the cursor's `x`: a test shows the echo at the first slot at least `echoAfter` after its view, the second try first on the next page, each put in once, their keys unique, and the base order otherwise unchanged.
 - **B5.** The daily job deletes `ClipView` rows older than `windowDays`; the account purge and a game's removal delete their rows. Tested against Postgres.
-- **B7.** Without consent: a unit test shows the route writes nothing and returns 204 without `rk_consent`; the consent journey's check (no `POST`, no beacon before "I agree") stays green with the feed scrolled past several clips.
+- **B7.** Without consent: a unit test shows the route writes nothing and answers 403 without `rk_consent`; the consent journey's check (no `POST`, no beacon before "I agree") stays green with the feed scrolled past several clips.
 - **B6.** Journey: watch a clip to the end without Play, scroll on, and the game comes back later in the same scroll; swipe a clip away at once, open the feed again, and its game is not in round 0's first half.
 
 Steps:
@@ -281,12 +283,12 @@ Steps:
 
 ### Unit D: Your feed
 
-- **D1.** `FeedTaste`: `userId`, `direction` (`more`/`less`), `kind` (`mood`, `genre`, `maker`, `game`), `value` (a mood, a genre, or a user or game id), `createdAt`; unique on the four; maker and game rows cascade with their user or game. `User.feedResetAt`: personal signals before it are not read (plays stay, for pay). `GoodPickAsked`: `userId`, `gameId`, `askedAt`, `answer` (`yes`/`no`/null).
+- **D1.** `FeedTaste`: `userId`, `direction` (`more`/`less`), `kind` (`mood`, `genre`, `maker`, `game`), `value` (a mood, a genre, or a user or game id), `createdAt`; unique on the four; maker and game rows cascade with their user or game. `User.feedResetAt`: personal signals before it are not read (plays stay, for pay). `User.feedPersonal`, Boolean, default true (D6). `GoodPickAsked`: `userId`, `gameId`, `askedAt`, `answer` (`yes`/`no`/null).
 - **D2.** The ••• sheet's buttons write a `game` row; Less also keeps that game out of round 0 for `lessDays` (4.4), from the next open.
 - **D3.** `/me/feed` (6.2): learned chips are the viewer's top moods, genres and makers by taste; suggestions are the next best not yet chosen; Add lists all moods, all genres, and the makers of games the viewer played; × deletes; Start over deletes their `FeedTaste`, `ClipView` and `GoodPickAsked` rows and sets `feedResetAt`.
 - **D4.** Good pick? (4.5) comes through `FeedPage.ask` only on its rule; yes adds a `more` row for the game's mood, no a `less` row.
-- **D7.** Without consent, More like this, Less like this and Good pick are not offered (the viewer is signed out, so `ask` is null), and pressing ••• shows only **How the feed works**; `/me/feed` asks them to sign in, which opens the consent notice first. A test shows no `FeedTaste` or `GoodPickAsked` row is written without consent.
-- **D6.** **Learn from what I do** (10.1): `User.feedPersonal`; off gives the crowd feed, stores no views and hides the chips; on again starts fresh; locked off for a teen without a parent's yes. The ••• sheet also holds **How the feed works**.
+- **D7.** Without consent, More like this, Less like this and Good pick are not offered (the viewer is signed out, so `ask` is null), and the ••• button is hidden (until unit L adds How the feed works, which then is all the sheet shows); `/me/feed` asks them to sign in, which opens the consent notice first. A test shows no `FeedTaste` or `GoodPickAsked` row is written without consent.
+- **D6.** **Learn from what I do** (10.1): `User.feedPersonal` (D1); off gives the crowd feed, stores no views and hides the chips; on again starts fresh; locked off for a teen without a parent's yes. **Call** (from the Owner's 16:24 UTC instruction on the law, not from the approved design). How the feed works is added to the ••• sheet and Your feed by unit L, once its page exists.
 - **D5.** Journey (CRUD): turn Learn from what I do off and on, add a chip, read it back, remove it, add a less chip, press More and Less on a clip and see the chips change, answer a Good pick, Start over and see the empty state; a second account cannot read or change the first's chips.
 
 Steps:
@@ -304,7 +306,7 @@ Steps:
 
 - **G1.** One row per person and game for each; pressing again takes it back. A count on screen is a count of rows, nothing else.
 - **G2.** Saved games list on You ("Saved"). Reposts show on You until players' pages are built (approved, not built).
-- **G5.** Without consent, pressing Like, Save or Repost opens the consent sheet ("To save this game" for Save, the same wording pattern for Like and Repost); "I agree" carries on to sign in or to the press. A test shows no row is written without consent.
+- **G5.** Without consent, pressing Like, Save or Repost opens the consent sheet ("To save this game" for Save, "To like this game" for Like, "To repost this game" for Repost, each followed by the consent sheet's own words); "I agree" carries on to sign in or to the press. A test shows no row is written without consent.
 - **G3.** A like is quiet interest for the order. Nobody can like, save or repost their own game.
 - **G4.** Journey (CRUD) for each, and the purge test.
 
@@ -321,6 +323,7 @@ Steps:
 - **H1.** `src/lib/sky.ts`: the sun's sign of a date, the moon's sign and phase at an instant, and whether Mercury is retrograde, from the injected clock, checked against at least 24 reference dates (sign changes, new and full moons, retrograde starts and ends in 2026 and 2027) listed in the test with their source.
 - **H2.** `signals/sky.ts`, with `sky` on: a game's sign is the sun's sign on the Chicago day it went live; the moon in that sign, or in the sign whose mood (the private design 8 table) is the game's mood, lifts its score, mood weighted `skyMoodShare`, the lift never above `skyLiftMax`; the moon's element moves `surpriseRate` by `skyElementStep` as the private design 8.3 says, inside `surpriseRange`; a new moon sets first-showing slots to `newMoonFirstShowingEvery`; a full moon multiplies standing's weight by `fullMoonStandingWeight`; Mercury retrograde puts back games the viewer came back to and has not opened in `retrogradeIdleDays`.
 - **H3.** Nothing on any screen, address, page title or response names a sign, the moon, a planet or the sky: a test reads every screen's words and the feed's responses for those words.
+- **H5.** A's `signals/` interface lets a module change the first-showing slots, standing's weight and the surprise rate, so H edits only `signals/sky.ts`.
 - **H4.** `docs/feed-sky.md` says the rules, not their strength (private design 13.4).
 
 Steps:
@@ -344,7 +347,7 @@ Steps:
 - [ ] 2. Migration and purge.
 - [ ] 3. The ask and the text, test first.
 - [ ] 4. The parent's page.
-- [ ] 5. The full feed follows the yes (A5's rule with a yes), test first.
+- [ ] 5. The full feed follows the yes (A5's rule with a yes), test first; and with `teenPersonal` off, a teen with a yes gets the crowd feed and no view is stored (10.2), test first.
 - [ ] 6. `verify`; shots.
 
 ### Unit K: high-taste players (hidden)
@@ -353,7 +356,7 @@ Open 1 is answered "Yes, all three", so K counts likes and reposts as designed. 
 
 - **K1.** `HighTaste`: `userId` (cascade), `source` (`picked`/`earned`), `since`. `POST /jobs/high-taste` with the jobs secret: `{"do":"add"|"remove","handle":…}`. The daily job marks as earned the players who were among a game's first members and whose games went on to the top of standing, at most `highTasteEarnedMax` at once, and unmarks those who no longer qualify.
 - **K2.** `signals/highTaste.ts`, with `highTaste` on: a marked player's like counts as `highTasteLike` members' standing (like and review `highTasteLikeReview`, all three `highTasteAll`); capped per game at `highTasteCapPerGame`; never for a game they made or earn from; reach only, never pay.
-- **K5.** `/jobs/high-taste` is a machine route: it goes on `consent/machine-routes.ts` with its reason (secret-signed, no browser). The earned mark reads likes, which exist only with consent.
+- **K5.** `/jobs/high-taste` is Machine through `consent/routes.ts`'s existing `/jobs/*` pattern (secret-signed, no browser); nothing is added to the list. The earned mark reads likes, which exist only with consent.
 - **K3.** Nothing tells anyone they are marked: no screen, no response, no count.
 - **K4.** No made-up likes or saves, ever (private design 9).
 
@@ -368,10 +371,11 @@ Steps:
 ### Unit L: How the feed works
 
 - **L1.** The page of 6.6; links on it 44 × 44; no `<style>` block (help rules).
+- **L2.** **How the feed works** is added to every clip's ••• sheet (under More and Less; for a viewer without consent, the only button, and the ••• button shows again) and to Your feed; both open the page.
 
 Steps:
-- [ ] 1. Journey: open it from Your feed and from the help list; its words. Failing.
-- [ ] 2. The page and the two links; `verify`; shots.
+- [ ] 1. Journey: open it from a clip's •••, from Your feed and from the help list, with and without consent; its words. Failing.
+- [ ] 2. The page and the three links; `verify`; shots.
 
 ### Unit J1: the private settings (RukenPrivate #18)
 
@@ -379,7 +383,7 @@ Steps:
 
 Steps:
 - [x] 1. Write both files.
-- [ ] 2. Add the keys plan audit 1 asked for; drop the hand-run command; record the exposure.
+- [x] 2. Add the keys plan audit 1 asked for, with their sources; drop the hand-run command; record the exposure.
 
 ### Unit J2: the settings workflow (RukenPrivate)
 
@@ -398,7 +402,7 @@ Steps:
 3. **Open 3, how a parent says yes.** **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Text the parent a code".** Unit I waits on nothing but D.
 4. **Open 5, a lawyer's read** (section 10.3). Answered 2026-11-22 16:40 UTC: no lawyer now, `teenPersonal` on. Nothing waits.
 5. **Open 4, the Cloudflare token on RukenPrivate** (section 5). New access for a second repository, so it is the Owner's: asked once, inside the "Deploy automatically from main" work's batch of Owner commands (the same token). Unit J2 waits.
-6. **Not the Owner's: the cookie consent work** (thread "Block data collection until cookies accepted", branch `claude/project-thread-rnuc8p`). Units B, D, G, I and K wait for it to merge (section 3). A and F do not: they only read, and the consent work's guards keep them honest.
+6. **Not the Owner's: the cookie consent work** (thread "Block data collection until cookies accepted", branch `claude/project-thread-rnuc8p`). Units B, D, G, I and K wait for it to merge (section 3), and L through G. A, F, C, E and H do not.
 7. **Not the Owner's: a hook for RukenPrivate pull requests.** In a repository without `rules.json`, creating a pull request is not checked (`progress.md`, hook follow-ups). J2 is a lane 3 pull request there, so it waits until a hook covers that route.
 
 ## 9. Risks, and what is not checked
@@ -410,7 +414,7 @@ Steps:
 - Device profiles are emulation, not proof of how a phone performs.
 - The legal questions in 10.3 are not answered: the Owner chose to build and turn everything on without a lawyer's read. If a law or a lawyer says otherwise, `teenPersonal`, `highTaste` and `sky` each turn off in one change to the private file.
 - Ruken has no privacy policy or terms page yet. The feed adds data people should be told about (10.3, item 3). Their own work is the thread "Add privacy policy and terms pages" (branch `claude/project-thread-xa97zr`); this spec does not write them. Its privacy page should name watching, More/Less, likes, saves, reposts and taste.
-- If the consent work slips, units B, D, G, I and K slip with it; A, F, C, E, H and L can go ahead.
+- If the consent work slips, units B, D, G, I and K slip with it; A, F, C, E and H can go ahead; L waits on G.
 
 ## 10. The law, and what needs a lawyer
 
@@ -421,8 +425,8 @@ Steps:
 - **No one under 13.** Accounts are 13 and up today (`adultOn`, sign-up's age check), so the feed never holds data about a child under 13. No unit changes that.
 - **Teens get a calm feed by default.** An under-18, or anyone whose birthday is not known, gets the crowd feed: nothing personal is read, and no watching is recorded (4.1, B2). The full feed needs a parent's yes (unit I) **and** the switch `teenPersonal` (below).
 - **Anyone can turn personalising off.** Your feed (unit D) gains a switch, **Learn from what I do** (on by default for adults, off and locked for a teen without a parent's yes). Off gives the crowd feed, stops recording views, and keeps chips hidden; on again starts fresh. `User.feedPersonal` (Boolean, default true) holds it; journey D5 covers it both ways.
-- **Plain disclosure.** "How the feed works" (unit L, the Owner-approved words) says what the feed ranks on, that it learns from what you play and watch, how to change it, that teens' feeds do not learn without a parent, that nobody can pay to move a game, and that Ruken adds "a few touches of our own". It is linked from every clip's ••• sheet ("How the feed works"), from Your feed and from the help list, so it is one tap from where the feed is used.
-- **No fake engagement, no paid ranking.** Every count on screen is a count of rows people made (G1); high-taste players change reach only, never pay, and never add a like (K2, K4). An architecture test (K, step 6) keeps the money code from reading any ranking signal, and a second one keeps ranking from reading payments beyond membership status.
+- **Plain disclosure.** "How the feed works" (unit L, the Owner-approved words) says what the feed ranks on, that it learns from what you play and watch, how to change it, that teens' feeds do not learn without a parent, that nobody can pay to move a game, and that Ruken adds "a few touches of our own". It is linked from every clip's ••• sheet ("How the feed works"), from Your feed and from the help list, so it is one tap from where the feed is used. The approved words do not mention **Learn from what I do**; L ships the approved words as they are, and a line about the switch is the Owner's to approve, asked when L's screens go to the Owner.
+- **No fake engagement, no paid ranking.** Every count on screen is a count of rows people made (G1); high-taste players change reach only, never pay, and never add a like (K2, K4). An architecture test (K, step 6) keeps the money code from reading any ranking signal, and a second one (A13) keeps ranking from reading payments beyond membership status.
 - **Nothing hidden makes a claim.** The sky layer and high-taste players show nothing, promise nothing and name nothing in the app (H3, K3). The sky layer is a ranking input like any other, described on GitHub (`docs/feed-sky.md`) without its strength.
 - **Nothing before "I agree".** The Owner's consent rule (16:41 UTC) comes first: without `rk_consent` the feed reads nothing personal and writes nothing, and the consent work's write guard makes a missed write fail loudly (section 3, "For every unit").
 - **Least data, kept short.** Watching rows hold no device, place or address, are deleted after `windowDays`, and go with the account; "Start over" and the switch above delete them at once. A parent's phone is kept only as a hash.
