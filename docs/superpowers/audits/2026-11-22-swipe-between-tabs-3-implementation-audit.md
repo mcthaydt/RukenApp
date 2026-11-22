@@ -47,9 +47,9 @@ same-page-redirect branch leaves a refusal on the screen after a later answer su
     press "Show how many people played it" (plain form, `?/playerCount`, redirects to `/make/${slug}`). At `68f140e`:
     the switch turns On, and the refusal "Ruken can't see your game on GitHub any more..." is still there,
     `getByRole('alert')` count 1, expected 0. With `stay-in-app.ts` from `2dc952c`: passes (count 0). The same holds for
-    TakenOffScreen: a "Put it back" refusal stays after "Delete what's left" succeeds (`+page.svelte:59` passes
+    TakenOffScreen: a "Put it back on Ruken" refusal stays after "Delete them" succeeds (read from the code, not run) (`+page.svelte:59` passes
     `form?.problem` to every screen).
-  - AcceptedScreen "OK" (`?/seen`) redirects to the same address and the screen becomes Live ("You're in." to "Live"),
+  - AcceptedScreen "See your game" (`?/seen`) redirects to the same address and the screen becomes Live ("You're in." to "Live"),
     but the branch returns before `headingNow() !== headingBefore`, so the new screen opens where the old one was
     scrolled.
 - EXPECTED: after a same-page redirect, no refusal from an earlier answer is shown, and a changed heading starts at the
