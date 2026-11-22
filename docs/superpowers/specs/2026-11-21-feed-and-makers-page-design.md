@@ -283,14 +283,14 @@ Acceptance:
 
 Tasks:
 
-- [ ] 1. The journey first, in `tests/browser/feed.test.ts`: "Ruken opens straight into the feed, with the right clip for the screen" (D1, D2, D4), shown as "the feed".
-- [ ] 2. `Feed.svelte`, `feed.browser.ts`, the route and its load (`feed()`), the layout's condition for screens with no wordmark, building on H's (D1 to D5, D13).
-- [ ] 3. `Bar.svelte`, drawn by the root layout for the three routes; the game page's way back and its room at the foot (D11), shown as "a game's page with the bar" and "a maker's page with the bar".
-- [ ] 4. `current.ts`, playing and sound, test first (D6, D7), in `tests/features/feed/current.test.ts` and `tests/browser/feed-controls.test.ts`.
-- [ ] 5. `share.ts` and the Share mark, test first (D8).
-- [ ] 6. The hints, test first (D9), shown as "the feed on a first open". The empty feed (D12), shown as "the feed with no games".
-- [ ] 7. The placeholder home page goes, and with it `tests/browser/home.test.ts` and the home page's cases in `tests/browser/look.test.ts` and `tests/browser/look-layout.test.ts`. Every journey that opened `/` for the placeholder (the builder searches `tests/browser/` for `goto("/")`, `toHaveURL("/")`, "Coming soon", "Your games" and "Back to Ruken"; `sign-in`, `sign-up`, `me`, `mailed-links`, `make-walk` and `support/account.ts` are a hint of where, not a boundary) is read and changed only where it named the placeholder's own words; each change is named in the pull request. A screen replaced is not a test loosened.
-- [ ] 8. The architecture case and `verify` (D14); the request count (D3); the keys (D10).
+- [x] 1. The journey first, in `tests/browser/feed.test.ts`: "Ruken opens straight into the feed, with the right clip for the screen" (D1, D2, D4), shown as "the feed".
+- [x] 2. `Feed.svelte`, `feed.browser.ts`, the route and its load (`feed()`), the layout's condition for screens with no wordmark, building on H's (D1 to D5, D13).
+- [x] 3. `Bar.svelte`, drawn by the root layout for the three routes; the game page's way back and its room at the foot (D11), shown as "a game's page with the bar" and "a maker's page with the bar".
+- [x] 4. `current.ts`, playing and sound, test first (D6, D7), in `tests/features/feed/current.test.ts` and `tests/browser/feed-controls.test.ts`.
+- [x] 5. `share.ts` and the Share mark, test first (D8).
+- [x] 6. The hints, test first (D9), shown as "the feed on a first open". The empty feed (D12), shown as "the feed with no games".
+- [x] 7. The placeholder home page goes, and with it `tests/browser/home.test.ts` and the home page's cases in `tests/browser/look.test.ts` and `tests/browser/look-layout.test.ts`. Every journey that opened `/` for the placeholder (the builder searches `tests/browser/` for `goto("/")`, `toHaveURL("/")`, "Coming soon", "Your games" and "Back to Ruken"; `sign-in`, `sign-up`, `me`, `mailed-links`, `make-walk` and `support/account.ts` are a hint of where, not a boundary) is read and changed only where it named the placeholder's own words; each change is named in the pull request. A screen replaced is not a test loosened.
+- [x] 8. The architecture case and `verify` (D14); the request count (D3); the keys (D10).
 
 ### Unit I: editing your page (Open 2)
 

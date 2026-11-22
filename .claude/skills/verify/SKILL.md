@@ -50,7 +50,7 @@ It is ready when both `localhost:4173/healthz` (the app) and `localhost:8788/__r
 
 Open it in a real browser: the Chromium and Playwright the container already has (`require('playwright')`, then `chromium.launch()`), at the sizes the change affects (see "Shoot what the change touches" in `visual-check`). Tap, click, type and press keys the way a person would, and find things by their label or role. Take a screenshot at deviceScaleFactor 1 for your own check, and save it in the scratchpad, never in the repo. The main screen, what it shows and how to use it:
 
-The main screen today is the home page at `http://localhost:4173/`: "Ruken", "Games, one swipe at a time. Coming soon." and one big "Sign in" button (there is no feed yet; when it lands, this line is updated in the same pull request). Run the driver script below from the repo root; it runs on any `node` once `NODE_PATH=/opt/node-tools/node_modules` is set, and it opens a phone-sized window (375 by 667, the iPhone SE size in `playwright.config.ts`); for the tablet and the computer, change `viewport` to 1024 by 768 and 1280 by 720. It looks for headings and labels, and exits 1 at the first thing it cannot find.
+The main screen today is the feed at `http://localhost:4173/`: one full-window clip per live game, each with the maker's line, the game's name and a blue "Play" link, and at the bottom a bar with "Home" and "You". On a fresh database there is no live game, so it says "No games here yet." and shows the bar. Run the driver script below from the repo root; it runs on any `node` once `NODE_PATH=/opt/node-tools/node_modules` is set, and it opens a phone-sized window (375 by 667, the iPhone SE size in `playwright.config.ts`); for the tablet and the computer, change `viewport` to 1024 by 768 and 1280 by 720. It looks for headings and labels, and exits 1 at the first thing it cannot find.
 
 ```sh
 : "${SHOTS:?set SHOTS to a scratchpad folder, outside the repo}"
@@ -62,8 +62,8 @@ const { chromium } = require('playwright');
   const c = await b.newContext({ viewport: { width: 375, height: 667 }, deviceScaleFactor: 1 });
   const p = await c.newPage();
   await p.goto('http://localhost:4173/');
-  await p.getByRole('heading', { name: 'Ruken' }).first().waitFor();
-  await p.getByRole('link', { name: 'Sign in' }).waitFor();
+  await p.getByRole('navigation', { name: 'Ruken' }).getByRole('link', { name: 'You' }).waitFor();
+  await p.locator('section[data-slug], :text("No games here yet.")').first().waitFor();
   await p.screenshot({ path: process.argv[2] + '/main.png' });
   await p.goto('http://localhost:4173/sign-up?next=/me');
   await p.getByRole('heading', { name: 'Create your account' }).waitFor();
@@ -84,7 +84,7 @@ The first screenshot is the main screen. The script also walks the sign-up journ
 
 One line each, from a person's side: where it starts, the steps, and what they see at the end.
 
-- Home: open `/`. See "Ruken", "Games, one swipe at a time. Coming soon." and a "Sign in" button.
+- Feed: open `/`. See a clip per live game (or "No games here yet."), the bar with "Home" and "You", and press an arrow key or Page Down to move one clip. "You" opens `/me` (`feed.test.ts`, `feed-controls.test.ts`).
 - Sign up: open `/sign-up?next=/me`. Fill Email, Password (10 to 128 characters), and Month, Day and Year of birth (someone under 13 is told to come back). Press "Create account". You land on `/me`, signed in.
 - Sign in: open `/sign-in`, type the email and password, press "Sign in". A wrong password says so and offers the reset (`sign-in.test.ts`).
 - Your account: open `/me` signed in. See your email and Sign out; change your password, and other devices are signed out (`me.test.ts`, `change-credentials.test.ts`).

@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-11-22 02:29 UTC (from `date`), by the apps-kit practice thread for the coordinator, which cannot write to the repo.
+Last updated: 2026-11-22 02:41 UTC (from `date`), by the apps-kit practice thread for the coordinator, which cannot write to the repo.
 
 ## The owner's instructions
 
@@ -63,19 +63,18 @@ Each entry is dated and quotes the owner where the source does; "(paraphrase)" m
 
 Setup (first-time setup, lane 2) is done and moved to History, Setup.
 
-Current work, from GitHub on 2026-11-22 02:29 UTC (open pull requests: #209 phone sign-in, ready; #285 the feed screen, ready; #290 the faster-CI spec, which the owner fast-tracked at 02:22 UTC):
+Current work, from GitHub on 2026-11-22 02:41 UTC (open pull requests: #209 phone sign-in; #292 this apps-kit practice alignment):
 
 - #209, phone sign-in (lane 3): audit PASS at `628803f`, waiting on its full run. After it merges and deploys, the owner runs the attach-phone command once; then it is retired.
-- #285, slice 3 unit D, the feed screen (lane 2): review PASS at `6429568`.
 - The open pull request limit is 6 (#288, #289 merged).
 - Apps-kit practice alignment: the gap list and its fixes, on `claude/project-thread-iexvtj`.
 - "Speed up CI": its own thread.
 
-Completed since setup (merge times from `gh api`, UTC): #242 flaky journeys fixed (2026-11-21 00:18), #249 the maker's page (02:52), #252 three devices (04:08), #253, #255, #260 slice 2 design rounds (04:36, 09:10, 09:52), #258 sessions merge reviewed pull requests (08:58), #262 shoot only changed screens (13:33), #265 and #266 the owner's notes on the menu tab and game page (14:07, 14:26), #267 CRUD audit (15:03), #268 purge takes games off (16:00), #269 everything-editable spec (15:15), #271 live game files and websites (16:02), #274 unit D (19:16), #275 PR-H (19:45), #276 unit A (20:00), #277 18+ gate (20:07), #278 CRUD rule (20:11), #281 red main fixed (20:53), #280 apps-kit spec (21:09), #282 unit B (21:31), #279 PR-R (21:32), #284 apps-kit rules alignment (21:58), #283 adults-only sign-in returns (22:53), #286 unit I, editing your page (2026-11-22 00:30), #287 the test Stripe's ids (01:09), #288 and #289 the open limit of 6.
+Completed since setup (merge times from `gh api`, UTC): #242 flaky journeys fixed (2026-11-21 00:18), #249 the maker's page (02:52), #252 three devices (04:08), #253, #255, #260 slice 2 design rounds (04:36, 09:10, 09:52), #258 sessions merge reviewed pull requests (08:58), #262 shoot only changed screens (13:33), #265 and #266 the owner's notes on the menu tab and game page (14:07, 14:26), #267 CRUD audit (15:03), #268 purge takes games off (16:00), #269 everything-editable spec (15:15), #271 live game files and websites (16:02), #274 unit D (19:16), #275 PR-H (19:45), #276 unit A (20:00), #277 18+ gate (20:07), #278 CRUD rule (20:11), #281 red main fixed (20:53), #280 apps-kit spec (21:09), #282 unit B (21:31), #279 PR-R (21:32), #284 apps-kit rules alignment (21:58), #283 adults-only sign-in returns (22:53), #286 unit I, editing your page (2026-11-22 00:30), #287 the test Stripe's ids (01:09), #288 and #289 the open limit of 6, #290 the faster-CI spec, #285 unit D, the feed screen.
 
 Remaining:
 
-- Merge #209 and #285.
+- Merge #209 and #292; build faster CI from its spec (#290).
 - The slice 2 retrospective, owed since slice 2 closed (gap P5), and the root causes of the two open flaky tests (gap P9): each its own thread.
 - Slice 3's remaining units, then slices 4 to 6 and the before-launch list, in roadmap order.
 - Hook follow-ups (see History, Known issues).
@@ -91,9 +90,9 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 
 | Stage or unit | Pull request or thread | Status | Done |
 |---|---|---|---|
-| Apps-kit practice alignment (lane 1) | `claude/project-thread-iexvtj` | gap list written; fixes on the branch | not measured (short path, no plan) |
+| Apps-kit practice alignment (lane 1) | #292 | gap list written; fixes in the pull request | not measured (short path, no plan) |
 | Phone sign-in, branch B (lane 3) | #209 | audit PASS at `628803f`, waiting on its full run | not measured (no plan checklist) |
-| Slice 3, the feed and the maker's page | #285 (unit D); unit K not started | units C, F, H and I merged (#246, #248, #247, #249, #286); D in review | 65% (20 of 31 plan steps ticked; one struck) |
+| Slice 3, the feed and the maker's page | unit K not started | units C, F, H, I and D merged (#246, #248, #247, #249, #286, #285) | 90% (28 of 31 plan steps ticked; one struck) |
 | Slice 2 retrospective | none yet | owed (gap P5) | not started |
 | Flaky root causes, `play.test.ts:41` and `pay.test.ts:41` | none yet | owed (gap P9) | not started |
 | A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f` | not measured |
@@ -110,7 +109,7 @@ Spec `2026-11-21-everything-editable-design.md`: merged (#269, 2d00e7e, 15:15 UT
 
 ## Slice 3
 
-Resuming. The owner's 2026-11-21 03:12 UTC "Let's park slice 3 until we confirm slice 2 is perfect" is replaced by their 14:32 UTC word: slice 3 unparks once the editing work lands. That work has landed: #274, #276 and #282. Merged so far: the plan (#245), the feed's order and service (#246, #248), the clip behind the price card (#247), the maker's page (#249), editing your page, unit I (#286, 2026-11-22 00:30 UTC). The parked feed screen draft (#251) was closed unmerged on the owner's 15:33 UTC word. The feed screen, unit D, is #285. No pull request is open for unit K or the learned feed's spec. The spec is `2026-11-21-feed-and-makers-page-design.md`.
+Resuming. The owner's 2026-11-21 03:12 UTC "Let's park slice 3 until we confirm slice 2 is perfect" is replaced by their 14:32 UTC word: slice 3 unparks once the editing work lands. That work has landed: #274, #276 and #282. Merged so far: the plan (#245), the feed's order and service (#246, #248), the clip behind the price card (#247), the maker's page (#249), editing your page, unit I (#286, 2026-11-22 00:30 UTC). The parked feed screen draft (#251) was closed unmerged on the owner's 15:33 UTC word. The feed screen, unit D, merged (#285). No pull request is open for unit K or the learned feed's spec. The spec is `2026-11-21-feed-and-makers-page-design.md`.
 
 ## Approved screens
 
@@ -151,6 +150,8 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 - First-time setup: the owner's request is the standing permission for the setup check (CLAUDE.md, Risk).
 
 ### Flaky tests
+
+- `tests/browser/feed-controls.test.ts` "each key moves one clip... within a second" [computer], first run on the unit D branch at `aff0cd9`, three profiles side by side: `data-current` was still false on the second clip after the 1-second wait; 8 of 8 passed on a rerun. Cause: the journey asserted a 1-second wall clock on a busy machine. Fix: it waits for the state (the clip becomes current), not the clock. Gap: the journey no longer measures the "within one second" budget (spec section 7), and the same go for the reduced-motion check, which now checks for no in-between scroll positions instead of two frames.
 
 Each failed once and passed on its one rerun. Root causes and fixes are in pull request #242.
 
