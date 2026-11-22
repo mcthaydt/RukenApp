@@ -185,15 +185,16 @@ export const CLOSING: readonly { heading: string; button: Link; glow: string }[]
 ];
 
 /**
- * Under the closing cards: Ruken's code is public (the owner, 2026-11-22 19:56 UTC: "a section under want to play/made a
- * game mentioning how it's open source and include github link"). The licence is the Functional Source License with an
- * Apache 2.0 future (LICENSE.md): readable by anyone now, fully open source two years after each version, and the words
- * say exactly that.
+ * Under the closing cards: most of Ruken's code is public (the owner, 2026-11-22 19:56 UTC: "a section under want to
+ * play/made a game mentioning how it's open source and include github link"; 20:25 UTC: "we're making some things
+ * private like the algo"). The feed's order and the checks that stop cheating live in the private repo. The licence is
+ * the Functional Source License with an Apache 2.0 future (LICENSE.md): readable now, fully open source two years after
+ * each version, and the words say exactly that.
  */
 export const OPEN_CODE = {
-  heading: "Open code. Nothing hidden.",
+  heading: "Built in the open.",
   lines: [
-    "Every line of Ruken is on GitHub for anyone to read: how the feed picks games, how makers are paid, all of it.",
+    "Most of Ruken's code is on GitHub for anyone to read. The parts that choose what's in your feed and stop cheats stay private.",
     "Each version becomes fully open source two years after it comes out.",
   ],
   button: { words: "See the code on GitHub", href: "https://github.com/mcthaydt/RukenApp" },

@@ -22,7 +22,7 @@ const SECTIONS = [
   "Makers' pay, in the open",
   "Want to play?",
   "Made a game?",
-  "Open code. Nothing hidden.",
+  "Built in the open.",
 ];
 
 /** The page is there and says what Ruken is, with its one blue button first. */
