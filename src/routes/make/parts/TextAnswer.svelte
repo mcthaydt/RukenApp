@@ -6,7 +6,7 @@
   what was typed and not its tail; Enter still goes on, as in a one-line box, and the answer has no new line in it.
 -->
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { previewOfPage } from "./preview.svelte.ts";
 
   let {
@@ -37,7 +37,8 @@
   // which leaves the cursor after the last word: typing then added to the saved answer instead of replacing it (run
   // 45033130832). This script runs before the box is brought to life, so it reads the selection from the page as sent.
   let area = $state<HTMLTextAreaElement | undefined>(undefined);
-  const selectedBefore = selectionOfSentBox(name);
+  // Read once, on purpose: only the box as the page sent it matters, before it comes alive.
+  const selectedBefore = untrack(() => selectionOfSentBox(name));
 
   function selectionOfSentBox(
     named: string,
