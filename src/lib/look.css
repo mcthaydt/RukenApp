@@ -2896,6 +2896,32 @@ main.playing {
   background: var(--felt-deep);
 }
 
+/* A full-screen panel, the feed or a game being played, is the whole window (the owner, 2026-11-22: "it should scroll
+   within the static panel", "holding the screen doesn't highlight the entire panel", "not be able to zoom in to the
+   panel"). The page behind it cannot scroll, so on a phone a swipe never moves the page as the address bar shows or
+   hides; only the panel moves. On the panel nothing is selected, held or zoomed: the feed only goes up and down, and a
+   game may still pan either way. */
+html:has(main.feed),
+html:has(main.playing) {
+  height: 100%;
+  overflow: hidden;
+}
+
+main.feed,
+main.playing {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+main.feed {
+  touch-action: pan-y;
+}
+
+main.playing {
+  touch-action: pan-x pan-y;
+}
+
 .playing .frame {
   height: 100%;
 }
@@ -3336,4 +3362,27 @@ video[data-loading] {
   .consent-answers {
     grid-template-columns: 1fr;
   }
+}
+
+/* Ruken feels like an app on a phone, not a web page (the owner, 2026-11-22: "should feel like an app at all times"): a
+   press shows no grey flash, a double tap does not zoom (a pinch still does on a reading screen), the page never bounces or
+   pulls to refresh at its ends, holding a finger on a link, picture or video opens no menu, a picture or video is never
+   dragged, and a button selects nothing. Words to read, links among them, and boxes to type in still select. */
+html {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+:is(a, img, video) {
+  -webkit-touch-callout: none;
+}
+
+:is(button, a.button, summary, label, svg) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+:is(img, video) {
+  -webkit-user-drag: none;
 }
