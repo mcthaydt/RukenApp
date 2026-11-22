@@ -113,7 +113,7 @@ test("the landing page's foot leads to the terms and the privacy pages, with no 
   for (const name of ["Terms", "Privacy"]) {
     await page.goto("/about");
     await expectTheLandingPage(page);
-    const link = page.getByRole("contentinfo").getByRole("link", { name, exact: true });
+    const link = page.getByRole("navigation", { name: "Ruken" }).getByRole("link", { name, exact: true });
     // No underlined words act as links on Ruken (the owner's rule, 2026-11-22).
     expect(await link.evaluate((node) => getComputedStyle(node).textDecorationLine)).toBe("none");
     await link.click();
