@@ -91,6 +91,19 @@ Two pull requests, because `build` says a CI workflow changes in a pull request 
 - Six pieces stay (Settings in CLAUDE.md). More pieces mean more jobs against the 20-runner limit.
 - Lint, typecheck and the unit and database tests are untouched: they are off the path to the result.
 
+### 3.4 Unit F: the pieces read main's times (lane 3, follow-up)
+
+Found on #302's full run (run 44989252655): every piece logged "Split by Playwright (no planner or no recorded times)" and "Cache not found", although `main` had saved `ci-test-times-7e6c8ee…` at 05:06 UTC. `test-times` runs on the host runner, where `actions/cache` packs with zstd (its log: `tar … --use-compress-program zstdmt`, `cache.tzst`). The pieces run in Playwright's image, which has no zstd, so `actions/cache` there packs and unpacks with gzip (`cache.tgz`). The two count as different cache versions, so a piece never finds a time `main` saved, and the planner (unit T) never runs.
+
+1. **Packed where it is read.** On a push to `main`, each piece saves its own times under `ci-piece-times-<sha>-<n>`, from inside the image. Its times are seconds per device profile and file, summed from its Playwright JSON report by the rule `test-times` uses today. `test-times` runs in the same image, pinned by the same digest. It restores the six by exact key, joins them and saves `ci-test-times-<sha>`. Every times cache is then packed and unpacked with gzip. Only `actions/cache`, already pinned, is used: no new action, tool or secret. `gh run download` leaves `test-times`; the `ran-*` artifacts and the gate are unchanged.
+2. **One times file for all six.** A piece first restores `ci-test-times-<base>`. `<base>` is the pull request's base commit (`github.event.pull_request.base.sha`) or, on `main`, the commit before the push (`github.event.before`). Only when that key is missing does the piece fall back to the newest key by prefix. With the exact key, every piece reads the same file. In the fallback, a save that lands between two pieces' restores can still give them different files. The gate's union check then fails that run, so the run goes red but no test is lost. Each piece logs the key it matched (`cache-matched-key`) so the cause is plain.
+
+Acceptance:
+
+- F1. On the first full pull request run after F merges and `main` has recorded times, every piece logs "Split by main's recorded times" and the same matched key.
+- F2. A9 holds on that run (the gate's union check passes).
+- A7, and then A8, are measured from that point, as in section 4.
+
 ## 4. Acceptance criteria
 
 - A1. On a ready pull request, the run's jobs are `verify`, `postgres`, `browser shard 1..6 of 6` and `gate` (plus `test-times` on `main`); none of the first eight lists a `needs`. Checked by reading the run's job list.
@@ -109,11 +122,12 @@ Two pull requests, because `build` says a CI workflow changes in a pull request 
 | Unit | Waits on | Owns | Output | Check | Lane |
 |---|---|---|---|---|---|
 | W | this spec merged | `.github/workflows/ci.yml`, `.github/scripts/docs-only.sh`, `.github/scripts/ci-times.mjs` | one PR | A1 to A6, A9 on real runs; A10 after merge | 3 |
-| T | W merged | `tests/browser/support/shard-plan.ts`, `tests/browser/support/shard-plan.test.ts`, `playwright.config.ts` | one PR | its unit test, A7, A9; A8 after merge | 2 |
+| T | W merged | `tests/browser/support/shard-plan.ts`, `tests/browser/support/shard-plan.test.ts`, `playwright.config.ts` | one PR | its unit test, A9; A7 and A8 after F | 2 |
+| F | T merged | `.github/workflows/ci.yml` | one PR | F1, F2, then A7; A8 after merge | 3 |
 
-- Expected duration: W about 3 hours including measuring runs; T about 2 hours.
+- Expected duration: W about 3 hours including measuring runs; T about 2 hours; F about 2 hours.
 - Budget: GitHub's free runners only. No new dependency, service or secret. The Playwright image is Microsoft's public image of the version already pinned.
-- Audits: W, plan audit (this spec) and implementation audit; T, one fresh review. Merge under the standing permission in `progress.md` (History, Standing permissions) once audits pass and CI is green.
+- Audits: W, plan audit (this spec) and implementation audit; T, one fresh review; F, a plan audit of section 3.4 and an implementation audit. Merge under the standing permission in `progress.md` (History, Standing permissions) once audits pass and CI is green.
 
 ## 6. Open product decisions
 
