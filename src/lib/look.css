@@ -2616,10 +2616,10 @@ main.helpdesk {
   color: var(--chalk);
 }
 
-/* The keyboard's ring goes round the whole row. It is drawn by the price's own layer laid over the row, after the radio
-   in the row, not by the row asking what it holds: WebKit did not redraw a ring set with :has(:focus-visible) (CI, the
-   phone, #348). */
-.card.bold .plan input:focus-visible ~ .price::before {
+/* The keyboard's ring goes round the whole row, drawn by the price's own layer laid over the row. It follows :focus, not
+   :focus-visible: WebKit takes :focus-visible off a radio the arrow keys move to, though it keeps :focus (measured on
+   the phone, #348), so the ring vanished just as the keyboard chose a plan. */
+.card.bold .plan input:focus ~ .price::before {
   content: "";
   position: absolute;
   inset: -2px;
