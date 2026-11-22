@@ -1,0 +1,5 @@
+- Task: attach-phone says plainly when the body is not valid JSON
+- Last commit: 7b1784a
+- Next step: open PR, CI green, merge
+- Open decisions: none
+- Updated: 2026-11-22T03:58:26Z
