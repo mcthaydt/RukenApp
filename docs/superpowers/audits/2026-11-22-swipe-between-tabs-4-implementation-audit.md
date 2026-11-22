@@ -40,5 +40,6 @@ lines again.
 ## Notes (not blocking)
 
 1. No journey checks that "See your game" on "You're in." lands at the top of Live. It follows from the heading rule,
-   read above; the sign-up code screen's move to the top is the journey-checked case of the same rule.
+   read above. No journey checks the move to the top for any next step (sign-up's code screen included); a later change
+   could add one.
 2. Earlier notes stand: WebKit (phone) unrun here; change password's "Done" keeps its heading and so its place.
