@@ -449,6 +449,35 @@ test("a colour tapped before the screen's scripts arrive is still the one picked
   await expect(page.locator("main")).toHaveCSS("background-color", rgb(chosen?.ground ?? ""));
 });
 
+/**
+ * Holds the page's scripts back, so a journey can act on a screen before it has come alive, for as long as it needs.
+ * One route serves the whole journey and each hold opens a new gate on it: turning the route off and on again between
+ * two holds let the second screen's scripts through unheld (run 45033130832, where the screen came alive in the middle
+ * of a fill). `release` checks the hold caught the screen's scripts, so a hold that missed fails here instead of racing.
+ */
+async function holdScripts(page: Page): Promise<{ hold: () => void; release: () => Promise<void> }> {
+  let gate = Promise.resolve();
+  let open: () => void = () => undefined;
+  let caught = 0;
+  await page.route(/\.m?js(\?.*)?$/, async (route) => {
+    caught += 1;
+    await gate;
+    await route.continue();
+  });
+  return {
+    hold() {
+      caught = 0;
+      gate = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+    },
+    async release() {
+      await expect.poll(() => caught, { message: "the screen's scripts were held back" }).toBeGreaterThan(0);
+      open();
+    },
+  };
+}
+
 test("words typed over a saved answer before the screen has come alive are kept when it does, and are saved", async ({
   page,
 }) => {
@@ -456,40 +485,47 @@ test("words typed over a saved answer before the screen has come alive are kept 
   // so Save kept the old name. Holding the scripts back makes that moment as long as it needs to be.
   const maker = await signUp(page);
   await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
-  let release: () => void = () => undefined;
-  const scriptsMayRun = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  await page.route(/\.m?js(\?.*)?$/, async (route) => {
-    await scriptsMayRun;
-    await route.continue();
-  });
+  const scripts = await holdScripts(page);
 
   // A one-line box (the name).
+  scripts.hold();
   await page.goto("/make/page/name", { waitUntil: "commit" });
   await page.getByLabel("What should your page call you?").fill("Quick Owl");
-  release();
+  await scripts.release();
   await pageHasSettled(page);
   await expect(page.getByLabel("What should your page call you?")).toHaveValue("Quick Owl");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
   await expect(page.getByRole("link", { name: /^Name/ })).toContainText("Quick Owl");
-  await page.unrouteAll({ behavior: "wait" });
 
   // A box that grows with its words (the one line), with the scripts held back again.
-  let releaseAgain: () => void = () => undefined;
-  const scriptsMayRunAgain = new Promise<void>((resolve) => {
-    releaseAgain = resolve;
-  });
-  await page.route(/\.m?js(\?.*)?$/, async (route) => {
-    await scriptsMayRunAgain;
-    await route.continue();
-  });
+  scripts.hold();
   await page.goto("/make/page/line", { waitUntil: "commit" });
   await page.getByLabel("Say one line about you").fill("I make quick games.");
-  releaseAgain();
+  await scripts.release();
   await pageHasSettled(page);
   await expect(page.getByLabel("Say one line about you")).toHaveValue("I make quick games.");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await expect(page.getByRole("link", { name: /^About you/ })).toContainText("I make quick games.");
+});
+
+test("words selected in a saved answer before the screen has come alive stay selected, so typing replaces them", async ({
+  page,
+}) => {
+  // Run 45033130832: the saved line was selected, the screen came alive, and the words typed next were added after the
+  // saved line ("I make small games.I make quick games.") instead of taking its place.
+  const maker = await signUp(page);
+  await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
+  const scripts = await holdScripts(page);
+  scripts.hold();
+  await page.goto("/make/page/line", { waitUntil: "commit" });
+  const box = page.getByLabel("Say one line about you");
+  await box.selectText();
+  await scripts.release();
+  await pageHasSettled(page);
+  await page.keyboard.type("I make quick games.");
+  await expect(box).toHaveValue("I make quick games.");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
   await expect(page.getByRole("link", { name: /^About you/ })).toContainText("I make quick games.");
