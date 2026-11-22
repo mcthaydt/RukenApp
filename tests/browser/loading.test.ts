@@ -65,7 +65,7 @@ test("a plain form shows its button busy while it sends, and a second press send
   await expect(page.getByRole("button", { name: "Sign in" })).not.toHaveAttribute("aria-busy", "true");
 });
 
-test("a video shimmers until it has loaded", async ({ page, browser, request }, testInfo) => {
+test("a video shimmers until it has loaded", async ({ page, browser, request, browserName }, testInfo) => {
   test.setTimeout(180_000);
   const game = await addGame(browser, request);
   await page.goto(`/g/${game.slug}`);
@@ -78,7 +78,9 @@ test("a video shimmers until it has loaded", async ({ page, browser, request }, 
 
   const loading = page.locator("video[data-loading]");
   await expect(loading.first()).toBeVisible();
-  await showTheOwner(page, testInfo, "a video while it loads");
+  // The picture waits for the page's fonts, and WebKit says its fonts are ready only once the held clips have come, so
+  // the phone would wait for ever. The tablet and the computer still take it.
+  if (browserName !== "webkit") await showTheOwner(page, testInfo, "a video while it loads");
   held.release();
   await expect(loading).toHaveCount(0);
 });
