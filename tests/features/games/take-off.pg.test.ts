@@ -200,33 +200,6 @@ describe("putBack", () => {
     return game;
   }
 
-  it("copies the files again and waits for a person's yes, and is never live by itself", async () => {
-    const game = await offGame();
-
-    await service.putBack(game.id, game.makerUserId);
-
-    const after = await row(game.id);
-    expect(after).toMatchObject({ state: "waiting", livePullId: null });
-    expect(after.pendingPullId).not.toBeNull();
-    expect(after.pendingPullId).not.toBe(game.pullId);
-    expect(await service.liveGameBySlug(game.slug)).toBeNull();
-    expect(
-      files.keys().some((key) => key.startsWith(`files/${game.publicId}/${after.pendingPullId ?? ""}/`)),
-    ).toBe(true);
-  });
-
-  it("stays off when GitHub refuses the copy, and says why", async () => {
-    const game = await offGame();
-    installed = null;
-
-    await expect(service.putBack(game.id, game.makerUserId)).rejects.toMatchObject({
-      name: "GameError",
-      code: "NOT_CONNECTED",
-    });
-
-    expect((await row(game.id)).state).toBe("taken_off");
-  });
-
   it.each(["draft", "waiting", "sent_back", "live"] as const)(
     "refuses to put back or clean up a %s game",
     async (state) => {

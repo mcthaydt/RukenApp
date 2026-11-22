@@ -84,8 +84,20 @@ The first screenshot is the main screen. The script also walks the sign-up journ
 
 One line each, from a person's side: where it starts, the steps, and what they see at the end.
 
-- Feed: open `/`. See a clip per live game (or "No games here yet."), the bar with "Home" and "You", and press an arrow key or Page Down to move one clip. "You" opens `/me`.
-- Sign up: open `/sign-up?next=/me`. Fill Email, Password (10 to 128 characters), and Month, Day and Year of birth (someone under 13 is told to come back). Press "Create account". You land on `/me`, signed in. More journeys, each with its stand-in (mail, texts, payment), are the tests in `tests/browser/`; run the one that matches the change by reading its steps and doing them the same way.
+- Feed: open `/`. See a clip per live game (or "No games here yet."), the bar with "Home" and "You", and press an arrow key or Page Down to move one clip. "You" opens `/me` (`feed.test.ts`, `feed-controls.test.ts`).
+- Sign up: open `/sign-up?next=/me`. Fill Email, Password (10 to 128 characters), and Month, Day and Year of birth (someone under 13 is told to come back). Press "Create account". You land on `/me`, signed in.
+- Sign in: open `/sign-in`, type the email and password, press "Sign in". A wrong password says so and offers the reset (`sign-in.test.ts`).
+- Your account: open `/me` signed in. See your email and Sign out; change your password, and other devices are signed out (`me.test.ts`, `change-credentials.test.ts`).
+- Delete your account: open `/me/delete` and ask to be deleted. You are signed out and told the date; signing in again within 14 days undoes it (`delete-account.test.ts`).
+- Send a game: signed in, open `/make` and start a new game. Answer the six questions, agree once, press "Check and send". You see "Waiting for review" (`make-send.test.ts`); the review job accepts it in the GitHub stand-in.
+- Change, then take off, a live game: from Your games, change its files, videos or rating, then take it off. Players see the change, then the game is gone (`make-game-crud.test.ts`, `make-live-changes.test.ts`, `take-off.test.ts`).
+- Your page: open `/make/page`. Make it (address, name, line, photo, colours, links), open it at `/<handle>`, change each part, take parts away (`edit-page.test.ts`, `maker-page.test.ts`).
+- Join: a stranger presses Play on a game's page and meets the price card. Pick a plan, pay in the Stripe stand-in, land in the game as a member (`join.test.ts`, `pay.test.ts`, `play.test.ts`).
+- Play: a member opens `/g/<game>` and presses Play. The game loads in a frame on another address and sees nothing about the player (`play.test.ts`).
+- Membership: a member opens `/me` and sees what they pay and when it renews; cancelling in Stripe tells them when it ends (`membership.test.ts`).
+- 18+ games: signed out or under 18, an 18+ game says no and asks to sign in; an adult who signs in from there lands back on the game (`adults-only.test.ts`).
+
+Each line's test file holds its full steps and stand-ins (mail, texts, payment, GitHub). Walk the one that matches the change by reading its steps and doing them the same way.
 
 ## Stop it
 
