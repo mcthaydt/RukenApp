@@ -53,7 +53,10 @@ test("a new maker finds the guide from Your games and copies the prompt for thei
   ]) {
     await expect(page.getByRole("heading", { level: 3, name: step })).toBeVisible();
   }
+  // The prompt is folded away until the maker opens it.
   const prompt = page.getByRole("region", { name: "The prompt for your AI helper" });
+  await expect(prompt).toBeHidden();
+  await page.getByText("Read the prompt").click();
   await expect(prompt).toContainText("Help me put my game on Ruken (ruken.io).");
   await expect(prompt).toContainText("press Add a game");
   await showTheOwner(page, testInfo, "the guide to getting a game on Ruken");
@@ -92,7 +95,7 @@ test("when the browser won't copy, the guide says what still works", async ({ pa
   await page.getByRole("button", { name: "Copy the prompt" }).click();
 
   await expect(page.getByRole("status")).toHaveText(
-    "We couldn't copy it. Select the words above and copy them yourself.",
+    "We couldn't copy it. Open Read the prompt, then select the words and copy them yourself.",
   );
 });
 

@@ -59,27 +59,6 @@
     Use an AI coding helper, like Claude Code? Copy this and paste it in. It gets your game ready and puts it
     on GitHub. Then it tells you what's left to do on Ruken.
   </p>
-  <h3 id="prompt">The prompt for your AI helper</h3>
-  <div role="region" aria-labelledby="prompt">
-    {#each PROMPT_OPENING as words (words)}
-      <p>{words}</p>
-    {/each}
-    <ol>
-      {#each PROMPT_STEPS as step (step.words)}
-        <li>
-          {step.words}
-          {#if step.points !== undefined}
-            <ul>
-              {#each step.points as point (point)}
-                <li>{point}</li>
-              {/each}
-            </ul>
-          {/if}
-        </li>
-      {/each}
-    </ol>
-    <p>{PROMPT_CLOSING}</p>
-  </div>
   {#if woke}
     <p><button type="button" onclick={copyPrompt}>Copy the prompt</button></p>
   {/if}
@@ -87,9 +66,35 @@
     {#if copied === "yes"}
       Copied. Paste it into your AI helper.
     {:else if copied === "failed"}
-      We couldn't copy it. Select the words above and copy them yourself.
+      We couldn't copy it. Open Read the prompt, then select the words and copy them yourself.
     {/if}
   </p>
+
+  <!-- The prompt is long on a phone, so it is folded away and the guide's steps stay close. The button copies it either
+       way; open, it can be read and copied by hand. -->
+  <details>
+    <summary>Read the prompt</summary>
+    <div role="region" aria-label="The prompt for your AI helper">
+      {#each PROMPT_OPENING as words (words)}
+        <p>{words}</p>
+      {/each}
+      <ol>
+        {#each PROMPT_STEPS as step (step.words)}
+          <li>
+            {step.words}
+            {#if step.points !== undefined}
+              <ul>
+                {#each step.points as point (point)}
+                  <li>{point}</li>
+                {/each}
+              </ul>
+            {/if}
+          </li>
+        {/each}
+      </ol>
+      <p>{PROMPT_CLOSING}</p>
+    </div>
+  </details>
 
   <h2 id="need">What you need</h2>
   <ul>
