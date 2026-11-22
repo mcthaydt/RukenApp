@@ -382,6 +382,8 @@ describe("screens wear the look and nothing of their own", () => {
     // A maker's test play: the button under a game in Your games, and the strip across the top of the test play.
     "testplay",
     "teststrip",
+    // A list of short points on a reading page (privacy, terms).
+    "bullets",
   ];
   const ROUTES = "src/routes";
 
