@@ -257,7 +257,7 @@ The implementer ticks each step below on its branch and the coordinator copies t
 - [ ] Words review and visual check (A12, A13); green; live-state file deleted; handed to the audit.
 
 ### After pull request 1 merges (outside the repo, needs the owner)
-- The owner deploys (`pnpm run deploy`, which runs the migration).
+- The site deploys itself from `main`, and its deploy runs the migration; the owner runs nothing.
 - Publishing (audit 1, R9). Under D2 option A, the first publishes are by hand from the owner's computer, which needs no secret: `npm login` once, then `pnpm --filter ruken publish --access public`. Publishing from CI (npm's trusted publishing from GitHub Actions, so no npm token is saved) would change `.github/workflows/`, a rule path the rule-mix hook keeps apart, so it would be its own lane 3 pull request, and it is not part of this spec. Until the first publish, the owner runs it from a checkout: `node packages/ruken/bin.js video floor-fifty upright <file>`.
 
 ## 9. Decisions for the owner
