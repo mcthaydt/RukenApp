@@ -110,8 +110,8 @@ CRUD: the page makes nothing a person can save, so it adds no create, update or 
 - [x] 4. Styles in `look.css`.
 - [x] 5. Links from `/join`, `/sign-in`, `/me`, `/help`.
 - [x] 6. `this-repo` rule.
-- [ ] 7. Lint, typecheck, unit tests, the journeys reached; run it like a person (`verify`).
-- [ ] 8. Screenshots in one artifact (`visual-check` step 1); fix what it finds.
+- [x] 7. Lint, typecheck, unit tests, the journeys reached; run it like a person (`verify`).
+- [x] 8. Screenshots in one artifact (`visual-check` step 1); fix what it finds.
 - [ ] 9. Delete the live-state file; open the pull request; fresh lane 2 review.
 
-Progress: 6 of 9 (67%).
+Progress: 8 of 9 (89%); step 9 is this pull request and its review.
