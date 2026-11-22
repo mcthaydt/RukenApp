@@ -239,11 +239,11 @@ The implementer ticks each step below on its branch and the coordinator copies t
 - [x] All A-checks for this PR green locally; visual check of the two screens; live-state file deleted; handed to the implementation audit by commit.
 
 ### Pull request 2
-- [ ] Live-state file; failing journeys A6, A7 and A5 for every new route.
-- [ ] `sendWhenAgreed` in `src/features/make/send.ts`, called only by the check screen's `send` and by the `send` endpoint for a `draft`; every other send (sent back, send again, new version, put back, live saves) unchanged (audit 3, R3-1; audit 4, R4-1).
-- [ ] The other PR 2 rows of 5.3 moved into the games service or their helper, the form actions calling the same thing (their existing journeys stay green unchanged).
-- [ ] Endpoints and commands for every row of 3.2 and 3.3, their rows in `parity/games.json` and `parity/github.json` set built.
-- [ ] Green; live-state file deleted; handed to the audit.
+- [x] Live-state file; failing journeys A6, A7 and A5 for every new route.
+- [x] `sendWhenAgreed` in `src/features/make/send.ts`, called only by the check screen's `send` and by the `send` endpoint for a `draft`; every other send (sent back, send again, new version, put back, live saves) unchanged (audit 3, R3-1; audit 4, R4-1).
+- [x] The other PR 2 rows of 5.3 moved into the games service or their helper, the form actions calling the same thing (their existing journeys stay green unchanged).
+- [x] Endpoints and commands for every row of 3.2 and 3.3, their rows in `parity/games.json` and `parity/github.json` set built.
+- [x] Green; live-state file deleted; handed to the audit.
 
 ### Pull request 3
 - [ ] Live-state file; failing journeys A8 and A5 for the page routes.
