@@ -36,7 +36,9 @@ Found by reading every `cookies.set`, `setCookie`, `localStorage`, `sessionStora
 | `rk_seen_hints` (localStorage) | `src/features/feed/Feed.svelte:136` | First open of the feed, signed out included | Yes. Without it the hints show each visit and nothing is written. |
 | `rk_menu_tab` (localStorage) | `src/routes/g/[game]/play/+page.svelte:52` | Moving the play menu | Yes (play waits) |
 
-No `sessionStorage`, IndexedDB, `document.cookie` or service worker in `src/`. Fonts are Ruken's own. No analytics, ads or outside scripts.
+| `sveltekit:history-info`, `sveltekit:snapshot`, `sveltekit:navigation-snapshot` (sessionStorage) | SvelteKit 3.0.0 itself, not `src/`: `client.js` `persist_state()` (`:686-694`) on `beforeunload` and on the tab going hidden (`:3086`, `:3113`) | Every visitor who switches tabs or leaves | Yes: cleared without one (3.3, guard 4) |
+
+No other `sessionStorage`, no IndexedDB, `document.cookie` or service worker in `src/`. Fonts are Ruken's own. No analytics, ads or outside scripts.
 
 ### Database writes a stranger causes
 
@@ -48,7 +50,7 @@ No `sessionStorage`, IndexedDB, `document.cookie` or service worker in `src/`. F
 | `Session` (IP, browser), `RateLimit`, `SignInGuard`, `Verification`, texts and mail sent | better-auth through `/api/auth` and the sign-in, sign-up, forgot-password and phone forms | Signing up or in | Yes |
 | Session renewal (row extended, cookie re-sent) | `accounts/handle.ts` | Every page for a signed-in browser | Yes (see 3.6) |
 | Wishlist rows | branch `mqxj7b` | Signed in only | Already behind sign-in |
-| `ComputerSignIn` row | branch `claude/project-thread-ps17ej` (#331, "Yes" sign-in from a terminal) | A terminal asks to sign in | See 3.7 |
+| `ComputerSignIn`, `ComputerKey` rows and the terminal's game and video writes | #331 (`claude/project-thread-ps17ej`): `/api/v1/*` | A terminal holding a key, or asking to sign in | See 3.7 (machine routes) |
 
 In flight and covered by the rule, not by this table: the endless feed (#329) only reads; the learned feed (thread "Spec the learned feed") will record watch signals and More/Less like this, which are writes and wait for a yes.
 
@@ -79,13 +81,14 @@ In flight and covered by the rule, not by this table: the endless feed (#329) on
 
 `src/features/consent/` holds: the cookie's name and value, `hasConsent(cookies)`, `agree(cookies)`, `takeBack(cookies)` (deletes every Ruken cookie by name), the list of machine routes (3.7), and the browser-side `deviceStore` (3.5). It goes first in `FEATURE_ORDER` in `tests/architecture.test.ts`, below `accounts`, because `accounts` and every feature above read it.
 
-### 3.3 Three guards, so a missed spot fails loudly instead of collecting quietly
+### 3.3 Four guards, so a missed spot fails loudly instead of collecting quietly
 
 The rule is enforced at the narrowest points every request passes, not route by route, so a later feature (the learned feed, say) cannot forget it.
 
 1. **Cookie guard** (a `Handle` in `hooks.server.ts`, right after `httpsOnly`). Without `rk_consent`, any `Set-Cookie` on the answer other than `rk_consent` itself, or a deletion (`Max-Age=0`), is removed, and one log line names the cookie (never its value). A unit test proves the removal; the journeys prove none is sent, so in practice the guard never fires.
 2. **Write guard** (in `src/lib/server/db.ts`, the per-request database store). The request's store carries `writesAllowed`, set from consent or a machine route. When false, every Prisma write (`create*`, `update*`, `upsert`, `delete*`, `$executeRaw*`, and writes inside `$transaction`) throws `NoConsentWrite` naming the model. **Call:** throw, not skip: a write that slipped through is a bug the journeys must see as a failed page, never a silent record. Reads are untouched.
-3. **Device-store guard** (browser). `deviceStore.get/set` writes `localStorage` only when the layout says this browser agreed; otherwise it keeps the value in memory for this visit. A test fails if `localStorage` or `sessionStorage` appears anywhere in `src/` outside `deviceStore`.
+3. **Device-store guard** (browser). `deviceStore.get/set` writes `localStorage` only when the layout says this browser agreed; otherwise it keeps the value in memory for this visit. A test fails if `localStorage` or `sessionStorage` appears anywhere in `src/` outside `deviceStore` and guard 4.
+4. **Framework-storage guard** (browser). SvelteKit writes three `sveltekit:` keys to `sessionStorage` when the tab goes hidden or unloads, whatever the visitor chose. **Call:** without a yes, a listener registered after SvelteKit's own (so it runs after) removes every `sveltekit:` key on `visibilitychange` to hidden and on `pagehide`. The cost: a tab without a yes does not get its scroll place back after a reload. With a yes nothing changes.
 
 ### 3.4 The notice
 
@@ -104,8 +107,8 @@ The rule is enforced at the narrowest points every request passes, not route by 
 
   The sheet's first line, when a button opened it, says what was pressed: "To sign in, Ruken needs to keep a few small things in your browser." (and "To play", "To join", "To save this game").
 - **The two buttons** are the same size, shape, weight and colour family, side by side (stacked on the small phone, same width), and both reachable by keyboard with visible focus. No pre-ticked box; no "by using this site". A browser check compares their boxes and computed styles.
-- **I agree** is a plain form (`POST /cookies?/agree` with `next`), so it works before scripts load; with scripts it does not reload the screen (app feel) and shows the busy spinner while it sends. It sets `rk_consent` and goes to `next`: the screen behind, or what was pressed (`/sign-in?next=…`, the game's play screen, the Join screen). Coming back to the game or maker page that was open means its load now sets `rk_arrival` and counts the view, so the maker who brought them is still thanked.
-- **Not now** is a button with no request. It hides the card in memory only.
+- **I agree** is a plain form (`POST /cookies?/agree` with `next`), so it works before scripts load; with scripts it does not reload the screen (app feel) and shows the busy spinner while it sends. It also carries `from`, the same-site page it was opened on; when that is a game page or a maker's page, the action calls `arrival.remember` for that page's maker before going on, so a yes given from Join, Play or Sign in on `/g/x` still thanks the maker who brought them. It sets `rk_consent` and goes to `next`: the screen behind, or what was pressed (`/sign-in?next=…`, the game's play screen, the Join screen). Coming back to the game or maker page that was open means its load now sets `rk_arrival` and counts the view, so the maker who brought them is still thanked.
+- **Not now** is a button with no request. It hides the card in memory only. On a screen whose form waits for a yes (sign-in, sign-up, the password pages, `/join`), Not now leaves that screen: back to the screen before it in this app, or the feed when there is none, so nobody is left on an empty screen. Escape is Not now; focus goes into the sheet when it opens and back to the pressed button when it closes.
 - **Without scripts**, Not now is a link to the same address with `#` and the card stays; acceptable.
 
 ### 3.5 Every collector, wired
@@ -129,13 +132,21 @@ The rule is enforced at the narrowest points every request passes, not route by 
 
 ### 3.7 Routes no visitor's browser calls
 
-`/webhooks/stripe`, `/jobs/*` (secret-signed), `/healthz` and `/make/github/callback` (GitHub returning a signed-in maker, who agreed already: it checks consent like any page) are listed in `consent/machine-routes.ts`. The first three run with writes allowed and no consent. A test lists every `+server.ts` and `+page.server.ts` under `src/routes` and fails unless each is either gated by consent or named in that list with its reason, so a new route must decide.
+Every route is exactly one of three kinds, named in `consent/routes.ts`:
 
-**Call, flagged for the plan audit:** the terminal's "Yes" sign-in (#331) starts from a terminal, not a browser, and its first row names no one until a person presses Yes in a browser, which needs consent. Its terminal routes go on the machine list with that reason. Whichever of #331 and this lands second wires it.
+- **Open**: answers without a yes and writes nothing (the write guard stays on): `/`, `/g/[game]`, `/[handle=handle]`, `/[handle=handle]/out/[link]`, `/help/*`, `/legal/*`, `/privacy`, `/terms`, `/goodbye`, `/cookies`, the missing page, and #329's `GET /api/feed` when it lands.
+- **Machine**: called by a server or a terminal, never a visitor's browser, so writes are allowed without `rk_consent`, each with its reason: `/webhooks/stripe` (Stripe, signed), `/jobs/*` (the crons, secret-signed), `/healthz` (writes nothing), and #331's `/api/v1/*` ("called by a terminal holding a key that a signed-in person made on `/me/link`, which needed a yes; a request with no valid key writes nothing"). On `/api/v1/*` writes are allowed only after the key checks out, except `sign-in/start` and `sign-in/finish`, whose row names no one until a person presses Yes in a browser that agreed.
+- **Gated**: everything not named above; it shows the notice or refuses without a yes (sign-in, sign-up, password pages, `/join`, `/g/[game]/play`, `play/beat`, `/api/auth/*`, `/me/*`, `/make/*` including the GitHub callback).
+
+A test lists every `+server.ts`, `+page.server.ts` and `+page.ts` under `src/routes` and fails unless each is in exactly one kind, so a new route must decide.
+
+Whichever of #331 and this lands second wires `/api/v1/*` into the machine kind.
 
 ### 3.8 Logs off
 
-Both `wrangler.jsonc` files: `"observability": { "enabled": true, "logs": { "invocation_logs": false } }`, so Ruken's own `console` lines are kept and Cloudflare's per-request entries are not. The implementer first checks the key exists in the installed Wrangler's `config-schema.json` (a tool is checked before it is built on); if it does not, stop and report. `tests/wrangler.test.ts` asserts it for both files. The site Worker deploys on merge; the games Worker is deployed separately today, so the coordinator schedules its deploy (never the owner).
+- **Games Worker** (`cloudflare/games/wrangler.jsonc`): it writes no `console` line (`cloudflare/games/worker.ts`, `src/features/play/gate.ts`), so `"observability": { "enabled": false }`.
+- **Site Worker** (`wrangler.jsonc`): `"observability": { "enabled": true, "logs": { "invocation_logs": false } }`, keeping Ruken's own `console` lines (errors, the guards' lines) and dropping Cloudflare's per-request entries. Before building on it the implementer checks two things and writes the answers, with their sources, into the pull request body: (1) the key exists in the installed Wrangler's `config-schema.json`; (2) from Cloudflare's Workers Logs documentation, which fields Cloudflare stores beside each kept `console` line. If any of them is a detail about the visitor (IP address, headers, full address with query, browser), the site Worker also goes to `"enabled": false`, and Ruken's error lines are given up until that is solved in its own thread. If the key does not exist, stop and report.
+- `tests/wrangler.test.ts` asserts the chosen setting for each file. The site Worker deploys on merge; the games Worker is deployed separately today, so the coordinator schedules its deploy (never the owner).
 
 ### 3.9 Taking it back
 
@@ -143,6 +154,10 @@ Both `wrangler.jsonc` files: `"observability": { "enabled": true, "logs": { "inv
 
 ### 3.10 Open legal questions (not built; for a lawyer)
 
+- **Asked again every visit.** "Not now" stores nothing (the owner's strict reading, kept), so a visitor who refuses sees the card on every visit, while a yes lasts 180 days. Does asking again every visit make refusing harder than agreeing?
+- **One yes for everything.** One yes covers what the person asked for (sign-in, play) and what they did not (the maker's thank-you cookie `rk_arrival`, page view and link-tap counts). May sign-in wait on a yes that also covers referral tracking, or must those be a separate choice?
+- **"We never sell your data."** "Sell" has a legal meaning in some US states (for example, sharing with a partner for value). Is the sentence true as written for Stripe, the text sender and the makers' thank-you?
+- **Framework storage.** If clearing SvelteKit's `sveltekit:` keys (guard 4) proves unreliable on some browser, is a tab-only scroll place kept in that tab allowed before a yes?
 - Global Privacy Control: nothing optional is kept separately, so there is nothing to switch off by it; confirm.
 - Whether a 180-day `rk_consent` is right for every state and country Ruken serves.
 - What the notice must say about a game's own saves on its own address (a game runs only after a yes).
@@ -151,21 +166,22 @@ Both `wrangler.jsonc` files: `"observability": { "enabled": true, "logs": { "inv
 
 Each is observed by a program unless marked "person".
 
-1. **No collection before a yes, three devices.** A new journey, `tests/browser/cookie-consent.test.ts`, runs on `phone` (WebKit), `tablet` and `computer`. With a fresh browser it opens `/`, scrolls the feed past the hints, opens a game page, a maker's page, taps a maker's link, opens `/help`, `/legal/maker-agreement`, `/privacy`, `/terms` (when merged), `/sign-in`, `/sign-up`, `/join`, `/g/<game>/play` and a missing page. Afterwards: `context.cookies()` is empty; `localStorage` and `sessionStorage` have no keys and IndexedDB has no databases on Ruken's origin; every request the page sent was a `GET` or `HEAD` (no `POST`, no beacon); the maker page's `views` and the link's `taps` are unchanged; and no `Session`, `RateLimit`, `PlayPass`, `PlaySession` or `Verification` row was made for this run (rows read by the run's own unique game and maker). The write guard (3.3) makes any other write fail the page, which fails the journey.
-2. **Not now.** The same walk after pressing Not now: the same empty results; the card stays hidden while moving around the app; after a reload it is back.
-3. **I agree, and each gated button.** Pressing Sign in, Sign up, Join, Play and (when merged) Wishlist with no consent opens the sheet naming the action; "I agree" lands on what was pressed; `rk_consent` is the only new cookie before that screen acts; playing then works and the maker page then counts a view and sets `rk_arrival`.
+1. **No collection before a yes, three devices.** A new journey, `tests/browser/cookie-consent.test.ts`, runs on `phone` (WebKit), `tablet` and `computer`. With a fresh browser it opens `/`, scrolls the feed past the hints, opens a game page, a maker's page, taps a maker's link, opens `/help`, `/legal/maker-agreement`, `/privacy`, `/terms` (when merged), `/sign-in`, `/sign-up`, `/join`, `/g/<game>/play` and a missing page. Before measuring it sends the tab to hidden (`visibilitychange`) and reloads once, so the framework's own writes (guard 4) would show. Afterwards: `context.cookies()` is empty; `localStorage` and `sessionStorage` have no keys at all, `sveltekit:` included, and IndexedDB has no databases on Ruken's origin; every request the page sent was a `GET` or `HEAD` (no `POST`, no beacon); the maker page's `views` and the link's `taps` are unchanged; and no `Session`, `PlayPass`, `PlaySession` or `Verification` row was made for the run's own unique game, maker and test account (rows read only by keys the run owns, since parallel workers share an IP). The write guard (3.3) makes any other write fail the page, which fails the journey.
+2. **Not now.** The same walk after pressing Not now: the same empty results; the card stays hidden while moving around the app; after a reload it is back. Not now on `/sign-in` lands on the screen before it, or the feed.
+3. **I agree, and each gated button.** Pressing Sign in, Sign up, Join, Play and (when merged) Wishlist with no consent opens the sheet naming the action; "I agree" lands on what was pressed; `rk_consent` is the only new cookie before that screen acts; playing then works and the maker page then counts a view and sets `rk_arrival`. Landing on a game page from a maker's link, pressing Join and agreeing leaves `rk_arrival` naming that game's maker.
 4. **Take it back (CRUD of the one thing a visitor makes here).** Create: agree. Read: `/cookies` says yes and the date. Update: agree again after taking back. Delete: Take it back leaves no Ruken cookie and no `rk_` storage key, the browser is signed out, and the next page shows the notice. Signing in again needs a new yes.
 5. **Signed in before this ships.** A browser with a valid session cookie and no `rk_consent` is treated as signed out, no `Session` row is updated, and after "I agree" it is signed in again.
-6. **The guards.** Unit tests: the cookie guard removes a stray cookie and keeps `rk_consent` and deletions; the write guard throws on each write kind and allows reads; `deviceStore` writes only when agreed; no `localStorage`/`sessionStorage` outside it; every route is consent-gated or on the machine list (3.7); `/api/auth/*` refuses without consent.
+6. **The guards.** Unit tests: the cookie guard removes a stray cookie and keeps `rk_consent` and deletions; the write guard throws on each write kind and allows reads; `deviceStore` writes only when agreed; no `localStorage`/`sessionStorage` outside it; every route is exactly one of open, machine or gated (3.7); `/api/auth/*` refuses without consent; one `/api/v1` write with a valid key and no cookie succeeds, and one with no valid key writes nothing (once #331 is on `main`).
 7. **Equal buttons.** On all three devices, I agree and Not now have the same height, width (within 1px), font size, font weight and border radius; both are reachable by Tab with visible focus; the card uses the glass tokens.
-8. **Logs.** `tests/wrangler.test.ts` asserts `invocation_logs: false` in both files.
+8. **Logs.** `tests/wrangler.test.ts` asserts the games Worker's observability is off and the site Worker's setting chosen under 3.8; the pull request body carries the two checks of 3.8 with their sources.
 9. **Live (person, after merge).** `curl -sI` on `/`, a game page and a maker page of ruken.io answers with no `set-cookie`. The verify run walks the notice on the deployed site.
 10. **Words** pass the drunk-grandma test (person: the audit and the design review read them).
 
 ## 5. Boundaries
 
 - **No new dependency, tool, environment or spend.** Only code in this repo and two settings in the `wrangler.jsonc` files.
-- **Out of scope:** the `/privacy` and `/terms` pages (their own thread; this spec gives them `rk_consent` and the "nothing before yes" sentence to state); Cloudflare zone settings (only checked, item 9); a cookie preference centre with toggles.
+- **The legal pages:** `/privacy` and `/terms` are their own thread. This build adds its own part to `/privacy` in the same pull request: `rk_consent` in the "Cookies and your browser" list, the sentence that nothing is kept before a yes, and the `/cookies` link (`tests/routes/privacy/cookies.test.ts` fails otherwise). If `/privacy` has not reached `main` when the build starts, the builder coordinates with the "Add privacy policy and terms pages" thread.
+- **Out of scope:** Cloudflare zone settings (only checked, item 9); a cookie preference centre with toggles.
 - **Expected duration:** execution about one working day; the overrun in Settings applies at two.
 - **Supported browsers:** the three device profiles in `playwright.config.ts`.
 
@@ -176,11 +192,11 @@ Units run in this order on one branch, because each reads the one before. Each s
 | Unit | Waits on | Owns | Output | Check |
 |---|---|---|---|---|
 | A. Consent core | — | `src/features/consent/*`, `tests/architecture.test.ts` (one line), `tests/features/consent/*` | cookie, `hasConsent`, `agree`, `takeBack`, machine-route list | unit tests (criterion 6) |
-| B. Guards | A | `src/lib/server/db.ts`, `src/hooks.server.ts`, `src/features/consent/cookie-guard.ts`, `deviceStore`, their tests | the three guards | criterion 6 |
-| C. Notice and `/cookies` | A | `src/features/consent/Notice.svelte`, `src/routes/cookies/*`, `src/routes/+layout.*` | the card, the sheet, agree, take back | criterion 7; unit tests on the action |
+| B. Guards | A | `src/lib/server/db.ts` (a Prisma query extension reading the request's store, not the adapter, which cannot tell `INSERT … RETURNING` from a read), `src/hooks.server.ts`, `src/features/consent/cookie-guard.ts`, `deviceStore`, the framework-storage guard, the journeys' default `rk_consent` helper in `tests/browser/support/*` (so the branch stays green once the write guard is on), their tests | the four guards | criterion 6 |
+| C. Notice and `/cookies` | A | `src/features/consent/Notice.svelte`, `src/routes/cookies/*`, `src/routes/+layout.*`, `src/routes/privacy/+page.svelte` (its part only, section 5) | the card, the sheet, agree, take back | criterion 7; unit tests on the action |
 | D. Wire every collector | B, C | the files in 3.5 and 3.6 | each row of 3.5 | criteria 1–5 |
 | E. Logs off | — | `wrangler.jsonc`, `cloudflare/games/wrangler.jsonc`, `tests/wrangler.test.ts` | 3.8 | criterion 8 |
-| F. Journeys | D | `tests/browser/cookie-consent.test.ts`; existing journeys gain one "agree" step in their shared sign-in/visit helpers (`tests/browser/support/*`), named in the PR body | criteria 1–5, 7 on three devices | CI green |
+| F. Journeys | D | `tests/browser/cookie-consent.test.ts` | criteria 1–5, 7 on three devices | CI green |
 
 - [ ] A. Consent core
 - [ ] B. Guards
@@ -191,9 +207,9 @@ Units run in this order on one branch, because each reads the one before. Each s
 - [ ] `verify` run on the three devices; screens shot for the notice, the sheet and `/cookies`
 - [ ] Implementation audit (fresh session), fixes
 
-**Existing journeys.** Nearly every journey signs in or plays, so each needs consent first. The helper that opens a fresh browser sets `rk_consent=v1` by default (the one change to shared test support, lane 2), and the new journey opts out. This is named in the pull request body as a change to existing tests, with the reason.
+**Existing journeys.** Nearly every journey signs in or plays, so each needs consent first. The helper that opens a fresh browser sets `rk_consent=v1` by default (the one change to shared test support, lane 2, in unit B), and the new journey opts out. This is named in the pull request body as a change to existing tests, with the reason.
 
-**Ordering with branches in flight.** Wishlist (`mqxj7b`), the endless feed (#329), the terminal sign-in (#331) and the privacy pages (`xa97zr`) touch the same screens. Whichever merges second wires the rule for the other; the route test in 3.7 and the write guard make a miss fail CI.
+**Ordering with branches in flight.** Wishlist (`mqxj7b`), the endless feed (#329), the terminal sign-in (#331), the learned feed and the privacy pages (`xa97zr`) touch the same screens; the builder re-checks section 1 against `main` when it starts. Whichever merges second wires the rule for the other; the route test in 3.7 and the write guard make a miss fail CI.
 
 ## 7. Lane and reviews
 
