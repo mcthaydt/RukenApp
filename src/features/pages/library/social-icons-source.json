@@ -1,0 +1,9 @@
+{
+  "package": "simple-icons",
+  "version": "16.38.1",
+  "tarball": "https://registry.npmjs.org/simple-icons/-/simple-icons-16.38.1.tgz",
+  "integrity": "sha512-q4JnGp1cgeASp4jzEsmSh/7BD/e2y7aYO8XST+QBEvOJ5wzZ/9WRmKsI+QUwkfPUSiXC+sfh2+QetD38zl3N0g==",
+  "path": "package/icons/<name>.svg",
+  "licence": "CC0-1.0",
+  "note": "Each mark is the d attribute of the package's svg, copied as it is. The mark for itchio is itchdotio.svg in the package."
+}
