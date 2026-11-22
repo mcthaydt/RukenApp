@@ -16,10 +16,6 @@
   onMount(() => keep?.focus());
 </script>
 
-<svelte:head>
-  <title>Delete your account? · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <h1>Delete your account?</h1>
   {#if data.staff}

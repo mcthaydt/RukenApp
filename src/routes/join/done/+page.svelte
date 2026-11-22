@@ -27,10 +27,6 @@
   });
 </script>
 
-<svelte:head>
-  <title>Finishing up · Ruken</title>
-</svelte:head>
-
 <main class="card">
   {#if slow}
     <h1>This is taking longer than usual.</h1>

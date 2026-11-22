@@ -38,7 +38,7 @@ Code from the archived RukenAppFailed is copied on purpose, file by file, with i
 
 ## Outside the repo
 
-- The live site is https://ruken.io, which sends mail from no-reply@ruken.io; https://ruken.dev serves games and media. The old games address is closed. A merge to `main` does not deploy: the owner runs `pnpm run deploy` (and `pnpm run deploy:games`; a bare `pnpm deploy` is pnpm's own deploy command, not this script) for the games Worker).
+- The live site is https://ruken.io, which sends mail from no-reply@ruken.io; https://ruken.dev serves games and media. The old games address is closed. Every push to `main` deploys the site: Cloudflare's own build (Workers Builds, the "Workers Builds: ruken" check) runs `pnpm run deploy`, migrations first, without waiting for CI (spec `2026-11-22-deploy-from-green-main-design.md` moves it behind a green run). Nobody runs `pnpm run deploy` for the site by hand. The games Worker is still deployed by the owner with `pnpm run deploy:games --route …` (a bare `pnpm deploy` is pnpm's own command, not these scripts).
 - This repo is public: R2 stays out of it (no R2 bucket names, keys or upload steps), and nothing for it runs on the owner's computer.
 - Secrets are the owner's, typed into Cloudflare with `wrangler secret put`. None is written in the repository or in chat.
 

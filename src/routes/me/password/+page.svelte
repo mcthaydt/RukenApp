@@ -8,10 +8,6 @@
   let { data, form }: PageProps = $props();
 </script>
 
-<svelte:head>
-  <title>Change your password · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <h1>Change your password</h1>
   {#if !data.hasNumber}
