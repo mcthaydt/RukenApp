@@ -206,6 +206,37 @@ test("a visitor's open and tap are counted, the maker's own are not", async ({ p
   expect(await pageCounts(handle)).toEqual({ views: 1, taps: [0] });
 });
 
+test("resting on or touching Made by counts no view; opening the page counts one", async ({ page }) => {
+  // The site loads a page early when the pointer rests on its link or a finger lands on it. A maker's page counts a
+  // view each time its data is loaded, so an early load would count a person who never opened it.
+  const { handle } = shown;
+  const asked: string[] = [];
+  page.on("request", (sent) => {
+    const path = new URL(sent.url()).pathname;
+    if (path === `/${handle}` || path.startsWith(`/${handle}/`)) asked.push(path);
+  });
+  await page.goto(`/g/${maker.slug}`, { waitUntil: "domcontentloaded" });
+  await pageHasSettled(page);
+  const before = (await pageCounts(handle)).views;
+
+  const madeBy = page.locator(".madeby").getByRole("link", { name: "Night Owl" });
+  await madeBy.hover();
+  await madeBy.dispatchEvent("touchstart");
+  // A touch starts an early load at once; a resting pointer starts one after a short wait. The way back to the feed is
+  // loaded early, so once the site has asked for it after the pointer rested there, it would already have asked for
+  // the maker's page if the touch on Made by had started a load.
+  const back = page.getByRole("link", { name: "← Back to the feed" });
+  const feedAsked = page.waitForResponse((answer) => new URL(answer.url()).pathname === "/__data.json");
+  await back.hover();
+  await feedAsked;
+  expect(asked).toEqual([]);
+  expect((await pageCounts(handle)).views).toBe(before);
+
+  await madeBy.click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Night Owl");
+  expect((await pageCounts(handle)).views).toBe(before + 1);
+});
+
 test("landing on a page remembers its maker's link", async ({ page, browser }) => {
   const { handle } = await givePage(await signUpInItsOwnContext(browser), {
     name: "Remembered",
