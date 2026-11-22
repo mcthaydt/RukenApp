@@ -161,6 +161,12 @@ test("a maker's screens: Your games, Your page and its links are real buttons", 
   await page.goto("/make/page/links");
   await expect(page.getByRole("button", { name: "Show" })).toBeVisible();
   await expectRealButtons(page);
+  // Review 2026-11-22: an eye reads as the link's state, not as what pressing does, so Show and Hide say their word.
+  for (const name of ["Show", "Hide"]) {
+    const button = page.getByRole("button", { name, exact: true });
+    await expect(button).toHaveText(name);
+    await expect(button.locator("svg")).toHaveCount(0);
+  }
 });
 
 for (const state of ["waiting", "live"] as const) {
