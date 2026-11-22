@@ -3267,7 +3267,8 @@ video[data-loading] {
 }
 
 .consent-answers {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
   margin-top: 1rem;
 }
@@ -3275,12 +3276,12 @@ video[data-loading] {
 .consent-answers > form,
 .consent-answers > .button,
 .consent-answers > button {
-  flex: 1 1 0;
   min-width: 0;
   margin: 0;
 }
 
 .consent-answers button,
+.consent-answers > form > button:not(.quiet),
 .consent-answers .button {
   box-sizing: border-box;
   width: 100%;
@@ -3290,6 +3291,6 @@ video[data-loading] {
 
 @media (max-width: 22rem) {
   .consent-answers {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 }

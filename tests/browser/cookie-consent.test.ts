@@ -30,11 +30,21 @@ const notNow = (page: Page) => page.getByText("Not now", { exact: true });
 
 /** Everything this browser holds for Ruken: cookies, both storages, IndexedDB. */
 async function whatIsKept(page: Page, context: BrowserContext) {
-  const inPage = await page.evaluate(async () => ({
-    local: Object.keys(localStorage),
-    session: Object.keys(sessionStorage),
-    databases: (await indexedDB.databases()).length,
-  }));
+  const inPage = await page.evaluate(async () => {
+    // The page's own sessionStorage is a stand-in until a yes; a blank frame of the same origin shows the real one.
+    const realSessionKeys = () => {
+      const frame = document.createElement("iframe");
+      document.body.append(frame);
+      const keys = Object.keys(frame.contentWindow?.sessionStorage ?? {});
+      frame.remove();
+      return keys;
+    };
+    return {
+      local: Object.keys(localStorage),
+      session: realSessionKeys(),
+      databases: (await indexedDB.databases()).length,
+    };
+  });
   return { cookies: (await context.cookies()).map((cookie) => cookie.name), ...inPage };
 }
 
@@ -138,8 +148,10 @@ test("each button that needs a yes says what it is for, and I agree goes on to i
     ).toBeVisible();
     await agreeButton(page).click();
     await expect(page).toHaveURL(new RegExp(`${address.replaceAll("/", "\\/")}$`));
-    expect(await context.cookies()).toHaveLength(1);
-    expect((await context.cookies())[0]?.name).toBe("rk_consent");
+    // Saying yes from a game's page also keeps who brought the person; nothing else is set.
+    expect((await context.cookies()).map((cookie) => cookie.name).sort()).toEqual(
+      address.startsWith("/g/") ? ["rk_arrival", "rk_consent"] : ["rk_consent"],
+    );
   }
   // Playing now works, and the maker's page now counts a visit and remembers who brought the person.
   await page.goto(`/${maker.handle}`);
@@ -196,6 +208,7 @@ test("someone already signed in is signed out until they say yes, then carries o
 }) => {
   await page.goto("/");
   await agreeButton(page).click();
+  await expect(asking(page)).toHaveCount(0);
   await signUp(page);
   await context.clearCookies({ name: "rk_consent" });
   await page.goto("/me");
