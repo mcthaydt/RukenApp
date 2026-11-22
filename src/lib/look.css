@@ -3095,10 +3095,10 @@ main.playing {
 }
 
 /* Every wait shows it. A move between pages runs a Blue line across the top of the window and shows a turning
-   spinner with "Loading…" under it (src/lib/page-loading.svelte); a button whose form is out shows the spinner after
+   spinner under it, with no words (src/lib/page-loading.svelte); a button whose form is out shows the spinner after
    its words and cannot be pressed again (src/lib/busy-forms.ts); a picture or a video is a box that slowly brightens
    and dims until it has loaded (src/lib/loads.ts). With reduced motion nothing turns or runs: the line is drawn
-   whole, the spinner stands still and the words stay. */
+   whole, and the spinner stands still. */
 .page-loading {
   position: fixed;
   inset: 0 0 auto;
@@ -3117,16 +3117,15 @@ main.playing {
   animation: running-line 1.1s var(--ease) infinite;
 }
 
-.page-loading-words {
+.page-loading-spinner {
   position: fixed;
   top: 16px;
   left: 50%;
   z-index: 100;
   display: inline-flex;
   align-items: center;
-  gap: 0.6em;
   margin: 0;
-  padding: 0.6rem 1.1rem;
+  padding: 0.6rem;
   border-radius: var(--radius-button);
   background: var(--felt-deep);
   color: var(--chalk);
