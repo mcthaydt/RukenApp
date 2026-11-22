@@ -48,7 +48,9 @@
       <p class="problem" role="alert">{problem}</p>
       <!-- A refusal that says to choose the game on GitHub gets the way to do it, as the files question has. -->
       {#if problem.includes("Choose it on GitHub")}
-        <p class="note"><a href={connectAddress} data-sveltekit-reload>Choose it on GitHub</a></p>
+        <p class="note">
+          <a class="quiet" href={connectAddress} data-sveltekit-reload>Choose it on GitHub</a>
+        </p>
       {/if}
     {/if}
     <form

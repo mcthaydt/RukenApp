@@ -23,6 +23,7 @@ import {
   wordsHaveSettled,
 } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { rgb, token } from "../support/look-tokens.ts";
 
 // What the second look at the submission screens found (docs/superpowers/audits/2026-11-15-submission-screens-second-look.md),
 // one journey for each thing that was wrong and can be measured. Each measures the page in the window it runs in. The one
@@ -37,16 +38,16 @@ const LONG_LINE =
   "Tap the wobbly buttons before the tide comes in and the harbour lights go out, one by one, tonight.";
 
 /** The size, in pixels, and the opacity a link is drawn with. */
-function drawnAs(link: ReturnType<Page["getByRole"]>): Promise<{ size: number; opacity: number }> {
+function drawnAs(link: ReturnType<Page["getByRole"]>): Promise<{ size: number; colour: string }> {
   return link.evaluate((element) => {
     const style = getComputedStyle(element);
-    return { size: parseFloat(style.fontSize), opacity: Number(style.opacity) };
+    return { size: parseFloat(style.fontSize), colour: style.color };
   });
 }
 
 // ---- L1: Live's way off Ruken is quiet ---------------------------------------------------------------------------------
 
-test("on Live, taking the game off Ruken is the quietest link: last, smaller and dimmer than Back", async ({
+test("on Live, taking the game off Ruken is the quietest button: last, smaller and dimmer than Back", async ({
   page,
 }) => {
   const { slug } = await gameWhere(page, { state: "live" });
@@ -58,7 +59,10 @@ test("on Live, taking the game off Ruken is the quietest link: last, smaller and
   const backDrawn = await drawnAs(back);
   const offDrawn = await drawnAs(off);
   expect(offDrawn.size, "smaller than Back").toBeLessThan(backDrawn.size);
-  expect(offDrawn.opacity, "dimmer than Back").toBeLessThan(backDrawn.opacity);
+  // Dimmer: both are real buttons now (the owner, 2026-11-22: no underlined words as buttons), and the way off has the
+  // softer Glaucous Green words where Back has chalk. Never see-through, which would only be glass.
+  expect(backDrawn.colour, "Back's words are chalk").toBe(rgb(token("--chalk")));
+  expect(offDrawn.colour, "dimmer than Back").toBe(rgb(token("--sage")));
   // Last: under Back, at the foot of the left half, so it is never read as the blue button's note.
   const backBox = await boxOf(back);
   const offBox = await boxOf(off);
@@ -305,14 +309,14 @@ test("the Maker agreement link has a line's room above it", async ({ page }) => 
   await pageHasSettled(page);
 
   const above = await page.locator("main.games").evaluate((main) => {
-    const note = main.querySelector(":scope > .note");
+    const note = main.querySelector(":scope > .ways");
     // The bar of buttons is fixed to the window's bottom on a phone, so it is not something the link sits under.
     const sections = [...main.children].filter(
       (child) => child !== note && getComputedStyle(child).position !== "fixed",
     );
     return Math.max(...sections.map((child) => child.getBoundingClientRect().bottom));
   });
-  // Its words, not its box: a link's 44px box reaches 14px above its line into the air round it, by design.
+  // Its words, not its box: the line of quiet buttons, measured from where their words start.
   const wordsTop = await page.getByRole("link", { name: "Maker agreement" }).evaluate((link) => {
     const range = document.createRange();
     range.selectNodeContents(link);

@@ -1,6 +1,6 @@
 <!--
-  Your account: who is signed in, where their membership stands, the one thing they can do about it, a quiet way
-  to sign out and a plain link to delete the account.
+  Your account: who is signed in, where their membership stands, the one thing they can do about it, a quiet button
+  to sign out and another to delete the account.
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
@@ -18,7 +18,7 @@
 <main class="card">
   <h1>Your account</h1>
   <p>{data.phone}</p>
-  <p class="note"><a href="/me/password">Change password</a></p>
+  <p class="note"><a class="quiet" href="/me/password">Change password</a></p>
   <p>{data.membership.line}</p>
   {#if data.membership.button === "join"}
     <p><a class="button" href="/join?next=/me">Join Ruken</a></p>
@@ -35,9 +35,9 @@
     <button class="quiet">Sign out</button>
   </form>
   {#if data.makesGames}
-    <p class="apart"><a href="/make">Your games</a></p>
+    <p class="apart"><a class="quiet" href="/make">Your games</a></p>
   {:else}
-    <p class="apart">Make games? <a href="/make">Add yours to Ruken.</a></p>
+    <p class="apart">Make games? <a class="quiet" href="/make">Add yours to Ruken.</a></p>
   {/if}
-  <p class="note"><a href="/me/delete">Delete my account</a></p>
+  <p class="note"><a class="quiet" href="/me/delete">Delete my account</a></p>
 </main>

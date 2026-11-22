@@ -21,7 +21,7 @@
   <h1>Maker agreement</h1>
   <p class="note">{versionWords}</p>
   <p>You agree to this once, when you send your first game.</p>
-  <p><a href={data.back.href}>{data.back.words}</a></p>
+  <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
   <Points points={data.points} />
-  <p><a href={data.back.href}>{data.back.words}</a></p>
+  <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
 </main>

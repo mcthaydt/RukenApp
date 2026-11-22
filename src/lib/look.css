@@ -255,9 +255,9 @@ a {
 /* A link in a line of words, or on a line of its own, is as easy to tap as a button. The words stay one line
    tall, so the height a target adds is taken back from the margins above and below it: the line keeps its
    place and the lines around it keep their rhythm (one rem between the words). Two such lines in a row
-   overlap by a few pixels of air, never of words. A quiet button is the same thing as a link. */
-a:not(.button, .wordmark),
-.quiet {
+   overlap by a few pixels of air, never of words. An action that stands on its own is a button, not a link in words
+   (below). */
+a:not(.button, .wordmark, .quiet) {
   display: inline-flex;
   align-items: center;
   min-height: var(--size-target);
@@ -326,16 +326,16 @@ strong {
   font: var(--text-button);
 }
 
-/* A list of ways to go on a card, one to a line, with no bullets (the record-your-screen page's devices). */
+/* A list of ways to go on a card (the guides, the record-your-screen page's devices): quiet buttons, one to a line, with no
+   bullets. */
 .card nav ul {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
   margin: 1rem 0 0;
   padding: 0;
   list-style: none;
-}
-
-/* Each device link is a target wide as well as tall: "Mac" is three letters and was 36 wide. */
-.card nav a {
-  min-width: var(--size-target);
 }
 
 /* A step and a half between the title and what it introduces. */
@@ -414,20 +414,32 @@ textarea {
   font: inherit;
 }
 
-/* A fold-out ("My game uses other websites") is a line to press, as easy to hit as a button. It has an arrow where the
-   browser draws its own triangle: pointing right while it is shut, and down while it is open, the usual sign for "opens
-   here" (a plus read as "add"). */
+/* A fold-out ("Change the branch or folder") is a quiet button (below) that opens what is under it. It has an arrow where
+   the browser draws its own triangle: pointing right while it is shut, and down while it is open, the usual sign for
+   "opens here" (a plus read as "add"). */
 summary {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  width: fit-content;
   min-height: var(--size-target);
-  /* The height the target adds is taken back from the margins, as for a link, so one rem separates its words from the
-     line above and not two. */
-  margin-block: calc((var(--size-target) - 1lh) / -2);
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-button);
   list-style: none;
-  text-decoration: underline;
   cursor: pointer;
+  transition: transform var(--press-time);
+}
+
+.card summary {
+  background: var(--sage);
+  color: var(--ink);
+}
+
+summary:active {
+  transform: scale(var(--press-scale));
 }
 
 summary::-webkit-details-marker {
@@ -547,17 +559,49 @@ button,
   color: var(--pay);
 }
 
-/* A second action that must not draw the eye: no fill, it looks like a link. No padding, so its words start
-   where the words above it start. Words start at the left on every line: a browser centres a button's words by
-   default, which shows only once they wrap onto a second line, as on a phone. */
-.quiet,
-.card .quiet {
-  padding: 0;
+/* A second action that must not draw the eye (Sign out, Not now, Forgot your password?): a real button, never words
+   with a line under them (the owner, 2026-11-22: professional apps do not use underlined words as buttons). It is a
+   tone step off what it stands on, so the one blue button still leads: Dusky Green on the felt, as Back is, and
+   Glaucous Green with ink words on a card. As wide as its words; a long one wraps with its words at the left. */
+.quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: var(--size-target);
+  margin-block: 0;
+  padding: 0.5rem 1.25rem;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-button);
   text-align: start;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
+  text-decoration: none;
+  transition: transform var(--press-time);
+  cursor: pointer;
+}
+
+.card .quiet {
+  background: var(--sage);
+  color: var(--ink);
+}
+
+.quiet:active {
+  transform: scale(var(--press-scale));
+}
+
+/* A quiet button under a form's main button, or alone on a line, keeps a line of its own and its own width. */
+form > .quiet {
+  display: flex;
+  width: fit-content;
+}
+
+/* Several quiet buttons on one line (the foot of Your games), with room between them. */
+.ways {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
 }
 
 /* The main button of a form is a step and a half under the last field. On a phone it spans the card, so a
@@ -639,13 +683,15 @@ form > * + button:not(.quiet) {
 }
 
 .file[data-quiet] > span {
-  width: auto;
-  padding: 0;
+  width: fit-content;
   justify-content: flex-start;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
+  background: var(--felt-raised);
+  color: var(--chalk);
+}
+
+.card .file[data-quiet] > span {
+  background: var(--sage);
+  color: var(--ink);
 }
 
 .file:active > span {
@@ -805,8 +851,22 @@ form > * + button:not(.quiet) {
   width: fit-content;
   min-height: 44px;
   margin-block: 0;
-  color: var(--sage);
-  font: var(--text-small);
+  padding: 0.25rem 1rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-button);
+  font-size: 1rem;
+  text-decoration: none;
+  transition: transform var(--press-time);
+}
+
+.screen a.help + a.help {
+  margin-top: 0.5rem;
+}
+
+.screen a.help:active {
+  transform: scale(var(--press-scale));
 }
 
 .screen :is(input, textarea, select).answer {
@@ -1449,12 +1509,26 @@ html:has(dialog.viewer[open]) {
   right: 1rem;
 }
 
-/* The small link at the foot: throwing a game away, which has its own screen. */
+/* The small button at the foot: throwing a game away, which has its own screen. A quiet button a size smaller, so it is
+   there to be found and never read as the main thing. */
 a.foot {
+  display: inline-flex;
+  align-items: center;
   align-self: flex-start;
+  min-height: 44px;
   margin: 1.5rem 0 1rem 1.25rem;
-  color: var(--sage);
-  font: var(--text-small);
+  padding: 0.25rem 1rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-button);
+  font-size: 1rem;
+  text-decoration: none;
+  transition: transform var(--press-time);
+}
+
+a.foot:active {
+  transform: scale(var(--press-scale));
 }
 
 /* On the maker's screens it stands in the column of words, at the left edge they start from, and at the foot of the page
@@ -1462,13 +1536,13 @@ a.foot {
    computer, and under the answer on a phone. */
 .screen > a.foot {
   align-self: center;
-  width: min(100% - 2.5rem, var(--column));
-  margin: auto auto 1rem;
+  width: fit-content;
+  margin: auto auto 1rem calc((100% - min(100% - 2.5rem, var(--column))) / 2);
 }
 
 @media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
   .screen:has(.asks) > a.foot {
-    width: min(100% - 5rem, 1200px);
+    margin-left: calc((100% - min(100% - 5rem, 1200px)) / 2);
   }
 }
 
@@ -1524,19 +1598,18 @@ a.foot {
   }
 }
 
-/* On Live, "Back to your games" is a little larger than the link that takes the game off Ruken. That one is the quietest thing
-   on the screen: last, a size smaller and dimmer, and a step below the way back, so a thumb that aims for one does not land
+/* On Live, "Back to your games" is a little larger than the button that takes the game off Ruken. That one is the quietest
+   thing on the screen: last, a size smaller and with dimmer words, and a step below the way back, so a thumb that aims for one does not land
    on the other and it is never read as part of the blue button's note above. Each is on its own line. */
 .live a.foot {
   display: flex;
   width: fit-content;
-  font-size: 1rem;
 }
 
 .live a.foot[data-off] {
   margin-top: 1.5rem;
+  color: var(--sage);
   font-size: 0.875rem;
-  opacity: 0.75;
 }
 
 @media (orientation: landscape) and (min-width: 700px) {
@@ -1802,7 +1875,7 @@ a.foot {
   overflow-wrap: break-word;
 }
 
-/* A small Change beside a part. A link, not a button, and still a 44 by 44 target. */
+/* A small Change beside a part: a small quiet button, still a 44 by 44 target. */
 .laid .change {
   /* Beside or under a part's words, it keeps the space it is given: the pull a link takes on its margins is for a line of words.
      The `.laid` in front lets this win over the rule for every link, whatever order the two are read in. */
@@ -1812,9 +1885,13 @@ a.foot {
   justify-content: center;
   min-width: 44px;
   min-height: 44px;
-  color: var(--sage);
-  font: var(--text-small);
-  text-decoration: underline;
+  padding: 0 0.875rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-button);
+  font-size: 0.875rem;
+  text-decoration: none;
   /* One word, never cut: where there is no room beside the words it belongs to, it drops to the next line whole. */
   white-space: nowrap;
 }
@@ -1831,8 +1908,15 @@ a.foot {
 }
 
 .laid .other a {
+  min-height: 44px;
   margin-block: 0;
-  color: var(--sage);
+  padding: 0.25rem 1rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-button);
+  font-size: 1rem;
+  text-decoration: none;
 }
 
 /* On a phone the mark wraps under its link: close to it, so it reads as the link's. */
@@ -2093,12 +2177,20 @@ button:active,
 
   button,
   .button,
+  .quiet,
+  summary,
+  a.foot,
+  .screen a.help,
   .file > span {
     transition: none;
   }
 
   button:active,
   .button:active,
+  .quiet:active,
+  summary:active,
+  a.foot:active,
+  .screen a.help:active,
   .file:active > span,
   a.game:active {
     transform: none;
@@ -2206,6 +2298,9 @@ a.sheet.fix {
   /* The card has no padding above its line, so a summary's pull on its margins (above) would draw the card up into the
      one over it. */
   margin-block: 0;
+  width: auto;
+  padding: 0;
+  background: none;
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -2219,7 +2314,6 @@ a.sheet.fix {
   content: "Show";
   flex: none;
   font: var(--text-small);
-  text-decoration: underline;
   white-space: nowrap;
 }
 
@@ -2635,12 +2729,19 @@ main.gamepage {
   gap: 0.25rem;
 }
 
+/* Join, after the cost: a small button with a chalk edge, never an underlined word, so the white Play stays the main one. */
 .gamepage .costrow .joinlink {
-  display: inline;
-  min-height: 0;
-  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem 1rem;
+  border: 2px solid var(--chalk);
+  border-radius: var(--radius-button);
   color: var(--chalk);
-  text-decoration: underline;
+  font: var(--text-button);
+  font-size: 1rem;
+  text-decoration: none;
 }
 
 .gamepage .playtile > .outline {

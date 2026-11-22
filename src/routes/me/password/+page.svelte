@@ -45,6 +45,6 @@
       {/if}
       <button>Save password</button>
     </form>
-    <p><a href="/me">Back to your account</a></p>
+    <p><a class="quiet" href="/me">Back to your account</a></p>
   {/if}
 </main>

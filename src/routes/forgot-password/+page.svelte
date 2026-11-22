@@ -57,5 +57,5 @@
       <button>Text me a code</button>
     </form>
   {/if}
-  <p><a href="/sign-in">Back to sign in</a></p>
+  <p><a class="quiet" href="/sign-in">Back to sign in</a></p>
 </main>

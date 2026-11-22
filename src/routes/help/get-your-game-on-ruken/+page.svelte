@@ -36,17 +36,17 @@
 </script>
 
 <main class="card">
-  <p><a href={data.back.href}>{data.back.words}</a></p>
+  <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
   <h1>Get your game on Ruken</h1>
   <p>Ruken is where people find web games and play them. Here's how to put yours there.</p>
 
   <!-- A long page on a phone: a maker goes straight to the part they need. -->
   <nav aria-label="On this page">
     <ul>
-      <li><a href="#helper">Let an AI helper do it</a></li>
-      <li><a href="#need">What you need</a></li>
-      <li><a href="#steps">Step by step</a></li>
-      <li><a href="#fixes">If Ruken can't start your game</a></li>
+      <li><a class="quiet" href="#helper">Let an AI helper do it</a></li>
+      <li><a class="quiet" href="#need">What you need</a></li>
+      <li><a class="quiet" href="#steps">Step by step</a></li>
+      <li><a class="quiet" href="#fixes">If Ruken can't start your game</a></li>
     </ul>
   </nav>
 
@@ -180,5 +180,5 @@
     <li>A file stored with Git LFS, or a link to another file: upload the file itself to GitHub instead.</li>
   </ul>
 
-  <p><a href={data.back.href}>{data.back.words}</a></p>
+  <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
 </main>

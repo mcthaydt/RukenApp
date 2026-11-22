@@ -164,7 +164,9 @@
         : shown.words}
     </p>
   </div>
-  <p class="note"><a href={files.folderHowToAddress}>Here's how to set up your game's folder</a></p>
+  <p class="note">
+    <a class="quiet" href={files.folderHowToAddress}>Here's how to set up your game's folder</a>
+  </p>
 {/snippet}
 
 {#if screen === "pick"}
@@ -208,7 +210,9 @@
       </p>
     {/if}
     <p class="note">
-      <a href={files.connectAddress} data-sveltekit-reload>Don't see your game? Choose it on GitHub</a>
+      <a class="quiet" href={files.connectAddress} data-sveltekit-reload
+        >Don't see your game? Choose it on GitHub</a
+      >
     </p>
     <details open={boxesOpen}>
       <summary>Change the branch or folder</summary>
@@ -284,7 +288,7 @@
       <p class="note">You choose which games on GitHub Ruken can see. It can't see anything else.</p>
     </div>
     <p class="note">
-      New to GitHub? <a href={files.howToAddress}>Here's how to put your game there</a>
+      New to GitHub? <a class="quiet" href={files.howToAddress}>Here's how to put your game there</a>
     </p>
     {#snippet forward()}
       {@render connectButton("Connect GitHub")}
