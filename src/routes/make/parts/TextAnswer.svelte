@@ -6,6 +6,7 @@
   what was typed and not its tail; Enter still goes on, as in a one-line box, and the answer has no new line in it.
 -->
 <script lang="ts">
+  import { onMount } from "svelte";
   import { previewOfPage } from "./preview.svelte.ts";
 
   let {
@@ -30,6 +31,32 @@
   } = $props();
 
   const preview = previewOfPage();
+
+  // Words a person selected in a taller box before the page came alive stay selected when it does, so what they type
+  // next takes the selection's place. As the page comes alive Svelte empties the box's text and puts the answer back,
+  // which leaves the cursor after the last word: typing then added to the saved answer instead of replacing it (run
+  // 45033130832). This script runs before the box is brought to life, so it reads the selection from the page as sent.
+  let area = $state<HTMLTextAreaElement | undefined>(undefined);
+  const selectedBefore = selectionOfSentBox(name);
+
+  function selectionOfSentBox(
+    named: string,
+  ): { value: string; start: number; end: number; direction: "forward" | "backward" | "none" } | undefined {
+    if (typeof document === "undefined") return undefined;
+    const sent = document.querySelector<HTMLTextAreaElement>(`textarea[name="${CSS.escape(named)}"]`);
+    if (sent === null || sent !== document.activeElement) return undefined;
+    return {
+      value: sent.value,
+      start: sent.selectionStart,
+      end: sent.selectionEnd,
+      direction: sent.selectionDirection,
+    };
+  }
+
+  onMount(() => {
+    if (selectedBefore === undefined || area === undefined || area.value !== selectedBefore.value) return;
+    area.setSelectionRange(selectedBefore.start, selectedBefore.end, selectedBefore.direction);
+  });
 
   // What the box holds: what came from the server, until it is typed over. Bound, never set, because a set value is
   // written over anything typed before the page came alive (run 44977261003), while a bound one keeps it. A new value
@@ -74,6 +101,7 @@
   <textarea
     class="answer"
     {name}
+    bind:this={area}
     bind:value={box}
     rows={lines ?? 1}
     data-grows={lines === undefined ? "" : undefined}
