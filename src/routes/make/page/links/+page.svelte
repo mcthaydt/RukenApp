@@ -9,10 +9,6 @@
   let { data }: PageProps = $props();
 </script>
 
-<svelte:head>
-  <title>Your links · Ruken</title>
-</svelte:head>
-
 <main class="games">
   <h1>Your links</h1>
   {#if data.links.length === 0}

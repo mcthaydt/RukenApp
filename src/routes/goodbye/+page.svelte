@@ -9,10 +9,6 @@
   let { data }: PageProps = $props();
 </script>
 
-<svelte:head>
-  <title>{data.date !== null ? "Your account will be deleted" : "You're signed out"} · Ruken</title>
-</svelte:head>
-
 <main class="card">
   {#if data.date !== null}
     <h1>Your account will be deleted.</h1>

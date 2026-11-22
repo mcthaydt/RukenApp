@@ -9,10 +9,6 @@
   let { data }: PageProps = $props();
 </script>
 
-<svelte:head>
-  <title>Your games · Ruken</title>
-</svelte:head>
-
 <main class="games">
   <h1>Your games</h1>
   <p data-acceptance>{data.acceptance}</p>

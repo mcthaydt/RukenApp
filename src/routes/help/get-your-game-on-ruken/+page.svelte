@@ -35,10 +35,6 @@
   }
 </script>
 
-<svelte:head>
-  <title>Get your game on Ruken · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <p><a href={data.back.href}>{data.back.words}</a></p>
   <h1>Get your game on Ruken</h1>

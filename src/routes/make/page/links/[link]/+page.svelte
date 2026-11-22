@@ -8,13 +8,7 @@
   let { data, form }: PageProps = $props();
 </script>
 
-<QuestionScreen
-  title="Change a link · Ruken"
-  heading="What should the link say?"
-  counter={null}
-  back="/make/page/links"
-  action="?/words"
->
+<QuestionScreen heading="What should the link say?" counter={null} back="/make/page/links" action="?/words">
   <TextAnswer
     name="title"
     value={form?.title ?? data.title}
