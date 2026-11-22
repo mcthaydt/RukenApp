@@ -1,25 +1,33 @@
 import { chicagoDayOf, type Clock } from "../../lib/clock.ts";
 import type { ListedGame } from "../games/games.ts";
-import { seededNumber } from "../../lib/random.ts";
-import { feedOrder } from "./order.ts";
+import { CROWD, type Asking } from "./feed-public.ts";
+import { openRanker } from "./public-ranker.ts";
+import {
+  isRankedPageOrBadCursor,
+  type FeedFacts,
+  type RankedPage,
+  type Ranker,
+  type RankRequest,
+  type Viewer,
+} from "./ranker.ts";
 
-// What the feed shows, in order. It is built from what it needs (the neighbours as plain functions) so a test hands it
-// stand-ins and no database.
+export { FEED_MAX } from "./ranker.ts";
+export { MORE_AT_LEAST } from "./public-ranker.ts";
 
-/** The most clips one page of the feed answers. */
-export const FEED_MAX = 50;
-/**
- * The fewest clips a later page answers. With only a few games live a round is short, so a page takes several rounds;
- * otherwise the screen would ask again after every few clips.
- */
-export const MORE_AT_LEAST = 10;
-/**
- * The address of a later page: the Chicago day the feed was opened, the round, where in it, whether that round's first
- * two games changed places (1) or not (0), and the game the page before ended on.
- */
-const NEXT = /^(\d{4}-\d{2}-\d{2})~(\d{1,6})~(\d{1,6})~([01])~([a-z0-9-]{1,100})$/;
-/** How far back a game's plays count towards its place in the feed. */
+// What the feed shows, in order. The order comes from a ranker (ranker.ts); this file reads what a ranker may see,
+// picks the ranker, and turns its answer into clips. It is built from what it needs (the neighbours as plain functions)
+// so a test hands it stand-ins and no database.
+
+/** How far back a game's plays are read for the ranker. */
 const PLAYED_DAYS = 7;
+/** How long the private ranker has to answer before the open one answers instead. */
+export const PRIVATE_WAIT_MS = 800;
+/**
+ * Every address the feed hands out says which ranker made it: `p.` the private one, `o.` the open one. A ranker is only
+ * ever given back its own addresses.
+ */
+const PRIVATE_PREFIX = "p.";
+const OPEN_PREFIX = "o.";
 
 export interface FeedServiceDeps {
   clock: Clock;
@@ -30,6 +38,12 @@ export interface FeedServiceDeps {
   ): Promise<Map<string, { handle: string; name: string; photoKey: string | null }>>;
   /** The whole address of a file in the bucket, from its key. */
   media(key: string): string;
+  /** The private ranker, when this app has one bound; left out or null, the open ranker answers every page. */
+  privateRanker?: () => Ranker | null;
+  /** The open ranker; left out, the feed's own (public-ranker.ts). */
+  openRanker?: Ranker;
+  /** Where a line goes when the private ranker did not answer; left out, the Worker's log. */
+  log?: (line: string) => void;
 }
 
 /**
@@ -46,120 +60,122 @@ export interface FeedClip {
   maker: { handle: string; name: string; photo: string | null } | null;
 }
 
-/** A page of the feed, and the address of the one after it (null only when no game is live). */
+/**
+ * A page of the feed, and the address of the one after it (null only when no game is live). `caughtUpAt` and `ask` are
+ * there only when the ranker gave them.
+ */
 export interface FeedPage {
   clips: FeedClip[];
   next: string | null;
+  caughtUpAt?: number;
+  ask?: { index: number; gameId: string };
 }
 
-/**
- * The order of one round. Round 0 is the feed's order. The feed never ends, so when every game has been shown it goes
- * round again in a new shuffle drawn from the day, the round and the games alone, so it is the same on every request.
- * `swapped` puts its first two games the other way round: a round whose first game is the one the person just saw starts
- * with the second instead, and the address remembers that for the rest of the round.
- */
-function roundOrder<Game extends { id: string }>(
-  first: readonly Game[],
-  day: string,
-  round: number,
-  swapped: boolean,
-): Game[] {
-  if (round === 0) return [...first];
-  const seed = `${day}~${String(round)}`;
-  const order = [...first].sort(
-    (one, other) =>
-      seededNumber(seed, one.id) - seededNumber(seed, other.id) ||
-      (one.id < other.id ? -1 : one.id > other.id ? 1 : 0),
-  );
-  if (swapped && order.length >= 2) [order[0], order[1]] = [order[1] as Game, order[0] as Game];
-  return order;
-}
+/** Why the private ranker's answer was not used. Never the viewer or anything they did. */
+type Miss = "threw" | "slow" | "bad answer";
 
 export function createFeedService(deps: FeedServiceDeps) {
+  const open = deps.openRanker ?? openRanker;
+  const privateRanker = deps.privateRanker ?? (() => null);
+  const log =
+    deps.log ??
+    ((line: string) => {
+      console.warn(line);
+    });
+
+  /** The private ranker's page, or why there is none. It is given PRIVATE_WAIT_MS, and its answer is checked. */
+  async function askPrivate(ranker: Ranker, request: RankRequest): Promise<RankedPage | "bad-cursor" | Miss> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const slow = new Promise<"slow">((resolve) => {
+      timer = setTimeout(() => {
+        resolve("slow");
+      }, PRIVATE_WAIT_MS);
+    });
+    try {
+      const answer: unknown = await Promise.race([ranker.page(request), slow]);
+      if (answer === "slow") return "slow";
+      return isRankedPageOrBadCursor(answer) ? answer : "bad answer";
+    } catch {
+      return "threw";
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   /**
-   * A page of the feed: with `after` null, the first, which is the feed's order up to `FEED_MAX`; otherwise the page at
-   * that address, or null for an address the feed did not make. A game rated 18+ is left out: the rules for who may see
-   * one are not built, and a clip that plays by itself in front of anyone must not be one.
+   * A page of the feed: with `after` null, the first; otherwise the page at that address, or null for an address the
+   * feed did not make. An address made by a ranker that is not answering now gives a fresh first page. A game rated 18+
+   * is left out: the rules for who may see one are not built, and a clip that plays by itself in front of anyone must
+   * not be one.
    */
-  async function page(after: null): Promise<FeedPage>;
-  async function page(after: string): Promise<FeedPage | null>;
-  async function page(after: string | null): Promise<FeedPage | null> {
-    let day: string;
-    let round = 0;
-    let offset = 0;
-    let swapped = false;
-    // The game the person saw last, so the next one is never the same game.
-    let last: string | null = null;
+  async function page(after: null, asking?: Asking): Promise<FeedPage>;
+  async function page(after: string, asking?: Asking): Promise<FeedPage | null>;
+  async function page(after: string | null, asking: Asking = CROWD): Promise<FeedPage | null> {
+    let cursor: { made: "private" | "open"; rest: string } | null = null;
+    if (after !== null) {
+      if (after.startsWith(PRIVATE_PREFIX))
+        cursor = { made: "private", rest: after.slice(PRIVATE_PREFIX.length) };
+      else if (after.startsWith(OPEN_PREFIX))
+        cursor = { made: "open", rest: after.slice(OPEN_PREFIX.length) };
+      else return null;
+    }
+
     const nowMs = deps.clock.epochMs();
-    if (after === null) {
-      // The day's seed is a Chicago day, so two opens on one day see one order.
-      day = chicagoDayOf(nowMs);
-    } else {
-      const found = NEXT.exec(after);
-      if (found === null) return null;
-      // A page goes on in the order of the day the feed was opened, so it does not change order at midnight.
-      day = found[1] as string;
-      round = Number(found[2]);
-      offset = Number(found[3]);
-      swapped = found[4] === "1";
-      last = found[5] as string;
-    }
-
     const games = (await deps.liveGames()).filter((game) => game.ageRating !== "age_18");
-    if (games.length === 0) return { clips: [], next: null };
 
-    const since = new Date(nowMs - PLAYED_DAYS * 24 * 60 * 60 * 1000);
-    const beats = await deps.memberBeatsByGame(since, new Date(nowMs));
-    const first = feedOrder(
-      games.map((game) => ({ game, id: game.id, liveSince: game.liveSince, beats: beats.get(game.id) ?? 0 })),
-      nowMs,
-      day,
-    ).map((entry) => entry.game);
-
-    // The first page is round 0 alone, so it never shows a game twice. A later page goes on through rounds until it has
-    // at least MORE_AT_LEAST clips, and never more than FEED_MAX.
-    const want = after === null ? 1 : MORE_AT_LEAST;
-    const picked: { key: string; game: (typeof first)[number] }[] = [];
-    let order = roundOrder(first, day, round, swapped);
-    // A round starts: if its first game is the one just seen, its first two change places.
-    const startRound = () => {
-      swapped = order.length >= 2 && order[0]?.slug === last;
-      if (swapped) order = roundOrder(first, day, round, true);
+    const since = nowMs - PLAYED_DAYS * 24 * 60 * 60 * 1000;
+    const beats = await deps.memberBeatsByGame(new Date(since), new Date(nowMs));
+    const facts: FeedFacts = {
+      games: games.map((game) => ({
+        id: game.id,
+        slug: game.slug,
+        makerId: game.makerUserId,
+        liveSince: game.liveSince.getTime(),
+        ageRating: game.ageRating,
+        slots: 1,
+      })),
+      memberBeats: Object.fromEntries(beats),
+      memberBeatsSince: since,
     };
-    for (;;) {
-      if (offset >= order.length) {
-        // The round is over (or fewer games are live than when the address was made): the next one starts.
-        round += 1;
-        offset = 0;
-        order = roundOrder(first, day, round, false);
-        if (picked.length >= want) break;
-        startRound();
-      }
-      // Round 0 is put in order again on each request, from plays that may have moved since the page before: a game
-      // that moved up to where the page goes on may be the one just seen, and it is passed over rather than shown twice.
-      if (round === 0 && offset > 0 && order.length >= 2 && order[offset]?.slug === last) {
-        offset += 1;
-        continue;
-      }
-      const game = order[offset] as (typeof first)[number];
-      picked.push({ key: `${String(round)}~${game.slug}`, game });
-      last = game.slug;
-      offset += 1;
-      if (picked.length >= FEED_MAX) break;
-      if (after === null && offset >= order.length) {
-        round += 1;
-        offset = 0;
-        order = roundOrder(first, day, round, false);
-        break;
+    const seed = chicagoDayOf(nowMs);
+    const viewer: Viewer =
+      asking.kind === "crowd" ? { kind: "crowd", seed } : { kind: "full", seed, id: asking.id };
+    const request = (from: string | null): RankRequest => ({ v: 1, viewer, after: from, asOf: nowMs, facts });
+
+    let ranked: RankedPage | "bad-cursor";
+    let prefix: string;
+    const bound = privateRanker();
+    if (bound === null) {
+      // No private ranker here: a private address is from before, and starts the feed again.
+      ranked = await open.page(request(cursor?.made === "open" ? cursor.rest : null));
+      prefix = OPEN_PREFIX;
+    } else {
+      // An open address is from while the private ranker was not answering: it starts the private feed again.
+      const answer = await askPrivate(bound, request(cursor?.made === "private" ? cursor.rest : null));
+      if (answer === "slow" || answer === "threw" || answer === "bad answer") {
+        log(`feed: the private ranker did not answer (${answer}); the open order was used.`);
+        ranked = await open.page(request(null));
+        prefix = OPEN_PREFIX;
+      } else {
+        ranked = answer;
+        prefix = PRIVATE_PREFIX;
       }
     }
-    // A page that ends where a round starts decides that round's first game now, against the game it ended on.
-    if (offset === 0) startRound();
+    if (ranked === "bad-cursor") return null;
 
-    const makers = await deps.makersOf([...new Set(picked.map(({ game }) => game.makerUserId))]);
-    return {
-      next: `${day}~${String(round)}~${String(offset)}~${swapped ? "1" : "0"}~${last ?? ""}`,
-      clips: picked.map(({ key, game }) => {
+    // A ranker may name a game that is no longer live (or one this viewer may not see): it is left out.
+    const byId = new Map(games.map((game) => [game.id, game]));
+    const shown = ranked.items.flatMap((item) => {
+      const game = byId.get(item.gameId);
+      return game === undefined ? [] : [{ key: item.key, game }];
+    });
+    const makers =
+      shown.length === 0
+        ? new Map<string, { handle: string; name: string; photoKey: string | null }>()
+        : await deps.makersOf([...new Set(shown.map(({ game }) => game.makerUserId))]);
+    const result: FeedPage = {
+      next: ranked.next === null ? null : `${prefix}${ranked.next}`,
+      clips: shown.map(({ key, game }) => {
         const maker = makers.get(game.makerUserId);
         return {
           key,
@@ -179,6 +195,9 @@ export function createFeedService(deps: FeedServiceDeps) {
         };
       }),
     };
+    if (ranked.caughtUpAt !== null) result.caughtUpAt = ranked.caughtUpAt;
+    if (ranked.ask !== null && byId.has(ranked.ask.gameId)) result.ask = ranked.ask;
+    return result;
   }
 
   return { page };
