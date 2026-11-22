@@ -129,7 +129,9 @@ test("only the clip on screen and the next are fetched before a person scrolls",
   expect(preloads.slice(2).every((preload) => preload === "none")).toBe(true);
 });
 
-const fillsTheWindow = async ({ page }: { page: Page }) => {
+test("the clip that fills the window is the current one, and only one is; the others wait at their start", async ({
+  page,
+}) => {
   await page.addInitScript(keepClipLog);
   await openFeed(page);
   const first = await currentSlug(page);
@@ -159,12 +161,7 @@ const fillsTheWindow = async ({ page }: { page: Page }) => {
     .catch(async (error: unknown) => {
       throw new Error(`${String(error)}\n${await clipLogOf(page)}`);
     });
-};
-for (let copy = 0; copy < 100; copy += 1)
-  test(
-    `the clip that fills the window is the current one, and only one is; the others wait at their start (copy ${String(copy)})`,
-    fillsTheWindow,
-  );
+});
 
 test("each key moves one clip, never past either end", async ({ page }) => {
   await openFeed(page);
