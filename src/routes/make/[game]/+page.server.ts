@@ -209,6 +209,11 @@ export const load: PageServerLoad = async (event) => {
   };
 };
 
+/** What Live says when Ruken can't see a game's repository on GitHub: press the Change beside it. */
+function cantSeeOnLive(repoFullName: string): string {
+  return `Ruken can't see your game on GitHub any more. Press Change next to ${repoFullName} to add it again.`;
+}
+
 /** The refusal a screen shows above its button: a game's own words, and any other failure is a failure. */
 function refusal(problem: unknown): { problem: string } {
   if (problem instanceof GameError) return { problem: problem.message };
@@ -292,6 +297,11 @@ export const actions: Actions = {
       await gamesServices().service.pullLatest(game.id);
       await gamesServices().service.sendForReview(game.id, userId);
     } catch (problem) {
+      // Ruken can't see the repository. On Live the way to mend that is the Change beside the game's files, which
+      // leads to choosing it on GitHub, so the words point there (the owner's direction: no new button).
+      if (problem instanceof GameError && problem.code === "NOT_CONNECTED" && game.repoFullName !== null) {
+        return fail(400, { problem: cantSeeOnLive(game.repoFullName) });
+      }
       return fail(400, refusal(problem));
     }
     redirect(303, `/make/${game.slug}`);

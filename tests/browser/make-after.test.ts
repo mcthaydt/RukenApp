@@ -1,7 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled, signUp } from "./support/account.ts";
-import { fillAnswers, putGameWhereStaffLeaveIt, type SentBackPart } from "./support/database.ts";
+import {
+  fillAnswers,
+  forgetTheirRepositories,
+  putGameWhereStaffLeaveIt,
+  stateOf,
+  type SentBackPart,
+} from "./support/database.ts";
 import {
   addDraft,
   answerEveryQuestion,
@@ -13,6 +19,7 @@ import {
   MAKER_ADDRESSES,
   nextButton,
   startDraft,
+  TINY_GAME,
   videoFile,
 } from "./support/game.ts";
 import { filledButtons, pipRed, showTheOwner } from "./support/look.ts";
@@ -220,6 +227,42 @@ test("a live game: Send a new version is the blue button, and a new version goes
   // The press copies the game's newest files before it sends them, which takes a few seconds in Safari's engine.
   await expect(page.getByText("Your update is waiting for review.")).toBeVisible({ timeout: 20_000 });
   await showTheOwner(page, testInfo, "Live, an update waiting for review");
+});
+
+// Floor Fifty on ruken.io: Ruken's list of the maker's games on GitHub no longer held it, so Send a new version was
+// refused with words that say to choose it on GitHub, and Live gave no way to do that.
+// Floor Fifty on ruken.io: Ruken's list of the maker's games on GitHub no longer held it, so Send a new version was
+// refused with words that said to choose it on GitHub, and Live gave no way to do that. Now the words point at the
+// Change beside the game's files, which leads to GitHub and back.
+test("a live game GitHub stopped showing: the refusal points to Change, and saving sends it", async ({ page }) => {
+  test.setTimeout(90_000);
+  const { slug, maker } = await answerEveryQuestion(page);
+  if (maker === undefined) throw new Error("a new maker was signed up, so there is an account");
+  await putGameWhereStaffLeaveIt(slug, { state: "live" });
+  await forgetTheirRepositories(maker.email);
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+
+  await page.getByRole("button", { name: "Send a new version" }).click();
+
+  await expect(page.getByRole("alert")).toHaveText(
+    `Ruken can't see your game on GitHub any more. Press Change next to ${TINY_GAME} to add it again.`,
+    { timeout: 20_000 },
+  );
+  await expect(page.locator(".chip", { hasText: TINY_GAME })).toBeVisible();
+  await page.getByRole("link", { name: "Change the game's files" }).click();
+  await expect(page).toHaveURL(`/make/${slug}/files`);
+  await pageHasSettled(page);
+  await page.getByRole("link", { name: "Choose on GitHub" }).click();
+
+  // GitHub sends her back to the game's files, with her games to pick from; saving copies and sends them.
+  await expect(page).toHaveURL(`/make/${slug}/files`);
+  await pageHasSettled(page);
+  await page.getByLabel(TINY_GAME).check();
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page).toHaveURL(`/make/${slug}`, { timeout: 20_000 });
+  await expect(page.getByText("Your update is waiting for review.")).toBeVisible();
+  expect(await stateOf(slug)).toBe("live");
 });
 
 // Spec 5c: beside the headline sit the game's one video (the shape of this window), its name and line, and where it plays;
