@@ -159,7 +159,13 @@ const allowed = (command: string) => {
 };
 
 const APIBODY = `"body=${GOOD_BODY}"`;
-const THREE = "3 are open now";
+// The open limit as configured (rules.json, prFlow.maxOpenPrs), so these tests follow a change to it.
+const MAX = (
+  JSON.parse(readFileSync(join(ROOT, ".claude", "hooks", "rules.json"), "utf8")) as {
+    prFlow: { maxOpenPrs: number };
+  }
+).prFlow.maxOpenPrs;
+const FULL = `${MAX} are open now`;
 
 describe("create through gh api is judged like gh pr create (criterion 10)", () => {
   const spellings: [string, string][] = [
@@ -181,12 +187,12 @@ describe("create through gh api is judged like gh pr create (criterion 10)", () 
   ];
   const make = (path: string, spelling: string) =>
     `gh api ${path} ${spelling} -f title=t -f head=x -f base=main -F draft=true`;
-  test("with 3 open it is refused for every field spelling and every path", () => {
-    setState({ open: prs(3) });
-    for (const [, sp] of spellings) for (const path of paths) refused(make(path, sp), THREE);
+  test("with the limit open it is refused for every field spelling and every path", () => {
+    setState({ open: prs(MAX) });
+    for (const [, sp] of spellings) for (const path of paths) refused(make(path, sp), FULL);
   });
-  test("with 2 open it is allowed", () => {
-    setState({ open: prs(2) });
+  test("with one under the limit open it is allowed", () => {
+    setState({ open: prs(MAX - 1) });
     for (const [, sp] of spellings) for (const path of paths) allowed(make(path, sp));
   });
   test("a list that cannot be read refuses it", () => {
@@ -205,26 +211,26 @@ describe("create through gh api is judged like gh pr create (criterion 10)", () 
 
 describe("the open count: own branches only, every page, docs too (criteria 13 and 17b)", () => {
   const create = "gh pr create --draft --body-file b.md";
-  test("a docs-only branch counts: with 3 open the create is refused", () => {
-    setState({ open: prs(3) });
-    refused(create, THREE);
+  test("a docs-only branch counts: with the limit open the create is refused", () => {
+    setState({ open: prs(MAX) });
+    refused(create, FULL);
   });
-  test("with 2 of ours and 3 forks open it is allowed; with 3 of ours it is refused", () => {
-    setState({ open: [...prs(2), ...prs(3, FORK, 10)] });
+  test("with one under the limit of ours and 3 forks open it is allowed; with the limit of ours it is refused", () => {
+    setState({ open: [...prs(MAX - 1), ...prs(3, FORK, 50)] });
     allowed(create);
-    setState({ open: [...prs(3), ...prs(3, FORK, 10)] });
-    refused(create, THREE);
+    setState({ open: [...prs(MAX), ...prs(3, FORK, 50)] });
+    refused(create, FULL);
   });
   test("a fork whose repository was deleted is a fork", () => {
-    setState({ open: [...prs(2), ...prs(3, { head: { repo: null } }, 10)] });
+    setState({ open: [...prs(MAX - 1), ...prs(3, { head: { repo: null } }, 50)] });
     allowed(create);
   });
-  test("with 150 open, 148 from forks and 2 of ours, the count is 2; with 3 of ours on the second page it is refused", () => {
+  test("with 150 open, 148 from forks and 2 of ours, the count is 2; with the limit of ours on the second page it is refused", () => {
     const forks = prs(148, FORK, 100);
     setState({ open: [...prs(2), ...forks].reverse() });
     allowed(create);
-    setState({ open: [...forks.slice(0, 100), ...prs(3), ...forks.slice(100)] });
-    refused(create, THREE);
+    setState({ open: [...forks.slice(0, 100), ...prs(MAX), ...forks.slice(100)] });
+    refused(create, FULL);
   });
 });
 
@@ -329,7 +335,7 @@ describe("the hook fails closed for create (criterion 14)", () => {
     expect(entries[1]?.hooks[0]?.onFailure).toBe("block");
   });
   test("the MCP create tool meets the same open limit", () => {
-    setState({ open: prs(3) });
+    setState({ open: prs(MAX) });
     const a = hook("PreToolUse", "mcp__github__create_pull_request", {
       owner: "mcthaydt",
       repo: "RukenApp",
@@ -339,7 +345,7 @@ describe("the hook fails closed for create (criterion 14)", () => {
       draft: true,
       body: GOOD_BODY,
     });
-    expect(a.deny).toContain(THREE);
+    expect(a.deny).toContain(FULL);
   });
 });
 
@@ -478,5 +484,13 @@ describe("only the owner's account's verdicts count at merge (criterion 17a)", (
       comments: [{ body: `${SHORT} PASS`, login: "mcthaydt" }],
     });
     expect(merge().deny).toBeNull();
+  });
+});
+
+describe("the open limit is one number (CLAUDE.md, Settings)", () => {
+  test("rules.json's maxOpenPrs is the number CLAUDE.md Settings states", () => {
+    const stated = /^- Pull requests open: (\d+)\./m.exec(readFileSync(join(ROOT, "CLAUDE.md"), "utf8"));
+    expect(stated, "CLAUDE.md Settings has no 'Pull requests open: N.' line").not.toBeNull();
+    expect(MAX).toBe(Number(stated?.[1]));
   });
 });

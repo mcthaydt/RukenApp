@@ -13,6 +13,15 @@ const ROOT = resolve(import.meta.dirname, "..");
 const HOOKS = join(ROOT, ".claude", "hooks");
 const SCRIPT = join(HOOKS, "pr-rules.mjs");
 const REPO = "mcthaydt/RukenApp";
+// The open limit as configured (rules.json, prFlow.maxOpenPrs), so these tests follow a change to it.
+const MAX = (
+  JSON.parse(readFileSync(join(HOOKS, "rules.json"), "utf8")) as { prFlow: { maxOpenPrs: number } }
+).prFlow.maxOpenPrs;
+const upTo = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
+const named = (n: number) =>
+  upTo(n)
+    .map((i) => `#${i}`)
+    .join(", ");
 const OK_BODY =
   "## Lane\nLane 1: docs only.\n\n## Acceptance criteria\n- it reads well\n\nRequested by **McThayDT**";
 
@@ -189,58 +198,59 @@ const fails = (r: Run, text: string) => {
 };
 
 describe("the open limit (criteria 1 and 2)", () => {
-  test("with 3 open, a 4th opened pull request fails and is closed with a comment naming the 3", async () => {
-    for (const n of [1, 2, 3]) add(n, ["docs/a.md"]);
-    add(4, ["src/features/x/a.ts"]);
-    const r = await judge(4, "opened");
-    fails(r, "3 pull requests are already open (#1, #2, #3)");
-    expect(calls.patches).toEqual([{ number: 4, state: "closed" }]);
+  const OVER = MAX + 1;
+  test("with the limit open, one more opened pull request fails and is closed with a comment naming them", async () => {
+    for (const n of upTo(MAX)) add(n, ["docs/a.md"]);
+    add(OVER, ["src/features/x/a.ts"]);
+    const r = await judge(OVER, "opened");
+    fails(r, `${MAX} pull requests are already open (${named(MAX)})`);
+    expect(calls.patches).toEqual([{ number: OVER, state: "closed" }]);
     expect(String(calls.comments[0]?.body)).toBe(
-      "Closed: 3 pull requests are already open (#1, #2, #3). Reopen this when one merges or closes.",
+      `Closed: ${MAX} pull requests are already open (${named(MAX)}). Reopen this when one merges or closes.`,
     );
   });
   test("its reopened event does the same", async () => {
-    for (const n of [1, 2, 3]) add(n, ["docs/a.md"]);
-    add(4, ["docs/b.md"]);
-    fails(await judge(4, "reopened"), "3 pull requests are already open");
-    expect(calls.patches).toEqual([{ number: 4, state: "closed" }]);
+    for (const n of upTo(MAX)) add(n, ["docs/a.md"]);
+    add(OVER, ["docs/b.md"]);
+    fails(await judge(OVER, "reopened"), `${MAX} pull requests are already open`);
+    expect(calls.patches).toEqual([{ number: OVER, state: "closed" }]);
   });
-  test("with 2 open, a 3rd passes this rule", async () => {
-    for (const n of [1, 2, 3]) add(n, ["docs/a.md"]);
-    passes(await judge(3, "opened"));
+  test("with one under the limit open, the last place passes this rule", async () => {
+    for (const n of upTo(MAX)) add(n, ["docs/a.md"]);
+    passes(await judge(MAX, "opened"));
     expect(calls.patches).toEqual([]);
   });
-  test("a docs-only 4th is treated the same", async () => {
-    for (const n of [1, 2, 3, 4]) add(n, ["docs/a.md"]);
-    fails(await judge(4, "opened"), "over the limit");
+  test("a docs-only one over the limit is treated the same", async () => {
+    for (const n of upTo(OVER)) add(n, ["docs/a.md"]);
+    fails(await judge(OVER, "opened"), "over the limit");
     expect(calls.patches).toHaveLength(1);
   });
   test("forks are not counted and not closed", async () => {
-    for (const n of [1, 2, 3]) add(n, ["docs/a.md"]);
-    for (const n of [11, 12])
+    for (const n of upTo(MAX)) add(n, ["docs/a.md"]);
+    for (const n of [101, 102])
       add(n, ["docs/a.md"], { head: { sha: sha(n), repo: { full_name: "someone/RukenApp" } } });
-    add(4, ["docs/b.md"]);
-    fails(await judge(4, "opened"), "over the limit");
-    expect(calls.patches).toEqual([{ number: 4, state: "closed" }]);
+    add(OVER, ["docs/b.md"]);
+    fails(await judge(OVER, "opened"), "over the limit");
+    expect(calls.patches).toEqual([{ number: OVER, state: "closed" }]);
     // a fork's own pull request: neither counted nor closed
     calls.patches = [];
     calls.comments = [];
-    passes(await judge(11, "opened"));
+    passes(await judge(101, "opened"));
     expect(calls.patches).toEqual([]);
   });
-  test("with 2 of ours plus 3 from forks, a 3rd of ours passes; a deleted fork counts as a fork", async () => {
-    for (const n of [1, 2]) add(n, ["docs/a.md"]);
-    for (const n of [11, 12])
+  test("with one under the limit of ours plus 3 from forks, the last of ours passes; a deleted fork counts as a fork", async () => {
+    for (const n of upTo(MAX - 1)) add(n, ["docs/a.md"]);
+    for (const n of [101, 102])
       add(n, ["docs/a.md"], { head: { sha: sha(n), repo: { full_name: "someone/RukenApp" } } });
-    add(13, ["docs/a.md"], { head: { sha: sha(13), repo: null } });
-    add(3, ["docs/b.md"]);
-    passes(await judge(3, "opened"));
+    add(103, ["docs/a.md"], { head: { sha: sha(103), repo: null } });
+    add(MAX, ["docs/b.md"]);
+    passes(await judge(MAX, "opened"));
   });
-  test("with 4 open (one opened before the check), the newest fails, the oldest three pass, nothing is closed", async () => {
-    for (const n of [1, 2, 3, 4]) add(n, ["docs/a.md"]);
+  test("with one over the limit open (one opened before the check), the newest fails, the oldest pass, nothing is closed", async () => {
+    for (const n of upTo(OVER)) add(n, ["docs/a.md"]);
     for (const action of ["synchronize", "edited"]) {
-      fails(await judge(4, action), "over the limit");
-      for (const n of [1, 2, 3]) passes(await judge(n, action));
+      fails(await judge(OVER, action), "over the limit");
+      for (const n of upTo(MAX)) passes(await judge(n, action));
     }
     expect(calls.patches).toEqual([]);
     expect(calls.comments).toEqual([]);
@@ -252,11 +262,11 @@ describe("the open limit (criteria 1 and 2)", () => {
     add(2, ["docs/a.md"]);
     passes(await judge(2, "opened"));
   });
-  test("a pull request on the second page is still counted: 100 forks first, then 4 of ours", async () => {
+  test("a pull request on the second page is still counted: 100 forks first, then one over the limit of ours", async () => {
     for (let n = 1; n <= 100; n++)
       add(1000 + n, ["docs/a.md"], { head: { sha: sha(n), repo: { full_name: "x/y" } } });
-    for (const n of [1, 2, 3, 4]) add(n, ["docs/a.md"]);
-    fails(await judge(4, "opened"), "over the limit");
+    for (const n of upTo(OVER)) add(n, ["docs/a.md"]);
+    fails(await judge(OVER, "opened"), "over the limit");
   });
 });
 
