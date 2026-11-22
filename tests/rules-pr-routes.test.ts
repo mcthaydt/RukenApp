@@ -211,6 +211,15 @@ describe("create through gh api is judged like gh pr create (criterion 10)", () 
 
 describe("the open count: own branches only, every page, docs too (criteria 13 and 17b)", () => {
   const create = "gh pr create --draft --body-file b.md";
+  test("the refusal names every open pull request, not only the first few", () => {
+    setState({ open: prs(MAX) });
+    refused(
+      create,
+      `(${prs(MAX)
+        .map((p) => `#${String(p.number)}`)
+        .join(", ")})`,
+    );
+  });
   test("a docs-only branch counts: with the limit open the create is refused", () => {
     setState({ open: prs(MAX) });
     refused(create, FULL);
