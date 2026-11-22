@@ -86,7 +86,7 @@ The `this-repo` skill gains one product rule: when a pull request ships or chang
 
 ## Acceptance criteria
 
-1. `/about` answers 200 to anyone, signed in or not, and its title is "What is Ruken? · Ruken".
+1. `/about` answers 200 to anyone, signed in or not, and its tab shows the base title, "Ruken - The Everyday Console", like every screen (#320).
 2. It shows, in this order, the sections in the table above, each with its heading; the hero's one blue button "Watch the feed" goes to `/`.
 3. With at least one live game, the hero shows the first clip in the feed's order, muted and looping, with `use:loads`; with none, the hero has no frame and nothing broken.
 4. The price on the page is the price on the paywall card (both from `PREMIUM_PRICES_CENTS`).

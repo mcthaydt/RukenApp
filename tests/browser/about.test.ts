@@ -4,6 +4,7 @@ import { gameWhere } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { dollars, PREMIUM_PRICES_CENTS } from "../../src/features/membership/membership.ts";
+import { BASE_TITLE } from "../../src/lib/titles.ts";
 
 // The landing page (/about): a stranger who wants to know what Ruken is finds it from the price card, the sign-in screen,
 // the You page and the help, reads it top to bottom, and goes on to the feed or to the help for makers. It makes nothing
@@ -26,7 +27,8 @@ const SECTIONS = [
 /** The page is there and says what Ruken is, with its one blue button first. */
 async function expectTheLandingPage(page: Page): Promise<void> {
   await expect(page).toHaveURL("/about");
-  await expect(page).toHaveTitle("What is Ruken? · Ruken");
+  // Every screen shows the base title in the browser tab (#320).
+  await expect(page).toHaveTitle(BASE_TITLE);
   await expect(page.getByRole("heading", { level: 1, name: "Watch a game. Then play it." })).toBeVisible();
 }
 

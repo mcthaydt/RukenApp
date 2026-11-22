@@ -25,10 +25,6 @@
   let { data }: PageProps = $props();
 </script>
 
-<svelte:head>
-  <title>What is Ruken? · Ruken</title>
-</svelte:head>
-
 <main class="about">
   <nav class="ways" aria-label="On this page">
     {#each TOP_LINKS as link (link.href)}
@@ -62,10 +58,34 @@
           aria-label={`A clip of ${data.clip.name}`}
           use:quietVideo
         ></video>
-        <figcaption><a href={`/g/${data.clip.slug}`}>{data.clip.name}</a></figcaption>
+        <figcaption><a class="more" href={`/g/${data.clip.slug}`}>{data.clip.name}</a></figcaption>
       </figure>
     {/if}
   </section>
+
+  {#if data.reel.length > 0}
+    <!-- Live games running past, as the feed shows them. It only decorates: the clips are not links and a reader skips
+         it. It is shown twice in a row so the loop has no seam, and it stands still for a person who asked for less
+         motion. -->
+    <div class="reel" aria-hidden="true">
+      <div class="reel-track">
+        {#each [0, 1] as copy (copy)}
+          {#each data.reel as clip, index (`${String(copy)}-${String(index)}`)}
+            <video
+              use:loads
+              src={`${clip.upright}#t=${String(clip.at)}`}
+              preload="metadata"
+              muted
+              loop
+              playsinline
+              tabindex="-1"
+              use:quietVideo
+            ></video>
+          {/each}
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   <div class="pair">
     {#each AUDIENCES as audience (audience.id)}
@@ -85,7 +105,7 @@
             {#if index === 0}
               <a class="button outline" href={link.href}>{link.words}</a>
             {:else}
-              <a href={link.href}>{link.words}</a>
+              <a class="more" href={link.href}>{link.words}</a>
             {/if}
           {/each}
         </p>
@@ -130,20 +150,22 @@
           </ul>
         {/if}
         {#each section.links as link (link.href)}
-          <p><a href={link.href}>{link.words}</a></p>
+          <p><a class="more" href={link.href}>{link.words}</a></p>
         {/each}
       </div>
       {#if still !== null}
-        <!-- A still from a live game: a picture of what the section is about, never a mock-up. -->
+        <!-- A live game's clip, playing where a video may play by itself: what the section is about, never a mock-up. -->
         <figure class="still">
           <video
             use:loads
             src={`${still.wide}#t=${String(still.at)}`}
             preload="metadata"
             muted
+            loop
             playsinline
             tabindex="-1"
-            aria-label={`A still from ${still.name}`}
+            aria-label={`A clip of ${still.name}`}
+            use:quietVideo
           ></video>
         </figure>
       {/if}
