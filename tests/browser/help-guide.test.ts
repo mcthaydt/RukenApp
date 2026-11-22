@@ -128,9 +128,10 @@ test("every guide is listed on the help page and opens", async ({ page }) => {
     "Get your game on Ruken",
     "Put your game on GitHub",
     "Record your screen",
+    "How the feed works",
   ]);
 
-  for (const name of ["Put your game on GitHub", "Record your screen"]) {
+  for (const name of ["Put your game on GitHub", "Record your screen", "How the feed works"]) {
     await page.goto("/help");
     await page.getByRole("link", { name }).click();
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();

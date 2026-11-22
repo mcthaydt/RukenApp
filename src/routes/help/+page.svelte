@@ -10,6 +10,7 @@
       <li><a href="/help/get-your-game-on-ruken?from=%2Fhelp">Get your game on Ruken</a></li>
       <li><a href="/help/github?from=%2Fhelp">Put your game on GitHub</a></li>
       <li><a href="/help/record-screen?from=%2Fhelp">Record your screen</a></li>
+      <li><a href="/help/how-the-feed-works?from=%2Fhelp">How the feed works</a></li>
     </ul>
   </nav>
 </main>
