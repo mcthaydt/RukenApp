@@ -15,6 +15,7 @@
   import { moveBetween } from "../lib/page-moves.ts";
   import PageLoading from "../lib/page-loading.svelte";
   import { sendInApp } from "../lib/stay-in-app.ts";
+  import { BASE_TITLE } from "../lib/titles.ts";
   import type { LayoutProps } from "./$types";
 
   let { data, children }: LayoutProps = $props();
@@ -34,6 +35,12 @@
     if (page.route.id === "/me") return "you";
     return null;
   });
+
+  // A game's own page and its play screen name the game in the tab; every other screen, a missing page included,
+  // has the base title.
+  const gameScreen = $derived(
+    page.status < 400 && (page.route.id === "/g/[game]" || page.route.id === "/g/[game]/play"),
+  );
 
   function cameBack(event: PageTransitionEvent): void {
     if (event.persisted) clearSending();
@@ -82,6 +89,12 @@
     });
   });
 </script>
+
+<svelte:head>
+  {#if !gameScreen}
+    <title>{BASE_TITLE}</title>
+  {/if}
+</svelte:head>
 
 <svelte:document onsubmit={sent} />
 <svelte:window onpageshow={cameBack} onpopstate={wentBack} />

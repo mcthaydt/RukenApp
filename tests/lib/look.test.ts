@@ -107,9 +107,7 @@ describe("the tokens (design 5.8)", () => {
 
   it("is one dark theme, with none of what the design rules out", () => {
     expect(css).toMatch(/:root\s*\{[^}]*color-scheme:\s*dark;/);
-    expect(css).not.toMatch(
-      /gradient\(|box-shadow|text-shadow|backdrop-filter|text-transform|letter-spacing/,
-    );
+    expect(css).not.toMatch(/gradient\(|box-shadow|text-shadow|text-transform|letter-spacing/);
   });
 });
 
@@ -284,6 +282,8 @@ describe("what the browser would draw itself", () => {
 describe("screens wear the look and nothing of their own", () => {
   const CLASSES = [
     "card",
+    "code",
+    "computers",
     "statement",
     "note",
     "row",
@@ -379,6 +379,8 @@ describe("screens wear the look and nothing of their own", () => {
     "side",
     // Words only a screen reader meets: the layout's "Sending…" (src/lib/busy-forms.ts).
     "hidden-words",
+    // A list of short points on a reading page (privacy, terms).
+    "bullets",
   ];
   const ROUTES = "src/routes";
 
@@ -592,14 +594,10 @@ describe("the play screen", () => {
     expect(tab).toMatch(/height:\s*56px/);
   });
 
-  it("chalk on the tab at its rest opacity, over a white game, is 4.5:1 or better", () => {
-    const share = Number(/color-mix\(in srgb, var\(--felt-deep\) (\d+)%/.exec(tab)?.[1]) / 100;
-    expect(share).toBeGreaterThan(0);
-    expect(share).toBeLessThan(1);
-    const [r = 0, g = 0, b = 0] = rgb(token("--felt-deep")).match(/\d+/g)?.map(Number) ?? [];
-    const over = (channel: number) => Math.round(channel * share + 255 * (1 - share));
-    const blended = `#${[r, g, b].map((one) => over(one).toString(16).padStart(2, "0")).join("")}`;
-    expect(contrast(token("--chalk"), blended)).toBeGreaterThanOrEqual(4.5);
+  // The glass itself, and chalk on it over a white game, are measured in tests/lib/glass.test.ts.
+  it("is frosted glass at rest", () => {
+    expect(tab).toContain("background: var(--glass-bg);");
+    expect(tab).toContain("backdrop-filter: var(--glass-filter);");
   });
 
   it("has 12px corners on the tab and no use of the pip", () => {

@@ -1,0 +1,39 @@
+[
+  {
+    "id": "github",
+    "browser": "Is GitHub connected",
+    "command": "github",
+    "mcp": "github_status",
+    "endpoint": "GET /api/v1/github",
+    "actions": [],
+    "built": true
+  },
+  {
+    "id": "github-connect",
+    "browser": "Connect GitHub",
+    "command": "github connect",
+    "mcp": "github_status",
+    "endpoint": null,
+    "actions": ["make/github#GET", "make/github/callback#GET"],
+    "built": true,
+    "browserOnly": true
+  },
+  {
+    "id": "repos",
+    "browser": "Your repositories and their branches",
+    "command": "repos",
+    "mcp": "list_repos",
+    "endpoint": "GET /api/v1/github/repos",
+    "actions": [],
+    "built": true
+  },
+  {
+    "id": "branches",
+    "browser": "A repository's branches",
+    "command": "branches",
+    "mcp": "list_branches",
+    "endpoint": "GET /api/v1/github/repos/<owner>/<repo>/branches",
+    "actions": ["make/github/branches#GET"],
+    "built": true
+  }
+]

@@ -15,10 +15,6 @@
   } as const;
 </script>
 
-<svelte:head>
-  <title>Your account · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <h1>Your account</h1>
   <p>{data.phone}</p>
@@ -43,5 +39,6 @@
   {:else}
     <p class="apart">Make games? <a href="/make">Add yours to Ruken.</a></p>
   {/if}
+  <p class="note"><a href="/me/computers">Your computers</a></p>
   <p class="note"><a href="/me/delete">Delete my account</a></p>
 </main>

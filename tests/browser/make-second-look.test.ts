@@ -304,13 +304,20 @@ test("the Maker agreement link has a line's room above it", async ({ page }) => 
   await page.goto("/make");
   await pageHasSettled(page);
 
-  const above = await page.locator("main.games").evaluate((main) => {
+  const { above, layout } = await page.locator("main.games").evaluate((main) => {
     const note = main.querySelector(":scope > .note");
     // The bar of buttons is fixed to the window's bottom on a phone, so it is not something the link sits under.
     const sections = [...main.children].filter(
       (child) => child !== note && getComputedStyle(child).position !== "fixed",
     );
-    return Math.max(...sections.map((child) => child.getBoundingClientRect().bottom));
+    // What each part measured, for the failure message: this fails now and then on phone (progress.md, Flaky tests).
+    const layout = [...main.children]
+      .map((child) => {
+        const box = child.getBoundingClientRect();
+        return `${child.tagName.toLowerCase()}.${child.className} ${getComputedStyle(child).position} top ${String(box.top)} bottom ${String(box.bottom)}`;
+      })
+      .concat(`fonts ${document.fonts.status}`);
+    return { above: Math.max(...sections.map((child) => child.getBoundingClientRect().bottom)), layout };
   });
   // Its words, not its box: a link's 44px box reaches 14px above its line into the air round it, by design.
   const wordsTop = await page.getByRole("link", { name: "Maker agreement" }).evaluate((link) => {
@@ -318,7 +325,10 @@ test("the Maker agreement link has a line's room above it", async ({ page }) => 
     range.selectNodeContents(link);
     return range.getBoundingClientRect().y;
   });
-  expect(wordsTop - above, "the link's words start well under what is above them").toBeGreaterThanOrEqual(16);
+  expect(
+    wordsTop - above,
+    `the link's words start well under what is above them (words at ${String(wordsTop)}; ${layout.join("; ")})`,
+  ).toBeGreaterThanOrEqual(16);
 });
 
 // ---- L22: a refusal is read with the question it is about -----------------------------------------------------------------------

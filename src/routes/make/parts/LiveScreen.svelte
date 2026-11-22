@@ -54,10 +54,6 @@
   const first = $derived(fixes.find((fix) => fix.href !== null));
 </script>
 
-<svelte:head>
-  <title>Live · Ruken</title>
-</svelte:head>
-
 <GameBackdrop {backdrop} upright={screen.upright} />
 
 <!-- The send: the blue button in the bar when it is what to do next, otherwise a quiet outline under the main button. -->

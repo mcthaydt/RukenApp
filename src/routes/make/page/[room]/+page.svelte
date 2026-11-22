@@ -41,7 +41,7 @@
 
 {#key data.room}
   {#if data.room === "address"}
-    <QuestionScreen title="Your page · Ruken" heading="Pick your page's address" counter={null} back={BACK}>
+    <QuestionScreen heading="Pick your page's address" counter={null} back={BACK}>
       <TextAnswer
         name="handle"
         value={form?.handle ?? data.handle}
@@ -50,12 +50,7 @@
       />
     </QuestionScreen>
   {:else if data.room === "name"}
-    <QuestionScreen
-      title="Your page · Ruken"
-      heading="What should your page call you?"
-      counter={null}
-      back={BACK}
-    >
+    <QuestionScreen heading="What should your page call you?" counter={null} back={BACK}>
       <TextAnswer
         name="name"
         value={form?.name ?? data.name}
@@ -64,7 +59,7 @@
       />
     </QuestionScreen>
   {:else if data.room === "line"}
-    <QuestionScreen title="Your page · Ruken" heading="Say one line about you" counter={null} back={BACK}>
+    <QuestionScreen heading="Say one line about you" counter={null} back={BACK}>
       <TextAnswer
         name="line"
         grows
@@ -75,7 +70,6 @@
     </QuestionScreen>
   {:else if data.room === "photo"}
     <QuestionScreen
-      title="Your page · Ruken"
       heading="Add a photo for your page"
       counter={null}
       back={BACK}
@@ -102,13 +96,7 @@
       {/if}
     </QuestionScreen>
   {:else}
-    <QuestionScreen
-      title="Your page · Ruken"
-      heading="Pick your page's colours"
-      counter={null}
-      back={BACK}
-      enterHint={false}
-    >
+    <QuestionScreen heading="Pick your page's colours" counter={null} back={BACK} enterHint={false}>
       <ThemePicker themes={data.themes} chosen={data.themeId} problem={form?.problem} />
       <p class="note" id="hint">You can change them any time.</p>
       {#if form?.problem !== undefined}

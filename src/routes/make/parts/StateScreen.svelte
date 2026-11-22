@@ -16,10 +16,6 @@
   } = $props();
 </script>
 
-<svelte:head>
-  <title>Your game · Ruken</title>
-</svelte:head>
-
 <main data-state>
   <p class="count">{name}</p>
   <h1>{headline}</h1>

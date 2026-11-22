@@ -71,7 +71,7 @@ test("a maker's page shows who they are, their games and their links, in their c
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Night Owl");
   await expect(page.getByText(`@${handle}`)).toBeVisible();
   await expect(page.getByText("I make small, hard games.")).toBeVisible();
-  await expect(page).toHaveTitle("Night Owl · Ruken");
+  await expect(page).toHaveTitle("Ruken - The Everyday Console");
   // No photo: the name's first letter in a circle.
   await expect(page.locator(".initial")).toHaveText("N");
   await expect(page.locator(".dot")).toHaveCount(theme.colours.length);

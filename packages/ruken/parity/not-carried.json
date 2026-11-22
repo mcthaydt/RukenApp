@@ -1,0 +1,6 @@
+[
+  {
+    "action": "make/[game]#seen",
+    "why": "It only closes the accepted screen, which the command line never shows."
+  }
+]

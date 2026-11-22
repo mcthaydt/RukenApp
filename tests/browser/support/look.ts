@@ -82,6 +82,22 @@ export const CARD_SCREENS: { name: string; open(page: Page): Promise<void> }[] =
     },
   },
   {
+    // Needs no account: anyone reads it before they join.
+    name: "privacy",
+    open: async (page) => {
+      await page.goto("/privacy");
+      await expect(page.getByRole("heading", { level: 1, name: "Privacy" })).toBeVisible();
+    },
+  },
+  {
+    // Needs no account: anyone reads it before they join.
+    name: "terms",
+    open: async (page) => {
+      await page.goto("/terms");
+      await expect(page.getByRole("heading", { level: 1, name: "Terms" })).toBeVisible();
+    },
+  },
+  {
     // Needs no account: a maker reads it before they have a GitHub.
     name: "the GitHub how-to",
     open: async (page) => {
@@ -313,7 +329,10 @@ export async function showTheOwner(page: Page, testInfo: TestInfo, screen: strin
     const ends = document
       .getAnimations()
       .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity);
-    await Promise.all(ends.map((animation) => animation.finished));
+    // A cancelled animation (a pressed button's transition, cut short as the button turns busy) rejects its `finished`
+    // with "AbortError: The user aborted a request" (make-questions.test.ts:388, runs on #309 and #319 and #323): it
+    // has stopped, which is all the picture waits for, so it counts as finished.
+    await Promise.all(ends.map((animation) => animation.finished.catch(() => undefined)));
   });
   let picture: Buffer;
   try {

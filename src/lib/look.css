@@ -97,6 +97,36 @@
   /* Motion. Pressing a button scales it a little; nothing else moves. */
   --press-scale: 0.97;
   --press-time: 160ms;
+
+  /* Glass (the owner, 2026-11-22: "whenever we use transparency, let's go with an Apple-like Frosted Glass"). Copied from
+     the Automata Framework editors' pop-up glass (their layer 2, as the owner tuned it on 2026-11-21): a thin tint of
+     the darkest felt (#111314) over what is behind, which is blurred, darkened and given a little more colour, so the
+     colours of the clip or game show through and the darkening does the work. The darkening keeps chalk at 4.5 to 1 or more over even a white
+     clip. A dim behind an open menu or card keeps its old tint and blurs what it covers a little. Surfaces are still
+     told apart by tone, so the glass has no edge line or shadow. Read only through these tokens, never as a colour
+     with see-through of its own (tests/lib/glass.test.ts). */
+  --glass-bg: rgb(17 19 20 / 0.12);
+  --glass-filter: blur(24px) brightness(0.29) saturate(1.3);
+  --dim-bg: rgb(17 19 20 / 0.62);
+  --dim-filter: blur(6px);
+}
+
+/* With no glass the surfaces are the solid darkest felt and nothing is blurred, while a dim still dims: when the browser
+   draws no blur, when the device asks for less see-through, or when it asks for more contrast. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --glass-bg: var(--felt-deep);
+    --glass-filter: none;
+    --dim-filter: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root {
+    --glass-bg: var(--felt-deep);
+    --glass-filter: none;
+    --dim-filter: none;
+  }
 }
 
 /* The page itself. Space comes only from the rules here: the browser's own margins on headings and
@@ -306,6 +336,18 @@ strong {
 /* Each device link is a target wide as well as tall: "Mac" is three letters and was 36 wide. */
 .card nav a {
   min-width: var(--size-target);
+}
+
+/* The code a computer shows (Let this computer use your Ruken?): big letters, so it is read across a desk. */
+.card .code {
+  font: var(--text-statement);
+}
+
+/* Your computers: one block for each, no bullets. */
+.card .computers {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* A step and a half between the title and what it introduces. */
@@ -2121,6 +2163,37 @@ html[data-move] .screen main > form > :not(.acts) {
   display: block;
 }
 
+/* A list of short points on a reading page (privacy, terms): Ruken's own small square in the gutter, not the browser's
+   disc and 40px indent, and half a rem between points, since each is a line or two and not a block of its own. */
+.card ul.bullets {
+  margin: 1rem 0 0;
+  padding-left: 1.25rem;
+  list-style: none;
+}
+
+.card ul.bullets > li {
+  position: relative;
+}
+
+.card ul.bullets > li::before {
+  content: "";
+  position: absolute;
+  top: 0.65em;
+  left: -1.125rem;
+  width: 0.375rem;
+  height: 0.375rem;
+  background: var(--felt-raised);
+}
+
+.card ul.bullets > li + li {
+  margin-top: 0.5rem;
+}
+
+/* A point's bold opening words run on into the point, unlike a numbered point's title. */
+.card ul.bullets > li > strong {
+  display: inline;
+}
+
 .card li > p {
   margin-top: 0.25rem;
 }
@@ -2321,8 +2394,8 @@ a.sheet.fix {
   background: var(--pay);
 }
 
-/* The price card's backdrop: the clip of the game the person tapped, behind the card, under one flat layer of the darkest
-   felt at 62% (the play menu's dim). It sits under the page's own content, takes no press, and is not blurred. */
+/* The price card's backdrop: the clip of the game the person tapped, behind the card, under the play menu's dim, frosted.
+   It sits under the page's own content and takes no press. */
 .behindcard {
   position: fixed;
   inset: 0;
@@ -2342,8 +2415,9 @@ a.sheet.fix {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--felt-deep);
-  opacity: 0.62;
+  background: var(--dim-bg);
+  -webkit-backdrop-filter: var(--dim-filter);
+  backdrop-filter: var(--dim-filter);
 }
 
 /* The statement piece, only on Live (spec 5c): the game's own video fills the screen behind everything, blurred, dimmed and
@@ -2602,7 +2676,9 @@ main.gamepage {
   position: absolute;
   inset: auto 0 0 0;
   padding: 1rem 1.25rem 1.25rem;
-  background: color-mix(in srgb, var(--felt-deep) 82%, transparent);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
   color: var(--chalk);
   pointer-events: none;
 }
@@ -2903,6 +2979,32 @@ main.playing {
   background: var(--felt-deep);
 }
 
+/* A full-screen panel, the feed or a game being played, is the whole window (the owner, 2026-11-22: "it should scroll
+   within the static panel", "holding the screen doesn't highlight the entire panel", "not be able to zoom in to the
+   panel"). The page behind it cannot scroll, so on a phone a swipe never moves the page as the address bar shows or
+   hides; only the panel moves. On the panel nothing is selected, held or zoomed: the feed only goes up and down, and a
+   game may still pan either way. */
+html:has(main.feed),
+html:has(main.playing) {
+  height: 100%;
+  overflow: hidden;
+}
+
+main.feed,
+main.playing {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+main.feed {
+  touch-action: pan-y;
+}
+
+main.playing {
+  touch-action: pan-x pan-y;
+}
+
 .playing .frame {
   height: 100%;
 }
@@ -2935,7 +3037,7 @@ main.playing {
   pointer-events: auto;
 }
 
-/* The tab: 48 by 56, the game showing faintly through it (chalk on this is 7.48:1 over a white game), solid while
+/* The tab: 48 by 56, frosted glass over the game (chalk on it stays above 4.5:1 over a white game), solid while
    pressed, dragged or focused. It rests on the left; the right is a slide across, so it can glide between the two. */
 .playing .menu > summary {
   position: fixed;
@@ -2954,7 +3056,9 @@ main.playing {
   height: 56px;
   padding-inline: 8px;
   border-radius: 0 var(--radius-button) var(--radius-button) 0;
-  background: color-mix(in srgb, var(--felt-deep) 72%, transparent);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
   color: var(--chalk);
   font: var(--text-small);
   line-height: 1.1;
@@ -3021,7 +3125,9 @@ main.playing {
   z-index: 2;
   inset: 0;
   display: flex;
-  background: color-mix(in srgb, var(--felt-deep) 62%, transparent);
+  background: var(--dim-bg);
+  -webkit-backdrop-filter: var(--dim-filter);
+  backdrop-filter: var(--dim-filter);
 }
 
 .playing .menu:not([open]) .menusheet {
@@ -3274,4 +3380,27 @@ video[data-loading] {
     background-image: var(--spinner-still);
     animation: none;
   }
+}
+
+/* Ruken feels like an app on a phone, not a web page (the owner, 2026-11-22: "should feel like an app at all times"): a
+   press shows no grey flash, a double tap does not zoom (a pinch still does on a reading screen), the page never bounces or
+   pulls to refresh at its ends, holding a finger on a link, picture or video opens no menu, a picture or video is never
+   dragged, and a button selects nothing. Words to read, links among them, and boxes to type in still select. */
+html {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+:is(a, img, video) {
+  -webkit-touch-callout: none;
+}
+
+:is(button, a.button, summary, label, svg) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+:is(img, video) {
+  -webkit-user-drag: none;
 }
