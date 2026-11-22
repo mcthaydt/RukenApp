@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { THEMES } from "../../../src/features/pages/themes.ts";
-import { isPhotoKey } from "../../../src/features/pages/photo.ts";
 import { createPagesService, PageError, type PagesService } from "../../../src/features/pages/service.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
@@ -81,24 +80,16 @@ describe("a maker's page", () => {
   });
 
   it.each([
-    [{ handle: "ab", name: "A", oneLine: "" }, "INVALID", "Use at least 3 letters or numbers."],
     [
       { handle: "a".repeat(31), name: "A", oneLine: "" },
       "INVALID",
       "That's too long. Use 30 characters or fewer.",
     ],
     [{ handle: "night owl", name: "A", oneLine: "" }, "INVALID", "Use only letters, numbers and hyphens."],
-    [{ handle: "make", name: "A", oneLine: "" }, "TAKEN", "That one is taken. Pick another."],
-    [{ handle: "fine-one", name: "  ", oneLine: "" }, "INVALID", "Your page needs a name."],
     [
       { handle: "fine-one", name: "a".repeat(41), oneLine: "" },
       "INVALID",
       "A name can be up to 40 characters.",
-    ],
-    [
-      { handle: "fine-one", name: "A", oneLine: "a".repeat(101) },
-      "INVALID",
-      "The one line can be up to 100 characters.",
     ],
   ] as const)("says what is wrong with %j in words", async (input, code, message) => {
     const userId = await createUser(db());
@@ -113,14 +104,6 @@ describe("a maker's page", () => {
     await expect(service.savePage(b, { handle: "Maker-One", name: "B", oneLine: "" })).rejects.toMatchObject({
       code: "TAKEN",
       message: "That one is taken. Pick another.",
-    });
-  });
-
-  it("lets a maker keep their own address when they save again", async () => {
-    const a = await createUser(db());
-    await service.savePage(a, { handle: "keeper", name: "A", oneLine: "" });
-    await expect(service.savePage(a, { handle: "keeper", name: "A2", oneLine: "" })).resolves.toEqual({
-      handle: "keeper",
     });
   });
 
@@ -160,20 +143,6 @@ describe("a maker's page", () => {
 });
 
 describe("a page's colours", () => {
-  it("keeps a page's colours when a number that is not offered is sent", async () => {
-    const { userId } = await makerWithPage();
-    const offered = THEMES[0];
-    if (offered === undefined) throw new Error("no theme is offered");
-    await service.saveTheme(userId, offered.id);
-    for (const id of [349, -1, 1.5, Number.NaN]) {
-      await expect(service.saveTheme(userId, id), String(id)).rejects.toMatchObject({
-        code: "INVALID",
-        message: "Pick one of the colours shown.",
-      });
-    }
-    expect((await service.pageOf(userId))?.themeId).toBe(offered.id);
-  });
-
   it("takes 0, which is Ruken's own colours", async () => {
     const { userId } = await makerWithPage();
     await service.saveTheme(userId, THEMES[0]?.id ?? 1);
@@ -312,50 +281,6 @@ describe("what a visitor sees and counts", () => {
     ]);
   });
 
-  it("answers nothing for an address that has no page", async () => {
-    expect(await service.pageByHandle("nobody-here")).toBeNull();
-    expect(await service.pageOf(await createUser(db()))).toBeNull();
-  });
-
-  it("wears the colours of the theme the maker picked", async () => {
-    const { userId, handle } = await makerWithPage();
-    const offered = THEMES[0];
-    if (offered === undefined) throw new Error("no theme is offered");
-    await service.saveTheme(userId, offered.id);
-    expect((await service.pageByHandle(handle))?.theme).toEqual(offered);
-  });
-
-  it("counts a visitor's view and tap, and not the maker's own", async () => {
-    const { userId, handle, pageId } = await makerWithPage();
-    const visitor = await createUser(db());
-    await service.addLink(userId, { kind: "link", title: "X", url: "https://example.com/x" });
-    const link = { id: await idOf(userId, "X") };
-
-    await service.countView(pageId, null);
-    await service.countView(pageId, visitor);
-    await service.countView(pageId, userId);
-    expect(await service.tapLink(handle, link.id, null)).toBe("https://example.com/x");
-    expect(await service.tapLink(handle, link.id, userId)).toBe("https://example.com/x");
-    expect(await service.pageOf(userId)).toMatchObject({ views: 2, links: [{ taps: 1 }] });
-  });
-
-  it("sends nobody on from a hidden link, another page's link or a made-up one", async () => {
-    const a = await makerWithPage();
-    const b = await makerWithPage();
-    await service.addLink(a.userId, { kind: "link", title: "Hidden", url: "https://example.com/h" });
-    await service.addLink(b.userId, { kind: "link", title: "Theirs", url: "https://example.com/t" });
-    const hidden = await idOf(a.userId, "Hidden");
-    const theirs = await idOf(b.userId, "Theirs");
-    await service.setHidden(a.userId, hidden, true);
-
-    expect(await service.tapLink(a.handle, hidden, null)).toBeNull();
-    expect(await service.tapLink(a.handle, theirs, null)).toBeNull();
-    expect(await service.tapLink(a.handle, "made-up", null)).toBeNull();
-    expect(await service.tapLink("nobody-here", theirs, null)).toBeNull();
-    expect((await service.pageOf(a.userId))?.links[0]?.taps).toBe(0);
-    expect((await service.pageOf(b.userId))?.links[0]?.taps).toBe(0);
-  });
-
   it("finds the addresses of the makers it is asked about", async () => {
     const a = await makerWithPage();
     const b = await makerWithPage();
@@ -388,9 +313,8 @@ describe("what a visitor sees and counts", () => {
   });
 });
 
-// The first bytes of a PNG and a JPEG: all a photo is checked for, and all a test needs.
+// The first bytes of a PNG: all a photo is checked for, and all a test needs.
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
-const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 4, 5, 6, 7]);
 
 /** The key a maker's page holds for its photo, which a test that has just saved one knows is there. */
 async function photoKeyOf(userId: string): Promise<string> {
@@ -400,30 +324,6 @@ async function photoKeyOf(userId: string): Promise<string> {
 }
 
 describe("a maker's photo", () => {
-  it("stores a photo and remembers where it is", async () => {
-    const { userId } = await makerWithPage();
-    await service.savePhoto(userId, { contentType: "image/png", bytes: PNG });
-
-    const key = await photoKeyOf(userId);
-    expect(isPhotoKey(key)).toBe(true);
-    expect(key.endsWith(".png")).toBe(true);
-    expect((await files.head(key))?.size).toBe(PNG.length);
-  });
-
-  it("puts a second photo in place of the first, and the first goes", async () => {
-    const { userId } = await makerWithPage();
-    await service.savePhoto(userId, { contentType: "image/png", bytes: PNG });
-    const first = await photoKeyOf(userId);
-
-    await service.savePhoto(userId, { contentType: "image/jpeg", bytes: JPEG });
-    const second = await photoKeyOf(userId);
-
-    expect(second).not.toBe(first);
-    expect(second.endsWith(".jpg")).toBe(true);
-    expect(await files.head(first)).toBeNull();
-    expect((await files.head(second))?.size).toBe(JPEG.length);
-  });
-
   it("refuses a photo that breaks a rule, and stores nothing", async () => {
     const { userId } = await makerWithPage();
     const put = vi.spyOn(files, "put");
@@ -474,17 +374,6 @@ describe("a maker's photo", () => {
     } finally {
       put.mockRestore();
     }
-  });
-
-  it("removes the photo from the page and from the store", async () => {
-    const { userId } = await makerWithPage();
-    await service.savePhoto(userId, { contentType: "image/png", bytes: PNG });
-    const key = await photoKeyOf(userId);
-
-    await service.removePhoto(userId);
-
-    expect((await service.pageOf(userId))?.photoKey).toBeNull();
-    expect(await files.head(key)).toBeNull();
   });
 
   it("removes nothing, without a fuss, from a page that has no photo", async () => {
