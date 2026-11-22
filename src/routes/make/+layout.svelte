@@ -45,6 +45,8 @@
   // A move into or out of the area slides sideways instead, as every other move does (src/routes/+layout.svelte).
   onNavigate((navigation) => {
     if (!inMakersArea(navigation.to?.url.pathname) || !inMakersArea(navigation.from?.url.pathname)) return;
+    // The same page brought up to date (an answer sent from inside it, src/lib/stay-in-app.ts) is no step.
+    if (navigation.to?.url.href === navigation.from?.url.href) return;
     delete document.documentElement.dataset.move;
     const going = placeOf(navigation.to?.params?.question) < placeOf(navigation.from?.params?.question);
     document.documentElement.dataset.step = going ? "back" : "on";

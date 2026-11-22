@@ -265,11 +265,16 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
     return window.scrollY;
   });
   expect(footOfThePage).toBeGreaterThan(0);
+  // Nor does it play the maker area's step between two questions: it is the same page, brought up to date.
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.step;
+  });
   await rows.nth(1).getByRole("button", { name: "Up" }).click();
   await expect(rows.nth(0)).toContainText("My other game");
   await expect(rows.nth(0).getByRole("button", { name: "Down" })).not.toHaveAttribute("aria-busy", /.*/);
   // Not sent back to the top. The browser may nudge the page a little to keep the row in view as the rows swap places.
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.documentElement.dataset.step)).toBeUndefined();
   await page.setViewportSize(size);
   await rows.nth(0).getByRole("button", { name: "Hide" }).click();
   await expect(rows.nth(0)).toContainText("Hidden");
