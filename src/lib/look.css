@@ -3093,7 +3093,8 @@ header:has(+ main.about) {
 .about .ways {
   display: flex;
   flex-wrap: wrap;
-  column-gap: 1.5rem;
+  /* A wrapped row ("Sign in" on a 320-wide phone) keeps its tap areas apart, not stacked on each other. */
+  gap: 1.25rem 1.5rem;
 }
 
 .about .news {
@@ -3138,6 +3139,11 @@ header:has(+ main.about) {
   text-wrap: balance;
 }
 
+/* The headline's two sentences are two lines, never broken in the middle of one. */
+.about .hero h1 > span {
+  display: block;
+}
+
 /* The top game's clip in a phone's shape, so it reads as "this is what you swipe". */
 .about .phone {
   justify-self: center;
@@ -3168,6 +3174,19 @@ header:has(+ main.about) {
   margin: 0;
 }
 
+/* A button whose words wrap on a small phone keeps them centred, as its single-line neighbours are. */
+.about .button {
+  text-align: center;
+}
+
+/* Under 360 wide a card's title drops to the statement's size, as the screens' card titles do, so it breaks in two
+   lines and not three. */
+@media (max-width: 359px) {
+  .about .card h2 {
+    font: var(--text-statement);
+  }
+}
+
 .about .links {
   display: flex;
   flex-wrap: wrap;
@@ -3195,11 +3214,32 @@ header:has(+ main.about) {
   border-radius: var(--radius-card);
   background: var(--felt-deep);
   font: var(--text-statement);
+  text-wrap: balance;
+}
+
+/* The steps' numbers sit inside the column, in the text face, so "3." is tight and lines up with the words. */
+.about .steps {
+  padding-left: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.about .steps li {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  counter-increment: step;
+}
+
+.about .steps li::before {
+  grid-row: span 2;
+  content: counter(step) ".";
+  font: var(--text-button);
 }
 
 .about .steps li > strong,
 .about .steps li > span {
   display: block;
+  grid-column: 2;
 }
 
 .about .sitefoot {
@@ -3228,15 +3268,29 @@ header:has(+ main.about) {
     grid-template-columns: 1fr 1fr;
   }
 
+  /* Two by two, in the same centred column as the sections under it, so no panel is a word to a line. */
   .about .perks {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    max-width: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .about .plain:has(.perks) {
-    max-width: none;
+  /* Below the cards the page is one centred column, as the sketch says, with the links at the foot under it. */
+  .about .plain,
+  .about .sitefoot {
+    margin-inline: auto;
+  }
+
+  .about .sitefoot {
+    justify-content: center;
   }
 }
+
+/* A tablet's half is too narrow for the headline at its wide size: it is set smaller there, two lines still. */
+@media (min-width: 48rem) and (max-width: 63.999rem) {
+  .about .hero h1 {
+    font-size: 3rem;
+  }
+}
+
 
 /* Every wait shows it. A move between pages runs a Blue line across the top of the window and shows a turning
    spinner under it, with no words (src/lib/page-loading.svelte); a button whose form is out shows the spinner after

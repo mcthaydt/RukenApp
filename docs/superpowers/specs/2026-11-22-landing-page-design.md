@@ -76,7 +76,7 @@ Phone (one column):
 └─────────────────────────┘
 ```
 
-Computer: the hero is two halves (words left, clip right); the makers and players cards sit side by side; the four membership cards are a row of four; the closing cards are side by side. Everything else is one centred column.
+Computer: the hero is two halves (words left, clip right); the makers and players cards sit side by side; the closing cards are side by side. Everything else is one centred column, the membership's four cards two by two in it (design round 1: a row of four left the membership wider than the column under it).
 
 ## Easy to change
 

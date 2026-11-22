@@ -43,7 +43,7 @@
 
   <section class="hero" aria-labelledby="about-title">
     <div>
-      <h1 id="about-title">{HERO.heading}</h1>
+      <h1 id="about-title"><span>{HERO.heading[0]}</span> <span>{HERO.heading[1]}</span></h1>
       {#each HERO.lines as line (line)}
         <p>{line}</p>
       {/each}

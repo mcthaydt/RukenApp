@@ -38,7 +38,8 @@ export const NEWS: Link = {
 };
 
 export const HERO = {
-  heading: "Watch a game. Then play it.",
+  /** Two sentences, each a line of its own. */
+  heading: ["Watch a game.", "Then play it."],
   lines: [
     "Ruken is a feed of short game clips. See one you like? Members tap Play, and they're in the game.",
     "Nothing to download. It plays right here in your browser.",
