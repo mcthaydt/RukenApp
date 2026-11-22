@@ -66,8 +66,14 @@ test("a new maker finds the guide from Your games and copies the prompt for thei
   await expect(page.getByRole("status")).toHaveText("Copied. Paste it into your AI helper.");
   const copied = await copiedWords(page);
   expect(copied).toHaveLength(1);
-  // What lands on the clipboard is the whole prompt the page shows, word for word.
-  expect(copied[0]).toBe(await prompt.textContent());
+  // What lands on the clipboard is the whole prompt the page shows, word for word (the page's lists and paragraphs
+  // become lines; only the spacing differs).
+  const words = (text: string | null | undefined) =>
+    (text ?? "")
+      .replace(/^\s*(\d+\.|-)\s/gm, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  expect(words(copied[0])).toBe(words(await prompt.innerText()));
 
   // The way back is at the top and again at the foot, and goes to Your games.
   await expect(page.getByRole("link", { name: "Back to your games" })).toHaveCount(2);

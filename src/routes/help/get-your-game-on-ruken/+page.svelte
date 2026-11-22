@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { onMount } from "svelte";
-  import { AGENT_PROMPT } from "./agent-prompt.ts";
+  import { AGENT_PROMPT, PROMPT_CLOSING, PROMPT_OPENING, PROMPT_STEPS } from "./agent-prompt.ts";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
@@ -59,13 +59,27 @@
     Use an AI coding helper, like Claude Code? Copy this and paste it in. It gets your game ready and puts it
     on GitHub. Then it tells you what's left to do on Ruken.
   </p>
-  <!-- Focusable so the keyboard can scroll it when it scrolls inside itself. -->
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <pre
-    class="prompt"
-    role="region"
-    aria-label="The prompt for your AI helper"
-    tabindex="0">{AGENT_PROMPT}</pre>
+  <h3 id="prompt">The prompt for your AI helper</h3>
+  <div role="region" aria-labelledby="prompt">
+    {#each PROMPT_OPENING as words (words)}
+      <p>{words}</p>
+    {/each}
+    <ol>
+      {#each PROMPT_STEPS as step (step.words)}
+        <li>
+          {step.words}
+          {#if step.points !== undefined}
+            <ul>
+              {#each step.points as point (point)}
+                <li>{point}</li>
+              {/each}
+            </ul>
+          {/if}
+        </li>
+      {/each}
+    </ol>
+    <p>{PROMPT_CLOSING}</p>
+  </div>
   {#if woke}
     <p><button type="button" onclick={copyPrompt}>Copy the prompt</button></p>
   {/if}
@@ -167,16 +181,3 @@
 
   <p><a href={data.back.href}>{data.back.words}</a></p>
 </main>
-
-<style>
-  /* The prompt keeps its own lines and wraps inside the card, so a phone never scrolls sideways to read it. */
-  .prompt {
-    max-height: 20rem;
-    overflow-y: auto;
-    padding: 1rem;
-    border: 1px solid var(--ink-soft);
-    border-radius: var(--radius-button);
-    font: var(--text-small);
-    white-space: pre-wrap;
-  }
-</style>
