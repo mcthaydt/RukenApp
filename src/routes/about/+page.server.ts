@@ -14,7 +14,7 @@ const WALL_COLUMNS = 3;
 const WALL_ROWS = 2;
 
 export const load: PageServerLoad = async ({ locals }) => {
-  const clips = await feedServices().service.feed();
+  const { clips } = await feedServices().service.page(null);
   const [top] = clips;
   return {
     wall:
