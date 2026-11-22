@@ -10,6 +10,7 @@ import { createRateLimiter } from "../../lib/server/rate-limit.ts";
 import { TextError, textFailureCode, type Texter } from "../../lib/server/text.ts";
 import { authLimitsPlugin } from "./auth-limits-plugin.ts";
 import { resetChannel, resetCodeMessage, userHasMoney } from "./changed-hands.ts";
+import { removeAllComputers } from "./computer-keys.ts";
 import { WELCOME_BACK_COOKIE, WELCOME_BACK_MAX_AGE_SECONDS, type CookiePolicy } from "./cookies.ts";
 import { restoreOnSignIn } from "./deletion.ts";
 import { signInPausePlugin } from "./sign-in-pause-plugin.ts";
@@ -165,6 +166,14 @@ export function createAuth(options: AuthOptions) {
         // and an error thrown here would skip the signing out (and answer 500, though the password
         // did change). So nothing here may throw: a stolen session must not outlive the reset
         // because Twilio or the database hiccuped.
+        // A reset also ends every computer's key, on its own try so a failure here never stops the signing out.
+        try {
+          await removeAllComputers(prisma, user.id);
+        } catch (error) {
+          log(
+            `computer keys not removed after a reset: ${error instanceof Error ? error.message : "unknown error"}`,
+          );
+        }
         const number = (user as { phoneNumber?: string | null }).phoneNumber;
         if (number == null) return;
         try {
