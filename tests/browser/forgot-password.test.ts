@@ -11,6 +11,7 @@ import { forgetCodeLimits, paperEmailOf, pauseOf } from "./support/database.ts";
 import { countMailsTo, mailTo } from "./support/mail.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { codesKept, codeTo, countCodesTo, sayChangedHands, textTo } from "./support/texts.ts";
+import { consented } from "./support/consent.ts";
 
 test.beforeEach(forgetRateLimits);
 
@@ -57,7 +58,7 @@ test("a reset by code saves the new password, signs every device out, and texts 
 }) => {
   const { number, password } = await signUp(page);
   // A second device is signed in too.
-  const other = await browser.newContext({ baseURL: baseURL ?? "http://localhost:4173" });
+  const other = await browser.newContext({ ...consented, baseURL: baseURL ?? "http://localhost:4173" });
   try {
     const device = await other.newPage();
     await device.goto("/sign-in");

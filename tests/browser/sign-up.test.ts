@@ -14,6 +14,7 @@ import {
 import { forgetCodeLimits, userIdOf } from "./support/database.ts";
 import { forgetAddressCounters, forgetRateLimits } from "./support/rate-limits.ts";
 import { codesKept, codeTo, countCodesTo, failNextTextTo } from "./support/texts.ts";
+import { consented } from "./support/consent.ts";
 
 test.beforeEach(forgetRateLimits);
 
@@ -196,7 +197,7 @@ test("Text it again shows 30 seconds after the code screen, and is there at once
   await expect(page.getByRole("button", { name: "Text it again" })).toBeVisible();
 
   // Without a script the page is plain HTML and the button is always there.
-  const plain = await browser.newContext({ baseURL: baseURL ?? "", javaScriptEnabled: false });
+  const plain = await browser.newContext({ ...consented, baseURL: baseURL ?? "", javaScriptEnabled: false });
   try {
     const bare = await plain.newPage();
     await bare.goto("/sign-up");
@@ -263,7 +264,7 @@ test("a second browser cannot choose the password, even when it has the code", a
   await page.goto("/sign-up");
   await startSignUpForm(page, number, "the first long password");
 
-  const other = await browser.newContext({ baseURL: baseURL ?? "http://localhost:4173" });
+  const other = await browser.newContext({ ...consented, baseURL: baseURL ?? "http://localhost:4173" });
   try {
     const stranger = await other.newPage();
     // A second code for the same number within half a minute is refused by the site; the wait is forgotten.
@@ -343,6 +344,7 @@ test("the sign-up's own cookie is only for the sign-up, and is gone once it is d
 
 test("it works with no script at all", async ({ browser, baseURL }) => {
   const context = await browser.newContext({
+    ...consented,
     baseURL: baseURL ?? "http://localhost:4173",
     javaScriptEnabled: false,
   });
@@ -363,7 +365,7 @@ test("it works with no script at all", async ({ browser, baseURL }) => {
 async function signUpInTheirOwnContext(
   browser: import("@playwright/test").Browser,
 ): Promise<{ number: string }> {
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     const page = await context.newPage();
     return await signUp(page);

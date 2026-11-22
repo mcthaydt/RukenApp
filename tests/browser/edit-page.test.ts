@@ -6,6 +6,7 @@ import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { rgb } from "../support/look-tokens.ts";
 import { THEMES } from "../../src/features/pages/themes.ts";
+import { consented } from "./support/consent.ts";
 
 // Editing your page (spec 5.5): a maker makes her page from nothing, reads it where visitors see it, changes every part
 // of it and takes the parts away again, all on the real screens.
@@ -56,7 +57,7 @@ async function atRest(page: Page): Promise<void> {
  * new address.
  */
 async function statusOf(page: Page, address: string | null): Promise<number> {
-  const context = await page.context().browser()?.newContext();
+  const context = await page.context().browser()?.newContext(consented);
   if (context === undefined) throw new Error("the page has no browser");
   try {
     return (await (await context.newPage()).goto(new URL(address ?? "", page.url()).href))?.status() ?? 0;
@@ -342,7 +343,7 @@ test("nobody changes another maker's links, and thirty is the most", async ({ pa
   const [victim = ""] = linkIds;
 
   // The other maker posts every change at my link: each is the missing page, and my link stays.
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     const theirs = await context.newPage();
     await signInAs(theirs, other.number, other.password);
@@ -388,7 +389,7 @@ test("nobody changes another maker's links, and thirty is the most", async ({ pa
       url: `https://full.example.com/${String(index + 1)}`,
     })),
   });
-  const context2 = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context2 = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     const fullPage = await context2.newPage();
     await signInAs(fullPage, full.number, full.password);

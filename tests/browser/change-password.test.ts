@@ -9,6 +9,7 @@ import {
 } from "./support/account.ts";
 import { makeItAnOldAccount } from "./support/database.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 test.beforeEach(forgetRateLimits);
 
@@ -35,7 +36,7 @@ async function signInWorks(page: Page, number: string, password: string): Promis
 
 /** A browser of its own with nobody signed in: another device. */
 async function anotherDevice(browser: Browser): Promise<Page> {
-  const context = await browser.newContext({ baseURL: SITE_URL });
+  const context = await browser.newContext({ ...consented, baseURL: SITE_URL });
   return context.newPage();
 }
 

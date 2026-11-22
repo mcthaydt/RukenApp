@@ -1,4 +1,5 @@
 import { error } from "@sveltejs/kit";
+import { hasConsent } from "../../features/consent/consent.ts";
 import { gamesServices } from "../../features/games/games.ts";
 import { membershipServices } from "../../features/membership/membership.ts";
 import { pagesServices } from "../../features/pages/pages.ts";
@@ -13,7 +14,8 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url }) => 
 
   const viewer = locals.caller.kind === "user" ? locals.caller.userId : null;
   // The maker opening their own page is not a visitor: `countView` leaves them out.
-  await pages.countView(page.id, viewer);
+  // Counted only for a browser that said yes to cookies; without it nothing is written about the visit.
+  if (hasConsent(cookies)) await pages.countView(page.id, viewer);
   // Landing here is an arrival through this maker's page (design 6): the last one a visitor made is who brought them.
   membershipServices().arrival.remember(cookies, { makerUserId: page.makerUserId, path: url.pathname });
 

@@ -10,6 +10,7 @@ import {
 import { addGame, gameWhere } from "./support/game.ts";
 import { expectFrame, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // A game's page (spec 3): the clip, the facts a person needs before pressing Play, and what Play will cost them.
 
@@ -88,7 +89,7 @@ test("the cost line is said to each person in their own words", async ({ page, b
 
   const staff = await signUpInItsOwnContext(browser);
   await giveStaffRole(staff, "curator");
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   const staffPage = await context.newPage();
   await signInAs(staffPage, staff.number, staff.password);
   await staffPage.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
@@ -189,7 +190,11 @@ test("Play and every tile are reached by the keyboard, with focus showing", asyn
 });
 
 test("with no script the clip's own controls are not under the name", async ({ browser }) => {
-  const context = await browser.newContext({ baseURL: "http://localhost:4173", javaScriptEnabled: false });
+  const context = await browser.newContext({
+    ...consented,
+    baseURL: "http://localhost:4173",
+    javaScriptEnabled: false,
+  });
   const page = await context.newPage();
   await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   const clip = await page.locator(".clipbox video").boundingBox();
@@ -220,6 +225,7 @@ test("a game is not at its address until it is accepted", async ({ page }) => {
 
 test("the device line names a tablet that says it is a computer", async ({ browser }) => {
   const context = await browser.newContext({
+    ...consented,
     baseURL: "http://localhost:4173",
     hasTouch: true,
     viewport: { width: 820, height: 1180 },

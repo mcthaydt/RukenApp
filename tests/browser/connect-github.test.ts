@@ -10,6 +10,7 @@ import {
 import { connectGitHubFromFiles, startAtFiles, startDraft } from "./support/game.ts";
 import { boxOf, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // A maker connects their GitHub on the site and the site remembers which repositories GitHub says they can reach. The
 // stand-in GitHub (support/fake-github-server.ts) holds one installation with three repositories the app can read, two
@@ -202,7 +203,7 @@ test("a state for another maker's game lands on a 404, never on her question", a
   baseURL,
 }) => {
   const { slug } = await startDraft(page);
-  const stranger = await browser.newContext({ baseURL: baseURL ?? "http://localhost:4173" });
+  const stranger = await browser.newContext({ ...consented, baseURL: baseURL ?? "http://localhost:4173" });
   try {
     const other = await stranger.newPage();
     const intruder = await signUp(other);
