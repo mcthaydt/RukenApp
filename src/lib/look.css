@@ -247,9 +247,20 @@ p {
   margin: 1rem 0 0;
 }
 
+/* No line under any words, anywhere (the owner, 2026-11-22: "no text with underline links anywhere"). A link inside a line
+   of words is told from the words around it by weight, and on a card by the blue that means go on (5.4:1 on paper); on
+   the felt it is the heavier chalk. The focus ring shows where the keyboard is, as it does for a button. */
 a {
   color: inherit;
-  text-decoration: underline;
+  text-decoration: none;
+}
+
+:is(p, li, small, span, dd, td, q, label) > a:not([class]) {
+  font-weight: 600;
+}
+
+.card :is(p, li, small, span, dd, td, q, label) > a:not([class]) {
+  color: var(--pay);
 }
 
 /* A link in a line of words, or on a line of its own, is as easy to tap as a button. The words stay one line
@@ -2294,7 +2305,6 @@ a.sheet.fix {
 .fixgo {
   color: var(--pay);
   font: 600 1rem / 1.3 var(--font-text);
-  text-decoration: underline;
 }
 
 /* What passed, folded away in one green card; opened, it is the game laid out. Its chips sit one tone down, on the felt,
