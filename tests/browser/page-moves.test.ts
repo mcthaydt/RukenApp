@@ -22,6 +22,9 @@ const place = (page: Page, name: "Home" | "Add a game" | "You") =>
 
 /** Leaves a mark in the page that a whole new page load would wipe. */
 async function markThePage(page: Page): Promise<void> {
+  // Before its script has come alive a page sends its forms the plain way, as it must without a script; the mark is
+  // left once the page is alive (seen once on the computer: the sign-in was pressed before then).
+  await pageHasSettled(page);
   await page.evaluate(() => {
     (window as unknown as { stayed: boolean }).stayed = true;
   });
