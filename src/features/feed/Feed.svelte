@@ -217,7 +217,9 @@
 
   // The feed scrolls inside itself, which the browser's own Back does not keep, so where a person was is kept as the
   // page's snapshot and put back at once when they come back to it. The feed goes round and a game can be on it twice,
-  // so the snapshot keeps every clip the feed had (later pages too) and the place by its key, not by the game.
+  // so the snapshot keeps every clip the feed had (later pages too) and the place by its key, not by the game. A place on
+  // the first page is found in the first page the page came with, which is fresh: a game that went live or came off since
+  // shows as it is now. Only a place on a later page puts back the kept clips.
   interface Place {
     clips: FeedClip[];
     next: string | null;
@@ -226,8 +228,10 @@
   let mounted = false;
   let returning: Place | undefined;
   function returnTo(place: Place): void {
-    clips = place.clips;
-    next = place.next;
+    if (!first.clips.some((clip) => clip.key === place.key)) {
+      clips = place.clips;
+      next = place.next;
+    }
     void tick().then(() => {
       const index = clips.findIndex((clip) => clip.key === place.key);
       if (index <= 0) return;

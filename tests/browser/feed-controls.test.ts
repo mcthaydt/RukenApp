@@ -284,6 +284,41 @@ test("Back from a game opened past the first page comes back to that very clip, 
   ).toBe(before);
 });
 
+test("a reload on the first page shows the feed as it is now, not as it was kept", async ({ page }) => {
+  await openFeed(page);
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
+  const slug = (await current(page).getAttribute("data-slug")) ?? "?";
+  const name = (await current(page).getByRole("heading", { level: 2 }).textContent()) ?? "?";
+  // A game's name changed while the person was away: here the kept copy of the clip on screen has an old name.
+  // (The kept value is text in SvelteKit's own format, as in the journey below.)
+  await page.addInitScript(() => {
+    const keptName = "sveltekit:navigation-snapshot";
+    const kept = JSON.parse(sessionStorage.getItem(keptName) ?? "{}") as Record<
+      string,
+      Record<string, string>
+    >;
+    let changed = 0;
+    for (const values of Object.values(kept))
+      for (const [id, text] of Object.entries(values)) {
+        const parts = JSON.parse(text) as unknown[];
+        const place = parts[0] as { clips?: number } | null;
+        if (typeof place?.clips !== "number") continue;
+        const second = parts[(parts[place.clips] as number[])[1] as number] as { name: number };
+        parts[second.name] = "A name from before";
+        values[id] = JSON.stringify(parts);
+        changed++;
+      }
+    if (changed === 0) throw new Error("the feed kept no clips");
+    sessionStorage.setItem(keptName, JSON.stringify(kept));
+  });
+  await page.reload();
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await expect(current(page)).toHaveAttribute("data-slug", slug);
+  await expect(current(page).getByRole("heading", { level: 2 })).toHaveText(name);
+  await expect(page.getByText("A name from before")).toHaveCount(0);
+});
+
 test("a reload whose kept feed is shorter than the fresh one puts back the kept feed, and the page keeps working", async ({
   page,
 }) => {
@@ -294,7 +329,8 @@ test("a reload whose kept feed is shorter than the fresh one puts back the kept 
   await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
   const slug = (await current(page).getAttribute("data-slug")) ?? "?";
   // While a person is away, more games can go live, so the feed the page comes back with can be longer than the one
-  // it keeps. Here the kept feed is cut to its first two clips. (Each kept value is text in SvelteKit's own format: a
+  // it keeps. Here the kept feed is cut to its first two clips, and its keys are moved to a later round, as a place past
+  // the first page is, so the kept clips are the ones put back. (Each kept value is text in SvelteKit's own format: a
   // list whose first item is the value, with every object, list and string inside it held by its place in the list.)
   await page.addInitScript(() => {
     const name = "sveltekit:navigation-snapshot";
@@ -306,7 +342,9 @@ test("a reload whose kept feed is shorter than the fresh one puts back the kept 
         const place = parts[0] as { clips?: number } | null;
         if (typeof place?.clips !== "number") continue;
         parts[place.clips] = (parts[place.clips] as number[]).slice(0, 2);
-        values[id] = JSON.stringify(parts);
+        values[id] = JSON.stringify(
+          parts.map((part) => (typeof part === "string" ? part.replace(/^0~/, "7~") : part)),
+        );
         cut++;
       }
     if (cut === 0) throw new Error("the feed kept no clips");
