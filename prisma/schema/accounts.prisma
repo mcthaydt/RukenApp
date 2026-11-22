@@ -50,6 +50,8 @@ model User {
   staffAssignments StaffAssignment[]
   deletionRequests DeletionRequest[]
   textsSent        TextSent[]
+  computerKeys     ComputerKey[]
+  computerSignIns  ComputerSignIn[]
 
   // The membership feature's tables point at a person; they are declared in membership.prisma.
   billingCustomer         BillingCustomer?
@@ -221,4 +223,41 @@ model DeletionRequest {
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([purgeAfter])
+}
+
+/// A computer a maker let act for them: the key it holds is kept only as its SHA-256 (`keyHash`), shown once at sign-in.
+/// A key stops working when its row is deleted (removed, signed out, a changed or reset password, a deleted account) or
+/// after 90 days unused. `lastUsedAt` is written at most once an hour.
+model ComputerKey {
+  id         String   @id @default(cuid(2))
+  userId     String
+  /// What the computer called itself, up to 60 characters; the maker can rename it.
+  name       String
+  keyHash    String   @unique
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  lastUsedAt DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// A sign-in code for ten minutes and one Yes. `userId` and `answer` stay null until the maker answers on Ruken.
+/// `deviceSecretHash` is the SHA-256 of a secret only the terminal holds, so knowing the code alone never collects the
+/// key. `startedFrom` is the city and country of the request that made it ({"city":..,"country":..} as text), shown beside
+/// the Yes button.
+model ComputerSignIn {
+  id               String   @id @default(cuid(2))
+  code             String   @unique
+  deviceSecretHash String
+  name             String
+  startedFrom      String?
+  userId           String?
+  answer           String?
+  expiresAt        DateTime @db.Timestamptz
+  createdAt        DateTime @default(now()) @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }

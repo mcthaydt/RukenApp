@@ -6,6 +6,7 @@
   what was typed and not its tail; Enter still goes on, as in a one-line box, and the answer has no new line in it.
 -->
 <script lang="ts">
+  import { onMount, untrack } from "svelte";
   import { previewOfPage } from "./preview.svelte.ts";
 
   let {
@@ -30,6 +31,39 @@
   } = $props();
 
   const preview = previewOfPage();
+
+  // Words a person selected in the box before the page came alive stay selected when it does, so what they type next
+  // takes the selection's place. As the page comes alive Svelte puts the answer back into the box (a taller box is
+  // emptied first), which leaves the cursor after the last word: typing then added to the saved answer instead of
+  // replacing it (run 45033130832, and the one-line box in pull request 332's review). This script runs before the box
+  // is brought to life, so it reads the selection from the page as sent.
+  let answerBox = $state<HTMLInputElement | HTMLTextAreaElement | undefined>(undefined);
+  // Read once, on purpose: only the box as the page sent it matters, before it comes alive.
+  const selectedBefore = untrack(() => selectionOfSentBox(name));
+
+  function selectionOfSentBox(
+    named: string,
+  ): { value: string; start: number; end: number; direction: "forward" | "backward" | "none" } | undefined {
+    if (typeof document === "undefined") return undefined;
+    const sent = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+      `input[name="${CSS.escape(named)}"], textarea[name="${CSS.escape(named)}"]`,
+    );
+    if (sent === null || sent !== document.activeElement) return undefined;
+    const { selectionStart: start, selectionEnd: end, selectionDirection: direction } = sent;
+    if (start === null || end === null) return undefined;
+    return { value: sent.value, start, end, direction: direction ?? "none" };
+  }
+
+  // Put back once the box has come alive. A one-line box is put back a moment later than this, in a task Svelte queues
+  // as the page comes alive (`remove_input_defaults`: it takes the `value` the server wrote off the box and sets the
+  // words again, which moves the cursor to the end), so the selection goes back in the task after that one.
+  onMount(() => {
+    queueMicrotask(() => {
+      if (selectedBefore === undefined || answerBox === undefined || answerBox.value !== selectedBefore.value)
+        return;
+      answerBox.setSelectionRange(selectedBefore.start, selectedBefore.end, selectedBefore.direction);
+    });
+  });
 
   // What the box holds: what came from the server, until it is typed over. Bound, never set, because a set value is
   // written over anything typed before the page came alive (run 44977261003), while a bound one keeps it. A new value
@@ -63,6 +97,7 @@
     class="answer"
     type="text"
     {name}
+    bind:this={answerBox}
     bind:value={box}
     oninput={typed}
     autocomplete="off"
@@ -74,6 +109,7 @@
   <textarea
     class="answer"
     {name}
+    bind:this={answerBox}
     bind:value={box}
     rows={lines ?? 1}
     data-grows={lines === undefined ? "" : undefined}
