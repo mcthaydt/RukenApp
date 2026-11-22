@@ -65,9 +65,9 @@ Everything is a command except creating the key: Cloudflare can only create a fi
 2. In the RukenApp folder:
 
 ```sh
-gh api -X PUT repos/mcthaydt/RukenApp/environments/production \
+GH_PAGER=cat gh api -X PUT repos/mcthaydt/RukenApp/environments/production \
   -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true'
-gh api -X POST repos/mcthaydt/RukenApp/environments/production/deployment-branch-policies -f name=main -f type=branch
+GH_PAGER=cat gh api -X POST repos/mcthaydt/RukenApp/environments/production/deployment-branch-policies -f name=main -f type=branch
 gh secret set CLOUDFLARE_API_TOKEN --env production --repo mcthaydt/RukenApp   # paste the key when asked
 npx -y neonctl connection-string | gh secret set DIRECT_DATABASE_URL --env production --repo mcthaydt/RukenApp
 gh variable set CLOUDFLARE_ACCOUNT_ID --env production --repo mcthaydt/RukenApp --body "$(npx -y wrangler whoami 2>/dev/null | grep -oE '[0-9a-f]{32}' | head -1)"
