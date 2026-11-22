@@ -8,3 +8,4 @@ export {
   type AgreementPoint,
   type ParsedAgreement,
 } from "./agreement.ts";
+export { AGREE_FIRST, sendWhenAgreed } from "./send.ts";

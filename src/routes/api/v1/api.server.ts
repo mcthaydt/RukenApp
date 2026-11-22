@@ -48,7 +48,12 @@ export function problem(status: number, words: string): Response {
 /** The words for a refusal from the games feature, with the status the screens use for it (404 for "not found"). */
 export function gameProblem(error: unknown): Response {
   if (!(error instanceof GameError)) throw error;
-  return problem(error.code === "NOT_FOUND" ? 404 : failureStatus(error.code), error.message);
+  const status = error.code === "NOT_FOUND" ? 404 : failureStatus(error.code);
+  // The box the words are about, when they are about one, so a command can say what to type instead.
+  return Response.json(
+    { problem: error.message, ...(error.field === undefined ? {} : { field: error.field }) },
+    { status },
+  );
 }
 
 /**
