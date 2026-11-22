@@ -67,6 +67,7 @@ Each entry is dated and quotes the owner where the source does; "(paraphrase)" m
 - 2026-11-22 14:32 UTC: "padd some padding to the tab icon". The tab icon (`favicon.ico`, `icons/favicon-32.png`) keeps a clear green edge around RKN, 14% of the side on each edge. Merged (#320, `74bd185`).
 - 2026-11-22 15:23 UTC, answering whether a home-screen launch opens as its own app: "Home-screen app: yes, full screen". The manifest keeps `"display": "standalone"`; on an iPhone the home-screen app keeps its own sign-in, so a player signs in there once. Merged (#320, `74bd185`).
 - 2026-11-22 15:23 UTC: "why aren't deploys automatic and just coming from main?" They already were: Cloudflare's own build deploys every push to `main`, but before the tests finish (`bb33e0b` went live at 14:52 UTC; its `gate` failed at 15:00 UTC). 15:26 UTC, choosing A: "A" (deploy from GitHub Actions only after CI passes on `main`, then check the live site; the owner adds a Cloudflare key and turns off Cloudflare's own build). Spec `2026-11-22-deploy-from-green-main-design.md`.
+- 2026-11-22 17:02 UTC: "I'm also not a fan of how often we use the text with underline for buttons, I don't think professional apps use that very often, if ever". Every action that stood as underlined words (outside /about, which the landing page thread redoes) is a real button: quiet buttons are Dusky Green on the felt and Glaucous Green with ink words on a card; links inside sentences stay links. The journey `tests/browser/real-buttons.test.ts` holds it. On branch `claude/project-thread-p6zxug`.
 
 ## Active milestone: "Finish Ruken"
 
@@ -107,6 +108,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f` | not measured |
 | Hook follow-ups (the lane reading, the launcher-word refusal) | none yet | not started; lane 3 hooks changes, each its own pull request | not measured |
 | Deploy from a green `main` (lane 3) | spec `2026-11-22-deploy-from-green-main-design.md` on `claude/project-thread-mqcz6h` | spec written, waiting on its plan audit | 0% (0 of 8 plan steps ticked) |
+| Real buttons, not underlined words (lane 2) | branch `claude/project-thread-p6zxug` | built; waiting on its lane 2 review | not measured (short path, no plan) |
 | Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
 
 ## Slice 2
