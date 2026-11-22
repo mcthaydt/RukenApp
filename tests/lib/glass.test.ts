@@ -40,6 +40,32 @@ const NOT_SURFACES = new Set([".backdrop::after", ".drift"]);
 const isTokenBlock = (path: string, selector: string) =>
   path.endsWith("look.css") && /(^|\s):root$/.test(selector);
 
+/** A colour that lets what is behind show through: an alpha in any notation, or a mix with anything see-through. */
+const SEE_THROUGH_COLOUR =
+  /(?:rgba|hsla)\(|(?:rgb|hsl)\([^)]*\/|#(?:[0-9a-f]{4}|[0-9a-f]{8})\b|color-mix\([^;]*\btransparent\b/i;
+
+/** A share between 0 and 1 (not 0, which hides, and not 1, which is solid), written as a number or a percentage. */
+const isPartial = (value: string): boolean => {
+  const share = value.trim().endsWith("%") ? Number.parseFloat(value) / 100 : Number.parseFloat(value);
+  return share > 0 && share < 1;
+};
+
+/** Why a rule is a see-through surface of its own making, or null when it is not one. */
+function seeThrough(selector: string, body: string): string | null {
+  const backgrounds = [...body.matchAll(/(?:^|[;\s])background(?:-color)?\s*:\s*([^;]+)/g)].map((match) =>
+    (match[1] ?? "").trim(),
+  );
+  const colour = backgrounds.find((value) => SEE_THROUGH_COLOUR.test(value));
+  if (colour !== undefined) return colour;
+  if (backgrounds.length === 0 || NOT_SURFACES.has(selector)) return null;
+  const opacity = /(?:^|[;\s])opacity\s*:\s*([^;]+)/.exec(body)?.[1];
+  if (opacity !== undefined && isPartial(opacity)) return `opacity: ${opacity.trim()}`;
+  const filter = /(?:^|[;\s])filter\s*:\s*([^;]+)/.exec(body)?.[1] ?? "";
+  const filterOpacity = /opacity\(([^)]+)\)/.exec(filter)?.[1];
+  if (filterOpacity !== undefined && isPartial(filterOpacity)) return `filter: ${filter.trim()}`;
+  return null;
+}
+
 describe("frosted glass", () => {
   it("blurs behind a surface only with the glass or dim tokens, for every browser", () => {
     const found: string[] = [];
@@ -61,15 +87,44 @@ describe("frosted glass", () => {
     const found: string[] = [];
     for (const [path, selector, body] of rules) {
       if (isTokenBlock(path, selector)) continue;
-      const background = /(?:^|[;\s])background(?:-color)?\s*:\s*([^;]+)/.exec(body)?.[1] ?? "";
-      const seeThroughColour =
-        /color-mix\([^;]*transparent/.test(background) ||
-        /(?:rgba|hsla)\(|(?:rgb|hsl)\([^)]*\//.test(background);
-      const faded = /(?:^|[;\s])opacity\s*:\s*0?\.\d/.test(body);
-      if (seeThroughColour || (background !== "" && faded && !NOT_SURFACES.has(selector)))
-        found.push(`${path} ${selector}: ${background.trim()}`);
+      const reason = seeThrough(selector, body);
+      if (reason !== null) found.push(`${path} ${selector}: ${reason}`);
     }
     expect(found).toEqual([]);
+  });
+
+  // The guard itself: every way of writing see-through it should catch, and what it should leave alone.
+  it.each([
+    ["background: #00000080;"],
+    ["background-color: #0008;"],
+    ["background: rgba(0, 0, 0, 0.5);"],
+    ["background: rgb(0 0 0 / 50%);"],
+    ["background: hsl(0 0% 0% / .5);"],
+    ["background: color-mix(in srgb, var(--ink) 50%, transparent);"],
+    ["background: color-mix(in srgb, var(--ink) 50%, #0000);"],
+    ["background: var(--felt-deep); opacity: 0.8;"],
+    ["background: var(--felt-deep); opacity: .8;"],
+    ["background: var(--felt-deep); opacity: 80%;"],
+    ["background: var(--felt-deep); filter: opacity(0.6);"],
+    ["background: var(--felt-deep); filter: blur(2px) opacity(60%);"],
+    ["color: red; background: var(--felt-deep); background-color: rgb(0 0 0 / 0.4);"],
+  ])("catches %s", (body) => {
+    expect(seeThrough(".m", body)).not.toBeNull();
+  });
+
+  it.each([
+    ["background: var(--felt-deep);"],
+    ["background: transparent;"],
+    ["background: none;"],
+    ["background: #111314;"],
+    ["background: #fff;"],
+    ["background: var(--glass-bg);"],
+    ["background: var(--felt-deep); opacity: 1;"],
+    ["background: var(--felt-deep); opacity: 100%;"],
+    ["opacity: 0.5;"],
+    ["background: var(--felt-deep); opacity: 0;"],
+  ])("leaves alone %s", (body) => {
+    expect(seeThrough(".m", body)).toBeNull();
   });
 
   it("is frosted: blurred, darkened, with more colour, under a thin tint of the darkest felt", () => {
@@ -81,7 +136,6 @@ describe("frosted glass", () => {
     expect(token("--dim-filter")).toMatch(/blur\(\d+px\)/);
   });
 
-  // The worst case is a white clip behind: darkened by the filter, then under the tint. Chalk must still read.
   it("tints with the darkest felt", () => {
     const feltDeep = token("--felt-deep");
     const channels = [1, 3, 5].map((start) => parseInt(feltDeep.slice(start, start + 2), 16)).join(" ");
