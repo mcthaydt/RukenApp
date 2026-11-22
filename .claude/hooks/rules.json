@@ -68,7 +68,7 @@
   },
   "prFlow": {
     "enabled": true,
-    "maxOpenPrs": 6,
+    "maxOpenPrs": 10,
     "verdictAuthor": "mcthaydt",
     "lanePathsSource": "CLAUDE.md, Risk",
     "lanePaths": {

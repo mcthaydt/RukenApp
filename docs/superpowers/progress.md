@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-11-22 13:54 UTC (from `date`), by the Ruken-from-your-computer spec thread for the coordinator, which cannot write to the repo.
+Last updated: 2026-11-22 14:58 UTC (from `date`), by the Ruken-from-your-computer PR 1 thread for the coordinator, which cannot write to the repo.
 
 ## The owner's instructions
 
@@ -67,6 +67,7 @@ Each entry is dated and quotes the owner where the source does; "(paraphrase)" m
 - 2026-11-22 14:32 UTC: "padd some padding to the tab icon". The tab icon (`favicon.ico`, `icons/favicon-32.png`) keeps a clear green edge around RKN, 14% of the side on each edge. Merged (#320, `74bd185`).
 - 2026-11-22 15:23 UTC, answering whether a home-screen launch opens as its own app: "Home-screen app: yes, full screen". The manifest keeps `"display": "standalone"`; on an iPhone the home-screen app keeps its own sign-in, so a player signs in there once. Merged (#320, `74bd185`).
 - 2026-11-22 15:23 UTC: "why aren't deploys automatic and just coming from main?" They already were: Cloudflare's own build deploys every push to `main`, but before the tests finish (`bb33e0b` went live at 14:52 UTC; its `gate` failed at 15:00 UTC). 15:26 UTC, choosing A: "A" (deploy from GitHub Actions only after CI passes on `main`, then check the live site; the owner adds a Cloudflare key and turns off Cloudflare's own build). Spec `2026-11-22-deploy-from-green-main-design.md`.
+- 2026-11-22 17:15 UTC: "both", answering whether to raise the open pull request limit to 10 and push the learned feed's clean branch. The limit on open pull requests from this repo's own branches goes from 6 to 10 (CLAUDE.md Settings, `maxOpenPrs` in `.claude/hooks/rules.json`, `pr-rules`); docs-only pull requests still count and forks still do not. The branch limit goes from 7 to 11 (`main` plus 10). The 6 writers stay. Spec `2026-11-22-open-pr-limit-ten-design.md` (plan audit 1 PASS at `fe0a7c1`); the test fixture fix merged (#335); the number on `claude/project-thread-hyffd9`.
 
 ## Active milestone: "Finish Ruken"
 
@@ -75,7 +76,7 @@ Setup (first-time setup, lane 2) is done and moved to History, Setup.
 Current work, from GitHub on 2026-11-22 02:41 UTC (open pull requests: #209 phone sign-in; #292 this apps-kit practice alignment):
 
 - #209, phone sign-in (lane 3): audit PASS at `628803f`, waiting on its full run. After it merges and deploys, the owner runs the attach-phone command once; then it is retired.
-- The open pull request limit is 6 (#288, #289 merged).
+- The open pull request limit is 6 (#288, #289 merged); 10 on `claude/project-thread-hyffd9`.
 - Apps-kit practice alignment: the gap list and its fixes, on `claude/project-thread-iexvtj`.
 - "Speed up CI": its own thread.
 
@@ -102,6 +103,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Apps-kit practice alignment (lane 1) | #292 | gap list written; fixes in the pull request | not measured (short path, no plan) |
 | Phone sign-in, branch B (lane 3) | #209 | audit PASS at `628803f`, waiting on its full run | not measured (no plan checklist) |
 | Slice 3, the feed and the maker's page | unit K not started | units C, F, H, I and D merged (#246, #248, #247, #249, #286, #285) | 90% (28 of 31 plan steps ticked; one struck) |
+| Ruken from your computer, PR 1 (lane 3: computer keys, press-Yes sign-in, videos by command line) | branch `claude/project-thread-ps17ej` | built; all checks green locally; waiting for the implementation audit | 100% (12 of 12 PR 1 steps ticked) |
 | Slice 2 retrospective | none yet | owed (gap P5) | not started |
 | Flaky root causes, `play.test.ts:41` and `pay.test.ts:41` | #293 | merged as `e172f2a` (with the typed-before-alive fix); the follow-up for three more flaky journeys is on `claude/project-thread-4625xg` | not measured (short path, no plan) |
 | A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f` | not measured |

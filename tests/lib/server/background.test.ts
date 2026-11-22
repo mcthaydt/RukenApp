@@ -9,7 +9,7 @@ import { setPlatform } from "../../../src/lib/server/platform.ts";
 describe("runAfterAnswer", () => {
   it("hands the started work to the platform, so the host waits for it", async () => {
     const waitUntil = vi.fn<(work: Promise<unknown>) => void>();
-    setPlatform({ databaseUrl: () => "", waitUntil });
+    setPlatform({ databaseUrl: () => "", waitUntil, placeOf: () => ({ city: null, country: null }) });
     let finished = false;
 
     runAfterAnswer(async () => {
