@@ -158,9 +158,9 @@ describe("startCheckout", { timeout: 30_000 }, () => {
     });
 
     const intent = await db().checkoutIntent.findFirstOrThrow({ where: { userId } });
-    const user = await db().user.findUniqueOrThrow({ where: { id: userId } });
     const customer = await db().billingCustomer.findUniqueOrThrow({ where: { userId } });
-    expect(stripe.customersMade).toEqual([{ userId, email: user.email }]);
+    // The account's own address is a stand-in, so the customer is made with none: Checkout asks for the real one.
+    expect(stripe.customersMade).toEqual([{ userId }]);
     expect(stripe.checkouts).toEqual([
       {
         priceId: "price_annual",
@@ -384,6 +384,47 @@ describe("completeCheckout and expireCheckout", { timeout: 30_000 }, () => {
       state: "completed",
       completedAt: new Date(NOW_MS),
     });
+  });
+
+  it("keeps the address the person paid with, trimmed and in lower case, and never one that is not an address", async () => {
+    const { stripe, service } = setup();
+    const second = await createUser(db());
+    await start(service, second);
+    const secondIntent = await db().checkoutIntent.findFirstOrThrow({ where: { userId: second } });
+    stripe.sessions.set(secondIntent.stripeCheckoutSessionId, "complete");
+    const secondSubscription = stripeSubscription(stripe, second, { plan: secondIntent.plan });
+    await service.completeCheckout({
+      stripeCheckoutSessionId: secondIntent.stripeCheckoutSessionId,
+      subscriptionId: secondSubscription.id,
+      paidWithEmail: "  Paid.With@Example.TEST ",
+      atMs: NOW_MS,
+    });
+    expect((await db().user.findUniqueOrThrow({ where: { id: second } })).paperEmail).toBe(
+      "paid.with@example.test",
+    );
+
+    const third = await createUser(db());
+    await start(service, third);
+    const thirdIntent = await db().checkoutIntent.findFirstOrThrow({ where: { userId: third } });
+    stripe.sessions.set(thirdIntent.stripeCheckoutSessionId, "complete");
+    await service.completeCheckout({
+      stripeCheckoutSessionId: thirdIntent.stripeCheckoutSessionId,
+      subscriptionId: stripeSubscription(stripe, third, { plan: thirdIntent.plan }).id,
+      paidWithEmail: "not an address",
+      atMs: NOW_MS,
+    });
+    expect((await db().user.findUniqueOrThrow({ where: { id: third } })).paperEmail).toBeNull();
+  });
+
+  it("answers whether a person ever started to pay", async () => {
+    const { service } = setup();
+    const userId = await createUser(db());
+    expect(await service.hasBillingCustomer(userId)).toBe(false);
+
+    await start(service, userId);
+
+    expect(await service.hasBillingCustomer(userId)).toBe(true);
+    expect(await service.hasBillingCustomer(await createUser(db()))).toBe(false);
   });
 
   it("answers duplicate for a repeat, and unknown for a session Ruken did not start", async () => {

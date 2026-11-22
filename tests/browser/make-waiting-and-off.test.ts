@@ -145,7 +145,7 @@ test("a taken-off game's line and upright video are changed from the Taken off s
 }) => {
   const game = await addGame(browser, request);
   const before = await playersSee(browser, game.slug);
-  await signInAs(page, game.maker);
+  await signInAs(page, game.maker.number, game.maker.password);
   await takeOff(page, game.slug);
 
   // Every part has a Change, above the blue button that puts it back.
@@ -204,7 +204,7 @@ test("a taken-off game is deleted for good: it leaves Your games, its address an
   const live = await playersSee(browser, game.slug);
   expect(await gateAnswers(browser, live.upright)).toBe(200);
   const { publicId } = await idsOf(game.slug);
-  await signInAs(page, game.maker);
+  await signInAs(page, game.maker.number, game.maker.password);
   await takeOff(page, game.slug);
 
   const quiet = page.getByRole("link", { name: "Delete it for good" });

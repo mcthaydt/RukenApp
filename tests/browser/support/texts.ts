@@ -72,3 +72,21 @@ export async function codeTo(number: string): Promise<string> {
 export async function countCodesTo(number: string): Promise<number> {
   return (await codesKeptFor(number)).length;
 }
+
+/** Every code sent to this number so far, oldest first, with the status the stand-in holds for it. */
+export function codesKept(number: string): Promise<Code[]> {
+  return codesKeptFor(number);
+}
+
+/** Tells the stand-in to answer the next text or code started for this number with Twilio's 500, once. */
+export async function failNextTextTo(number: string): Promise<void> {
+  await fetch(`${TWILIO_URL}/test/fail`, { method: "POST", body: JSON.stringify({ to: number }) });
+}
+
+/** Tells the stand-in what Twilio's number check says about this number: it changed hands, or not, or cannot say. */
+export async function sayChangedHands(
+  number: string,
+  answer: "yes" | "no" | "no_data_available",
+): Promise<void> {
+  await fetch(`${TWILIO_URL}/test/hands`, { method: "POST", body: JSON.stringify({ number, answer }) });
+}

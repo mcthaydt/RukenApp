@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 import type { RateLimiter, RateLimitRule } from "../../lib/server/rate-limit.ts";
+import { setPaperEmail } from "../accounts/accounts.ts";
 import { pastDuePausesAt, premiumAccess } from "./access.ts";
 import type { Arrival } from "./arrival.ts";
 import { premiumCheckoutExpiry } from "./checkout.ts";
@@ -86,8 +87,7 @@ export function createMembershipService(deps: MembershipServiceDeps) {
   async function customerFor(tables: Tables, userId: string): Promise<string> {
     const existing = await tables.billingCustomer.findUnique({ where: { userId } });
     if (existing !== null) return existing.stripeCustomerId;
-    const user = await tables.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
-    const customerId = await stripe.createCustomer({ userId, email: user.email });
+    const customerId = await stripe.createCustomer({ userId });
     await tables.billingCustomer.createMany({
       data: [{ userId, stripeCustomerId: customerId }],
       skipDuplicates: true,
@@ -261,6 +261,11 @@ export function createMembershipService(deps: MembershipServiceDeps) {
       return "ended";
     },
 
+    /** Whether the person ever had a Stripe customer made for them, which is to say they started to pay. */
+    async hasBillingCustomer(userId: string): Promise<boolean> {
+      return (await db.billingCustomer.count({ where: { userId } })) > 0;
+    },
+
     // ---- The webhook handlers. Each reads Stripe again; the event is only a signal. ----
 
     /**
@@ -273,6 +278,8 @@ export function createMembershipService(deps: MembershipServiceDeps) {
     async completeCheckout(input: {
       readonly stripeCheckoutSessionId: string;
       readonly subscriptionId: string;
+      /** The address the person paid with, when Stripe sent one: kept for the few legal emails and a reset code. */
+      readonly paidWithEmail?: string | null;
       /** The event's time, in milliseconds. */
       readonly atMs: number;
     }): Promise<"recorded" | "duplicate" | "unknown"> {
@@ -299,6 +306,9 @@ export function createMembershipService(deps: MembershipServiceDeps) {
             arrivedAt: intent.arrivedAt,
           },
         });
+        // Only an address with an "@" in it: the field is Stripe's, and a legal email is sent to whatever is kept.
+        const email = input.paidWithEmail?.trim() ?? "";
+        if (email.includes("@")) await setPaperEmail(tx, intent.userId, email);
         return "recorded";
       });
     },

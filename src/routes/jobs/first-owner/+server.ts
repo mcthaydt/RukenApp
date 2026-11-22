@@ -4,12 +4,12 @@ import { prisma } from "../../../lib/server/db.ts";
 import { hasJobSecret } from "../../../lib/server/job-secret.ts";
 import type { RequestHandler } from "./$types";
 
-/** The `email` of a JSON body, or null when the body is not JSON or holds no text there. */
-async function emailOf(request: Request): Promise<string | null> {
+/** The `phone` of a JSON body, or null when the body is not JSON or holds no text there. */
+async function phoneOf(request: Request): Promise<string | null> {
   try {
     const body: unknown = await request.json();
-    const email = typeof body === "object" && body !== null ? (body as { email?: unknown }).email : undefined;
-    return typeof email === "string" && email.trim() !== "" ? email : null;
+    const phone = typeof body === "object" && body !== null ? (body as { phone?: unknown }).phone : undefined;
+    return typeof phone === "string" && phone.trim() !== "" ? phone : null;
   } catch {
     return null;
   }
@@ -19,18 +19,18 @@ async function emailOf(request: Request): Promise<string | null> {
 // answers 404 to anyone without the secret. It does nothing once any staff account exists.
 export const POST: RequestHandler = async ({ request }) => {
   if (!hasJobSecret(request)) error(404, "Not found");
-  const email = await emailOf(request);
-  if (email === null)
-    return Response.json({ problem: "Send the email address of the account." }, { status: 400 });
+  const phone = await phoneOf(request);
+  if (phone === null)
+    return Response.json({ problem: "Send the phone number of the account." }, { status: 400 });
 
-  switch (await grantFirstOwner(prisma(), email)) {
+  switch (await grantFirstOwner(prisma(), phone)) {
     case "granted":
       return Response.json({ granted: true });
     case "already_one":
       return Response.json({ problem: "There is already a staff account." }, { status: 409 });
     case "no_account":
       return Response.json(
-        { problem: "No account has that email. Sign up on the site first." },
+        { problem: "No account has that number. Sign up on the site first." },
         { status: 400 },
       );
   }

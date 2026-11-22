@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signUpInItsOwnContext } from "./support/account.ts";
-import { staffRolesOfEmail } from "./support/database.ts";
+import { staffRolesOfNumber } from "./support/database.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -15,8 +15,8 @@ const JSON_BODY = { "content-type": "application/json" };
 const WITH_SECRET = { ...JSON_BODY, authorization: `Bearer ${SECRET}` };
 
 test("answers 404 to anyone without the secret, and makes nobody staff", async ({ request, browser }) => {
-  const { email } = await signUpInItsOwnContext(browser);
-  const data = JSON.stringify({ email });
+  const { number } = await signUpInItsOwnContext(browser);
+  const data = JSON.stringify({ phone: number });
 
   expect((await request.post("/jobs/first-owner", { headers: JSON_BODY, data })).status()).toBe(404);
   const wrong = await request.post("/jobs/first-owner", {
@@ -25,7 +25,7 @@ test("answers 404 to anyone without the secret, and makes nobody staff", async (
   });
   expect(wrong.status()).toBe(404);
 
-  expect(await staffRolesOfEmail(email)).toEqual([]);
+  expect(await staffRolesOfNumber(number)).toEqual([]);
 });
 
 test("only a POST asks for it", async ({ request }) => {
@@ -36,26 +36,26 @@ test("makes the first staff account the owner, and says plainly when there is on
   request,
   browser,
 }) => {
-  const { email } = await signUpInItsOwnContext(browser);
+  const { number } = await signUpInItsOwnContext(browser);
 
   const answer = await request.post("/jobs/first-owner", {
     headers: WITH_SECRET,
-    data: JSON.stringify({ email }),
+    data: JSON.stringify({ phone: number }),
   });
 
   expect([200, 409]).toContain(answer.status());
   if (answer.status() === 200) {
     expect(await answer.json()).toEqual({ granted: true });
-    expect(await staffRolesOfEmail(email)).toEqual(["owner"]);
+    expect(await staffRolesOfNumber(number)).toEqual(["owner"]);
   } else {
     expect(await answer.json()).toEqual({ problem: "There is already a staff account." });
-    expect(await staffRolesOfEmail(email)).toEqual([]);
+    expect(await staffRolesOfNumber(number)).toEqual([]);
   }
 });
 
-test("asks for an email address when none came", async ({ request }) => {
+test("asks for a phone number when none came", async ({ request }) => {
   const answer = await request.post("/jobs/first-owner", { headers: WITH_SECRET, data: JSON.stringify({}) });
 
   expect(answer.status()).toBe(400);
-  expect(await answer.json()).toEqual({ problem: "Send the email address of the account." });
+  expect(await answer.json()).toEqual({ problem: "Send the phone number of the account." });
 });

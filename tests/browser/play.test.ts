@@ -1,15 +1,12 @@
 import { expect, test } from "@playwright/test";
 import {
   continueToPayment,
-  fillBirthDate,
-  freshEmail,
-  JOURNEY_PASSWORD,
+  finishSignUpForm,
+  freshNumber,
   pageHasSettled,
   payAsNewMember,
   signInAs,
   pressPay,
-  yearsAgo,
-  SITE_ANSWER_TIMEOUT,
 } from "./support/account.ts";
 import { endMembershipOf, userIdOf } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
@@ -62,8 +59,8 @@ test("the game sees nothing about the player", async ({ page }) => {
   const seen = page.frameLocator("iframe.frame").locator("#seen");
   await expect(seen).not.toHaveText("");
   const text = (await seen.textContent()) ?? "";
-  expect(text).not.toContain(member.email);
-  expect(text).not.toContain(await userIdOf(member.email));
+  expect(text).not.toContain(member.number);
+  expect(text).not.toContain(await userIdOf(member.number));
   expect(text).not.toContain(member.checkoutSessionId);
   await expect(page.locator("iframe.frame")).not.toHaveAttribute("name", /.+/);
 });
@@ -79,10 +76,7 @@ test("a stranger signs up, pays, and is in the game they chose", async ({ page }
   await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("link", { name: "Play" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByLabel("Email").fill(freshEmail());
-  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
-  await fillBirthDate(page, yearsAgo(30));
-  await page.getByRole("button", { name: "Create account" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+  await finishSignUpForm(page, freshNumber());
   await continueToPayment(page);
   await pressPay(page);
   await expect(page).toHaveURL(`/g/${game.slug}/play`);
@@ -97,7 +91,7 @@ test("anyone can play a free game without an account", async ({ page }) => {
 });
 
 test("the game's own maker plays it without paying", async ({ page }) => {
-  await signInAs(page, game.maker);
+  await signInAs(page, game.maker.number, game.maker.password);
   await page.goto(`/g/${game.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
 });
@@ -364,7 +358,7 @@ test("a game taken off Ruken is gone on the next load", async ({ page, browser, 
 
   const context = await browser.newContext({ baseURL: "http://localhost:4173" });
   const maker = await context.newPage();
-  await signInAs(maker, own.maker);
+  await signInAs(maker, own.maker.number, own.maker.password);
   await maker.goto(`/make/${own.slug}/take-off`);
   await maker.getByRole("button", { name: /^Take it off/ }).click();
   await expect(maker.getByRole("heading", { level: 1 })).toHaveText("Taken off Ruken");

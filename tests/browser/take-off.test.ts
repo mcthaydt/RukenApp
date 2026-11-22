@@ -67,7 +67,7 @@ test("putting it back copies the newest version and sends it for review", async 
 }) => {
   test.setTimeout(90_000);
   const game = await addGame(browser, request);
-  await signInAs(page, game.maker);
+  await signInAs(page, game.maker.number, game.maker.password);
   await takeOff(page, game.slug);
 
   await page.getByRole("button", { name: "Put it back on Ruken" }).click();
