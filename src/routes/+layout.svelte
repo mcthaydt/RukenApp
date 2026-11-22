@@ -12,7 +12,7 @@
   import { page } from "$app/state";
   import { Bar } from "../features/feed/feed.browser.ts";
   import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
-  import { moveBetween } from "../lib/page-moves.ts";
+  import { moveBetween, slideWhile } from "../lib/page-moves.ts";
   import PageLoading from "../lib/page-loading.svelte";
   import { sendInApp } from "../lib/stay-in-app.ts";
   import { BASE_TITLE } from "../lib/titles.ts";
@@ -81,20 +81,7 @@
     // The mark stays until the next move: while it is on, the maker area's rising lines keep still, so a page that
     // slides in does not also rise (look.css).
     html.dataset.move = move;
-    // The new page must come whatever the browser does with the slide: a slide it skips (Safari skipped one leaving
-    // the play screen in CI) lets the move go on, and so does a slide that never starts.
-    return new Promise<void>((resolve) => {
-      const slide = document.startViewTransition(async () => {
-        resolve();
-        await navigation.complete;
-      });
-      slide.ready.catch(() => {
-        resolve();
-      });
-      setTimeout(() => {
-        resolve();
-      }, 1000);
-    });
+    return slideWhile(navigation.complete);
   });
 </script>
 

@@ -33,3 +33,23 @@ export function moveBetween(from: string, to: string, wentBack: boolean): Move |
   if (was === goes && to === PLACES[goes]) return "back";
   return "on";
 }
+
+/**
+ * Plays one slide while the new page comes in, and answers once the new page may be put in. The new page must come
+ * whatever the browser does with the slide: a slide it skips (Safari skipped one leaving the play screen in CI) lets
+ * the move go on, and so does a slide that never starts, after a second at most.
+ */
+export function slideWhile(arrived: Promise<unknown>): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const slide = document.startViewTransition(async () => {
+      resolve();
+      await arrived;
+    });
+    slide.ready.catch(() => {
+      resolve();
+    });
+    setTimeout(() => {
+      resolve();
+    }, 1000);
+  });
+}

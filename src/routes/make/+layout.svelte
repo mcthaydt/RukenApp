@@ -6,6 +6,7 @@
 <script lang="ts">
   import { onNavigate } from "$app/navigation";
   import { page } from "$app/state";
+  import { slideWhile } from "../../lib/page-moves.ts";
   import type { LayoutProps } from "./$types";
 
   let { data, children }: LayoutProps = $props();
@@ -52,12 +53,7 @@
     document.documentElement.dataset.step = going ? "back" : "on";
     if (!("startViewTransition" in document) || matchMedia("(prefers-reduced-motion: reduce)").matches)
       return;
-    return new Promise<void>((resolve) => {
-      document.startViewTransition(async () => {
-        resolve();
-        await navigation.complete;
-      });
-    });
+    return slideWhile(navigation.complete);
   });
 </script>
 

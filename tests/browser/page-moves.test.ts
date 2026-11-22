@@ -7,6 +7,7 @@ import {
   nationalOf,
   pageHasSettled,
   SITE_ANSWER_TIMEOUT,
+  signUp,
   signUpInItsOwnContext,
 } from "./support/account.ts";
 
@@ -48,6 +49,21 @@ async function signIn(page: Page, number: string): Promise<void> {
   await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/");
   await pageHasSettled(page);
+}
+
+/** Stands in for a browser whose slide never starts (Safari in CI): it neither runs the move nor ever finishes. */
+async function slideNeverStarts(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const never = new Promise<never>(() => {});
+    const refused = Promise.reject(new DOMException("Skipped", "AbortError"));
+    refused.catch(() => {});
+    (document as unknown as { startViewTransition: () => unknown }).startViewTransition = () => ({
+      ready: refused,
+      finished: never,
+      updateCallbackDone: never,
+      skipTransition: () => {},
+    });
+  });
 }
 
 test("Feed, Your games and You slide sideways the way the bar runs, without a page load", async ({
@@ -146,17 +162,7 @@ test("a browser that skips the slide still shows the new page", async ({ page, b
   // Safari in CI once left Back from the play screen on the old page: the address changed and the page never did.
   // Here the browser's slide never starts at all, the worst it can do.
   const free = await addGame(browser, request, { free: true });
-  await page.addInitScript(() => {
-    const never = new Promise<never>(() => {});
-    const refused = Promise.reject(new DOMException("Skipped", "AbortError"));
-    refused.catch(() => {});
-    (document as unknown as { startViewTransition: () => unknown }).startViewTransition = () => ({
-      ready: refused,
-      finished: never,
-      updateCallbackDone: never,
-      skipTransition: () => {},
-    });
-  });
+  await slideNeverStarts(page);
   await page.goto(`/g/${free.slug}`);
   await markThePage(page);
   await page.getByRole("link", { name: "Play" }).click();
@@ -166,5 +172,16 @@ test("a browser that skips the slide still shows the new page", async ({ page, b
   await page.goBack();
   await expect(page).toHaveURL(`/g/${free.slug}`);
   await expect(page.getByRole("link", { name: "Play" })).toBeVisible();
+  await expectNoNewPageLoad(page);
+});
+
+test("a browser that skips the slide still shows the maker's next question", async ({ page }) => {
+  await signUp(page);
+  await slideNeverStarts(page);
+  await page.goto("/make");
+  await markThePage(page);
+  await page.getByRole("main").getByRole("link", { name: "Add a game" }).click();
+  await expect(page).toHaveURL("/make/new");
+  await expect(page.getByText("Question 1 of 6")).toBeVisible();
   await expectNoNewPageLoad(page);
 });
