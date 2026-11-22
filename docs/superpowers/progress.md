@@ -139,6 +139,8 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 
 ### Flaky tests
 
+- `tests/browser/feed-controls.test.ts` "each key moves one clip... within a second" [computer], first run on the unit D branch at `aff0cd9`, three profiles side by side: `data-current` was still false on the second clip after the 1-second wait; 8 of 8 passed on a rerun. Cause: the journey asserted a 1-second wall clock on a busy machine. Fix: it waits for the state (the clip becomes current), not the clock. Gap: the journey no longer measures the "within one second" budget (spec section 7), and the same go for the reduced-motion check, which now checks for no in-between scroll positions instead of two frames.
+
 Each failed once and passed on its one rerun. Root causes and fixes are in pull request #242.
 
 - `tests/browser/make-design-pass.test.ts:284` "a 56-letter name in a question's heading › on an iPhone SE held sideways › the box is above the bar" [phone-landscape], run 44829777713 at `af7ec29`: "there is nothing on the page to measure" for `.acts`. Cause: `addDraft` waited only for the address to become `/line`, which changes a moment before the screen does, so the journey measured the name question's bar while it was being taken away. Fix: `addDraft` waits for question 2's box.

@@ -160,6 +160,16 @@ header + main {
   border-radius: var(--radius-card);
 }
 
+/* On the feed the clips fill the whole window, so the line floats above them. */
+.panel.over {
+  position: fixed;
+  top: 0.5rem;
+  left: 50%;
+  z-index: 20;
+  translate: -50% 0;
+  margin: 0;
+}
+
 .panel + main {
   margin-top: 1rem;
 }
