@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
   import { cropSquare, PHOTO_SIDE } from "../../../../features/pages/pages.browser.ts";
-  import ThemePicker from "../../../../features/pages/ThemePicker.svelte";
+  import { ThemePicker } from "../../../../features/pages/pages.screens.ts";
   import QuestionScreen from "../../parts/QuestionScreen.svelte";
   import TextAnswer from "../../parts/TextAnswer.svelte";
   import type { PageProps } from "./$types";

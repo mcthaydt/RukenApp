@@ -68,7 +68,7 @@ async function judge(pr, action, closeNow) {
   const failures = [];
   const f = config.prFlow ?? {};
   const n = pr.number;
-  const max = f.maxOpenPrs ?? 3;
+  const max = f.maxOpenPrs ?? 6;
   const body = pr.body ?? '';
 
   // 1. Open limit. Every pull request counts, docs included; forks do not.
