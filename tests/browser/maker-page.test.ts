@@ -154,7 +154,7 @@ test("small icons sit after the links, one round link for each site, and are not
     const box = await icon.boundingBox();
     expect(box?.width).toBe(48);
     expect(box?.height).toBe(48);
-    await expect(icon).toHaveCSS("border-radius", "24px");
+    await expect(icon).toHaveCSS("border-radius", "50%");
     await expect(icon).toHaveCSS("background-color", rgb(theme.button));
     await expect(icon.locator("svg path")).toHaveCount(1);
     await expect(icon.locator("svg")).toHaveCSS("fill", rgb(theme.buttonText));
