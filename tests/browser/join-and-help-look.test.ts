@@ -185,16 +185,23 @@ test.describe("the paywall card over the game's clip", () => {
     expect(surface).toEqual({ background: "rgba(0, 0, 0, 0)", filter: "none" });
     await expect(top).toHaveCSS("color", rgb(token("--chalk")));
 
-    // Behind the title, away from its words (the top's lower right), against the clip beside the card at that height.
+    // Behind the title, away from its words (the top's lower right).
     await page.locator(".behindcard video").evaluate((video: HTMLVideoElement) => {
       video.pause();
     });
+    // The same patch is read again with the card hidden: the clip varies across the screen, so only the same place is a fair
+    // comparison. With no surface on the top, the two are the same.
     const box = await boxOf(top);
-    const card = await boxOf(page.locator("main.card"));
-    const strip = { y: box.y + box.height - 40, height: 30 };
-    const behindTitle = await meanLuminance(page, { x: box.x + box.width - 60, width: 40, ...strip });
-    const besideCard = await meanLuminance(page, { x: Math.max(0, card.x - 14), width: 10, ...strip });
-    expect(behindTitle).toBeGreaterThanOrEqual(besideCard * 0.9);
+    const patch = { x: box.x + box.width - 60, width: 40, y: box.y + box.height - 40, height: 30 };
+    const behindTitle = await meanLuminance(page, patch);
+    await page.locator("main.card").evaluate((node: HTMLElement) => {
+      node.style.visibility = "hidden";
+    });
+    const clipAlone = await meanLuminance(page, patch);
+    await page.locator("main.card").evaluate((node: HTMLElement) => {
+      node.style.visibility = "";
+    });
+    expect(behindTitle).toBeGreaterThanOrEqual(clipAlone * 0.9);
     await showTheOwner(page, testInfo, "the bold paywall card over a clip");
   });
 

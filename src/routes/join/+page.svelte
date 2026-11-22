@@ -88,8 +88,12 @@
     </div>
   {:else}
     <div class="cardtop">
-      {@render close()}
-      <h1>Join Ruken to play</h1>
+      <!-- The close mark and the title share a row, so the title's lines wrap round the mark; what a member gets sits at the
+           foot of the top, however tall the window makes it. -->
+      <div class="titlerow">
+        {@render close()}
+        <h1>Join Ruken to play</h1>
+      </div>
       <!-- What a member gets, each a short line with a tick: the owner's own list (2026-11-22). -->
       <ul class="gets">
         <li>Every game on Ruken</li>

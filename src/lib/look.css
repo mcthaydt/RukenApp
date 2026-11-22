@@ -2370,6 +2370,72 @@ header ~ .behindcard + main.card.bold {
   }
 }
 
+/* The card fills the window down to a gutter at the bottom, so a short card is never a strip on empty felt (the owner,
+   2026-11-22: "the white space makes it look incomplete, especially on desktop"). The space above it is the wordmark's row:
+   half a rem, the 48px wordmark and a rem on a phone; three rems, the wordmark and a rem and a half from 48rem. On a phone
+   and a tablet the top grows and the paper half sits at the foot of the screen, as a sheet does; on a computer both halves
+   take the full height. A card taller than the window just runs on and scrolls, as before. */
+main.card.bold,
+main.helpdesk {
+  --above-main: 4.5rem;
+  --below-main: 1rem;
+
+  min-height: calc(100vh - var(--above-main) - var(--below-main));
+  min-height: calc(100dvh - var(--above-main) - var(--below-main));
+  margin-bottom: var(--below-main);
+}
+
+@media (min-width: 48rem) {
+  main.card.bold,
+  main.helpdesk {
+    --above-main: 7.5rem;
+    --below-main: 2rem;
+  }
+}
+
+.card.bold {
+  grid-template-rows: 1fr auto;
+}
+
+/* A tall top does not leave its lines at the top and a gap under them: the title stays at the top and what a member gets
+   sits at the top's foot, by the plans. */
+.card.bold .cardtop:has(.gets) {
+  display: flex;
+  flex-direction: column;
+}
+
+.card.bold .cardtop:has(.gets) .gets {
+  margin-top: auto;
+  padding-top: 1.5rem;
+}
+
+/* With one thing to do (already a member, or paused) the top holds only the title: it sits at the top's foot, right over
+   the button, and is as big as the screen lets it be, so the top is a poster, not a green field with a line at its head.
+   The close mark keeps the corner, and the top keeps the mark's row clear above the title. */
+.card.bold:not(:has(.plans)) .cardtop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.card.bold:not(:has(.plans)) .cardtop:has(.close) {
+  padding-top: calc(var(--card-pad) + var(--size-target) + 1rem);
+}
+
+.card.bold:not(:has(.plans)) .cardtop .close {
+  position: absolute;
+  top: var(--card-pad);
+  right: var(--card-pad);
+}
+
+/* From a tablet up the title is as big as the top lets it be. */
+@media (min-width: 48rem) {
+  .card.bold .cardtop h1 {
+    font-size: clamp(4.5rem, 12vw, 8rem);
+  }
+}
+
 @media (min-width: 60rem) {
   main.card.bold,
   header:has(~ main.card.bold) {
@@ -2379,17 +2445,36 @@ header ~ .behindcard + main.card.bold {
   /* Two even halves: a long title word never widens its half. */
   .card.bold {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: 1fr;
   }
 
   .card.bold .cardtop {
     border-radius: var(--radius-card) 0 0 var(--radius-card);
   }
 
+  /* The plans and the button at the top of the paper half, the small print at its foot, level with the last of what a
+     member gets: the half is laid out from edge to edge, not a block floating in white. */
   .card.bold .cardbody {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-between;
     border-radius: 0 var(--radius-card) var(--radius-card) 0;
+  }
+
+  /* With one thing to do (already a member, or paused) there is nothing to set beside the title: the card is one tall
+     panel with the title big across it and the paper strip at its foot, as on a tablet. */
+  .card.bold:not(:has(.plans)) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 1fr auto;
+  }
+
+  .card.bold:not(:has(.plans)) .cardtop {
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+  }
+
+  .card.bold:not(:has(.plans)) .cardbody {
+    display: block;
+    border-radius: 0 0 var(--radius-card) var(--radius-card);
   }
 }
 
@@ -2400,9 +2485,10 @@ header ~ .behindcard + main.card.bold {
   overflow-wrap: normal;
 }
 
+/* On a computer the title grows to the size of its half. */
 @media (min-width: 60rem) {
-  .card.bold h1 {
-    font-size: clamp(3.5rem, 6vw, 5rem);
+  .card.bold .cardtop h1 {
+    font-size: clamp(4rem, 7.5vw, 7rem);
   }
 }
 
@@ -2592,7 +2678,18 @@ header ~ .behindcard + main.card.bold {
 
 /* A short window (a small phone, a laptop with its bars) packs the card tighter, so the blue button is in view without
    scrolling. */
-@media (max-height: 740px) {
+/* On a computer the plans grow to the size of their half. */
+@media (min-width: 60rem) {
+  .card.bold .plan {
+    min-height: 5.5rem;
+  }
+
+  .card.bold .price {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-height: 740px) and (max-width: 59.99rem) {
   .card.bold .gets {
     gap: 0.25rem;
     margin-top: 1rem;
@@ -2661,8 +2758,22 @@ header:has(~ main.helpdesk) {
   font: var(--text-statement);
 }
 
+/* The tiles take what the window has left under the title, so the page ends at the window's foot, not partway down. */
+main.helpdesk {
+  display: flex;
+  flex-direction: column;
+}
+
+.helpdesk nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
 .helpdesk ol {
   display: grid;
+  flex: 1;
+  grid-auto-rows: 1fr;
   gap: 1rem;
   margin: 2.5rem 0 0;
   padding: 0;
@@ -2671,8 +2782,15 @@ header:has(~ main.helpdesk) {
 
 @media (min-width: 48rem) {
   .helpdesk ol {
-    grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem;
+  }
+}
+
+/* Side by side only where a tile is wide enough to read across; on a tablet three narrow columns were tall strips with
+   nothing in their middles, so the tiles stack as wide rows there, as on a phone. */
+@media (min-width: 60rem) {
+  .helpdesk ol {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -2704,8 +2822,13 @@ header:has(~ main.helpdesk) {
 
 @media (min-width: 48rem) {
   .helpdesk .guide {
-    min-height: 19rem;
     padding: 2rem;
+  }
+}
+
+@media (min-width: 60rem) {
+  .helpdesk .guide {
+    min-height: 19rem;
   }
 }
 
@@ -2726,14 +2849,14 @@ header:has(~ main.helpdesk) {
 }
 
 .helpdesk .guide h2 {
-  margin-top: 1.5rem;
+  margin-top: auto;
+  padding-top: 1.5rem;
   font: 400 1.75rem/1.1 var(--font-display);
   text-wrap: balance;
 }
 
 @media (min-width: 48rem) {
   .helpdesk .guide h2 {
-    margin-top: auto;
     padding-top: 2rem;
   }
 }

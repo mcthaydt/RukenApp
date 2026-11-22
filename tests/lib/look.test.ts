@@ -395,6 +395,7 @@ describe("screens wear the look and nothing of their own", () => {
     "helpdesk",
     "lead",
     "guide",
+    "titlerow",
     "number",
     "arrow",
   ];
