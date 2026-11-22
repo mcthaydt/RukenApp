@@ -28,7 +28,7 @@
 # journey still runs and checks as before: only the pictures change.
 #
 # A pull request that changes only .md files has nothing to test (Owner, 2026-11-15: "when a PR only touches .md
-# files, skip the tests and allow the merge, in all repos."). .github/scripts/docs-only.sh decides it. Each job asks
+# files, skip the tests and allow the merge, in all repos."). The DOCS_ONLY script below decides it. Each job asks
 # it only to skip its own work; `gate` asks it again, and only the gate's answer lets skipped work pass. The jobs are
 # not left out with `paths-ignore`, because a required check that never starts stays pending and nothing merges.
 # One file that is not .md, or any doubt about what changed, runs everything. A push to main always does.
@@ -65,6 +65,52 @@ env:
   # (or the picker itself, the stand-in servers and the helpers the journeys import), so it shoots every screen.
   SHOOT_EVERYTHING_WHEN: '^(prisma|cloudflare|tests/fixtures|tests/browser/support|tests/support)/|^(pnpm-lock\.yaml|package\.json|vite\.config\.ts|playwright\.config\.ts|wrangler\.jsonc|\.github/workflows/ci\.yml)$'
 
+  # The docs-only rule, written once and run by every job as `bash -c "$DOCS_ONLY"`. Kept in this file, not a
+  # script beside it, so the CI change stays one file (build, "A change does not quietly edit its own check").
+  DOCS_ONLY: |
+    # Prints docs_only=true when this pull request changes only .md files, otherwise docs_only=false.
+    # A push to main, an empty diff or any error answers false: a doubt never skips a test.
+    # The gate's own answer is the one that counts (release, Docs only); other jobs ask only to save work.
+    set -u
+    docs_only=false
+    if [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ]; then
+      # --no-renames lists both the old and the new name, so moving a code file to a .md name still counts.
+      if files=$(git diff --name-only --no-renames origin/main...HEAD); then
+        printf '%s\n' "$files" >&2
+        if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '\.md$'; then
+          docs_only=true
+        fi
+      fi
+    fi
+    echo "Only .md files changed: $docs_only" >&2
+    echo "docs_only=$docs_only"
+  # One line per test in a Playwright JSON report, run as `node --input-type=module -e "$TESTS_IN_REPORT" <mode> <file>`.
+  TESTS_IN_REPORT: |
+    // node tests-in-report.js <ran|listed> <Playwright JSON report>
+    // Prints one line per test, sorted: "<device profile>|<file>:<line>:<column>|<title path>".
+    // "ran" keeps the tests that have a result in the report (what this piece really ran); "listed" keeps every
+    // test, as `playwright test --list --reporter=json` gives them.
+    import { readFileSync } from "node:fs";
+
+    const [mode, file] = process.argv.slice(1);
+    if (mode !== "ran" && mode !== "listed") throw new Error(`mode must be ran or listed, not ${mode}`);
+    const report = JSON.parse(readFileSync(file, "utf8"));
+    const lines = [];
+    const walk = (suite, titles) => {
+      const here = suite.title ? [...titles, suite.title] : titles;
+      for (const spec of suite.specs ?? []) {
+        for (const t of spec.tests ?? []) {
+          if (mode === "ran" && !(t.results?.length > 0)) continue;
+          lines.push(
+            `${t.projectName}|${spec.file}:${spec.line}:${spec.column}|${[...here, spec.title].join(" › ")}`,
+          );
+        }
+      }
+      for (const child of suite.suites ?? []) walk(child, here);
+    };
+    for (const suite of report.suites ?? []) walk(suite, []);
+    process.stdout.write(lines.sort().join("\n") + (lines.length ? "\n" : ""));
+
 jobs:
   verify:
     name: ${{ github.event.pull_request.draft && 'verify (quick, draft)' || 'verify' }}
@@ -78,7 +124,7 @@ jobs:
           fetch-depth: 0
       - name: Only .md files changed?
         id: docs
-        run: .github/scripts/docs-only.sh >> "$GITHUB_OUTPUT"
+        run: bash -c "$DOCS_ONLY" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: steps.docs.outputs.docs_only != 'true'
       # `cache: pnpm` keeps the downloaded packages between runs.
@@ -139,7 +185,7 @@ jobs:
           fetch-depth: 0
       - name: Only .md files changed?
         id: docs
-        run: .github/scripts/docs-only.sh >> "$GITHUB_OUTPUT"
+        run: bash -c "$DOCS_ONLY" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: steps.docs.outputs.docs_only != 'true'
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -204,7 +250,7 @@ jobs:
         run: |
           # The job container runs as root over a checkout git did not make, so git is told the folder is ours.
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          .github/scripts/docs-only.sh >> "$GITHUB_OUTPUT"
+          bash -c "$DOCS_ONLY" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: steps.docs.outputs.docs_only != 'true'
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -223,8 +269,9 @@ jobs:
           key: ci-test-times-${{ github.sha }}
           restore-keys: ci-test-times-
       # Asks Playwright which journeys this piece would run, before anything slow starts. A draft piece that has
-      # none skips the rest, so it finishes in a minute. Only Playwright's own "No tests found" skips; any other
-      # failure still runs the journeys, so a real error is never hidden. With the planner on main and times to
+      # none skips the rest, so it finishes in a minute. Only Playwright's own empty answers skip: "No tests found"
+      # with an error, or "Total: 0 tests in 0 files" with none (Playwright 1.63 lists an empty piece that way).
+      # Any other failure still runs the journeys, so a real error is never hidden. With the planner on main and times to
       # read, the planner fills the pieces by time; otherwise Playwright's own split is used.
       - name: Pick the journeys
         id: pick
@@ -246,10 +293,15 @@ jobs:
               args="$args --only-changed=origin/main"
             fi
           fi
+          # The journeys import the generated database client, so generate it first, as `pnpm test:browser` does;
+          # without it every file fails to load and the listing is empty for the wrong reason.
+          pnpm generate > /dev/null
           status=0
           listing=$(pnpm exec playwright test --list --reporter=list $args 2>&1) || status=$?
-          printf '%s\n' "$listing" | tail -n 3
-          if [ "$status" -ne 0 ] && printf '%s' "$listing" | grep -q "No tests found"; then
+          echo "The listing ended with status $status:"
+          printf '%s\n' "$listing" | tail -n 5
+          if { [ "$status" -ne 0 ] && printf '%s' "$listing" | grep -q "No tests found"; } ||
+            { [ "$status" -eq 0 ] && printf '%s\n' "$listing" | grep -Eq '^Total: 0 tests in 0 files$'; }; then
             echo "run=false" >> "$GITHUB_OUTPUT"
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
@@ -331,7 +383,7 @@ jobs:
         run: |
           mkdir -p ran
           if [ -f "$PLAYWRIGHT_JSON_OUTPUT_NAME" ]; then
-            node .github/scripts/tests-in-report.mjs ran "$PLAYWRIGHT_JSON_OUTPUT_NAME" > ran/ran-${{ matrix.shard }}.txt
+            node --input-type=module -e "$TESTS_IN_REPORT" ran "$PLAYWRIGHT_JSON_OUTPUT_NAME" > ran/ran-${{ matrix.shard }}.txt
           else
             : > ran/ran-${{ matrix.shard }}.txt
           fi
@@ -340,12 +392,12 @@ jobs:
       - name: List every journey
         if: always() && matrix.shard == 1 && steps.pick.outputs.run == 'true' && env.CHANGED_ONLY != 'true'
         env:
-          RUKEN_SHARD: ''
-          RUKEN_SHARD_TIMES: ''
+          RUKEN_SHARD: ""
+          RUKEN_SHARD_TIMES: ""
           PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-json/listed.json
         run: |
           pnpm exec playwright test --list --reporter=json
-          node .github/scripts/tests-in-report.mjs listed playwright-json/listed.json > ran/listed.txt
+          node --input-type=module -e "$TESTS_IN_REPORT" listed playwright-json/listed.json > ran/listed.txt
           echo "$(wc -l < ran/listed.txt) journeys listed."
       - name: Keep what this piece ran
         if: always() && steps.pick.outputs.run == 'true'
@@ -386,7 +438,32 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'ran-*' --dir pieces
-          node .github/scripts/test-times.mjs pieces/*/playwright-json/report.json > ci-test-times.json
+          node --input-type=module - pieces/*/playwright-json/report.json > ci-test-times.json <<'JS'
+          // node test-times.js <Playwright JSON report>...
+          // Prints {"<device profile>|<file>": seconds} summed over every result in the reports, sorted by key.
+          // The planner fills the browser pieces from these times (docs/superpowers/specs/2026-11-22-faster-ci-design.md).
+          import { readFileSync } from "node:fs";
+
+          const times = {};
+          const walk = (suite) => {
+            for (const spec of suite.specs ?? []) {
+              for (const t of spec.tests ?? []) {
+                const key = `${t.projectName}|${spec.file}`;
+                const ms = (t.results ?? []).reduce((sum, r) => sum + (r.duration ?? 0), 0);
+                times[key] = (times[key] ?? 0) + ms / 1000;
+              }
+            }
+            for (const child of suite.suites ?? []) walk(child);
+          };
+          for (const file of process.argv.slice(2))
+            for (const suite of JSON.parse(readFileSync(file, "utf8")).suites ?? []) walk(suite);
+          const sorted = Object.fromEntries(
+            Object.keys(times)
+              .sort()
+              .map((k) => [k, Math.round(times[k] * 10) / 10]),
+          );
+          process.stdout.write(JSON.stringify(sorted, null, 2) + "\n");
+          JS
           echo "$(grep -c '|' ci-test-times.json) file and device pairs recorded."
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -413,7 +490,7 @@ jobs:
           fetch-depth: 0
       - name: Only .md files changed?
         id: docs
-        run: .github/scripts/docs-only.sh >> "$GITHUB_OUTPUT"
+        run: bash -c "$DOCS_ONLY" >> "$GITHUB_OUTPUT"
       - name: Every check passed
         env:
           VERIFY: ${{ needs.verify.result }}
@@ -436,4 +513,29 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'ran-*' --dir pieces
-          node .github/scripts/every-test-ran.mjs pieces/ran-1/ran/listed.txt pieces/ran-*/ran/ran-*.txt
+          node --input-type=module - pieces/ran-1/ran/listed.txt pieces/ran-*/ran/ran-*.txt <<'JS'
+          // node every-test-ran.js <listed.txt> <ran file>...
+          // Fails when the pieces together did not run every listed test exactly once, naming each test missing or run twice.
+          import { readFileSync } from "node:fs";
+
+          const [listedFile, ...ranFiles] = process.argv.slice(2);
+          const read = (f) => readFileSync(f, "utf8").split("\n").filter(Boolean);
+          const listed = new Set(read(listedFile));
+          const seen = new Map();
+          for (const f of ranFiles) for (const t of read(f)) seen.set(t, (seen.get(t) ?? 0) + 1);
+          const missing = [...listed].filter((t) => !seen.has(t));
+          const twice = [...seen].filter(([, n]) => n > 1).map(([t, n]) => `${t} (${n} times)`);
+          const unknown = [...seen.keys()].filter((t) => !listed.has(t));
+          console.log(
+            `listed ${listed.size}, ran ${[...seen.values()].reduce((a, b) => a + b, 0)} in ${ranFiles.length} pieces`,
+          );
+          for (const [what, list] of [
+            ["not run", missing],
+            ["run more than once", twice],
+            ["run but not listed", unknown],
+          ]) {
+            for (const t of list) console.log(`${what}: ${t}`);
+          }
+          if (listed.size === 0 || missing.length || twice.length || unknown.length) process.exit(1);
+          console.log("Every listed test ran exactly once.");
+          JS

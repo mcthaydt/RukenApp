@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { relative } from "node:path";
 import { rgb, token } from "../../support/look-tokens.ts";
+import { fillBirthDate, freshNumber, JOURNEY_PASSWORD, nationalOf, yearsAgo } from "./account.ts";
 import { shouldShoot } from "./changed-screens.ts";
 
 // Helpers for the journeys that check the look (tests/browser/look.test.ts). CI checks values (a colour, a
@@ -25,7 +26,7 @@ export const CARD_SCREENS: { name: string; open(page: Page): Promise<void> }[] =
     name: "sign up",
     open: async (page) => {
       await page.goto("/sign-up");
-      await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Join Ruken", exact: true })).toBeVisible();
     },
   },
   {
@@ -43,19 +44,25 @@ export const CARD_SCREENS: { name: string; open(page: Page): Promise<void> }[] =
     },
   },
   {
-    name: "check your email",
+    // The second screen: any number gets it, so it needs no account.
+    name: "forgot password, the code",
     open: async (page) => {
       await page.goto("/forgot-password");
-      await page.getByLabel("Email").fill("nobody@ruken.test");
-      await page.getByRole("button", { name: "Send the link" }).click();
-      await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+      await page.getByLabel("Phone number").fill(nationalOf(freshNumber()));
+      await page.getByRole("button", { name: "Text me a code" }).click();
+      await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
     },
   },
   {
-    name: "new password",
+    // The second screen of sign-up, for a number that has no account: the code is the one the stand-in kept.
+    name: "sign up, the code",
     open: async (page) => {
-      await page.goto("/reset-password?token=nope");
-      await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
+      await page.goto("/sign-up");
+      await page.getByLabel("Phone number").fill(nationalOf(freshNumber()));
+      await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
+      await fillBirthDate(page, yearsAgo(30));
+      await page.getByRole("button", { name: "Text me a code" }).click();
+      await expect(page.getByRole("heading", { name: "We texted you a code" })).toBeVisible();
     },
   },
   {

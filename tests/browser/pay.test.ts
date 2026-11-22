@@ -1,15 +1,13 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import {
   continueToPayment,
-  fillBirthDate,
-  freshEmail,
-  JOURNEY_PASSWORD,
+  finishSignUpForm,
+  freshNumber,
+  pageHasSettled,
   payAsNewMember,
   releaseLateNews,
   signUpInItsOwnContext,
-  standInPayButton,
-  yearsAgo,
-  SITE_ANSWER_TIMEOUT,
+  pressPay,
 } from "./support/account.ts";
 import { changeGame, givePage, idsOf, membershipStartsOf, userIdOf } from "./support/database.ts";
 import { gameWhere } from "./support/game.ts";
@@ -20,21 +18,22 @@ test.beforeEach(forgetRateLimits);
 
 /** Signs up through the card, as a stranger who has not signed in yet, and lands back on it as a person who can pay. */
 async function signUpFromTheCard(page: Page): Promise<string> {
-  const email = freshEmail();
+  const number = freshNumber();
   await page.goto("/join?next=/me");
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
-  await fillBirthDate(page, yearsAgo(30));
-  await page.getByRole("button", { name: "Create account" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+  await finishSignUpForm(page, number);
   await expect(page.getByRole("button", { name: "Continue to payment" })).toBeVisible();
-  return email;
+  // The card shows before its page has come alive, and SvelteKit's start rewrites the history entry of the address it
+  // opened on. A goto sent before that can be interrupted by it (WebKit, run 44889391086: "interrupted by another
+  // navigation to /join?plan=monthly&next=%2Fme", the card's own address), so the journey waits for the page to settle.
+  await pageHasSettled(page);
+  return number;
 }
 
 test("a stranger signs up, pays, and lands where they were going as a member", async ({ page }) => {
   await signUpFromTheCard(page);
   await page.getByRole("button", { name: "Continue to payment" }).click();
-  await standInPayButton(page).click();
+  await pressPay(page);
   await expect(page).toHaveURL("/me");
 });
 
@@ -51,7 +50,7 @@ test("when Stripe's news is late, the page says so and goes on by itself", async
   const checkoutSessionId = await continueToPayment(page);
   // The stand-in's own page, asked to hold its news back until this journey lets it go.
   await page.goto(`${page.url()}?events=later`);
-  await standInPayButton(page).click();
+  await pressPay(page);
   await expect(page.getByRole("heading", { name: "Finishing up…" })).toBeVisible();
   // Looked at while the news is still held, and with values only: the page moves on to /me by itself once it
   // arrives (design 5.8).
@@ -81,7 +80,7 @@ test("a member's sign-up records the maker's link they came through", async ({ p
 
   const member = await payAsNewMember(page);
 
-  expect(await membershipStartsOf(member.email)).toMatchObject([
+  expect(await membershipStartsOf(member.number)).toMatchObject([
     { broughtByUserId: game.makerUserId, arrivalPath: `/g/${game.slug}` },
   ]);
 });
@@ -92,7 +91,7 @@ test("a member who came through a maker's page, pressed Play on their game and p
 }) => {
   const game = await liveGameOfItsOwnMaker(browser);
   const owner = await signUpInItsOwnContext(browser);
-  await changeGame(game.slug, { makerUserId: await userIdOf(owner.email) });
+  await changeGame(game.slug, { makerUserId: await userIdOf(owner.number) });
   const { handle } = await givePage(owner, { name: "Pay Maker", oneLine: "" });
 
   await page.goto(`/${handle}`, { waitUntil: "domcontentloaded" });
@@ -101,8 +100,8 @@ test("a member who came through a maker's page, pressed Play on their game and p
 
   const member = await payAsNewMember(page);
 
-  expect(await membershipStartsOf(member.email)).toMatchObject([
-    { broughtByUserId: await userIdOf(owner.email), arrivalPath: `/${handle}` },
+  expect(await membershipStartsOf(member.number)).toMatchObject([
+    { broughtByUserId: await userIdOf(owner.number), arrivalPath: `/${handle}` },
   ]);
 });
 
@@ -117,7 +116,7 @@ test("a visitor who lands on one game's page and then another's is recorded with
 
   const member = await payAsNewMember(page);
 
-  expect(await membershipStartsOf(member.email)).toMatchObject([
+  expect(await membershipStartsOf(member.number)).toMatchObject([
     { broughtByUserId: second.makerUserId, arrivalPath: `/g/${second.slug}` },
   ]);
 });
@@ -125,7 +124,7 @@ test("a visitor who lands on one game's page and then another's is recorded with
 test("a member who came through no maker's link has no maker recorded", async ({ page }) => {
   const member = await payAsNewMember(page);
 
-  expect(await membershipStartsOf(member.email)).toMatchObject([
+  expect(await membershipStartsOf(member.number)).toMatchObject([
     { broughtByUserId: null, arrivalPath: null },
   ]);
 });

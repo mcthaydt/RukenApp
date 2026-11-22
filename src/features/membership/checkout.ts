@@ -110,9 +110,10 @@ export function isMissing(error: unknown): boolean {
 /** Makes the member's Stripe customer, the first time they check out. */
 export async function createBillingCustomer(
   stripe: Stripe,
-  input: { readonly userId: string; readonly email: string },
+  input: { readonly userId: string },
 ): Promise<string> {
-  const customer = await stripe.customers.create({ email: input.email, metadata: { userId: input.userId } });
+  // No email: an account's own address is a stand-in. Checkout asks for the real one.
+  const customer = await stripe.customers.create({ metadata: { userId: input.userId } });
   return customer.id;
 }
 

@@ -29,6 +29,7 @@ export DIRECT_DATABASE_URL=$TEST_DATABASE_URL CLOUDFLARE_HYPERDRIVE_LOCAL_CONNEC
 export BETTER_AUTH_SECRET=test-only-secret-not-used-anywhere-real BETTER_AUTH_URL=http://localhost:4173
 export RESEND_API_KEY=re_test_fake RESEND_API_BASE=http://127.0.0.1:12113 "MAIL_FROM=Ruken <hello@ruken.test>"
 export JOBS_SECRET=test-only-jobs-secret STRIPE_SECRET_KEY=sk_test_fake STRIPE_WEBHOOK_SECRET=whsec_test_fake STRIPE_LIVE=false STRIPE_API_BASE=http://127.0.0.1:12111
+export TWILIO_ACCOUNT_SID=AC_test_fake TWILIO_API_KEY=SK_test_fake TWILIO_API_SECRET=test-only-twilio-secret TWILIO_ACCOUNT_SERVICE=MG-account TWILIO_NEWS_SERVICE=MG-news TWILIO_VERIFY_SERVICE=VA_test_fake TWILIO_API_BASE=http://127.0.0.1:12114
 export PLAY_PASS_SECRET=test-only-play-pass-secret GITHUB_APP_ID=1 GITHUB_APP_SLUG=ruken-test-app GITHUB_APP_CLIENT_ID=test-client GITHUB_APP_CLIENT_SECRET=test-only-client-secret
 export GITHUB_API_BASE=http://127.0.0.1:12112 GITHUB_WEB_BASE=http://127.0.0.1:12112 "GAME_ADDRESS_PATTERN=http://{name}.localhost:8788" LAUNCH_TEST_SWITCH=on DECISION_DAYS_TEST_OFF=on
 # the app on 4173, then the game gate on 8788, which waits for the app (two Workers opening one storage folder at once fail)
@@ -50,7 +51,7 @@ It is ready when both `localhost:4173/healthz` (the app) and `localhost:8788/__r
 
 Open it in a real browser: the Chromium and Playwright the container already has (`require('playwright')`, then `chromium.launch()`), at the sizes the change affects (see "Shoot what the change touches" in `visual-check`). Tap, click, type and press keys the way a person would, and find things by their label or role. Take a screenshot at deviceScaleFactor 1 for your own check, and save it in the scratchpad, never in the repo. The main screen, what it shows and how to use it:
 
-The main screen today is the home page at `http://localhost:4173/`: "Ruken", "Games, one swipe at a time. Coming soon." and one big "Sign in" button (there is no feed yet; when it lands, this line is updated in the same pull request). Run the driver script below from the repo root; it runs on any `node` once `NODE_PATH=/opt/node-tools/node_modules` is set, and it opens a phone-sized window (375 by 667, the iPhone SE size in `playwright.config.ts`); for the tablet and the computer, change `viewport` to 1024 by 768 and 1280 by 720. It looks for headings and labels, and exits 1 at the first thing it cannot find.
+The main screen today is the feed at `http://localhost:4173/`: one full-window clip per live game, each with the maker's line, the game's name and a blue "Play" link, and at the bottom a bar with "Home" and "You". On a fresh database there is no live game, so it says "No games here yet." and shows the bar. Run the driver script below from the repo root; it runs on any `node` once `NODE_PATH=/opt/node-tools/node_modules` is set, and it opens a phone-sized window (375 by 667, the iPhone SE size in `playwright.config.ts`); for the tablet and the computer, change `viewport` to 1024 by 768 and 1280 by 720. It looks for headings and labels, and exits 1 at the first thing it cannot find.
 
 ```sh
 : "${SHOTS:?set SHOTS to a scratchpad folder, outside the repo}"
@@ -62,15 +63,27 @@ const { chromium } = require('playwright');
   const c = await b.newContext({ viewport: { width: 375, height: 667 }, deviceScaleFactor: 1 });
   const p = await c.newPage();
   await p.goto('http://localhost:4173/');
-  await p.getByRole('heading', { name: 'Ruken' }).first().waitFor();
-  await p.getByRole('link', { name: 'Sign in' }).waitFor();
+  await p.getByRole('navigation', { name: 'Ruken' }).getByRole('link', { name: 'You' }).waitFor();
+  await p.locator('section[data-slug], :text("No games here yet.")').first().waitFor();
   await p.screenshot({ path: process.argv[2] + '/main.png' });
+  // Sign up by phone: a made-up number (the stand-in Twilio keeps its texts, nothing real is texted), then the code it kept.
+  const number = '+1312555' + String(Math.floor(1000 + Math.random() * 9000));
   await p.goto('http://localhost:4173/sign-up?next=/me');
-  await p.getByRole('heading', { name: 'Create your account' }).waitFor();
-  await p.getByLabel('Email').fill(`verify-${Date.now()}@example.test`);
+  await p.getByRole('heading', { name: 'Join Ruken' }).waitFor();
+  await p.getByLabel('Phone number').fill(number.slice(2));
   await p.getByLabel('Password').fill('a long enough password');
   await p.getByLabel('Month').fill('1'); await p.getByLabel('Day').fill('1'); await p.getByLabel('Year').fill('1990');
-  await p.getByRole('button', { name: 'Create account' }).click();
+  await p.getByRole('button', { name: 'Text me a code' }).click();
+  await p.getByRole('heading', { name: 'We texted you a code' }).waitFor();
+  let code;
+  for (let tries = 0; tries < 30 && code === undefined; tries += 1) {
+    const kept = await (await fetch('http://127.0.0.1:12114/codes?to=' + encodeURIComponent(number))).json();
+    code = kept.findLast((c) => c.status === 'pending')?.code;
+    if (code === undefined) await new Promise((r) => setTimeout(r, 500));
+  }
+  if (code === undefined) throw new Error('no code reached the stand-in Twilio');
+  await p.getByLabel('The code we texted you').fill(code);
+  await p.getByRole('button', { name: 'Join Ruken' }).click();
   await p.waitForURL('**/me');
   await p.screenshot({ path: process.argv[2] + '/me.png' });
   await b.close();
@@ -84,8 +97,20 @@ The first screenshot is the main screen. The script also walks the sign-up journ
 
 One line each, from a person's side: where it starts, the steps, and what they see at the end.
 
-- Home: open `/`. See "Ruken", "Games, one swipe at a time. Coming soon." and a "Sign in" button.
-- Sign up: open `/sign-up?next=/me`. Fill Email, Password (10 to 128 characters), and Month, Day and Year of birth (someone under 13 is told to come back). Press "Create account". You land on `/me`, signed in. More journeys, each with its stand-in (mail, texts, payment), are the tests in `tests/browser/`; run the one that matches the change by reading its steps and doing them the same way.
+- Feed: open `/`. See a clip per live game (or "No games here yet."), the bar with "Home" and "You", and press an arrow key or Page Down to move one clip. "You" opens `/me` (`feed.test.ts`, `feed-controls.test.ts`).
+- Sign up: open `/sign-up?next=/me`. Fill Phone number (a made-up number such as 312 555 1234; the country stays United States), Password (10 to 128 characters), and Month, Day and Year of birth (someone under 13 is told to come back). Press "Text me a code". The code screen says "We texted you a code": read the code the stand-in Twilio kept at `http://127.0.0.1:12114/codes?to=%2B13125551234` (the newest `pending` one), type it, press "Join Ruken". You land on `/me`, signed in. Sign in is the Phone number and Password; forgot password is the same number and a texted code. More journeys, each with its stand-in (mail, texts, payment), are the tests in `tests/browser/`; run the one that matches the change by reading its steps and doing them the same way.
+- Sign in: open `/sign-in`, type the phone number and password, press "Sign in". A wrong password says so and offers the reset, which texts a code to the same number (`sign-in.test.ts`, `forgot-password.test.ts`).
+- Your account: open `/me` signed in. See your phone number and Sign out; change your password, and other devices are signed out (`me.test.ts`, `change-password.test.ts`). There is no email to change: nobody signs in with one.
+- Delete your account: open `/me/delete` and ask to be deleted. You are signed out and told the date; signing in again within 14 days undoes it (`delete-account.test.ts`).
+- Send a game: signed in, open `/make` and start a new game. Answer the six questions, agree once, press "Check and send". You see "Waiting for review" (`make-send.test.ts`); the review job accepts it in the GitHub stand-in.
+- Change, then take off, a live game: from Your games, change its files, videos or rating, then take it off. Players see the change, then the game is gone (`make-game-crud.test.ts`, `make-live-changes.test.ts`, `take-off.test.ts`).
+- Your page: open `/make/page`. Make it (address, name, line, photo, colours, links), open it at `/<handle>`, change each part, take parts away (`edit-page.test.ts`, `maker-page.test.ts`).
+- Join: a stranger presses Play on a game's page and meets the price card. Pick a plan, pay in the Stripe stand-in, land in the game as a member (`join.test.ts`, `pay.test.ts`, `play.test.ts`).
+- Play: a member opens `/g/<game>` and presses Play. The game loads in a frame on another address and sees nothing about the player (`play.test.ts`).
+- Membership: a member opens `/me` and sees what they pay and when it renews; cancelling in Stripe tells them when it ends (`membership.test.ts`).
+- 18+ games: signed out or under 18, an 18+ game says no and asks to sign in; an adult who signs in from there lands back on the game (`adults-only.test.ts`).
+
+Each line's test file holds its full steps and stand-ins (mail, texts, payment, GitHub). Walk the one that matches the change by reading its steps and doing them the same way.
 
 ## Stop it
 

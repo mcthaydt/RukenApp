@@ -31,6 +31,11 @@
 
   const preview = previewOfPage();
 
+  // What the box holds: what came from the server, until it is typed over. Bound, never set, because a set value is
+  // written over anything typed before the page came alive (run 44977261003), while a bound one keeps it. A new value
+  // from the server (a refusal, a fresh question) is shown as before.
+  let box = $derived(value);
+
   // A refusal is about what was sent. Once the box is changed it is about nothing, so it goes; the answer that comes
   // back next (different words, or a different refusal) is a new thing and shows.
   const sent = $derived(`${value}\n${problem ?? ""}`);
@@ -58,7 +63,7 @@
     class="answer"
     type="text"
     {name}
-    {value}
+    bind:value={box}
     oninput={typed}
     autocomplete="off"
     aria-labelledby="question"
@@ -69,7 +74,7 @@
   <textarea
     class="answer"
     {name}
-    {value}
+    bind:value={box}
     rows={lines ?? 1}
     data-grows={lines === undefined ? "" : undefined}
     oninput={typed}

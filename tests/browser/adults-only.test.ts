@@ -1,8 +1,9 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import {
   fillBirthDate,
-  freshEmail,
+  freshNumber,
   JOURNEY_PASSWORD,
+  nationalOf,
   pageHasSettled,
   signInAs,
   SITE_ANSWER_TIMEOUT,
@@ -11,6 +12,7 @@ import {
 import { changeGame, forgetAgeOf, givePage, playOf, stateOf } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
+import { codeTo } from "./support/texts.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // An 18+ game is only for people Ruken knows are 18 or over. Everyone else (signed out, under 18, or with no age on
@@ -39,23 +41,27 @@ test.beforeAll(async ({ browser, request }) => {
 test.beforeEach(forgetRateLimits);
 
 /** Makes an account of this age through the sign-up form, signed in afterwards. */
-async function signUpAged(page: Page, years: number): Promise<{ email: string; password: string }> {
-  const email = freshEmail();
+async function signUpAged(page: Page, years: number): Promise<{ number: string; password: string }> {
+  const number = freshNumber();
   await page.goto("/sign-up");
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
   await fillBirthDate(page, yearsAgo(years));
-  await page.getByRole("button", { name: "Create account" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+  await page.getByRole("button", { name: "Text me a code" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+  await expect(page.getByRole("heading", { name: "We texted you a code" })).toBeVisible();
+  await pageHasSettled(page);
+  await page.getByLabel("The code we texted you").fill(await codeTo(number));
+  await page.getByRole("button", { name: "Join Ruken" }).click();
   await expect(page).toHaveURL("/");
   await pageHasSettled(page);
-  return { email, password: JOURNEY_PASSWORD };
+  return { number, password: JOURNEY_PASSWORD };
 }
 
 /** Makes an account of this age in a browser of its own and closes it, so the journey's own browser stays signed out. */
 async function signUpAgedElsewhere(
   browser: Browser,
   years: number,
-): Promise<{ email: string; password: string }> {
+): Promise<{ number: string; password: string }> {
   const context = await browser.newContext({ baseURL: "http://localhost:4173" });
   try {
     return await signUpAged(await context.newPage(), years);
@@ -65,10 +71,13 @@ async function signUpAgedElsewhere(
 }
 
 /** On the refusal, presses "Sign in" and signs in there with this account. */
-async function signInFromTheRefusal(page: Page, account: { email: string; password: string }): Promise<void> {
+async function signInFromTheRefusal(
+  page: Page,
+  account: { number: string; password: string },
+): Promise<void> {
   await page.getByRole("link", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sign in");
-  await page.getByLabel("Email").fill(account.email);
+  await page.getByLabel("Phone number").fill(nationalOf(account.number));
   await page.getByLabel("Password").fill(account.password);
   await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
 }
@@ -86,13 +95,13 @@ async function statusOf(page: Page, path: string): Promise<number | undefined> {
 /** The maker, signed in in a browser of its own, takes the game off Ruken with the real button. */
 async function takeOffAsMaker(
   browser: Browser,
-  maker: { email: string; password: string },
+  maker: { number: string; password: string },
   slug: string,
 ): Promise<void> {
   const context = await browser.newContext({ baseURL: "http://localhost:4173" });
   try {
     const page = await context.newPage();
-    await signInAs(page, maker);
+    await signInAs(page, maker.number, maker.password);
     await page.goto(`/make/${slug}/take-off`);
     await pageHasSettled(page);
     await page.getByRole("button", { name: "Take it off Ruken" }).click();
@@ -182,7 +191,7 @@ test("an adult who signs in from the refusal lands back on the 18+ game, on its 
     waitUntil: "domcontentloaded",
   });
   await pageHasSettled(page);
-  await page.getByLabel("Email").fill(adult.email);
+  await page.getByLabel("Phone number").fill(nationalOf(adult.number));
   await page.getByLabel("Password").fill(adult.password);
   await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/");
@@ -205,6 +214,37 @@ test("a person under 18 who signs in from the refusal lands on the same refusal,
   await expect(page.getByRole("link", { name: "Back to Ruken" })).toHaveAttribute("href", "/");
 });
 
+/** The feed has loaded (a clip, or its empty words) and the 18+ game is not among its clips, by name or by address. */
+async function expectNotInTheFeed(page: Page): Promise<void> {
+  await page.goto("/");
+  await expect(
+    page.locator("section[data-slug]").first().or(page.getByText("No games here yet.")),
+  ).toBeAttached();
+  await pageHasSettled(page);
+  await expect(page.locator(`section[data-slug="${adultsGame.slug}"]`)).toHaveCount(0);
+  await expect(page.getByText(adultsGame.name)).toHaveCount(0);
+}
+
+test("an 18+ game is not in the feed for a visitor, a person under 18, a person of unknown age, or an adult", async ({
+  page,
+  browser,
+}) => {
+  await expectNotInTheFeed(page);
+
+  // Each person has a browser of their own, so one's sign-in never carries to the next.
+  for (const years of [15, 30, 18]) {
+    const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+    try {
+      const person = await context.newPage();
+      const account = await signUpAged(person, years);
+      if (years === 30) await forgetAgeOf(account.number);
+      await expectNotInTheFeed(person);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 test("a person under 18 cannot see or play an 18+ game", async ({ page }, testInfo) => {
   await signUpAged(page, 15);
   const before = (await playOf(adultsGame.slug)).sessions.length;
@@ -219,7 +259,7 @@ test("a person under 18 cannot see or play an 18+ game", async ({ page }, testIn
 
 test("a person whose age Ruken does not know cannot see or play an 18+ game", async ({ page }) => {
   const account = await signUpAged(page, 30);
-  await forgetAgeOf(account.email);
+  await forgetAgeOf(account.number);
   await expectRefusedEverywhere(page, TOO_YOUNG);
 });
 

@@ -1,9 +1,15 @@
-import { authServices, signedInRedirect, signInWithPassword } from "../../features/accounts/accounts.ts";
+import {
+  authServices,
+  OPEN_COUNTRIES,
+  signedInRedirect,
+  signInWithPassword,
+} from "../../features/accounts/accounts.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
-// `reset` is set by /reset-password after a new password is saved: the page says so once.
+// `reset` is set by /forgot-password after a new password is saved: the page says so once.
 export const load: PageServerLoad = ({ locals, url }) => ({
   ...signedInRedirect(locals.caller, url),
+  countries: OPEN_COUNTRIES,
   reset: url.searchParams.get("reset") === "1",
 });
 

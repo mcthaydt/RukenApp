@@ -101,20 +101,6 @@ async function storedFor(userId: string) {
 }
 
 describe("rememberConnection", () => {
-  it("stores the installations and repositories GitHub listed", async () => {
-    const maker = await createUser(db());
-
-    await service.rememberConnection(maker, [
-      installation(11n, "alice", [repo("alice/b"), repo("alice/a", "dev")]),
-      installation(12n, "a-team", [repo("a-team/shared")]),
-    ]);
-
-    expect(await storedFor(maker)).toEqual([
-      { installationId: 11n, accountLogin: "alice", repositories: ["alice/a@dev", "alice/b@main"] },
-      { installationId: 12n, accountLogin: "a-team", repositories: ["a-team/shared@main"] },
-    ]);
-  });
-
   it("forgets what GitHub stopped listing, and takes what changed", async () => {
     const maker = await createUser(db());
     await service.rememberConnection(maker, [

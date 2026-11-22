@@ -3,7 +3,7 @@ import {
   continueToPayment,
   letMembershipRunOut,
   payAsNewMember,
-  standInPayButton,
+  pressPay,
   subscriptionStatusAtStandIn,
 } from "./support/account.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -33,7 +33,7 @@ test("a member whose membership has ended is offered the card again, pays, and i
   await expect(page.getByRole("heading", { name: "You're already a member." })).toHaveCount(0);
   const secondCheckout = await continueToPayment(page);
   expect(secondCheckout).not.toBe(first.checkoutSessionId);
-  await standInPayButton(page).click();
+  await pressPay(page);
 
   await expect(page).toHaveURL("/me");
   await expect(
