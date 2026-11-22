@@ -121,6 +121,14 @@
     });
   });
 
+  // A clip that starts while it is not the one on screen is stopped where it is. The feed never starts one, but Safari's
+  // engine can: when the feed pauses the clip a person left and rewinds it, the engine may start it again once the rewind
+  // lands (seen in the feed journey's log: a "play" with no call from the page, 16 ms after the pause). It is only paused
+  // here, not rewound again, so a rewind cannot start it a second time.
+  function stopIfOffScreen(index: number): void {
+    if (index !== current) videos[index]?.pause();
+  }
+
   function forgetHints(): void {
     if (hint === null) return;
     hint = null;
@@ -198,6 +206,9 @@
         <video
           use:loads
           bind:this={videos[index]}
+          onplay={() => {
+            stopIfOffScreen(index);
+          }}
           src={fetches(index) ? clipAddress(clip) : undefined}
           preload={preloads(index)}
           muted
