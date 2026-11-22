@@ -24,10 +24,14 @@
     // Must stay true: worker-configuration.d.ts declares the Workers versions of Request, Response and the
     // like beside the browser's, and they agree only because declaration files are not checked.
     "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": true,
     "noEmit": true
   },
   "include": [
     "src",
+    // The command line package: plain JavaScript checked through // @ts-check.
+    "packages/ruken/**/*.js",
     "tests",
     // The game gate's Worker. Its folder only, not cloudflare/worker.js, which imports the built site.
     "cloudflare/games",
