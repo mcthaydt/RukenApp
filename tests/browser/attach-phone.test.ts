@@ -33,6 +33,21 @@ test("asks for an email and a number when they did not come", async ({ request }
   expect(await answer.json()).toEqual({ problem: "Send the email of the account and the phone number." });
 });
 
+test("says plainly when the body is not valid JSON, such as a day written 03", async ({ request }) => {
+  const answer = await request.post("/jobs/attach-phone", {
+    headers: WITH_SECRET,
+    // A Buffer goes out exactly as written; a string would be wrapped as JSON by the test client.
+    data: Buffer.from(
+      '{"email":"a@example.com","phone":"+17735550100","birthDate":{"year":1998,"month":11,"day":03}}',
+    ),
+  });
+
+  expect(answer.status()).toBe(400);
+  expect(await answer.json()).toEqual({
+    problem: "That is not written the way the command needs. A number such as 03 must be written 3.",
+  });
+});
+
 test("an account made by email gets a number and signs in by phone with its old password", async ({
   request,
   browser,
