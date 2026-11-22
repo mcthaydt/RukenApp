@@ -1,3 +1,4 @@
+import { redirect } from "@sveltejs/kit";
 import type { Handle } from "@sveltejs/kit/hooks";
 import { CONSENT_COOKIE, CONSENT_VERSION, hasConsent } from "./cookies.ts";
 import { routeKind, type RouteKind } from "./routes.ts";
@@ -76,8 +77,9 @@ export function consentGate(
       if (id.startsWith("/api/") || id.endsWith("/beat")) {
         return new Response("Say yes to cookies first.", { status: 403 });
       }
-      const to = `/cookies?for=${actionOfRoute(event.route.id)}&next=${encodeURIComponent(next)}`;
-      return new Response(null, { status: 303, headers: { location: to } });
+      // A thrown redirect, so SvelteKit answers it in the form the caller expects: a page load, a form's post or the
+      // data a client-side move asks for (which then lands on the notice without reloading the app).
+      redirect(303, `/cookies?for=${actionOfRoute(event.route.id)}&next=${encodeURIComponent(next)}`);
     }
 
     const response = await resolve(event, {

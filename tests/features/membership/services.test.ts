@@ -38,7 +38,7 @@ type CookieOptions = Parameters<Cookies["set"]>[2];
 function cookieJar(agreed = true) {
   // A browser that said yes to cookies, unless a test says otherwise.
   const stored = new Map<string, { value: string; options: CookieOptions }>(
-    agreed ? [["rk_consent", { value: "v1", options: { path: "/" } as CookieOptions }]] : [],
+    agreed ? [["rk_consent", { value: "v1", options: { path: "/" } }]] : [],
   );
   return {
     stored,

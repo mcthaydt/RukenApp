@@ -78,7 +78,9 @@ test("nothing is kept before a yes: every public screen opens, and nothing is se
     await expect(page.locator("body")).toBeVisible();
   }
   // A tap on the maker's link opens it, and is not counted.
-  const tapped = await page.request.get(`/${maker.handle}/out/${maker.linkIds[0] ?? ""}`, { maxRedirects: 0 });
+  const tapped = await page.request.get(`/${maker.handle}/out/${maker.linkIds[0] ?? ""}`, {
+    maxRedirects: 0,
+  });
   expect(tapped.status()).toBe(303);
   // The screens that need a yes show the notice and keep nothing (their forms are never reached).
   for (const address of ["/sign-in", "/sign-up", "/join", `/g/${game.slug}/play`]) {
@@ -111,13 +113,18 @@ test("Not now keeps nothing, stays closed while moving around, and comes back on
 
   // On a screen that needs the yes, Not now goes back to the screen before it.
   await page.goto("/sign-in");
-  await expect(page.getByText("To sign in, Ruken needs to keep a few small things in your browser.")).toBeVisible();
+  await expect(
+    page.getByText("To sign in, Ruken needs to keep a few small things in your browser."),
+  ).toBeVisible();
   await notNow(page).click();
   await expect(page).toHaveURL("/");
   expect(await whatIsKept(page, context)).toEqual(NOTHING);
 });
 
-test("each button that needs a yes says what it is for, and I agree goes on to it", async ({ page, context }) => {
+test("each button that needs a yes says what it is for, and I agree goes on to it", async ({
+  page,
+  context,
+}) => {
   for (const [address, words] of [
     ["/sign-in", "To sign in"],
     ["/sign-up", "To make an account"],
@@ -126,7 +133,9 @@ test("each button that needs a yes says what it is for, and I agree goes on to i
   ] as const) {
     await context.clearCookies();
     await page.goto(address);
-    await expect(page.getByText(`${words}, Ruken needs to keep a few small things in your browser.`)).toBeVisible();
+    await expect(
+      page.getByText(`${words}, Ruken needs to keep a few small things in your browser.`),
+    ).toBeVisible();
     await agreeButton(page).click();
     await expect(page).toHaveURL(new RegExp(`${address.replaceAll("/", "\\/")}$`));
     expect(await context.cookies()).toHaveLength(1);
@@ -155,7 +164,10 @@ test("saying yes from a game's page keeps the maker who brought the person", asy
   expect((await context.cookies()).map((cookie) => cookie.name)).toContain("rk_arrival");
 });
 
-test("Take it back: create, read, update and delete the one thing a visitor makes here", async ({ page, context }) => {
+test("Take it back: create, read, update and delete the one thing a visitor makes here", async ({
+  page,
+  context,
+}) => {
   // Create: agree.
   await page.goto("/");
   await agreeButton(page).click();
@@ -178,7 +190,10 @@ test("Take it back: create, read, update and delete the one thing a visitor make
   expect(account.number).not.toBe("");
 });
 
-test("someone already signed in is signed out until they say yes, then carries on", async ({ page, context }) => {
+test("someone already signed in is signed out until they say yes, then carries on", async ({
+  page,
+  context,
+}) => {
   await page.goto("/");
   await agreeButton(page).click();
   await signUp(page);

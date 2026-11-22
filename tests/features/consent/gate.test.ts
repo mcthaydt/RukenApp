@@ -1,3 +1,4 @@
+import { isRedirect } from "@sveltejs/kit";
 import { describe, expect, it, vi } from "vitest";
 import { actionOfRoute, consentGate, stripCookies } from "../../../src/features/consent/consent.ts";
 
@@ -30,24 +31,31 @@ async function run(
     (line) => log.push(line),
   );
   const url = new URL(path, "https://ruken.test");
-  const response = await handle({
-    event: {
-      url,
-      request: new Request(url, { method: options.method ?? "GET" }),
-      route: { id: options.routeId },
-      cookies: {
-        get: (name: string) => (options.agreed === true && name === "rk_consent" ? "v1" : undefined),
-      },
-    } as never,
-    resolve: ((
-      _event: unknown,
-      resolveOptions?: { transformPageChunk?: (chunk: { html: string; done: boolean }) => string },
-    ) => {
-      resolved = true;
-      html = resolveOptions?.transformPageChunk?.({ html: options.html ?? "", done: true }) ?? "";
-      return Promise.resolve(options.answer?.() ?? new Response("ok"));
-    }) as never,
-  });
+  let response: Response;
+  try {
+    response = await handle({
+      event: {
+        url,
+        request: new Request(url, { method: options.method ?? "GET" }),
+        route: { id: options.routeId },
+        cookies: {
+          get: (name: string) => (options.agreed === true && name === "rk_consent" ? "v1" : undefined),
+        },
+      } as never,
+      resolve: ((
+        _event: unknown,
+        resolveOptions?: { transformPageChunk?: (chunk: { html: string; done: boolean }) => string },
+      ) => {
+        resolved = true;
+        html = resolveOptions?.transformPageChunk?.({ html: options.html ?? "", done: true }) ?? "";
+        return Promise.resolve(options.answer?.() ?? new Response("ok"));
+      }) as never,
+    });
+  } catch (error) {
+    // A thrown redirect is how the gate sends a browser to the notice.
+    if (!isRedirect(error)) throw error;
+    response = new Response(null, { status: error.status, headers: { location: error.location } });
+  }
   return { response, allowed, resolved, log, html };
 }
 
