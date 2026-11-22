@@ -17,8 +17,8 @@ const SECTIONS = [
   "Find your next game in a swipe.",
   "One price. Every game.",
   "How Ruken works",
-  "Bring your fans",
-  "Safe to play",
+  "Your clip got seen. Now send them here.",
+  "Chosen by people. Safe to play.",
   "Makers' pay, in the open",
   "Want to play?",
   "Made a game?",
@@ -105,6 +105,21 @@ test("a maker goes from the landing page to the help for makers", async ({ page 
   // And back: the help links to the landing page too.
   await page.getByRole("link", { name: "What is Ruken?" }).click();
   await expectTheLandingPage(page);
+});
+
+test("the landing page's foot leads to the terms and the privacy pages, with no underline", async ({
+  page,
+}) => {
+  for (const name of ["Terms", "Privacy"]) {
+    await page.goto("/about");
+    await expectTheLandingPage(page);
+    const link = page.getByRole("contentinfo").getByRole("link", { name, exact: true });
+    // No underlined words act as links on Ruken (the owner's rule, 2026-11-22).
+    expect(await link.evaluate((node) => getComputedStyle(node).textDecorationLine)).toBe("none");
+    await link.click();
+    await expect(page).toHaveURL(`/${name.toLowerCase()}`);
+    await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  }
 });
 
 test("the price card and the sign-in screen lead to the landing page", async ({ page }) => {

@@ -16,6 +16,8 @@ export interface Section {
   lines: readonly string[];
   points: readonly string[];
   links: readonly Link[];
+  /** A real screenshot of the app beside the words, in static/about/. */
+  picture?: { src: string; alt: string };
 }
 
 export interface Step {
@@ -113,32 +115,45 @@ export const MORE: readonly Section[] = [
   {
     id: "fans",
     forWhom: "For makers",
-    heading: "Bring your fans",
+    // The strategy's pains: the dead end after a viral clip, and nobody treating a maker's own audience as theirs.
+    heading: "Your clip got seen. Now send them here.",
     lines: [
-      "Share your Ruken page or your game's link. When a fan joins from it, half of what they pay makers goes to you for their first 12 months, whatever they play.",
+      "People see your clip and ask where to play. Your Ruken page is the answer: every game you've made, one tap from playing.",
     ],
-    points: [],
+    points: [
+      "Bring a fan, and for their first 12 months half of their makers' share is yours, whatever they play.",
+      "Not exclusive. Keep your game on itch.io or anywhere else too.",
+    ],
     links: [{ words: "Make your page", href: "/make/page" }],
+    picture: {
+      src: "/about/maker-page.jpg",
+      alt: "A maker's page on Ruken: their name, and their game with a Play button",
+    },
   },
   {
     id: "safe",
     forWhom: "For players",
-    heading: "Safe to play",
-    lines: [],
+    // The strategy's pain for players: drowning in clones and ads. A person checks every game (maker agreement 3).
+    heading: "Chosen by people. Safe to play.",
+    lines: ["A person checks every game before it goes live. No clones, no ads, nothing sneaky."],
     points: [
       "Games run apart from Ruken. A game never sees your sign-in.",
       "Ruken is for people 13 and up. Games marked 18+ are for adults only.",
       "No game may have pornography or gambling.",
     ],
-    links: [],
+    links: [{ words: "Watch the feed", href: "/" }],
+    picture: {
+      src: "/about/feed.jpg",
+      alt: "The Ruken feed on a phone: a game playing, with its name and a Play button",
+    },
   },
   {
     id: "pay",
     forWhom: "For makers",
     heading: "Makers' pay, in the open",
     lines: [
-      "How makers are paid is written down for anyone to read.",
-      "Statements are final on the 10th of each month and paid on the 15th.",
+      "How makers are paid is written down for anyone to read. No secret formula.",
+      "Statements are final on the 10th of each month and paid on the 15th, once you're owed $25.",
     ],
     points: [],
     links: [{ words: "Read the maker agreement", href: "/legal/maker-agreement" }],
@@ -177,6 +192,13 @@ export const FOOTER: readonly { heading: string; links: readonly Link[] }[] = [
       { words: "Your games", href: "/make" },
       { words: "Help for makers", href: "/help" },
       { words: "Maker agreement", href: "/legal/maker-agreement" },
+    ],
+  },
+  {
+    heading: "Ruken",
+    links: [
+      { words: "Terms", href: "/terms" },
+      { words: "Privacy", href: "/privacy" },
     ],
   },
 ];

@@ -146,57 +146,17 @@
           <p><a class="more" href={link.href}>{link.words}</a></p>
         {/each}
       </div>
-      {#if section.id === "fans" && data.maker !== null}
-        <!-- A maker's page on a phone: the first maker in the feed, with their live games, as their page shows them. -->
-        <figure class="device" aria-hidden="true">
-          <div class="devicemaker">
-            {#if data.maker.photo !== null}
-              <img use:loads class="deviceface" src={data.maker.photo} alt="" />
-            {:else}
-              <span class="deviceface">{data.maker.name.slice(0, 1).toUpperCase()}</span>
-            {/if}
-            <p class="devicename">{data.maker.name}</p>
-            <p class="devicehandle">@{data.maker.handle}</p>
-            <ul class="devicegames">
-              {#each data.maker.games as game (game.name)}
-                <li>
-                  <video
-                    use:loads
-                    src={`${game.upright}#t=3`}
-                    preload="metadata"
-                    muted
-                    playsinline
-                    tabindex="-1"
-                  ></video>
-                  <span>{game.name}</span>
-                  <span class="playbox">Play</span>
-                </li>
-              {/each}
-            </ul>
-          </div>
-        </figure>
-      {:else if section.id === "safe" && data.feed !== null}
-        <!-- The feed on a phone: the top clip playing, with its name, its maker and Play, as the feed shows it. -->
-        <figure class="device" aria-hidden="true">
-          <div class="devicefeed">
-            <video
-              use:loads
-              src={data.feed.upright}
-              preload="none"
-              muted
-              loop
-              playsinline
-              tabindex="-1"
-              use:playOnScreen
-            ></video>
-            <div class="devicebar">
-              <p>
-                <strong>{data.feed.name}</strong>
-                {#if data.feed.maker !== null}<span>by {data.feed.maker}</span>{/if}
-              </p>
-              <span class="playbox">Play</span>
-            </div>
-          </div>
+      {#if section.picture !== undefined}
+        <!-- A real screenshot of the app on a phone (the feed, or a maker's page), in a drawn phone's frame. -->
+        <figure class="device">
+          <img
+            use:loads
+            src={section.picture.src}
+            alt={section.picture.alt}
+            width="600"
+            height="1298"
+            loading="lazy"
+          />
         </figure>
       {:else if section.id === "pay"}
         <!-- Where a member's money goes, drawn from the maker agreement. Each maker's own share comes with statements. -->

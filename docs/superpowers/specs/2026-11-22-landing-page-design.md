@@ -25,8 +25,8 @@ Lyft's home page, top to bottom (read 2026-11-22), and what each becomes here:
 | Rider block: app picture, three benefits, two buttons | Players block: three benefits, two buttons |
 | Membership cards: four cards, one button | Membership: four cards, the price from the rules, one button |
 | Ride types: a list | How Ruken works: three numbered steps |
-| Business block | Bring your fans (the bring-a-member rule) |
-| Safety block | Safe to play |
+| Business block | Your clip got seen. Now send them here. (a real maker page; the bring-a-member rule) |
+| Safety block | Chosen by people. Safe to play. (a real feed screenshot) |
 | Accessibility block, text only | Makers' pay, in the open, text only |
 | App download: two columns, one per audience | Two closing cards, one per audience, each with its button |
 | Footer: link columns | Two link columns: players, makers |
@@ -67,8 +67,8 @@ Phone (one column):
 │ For players (card)      │  h2, 3 points, 2 buttons
 │ One price. Every game.  │  4 small cards, Join Ruken
 │ How Ruken works 1 2 3   │
-│ Bring your fans         │
-│ Safe to play            │
+│ Send them here          │
+│ Chosen by people        │
 │ Makers' pay, in the open│
 │ [Want to play?][Made a  │
 │  game?]  closing cards  │
