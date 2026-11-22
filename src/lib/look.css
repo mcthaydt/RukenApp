@@ -3188,7 +3188,7 @@ header:has(+ main.about) {
 }
 
 .about .sitefoot a:hover {
-  text-decoration: underline;
+  color: var(--sage);
 }
 
 /* The news is a small box under the blue button, with an arrow: something new to look at, not a line of small print. */
@@ -3358,7 +3358,68 @@ header:has(+ main.about) {
 }
 
 .about .pair .card {
+  display: flex;
+  flex-direction: column;
   margin: 0;
+}
+
+/* The two cards are a pair, not two copies: the makers' on paper, the players' on the Dusky Green, each the same
+   height, with its buttons on one line along the bottom whatever the length of the words above. */
+.about .pair .card + .card {
+  background: var(--felt-raised);
+  color: var(--chalk);
+  color-scheme: dark;
+}
+
+.about .pair .card + .card .forwhom {
+  color: var(--sage);
+}
+
+.about .pair .card + .card .outline {
+  border-color: var(--chalk);
+  color: var(--chalk);
+}
+
+.about .pair .card + .card a.more {
+  color: var(--chalk);
+}
+
+.about .pair .links {
+  margin-top: auto;
+  padding-top: 2rem;
+}
+
+/* Each point is a line with a tick, not a bullet: a promise, read at a glance. */
+.about .pair ul,
+.about .band > div > ul {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.about .pair li,
+.about .band > div > ul > li {
+  display: grid;
+  grid-template-columns: 1.75rem 1fr;
+  margin: 0;
+}
+
+.about .pair li::before {
+  content: "✓";
+  color: var(--pay);
+  font: var(--text-button);
+}
+
+.about .band > div > ul > li::before {
+  content: "✓";
+  color: var(--sage);
+  font: var(--text-button);
+}
+
+.about .pair .card + .card li::before {
+  color: var(--sage);
 }
 
 /* A button whose words wrap on a small phone keeps them centred, as its single-line neighbours are. */
@@ -3412,52 +3473,282 @@ header:has(+ main.about) {
   max-width: var(--width-read);
 }
 
+/* The price panel is as wide as the band, not a column of reading. */
+.about .band > .price {
+  max-width: none;
+}
+
 /* A band's heading is set at the section's size, larger than a card's title, so each band opens with a statement. */
 .about .band h2 {
   font: var(--text-section);
 }
 
 /* A band's heading has the same room above its panels or steps as above its words. */
-.about .band h2 + ul,
 .about .band h2 + ol {
   margin-top: 2rem;
 }
 
-/* A still from a live game, in its wide shape, beside the words on a computer and above them on a phone. */
-.about .band:has(.still) {
+/* A band's picture (a phone showing Ruken, or the money split) beside the words on a computer and above them on a
+   phone. */
+.about .band:has(figure) {
   display: grid;
   gap: 1.5rem;
 }
 
-.about .still {
+.about .band figure {
   order: -1;
   margin: 0;
 }
 
-.about .still video {
+/* A phone, drawn: a dark frame round a screen, as Ruken looks in a hand. */
+.about .device {
+  justify-self: center;
+  width: min(100%, 17rem);
+  padding: 0.625rem;
+  border-radius: 2rem;
+  background: var(--felt-deep);
+}
+
+.about .device > div {
+  position: relative;
+  aspect-ratio: 9 / 18;
+  overflow: hidden;
+  border-radius: 1.5rem;
+}
+
+/* The feed on the phone: the clip fills the screen, with the game's name, its maker and Play in a bar at the foot. */
+.about .devicefeed video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  background-color: var(--felt);
+}
+
+.about .devicebar {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-card);
+  background: var(--felt);
+}
+
+.about .devicebar p {
+  display: grid;
+  margin: 0;
+  min-width: 0;
+}
+
+.about .devicebar span {
+  color: var(--sage);
+}
+
+.about .playbox {
+  flex: none;
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--radius-button);
+  background: var(--pay);
+  color: var(--chalk);
+  font: var(--text-button);
+}
+
+/* A maker's page on the phone: their picture, name and handle, and their games as rows to play, on paper. */
+.about .devicemaker {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.25rem;
+  padding: 2rem 1rem;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: center;
+}
+
+.about .deviceface {
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  aspect-ratio: 1;
+  margin-bottom: 0.5rem;
+  border-radius: var(--radius-card);
+  object-fit: cover;
+  background-color: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-card-title);
+}
+
+.about .devicename {
+  margin: 0;
+  font: var(--text-statement);
+}
+
+.about .devicehandle {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.about .devicemaker .devicegames {
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+
+.about .devicegames li {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.5rem;
+  border-radius: var(--radius-button);
+  background: var(--felt);
+  color: var(--chalk);
+  text-align: start;
+}
+
+.about .devicegames video {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 9 / 16;
   object-fit: cover;
-  border-radius: var(--radius-card);
+  border-radius: 0.5rem;
   background-color: var(--felt-deep);
 }
 
-/* The membership's four points, each a small panel on the felt. */
-.about .perks {
+/* Where a member's money goes: one bar cut in three, and a line for each part in the same colour. */
+.about .split {
+  padding: 2rem 1.5rem;
+  border-radius: var(--radius-card);
+  background: var(--felt-deep);
+}
+
+.about .split figcaption {
+  font: var(--text-statement);
+}
+
+.about .splitbar {
+  display: flex;
+  gap: 0.25rem;
+  height: 3.5rem;
+  margin-top: 1.5rem;
+}
+
+.about .splitbar span {
+  border-radius: var(--radius-button);
+}
+
+.about .split [data-part="fees"] {
+  --part: var(--sage);
+}
+
+.about .split [data-part="makers"] {
+  --part: var(--pay);
+}
+
+.about .split [data-part="ruken"] {
+  --part: var(--felt-raised);
+}
+
+/* The fees are a thin slice; makers and Ruken share the rest half and half. */
+.about .splitbar [data-part="fees"] {
+  flex: 1;
+  background: var(--part);
+}
+
+.about .splitbar [data-part="makers"],
+.about .splitbar [data-part="ruken"] {
+  flex: 3;
+  background: var(--part);
+}
+
+.about .split ul {
   display: grid;
   gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.about .split li {
+  display: grid;
+  grid-template-columns: 1.75rem 1fr;
+  margin: 0;
+}
+
+.about .split li::before {
+  content: "";
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.25rem;
+  border-radius: 0.25rem;
+  background: var(--part);
+}
+
+/* The membership is one panel, not four boxes: the price as the biggest thing in it, the way to join under it, and
+   what a member gets as ticked lines beside it. */
+.about .price {
+  display: grid;
+  gap: 2rem;
+  margin-top: 2rem;
+  padding: 2rem 1.5rem;
+  border-radius: var(--radius-card);
+  background: var(--felt-deep);
+}
+
+.about .price p {
+  margin: 0;
+}
+
+.about .price > div {
+  display: grid;
+  justify-items: start;
+  gap: 1.25rem;
+}
+
+.about .amount {
+  font: var(--text-statement);
+  text-wrap: balance;
+}
+
+/* The monthly price is the size of the headline's words, on a line of its own. */
+.about .amount > span {
+  display: block;
+  font: var(--text-section);
+  font-size: 4rem;
+}
+
+.about .perks {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .about .perks li {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
   margin: 0;
-  padding: 1.25rem;
-  border-radius: var(--radius-card);
-  background: var(--felt-deep);
   font: var(--text-statement);
   text-wrap: balance;
+}
+
+.about .perks li::before {
+  content: "✓";
+  color: var(--sage);
+  font: var(--text-button);
+  line-height: inherit;
 }
 
 /* The steps' numbers sit inside the column, in the text face, so "3." is tight and lines up with the words. */
@@ -3525,24 +3816,46 @@ header:has(+ main.about) {
     grid-template-columns: 1fr 1fr;
   }
 
+  /* On a tablet or a computer the two cards have room to breathe, and their headlines grow to the bands' size. */
+  .about .pair .card {
+    padding: 2.5rem;
+  }
+
+  .about .pair .card h2 {
+    font: var(--text-section);
+  }
+
   /* Two by two on a tablet, so no panel is a word to a line; four in a row on a computer. */
+  /* The price on the left, what a member gets on the right, with a line between. */
+  .about .price {
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+    padding: 3rem;
+  }
+
   .about .perks {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-left: 3rem;
+    border-left: 2px solid var(--felt-raised);
   }
 
   .about .band {
     padding-block: 6rem;
   }
 
-  /* A section with a still: the words on the left, the still on the right. */
-  .about .band:has(.still) {
+  /* A section with a picture: the words on the left, the picture on the right. */
+  .about .band:has(figure) {
     grid-template-columns: 1fr 1fr;
     gap: 3rem;
     align-items: center;
   }
 
-  .about .still {
+  .about .band figure {
     order: 0;
+  }
+
+  .about .split {
+    padding: 2.5rem;
   }
 
   /* The three steps side by side, across the hero's width. */
@@ -3572,8 +3885,8 @@ header:has(+ main.about) {
 }
 
 @media (min-width: 64rem) {
-  .about .perks {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .about .amount > span {
+    font-size: 5.5rem;
   }
 
   /* A computer's stage is wide enough for the third column. */

@@ -53,12 +53,14 @@ export const AUDIENCES: readonly Section[] = [
     id: "makers",
     forWhom: "For makers",
     heading: "Made a game? Let people play it.",
-    lines: ["People see your clip and ask where to play. On Ruken, your clip leads straight to your game."],
+    // The owner, 2026-11-22 18:02 UTC: selective so the quality is high, a good page for maker and game that is easy
+    // to make, pay from the members' pool, simple to send, and the feed brings the players.
+    lines: ["Ruken is picky. Every game is checked by a person, so yours sits next to good ones."],
     points: [
-      "Send your game from GitHub in six short questions. A step-by-step guide shows you how.",
-      "Members pay. After tax and Stripe's fees, half goes to makers, shared by how long members play.",
-      "A person looks at every game. If it's a no, we always tell you why.",
-      "Your game stays yours. Take it off Ruken any time.",
+      "The feed brings you players. Your clip shows, and one tap plays your game.",
+      "Send your game from GitHub in six short questions.",
+      "A good-looking page for you and for each game, made in minutes.",
+      "Get paid. Half of what members pay, after tax and fees, goes to makers, shared by how long they play.",
     ],
     links: [
       { words: "Put your game on Ruken", href: "/make" },
@@ -69,13 +71,13 @@ export const AUDIENCES: readonly Section[] = [
     id: "players",
     forWhom: "For players",
     heading: "Find your next game in a swipe.",
-    lines: [
-      "Tired of digging through copycat games? Watch a few seconds of each one first. Play the ones you like.",
-    ],
+    // The owner, 2026-11-22 18:02 UTC: play anywhere, no ads, a console-like experience, no slop because it's vetted.
+    lines: ["Watch a few seconds of a game first. Play the ones you like."],
     points: [
-      "Watching is free. You don't need an account.",
-      "Members tap Play and the game starts in the browser. Nothing to install.",
-      "A person checks every game before it goes live.",
+      "Play anywhere: your phone, tablet or computer. Nothing to install.",
+      "No ads. Not before a game, not during one.",
+      "Full screen, like a console.",
+      "No junk. A person checks every game before it goes live.",
     ],
     links: [
       { words: "Watch the feed", href: "/" },
@@ -85,17 +87,14 @@ export const AUDIENCES: readonly Section[] = [
 ];
 
 /** The membership's four cards. The price comes from the rules, so the first card is written from it. */
-export function membershipCards(prices: { monthly: string; annual: string }): readonly string[] {
-  return [
-    `${prices.monthly} a month, or ${prices.annual} a year`,
+export const MEMBERSHIP = {
+  heading: "One price. Every game.",
+  /** What a member gets, each a line with a tick beside the price. */
+  perks: [
     "Play every game on Ruken",
     "Your money helps pay the makers whose games you play",
     "Cancel any time from your account",
-  ];
-}
-
-export const MEMBERSHIP = {
-  heading: "One price. Every game.",
+  ],
   note: "Tax is added where it applies.",
   button: { words: "Join Ruken", href: "/join" },
 } as const;
@@ -145,6 +144,17 @@ export const MORE: readonly Section[] = [
     links: [{ words: "Read the maker agreement", href: "/legal/maker-agreement" }],
   },
 ];
+
+/** The picture beside "Makers' pay": where a member's money goes, as the maker agreement says it. Each maker's own
+ *  share is not shown until the statements are built. */
+export const SPLIT = {
+  title: "Where a member's money goes",
+  parts: [
+    { id: "fees", words: "Tax and Stripe's fees come off first." },
+    { id: "makers", words: "Half of the rest goes to makers, shared by how long members play their games." },
+    { id: "ruken", words: "The other half runs Ruken." },
+  ],
+} as const;
 
 /** The two cards at the foot, one per audience, each with its one button. */
 export const CLOSING: readonly { heading: string; button: Link }[] = [

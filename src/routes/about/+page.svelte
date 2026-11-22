@@ -13,10 +13,10 @@
     FOOTER,
     HERO,
     MEMBERSHIP,
-    membershipCards,
     MORE,
     NEWS,
     SIGN_IN,
+    SPLIT,
     STEPS,
     TOP_LINKS,
   } from "./sections.ts";
@@ -103,13 +103,19 @@
 
   <section class="plain band" aria-labelledby="membership-title">
     <h2 id="membership-title">{MEMBERSHIP.heading}</h2>
-    <ul class="perks">
-      {#each membershipCards(data.prices) as words (words)}
-        <li>{words}</li>
-      {/each}
-    </ul>
-    <p class="note">{MEMBERSHIP.note}</p>
-    <p><a class="button outline" href={MEMBERSHIP.button.href}>{MEMBERSHIP.button.words}</a></p>
+    <!-- One panel: the price big on the left, with the way to join under it, and what a member gets on the right. -->
+    <div class="price">
+      <div>
+        <p class="amount"><span>{data.prices.monthly}</span> a month, or {data.prices.annual} a year</p>
+        <p><a class="button outline" href={MEMBERSHIP.button.href}>{MEMBERSHIP.button.words}</a></p>
+        <p class="note">{MEMBERSHIP.note}</p>
+      </div>
+      <ul class="perks">
+        {#each MEMBERSHIP.perks as words (words)}
+          <li>{words}</li>
+        {/each}
+      </ul>
+    </div>
   </section>
 
   <section class="plain band" aria-labelledby="steps-title">
@@ -121,8 +127,7 @@
     </ol>
   </section>
 
-  {#each MORE as section, index (section.id)}
-    {@const still = data.stills[index] ?? null}
+  {#each MORE as section (section.id)}
     <section class="plain band" id={section.id} aria-labelledby={`${section.id}-title`}>
       <div>
         <p class="forwhom">{section.forWhom}</p>
@@ -141,20 +146,72 @@
           <p><a class="more" href={link.href}>{link.words}</a></p>
         {/each}
       </div>
-      {#if still !== null}
-        <!-- A live game's clip, playing while it is on screen: what the section is about, never a mock-up. -->
-        <figure class="still">
-          <video
-            use:loads
-            src={`${still.wide}#t=${String(still.at)}`}
-            preload="none"
-            muted
-            loop
-            playsinline
-            tabindex="-1"
-            aria-label={`A clip of ${still.name}`}
-            use:playOnScreen
-          ></video>
+      {#if section.id === "fans" && data.maker !== null}
+        <!-- A maker's page on a phone: the first maker in the feed, with their live games, as their page shows them. -->
+        <figure class="device" aria-hidden="true">
+          <div class="devicemaker">
+            {#if data.maker.photo !== null}
+              <img use:loads class="deviceface" src={data.maker.photo} alt="" />
+            {:else}
+              <span class="deviceface">{data.maker.name.slice(0, 1).toUpperCase()}</span>
+            {/if}
+            <p class="devicename">{data.maker.name}</p>
+            <p class="devicehandle">@{data.maker.handle}</p>
+            <ul class="devicegames">
+              {#each data.maker.games as game (game.name)}
+                <li>
+                  <video
+                    use:loads
+                    src={`${game.upright}#t=3`}
+                    preload="metadata"
+                    muted
+                    playsinline
+                    tabindex="-1"
+                  ></video>
+                  <span>{game.name}</span>
+                  <span class="playbox">Play</span>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        </figure>
+      {:else if section.id === "safe" && data.feed !== null}
+        <!-- The feed on a phone: the top clip playing, with its name, its maker and Play, as the feed shows it. -->
+        <figure class="device" aria-hidden="true">
+          <div class="devicefeed">
+            <video
+              use:loads
+              src={data.feed.upright}
+              preload="none"
+              muted
+              loop
+              playsinline
+              tabindex="-1"
+              use:playOnScreen
+            ></video>
+            <div class="devicebar">
+              <p>
+                <strong>{data.feed.name}</strong>
+                {#if data.feed.maker !== null}<span>by {data.feed.maker}</span>{/if}
+              </p>
+              <span class="playbox">Play</span>
+            </div>
+          </div>
+        </figure>
+      {:else if section.id === "pay"}
+        <!-- Where a member's money goes, drawn from the maker agreement. Each maker's own share comes with statements. -->
+        <figure class="split">
+          <figcaption>{SPLIT.title}</figcaption>
+          <div class="splitbar" aria-hidden="true">
+            {#each SPLIT.parts as part (part.id)}
+              <span data-part={part.id}></span>
+            {/each}
+          </div>
+          <ul>
+            {#each SPLIT.parts as part (part.id)}
+              <li data-part={part.id}>{part.words}</li>
+            {/each}
+          </ul>
         </figure>
       {/if}
     </section>
