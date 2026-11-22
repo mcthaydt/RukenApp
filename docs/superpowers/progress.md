@@ -60,6 +60,7 @@ Each entry is dated and quotes the owner where the source does; "(paraphrase)" m
 - 2026-11-22 01:21 UTC: "okay, get us aligned with our workflow; all of our issues is you not following the workflow". Gap list: `audits/2026-11-22-apps-kit-practice-1-audit.md`; its fixes are in the pull request that carries it and in every thread prompt from now on (its P8).
 - 2026-11-22 02:06 UTC, answering the coordinator's question whether to raise the cap on sessions writing code from 3 to 6 to match: "Yes". CLAUDE.md Settings and `staged-path` say 6 writers. The 5 work sessions at once stays (a writer waiting on a review or the owner is not one of the 5). Done (#291).
 - 2026-11-22 04:53 UTC: 'update our notion at the end of our slice, and create a prompt to send automata framework so the notion setup can be replicated'. The Ruken page in Notion was brought up to date for slice 2's close, and the update is a standing step at the end of every slice (this-repo, Private notes go to Notion, #303). The prompt is in the project's files, handoff/notion-setup-prompt.md.
+- 2026-11-22 13:41 UTC: "Also we have another major issue: the page scrolls when we swipe, it should scroll within the static panel". 13:42 UTC: "also double check that holding the screen doesn't highlight the entire panel, we should only be able to highlight anything OUTSIDE the game as well; double check various expected quality of life things like that". 13:43 UTC: "We should also not be able to zoom in to the panel, it should feel like we're using a real app inside the browser". 13:46 UTC: "\"double check various expected quality of life things like that\" was mostly referring to things that will break the illusion that we're doing this inside a browser, should feel like an app at all times" (the same message's frosted-glass ask is its own thread). Work: the "Keep swipes inside the feed panel" thread, branch `claude/project-thread-9hbbq0`.
 
 ## Active milestone: "Finish Ruken"
 
@@ -99,6 +100,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Flaky root causes, `play.test.ts:41` and `pay.test.ts:41` | #293 | merged as `e172f2a` (with the typed-before-alive fix); the follow-up for three more flaky journeys is on `claude/project-thread-4625xg` | not measured (short path, no plan) |
 | A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f` | not measured |
 | Hook follow-ups (the lane reading, the launcher-word refusal) | none yet | not started; lane 3 hooks changes, each its own pull request | not measured |
+| Panels feel like an app: swipes stay in the feed, no zoom, no highlight (lane 2) | `claude/project-thread-9hbbq0` | built, journeys pass in the cloud; waiting on its lane 2 review | not measured (short path, no plan) |
 | Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
 
 ## Slice 2
