@@ -289,6 +289,7 @@ describe("screens wear the look and nothing of their own", () => {
     "row",
     "button",
     "quiet",
+    "plain-link",
     "safe",
     "danger",
     "outline",
