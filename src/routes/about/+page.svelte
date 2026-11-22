@@ -93,7 +93,7 @@
     {/each}
   </div>
 
-  <section class="plain" aria-labelledby="membership-title">
+  <section class="plain band" aria-labelledby="membership-title">
     <h2 id="membership-title">{MEMBERSHIP.heading}</h2>
     <ul class="perks">
       {#each membershipCards(data.prices) as words (words)}
@@ -104,7 +104,7 @@
     <p><a class="button outline" href={MEMBERSHIP.button.href}>{MEMBERSHIP.button.words}</a></p>
   </section>
 
-  <section class="plain" aria-labelledby="steps-title">
+  <section class="plain band" aria-labelledby="steps-title">
     <h2 id="steps-title">{STEPS.heading}</h2>
     <ol class="steps">
       {#each STEPS.steps as step (step.title)}
@@ -113,23 +113,40 @@
     </ol>
   </section>
 
-  {#each MORE as section (section.id)}
-    <section class="plain" id={section.id} aria-labelledby={`${section.id}-title`}>
-      <p class="forwhom">{section.forWhom}</p>
-      <h2 id={`${section.id}-title`}>{section.heading}</h2>
-      {#each section.lines as line (line)}
-        <p>{line}</p>
-      {/each}
-      {#if section.points.length > 0}
-        <ul>
-          {#each section.points as point (point)}
-            <li>{point}</li>
-          {/each}
-        </ul>
+  {#each MORE as section, index (section.id)}
+    {@const still = data.stills[index] ?? null}
+    <section class="plain band" id={section.id} aria-labelledby={`${section.id}-title`}>
+      <div>
+        <p class="forwhom">{section.forWhom}</p>
+        <h2 id={`${section.id}-title`}>{section.heading}</h2>
+        {#each section.lines as line (line)}
+          <p>{line}</p>
+        {/each}
+        {#if section.points.length > 0}
+          <ul>
+            {#each section.points as point (point)}
+              <li>{point}</li>
+            {/each}
+          </ul>
+        {/if}
+        {#each section.links as link (link.href)}
+          <p><a href={link.href}>{link.words}</a></p>
+        {/each}
+      </div>
+      {#if still !== null}
+        <!-- A still from a live game: a picture of what the section is about, never a mock-up. -->
+        <figure class="still">
+          <video
+            use:loads
+            src={`${still.wide}#t=${String(still.at)}`}
+            preload="metadata"
+            muted
+            playsinline
+            tabindex="-1"
+            aria-label={`A still from ${still.name}`}
+          ></video>
+        </figure>
       {/if}
-      {#each section.links as link (link.href)}
-        <p><a href={link.href}>{link.words}</a></p>
-      {/each}
     </section>
   {/each}
 

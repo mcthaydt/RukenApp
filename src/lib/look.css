@@ -3196,8 +3196,53 @@ header:has(+ main.about) {
 }
 
 .about .plain {
-  max-width: var(--width-read);
   margin-top: 3rem;
+}
+
+/* After the two cards, each section is a band across the whole window, so a person sees where one ends and the next
+   begins: the felt and the Dusky Green take turns (white words are 9.5:1 on it, the notes 5.4:1). The band's colour
+   reaches the window's edges by an outline, cut to the band's height, which never widens the page. */
+.about .band {
+  margin-top: 0;
+  padding-block: 4rem;
+}
+
+.about .pair + .band {
+  margin-top: 3rem;
+}
+
+.about .band:nth-child(odd of .band) {
+  background-color: var(--felt-raised);
+  outline: 100vmax solid var(--felt-raised);
+  clip-path: inset(0 -100vmax);
+}
+
+.about .band + .pair {
+  margin-top: 3rem;
+}
+
+.about .band > div {
+  max-width: var(--width-read);
+}
+
+/* A still from a live game, in its wide shape, beside the words on a computer and above them on a phone. */
+.about .band:has(.still) {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.about .still {
+  order: -1;
+  margin: 0;
+}
+
+.about .still video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-card);
+  background-color: var(--felt-deep);
 }
 
 /* The membership's four points, each a small panel on the felt. */
@@ -3268,19 +3313,55 @@ header:has(+ main.about) {
     grid-template-columns: 1fr 1fr;
   }
 
-  /* Two by two, in the same centred column as the sections under it, so no panel is a word to a line. */
+  /* Two by two on a tablet, so no panel is a word to a line; four in a row on a computer. */
   .about .perks {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* Below the cards the page is one centred column, as the sketch says, with the links at the foot under it. */
-  .about .plain,
+  .about .band {
+    padding-block: 6rem;
+  }
+
+  /* A section with a still: the words on the left, the still on the right. */
+  .about .band:has(.still) {
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  .about .still {
+    order: 0;
+  }
+
+  /* The three steps side by side, across the hero's width. */
+  .about .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .about .steps li {
+    align-content: start;
+  }
+
+  .about .steps li + li {
+    margin-top: 0;
+  }
+
+  /* The links at the foot are centred under the page. */
   .about .sitefoot {
     margin-inline: auto;
   }
 
   .about .sitefoot {
     justify-content: center;
+  }
+}
+
+@media (min-width: 64rem) {
+  .about .perks {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

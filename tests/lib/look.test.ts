@@ -389,6 +389,8 @@ describe("screens wear the look and nothing of their own", () => {
     "perks",
     "steps",
     "sitefoot",
+    "band",
+    "still",
     // Words only a screen reader meets: the layout's "Sending…" (src/lib/busy-forms.ts).
     "hidden-words",
   ];

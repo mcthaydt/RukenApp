@@ -120,6 +120,10 @@ Resuming. The owner's 2026-11-21 03:12 UTC "Let's park slice 3 until we confirm 
 
 Each approval names the screen and the commit it shows (`visual-check`, Skip what is already approved). None is recorded by screen and commit yet: slice 2's screens were approved on the owner's word without that record, so slice 3's end shoots and records them.
 
+## Blind judge picks
+
+- 2026-11-22, landing page (/about) at f2f06ca against the home page the owner named as its inspiration: the judge called ours amateur (about 90% sure). Gap taken: the section wall after the hero, fixed with full-width bands, a still per short section and the price and steps at the hero's width. Audit: `docs/superpowers/audits/2026-11-22-landing-page-blind-judge-1.md` (90fa5b7).
+
 ## Kept on purpose
 
 Things the owner keeps from being updated or deleted, each with its scope (`build`, CRUD in the journeys). None yet.
