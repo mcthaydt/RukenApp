@@ -195,7 +195,7 @@ export const OPEN_CODE = {
   heading: "Built in the open.",
   lines: [
     "Most of Ruken's code is on GitHub for anyone to read. The parts that choose what's in your feed and stop cheats stay private.",
-    "Each version becomes fully open source two years after it comes out.",
+    "Two years after each version comes out, its public code becomes fully open source. The private parts stay private.",
   ],
   button: { words: "See the code on GitHub", href: "https://github.com/mcthaydt/RukenApp" },
 } as const;
