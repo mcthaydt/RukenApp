@@ -12,24 +12,30 @@
 #   reaches, and the first failure stops the run. Its checks carry different names, so they never stand in for the
 #   required ones.
 # - A pull request that is ready for review, and every push to main, gets the full run: `verify`, `postgres` and
-#   `browser`, summed up by the required check `gate`. Marking a draft ready starts it. Nothing merges without it.
+#   the six browser pieces, summed up by the required check `gate`. Marking a draft ready starts it.
+#
+# Fast (Owner, 2026-11-22 01:20 UTC: "how can we speed up our CI? We don't have enough built in the app for it to take
+# this long"; docs/superpowers/specs/2026-11-22-faster-ci-design.md). Every job but `gate` starts at once, so a run
+# waits for a runner twice, not five times. The browser pieces run in Playwright's own image, with the browsers in
+# it. They are filled by the test times `main` records, once the planner is on `main`, and `gate` checks on a full
+# run that the pieces together ran every listed journey exactly once.
 #
 # Screenshots (Owner, 2026-11-21 06:05 UTC, "Yes, start it" to taking pictures of only the screens a change touches):
-# every run, draft or full, on a pull request or on main, attaches a `look:` picture only for the screens its change
-# reaches. The `screens` job builds the base and the change, asks the picker (tests/browser/support/changed-screens.ts,
-# built in the next pull request) which pages differ, and hands the answer to the browser pieces as LOOK_CHANGED. Any
-# doubt (the `screenshots` label, a path in SHOOT_EVERYTHING_WHEN, a build that fails, no picker yet) answers
-# {"all":true,...} and every screen is shot. Every journey still runs and checks as before: only the pictures change.
+# every run attaches a `look:` picture only for the screens its change reaches. Each browser piece that has journeys
+# to run builds the base and the change, asks the picker (tests/browser/support/changed-screens.ts) which pages
+# differ, and hands the answer to its journeys as LOOK_CHANGED. Any doubt (the `screenshots` label, a path in
+# SHOOT_EVERYTHING_WHEN, a build that fails, no picker) answers {"all":true,...} and every screen is shot. Every
+# journey still runs and checks as before: only the pictures change.
 #
 # A pull request that changes only .md files has nothing to test (Owner, 2026-11-15: "when a PR only touches .md
-# files, skip the tests and allow the merge, in all repos."). The `changes` job spots it, and `verify`, `postgres`
-# and `browser` still run and still report success to `gate`, but do no work. They are not left out of
-# the workflow with `paths-ignore`, because a required check that never starts stays pending and nothing merges.
-# One file that is not .md, or any doubt about what changed, runs everything as before. A push to main always does.
+# files, skip the tests and allow the merge, in all repos."). The DOCS_ONLY script below decides it. Each job asks
+# it only to skip its own work; `gate` asks it again, and only the gate's answer lets skipped work pass. The jobs are
+# not left out with `paths-ignore`, because a required check that never starts stays pending and nothing merges.
+# One file that is not .md, or any doubt about what changed, runs everything. A push to main always does.
 #
-# The one required check is `gate`, the last job: it passes only when `verify`, `postgres` and `browser` all passed
-# on this run. The commit and pull request identity check is its own workflow, `commit-authors.yml`, because it
-# must run again when the pull request's text is edited, and that should not rerun every test.
+# The one required check is `gate`, the last job. The commit and pull request identity check is its own workflow,
+# `commit-authors.yml`, because it must run again when the pull request's text is edited, and that should not rerun
+# every test.
 name: CI
 
 on:
@@ -55,76 +61,86 @@ env:
   # A change to any of these can break tests that do not import it (the database, the Workers, the tooling), so
   # it makes even a draft run everything.
   RUN_EVERYTHING_WHEN: '^(prisma|cloudflare|tests/fixtures)/|^(pnpm-lock\.yaml|package\.json|vite\.config\.ts|playwright\.config\.ts)$'
-  # Read by the `screens` job alone. A change to any of these can change how every screen looks (or the picker itself,
-  # the stand-in servers and the helpers the journeys import), so it shoots every screen. RUN_EVERYTHING_WHEN above
-  # is a different list and stays as it is, so a draft's choice of tests does not change.
+  # Read only by the screens steps of the browser pieces. A change to any of these can change how every screen looks
+  # (or the picker itself, the stand-in servers and the helpers the journeys import), so it shoots every screen.
   SHOOT_EVERYTHING_WHEN: '^(prisma|cloudflare|tests/fixtures|tests/browser/support|tests/support)/|^(pnpm-lock\.yaml|package\.json|vite\.config\.ts|playwright\.config\.ts|wrangler\.jsonc|\.github/workflows/ci\.yml)$'
 
-jobs:
-  # Says whether the pull request changes only .md files. The jobs below read its answer and, when it is "true",
-  # skip their work. If this job fails or says nothing, they see "not true" and run everything: a doubt never
-  # skips a test.
-  changes:
-    name: what changed
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      docs_only: ${{ steps.look.outputs.docs_only }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - name: Look for anything that is not a .md file
-        id: look
-        run: |
-          docs_only=false
-          # Only a pull request can be docs-only; every push to main is tested in full.
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            # --no-renames lists both the old and the new name, so moving a code file to a .md name still counts.
-            files=$(git diff --name-only --no-renames origin/main...HEAD)
-            printf '%s\n' "$files"
-            # An empty list is not docs-only: with nothing to go on, run everything.
-            if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '\.md$'; then
-              docs_only=true
-            fi
-          fi
-          echo "Only .md files changed: $docs_only"
-          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+  # The docs-only rule, written once and run by every job as `bash -c "$DOCS_ONLY"`. Kept in this file, not a
+  # script beside it, so the CI change stays one file (build, "A change does not quietly edit its own check").
+  DOCS_ONLY: |
+    # Prints docs_only=true when this pull request changes only .md files, otherwise docs_only=false.
+    # A push to main, an empty diff or any error answers false: a doubt never skips a test.
+    # The gate's own answer is the one that counts (release, Docs only); other jobs ask only to save work.
+    set -u
+    docs_only=false
+    if [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ]; then
+      # --no-renames lists both the old and the new name, so moving a code file to a .md name still counts.
+      if files=$(git diff --name-only --no-renames origin/main...HEAD); then
+        printf '%s\n' "$files" >&2
+        if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvE '\.md$'; then
+          docs_only=true
+        fi
+      fi
+    fi
+    echo "Only .md files changed: $docs_only" >&2
+    echo "docs_only=$docs_only"
+  # One line per test in a Playwright JSON report, run as `node --input-type=module -e "$TESTS_IN_REPORT" <mode> <file>`.
+  TESTS_IN_REPORT: |
+    // node tests-in-report.js <ran|listed> <Playwright JSON report>
+    // Prints one line per test, sorted: "<device profile>|<file>:<line>:<column>|<title path>".
+    // "ran" keeps the tests that have a result in the report (what this piece really ran); "listed" keeps every
+    // test, as `playwright test --list --reporter=json` gives them.
+    import { readFileSync } from "node:fs";
 
+    const [mode, file] = process.argv.slice(1);
+    if (mode !== "ran" && mode !== "listed") throw new Error(`mode must be ran or listed, not ${mode}`);
+    const report = JSON.parse(readFileSync(file, "utf8"));
+    const lines = [];
+    const walk = (suite, titles) => {
+      const here = suite.title ? [...titles, suite.title] : titles;
+      for (const spec of suite.specs ?? []) {
+        for (const t of spec.tests ?? []) {
+          if (mode === "ran" && !(t.results?.length > 0)) continue;
+          lines.push(
+            `${t.projectName}|${spec.file}:${spec.line}:${spec.column}|${[...here, spec.title].join(" › ")}`,
+          );
+        }
+      }
+      for (const child of suite.suites ?? []) walk(child, here);
+    };
+    for (const suite of report.suites ?? []) walk(suite, []);
+    process.stdout.write(lines.sort().join("\n") + (lines.length ? "\n" : ""));
+
+jobs:
   verify:
     name: ${{ github.event.pull_request.draft && 'verify (quick, draft)' || 'verify' }}
-    needs: changes
-    # Not `always()`: that would also run after a cancel. This runs even when `changes` failed, which then runs everything.
-    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Only .md files changed, nothing to test
-        if: needs.changes.outputs.docs_only == 'true'
-        run: echo "Only .md files changed. Lint, typecheck, the tests and the build have nothing to check."
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.docs_only != 'true'
         with:
           persist-credentials: false
-          # The quick run compares with main, so it needs the history.
+          # The docs-only answer and the quick run compare with main, so they need the history.
           fetch-depth: 0
+      - name: Only .md files changed?
+        id: docs
+        run: bash -c "$DOCS_ONLY" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        if: needs.changes.outputs.docs_only != 'true'
+        if: steps.docs.outputs.docs_only != 'true'
       # `cache: pnpm` keeps the downloaded packages between runs.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        if: needs.changes.outputs.docs_only != 'true'
+        if: steps.docs.outputs.docs_only != 'true'
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-        if: needs.changes.outputs.docs_only != 'true'
+        if: steps.docs.outputs.docs_only != 'true'
       - run: pnpm lint
-        if: needs.changes.outputs.docs_only != 'true'
+        if: steps.docs.outputs.docs_only != 'true'
       - run: pnpm typecheck
-        if: needs.changes.outputs.docs_only != 'true'
+        if: steps.docs.outputs.docs_only != 'true'
       - name: Unit tests
-        if: needs.changes.outputs.docs_only != 'true'
+        if: steps.docs.outputs.docs_only != 'true'
         run: |
           if [ "$CHANGED_ONLY" = "true" ] && ! git diff --name-only origin/main | grep -Eq "$RUN_EVERYTHING_WHEN"; then
             # The tests the change reaches, stopping at the first failure. The two below read files as text, so
@@ -141,12 +157,10 @@ jobs:
             pnpm test
           fi
       - run: pnpm build
-        if: needs.changes.outputs.docs_only != 'true'
+        if: steps.docs.outputs.docs_only != 'true'
 
   postgres:
     name: ${{ github.event.pull_request.draft && 'postgres (quick, draft)' || 'postgres' }}
-    needs: changes
-    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -165,25 +179,24 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
-      - name: Only .md files changed, nothing to test
-        if: needs.changes.outputs.docs_only == 'true'
-        run: echo "Only .md files changed. The database tests have nothing to check."
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.docs_only != 'true'
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Only .md files changed?
+        id: docs
+        run: bash -c "$DOCS_ONLY" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        if: needs.changes.outputs.docs_only != 'true'
+        if: steps.docs.outputs.docs_only != 'true'
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        if: needs.changes.outputs.docs_only != 'true'
+        if: steps.docs.outputs.docs_only != 'true'
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-        if: needs.changes.outputs.docs_only != 'true'
+        if: steps.docs.outputs.docs_only != 'true'
       - name: Database tests
-        if: needs.changes.outputs.docs_only != 'true'
+        if: steps.docs.outputs.docs_only != 'true'
         run: |
           # A draft stops at the first failure; the full run reports every one.
           if [ "$CHANGED_ONLY" = "true" ]; then
@@ -192,119 +205,17 @@ jobs:
             pnpm test:pg
           fi
 
-  # Works out which screens the change reaches, once per run, and hands the answer (one line of JSON, LOOK_CHANGED)
-  # to the browser pieces. The picker is tests/browser/support/changed-screens.ts, run as
-  #   node tests/browser/support/changed-screens.ts <change build output> <base build output> <file with the changed paths>
-  # and it prints the answer on one line. A root file it expects (such as server/entries/params.js, which is written
-  # only while the app has a route matcher) that is missing from both builds is nothing to follow, not a crash; one
-  # present in only one build counts as changed. Until that file exists this job answers "all" straight after the checkout,
-  # before it installs or builds anything. It never fails the run: whatever goes wrong, it answers "all", so a doubt
-  # shoots every screen, as a doubt never skips a test. A docs-only pull request skips it, as it skips the pieces.
-  screens:
-    name: which screens changed
-    needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    outputs:
-      look_changed: ${{ steps.decide.outputs.look_changed || steps.compare.outputs.look_changed }}
-    env:
-      PICKER: tests/browser/support/changed-screens.ts
-      PULL_REQUEST_LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      # Answers "all" at once, with no build, when it can already tell. Otherwise says to go on and build.
-      - name: See whether a comparison is needed
-        id: decide
-        run: |
-          shoot_all() {
-            answer=$(node -p 'JSON.stringify({ all: true, reason: process.argv[1] })' "$1")
-            echo "Every screen is shot: $1"
-            echo "look_changed=$answer" >> "$GITHUB_OUTPUT"
-            echo "build=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          }
-          if [ ! -f "$PICKER" ]; then shoot_all "no picker yet"; fi
-          case " $PULL_REQUEST_LABELS " in *" screenshots "*) shoot_all "the pull request carries the screenshots label" ;; esac
-          head=$(git rev-parse HEAD)
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base=$(git merge-base origin/main "$head") || shoot_all "no base to compare with"
-          else
-            # A push to main: the merge commit of a pull request is compared with its first parent.
-            base=$(git rev-parse "$head^1") || shoot_all "no base to compare with"
-          fi
-          echo "Comparing $head with $base"
-          git diff --name-only --no-renames "$base" "$head" > "$RUNNER_TEMP/changed-paths.txt"
-          cat "$RUNNER_TEMP/changed-paths.txt"
-          if grep -Eq "$SHOOT_EVERYTHING_WHEN" "$RUNNER_TEMP/changed-paths.txt"; then
-            shoot_all "a changed file is one that can change every screen ($(grep -E "$SHOOT_EVERYTHING_WHEN" "$RUNNER_TEMP/changed-paths.txt" | head -n 1))"
-          fi
-          echo "head=$head" >> "$GITHUB_OUTPUT"
-          echo "base=$base" >> "$GITHUB_OUTPUT"
-          echo "build=true" >> "$GITHUB_OUTPUT"
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        if: steps.decide.outputs.build == 'true'
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        if: steps.decide.outputs.build == 'true'
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      # A failed install is not a failed run: the next step reads the outcome and answers "all".
-      - name: Install
-        id: install
-        if: steps.decide.outputs.build == 'true'
-        continue-on-error: true
-        run: pnpm install --frozen-lockfile
-      # Builds the change, then the base in the same checkout with the same packages (the lockfile and package.json are
-      # in SHOOT_EVERYTHING_WHEN, so the packages are the same for both), and asks the picker.
-      - name: Build both and compare
-        id: compare
-        if: steps.decide.outputs.build == 'true'
-        env:
-          HEAD_SHA: ${{ steps.decide.outputs.head }}
-          BASE_SHA: ${{ steps.decide.outputs.base }}
-          INSTALL_OUTCOME: ${{ steps.install.outcome }}
-        run: |
-          shoot_all() {
-            # Back on the change, whatever happened.
-            git checkout --quiet --detach "$HEAD_SHA" || true
-            answer=$(node -p 'JSON.stringify({ all: true, reason: process.argv[1] })' "$1")
-            echo "Every screen is shot: $1"
-            echo "look_changed=$answer" >> "$GITHUB_OUTPUT"
-            exit 0
-          }
-          [ "$INSTALL_OUTCOME" = "success" ] || shoot_all "the install failed"
-          out="$RUNNER_TEMP/look"
-          rm -rf "$out"; mkdir -p "$out"
-          pnpm build || shoot_all "the change did not build"
-          cp -r .svelte-kit/output "$out/change"
-          git checkout --quiet --detach "$BASE_SHA" || shoot_all "the base could not be checked out"
-          rm -rf .svelte-kit/output
-          pnpm build || shoot_all "the base did not build"
-          cp -r .svelte-kit/output "$out/base"
-          git checkout --quiet --detach "$HEAD_SHA"
-          answer=$(node "$PICKER" "$out/change" "$out/base" "$RUNNER_TEMP/changed-paths.txt" | head -n 1) || shoot_all "the picker failed"
-          [ -n "$answer" ] || shoot_all "the picker gave no answer"
-          # A job output is capped at 1 MB and an environment variable at about 128 KB, so a longer answer is not passed on.
-          [ "${#answer}" -le 100000 ] || shoot_all "the answer was too long to pass on"
-          echo "$answer" | node -e 'JSON.parse(require("fs").readFileSync(0, "utf8"))' || shoot_all "the picker's answer could not be read"
-          printf '%s\n' "$answer" | cut -c 1-2000
-          echo "look_changed=$answer" >> "$GITHUB_OUTPUT"
-
-  # The journeys are split across six runners, side by side, each with its own database and its own site, so a run
-  # stays short as the journeys grow. Playwright deals the test files out among the pieces. On a draft only the
-  # journeys the change reaches run, and the first failure stops every piece.
+  # The journeys are split across six runners, side by side, each with its own database and its own site. On a draft
+  # only the journeys the change reaches run, and the first failure stops every piece.
   browser-shard:
     name: browser shard ${{ matrix.shard }} of 6${{ github.event.pull_request.draft && ' (quick, draft)' || '' }}
-    needs: [changes, screens]
-    # The pieces are not required checks, so a docs-only pull request skips them whole. The `browser` check below
-    # accepts that. As with `verify`, a failed `changes` job still runs them.
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Playwright's own image for the version package.json pins, by digest: the browsers and their system libraries
+    # are already in it, so nothing is installed for them. --ipc=host is what Playwright asks for Chromium in Docker.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      options: --ipc=host
     strategy:
       # The full run wants every piece's result, so a failing piece must not hide the others. A draft wants to hear
       # of the first failure at once.
@@ -322,60 +233,181 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-        ports:
-          - 5432:5432
     env:
-      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-      # The `screens` job's answer: which screens to photograph. Empty (that job failed or was skipped) shoots every screen.
-      LOOK_CHANGED: ${{ needs.screens.outputs.look_changed }}
+      # Inside a job container the service is reached by its name, not through a port on the runner.
+      TEST_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+      PICKER: tests/browser/support/changed-screens.ts
+      PLANNER: tests/browser/support/shard-plan.ts
+      PULL_REQUEST_LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+      PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-json/report.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Only .md files changed?
+        id: docs
+        run: |
+          # The job container runs as root over a checkout git did not make, so git is told the folder is ours.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          bash -c "$DOCS_ONLY" >> "$GITHUB_OUTPUT"
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: steps.docs.outputs.docs_only != 'true'
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.docs.outputs.docs_only != 'true'
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        if: steps.docs.outputs.docs_only != 'true'
+      # The seconds each journey file took on each device in main's last full run. The newest one is taken.
+      - name: Fetch main's test times
+        if: steps.docs.outputs.docs_only != 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ci-test-times.json
+          key: ci-test-times-${{ github.sha }}
+          restore-keys: ci-test-times-
       # Asks Playwright which journeys this piece would run, before anything slow starts. A draft piece that has
-      # none skips the rest, so it finishes in a minute. Only Playwright's own "No tests found" skips; any other
-      # failure still runs the journeys, so a real error is never hidden.
+      # none skips the rest, so it finishes in a minute. Only Playwright's own empty answers skip: "No tests found"
+      # with an error, or "Total: 0 tests in 0 files" with none (Playwright 1.63 lists an empty piece that way).
+      # Any other failure still runs the journeys, so a real error is never hidden. With the planner on main and times to
+      # read, the planner fills the pieces by time; otherwise Playwright's own split is used.
       - name: Pick the journeys
         id: pick
+        if: steps.docs.outputs.docs_only != 'true'
         run: |
-          args="--shard=${{ matrix.shard }}/6"
+          if [ -f "$PLANNER" ] && [ -f ci-test-times.json ]; then
+            echo "RUKEN_SHARD=${{ matrix.shard }}/6" >> "$GITHUB_ENV"
+            echo "RUKEN_SHARD_TIMES=$GITHUB_WORKSPACE/ci-test-times.json" >> "$GITHUB_ENV"
+            export RUKEN_SHARD="${{ matrix.shard }}/6" RUKEN_SHARD_TIMES="$GITHUB_WORKSPACE/ci-test-times.json"
+            echo "Split by main's recorded times."
+            args=""
+          else
+            echo "Split by Playwright (no planner or no recorded times)."
+            args="--shard=${{ matrix.shard }}/6"
+          fi
           if [ "$CHANGED_ONLY" = "true" ]; then
             args="$args --max-failures=1"
             if ! git diff --name-only origin/main | grep -Eq "$RUN_EVERYTHING_WHEN"; then
               args="$args --only-changed=origin/main"
             fi
           fi
+          # The journeys import the generated database client, so generate it first, as `pnpm test:browser` does;
+          # without it every file fails to load and the listing is empty for the wrong reason.
+          pnpm generate > /dev/null
           status=0
           listing=$(pnpm exec playwright test --list --reporter=list $args 2>&1) || status=$?
-          printf '%s\n' "$listing" | tail -n 3
-          if [ "$status" -ne 0 ] && printf '%s' "$listing" | grep -q "No tests found"; then
+          echo "The listing ended with status $status:"
+          printf '%s\n' "$listing" | tail -n 5
+          if { [ "$status" -ne 0 ] && printf '%s' "$listing" | grep -q "No tests found"; } ||
+            { [ "$status" -eq 0 ] && printf '%s\n' "$listing" | grep -Eq '^Total: 0 tests in 0 files$'; }; then
             echo "run=false" >> "$GITHUB_OUTPUT"
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
           echo "args=$args" >> "$GITHUB_OUTPUT"
-      # The browsers are kept between runs, keyed by Playwright's version (pinned exactly in package.json). The
-      # install below still adds the system libraries, and downloads a browser only when the cache has none.
-      - name: Find Playwright's version
-        id: playwright
+      # Works out which screens the change reaches, only in a piece with journeys to run. Answers "all" at once, with
+      # no build, when it can already tell; otherwise says to go on and build.
+      - name: See whether a screens comparison is needed
+        id: decide
         if: steps.pick.outputs.run == 'true'
-        run: echo "version=$(node -p "require('./package.json').devDependencies['@playwright/test']")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        run: |
+          shoot_all() {
+            answer=$(node -p 'JSON.stringify({ all: true, reason: process.argv[1] })' "$1")
+            echo "Every screen is shot: $1"
+            echo "look_changed=$answer" >> "$GITHUB_OUTPUT"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          if [ ! -f "$PICKER" ]; then shoot_all "no picker"; fi
+          case " $PULL_REQUEST_LABELS " in *" screenshots "*) shoot_all "the pull request carries the screenshots label" ;; esac
+          head=$(git rev-parse HEAD)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base=$(git merge-base origin/main "$head") || shoot_all "no base to compare with"
+          else
+            # A push to main: the merge commit of a pull request is compared with its first parent.
+            base=$(git rev-parse "$head^1") || shoot_all "no base to compare with"
+          fi
+          echo "Comparing $head with $base"
+          git diff --name-only --no-renames "$base" "$head" > "$RUNNER_TEMP/changed-paths.txt"
+          cat "$RUNNER_TEMP/changed-paths.txt"
+          if grep -Eq "$SHOOT_EVERYTHING_WHEN" "$RUNNER_TEMP/changed-paths.txt"; then
+            shoot_all "a changed file is one that can change every screen ($(grep -E "$SHOOT_EVERYTHING_WHEN" "$RUNNER_TEMP/changed-paths.txt" | head -n 1))"
+          fi
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "build=true" >> "$GITHUB_OUTPUT"
+      # Builds the change, then the base in the same checkout with the same packages (the lockfile and package.json are
+      # in SHOOT_EVERYTHING_WHEN, so the packages are the same for both), and asks the picker. It never fails the run:
+      # whatever goes wrong, it answers "all".
+      - name: Build both and compare screens
+        id: compare
+        if: steps.decide.outputs.build == 'true'
+        env:
+          HEAD_SHA: ${{ steps.decide.outputs.head }}
+          BASE_SHA: ${{ steps.decide.outputs.base }}
+        run: |
+          shoot_all() {
+            # Back on the change, whatever happened.
+            git checkout --quiet --detach "$HEAD_SHA" || true
+            answer=$(node -p 'JSON.stringify({ all: true, reason: process.argv[1] })' "$1")
+            echo "Every screen is shot: $1"
+            echo "look_changed=$answer" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          out="$RUNNER_TEMP/look"
+          rm -rf "$out"; mkdir -p "$out"
+          pnpm build || shoot_all "the change did not build"
+          cp -r .svelte-kit/output "$out/change"
+          git checkout --quiet --detach "$BASE_SHA" || shoot_all "the base could not be checked out"
+          rm -rf .svelte-kit/output
+          pnpm build || shoot_all "the base did not build"
+          cp -r .svelte-kit/output "$out/base"
+          git checkout --quiet --detach "$HEAD_SHA"
+          answer=$(node "$PICKER" "$out/change" "$out/base" "$RUNNER_TEMP/changed-paths.txt" | head -n 1) || shoot_all "the picker failed"
+          [ -n "$answer" ] || shoot_all "the picker gave no answer"
+          # An environment variable is capped at about 128 KB, so a longer answer is not passed on.
+          [ "${#answer}" -le 100000 ] || shoot_all "the answer was too long to pass on"
+          echo "$answer" | node -e 'JSON.parse(require("fs").readFileSync(0, "utf8"))' || shoot_all "the picker's answer could not be read"
+          printf '%s\n' "$answer" | cut -c 1-2000
+          echo "look_changed=$answer" >> "$GITHUB_OUTPUT"
+      # The JSON report beside the usual two records what this piece really ran, for the gate's check and main's times.
+      - name: Run the journeys
         if: steps.pick.outputs.run == 'true'
+        env:
+          LOOK_CHANGED: ${{ steps.decide.outputs.look_changed || steps.compare.outputs.look_changed }}
+        run: pnpm test:browser ${{ steps.pick.outputs.args }} --reporter=list,html,json
+      - name: List the journeys this piece ran
+        if: always() && steps.pick.outputs.run == 'true'
+        run: |
+          mkdir -p ran
+          if [ -f "$PLAYWRIGHT_JSON_OUTPUT_NAME" ]; then
+            node --input-type=module -e "$TESTS_IN_REPORT" ran "$PLAYWRIGHT_JSON_OUTPUT_NAME" > ran/ran-${{ matrix.shard }}.txt
+          else
+            : > ran/ran-${{ matrix.shard }}.txt
+          fi
+          echo "This piece ran $(wc -l < ran/ran-${{ matrix.shard }}.txt) journeys."
+      # Every journey the full run should run, with no split and no selection, for the gate to check the pieces against.
+      - name: List every journey
+        if: always() && matrix.shard == 1 && steps.pick.outputs.run == 'true' && env.CHANGED_ONLY != 'true'
+        env:
+          RUKEN_SHARD: ""
+          RUKEN_SHARD_TIMES: ""
+          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-json/listed.json
+        run: |
+          pnpm exec playwright test --list --reporter=json
+          node --input-type=module -e "$TESTS_IN_REPORT" listed playwright-json/listed.json > ran/listed.txt
+          echo "$(wc -l < ran/listed.txt) journeys listed."
+      - name: Keep what this piece ran
+        if: always() && steps.pick.outputs.run == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      - if: steps.pick.outputs.run == 'true'
-        run: pnpm exec playwright install --with-deps chromium webkit
-      - if: steps.pick.outputs.run == 'true'
-        run: pnpm test:browser ${{ steps.pick.outputs.args }}
+          name: ran-${{ matrix.shard }}
+          path: |
+            ran/
+            playwright-json/report.json
+          retention-days: 7
       # The report also carries the look's screenshots, which a person looks at (Owner, 2026-11-13: "Screenshots
       # on the board"), so it is kept when every journey passes too.
       - name: Keep the browser report, with the look's screenshots
@@ -386,44 +418,124 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # The one check that sums up the browser pieces for `gate`, under the name `browser`: it passes only when
-  # every piece above passed. A piece that was cancelled or skipped is not a pass, except when the pull request
-  # changes only .md files and every piece was skipped on purpose. On a draft it is named differently,
-  # so a draft's quick run can never stand in for the full one.
-  browser:
-    name: ${{ github.event.pull_request.draft && 'browser (quick, draft)' || 'browser' }}
-    needs: [changes, browser-shard]
-    if: always()
+  # After a full run on main, the seconds each journey file took on each device, for the next runs' pieces. Nothing
+  # waits for it. A plain `needs` skips it when a piece failed, so a broken run records no times.
+  test-times:
+    name: record the journeys' times
+    needs: browser-shard
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
     steps:
-      - name: Every piece of the browser journeys passed
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Sum the times from every piece's report
         env:
-          PIECES_RESULT: ${{ needs.browser-shard.result }}
-          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # A pull request that changes only .md files skips every piece on purpose, and that counts as a pass.
-          if [ "$DOCS_ONLY" = "true" ] && [ "$PIECES_RESULT" = "skipped" ]; then
-            echo "Only .md files changed, so no browser journeys were needed."
-            exit 0
-          fi
-          test "$PIECES_RESULT" = "success"
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'ran-*' --dir pieces
+          node --input-type=module - pieces/*/playwright-json/report.json > ci-test-times.json <<'JS'
+          // node test-times.js <Playwright JSON report>...
+          // Prints {"<device profile>|<file>": seconds} summed over every result in the reports, sorted by key.
+          // The planner fills the browser pieces from these times (docs/superpowers/specs/2026-11-22-faster-ci-design.md).
+          import { readFileSync } from "node:fs";
 
-  # The one required check. It passes only when every check above passed on this run. On a pull request that
-  # changes only .md files, `verify` and `postgres` pass by doing nothing and `browser` passes with every piece
-  # skipped, as the `changes` job decided. On a draft it carries another name, so a quick run never stands in for it.
+          const times = {};
+          const walk = (suite) => {
+            for (const spec of suite.specs ?? []) {
+              for (const t of spec.tests ?? []) {
+                const key = `${t.projectName}|${spec.file}`;
+                const ms = (t.results ?? []).reduce((sum, r) => sum + (r.duration ?? 0), 0);
+                times[key] = (times[key] ?? 0) + ms / 1000;
+              }
+            }
+            for (const child of suite.suites ?? []) walk(child);
+          };
+          for (const file of process.argv.slice(2))
+            for (const suite of JSON.parse(readFileSync(file, "utf8")).suites ?? []) walk(suite);
+          const sorted = Object.fromEntries(
+            Object.keys(times)
+              .sort()
+              .map((k) => [k, Math.round(times[k] * 10) / 10]),
+          );
+          process.stdout.write(JSON.stringify(sorted, null, 2) + "\n");
+          JS
+          echo "$(grep -c '|' ci-test-times.json) file and device pairs recorded."
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ci-test-times.json
+          key: ci-test-times-${{ github.sha }}
+
+  # The one required check. It asks the docs-only question itself, and only its own answer lets skipped work pass.
+  # Otherwise it passes only when `verify`, `postgres` and every browser piece passed on this run and, on a full run,
+  # the pieces together ran every listed journey exactly once. On a draft it carries another name, so a quick run
+  # never stands in for it.
   gate:
     name: ${{ github.event.pull_request.draft && 'gate (quick, draft)' || 'gate' }}
-    needs: [verify, postgres, browser]
+    needs: [verify, postgres, browser-shard]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Only .md files changed?
+        id: docs
+        run: bash -c "$DOCS_ONLY" >> "$GITHUB_OUTPUT"
       - name: Every check passed
         env:
           VERIFY: ${{ needs.verify.result }}
           POSTGRES: ${{ needs.postgres.result }}
-          BROWSER: ${{ needs.browser.result }}
+          BROWSER: ${{ needs.browser-shard.result }}
+          DOCS_ONLY: ${{ steps.docs.outputs.docs_only }}
         run: |
-          echo "verify=$VERIFY postgres=$POSTGRES browser=$BROWSER"
+          echo "verify=$VERIFY postgres=$POSTGRES browser=$BROWSER docs_only=$DOCS_ONLY"
+          if [ "$DOCS_ONLY" = "true" ]; then
+            for result in "$VERIFY" "$POSTGRES" "$BROWSER"; do
+              case "$result" in failure|cancelled) exit 1 ;; esac
+            done
+            echo "Only .md files changed, so no tests were needed."
+            exit 0
+          fi
           test "$VERIFY" = "success" && test "$POSTGRES" = "success" && test "$BROWSER" = "success"
+      - name: The pieces ran every journey exactly once
+        if: steps.docs.outputs.docs_only != 'true' && env.CHANGED_ONLY != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'ran-*' --dir pieces
+          node --input-type=module - pieces/ran-1/ran/listed.txt pieces/ran-*/ran/ran-*.txt <<'JS'
+          // node every-test-ran.js <listed.txt> <ran file>...
+          // Fails when the pieces together did not run every listed test exactly once, naming each test missing or run twice.
+          import { readFileSync } from "node:fs";
+
+          const [listedFile, ...ranFiles] = process.argv.slice(2);
+          const read = (f) => readFileSync(f, "utf8").split("\n").filter(Boolean);
+          const listed = new Set(read(listedFile));
+          const seen = new Map();
+          for (const f of ranFiles) for (const t of read(f)) seen.set(t, (seen.get(t) ?? 0) + 1);
+          const missing = [...listed].filter((t) => !seen.has(t));
+          const twice = [...seen].filter(([, n]) => n > 1).map(([t, n]) => `${t} (${n} times)`);
+          const unknown = [...seen.keys()].filter((t) => !listed.has(t));
+          console.log(
+            `listed ${listed.size}, ran ${[...seen.values()].reduce((a, b) => a + b, 0)} in ${ranFiles.length} pieces`,
+          );
+          for (const [what, list] of [
+            ["not run", missing],
+            ["run more than once", twice],
+            ["run but not listed", unknown],
+          ]) {
+            for (const t of list) console.log(`${what}: ${t}`);
+          }
+          if (listed.size === 0 || missing.length || twice.length || unknown.length) process.exit(1);
+          console.log("Every listed test ran exactly once.");
+          JS

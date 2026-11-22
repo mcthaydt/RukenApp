@@ -6,7 +6,7 @@ import {
   pageHasSettled,
   payAsNewMember,
   signInAs,
-  standInPayButton,
+  pressPay,
 } from "./support/account.ts";
 import { endMembershipOf, userIdOf } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
@@ -78,7 +78,7 @@ test("a stranger signs up, pays, and is in the game they chose", async ({ page }
   await page.getByRole("button", { name: "Continue" }).click();
   await finishSignUpForm(page, freshNumber());
   await continueToPayment(page);
-  await standInPayButton(page).click();
+  await pressPay(page);
   await expect(page).toHaveURL(`/g/${game.slug}/play`);
   await loaded(page);
 });

@@ -162,6 +162,17 @@ export function standInPayButton(page: Page): Locator {
 }
 
 /**
+ * Presses the stand-in Stripe's "Pay". The stand-in answers the press only after it has told the site the three
+ * pieces of news a payment makes, one after another, so the press's answer is the site's answer, and on a busy runner
+ * it can take over the 5 seconds a press waits for the page it starts (run 44852401580: "waiting for scheduled
+ * navigations to finish" on this press). So the press does not wait for that page; the journey's next look (where the
+ * person lands, or the page that waits for late news) is the wait, with the config's time for the site's answer.
+ */
+export async function pressPay(page: Page): Promise<void> {
+  await standInPayButton(page).click({ noWaitAfter: true });
+}
+
+/**
  * Presses "Continue to payment" and waits until the browser is on the stand-in's payment page, then answers the
  * checkout's id from its address. The press can come back while the browser still shows the card (seen in WebKit:
  * runs 43657290538, 43658030234 and 43659012481), so the address is read only once it is the payment page's.
@@ -184,7 +195,7 @@ export async function payAsNewMember(page: Page): Promise<{ number: string; chec
   const { number } = await signUp(page);
   await page.goto("/join?next=/me");
   const checkoutSessionId = await continueToPayment(page);
-  await standInPayButton(page).click();
+  await pressPay(page);
   await expect(page).toHaveURL("/me");
   await pageHasSettled(page);
   return { number, checkoutSessionId };
