@@ -88,7 +88,7 @@ Two pull requests, because `build` says a CI workflow changes in a pull request 
 ### 3.3 Not changed, and why
 
 - Workers stay at 2 per piece: the four-core runner also runs two browsers' worth of pages, `wrangler dev` for the site and the game gate, and Postgres, and `playwright.config.ts` records answers taking over 5 s at today's load (run 44835171025). Raising it is a separate measured change.
-- Six pieces stay (Settings in CLAUDE.md). More pieces mean more jobs against the 20-runner limit.
+- Six pieces stay (Settings in CLAUDE.md). More pieces mean more jobs against the 20-runner limit. (Changed by unit P, section 3.5: twelve pieces on a full run and six on a draft, on the owner's word that more free runners are fine.)
 - Lint, typecheck and the unit and database tests are untouched: they are off the path to the result.
 
 ### 3.4 Unit F: the pieces read main's times (lane 3, follow-up)
@@ -117,6 +117,73 @@ Acceptance:
 - F2. On the first full pull request run after that, every piece logs "Split by main's recorded times" and the same key, the gate's key check passes, and A9 holds (the union check passes).
 - A7, and then A8, are measured from that point, as in section 4.
 
+### 3.5 Unit P: twelve browser pieces on a full run (lane 3, follow-up)
+
+- **Owner, 2026-11-22 13:39 UTC:** "we are using public free gh runners, so we can get more runners"
+
+With the planner working (F2 on run 44999849245), six pieces do not reach the 8-minute p50. Revised after plan audit 7 (8283b0e, FAIL, 5 red).
+
+**What a full run is made of.** Six full runs after #312 merged (`ci-times.js` since 2026-11-22T07:57:54Z): 45001251809, 45002767457, 45006700371, 45007516224, 45010214545, 45011227560.
+
+- Each took 8.5 to 10.6 min counted per attempt; `ci-times.js` gives p50 10.6 and p95 24.5, because it counts a re-run from the first attempt's start.
+- Each piece's "Run the journeys" step, from the jobs API, in seconds:
+
+  | Run | Pieces 1 to 6 | Sum | Slowest ÷ mean |
+  |---|---|---|---|
+  | 45001251809 | 399, 375, 393, 373, 361, 428 | 2,329 | 1.10 |
+  | 45002767457 | 333, 410, 381, 298, 349, 385 | 2,156 | 1.14 |
+  | 45006700371 | 387, 278, 316, 415, 312, 431 | 2,139 | 1.21 |
+  | 45007516224 | 315, 352, 416, 409, 414, 345 | 2,251 | 1.11 |
+  | 45010214545 | 434, 471, 448, 342, 406, 428 | 2,529 | 1.12 |
+  | 45011227560 | 341, 369, 468, 459, 321, 341 | 2,299 | 1.22 |
+
+- The journeys' own test-seconds, summed from the six Playwright JSON reports of 45011227560: 3,870 over 165 file and device pairs, the largest 174 s (`phone|make-live-changes.test.ts`). At 2 workers that is 1,935 s of packed work. The step sum is 2,299 s, so about 60 s per piece does not shrink with more pieces: starting the fake servers and `wrangler dev`, and the two workers not ending together.
+- Outside the slowest step, the run took 2.8 min on 45011227560 (created 10:11:44, slowest step ended 10:21:34, last job ended 10:22:20), including 62 s that piece 2 waited for a runner: the container (32 to 41 s), Node and pnpm (about 18 s), "Pick the journeys" (6 to 9 s), the reports, and the gate.
+
+**The estimate, with every piece starting at once.** A full run ≈ 2.8 min + the slowest piece's step, where the mean step is (1,935 s + 60 s × N) / N and the slowest is 1.10 to 1.22 times that (median 1.13):
+
+| Pieces | Mean step | Slowest step (1.13 to 1.22) | Full run |
+|---|---|---|---|
+| 6 (today) | 383 s | 433 to 467 s | 10.0 to 10.6 min (measured 8.5 to 10.6) |
+| 8 | 302 s | 341 to 368 s | 8.5 to 8.9 min |
+| 10 | 254 s | 286 to 309 s | 7.6 to 8.0 min |
+| 12 | 221 s | 250 to 270 s | 7.0 to 7.3 min |
+
+Ten is at the 8-minute line with no margin. **Call:** twelve pieces on a full run.
+
+**Running at the same time as other runs.** GitHub's limit for standard hosted runners is 20 jobs at once per account, not per repository ([Actions limits](https://docs.github.com/en/actions/reference/limits)). It is shared with any workflow in the owner's other repositories; `mcthaydt/RukenPrivate` has no runs, and the others are outside this session's access, so they are not counted here.
+
+- Measured from the jobs API over 2026-11-21T21:44Z to 2026-11-22T13:41Z (958 min, 96 full-run attempts): 83 of 96 had another full run in flight at some point. Running CI jobs peaked at 19 (03:27:43Z) and never reached 20; 14 or more were running for 34 min and 18 or more for 3.6 min. Re-run attempts were counted once.
+- Pieces already wait for runners at six, although this repository never reached 20 (plan audit 8, R1, by the jobs API over every CI, `commit-authors` and `pr-rules` run created 2026-11-21T20:00Z to 2026-11-22T13:45Z, 772 runs, re-run copies counted once). For each of 93 full runs' first attempts, the longest wait of any piece from job created to job started: p50 257 s, p75 383 s, p90 586 s, max 1,112 s. 77 of 93 waited over 60 s and 56 over 180 s; only 16 of 93 had every piece start within a minute. Busy hours wait most: 02:00 to 07:59 UTC, 66 runs, 52 of them over 200 s (for example 44992933874, created 06:15:48, pieces started 06:24:32 to 06:29:43). During those waits this repository had 1 to 18 jobs running (median about 8), so the waits come from the rest of the account's use or from GitHub's own runner start-up at busy times; the jobs API cannot tell which. `ci-times.js` shows the same per job in its "wait" column.
+- The six quiet runs the estimate uses waited 2 to 177 s (45001251809: 2, 45002767457: 177, 45006700371: 2, 45007516224: 2, 45010214545: 41, 45011227560: 94). So the 7.0 to 7.3 min for twelve pieces is for a run whose pieces start at once, as 16 of 93 did in that window.
+- A run ends at its latest piece's start plus that piece's work, and twelve pieces are twelve chances of a late start. At busy times the wait, not the pieces, sets the run's time, whatever the count. So the 8-minute p50 (A8) may be missed when GitHub is busy, and twelve pieces may not change that. Twelve stays because it shortens every run whose pieces do start promptly, and the owner allowed the runners. A8 is measured as runs come and any gap is reported with numbers, including each run's longest piece wait so the two causes can be told apart.
+- What the merging session does: it already integrates with `main` one pull request at a time, and it reads A8 as runs come, with no run left out for load (section 2).
+
+**Drafts keep six pieces.** A draft runs only the journeys its change touches, and a draft piece with nothing to run still pays about 60 s of setup. Drafts were 66 of 150 runs (section 1). So the matrix has six pieces on a draft and twelve on a full run: drafts hold the same 8 jobs as today, and A10 (draft p50 ≤ 3.1 min, p95 ≤ 16.0 min) is not expected to move.
+
+**The plan, as a checklist the builder ticks.** Two pull requests, because the `ruleMix` hook refuses a rule file (`CLAUDE.md`, `.github/workflows/**`) together with any file that is neither a rule nor a doc, such as `.github/scripts/ci-times.js` (`.claude/hooks/rules.json`, `checkRuleMix` in `.claude/hooks/rules.mjs`).
+
+P-a, `.github/scripts/ci-times.js` alone (lane 3 by `.github/**`), merged first:
+
+- [ ] Its job grouping reads `shard \d+ of \d+` and labels the row "browser shard n", so six, twelve and draft pieces group alike; checked by running it on the six runs above (same numbers as before, label changed).
+
+P-b, `.github/workflows/ci.yml`, `CLAUDE.md` Settings and the `this-repo` skill, after P-a merges:
+
+- [ ] The matrix is `shard: ${{ fromJSON(github.event.pull_request.draft && '[1,2,3,4,5,6]' || '[1,2,3,4,5,6,7,8,9,10,11,12]') }}`, and the job sets `PIECES: ${{ github.event.pull_request.draft && 6 || 12 }}`.
+- [ ] The job's name is `browser shard <n> of <PIECES>` by the same expression, with " (quick, draft)" on a draft as today.
+- [ ] "Pick the journeys" uses `<n>/$PIECES` in its three places (`RUKEN_SHARD` twice, `--shard` once). The planner (`shard-plan.ts`) takes the count from `RUKEN_SHARD`, so it does not change.
+- [ ] `test-times` (push to `main` only, always twelve) has twelve restore steps, step n with `path: piece-times-<n>.json`, `key: ci-piece-times-${{ github.sha }}-<n>` and `fail-on-cache-miss: true` (n from 1 to 12), and "Join the twelve pieces' times" logs "joined 12 of 12 pieces, P file and device pairs". A missing piece still fails `test-times`, so partial times are never saved.
+- [ ] The comments in `ci.yml` that say "six" say what is true (twelve on a full run, six on a draft). The gate does not change: it reads every `ran-*` artifact, checks every piece's times key, and counts the pieces it has.
+- [ ] `CLAUDE.md` Settings: "Browser test pieces in CI: 12 on a full run, 6 on a draft."
+- [ ] `.claude/skills/this-repo/SKILL.md` line 33 says what is true: `verify`, `postgres`, the browser pieces (twelve on a full run, six on a draft) and `gate`, which passes only when every one of them passed (there is no `browser` job since W).
+- [ ] P1. A ready pull request's run has `verify`, `postgres`, `browser shard 1 of 12` to `browser shard 12 of 12` and `gate`; every piece logs "Split by main's recorded times" with the same key; the key check passes; and A9 holds ("listed N, ran N in 12 pieces").
+- [ ] P2. A draft run of P-b has `browser shard 1 of 6 (quick, draft)` to `6 of 6`, as today.
+- [ ] P3. The first push to `main` after P-b logs "joined 12 of 12 pieces, P file and device pairs" in `test-times` and saves `ci-test-times-<sha>`.
+- [ ] P4. `ci-times.js` (P-a) groups P1's twelve pieces in one row.
+- [ ] A7 and A8 over the first 10 full runs after P-b merges, by `ci-times.js` since P-b's merge commit, each run's id and its longest piece wait listed. If A8 is still not met, the gap is reported with numbers, never rounded. A10 over the first 10 draft runs after P-b merges.
+
+Nothing else changes: same image, journeys, devices and workers (2 per piece), and no new action, tool or secret. The times file holds seconds per file and device, so twelve pieces read times a six-piece `main` run saved. A follow-up, not in P: `tests/browser/support/shard-plan.ts` line 1 says "six browser pieces" (lane 2, so `ruleMix` keeps it out of P-b).
+
 ## 4. Acceptance criteria
 
 - A1. On a ready pull request, the run's jobs are `verify`, `postgres`, `browser shard 1..6 of 6` and `gate` (plus `test-times` on `main`); none of the first eight lists a `needs`. Checked by reading the run's job list.
@@ -125,7 +192,7 @@ Acceptance:
 - A4. The screens answer each piece logs is the same one today's `which screens changed` job gives for the same change: checked on one change that shoots all and one that shoots a subset (a one-page Svelte change). A piece with no journeys logs no build.
 - A5. No piece runs `playwright install`; each piece's container image is the pinned digest; every journey that passes on the runner passes in the container. Checked from the run log. (Or, per 3.1 item 2, the reported reason that kept the install.)
 - A6. On a full run, the union check passes, and it fails when a pair is left out on purpose (a throwaway commit, reverted).
-- A7. After unit T: the six pieces' test times on a full run are within 1.15× of their mean, at the median over the measuring runs.
+- A7. After unit T: the pieces' test times on a full run are within 1.15× of their mean, at the median over the measuring runs.
 - A8. Full runs, section 2: p50 ≤ 8 min and p95 ≤ 15 min over the first 10 full runs after T merges, by `ci-times.mjs`, each run's id listed. If not met, the gap is reported with numbers, never rounded.
 - A9. The number of journeys run on a full run (sum over the pieces) equals the number before the change for the same commit of `tests/browser`: no test, device or engine is lost.
 - A10. Draft runs, section 2: p50 ≤ 3.1 min and p95 ≤ 16.0 min over the first 10 draft runs after W merges, by `ci-times.mjs`, each run's id listed.
@@ -137,10 +204,12 @@ Acceptance:
 | W | this spec merged | `.github/workflows/ci.yml`, `.github/scripts/docs-only.sh`, `.github/scripts/ci-times.mjs` | one PR | A1 to A6, A9 on real runs; A10 after merge | 3 |
 | T | W merged | `tests/browser/support/shard-plan.ts`, `tests/browser/support/shard-plan.test.ts`, `playwright.config.ts` | one PR | its unit test, A9; A7 and A8 after F | 2 |
 | F | T merged | `.github/workflows/ci.yml` | one PR | F1, F2, then A7; A8 after merge | 3 |
+| P-a | F merged | `.github/scripts/ci-times.js` | one PR | its checklist line in 3.5 | 3 |
+| P-b | P-a merged | `.github/workflows/ci.yml`, `CLAUDE.md` (Settings), `.claude/skills/this-repo/SKILL.md` | one PR | P1 to P4, then A7, A8 and A10 after merge | 3 |
 
-- Expected duration: W about 3 hours including measuring runs; T about 2 hours; F about 2 hours.
+- Expected duration: W about 3 hours including measuring runs; T about 2 hours; F about 2 hours; P-a about 30 minutes; P-b about 2 hours, plus the 10 measuring runs.
 - Budget: GitHub's free runners only. No new dependency, service or secret. The Playwright image is Microsoft's public image of the version already pinned.
-- Audits: W, plan audit (this spec) and implementation audit; T, one fresh review; F, a plan audit of section 3.4 and an implementation audit. Merge under the standing permission in `progress.md` (History, Standing permissions) once audits pass and CI is green.
+- Audits: W, plan audit (this spec) and implementation audit; T, one fresh review; F, a plan audit of section 3.4 and an implementation audit; P, a plan audit of section 3.5 and an implementation audit of each of P-a and P-b. Merge under the standing permission in `progress.md` (History, Standing permissions) once audits pass and CI is green.
 
 ## 6. Open product decisions
 

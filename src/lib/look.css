@@ -64,6 +64,11 @@
   /* Scarlet: only a button that can't be undone (delete, pay out, refund), with white words (5.2:1). */
   --pip: #cb2f43;
   --pay: #006eb8; /* Blue: the main button, with white words (5.4:1); never a field */
+  /* The loading spinner over a picture or a video that has not come yet, drawn in chalk (White). A picture is the
+     only way to put it on an <img> or a <video>, which hold nothing else; a picture cannot read a token, so the
+     colour is written here with the others. The still one is for reduced motion. */
+  --spinner-turning: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='16' fill='none' stroke='%23ffffff' stroke-width='4' stroke-dasharray='75 26'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 20 20' to='360 20 20' dur='0.8s' repeatCount='indefinite'/%3E%3C/circle%3E%3C/svg%3E");
+  --spinner-still: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='16' fill='none' stroke='%23ffffff' stroke-width='4' stroke-dasharray='75 26'/%3E%3C/svg%3E");
 
   /* Type. A system font stands behind each face, so every word shows if a file does not arrive. */
   --font-display:
@@ -2097,9 +2102,13 @@ a.sheet.fix {
   display: block;
   max-width: 100%;
   border-radius: 8px;
-  /* Sage until a frame is drawn, as every other video's tile is, so it is never white on white. */
-  background: var(--sage);
   object-fit: cover;
+}
+
+/* Sage when no frame comes (a video that failed), as every other video's tile is, so it is never white on white. While
+   it loads it is the shimmering box with the spinner, as every loading video is: chalk on sage would not be seen. */
+.sheet.fix video:not([data-loading]) {
+  background-color: var(--sage);
 }
 
 /* An upright video sits beside the card's words, at the right, and not under them with the rest of the card blank. On a
@@ -3069,10 +3078,10 @@ main.playing {
 }
 
 /* Every wait shows it. A move between pages runs a Blue line across the top of the window and shows a turning
-   spinner with "Loading…" under it (src/lib/page-loading.svelte); a button whose form is out shows the spinner after
+   spinner under it, with no words (src/lib/page-loading.svelte); a button whose form is out shows the spinner after
    its words and cannot be pressed again (src/lib/busy-forms.ts); a picture or a video is a box that slowly brightens
-   and dims until it has loaded (src/lib/loads.ts). With reduced motion nothing turns or runs: the line is drawn
-   whole, the spinner stands still and the words stay. */
+   and dims, with the spinner turning in its middle, until it has loaded (src/lib/loads.ts). With reduced motion
+   nothing turns or runs: the line is drawn whole, and the spinners stand still. */
 .page-loading {
   position: fixed;
   inset: 0 0 auto;
@@ -3091,16 +3100,15 @@ main.playing {
   animation: running-line 1.1s var(--ease) infinite;
 }
 
-.page-loading-words {
+.page-loading-spinner {
   position: fixed;
   top: 16px;
   left: 50%;
   z-index: 100;
   display: inline-flex;
   align-items: center;
-  gap: 0.6em;
   margin: 0;
-  padding: 0.6rem 1.1rem;
+  padding: 0.6rem;
   border-radius: var(--radius-button);
   background: var(--felt-deep);
   color: var(--chalk);
@@ -3153,9 +3161,11 @@ main.playing {
   white-space: nowrap;
 }
 
+/* A picture or a video that has not come yet: the box shimmers and a spinner turns in its middle. Owner, 2026-11-22:
+   "The videos don't have a spinner before they load in the panel, I said do it everywhere". */
 img[data-loading],
 video[data-loading] {
-  background-color: var(--felt-raised);
+  background: var(--spinner-turning) center / min(40px, 50%) no-repeat var(--felt-raised);
   animation: media-loading 1.4s ease-in-out infinite alternate;
 }
 
@@ -3178,6 +3188,7 @@ video[data-loading] {
 
   img[data-loading],
   video[data-loading] {
+    background-image: var(--spinner-still);
     animation: none;
   }
 }
