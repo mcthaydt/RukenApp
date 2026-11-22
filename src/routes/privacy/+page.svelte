@@ -50,6 +50,15 @@
       <strong>Where you're signed in.</strong> For each phone or computer you sign in on, we keep its internet address
       and the name of its browser. A sign-in lasts 30 days after you last used Ruken, or until you sign out.
     </li>
+    <li>
+      <strong>Your computers.</strong> If you let a computer use your Ruken (<code>npx ruken sign-in</code>),
+      we keep its name, a scrambled copy of its key, and when it was let in and last used. A key stops working
+      after 90 days unused, or when you remove it.
+    </li>
+    <li>
+      <strong>While a computer asks to sign in.</strong> We keep the city and country it asked from, to show you
+      before you say Yes. The code works for 10 minutes, and old codes are cleared out as new ones come in.
+    </li>
   </ul>
 
   <h2>Keeping your account safe</h2>
@@ -182,7 +191,8 @@
     <li>While you have an account, we keep what this page lists.</li>
     <li>
       When you delete your account, your membership ends at once, with no money back. You're signed out
-      everywhere. You have 14 days to change your mind: just sign in again.
+      everywhere, and every computer you let in is removed. You have 14 days to change your mind: just sign in
+      again.
     </li>
     <li>
       After 14 days, we remove your phone number, email, name and age, your page, photo and links, your GitHub
@@ -206,6 +216,7 @@
     <li>Delete your account: go to You, then "Delete my account".</li>
     <li>Cancel your membership: go to You, then "Change card or cancel".</li>
     <li>Change your password: go to You, then "Change password".</li>
+    <li>Remove a computer: go to You, then "Your computers", then "Remove".</li>
     <li>Stop texts: reply STOP.</li>
   </ul>
   <p>

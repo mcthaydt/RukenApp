@@ -1,5 +1,0 @@
-- Task: fix audit 4 R1 (privacy page lists computer keys from #331)
-- Last commit: 8e73f8b3
-- Next: add Your computers lines to /privacy, run checks, delete this file, ask for the re-check
-- Open decisions: none
-- Updated: 2026-11-22 18:14 UTC
