@@ -77,9 +77,14 @@ export function consentGate(
       if (id.startsWith("/api/") || id.endsWith("/beat")) {
         return new Response("Say yes to cookies first.", { status: 403 });
       }
+      const notice = `/cookies?for=${actionOfRoute(event.route.id)}&next=${encodeURIComponent(next)}`;
+      // A page's own script that asked for JSON (the Wishlist button) is told where to go, as that route answers it.
+      if ((event.request.headers.get("accept") ?? "").includes("application/json")) {
+        return Response.json({ go: notice });
+      }
       // A thrown redirect, so SvelteKit answers it in the form the caller expects: a page load, a form's post or the
       // data a client-side move asks for (which then lands on the notice without reloading the app).
-      redirect(303, `/cookies?for=${actionOfRoute(event.route.id)}&next=${encodeURIComponent(next)}`);
+      redirect(303, notice);
     }
 
     const response = await resolve(event, {

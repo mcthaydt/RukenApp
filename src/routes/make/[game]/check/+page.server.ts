@@ -39,6 +39,8 @@ export const load: PageServerLoad = async (event) => {
     doneAddress: `/make/${game.slug}`,
     // A waiting game cannot be thrown away (it is with staff); a draft can.
     throwAway: game.state === "draft" ? `/make/${game.slug}/throw-away` : null,
+    // The maker can try the files before sending them (or while they wait).
+    testPlay: game.testPlay ? `/make/${game.slug}/play` : null,
   };
 };
 

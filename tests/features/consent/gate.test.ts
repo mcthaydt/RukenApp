@@ -116,6 +116,26 @@ describe("the consent gate", () => {
     }
   });
 
+  it("tells a page's own script where the notice is, when it asked for JSON (the Wishlist button)", async () => {
+    const log: string[] = [];
+    const handle = consentGate(
+      () => undefined,
+      (line) => log.push(line),
+    );
+    const url = new URL("/g/night/wishlist", "https://ruken.test");
+    const answer = await handle({
+      event: {
+        url,
+        request: new Request(url, { method: "POST", headers: { accept: "application/json" } }),
+        route: { id: "/g/[game]/wishlist" },
+        cookies: { get: () => undefined },
+      } as never,
+      resolve: () => Promise.reject(new Error("must not open")),
+    });
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({ go: "/cookies?for=save&next=%2Fg%2Fnight%2Fwishlist" });
+  });
+
   it("refuses a script's call to a gated route", async () => {
     for (const [path, routeId] of [
       ["/api/auth/sign-out", "/api/auth/[...path]"],

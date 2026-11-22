@@ -4,6 +4,7 @@ import { letInTerminal, terminal } from "./support/computers.ts";
 import { NOT_CONSENTED } from "./support/consent.ts";
 import { givePage, pageCounts, playOf, rateLimitRows } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
+import { beforeLaunch } from "./support/launch.ts";
 import { forgetRateLimits, journeyClientHeaders } from "./support/rate-limits.ts";
 
 // Nothing is kept before "I agree" (design: cookie consent, criteria 1 to 7). Every other journey starts out having said
@@ -297,4 +298,30 @@ test("Not now on a screen that needs the yes goes back to the Ruken page before 
   await pageHasSettled(page);
   await notNow(page).click();
   await expect(page).toHaveURL("/");
+});
+
+test("Wishlist before a yes shows the notice and sets nothing; after the yes it signs you up, and Take it back clears it", async ({
+  page,
+  context,
+}) => {
+  await beforeLaunch(context);
+  await page.goto(`/g/${game.slug}`);
+  await pageHasSettled(page);
+  await notNow(page).click();
+  await page.getByRole("button", { name: "Wishlist", exact: true }).click();
+  await expect(page.getByText("To save this game, Ruken needs")).toBeVisible();
+  expect((await context.cookies()).map((cookie) => cookie.name)).not.toContain("rk_wish_pressed");
+  await pageHasSettled(page);
+  await agreeButton(page).click();
+  await expect(page).toHaveURL(`/g/${game.slug}`);
+
+  // Now it is allowed: pressing sets the cookie and goes to sign-up.
+  await page.getByRole("button", { name: "Wishlist", exact: true }).click();
+  await expect(page).toHaveURL(/\/sign-up/);
+  expect((await context.cookies()).map((cookie) => cookie.name)).toContain("rk_wish_pressed");
+
+  await page.goto("/cookies");
+  await page.getByRole("button", { name: "Take it back" }).click();
+  await expect(page.getByText("Done. Ruken keeps nothing on this browser now.")).toBeVisible();
+  expect((await context.cookies()).map((cookie) => cookie.name)).not.toContain("rk_wish_pressed");
 });

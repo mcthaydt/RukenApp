@@ -38,7 +38,8 @@ test.beforeAll(async ({ browser, request }) => {
 });
 test.beforeEach(forgetRateLimits);
 
-const clipOf = (page: Page, slug: string) => page.locator(`section[data-slug="${slug}"]`);
+// The feed goes round, so a game can be on it more than once once a later page has come: the journeys look at its first.
+const clipOf = (page: Page, slug: string) => page.locator(`section[data-slug="${slug}"]`).first();
 const isUpright = (page: Page): boolean => {
   const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
   return height > width;

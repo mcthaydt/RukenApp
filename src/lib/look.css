@@ -1919,6 +1919,11 @@ a.game {
   transition: transform var(--press-time);
 }
 
+/* Test play, under its game's card in Your games. */
+.games .testplay {
+  margin-top: 0.5rem;
+}
+
 a.game > .tile {
   flex: none;
   width: 96px;
@@ -2924,6 +2929,31 @@ main.playing {
 
 .playing .frame {
   height: 100%;
+}
+
+/* A maker's test play: a strip across the top says so, and the game fills the rest. The strip stays over the
+   starting screen too, so the label is the first thing seen. */
+main.playing[data-testing] {
+  display: flex;
+  flex-direction: column;
+}
+
+.playing[data-testing] .frame {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+.playing .teststrip {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding: calc(0.5rem + var(--inset-top)) 1rem 0.5rem;
+  /* Ruken's own dark, so it never melts into a white game and is read as Ruken's words, not the game's. */
+  background: var(--felt-deep);
+  color: var(--chalk);
+  font-weight: 700;
+  text-align: center;
 }
 
 /* While the game starts: its name in the middle of the dark window, and words if it is slow. */

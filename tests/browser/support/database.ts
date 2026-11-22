@@ -181,6 +181,15 @@ export async function filesOf(slug: string): Promise<{ repo: string | null; pull
   return { repo: game.repoFullName, pulls: game._count.pulls };
 }
 
+/** Which copy of a game's files is live and which waits for review, as the database holds them. */
+export async function pullsOf(slug: string): Promise<{ live: string | null; pending: string | null }> {
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { livePullId: true, pendingPullId: true },
+  });
+  return { live: game.livePullId, pending: game.pendingPullId };
+}
+
 /** Where a game stands: its state, as the database holds it. */
 export async function stateOf(slug: string): Promise<string> {
   return (await db().game.findUniqueOrThrow({ where: { slug }, select: { state: true } })).state;

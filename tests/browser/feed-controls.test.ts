@@ -165,7 +165,7 @@ test("the clip that fills the window is the current one, and only one is; the ot
     });
 });
 
-test("each key moves one clip, never past either end", async ({ page }) => {
+test("each key moves one clip, never before the first", async ({ page }) => {
   await openFeed(page);
   const clips = page.locator("section[data-slug]");
   await page.keyboard.press("ArrowUp");
@@ -259,6 +259,106 @@ test("Back from a game's page comes back to the clip it was opened from", async 
   await expect(current(page)).toHaveAttribute("data-slug", second);
 });
 
+test("Back from a game opened past the first page comes back to that very clip, not an earlier showing of it", async ({
+  page,
+}) => {
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  const before = await clips.count();
+  // Past the first page: the feed goes round, so this game was shown once already on the first page.
+  await page.locator("section.more").scrollIntoViewIfNeeded();
+  await expect.poll(() => clips.count()).toBeGreaterThan(before);
+  await expect(clips.nth(before)).toHaveAttribute("data-current", "true");
+  const slug = (await clips.nth(before).getAttribute("data-slug")) ?? "?";
+  const box = await boxOf(clips.nth(before));
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.4);
+  await expect(page).toHaveURL(new RegExp(`/g/${slug}$`));
+
+  await page.goBack();
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await expect(current(page)).toHaveAttribute("data-slug", slug);
+  // The very place: the clips that came on later pages are back, and the one on screen is the one that was opened.
+  expect(
+    await clips.evaluateAll((sections) =>
+      sections.findIndex((section) => section.getAttribute("data-current") === "true"),
+    ),
+  ).toBe(before);
+});
+
+test("a reload on the first page shows the feed as it is now, not as it was kept", async ({ page }) => {
+  await openFeed(page);
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
+  const slug = (await current(page).getAttribute("data-slug")) ?? "?";
+  const name = (await current(page).getByRole("heading", { level: 2 }).textContent()) ?? "?";
+  // A game's name changed while the person was away: here the kept copy of the clip on screen has an old name.
+  // (The kept value is text in SvelteKit's own format, as in the journey below.)
+  await page.addInitScript(() => {
+    const keptName = "sveltekit:navigation-snapshot";
+    const kept = JSON.parse(sessionStorage.getItem(keptName) ?? "{}") as Record<
+      string,
+      Record<string, string>
+    >;
+    let changed = 0;
+    for (const values of Object.values(kept))
+      for (const [id, text] of Object.entries(values)) {
+        const parts = JSON.parse(text) as unknown[];
+        const place = parts[0] as { clips?: number } | null;
+        if (typeof place?.clips !== "number") continue;
+        const second = parts[(parts[place.clips] as number[])[1] as number] as { name: number };
+        parts[second.name] = "A name from before";
+        values[id] = JSON.stringify(parts);
+        changed++;
+      }
+    if (changed === 0) throw new Error("the feed kept no clips");
+    sessionStorage.setItem(keptName, JSON.stringify(kept));
+  });
+  await page.reload();
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await expect(current(page)).toHaveAttribute("data-slug", slug);
+  await expect(current(page).getByRole("heading", { level: 2 })).toHaveText(name);
+  await expect(page.getByText("A name from before")).toHaveCount(0);
+});
+
+test("a reload whose kept feed is shorter than the fresh one puts back the kept feed, and the page keeps working", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openFeed(page);
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
+  const slug = (await current(page).getAttribute("data-slug")) ?? "?";
+  // While a person is away, more games can go live, so the feed the page comes back with can be longer than the one
+  // it keeps. Here the kept feed is cut to its first two clips, and its keys are moved to a later round, as a place past
+  // the first page is, so the kept clips are the ones put back. (Each kept value is text in SvelteKit's own format: a
+  // list whose first item is the value, with every object, list and string inside it held by its place in the list.)
+  await page.addInitScript(() => {
+    const name = "sveltekit:navigation-snapshot";
+    const kept = JSON.parse(sessionStorage.getItem(name) ?? "{}") as Record<string, Record<string, string>>;
+    let cut = 0;
+    for (const values of Object.values(kept))
+      for (const [id, text] of Object.entries(values)) {
+        const parts = JSON.parse(text) as unknown[];
+        const place = parts[0] as { clips?: number } | null;
+        if (typeof place?.clips !== "number") continue;
+        parts[place.clips] = (parts[place.clips] as number[]).slice(0, 2);
+        values[id] = JSON.stringify(
+          parts.map((part) => (typeof part === "string" ? part.replace(/^0~/, "7~") : part)),
+        );
+        cut++;
+      }
+    if (cut === 0) throw new Error("the feed kept no clips");
+    sessionStorage.setItem(name, JSON.stringify(kept));
+  });
+  await page.reload();
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await expect(current(page)).toHaveAttribute("data-slug", slug);
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("section[data-slug]").nth(2)).toHaveAttribute("data-current", "true");
+  expect(errors).toEqual([]);
+});
+
 test("pressing the speaker flips sound for every clip, and it stays as set from one game to the next", async ({
   page,
 }) => {
@@ -300,8 +400,9 @@ test("the press that opens the game never covers the speaker, Play, Share, the t
     clip.getByRole("link", { name: "Play", exact: true }),
     clip.getByRole("button", { name: "Share" }),
     clip.locator("a.gamelink"),
-    page.getByRole("link", { name: "Home" }),
-    page.getByRole("link", { name: "You" }),
+    page.getByRole("link", { name: "Home", exact: true }),
+    page.getByRole("link", { name: "Add a game", exact: true }),
+    page.getByRole("link", { name: "You", exact: true }),
   ];
   for (const thing of things) {
     const reached = await thing.evaluate((element) => {
@@ -513,10 +614,115 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   }
   // The bar first (it is always there), then the first clip's controls from the top of the screen to the bottom, then the
   // next clip's.
-  expect(names.slice(0, 3)).toEqual(["Home", "You", "Sound"]);
+  expect(names.slice(0, 4)).toEqual(["Home", "Add a game", "You", "Sound"]);
   const play = names.indexOf("Play");
-  expect(play).toBeGreaterThan(2);
+  expect(play).toBeGreaterThan(3);
   expect(names[play + 1]).toBe("Share");
   expect(names[play + 2]).toBe("Sound");
   for (const outline of outlines) expect(outline).not.toMatch(/^none/);
+});
+
+// The feed never ends (owner, 2026-11-22: "the feed should be infinite"). Near the end of what it has, it asks for the next
+// page; past the last clip a spinner waits for it; when every game has been shown it goes round again.
+test("the feed never ends: a spinner past the last clip, then more, then the same games again", async ({
+  page,
+}) => {
+  // The next page is held until the spinner has been seen, so the journey waits on what is on screen, not on a clock.
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/feed?*", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  const before = await clips.count();
+
+  // A fast swipe to the bottom: past the last clip is the spinner, and it says what it is waiting for.
+  await page.locator("section.more").scrollIntoViewIfNeeded();
+  const spinner = page.getByRole("progressbar", { name: "Loading more games" });
+  await expect(spinner).toBeVisible();
+  await expect(page.locator("section.more")).toHaveAttribute("aria-busy", "true");
+  release();
+  await expect.poll(() => clips.count()).toBeGreaterThan(before);
+  // The person who waited is on the first clip that came, not left on the spinner as it moves down.
+  await expect(clips.nth(before)).toHaveAttribute("data-current", "true");
+  await expect(clips.nth(before)).toBeInViewport({ ratio: 0.9 });
+
+  // Every live game came first; a game coming round again means the feed went round. With more than a page of games
+  // in the shared database it can take more than one page.
+  const repeats = async () => {
+    const slugs = await clips.evaluateAll((sections) =>
+      sections.map((section) => section.getAttribute("data-slug")),
+    );
+    return slugs.length - new Set(slugs).size;
+  };
+  for (let pages = 0; pages < 4 && (await repeats()) === 0; pages += 1) {
+    const had = await clips.count();
+    await page.locator("section.more").scrollIntoViewIfNeeded();
+    await expect.poll(() => clips.count()).toBeGreaterThan(had);
+  }
+  expect(await repeats()).toBeGreaterThan(0);
+  // One game is never shown twice in a row while two or more are live.
+  const slugs = await clips.evaluateAll((sections) =>
+    sections.map((section) => section.getAttribute("data-slug")),
+  );
+  if (new Set(slugs).size > 1) {
+    for (let index = 1; index < slugs.length; index += 1) expect(slugs[index]).not.toBe(slugs[index - 1]);
+  }
+
+  // The keys go on past where the first page ended.
+  await clips.nth(before).scrollIntoViewIfNeeded();
+  await expect(clips.nth(before)).toHaveAttribute("data-current", "true");
+  await page.keyboard.press("ArrowDown");
+  await expect(clips.nth(before + 1)).toHaveAttribute("data-current", "true");
+
+  // A feed that never ends holds only the clips near the person: every clip more than one behind has let go of its video,
+  // so a long scroll does not keep every clip it passed.
+  await expect
+    .poll(() =>
+      clips.evaluateAll((sections) => {
+        const at = sections.findIndex((section) => section.getAttribute("data-current") === "true");
+        return (
+          sections
+            .slice(0, Math.max(at - 1, 0))
+            .map((section, index) => ({ index, video: section.querySelector("video") }))
+            // Let go: no address, nothing loaded and nothing being fetched. (`currentSrc` keeps the old address after a
+            // video lets go in Chromium, so it says nothing here.)
+            .filter(
+              ({ video }) =>
+                video !== null &&
+                (video.hasAttribute("src") ||
+                  video.readyState > HTMLMediaElement.HAVE_NOTHING ||
+                  video.networkState !== HTMLMediaElement.NETWORK_EMPTY),
+            )
+            .map(({ index }) => index)
+        );
+      }),
+    )
+    .toEqual([]);
+});
+
+test("when more games do not come, the feed says so and Try again brings them", async ({ page }) => {
+  let refuse = true;
+  await page.route("**/api/feed?*", async (route) => {
+    if (refuse) await route.fulfill({ status: 500, body: "" });
+    else await route.continue();
+  });
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  const before = await clips.count();
+
+  await page.locator("section.more").scrollIntoViewIfNeeded();
+  await expect(page.getByText("Couldn't load more games.")).toBeVisible();
+  const again = page.getByRole("button", { name: "Try again" });
+  await expect(again).toBeVisible();
+  expect((await boxOf(again)).height).toBeGreaterThanOrEqual(48);
+
+  refuse = false;
+  await again.click();
+  await expect.poll(() => clips.count()).toBeGreaterThan(before);
+  await expect(page.getByText("Couldn't load more games.")).toHaveCount(0);
 });

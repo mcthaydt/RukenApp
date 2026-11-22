@@ -2,7 +2,7 @@
   The one place the look is loaded (src/lib/look.css). Every page renders inside it, so a screen is plain
   elements and the few classes the look names. The layout adds the Ruken wordmark, a way home above the card (the
   feed, a game's page and a maker's page are the people's own screens, so they have none; the maker's area has its own bar),
-  the bar of Home and You on those same three screens, and, once, the line that says
+  the bar (Home, Add a game and You) on those same three screens, and, once, the line that says
   signing in undid a waiting deletion. Every wait shows it: the bar while a page loads, and a busy button on every plain
   form that is sent (src/lib/busy-forms.ts).
 -->
@@ -26,10 +26,13 @@
       (page.route.id === "/" || page.route.id === "/g/[game]" || page.route.id === "/[handle=handle]"),
   );
 
-  // A game's own page and its play screen name the game in the tab; every other screen, a missing page included,
-  // has the base title.
+  // A game's own page, its play screen and its maker's test play name the game in the tab; every other screen, a
+  // missing page included, has the base title.
   const gameScreen = $derived(
-    page.status < 400 && (page.route.id === "/g/[game]" || page.route.id === "/g/[game]/play"),
+    page.status < 400 &&
+      (page.route.id === "/g/[game]" ||
+        page.route.id === "/g/[game]/play" ||
+        page.route.id === "/make/[game]/play"),
   );
 
   // Until this browser says yes to cookies, the card at the bottom asks, once per visit ("Not now" hides it in memory
