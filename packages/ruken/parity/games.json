@@ -15,7 +15,7 @@
     "mcp": "start_game",
     "endpoint": "POST /api/v1/games",
     "actions": ["make/new#answer"],
-    "built": false
+    "built": true
   },
   {
     "id": "game",
@@ -33,7 +33,7 @@
     "mcp": "set_answer",
     "endpoint": "PATCH /api/v1/games/<game>",
     "actions": ["make/[game]/[question=question]#answer"],
-    "built": false
+    "built": true
   },
   {
     "id": "files",
@@ -42,7 +42,7 @@
     "mcp": "set_files",
     "endpoint": "PATCH /api/v1/games/<game>",
     "actions": [],
-    "built": false
+    "built": true
   },
   {
     "id": "video",
@@ -69,7 +69,7 @@
     "mcp": null,
     "endpoint": "POST /api/v1/agreement",
     "actions": ["make/[game]/agreement#default"],
-    "built": false
+    "built": true
   },
   {
     "id": "send",
@@ -78,7 +78,7 @@
     "mcp": "send_for_review",
     "endpoint": "POST /api/v1/games/<game>/send",
     "actions": ["make/[game]/check#send", "make/[game]#send", "make/[game]#sendAgain"],
-    "built": false
+    "built": true
   },
   {
     "id": "update",
@@ -87,7 +87,7 @@
     "mcp": "send_new_version",
     "endpoint": "POST /api/v1/games/<game>/new-version",
     "actions": ["make/[game]#newVersion"],
-    "built": false
+    "built": true
   },
   {
     "id": "player-count",
@@ -96,7 +96,7 @@
     "mcp": "set_player_count",
     "endpoint": "PATCH /api/v1/games/<game>",
     "actions": ["make/[game]#playerCount"],
-    "built": false
+    "built": true
   },
   {
     "id": "take-off",
@@ -105,7 +105,7 @@
     "mcp": "take_off",
     "endpoint": "POST /api/v1/games/<game>/take-off",
     "actions": ["make/[game]/take-off#takeOff"],
-    "built": false
+    "built": true
   },
   {
     "id": "put-back",
@@ -114,7 +114,7 @@
     "mcp": "put_back",
     "endpoint": "POST /api/v1/games/<game>/put-back",
     "actions": ["make/[game]#putBack"],
-    "built": false
+    "built": true
   },
   {
     "id": "delete-files",
@@ -123,7 +123,7 @@
     "mcp": "delete_left_files",
     "endpoint": "DELETE /api/v1/games/<game>/files",
     "actions": ["make/[game]#deleteLeft"],
-    "built": false
+    "built": true
   },
   {
     "id": "throw-away",
@@ -132,6 +132,6 @@
     "mcp": null,
     "endpoint": "DELETE /api/v1/games/<game>",
     "actions": ["make#throwAway"],
-    "built": false
+    "built": true
   }
 ]

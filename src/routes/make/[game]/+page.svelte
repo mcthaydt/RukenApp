@@ -47,6 +47,7 @@
     backdrop={data.backdrop}
     game={data.game}
     showsPlayerCount={data.showsPlayerCount}
+    wished={data.wished}
     problem={form?.problem}
   />
 {:else if data.view === "taken_off"}

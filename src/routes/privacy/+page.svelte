@@ -153,6 +153,10 @@
     <li>
       <strong>rk_welcome_back</strong> says "Welcome back" once, after you undo deleting your account. 5 minutes.
     </li>
+    <li>
+      <strong>rk_wish_pressed</strong> remembers which game you pressed Wishlist on while signed out, so it goes
+      on your list after you sign up. 30 minutes.
+    </li>
     <li><strong>thrown-away</strong> tells a maker which game they just threw away. 1 minute.</li>
     <li><strong>page-saved</strong> says "Saved." once, after a maker saves their page. 1 minute.</li>
     <li>
