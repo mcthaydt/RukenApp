@@ -255,8 +255,22 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(rows.nth(0)).toContainText("Tapped 0 times");
   await expect(rows.nth(1)).toContainText("My other game");
 
+  // An answer in place keeps the maker where they pressed, as an app does (src/lib/stay-in-app.ts): the page is
+  // scrolled to its foot first, and is not back at its top after Up has moved the row. The window is made short for this, so
+  // that the page scrolls on every size.
+  const size = page.viewportSize() ?? { width: 1280, height: 720 };
+  await page.setViewportSize({ width: size.width, height: 320 });
+  const footOfThePage = await page.evaluate(() => {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    return window.scrollY;
+  });
+  expect(footOfThePage).toBeGreaterThan(0);
   await rows.nth(1).getByRole("button", { name: "Up" }).click();
   await expect(rows.nth(0)).toContainText("My other game");
+  await expect(rows.nth(0).getByRole("button", { name: "Down" })).not.toHaveAttribute("aria-busy", /.*/);
+  // Not sent back to the top. The browser may nudge the page a little to keep the row in view as the rows swap places.
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await page.setViewportSize(size);
   await rows.nth(0).getByRole("button", { name: "Hide" }).click();
   await expect(rows.nth(0)).toContainText("Hidden");
   await page.goto(`/${moved}`);

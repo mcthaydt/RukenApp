@@ -5,7 +5,21 @@
 // nothing to get it, and without a script a form still works the plain way. A form with its own script
 // (`use:enhance`) stops the plain send itself and is left alone.
 import { enhance } from "$app/forms";
+import { refreshAll } from "$app/navigation";
 import { clearSending } from "./busy-forms.ts";
+
+/** The words of the screen's main heading, which change when an answer brings the next step. */
+function headingNow(): string | null {
+  return document.querySelector("h1")?.textContent ?? null;
+}
+
+/** Whether an address is the page the person is on now. */
+function isThisPage(address: string): boolean {
+  const there = new URL(address, location.href);
+  return (
+    there.origin === location.origin && there.pathname + there.search === location.pathname + location.search
+  );
+}
 
 /** Sends a plain POST form from inside the page, the way `use:enhance` would, and frees its button after. */
 export function sendInApp(event: SubmitEvent): void {
@@ -28,15 +42,23 @@ export function sendInApp(event: SubmitEvent): void {
       return;
     }
     alreadySent = true;
+    const headingBefore = headingNow();
     return async ({ result, update }) => {
       try {
+        // An answer that sends the person back to the page they are on (Up and Down on Your links) is an answer in
+        // place: the page is brought up to date where it is, without going to its top.
+        if (result.type === "redirect" && isThisPage(result.location)) {
+          HTMLFormElement.prototype.reset.call(form);
+          await refreshAll();
+          return;
+        }
         await update();
-        // An answer on the same page leaves no password in its box, as a fresh page would. A next step (the form
-        // gave way to another screen) starts at its top; an answer in place (a refusal, a line moved up) keeps the
-        // person where they pressed, as an app does.
+        // An answer on the same page leaves no password in its box, as a fresh page would. A next step (the screen's
+        // heading changed, as from "Join Ruken" to "We texted you a code") starts at its top; an answer in place (a
+        // refusal, a line moved up) keeps the person where they pressed, as an app does.
         if (result.type === "success" || result.type === "failure") {
           for (const box of form.querySelectorAll<HTMLInputElement>("input[type='password']")) box.value = "";
-          if (!form.isConnected) window.scrollTo(0, 0);
+          if (headingNow() !== headingBefore) window.scrollTo(0, 0);
         }
       } finally {
         clearSending(form);
