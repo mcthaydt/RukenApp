@@ -285,6 +285,19 @@ describe("startGame", () => {
 });
 
 describe("saveAnswer", () => {
+  it("keeps each answer on the game, one at a time", async () => {
+    const { makerUserId, id } = await begin();
+
+    await service.saveAnswer(id, makerUserId, { question: "line", oneLine: "  Climb fifty floors.  " });
+    await service.saveAnswer(id, makerUserId, { question: "age", ageRating: "age_12" });
+
+    expect(await db().game.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      oneLine: "Climb fifty floors.",
+      playsOn: "phone_and_computer",
+      ageRating: "age_12",
+    });
+  });
+
   it("refuses a bad answer in that answer's words, and keeps nothing", async () => {
     const { makerUserId, id } = await begin();
 

@@ -50,7 +50,28 @@ async function addSome(userId: string, ...titles: string[]): Promise<void> {
   }
 }
 
+/** The titles of a maker's links, in the order they sit. */
+async function titlesOf(userId: string): Promise<string[]> {
+  const page = await service.pageOf(userId);
+  return (page?.links ?? []).map((link) => link.title);
+}
+
 describe("a maker's page", () => {
+  it("makes a page, and changes it", async () => {
+    const userId = await createUser(db());
+    await service.savePage(userId, { handle: "first-name", name: "First", oneLine: "One" });
+    await service.savePage(userId, { handle: "second-name", name: "  Second  ", oneLine: "  Two  " });
+    expect(await db().makerPage.count({ where: { userId } })).toBe(1);
+    expect(await service.pageOf(userId)).toMatchObject({
+      handle: "second-name",
+      name: "Second",
+      oneLine: "Two",
+      themeId: 0,
+      views: 0,
+      links: [],
+    });
+  });
+
   it("answers the address it kept, cleaned", async () => {
     const userId = await createUser(db());
     expect(await service.savePage(userId, { handle: " @Night-Owl ", name: "N", oneLine: "" })).toEqual({
@@ -141,6 +162,34 @@ describe("a page's links", () => {
       await service.addLink(userId, { kind: "link", title, url: `https://example.com/${title}` });
     }
   }
+
+  it("adds links last, moves them, hides them and removes them", async () => {
+    const { userId, handle } = await makerWithPage();
+    await addLinks(userId, "x", "y", "z");
+    expect(await titlesOf(userId)).toEqual(["x", "y", "z"]);
+
+    const x = await idOf(userId, "x");
+    const y = await idOf(userId, "y");
+    const z = await idOf(userId, "z");
+    await service.moveLinkOf(userId, z, "up");
+    expect(await titlesOf(userId)).toEqual(["x", "z", "y"]);
+    await service.moveLinkOf(userId, z, "up");
+    expect(await titlesOf(userId)).toEqual(["z", "x", "y"]);
+    await service.moveLinkOf(userId, z, "up");
+    expect(await titlesOf(userId)).toEqual(["z", "x", "y"]);
+
+    await service.setHidden(userId, x, true);
+    await service.removeLink(userId, y);
+    expect((await service.pageOf(userId))?.links).toMatchObject([
+      { title: "z", hidden: false },
+      { title: "x", hidden: true },
+    ]);
+    expect((await service.pageByHandle(handle))?.links.map((link) => link.title)).toEqual(["z"]);
+
+    // A link added after a removal still goes last.
+    await addLinks(userId, "w");
+    expect(await titlesOf(userId)).toEqual(["z", "x", "w"]);
+  });
 
   it("keeps the address as it was read, and the words as trimmed", async () => {
     const { userId } = await makerWithPage();
