@@ -51,3 +51,11 @@ The `ruleMix` hook refuses a push that carries rules files (`CLAUDE.md`) togethe
 ## 4. Boundaries
 
 No new dependency, tool, environment or spend. Expected duration: about an hour, most of it audits and CI.
+
+## 5. Addendum: six writers (2026-11-22)
+
+- **Owner, 2026-11-22 02:06 UTC:** "Yes", answering whether to raise the cap on sessions writing code from 3 to 6 to match the open limit. A writer keeps its place until its pull request merges, so 3 writers kept code pull requests to 3 open (plan audit 1, note N2).
+- The change, one pull request, lane 3: CLAUDE.md Settings "at most 6 writing code (implementers)"; `.claude/skills/staged-path/SKILL.md` "keeps its place among the 6 writers"; the dated entry in `progress.md`.
+- **Call:** "Work sessions at once: 5" stays. A writer waiting on a review or the owner is not one of the 5, so 6 writers fit; at most 5 run at once.
+- Not changed: no hook counts writers, so nothing else moves.
+- Acceptance criteria: `grep -n "at most 6 writing code" CLAUDE.md` and `grep -n "among the 6 writers" .claude/skills/staged-path/SKILL.md` each find one line; `grep -rn "3 writ" CLAUDE.md .claude/skills` finds nothing; CI green; the audit PASS on the head.
