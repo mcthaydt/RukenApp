@@ -11,6 +11,8 @@
   // An 18+ game refused: the route throws one of two codes (accounts/adults.ts), never words for a person.
   const adultsOnly = $derived(page.status === 403 && page.error?.message.startsWith("adults-only:") === true);
   const signedOut = $derived(page.error?.message === "adults-only:signed-out");
+  // Signing in comes back here: the game's page or its play screen. /sign-in checks `next` with safeNextPath.
+  const signInHref = $derived(`/sign-in?next=${encodeURIComponent(page.url.pathname + page.url.search)}`);
 </script>
 
 <svelte:head>
@@ -35,7 +37,7 @@
     <p>Try again in a moment.</p>
   {/if}
   {#if adultsOnly && signedOut}
-    <p><a class="button" href="/sign-in">Sign in</a></p>
+    <p><a class="button" href={signInHref}>Sign in</a></p>
   {:else if inMakersArea}
     <p><a class="button" href="/make">Back to your games</a></p>
   {:else}

@@ -222,32 +222,6 @@ test.describe("a link that looks like a button", () => {
   }
 });
 
-test.describe("home", () => {
-  test("a Sign in button under the line, the blue button on felt", async ({ page }) => {
-    await visit(page, "/");
-    const button = page.getByRole("link", { name: "Sign in", exact: true });
-    await expect(button).toHaveAttribute("href", "/sign-in");
-    await expect(button).toHaveCSS("background-color", rgb(token("--pay")));
-    await expect(button).toHaveCSS("color", rgb(token("--chalk")));
-    const box = await boxOf(button);
-    expect(box.height).toBeGreaterThanOrEqual(48);
-    const line = await boxOf(page.getByText("Games, one swipe at a time. Coming soon."));
-    expect(box.y).toBeGreaterThanOrEqual(bottomOf(line));
-  });
-
-  test("the heading is the name already, so there is no second Ruken above it", async ({ page }) => {
-    await visit(page, "/");
-    await expect(page.getByRole("link", { name: "Ruken", exact: true })).toHaveCount(0);
-  });
-
-  test("someone already signed in is not asked to sign in", async ({ page }) => {
-    await signUp(page);
-    await visit(page, "/");
-    await expect(page.getByRole("heading", { name: "Ruken" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
-  });
-});
-
 test.describe("the card", () => {
   test("a heading breaks into even lines", async ({ page }) => {
     await visit(page, "/sign-up");

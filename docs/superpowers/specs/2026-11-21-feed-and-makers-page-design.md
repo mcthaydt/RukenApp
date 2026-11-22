@@ -68,7 +68,7 @@ Not built here, because each needs its own approval, data, spec or slice:
 
 - **Dependencies:** none added. Two data files are copied in, as the colour data was: the social marks' path data from the CC0 `simple-icons` package (unit K), with its licence and its source record beside it.
 - **Tools and environments:** cloud containers and CI only. Nothing runs on the Owner's computer (the repo is public). No new setting, secret, bucket or address.
-- **Migrations:** one, in unit K (`ALTER TYPE "PageLinkKind" ADD VALUE 'social'`). It reaches the site's database when the Owner next runs `pnpm run deploy`. Undoing it is leaving the value unused; Postgres cannot drop an enum value without rebuilding the type. K is lane 3: it merges after its implementation audit passes, under the standing permission of 2026-11-20 in `history.md` ("Merge PRs yourself once CI, reviews and audits pass, without asking the owner"); the merge itself changes no database.
+- **Migrations:** one, in unit K (`ALTER TYPE "PageLinkKind" ADD VALUE 'social'`). It reaches the site's database when the Owner next runs `pnpm run deploy`. Undoing it is leaving the value unused; Postgres cannot drop an enum value without rebuilding the type. K is lane 3: it merges after its implementation audit passes, under the owner's standing permission of 2026-11-21 19:16 UTC recorded in `progress.md` History; the merge itself changes no database.
 - **CI:** `.github/workflows/` does not change.
 - **Spend:** none.
 - **Expected duration** (estimates, for the overrun rule): C 3 hours, F 2, H 5, D 9, I 7, K 3, each plus its review. With the waves in section 6, about a day and a half of wall time before the slice's end.
@@ -198,7 +198,7 @@ Six units. Each is one pull request from its own branch, built by one session wi
 
 **Why this order.** C and F share no file and no output, so they start together. H reads C's `liveGames`. D reads C's service, links to H's route, and edits files F and H edit (the layout among them), so it starts from a `main` that holds all three. I's journeys open H's page. D and I share only `look.css` and `look.test.ts`, and only if a room needs a new class: then I waits on D; otherwise they run side by side. K adds to what H and I made. So: C and F; then H; then D and I; then K. At most three write at once.
 
-**Lessons carried** (`history.md`): a session that waits on CI watches the run in the foreground and never ends its turn only to wait. A journey waits for the thing it is about to measure, not for the address to change (the flaky `addDraft` fix). A press that waits for the site's answer gets `SITE_ANSWER_TIMEOUT`; finding a button still fails in 5 seconds.
+**Lessons carried** (`progress.md` History): a session that waits on CI watches the run in the foreground and never ends its turn only to wait. A journey waits for the thing it is about to measure, not for the address to change (the flaky `addDraft` fix). A press that waits for the site's answer gets `SITE_ANSWER_TIMEOUT`; finding a button still fails in 5 seconds.
 
 **For every unit.** Test first, the hardest to fool first: the journey, then the pieces under it. Quick tests run in the container before a push; the full run is CI's. Every journey file starts with `test.beforeEach(forgetRateLimits)`. Every new or changed screen is shown with `showTheOwner(page, testInfo, "<screen>")`. The journeys share one database, so the feed at `/` holds every game any journey made: a journey finds its own game's clip by `data-slug` and asserts the order only in unit and database tests. The journeys' clips are real videos today (`realClip`), but no journey asserts that a video is playing on a runner that may refuse to play one: it asserts what Ruken's page decides (which clip is current, whether sound is on, which addresses the sources have). A pull request that changes or deletes an existing test names each one and why. Before each commit that changes behaviour the builder runs the change through `verify`. Words on screens are the words in this spec; a change to them is a deviation to report.
 
@@ -233,9 +233,9 @@ Acceptance:
 
 Tasks:
 
-- [ ] 1. The journey first, in `tests/browser/join.test.ts`: a stranger presses Play on a game's page and meets the card over that game's clip (F3, F4), `showTheOwner` "the price card over a clip"; the three addresses of F5.
-- [ ] 2. `backFromPaywall`, test first (F1).
-- [ ] 3. The load, the video and the `backdrop` rule (F2, F3).
+- [x] 1. The journey first, in `tests/browser/join.test.ts`: a stranger presses Play on a game's page and meets the card over that game's clip (F3, F4), `showTheOwner` "the price card over a clip"; the three addresses of F5.
+- [x] 2. `backFromPaywall`, test first (F1).
+- [x] 3. The load, the video and the `backdrop` rule (F2, F3).
 - [ ] 4. ~~**Open 1, only if the Owner says keep the mark:** one empty `<span class="pip" aria-hidden="true">` on the price card (not on the member's or the paused card), a 12px diamond 1.25rem from the card's top and right; the `.pip` rule sits with the card's rules, above `main.gamepage` in `look.css`, so the game page's "uses no pip (red) anywhere" (`tests/lib/look.test.ts:556`) stands unchanged; "red is only the danger button" (`tests/lib/look.test.ts:103`) becomes "the danger button and the pip mark", named in the pull request. Otherwise this task is struck and nothing red is added.~~ Struck: the Owner said leave it off (2026-11-21).
 
 ### Unit H: a maker's page
@@ -255,12 +255,12 @@ Acceptance:
 
 Tasks:
 
-- [ ] 1. `givePage` in `tests/browser/support/database.ts` takes an address, a theme and links, and answers the address and the links' ids; `pageCounts(handle)` reads the two counts. (The rooms arrive in unit I, so H's journeys write rows.)
-- [ ] 2. The journeys first, in `tests/browser/maker-page.test.ts` (H2 to H9), each screen shown: "a maker's page", "a maker's page, Ruken's colours", "a maker's page with no games".
-- [ ] 3. The matcher, registered in `src/params/index.ts` beside `question`, and its unit test in `tests/params/handle.test.ts` (H1). The layout's condition that hides the wordmark on `/[handle=handle]` (H2).
-- [ ] 4. `MakerPage.svelte`, re-exported from `pages.browser.ts`, and the page's route and load (H2 to H4, H7, H8).
-- [ ] 5. The out route (H5, H6).
-- [ ] 6. The "Made by" link and its case in `tests/browser/game-page.test.ts` (H10).
+- [x] 1. `givePage` in `tests/browser/support/database.ts` takes an address, a theme and links, and answers the address and the links' ids; `pageCounts(handle)` reads the two counts. (The rooms arrive in unit I, so H's journeys write rows.)
+- [x] 2. The journeys first, in `tests/browser/maker-page.test.ts` (H2 to H9), each screen shown: "a maker's page", "a maker's page, Ruken's colours", "a maker's page with no games".
+- [x] 3. The matcher, registered in `src/params/index.ts` beside `question`, and its unit test in `tests/params/handle.test.ts` (H1). The layout's condition that hides the wordmark on `/[handle=handle]` (H2).
+- [x] 4. `MakerPage.svelte`, re-exported from `pages.browser.ts`, and the page's route and load (H2 to H4, H7, H8).
+- [x] 5. The out route (H5, H6).
+- [x] 6. The "Made by" link and its case in `tests/browser/game-page.test.ts` (H10).
 
 ### Unit D: the feed screen
 
@@ -283,14 +283,14 @@ Acceptance:
 
 Tasks:
 
-- [ ] 1. The journey first, in `tests/browser/feed.test.ts`: "Ruken opens straight into the feed, with the right clip for the screen" (D1, D2, D4), shown as "the feed".
-- [ ] 2. `Feed.svelte`, `feed.browser.ts`, the route and its load (`feed()`), the layout's condition for screens with no wordmark, building on H's (D1 to D5, D13).
-- [ ] 3. `Bar.svelte`, drawn by the root layout for the three routes; the game page's way back and its room at the foot (D11), shown as "a game's page with the bar" and "a maker's page with the bar".
-- [ ] 4. `current.ts`, playing and sound, test first (D6, D7), in `tests/features/feed/current.test.ts` and `tests/browser/feed-controls.test.ts`.
-- [ ] 5. `share.ts` and the Share mark, test first (D8).
-- [ ] 6. The hints, test first (D9), shown as "the feed on a first open". The empty feed (D12), shown as "the feed with no games".
-- [ ] 7. The placeholder home page goes, and with it `tests/browser/home.test.ts` and the home page's cases in `tests/browser/look.test.ts` and `tests/browser/look-layout.test.ts`. Every journey that opened `/` for the placeholder (the builder searches `tests/browser/` for `goto("/")`, `toHaveURL("/")`, "Coming soon", "Your games" and "Back to Ruken"; `sign-in`, `sign-up`, `me`, `mailed-links`, `make-walk` and `support/account.ts` are a hint of where, not a boundary) is read and changed only where it named the placeholder's own words; each change is named in the pull request. A screen replaced is not a test loosened.
-- [ ] 8. The architecture case and `verify` (D14); the request count (D3); the keys (D10).
+- [x] 1. The journey first, in `tests/browser/feed.test.ts`: "Ruken opens straight into the feed, with the right clip for the screen" (D1, D2, D4), shown as "the feed".
+- [x] 2. `Feed.svelte`, `feed.browser.ts`, the route and its load (`feed()`), the layout's condition for screens with no wordmark, building on H's (D1 to D5, D13).
+- [x] 3. `Bar.svelte`, drawn by the root layout for the three routes; the game page's way back and its room at the foot (D11), shown as "a game's page with the bar" and "a maker's page with the bar".
+- [x] 4. `current.ts`, playing and sound, test first (D6, D7), in `tests/features/feed/current.test.ts` and `tests/browser/feed-controls.test.ts`.
+- [x] 5. `share.ts` and the Share mark, test first (D8).
+- [x] 6. The hints, test first (D9), shown as "the feed on a first open". The empty feed (D12), shown as "the feed with no games".
+- [x] 7. The placeholder home page goes, and with it `tests/browser/home.test.ts` and the home page's cases in `tests/browser/look.test.ts` and `tests/browser/look-layout.test.ts`. Every journey that opened `/` for the placeholder (the builder searches `tests/browser/` for `goto("/")`, `toHaveURL("/")`, "Coming soon", "Your games" and "Back to Ruken"; `sign-in`, `sign-up`, `me`, `mailed-links`, `make-walk` and `support/account.ts` are a hint of where, not a boundary) is read and changed only where it named the placeholder's own words; each change is named in the pull request. A screen replaced is not a test loosened.
+- [x] 8. The architecture case and `verify` (D14); the request count (D3); the keys (D10).
 
 ### Unit I: editing your page (Open 2)
 
@@ -310,12 +310,12 @@ Acceptance:
 
 Tasks:
 
-- [ ] 1. The journey first, in `tests/browser/edit-page.test.ts`: a maker makes her page from nothing and sees it live (I1 to I3), each screen shown.
-- [ ] 2. The reserved words (I11) and the "Your page" link (I10).
-- [ ] 3. Address, Name and About you (I2, I4, I5); `timesWords`, test first.
-- [ ] 4. Colours, with `ThemePicker.svelte` (I6).
-- [ ] 5. Photo (I7).
-- [ ] 6. Links (I8, I9).
+- [x] 1. The journey first, in `tests/browser/edit-page.test.ts`: a maker makes her page from nothing and sees it live (I1 to I3), each screen shown.
+- [x] 2. The reserved words (I11) and the "Your page" link (I10).
+- [x] 3. Address, Name and About you (I2, I4, I5); `timesWords`, test first.
+- [x] 4. Colours, with `ThemePicker.svelte` (I6).
+- [x] 5. Photo (I7).
+- [x] 6. Links (I8, I9).
 
 ### Unit K: social icons (lane 3)
 

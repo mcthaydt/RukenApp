@@ -13,6 +13,16 @@ const ID_LENGTH = 10;
 const SLUG_MIN = 3;
 const SLUG_MAX = 40;
 
+/** The shape of a game's address: words of lower-case letters and digits joined by single hyphens. */
+export const GAME_SLUG_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * The words the maker's own screens use right after `/make/`. A game with one of these as its address would have its
+ * screens hidden behind them, so `freeSlug` treats each as taken. A test reads the folders of `src/routes/make/` and
+ * fails until a new screen's word is listed here.
+ */
+export const RESERVED_GAME_SLUGS: ReadonlySet<string> = new Set(["new", "github", "page"]);
+
 function randomBytesFromTheRuntime(count: number): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(count));
 }

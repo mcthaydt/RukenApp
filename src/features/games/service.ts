@@ -23,7 +23,7 @@ import {
   repoProblem,
 } from "./fields.ts";
 import { NOT_VISIBLE, type GitHub } from "./github.ts";
-import { newPublicId, slugOf } from "./ids.ts";
+import { newPublicId, RESERVED_GAME_SLUGS, slugOf } from "./ids.ts";
 import { pullGame, type Pull } from "./pull.ts";
 import { counterOf, firstUnanswered, type Answers } from "./questions.ts";
 import { listWords, sentBackStillOpen, stateParts, stateWords } from "./review.ts";
@@ -414,7 +414,8 @@ export function createGamesService(deps: GamesServiceDeps) {
       },
       select: { slug: true },
     });
-    const taken = new Set(rows.map((row) => row.slug));
+    // The maker's own screens are at `/make/<word>`, so those words are never a game's address.
+    const taken = new Set([...rows.map((row) => row.slug), ...RESERVED_GAME_SLUGS]);
     const free = candidates.find((candidate) => !taken.has(candidate));
     if (free === undefined) throw new GameError("INVALID", "That name is taken. Pick another.", "name");
     return free;
