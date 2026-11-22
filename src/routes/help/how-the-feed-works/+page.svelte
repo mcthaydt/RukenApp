@@ -13,7 +13,7 @@
 </script>
 
 <main class="card">
-  <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
+  <p><a class="plain-link" href={data.back.href}>{data.back.words}</a></p>
   <h1>How the feed works</h1>
   <p class="note">Last updated 22 November 2026</p>
   <p>
@@ -87,7 +87,7 @@
     </ul>
   </section>
 
-  <p><a class="quiet" href="/privacy">Read what we keep about you</a></p>
-  <p><a class="quiet" href="/terms">Read the terms</a></p>
-  <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
+  <p><a class="plain-link" href="/privacy">Read what we keep about you</a></p>
+  <p><a class="plain-link" href="/terms">Read the terms</a></p>
+  <p><a class="plain-link" href={data.back.href}>{data.back.words}</a></p>
 </main>

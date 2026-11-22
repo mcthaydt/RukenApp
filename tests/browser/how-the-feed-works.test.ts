@@ -36,6 +36,11 @@ test("a person finds how the feed works from help, reads today apart from what's
   const words = (await Promise.all([today, coming, never].map((part) => part.innerText()))).join("\n");
   expect(words.match(/\d+/g) ?? []).toEqual(["18"]);
 
+  // No link on the page is underlined (the owner, 2026-11-22: "no text with underline links anywhere").
+  for (const link of await page.getByRole("main").getByRole("link").all()) {
+    await expect(link).toHaveCSS("text-decoration-line", "none");
+  }
+
   await page.getByRole("link", { name: "Back to help" }).first().click();
   await expect(page).toHaveURL("/help");
 });

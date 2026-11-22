@@ -273,6 +273,14 @@ strong {
   font-weight: 600;
 }
 
+/* A link on a line of its own that is not underlined (How the feed works, and the ways to it from help, privacy and
+   terms): the owner, 2026-11-22 18:02 UTC, "no text with underline links anywhere". Its weight sets it apart from the
+   words around it. */
+a.plain-link {
+  font-weight: 600;
+  text-decoration: none;
+}
+
 /* The focus ring on felt. */
 :focus-visible {
   outline: 3px solid var(--paper);

@@ -121,7 +121,7 @@
       does.
     </li>
   </ul>
-  <p><a class="quiet" href="/help/how-the-feed-works">How the feed works</a></p>
+  <p><a class="plain-link" href="/help/how-the-feed-works">How the feed works</a></p>
 
   <h2>Games you want</h2>
   <p>Before Ruken opens, you can add games to a list. We keep your list.</p>
