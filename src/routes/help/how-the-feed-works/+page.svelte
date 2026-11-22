@@ -26,7 +26,10 @@
     <ul class="bullets">
       <li>Everyone sees the same feed. It doesn't learn anything about you yet.</li>
       <li>New games go near the top for their first week, so every new game gets seen.</li>
-      <li>After that, a game moves up when members play it. The more they play, the higher it goes.</li>
+      <li>
+        After that, a game moves up when members play it. The more they have played it lately, the higher it
+        goes.
+      </li>
       <li>
         Only real play counts: the game is on your screen and you're using it. A game left in a hidden tab
         adds nothing.

@@ -130,6 +130,8 @@ test("every guide is listed on the help page and opens", async ({ page }) => {
     "Record your screen",
     "How the feed works",
   ]);
+  // No guide on the list is underlined (the owner, 2026-11-22: "no text with underline links anywhere").
+  for (const guide of await guides.all()) await expect(guide).toHaveCSS("text-decoration-line", "none");
 
   for (const name of ["Put your game on GitHub", "Record your screen", "How the feed works"]) {
     await page.goto("/help");
