@@ -2,7 +2,7 @@
   Privacy: what Ruken keeps, why, who helps, and for how long, in plain words. It says only what the code does today;
   anything not decided yet says so instead of guessing. A lawyer has not read it, and the top of the page says that.
   When Ruken starts keeping something new, setting a new cookie or using a new outside service, this page changes in
-  the same pull request (this-repo, "The privacy and terms pages keep up"; tests/routes/privacy-cookies.test.ts).
+  the same pull request (this-repo, "The privacy and terms pages keep up"; tests/routes/privacy/cookies.test.ts).
 -->
 <svelte:head>
   <title>Privacy · Ruken</title>
@@ -18,7 +18,7 @@
   </p>
 
   <h2>The short version</h2>
-  <ul>
+  <ul class="bullets">
     <li>You can watch the feed without an account.</li>
     <li>To make an account, we need your phone number, a password and your date of birth.</li>
     <li>We don't keep your birthday. We keep only the day you turn 18.</li>
@@ -29,7 +29,7 @@
   </ul>
 
   <h2>Your account</h2>
-  <ul>
+  <ul class="bullets">
     <li>
       <strong>Your phone number.</strong> It's how you sign in. We text you codes and notes about your account.
     </li>
@@ -37,6 +37,10 @@
     <li>
       <strong>Your age.</strong> We ask for your date of birth to check you're 13 or older. We keep only the day
       you turn 18, so we know if you're under 18. If you're under 13, we keep nothing you typed.
+    </li>
+    <li>
+      <strong>While you sign up.</strong> Until you type the code we texted, we keep your number, your scrambled
+      password and the day you turn 18, for up to 10 minutes.
     </li>
     <li>
       <strong>Your email, if you pay.</strong> Stripe gives us the email you paid with. We use it to send a code
@@ -49,7 +53,7 @@
   </ul>
 
   <h2>Keeping your account safe</h2>
-  <ul>
+  <ul class="bullets">
     <li>
       We count tries from each internet address for a short time, to slow down people who guess passwords.
     </li>
@@ -64,7 +68,7 @@
   </ul>
 
   <h2>Texts</h2>
-  <ul>
+  <ul class="bullets">
     <li>Twilio sends our texts. We only text codes and notes about your account.</li>
     <li>Reply STOP to stop texts, or HELP for help. Message and data rates may apply.</li>
     <li>We keep a note that a text went out and when. That note doesn't hold your number.</li>
@@ -72,26 +76,27 @@
   </ul>
 
   <h2>Your membership</h2>
-  <ul>
+  <ul class="bullets">
     <li>Stripe takes your payment. Your card goes to Stripe, not to us. Stripe emails your receipts.</li>
     <li>We keep your plan, whether it's running, and when it renews or ends.</li>
     <li>For each payment, we keep what you paid, the tax, and Stripe's fee. We need this to pay makers.</li>
   </ul>
 
   <h2>Which maker brought you</h2>
-  <ul>
+  <ul class="bullets">
     <li>
-      When you open a maker's page or a link to their game, we put a small file (a cookie) in your browser. It
-      remembers which maker's link you came through, and when.
+      When you open a maker's page or any game's page, also from the feed, we put a small file (a cookie) in
+      your browser. It remembers the last maker whose page or game you opened, and when.
     </li>
     <li>If you then become a member, we write down that maker, so they get a bonus for bringing you.</li>
     <li>
-      It lasts up to 400 days, or until you open another maker's link. You can clear it in your browser.
+      It lasts 400 days from the last time, and the next maker's page or game you open replaces it. You can
+      clear it in your browser.
     </li>
   </ul>
 
   <h2>What you play</h2>
-  <ul>
+  <ul class="bullets">
     <li>Each time you press Play, we keep which game, when, and your account if you're signed in.</li>
     <li>
       While you play, your browser tells us every 15 seconds if you're still playing: the tab is showing, the
@@ -112,7 +117,7 @@
   <p>Before Ruken opens, you can add games to a list. We keep your list.</p>
 
   <h2>If you make games</h2>
-  <ul>
+  <ul class="bullets">
     <li>
       <strong>Your page</strong>: its address, your name, one line about you, your photo, your links and your
       colours. Your page is public.
@@ -128,13 +133,19 @@
 
   <h2>Cookies and your browser</h2>
   <p>Ruken has no cookies for ads, and none that follow you to other websites.</p>
-  <ul>
+  <ul class="bullets">
     <li><strong>rk_session</strong> keeps you signed in. Up to 30 days.</li>
-    <li><strong>rk_arrival</strong> remembers which maker's link you came through. Up to 400 days.</li>
+    <li>
+      <strong>rk_arrival</strong> remembers the last maker's page or game you opened. 400 days from the last time.
+    </li>
+    <li>
+      <strong>ruken_sign_up</strong> keeps your sign-up going while you type the code we texted. 10 minutes.
+    </li>
     <li>
       <strong>rk_welcome_back</strong> says "Welcome back" once, after you undo deleting your account. 5 minutes.
     </li>
     <li><strong>thrown-away</strong> tells a maker which game they just threw away. 1 minute.</li>
+    <li><strong>page-saved</strong> says "Saved." once, after a maker saves their page. 1 minute.</li>
     <li>
       <strong>rk_seen_hints</strong> and <strong>rk_menu_tab</strong> stay in your browser and never reach us. They
       remember that you saw the feed's first hints, and where you put a game's menu.
@@ -144,7 +155,7 @@
 
   <h2>Who helps us</h2>
   <p>These companies handle some of your details for us:</p>
-  <ul>
+  <ul class="bullets">
     <li>
       <strong>Cloudflare</strong> runs the website, keeps game files, clips and photos, and keeps our logs.
     </li>
@@ -157,13 +168,17 @@
   <p>We don't sell what we know about you, and we don't share it for ads.</p>
 
   <h2>Logs</h2>
-  <p>
-    When something goes wrong, the website writes a short note about it, so we can fix it. Cloudflare keeps
-    these notes.
-  </p>
+  <ul class="bullets">
+    <li>
+      Cloudflare keeps a short record of each visit: the page, the time, your internet address and your
+      browser.
+    </li>
+    <li>When something goes wrong, the website adds a note about it, so we can fix it.</li>
+    <li>When a maker connects GitHub, we note which GitHub accounts it showed.</li>
+  </ul>
 
   <h2>How long we keep it</h2>
-  <ul>
+  <ul class="bullets">
     <li>While you have an account, we keep what this page lists.</li>
     <li>
       When you delete your account, your membership ends at once, with no money back. You're signed out
@@ -174,14 +189,20 @@
       connection and your list of games. Your games come off Ruken, with their files and clips.
     </li>
     <li>
-      Some records stay, with no name or number on them: payments, play time, which maker brought you, which
-      agreement a maker agreed to, and that texts went out. We need them to keep our money records right.
+      Some records stay, with no phone number or email on them: payments, play time, which maker brought you,
+      which agreement a maker agreed to, and that texts went out. We need them to keep our money records
+      right.
+    </li>
+    <li>
+      If you made games, each game's name and line, the GitHub repository it came from, and staff notes about
+      it stay too. A repository's name often holds your GitHub name. So does your page's old address, on the
+      records of members you brought.
     </li>
     <li>Stripe and Twilio keep their own records under their own rules.</li>
   </ul>
 
   <h2>Your choices</h2>
-  <ul>
+  <ul class="bullets">
     <li>Delete your account: go to You, then "Delete my account".</li>
     <li>Cancel your membership: go to You, then "Change card or cancel".</li>
     <li>Change your password: go to You, then "Change password".</li>
@@ -192,7 +213,7 @@
   </p>
 
   <h2>Under 18</h2>
-  <ul>
+  <ul class="bullets">
     <li>Ruken is for people 13 and up. If you're under 13, you can't make an account.</li>
     <li>If you're under 18, or we don't know your age, you don't see games made for adults.</li>
     <li>We keep the same details about you as about anyone else, and nothing more.</li>

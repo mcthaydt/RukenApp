@@ -19,7 +19,7 @@
   <p>These are the rules for using Ruken. By making an account, you agree to them.</p>
 
   <h2>What Ruken is</h2>
-  <ul>
+  <ul class="bullets">
     <li>Ruken is a place to find and play games in your browser.</li>
     <li>Watching is free. Anyone can watch the feed without an account.</li>
     <li>Playing needs a membership. Some games are free for everyone, and they say so.</li>
@@ -27,7 +27,7 @@
   </ul>
 
   <h2>Who can join</h2>
-  <ul>
+  <ul class="bullets">
     <li>You must be 13 or older to make an account.</li>
     <li>Sign-up is open to phone numbers in the United States and Canada.</li>
     <li>One person, one account. Use a phone number that's yours.</li>
@@ -35,13 +35,13 @@
   </ul>
 
   <h2>Your account</h2>
-  <ul>
+  <ul class="bullets">
     <li>Keep your password to yourself. What happens on your account is up to you.</li>
     <li>You can change your password, or delete your account, at any time from You.</li>
   </ul>
 
   <h2>Membership</h2>
-  <ul>
+  <ul class="bullets">
     <li>A membership costs $9.99 a month or $99 a year. Tax is added where it applies.</li>
     <li>There is no free trial.</li>
     <li>It renews by itself until you cancel.</li>
@@ -54,7 +54,7 @@
   </ul>
 
   <h2>Games on Ruken</h2>
-  <ul>
+  <ul class="bullets">
     <li>Makers make the games, not Ruken. A person at Ruken checks each game before it goes on Ruken.</li>
     <li>Games made for adults are shown only to adults. No game may have pornography or gambling.</li>
     <li>A game plays apart from Ruken. It never gets your sign-in or your account.</li>
@@ -62,7 +62,7 @@
   </ul>
 
   <h2>Play fair</h2>
-  <ul>
+  <ul class="bullets">
     <li>Don't try to play games without paying, or help others do it.</li>
     <li>Don't try to break into Ruken, or into anyone's account.</li>
     <li>Don't use Ruken to break the law or to hurt anyone.</li>
