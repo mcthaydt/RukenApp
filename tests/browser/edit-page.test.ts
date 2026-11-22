@@ -3,6 +3,7 @@ import { pageHasSettled, signUp, signUpInItsOwnContext, signInAs } from "./suppo
 import { givePage, makeDeletionDue } from "./support/database.ts";
 import { addDraft } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
+import { holdNextScreen } from "./support/hold.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { rgb } from "../support/look-tokens.ts";
 import { THEMES } from "../../src/features/pages/themes.ts";
@@ -415,16 +416,13 @@ test("a game named like one of the maker's screens gets an address of its own", 
   await expect(page.getByLabel(/about, in one line\?$/)).toBeVisible();
 });
 
-test("a colour tapped before the screen's scripts arrive is still the one picked, and is saved", async ({
+test("a colour tapped before the screen has come alive is still the one picked, and is saved", async ({
   page,
 }) => {
   const maker = await signUp(page);
   const { handle } = await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
-  // A slow connection: the words and the tiles are on the screen, the scripts that make it live are still coming.
-  await page.route(/_app\/immutable\/.*\.js/, async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    await route.continue();
-  });
+  // A slow connection: the words and the tiles are on the screen, and it has not come alive yet.
+  const screen = await holdNextScreen(page);
   await page.goto("/make/page/colours", { waitUntil: "commit" });
   await page.waitForSelector("label.swatch input", { state: "attached" });
   const picked = () =>
@@ -435,9 +433,10 @@ test("a colour tapped before the screen's scripts arrive is still the one picked
   const tapped = 2;
   await page.locator("label.swatch").nth(tapped).click({ noWaitAfter: true });
   expect((await picked())[tapped]).toBe(true);
-  // The scripts arrive and make the screen live: the tap must not be undone.
+  // The screen comes alive: the tap must not be undone.
+  await screen.release();
   // The screen is live once SvelteKit has started in the browser: its announcer is on the page.
-  await expect(page.locator("#svelte-announcer")).toBeAttached({ timeout: 30_000 });
+  await expect(page.locator("#svelte-announcer")).toBeAttached();
   const after = await picked();
   expect(after[tapped]).toBe(true);
   expect(after[own]).toBe(false);
@@ -454,44 +453,69 @@ test("words typed over a saved answer before the screen has come alive are kept 
   page,
 }) => {
   // Run 44977261003: a name typed the moment the screen showed was put back to the saved one as the screen came alive,
-  // so Save kept the old name. Holding the scripts back makes that moment as long as it needs to be.
+  // so Save kept the old name. Holding the screen back makes that moment as long as it needs to be.
   const maker = await signUp(page);
   await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
-  let release: () => void = () => undefined;
-  const scriptsMayRun = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  await page.route(/\.m?js(\?.*)?$/, async (route) => {
-    await scriptsMayRun;
-    await route.continue();
-  });
 
   // A one-line box (the name).
+  const screen = await holdNextScreen(page);
   await page.goto("/make/page/name", { waitUntil: "commit" });
   await page.getByLabel("What should your page call you?").fill("Quick Owl");
-  release();
+  await screen.release();
   await pageHasSettled(page);
   await expect(page.getByLabel("What should your page call you?")).toHaveValue("Quick Owl");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
   await expect(page.getByRole("link", { name: /^Name/ })).toContainText("Quick Owl");
-  await page.unrouteAll({ behavior: "wait" });
 
-  // A box that grows with its words (the one line), with the scripts held back again.
-  let releaseAgain: () => void = () => undefined;
-  const scriptsMayRunAgain = new Promise<void>((resolve) => {
-    releaseAgain = resolve;
-  });
-  await page.route(/\.m?js(\?.*)?$/, async (route) => {
-    await scriptsMayRunAgain;
-    await route.continue();
-  });
+  // A box that grows with its words (the one line), held back again.
+  const lineScreen = await holdNextScreen(page);
   await page.goto("/make/page/line", { waitUntil: "commit" });
   await page.getByLabel("Say one line about you").fill("I make quick games.");
-  releaseAgain();
+  await lineScreen.release();
   await pageHasSettled(page);
   await expect(page.getByLabel("Say one line about you")).toHaveValue("I make quick games.");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
   await expect(page.getByRole("link", { name: /^About you/ })).toContainText("I make quick games.");
+});
+
+test("words selected in a saved answer before the screen has come alive stay selected, so typing replaces them", async ({
+  page,
+}) => {
+  // Run 45033130832: the saved line was selected, the screen came alive, and the words typed next were added after the
+  // saved line ("I make small games.I make quick games.") instead of taking its place.
+  const maker = await signUp(page);
+  await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
+  const screen = await holdNextScreen(page);
+  await page.goto("/make/page/line", { waitUntil: "commit" });
+  const box = page.getByLabel("Say one line about you");
+  await box.selectText();
+  await screen.release();
+  await pageHasSettled(page);
+  await page.keyboard.type("I make quick games.");
+  await expect(box).toHaveValue("I make quick games.");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await expect(page.getByRole("link", { name: /^About you/ })).toContainText("I make quick games.");
+});
+
+test("a saved name selected before the screen has come alive stays selected, so typing replaces it", async ({
+  page,
+}) => {
+  // #332's review: the one-line box lost its selection the same way, so "Quick Owl" typed over a selected "Slow Owl"
+  // ended as "Slow OwlQuick Owl".
+  const maker = await signUp(page);
+  await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
+  const screen = await holdNextScreen(page);
+  await page.goto("/make/page/name", { waitUntil: "commit" });
+  const box = page.getByLabel("What should your page call you?");
+  await box.selectText();
+  await screen.release();
+  await pageHasSettled(page);
+  await page.keyboard.type("Quick Owl");
+  await expect(box).toHaveValue("Quick Owl");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await expect(page.getByRole("link", { name: /^Name/ })).toContainText("Quick Owl");
 });

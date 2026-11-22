@@ -9,6 +9,7 @@ import {
 } from "./support/account.ts";
 import { addGame } from "./support/game.ts";
 import { boxOf, expectFrame, expectOneCard, pipRed, showTheOwner } from "./support/look.ts";
+import { holdNextScreen } from "./support/hold.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
@@ -76,21 +77,14 @@ test("pressing anywhere on a plan's row picks it", async ({ page }) => {
 
 // A journey failed once in CI (slice 2's run 222, computer): the yearly plan was lost on the way to sign-up. The card set
 // each radio button from the plan in the address, and when the page came alive that put the monthly plan back over a
-// choice made a moment before. A person on a slow phone can do the same. This holds the page's scripts back, picks the
+// choice made a moment before. A person on a slow phone can do the same. This holds the page back from coming alive, picks the
 // plan on the page as the server sent it, lets the scripts run, and checks the choice is still there and still sent.
 test("a plan picked before the page has come alive is kept when it does", async ({ page }) => {
-  let release: () => void = () => undefined;
-  const scriptsMayRun = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  await page.route(/\.m?js(\?.*)?$/, async (route) => {
-    await scriptsMayRun;
-    await route.continue();
-  });
-  // The scripts are held, so the page never finishes loading: the server's page is all there is to wait for.
+  const screen = await holdNextScreen(page);
+  // The screen is held, so it is the server's page that is there to act on.
   await page.goto("/join?next=/me", { waitUntil: "commit" });
   await page.getByRole("radio", { name: "$99 a year" }).check();
-  release();
+  await screen.release();
   // SvelteKit adds its screen-reader announcer to the page once the app has started and the page has come alive
   // (hydrated), so its arrival says the scripts have run. It is the page's own sign, not a quiet network or a pause.
   await expect(page.locator("#svelte-announcer")).toBeAttached();

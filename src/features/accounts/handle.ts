@@ -18,6 +18,8 @@ export interface HandleDeps {
   cookies: CookiePolicy;
   getSession(headers: Headers): Promise<SessionInfo | null>;
   staffRolesOf(userId: string): Promise<StaffRole[]>;
+  /** Who an `Authorization` header's computer key is, or null (computer-keys.ts `readKey`). */
+  computerKey(authorization: string | null): Promise<{ userId: string; keyId: string } | null>;
 }
 
 type CallerEvent = Pick<RequestEvent, "request" | "url" | "locals" | "cookies" | "route">;
@@ -29,6 +31,11 @@ type CallerEvent = Pick<RequestEvent, "request" | "url" | "locals" | "cookies" |
 const HEALTH_PATH = "/healthz";
 /** better-auth's own routes (routes/api/auth), which answer with their own session cookie. */
 const AUTH_ROUTE_PREFIX = "/api/auth/";
+/**
+ * The maker's API (routes/api/v1). The one place a computer's key is read, and there it is the only thing read: the
+ * session cookie is ignored, so a browser tab can never act through it, and everywhere else the header is ignored.
+ */
+export const API_PREFIX = "/api/v1/";
 
 /**
  * The SvelteKit `handle` hook. `getDeps` is called on the first request that needs it, so a
@@ -36,10 +43,17 @@ const AUTH_ROUTE_PREFIX = "/api/auth/";
  */
 export function createHandle(getDeps: () => HandleDeps): Handle {
   return async ({ event, resolve }) => {
-    event.locals.caller =
-      event.url.pathname === HEALTH_PATH ? { kind: "none" } : await resolveCaller(event, getDeps());
+    if (event.url.pathname === HEALTH_PATH) event.locals.caller = { kind: "none" };
+    else if (event.url.pathname.startsWith(API_PREFIX))
+      event.locals.caller = await resolveKey(event, getDeps());
+    else event.locals.caller = await resolveCaller(event, getDeps());
     return resolve(event);
   };
+}
+
+async function resolveKey(event: CallerEvent, deps: HandleDeps): Promise<Caller> {
+  const key = await deps.computerKey(event.request.headers.get("authorization"));
+  return key === null ? { kind: "none" } : { kind: "computer", ...key };
 }
 
 async function resolveCaller(event: CallerEvent, deps: HandleDeps): Promise<Caller> {
