@@ -451,10 +451,9 @@ test("a colour tapped before the screen's scripts arrive is still the one picked
 
 /**
  * Holds the page's scripts back, so a journey can act on a screen before it has come alive, for as long as it needs.
- * One route serves the whole journey, set before anything loads, and each hold opens a new gate on it. Every script it
- * passes on is marked not to be kept: Safari's engine serves a script it already has without asking the route, so a
- * second screen came alive unheld in the middle of a fill (run 45033130832). `release` checks the hold caught the
- * screen's scripts, so a hold that missed fails here instead of racing.
+ * One route serves the whole journey and each hold opens a new gate on it: turning the route off and on again between
+ * two holds let the second screen's scripts through unheld (run 45033130832, where the screen came alive in the middle
+ * of a fill). `release` checks the hold caught the screen's scripts, so a hold that missed fails here instead of racing.
  */
 async function holdScripts(page: Page): Promise<{ hold: () => void; release: () => Promise<void> }> {
   let gate = Promise.resolve();
@@ -463,8 +462,7 @@ async function holdScripts(page: Page): Promise<{ hold: () => void; release: () 
   await page.route(/\.m?js(\?.*)?$/, async (route) => {
     caught += 1;
     await gate;
-    const response = await route.fetch();
-    await route.fulfill({ response, headers: { ...response.headers(), "cache-control": "no-store" } });
+    await route.continue();
   });
   return {
     hold() {
@@ -485,9 +483,9 @@ test("words typed over a saved answer before the screen has come alive are kept 
 }) => {
   // Run 44977261003: a name typed the moment the screen showed was put back to the saved one as the screen came alive,
   // so Save kept the old name. Holding the scripts back makes that moment as long as it needs to be.
-  const scripts = await holdScripts(page);
   const maker = await signUp(page);
   await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
+  const scripts = await holdScripts(page);
 
   // A one-line box (the name).
   scripts.hold();
@@ -517,9 +515,9 @@ test("words selected in a saved answer before the screen has come alive stay sel
 }) => {
   // Run 45033130832: the saved line was selected, the screen came alive, and the words typed next were added after the
   // saved line ("I make small games.I make quick games.") instead of taking its place.
-  const scripts = await holdScripts(page);
   const maker = await signUp(page);
   await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
+  const scripts = await holdScripts(page);
   scripts.hold();
   await page.goto("/make/page/line", { waitUntil: "commit" });
   const box = page.getByLabel("Say one line about you");
