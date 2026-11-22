@@ -58,7 +58,12 @@
   <input type="hidden" name="want" value={on ? "off" : "on"} />
   <input type="hidden" name="back" value={back} />
   <p class="opens">{opens}</p>
-  <button class={buttonClass} disabled={sending} aria-busy={sending ? "true" : undefined}>
+  <!-- Not `disabled` while it sends: a disabled button drops the keyboard's focus, and a second press is refused above. -->
+  <button
+    class={buttonClass}
+    aria-disabled={sending ? "true" : undefined}
+    aria-busy={sending ? "true" : undefined}
+  >
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
       <path
         d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"
