@@ -324,7 +324,9 @@ test.describe("help for makers", () => {
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab");
     await expect(first).toBeFocused();
-    await expect.poll(() => first.evaluate((link) => getComputedStyle(link, "::after").outlineStyle)).toBe("solid");
+    await expect
+      .poll(() => first.evaluate((link) => getComputedStyle(link, "::after").outlineStyle))
+      .toBe("solid");
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { level: 1, name: "Get your game on Ruken" })).toBeVisible();
   });
