@@ -316,7 +316,8 @@
               <h2>{clip.name}</h2>
               <p>{clip.oneLine}</p>
             </a>
-            <a class="button play" href={`/g/${clip.slug}/play`}>Play</a>
+            <!-- Opening the game counts a play, so it never loads ahead of a press. -->
+            <a class="button play" data-sveltekit-preload-data="off" href={`/g/${clip.slug}/play`}>Play</a>
           </div>
           <div class="side">
             <p class="sharenote" role="status">{note?.slug === clip.slug ? note.words : ""}</p>
