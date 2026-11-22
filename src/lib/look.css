@@ -3151,7 +3151,7 @@ header:has(+ main.about) {
   aspect-ratio: 9 / 16;
   object-fit: cover;
   border-radius: var(--radius-card);
-  background: var(--felt-deep);
+  background-color: var(--felt-deep);
 }
 
 .about .phone figcaption {
