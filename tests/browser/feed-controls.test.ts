@@ -299,8 +299,9 @@ test("the press that opens the game never covers the speaker, Play, Share, the t
     clip.getByRole("link", { name: "Play", exact: true }),
     clip.getByRole("button", { name: "Share" }),
     clip.locator("a.gamelink"),
-    page.getByRole("link", { name: "Home" }),
-    page.getByRole("link", { name: "You" }),
+    page.getByRole("link", { name: "Home", exact: true }),
+    page.getByRole("link", { name: "Add a game", exact: true }),
+    page.getByRole("link", { name: "You", exact: true }),
   ];
   for (const thing of things) {
     const reached = await thing.evaluate((element) => {
@@ -504,9 +505,9 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   }
   // The bar first (it is always there), then the first clip's controls from the top of the screen to the bottom, then the
   // next clip's.
-  expect(names.slice(0, 3)).toEqual(["Home", "You", "Sound"]);
+  expect(names.slice(0, 4)).toEqual(["Home", "Add a game", "You", "Sound"]);
   const play = names.indexOf("Play");
-  expect(play).toBeGreaterThan(2);
+  expect(play).toBeGreaterThan(3);
   expect(names[play + 1]).toBe("Share");
   expect(names[play + 2]).toBe("Sound");
   for (const outline of outlines) expect(outline).not.toMatch(/^none/);

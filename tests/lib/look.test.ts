@@ -398,6 +398,8 @@ describe("screens wear the look and nothing of their own", () => {
     "titlerow",
     "number",
     "arrow",
+    // A list of short points on a reading page (privacy, terms).
+    "bullets",
   ];
   const ROUTES = "src/routes";
 
