@@ -43,11 +43,13 @@
 
   let sending = $state(false);
 
-  /** "Not now" on the notice's own screen leaves it: back to the screen before, or the feed. */
+  /** "Not now" on the notice's own screen leaves it: to the Ruken page the person came from, or the feed. Never back to another website. */
   function leave(event: MouseEvent): void {
     event.preventDefault();
-    if (history.length > 1) history.back();
-    else void goto("/");
+    const target = new URL(from, "https://ruken.invalid");
+    const wanted = new URL(next, "https://ruken.invalid");
+    const stays = from.startsWith("/") && !from.startsWith("//") && target.pathname !== wanted.pathname;
+    void goto(stays ? from : "/");
   }
 </script>
 

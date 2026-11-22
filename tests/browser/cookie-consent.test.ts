@@ -279,3 +279,22 @@ test("a computer's key writes with no cookie, and a made-up key writes nothing",
   expect((await request.delete("/api/v1/me/key", { headers: KEY_HEADER(key) })).status()).toBe(200);
   expect((await request.get("/api/v1/me", { headers: KEY_HEADER(key) })).status()).toBe(401);
 });
+
+test("Not now on a screen that needs the yes goes back to the Ruken page before it, never to another site", async ({
+  page,
+}) => {
+  await page.goto(`/g/${game.slug}`);
+  await pageHasSettled(page);
+  await notNow(page).click();
+  await page.getByRole("link", { name: "Play" }).click();
+  await expect(page.getByText("To play, Ruken needs")).toBeVisible();
+  await pageHasSettled(page);
+  await notNow(page).click();
+  await expect(page).toHaveURL(`/g/${game.slug}`);
+
+  // Arriving from another website, there is no Ruken page before it: Not now goes to the feed.
+  await page.goto("/sign-in", { referer: "https://search.example.com/results" });
+  await pageHasSettled(page);
+  await notNow(page).click();
+  await expect(page).toHaveURL("/");
+});
