@@ -3068,10 +3068,11 @@ main.playing {
   }
 }
 
-/* Every wait shows it. A move between pages shows a Blue bar across the top (src/lib/page-loading.svelte); a button
-   whose form is out shows a turning ring after its words and cannot be pressed again (src/lib/busy-forms.ts); a
-   picture or a video shows a shimmering box until it has loaded (src/lib/loads.ts). With reduced motion the ring and
-   the box stand still and the bar is drawn whole: still there, not moving. */
+/* Every wait shows it, in one way: a Blue line that runs along. A move between pages runs it across the top of the
+   window (src/lib/page-loading.svelte); a button whose form is out runs it along its own bottom edge and cannot be
+   pressed again (src/lib/busy-forms.ts); a picture or a video is a box that slowly brightens and dims until it has
+   loaded (src/lib/loads.ts). With reduced motion the line is drawn whole and the box stays still: still there, not
+   moving. */
 .page-loading {
   position: fixed;
   inset: 0 0 auto;
@@ -3081,16 +3082,35 @@ main.playing {
   background: var(--felt-raised);
 }
 
-.page-loading::before {
+.page-loading::before,
+:is(button, .button)[aria-busy="true"]::after {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
   width: 40%;
   background: var(--pay);
-  animation: page-loading 1.1s var(--ease) infinite;
+  animation: running-line 1.1s var(--ease) infinite;
 }
 
-@keyframes page-loading {
+:is(button, .button)[aria-busy="true"] {
+  position: relative;
+  overflow: hidden;
+  cursor: progress;
+}
+
+/* On the Blue button the line is white, so it shows, and it runs inside the button, under its words. */
+:is(button, .button)[aria-busy="true"]::after {
+  inset: auto auto 8px 0;
+  height: 3px;
+  background: var(--chalk);
+}
+
+.outline[aria-busy="true"]::after,
+.card .quiet[aria-busy="true"]::after {
+  background: var(--pay);
+}
+
+@keyframes running-line {
   from {
     transform: translateX(-100%);
   }
@@ -3100,53 +3120,25 @@ main.playing {
   }
 }
 
-:is(button, .button)[aria-busy="true"] {
-  cursor: progress;
-}
-
-:is(button, .button)[aria-busy="true"]::after {
-  content: "";
-  flex: none;
-  width: 1em;
-  height: 1em;
-  margin-left: 0.6em;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: busy-ring 0.8s linear infinite;
-}
-
-@keyframes busy-ring {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
 img[data-loading],
 video[data-loading] {
   background-color: var(--felt-raised);
-  background-image: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.16) 50%, transparent 70%);
-  background-size: 200% 100%;
-  animation: media-loading 1.4s linear infinite;
+  animation: media-loading 1.4s ease-in-out infinite alternate;
 }
 
 @keyframes media-loading {
-  from {
-    background-position: 100% 0;
-  }
-
   to {
-    background-position: -100% 0;
+    background-color: var(--felt);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-loading::before {
+  .page-loading::before,
+  :is(button, .button)[aria-busy="true"]::after {
     width: 100%;
     animation: none;
   }
 
-  :is(button, .button)[aria-busy="true"]::after,
   img[data-loading],
   video[data-loading] {
     animation: none;
