@@ -14,10 +14,6 @@
   let signUpLink = $derived(`/sign-up?next=${encodeURIComponent(data.next)}`);
 </script>
 
-<svelte:head>
-  <title>Sign in · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <h1>Sign in</h1>
   {#if data.reset}

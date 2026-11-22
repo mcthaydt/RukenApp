@@ -9,10 +9,6 @@
   let { data }: PageProps = $props();
 </script>
 
-<svelte:head>
-  <title>Put your game on GitHub · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <p><a href={data.back.href}>{data.back.words}</a></p>
   <h1>Put your game on GitHub</h1>

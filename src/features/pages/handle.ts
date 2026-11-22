@@ -29,6 +29,8 @@ export const RESERVED_HANDLES: ReadonlySet<string> = new Set([
   "legal",
   "fonts",
   "favicon",
+  "icons",
+  "manifest",
   "robots",
   "ruken",
   "about",

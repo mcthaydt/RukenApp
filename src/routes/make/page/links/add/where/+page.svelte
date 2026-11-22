@@ -12,7 +12,6 @@
 </script>
 
 <QuestionScreen
-  title="Add a link · Ruken"
   heading="Where does it go?"
   counter={null}
   back="/make/page/links/add"

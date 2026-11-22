@@ -22,10 +22,6 @@
   const screen = watchUpright();
 </script>
 
-<svelte:head>
-  <title>You're in · Ruken</title>
-</svelte:head>
-
 <GameBackdrop {backdrop} upright={screen.upright} />
 
 <main class="halves live">
