@@ -10,21 +10,11 @@
   let { data, form }: PageProps = $props();
 </script>
 
-<svelte:head>
-  <title>Your page · Ruken</title>
-</svelte:head>
-
 {#if data.rooms === null}
   {#if data.saved !== null}
     <p class="note" role="status">{data.saved}</p>
   {/if}
-  <QuestionScreen
-    title="Your page · Ruken"
-    heading="Pick your page's address"
-    counter={null}
-    back="/make"
-    action="?/make"
-  >
+  <QuestionScreen heading="Pick your page's address" counter={null} back="/make" action="?/make">
     <TextAnswer
       name="handle"
       value={form?.handle ?? ""}

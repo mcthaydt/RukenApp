@@ -10,10 +10,6 @@
   let { data }: PageProps = $props();
 </script>
 
-<svelte:head>
-  <title>Record your screen · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <p><a href={data.back.href}>{data.back.words}</a></p>
   <h1>Record your screen</h1>

@@ -35,10 +35,6 @@
   });
 </script>
 
-<svelte:head>
-  <title>Join Ruken to play · Ruken</title>
-</svelte:head>
-
 {#if data.backdrop !== null}
   <!-- The game they tapped, dimmed, behind the card. It takes no press and no focus, and a screen reader does not meet it. -->
   <div class="behindcard" aria-hidden="true">

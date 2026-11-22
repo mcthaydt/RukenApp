@@ -5,6 +5,7 @@
   Leave game. A stray tap never ends a game. With no script the <details> opens by itself and Leave game is a link.
 -->
 <script lang="ts">
+  import { gameTitle } from "../../../../lib/titles.ts";
   import { onMount } from "svelte";
   import {
     BEAT_EVERY_MS,
@@ -291,7 +292,7 @@
 </script>
 
 <svelte:head>
-  <title>{data.name} · Ruken</title>
+  <title>{gameTitle(data.name)}</title>
 </svelte:head>
 
 <svelte:window onkeydown={onKeydown} />

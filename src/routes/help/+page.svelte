@@ -2,10 +2,6 @@
   Ruken's help for makers: the guides, one to a line. One paper sheet on the felt like the guides themselves, with the
   way back to Ruken at the top. Nothing on it is a button.
 -->
-<svelte:head>
-  <title>Help · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <p><a href="/">Back to Ruken</a></p>
   <h1>Help for makers</h1>
