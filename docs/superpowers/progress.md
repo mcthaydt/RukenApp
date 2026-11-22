@@ -63,6 +63,7 @@ Each entry is dated and quotes the owner where the source does; "(paraphrase)" m
 - 2026-11-22 05:52 UTC: "Make sure we have async loaders for everything that loads, now and in the future"; 05:53 UTC: "images and videos too"; 06:36 UTC: "let's use a spinner too, or at least some obvious indication that something is loading". Built in #309 (merged at `f5296bd`); the standing rule is "Every wait shows it" in the `this-repo` skill. 13:38 UTC: "We don't need the Loading... text": the page-load spinner shows with no words.
 - 2026-11-22 13:45 UTC: "Also let's add an icon for the browser RKN green background, white text in our font; and use Ruken - The Everyday Console for base title and Ruken - [Game Name] for when play a game". Read as: the icon is "RKN" in Young Serif, white, on the felt green (`#112f2c`), as the favicon, the home-screen icon and the web manifest's icons; every screen's tab says "Ruken - The Everyday Console", and a game's page and its play screen say "Ruken - " and the game's name. On a branch (`claude/project-thread-vffi7e`).
 - 2026-11-22 14:32 UTC: "padd some padding to the tab icon". The tab icon (`favicon.ico`, `icons/favicon-32.png`) keeps a clear green edge around RKN, 14% of the side on each edge. On a branch (#320).
+- 2026-11-22 15:23 UTC, answering whether a home-screen launch opens as its own app: "Home-screen app: yes, full screen". The manifest keeps `"display": "standalone"`; on an iPhone the home-screen app keeps its own sign-in, so a player signs in there once. On a branch (#320).
 
 ## Active milestone: "Finish Ruken"
 
