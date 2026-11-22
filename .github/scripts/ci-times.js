@@ -6,8 +6,9 @@
 // "gate (quick, draft)". Run time = the last job's completed_at minus the run's created_at.
 // Per job: wait = started_at - created_at; setup = started_at to the end of the last setup step
 // (SETUP below); run = the rest of the job. Percentiles are nearest-rank. Pieces group as "browser shard n" whatever
-// their count. With [since], each run's longest browser-piece wait is listed too, by run id.
-import { readFileSync, readdirSync } from "node:fs";
+// their count. With [since], each run's longest browser-piece wait in its first attempt is listed too, by run id; for a
+// re-run (run_attempt > 1) that needs jobs/<run id>-attempt-1.json (GET actions/runs/<id>/attempts/1/jobs?per_page=100).
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const [dir, countArg, since] = process.argv.slice(2);
@@ -73,9 +74,20 @@ for (const run of runs) {
     add(name, "run", t(j.completed_at) - setupEnd);
   }
   // A run ends at its latest piece's start plus that piece's work, so its longest piece wait is listed with it (spec 3.5).
-  const pieces = jobs.filter((j) => j.started_at && /^browser shard \d+ of \d+/.test(j.name));
+  // It is the first attempt's, as the run's time is counted from the first attempt. A re-run's jobs list mixes
+  // attempts (a carried-over piece keeps the first attempt's start but takes the new attempt's created time), so a
+  // re-run reads jobs/<run id>-attempt-1.json, and without that file says "re-run" instead of a number.
+  const firstFile = join(dir, "jobs", `${run.id}-attempt-1.json`);
+  const firstJobs =
+    (run.run_attempt ?? 1) <= 1
+      ? jobs
+      : existsSync(firstFile)
+        ? JSON.parse(readFileSync(firstFile, "utf8")).jobs
+        : null;
+  const pieces = (firstJobs ?? []).filter((j) => j.started_at && /^browser shard \d+ of \d+/.test(j.name));
   const longest = Math.max(...pieces.map((j) => t(j.started_at) - t(j.created_at)));
-  if (pieces.length) waits[kind].push(`${run.id}:${longest.toFixed(0)}`);
+  if (!firstJobs) waits[kind].push(`${run.id}:re-run`);
+  else if (pieces.length) waits[kind].push(`${run.id}:${longest.toFixed(0)}`);
 }
 const first = runs.at(-1)?.created_at,
   last = runs[0]?.created_at;
@@ -85,7 +97,7 @@ console.log(
 if (since) {
   console.log(`run ids: ${runs.map((r) => r.id).join(" ")}`);
   for (const k of ["full", "draft"])
-    console.log(`${k} runs' longest piece wait, run:s: ${waits[k].join(" ")}`);
+    console.log(`${k} runs' longest piece wait, run:seconds: ${waits[k].join(" ")}`);
 }
 for (const k of ["full", "draft"])
   console.log(
