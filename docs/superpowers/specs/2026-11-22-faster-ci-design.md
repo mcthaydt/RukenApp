@@ -106,7 +106,8 @@ Found on #302's full run (run 44989252655): every piece logged "Split by Playwri
    - The run's creation time is the same for all six and for re-runs. The 2-minute margin covers a save that was reserved but not yet visible.
    - The piece asks GitHub's cache list for those entries: `GET /repos/{repo}/actions/caches?ref=refs/heads/main&key=ci-test-times-&sort=created_at&direction=desc`. It uses Node's `fetch` with the job's own token, so the job gains `actions: read`. It reads the run's `created_at` from `GET /repos/{repo}/actions/runs/{run_id}`.
    - It takes the newest entry in that set and restores exactly that key with `path: ci-test-times.json`, logging the key.
-   - When the set is empty, the listing fails, or the restore misses, the piece splits with `--shard=<n>/6`. That happens to all six alike, because they share the same set.
+   - When the set is empty or the restore misses, the piece splits with `--shard=<n>/6`. That happens to all six alike, because they share the same set.
+   - A failed lookup is the one case that can hit one piece and not the others, and the key check then fails the run (implementation audit F-1, follow-up). So each of the two API calls is tried up to 3 times, 2 s and then 5 s apart, when it fails to connect or answers 429 or 5xx. This retries the network, not a test. Any other answer, or a third failure, splits by count as before, and the key check names the piece.
    - The one way left for pieces to differ is if the chosen entry is evicted between two pieces' restores. It is the newest times entry and every run reads it, so it is the last one an oldest-used-first eviction removes.
    - Each piece adds its chosen key to its `ran-*` artifact as `ran/times-key.txt`. On a full run, the gate checks that all six keys are equal before the union check, and if they are not, it fails naming the keys. Such a failure is recorded under "Flaky tests", like any other.
 
