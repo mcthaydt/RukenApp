@@ -47,6 +47,8 @@ interface Session {
   metadata: Record<string, string>;
   status: "open" | "complete" | "expired";
   subscriptionId: string | null;
+  /** The address the stand-in's page collected, as Stripe's own page asks for one. Set when the page is paid. */
+  email: string | null;
 }
 
 interface Subscription {
@@ -208,6 +210,8 @@ function sessionJson(session: Session): Json {
     customer: session.customerId,
     subscription: session.subscriptionId,
     metadata: session.metadata,
+    // Stripe's page collects an email and hands it back on the finished checkout.
+    customer_details: session.email === null ? null : { email: session.email },
     url: session.status === "open" ? `${PUBLIC_URL}/pay/${session.id}` : null,
   };
 }
@@ -374,11 +378,13 @@ async function sendAll(events: [string, Json][]): Promise<void> {
   for (const [type, object] of events) await sendEvent(type, object);
 }
 
-function page(response: ServerResponse, title: string, button: string): void {
+function page(response: ServerResponse, title: string, button: string, email?: string): void {
   response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+  const field =
+    email === undefined ? "" : `<p><label>Email <input name="email" value="${email}"></label></p>`;
   response.end(
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title></head>` +
-      `<body><h1>${title}</h1><form method="POST"><button>${button}</button></form></body></html>`,
+      `<body><h1>${title}</h1><form method="POST">${field}<button>${button}</button></form></body></html>`,
   );
 }
 
@@ -500,6 +506,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       metadata: strings(child(fields, "metadata")),
       status: "open",
       subscriptionId: null,
+      email: null,
     };
     sessions.set(session.id, session);
     send(response, sessionJson(session));
@@ -649,9 +656,16 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
       return;
     }
     if (method === "GET") {
-      page(response, "Stand-in payment page", "Pay");
+      // Already filled with a made-up address, as a journey would have typed one.
+      page(
+        response,
+        "Stand-in payment page",
+        "Pay",
+        `journey+${crypto.randomUUID().slice(0, 12)}@example.test`,
+      );
       return;
     }
+    session.email = text(fields, "email") ?? null;
     const { events } = pay(session);
     if (url.searchParams.get("events") === "later") {
       // Stripe's news is late: the browser is sent back first, and the site hears only when the journey lets it

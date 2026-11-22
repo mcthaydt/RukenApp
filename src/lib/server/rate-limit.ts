@@ -21,6 +21,8 @@ export type RateLimitResult = { allowed: true } | { allowed: false; retryAfterSe
 export interface RateLimiter {
   /** Counts one request against `key` and says whether it may go ahead. */
   hit(key: string, rule: RateLimitRule): Promise<RateLimitResult>;
+  /** How many requests `key` has counted in its current window, without counting one. 0 once the window has passed. */
+  count(key: string, rule: RateLimitRule): Promise<number>;
 }
 
 /**
@@ -57,6 +59,15 @@ export function createRateLimiter(prisma: PrismaClient, clock: Clock): RateLimit
       if (row.count <= rule.max) return { allowed: true };
       const windowEndsAt = Number(row.lastRequest) + rule.windowMs;
       return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((windowEndsAt - now) / 1000)) };
+    },
+
+    async count(key, rule) {
+      const row = await prisma.rateLimit.findUnique({
+        where: { key },
+        select: { count: true, lastRequest: true },
+      });
+      if (row === null || Number(row.lastRequest) <= clock.epochMs() - rule.windowMs) return 0;
+      return row.count;
     },
   };
 }

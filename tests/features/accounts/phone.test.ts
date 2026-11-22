@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { hashNumber, isMadeUpNumber, toE164 } from "../../../src/features/accounts/phone.ts";
+import {
+  countryOf,
+  hashNumber,
+  isMadeUpNumber,
+  OPEN_COUNTRIES,
+  shownAs,
+  toE164,
+} from "../../../src/features/accounts/phone.ts";
 
 describe("toE164", () => {
   it.each([
@@ -27,6 +34,11 @@ describe("toE164", () => {
     ["+1", "abc"],
     ["+1", "312 555 01x2"],
     ["+1", "1234567890123456"],
+    // North America is ten digits after the 1: a number typed without its area code is not one.
+    ["+1", "555 0142"],
+    ["+1", "+1 555 0142"],
+    ["+1", "312 555 014"],
+    ["+1", "312 555 01422"],
   ])("refuses %s %s", (code, typed) => {
     expect(toE164(code, typed)).toBeNull();
   });
@@ -50,5 +62,31 @@ describe("isMadeUpNumber", () => {
   it("knows a made-up number", () => {
     expect(isMadeUpNumber("+12125550123")).toBe(true);
     expect(isMadeUpNumber("+12125551234")).toBe(false);
+  });
+});
+
+describe("the open countries", () => {
+  it("are the United States and Canada, each with its dialing code", () => {
+    expect(OPEN_COUNTRIES.map((country) => [country.code, country.dialing])).toEqual([
+      ["US", "+1"],
+      ["CA", "+1"],
+    ]);
+  });
+
+  it("are found by their two letters, and nothing else is", () => {
+    expect(countryOf("CA")?.name).toBe("Canada");
+    expect(countryOf("GB")).toBeNull();
+    expect(countryOf("")).toBeNull();
+    expect(countryOf("us")).toBeNull();
+  });
+});
+
+describe("shownAs", () => {
+  it("spaces a North American number the way it is read aloud", () => {
+    expect(shownAs("+13125550142")).toBe("+1 312 555 0142");
+  });
+
+  it("leaves any other number as one run of digits", () => {
+    expect(shownAs("+447700900123")).toBe("+447700900123");
   });
 });

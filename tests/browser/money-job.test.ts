@@ -55,10 +55,10 @@ test("a member who paid is posted, and Stripe's fees are asked for and then read
   page,
   request,
 }) => {
-  const { email } = await payAsNewMember(page);
+  const { number } = await payAsNewMember(page);
   const first = await knock(request);
   expect(first.problems).toEqual([]);
-  expect(await paymentPostingOf(email)).not.toBeNull();
+  expect(await paymentPostingOf(number)).not.toBeNull();
 
   // What the stand-in's next fee report holds: a Billing fee for the newest payment it knows.
   const said = await request.post(`${STAND_IN_URL}/test/fees`, {

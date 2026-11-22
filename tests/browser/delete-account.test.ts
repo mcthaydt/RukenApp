@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
-import { pageHasSettled, signUp, SITE_ANSWER_TIMEOUT } from "./support/account.ts";
+import { nationalOf, pageHasSettled, signUp, SITE_ANSWER_TIMEOUT } from "./support/account.ts";
 import { expectOneCard, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -9,7 +9,7 @@ test.beforeEach(forgetRateLimits);
 const WELCOME_BACK = "Welcome back. Your account will not be deleted.";
 
 /** Makes an account, asks to delete it from /me, and lands on /goodbye signed out. */
-async function askToBeDeleted(page: Page): Promise<{ email: string; password: string }> {
+async function askToBeDeleted(page: Page): Promise<{ number: string; password: string }> {
   const account = await signUp(page);
   await page.goto("/me");
   await page.getByRole("link", { name: "Delete my account" }).click();
@@ -38,9 +38,9 @@ test("a person asks to be deleted, is signed out, and is told the date", async (
 });
 
 test("signing in again within the 14 days undoes it, and says so once", async ({ page }) => {
-  const { email, password } = await askToBeDeleted(page);
+  const { number, password } = await askToBeDeleted(page);
   await page.goto("/sign-in?next=%2Fme");
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
   await expect(page).toHaveURL("/me");

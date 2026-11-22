@@ -26,6 +26,17 @@ model User {
   name          String
   email         String     @unique
   emailVerified Boolean    @default(false)
+  /// The sign-in. E.164: a "+" and 8 to 15 digits, one account for each. The column is named as better-auth's
+  /// phone-number plugin reads it. A person who deleted their account has it set to null.
+  /// SQL: CHECK "User_phoneNumber_check".
+  phoneNumber         String?   @unique
+  phoneNumberVerified Boolean   @default(false)
+  /// When the person last typed a code that proved they hold the number. Null until they have.
+  phoneConfirmedAt    DateTime? @db.Timestamptz
+  /// The address a member pays with, kept for the few legal emails and for a reset code when Twilio cannot say the
+  /// number is still theirs. Nobody types it into Ruken; checkout hands it over. Not the sign-in: `email` above is a
+  /// stand-in for better-auth, which cannot do without one.
+  paperEmail          String?
   image         String?
   status        UserStatus @default(active)
   /// The date of the 18th birthday, worked out once at sign-up. The birth date itself is
@@ -38,6 +49,7 @@ model User {
   accounts         Account[]
   staffAssignments StaffAssignment[]
   deletionRequests DeletionRequest[]
+  textsSent        TextSent[]
 
   // The membership feature's tables point at a person; they are declared in membership.prisma.
   billingCustomer         BillingCustomer?
@@ -145,21 +157,53 @@ model RateLimit {
   lastRequest BigInt
 }
 
-/// Failed password sign-ins per email address. Ten failures inside an hour pause password sign-in for
-/// that address for an hour. The key is the SHA-256 of the lower-cased address, not the user id: the
-/// table also holds addresses with no account, so a pause looks the same for every address and no
-/// stranger's address is stored in the clear. Rows expire by their own times (`windowStartedAt` + 1 h,
+/// Failed password sign-ins per phone number. Ten failures inside an hour pause password sign-in for
+/// that number for an hour. The key is a keyed hash of the number, not the user id: the
+/// table also holds numbers with no account, so a pause looks the same for every number and no
+/// stranger's number is stored in the clear. Rows expire by their own times (`windowStartedAt` + 1 h,
 /// `pausedUntil`), so no job is needed for the rules to be right; a row that is long expired is
 /// overwritten by the next failure and can be deleted at any time.
-/// SQL: CHECK "SignInGuard_emailHash_check" requires 64 lower-case hex characters;
+/// SQL: CHECK "SignInGuard_numberHash_check" requires 64 lower-case hex characters;
 /// CHECK "SignInGuard_failures_check" requires at least 1.
 model SignInGuard {
-  emailHash       String    @id
+  numberHash      String    @id
   failures        Int
   windowStartedAt DateTime  @db.Timestamptz
   pausedUntil     DateTime? @db.Timestamptz
   createdAt       DateTime  @default(now()) @db.Timestamptz
   updatedAt       DateTime  @updatedAt @db.Timestamptz
+}
+
+/// A sign-up between its two screens: the password (already hashed) and the 18th birthday wait here for the code.
+/// One row for each browser that started a sign-up for the number, so a stranger who starts one for someone's
+/// number cannot change the password the real person's code then sets. Both keys are keyed hashes. Rows last ten
+/// minutes. SQL: nothing but the key.
+model PendingSignUp {
+  numberHash   String
+  browserHash  String
+  passwordHash String
+  adultOn      DateTime @db.Date
+  expiresAt    DateTime @db.Timestamptz
+  createdAt    DateTime @default(now()) @db.Timestamptz
+
+  @@id([numberHash, browserHash])
+}
+
+/// A text sent to an account: one row for each person, kind and key, so the same notice is never sent twice. It holds
+/// an id and no number, so it stays when the account is deleted. Added and never changed (trigger).
+model TextSent {
+  id         String   @id @default(cuid(2))
+  userId     String
+  kind       String
+  key        String
+  line       String
+  providerId String?
+  sentAt     DateTime @db.Timestamptz
+  createdAt  DateTime @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, kind, key])
 }
 
 /// A person asked to delete their account. The account waits in pending_deletion for 14 days;
