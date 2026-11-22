@@ -1233,8 +1233,14 @@ form > * + button:not(.quiet) {
 /* A screen with the bar of places (src/features/feed/Bar.svelte) ends its last line clear above it, and a maker's
    screen that has the bar keeps its buttons under its words instead of pinned under the bar: only the step-by-step
    screens, which have no bar, pin theirs. */
+/* The room is padding on the page itself, not a margin on the card: a margin can fall out of the page, and then a
+   card that just fills the window ends under the bar and does not scroll. */
+:root:has(nav.bar) body:has(:is(main.card, .screen)) {
+  padding-bottom: calc(var(--size-target) + 2.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 :root:has(nav.bar) :is(main.card, .screen) {
-  margin-bottom: calc(var(--size-target) + 2rem + env(safe-area-inset-bottom, 0px));
+  margin-bottom: 0;
 }
 
 @media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
@@ -1266,6 +1272,10 @@ form > * + button:not(.quiet) {
 
   body {
     padding-right: var(--rail);
+  }
+
+  :root:has(nav.bar) body:has(:is(main.card, .screen)) {
+    padding-bottom: 0;
   }
 
   :root:has(nav.bar) :is(main.card, .screen) {

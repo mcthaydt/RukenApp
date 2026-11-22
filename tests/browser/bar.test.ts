@@ -179,3 +179,31 @@ test("no bar where the game or a step has the whole screen: playing, and each st
   await page.goto(`/make/${game.slug}`);
   await expectTheBar(page, { home: false });
 });
+
+test.describe("on an upright phone", () => {
+  test.use({ viewport: { width: 375, height: 667 } });
+
+  test("a card that just fills the window, and a maker's long screen, end clear above the bar", async ({
+    page,
+  }) => {
+    /** Scrolled to its end, every button and link of the screen, its whole tap box, is above the bar. */
+    async function expectAllAboveTheBar(path: string): Promise<void> {
+      await page.goto(path);
+      await wordsHaveSettled(page);
+      await page.evaluate(() => {
+        window.scrollTo(0, document.documentElement.scrollHeight);
+      });
+      const barTop = (await boxOf(bar(page))).y;
+      const bottoms = await page.evaluate(() =>
+        [...document.querySelectorAll("main :is(a, button)")].map(
+          (part) => part.getBoundingClientRect().bottom,
+        ),
+      );
+      expect(bottoms.length, path).toBeGreaterThan(0);
+      for (const bottom of bottoms) expect(bottom, path).toBeLessThanOrEqual(barTop);
+    }
+    await expectAllAboveTheBar("/join");
+    await signInAs(page, game.maker.number, game.maker.password);
+    await expectAllAboveTheBar("/make/page");
+  });
+});
