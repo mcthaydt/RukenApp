@@ -42,3 +42,17 @@ export {
 } from "./deletion.ts";
 export { WELCOME_BACK_COOKIE } from "./cookies.ts";
 export { ADULTS_ONLY, adultsOnlyRefusal, isKnownAdultCaller } from "./adults.ts";
+export {
+  answerSignIn,
+  CODE_LIFETIME_MS,
+  computersOf,
+  finishSignIn,
+  lookAtSignIn,
+  MAX_COMPUTERS,
+  placeWarning,
+  placeWords,
+  removeComputer,
+  renameComputer,
+  startSignIn,
+  WORDS as COMPUTER_WORDS,
+} from "./computer-keys.ts";

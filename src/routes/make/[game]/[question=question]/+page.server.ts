@@ -21,6 +21,7 @@ import {
   type ContentMark,
   type MakerGame,
 } from "../../../../features/games/games.ts";
+import { bodyTooBig } from "../../../../lib/server/body-size.ts";
 import { ownGame } from "../../own-game.server.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -411,7 +412,7 @@ export const actions: Actions = {
     const shape = askedQuestion(event.params.question, game, false);
     if (!isVideoQuestion(shape)) error(404, "Not found");
     // Refused before the body is read, so a huge file is never held in the Worker.
-    if (Number(event.request.headers.get("content-length") ?? "0") > CLIP_REQUEST_MAX_BYTES) {
+    if (bodyTooBig(event.request, CLIP_REQUEST_MAX_BYTES)) {
       return fail(413, { problem: "A video can be up to 30 MB.", value: "" });
     }
     const file = (await event.request.formData()).get("clip");
