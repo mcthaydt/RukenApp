@@ -293,10 +293,13 @@ jobs:
               args="$args --only-changed=origin/main"
             fi
           fi
+          # The journeys import the generated database client, so generate it first, as `pnpm test:browser` does;
+          # without it every file fails to load and the listing is empty for the wrong reason.
+          pnpm generate > /dev/null
           status=0
           listing=$(pnpm exec playwright test --list --reporter=list $args 2>&1) || status=$?
           echo "The listing ended with status $status:"
-          printf '%s\n' "$listing" | tail -n 20
+          printf '%s\n' "$listing" | tail -n 5
           if { [ "$status" -ne 0 ] && printf '%s' "$listing" | grep -q "No tests found"; } ||
             { [ "$status" -eq 0 ] && printf '%s\n' "$listing" | grep -Eq '^Total: 0 tests in 0 files$'; }; then
             echo "run=false" >> "$GITHUB_OUTPUT"
