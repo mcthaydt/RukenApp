@@ -40,7 +40,7 @@ export const NEWS: Link = {
 export const HERO = {
   heading: "Watch a game. Then play it.",
   lines: [
-    "Ruken is a feed of short game clips. See one you like? Tap Play, and you're in the game.",
+    "Ruken is a feed of short game clips. See one you like? Members tap Play, and they're in the game.",
     "Nothing to download. It plays right here in your browser.",
   ],
   button: { words: "Watch the feed", href: "/" },
@@ -54,7 +54,7 @@ export const AUDIENCES: readonly Section[] = [
     heading: "Made a game? Let people play it.",
     lines: ["People see your clip and ask where to play. On Ruken, your clip leads straight to your game."],
     points: [
-      "Send your game from GitHub, on one form. A step-by-step guide shows you how.",
+      "Send your game from GitHub in six short questions. A step-by-step guide shows you how.",
       "Members pay. After tax and Stripe's fees, half goes to makers, shared by how long members play.",
       "A person looks at every game. If it's a no, we always tell you why.",
       "Your game stays yours. Take it off Ruken any time.",
@@ -73,7 +73,7 @@ export const AUDIENCES: readonly Section[] = [
     ],
     points: [
       "Watching is free. You don't need an account.",
-      "Tap Play and the game starts in your browser. Nothing to install.",
+      "Members tap Play and the game starts in the browser. Nothing to install.",
       "A person checks every game before it goes live.",
     ],
     links: [
