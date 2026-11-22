@@ -239,6 +239,33 @@ test("connected with nothing chosen, she is told, with one way to choose some", 
   await showTheOwner(page, testInfo, "question 3, connected, nothing chosen on GitHub");
 });
 
+// Floor Fifty: a maker already connected reaches a game through an organisation she can't install the app on. GitHub's
+// install page offers her only her own account and never sends her back, so Ruken's list of her games never refreshed.
+// A connected maker's first press now goes through GitHub's sign-in, which always comes back with the list refreshed;
+// pressed again straight after, it opens the install page, for a game GitHub still doesn't list.
+test("a connected maker's Choose it on GitHub refreshes the list first, then opens GitHub's install page", async ({
+  page,
+}) => {
+  const { slug, maker } = await startAtFiles(page);
+  await connectGitHubFromFiles(page, slug);
+  await forgetTheirRepositories(maker.number);
+  await page.goto(`/make/${slug}/files`);
+  await pageHasSettled(page);
+
+  const signIn = page.waitForRequest(/\/login\/oauth\/authorize/);
+  await page.getByRole("link", { name: "Choose on GitHub" }).click();
+  await signIn;
+  await expect(page).toHaveURL(`/make/${slug}/files?looked=1`);
+  await pageHasSettled(page);
+  // The refreshed list is back.
+  await expect(page.getByLabel("ruken-test/tiny-game")).toBeVisible();
+
+  const install = page.waitForRequest(/\/apps\/ruken-test-app\/installations\/new/);
+  await page.getByRole("link", { name: "Don't see your game? Choose it on GitHub" }).click();
+  await install;
+  await expect(page).toHaveURL(`/make/${slug}/files`);
+});
+
 // ---- The how-to page ---------------------------------------------------------------------------------------------
 
 test("the how-to page is plain steps, and leads back to her question", async ({ page }) => {

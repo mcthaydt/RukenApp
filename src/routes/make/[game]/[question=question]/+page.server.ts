@@ -120,7 +120,11 @@ async function filesScreen(url: URL, userId: string, game: MakerGame) {
     folder: game.repoFolder,
     refusal: game.pullProblem === null ? null : refusalOf(game.pullProblem),
     // `data-sveltekit-reload` links: a server redirect to GitHub, not a page of the app.
-    connectAddress: `/make/github?choose=1&game=${game.slug}`,
+    // Just back from GitHub's sign-in with the list fresh: the next press opens GitHub's install page.
+    connectAddress:
+      url.searchParams.get("looked") === "1"
+        ? `/make/github?choose=1&install=1&game=${game.slug}`
+        : `/make/github?choose=1&game=${game.slug}`,
     howToAddress: howTo,
     folderHowToAddress: `${howTo}#folder`,
     changeAddress: `${folder}?change=1`,

@@ -241,7 +241,7 @@ test("a live game GitHub stopped showing: the refusal points to Change, and savi
   const { slug, maker } = await answerEveryQuestion(page);
   if (maker === undefined) throw new Error("a new maker was signed up, so there is an account");
   await putGameWhereStaffLeaveIt(slug, { state: "live" });
-  await forgetTheirRepositories(maker.email);
+  await forgetTheirRepositories(maker.number);
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
 
@@ -258,7 +258,7 @@ test("a live game GitHub stopped showing: the refusal points to Change, and savi
   await page.getByRole("link", { name: "Choose on GitHub" }).click();
 
   // GitHub sends her back to the game's files, with her games to pick from; saving copies and sends them.
-  await expect(page).toHaveURL(`/make/${slug}/files`);
+  await expect(page).toHaveURL(`/make/${slug}/files?looked=1`);
   await pageHasSettled(page);
   await page.getByLabel(TINY_GAME).check();
   await page.getByRole("button", { name: "Save" }).click();
