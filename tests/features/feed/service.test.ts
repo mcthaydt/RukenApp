@@ -254,6 +254,32 @@ describe("the feed never ends", () => {
     expect(new Set(await walk(service, 30))).toEqual(new Set(["kids"]));
   });
 
+  it("never shows one game twice in a row where a page ends, even when plays change the order in between", async () => {
+    for (let count = 2; count <= 8; count += 1) {
+      const games = Array.from({ length: count }, (_, index) => listed(`g${String(index)}`, 20));
+      const beats: Record<string, number> = {};
+      const { service } = depsFor(games, { beats });
+
+      const first = await service.page(null);
+      const shown = first.clips.map((clip) => clip.slug);
+      // Members play the game that ended the first page, so on the next request it is first in the order, not last.
+      beats[`id-${shown.at(-1) ?? ""}`] = 1_000;
+      let next = first.next ?? "";
+      for (let pages = 0; pages < 6; pages += 1) {
+        const page = await service.page(next);
+        if (page === null) throw new Error("a next page from the service is always one it reads");
+        shown.push(...page.clips.map((clip) => clip.slug));
+        next = page.next ?? "";
+        // And again: the game that ended this page becomes the most played.
+        beats[`id-${shown.at(-1) ?? ""}`] = 2_000 + pages;
+      }
+
+      for (let index = 1; index < shown.length; index += 1) {
+        expect(shown[index], `${String(count)} games: ${shown.join(" ")}`).not.toBe(shown[index - 1]);
+      }
+    }
+  });
+
   it("answers null for an address it did not make", async () => {
     const { service } = depsFor([listed("a", 20)]);
 

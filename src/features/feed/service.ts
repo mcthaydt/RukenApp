@@ -13,8 +13,11 @@ export const FEED_MAX = 50;
  * otherwise the screen would ask again after every few clips.
  */
 export const MORE_AT_LEAST = 10;
-/** The address of a later page: the Chicago day the feed was opened, the round, and where in it. */
-const NEXT = /^(\d{4}-\d{2}-\d{2})~(\d{1,6})~(\d{1,6})$/;
+/**
+ * The address of a later page: the Chicago day the feed was opened, the round, where in it, whether that round's first
+ * two games changed places (1) or not (0), and the game the page before ended on.
+ */
+const NEXT = /^(\d{4}-\d{2}-\d{2})~(\d{1,6})~(\d{1,6})~([01])~([a-z0-9-]{1,100})$/;
 /** How far back a game's plays count towards its place in the feed. */
 const PLAYED_DAYS = 7;
 
@@ -51,21 +54,24 @@ export interface FeedPage {
 
 /**
  * The order of one round. Round 0 is the feed's order. The feed never ends, so when every game has been shown it goes
- * round again in a new shuffle drawn from the day and the round, with the game that ended the round before never first.
- * One or two games keep round 0's order, which already never repeats a game back to back.
+ * round again in a new shuffle drawn from the day, the round and the games alone, so it is the same on every request.
+ * `swapped` puts its first two games the other way round: a round whose first game is the one the person just saw starts
+ * with the second instead, and the address remembers that for the rest of the round.
  */
-function roundOrder<Game extends { id: string }>(first: readonly Game[], day: string, round: number): Game[] {
-  if (round === 0 || first.length <= 2) return [...first];
-  const shuffled = (which: number): Game[] =>
-    [...first].sort(
-      (one, other) =>
-        seededNumber(`${day}~${String(which)}`, one.id) - seededNumber(`${day}~${String(which)}`, other.id) ||
-        (one.id < other.id ? -1 : one.id > other.id ? 1 : 0),
-    );
-  const order = shuffled(round);
-  // With three or more games the swap below never moves a round's last game, so the round before's last is its shuffle's.
-  const before = round === 1 ? first.at(-1) : shuffled(round - 1).at(-1);
-  if (order[0]?.id === before?.id) [order[0], order[1]] = [order[1] as Game, order[0] as Game];
+function roundOrder<Game extends { id: string }>(
+  first: readonly Game[],
+  day: string,
+  round: number,
+  swapped: boolean,
+): Game[] {
+  if (round === 0) return [...first];
+  const seed = `${day}~${String(round)}`;
+  const order = [...first].sort(
+    (one, other) =>
+      seededNumber(seed, one.id) - seededNumber(seed, other.id) ||
+      (one.id < other.id ? -1 : one.id > other.id ? 1 : 0),
+  );
+  if (swapped && order.length >= 2) [order[0], order[1]] = [order[1] as Game, order[0] as Game];
   return order;
 }
 
@@ -81,6 +87,9 @@ export function createFeedService(deps: FeedServiceDeps) {
     let day: string;
     let round = 0;
     let offset = 0;
+    let swapped = false;
+    // The game the person saw last, so the next one is never the same game.
+    let last: string | null = null;
     const nowMs = deps.clock.epochMs();
     if (after === null) {
       // The day's seed is a Chicago day, so two opens on one day see one order.
@@ -92,6 +101,8 @@ export function createFeedService(deps: FeedServiceDeps) {
       day = found[1] as string;
       round = Number(found[2]);
       offset = Number(found[3]);
+      swapped = found[4] === "1";
+      last = found[5] as string;
     }
 
     const games = (await deps.liveGames()).filter((game) => game.ageRating !== "age_18");
@@ -109,29 +120,45 @@ export function createFeedService(deps: FeedServiceDeps) {
     // at least MORE_AT_LEAST clips, and never more than FEED_MAX.
     const want = after === null ? 1 : MORE_AT_LEAST;
     const picked: { key: string; game: (typeof first)[number] }[] = [];
-    let order = roundOrder(first, day, round);
+    let order = roundOrder(first, day, round, swapped);
+    // A round starts: if its first game is the one just seen, its first two change places.
+    const startRound = () => {
+      swapped = order.length >= 2 && order[0]?.slug === last;
+      if (swapped) order = roundOrder(first, day, round, true);
+    };
     for (;;) {
       if (offset >= order.length) {
         // The round is over (or fewer games are live than when the address was made): the next one starts.
         round += 1;
         offset = 0;
-        order = roundOrder(first, day, round);
+        order = roundOrder(first, day, round, false);
         if (picked.length >= want) break;
+        startRound();
+      }
+      // Round 0 is put in order again on each request, from plays that may have moved since the page before: a game
+      // that moved up to where the page goes on may be the one just seen, and it is passed over rather than shown twice.
+      if (round === 0 && offset > 0 && order.length >= 2 && order[offset]?.slug === last) {
+        offset += 1;
+        continue;
       }
       const game = order[offset] as (typeof first)[number];
       picked.push({ key: `${String(round)}~${game.slug}`, game });
+      last = game.slug;
       offset += 1;
       if (picked.length >= FEED_MAX) break;
       if (after === null && offset >= order.length) {
         round += 1;
         offset = 0;
+        order = roundOrder(first, day, round, false);
         break;
       }
     }
+    // A page that ends where a round starts decides that round's first game now, against the game it ended on.
+    if (offset === 0) startRound();
 
     const makers = await deps.makersOf([...new Set(picked.map(({ game }) => game.makerUserId))]);
     return {
-      next: `${day}~${String(round)}~${String(offset)}`,
+      next: `${day}~${String(round)}~${String(offset)}~${swapped ? "1" : "0"}~${last ?? ""}`,
       clips: picked.map(({ key, game }) => {
         const maker = makers.get(game.makerUserId);
         return {

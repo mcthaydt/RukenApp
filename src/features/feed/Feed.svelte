@@ -57,12 +57,13 @@
   const initialOf = (name: string): string => Array.from(name.trim())[0]?.toUpperCase() ?? "";
   const clipAddress = (clip: FeedClip): string =>
     `${ready && shape === "wide" ? clip.wide : clip.upright}#t=0.001`;
-  // The clip on screen and the next are fetched; every other clip waits until a person is close.
-  // A clip has no address at all until it is the one on screen or the next: WebKit fetches a clip that has an address
-  // whatever its preload says, which would fetch the whole feed on the first open.
-  const fetches = (index: number): boolean => warm && index <= current + 1;
-  const preloads = (index: number): "metadata" | "none" =>
-    warm && index <= current + 1 ? "metadata" : "none";
+  // The clip on screen, the one before and the next are fetched; every other clip waits until a person is close.
+  // A clip has no address at all unless it is one of those three: WebKit fetches a clip that has an address whatever its
+  // preload says, which would fetch the whole feed on the first open, and a feed that never ends must not keep every clip
+  // a person has passed.
+  const near = (index: number): boolean => warm && index >= current - 1 && index <= current + 1;
+  const fetches = near;
+  const preloads = (index: number): "metadata" | "none" => (near(index) ? "metadata" : "none");
 
   onMount(() => {
     autoplay = mayMove();
@@ -142,6 +143,19 @@
       more = "failed";
     }
   }
+
+  // A clip that is no longer near lets go of its video. Taking its address away is not enough: a video keeps what it
+  // fetched until it is told to load again, with no address, which empties it.
+  $effect(() => {
+    videos.forEach((video, index) => {
+      if (video === undefined || fetches(index)) return;
+      // Already let go: no address and nothing held. (`currentSrc` keeps the old address after this in Chromium.)
+      if (!video.hasAttribute("src") && video.networkState === HTMLMediaElement.NETWORK_EMPTY) return;
+      // The address is taken off here too, not left to the screen's own update, so the load below never fetches it again.
+      video.removeAttribute("src");
+      video.load();
+    });
+  });
 
   // The clip on screen plays (where a video may move, or once pressed), every other clip waits at its start, and sound is
   // one setting for all of them.
@@ -356,8 +370,9 @@
         </div>
       </section>
     {/each}
-    {#if next !== null}
-      <!-- Past the last clip: the spinner while the next page comes, or what to do when it did not. -->
+    {#if next !== null && ready}
+      <!-- Past the last clip: the spinner while the next page comes, or what to do when it did not. Without script
+           nothing would come, so it is only there once the script runs. -->
       <section bind:this={moreScreen} class="more" aria-busy={more === "failed" ? "false" : "true"}>
         {#if more === "failed"}
           <p>Couldn't load more games.</p>

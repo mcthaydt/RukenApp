@@ -479,6 +479,31 @@ test("the feed never ends: a spinner past the last clip, then more, then the sam
   await expect(clips.nth(before)).toHaveAttribute("data-current", "true");
   await page.keyboard.press("ArrowDown");
   await expect(clips.nth(before + 1)).toHaveAttribute("data-current", "true");
+
+  // A feed that never ends holds only the clips near the person: every clip more than one behind has let go of its video,
+  // so a long scroll does not keep every clip it passed.
+  await expect
+    .poll(() =>
+      clips.evaluateAll((sections) => {
+        const at = sections.findIndex((section) => section.getAttribute("data-current") === "true");
+        return (
+          sections
+            .slice(0, Math.max(at - 1, 0))
+            .map((section, index) => ({ index, video: section.querySelector("video") }))
+            // Let go: no address, nothing loaded and nothing being fetched. (`currentSrc` keeps the old address after a
+            // video lets go in Chromium, so it says nothing here.)
+            .filter(
+              ({ video }) =>
+                video !== null &&
+                (video.hasAttribute("src") ||
+                  video.readyState > HTMLMediaElement.HAVE_NOTHING ||
+                  video.networkState !== HTMLMediaElement.NETWORK_EMPTY),
+            )
+            .map(({ index }) => index)
+        );
+      }),
+    )
+    .toEqual([]);
 });
 
 test("when more games do not come, the feed says so and Try again brings them", async ({ page }) => {
