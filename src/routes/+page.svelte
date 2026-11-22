@@ -5,4 +5,7 @@
   let { data }: PageProps = $props();
 </script>
 
-<Feed clips={data.clips} launch={data.launch} />
+<!-- A new first page (coming back to the feed) starts the feed again from it. -->
+{#key data.first}
+  <Feed first={data.first} launch={data.launch} />
+{/key}
