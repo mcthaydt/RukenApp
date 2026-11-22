@@ -234,7 +234,9 @@ test("a live game: Send a new version is the blue button, and a new version goes
 // Floor Fifty on ruken.io: Ruken's list of the maker's games on GitHub no longer held it, so Send a new version was
 // refused with words that said to choose it on GitHub, and Live gave no way to do that. Now the words point at the
 // Change beside the game's files, which leads to GitHub and back.
-test("a live game GitHub stopped showing: the refusal points to Change, and saving sends it", async ({ page }) => {
+test("a live game GitHub stopped showing: the refusal points to Change, and saving sends it", async ({
+  page,
+}) => {
   test.setTimeout(90_000);
   const { slug, maker } = await answerEveryQuestion(page);
   if (maker === undefined) throw new Error("a new maker was signed up, so there is an account");
