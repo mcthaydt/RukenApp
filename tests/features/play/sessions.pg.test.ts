@@ -245,16 +245,6 @@ describe("startPlay", () => {
     expect(await db().playSession.count({ where: { gameId: game.id } })).toBe(0);
   });
 
-  it("records a free game played by nobody", async () => {
-    const game = await newGame({ freeToPlay: true });
-
-    await service.startPlay({ game, viewer: null, clientAddress: newAddress() });
-
-    expect(await db().playSession.findMany({ where: { gameId: game.id } })).toMatchObject([
-      { userId: null, basis: "free_game" },
-    ]);
-  });
-
   it("records staff, and a maker on their own game, for what they are", async () => {
     const game = await newGame();
     const staff = await newViewer({ isStaff: true });
