@@ -15,10 +15,6 @@
   const signInHref = $derived(`/sign-in?next=${encodeURIComponent(page.url.pathname + page.url.search)}`);
 </script>
 
-<svelte:head>
-  <title>Ruken</title>
-</svelte:head>
-
 <main class="card">
   {#if adultsOnly}
     <h1>This game is only for adults.</h1>

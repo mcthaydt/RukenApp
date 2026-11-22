@@ -25,10 +25,6 @@
   const initial = $derived(Array.from(name.trim())[0]?.toUpperCase() ?? "");
 </script>
 
-<svelte:head>
-  <title>{name} · Ruken</title>
-</svelte:head>
-
 <main
   class="makerpage"
   style:--ground={colours.ground}

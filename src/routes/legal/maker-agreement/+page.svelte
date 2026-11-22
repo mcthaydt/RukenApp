@@ -17,10 +17,6 @@
   );
 </script>
 
-<svelte:head>
-  <title>Maker agreement · Ruken</title>
-</svelte:head>
-
 <main class="card">
   <h1>Maker agreement</h1>
   <p class="note">{versionWords}</p>
