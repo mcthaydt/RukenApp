@@ -3076,8 +3076,8 @@ main.playing {
 /* Every wait shows it. A move between pages runs a Blue line across the top of the window and shows a turning
    spinner under it, with no words (src/lib/page-loading.svelte); a button whose form is out shows the spinner after
    its words and cannot be pressed again (src/lib/busy-forms.ts); a picture or a video is a box that slowly brightens
-   and dims until it has loaded (src/lib/loads.ts). With reduced motion nothing turns or runs: the line is drawn
-   whole, and the spinner stands still. */
+   and dims, with the spinner turning in its middle, until it has loaded (src/lib/loads.ts). With reduced motion
+   nothing turns or runs: the line is drawn whole, and the spinners stand still. */
 .page-loading {
   position: fixed;
   inset: 0 0 auto;
