@@ -176,13 +176,39 @@ P-b, `.github/workflows/ci.yml`, `CLAUDE.md` Settings and the `this-repo` skill,
 - [x] The comments in `ci.yml` that say "six" say what is true (twelve on a full run, six on a draft). The gate does not change: it reads every `ran-*` artifact, checks every piece's times key, and counts the pieces it has.
 - [x] `CLAUDE.md` Settings: "Browser test pieces in CI: 12 on a full run, 6 on a draft."
 - [x] `.claude/skills/this-repo/SKILL.md` line 33 says what is true: `verify`, `postgres`, the browser pieces (twelve on a full run, six on a draft) and `gate`, which passes only when every one of them passed (there is no `browser` job since W).
-- [ ] P1. A ready pull request's run has `verify`, `postgres`, `browser shard 1 of 12` to `browser shard 12 of 12` and `gate`; every piece logs "Split by main's recorded times" with the same key; the key check passes; and A9 holds ("listed N, ran N in 12 pieces").
-- [ ] P2. A draft run of P-b has `browser shard 1 of 6 (quick, draft)` to `6 of 6`, as today.
-- [ ] P3. The first push to `main` after P-b logs "joined 12 of 12 pieces, P file and device pairs" in `test-times` and saves `ci-test-times-<sha>`.
-- [ ] P4. `ci-times.js` (P-a) groups P1's twelve pieces in one row.
-- [ ] A7 and A8 over the first 10 full runs after P-b merges, by `ci-times.js` since P-b's merge commit, each run's id and its longest piece wait listed. If A8 is still not met, the gap is reported with numbers, never rounded. A10 over the first 10 draft runs after P-b merges.
+- [x] P1. A ready pull request's run has `verify`, `postgres`, `browser shard 1 of 12` to `browser shard 12 of 12` and `gate`; every piece logs "Split by main's recorded times" with the same key; the key check passes; and A9 holds ("listed N, ran N in 12 pieces"). Met on #326: run 45037272045 at `c7c5f6d`, all twelve pieces logged "Split by main's recorded times.", gate green.
+- [x] P2. A draft run of P-b has `browser shard 1 of 6 (quick, draft)` to `6 of 6`, as today. Met: run 45036197399 at `fa48be4`.
+- [x] P3. The first push to `main` after P-b logs "joined 12 of 12 pieces, P file and device pairs" in `test-times` and saves `ci-test-times-<sha>`. Met: `main` at `41d5610` logged "joined 12 of 12 pieces, 168 file and device pairs" and saved `ci-test-times-41d5610…`.
+- [x] P4. `ci-times.js` (P-a) groups P1's twelve pieces in one row. Met: `full: browser shard n | 12`.
+- [ ] A7 and A8 over the first 10 full runs after P-b merges, by `ci-times.js` since P-b's merge commit, each run's id and its longest piece wait listed. If A8 is still not met, the gap is reported with numbers, never rounded. A10 over the first 10 draft runs after P-b merges. Measured, none met; see 3.6.
 
 Nothing else changes: same image, journeys, devices and workers (2 per piece), and no new action, tool or secret. The times file holds seconds per file and device, so twelve pieces read times a six-piece `main` run saved. A follow-up, not in P: `tests/browser/support/shard-plan.ts` line 1 says "six browser pieces" (lane 2, so `ruleMix` keeps it out of P-b).
+
+### 3.6 Unit R: back to six pieces (lane 3, follow-up)
+
+**Why.** Twelve pieces made full runs slower. The first 10 full and 10 draft runs after P-b merged (`41d5610`, 2026-11-22 16:41:19 UTC; runs 16:41 to 17:52 UTC), by `node .github/scripts/ci-times.js <dir> 10 2026-11-22T16:41:19Z`:
+
+| | goal | six pieces, 10 full runs from 08:06 UTC | twelve pieces |
+| --- | --- | --- | --- |
+| A8 full run p50 / p95 | 8 / 15 min | 10.6 / 24.5 min | 17.5 / 26.8 min |
+| a piece's wait for a runner, p50 / p95 | | 2 / 104 s | 271 / 786 s |
+| a piece's work after setup, p50 / p95 | | 394 / 480 s | 246 / 311 s |
+| A10 draft run p50 / p95 | 3.1 / 16.0 min | | 7.2 / 9.9 min |
+
+Each run's longest piece wait, run:seconds: 45048481725:322 45048223174:307 45047289955:486 45046407543:912 45046384959:882 45046312899:633 45045644992:377 45045594639:573 45045376129:233 45045231715:37. A7: the slowest piece's "Run the journeys" step over the mean was 1.16 to 1.30, median 1.21 (goal 1.15).
+
+The pieces' work shrank as 3.5 estimated, but the wait for a runner grew far more: the account was busy with many threads' runs, and twelve pieces are twelve chances of a late start (the risk 3.5 named). Six pieces held a p50 wait of 2 s over the same day. So R goes back to six on every run, the state that `main` ran before P-b. The six-piece "before" p95 of 24.5 min is set by four re-runs, which `ci-times.js` times to their last attempt; the four plain first-attempt full runs took 8.8, 9.5, 10.6 and 10.9 min.
+
+**What changes.** One pull request; `ci.yml`, `CLAUDE.md` Settings and the `this-repo` skill are rule files, so `ruleMix` lets them go with this doc.
+
+- [ ] `.github/workflows/ci.yml` is exactly as it was at `5bbea3e` (before P-b): the matrix `[1, 2, 3, 4, 5, 6]`, names `browser shard <n> of 6`, `RUKEN_SHARD=<n>/6` and `--shard=<n>/6`, six restore steps in `test-times`, and no `PIECES`. Checked by `git diff 5bbea3e -- .github/workflows/ci.yml` printing nothing.
+- [ ] `CLAUDE.md` Settings: "Browser test pieces in CI: 6."
+- [ ] `.claude/skills/this-repo/SKILL.md` line 33: the browser pieces are `browser shard <n> of 6` (a draft's say "(quick, draft)").
+- [ ] `ci-times.js` (P-a) stays: it groups any piece count.
+- [ ] R1. This pull request's ready run has `browser shard 1 of 6` to `6 of 6` and a green gate; its draft run has `browser shard 1 of 6 (quick, draft)` to `6 of 6`.
+- [ ] R2. The first push to `main` after R logs "joined 6 of 6 pieces" in `test-times`.
+
+Nothing else changes, and no new action, tool, secret or money. The times file holds seconds per file and device, so six pieces read the times twelve saved. A8 stays open, reported with numbers; a faster CI now needs something other than more pieces.
 
 ## 4. Acceptance criteria
 
@@ -206,10 +232,11 @@ Nothing else changes: same image, journeys, devices and workers (2 per piece), a
 | F | T merged | `.github/workflows/ci.yml` | one PR | F1, F2, then A7; A8 after merge | 3 |
 | P-a | F merged | `.github/scripts/ci-times.js` | one PR | its checklist line in 3.5 | 3 |
 | P-b | P-a merged | `.github/workflows/ci.yml`, `CLAUDE.md` (Settings), `.claude/skills/this-repo/SKILL.md` | one PR | P1 to P4, then A7, A8 and A10 after merge | 3 |
+| R | P-b measured | `.github/workflows/ci.yml`, `CLAUDE.md` (Settings), `.claude/skills/this-repo/SKILL.md`, this spec | one PR | its checklist in 3.6, R1 and R2 | 3 |
 
-- Expected duration: W about 3 hours including measuring runs; T about 2 hours; F about 2 hours; P-a about 30 minutes; P-b about 2 hours, plus the 10 measuring runs.
+- Expected duration: W about 3 hours including measuring runs; T about 2 hours; F about 2 hours; P-a about 30 minutes; P-b about 2 hours, plus the 10 measuring runs. R about 1 hour.
 - Budget: GitHub's free runners only. No new dependency, service or secret. The Playwright image is Microsoft's public image of the version already pinned.
-- Audits: W, plan audit (this spec) and implementation audit; T, one fresh review; F, a plan audit of section 3.4 and an implementation audit; P, a plan audit of section 3.5 and an implementation audit of each of P-a and P-b. Merge under the standing permission in `progress.md` (History, Standing permissions) once audits pass and CI is green.
+- Audits: W, plan audit (this spec) and implementation audit; T, one fresh review; F, a plan audit of section 3.4 and an implementation audit; P, a plan audit of section 3.5 and an implementation audit of each of P-a and P-b. R, a plan audit of section 3.6 and an implementation audit. Merge under the standing permission in `progress.md` (History, Standing permissions) once audits pass and CI is green.
 
 ## 6. Open product decisions
 
