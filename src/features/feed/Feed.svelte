@@ -34,8 +34,10 @@
   const NOTE_MS = 4000;
 
   let feed = $state<HTMLElement>();
-  let sections = $state<(HTMLElement | undefined)[]>([]);
-  let videos = $state<(HTMLVideoElement | undefined)[]>([]);
+  // An element bound here is null once it has gone (a clip put back from Back, or the spinner screen when no page is
+  // left), not undefined, so every use checks for both.
+  let sections = $state<(HTMLElement | null | undefined)[]>([]);
+  let videos = $state<(HTMLVideoElement | null | undefined)[]>([]);
   // Whether the script has started. Before it, every clip is the upright one and none is fetched until the window's
   // shape is known, so a wide window never fetches a clip it will not show.
   let ready = $state(false);
@@ -52,7 +54,7 @@
   let note = $state<{ key: string; words: string } | null>(null);
   let watcher = $state.raw<IntersectionObserver>();
   // The screen past the last clip, while there is a next page: the spinner, or "Try again".
-  let moreScreen = $state<HTMLElement>();
+  let moreScreen = $state<HTMLElement | null>();
   let noteTimer: ReturnType<typeof setTimeout> | undefined;
 
   const initialOf = (name: string): string => Array.from(name.trim())[0]?.toUpperCase() ?? "";
@@ -91,9 +93,7 @@
       (entries) => {
         for (const entry of entries) ratios.set(entry.target, entry.intersectionRatio);
         const screens = [...sections, moreScreen];
-        current =
-          currentOf(screens.map((screen) => (screen === undefined ? undefined : ratios.get(screen)))) ??
-          current;
+        current = currentOf(screens.map((screen) => (screen ? ratios.get(screen) : undefined))) ?? current;
       },
       { root: feed ?? null, threshold: Array.from({ length: 21 }, (_, step) => step / 20) },
     );
@@ -115,7 +115,7 @@
   // does nothing, so all of them are handed over each time.
   $effect(() => {
     if (watcher === undefined) return;
-    for (const section of [...sections, moreScreen]) if (section !== undefined) watcher.observe(section);
+    for (const section of [...sections, moreScreen]) if (section) watcher.observe(section);
   });
 
   // A few clips before the end of what the feed has, it asks for the next page. A page that failed waits for "Try again".
@@ -151,7 +151,7 @@
   // fetched until it is told to load again, with no address, which empties it.
   $effect(() => {
     videos.forEach((video, index) => {
-      if (video === undefined || fetches(index)) return;
+      if (!video || fetches(index)) return;
       // Already let go: no address and nothing held. (`currentSrc` keeps the old address after this in Chromium.)
       if (!video.hasAttribute("src") && video.networkState === HTMLMediaElement.NETWORK_EMPTY) return;
       // The address is taken off here too, not left to the screen's own update, so the load below never fetches it again.
@@ -165,7 +165,7 @@
   $effect(() => {
     if (!warm) return;
     videos.forEach((video, index) => {
-      if (video === undefined) return;
+      if (!video) return;
       video.muted = !soundOn;
       const slug = clips[index]?.slug ?? "";
       if (index === current && (autoplay || started.includes(slug))) {
@@ -251,9 +251,7 @@
     // With less motion the next clip is simply there, not slid to.
     // Past the last clip is the screen that waits for the next page, so a key can go on to it.
     const target =
-      index >= clips.length && moreScreen !== undefined
-        ? moreScreen
-        : sections[clampClip(index, clips.length)];
+      index >= clips.length && moreScreen ? moreScreen : sections[clampClip(index, clips.length)];
     target?.scrollIntoView({
       behavior: mayMove() ? "smooth" : "auto",
       block: "start",
