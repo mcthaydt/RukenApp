@@ -125,12 +125,14 @@ test("the band's chalk words read on a white clip: 4.5 to 1 or more", async ({ p
   await page.goto("/");
   const band = clipOf(page, withPage.slug).locator(".band");
   await expect(band).toBeAttached();
-  // The band is ink at 60% behind its words; put it over white and measure the chalk on what that makes.
-  const { ink, opacity, chalk } = await band.evaluate((element) => {
+  // The band is frosted glass behind its words: what is behind is darkened by the filter, then under a thin tint. Put it
+  // over white and measure the chalk on what that makes.
+  const { tint, brightness, chalk } = await band.evaluate((element) => {
     const behind = getComputedStyle(element, "::before");
+    const filter = behind.backdropFilter || behind.getPropertyValue("-webkit-backdrop-filter");
     return {
-      ink: behind.backgroundColor,
-      opacity: Number(behind.opacity),
+      tint: behind.backgroundColor,
+      brightness: Number(/brightness\(([\d.]+)\)/.exec(filter)?.[1] ?? 1),
       chalk: getComputedStyle(element).color,
     };
   });
@@ -143,7 +145,8 @@ test("the band's chalk words read on a white clip: 4.5 to 1 or more", async ({ p
     0.2126 * linear(rgbValues[0] ?? 0) +
     0.7152 * linear(rgbValues[1] ?? 0) +
     0.0722 * linear(rgbValues[2] ?? 0);
-  const overWhite = channels(ink).map((value) => value * opacity + 255 * (1 - opacity));
+  const alpha = Number((tint.match(/[\d.]+/g) ?? [])[3] ?? 1);
+  const overWhite = channels(tint).map((value) => value * alpha + 255 * brightness * (1 - alpha));
   const lighter = Math.max(luminance(overWhite), luminance(channels(chalk)));
   const darker = Math.min(luminance(overWhite), luminance(channels(chalk)));
   expect((lighter + 0.05) / (darker + 0.05)).toBeGreaterThanOrEqual(4.5);
