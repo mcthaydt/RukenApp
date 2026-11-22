@@ -108,6 +108,21 @@
     align-items: center;
     gap: 1.5rem;
   }
+  /* A phone held sideways: the bar stands along the right edge and the page keeps clear of it (look.css sets --rail),
+     with its own colour still reaching the edge under the bar. */
+  @media (orientation: landscape) and (max-height: 449px) {
+    .makerpage {
+      margin-right: calc(-1 * var(--rail, 0px));
+      padding: 1rem calc(1rem + var(--rail, 0px)) 1rem 1rem;
+      gap: 1rem;
+    }
+    .who img,
+    .initial {
+      width: 64px;
+      height: 64px;
+      font-size: 1.75rem;
+    }
+  }
   .who,
   .links {
     width: 100%;
