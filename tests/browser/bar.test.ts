@@ -6,7 +6,8 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 import { signUp } from "./support/account.ts";
 
 // The bar (spec 5.2): Home, Add a game in the middle and You, each a picture with its name for a screen reader, on the
-// feed, a game's page and a maker's page, and nowhere else (the owner, 2026-11-22: icons, with room for more).
+// feed, a game's page, a maker's page, Your games and You (tests/browser/page-moves.test.ts), and nowhere else (the
+// owner, 2026-11-22: icons, with room for more; and the bar on all three of its places, like an app's tabs).
 
 let game: Awaited<ReturnType<typeof addGame>>;
 let handle: string;

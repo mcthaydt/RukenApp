@@ -8,10 +8,13 @@
 -->
 <script lang="ts">
   import "../lib/look.css";
+  import { onNavigate } from "$app/navigation";
   import { page } from "$app/state";
   import { Bar } from "../features/feed/feed.browser.ts";
   import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
+  import { moveBetween } from "../lib/page-moves.ts";
   import PageLoading from "../lib/page-loading.svelte";
+  import { sendInApp } from "../lib/stay-in-app.ts";
   import type { LayoutProps } from "./$types";
 
   let { data, children }: LayoutProps = $props();
@@ -23,13 +26,61 @@
       (page.route.id === "/" || page.route.id === "/g/[game]" || page.route.id === "/[handle=handle]"),
   );
 
+  // The tops of Your games and You carry the bar too, so the three feel like an app's tabs (the owner, 2026-11-22).
+  const place = $derived.by(() => {
+    if (page.status >= 400) return null;
+    if (page.route.id === "/") return "home";
+    if (page.route.id === "/make") return "make";
+    if (page.route.id === "/me") return "you";
+    return null;
+  });
+
   function cameBack(event: PageTransitionEvent): void {
     if (event.persisted) clearSending();
   }
+
+  function sent(event: SubmitEvent): void {
+    markSending(event);
+    sendInApp(event);
+  }
+
+  // Safari's own swipe back already slides the page; a second slide after it would play the move twice.
+  let browserSlid = false;
+  function wentBack(event: PopStateEvent): void {
+    browserSlid = event.hasUAVisualTransition;
+  }
+
+  // Every move to another page slides sideways, the way the move goes (src/lib/page-moves.ts), for a person who
+  // welcomes motion and a browser that has view transitions; anyone else gets the new page at once. It starts once the
+  // new page has loaded, so the loading bar shows the wait as before, and the bar of places stays where it is.
+  onNavigate((navigation) => {
+    const from = navigation.from?.url.pathname;
+    const to = navigation.to?.url.pathname;
+    const back = navigation.type === "popstate" && navigation.delta < 0;
+    const move = from === undefined || to === undefined ? null : moveBetween(from, to, back);
+    const slid = browserSlid;
+    browserSlid = false;
+    // A move inside the maker's area is that area's own step (src/routes/make/+layout.svelte).
+    if (move === null) return;
+    const html = document.documentElement;
+    delete html.dataset.step;
+    delete html.dataset.move;
+    if (slid || !("startViewTransition" in document) || matchMedia("(prefers-reduced-motion: reduce)").matches)
+      return;
+    // The mark stays until the next move: while it is on, the maker area's rising lines keep still, so a page that
+    // slides in does not also rise (look.css).
+    html.dataset.move = move;
+    return new Promise<void>((resolve) => {
+      document.startViewTransition(async () => {
+        resolve();
+        await navigation.complete;
+      });
+    });
+  });
 </script>
 
-<svelte:document onsubmit={markSending} />
-<svelte:window onpageshow={cameBack} />
+<svelte:document onsubmit={sent} />
+<svelte:window onpageshow={cameBack} onpopstate={wentBack} />
 
 <PageLoading />
 <!-- Says "Sending…" to a screen reader when a plain form is sent (src/lib/busy-forms.ts). -->
@@ -47,8 +98,8 @@
   {/if}
 {/if}
 
-{#if browsing}
-  <Bar home={page.route.id === "/"} />
+{#if browsing || place !== null}
+  <Bar on={place} />
 {/if}
 
 {@render children()}

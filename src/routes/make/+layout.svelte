@@ -36,11 +36,17 @@
     return question === undefined ? -1 : asked.indexOf(question);
   }
 
+  function inMakersArea(path: string | undefined): boolean {
+    return path === "/make" || path?.startsWith("/make/") === true;
+  }
+
   // A step is only for a move inside the maker's area, and only for a person who welcomes motion. Without the
   // browser's view transitions the new question's lines still rise (a plain animation), and the old one just goes.
+  // A move into or out of the area slides sideways instead, as every other move does (src/routes/+layout.svelte).
   onNavigate((navigation) => {
-    if (navigation.to?.url.pathname.startsWith("/make") !== true) return;
-    const going = placeOf(navigation.to.params?.question) < placeOf(navigation.from?.params?.question);
+    if (!inMakersArea(navigation.to?.url.pathname) || !inMakersArea(navigation.from?.url.pathname)) return;
+    delete document.documentElement.dataset.move;
+    const going = placeOf(navigation.to?.params?.question) < placeOf(navigation.from?.params?.question);
     document.documentElement.dataset.step = going ? "back" : "on";
     if (!("startViewTransition" in document) || matchMedia("(prefers-reduced-motion: reduce)").matches)
       return;
