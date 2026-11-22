@@ -5,6 +5,7 @@
   plain sage block. A `still` is a picture and never plays or opens (Your games).
 -->
 <script lang="ts">
+  import Icon from "../../../lib/icon.svelte";
   import { loads } from "../../../lib/loads.ts";
   import { quietVideo } from "../../../lib/quiet-video.ts";
 
@@ -71,6 +72,8 @@
       <video use:loads {src} controls autoplay playsinline></video>
     {/if}
     <!-- Not a form: the question's own form is around this, and a form inside a form is not allowed. -->
-    <button type="button" class="safe" onclick={() => viewer?.close()}>Close</button>
+    <button type="button" class="safe" onclick={() => viewer?.close()} aria-label="Close"
+      ><Icon name="close" /></button
+    >
   </dialog>
 {/if}

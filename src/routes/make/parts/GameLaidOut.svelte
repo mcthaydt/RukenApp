@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
   import type { ChangePart, LaidOutGame } from "../laid-out.ts";
+  import Icon from "../../../lib/icon.svelte";
   import VideoTile from "./VideoTile.svelte";
 
   let { game, only }: { game: LaidOutGame; only?: "upright" | "wide" } = $props();
@@ -44,7 +45,7 @@
 
 {#snippet change(part: ChangePart)}
   {#if game.changes[part] !== undefined}
-    <a class="change" href={game.changes[part]} aria-label={CHANGE_WORDS[part]}>Change</a>
+    <a class="change" href={game.changes[part]} aria-label={CHANGE_WORDS[part]}><Icon name="change" /></a>
   {/if}
 {/snippet}
 

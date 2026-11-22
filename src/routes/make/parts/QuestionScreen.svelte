@@ -11,6 +11,7 @@
   import { tick, type Snippet } from "svelte";
   import { focusFirstRefused, showTheRefusal } from "../../../lib/focus.ts";
   import GamePreview from "./GamePreview.svelte";
+  import Icon from "../../../lib/icon.svelte";
 
   /** A heading longer than this has a long name in it, and is set smaller (the stylesheet's `h1[data-long]`). */
   const LONG_HEADING = 50;
@@ -106,7 +107,7 @@
         <p class="note" role="status">{busyLine}</p>
       {/if}
       <div class="acts">
-        <a class="button safe" href={back}>Back</a>
+        <a class="button safe" href={back} aria-label="Back"><Icon name="back" /></a>
         {#if forward !== undefined}
           {@render forward()}
         {:else}

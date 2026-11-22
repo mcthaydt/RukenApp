@@ -6,6 +6,7 @@
   sound, and a coarse pointer makes "computer" read "tablet".
 -->
 <script lang="ts">
+  import Icon from "../../../lib/icon.svelte";
   import { gameTitle } from "../../../lib/titles.ts";
   import { loads } from "../../../lib/loads.ts";
   import { onMount } from "svelte";
@@ -102,7 +103,7 @@
           </button>
         {/if}
       </div>
-      <a class="back" href="/">← Back to the feed</a>
+      <a class="back" href="/" aria-label="Back to the feed"><Icon name="back" /></a>
       <div class="heroname">
         <h1>{data.name}</h1>
         <p>{data.oneLine}</p>
@@ -243,5 +244,7 @@
     <!-- svelte-ignore a11y_media_has_caption -->
     <video use:loads src={data.clips[shape]} controls autoplay playsinline></video>
   {/if}
-  <button type="button" class="safe" onclick={() => viewer?.close()}>Close</button>
+  <button type="button" class="safe" onclick={() => viewer?.close()} aria-label="Close"
+    ><Icon name="close" /></button
+  >
 </dialog>

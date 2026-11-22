@@ -625,6 +625,23 @@ form > .quiet {
   gap: 0.5rem 0.75rem;
 }
 
+/* An icon in place of a word (src/lib/icon.svelte): lines in the colour of the words, the weight of the button's letters. A
+   button that holds only an icon is a square, the size of every other target, so it is as easy to hit. */
+.icon {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:is(button, .button, .quiet, a):has(> .icon:only-child) {
+  justify-content: center;
+  min-width: var(--size-target);
+  padding-inline: 0;
+}
+
 /* The main button of a form is a step and a half under the last field. On a phone it spans the card, so a
    thumb finds it anywhere along the bottom; a quiet button stays as wide as its words. A link that looks like
    a button, alone in its line ("Back to Ruken"), is the same button and spans the card the same way. */
