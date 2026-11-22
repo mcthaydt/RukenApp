@@ -445,3 +445,49 @@ test("a colour tapped before the screen's scripts arrive is still the one picked
   expect(chosen).toBeDefined();
   await expect(page.locator("main")).toHaveCSS("background-color", rgb(chosen?.ground ?? ""));
 });
+
+test("words typed over a saved answer before the screen has come alive are kept when it does, and are saved", async ({
+  page,
+}) => {
+  // Run 44977261003: a name typed the moment the screen showed was put back to the saved one as the screen came alive,
+  // so Save kept the old name. Holding the scripts back makes that moment as long as it needs to be.
+  const maker = await signUp(page);
+  await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
+  let release: () => void = () => undefined;
+  const scriptsMayRun = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(/\.m?js(\?.*)?$/, async (route) => {
+    await scriptsMayRun;
+    await route.continue();
+  });
+
+  // A one-line box (the name).
+  await page.goto("/make/page/name", { waitUntil: "commit" });
+  await page.getByLabel("What should your page call you?").fill("Quick Owl");
+  release();
+  await pageHasSettled(page);
+  await expect(page.getByLabel("What should your page call you?")).toHaveValue("Quick Owl");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await expect(page.getByRole("link", { name: /^Name/ })).toContainText("Quick Owl");
+  await page.unrouteAll({ behavior: "wait" });
+
+  // A box that grows with its words (the one line), with the scripts held back again.
+  let releaseAgain: () => void = () => undefined;
+  const scriptsMayRunAgain = new Promise<void>((resolve) => {
+    releaseAgain = resolve;
+  });
+  await page.route(/\.m?js(\?.*)?$/, async (route) => {
+    await scriptsMayRunAgain;
+    await route.continue();
+  });
+  await page.goto("/make/page/line", { waitUntil: "commit" });
+  await page.getByLabel("Say one line about you").fill("I make quick games.");
+  releaseAgain();
+  await pageHasSettled(page);
+  await expect(page.getByLabel("Say one line about you")).toHaveValue("I make quick games.");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await expect(page.getByRole("link", { name: /^About you/ })).toContainText("I make quick games.");
+});

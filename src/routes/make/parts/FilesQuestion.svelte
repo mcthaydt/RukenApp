@@ -63,6 +63,8 @@
   let otherGameTicked = $state(false);
   const branch = $derived(otherGameTicked ? "" : (asked?.branch ?? files.branch));
   const folder = $derived(asked?.folder ?? files.folder);
+  // The folder box is bound, never set: a set value is written over a folder typed before the page came alive.
+  let folderBox = $derived(folder);
 
   // The branches to pick from belong to the game that is ticked, so ticking another game fetches its own. The main
   // branch is always on the list and is the empty answer, so nothing here can make a game that cannot be copied.
@@ -221,7 +223,7 @@
           class="answer"
           type="text"
           name="folder"
-          value={folder}
+          bind:value={folderBox}
           autocomplete="off"
           autofocus={files.changing}
           aria-describedby={describedBy("folder")}

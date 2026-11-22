@@ -70,13 +70,15 @@
   data-plain={plain ? "" : undefined}
   onchange={keepNoneAlone}
 >
+  <!-- `defaultChecked`, never `checked`: a set `checked` is written over a choice made before the page came alive,
+       while a default one leaves it alone (as on the theme picker). -->
   {#each options as option, index (option.value)}
     <label class="pick">
       <input
         type={several ? "checkbox" : "radio"}
         {name}
         value={option.value}
-        checked={chosen.includes(option.value)}
+        defaultChecked={chosen.includes(option.value)}
         aria-invalid={problem !== undefined && index === 0 ? "true" : undefined}
       />
       <b>
