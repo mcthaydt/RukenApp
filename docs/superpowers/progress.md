@@ -61,10 +61,11 @@ Each entry is dated and quotes the owner where the source does; "(paraphrase)" m
 - 2026-11-22 02:06 UTC, answering the coordinator's question whether to raise the cap on sessions writing code from 3 to 6 to match: "Yes". CLAUDE.md Settings and `staged-path` say 6 writers. The 5 work sessions at once stays (a writer waiting on a review or the owner is not one of the 5). Done (#291).
 - 2026-11-22 04:53 UTC: 'update our notion at the end of our slice, and create a prompt to send automata framework so the notion setup can be replicated'. The Ruken page in Notion was brought up to date for slice 2's close, and the update is a standing step at the end of every slice (this-repo, Private notes go to Notion, #303). The prompt is in the project's files, handoff/notion-setup-prompt.md.
 - 2026-11-22 05:52 UTC: "Make sure we have async loaders for everything that loads, now and in the future"; 05:53 UTC: "images and videos too"; 06:36 UTC: "let's use a spinner too, or at least some obvious indication that something is loading". Built in #309 (merged at `f5296bd`); the standing rule is "Every wait shows it" in the `this-repo` skill. 13:38 UTC: "We don't need the Loading... text": the page-load spinner shows with no words.
-- 2026-11-22 13:45 UTC: "Also let's add an icon for the browser RKN green background, white text in our font; and use Ruken - The Everyday Console for base title and Ruken - [Game Name] for when play a game". Read as: the icon is "RKN" in Young Serif, white, on the felt green (`#112f2c`), as the favicon, the home-screen icon and the web manifest's icons; every screen's tab says "Ruken - The Everyday Console", and a game's page and its play screen say "Ruken - " and the game's name. On a branch (`claude/project-thread-vffi7e`).
+- 2026-11-22 13:45 UTC: "Also let's add an icon for the browser RKN green background, white text in our font; and use Ruken - The Everyday Console for base title and Ruken - [Game Name] for when play a game". Read as: the icon is "RKN" in Young Serif, white, on the felt green (`#112f2c`), as the favicon, the home-screen icon and the web manifest's icons; every screen's tab says "Ruken - The Everyday Console", and a game's page and its play screen say "Ruken - " and the game's name. Merged (#320, `74bd185`).
 - 2026-11-22 13:50 UTC: "Also, are we able to create an MCP? It'd be great if makers could do all the things we do in the browser, but through their IDE; we're creating a new video for vertical and horizontal for floor fifty, I'd like it if we should just have it send it via. CLI". 13:51 UTC: "Do everything from the CLI, not just new videos, that's just what prompted the question". Spec: `specs/2026-11-22-ruken-from-your-computer-design.md` (full parity; videos ship first). Waits on its plan audit and the owner's D2 (package name and publishing). 13:55 UTC, on a card: "Press Yes on Ruken" (D1: a computer signs in by the maker pressing Yes on Ruken). 14:10 UTC, on a card: "No, only the person (terminal)" (D3: an AI agent cannot throw a game away or take a page down; only the person, in the terminal).
-- 2026-11-22 14:32 UTC: "padd some padding to the tab icon". The tab icon (`favicon.ico`, `icons/favicon-32.png`) keeps a clear green edge around RKN, 14% of the side on each edge. On a branch (#320).
-- 2026-11-22 15:23 UTC, answering whether a home-screen launch opens as its own app: "Home-screen app: yes, full screen". The manifest keeps `"display": "standalone"`; on an iPhone the home-screen app keeps its own sign-in, so a player signs in there once. On a branch (#320).
+- 2026-11-22 14:32 UTC: "padd some padding to the tab icon". The tab icon (`favicon.ico`, `icons/favicon-32.png`) keeps a clear green edge around RKN, 14% of the side on each edge. Merged (#320, `74bd185`).
+- 2026-11-22 15:23 UTC, answering whether a home-screen launch opens as its own app: "Home-screen app: yes, full screen". The manifest keeps `"display": "standalone"`; on an iPhone the home-screen app keeps its own sign-in, so a player signs in there once. Merged (#320, `74bd185`).
+- 2026-11-22 15:23 UTC: "why aren't deploys automatic and just coming from main?" They already were: Cloudflare's own build deploys every push to `main`, but before the tests finish (`bb33e0b` went live at 14:52 UTC; its `gate` failed at 15:00 UTC). 15:26 UTC, choosing A: "A" (deploy from GitHub Actions only after CI passes on `main`, then check the live site; the owner adds a Cloudflare key and turns off Cloudflare's own build). Spec `2026-11-22-deploy-from-green-main-design.md`.
 
 ## Active milestone: "Finish Ruken"
 
@@ -89,7 +90,7 @@ Remaining:
 
 Blockers: none.
 
-Preview: https://ruken.io (deployed by the owner; `main` is not deployed on merge).
+Preview: https://ruken.io. Every push to `main` deploys there through Cloudflare's own build, before the tests finish; the games Worker is deployed by the owner. Moving the deploy behind a green CI run: spec `2026-11-22-deploy-from-green-main-design.md`.
 
 ## Stages
 
@@ -104,6 +105,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Flaky root causes, `play.test.ts:41` and `pay.test.ts:41` | #293 | merged as `e172f2a` (with the typed-before-alive fix); the follow-up for three more flaky journeys is on `claude/project-thread-4625xg` | not measured (short path, no plan) |
 | A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f` | not measured |
 | Hook follow-ups (the lane reading, the launcher-word refusal) | none yet | not started; lane 3 hooks changes, each its own pull request | not measured |
+| Deploy from a green `main` (lane 3) | spec `2026-11-22-deploy-from-green-main-design.md` on `claude/project-thread-mqcz6h` | spec written, waiting on its plan audit | 0% (0 of 8 plan steps ticked) |
 | Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
 
 ## Slice 2
