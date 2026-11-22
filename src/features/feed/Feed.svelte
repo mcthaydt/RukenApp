@@ -1,7 +1,7 @@
 <!--
   The feed (spec 5.1): one game to a screen, full-window clips that snap one at a time. Each clip leads with the person
-  who made it, then the game and Play. A press on the clip flips sound for every clip; Share is the one mark on the
-  right. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
+  who made it, then the game and Play. A press on the clip opens the game's page; the speaker in the corner flips sound
+  for every clip, and Share is the one mark on the right. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
   With script it fetches only the clip on screen and the next, plays the one on screen where a video may move, shows
   the window's shape of clip, and moves a clip at a time on the arrow keys, Page Up, Page Down and Space.
 -->
@@ -139,7 +139,7 @@
     }
   }
 
-  function pressClip(slug: string): void {
+  function pressSound(slug: string): void {
     soundOn = !soundOn;
     if (!started.includes(slug)) started = [...started, slug];
     forgetHints();
@@ -228,13 +228,22 @@
             aria-hidden="true"
           ></video>
         </noscript>
+        <!-- The whole clip opens its game's page, like the game's name on the band. It is left out of Tab and of what a
+             screen reader reads because the name on the band is the same link. -->
+        <a
+          class="open"
+          href={`/g/${clip.slug}`}
+          data-sveltekit-preload-data="tap"
+          tabindex="-1"
+          aria-hidden="true"
+        ></a>
         <button
           type="button"
           class="sound"
           aria-label="Sound"
           aria-pressed={soundOn}
           onclick={() => {
-            pressClip(clip.slug);
+            pressSound(clip.slug);
           }}
         >
           <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
@@ -262,7 +271,7 @@
         {#if index === 0 && hint !== null}
           <div class="hints">
             <p>{hint === "touch" ? "Swipe up for the next game" : "Scroll down for the next game"}</p>
-            <p>{hint === "touch" ? "Tap for sound" : "Click for sound"}</p>
+            <p>{hint === "touch" ? "Tap the speaker for sound" : "Click the speaker for sound"}</p>
           </div>
         {/if}
 
@@ -344,29 +353,28 @@
     object-fit: cover;
     background: var(--felt-deep);
   }
-  /* The whole clip is one button: a press anywhere on it that is not a link or a mark flips sound. The speaker mark in its
-     corner shows which it is. */
-  .sound {
+  /* The whole clip is one link to its game's page: a press anywhere on it that is not a link or a mark opens the game. */
+  .open {
     position: absolute;
     inset: 0;
     z-index: 1;
     display: block;
-    width: 100%;
-    min-height: 0;
-    padding: 0;
-    border-radius: 0;
-    background: none;
-    color: var(--chalk);
-    text-align: start;
+    margin: 0;
   }
-  .sound svg {
+  /* The speaker in the top corner flips sound, and shows which it is. */
+  .sound {
     position: absolute;
     top: 0.75rem;
     left: 0.75rem;
-    box-sizing: content-box;
-    padding: 10px;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: var(--size-target);
+    min-height: var(--size-target);
+    padding: 0;
     border-radius: 50%;
     background: var(--felt-deep);
+    color: var(--chalk);
     opacity: 0.8;
   }
   .sound:focus-visible,
