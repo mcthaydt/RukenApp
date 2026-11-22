@@ -40,7 +40,10 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   use: {
     baseURL: "http://localhost:4173",
-    trace: "off",
+    // A failed journey keeps a recording of its actions and network, so a press that got no answer shows whether the
+    // post left the browser and what came back (progress.md, Flaky tests). Playwright records the network only with
+    // its page snapshots, so those stay on; the running screenshots, which cost the busy runner the most, stay off.
+    trace: { mode: "retain-on-failure", screenshots: false, snapshots: true, sources: false },
     actionTimeout: 5_000,
     extraHTTPHeaders: journeyClientHeaders(),
   },
