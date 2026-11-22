@@ -1,6 +1,6 @@
 # Landing page, implementation audit 2
 
-Reviewed: `3b013c7` on `claude/project-thread-2vpwcj` (the fix for audit 1 at `3603d00`, fast-forwarded onto audit 1's commit `eea847c`). Lane 2 re-check of the fix round, 2026-11-22 15:13 UTC.
+Reviewed: `3b013c7` on `claude/project-thread-2vpwcj` (the fix for audit 1 at `3603d00`, fast-forwarded onto audit 1's commit `eea847c`). Lane 2 re-check of the fix round, 2026-11-22 15:12 UTC.
 
 **Verdict: PASS.**
 
