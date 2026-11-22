@@ -15,6 +15,8 @@ export function terminal(name = "Journey laptop") {
   const folder = mkdtempSync(join(tmpdir(), "ruken-terminal-"));
   const keyFile = join(folder, "key");
   const said: string[] = [];
+  /** What the person types when asked: one answer for each question, first in first out. */
+  const typed: string[] = [];
   const env = {
     HOME: folder,
     RUKEN_URL: SITE,
@@ -36,11 +38,16 @@ export function terminal(name = "Journey laptop") {
     interactive: false,
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     computerName: () => name,
+    prompt: (question) => {
+      said.push(question);
+      return Promise.resolve(typed.shift() ?? "");
+    },
     readFile: (file) => readFile(file),
     sizeOf: async (file) => (await stat(file)).size,
   };
   return {
     said,
+    typed,
     keyFile,
     env,
     /** Types a command and waits for it; answers the exit code. */

@@ -1,4 +1,4 @@
-import { answersOf, firstUnanswered, type MakerGame } from "../../../../features/games/games.ts";
+import { answersOf, firstUnanswered, ratingWords, type MakerGame } from "../../../../features/games/games.ts";
 
 /**
  * A game as the command line shows it: where it stands in words, what is left to answer, what staff sent back, and what
@@ -22,6 +22,8 @@ export function gameView(game: MakerGame) {
     reason: game.reason,
     oneLine: game.oneLine,
     ageRating: game.ageRating,
+    rating: ratingWords(game.ageRating, game.contentMarks),
+    heldRating: game.held === null ? null : ratingWords(game.held.ageRating, game.held.contentMarks),
     contentMarks: game.contentMarks,
     heldAgeRating: game.held?.ageRating ?? null,
     heldContentMarks: game.held?.contentMarks ?? [],
