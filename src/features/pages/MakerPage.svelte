@@ -4,6 +4,7 @@
   the same markup. It reads without script: a clip shows its first frame and every game and link is a plain link.
 -->
 <script lang="ts">
+  import { loads } from "../../lib/loads.ts";
   import { quietVideo } from "../../lib/quiet-video.ts";
 
   interface Props {
@@ -37,7 +38,7 @@
 >
   <header class="who">
     {#if photo !== null}
-      <img src={photo} alt="" width="96" height="96" />
+      <img use:loads src={photo} alt="" width="96" height="96" />
     {:else}
       <span class="initial" aria-hidden="true">{initial}</span>
     {/if}
@@ -58,6 +59,7 @@
       {#each games as game (game.slug)}
         <article class="game">
           <video
+            use:loads
             src={`${game.upright}#t=0.001`}
             preload="metadata"
             tabindex="-1"

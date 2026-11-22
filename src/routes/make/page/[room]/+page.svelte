@@ -3,6 +3,7 @@
   heading, answer and hint, with Save, and Back goes to the rooms.
 -->
 <script lang="ts">
+  import { loads } from "../../../../lib/loads.ts";
   import { cropSquare, PHOTO_SIDE } from "../../../../features/pages/pages.browser.ts";
   import { ThemePicker } from "../../../../features/pages/pages.screens.ts";
   import QuestionScreen from "../../parts/QuestionScreen.svelte";
@@ -84,7 +85,7 @@
       quiet={data.photo === null ? undefined : { words: "Remove photo", action: "?/removePhoto" }}
     >
       {#if data.photo !== null}
-        <img src={data.photo} alt="What your page shows now" width="96" height="96" />
+        <img use:loads src={data.photo} alt="What your page shows now" width="96" height="96" />
       {/if}
       <input
         class="answer"

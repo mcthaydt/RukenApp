@@ -71,6 +71,8 @@
   // The branches to pick from belong to the game that is ticked, so ticking another game fetches its own. The main
   // branch is always on the list and is the empty answer, so nothing here can make a game that cannot be copied.
   let fetched = $state<{ repo: string; names: string[] } | undefined>(undefined);
+  // The game whose branches GitHub is being asked for, while the answer is out: the screen says so.
+  let lookingUp = $state<string | null>(null);
   const savedRepo = $derived(files.chosen[0] ?? "");
   const branchNames = $derived(fetched === undefined ? files.branches : fetched.names);
   // A branch that was typed or saved stays on the list even when GitHub no longer lists it, so what she sees is what she sent.
@@ -84,9 +86,11 @@
     const repo = ticked.value;
     otherGameTicked = repo !== (asked?.repo ?? savedRepo);
     if (repo === savedRepo) {
+      lookingUp = null;
       fetched = undefined;
       return;
     }
+    lookingUp = repo;
     try {
       const response = await fetch(`${files.branchesAddress}?repo=${encodeURIComponent(repo)}`);
       const body: unknown = await response.json();
@@ -101,6 +105,8 @@
       if (ticked.form?.querySelector<HTMLInputElement>('input[name="repo"]:checked')?.value === repo) {
         fetched = { repo, names: [] };
       }
+    } finally {
+      if (lookingUp === repo) lookingUp = null;
     }
   }
 
@@ -183,6 +189,9 @@
         problem={problems?.repo}
       />
     </div>
+    {#if lookingUp !== null}
+      <p class="note" role="status" aria-busy="true">Looking up branches…</p>
+    {/if}
     {#if files.sendsForReview}
       <p class="note">
         Save copies your game from GitHub and sends it for review. Players can still play it while you wait.

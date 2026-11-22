@@ -5,6 +5,7 @@
   to Stripe's page, in place of the price (paywall.ts).
 -->
 <script lang="ts">
+  import { loads } from "../../lib/loads.ts";
   import { onMount } from "svelte";
   import { quietVideo } from "../../lib/quiet-video.ts";
   import type { PageProps } from "./$types";
@@ -44,6 +45,7 @@
     <!-- Remounted when the shape changes, so the new clip is started by quietVideo too. -->
     {#key wide}
       <video
+        use:loads
         src={wide ? data.backdrop.wide : data.backdrop.upright}
         preload="metadata"
         tabindex="-1"

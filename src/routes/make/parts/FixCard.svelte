@@ -5,6 +5,7 @@
   card with nowhere to go (a live game's files, mended on GitHub) is the same sheet without the link and without "Fix this".
 -->
 <script lang="ts">
+  import { loads } from "../../../lib/loads.ts";
   import { quietVideo } from "../../../lib/quiet-video.ts";
   import type { FixCardData } from "../laid-out.ts";
 
@@ -20,6 +21,7 @@
   {/if}
   {#if fix.video !== null}
     <video
+      use:loads
       data-shape={fix.video.shape}
       src={`${fix.video.src}#t=0.001`}
       preload="metadata"
