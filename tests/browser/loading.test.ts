@@ -72,7 +72,8 @@ test("a video shimmers until it has loaded", async ({ page, browser, request }, 
   await pageHasSettled(page);
   // Opening the page again with every clip held back (the games' address serves them from its media name).
   const held = await holdAnswersTo(page, /\/\/media\./);
-  await page.reload();
+  // Not the page's load event: WebKit holds that back until the held clips have come, so the reload would never end.
+  await page.reload({ waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
 
   const loading = page.locator("video[data-loading]");
