@@ -16,6 +16,6 @@
 | The added line is unchanged | Compared the 13:46 line at `3b825d6` and at `3fb3849` | Identical. |
 | The merge's hand edits | `git show --remerge-diff 3fb3849` | Only `progress.md` (the conflict markers removed). |
 | The PR's diff against `main` | `git diff --name-only c556cc0 3fb3849` | The same files as at audit 6 (`Feed.svelte`, `look.css`, the four tests, `glass.test.ts`, `progress.md`) plus audits 1 to 6. Nothing from `main` reverted. |
-| What `main` brought | `git diff --stat 3b825d6 3fb3849`, outside `progress.md` | Docs only (#328's deploy spec, its plan audits and owner steps); no code. |
+| What `main` brought | `git diff --stat 3b825d6 3fb3849`, outside `progress.md` | Docs only: #328's deploy spec, its four plan audits and one line in the `this-repo` skill. No code. |
 
 No tests were run for this audit: the merge brings no code, and audit 6's checks at `5c73d1c` cover the PR's code, which is unchanged. CI at `3fb3849` is not judged here.
