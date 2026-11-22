@@ -42,7 +42,7 @@ const isTokenBlock = (path: string, selector: string) =>
 
 /** A colour that lets what is behind show through: an alpha in any notation, or a mix with anything see-through. */
 const SEE_THROUGH_COLOUR =
-  /(?:rgba|hsla)\(|(?:rgb|hsl|hwb|lab|lch|oklab|oklch|color)\([^)]*\/|#(?:[0-9a-f]{4}|[0-9a-f]{8})\b|color-mix\([^;]*\btransparent\b/i;
+  /(?:rgba|hsla)\(|(?:rgb|hsl|hwb|lab|lch|oklab|oklch|color)\((?:[^()]|\([^()]*\))*\/|#(?:[0-9a-f]{4}|[0-9a-f]{8})\b|(?:color-mix|-gradient)\([^;]*\btransparent\b/i;
 
 /** A share between 0 and 1 (not 0, which hides, and not 1, which is solid), written as a number or a percentage. */
 const isPartial = (value: string): boolean => {
@@ -113,6 +113,10 @@ describe("frosted glass", () => {
     ["background: hwb(0 0% 100% / 0.5);"],
     ["background: color(srgb 0 0 0 / 0.5);"],
     ["background-image: linear-gradient(rgb(0 0 0 / 0.5), rgb(0 0 0 / 0.5));"],
+    ["background: linear-gradient(to top, var(--felt-deep), transparent);"],
+    ["background-image: linear-gradient(transparent, var(--felt-deep));"],
+    ["background-color: oklch(from var(--felt-deep) l c h / 0.5);"],
+    ["background: rgb(from var(--felt-deep) r g b / 50%);"],
   ])("catches %s", (body) => {
     expect(seeThrough(".m", body)).not.toBeNull();
   });
@@ -128,6 +132,11 @@ describe("frosted glass", () => {
     ["background: var(--felt-deep); opacity: 100%;"],
     ["opacity: 0.5;"],
     ["background: var(--felt-deep); opacity: 0;"],
+    ["background: oklch(0.2 0.01 200);"],
+    ["background-image: url(/images/felt.png);"],
+    ["background: var(--spinner-turning) center / min(40px, 50%) no-repeat var(--felt-raised);"],
+    ["background-image: linear-gradient(var(--felt), var(--felt-deep));"],
+    ['background: url("/a/b.png") center / cover;'],
   ])("leaves alone %s", (body) => {
     expect(seeThrough(".m", body)).toBeNull();
   });
