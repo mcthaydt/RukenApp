@@ -184,10 +184,6 @@
   }
 </script>
 
-<svelte:head>
-  <title>Ruken</title>
-</svelte:head>
-
 <svelte:window onkeydown={onKey} onpointerdown={forgetHints} />
 
 {#if clips.length === 0}

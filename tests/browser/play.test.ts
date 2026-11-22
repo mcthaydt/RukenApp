@@ -112,6 +112,7 @@ test("the menu opens, keeps playing, starts again and leaves", async ({ page }, 
   const tab = tabOf(page);
   await tab.click();
   await expect(page.getByRole("heading", { name: free.name })).toBeVisible();
+  await expect(page).toHaveTitle(`Ruken - ${free.name}`);
   for (const name of ["Keep playing", "Start again", "Leave game"])
     await expect(page.getByRole("button", { name }).or(page.getByRole("link", { name }))).toBeVisible();
   await expect(page.getByText("Use this if the game is stuck.")).toBeVisible();

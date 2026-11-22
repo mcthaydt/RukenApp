@@ -45,7 +45,7 @@ const isUpright = (page: Page): boolean => {
 
 test("Ruken opens straight into the feed, with the right clip for the screen", async ({ page }, testInfo) => {
   await page.goto("/");
-  await expect(page).toHaveTitle("Ruken");
+  await expect(page).toHaveTitle("Ruken - The Everyday Console");
   await expect(page.getByText("Coming soon")).toHaveCount(0);
   await expect(page.locator("main")).toHaveCount(1);
   // The clips are the feed's own: no wordmark above them, and the bar is not the wordmark.

@@ -7,6 +7,7 @@ test("an address nobody serves says so and offers the way back", async ({ page }
   await page.goto("/no-such-page");
   await expect(page.getByRole("heading", { name: "We can't find that page." })).toBeVisible();
   await expect(page.getByRole("link", { name: "Back to Ruken" })).toHaveAttribute("href", "/");
+  await expect(page).toHaveTitle("Ruken - The Everyday Console");
 });
 
 test("opening a lot of games in a minute says so, and offers the way back", async ({
