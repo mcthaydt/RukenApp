@@ -82,13 +82,16 @@
     }
     if (!seen && clips.length > 0) hint = matchMedia("(pointer: coarse)").matches ? "touch" : "pointer";
 
-    const ratios: (number | undefined)[] = [];
+    // How much of each screen is in the window. The screen past the last clip counts as one after it, so a fast swipe
+    // straight to the spinner is "near the end" and asks for the next page, and no clip plays behind the spinner.
+    const ratios = new WeakMap<Element, number>();
     watcher = new IntersectionObserver(
       (entries) => {
-        for (const entry of entries) {
-          ratios[sections.indexOf(entry.target as HTMLElement)] = entry.intersectionRatio;
-        }
-        current = currentOf(ratios) ?? current;
+        for (const entry of entries) ratios.set(entry.target, entry.intersectionRatio);
+        const screens = [...sections, moreScreen];
+        current =
+          currentOf(screens.map((screen) => (screen === undefined ? undefined : ratios.get(screen)))) ??
+          current;
       },
       { root: feed ?? null, threshold: Array.from({ length: 21 }, (_, step) => step / 20) },
     );
@@ -108,7 +111,7 @@
   // does nothing, so all of them are handed over each time.
   $effect(() => {
     if (watcher === undefined) return;
-    for (const section of sections) if (section !== undefined) watcher.observe(section);
+    for (const section of [...sections, moreScreen]) if (section !== undefined) watcher.observe(section);
   });
 
   // A few clips before the end of what the feed has, it asks for the next page. A page that failed waits for "Try again".
