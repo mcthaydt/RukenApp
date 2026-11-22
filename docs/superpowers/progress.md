@@ -76,7 +76,7 @@ Completed since setup (merge times from `gh api`, UTC): #242 flaky journeys fixe
 
 Remaining:
 
-- Merge #209 and #292; build faster CI from its spec (#290).
+- Merge #292. Faster CI, from its spec (#290): unit W is done (#296 merged as `7e6c8ee`, and `main`'s run after the merge passed); A10, the first 10 draft runs after W, is still open; unit T is next.
 - The slice 2 retrospective, owed since slice 2 closed (gap P5), and the root causes of the two open flaky tests (gap P9): each its own thread.
 - Slice 3's remaining units, then slices 4 to 6 and the before-launch list, in roadmap order.
 - Hook follow-ups (see History, Known issues).
@@ -96,7 +96,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Phone sign-in, branch B (lane 3) | #209 | audit PASS at `628803f`, waiting on its full run | not measured (no plan checklist) |
 | Slice 3, the feed and the maker's page | unit K not started | units C, F, H, I and D merged (#246, #248, #247, #249, #286, #285) | 90% (28 of 31 plan steps ticked; one struck) |
 | Slice 2 retrospective | none yet | owed (gap P5) | not started |
-| Flaky root causes, `play.test.ts:41` and `pay.test.ts:41` | none yet | owed (gap P9) | not started |
+| Flaky root causes, `play.test.ts:41` and `pay.test.ts:41` | #293 | merged as `e172f2a` (with the typed-before-alive fix); the follow-up for three more flaky journeys is on `claude/project-thread-4625xg` | not measured (short path, no plan) |
 | A video's address needs a pass (lane 3, from the 18+ gate audit's note N2) | spec `2026-11-21-video-addresses-need-a-pass-design.md` on `claude/project-thread-8400fx`; no pull request yet | plan audit PASS at `a83679f` | not measured |
 | Hook follow-ups (the lane reading, the launcher-word refusal) | none yet | not started; lane 3 hooks changes, each its own pull request | not measured |
 | Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
