@@ -46,6 +46,7 @@ function deps(overrides: Partial<HandleDeps> = {}): HandleDeps {
     cookies: cookiePolicy("http://localhost:5173"),
     getSession: vi.fn(() => Promise.resolve(null)),
     staffRolesOf: vi.fn(() => Promise.resolve([] as StaffRole[])),
+    computerKey: vi.fn(() => Promise.resolve(null)),
     ...overrides,
   };
 }
@@ -148,5 +149,43 @@ describe("createHandle: the health probe", () => {
     const getSession = vi.fn(() => Promise.resolve(session));
     await run(fakeEvent("/healthz/more"), deps({ getSession }));
     expect(getSession).toHaveBeenCalledOnce();
+  });
+});
+
+describe("createHandle: a computer's key", () => {
+  const key = { userId: "user_1", keyId: "key_1" };
+  const header = { authorization: "Bearer rk_whatever" };
+
+  it("is a computer under /api/v1, and the session cookie is not read there", async () => {
+    const getSession = vi.fn(() => Promise.resolve(session));
+    const computerKey = vi.fn(() => Promise.resolve(key));
+    const event = fakeEvent("/api/v1/games", { headers: { ...header, cookie: "rk_session=abc" } });
+
+    expect(await run(event, deps({ getSession, computerKey }))).toEqual({ kind: "computer", ...key });
+    expect(computerKey).toHaveBeenCalledWith("Bearer rk_whatever");
+    expect(getSession).not.toHaveBeenCalled();
+  });
+
+  it("is nobody under /api/v1 with a session cookie and no working key", async () => {
+    const getSession = vi.fn(() => Promise.resolve(session));
+    const event = fakeEvent("/api/v1/games", { headers: { cookie: "rk_session=abc" } });
+    expect(await run(event, deps({ getSession }))).toEqual({ kind: "none" });
+    expect(getSession).not.toHaveBeenCalled();
+  });
+
+  it("is never read anywhere else: the header is ignored and the session decides", async () => {
+    const computerKey = vi.fn(() => Promise.resolve(key));
+    for (const path of ["/me", "/me/password", "/make", "/jobs/money", "/webhooks/stripe", "/join"]) {
+      expect(await run(fakeEvent(path, { headers: header }), deps({ computerKey }))).toEqual({
+        kind: "none",
+      });
+    }
+    expect(computerKey).not.toHaveBeenCalled();
+  });
+
+  it("is a different kind of caller than a person, so no screen's sign-in check lets it in", async () => {
+    const event = fakeEvent("/api/v1/me", { headers: header });
+    const caller = await run(event, deps({ computerKey: () => Promise.resolve(key) }));
+    expect(caller?.kind).not.toBe("user");
   });
 });

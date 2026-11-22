@@ -168,6 +168,37 @@ describe("change password", () => {
     expect((await signIn(PASSWORD)).status).toBe(401);
   });
 
+  it("ends every computer's key, and only this maker's", async () => {
+    const { userId, number, cookie } = await accountWithSession();
+    const other = await accountWithSession();
+    await db().computerKey.create({ data: { userId, name: "Laptop", keyHash: `hash-${userId}` } });
+    await db().computerKey.create({
+      data: { userId: other.userId, name: "Laptop", keyHash: `hash-${other.userId}` },
+    });
+    const answer = await changePassword(
+      formEvent({ password: PASSWORD, newPassword: "a brand new password" }, cookie),
+      deps(),
+      { userId, number },
+    );
+    expect(answer).toEqual({ done: true });
+    expect(await db().computerKey.count({ where: { userId } })).toBe(0);
+    expect(await db().computerKey.count({ where: { userId: other.userId } })).toBe(1);
+  });
+
+  it("keeps the computers' keys when the new password is refused", async () => {
+    const { userId, number, cookie } = await accountWithSession();
+    await db().computerKey.create({ data: { userId, name: "Laptop", keyHash: `hash-${userId}` } });
+    await changePassword(
+      formEvent({ password: "wrong password here", newPassword: "a brand new password" }, cookie),
+      deps(),
+      {
+        userId,
+        number,
+      },
+    );
+    expect(await db().computerKey.count({ where: { userId } })).toBe(1);
+  });
+
   it("refuses a wrong current password and a new one that is too short, changing nothing", async () => {
     const { userId, number, cookie } = await accountWithSession();
     const wrong = await changePassword(

@@ -1,6 +1,6 @@
 import { error, type RequestEvent } from "@sveltejs/kit";
 import { signedInOnly } from "../../features/accounts/accounts.ts";
-import { gamesServices } from "../../features/games/games.ts";
+import { GameError, gamesServices, ownGameOr404 } from "../../features/games/games.ts";
 
 /**
  * The signed-in maker and their game for this page's address. Every page and action in the maker's area finds its
@@ -9,7 +9,10 @@ import { gamesServices } from "../../features/games/games.ts";
  */
 export async function ownGame(event: Pick<RequestEvent, "locals" | "url"> & { params: { game: string } }) {
   const { userId } = signedInOnly(event.locals.caller, event.url);
-  const game = await gamesServices().service.gameForMaker(event.params.game, userId);
-  if (game === null) error(404, "Not found");
-  return { userId, game };
+  try {
+    return { userId, game: await ownGameOr404(gamesServices().service, event.params.game, userId) };
+  } catch (problem) {
+    if (problem instanceof GameError && problem.code === "NOT_FOUND") error(404, "Not found");
+    throw problem;
+  }
 }
