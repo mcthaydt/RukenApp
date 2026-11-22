@@ -227,7 +227,12 @@ describe("sharePool", () => {
     const asked = new TestClock("2027-08-21T12:00:00Z");
     await requestDeletion({ prisma: db(), clock: asked }, game.makerUserId);
     asked.advance(15 * 24 * 60 * 60 * 1000);
-    await purgeDueAccounts({ prisma: db(), clock: asked, files: new MemoryFileStore() });
+    await purgeDueAccounts({
+      prisma: db(),
+      clock: asked,
+      files: new MemoryFileStore(),
+      secret: "test-secret-that-is-long-enough",
+    });
     expect((await db().user.findUniqueOrThrow({ where: { id: game.makerUserId } })).status).toBe("deleted");
 
     const before = await db().journalLine.count();
@@ -235,7 +240,12 @@ describe("sharePool", () => {
     expect((await balancesOf(db()))[`maker:${game.makerUserId}:payable`]).toBe(-469n);
     expect(await db().journalLine.count()).toBeGreaterThan(before);
     // Another day's job: the purge removes no money row.
-    await purgeDueAccounts({ prisma: db(), clock: asked, files: new MemoryFileStore() });
+    await purgeDueAccounts({
+      prisma: db(),
+      clock: asked,
+      files: new MemoryFileStore(),
+      secret: "test-secret-that-is-long-enough",
+    });
     expect((await balancesOf(db()))[`maker:${game.makerUserId}:payable`]).toBe(-469n);
     expect(await db().poolShare.count({ where: { makerUserId: game.makerUserId } })).toBe(1);
   });

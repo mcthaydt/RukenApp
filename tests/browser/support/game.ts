@@ -88,7 +88,7 @@ export async function startDraft(
 /** A new maker with a game, answered up to the question of where its files are: signs up, then answers 1 and 2. */
 export async function startAtFiles(
   page: Page,
-): Promise<{ slug: string; name: string; maker: { email: string; password: string } }> {
+): Promise<{ slug: string; name: string; maker: { number: string; password: string } }> {
   const maker = await signUp(page);
   const { slug, name } = await addDraft(page);
   await answerLine(page);
@@ -280,7 +280,7 @@ export async function addVideo(page: Page, shape: "upright" | "wide"): Promise<v
 export async function answerEveryQuestion(
   page: Page,
   options: { rating?: "3+" | "7+" | "12+" | "16+" | "18+"; marks?: string[]; signedIn?: boolean } = {},
-): Promise<{ slug: string; name: string; maker?: { email: string; password: string } }> {
+): Promise<{ slug: string; name: string; maker?: { number: string; password: string } }> {
   // A maker who is already signed in adds a game; a new one signs up first.
   const { slug, name, maker } =
     options.signedIn === true
@@ -372,8 +372,11 @@ export async function reviewJob(
 ): Promise<APIResponse> {
   const headers = { "content-type": "application/json", authorization: `Bearer ${JOBS_SECRET}` };
   if (!staffMade) {
-    const { email } = await signUpInItsOwnContext(browser);
-    const made = await request.post("/jobs/first-owner", { headers, data: JSON.stringify({ email }) });
+    const { number } = await signUpInItsOwnContext(browser);
+    const made = await request.post("/jobs/first-owner", {
+      headers,
+      data: JSON.stringify({ phone: number }),
+    });
     expect([200, 409]).toContain(made.status());
     staffMade = true;
   }
@@ -386,7 +389,7 @@ export async function reviewJob(
  */
 export async function submitGame(
   browser: Browser,
-): Promise<{ slug: string; name: string; maker: { email: string; password: string } }> {
+): Promise<{ slug: string; name: string; maker: { number: string; password: string } }> {
   const context = await browser.newContext({ baseURL: "http://localhost:4173" });
   try {
     const page = await context.newPage();
@@ -416,7 +419,7 @@ export async function addGame(
   id: string;
   publicId: string;
   makerUserId: string;
-  maker: { email: string; password: string };
+  maker: { number: string; password: string };
 }> {
   const sent = await submitGame(browser);
   const yes = await reviewJob(request, { do: "accept", game: sent.slug }, browser);

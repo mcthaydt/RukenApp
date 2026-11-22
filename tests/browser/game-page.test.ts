@@ -80,7 +80,7 @@ test("the cost line is said to each person in their own words", async ({ page, b
   await page.goto(`/g/${free.slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Free to play. No account needed.")).toBeVisible();
 
-  await signInAs(page, game.maker);
+  await signInAs(page, game.maker.number, game.maker.password);
   await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await expect(
     page.getByText("This is your game. Playing it here doesn't count toward its play time."),
@@ -90,7 +90,7 @@ test("the cost line is said to each person in their own words", async ({ page, b
   await giveStaffRole(staff, "curator");
   const context = await browser.newContext({ baseURL: "http://localhost:4173" });
   const staffPage = await context.newPage();
-  await signInAs(staffPage, staff);
+  await signInAs(staffPage, staff.number, staff.password);
   await staffPage.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await expect(
     staffPage.getByText("You can play this to check it. It doesn't count toward its play time."),

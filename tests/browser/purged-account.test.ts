@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { JOURNEY_PASSWORD, signInAs, signUp } from "./support/account.ts";
-import { makeDeletionDue, stateOf } from "./support/database.ts";
+import { freshNumber, JOURNEY_PASSWORD, nationalOf, signInAs, signUp } from "./support/account.ts";
+import { forgetCodeLimits, makeDeletionDue, numberOfId, stateOf, userIdOf } from "./support/database.ts";
+import { shownAs } from "../../src/features/accounts/phone.ts";
 import { addGame } from "./support/game.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -11,8 +12,8 @@ test.beforeEach(forgetRateLimits);
 // (see makeDeletionDue), and the job runs for real.
 const SECRET = "test-only-jobs-secret";
 
-async function askToBeDeleted(page: Page, email: string): Promise<void> {
-  await signUp(page, email);
+async function askToBeDeleted(page: Page, number: string): Promise<void> {
+  await signUp(page, number);
   await page.goto("/me");
   await page.getByRole("link", { name: "Delete my account" }).click();
   await page.getByRole("button", { name: "Delete my account" }).click();
@@ -27,12 +28,13 @@ async function runTheDailyJob(page: Page): Promise<number> {
   return ((await answer.json()) as { purged: number }).purged;
 }
 
-test("after the 14 days the account is gone: sign-in is refused, and the address is free to use again", async ({
+test("after the 14 days the account is gone: sign-in is refused, and the number is free to use again", async ({
   page,
 }) => {
-  const email = `journey+gone-${crypto.randomUUID().slice(0, 12)}@ruken.test`;
-  await askToBeDeleted(page, email);
-  await makeDeletionDue(email);
+  const number = freshNumber();
+  await askToBeDeleted(page, number);
+  const userId = await userIdOf(number);
+  await makeDeletionDue(number);
 
   // Not "it finished one": journeys run side by side, and another one's run of the job may finish this account first.
   // What follows shows it was finished.
@@ -40,32 +42,37 @@ test("after the 14 days the account is gone: sign-in is refused, and the address
 
   // The old password opens nothing, and the page says what it says to anyone with the wrong password.
   await page.goto("/sign-in");
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(
-    page.getByText("That email and password don't match. Try again, or reset your password."),
+    page.getByText("That number and password don't match. Try again, or reset your password."),
   ).toBeVisible();
+  // The old account keeps no number: the tombstone holds nothing of the person.
+  expect(await numberOfId(userId)).toBeNull();
   await page.goto("/me");
   await expect(page).toHaveURL(/\/sign-in/);
 
-  // The same address makes a new account, which is a new person's, not the old one come back.
-  await signUp(page, email);
+  // The same number makes a new account, which is a new person's, not the old one come back.
+  // The first code for this number was sent a moment ago; the site makes a second one wait half a minute.
+  await forgetCodeLimits(number);
+  await signUp(page, number);
   await page.goto("/me");
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
-  await expect(page.getByText(email).first()).toBeVisible();
+  await expect(page.getByText(shownAs(number)).first()).toBeVisible();
+  expect(await userIdOf(number)).not.toBe(userId);
   await expect(page.getByText("Welcome back. Your account will not be deleted.")).toHaveCount(0);
 });
 
 test("the daily job does not finish an account whose 14 days are not over", async ({ page }) => {
-  const email = `journey+waiting-${crypto.randomUUID().slice(0, 12)}@ruken.test`;
-  await askToBeDeleted(page, email);
+  const number = freshNumber();
+  await askToBeDeleted(page, number);
 
   await runTheDailyJob(page);
 
   // Still within the 14 days, so signing in still undoes it.
   await page.goto("/sign-in?next=%2Fme");
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Phone number").fill(nationalOf(number));
   await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL("/me");
@@ -81,7 +88,7 @@ test("a maker's live game stays up for the 14 days, then comes off Ruken with th
 }) => {
   test.setTimeout(120_000);
   const game = await addGame(browser, request, { free: true });
-  await signInAs(page, game.maker);
+  await signInAs(page, game.maker.number, game.maker.password);
   await page.goto("/me");
   await page.getByRole("link", { name: "Delete my account" }).click();
   await page.getByRole("button", { name: "Delete my account" }).click();
@@ -92,7 +99,7 @@ test("a maker's live game stays up for the 14 days, then comes off Ruken with th
   await runTheDailyJob(page);
   expect((await page.request.get(`/g/${game.slug}`)).status()).toBe(200);
 
-  await makeDeletionDue(game.maker.email);
+  await makeDeletionDue(game.maker.number);
   await runTheDailyJob(page);
 
   expect(await stateOf(game.slug)).toBe("taken_off");

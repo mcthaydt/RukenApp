@@ -49,6 +49,8 @@ export interface MembershipEventHandlers {
   completeCheckout(input: {
     readonly stripeCheckoutSessionId: string;
     readonly subscriptionId: string;
+    /** The address the person paid with, as Stripe collected it on its page; null when it sent none. */
+    readonly paidWithEmail: string | null;
     readonly atMs: number;
   }): Promise<unknown>;
   expireCheckout(stripeCheckoutSessionId: string): Promise<unknown>;
@@ -75,14 +77,26 @@ interface Invoice {
 const SECOND_SUBSCRIPTION = "A member has two subscriptions running. Cancel one in Stripe.";
 const PAID_AFTER_END = "An invoice was paid after its subscription ended. Refund it in Stripe.";
 
+/**
+ * The address a finished checkout was paid with, read from the verified event as Stripe sent it. The inbox keeps a
+ * cut-down copy that holds no address (kept-event.ts), so this is read before that copy is made and handed to
+ * `handleStripeEvent` alongside it. Stripe sends a retried event whole, so a failed first try is not a lost address.
+ */
+export function paidWithEmailOf(event: StripeEvent): string | null {
+  if (event.type !== "checkout.session.completed") return null;
+  const details = (event.data.object as { customer_details?: { email?: unknown } | null }).customer_details;
+  return typeof details?.email === "string" ? details.email : null;
+}
+
 export async function handleStripeEvent(
   handlers: MembershipEventHandlers,
   event: StripeEvent,
+  paidWithEmail: string | null = null,
 ): Promise<void> {
   const atMs = event.created * 1000;
   switch (event.type) {
     case "checkout.session.completed":
-      await completeCheckout(handlers, event.data.object as CompletedSession, atMs);
+      await completeCheckout(handlers, event.data.object as CompletedSession, paidWithEmail, atMs);
       return;
     case "checkout.session.expired":
       await handlers.expireCheckout((event.data.object as { id: string }).id);
@@ -110,7 +124,12 @@ export async function handleStripeEvent(
   }
 }
 
-async function completeCheckout(handlers: MembershipEventHandlers, session: CompletedSession, atMs: number) {
+async function completeCheckout(
+  handlers: MembershipEventHandlers,
+  session: CompletedSession,
+  paidWithEmail: string | null,
+  atMs: number,
+) {
   // "unpaid" means a delayed payment method that may still fail: nothing is granted until Stripe
   // says it is paid. Checkout only offers cards, so this does not happen in practice.
   if (session.payment_status !== "paid") return;
@@ -120,6 +139,7 @@ async function completeCheckout(handlers: MembershipEventHandlers, session: Comp
   await handlers.completeCheckout({
     stripeCheckoutSessionId: session.id,
     subscriptionId: session.subscription,
+    paidWithEmail,
     atMs,
   });
 }
