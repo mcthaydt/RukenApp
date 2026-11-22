@@ -68,10 +68,12 @@ Everything is a command except creating the key (Cloudflare can only create a fi
 ```sh
 npx -y wrangler whoami                                              # note the Account ID of the Ruken account
 npx -y wrangler hyperdrive get eb64483c638e4f5eab2ce9dd1b7ea081     # note the origin host, database and user
-npx -y neonctl projects list                                        # note the id of the project with that host
-npx -y neonctl branches list --project-id <project id>              # note the branch whose endpoint is that host
-ORIGIN_HOST=<origin host>; HOST=$(npx -y neonctl connection-string <branch> --project-id <project id> --database-name <database> --role-name <user> | sed -E 's#^[^@]*@([^/:?]*).*#\1#'); [ "$HOST" = "${ORIGIN_HOST/-pooler/}" ] && echo "same database" || echo "STOP: different database ($HOST)"
+npx -y neonctl projects list                                        # note the id of each project
+npx -y neonctl computes list --project-id <project id>              # find the id that starts the origin host; note its branch_id
+ORIGIN_HOST=<origin host>; DB_HOST=$(npx -y neonctl connection-string <branch_id> --project-id <project id> --database-name <database> --role-name <user> | sed -E 's#^[^@]*@([^/:?]*).*#\1#'); [ -n "$DB_HOST" ] && [ "$DB_HOST" = "${ORIGIN_HOST/-pooler/}" ] && echo "same database" || echo "STOP: different database ($DB_HOST)"
 ```
+
+The id that starts the origin host is the part before the first ".", with any "-pooler" removed (for example `ep-cool-x-123`). Run `computes list` for each project id until one lists it; that row's `branch_id` is `<branch_id>` below.
 
 Go on only if it printed "same database".
 
@@ -82,7 +84,7 @@ GH_PAGER=cat gh api -X PUT repos/mcthaydt/RukenApp/environments/production \
   -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true'
 GH_PAGER=cat gh api -X POST repos/mcthaydt/RukenApp/environments/production/deployment-branch-policies -f name=main -f type=branch
 gh secret set CLOUDFLARE_API_TOKEN --env production --repo mcthaydt/RukenApp   # paste the key when asked
-npx -y neonctl connection-string <branch> --project-id <project id> --database-name <database> --role-name <user> | gh secret set DIRECT_DATABASE_URL --env production --repo mcthaydt/RukenApp
+npx -y neonctl connection-string <branch_id> --project-id <project id> --database-name <database> --role-name <user> | gh secret set DIRECT_DATABASE_URL --env production --repo mcthaydt/RukenApp
 gh variable set CLOUDFLARE_ACCOUNT_ID --env production --repo mcthaydt/RukenApp --body <Account ID of the Ruken account>
 ```
 
