@@ -22,6 +22,7 @@
     plain = false,
     hint,
     problem,
+    legend,
   }: {
     name: string;
     options: Option[];
@@ -34,6 +35,8 @@
     plain?: boolean;
     hint?: string;
     problem: string | undefined;
+    /** Names the group when the heading is the name of another box on the same screen (a choice beside a typed answer). */
+    legend?: string;
   } = $props();
 
   // The ids of the lines under the choices that a reader should hear with them.
@@ -59,7 +62,8 @@
 
 <fieldset
   class="picks"
-  aria-labelledby="question"
+  aria-labelledby={legend === undefined ? "question" : undefined}
+  aria-label={legend}
   aria-describedby={describedBy}
   data-several={several ? "" : undefined}
   data-ratings={ratings ? "" : undefined}
