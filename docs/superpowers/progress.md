@@ -157,6 +157,8 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 
 - `tests/browser/make-game-crud.test.ts:20` "a maker makes a game, players find it, ..." [tablet], local run in a cloud container on the Floor Fifty org-repo branch, five journey files on two profiles at once: failed once; the error text was not kept, because the next run wrote over test-results. Passed on two runs alone. Cause not found yet; its own thread.
 
+- `tests/browser/feed-controls.test.ts:71` "the clip that fills the window is the current one, and only one is; the others wait at their start" [phone], CI full run on #305 at `a49fc9a` (browser shard 1 of 6): the 15-second wait on the predicate at line 96 timed out (expected true, got false). It passed on the next full run at `e0f48a4`. #305 changes only the help pages and a link on Your games, not the feed. Cause not found yet.
+
 Each failed once and passed on its one rerun. Root causes and fixes are in pull request #242.
 
 - `tests/browser/make-design-pass.test.ts:284` "a 56-letter name in a question's heading › on an iPhone SE held sideways › the box is above the bar" [phone-landscape], run 44829777713 at `af7ec29`: "there is nothing on the page to measure" for `.acts`. Cause: `addDraft` waited only for the address to become `/line`, which changes a moment before the screen does, so the journey measured the name question's bar while it was being taken away. Fix: `addDraft` waits for question 2's box.
