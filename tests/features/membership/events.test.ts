@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { keptEvent } from "../../../src/features/membership/kept-event.ts";
 import {
   handleStripeEvent,
+  paidWithEmailOf,
   type InvoicePaidOutcome,
   type MembershipEventHandlers,
   type StripeEvent,
@@ -45,8 +47,28 @@ describe("checkout.session.completed", () => {
     expect(h.completeCheckout).toHaveBeenCalledWith({
       stripeCheckoutSessionId: "cs_premium_1",
       subscriptionId: "sub_1",
+      paidWithEmail: null,
       atMs: CREATED * 1000,
     });
+  });
+
+  it("hands on the address the person paid with, which only the verified event carries", async () => {
+    const h = handlers();
+    const verified = event("checkout.session.completed", {
+      ...SESSION,
+      customer_details: { email: "Paid@Example.test" },
+    });
+    expect(paidWithEmailOf(verified)).toBe("Paid@Example.test");
+    expect(paidWithEmailOf(keptEvent(verified))).toBeNull();
+    expect(
+      paidWithEmailOf(event("invoice.paid", { id: "in_1", customer_email: "x@example.test" })),
+    ).toBeNull();
+
+    await handleStripeEvent(h, verified, paidWithEmailOf(verified));
+
+    expect(h.completeCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({ paidWithEmail: "Paid@Example.test" }),
+    );
   });
 
   it("throws for a membership checkout without a subscription, so it is tried again", async () => {

@@ -12,7 +12,8 @@ export { isMadeUpNumber } from "../../lib/server/text.ts";
  * ("+1"). Spaces, dashes, dots and brackets are dropped. Typed text starting "+" or "00" already names its country,
  * and so does "011" under "+1" (the North American prefix; elsewhere it is a national number, as in Leeds's 0113),
  * so what follows is the whole number, whatever country was picked. Otherwise leading zeros are dropped
- * (several countries write one), under "+1" one leading "1" is dropped, and the dialing code goes in front.
+ * (several countries write one), under "+1" one leading "1" is dropped, and the dialing code goes in front. A North
+ * American number (country code 1) must be ten digits after it.
  */
 export function toE164(dialingCode: string, typed: string): string | null {
   const cleaned = typed.replace(/[\s\-.()]/g, "");
@@ -28,6 +29,9 @@ export function toE164(dialingCode: string, typed: string): string | null {
     digits = dialingCode.replace(/\D/g, "") + withoutTrunkOne;
   }
 
+  // Country code 1 is North America's: a number there is ten digits after it, so a short one (a number typed without
+  // its area code) is refused here and never reaches a text.
+  if (digits.startsWith("1") && digits.length !== 11) return null;
   return /^\d{8,15}$/.test(digits) ? `+${digits}` : null;
 }
 
@@ -41,4 +45,32 @@ export function toE164(dialingCode: string, typed: string): string | null {
  */
 export function hashNumber(number: string, secret: string): string {
   return createHmac("sha256", secret).update(`phone:${number}`).digest("hex");
+}
+
+export interface OpenCountry {
+  /** ISO 3166-1 alpha-2, what the form posts. */
+  code: string;
+  name: string;
+  /** What `toE164` puts in front of a number typed without one. */
+  dialing: string;
+}
+
+/**
+ * The countries the sign-in screens offer. Ruken opens only where a person can text Ruken back (STOP, START, HELP), which
+ * today is the United States and Canada; each one that follows is added here, with its numbers, when it opens.
+ */
+export const OPEN_COUNTRIES: readonly OpenCountry[] = [
+  { code: "US", name: "United States", dialing: "+1" },
+  { code: "CA", name: "Canada", dialing: "+1" },
+];
+
+/** The open country with these two capital letters, or null for anything else (a closed country, or text a form made up). */
+export function countryOf(code: string): OpenCountry | null {
+  return OPEN_COUNTRIES.find((country) => country.code === code) ?? null;
+}
+
+/** A number as /me shows it to its owner: "+1 312 555 0142" for a North American one, the digits as they are otherwise. */
+export function shownAs(number: string): string {
+  const north = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(number);
+  return north === null ? number : `+1 ${north[1] ?? ""} ${north[2] ?? ""} ${north[3] ?? ""}`;
 }

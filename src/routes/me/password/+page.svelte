@@ -5,7 +5,7 @@
 <script lang="ts">
   import type { PageProps } from "./$types";
 
-  let { form }: PageProps = $props();
+  let { data, form }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -14,7 +14,12 @@
 
 <main class="card">
   <h1>Change your password</h1>
-  {#if form?.done}
+  {#if !data.hasNumber}
+    <p role="alert">
+      Your account needs its phone number first. Ruken will add it, then you can change your password.
+    </p>
+    <p><a class="button" href="/me">Back to your account</a></p>
+  {:else if form?.done}
     <p role="status">Done. Your password is changed.</p>
     <p>Anyone else signed in to your account was signed out.</p>
     <p><a class="button" href="/me">Back to your account</a></p>

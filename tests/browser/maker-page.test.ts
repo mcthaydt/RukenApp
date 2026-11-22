@@ -195,7 +195,7 @@ test("a visitor's open and tap are counted, the maker's own are not", async ({ p
   const context = await browser.newContext({ baseURL: "http://localhost:4173" });
   try {
     const own = await context.newPage();
-    await signInAs(own, owner);
+    await signInAs(own, owner.number, owner.password);
     await own.goto(`/${handle}`, { waitUntil: "domcontentloaded" });
     const [ownLink = ""] = linkIds;
     const tap = await context.request.get(`/${handle}/out/${ownLink}`, { maxRedirects: 0 });

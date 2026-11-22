@@ -2,12 +2,10 @@ import { expect, test } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import {
   continueToPayment,
-  fillBirthDate,
-  freshEmail,
-  JOURNEY_PASSWORD,
+  finishSignUpForm,
+  freshNumber,
+  pageHasSettled,
   signUp,
-  yearsAgo,
-  SITE_ANSWER_TIMEOUT,
 } from "./support/account.ts";
 import { addGame } from "./support/game.ts";
 import { boxOf, expectFrame, expectOneCard, pipRed, showTheOwner } from "./support/look.ts";
@@ -110,10 +108,7 @@ test("a signed-out person is asked to sign up only after pressing Continue, and 
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page).toHaveURL(/\/sign-up\?next=/);
 
-  await page.getByLabel("Email").fill(freshEmail());
-  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
-  await fillBirthDate(page, yearsAgo(30));
-  await page.getByRole("button", { name: "Create account" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+  await finishSignUpForm(page, freshNumber());
 
   // Back on the same card, with the plan still chosen, and now the button that spends money.
   await expect(page).toHaveURL(/\/join\?/);
@@ -175,6 +170,8 @@ test.describe("the card over a game's clip", () => {
 
   test("a stranger who presses Play meets the card over that game's clip", async ({ page }, testInfo) => {
     await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
+    // A press while the page is still coming alive can be lost (seen in WebKit, run 44951754611, phone).
+    await pageHasSettled(page);
     await page.getByRole("link", { name: "Play" }).click();
     await expect(page.getByRole("heading", { name: "Join Ruken to play" })).toBeVisible();
     await expect(page).toHaveURL(/\/join\?next=/);

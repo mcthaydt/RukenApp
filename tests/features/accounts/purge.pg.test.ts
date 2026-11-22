@@ -5,6 +5,7 @@ import {
   requestDeletion,
   restoreOnSignIn,
 } from "../../../src/features/accounts/deletion.ts";
+import { hashNumber } from "../../../src/features/accounts/phone.ts";
 import { newPublicId } from "../../../src/features/games/ids.ts";
 import { createWishlist } from "../../../src/features/launch/wishlist.ts";
 import type { FileStore } from "../../../src/lib/files/store.ts";
@@ -42,6 +43,7 @@ beforeEach(async () => {
 // The bucket a person's photo is kept in.
 const files = new MemoryFileStore();
 
+const SECRET = "test-secret-that-is-long-enough";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const START = "2026-10-14T17:00:00Z";
 
@@ -51,11 +53,16 @@ let made = 0;
 async function seedPerson() {
   made += 1;
   const email = `leaving-${String(made)}@example.test`;
+  const number = `+1312556${String(made).padStart(4, "0")}`;
   const user = await db().user.create({
     data: {
       name: "Leaving",
       email,
       emailVerified: true,
+      phoneNumber: number,
+      phoneNumberVerified: true,
+      phoneConfirmedAt: new Date("2026-10-01T00:00:00Z"),
+      paperEmail: `paid-${String(made)}@example.test`,
       image: "https://example.test/me.png",
       adultOn: new Date("2030-01-01"),
     },
@@ -73,9 +80,22 @@ async function seedPerson() {
       { identifier: email, value: "token-a", expiresAt },
       { identifier: "reset-password:abc", value: user.id, expiresAt },
       { identifier: "email-otp", value: email, expiresAt },
+      // A texted code is kept by the number, and a password-reset code by the number and a suffix.
+      { identifier: number, value: "123456:0", expiresAt },
+      { identifier: `${number}-request-password-reset`, value: "654321:0", expiresAt },
     ],
   });
-  return { id: user.id, email };
+  // A sign-up this number started and never finished.
+  await db().pendingSignUp.create({
+    data: {
+      numberHash: hashNumber(number, SECRET),
+      browserHash: "b".repeat(64),
+      passwordHash: "hash",
+      adultOn: new Date("2008-01-01"),
+      expiresAt,
+    },
+  });
+  return { id: user.id, email, number };
 }
 
 let gamesMade = 0;
@@ -175,31 +195,41 @@ describe("purgeDueAccounts", () => {
 
     clock.advance(13 * DAY_MS);
 
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
     const user = await db().user.findUniqueOrThrow({ where: { id } });
     expect(user.status).toBe("pending_deletion");
     expect(user.name).toBe("Leaving");
     expect(await db().account.count({ where: { userId: id } })).toBe(1);
   });
 
-  it("removes the email, the password and the sessions, keeps the row, and marks the request done", async () => {
-    const { id, email } = await seedPerson();
+  it("removes the email, the number, the password and the sessions, keeps the row, and marks the request done", async () => {
+    const { id, email, number } = await seedPerson();
     const clock = await askToBeDeleted(id);
     await db().session.create({
       data: { userId: id, token: `late-${id}`, expiresAt: new Date("2026-12-01T00:00:00Z") },
     });
 
     clock.advance(15 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
 
     expect(await db().user.findUniqueOrThrow({ where: { id } })).toMatchObject({
       status: "deleted",
       email: `deleted-${id}@deleted.invalid`,
       name: "Deleted",
       emailVerified: false,
+      phoneNumber: null,
+      phoneNumberVerified: false,
+      phoneConfirmedAt: null,
+      paperEmail: null,
       image: null,
       adultOn: null,
     });
+    expect(
+      await db().verification.count({
+        where: { identifier: { in: [number, `${number}-request-password-reset`] } },
+      }),
+    ).toBe(0);
+    expect(await db().pendingSignUp.count({ where: { numberHash: hashNumber(number, SECRET) } })).toBe(0);
     expect(await db().account.count({ where: { userId: id } })).toBe(0);
     expect(await db().session.count({ where: { userId: id } })).toBe(0);
     expect(
@@ -216,9 +246,9 @@ describe("purgeDueAccounts", () => {
     const { id } = await seedPerson();
     const clock = await askToBeDeleted(id);
     clock.advance(15 * DAY_MS);
-    await purgeDueAccounts({ prisma: db(), clock, files });
+    await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET });
 
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
   });
 
   it("skips a request that signing in cancelled", async () => {
@@ -229,19 +259,19 @@ describe("purgeDueAccounts", () => {
 
     clock.advance(12 * DAY_MS);
 
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
     const user = await db().user.findUniqueOrThrow({ where: { id } });
     expect(user.status).toBe("active");
     expect(user.name).toBe("Leaving");
   });
 
-  it("lets the same address sign up again afterwards", async () => {
-    const { id, email } = await seedPerson();
+  it("lets the same number and address sign up again afterwards", async () => {
+    const { id, email, number } = await seedPerson();
     const clock = await askToBeDeleted(id);
     clock.advance(15 * DAY_MS);
-    await purgeDueAccounts({ prisma: db(), clock, files });
+    await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET });
 
-    const again = await db().user.create({ data: { name: "Back", email } });
+    const again = await db().user.create({ data: { name: "Back", email, phoneNumber: number } });
 
     expect(again.id).not.toBe(id);
   });
@@ -266,7 +296,7 @@ describe("purgeDueAccounts", () => {
     const clock = await askToBeDeleted(leaving.id);
 
     clock.advance(15 * DAY_MS);
-    await purgeDueAccounts({ prisma: db(), clock, files });
+    await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET });
 
     expect(await db().gitHubInstallation.count({ where: { userId: leaving.id } })).toBe(0);
     expect(await db().gitHubRepository.count({ where: { fullName: "leaving/game" } })).toBe(0);
@@ -299,12 +329,12 @@ describe("purgeDueAccounts", () => {
     const clock = await askToBeDeleted(leaving.id);
 
     clock.advance(13 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
     expect(await db().makerPage.count({ where: { userId: leaving.id } })).toBe(1);
     expect(await db().pageLink.count({ where: { page: { userId: leaving.id } } })).toBe(2);
 
     clock.advance(2 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
 
     expect(await db().makerPage.count({ where: { userId: leaving.id } })).toBe(0);
     expect(await db().pageLink.count({ where: { page: { handle: "leaving-maker" } } })).toBe(0);
@@ -344,7 +374,7 @@ describe("purgeDueAccounts", () => {
     await requestDeletion({ prisma: db(), clock }, without.id);
 
     clock.advance(15 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(2);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(2);
 
     expect(await files.head(keys.leaving)).toBeNull();
     expect(await files.head(keys.staying)).not.toBeNull();
@@ -376,12 +406,12 @@ describe("purgeDueAccounts", () => {
     const wishlist = createWishlist({ db: db(), clock });
 
     clock.advance(13 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
     expect(await db().wishlist.count({ where: { userId: leaving.id } })).toBe(1);
     expect(await wishlist.countFor(game.id, maker.id)).toBe(2);
 
     clock.advance(2 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
 
     expect(await db().wishlist.count({ where: { userId: leaving.id } })).toBe(0);
     expect(await wishlist.countFor(game.id, maker.id)).toBe(1);
@@ -406,11 +436,11 @@ describe("purgeDueAccounts", () => {
 
     // Still up during the 14 days, so changing their mind loses nothing.
     clock.advance(13 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(0);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
     expect(await stateOf(made.live.id)).toMatchObject({ state: "live" });
 
     clock.advance(2 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
 
     for (const game of [made.live, made.waiting])
       expect(await stateOf(game.id)).toEqual({
@@ -459,7 +489,7 @@ describe("purgeDueAccounts", () => {
     const clock = await askToBeDeleted(leaving.id);
 
     clock.advance(15 * DAY_MS);
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
 
     expect(await stateOf(live.id)).toMatchObject({ state: "taken_off" });
     expect(await db().gameHeldClip.count({ where: { gameId: live.id } })).toBe(0);
@@ -491,7 +521,7 @@ describe("purgeDueAccounts", () => {
     try {
       await staff.query("BEGIN");
       await staff.query('SELECT "id" FROM "Game" WHERE "id" = $1 FOR UPDATE', [live.id]);
-      const purge = purgeDueAccounts({ prisma: db(), clock, files });
+      const purge = purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET });
       purge.catch(() => undefined);
       // Readiness, not a guess: the purge is stuck on the game's lock when the server shows it.
       for (let tries = 0; ; tries += 1) {
@@ -525,7 +555,7 @@ describe("purgeDueAccounts", () => {
     clock.advance(15 * DAY_MS);
 
     const broken = brokenFor(`files/${failingGame.publicId}/`);
-    await expect(purgeDueAccounts({ prisma: db(), clock, files: broken })).rejects.toThrow(
+    await expect(purgeDueAccounts({ prisma: db(), clock, files: broken, secret: SECRET })).rejects.toThrow(
       "1 account(s) could not be deleted; 1 were.",
     );
     expect(await statusOf(fine.id)).toBe("deleted");
@@ -537,7 +567,7 @@ describe("purgeDueAccounts", () => {
     ).toBe(1);
 
     // The next run, with the bucket working, finishes it.
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
     expect(await statusOf(failing.id)).toBe("deleted");
     expect(await stateOf(failingGame.id)).toMatchObject({ state: "taken_off" });
     expect(await files.hasAny(`files/${failingGame.publicId}/`)).toBe(false);
@@ -585,7 +615,7 @@ describe("purgeDueAccounts", () => {
 
     clock.advance(15 * DAY_MS);
 
-    expect(await purgeDueAccounts({ prisma: db(), clock, files })).toBe(1);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
     expect(await moneyRowsOf(id)).toEqual(before);
     expect(before.payments).toHaveLength(1);
     expect(before.starts).toHaveLength(1);

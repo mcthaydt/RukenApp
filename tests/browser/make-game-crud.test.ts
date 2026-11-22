@@ -55,7 +55,7 @@ test("a maker makes a game, players find it, the maker changes it while it is li
   await expect(page).toHaveURL(`/make/${slug}`);
   await expect(page.locator(".laid .tagline")).toHaveText("Climb higher, fall further.");
 
-  await forgetTheirRepositories(maker.email);
+  await forgetTheirRepositories(maker.number);
   await page.reload();
   await pageHasSettled(page);
   await page.getByRole("link", { name: "Change the game's files" }).click();

@@ -42,7 +42,7 @@ test("a live game's new name is what players see on its page and in Play", async
   test.setTimeout(120_000);
   const game = await addGame(browser, request, { free: true });
 
-  await signInAs(page, game.maker);
+  await signInAs(page, game.maker.number, game.maker.password);
   await page.goto(`/make/${game.slug}/name`);
   await pageHasSettled(page);
   const renamed = freshName("Floor Fifty");
@@ -73,7 +73,7 @@ test("a new version reaches players only once it is accepted, and then Play open
   const game = await addGame(browser, request, { free: true });
   const first = await asStranger(browser, (stranger) => pullPlayOpens(stranger, game.slug));
 
-  await signInAs(page, game.maker);
+  await signInAs(page, game.maker.number, game.maker.password);
   await page.goto(`/make/${game.slug}`);
   await pageHasSettled(page);
   await page.getByRole("button", { name: "Send a new version" }).click();

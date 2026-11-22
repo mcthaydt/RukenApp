@@ -27,7 +27,7 @@ test("connecting GitHub comes back with the maker's repositories remembered", as
 
   await expect(page).toHaveURL("/make");
   // Never `ruken-test/not-yours`: the app can read it, but GitHub did not list it for this person.
-  expect(await githubConnectionOf(maker.email)).toMatchObject([
+  expect(await githubConnectionOf(maker.number)).toMatchObject([
     {
       installationId: 1n,
       accountLogin: "ruken-test",
@@ -42,7 +42,7 @@ test("choosing repositories on GitHub's own page also comes back remembered", as
   await page.goto("/make/github?choose=1");
 
   await expect(page).toHaveURL("/make");
-  expect(await githubConnectionOf(maker.email)).toMatchObject([{ installationId: 1n }]);
+  expect(await githubConnectionOf(maker.number)).toMatchObject([{ installationId: 1n }]);
 });
 
 test("a callback with a state nobody started is refused, and nothing is remembered", async ({ page }) => {
@@ -51,7 +51,7 @@ test("a callback with a state nobody started is refused, and nothing is remember
   await page.goto("/make/github/callback?code=test-code&state=made-up");
 
   await expect(page).toHaveURL("/make?github=failed");
-  expect(await githubConnectionOf(maker.email)).toEqual([]);
+  expect(await githubConnectionOf(maker.number)).toEqual([]);
 });
 
 // The state travels through GitHub in an address, so it must open only for the account that started it.
@@ -63,17 +63,17 @@ test("a state that another account started is refused, and nothing is remembered
   );
 
   await expect(page).toHaveURL("/make?github=failed");
-  expect(await githubConnectionOf(maker.email)).toEqual([]);
+  expect(await githubConnectionOf(maker.number)).toEqual([]);
 });
 
 test("a callback with no code is refused", async ({ page }) => {
   const maker = await signUp(page);
-  const state = connectStateFor(await userIdOf(maker.email));
+  const state = connectStateFor(await userIdOf(maker.number));
 
   await page.goto(`/make/github/callback?state=${encodeURIComponent(state)}`);
 
   await expect(page).toHaveURL("/make?github=failed");
-  expect(await githubConnectionOf(maker.email)).toEqual([]);
+  expect(await githubConnectionOf(maker.number)).toEqual([]);
 });
 
 test("signed out, connecting asks for sign-in first", async ({ page }) => {
@@ -118,7 +118,7 @@ test("connecting from question 3 comes back to question 3, with the first two an
   await expect(page.getByText("ruken-test/broken-game")).toBeVisible();
   // Never `ruken-test/not-yours`: the app can read it, but GitHub did not list it for this person.
   await expect(page.getByText("ruken-test/not-yours")).toHaveCount(0);
-  expect(await githubConnectionOf(maker.email)).toMatchObject([{ installationId: 1n }]);
+  expect(await githubConnectionOf(maker.number)).toMatchObject([{ installationId: 1n }]);
   await showTheOwner(page, testInfo, "question 3, GitHub connected");
 
   await page.getByRole("link", { name: "Back" }).click();
@@ -132,7 +132,7 @@ test("a connection that failed says so on the question, above the way to try aga
   page,
 }, testInfo) => {
   const { slug, maker } = await startAtFiles(page);
-  const userId = await userIdOf(maker.email);
+  const userId = await userIdOf(maker.number);
 
   // A code GitHub refuses: the state opens, so she comes back to her own question.
   await page.goto(
@@ -145,7 +145,7 @@ test("a connection that failed says so on the question, above the way to try aga
   const sheet = page.getByText("Your game lives on GitHub. Connect it, then pick your game.");
   expect((await boxOf(failure)).y).toBeLessThan((await boxOf(sheet)).y);
   await expect(page.getByRole("link", { name: "Connect GitHub" })).toBeVisible();
-  expect(await githubConnectionOf(maker.email)).toEqual([]);
+  expect(await githubConnectionOf(maker.number)).toEqual([]);
   await showTheOwner(page, testInfo, "question 3, the connection failed");
 });
 
@@ -156,7 +156,7 @@ test("a failed reconnect says so to a maker who is already connected, above her 
 }, testInfo) => {
   const { slug, maker } = await startAtFiles(page);
   await connectGitHubFromFiles(page, slug);
-  const userId = await userIdOf(maker.email);
+  const userId = await userIdOf(maker.number);
 
   await page.goto(
     `/make/github/callback?code=refused&state=${encodeURIComponent(connectStateFor(userId, slug))}`,
@@ -170,14 +170,14 @@ test("a failed reconnect says so to a maker who is already connected, above her 
   // Under the hint, beneath the answer, where every other refusal is.
   const hint = page.getByText("Pick the one that is your game.");
   expect((await boxOf(failure)).y).toBeGreaterThan((await boxOf(hint)).y);
-  expect(await githubConnectionOf(maker.email)).toMatchObject([{ installationId: 1n }]);
+  expect(await githubConnectionOf(maker.number)).toMatchObject([{ installationId: 1n }]);
   await showTheOwner(page, testInfo, "question 3, connected, the reconnect failed");
 });
 
 test("a failed reconnect says so to a maker whose connection holds no repositories", async ({ page }) => {
   const { slug, maker } = await startAtFiles(page);
   await connectGitHubFromFiles(page, slug);
-  await forgetTheirRepositories(maker.email);
+  await forgetTheirRepositories(maker.number);
 
   await page.goto(`/make/${slug}/files?github=failed`);
 
@@ -206,7 +206,7 @@ test("a state for another maker's game lands on a 404, never on her question", a
   try {
     const other = await stranger.newPage();
     const intruder = await signUp(other);
-    const state = connectStateFor(await userIdOf(intruder.email), slug);
+    const state = connectStateFor(await userIdOf(intruder.number), slug);
 
     const landed = await other.goto(
       `/make/github/callback?code=test-code&state=${encodeURIComponent(state)}`,
@@ -224,7 +224,7 @@ test("connected with nothing chosen, she is told, with one way to choose some", 
 }, testInfo) => {
   const { slug, maker } = await startAtFiles(page);
   await connectGitHubFromFiles(page, slug);
-  await forgetTheirRepositories(maker.email);
+  await forgetTheirRepositories(maker.number);
 
   await page.goto(`/make/${slug}/files`);
   await pageHasSettled(page);

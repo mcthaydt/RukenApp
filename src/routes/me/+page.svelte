@@ -1,7 +1,6 @@
 <!--
   Your account: who is signed in, where their membership stands, the one thing they can do about it, a quiet way
-  to sign out and a plain link to delete the account. The "Confirm your email" line shows only while the address is
-  unconfirmed.
+  to sign out and a plain link to delete the account.
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
@@ -22,21 +21,8 @@
 
 <main class="card">
   <h1>Your account</h1>
-  <p>{data.email}</p>
-  <p class="note"><a href="/me/email">Change email</a> · <a href="/me/password">Change password</a></p>
-  {#if !data.emailVerified}
-    {#if form?.resent}
-      <p role="status">Sent. Check your email.</p>
-    {:else}
-      <form method="POST" action="?/resend">
-        <p>Confirm your email. We sent you a link.</p>
-        {#if form?.error}
-          <p class="problem" role="alert">{form.error}</p>
-        {/if}
-        <p><button class="quiet">Send it again</button></p>
-      </form>
-    {/if}
-  {/if}
+  <p>{data.phone}</p>
+  <p class="note"><a href="/me/password">Change password</a></p>
   <p>{data.membership.line}</p>
   {#if data.membership.button === "join"}
     <p><a class="button" href="/join?next=/me">Join Ruken</a></p>

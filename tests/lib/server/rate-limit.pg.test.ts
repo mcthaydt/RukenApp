@@ -55,4 +55,16 @@ describe("rate limits on the RateLimit table", () => {
       limiter.hit("api:test:long", { max: 1, windowMs: RATE_LIMIT_ROWS_KEPT_MS + 1 }),
     ).rejects.toThrow(/window/);
   });
+
+  it("counts a window without adding to it", async () => {
+    const clock = new TestClock("2026-10-07T12:00:00Z");
+    const limiter = createRateLimiter(database.prisma, clock);
+    expect(await limiter.count("api:test:f", rule)).toBe(0);
+    await limiter.hit("api:test:f", rule);
+    await limiter.hit("api:test:f", rule);
+    expect(await limiter.count("api:test:f", rule)).toBe(2);
+    expect(await limiter.count("api:test:f", rule)).toBe(2);
+    clock.advance(60_000);
+    expect(await limiter.count("api:test:f", rule)).toBe(0);
+  });
 });

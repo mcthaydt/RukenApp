@@ -25,7 +25,11 @@ import {
 export interface PremiumStripe {
   /** The two membership price ids, found or created on first use. */
   prices(): Promise<PremiumPrices>;
-  createCustomer(input: { readonly userId: string; readonly email: string }): Promise<string>;
+  /**
+   * Made with no address: Checkout asks for one on its own page, and the finished checkout hands it back
+   * (`customer_details.email`), which is kept as the email the member paid with.
+   */
+  createCustomer(input: { readonly userId: string }): Promise<string>;
   startCheckout(input: PremiumCheckoutInput): Promise<CheckoutStarted>;
   closeCheckout(sessionId: string): Promise<"expired" | "complete">;
   subscription(subscriptionId: string): Promise<PremiumSubscription>;
