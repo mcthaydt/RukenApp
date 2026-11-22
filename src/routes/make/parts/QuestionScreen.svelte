@@ -23,6 +23,11 @@
     enterHint = true,
     keepOld = false,
     busyWords = "Saving…",
+    title = "Your game · Ruken",
+    action = "?/answer",
+    enctype,
+    submit,
+    quiet,
     busyLine,
     forward,
     saving = $bindable(false),
@@ -41,6 +46,16 @@
     keepOld?: boolean;
     /** What the blue button says from the press until the answer comes. */
     busyWords?: string;
+    /** The tab's title: a game's question by default, a page's own room for the page editor. */
+    title?: string;
+    /** Where the form posts. */
+    action?: string;
+    /** `multipart/form-data` for a question that sends a file. */
+    enctype?: "multipart/form-data" | undefined;
+    /** A second, quiet way out under the buttons (Remove photo): its words and the action it posts to. */
+    quiet?: { words: string; action: string } | undefined;
+    /** Runs when the form is sent, before it goes; the form's data may be changed (a photo cut to a square). */
+    submit?: ((data: FormData) => Promise<void>) | undefined;
     /** A line shown under the answer while it waits, for an answer that can take a minute. */
     busyLine?: string;
     /** The blue button when it is not a submit: a link that goes elsewhere. */
@@ -52,7 +67,7 @@
 </script>
 
 <svelte:head>
-  <title>Your game · Ruken</title>
+  <title>{title}</title>
 </svelte:head>
 
 {#if counter !== null}
@@ -70,11 +85,16 @@
   <main>
     <form
       method="POST"
-      action="?/answer"
-      use:enhance={({ cancel }) => {
+      {action}
+      {enctype}
+      use:enhance={async ({ cancel, formData }) => {
         // A second press while the first is out would save twice, and for a new game make two.
-        if (saving) cancel();
+        if (saving) {
+          cancel();
+          return;
+        }
         saving = true;
+        await submit?.(formData);
         return async ({ update }) => {
           await update();
           saving = false;
@@ -105,6 +125,13 @@
           <span class="key">press Enter <kbd>↵</kbd></span>
         {/if}
       </div>
+      {#if quiet !== undefined}
+        <p class="keep">
+          <button class="quiet" formaction={quiet.action} formnovalidate disabled={saving}
+            >{quiet.words}</button
+          >
+        </p>
+      {/if}
       {#if keepOld}
         <!-- After the Save button, never before it: Enter in the form presses the first button, which must be Save. -->
         <p class="keep">
