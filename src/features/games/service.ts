@@ -1091,6 +1091,10 @@ export function createGamesService(deps: GamesServiceDeps) {
     makerUserId: string,
     part: "upright_video" | "wide_video" | "age_rating",
   ): Promise<void> {
+    // Checked here as well as by the screen and the API: the part is a word from outside, and only these three can wait.
+    if (part !== "upright_video" && part !== "wide_video" && part !== "age_rating") {
+      throw new GameError("INVALID", "That isn't something Ruken can keep the old one of.");
+    }
     const game = await ownGame(gameId, makerUserId);
     if (game.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
     const shape: ClipShape = part === "upright_video" ? "upright" : "wide";

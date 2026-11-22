@@ -27,6 +27,11 @@ export function httpsOnly(siteOrigin: () => string): Handle {
     if (new URL(siteOrigin()).protocol !== "https:") return resolve(event);
 
     if (cameByPlainHttp(event.url, event.request.headers)) {
+      // A computer's key has already crossed the wire by now, and a redirect would invite it to cross again: the
+      // maker's API answers 400 and says where to go, with no Location.
+      if (event.url.pathname.startsWith("/api/v1/")) {
+        return Response.json({ problem: "Use https://ruken.io." }, { status: 400 });
+      }
       const secure = `https://${event.url.host}${event.url.pathname}${event.url.search}`;
       // 308 keeps the method and the body, so a form posted over http is posted again over https, not dropped.
       return new Response(null, {

@@ -899,6 +899,62 @@ describe("account sign-in pause", () => {
     expect(pauseLog.join("\n")).not.toContain(number.slice(2));
     expect((await signIn(number, "a brand new horse")).status).toBe(200);
   });
+
+  /** A computer already let in for this account: its key row, as sign-in leaves it. */
+  async function computerFor(userId: string): Promise<void> {
+    await db().computerKey.create({
+      data: { userId, name: "Dana's MacBook", keyHash: `hash-${userId}-${crypto.randomUUID()}` },
+    });
+  }
+
+  async function resetPassword(number: string, withAuth: Auth): Promise<number> {
+    await post("/phone-number/request-password-reset", { phoneNumber: number }, { auth: withAuth });
+    const otp = pauseTexter.codes.filter((code) => code.to === number).at(-1)?.code ?? "";
+    return (
+      await post(
+        "/phone-number/reset-password",
+        { phoneNumber: number, otp, newPassword: "a brand new horse" },
+        { auth: withAuth },
+      )
+    ).status;
+  }
+
+  it("ends every computer's key when the password is reset by text", async () => {
+    const number = await accountWithPassword();
+    const user = await db().user.findUniqueOrThrow({ where: { phoneNumber: number } });
+    await computerFor(user.id);
+    expect(await resetPassword(number, thePauseAuth())).toBe(200);
+    expect(await db().computerKey.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  it("still signs every device out when the keys cannot be removed, and logs it", async () => {
+    const number = await accountWithPassword();
+    const cookie = cookieHeaderFrom(await signIn(number, PASSWORD));
+    const user = await db().user.findUniqueOrThrow({ where: { phoneNumber: number } });
+    await computerFor(user.id);
+    // The same database, except that taking a computer's key away fails.
+    const failing = new Proxy(db(), {
+      get(target, name) {
+        if (name === "computerKey") return { deleteMany: () => Promise.reject(new Error("no database")) };
+        const value: unknown = Reflect.get(target, name, target);
+        return typeof value === "function" ? (value as () => unknown).bind(target) : value;
+      },
+    });
+    const breaking = createAuth({
+      prisma: failing,
+      secret: SECRET,
+      baseURL: ORIGIN,
+      mailer: capture,
+      texter: pauseTexter,
+      cookies,
+      clock: pauseClock,
+      log: (line) => pauseLog.push(line),
+      runInBackground,
+    });
+    expect(await resetPassword(number, breaking)).toBe(200);
+    expect(await sessionInfo(breaking, new Headers({ cookie }))).toBeNull();
+    expect(pauseLog).toContain("computer keys not removed after a reset: no database");
+  });
 });
 
 describe("signing in while a deletion waits", () => {
@@ -968,7 +1024,11 @@ describe("signing in while a deletion waits", () => {
 describe("texts after the answer", () => {
   // Texts go through the default `runAfterAnswer`, which asks the platform to keep them alive.
   beforeEach(() => {
-    setPlatform({ databaseUrl: () => "", waitUntil: () => undefined });
+    setPlatform({
+      databaseUrl: () => "",
+      waitUntil: () => undefined,
+      placeOf: () => ({ city: null, country: null }),
+    });
   });
 
   it("answers a code request without waiting for the text to go", async () => {
@@ -1029,6 +1089,7 @@ describe("texts after the answer", () => {
       waitUntil: (work) => {
         kept.push(work);
       },
+      placeOf: () => ({ city: null, country: null }),
     });
 
     await defaultAuth.handler(

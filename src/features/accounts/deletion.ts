@@ -65,6 +65,8 @@ export async function requestDeletion(
       await tx.user.update({ where: { id: userId }, data: { status: "pending_deletion" } });
       // Signed out everywhere: the next request from any of the person's devices is signed out.
       await tx.session.deleteMany({ where: { userId } });
+      // And every computer's key: a key stops working with the sessions.
+      await tx.computerKey.deleteMany({ where: { userId } });
       return { purgeAfter };
     });
   } catch (error) {
