@@ -20,7 +20,7 @@ const MAX = (
 const upTo = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 const named = (n: number) =>
   upTo(n)
-    .map((i) => `#${i}`)
+    .map((i) => `#${String(i)}`)
     .join(", ");
 const OK_BODY =
   "## Lane\nLane 1: docs only.\n\n## Acceptance criteria\n- it reads well\n\nRequested by **McThayDT**";
@@ -203,16 +203,16 @@ describe("the open limit (criteria 1 and 2)", () => {
     for (const n of upTo(MAX)) add(n, ["docs/a.md"]);
     add(OVER, ["src/features/x/a.ts"]);
     const r = await judge(OVER, "opened");
-    fails(r, `${MAX} pull requests are already open (${named(MAX)})`);
+    fails(r, `${String(MAX)} pull requests are already open (${named(MAX)})`);
     expect(calls.patches).toEqual([{ number: OVER, state: "closed" }]);
     expect(String(calls.comments[0]?.body)).toBe(
-      `Closed: ${MAX} pull requests are already open (${named(MAX)}). Reopen this when one merges or closes.`,
+      `Closed: ${String(MAX)} pull requests are already open (${named(MAX)}). Reopen this when one merges or closes.`,
     );
   });
   test("its reopened event does the same", async () => {
     for (const n of upTo(MAX)) add(n, ["docs/a.md"]);
     add(OVER, ["docs/b.md"]);
-    fails(await judge(OVER, "reopened"), `${MAX} pull requests are already open`);
+    fails(await judge(OVER, "reopened"), `${String(MAX)} pull requests are already open`);
     expect(calls.patches).toEqual([{ number: OVER, state: "closed" }]);
   });
   test("with one under the limit open, the last place passes this rule", async () => {

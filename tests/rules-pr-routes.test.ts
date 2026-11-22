@@ -165,7 +165,7 @@ const MAX = (
     prFlow: { maxOpenPrs: number };
   }
 ).prFlow.maxOpenPrs;
-const FULL = `${MAX} are open now`;
+const FULL = `${String(MAX)} are open now`;
 
 describe("create through gh api is judged like gh pr create (criterion 10)", () => {
   const spellings: [string, string][] = [
