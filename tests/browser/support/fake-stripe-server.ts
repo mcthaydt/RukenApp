@@ -89,7 +89,11 @@ let reportRows: { product: string; featureName: string; amount: string }[] = [];
 let reportDataEnd = 0;
 /** The key the site holds, which a report's file must be asked for with. */
 const SECRET_KEY = "sk_test_fake";
-let counter = 0;
+// The counter starts from the clock, not from 0. The journeys' database outlives the stand-in: a second run on the same
+// database (a local container, not CI's fresh one) would hand a new person "cus_1" again, which an earlier run's
+// person already holds, and the site's checkout fails on the taken id. A run makes far fewer than 1,000 ids in each
+// millisecond it lives, so a later run's numbers start above every earlier run's.
+let counter = Date.now() * 1000;
 
 /** A new id in Stripe's style. One counter for every kind, so two kinds never share a number. */
 function nextId(prefix: string): string {
