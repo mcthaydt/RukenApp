@@ -3,7 +3,7 @@
 Reviewed: branch `claude/project-thread-ow9u4y` at `91d5d81` (a fast-forward of round 1's `eb26174`), the fix commit
 `91d5d81` against `eb26174`. Lane 2. Round 1: `2026-11-22-swipe-between-tabs-1-implementation-audit.md` (FAIL, 1 red).
 
-**Verdict: PASS.** The red is fixed, and note 1 is fixed correctly.
+**Verdict: PASS.** The red is fixed, and round 1's note 2 (the jump to the top) is fixed correctly.
 
 ## What was checked
 
@@ -11,7 +11,7 @@ Reviewed: branch `claude/project-thread-ow9u4y` at `91d5d81` (a fast-forward of 
   in `src/routes/+layout.svelte` is split over lines, and the `toMatch` regex in `tests/loading-states.test.ts` moved
   to its own line, unchanged.
 - `pnpm typecheck`: 0 errors. `pnpm test`: 1,900 passed.
-- Note 1 (scroll): `src/lib/stay-in-app.ts:39` now scrolls to the top only when `!form.isConnected`, after
+- Round 1 note 2 (scroll): `src/lib/stay-in-app.ts:39` now scrolls to the top only when `!form.isConnected`, after
   `await update()`. `update()` runs `applyAction`, which sets `page.form` and awaits `tick()` (`@sveltejs/kit` 3.0.0
   `client.js:2989-3001`), so the DOM has the new screen when `isConnected` is read. Checked against every POST form
   in `src/` that answers on its own page:
@@ -35,5 +35,5 @@ Reviewed: branch `claude/project-thread-ow9u4y` at `91d5d81` (a fast-forward of 
 ## Notes (not blocking)
 
 1. No journey checks the scroll itself (that an in-place answer keeps the position and a next step starts at the top).
-   It was round 1's note, read here from the code above; a check could be added in a later change if it regresses.
+   It was round 1's note 2, read here from the code above; a check could be added in a later change if it regresses.
 2. Round 1's notes 3 to 5 stand as written.
