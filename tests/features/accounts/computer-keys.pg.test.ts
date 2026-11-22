@@ -16,6 +16,7 @@ import {
   startSignIn,
   type ComputerDeps,
 } from "../../../src/features/accounts/computer-keys.ts";
+import { hashNumber } from "../../../src/features/accounts/phone.ts";
 import { requestDeletion } from "../../../src/features/accounts/deletion.ts";
 import { createRateLimiter } from "../../../src/lib/server/rate-limit.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
@@ -235,6 +236,56 @@ describe("limits", () => {
     expect(await answerSignIn(d, { code: another.code, userId, yes: true })).toBe("too_many_computers");
   });
 
+  it("never lets a maker hold more than 20 keys, however many Yes were pressed before any finished", async () => {
+    const d = deps();
+    const userId = await createUser(db());
+    for (let n = 0; n < MAX_COMPUTERS - 1; n += 1) await letIn(d, userId, `Computer ${String(n)}`);
+    d.clock.advance({ minutes: 61 });
+    const waiting = [];
+    for (let n = 0; n < 5; n += 1) {
+      const started = await startSignIn(d, {
+        name: `Late ${String(n)}`,
+        startedFrom: LISBON,
+        clientAddress: nextAddress(),
+      });
+      if (!started.ok) throw new Error("refused");
+      waiting.push(started);
+    }
+    // Only one more fits: the Yes answers that come while a computer is on its way count as computers.
+    const answers = [];
+    for (const one of waiting) answers.push(await answerSignIn(d, { code: one.code, userId, yes: true }));
+    expect(answers).toEqual([
+      "yes",
+      "too_many_computers",
+      "too_many_computers",
+      "too_many_computers",
+      "too_many_computers",
+    ]);
+    for (const one of waiting) await finishSignIn(d, { code: one.code, deviceSecret: one.deviceSecret });
+    expect(await db().computerKey.count({ where: { userId } })).toBe(MAX_COMPUTERS);
+  });
+
+  it("refuses at finish when the maker is already at 20, and says so", async () => {
+    const d = deps();
+    const userId = await createUser(db());
+    const started = await startSignIn(d, {
+      name: "Early",
+      startedFrom: LISBON,
+      clientAddress: nextAddress(),
+    });
+    if (!started.ok) throw new Error("refused");
+    expect(await answerSignIn(d, { code: started.code, userId, yes: true })).toBe("yes");
+    // The 20 keys arrive some other way (twenty computers let in after this Yes).
+    for (let n = 0; n < MAX_COMPUTERS; n += 1) {
+      await db().computerKey.create({
+        data: { userId, name: `K${String(n)}`, keyHash: sha256(`k-${userId}-${String(n)}`) },
+      });
+    }
+    const finished = await finishSignIn(d, { code: started.code, deviceSecret: started.deviceSecret });
+    expect(finished.status).toBe("no");
+    expect(await db().computerKey.count({ where: { userId } })).toBe(MAX_COMPUTERS);
+  });
+
   it("deletes the ten oldest expired codes when a start runs", async () => {
     const d = deps();
     for (let n = 0; n < 12; n += 1)
@@ -334,6 +385,54 @@ describe("reading a key", () => {
     const { key } = await letIn(d, userId);
     await db().user.update({ where: { id: userId }, data: { status: "pending_deletion" } });
     expect(await readKey(d, `Bearer ${key}`)).toBeNull();
+  });
+
+  it("is not collected after removeAllComputers, even from a Yes pressed before it", async () => {
+    const d = deps();
+    const userId = await createUser(db());
+    const started = await startSignIn(d, {
+      name: "Mistake",
+      startedFrom: LISBON,
+      clientAddress: nextAddress(),
+    });
+    if (!started.ok) throw new Error("refused");
+    expect(await answerSignIn(d, { code: started.code, userId, yes: true })).toBe("yes");
+    await removeAllComputers(db(), userId);
+    const finished = await finishSignIn(d, { code: started.code, deviceSecret: started.deviceSecret });
+    expect(finished.status).not.toBe("yes");
+    expect(await db().computerKey.count({ where: { userId } })).toBe(0);
+  });
+
+  it("is not collected after Delete my account, even from a Yes pressed before it", async () => {
+    const d = deps();
+    const userId = await createUser(db());
+    const started = await startSignIn(d, {
+      name: "Mistake",
+      startedFrom: LISBON,
+      clientAddress: nextAddress(),
+    });
+    if (!started.ok) throw new Error("refused");
+    expect(await answerSignIn(d, { code: started.code, userId, yes: true })).toBe("yes");
+    await requestDeletion({ prisma: db(), clock: d.clock }, userId);
+    expect(await db().computerSignIn.count({ where: { userId } })).toBe(0);
+    const finished = await finishSignIn(d, { code: started.code, deviceSecret: started.deviceSecret });
+    expect(finished.status).not.toBe("yes");
+    expect(await db().computerKey.count({ where: { userId } })).toBe(0);
+  });
+
+  it("keeps working while a sign-in pause is on the maker's number: the pause is for password guesses only", async () => {
+    const d = deps();
+    const userId = await createUser(db());
+    const { key } = await letIn(d, userId);
+    await db().signInGuard.create({
+      data: {
+        numberHash: hashNumber("+12025550123", "a-secret"),
+        failures: 10,
+        windowStartedAt: new Date(d.clock.epochMs()),
+        pausedUntil: new Date(d.clock.epochMs() + 60 * 60_000),
+      },
+    });
+    expect(await readKey(d, `Bearer ${key}`)).toMatchObject({ userId });
   });
 
   it("is removed with every other key of the maker by removeAllComputers, and only theirs", async () => {

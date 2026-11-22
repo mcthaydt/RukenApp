@@ -67,6 +67,7 @@ export async function requestDeletion(
       await tx.session.deleteMany({ where: { userId } });
       // And every computer's key: a key stops working with the sessions.
       await tx.computerKey.deleteMany({ where: { userId } });
+      await tx.computerSignIn.deleteMany({ where: { userId } });
       return { purgeAfter };
     });
   } catch (error) {

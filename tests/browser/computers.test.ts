@@ -89,6 +89,11 @@ test("a computer signs out, and the key stops at once", async ({ page, request }
   const key = computer.key() ?? "";
   expect(await computer.run("sign-out")).toBe(0);
   expect(computer.key()).toBeNull();
+  // Told to sign in, and gone from Your computers.
+  expect(await computer.run("whoami")).toBe(1);
+  expect(computer.said.at(-1)).toContain("npx ruken sign-in");
+  await page.goto("/me/computers");
+  await expect(page.getByText("No computers can use your Ruken.")).toBeVisible();
   const answer = await request.get("/api/v1/me", { headers: KEY_HEADER(key) });
   expect(answer.status()).toBe(401);
 });
@@ -106,6 +111,33 @@ test("the key reaches only the maker's API; the cookie never does", async ({ pag
     expect(answer.status(), path).toBeGreaterThanOrEqual(300);
     expect(answer.status(), path).toBeLessThan(400);
     expect(answer.headers().location, path).toContain("/sign-in");
+  }
+  // Everywhere else the header is ignored: each answers exactly as it does with no header at all.
+  for (const [method, path] of [
+    ["GET", "/me/password"],
+    ["GET", "/me/delete"],
+    ["GET", "/join"],
+    ["POST", "/webhooks/stripe"],
+    ["POST", "/jobs/money"],
+    ["POST", "/jobs/review"],
+    ["POST", "/jobs/purge-accounts"],
+    ["POST", "/jobs/decision-day"],
+    ["POST", "/jobs/first-owner"],
+    ["POST", "/jobs/attach-phone"],
+  ] as const) {
+    const options = { maxRedirects: 0, headers: { "content-type": "application/json" }, data: "{}" };
+    const send = (headers: Record<string, string>) =>
+      request.fetch(path, {
+        method,
+        ...(method === "POST" ? options : { maxRedirects: 0 }),
+        headers: { ...(method === "POST" ? options.headers : {}), ...headers },
+      });
+    const without = await send(journeyClientHeaders());
+    const withKey = await send(KEY_HEADER(key));
+    expect(withKey.status(), path).toBe(without.status());
+    expect(withKey.headers().location, path).toBe(without.headers().location);
+    // /join is open to anyone, so it says 200 either way; everything else turns the header away.
+    if (path !== "/join") expect(withKey.status(), path).not.toBe(200);
   }
   // A signed-in browser cookie is no key under /api/v1.
   const cookies = await page.context().cookies();
@@ -159,6 +191,9 @@ test("a video that is too big, not a video, or sent with no length is refused", 
   const fake = join(folder, "fake.mp4");
   writeFileSync(fake, "this is only words, not a video, however long it is");
   expect(await computer.run("video", slug, "upright", fake)).toBe(1);
+  expect(computer.said.at(-1)).toBe(
+    "That file doesn't look like a video. Save it as MP4, WebM or MOV and try again.",
+  );
 
   // A kind Ruken does not take.
   const gif = join(folder, "funny.gif");
@@ -186,6 +221,11 @@ test("a video that is too big, not a video, or sent with no length is refused", 
     duplex: "half",
   });
   expect(noLength.status).toBe(411);
+
+  // None of the four stored anything.
+  computer.said.length = 0;
+  expect(await computer.run("game", slug)).toBe(0);
+  expect(computer.text()).toContain("Upright video: not added yet");
 });
 
 test("a wrong secret gets no key, and five wrong typed codes pause the screen", async ({ page, request }) => {

@@ -239,6 +239,18 @@ export async function lookAtSignIn(
   };
 }
 
+/** The maker's computers: keys made, and Yes answers whose terminal has not collected its key yet. */
+async function computersCounted(deps: ComputerDeps, userId: string): Promise<number> {
+  const { prisma, clock } = deps;
+  const [keys, coming] = await Promise.all([
+    prisma.computerKey.count({ where: { userId } }),
+    prisma.computerSignIn.count({
+      where: { userId, answer: "yes", expiresAt: { gt: new Date(clock.epochMs()) } },
+    }),
+  ]);
+  return keys + coming;
+}
+
 export type AnswerResult = "yes" | "no" | "wrong" | "ran_out" | "answered" | "too_many_computers" | "limited";
 
 /** The maker presses Yes or No on a code. Only the first answer counts. */
@@ -253,9 +265,8 @@ export async function answerSignIn(
   if (row === null) return "wrong";
   if (row.expiresAt.getTime() <= clock.epochMs()) return "ran_out";
   if (row.answer !== null) return "answered";
-  if (input.yes && (await prisma.computerKey.count({ where: { userId: input.userId } })) >= MAX_COMPUTERS) {
-    return "too_many_computers";
-  }
+  // A Yes that has not been collected yet is a computer on its way, so it counts too.
+  if (input.yes && (await computersCounted(deps, input.userId)) >= MAX_COMPUTERS) return "too_many_computers";
   // Only a code nobody has answered: two presses at once let one in.
   const answered = await prisma.computerSignIn.updateMany({
     where: { id: row.id, answer: null },
@@ -300,6 +311,11 @@ export async function finishSignIn(
 
   // One finish takes the key: the row is deleted in the same step, so a second finish finds nothing.
   const userId = row.userId;
+  // Checked again here: twenty keys is the most, whatever Yes answers were given while there was room.
+  if ((await prisma.computerKey.count({ where: { userId } })) >= MAX_COMPUTERS) {
+    await prisma.computerSignIn.delete({ where: { id: row.id } }).catch(() => undefined);
+    return { status: "no", problem: WORDS.tooManyComputers };
+  }
   const key = makeKey();
   const taken = await prisma.computerSignIn.deleteMany({ where: { id: row.id, answer: "yes" } });
   if (taken.count === 0) return { status: "gone", problem: WORDS.wrongCode };
@@ -376,8 +392,10 @@ export async function removeComputer(deps: ComputerDeps, userId: string, id: str
 
 /** Removes every computer of a maker: a changed or reset password, or a deleted account. */
 export async function removeAllComputers(
-  prisma: Pick<PrismaClient, "computerKey">,
+  prisma: Pick<PrismaClient, "computerKey" | "computerSignIn">,
   userId: string,
 ): Promise<void> {
   await prisma.computerKey.deleteMany({ where: { userId } });
+  // A Yes given before this is no way to collect a key after it.
+  await prisma.computerSignIn.deleteMany({ where: { userId } });
 }

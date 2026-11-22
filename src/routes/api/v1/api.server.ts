@@ -1,5 +1,6 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import { authServices, COMPUTER_WORDS } from "../../../features/accounts/accounts.ts";
+import type { RateLimiter } from "../../../lib/server/rate-limit.ts";
 import { failureStatus, GameError } from "../../../features/games/games.ts";
 
 // What every endpoint under /api/v1 shares. The key is read once, by the request hook (handle.ts), and only here.
@@ -54,10 +55,12 @@ export function gameProblem(error: unknown): Response {
  * The maker a request's key belongs to. A request with no working key is a 401, and a maker's 121st request in a
  * minute (all their keys together) is a 429. Throws an `Answered`, so a route reads `const userId = await maker(event)`.
  */
-export async function maker(event: Pick<RequestEvent, "locals">): Promise<string> {
+export async function maker(
+  event: Pick<RequestEvent, "locals">,
+  limiter: RateLimiter = authServices().computerDeps.limiter,
+): Promise<string> {
   const { caller } = event.locals;
   if (caller.kind !== "computer") throw new Answered(problem(401, COMPUTER_WORDS.signInAgain));
-  const { limiter } = authServices().computerDeps;
   if (!(await limiter.hit(`api:v1:${caller.userId}`, REQUESTS_PER_MINUTE)).allowed) {
     throw new Answered(problem(429, "Wait a minute and try again."));
   }
@@ -65,8 +68,10 @@ export async function maker(event: Pick<RequestEvent, "locals">): Promise<string
 }
 
 /** Counts one upload against the maker's 30 an hour; throws the 429 the same way when it is the 31st. */
-export async function countUpload(userId: string): Promise<void> {
-  const { limiter } = authServices().computerDeps;
+export async function countUpload(
+  userId: string,
+  limiter: RateLimiter = authServices().computerDeps.limiter,
+): Promise<void> {
   if (!(await limiter.hit(`api:v1-upload:${userId}`, UPLOADS_PER_HOUR)).allowed) {
     throw new Answered(problem(429, "Wait a minute and try again."));
   }
