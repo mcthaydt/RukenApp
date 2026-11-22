@@ -35,8 +35,8 @@
   // Words a person selected in the box before the page came alive stay selected when it does, so what they type next
   // takes the selection's place. As the page comes alive Svelte puts the answer back into the box (a taller box is
   // emptied first), which leaves the cursor after the last word: typing then added to the saved answer instead of
-  // replacing it (run 45033130832, and the one-line box in #332's review). This script runs before the box is brought to
-  // life, so it reads the selection from the page as sent.
+  // replacing it (run 45033130832, and the one-line box in pull request 332's review). This script runs before the box
+  // is brought to life, so it reads the selection from the page as sent.
   let answerBox = $state<HTMLInputElement | HTMLTextAreaElement | undefined>(undefined);
   // Read once, on purpose: only the box as the page sent it matters, before it comes alive.
   const selectedBefore = untrack(() => selectionOfSentBox(name));
