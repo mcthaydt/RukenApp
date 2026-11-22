@@ -92,7 +92,8 @@
     watcher = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) ratios.set(entry.target, entry.intersectionRatio);
-        const screens = [...sections, moreScreen];
+        // `sections` can be longer than the clips after a restore put back fewer clips: the slots past them are gone.
+        const screens = [...sections.slice(0, clips.length), moreScreen];
         current = currentOf(screens.map((screen) => (screen ? ratios.get(screen) : undefined))) ?? current;
       },
       { root: feed ?? null, threshold: Array.from({ length: 21 }, (_, step) => step / 20) },
@@ -219,18 +220,24 @@
   // page's snapshot and put back at once when they come back to it. The feed goes round and a game can be on it twice,
   // so the snapshot keeps every clip the feed had (later pages too) and the place by its key, not by the game. A place on
   // the first page is found in the first page the page came with, which is fresh: a game that went live or came off since
-  // shows as it is now. Only a place on a later page puts back the kept clips.
+  // shows as it is now, and a place on a game that came off starts from the top. Only a place on a later page puts back
+  // the kept clips.
   interface Place {
     clips: FeedClip[];
     next: string | null;
     key: string;
+    /** How many of the kept clips were the first page. */
+    firstCount: number;
   }
   let mounted = false;
   let returning: Place | undefined;
+  // svelte-ignore state_referenced_locally
+  let firstCount = first.clips.length;
   function returnTo(place: Place): void {
-    if (!first.clips.some((clip) => clip.key === place.key)) {
+    if (place.clips.findIndex((clip) => clip.key === place.key) >= place.firstCount) {
       clips = place.clips;
       next = place.next;
+      firstCount = place.firstCount;
     }
     void tick().then(() => {
       const index = clips.findIndex((clip) => clip.key === place.key);
@@ -242,7 +249,7 @@
   snapshot<Place | undefined>({
     capture: () => {
       const key = clips[current]?.key;
-      return key === undefined ? undefined : { clips, next, key };
+      return key === undefined ? undefined : { clips, next, key, firstCount };
     },
     restore: (place) => {
       if (place === undefined) return;
