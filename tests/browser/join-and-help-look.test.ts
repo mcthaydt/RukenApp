@@ -95,7 +95,12 @@ test.describe("the paywall card", () => {
   test("the plans can be chosen with the keyboard alone, and the row shows the focus", async ({ page }) => {
     await page.goto("/join");
     const monthly = page.getByRole("radio", { name: "$9.99 a month", exact: true });
+    // Reached by the keyboard, not only by script, so every browser counts the focus as the keyboard's (WebKit draws no
+    // ring for a focus a script gave).
     await monthly.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(monthly).toBeFocused();
     await page.keyboard.press("ArrowDown");
     const annual = page.getByRole("radio", { name: "$99 a year", exact: true });
     await expect(annual).toBeChecked();
