@@ -1,6 +1,7 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { FileStore } from "../../lib/files/store.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
+import { lockComputers } from "./computer-keys.ts";
 import { forgetPending } from "./pending-sign-up.ts";
 
 // "Delete my account".
@@ -58,6 +59,7 @@ export async function requestDeletion(
   const purgeAfter = new Date(now + DELETION_WAIT_DAYS * DAY_MS);
   try {
     return await prisma.$transaction(async (tx) => {
+      await lockComputers(tx, userId);
       const open = await openRequest(tx, userId);
       if (open !== null) return { purgeAfter: open.purgeAfter };
 

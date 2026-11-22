@@ -935,7 +935,7 @@ describe("account sign-in pause", () => {
     // The same database, except that taking a computer's key away fails.
     const failing = new Proxy(db(), {
       get(target, name) {
-        if (name === "computerKey") return { deleteMany: () => Promise.reject(new Error("no database")) };
+        if (name === "$transaction") return () => Promise.reject(new Error("no database"));
         const value: unknown = Reflect.get(target, name, target);
         return typeof value === "function" ? (value as () => unknown).bind(target) : value;
       },

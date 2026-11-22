@@ -239,14 +239,24 @@ export async function lookAtSignIn(
   };
 }
 
+/**
+ * One maker's computers are changed one at a time: answering Yes, collecting a key, removing every computer and
+ * deleting the account all take this lock first, inside their transaction, and it lets go when the transaction ends.
+ * Without it two of them could each look, find room or a live Yes, and both go on.
+ */
+export async function lockComputers(tx: Pick<PrismaClient, "$executeRaw">, userId: string): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`computers:${userId}`}, 0))`;
+}
+
 /** The maker's computers: keys made, and Yes answers whose terminal has not collected its key yet. */
-async function computersCounted(deps: ComputerDeps, userId: string): Promise<number> {
-  const { prisma, clock } = deps;
+async function computersCounted(
+  tx: Pick<PrismaClient, "computerKey" | "computerSignIn">,
+  userId: string,
+  nowMs: number,
+): Promise<number> {
   const [keys, coming] = await Promise.all([
-    prisma.computerKey.count({ where: { userId } }),
-    prisma.computerSignIn.count({
-      where: { userId, answer: "yes", expiresAt: { gt: new Date(clock.epochMs()) } },
-    }),
+    tx.computerKey.count({ where: { userId } }),
+    tx.computerSignIn.count({ where: { userId, answer: "yes", expiresAt: { gt: new Date(nowMs) } } }),
   ]);
   return keys + coming;
 }
@@ -265,15 +275,21 @@ export async function answerSignIn(
   if (row === null) return "wrong";
   if (row.expiresAt.getTime() <= clock.epochMs()) return "ran_out";
   if (row.answer !== null) return "answered";
-  // A Yes that has not been collected yet is a computer on its way, so it counts too.
-  if (input.yes && (await computersCounted(deps, input.userId)) >= MAX_COMPUTERS) return "too_many_computers";
-  // Only a code nobody has answered: two presses at once let one in.
-  const answered = await prisma.computerSignIn.updateMany({
-    where: { id: row.id, answer: null },
-    data: { userId: input.userId, answer: input.yes ? "yes" : "no" },
+  // Under the maker's lock, so the count and the Yes cannot be split by another Yes. A Yes that has not been
+  // collected yet is a computer on its way, so it counts too.
+  return prisma.$transaction(async (tx): Promise<AnswerResult> => {
+    await lockComputers(tx, input.userId);
+    if (input.yes && (await computersCounted(tx, input.userId, clock.epochMs())) >= MAX_COMPUTERS) {
+      return "too_many_computers";
+    }
+    // Only a code nobody has answered: two presses at once let one in.
+    const answered = await tx.computerSignIn.updateMany({
+      where: { id: row.id, answer: null },
+      data: { userId: input.userId, answer: input.yes ? "yes" : "no" },
+    });
+    if (answered.count === 0) return "answered";
+    return input.yes ? "yes" : "no";
   });
-  if (answered.count === 0) return "answered";
-  return input.yes ? "yes" : "no";
 }
 
 export type FinishResult =
@@ -309,21 +325,25 @@ export async function finishSignIn(
     return { status: "no", problem: WORDS.pressedNo };
   }
 
-  // One finish takes the key: the row is deleted in the same step, so a second finish finds nothing.
   const userId = row.userId;
-  // Checked again here: twenty keys is the most, whatever Yes answers were given while there was room.
-  if ((await prisma.computerKey.count({ where: { userId } })) >= MAX_COMPUTERS) {
-    await prisma.computerSignIn.delete({ where: { id: row.id } }).catch(() => undefined);
-    return { status: "no", problem: WORDS.tooManyComputers };
-  }
-  const key = makeKey();
-  const taken = await prisma.computerSignIn.deleteMany({ where: { id: row.id, answer: "yes" } });
-  if (taken.count === 0) return { status: "gone", problem: WORDS.wrongCode };
-  const now = new Date(clock.epochMs());
-  await prisma.computerKey.create({
-    data: { userId, name: row.name, keyHash: sha256(key), createdAt: now, lastUsedAt: now },
+  // Under the maker's lock: a password change or deletion that comes first has already removed this row, and one that
+  // comes after waits until the key is made and then removes it.
+  return prisma.$transaction(async (tx): Promise<FinishResult> => {
+    await lockComputers(tx, userId);
+    // One finish takes the key: the row is deleted in the same step, so a second finish finds nothing.
+    const taken = await tx.computerSignIn.deleteMany({ where: { id: row.id, answer: "yes", userId } });
+    if (taken.count === 0) return { status: "gone", problem: WORDS.wrongCode };
+    // Twenty keys is the most, whatever Yes answers were given while there was room.
+    if ((await tx.computerKey.count({ where: { userId } })) >= MAX_COMPUTERS) {
+      return { status: "no", problem: WORDS.tooManyComputers };
+    }
+    const key = makeKey();
+    const now = new Date(clock.epochMs());
+    await tx.computerKey.create({
+      data: { userId, name: row.name, keyHash: sha256(key), createdAt: now, lastUsedAt: now },
+    });
+    return { status: "yes", key, userId };
   });
-  return { status: "yes", key, userId };
 }
 
 // ---- Reading a key -----------------------------------------------------------------------------------------------
@@ -390,12 +410,15 @@ export async function removeComputer(deps: ComputerDeps, userId: string, id: str
   return done.count > 0;
 }
 
-/** Removes every computer of a maker: a changed or reset password, or a deleted account. */
+/** Removes every computer of a maker: a changed or reset password. A deleted account does the same inside its own transaction. */
 export async function removeAllComputers(
-  prisma: Pick<PrismaClient, "computerKey" | "computerSignIn">,
+  prisma: Pick<PrismaClient, "$transaction">,
   userId: string,
 ): Promise<void> {
-  await prisma.computerKey.deleteMany({ where: { userId } });
-  // A Yes given before this is no way to collect a key after it.
-  await prisma.computerSignIn.deleteMany({ where: { userId } });
+  await prisma.$transaction(async (tx) => {
+    await lockComputers(tx, userId);
+    await tx.computerKey.deleteMany({ where: { userId } });
+    // A Yes given before this is no way to collect a key after it.
+    await tx.computerSignIn.deleteMany({ where: { userId } });
+  });
 }

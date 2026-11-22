@@ -447,6 +447,115 @@ describe("reading a key", () => {
   });
 });
 
+describe("at the same moment", () => {
+  const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  /** A client whose transactions are slow at one step (a key made, or the computers counted), so another change can arrive halfway. */
+  function slowKeys(model: "computerKey" | "computerSignIn" = "computerKey", step = "create"): PrismaClient {
+    const wrap = <T extends object>(target: T, wait: (name: string) => Promise<void>): T =>
+      new Proxy(target, {
+        get(from, name) {
+          const value: unknown = Reflect.get(from, name, from);
+          if (name === model && typeof value === "object" && value !== null) {
+            return new Proxy(value, {
+              get(model, method) {
+                const fn: unknown = Reflect.get(model, method, model);
+                if (method !== step || typeof fn !== "function") return fn;
+                return async (...args: unknown[]) => {
+                  await wait("create");
+                  return (fn as (...a: unknown[]) => Promise<unknown>).apply(model, args);
+                };
+              },
+            });
+          }
+          return value;
+        },
+      });
+    return new Proxy(db(), {
+      get(from, name) {
+        const value: unknown = Reflect.get(from, name, from);
+        if (name !== "$transaction" || typeof value !== "function") return value;
+        return (run: (tx: PrismaClient) => Promise<unknown>) =>
+          (value as (fn: (tx: PrismaClient) => Promise<unknown>) => Promise<unknown>).call(from, (tx) =>
+            run(wrap(tx, () => sleep(150))),
+          );
+      },
+    });
+  }
+
+  async function answered(d: ComputerDeps, userId: string) {
+    const started = await startSignIn(d, { name: "Race", startedFrom: LISBON, clientAddress: nextAddress() });
+    if (!started.ok) throw new Error("refused");
+    expect(await answerSignIn(d, { code: started.code, userId, yes: true })).toBe("yes");
+    return started;
+  }
+
+  it("never ends with more than 20 computers when several Yes answers and finishes come at once", async () => {
+    const d = deps();
+    const userId = await createUser(db());
+    const now = new Date(d.clock.epochMs());
+    for (let n = 0; n < MAX_COMPUTERS - 1; n += 1) {
+      await db().computerKey.create({
+        data: {
+          userId,
+          name: `Old ${String(n)}`,
+          keyHash: sha256(`old-${String(n)}-${userId}`),
+          createdAt: now,
+          lastUsedAt: now,
+        },
+      });
+    }
+    const asks = [];
+    for (let n = 0; n < 5; n += 1) {
+      const started = await startSignIn(d, {
+        name: `New ${String(n)}`,
+        startedFrom: LISBON,
+        clientAddress: nextAddress(),
+      });
+      if (!started.ok) throw new Error("refused");
+      asks.push(started);
+    }
+    // The count is slow, so every Yes would see room if they did not take turns.
+    const slow = { ...d, prisma: slowKeys("computerSignIn", "count") };
+    const answers = await Promise.all(
+      asks.map((ask) => answerSignIn(slow, { code: ask.code, userId, yes: true })),
+    );
+    expect(answers.filter((answer) => answer === "yes")).toHaveLength(1);
+    expect(answers.filter((answer) => answer === "too_many_computers")).toHaveLength(4);
+    await Promise.all(asks.map((ask) => finishSignIn(d, { code: ask.code, deviceSecret: ask.deviceSecret })));
+    expect(await db().computerKey.count({ where: { userId } })).toBeLessThanOrEqual(MAX_COMPUTERS);
+  });
+
+  it("leaves no key when a password change comes while a finish is making one", async () => {
+    const d = deps();
+    const userId = await createUser(db());
+    const started = await answered(d, userId);
+    const finish = finishSignIn(
+      { ...d, prisma: slowKeys() },
+      { code: started.code, deviceSecret: started.deviceSecret },
+    );
+    await sleep(60);
+    await removeAllComputers(db(), userId);
+    await finish;
+    expect(await db().computerKey.count({ where: { userId } })).toBe(0);
+    expect(await db().computerSignIn.count({ where: { userId } })).toBe(0);
+  });
+
+  it("leaves no key when Delete my account comes while a finish is making one", async () => {
+    const d = deps();
+    const userId = await createUser(db());
+    const started = await answered(d, userId);
+    const finish = finishSignIn(
+      { ...d, prisma: slowKeys() },
+      { code: started.code, deviceSecret: started.deviceSecret },
+    );
+    await sleep(60);
+    await requestDeletion({ prisma: db(), clock: d.clock }, userId);
+    await finish;
+    expect(await db().computerKey.count({ where: { userId } })).toBe(0);
+  });
+});
+
 describe("where a request came from", () => {
   it("says no warning for the same place, and none when either place is unknown", () => {
     expect(placeWarning(CHICAGO, CHICAGO)).toBeNull();
