@@ -6,7 +6,7 @@ This replaces the feed's interim order (unit C of `2026-11-21-feed-and-makers-pa
 
 Read this with `CLAUDE.md`, the `build`, `this-repo`, `verify` and `visual-check` skills, the main design (sections 5.1 and 5.8) and the feed spec of 2026-11-21 (sections 5.1, 5.2 and unit D). If the repo is indexed in Graphify, use it to find callers and tests before changing a file.
 
-Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** are this spec's choices; the Owner can overrule any of them. Lines marked **Open** wait for the Owner, and only the units that name them wait.
+Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** are this spec's choices; the Owner can overrule any of them. Lines marked **Open** waited for the Owner; Opens 1 to 3 are answered, and only Open 4 (access) still waits.
 
 ## 0. The Owner's direction
 
@@ -14,6 +14,7 @@ Lines marked **Owner** are the Owner's words or choices. Lines marked **Call** a
 - **Owner, 2026-11-21, on a card:** "simple order first". The interim order shipped so the feed's screens could be built; this spec replaces it.
 - **Owner, 2026-11-22 15:57 UTC:** "We'll park after slice 3 to refine what we have so far; that's technically our MVP".
 - **Owner, 2026-11-22 16:06 UTC, on a card** ("Which parts of the approved feed design ship before we park slice 3?"): **"Everything in the design"**.
+- **Owner, 2026-11-22 16:24 UTC, on a card** ("How does a parent say yes to their teen's full feed?"): **"Text the parent a code"**.
 - **Owner, 2026-11-22 16:24 UTC, on a card** ("Build the hidden layers and child feed before a lawyer reads them?"): **"Build now, switches on"**.
 - **Owner, 2026-11-22 16:24 UTC, on a card** ("Add Like, Save and Repost buttons on clips, as the high-taste boost needs?"): **"Yes, all three"**.
 - **Owner, 2026-11-22:** the feed is endless (thread "Make the feed infinite"). The learned order pages without end (4.6).
@@ -164,7 +165,7 @@ Moods (**Owner**): Bold, Cosy, Clever, Heartfelt, Showy, Tidy, Friendly, Spooky,
 - When a pair has been shown `testClipViews` times and its share of Play taps is under `fewPlayTapShare`: "Lots of people watch this video but few tap Play. Try another one." Never a number.
 - A game whose first showing ended with few plays: "Few people have tapped Play on your game yet. A new video can help." (unit F).
 
-### 6.5 A parent's yes (unit I, Open 3)
+### 6.5 A parent's yes (unit I)
 
 The teen presses **Ask a parent**, types the parent's phone number, presses **Text my parent**. The parent gets: "Your teen <first name> asked for a Ruken feed that learns what they like. Say yes or no: <link>". The link opens a plain page with **Yes** and **No**. An unanswered ask ends after 5 days. After Yes, the same link shows **Turn it off** for as long as the yes holds. At 18 the full feed starts by itself.
 
@@ -186,13 +187,13 @@ Each unit is one pull request on its own branch, built test first (journeys firs
 | D, Your feed | C | migration `FeedTaste`, `User.feedResetAt`, `GoodPickAsked`; `signals/taste.ts` (the "more"/"less" part); `/me/feed`; `Feed.svelte` (the ••• sheet, the Good pick card); `service.ts` (`ask`) | the player sees and changes what the feed thinks; Start over | 3 |
 | G, Like, Save, Repost | D | migration `ClipLike`, `ClipSave`, `ClipRepost`; `Feed.svelte` (the buttons); Saved on You; the purge | real counts; each made and taken back by the person | 3 |
 | H, the sky layer | C | `src/lib/sky.ts`; `signals/sky.ts`; `docs/feed-sky.md` | hidden; on through the private file | 2 |
-| I, a parent's yes | Open 3, D | migration `ParentYes`; `/me/feed` (the ask); `/parent/<token>`; the text | an under-18 with a parent's yes gets the full feed | 3 |
+| I, a parent's yes | D | migration `ParentYes`; `/me/feed` (the ask); `/parent/<token>`; the text | an under-18 with a parent's yes gets the full feed | 3 |
 | K, high-taste players | G | migration `HighTaste`; `signals/highTaste.ts`; `src/routes/jobs/high-taste/`; the earned mark in the daily job (`cloudflare/crons.js` if a new job address is needed) | hidden; on through the private file | 3 |
 | L, How the feed works | D, E, G | `src/routes/help/how-the-feed-works/`, the help list | the public page | 1 |
 | J1, the private settings | nothing | RukenPrivate `feed/settings.json`, `feed/settings.md` (PR #18) | the real values | 1 |
 | J2, the settings workflow | A, Open 4, a hook covering RukenPrivate pull requests | RukenPrivate `.github/workflows/feed-settings.yml`, `scripts/check-feed-settings.mjs` and its test | the real values loaded on every change | 3 |
 
-**Why this order, and what runs side by side.** Every unit after A adds a signal module A made, so none edits another's module. The files that more than one unit edits are `Feed.svelte` (A, B, D, G), `/make/<game>` (F, C, E), `service.ts` (A, E, D) and `cursor.ts` (A, B); the units that touch each run one after another in the order above. So: A first. Then F and B side by side (F owns only its rule file and `/make/<game>`; B owns no file F touches). Then C (after both). Then E and D one after the other (both touch `service.ts`): E, then D. Then G after D, and H after C (H owns only `src/lib/sky.ts`, its module and its doc, so it may run beside E, D or G). I after D when Open 3 is answered, K after G. L last. J1 is done; J2 runs when its waits clear, beside anything.
+**Why this order, and what runs side by side.** Every unit after A adds a signal module A made, so none edits another's module. The files that more than one unit edits are `Feed.svelte` (A, B, D, G), `/make/<game>` (F, C, E), `service.ts` (A, E, D) and `cursor.ts` (A, B); the units that touch each run one after another in the order above. So: A first. Then F and B side by side (F owns only its rule file and `/make/<game>`; B owns no file F touches). Then C (after both). Then E and D one after the other (both touch `service.ts`): E, then D. Then G after D, and H after C (H owns only `src/lib/sky.ts`, its module and its doc, so it may run beside E, D or G). I after D, K after G. L last. J1 is done; J2 runs when its waits clear, beside anything.
 
 **For every unit.** Every journey starts with `test.beforeEach(forgetRateLimits)` and shows each new or changed screen with `showTheOwner`. The journeys share one database, so they find their own game by `data-slug` and assert order only in unit and database tests. Every new thing a person makes has create, read, update (where it can change) and delete in a journey (CRUD in `build`). Every new table's `userId` and `gameId` is a foreign key with `onDelete: Cascade`, and a `FeedTaste` row of kind `maker` or `game` holds the user's or game's id (never a handle or slug), with the same cascade; the account purge test covers every new table and shows that another player's chip for a deleted maker is gone. A pull request that changes or deletes an existing test names each one and why. Lessons in `progress.md` whose trigger the diff matches are carried. No unit puts a value from `feed/settings.json` in RukenApp.
 
@@ -322,9 +323,9 @@ Steps:
 - [ ] 3. `signals/sky.ts`, test first (H2), with the switch off and on.
 - [ ] 4. `docs/feed-sky.md`.
 
-### Unit I: a parent's yes (Open 3)
+### Unit I: a parent's yes
 
-Built as the Owner answers Open 3; this is the recommended answer, texting the parent.
+**Owner, 2026-11-22, on a card:** "Text the parent a code" ("The teen types a parent's phone number. Ruken texts that phone a code and a yes link. One tap from the parent turns on the full feed. Parent can undo it."). The code is the one-time part of the link, so the parent never types it.
 
 - **I1.** `ParentYes`: `teenUserId` (cascade), `phoneHash`, `tokenHash`, `askedAt`, `answeredAt`, `answer`, `revokedAt`. One open ask per teen; three texts per teen a day; an ask unanswered after 5 days ends.
 - **I2.** The flow of 6.5. The parent's page needs no account. Yes turns on the full feed at once; Turn it off returns the calm feed and stops recording; the teen can cancel an ask.
@@ -386,7 +387,7 @@ Steps:
 
 1. **Open 1, likes, saves and reposts** (private design 9, 13.3). **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Yes, all three".** Unit G builds all three; K counts like, review and repost as designed; L keeps "Watching and liking help a little".
 2. **Open 2, the lawyer's read** (private design 13.1): New York and California laws on feeds that learn from a child, and whether hidden boosts need saying in the terms. **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Build now, switches on"** (the card said: "They go live as soon as they merge. New York and California feed laws for children are still in court."). Units H, I and K wait on nothing but their units; the private file turns `sky`, `highTaste` and `parentYes` on.
-3. **Open 3, how a parent says yes.** Asked as a card on 2026-11-22 ("Text the parent a code" recommended). Unit I waits.
+3. **Open 3, how a parent says yes.** **Answered 2026-11-22 16:24 UTC by the Owner, on the card: "Text the parent a code".** Unit I waits on nothing but D.
 4. **Open 4, the Cloudflare token on RukenPrivate** (section 5). New access for a second repository, so it is the Owner's: asked once, inside the "Deploy automatically from main" work's batch of Owner commands (the same token). Unit J2 waits.
 5. **Not the Owner's: a hook for RukenPrivate pull requests.** In a repository without `rules.json`, creating a pull request is not checked (`progress.md`, hook follow-ups). J2 is a lane 3 pull request there, so it waits until a hook covers that route.
 
