@@ -35,7 +35,11 @@ export function launchServices(): LaunchServices {
       wishlist,
       async screenFor(userId, cookies) {
         if (isOpen(now(cookies))) return { before: false };
-        return { before: true, opens: OPENS_WORDS, wished: userId === null ? [] : await wishlist.slugsOf(userId) };
+        return {
+          before: true,
+          opens: OPENS_WORDS,
+          wished: userId === null ? [] : await wishlist.slugsOf(userId),
+        };
       },
     };
   }

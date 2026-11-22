@@ -25,7 +25,8 @@ const OPENS = "Opens 30 November";
 const clipOf = (page: Page, slug: string): Locator => page.locator(`section[data-slug="${slug}"]`);
 const makerGameOf = (page: Page, name: string): Locator =>
   page.locator("article.game").filter({ has: page.getByRole("heading", { name }) });
-const wishlist = (within: Page | Locator): Locator => within.getByRole("button", { name: "Wishlist", exact: true });
+const wishlist = (within: Page | Locator): Locator =>
+  within.getByRole("button", { name: "Wishlist", exact: true });
 const onList = (within: Page | Locator): Locator =>
   within.getByRole("button", { name: "On your wishlist", exact: true });
 const play = (within: Page | Locator): Locator => within.getByRole("link", { name: "Play", exact: true });
@@ -174,7 +175,10 @@ test("signed in, Wishlist in the feed and on the maker's page changes in place, 
   await expect(wishlist(makerGameOf(page, game.name))).toBeVisible();
 });
 
-test("with no script, Wishlist is a plain form that comes back to the same game", async ({ page, browser }) => {
+test("with no script, Wishlist is a plain form that comes back to the same game", async ({
+  page,
+  browser,
+}) => {
   test.setTimeout(90_000);
   await page.goto("/sign-up");
   await finishSignUpForm(page, freshNumber());
@@ -197,4 +201,19 @@ test("with no script, Wishlist is a plain form that comes back to the same game"
   } finally {
     await context.close();
   }
+});
+
+test("going to the way back from sign-up without pressing Wishlist adds nothing", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/sign-up");
+  await finishSignUpForm(page, freshNumber());
+  await expect(page).toHaveURL("/");
+  await beforeLaunch(page.context());
+
+  // A typed address, or a link someone put on a page: nobody pressed the button.
+  await page.goto(`/g/${game.slug}/wishlist`);
+  await expect(page).toHaveURL(`/g/${game.slug}`);
+  await pageHasSettled(page);
+  await expect(wishlist(page)).toBeVisible();
+  await expect(onList(page)).toHaveCount(0);
 });

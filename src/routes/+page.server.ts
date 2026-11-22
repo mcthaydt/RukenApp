@@ -6,5 +6,8 @@ import type { PageServerLoad } from "./$types";
 // Before launch each clip shows Wishlist where Play goes.
 export const load: PageServerLoad = async ({ locals, cookies }) => ({
   clips: await feedServices().service.feed(),
-  launch: await launchServices().screenFor(locals.caller.kind === "user" ? locals.caller.userId : null, cookies),
+  launch: await launchServices().screenFor(
+    locals.caller.kind === "user" ? locals.caller.userId : null,
+    cookies,
+  ),
 });
