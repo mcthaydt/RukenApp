@@ -631,6 +631,20 @@ describe("a picture or a video while it loads", () => {
     expect(still).not.toContain("animate");
   });
 
+  // Review of the video spinner, round 1: `.sheet.fix video { background: var(--sage) }` wiped the spinner off the
+  // Needs fixing card. Only the loading rules may draw a picture's or a video's background picture.
+  it("no other rule on a picture or a video sets its background picture, or the background shorthand", () => {
+    const rules = [...withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+    const others = rules
+      .filter(([, selector = "", body = ""]) => {
+        const media = /(^|[\s,>+~(])(img|video)\b/.test(selector);
+        const loading = /img\[data-loading\],\s*video\[data-loading\]/.test(selector);
+        return media && !loading && /background(-image)?\s*:/.test(body);
+      })
+      .map(([, selector = ""]) => selector.trim());
+    expect(others).toEqual([]);
+  });
+
   it("under reduced motion, the spinner stands still and the shimmer stops", () => {
     // The last such rule in the sheet is the one inside the closing reduced-motion block.
     const rules = [...withoutComments.matchAll(loadingRule)];

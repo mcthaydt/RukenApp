@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { freshNumber, nationalOf, pageHasSettled } from "./support/account.ts";
+import { freshNumber, nationalOf, pageHasSettled, signInAs } from "./support/account.ts";
 import { addGame, connectGitHubFromFiles, holdAnswersTo, startAtFiles } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -110,6 +110,30 @@ test("a clip in the feed shows the spinner until it has loaded", async ({ page, 
   await expect(clip).toHaveCSS("background-image", /^url\("data:image\/svg\+xml.*animateTransform/);
   held.release();
   await expect(clip).not.toHaveAttribute("data-loading");
+});
+
+// Owner, 2026-11-22, on "Change your upright video": "The videos don't have a spinner before they load in the panel".
+test("the maker's upright video panel, and what players will see, show the spinner until the videos load", async ({
+  page,
+  browser,
+  request,
+}) => {
+  test.setTimeout(180_000);
+  const game = await addGame(browser, request);
+  await signInAs(page, game.maker.number, game.maker.password);
+  const held = await holdAnswersTo(page, /\/\/media\./);
+  await page.goto(`/make/${game.slug}/upright?again=1`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Change your upright video");
+
+  const panel = page.locator(".vframe video");
+  await expect(panel).toHaveAttribute("data-loading", "");
+  await expect(panel).toHaveCSS("background-image", /^url\("data:image\/svg\+xml.*animateTransform/);
+  const loading = page.locator("video[data-loading]");
+  for (const video of await loading.all()) {
+    await expect(video).toHaveCSS("background-image", /^url\("data:image\/svg\+xml.*animateTransform/);
+  }
+  held.release();
+  await expect(loading).toHaveCount(0);
 });
 
 test("ticking another game on GitHub says the branches are being looked up", async ({ page }) => {

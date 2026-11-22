@@ -2102,9 +2102,13 @@ a.sheet.fix {
   display: block;
   max-width: 100%;
   border-radius: 8px;
-  /* Sage until a frame is drawn, as every other video's tile is, so it is never white on white. */
-  background: var(--sage);
   object-fit: cover;
+}
+
+/* Sage when no frame comes (a video that failed), as every other video's tile is, so it is never white on white. While
+   it loads it is the shimmering box with the spinner, as every loading video is: chalk on sage would not be seen. */
+.sheet.fix video:not([data-loading]) {
+  background-color: var(--sage);
 }
 
 /* An upright video sits beside the card's words, at the right, and not under them with the rest of the card blank. On a
