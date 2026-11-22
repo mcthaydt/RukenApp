@@ -44,6 +44,13 @@ async function idOf(userId: string, title: string): Promise<string> {
   return link.id;
 }
 
+/** Gives a maker links with these titles, last after last. */
+async function addSome(userId: string, ...titles: string[]): Promise<void> {
+  for (const title of titles) {
+    await service.addLink(userId, { kind: "link", title, url: `https://example.com/${title}` });
+  }
+}
+
 /** The titles of a maker's links, in the order they sit. */
 async function titlesOf(userId: string): Promise<string[]> {
   const page = await service.pageOf(userId);
@@ -501,5 +508,86 @@ describe("a maker's photo", () => {
 
     expect((await service.pageByHandle(mine.handle))?.photoKey).toBe(await photoKeyOf(mine.userId));
     expect((await service.pageByHandle(other.handle))?.photoKey).toBeNull();
+  });
+});
+
+describe("changing a link's words and address", () => {
+  it("changes a link in place: its place, its tap count and its hidden mark stay", async () => {
+    const { userId } = await makerWithPage();
+    await addSome(userId, "first", "second");
+    const second = await idOf(userId, "second");
+    await service.setHidden(userId, second, true);
+    await db().pageLink.update({ where: { id: second }, data: { taps: 7 } });
+
+    await service.updateLink(userId, second, {
+      kind: "game_elsewhere",
+      title: "  Renamed ",
+      url: "https://store.example.com/new",
+    });
+
+    const links = (await service.pageOf(userId))?.links ?? [];
+    expect(links.map((link) => link.title)).toEqual(["first", "Renamed"]);
+    expect(links[1]).toMatchObject({
+      id: second,
+      kind: "game_elsewhere",
+      url: "https://store.example.com/new",
+      hidden: true,
+      taps: 7,
+    });
+  });
+
+  it("refuses in the words an added link is refused in, and changes nothing", async () => {
+    const { userId } = await makerWithPage();
+    await addSome(userId, "keep");
+    const link = await idOf(userId, "keep");
+    const before = (await service.pageOf(userId))?.links;
+    await expect(
+      service.updateLink(userId, link, { kind: "link", title: "x", url: "http://nope.example.com" }),
+    ).rejects.toMatchObject({ code: "INVALID", message: "A link starts with https://" });
+    await expect(
+      service.updateLink(userId, link, { kind: "link", title: " ", url: "https://ok.example.com" }),
+    ).rejects.toMatchObject({ code: "INVALID", message: "Give the link a name." });
+    expect((await service.pageOf(userId))?.links).toEqual(before);
+  });
+
+  it("lets nobody change another maker's link", async () => {
+    const a = await makerWithPage();
+    const b = await makerWithPage();
+    await addSome(a.userId, "mine");
+    const link = await idOf(a.userId, "mine");
+    await expect(
+      service.updateLink(b.userId, link, { kind: "link", title: "x", url: "https://x.example.com" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect((await service.pageOf(a.userId))?.links).toMatchObject([{ title: "mine" }]);
+  });
+});
+
+describe("taking a page down", () => {
+  it("removes the page, its links and its photo, and frees the address", async () => {
+    const { userId, handle } = await makerWithPage();
+    await addSome(userId, "one", "two");
+    await service.savePhoto(userId, {
+      contentType: "image/png",
+      bytes: Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]),
+    });
+    const key = (await service.pageOf(userId))?.photoKey ?? "";
+    expect(files.keys()).toContain(key);
+
+    await service.removePage(userId);
+
+    expect(await service.pageOf(userId)).toBeNull();
+    expect(await service.pageByHandle(handle)).toBeNull();
+    expect(await db().pageLink.count({ where: { page: { handle } } })).toBe(0);
+    expect(files.keys()).not.toContain(key);
+    // The address is free again, for the same maker or anyone.
+    await service.savePage(userId, { handle, name: "Back again", oneLine: "" });
+    expect((await service.pageOf(userId))?.links).toEqual([]);
+  });
+
+  it("says there is no page to take down when there is none, and touches no other page", async () => {
+    const lonely = await createUser(db());
+    const other = await makerWithPage();
+    await expect(service.removePage(lonely)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(await service.pageOf(other.userId)).not.toBeNull();
   });
 });

@@ -275,6 +275,14 @@ describe("startGame", () => {
     expect(second.slug).toBe("cloud-nine-2");
   });
 
+  it.each(["New", "GitHub", "Page"])(
+    "never gives a game named %s a maker's screen's address",
+    async (name) => {
+      const game = await service.startGame({ makerUserId: await createUser(db()), name });
+      expect(game.slug).toBe(`${name.toLowerCase()}-2`);
+    },
+  );
+
   it("takes a name of 60 characters", async () => {
     await expect(
       service.startGame({ makerUserId: await createUser(db()), name: `Sixty ${"z".repeat(54)}` }),
