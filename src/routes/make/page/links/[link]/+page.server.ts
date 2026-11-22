@@ -1,5 +1,5 @@
 import { error, fail, redirect } from "@sveltejs/kit";
-import { LINK_TITLE_MAX, linkKindOf } from "../../../../../features/pages/pages.ts";
+import { LINK_KIND_CHOICES, LINK_TITLE_MAX, linkKindOf } from "../../../../../features/pages/pages.ts";
 import { ownPage } from "../../own-page.server";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -10,7 +10,7 @@ export const load: PageServerLoad = async (event) => {
   const { page } = await ownPage(event);
   const link = page.links.find((candidate) => candidate.id === event.params.link);
   if (link === undefined) error(404, "Not found");
-  return { title: link.title, kind: link.kind, id: link.id };
+  return { title: link.title, kind: link.kind, id: link.id, choices: [...LINK_KIND_CHOICES] };
 };
 
 export const actions: Actions = {

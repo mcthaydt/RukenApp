@@ -1,12 +1,11 @@
 <!-- A new link, question one of two: what it should say, and what kind it is. -->
 <script lang="ts">
-  import { LINK_KIND_CHOICES } from "../../../../../features/pages/pages.ts";
   import Picks from "../../../parts/Picks.svelte";
   import QuestionScreen from "../../../parts/QuestionScreen.svelte";
   import TextAnswer from "../../../parts/TextAnswer.svelte";
   import type { PageProps } from "./$types";
 
-  let { form }: PageProps = $props();
+  let { data, form }: PageProps = $props();
 </script>
 
 <QuestionScreen
@@ -21,7 +20,7 @@
     name="kind"
     legend="What kind is it?"
     plain
-    options={LINK_KIND_CHOICES.map(({ value, title }) => ({ value, title }))}
+    options={data.choices}
     chosen={[form?.kind ?? "link"]}
     problem={undefined}
   />

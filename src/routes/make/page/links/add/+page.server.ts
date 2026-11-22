@@ -1,5 +1,5 @@
 import { fail, redirect } from "@sveltejs/kit";
-import { LINK_TITLE_MAX, linkKindOf } from "../../../../../features/pages/pages.ts";
+import { LINK_KIND_CHOICES, LINK_TITLE_MAX, linkKindOf } from "../../../../../features/pages/pages.ts";
 import { ownPage } from "../../own-page.server";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -8,7 +8,7 @@ import type { Actions, PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async (event) => {
   await ownPage(event);
-  return {};
+  return { choices: [...LINK_KIND_CHOICES] };
 };
 
 export const actions: Actions = {
