@@ -27,12 +27,11 @@ export function httpsOnly(siteOrigin: () => string): Handle {
     if (new URL(siteOrigin()).protocol !== "https:") return resolve(event);
 
     if (cameByPlainHttp(event.url, event.request.headers)) {
-      const secure = new URL(event.url);
-      secure.protocol = "https:";
+      const secure = `https://${event.url.host}${event.url.pathname}${event.url.search}`;
       // 308 keeps the method and the body, so a form posted over http is posted again over https, not dropped.
       return new Response(null, {
         status: 308,
-        headers: { location: secure.href, "strict-transport-security": HSTS_HEADER },
+        headers: { location: secure, "strict-transport-security": HSTS_HEADER },
       });
     }
 
