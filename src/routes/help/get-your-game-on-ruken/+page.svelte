@@ -125,7 +125,7 @@
     <li>Your wide video, for computers.</li>
     <li>
       Who it's for: 3+, 7+, 12+, 16+ or 18+. An 18+ game gets one more question, about sex or nudity, gore and
-      drugs. No game may have pornography or gambling.
+      drugs. No game may have pornography, gambling or ads.
     </li>
   </ol>
   <p>

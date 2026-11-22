@@ -228,7 +228,7 @@ test("an 18+ game is asked one more question, and a 12+ game is not", async ({ p
   await expect(page.getByText("Question 7 of 7")).toBeVisible();
   await expect(
     page.getByText(
-      "Only adults will see this game. Sex or nudity is fine here. No game may have pornography or gambling.",
+      "Only adults will see this game. Sex or nudity is fine here. No game may have pornography, gambling or ads.",
     ),
   ).toBeVisible();
   // "None of these" stands alone: choosing it unticks the others, and choosing another unticks it.

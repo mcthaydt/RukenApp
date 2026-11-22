@@ -82,6 +82,22 @@ test("an old send back for where the game plays opens, asks for nothing, and can
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Waiting for review");
 });
 
+// The Owner, 2026-11-22: "No game may have pornography, gambling, or ads." Staff can send a game back for its ads,
+// and the maker reads what to do about them.
+test("sent back for ads: the maker reads that games on Ruken can't have ads", async ({ page }) => {
+  const { slug } = await gameWhere(page, { state: "sent_back", toFix: [{ part: "files", reason: "ads" }] });
+
+  await page.goto(`/make/${slug}`);
+
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sent back");
+  const card = page.locator("a.fix");
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("Needs fixing");
+  await expect(card).toContainText(
+    "Games on Ruken can't have ads. Take them out on GitHub, then send it again.",
+  );
+});
+
 test("staff's own line shows under the reason", async ({ page }, testInfo) => {
   const { slug } = await gameWhere(page, {
     state: "sent_back",
