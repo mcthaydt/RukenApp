@@ -67,7 +67,12 @@ test("a plain form shows its button busy while it sends, and a second press send
   await expect(page.getByRole("button", { name: "Sign in" })).not.toHaveAttribute("aria-busy", "true");
 });
 
-test("a video shimmers, with a spinner, until it has loaded", async ({ page, browser, request, browserName }, testInfo) => {
+test("a video shimmers, with a spinner, until it has loaded", async ({
+  page,
+  browser,
+  request,
+  browserName,
+}, testInfo) => {
   test.setTimeout(180_000);
   const game = await addGame(browser, request);
   await page.goto(`/g/${game.slug}`);
@@ -81,7 +86,10 @@ test("a video shimmers, with a spinner, until it has loaded", async ({ page, bro
   const loading = page.locator("video[data-loading]");
   await expect(loading.first()).toBeVisible();
   // Owner, 2026-11-22: "The videos don't have a spinner before they load in the panel": a spinner turns in it too.
-  await expect(loading.first()).toHaveCSS("background-image", /^url\("data:image\/svg\+xml.*animateTransform/);
+  await expect(loading.first()).toHaveCSS(
+    "background-image",
+    /^url\("data:image\/svg\+xml.*animateTransform/,
+  );
   // The picture waits for the page's fonts, and WebKit says its fonts are ready only once the held clips have come, so
   // the phone would wait for ever. The tablet and the computer still take it.
   if (browserName !== "webkit") await showTheOwner(page, testInfo, "a video while it loads");
