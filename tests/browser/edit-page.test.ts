@@ -450,32 +450,39 @@ test("a colour tapped before the screen's scripts arrive is still the one picked
 });
 
 /**
- * Holds the page's scripts back, so a journey can act on a screen before it has come alive, for as long as it needs.
- * One route serves the whole journey, set before anything loads, and each hold opens a new gate on it. Every script it
- * passes on is marked not to be kept: Safari's engine serves a script it already has without asking the route, so a
- * second screen came alive unheld in the middle of a fill (run 45033130832). `release` checks the hold caught the
- * screen's scripts, so a hold that missed fails here instead of racing.
+ * Holds the next screen back from coming alive, so a journey can act on it first, for as long as it needs. The screen's
+ * own start script waits for `release`: the page is passed on with that script told to wait inside the page, so nothing
+ * depends on which script requests the browser lets a route see. Holding the script requests did not hold in Safari's
+ * engine: after the first page, its script requests never reached the route (run 45041123880), and the screen came
+ * alive unheld. `release` fails if the screen it was given was not held.
  */
-async function holdScripts(page: Page): Promise<{ hold: () => void; release: () => Promise<void> }> {
-  let gate = Promise.resolve();
-  let open: () => void = () => undefined;
-  let caught = 0;
-  await page.route(/\.m?js(\?.*)?$/, async (route) => {
-    caught += 1;
-    await gate;
-    const response = await route.fetch();
-    await route.fulfill({ response, headers: { ...response.headers(), "cache-control": "no-store" } });
-  });
-  return {
-    hold() {
-      caught = 0;
-      gate = new Promise<void>((resolve) => {
-        open = resolve;
+async function holdNextScreen(page: Page): Promise<{ release: () => Promise<void> }> {
+  const waitHere = ".then(async (kit) => {";
+  let held = false;
+  await page.route(
+    (address) => !held && !address.pathname.startsWith("/_app/"),
+    async (route) => {
+      if (held || !route.request().isNavigationRequest()) {
+        await route.fallback();
+        return;
+      }
+      const response = await route.fetch();
+      const html = await response.text();
+      expect(html, "the screen has a start script to hold").toContain(waitHere);
+      held = true;
+      await route.fulfill({
+        response,
+        body: html.replace(waitHere, `${waitHere} await new Promise((go) => { window.__letItStart = go; });`),
       });
     },
+  );
+  return {
     async release() {
-      await expect.poll(() => caught, { message: "the screen's scripts were held back" }).toBeGreaterThan(0);
-      open();
+      await page.waitForFunction(() => "__letItStart" in window, undefined, { timeout: 15_000 });
+      await page.evaluate(() => {
+        (window as unknown as { __letItStart: () => void }).__letItStart();
+      });
+      await page.unrouteAll({ behavior: "wait" });
     },
   };
 }
@@ -484,27 +491,26 @@ test("words typed over a saved answer before the screen has come alive are kept 
   page,
 }) => {
   // Run 44977261003: a name typed the moment the screen showed was put back to the saved one as the screen came alive,
-  // so Save kept the old name. Holding the scripts back makes that moment as long as it needs to be.
-  const scripts = await holdScripts(page);
+  // so Save kept the old name. Holding the screen back makes that moment as long as it needs to be.
   const maker = await signUp(page);
   await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
 
   // A one-line box (the name).
-  scripts.hold();
+  const screen = await holdNextScreen(page);
   await page.goto("/make/page/name", { waitUntil: "commit" });
   await page.getByLabel("What should your page call you?").fill("Quick Owl");
-  await scripts.release();
+  await screen.release();
   await pageHasSettled(page);
   await expect(page.getByLabel("What should your page call you?")).toHaveValue("Quick Owl");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
   await expect(page.getByRole("link", { name: /^Name/ })).toContainText("Quick Owl");
 
-  // A box that grows with its words (the one line), with the scripts held back again.
-  scripts.hold();
+  // A box that grows with its words (the one line), held back again.
+  const lineScreen = await holdNextScreen(page);
   await page.goto("/make/page/line", { waitUntil: "commit" });
   await page.getByLabel("Say one line about you").fill("I make quick games.");
-  await scripts.release();
+  await lineScreen.release();
   await pageHasSettled(page);
   await expect(page.getByLabel("Say one line about you")).toHaveValue("I make quick games.");
   await page.getByRole("button", { name: "Save" }).click();
@@ -517,14 +523,13 @@ test("words selected in a saved answer before the screen has come alive stay sel
 }) => {
   // Run 45033130832: the saved line was selected, the screen came alive, and the words typed next were added after the
   // saved line ("I make small games.I make quick games.") instead of taking its place.
-  const scripts = await holdScripts(page);
   const maker = await signUp(page);
   await givePage(maker, { name: "Slow Owl", oneLine: "I make small games." });
-  scripts.hold();
+  const screen = await holdNextScreen(page);
   await page.goto("/make/page/line", { waitUntil: "commit" });
   const box = page.getByLabel("Say one line about you");
   await box.selectText();
-  await scripts.release();
+  await screen.release();
   await pageHasSettled(page);
   await page.keyboard.type("I make quick games.");
   await expect(box).toHaveValue("I make quick games.");
