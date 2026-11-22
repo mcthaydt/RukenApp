@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { givePage, makerNumberOf } from "./support/database.ts";
-import { gameWhere } from "./support/game.ts";
+import { connectGitHubFromFiles, gameWhere, startAtFiles } from "./support/game.ts";
 import { rgb, token } from "../support/look-tokens.ts";
 import { CARD_SCREENS, layoutHasSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -195,4 +195,45 @@ test("the feed, a game's page and a maker's page: nothing is underlined", async 
     expect(underlined, address).toEqual([]);
     expect(unseen, address).toEqual([]);
   }
+});
+
+test("the goodbye screen: Sign in in its sentence is a blue, heavier link with no line under it", async ({
+  page,
+}) => {
+  await signUp(page);
+  await page.goto("/me");
+  await page.getByRole("link", { name: "Delete my account" }).click();
+  await page.getByRole("button", { name: "Delete my account" }).click();
+  await expect(page.getByRole("heading", { name: "Your account will be deleted." })).toBeVisible();
+  await expectRealButtons(page);
+  const signIn = page.getByRole("link", { name: "Sign in", exact: true });
+  await expect(signIn).toHaveCSS("color", rgb(token("--pay")));
+  await expect(signIn).toHaveCSS("text-decoration-line", "none");
+});
+
+test("Join on a game's page, for someone who is not a member, is a button", async ({ page, browser }) => {
+  const { slug } = await gameWhere(page, { state: "live" });
+  const visitor = await browser.newContext({ baseURL: "http://localhost:4173" });
+  try {
+    const player = await visitor.newPage();
+    await player.goto(`/g/${slug}`);
+    await pageHasSettled(player);
+    const join = player.getByRole("link", { name: "Join", exact: true });
+    await expect(join).toBeVisible();
+    await expect(join).toHaveCSS("text-decoration-line", "none");
+    expect((await join.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await expectRealButtons(player);
+  } finally {
+    await visitor.close();
+  }
+});
+
+test("the files question: the fold-out and the GitHub links are real buttons", async ({ page }) => {
+  const { slug } = await startAtFiles(page);
+  await expectRealButtons(page);
+  await connectGitHubFromFiles(page, slug);
+  const fold = page.getByText("Change the branch or folder");
+  await expect(fold).toHaveCSS("text-decoration-line", "none");
+  await expect(fold).toHaveCSS("background-color", rgb(token("--felt-raised")));
+  await expectRealButtons(page);
 });

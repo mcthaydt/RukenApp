@@ -438,7 +438,7 @@ textarea {
 /* A fold-out ("Change the branch or folder") is a quiet button (below) that opens what is under it. It has an arrow where
    the browser draws its own triangle: pointing right while it is shut, and down while it is open, the usual sign for
    "opens here" (a plus read as "add"). */
-summary {
+details:not(.menu, .accepted) > summary {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -454,13 +454,19 @@ summary {
   transition: transform var(--press-time);
 }
 
-.card summary {
+.card details:not(.menu, .accepted) > summary {
   background: var(--sage);
   color: var(--ink);
 }
 
-summary:active {
+details:not(.menu, .accepted) > summary:active {
   transform: scale(var(--press-scale));
+}
+
+/* The play screen's RKN tab and the folded "accepted" card draw their own summary; nothing above reaches them. */
+.menu > summary,
+.accepted > summary {
+  list-style: none;
 }
 
 summary::-webkit-details-marker {
@@ -1974,7 +1980,7 @@ a.foot:active {
 /* "Keep the old one" on a question: under the buttons, not in them, so the bar keeps one main action. It comes after the
    Save button in the form, so Enter still saves. */
 .asks .keep {
-  margin-top: 1.5rem;
+  margin-top: 0.75rem;
 }
 
 /* What a live game's maker changed and staff have not said yes to yet: a quiet label beside it, so nobody reads it as
@@ -2219,7 +2225,7 @@ button:active,
   button,
   .button,
   .quiet,
-  summary,
+  details:not(.menu, .accepted) > summary,
   a.foot,
   .screen a.help,
   .file > span {
@@ -2229,7 +2235,7 @@ button:active,
   button:active,
   .button:active,
   .quiet:active,
-  summary:active,
+  details:not(.menu, .accepted) > summary:active,
   a.foot:active,
   .screen a.help:active,
   .file:active > span,
@@ -2338,9 +2344,6 @@ a.sheet.fix {
   /* The card has no padding above its line, so a summary's pull on its margins (above) would draw the card up into the
      one over it. */
   margin-block: 0;
-  width: auto;
-  padding: 0;
-  background: none;
   text-decoration: none;
   display: flex;
   align-items: center;

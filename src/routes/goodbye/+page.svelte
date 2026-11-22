@@ -14,7 +14,7 @@
     <h1>Your account will be deleted.</h1>
     <p>We'll delete it on {data.date}. You're signed out now.</p>
     <!-- Back to /me, so the welcome-back line and the account are the first things they see. -->
-    <p>Changed your mind? <a class="quiet" href="/sign-in?next=%2Fme">Sign in</a> before then.</p>
+    <p>Changed your mind? <a href="/sign-in?next=%2Fme">Sign in</a> before then.</p>
   {:else}
     <h1>You're signed out.</h1>
   {/if}
