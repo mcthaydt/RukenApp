@@ -64,7 +64,7 @@ test("a maker makes a game, players find it, the maker changes it while it is li
   await expect(page.getByText("Ruken can't see any of your games on GitHub yet.")).toBeVisible();
   await page.getByRole("link", { name: "Choose on GitHub" }).click();
   // GitHub sends her back to the same question, now with her games to pick from.
-  await expect(page).toHaveURL(`/make/${slug}/files`);
+  await expect(page).toHaveURL(`/make/${slug}/files?looked=1`);
   await pageHasSettled(page);
   await expect(page.getByText("Save copies your game from GitHub and sends it for review.")).toBeVisible();
   await showTheOwner(page, testInfo, "a live game's files being changed (Save)");

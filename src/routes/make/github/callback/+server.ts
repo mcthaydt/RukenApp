@@ -31,6 +31,16 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     if (error instanceof GameError) redirect(303, failed);
     throw error;
   });
+  // What GitHub listed, by account, with no repository names and no token: when a maker says Ruken can't see a game,
+  // the site's log shows whether GitHub offered that account at all.
+  console.info(
+    `GitHub listed ${String(found.length)} installation(s): ${found
+      .map((one) => `${one.accountLogin} (${String(one.repositories.length)} repos)`)
+      .join(", ")}`,
+  );
   await service.rememberConnection(userId, found);
-  redirect(303, filesQuestion);
+  // Back from GitHub's sign-in (an install sends `installation_id` too): the list is fresh, so the question's link now
+  // opens the install page, for a game GitHub still does not list.
+  const signedIn = url.searchParams.get("installation_id") === null;
+  redirect(303, signedIn && game !== null ? `${filesQuestion}?looked=1` : filesQuestion);
 };
