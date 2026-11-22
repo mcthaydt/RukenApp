@@ -191,11 +191,16 @@ test("with no script, Wishlist is a plain form that comes back to the same game"
   try {
     await beforeLaunch(context);
     const plain = await context.newPage();
+    // Without script there is no "settled" to wait for, so the screen's entrance is skipped, as reduced motion does.
+    await plain.emulateMedia({ reducedMotion: "reduce" });
     await plain.goto(`/g/${free.slug}`);
-    await wishlist(plain).click();
+    // Pressed from the keyboard: on a phone the fixed bar can sit over a button a mouse press scrolls to.
+    await wishlist(plain).focus();
+    await plain.keyboard.press("Enter");
     await expect(plain).toHaveURL(`/g/${free.slug}`);
     await expect(onList(plain)).toBeVisible();
-    await onList(plain).click();
+    await onList(plain).focus();
+    await plain.keyboard.press("Enter");
     await expect(plain).toHaveURL(`/g/${free.slug}`);
     await expect(wishlist(plain)).toBeVisible();
   } finally {
