@@ -90,6 +90,14 @@ Sent to the coordinator with this audit.
 - Evidence: `.claude/skills/this-repo/SKILL.md`, Layout, lists eight features; `src/features/feed/` is the ninth.
 - Fix: this pull request adds it.
 
+## Status, 2026-11-22 01:42 UTC
+
+- P1, P2, P3 (feed plan), P7, P11: fixed in this pull request. P2 also carries the `make-second-look.test.ts:302` flaky entry from `e34bb14`.
+- P4, P6, P8: closed by practice. The coordinator confirmed (01:32 UTC) that the five practices are a must-include in every thread prompt.
+- P5: the slice 2 retrospective ran in its own fresh thread (`abf7284` on `claude/project-thread-x7jzxz`), waiting for a pull request slot.
+- P9: the two flaky root causes run in their own fresh thread, "Fix the two flaky tests".
+- P10: closed. The owner approved deleting the unit A screenshots, and the three folders are gone (coordinator, 01:34 UTC).
+
 ## Not gaps
 
 - The kit's default stack (bun for tests and checks, Workers Builds deploying `main`) is for new apps; Ruken is its reference and keeps Vitest and the owner's manual deploy. CI tools are the "Speed up CI" thread's.
