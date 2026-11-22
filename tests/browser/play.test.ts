@@ -12,6 +12,7 @@ import { endMembershipOf, userIdOf } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { token } from "../support/look-tokens.ts";
 
 // Playing (spec 4): a game in a frame on an address of its own, and Ruken's one small Menu tab over it.
 
@@ -277,12 +278,19 @@ test("the Menu tab never leaves the screen: dragged past an edge, kept from a ta
   await inside();
 });
 
-test("a press that moves under 8px opens the menu, and the tab is see-through at rest", async ({ page }) => {
+test("a press that moves under 8px opens the menu, and the tab is frosted glass at rest", async ({
+  page,
+}) => {
   await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   const tab = tabOf(page);
-  const rest = await tab.evaluate((element) => getComputedStyle(element).backgroundColor);
-  expect(rest).toMatch(/rgba\(.*0\.72\)|color\(srgb.*\/ 0\.72\)/);
+  const rest = await tab.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return `${style.backgroundColor}|${style.backdropFilter || style.getPropertyValue("-webkit-backdrop-filter")}`;
+  });
+  // The glass token as the browser writes it: rgb(17 19 20 / 0.12) reads back as rgba(17, 19, 20, 0.12).
+  const [red, green, blue, alpha] = token("--glass-bg").match(/[\d.]+/g) ?? [];
+  expect(rest).toBe(`rgba(${red}, ${green}, ${blue}, ${alpha})|${token("--glass-filter")}`);
   const box = await tab.boundingBox();
   if (box === null) throw new Error("the tab has no box");
   await page.mouse.move(box.x + 20, box.y + 20);
