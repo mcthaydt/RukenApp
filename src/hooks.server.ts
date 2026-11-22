@@ -1,7 +1,8 @@
 import { sequence } from "@sveltejs/kit/hooks";
-import { authServices, createHandle, setMoneyCheck } from "./features/accounts/accounts.ts";
+import { authServices, createHandle, httpsOnly, setMoneyCheck } from "./features/accounts/accounts.ts";
 import { cloudflareFiles, cloudflarePlatform } from "./lib/server/cloudflare.ts";
 import { databasePerRequest } from "./lib/server/db.ts";
+import { requireEnv } from "./lib/server/env.ts";
 import { setFileStore } from "./lib/server/files.ts";
 import { membershipServices } from "./features/membership/membership.ts";
 import { moneyServices } from "./features/money/money.ts";
@@ -20,10 +21,13 @@ setMoneyCheck(
     (await moneyServices().hasBeenPaid(userId)),
 );
 
-// databasePerRequest is first, so every route and form reaches its own request's database client. createHandle
+// httpsOnly is first: a plain-http visit is sent to https before anything else runs, because the sign-in cookie is
+// never kept over http. databasePerRequest is next, so every route and form reaches its own request's database
+// client. createHandle
 // then says who sent the request; it builds the sign-in services on the first request that needs them, so
 // /healthz answers without them.
 export const handle = sequence(
+  httpsOnly(() => requireEnv("BETTER_AUTH_URL", process.env)),
   databasePerRequest(),
   createHandle(() => authServices().handleDeps),
 );
