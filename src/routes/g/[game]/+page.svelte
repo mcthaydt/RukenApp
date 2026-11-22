@@ -99,7 +99,7 @@
           </button>
         {/if}
       </div>
-      <a class="back" href="/">← Ruken</a>
+      <a class="back" href="/">← Back to the feed</a>
       <div class="heroname">
         <h1>{data.name}</h1>
         <p>{data.oneLine}</p>
@@ -196,7 +196,8 @@
             <img src={data.maker.photo} alt="" width="48" height="48" />
           {/if}
           <span
-            >Made by <a href={`/${data.maker.handle}`}><strong>{data.maker.name}</strong></a
+            >Made by <a data-sveltekit-preload-data="off" href={`/${data.maker.handle}`}
+              ><strong>{data.maker.name}</strong></a
             >{#if data.maker.oneLine !== ""}
               <q>{data.maker.oneLine}</q>{/if}</span
           >
