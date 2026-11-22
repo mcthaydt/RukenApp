@@ -117,7 +117,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Panels feel like an app: swipes stay in the feed, no zoom, no highlight (lane 2) | #323 | lane 2 review PASS at `7c6b49a` (audit `2a463cf`); full run, then merge | not measured (short path, no plan) |
 | Deploy from a green `main` (lane 3) | spec `2026-11-22-deploy-from-green-main-design.md` on `claude/project-thread-mqcz6h` | spec written, waiting on its plan audit | 0% (0 of 8 plan steps ticked) |
 | Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
-| Private move, P0: hooks in RukenPrivate (lane 3) | RukenPrivate #19 | built at `a52d930`; waiting for its implementation audit | not measured (one step) |
+| Private move, P0: hooks in RukenPrivate (lane 3) | RukenPrivate #19 | merged at `018ccc9` (head `a52d930`, implementation audit PASS `2bc2b5f`); hooks load only in a session started in a RukenPrivate checkout | 100% |
 | Private move, P1: the spec; the learned spec trimmed, the full one to RukenPrivate (lane 1) | branch `claude/project-thread-t02epm` | plan audit 3 PASS, re-pointed to `05e6bfc`; waiting for a pull request slot; the trim and the RukenPrivate copy after P0 | not measured |
 | Private move, P2: the `Ranker` seam and the public ranker (lane 2) | none yet | waits on #329 | not started |
 | Private move, P3: the private Worker `ruken-private` (lane 3) | none yet | waits on P0, P2; its deploy on the Cloudflare token on RukenPrivate | not started |
@@ -125,6 +125,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Private move, P5: the learned feed's execution prompt | project files `prompts/learned-feed-unit-execution.md` | rewritten 2026-11-22: each unit's repo, which half first, the "stays true" rule; the progress records in this commit | done (prompt), this row's records with P1 |
 | Private move, P6: limit numbers private (lane 3) | none yet | waits on P0 | not started |
 | Private move, P7: the pool maths and play count private (lane 3, money) | none yet | waits on P3; built last, with its own implementation audit | not started |
+| Private move, P8: the `pr-rules` check ported to RukenPrivate (lane 3, CI) | none yet | waits on C10's Actions measure; added on the P0 audit's note | not started |
 
 ## Slice 2
 
