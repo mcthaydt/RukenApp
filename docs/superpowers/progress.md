@@ -68,7 +68,7 @@ Each entry is dated and quotes the owner where the source does; "(paraphrase)" m
 - 2026-11-22 14:32 UTC: "padd some padding to the tab icon". The tab icon (`favicon.ico`, `icons/favicon-32.png`) keeps a clear green edge around RKN, 14% of the side on each edge. Merged (#320, `74bd185`).
 - 2026-11-22 15:23 UTC, answering whether a home-screen launch opens as its own app: "Home-screen app: yes, full screen". The manifest keeps `"display": "standalone"`; on an iPhone the home-screen app keeps its own sign-in, so a player signs in there once. Merged (#320, `74bd185`).
 - 2026-11-22 15:23 UTC: "why aren't deploys automatic and just coming from main?" They already were: Cloudflare's own build deploys every push to `main`, but before the tests finish (`bb33e0b` went live at 14:52 UTC; its `gate` failed at 15:00 UTC). 15:26 UTC, choosing A: "A" (deploy from GitHub Actions only after CI passes on `main`, then check the live site; the owner adds a Cloudflare key and turns off Cloudflare's own build). Spec `2026-11-22-deploy-from-green-main-design.md`.
-- 2026-11-22 17:15 UTC: "both", answering whether to raise the open pull request limit to 10 and push the learned feed's clean branch. The limit on open pull requests from this repo's own branches goes from 6 to 10 (CLAUDE.md Settings, `maxOpenPrs` in `.claude/hooks/rules.json`, `pr-rules`); docs-only pull requests still count and forks still do not. The branch limit goes from 7 to 11 (`main` plus 10). The 6 writers stay. Spec `2026-11-22-open-pr-limit-ten-design.md` (plan audit 1 PASS at `fe0a7c1`); the test fixture fix merged (#335); the number on `claude/project-thread-hyffd9`.
+- 2026-11-22 17:15 UTC: "both", answering whether to raise the open pull request limit to 10 and push the learned feed's clean branch. The limit on open pull requests from this repo's own branches goes from 6 to 10 (CLAUDE.md Settings, `maxOpenPrs` in `.claude/hooks/rules.json`, `pr-rules`); docs-only pull requests still count and forks still do not. The branch limit goes from 7 to 11 (`main` plus 10). The 6 writers stay. Spec `2026-11-22-open-pr-limit-ten-design.md` (plan audit 1 PASS at `fe0a7c1`); implementation audit 1 PASS at `7cfaf24`, re-pointed to `c9af307`. Done (#335, #336).
 
 ## Active milestone: "Finish Ruken"
 
@@ -77,7 +77,7 @@ Setup (first-time setup, lane 2) is done and moved to History, Setup.
 Current work, from GitHub on 2026-11-22 02:41 UTC (open pull requests: #209 phone sign-in; #292 this apps-kit practice alignment):
 
 - #209, phone sign-in (lane 3): audit PASS at `628803f`, waiting on its full run. After it merges and deploys, the owner runs the attach-phone command once; then it is retired.
-- The open pull request limit is 6 (#288, #289 merged); 10 on `claude/project-thread-hyffd9`.
+- The open pull request limit is 10 (#335, #336 merged).
 - Apps-kit practice alignment: the gap list and its fixes, on `claude/project-thread-iexvtj`.
 - "Speed up CI": its own thread.
 
