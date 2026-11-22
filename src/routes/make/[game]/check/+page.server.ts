@@ -6,7 +6,7 @@ import {
   gamesServices,
   type MakerGame,
 } from "../../../../features/games/games.ts";
-import { hasAgreed } from "../../../../features/make/make.ts";
+import { hasAgreed, sendWhenAgreed } from "../../../../features/make/make.ts";
 import { prisma } from "../../../../lib/server/db.ts";
 import { ownGame } from "../../own-game.server.ts";
 import { ALL_PARTS, laidOut } from "../../laid-out.server.ts";
@@ -51,7 +51,7 @@ export const actions: Actions = {
     const elsewhere = await whereItIsNotReady(userId, game);
     if (elsewhere !== null) redirect(303, elsewhere);
     try {
-      await gamesServices().service.sendForReview(game.id, userId);
+      await sendWhenAgreed(prisma(), gamesServices().service, game.id, userId);
     } catch (problem) {
       // The service's refusal is in its own words, shown under the heading.
       if (problem instanceof GameError) return fail(400, { problem: problem.message });

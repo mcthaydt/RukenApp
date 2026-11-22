@@ -1,0 +1,39 @@
+[
+  {
+    "id": "sign-in",
+    "browser": "let a computer act for you",
+    "command": "sign-in",
+    "mcp": null,
+    "endpoint": "POST /api/v1/sign-in/start, POST /api/v1/sign-in/finish",
+    "actions": [],
+    "built": true
+  },
+  {
+    "id": "whoami",
+    "browser": "see who you are",
+    "command": "whoami",
+    "mcp": "whoami",
+    "endpoint": "GET /api/v1/me",
+    "actions": [],
+    "built": true
+  },
+  {
+    "id": "sign-out",
+    "browser": "stop this computer acting for you",
+    "command": "sign-out",
+    "mcp": null,
+    "endpoint": "DELETE /api/v1/me/key",
+    "actions": [],
+    "built": true
+  },
+  {
+    "id": "account",
+    "browser": "the account screens (/me)",
+    "command": "account",
+    "mcp": null,
+    "endpoint": null,
+    "actions": [],
+    "built": true,
+    "browserOnly": true
+  }
+]

@@ -5,6 +5,8 @@ export type { AgeRating, ClipShape, ContentMark, GamePart, GamePlaysOn } from ".
 export { connectHostsFrom, isMissingIndexHtml, megabytes } from "./files-check.ts";
 export { ageProblem, marksProblem } from "./fields.ts";
 export { GameError } from "./game-error.ts";
+export { liveSendOf, type LiveSend } from "./live-send.ts";
+export { ownGameOr404 } from "./own-game.ts";
 export { RATING_LINE_LIST, ratingLine, ratingWords, websitesWords } from "./laid-out.ts";
 export { medianMs, playersWords, sittingWords } from "./play-facts.ts";
 export { HELD_PARTS, nextStepWords, toFixWords, waitingLine } from "./review.ts";
@@ -30,5 +32,5 @@ export {
   questionsFor,
   type QuestionId,
 } from "./questions.ts";
-export type { Answer, ListedGame, LiveGame, MakerGame } from "./service.ts";
+export type { Answer, GamesService, ListedGame, LiveGame, MakerGame } from "./service.ts";
 export { gamesServices } from "./services.ts";

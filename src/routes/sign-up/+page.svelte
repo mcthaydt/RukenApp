@@ -103,6 +103,10 @@
         We'll text you a code to check it's you, and texts about your account. Message and data rates may
         apply. Reply STOP to stop, HELP for help.
       </p>
+      <p class="note">
+        By joining, you agree to our <a href="/terms">terms</a>. Our <a href="/privacy">privacy page</a> says what
+        we keep.
+      </p>
       {#if form?.error}
         <p class="problem" role="alert">{form.error}</p>
       {/if}

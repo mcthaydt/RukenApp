@@ -140,6 +140,8 @@ test("your account, its password and its delete screen: every action is a real b
   await expectRealButtons(page);
   await page.goto("/me/delete");
   await expectRealButtons(page);
+  await page.goto("/me/computers");
+  await expectRealButtons(page);
 });
 
 test("a maker's screens: Your games, Your page and its links are real buttons", async ({ page }) => {
