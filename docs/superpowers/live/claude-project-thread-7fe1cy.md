@@ -1,8 +1,8 @@
 # Live state: claude/project-thread-7fe1cy
 
 - Current task: make the feed infinite (owner, 2026-11-22 16:00 UTC: "the feed should be infinite").
-- Last commit: 74bd185 (main), at 2026-11-22 16:02 UTC.
-- Next step: tests first (service pages, journey), then the service, the /api/feed route and the feed screen.
+- Last commit: 34bdd80, at 2026-11-22 16:20 UTC.
+- Next step: push, open the draft PR (lane 2), fresh review; phone (WebKit) journeys run in CI only (no WebKit in this container).
 - Open decisions: none. Chosen: when the catalogue runs out, loop it in a fresh shuffle (few games are live).
 
 ## Acceptance criteria (short path; lane 1/2 by paths, given one fresh review)
