@@ -171,7 +171,8 @@
   <p>These companies handle some of your details for us:</p>
   <ul class="bullets">
     <li>
-      <strong>Cloudflare</strong> runs the website, keeps game files, clips and photos, and keeps our logs.
+      <strong>Cloudflare</strong> runs the website, keeps game files, clips and photos. Its network sees your internet
+      address to bring you each page.
     </li>
     <li><strong>Neon</strong> keeps our database.</li>
     <li><strong>Stripe</strong> takes payments and works out tax.</li>
@@ -184,11 +185,10 @@
   <h2>Logs</h2>
   <ul class="bullets">
     <li>
-      Cloudflare keeps a short record of each visit: the page, the time, your internet address and your
-      browser.
+      Ruken keeps no log of visits. What we keep about an account is what this page lists above. Cloudflare's
+      network sees your internet address only to bring you the page, and our logs there are switched off.
     </li>
-    <li>When something goes wrong, the website adds a note about it, so we can fix it.</li>
-    <li>When a maker connects GitHub, we note which GitHub accounts it showed.</li>
+    <li>Nothing about a visit is written down before you say "I agree".</li>
   </ul>
 
   <h2>How long we keep it</h2>

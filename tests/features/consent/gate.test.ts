@@ -1,6 +1,13 @@
 import { isRedirect } from "@sveltejs/kit";
 import { describe, expect, it, vi } from "vitest";
-import { actionOfRoute, consentGate, stripCookies } from "../../../src/features/consent/consent.ts";
+import {
+  actionOfRoute,
+  consentGate,
+  GATED,
+  routeKind,
+  stripCookies,
+} from "../../../src/features/consent/consent.ts";
+import { routeIds } from "./route-ids.ts";
 
 const CONSENT = "rk_consent=v1.2026-11-22; Path=/; HttpOnly; Max-Age=15552000";
 
@@ -84,6 +91,29 @@ describe("the consent gate", () => {
     expect(answer.response.headers.get("location")).toBe(
       "/cookies?for=sign-in&next=%2Fsign-in%3Fnext%3D%2Fme",
     );
+  });
+
+  // Every gated route that exists, run through the gate with no yes: it is sent to the notice or refused, never opened,
+  // and writes nothing. Each gated pattern must have at least one real route, so a pattern cannot go untested.
+  const gatedRoutes = routeIds().filter((id) => routeKind(id) === "gated");
+
+  it("has a real route for every gated pattern", () => {
+    for (const pattern of GATED)
+      expect(
+        gatedRoutes.some((id) => id === pattern || id.startsWith(`${pattern}/`)),
+        pattern,
+      ).toBe(true);
+  });
+
+  it.each(gatedRoutes)("keeps %s shut to a browser with no yes", async (routeId) => {
+    const path = routeId.replace(/\[[^\]]+\]/g, "x");
+    const answer = await run(path, { routeId, method: "POST" });
+    expect(answer.resolved).toBe(false);
+    expect(answer.allowed).toEqual([false]);
+    expect([303, 403]).toContain(answer.response.status);
+    if (answer.response.status === 303) {
+      expect(answer.response.headers.get("location")).toMatch(/^\/cookies\?for=/);
+    }
   });
 
   it("refuses a script's call to a gated route", async () => {

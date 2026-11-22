@@ -64,7 +64,9 @@ export const RUKEN_COOKIE_NAMES: readonly string[] = RUKEN_COOKIES.map((cookie) 
 export function takeBack(cookies: Pick<Cookies, "getAll" | "delete">): void {
   const sent = new Set(cookies.getAll().map((cookie) => cookie.name));
   const mine = RUKEN_COOKIES.filter((cookie) => sent.has(cookie.name));
-  for (const cookie of [...mine].sort((a) => (a.name === CONSENT_COOKIE ? 1 : -1))) {
+  for (const cookie of [...mine].sort(
+    (a, b) => Number(a.name === CONSENT_COOKIE) - Number(b.name === CONSENT_COOKIE),
+  )) {
     cookies.delete(cookie.name, { path: cookie.path });
   }
 }

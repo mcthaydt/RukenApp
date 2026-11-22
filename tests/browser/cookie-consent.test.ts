@@ -1,9 +1,10 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { signUp } from "./support/account.ts";
+import { pageHasSettled, signUp } from "./support/account.ts";
+import { letInTerminal, terminal } from "./support/computers.ts";
 import { NOT_CONSENTED } from "./support/consent.ts";
-import { givePage, pageCounts, playOf } from "./support/database.ts";
+import { givePage, pageCounts, playOf, rateLimitRows } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
-import { forgetRateLimits } from "./support/rate-limits.ts";
+import { forgetRateLimits, journeyClientHeaders } from "./support/rate-limits.ts";
 
 // Nothing is kept before "I agree" (design: cookie consent, criteria 1 to 7). Every other journey starts out having said
 // yes (support/consent.ts); this one does not.
@@ -82,10 +83,14 @@ test("nothing is kept before a yes: every public screen opens, and nothing is se
     `/${maker.handle}`,
     "/help",
     "/legal/maker-agreement",
+    "/privacy",
+    "/terms",
     "/no-such-page-here",
   ]) {
     await page.goto(address);
     await expect(page.locator("body")).toBeVisible();
+    // The legal pages open where they are, never behind the notice.
+    if (address === "/privacy" || address === "/terms") await expect(page).toHaveURL(address);
   }
   // A tap on the maker's link opens it, and is not counted.
   const tapped = await page.request.get(`/${maker.handle}/out/${maker.linkIds[0] ?? ""}`, {
@@ -111,6 +116,7 @@ test("Not now keeps nothing, stays closed while moving around, and comes back on
   context,
 }) => {
   await page.goto(`/g/${game.slug}`);
+  await pageHasSettled(page);
   await notNow(page).click();
   await expect(asking(page)).toHaveCount(0);
   await page.getByRole("link", { name: "Home" }).click();
@@ -126,6 +132,7 @@ test("Not now keeps nothing, stays closed while moving around, and comes back on
   await expect(
     page.getByText("To sign in, Ruken needs to keep a few small things in your browser."),
   ).toBeVisible();
+  await pageHasSettled(page);
   await notNow(page).click();
   await expect(page).toHaveURL("/");
   expect(await whatIsKept(page, context)).toEqual(NOTHING);
@@ -167,7 +174,9 @@ test("saying yes from a game's page keeps the maker who brought the person", asy
   // Pressing a button that needs the yes first sends the person to the notice from the game's page, and keeps it too.
   await context.clearCookies();
   await page.goto(`/g/${game.slug}`);
+  await pageHasSettled(page);
   await notNow(page).click();
+  await expect(asking(page)).toHaveCount(0);
   await page.goto(`/g/${game.slug}`);
   await page.getByRole("link", { name: "Play" }).click();
   await expect(page.getByText("To play, Ruken needs")).toBeVisible();
@@ -236,4 +245,37 @@ test("I agree and Not now are the same size and weight, and reachable by keyboar
   await agree.focus();
   await page.keyboard.press("Tab");
   await expect(no).toBeFocused();
+});
+
+// The machine's own door: the `ruken` command has no browser to say yes in, so its calls need no cookie, but a call
+// with no valid key writes nothing (criterion 6).
+// JSON, as the command sends it: a bodiless DELETE would be taken for a cross-site form.
+const KEY_HEADER = (key: string) => ({
+  authorization: `Bearer ${key}`,
+  "content-type": "application/json",
+  ...journeyClientHeaders(),
+});
+
+test("a computer's key writes with no cookie, and a made-up key writes nothing", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/");
+  await agreeButton(page).click();
+  await expect(asking(page)).toHaveCount(0);
+  await signUp(page);
+  const computer = terminal();
+  await letInTerminal(page, computer);
+  const key = computer.key() ?? "";
+
+  // `request` holds no cookie at all. A made-up key is refused, and no row is written.
+  const rowsBefore = await rateLimitRows();
+  const refused = await request.delete("/api/v1/me/key", { headers: KEY_HEADER(`rk_${"a".repeat(52)}`) });
+  expect(refused.status()).toBe(401);
+  expect(await rateLimitRows()).toBe(rowsBefore);
+  expect((await request.get("/api/v1/me", { headers: KEY_HEADER(key) })).status()).toBe(200);
+
+  // The real key signs the computer out: a write, with no cookie and no yes.
+  expect((await request.delete("/api/v1/me/key", { headers: KEY_HEADER(key) })).status()).toBe(200);
+  expect((await request.get("/api/v1/me", { headers: KEY_HEADER(key) })).status()).toBe(401);
 });

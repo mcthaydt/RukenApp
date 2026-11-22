@@ -16,6 +16,8 @@ const OPEN: readonly string[] = [
   "/help/github",
   "/help/record-screen",
   "/legal/maker-agreement",
+  "/privacy",
+  "/terms",
 ];
 
 /**
@@ -32,15 +34,13 @@ const MACHINE: readonly string[] = ["/webhooks/stripe", "/healthz", "/jobs", "/a
  * Gated: shows the notice or refuses without a yes. A path matches itself and everything under it. A route in none of
  * the three kinds is neither of these either, and fails the test.
  */
-const GATED: readonly string[] = [
+export const GATED: readonly string[] = [
   "/sign-in",
   "/sign-up",
   "/sign-out",
   "/forgot-password",
-  "/reset-password",
   "/join",
   "/g/[game]/play",
-  "/g/[game]/wishlist",
   "/api/auth",
   "/me",
   "/make",

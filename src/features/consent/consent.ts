@@ -10,4 +10,4 @@ export {
   takeBack,
 } from "./cookies.ts";
 export { actionOfRoute, consentGate, stripCookies, type GatedAction } from "./gate.ts";
-export { kindsOfRoute, routeKind, type RouteKind } from "./routes.ts";
+export { GATED, kindsOfRoute, routeKind, type RouteKind } from "./routes.ts";

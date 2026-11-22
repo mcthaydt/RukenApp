@@ -1,20 +1,6 @@
-import { readdirSync } from "node:fs";
-import { relative, resolve, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 import { kindsOfRoute, routeKind } from "../../../src/features/consent/consent.ts";
-
-const ROUTES = resolve(import.meta.dirname, "../../../src/routes");
-
-/** The route id of every `+server.ts`, `+page.server.ts` and `+page.ts` under src/routes (SvelteKit names routes by folder). */
-function routeIds(): string[] {
-  const ids = new Set<string>();
-  for (const entry of readdirSync(ROUTES, { recursive: true, withFileTypes: true })) {
-    if (!entry.isFile() || !/^\+(server|page\.server|page)\.ts$/.test(entry.name)) continue;
-    const folder = relative(ROUTES, entry.parentPath).split(sep).join("/");
-    ids.add(`/${folder}`);
-  }
-  return [...ids].sort();
-}
+import { routeIds } from "./route-ids.ts";
 
 describe("what every route does before a yes", () => {
   it("names every route exactly once: open, machine or gated", () => {
@@ -49,6 +35,8 @@ describe("what every route does before a yes", () => {
       "/[handle=handle]",
       "/g/[game]",
       "/help/github",
+      "/privacy",
+      "/terms",
       "/legal/maker-agreement",
       "/cookies",
     ])
