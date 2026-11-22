@@ -1,6 +1,7 @@
 import { fail, type ActionFailure } from "@sveltejs/kit";
 import type { PrismaClient } from "../../lib/server/db.ts";
 import type { RateLimiter } from "../../lib/server/rate-limit.ts";
+import { removeAllComputers } from "./computer-keys.ts";
 import { hitPasswordChangeLimit } from "./auth-limits-plugin.ts";
 import type { Auth } from "./auth.ts";
 import { callAuth, FORM_MESSAGES, readForm, type FormDeps, type FormEvent } from "./forms.ts";
@@ -104,5 +105,7 @@ export async function changePassword(
   });
   if (response.status === 429) return fail(429, { field: "form", error: FORM_MESSAGES.rateLimited });
   if (!response.ok) return fail(500, { field: "form", error: FORM_MESSAGES.failed });
+  // A changed password ends every computer's key too, so a lost laptop is not kept by it.
+  await removeAllComputers(deps.prisma, account.userId);
   return { done: true };
 }

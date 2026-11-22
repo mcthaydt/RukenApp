@@ -7,6 +7,7 @@ import { createResendMailer, type Mailer } from "../../lib/server/mail.ts";
 import { createRateLimiter } from "../../lib/server/rate-limit.ts";
 import { createTwilioTexter, type Texter } from "../../lib/server/text.ts";
 import { createAuth, sessionInfo, type Auth } from "./auth.ts";
+import { readKey, type ComputerDeps } from "./computer-keys.ts";
 import { codesPausedFor, countWrongCode } from "./auth-limits-plugin.ts";
 import type { CredentialDeps } from "./credentials.ts";
 import { cookiePolicy, type CookiePolicy } from "./cookies.ts";
@@ -48,6 +49,8 @@ export interface AuthServices {
   /** BETTER_AUTH_SECRET, for the keyed hashes of numbers and browsers. */
   secret: string;
   handleDeps: HandleDeps;
+  /** What the computers' keys and sign-in codes need. */
+  computerDeps: ComputerDeps;
   formDeps: FormDeps;
   resetDeps: ResetDeps;
   signUpDeps: SignUpDeps;
@@ -101,8 +104,10 @@ export function createAuthServices(source: Settings, db?: PrismaClient): AuthSer
   });
   const auth = createAuth({ prisma, secret, baseURL, mailer, texter, cookies, clock });
 
+  const computerDeps: ComputerDeps = { prisma, clock, limiter: createRateLimiter(prisma, clock) };
   const handleDeps: HandleDeps = {
     cookies,
+    computerKey: (authorization) => readKey(computerDeps, authorization),
     getSession: (headers) => sessionInfo(auth, headers),
     staffRolesOf: (userId) => staffRolesOf(prisma, userId),
   };
@@ -157,6 +162,7 @@ export function createAuthServices(source: Settings, db?: PrismaClient): AuthSer
     auth,
     secret,
     handleDeps,
+    computerDeps,
     formDeps,
     resetDeps,
     signUpDeps,

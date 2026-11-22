@@ -7,6 +7,14 @@ export interface Platform {
   databaseUrl(): string;
   /** Keeps the host running until the work settles, after the answer has gone out. */
   waitUntil(work: Promise<unknown>): void;
+  /** Where a request came from, as the host's edge sees it (city and country), or nulls when it cannot say. */
+  placeOf(request: Request): Place;
+}
+
+/** A place in the world as words. A null is "not known". */
+export interface Place {
+  city: string | null;
+  country: string | null;
 }
 
 let current: Platform | undefined;
