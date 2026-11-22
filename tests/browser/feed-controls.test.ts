@@ -160,7 +160,7 @@ const fillsTheWindow = async ({ page }: { page: Page }) => {
       throw new Error(`${String(error)}\n${await clipLogOf(page)}`);
     });
 };
-for (let copy = 0; copy < 30; copy += 1)
+for (let copy = 0; copy < 100; copy += 1)
   test(
     `the clip that fills the window is the current one, and only one is; the others wait at their start (copy ${String(copy)})`,
     fillsTheWindow,
