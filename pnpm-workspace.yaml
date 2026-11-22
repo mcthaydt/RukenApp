@@ -1,4 +1,7 @@
-# One app, no workspaces. This file holds pnpm's settings only.
+# The app, and the `ruken` command line package in packages/ruken (plain JavaScript, no dependencies). This file also
+# holds pnpm's settings.
+packages:
+  - packages/*
 
 # Every pnpm script runs on this exact Node, downloaded into pnpm's store, so CI and every machine agree.
 # Bump it with .nvmrc in the same change.

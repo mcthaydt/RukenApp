@@ -47,6 +47,26 @@ describe("httpsOnly on a site served over https", () => {
     expect(response.status).toBe(308);
   });
 
+  it("answers 400 to a plain-http visit to the maker's API, with no redirect, since a key has already crossed the wire", async () => {
+    const { response, resolved } = await answer("https://ruken.io", "http://ruken.io/api/v1/games", {
+      headers: { authorization: "Bearer rk_whatever" },
+    });
+    expect(resolved).toBe(false);
+    expect(response.status).toBe(400);
+    expect(response.headers.get("location")).toBeNull();
+    expect(await response.json()).toEqual({ problem: "Use https://ruken.io." });
+  });
+
+  it("answers 400 to the maker's API when a proxy says the visit came by http, and still redirects every other route", async () => {
+    const proxied = { headers: { "x-forwarded-proto": "http" } };
+    expect((await answer("https://ruken.io", "https://ruken.io/api/v1/me", proxied)).response.status).toBe(
+      400,
+    );
+    expect(
+      (await answer("https://ruken.io", "https://ruken.io/api/auth/sign-in", proxied)).response.status,
+    ).toBe(308);
+  });
+
   it("answers an https visit as usual, and tells the browser to use https from now on", async () => {
     const { response, resolved } = await answer("https://ruken.io", "https://ruken.io/sign-in");
     expect(resolved).toBe(true);
