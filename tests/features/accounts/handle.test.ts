@@ -8,6 +8,7 @@ import type { StaffRole } from "../../../src/lib/server/db.ts";
 interface FakeEvent {
   request: Request;
   url: URL;
+  route: { id: string | null };
   locals: { caller?: Caller };
   cookies: {
     get: Mock<(name: string) => string | undefined>;
@@ -16,13 +17,23 @@ interface FakeEvent {
   };
 }
 
-function fakeEvent(path: string, init: { headers?: Record<string, string> } = {}): FakeEvent {
+/** `agreed: false` is a browser that has not said yes to cookies; every other test is one that has. */
+function fakeEvent(
+  path: string,
+  init: { headers?: Record<string, string>; agreed?: boolean; routeId?: string | null } = {},
+): FakeEvent {
   const url = new URL(path, "http://localhost:5173");
+  const agreed = init.agreed ?? true;
   return {
     request: new Request(url, { headers: init.headers ?? {} }),
     url,
+    route: { id: init.routeId ?? url.pathname },
     locals: {},
-    cookies: { get: vi.fn(() => undefined), set: vi.fn(), parse: vi.fn(parseCookieLine) },
+    cookies: {
+      get: vi.fn((name: string) => (agreed && name === "rk_consent" ? "v1" : undefined)),
+      set: vi.fn(),
+      parse: vi.fn(parseCookieLine),
+    },
   };
 }
 
@@ -76,6 +87,22 @@ describe("createHandle: signed-in sessions", () => {
     expect(getSession).toHaveBeenCalledWith(event.request.headers);
     expect(staffRolesOf).toHaveBeenCalledWith("user_1");
     expect(event.cookies.set).not.toHaveBeenCalled();
+  });
+
+  it("does not read the sign-in cookie until this browser has said yes to cookies", async () => {
+    const getSession = vi.fn(() => Promise.resolve(session));
+    const event = fakeEvent("/", { headers: { cookie: "rk_session=abc" }, agreed: false });
+
+    expect(await run(event, deps({ getSession }))).toEqual({ kind: "none" });
+    expect(getSession).not.toHaveBeenCalled();
+    expect(event.cookies.set).not.toHaveBeenCalled();
+  });
+
+  it("still reads the session on a route only servers call, with no cookie of consent", async () => {
+    const getSession = vi.fn(() => Promise.resolve(session));
+    const event = fakeEvent("/jobs/review", { agreed: false });
+
+    expect(await run(event, deps({ getSession }))).toMatchObject({ kind: "user" });
   });
 
   it("is nobody when there is no session", async () => {

@@ -3229,3 +3229,67 @@ video[data-loading] {
     animation: none;
   }
 }
+
+/* The cookie notice (src/features/consent/Notice.svelte): a frosted card at the bottom of every screen until the browser
+   chooses, above the bar of Home and You where that is shown. Its two answers are one size and one weight: side by side,
+   or one above the other on the smallest phone, each as wide as the other. */
+.consent {
+  position: fixed;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 30;
+  translate: -50% 0;
+  box-sizing: border-box;
+  width: min(100% - 1.5rem, var(--width-read));
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-card);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  color: var(--chalk);
+}
+
+.consent.above-bar {
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.25rem);
+}
+
+.consent h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.consent p {
+  margin: 0.5rem 0 0;
+}
+
+.consent a {
+  color: var(--chalk);
+}
+
+.consent-answers {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.consent-answers > form,
+.consent-answers > .button,
+.consent-answers > button {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+}
+
+.consent-answers button,
+.consent-answers .button {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+@media (max-width: 22rem) {
+  .consent-answers {
+    flex-direction: column;
+  }
+}

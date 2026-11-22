@@ -6,6 +6,7 @@
   the window's shape of clip, and moves a clip at a time on the arrow keys, Page Up, Page Down and Space.
 -->
 <script lang="ts">
+  import { deviceStore } from "../consent/consent.browser.ts";
   import { loads } from "../../lib/loads.ts";
   import { onMount, tick } from "svelte";
   import { mayMove } from "../../lib/quiet-video.ts";
@@ -58,13 +59,9 @@
     };
     wide.addEventListener("change", follow);
 
-    // The first open's hints, once per device. A browser that will not keep a note shows them every time.
-    let seen = false;
-    try {
-      seen = localStorage.getItem(SEEN_HINTS) !== null;
-    } catch {
-      // Private browsing: no memory, so no "never again".
-    }
+    // The first open's hints, once per device. A browser that has not said yes to cookies, or will not keep a note,
+    // shows them again on the next visit (the device store keeps the note for this visit only).
+    const seen = deviceStore.get(SEEN_HINTS) !== null;
     if (!seen && clips.length > 0) hint = matchMedia("(pointer: coarse)").matches ? "touch" : "pointer";
 
     const ratios: (number | undefined)[] = [];
@@ -132,11 +129,7 @@
   function forgetHints(): void {
     if (hint === null) return;
     hint = null;
-    try {
-      localStorage.setItem(SEEN_HINTS, "1");
-    } catch {
-      // Nothing to keep it in.
-    }
+    deviceStore.set(SEEN_HINTS, "1");
   }
 
   function pressClip(slug: string): void {
