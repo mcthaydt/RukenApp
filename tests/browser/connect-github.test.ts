@@ -257,8 +257,9 @@ test("a connected maker's Choose it on GitHub refreshes the list first, then ope
   await signIn;
   await expect(page).toHaveURL(`/make/${slug}/files?looked=1`);
   await pageHasSettled(page);
-  // The refreshed list is back.
+  // The refreshed list is back, and the screen says Ruken looked again.
   await expect(page.getByLabel("ruken-test/tiny-game")).toBeVisible();
+  await expect(page.getByText("Ruken looked on GitHub again. Still not there?")).toBeVisible();
 
   const install = page.waitForRequest(/\/apps\/ruken-test-app\/installations\/new/);
   await page.getByRole("link", { name: "Don't see your game? Choose it on GitHub" }).click();

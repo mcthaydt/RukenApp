@@ -119,6 +119,8 @@ async function filesScreen(url: URL, userId: string, game: MakerGame) {
     branchesAddress: "/make/github/branches",
     folder: game.repoFolder,
     refusal: game.pullProblem === null ? null : refusalOf(game.pullProblem),
+    // Just back from GitHub's sign-in with the list fresh: the screen says Ruken looked again.
+    looked: url.searchParams.get("looked") === "1",
     // `data-sveltekit-reload` links: a server redirect to GitHub, not a page of the app.
     // Just back from GitHub's sign-in with the list fresh: the next press opens GitHub's install page.
     connectAddress:

@@ -29,6 +29,8 @@
       connected: boolean;
       repositories: string[];
       connectionFailed: boolean;
+      /** Just back from GitHub's sign-in, with the list Ruken keeps looked up again. */
+      looked: boolean;
       changing: boolean;
       chosen: string[];
       branch: string;
@@ -189,6 +191,11 @@
       <p class="note">Save keeps your choice. Put it back on Ruken copies your game from GitHub.</p>
     {/if}
     {@render connectionFailedUnderList()}
+    {#if files.looked}
+      <p class="note">
+        Ruken looked on GitHub again. Still not there? Press the link below to add it on GitHub.
+      </p>
+    {/if}
     <p class="note">
       <a href={files.connectAddress} data-sveltekit-reload>Don't see your game? Choose it on GitHub</a>
     </p>
@@ -245,7 +252,14 @@
   <QuestionScreen heading="Where are your game's files?" {counter} {back} {throwAway}>
     {@render connectionFailedLine()}
     <div class="sheet">
-      <p>Ruken can't see any of your games on GitHub yet.</p>
+      {#if files.looked}
+        <p>
+          Ruken looked on GitHub again and still can't see your games. Press Choose on GitHub to add them
+          there.
+        </p>
+      {:else}
+        <p>Ruken can't see any of your games on GitHub yet.</p>
+      {/if}
     </div>
     {#snippet forward()}
       {@render connectButton("Choose on GitHub")}
