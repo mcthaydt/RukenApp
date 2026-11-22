@@ -964,7 +964,7 @@ function checkPrCreate(config, cwd, repo, body, draft, deny) {
     const all = ghPages(`repos/${repo}/pulls?state=open`, cwd);
     if (!all) { deny(refusal(`Pull requests open: ${f.maxOpenPrs} at most (CLAUDE.md, Settings).`, 'the list of open pull requests could not be read', 'read it yourself (gh pr list) and open the pull request only when fewer than the limit are open')); return; }
     const open = byCreation(ownBranchPrs(all, repo));
-    if (open.length >= f.maxOpenPrs) deny(refusal(`Pull requests open: ${f.maxOpenPrs} at most (CLAUDE.md, Settings).`, `${open.length} are open now (${open.slice(0, 5).map((x) => `#${x.number}`).join(', ')})`, 'merge or close one first, or report to the coordinator and wait for a free place'));
+    if (open.length >= f.maxOpenPrs) deny(refusal(`Pull requests open: ${f.maxOpenPrs} at most (CLAUDE.md, Settings).`, `${open.length} are open now (${open.map((x) => `#${x.number}`).join(', ')})`, 'merge or close one first, or report to the coordinator and wait for a free place'));
   }
 }
 // The lane of a pull request's files (CLAUDE.md, Risk: the highest lane wins). Every page
