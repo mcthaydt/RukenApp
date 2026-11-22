@@ -8,7 +8,11 @@ describe("platform", () => {
   });
 
   it("answers what setPlatform was given", () => {
-    const given: Platform = { databaseUrl: () => "postgres://stand-in", waitUntil: () => undefined };
+    const given: Platform = {
+      databaseUrl: () => "postgres://stand-in",
+      waitUntil: () => undefined,
+      placeOf: () => ({ city: null, country: null }),
+    };
 
     setPlatform(given);
 

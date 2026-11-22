@@ -1,0 +1,22 @@
+{
+  "name": "ruken",
+  "version": "0.1.0",
+  "description": "Ruken from your computer: sign in once, then send your games and videos from a terminal.",
+  "license": "FSL-1.1-ALv2",
+  "type": "module",
+  "bin": {
+    "ruken": "bin.js"
+  },
+  "files": [
+    "bin.js",
+    "cli.js",
+    "commands",
+    "lib",
+    "parity",
+    "words",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}

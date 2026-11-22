@@ -1,6 +1,7 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { FileStore } from "../../lib/files/store.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
+import { lockComputers } from "./computer-keys.ts";
 import { forgetPending } from "./pending-sign-up.ts";
 
 // "Delete my account".
@@ -58,6 +59,7 @@ export async function requestDeletion(
   const purgeAfter = new Date(now + DELETION_WAIT_DAYS * DAY_MS);
   try {
     return await prisma.$transaction(async (tx) => {
+      await lockComputers(tx, userId);
       const open = await openRequest(tx, userId);
       if (open !== null) return { purgeAfter: open.purgeAfter };
 
@@ -65,6 +67,9 @@ export async function requestDeletion(
       await tx.user.update({ where: { id: userId }, data: { status: "pending_deletion" } });
       // Signed out everywhere: the next request from any of the person's devices is signed out.
       await tx.session.deleteMany({ where: { userId } });
+      // And every computer's key: a key stops working with the sessions.
+      await tx.computerKey.deleteMany({ where: { userId } });
+      await tx.computerSignIn.deleteMany({ where: { userId } });
       return { purgeAfter };
     });
   } catch (error) {
