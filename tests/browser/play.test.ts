@@ -289,8 +289,8 @@ test("a press that moves under 8px opens the menu, and the tab is frosted glass 
     return `${style.backgroundColor}|${style.backdropFilter || style.getPropertyValue("-webkit-backdrop-filter")}`;
   });
   // The glass token as the browser writes it: rgb(17 19 20 / 0.12) reads back as rgba(17, 19, 20, 0.12).
-  const [red, green, blue, alpha] = token("--glass-bg").match(/[\d.]+/g) ?? [];
-  expect(rest).toBe(`rgba(${red}, ${green}, ${blue}, ${alpha})|${token("--glass-filter")}`);
+  const channels = (token("--glass-bg").match(/[\d.]+/g) ?? []).join(", ");
+  expect(rest).toBe(`rgba(${channels})|${token("--glass-filter")}`);
   const box = await tab.boundingBox();
   if (box === null) throw new Error("the tab has no box");
   await page.mouse.move(box.x + 20, box.y + 20);
