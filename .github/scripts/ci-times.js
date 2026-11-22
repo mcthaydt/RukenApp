@@ -5,7 +5,8 @@
 // and the first [count] draft runs created after it, so the check reads the same runs whenever it is run. A run is "full" when it has a job named exactly "gate", "draft" when it has
 // "gate (quick, draft)". Run time = the last job's completed_at minus the run's created_at.
 // Per job: wait = started_at - created_at; setup = started_at to the end of the last setup step
-// (SETUP below); run = the rest of the job. Percentiles are nearest-rank.
+// (SETUP below); run = the rest of the job. Percentiles are nearest-rank. Pieces group as "browser shard n" whatever
+// their count. With [since], each run's longest browser-piece wait is listed too, by run id.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -45,6 +46,7 @@ if (since) {
 }
 
 const total = { full: [], draft: [] };
+const waits = { full: [], draft: [] };
 const perJob = new Map();
 const add = (name, key, v) => {
   const k = `${name}|${key}`;
@@ -59,7 +61,8 @@ for (const run of runs) {
   if (!kind) continue;
   for (const j of jobs) {
     if (!j.started_at || !j.completed_at || j.conclusion === "skipped") continue;
-    const name = `${kind}: ${j.name.replace(/ \(quick, draft\)/, "").replace(/shard \d of 6/, "shard n of 6")}`;
+    // Any number of pieces groups in one row: "browser shard 3 of 6" and "browser shard 11 of 12" are "browser shard n".
+    const name = `${kind}: ${j.name.replace(/ \(quick, draft\)/, "").replace(/shard \d+ of \d+/, "shard n")}`;
     const steps = (j.steps ?? []).filter((s) => s.started_at && s.completed_at);
     const setupEnd = Math.max(
       t(j.started_at),
@@ -69,13 +72,21 @@ for (const run of runs) {
     add(name, "setup", setupEnd - t(j.started_at));
     add(name, "run", t(j.completed_at) - setupEnd);
   }
+  // A run ends at its latest piece's start plus that piece's work, so its longest piece wait is listed with it (spec 3.5).
+  const pieces = jobs.filter((j) => j.started_at && /^browser shard \d+ of \d+/.test(j.name));
+  const longest = Math.max(...pieces.map((j) => t(j.started_at) - t(j.created_at)));
+  if (pieces.length) waits[kind].push(`${run.id}:${longest.toFixed(0)}`);
 }
 const first = runs.at(-1)?.created_at,
   last = runs[0]?.created_at;
 console.log(
   `${runs.length} runs, ${first} to ${last}; full ${total.full.length}, draft ${total.draft.length}`,
 );
-if (since) console.log(`run ids: ${runs.map((r) => r.id).join(" ")}`);
+if (since) {
+  console.log(`run ids: ${runs.map((r) => r.id).join(" ")}`);
+  for (const k of ["full", "draft"])
+    console.log(`${k} runs' longest piece wait, run:s: ${waits[k].join(" ")}`);
+}
 for (const k of ["full", "draft"])
   console.log(
     `${k} run, minutes: p50 ${pct(total[k], 0.5).toFixed(1)} p95 ${pct(total[k], 0.95).toFixed(1)}`,
