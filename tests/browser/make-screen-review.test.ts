@@ -247,7 +247,7 @@ test("on a computer 'Add a game' is on the heading's line", async ({ page }) => 
   await pageHasSettled(page);
 
   const heading = await boxOf(page.getByRole("heading", { level: 1 }));
-  const add = await boxOf(page.getByRole("link", { name: "Add a game" }));
+  const add = await boxOf(page.getByRole("main").getByRole("link", { name: "Add a game" }));
   expect(add.y).toBeLessThan(heading.y + heading.height);
   expect(add.x).toBeGreaterThan(heading.x + heading.width);
 });

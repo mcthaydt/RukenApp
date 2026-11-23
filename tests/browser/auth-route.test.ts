@@ -25,7 +25,10 @@ test("an account cannot be made, signed in to or reset around the forms", async 
     "/api/auth/request-password-reset",
   ];
   for (const path of paths) {
+    // A browser that said yes to cookies sends one, and better-auth then asks where the post came from (an origin), as a
+    // browser's own post says.
     const response = await request.post(path, {
+      headers: { origin: "http://localhost:4173" },
       data: {
         phoneNumber: number,
         email: "around@ruken.test",

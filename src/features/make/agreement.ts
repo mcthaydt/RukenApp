@@ -1,8 +1,8 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
-import agreementText from "./library/maker-agreement-v2.txt?raw";
+import agreementText from "./library/maker-agreement-v3.txt?raw";
 
-// What a maker has agreed to. The text is the Owner's, kept word for word in library/maker-agreement-v2.txt and shown
+// What a maker has agreed to. The text is the Owner's, kept word for word in library/maker-agreement-v3.txt and shown
 // as plain paragraphs. A new version is a new file and a new number; a maker is asked to agree again before the next
 // game goes up (the agreement's own last point).
 

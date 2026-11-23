@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { gameWhere } from "./support/game.ts";
 import { boxOf, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // What a person does to the feed (spec 5.1): swipe or press keys to move a clip at a time, press the clip to open its game's
 // page, press the speaker for sound, share
@@ -13,7 +14,7 @@ test.beforeAll(async ({ browser }) => {
   // Three games from rows, so the feed has several clips to move between whatever else the database holds.
   for (let made = 0; made < 3; made += 1) {
     await forgetRateLimits();
-    const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
     try {
       await gameWhere(await context.newPage(), { state: "live" });
     } finally {
@@ -182,6 +183,57 @@ test("each key moves one clip, never before the first", async ({ page }) => {
     await page.keyboard.press(back);
     await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
   }
+});
+
+test("keys pressed faster than the feed slides each still move one clip", async ({ page }) => {
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  // Two keys in one go, before the feed has started to slide: a person tapping Down twice, or a busy phone that hands
+  // the page both at once. The page is given them together so the second always comes while the first is under way;
+  // Playwright's own presses each wait for the browser and could come after the slide has ended.
+  const pressTogether = (keys: string[]) =>
+    page.evaluate((names) => {
+      for (const key of names) window.dispatchEvent(new KeyboardEvent("keydown", { key, cancelable: true }));
+    }, keys);
+
+  await pressTogether(["ArrowDown", "ArrowDown"]);
+  await expect(clips.nth(2)).toHaveAttribute("data-current", "true");
+  await pressTogether(["ArrowUp", "ArrowUp"]);
+  await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
+  // Back and on again at once: the second key counts from where the first was going, not from where the feed still is.
+  await pressTogether(["ArrowDown", "ArrowUp", "ArrowDown"]);
+  await expect(clips.nth(1)).toHaveAttribute("data-current", "true");
+  // And it comes to rest there, the clip's top at the window's top.
+  await expect
+    .poll(() =>
+      clips.nth(1).evaluate((clip) => {
+        const feed = clip.closest("main.feed");
+        return feed === null
+          ? null
+          : Math.round(clip.getBoundingClientRect().top - feed.getBoundingClientRect().top);
+      }),
+    )
+    .toBe(0);
+});
+
+test("a slide that never moves does not hold the keys for long", async ({ page }) => {
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  // The first slide asked for goes nowhere, so no end of it ever comes: the feed must stop waiting for it by itself.
+  await page.evaluate(() => {
+    const slide = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
+    Element.prototype.scrollIntoView = function () {
+      if (slide) Object.defineProperty(Element.prototype, "scrollIntoView", slide);
+    };
+  });
+  await page.keyboard.press("ArrowDown");
+  await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
+  // A few seconds on, a key moves the feed again. Keys pressed before then are still held, so the journey presses until
+  // one is heard, and each press moves at most one clip.
+  await expect(async () => {
+    await page.keyboard.press("ArrowDown");
+    await expect(clips.nth(1)).toHaveAttribute("data-current", "true", { timeout: 1000 });
+  }).toPass({ timeout: 6000 });
 });
 
 test("pressing the clip opens the game's page", async ({ page }) => {
@@ -579,7 +631,11 @@ test.describe("the first open's hints", () => {
   });
 
   test("are never there with no script", async ({ browser }) => {
-    const context = await browser.newContext({ javaScriptEnabled: false, baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({
+      ...consented,
+      javaScriptEnabled: false,
+      baseURL: "http://localhost:4173",
+    });
     try {
       const page = await context.newPage();
       await page.goto("/");
@@ -595,7 +651,11 @@ test.describe("the first open's hints", () => {
   });
 
   test("with reduced motion the next clip is simply there, not slid to", async ({ browser }) => {
-    const context = await browser.newContext({ reducedMotion: "reduce", baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({
+      ...consented,
+      reducedMotion: "reduce",
+      baseURL: "http://localhost:4173",
+    });
     try {
       const page = await context.newPage();
       await openFeed(page);

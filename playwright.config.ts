@@ -1,6 +1,7 @@
 import { generateKeyPairSync } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
 import { resolve } from "node:path";
+import { CONSENTED_STATE } from "./tests/browser/support/consent.ts";
 import { journeyClientHeaders } from "./tests/browser/support/rate-limits.ts";
 import { exactly, pieceFromEnv } from "./tests/browser/support/shard-plan.ts";
 
@@ -40,6 +41,8 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   use: {
     baseURL: "http://localhost:4173",
+    // Every journey's browser has said yes to cookies, except the one about the notice (support/consent.ts).
+    storageState: CONSENTED_STATE,
     // A failed journey keeps a recording of its actions and network, so a press that got no answer shows whether the
     // post left the browser and what came back (progress.md, Flaky tests). Playwright records the network only with
     // its page snapshots, so those stay on; the running screenshots, which cost the busy runner the most, stay off.

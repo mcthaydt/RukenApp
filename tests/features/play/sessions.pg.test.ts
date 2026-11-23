@@ -414,6 +414,24 @@ describe("reviewLook", () => {
   });
 });
 
+describe("testPlay", () => {
+  it("gives the maker the address of files that are not live under a pass of their own, and records no play", async () => {
+    const game = await newGame();
+    const waiting = await withNewPull({ ...game, connectHosts: ["api.example.com"] });
+    const pull = { id: waiting.livePullId, connectHosts: ["api.example.com"] };
+
+    const address = await service.testPlay({ game, pull, makerUserId: game.makerUserId });
+
+    const claims = checkPass(new URL(address).pathname.split("/")[1] ?? "", SECRET, clock.epochMs());
+    expect(claims).toMatchObject({ game: game.publicId, pull: pull.id, connect: ["api.example.com"] });
+    expect(await db().playPass.findUniqueOrThrow({ where: { id: claims?.id ?? "" } })).toMatchObject({
+      userId: game.makerUserId,
+      pullId: pull.id,
+    });
+    expect(await db().playSession.count({ where: { gameId: game.id } })).toBe(0);
+  });
+});
+
 describe("sittingOf", () => {
   const NOW = new Date("2026-11-14T12:00:00Z");
 

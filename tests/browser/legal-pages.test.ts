@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 // The privacy and terms pages: anyone can read them without an account, each says at the top that a lawyer has not
-// checked it yet, and a person finds them from sign-up, from each other and from the maker agreement's own page.
+// checked it yet, the terms list what no game may have (pornography, gambling, ads), and a person finds them from
+// sign-up, from each other and from the maker agreement's own page.
 
 test("privacy opens for anyone, says it is a draft, and leads to the terms", async ({ page }) => {
   await page.goto("/privacy");
@@ -10,6 +11,9 @@ test("privacy opens for anyone, says it is a draft, and leads to the terms", asy
   await expect(page.getByText("This is a draft.")).toBeVisible();
   await expect(page.getByText("A lawyer has not checked it yet.", { exact: false })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Cookies and your browser" })).toBeVisible();
+  await expect(
+    page.getByText("Ruken has no ads, and no game on Ruken may have ads.", { exact: false }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "Read the terms" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Terms" })).toBeVisible();
 });
@@ -22,6 +26,12 @@ test("terms open for anyone, say they are a draft, and lead to the maker agreeme
   await expect(page).toHaveTitle("Terms · Ruken");
   await expect(page.getByText("This is a draft.")).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Waiting for a lawyer" })).toBeVisible();
+  const rules = page.getByRole("heading", { level: 2, name: "What no game may have" }).locator("+ ul");
+  await expect(rules.getByRole("listitem")).toHaveText([
+    "No pornography.",
+    "No gambling.",
+    "No ads. A game can't show ads of any kind.",
+  ]);
   await expect(page.getByRole("link", { name: "Read the maker agreement" })).toHaveAttribute(
     "href",
     "/legal/maker-agreement",

@@ -11,7 +11,8 @@
   // gives it as --route on every deploy of the gate. No free Cloudflare address beside it.
   "workers_dev": false,
   "preview_urls": false,
-  "observability": { "enabled": true },
+  // The gate writes no console line, and keeps nothing about a visitor before they say yes to cookies: logs off.
+  "observability": { "enabled": false },
   // The same bucket the site writes to. The gate only reads it.
   "r2_buckets": [{ "binding": "GAME_FILES", "bucket_name": "ruken-games" }],
 }

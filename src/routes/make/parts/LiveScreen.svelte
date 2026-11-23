@@ -28,6 +28,7 @@
     backdrop,
     game,
     showsPlayerCount,
+    wished,
     problem,
   }: {
     line: string;
@@ -44,6 +45,8 @@
     game: LaidOutGame;
     /** Whether the game's page says how many people played it this week. */
     showsPlayerCount: boolean;
+    /** How many people wishlisted it, in words, or null when there is nothing to say. */
+    wished: string | null;
     problem: string | undefined;
   } = $props();
 
@@ -109,6 +112,9 @@
   <div>
     <h1>Live</h1>
     <p>{line}</p>
+    {#if wished !== null}
+      <p>{wished}</p>
+    {/if}
     {#if problem !== undefined}
       <p class="problem" role="alert">{problem}</p>
     {/if}
