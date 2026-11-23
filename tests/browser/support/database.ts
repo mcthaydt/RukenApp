@@ -2,6 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { hashNumber } from "../../../src/features/accounts/phone.ts";
 import { sealState } from "../../../src/features/games/github-connect.ts";
 import type { AgeRating, GamePart } from "../../../src/lib/server/db.ts";
+import { journeyClientAddress } from "./rate-limits.ts";
 import { PrismaClient, type MembershipStart } from "../../support/generated/prisma/client.ts";
 
 // The one place a journey reads the app's database. No screen shows who brought a member, so the journeys that check
@@ -154,9 +155,19 @@ export async function paymentPostingOf(number: string): Promise<{ stripeInvoiceI
   });
 }
 
-/** How many rows the rate limiter keeps, so a journey can see that a refused call wrote none. */
-export function rateLimitRows(): Promise<number> {
-  return db().rateLimit.count();
+/**
+ * How many rate-limit rows hold this worker's client address, so a journey can see that a refused call wrote none.
+ * The whole table is not counted: other workers' journeys clear the rows that hold no address (and their own) while this
+ * one runs, so a count of everything drops under it.
+ */
+export async function rateLimitRows(): Promise<number> {
+  const address = journeyClientAddress();
+  const holdsAddress = new RegExp(`(^|:)${address.replaceAll(".", String.raw`\.`)}([|:]|$)`);
+  const rows = await db().rateLimit.findMany({
+    where: { key: { contains: address } },
+    select: { key: true },
+  });
+  return rows.filter((row) => holdsAddress.test(row.key)).length;
 }
 
 /** How many rows of Stripe's fee report of one kind (by Stripe's name for it, such as "billing") the site has kept. */
