@@ -32,5 +32,5 @@ export {
   questionsFor,
   type QuestionId,
 } from "./questions.ts";
-export type { Answer, GamesService, ListedGame, LiveGame, MakerGame } from "./service.ts";
+export type { Answer, GamesService, ListedGame, LiveGame, MakerGame, TestPlay } from "./service.ts";
 export { gamesServices } from "./services.ts";

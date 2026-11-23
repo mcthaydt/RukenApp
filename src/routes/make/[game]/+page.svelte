@@ -22,6 +22,7 @@
     filesProblem={data.filesProblem}
     filesAddress={data.filesAddress}
     throwAway={data.throwAway}
+    testPlay={data.testPlay}
   />
 {:else if data.view === "sent_back"}
   <SentBackScreen
@@ -46,6 +47,7 @@
     backdrop={data.backdrop}
     game={data.game}
     showsPlayerCount={data.showsPlayerCount}
+    wished={data.wished}
     problem={form?.problem}
   />
 {:else if data.view === "taken_off"}
