@@ -57,7 +57,6 @@
         preload="metadata"
         tabindex="-1"
         muted
-        loop
         playsinline
         use:quietVideo
       ></video>
