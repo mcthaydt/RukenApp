@@ -430,7 +430,6 @@ test("a reload on a game that came off while the person was away starts from the
   await openFeed(page);
   await page.keyboard.press("ArrowDown");
   await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
-  const top = (await page.locator("section[data-slug]").first().getAttribute("data-slug")) ?? "?";
   // The kept copy of the clip on screen becomes a game that is no longer on Ruken. (SvelteKit's format, as above.)
   await page.addInitScript(() => {
     const name = "sveltekit:navigation-snapshot";
@@ -454,8 +453,8 @@ test("a reload on a game that came off while the person was away starts from the
   await page.reload();
   await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
   await expect(page.locator('section[data-slug="a-game-taken-off"]')).toHaveCount(0);
+  // The top is the fresh first page's first clip; other journeys can make games live meanwhile, so it is found by place.
   await expect(page.locator("section[data-slug]").first()).toHaveAttribute("data-current", "true");
-  await expect(current(page)).toHaveAttribute("data-slug", top);
 });
 
 test("pressing the speaker flips sound for every clip, and it stays as set from one game to the next", async ({
