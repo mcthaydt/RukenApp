@@ -195,6 +195,8 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 
 ### Flaky tests
 
+- `tests/browser/adults-only.test.ts:149` [phone], CI on `main` at `992c281` (run 45253362674, attempt 1): the sign-up "Text me a code" click timed out at `tests/browser/support/account.ts:116`; it passed on the rerun. Another recurrence of the known sign-up text-code flake.
+
 - `tests/browser/make-after.test.ts:601` "a sent-back game can be thrown away" [computer], local run on the glass branch at `c2d10c87`, five journey files on two profiles: `Expected: true, Received: false`; passed alone on rerun. Cause not found; the glass change does not touch the computer layout.
 
 - `tests/browser/feed-controls.test.ts` "each key moves one clip... within a second" [computer], first run on the unit D branch at `aff0cd9`, three profiles side by side: `data-current` was still false on the second clip after the 1-second wait; 8 of 8 passed on a rerun. Cause: the journey asserted a 1-second wall clock on a busy machine. Fix: it waits for the state (the clip becomes current), not the clock. Gap: the journey no longer measures the "within one second" budget (spec section 7), and the same go for the reduced-motion check, which now checks for no in-between scroll positions instead of two frames.

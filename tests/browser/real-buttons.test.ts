@@ -3,8 +3,9 @@ import { pageHasSettled, signUp } from "./support/account.ts";
 import { givePage, makerNumberOf } from "./support/database.ts";
 import { connectGitHubFromFiles, gameWhere, startAtFiles } from "./support/game.ts";
 import { rgb, token } from "../support/look-tokens.ts";
-import { CARD_SCREENS, layoutHasSettled } from "./support/look.ts";
+import { CARD_SCREENS, layoutHasSettled, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { NOT_CONSENTED } from "./support/consent.ts";
 
 // The owner, 2026-11-22: "I'm also not a fan of how often we use the text with underline for buttons, I don't think
 // professional apps use that very often, if ever." Something a person presses that stands on its own (its own line, a
@@ -36,6 +37,11 @@ function standaloneActions(page: Page): Promise<Action[]> {
       // The bottom bar is a row of tabs, not buttons: the bottom bar thread gives it its own look.
       if (element.closest(".wordmark, .sr-only, nav.bar")) continue;
       if (element.querySelector("img, video, canvas, .statement")) continue;
+      // A help guide is a whole painted tile that opens it; the link is the tile's name, not a button of its own.
+      if (element.closest(".helpdesk .guide")) continue;
+      // The landing page's footer is columns of plain ways round the site, as on any site's foot: not underlined
+      // (checked below with everything else), but not buttons.
+      if (element.closest(".about .sitefoot")) continue;
       const words = element.textContent.replace(/\s+/g, " ").trim();
       if (words === "") continue;
       // Running words: the action sits among words of its own line (a text beside it, or in an inline piece beside
@@ -97,9 +103,10 @@ function underlinedOrHiddenLinks(page: Page): Promise<{ underlined: string[]; un
  * Fails, naming each one, for every action on its own that is underlined words, unpainted, or too small to hit, for
  * anything at all drawn with a line under it, and for a link in words that cannot be told from them.
  */
-async function expectRealButtons(page: Page): Promise<void> {
+async function expectRealButtons(page: Page, { videos = true }: { videos?: boolean } = {}): Promise<void> {
   await pageHasSettled(page);
-  await layoutHasSettled(page);
+  // The landing page holds its clips back until they are near (tablet), so there it waits for the words only.
+  await (videos ? layoutHasSettled(page) : wordsHaveSettled(page));
   const { underlined, unseen } = await underlinedOrHiddenLinks(page);
   expect(underlined, "nothing on the screen is underlined").toEqual([]);
   expect(unseen, "a link in words stands out from them").toEqual([]);
@@ -117,7 +124,9 @@ for (const screen of CARD_SCREENS) {
   });
 }
 
-test("the help pages: the way back and the list of guides are real buttons", async ({ page }) => {
+test("the help pages: the way back and the ways on are real buttons, and the guides are whole tiles", async ({
+  page,
+}) => {
   await page.goto("/help");
   await expect(page.getByRole("heading", { name: "Help for makers" })).toBeVisible();
   await expectRealButtons(page);
@@ -246,4 +255,27 @@ test("the files question: the fold-out and the GitHub links are real buttons", a
   await expect(fold).toHaveCSS("text-decoration-line", "none");
   await expect(fold).toHaveCSS("background-color", rgb(token("--felt-raised")));
   await expectRealButtons(page);
+});
+
+test("the landing page: every action on its own is a real button, and nothing is underlined", async ({
+  page,
+}) => {
+  await page.goto("/about");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expectRealButtons(page, { videos: false });
+});
+
+test("the cookie notice: What we keep is a real button, and nothing is underlined", async ({ browser }) => {
+  const visitor = await browser.newContext({ storageState: NOT_CONSENTED, baseURL: "http://localhost:4173" });
+  try {
+    const page = await visitor.newPage();
+    await page.goto("/privacy");
+    const keep = page.locator(".consent").getByRole("link", { name: "What we keep" });
+    await expect(keep).toBeVisible();
+    await expect(keep).toHaveCSS("text-decoration-line", "none");
+    expect((await keep.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await expectRealButtons(page);
+  } finally {
+    await visitor.close();
+  }
 });

@@ -4326,13 +4326,18 @@ header:has(+ main.about) {
   }
 }
 
-/* A link that goes on (in a card, a band or under the clip) is its words in the button's weight with an arrow after
-   them: no underline, and the arrow says where a tap goes. */
+/* A link that goes on (in a card, a band or under the clip) is a real button, Dusky Green on the felt and Glaucous Green
+   with ink words on a card, with an arrow after its words that says where a tap goes (the owner, 2026-11-22: no
+   underlined words, and actions are real buttons). */
 .about a.more {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   min-height: var(--size-target);
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
   font: var(--text-button);
   text-decoration: none;
 }
@@ -4347,7 +4352,8 @@ header:has(+ main.about) {
 }
 
 .about .card a.more {
-  color: var(--pay);
+  background: var(--sage);
+  color: var(--ink);
 }
 
 .about .sitefoot a {
@@ -4548,6 +4554,7 @@ header:has(+ main.about) {
 }
 
 .about .pair .card + .card a.more {
+  background: var(--felt-raised);
   color: var(--chalk);
 }
 
@@ -5323,8 +5330,10 @@ html:has(main.about) :is(a, button, summary, label) {
   box-shadow: var(--glass-edge);
 }
 
-.consent .safe {
+.consent .safe,
+.consent .quiet {
   background: var(--glass-safe);
+  box-shadow: var(--glass-edge);
 }
 
 .consent.above-bar {

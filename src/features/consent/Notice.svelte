@@ -84,7 +84,7 @@
       {@render answer()}
       <button type="button" class="safe" onclick={onNotNow}>Not now</button>
     </div>
-    <p class="note"><a href="/privacy">What we keep</a></p>
+    <p class="note"><a class="quiet" href="/privacy">What we keep</a></p>
   </aside>
 {:else}
   <main class="card">
@@ -101,6 +101,6 @@
       {@render answer()}
       <a class="button safe" href="/" onclick={leave}>Not now</a>
     </div>
-    <p class="note"><a href="/privacy">What we keep</a></p>
+    <p class="note"><a class="quiet" href="/privacy">What we keep</a></p>
   </main>
 {/if}
