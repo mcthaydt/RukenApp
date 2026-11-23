@@ -165,3 +165,62 @@ test("the You page leads to the landing page, which has no Sign in for someone s
     page.getByRole("navigation", { name: "On this page" }).getByRole("link", { name: "Sign in" }),
   ).toHaveCount(0);
 });
+
+test("a jump to For players lands on its top, and the card stays there as it shows", async ({ page }) => {
+  await page.goto("/about");
+  await expectTheLandingPage(page);
+  await pageHasSettled(page);
+  await page
+    .getByRole("navigation", { name: "On this page" })
+    .getByRole("link", { name: "For players" })
+    .click();
+  await expect(page).toHaveURL("/about#players");
+  const players = page.locator("#players");
+  await expect(players).toHaveCSS("opacity", "1");
+  // Its top is at the window's top once the scroll and the card's fade have both ended: not 24 px above it. Within a
+  // pixel, since a browser may land a fraction off (WebKit gives a tiny negative).
+  const top = (): Promise<number> => players.evaluate((card) => card.getBoundingClientRect().top);
+  await expect.poll(async () => Math.abs(await top()), { timeout: 5_000 }).toBeLessThan(1);
+  await page.waitForTimeout(1_000);
+  expect(Math.abs(await top())).toBeLessThan(1);
+});
+
+test("the corner button computes no underline, so no words in it could ever be underlined", async ({
+  page,
+}) => {
+  await page.goto("/about");
+  await expectTheLandingPage(page);
+  const back = page.getByRole("link", { name: "Back to the feed" });
+  expect(await back.evaluate((link) => getComputedStyle(link).textDecorationLine)).toBe("none");
+});
+
+test.describe("on a phone held sideways", () => {
+  for (const viewport of [
+    { width: 667, height: 375 },
+    { width: 844, height: 390 },
+  ]) {
+    test(`the blue button is on the first screen at ${String(viewport.width)} by ${String(viewport.height)}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.goto("/about");
+      await expectTheLandingPage(page);
+      await expect(page.getByRole("link", { name: "Watch the feed" }).first()).toBeInViewport({ ratio: 1 });
+    });
+  }
+});
+
+test("only the cards the top links jump to give up their rise; the bands further down still rise in", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto("/about");
+  await expectTheLandingPage(page);
+  await pageHasSettled(page);
+  /** How far below its place a block waits before it shows, in pixels. */
+  const waitsBelow = (selector: string): Promise<number> =>
+    page.locator(selector).evaluate((block) => new DOMMatrix(getComputedStyle(block).transform).m42);
+  expect(await waitsBelow("#makers")).toBe(0);
+  expect(await waitsBelow("#players")).toBe(0);
+  for (const band of ["#fans", "#safe", "#pay"]) expect(await waitsBelow(band), band).toBeGreaterThan(0);
+});
