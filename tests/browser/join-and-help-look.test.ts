@@ -87,6 +87,10 @@ test.describe("the paywall card", () => {
     await annualRow.click();
     await expect(annualRow).toHaveCSS("background-color", rgb(token("--ink")));
     await expect(monthlyRow).not.toHaveCSS("background-color", rgb(token("--ink")));
+    // A click shows the chosen row turning ink and no keyboard ring round it (the owner, 2026-11-23: no double edge).
+    expect(
+      await annualRow.locator(".price").evaluate((price) => getComputedStyle(price, "::before").outlineStyle),
+    ).toBe("none");
     // The mark is Ruken's own: the browser's radio button is there for the keyboard and a reader, but not drawn.
     await expect(annual).toHaveCSS("opacity", "0");
     await expect(annualRow.locator(".mark")).toHaveCSS("background-color", rgb(token("--sage")));

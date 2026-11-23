@@ -24,6 +24,11 @@
   // svelte-ignore state_referenced_locally
   let chosen = $state({ plan: form?.plan ?? data.plan });
 
+  // Whether the plans were last moved by the keyboard. The ring round a plan row is the keyboard's alone: a press or a
+  // click shows the chosen row turning ink and needs no ring. WebKit drops :focus-visible when an arrow key moves to the
+  // next plan (measured on the phone), so the arrow keys' ring is drawn from this instead.
+  let keys = $state(false);
+
   // The clip behind the card is the shape of the window: upright until the page is alive and says otherwise.
   let wide = $state(false);
   onMount(() => {
@@ -38,6 +43,8 @@
     };
   });
 </script>
+
+<svelte:window onkeydown={() => (keys = true)} onpointerdown={() => (keys = false)} />
 
 {#if data.backdrop !== null}
   <!-- The game they tapped, dimmed, behind the card. It takes no press and no focus, and a screen reader does not meet it. -->
@@ -106,7 +113,7 @@
         <input type="hidden" name="next" value={data.next} />
         <!-- Two big rows, each a real radio button (hidden from sight, with Ruken's own mark beside it) in a label the width of the card, so the whole row is the target. The
              price is in the display face, the size of a heading, so it is the first thing read. -->
-        <div role="radiogroup" aria-label="Plan" class="plans">
+        <div role="radiogroup" aria-label="Plan" class="plans" data-keys={keys ? "" : undefined}>
           <label class="plan">
             <input type="radio" name="plan" value="monthly" bind:group={chosen.plan} />
             <span class="mark" aria-hidden="true"></span>
