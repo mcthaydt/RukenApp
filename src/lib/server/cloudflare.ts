@@ -30,5 +30,11 @@ function placeOf(request: Request): Place {
   return { city, country };
 }
 
+/**
+ * The private Worker's feed ranker, or null when this Worker has no PRIVATE binding (dev, the journeys, anyone's own
+ * copy of the app).
+ */
+export const cloudflarePrivateFeed = () => env.PRIVATE?.feed ?? null;
+
 /** Games and clips live in one R2 bucket, bound as GAME_FILES (wrangler.jsonc). */
 export const cloudflareFiles = (): FileStore => r2FileStore(env.GAME_FILES);
