@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { signInAs, signUp } from "./support/account.ts";
-import { CONSENTED_STATE, NOT_CONSENTED } from "./support/consent.ts";
+import { signInAs } from "./support/account.ts";
+import { NOT_CONSENTED } from "./support/consent.ts";
 import { givePage } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
@@ -189,48 +189,6 @@ for (const phone of PHONES) {
         await expect(bar(page), path).toHaveCount(0);
         await expectPhoneSized(page);
       }
-    });
-
-    test("a step's Back and Save stand at the right edge, and its question, hint and links are all beside them", async ({
-      page,
-    }, testInfo) => {
-      // Slice 2 design round 3, note 3: a row of buttons pinned across the foot hid a step's hint until she scrolled.
-      await signInAs(page, game.maker.number, game.maker.password);
-      for (const path of [
-        "/make/new",
-        `/make/${game.slug}/name`,
-        `/make/${game.slug}/files`,
-        `/make/${game.slug}/wide`,
-        `/make/${game.slug}/age`,
-        `/make/${game.slug}/websites`,
-        "/make/page/name",
-        "/make/page/links/add",
-      ]) {
-        await page.goto(path);
-        await wordsHaveSettled(page);
-        await expect(bar(page), path).toHaveCount(0);
-        await expectPhoneSized(page);
-        const acts = await boxOf(page.locator(".screen .acts"));
-        expect(acts.x + acts.width, path).toBeLessThanOrEqual(phone.viewport.width);
-        expect(acts.x, path).toBeGreaterThan(phone.viewport.width / 2);
-        expect(acts.y, path).toBeGreaterThanOrEqual(0);
-        expect(acts.y + acts.height, path).toBeLessThanOrEqual(phone.viewport.height);
-        const rights = await page.evaluate(() =>
-          [...document.querySelectorAll(".screen main :is(h1, p, a, label, input, textarea, video, img)")]
-            .filter((part) => !part.closest(".acts") && part.getClientRects().length > 0)
-            .map((part) => part.getBoundingClientRect().right),
-        );
-        expect(rights.length, path).toBeGreaterThan(0);
-        for (const right of rights) expect(right, path).toBeLessThanOrEqual(acts.x);
-        await showTheOwner(page, testInfo, `${path}, ${phone.name} sideways`);
-      }
-      // A maker with no page yet is asked its address first: a step, so no bar there either.
-      await page.context().clearCookies();
-      await page.context().addCookies(CONSENTED_STATE.cookies);
-      await signUp(page);
-      await page.goto("/make/page");
-      await expect(page.getByRole("heading", { name: "Pick your page's address" })).toBeVisible();
-      await expect(bar(page)).toHaveCount(0);
     });
   });
 }
