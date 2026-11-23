@@ -130,10 +130,18 @@ describe("deploy.yml: the steps", () => {
 
   it("masks the database host name before the migration runs, in the deploy step", () => {
     const deploy = stepNamed(/id: deploy\n/);
-    const maskAt = deploy.indexOf("::add-mask::$dbhost");
+    const derive = [
+      "dbhost=${DIRECT_DATABASE_URL#*://}",
+      "dbhost=${dbhost##*@}",
+      "dbhost=${dbhost%%[/?:]*}",
+    ].map((needle) => deploy.indexOf(needle));
+    const maskAt = deploy.indexOf('echo "::add-mask::$dbhost"');
+    const migrateAt = deploy.indexOf("pnpm run deploy");
+    // Each line has to be there (indexOf is -1 when one is deleted), in order, all before the migration.
+    expect(derive.every((i) => i > -1)).toBe(true);
     expect(maskAt).toBeGreaterThan(-1);
-    expect(maskAt).toBeLessThan(deploy.indexOf("pnpm run deploy"));
-    expect(deploy.indexOf("dbhost=${DIRECT_DATABASE_URL")).toBeLessThan(maskAt);
+    expect(migrateAt).toBeGreaterThan(-1);
+    expect([...derive, maskAt, migrateAt]).toEqual([...derive, maskAt, migrateAt].sort((a, b) => a - b));
   });
 });
 
@@ -169,8 +177,16 @@ describe("deploy.yml: the games Worker", () => {
   });
 
   it("fails when the games deploy prints no version id, and hands the id to the check", () => {
-    expect(games()).toContain("Current Version ID");
-    expect(games()).toContain('echo "games_version=$version"');
+    const run = games();
+    const read = run.indexOf("Current Version ID");
+    const empty = run.indexOf('if [ -z "$version" ]; then');
+    const error = run.indexOf("::error::The games deploy finished but printed no version id");
+    const exit = run.indexOf("exit 1", error);
+    const hand = run.indexOf('echo "games_version=$version"');
+    // Reading the id, the empty check with its error and exit, then the handoff: deleting any one breaks the order.
+    const at = [read, empty, error, exit, hand];
+    expect(at.every((i) => i > -1)).toBe(true);
+    expect(at).toEqual([...at].sort((a, b) => a - b));
     const check = stepNamed(/games-check\.sh/);
     expect(check).toContain("VERSION_ID: ${{ steps.games.outputs.games_version }}");
   });
