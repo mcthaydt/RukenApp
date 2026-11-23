@@ -1,9 +1,11 @@
 # Live state: claude/project-thread-6s28wv (make the frosted glass visible)
 
-- Current task: QUEUED by the owner (2026-11-22 21:46 UTC, "just add it to the queue"). Nothing built yet; resume when the coordinator gives the slot (after the merge queue and the bottom-bar / sideways-phone change).
-- Last commit: base main 85916ae (this file is the only change); written 2026-11-22 21:46 UTC.
-- Next step: merge main after the bottom-bar change lands, then build, shoot before/after, fresh review, ask the coordinator before opening a PR.
+- Current task: BUILT on the branch (slot given by the coordinator 2026-11-23 15:32 UTC). Glass on every floating piece, much clearer (about 9.5% darker), lens edge with colour fringes, soft shadow on words and icons.
+- Last commit: see git log (the commit that wrote this line); written 2026-11-23 15:51 UTC.
+- Next step: share before/after with the owner, fresh lane 2 review naming the head, then ask the coordinator before opening the PR.
 - Open decisions: none for the owner.
+- Checks run here: lint, typecheck (0 errors once the local build output is moved out of .svelte-kit), unit tests (glass and look tests pass; whole suite had only look.test's no-shadow rule failing before it was changed), journeys bar/play/feed-controls/look/game-page on computer and tablet: 354 passed, 88 skipped, 0 failed. Phone (WebKit) not run: WebKit is not installed in this container.
+- Tests changed on purpose: tests/lib/glass.test.ts (4.5:1 over white replaced by "darkens by 5-12%" and "every glass surface has the lens edge"; fallback also turns edge/ink/icon off); tests/lib/look.test.ts (no box-shadow/text-shadow, except the glass tokens).
 
 ## Scope (owner, 2026-11-22 21:43 to 21:45 UTC)
 1. Every HUD-like element floating over content is frosted, not only the name, line and Play band.

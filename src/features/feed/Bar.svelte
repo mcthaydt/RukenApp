@@ -66,7 +66,10 @@
     gap: 0.5rem;
     padding: 0.25rem;
     border-radius: calc(var(--radius-button) + 0.25rem);
-    background: var(--felt-deep);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
     view-transition-name: tabs;
   }
   .bar a {
@@ -80,6 +83,9 @@
     border-radius: var(--radius-button);
     color: var(--chalk);
     text-decoration: none;
+  }
+  .bar svg {
+    filter: var(--glass-icon);
   }
   .bar a[aria-current="page"] {
     background: var(--felt-raised);

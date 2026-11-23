@@ -107,7 +107,14 @@ describe("the tokens (design 5.8)", () => {
 
   it("is one dark theme, with none of what the design rules out", () => {
     expect(css).toMatch(/:root\s*\{[^}]*color-scheme:\s*dark;/);
-    expect(css).not.toMatch(/gradient\(|box-shadow|text-shadow|text-transform|letter-spacing/);
+    // The one exception is the glass (tests/lib/glass.test.ts): the owner asked for its lens edge ("it also lacks
+    // chromatic abberation", 2026-11-22), and words on glass that clear need a soft shadow to read. Both live only in
+    // the glass tokens, read as `box-shadow: var(--glass-edge)` and `text-shadow: var(--glass-ink)` or `none`.
+    const outsideGlass = css
+      .replace(/--glass-(?:edge|ink|icon):[^;]*;/g, "")
+      .replace(/box-shadow:\s*var\(--glass-edge\);/g, "")
+      .replace(/text-shadow:\s*(?:var\(--glass-ink\)|none);/g, "");
+    expect(outsideGlass).not.toMatch(/gradient\(|box-shadow|text-shadow|text-transform|letter-spacing/);
   });
 
   it("names each @keyframes once, so one screen's motion never overrides another's", () => {

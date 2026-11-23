@@ -607,6 +607,11 @@
     color: var(--chalk);
     -webkit-backdrop-filter: var(--glass-filter);
     backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+  }
+  .sound svg,
+  .share svg {
+    filter: var(--glass-icon);
   }
   .sound:focus-visible,
   .share:focus-visible {
@@ -622,8 +627,12 @@
     max-width: calc(100% - 2rem);
     padding: 0.5rem 1rem;
     border-radius: var(--radius-button);
-    background: var(--felt-deep);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
     color: var(--chalk);
+    text-shadow: var(--glass-ink);
     text-align: center;
     pointer-events: none;
   }
@@ -657,6 +666,7 @@
     padding: 0.75rem;
     border-radius: var(--radius-button);
     color: var(--chalk);
+    text-shadow: var(--glass-ink);
   }
   /* Frosted glass under the words (look.css): chalk on it is 4.5 to 1 or more over even a white clip. */
   .band::before {
@@ -668,6 +678,10 @@
     background: var(--glass-bg);
     -webkit-backdrop-filter: var(--glass-filter);
     backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+  }
+  .band .button {
+    text-shadow: none;
   }
   .band a,
   .side button {
@@ -741,6 +755,7 @@
     color: var(--chalk);
     -webkit-backdrop-filter: var(--glass-filter);
     backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
   }
   .sharenote {
     position: absolute;
@@ -751,8 +766,12 @@
     margin: 0;
     padding: 0;
     border-radius: var(--radius-button);
-    background: var(--felt-deep);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
     color: var(--chalk);
+    text-shadow: var(--glass-ink);
     font: var(--text-small);
     text-align: end;
     pointer-events: none;
