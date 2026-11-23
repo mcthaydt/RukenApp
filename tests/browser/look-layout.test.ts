@@ -13,15 +13,6 @@ test.beforeEach(forgetRateLimits);
 
 const bottomOf = (box: Box): number => box.y + box.height;
 
-/**
- * The air a 48px target adds above and below its words. A link or a quiet button is as tall as a button, but
- * its words are one line, so the rest is split above and below them.
- */
-async function airAround(target: Locator): Promise<number> {
-  const lineHeight = await target.evaluate((element) => parseFloat(getComputedStyle(element).lineHeight));
-  return ((await boxOf(target)).height - lineHeight) / 2;
-}
-
 /** The text of an element only, from its first letter's edge: an element's own box may start earlier. */
 function textLeft(thing: Locator): Promise<number> {
   return thing.evaluate((element) => {
@@ -88,18 +79,34 @@ test.describe("sign up", () => {
 });
 
 test.describe("your account", () => {
-  test("the number is printed once, with Change password under it and the membership line a rem under that", async ({
+  // The owner, 2026-11-23: "this is ugly, arrange this better", then "beside the number we can have a green or red badge".
+  // The number with its badge and the one membership button first; then the side links stacked as → links; then Sign
+  // out and Delete at the foot.
+  test("the number is printed once with a red Not a member badge beside it, and the side links stacked as arrow links", async ({
     page,
   }) => {
     const { number } = await signUp(page);
     await visit(page, "/me");
     const shown = page.getByText(shownAs(number), { exact: true });
     await expect(shown).toHaveCount(1);
-    const change = page.locator("p.note", { has: page.getByRole("link", { name: "Change password" }) });
-    // A note sits close under what it is about: its own margin is 0.375rem (6px).
-    closeTo((await boxOf(change)).y - bottomOf(await boxOf(shown)), 6);
-    const membership = await boxOf(page.getByText("You're not a member.", { exact: true }));
-    closeTo(membership.y - bottomOf(await boxOf(change)), 16);
+    const badge = page.locator(".badged .badge", { hasText: "Not a member" });
+    await expect(badge).toHaveCSS("background-color", rgb(token("--pip")));
+    const numberBox = await boxOf(shown);
+    const beside = await boxOf(badge);
+    // On the number's line: the badge's middle is level with the number's middle, and it starts after it.
+    closeTo(beside.y + beside.height / 2, numberBox.y + numberBox.height / 2, 2);
+    expect(beside.x).toBeGreaterThan(numberBox.x);
+    await expect(page.getByText("You're not a member.")).toHaveCount(0);
+    const names = ["Add your games to Ruken", "Change password", "Your computers", "What is Ruken?"];
+    let above = bottomOf(await boxOf(page.getByRole("link", { name: "Join Ruken" })));
+    for (const name of names) {
+      const link = page.locator("ul.sidelinks a.go", { hasText: name });
+      const box = await boxOf(link);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.y).toBeGreaterThanOrEqual(above);
+      above = bottomOf(box);
+    }
+    expect((await boxOf(page.getByRole("button", { name: "Sign out" }))).y).toBeGreaterThanOrEqual(above);
   });
 
   // The Owner, 2026-11-14, "All six": two tap targets that overlap are one wrong tap from deleting an account.
@@ -141,16 +148,19 @@ test.describe("a link on its own line", () => {
     });
   }
 
-  test("a bigger target does not open holes: the words keep a rem between lines", async ({ page }) => {
+  // Each is a real button now (the owner, 2026-11-22: no underlined words as buttons), so its line is the button's own
+  // height: a rem from the form, and a rem from the next line, with nothing overlapping.
+  test("a bigger target does not open holes: a rem between each line", async ({ page }) => {
     await visit(page, "/sign-in");
     const form = await boxOf(page.locator("main.card form"));
-    const forgot = page.getByRole("link", { name: "Forgot your password?" });
-    const create = page.getByRole("link", { name: "Create an account" });
-    const air = await airAround(forgot);
-    const forgotBox = await boxOf(forgot);
-    closeTo(forgotBox.y + air - bottomOf(form), 16);
-    const createBox = await boxOf(create);
-    closeTo(createBox.y + (await airAround(create)) - (bottomOf(forgotBox) - air), 16);
+    const forgotLine = await boxOf(
+      page.locator("p", { has: page.getByRole("link", { name: "Forgot your password?" }) }),
+    );
+    const createLine = await boxOf(
+      page.locator("p", { has: page.getByRole("link", { name: "Create an account" }) }),
+    );
+    closeTo(forgotLine.y - bottomOf(form), 16);
+    closeTo(createLine.y - bottomOf(forgotLine), 16);
   });
 });
 

@@ -42,7 +42,7 @@
     <p>{line}</p>
     {#if filesProblem !== null}
       <p class="problem" role="alert">{filesProblem}</p>
-      <p><a href={filesAddress}>Fix your files</a></p>
+      <p><a class="quiet" href={filesAddress}>Fix your files</a></p>
     {/if}
     <div class="acts">
       <a class="button" href="/make">Back to your games</a>

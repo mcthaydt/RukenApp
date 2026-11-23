@@ -100,8 +100,10 @@ describe("the tokens (design 5.8)", () => {
       expect(declarationsOf(".card .outline")).toMatch(/var\(--pay\)/);
     });
 
-    it("red is only the danger button: no other rule uses the pip", () => {
-      expect(withoutComments.match(/var\(--pip\)/g)).toHaveLength(1);
+    // The one other red is the Not a member badge on Your account (the owner, 2026-11-23: "a green or red badge").
+    it("red is only the danger button and the Not a member badge: no other rule uses the pip", () => {
+      expect(withoutComments.match(/var\(--pip\)/g)).toHaveLength(2);
+      expect(withoutComments).toMatch(/\.badge\s*\{[^}]*background:\s*var\(--pip\)/);
     });
   });
 
@@ -267,8 +269,10 @@ describe("what the browser would draw itself", () => {
     expect(button).toMatch(/min-height:\s*var\(--size-target\)/);
   });
 
-  it("a quiet file picker looks like a link, and the browser's own button rule is gone", () => {
-    expect(declarationsOf(".file[data-quiet] > span")).toMatch(/background:\s*none/);
+  // The owner, 2026-11-22: underlined words are not buttons, so a quiet picker is a quiet button, filled and not underlined.
+  it("a quiet file picker is a quiet button, and the browser's own button rule is gone", () => {
+    expect(declarationsOf(".file[data-quiet] > span")).toMatch(/background:\s*var\(--felt-raised\)/);
+    expect(declarationsOf(".file[data-quiet] > span")).not.toMatch(/underline/);
     expect(withoutComments).not.toMatch(/file-selector-button/);
   });
 
@@ -302,7 +306,12 @@ describe("screens wear the look and nothing of their own", () => {
     "row",
     "button",
     "quiet",
-    "plain-link",
+    "ways",
+    "go",
+    "sidelinks",
+    "badged",
+    "badge",
+    "member",
     "safe",
     "danger",
     "outline",

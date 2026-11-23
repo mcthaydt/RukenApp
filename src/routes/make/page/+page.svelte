@@ -51,10 +51,10 @@
     <a class="game" href="/make/page/links"
       ><span><span class="statement">Links</span><span>{rooms.links}</span></span></a
     >
-    <p class="note"><a href={`/${rooms.handle}`}>See your page</a> · {rooms.opened}</p>
+    <p class="note ways"><a class="go" href={`/${rooms.handle}`}>See your page</a> {rooms.opened}</p>
     <div class="acts">
       <a class="button safe" href="/make">Back to your games</a>
     </div>
-    <p class="note"><a href="/make/page/take-down">Take my page down</a></p>
+    <p class="note"><a class="quiet" href="/make/page/take-down">Take my page down</a></p>
   </main>
 {/if}

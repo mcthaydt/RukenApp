@@ -76,15 +76,15 @@
   <aside class="consent" class:above-bar={aboveBar} aria-labelledby="consent-title">
     <h2 id="consent-title">Cookies?</h2>
     <p>
-      To sign you in, let you play and thank the maker who sent you, Ruken keeps a few small things in your
-      browser. We keep nothing until you say yes.
+      We save a few small things in your browser. They keep you signed in, let you play and thank the maker
+      who sent you. Nothing is saved until you say yes.
     </p>
     <p>No ads. We never sell your data.</p>
     <div class="consent-answers">
       {@render answer()}
       <button type="button" class="safe" onclick={onNotNow}>Not now</button>
     </div>
-    <p class="note"><a href="/privacy">What we keep</a></p>
+    <p class="note"><a class="go" href="/privacy">What we keep</a></p>
   </aside>
 {:else}
   <main class="card">
@@ -93,14 +93,14 @@
       <p>{WHY[reason]}</p>
     {/if}
     <p>
-      To sign you in, let you play and thank the maker who sent you, Ruken keeps a few small things in your
-      browser. We keep nothing until you say yes.
+      We save a few small things in your browser. They keep you signed in, let you play and thank the maker
+      who sent you. Nothing is saved until you say yes.
     </p>
     <p>No ads. We never sell your data.</p>
     <div class="consent-answers">
       {@render answer()}
       <a class="button safe" href="/" onclick={leave}>Not now</a>
     </div>
-    <p class="note"><a href="/privacy">What we keep</a></p>
+    <p class="note"><a class="go" href="/privacy">What we keep</a></p>
   </main>
 {/if}

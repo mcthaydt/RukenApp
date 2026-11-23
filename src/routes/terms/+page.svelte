@@ -9,7 +9,7 @@
 </svelte:head>
 
 <main class="card">
-  <p><a href="/">Back to Ruken</a></p>
+  <p><a class="quiet" href="/">Back to Ruken</a></p>
   <h1>Terms</h1>
   <p class="note">Last updated 22 November 2026</p>
   <p>
@@ -60,7 +60,7 @@
     <li>A game plays apart from Ruken. It never gets your sign-in or your account.</li>
     <li>A maker can take their game off Ruken at any time, so a game you like may go away.</li>
   </ul>
-  <p><a class="plain-link" href="/help/how-the-feed-works">How the feed works</a></p>
+  <p><a class="go" href="/help/how-the-feed-works">How the feed works</a></p>
 
   <h2>What no game may have</h2>
   <ul class="bullets">
@@ -83,7 +83,7 @@
     Before you send your first game, you agree to the maker agreement. It says what you let Ruken do with your
     game and how makers are paid. Where this page and the agreement differ, the agreement wins.
   </p>
-  <p><a href="/legal/maker-agreement">Read the maker agreement</a></p>
+  <p><a class="go" href="/legal/maker-agreement">Read the maker agreement</a></p>
 
   <h2>Waiting for a lawyer</h2>
   <p>
@@ -94,6 +94,6 @@
   <h2>Changes</h2>
   <p>When Ruken changes how it works, this page changes too, and so does the date at the top.</p>
 
-  <p><a href="/privacy">Read what we keep about you</a></p>
-  <p><a href="/">Back to Ruken</a></p>
+  <p><a class="go" href="/privacy">Read what we keep about you</a></p>
+  <p><a class="quiet" href="/">Back to Ruken</a></p>
 </main>

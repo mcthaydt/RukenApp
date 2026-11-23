@@ -19,10 +19,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const { userId } = signedInOnly(locals.caller, url);
   const account = await accountOf(userId);
   // The membership line and the one button under it, worked out by a pure function (membership/format.ts).
-  const membership = membershipLine(await membershipServices().service.view(userId));
+  const view = await membershipServices().service.view(userId);
+  const membership = membershipLine(view);
+  // The badge beside the number: a member right now (the one rule, `premiumAccess`), or not.
+  const member = view.member;
   // Her door to the maker's area says what she can do there: open her games, or add the first.
   const makesGames = (await gamesServices().service.gamesOf(userId)).length > 0;
-  return { ...account, membership, makesGames };
+  return { ...account, membership, member, makesGames };
 };
 
 export const actions: Actions = {

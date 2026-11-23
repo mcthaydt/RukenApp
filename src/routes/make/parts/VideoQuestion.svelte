@@ -151,7 +151,7 @@
     <p class="problem" id="problem" role="alert">
       {shown}
       {#if tooBig}
-        <a href={video.howToTooBig}>How to make it smaller</a>
+        <a class="go" href={video.howToTooBig}>How to make it smaller</a>
       {/if}
     </p>
   {/if}

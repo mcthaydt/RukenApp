@@ -1,6 +1,6 @@
 <!--
-  Your account: who is signed in, where their membership stands, the one thing they can do about it, a quiet way
-  to sign out and a plain link to delete the account.
+  Your account: who is signed in, where their membership stands, the one thing they can do about it, side links to
+  the pages around it, then a quiet button to sign out and another to delete the account.
 -->
 <script lang="ts">
   import type { PageProps } from "./$types";
@@ -17,9 +17,20 @@
 
 <main class="card">
   <h1>Your account</h1>
-  <p>{data.phone}</p>
-  <p class="note"><a href="/me/password">Change password</a></p>
-  <p>{data.membership.line}</p>
+  <!-- The number with a badge beside it that says at a glance whether this is a member (the owner, 2026-11-23: "beside
+       the number we can have a green or red badge"). "You're not a member." is then the badge alone; any other line
+       (renews on, ends on, card failed) still says what it needs to. -->
+  <p class="badged">
+    <span>{data.phone}</span>
+    {#if data.member}
+      <span class="badge member">Member</span>
+    {:else}
+      <span class="badge">Not a member</span>
+    {/if}
+  </p>
+  {#if data.membership.button !== "join"}
+    <p>{data.membership.line}</p>
+  {/if}
   {#if data.membership.button === "join"}
     <p><a class="button" href="/join?next=/me">Join Ruken</a></p>
   {:else}
@@ -31,16 +42,17 @@
       <small class="note">Opens our payment page, run by Stripe.</small>
     </form>
   {/if}
-  <form method="POST" action="/sign-out">
+  <!-- Side links, one under another: each goes to a page of its own (the owner, 2026-11-23: secondary actions are the →
+       links). -->
+  <ul class="sidelinks apart">
+    <li><a class="go" href="/make">{data.makesGames ? "Your games" : "Add your games to Ruken"}</a></li>
+    <li><a class="go" href="/me/password">Change password</a></li>
+    <li><a class="go" href="/me/computers">Your computers</a></li>
+    <li><a class="go" href="/about">What is Ruken?</a></li>
+  </ul>
+  <form class="apart" method="POST" action="/sign-out">
     <button class="quiet">Sign out</button>
   </form>
-  {#if data.makesGames}
-    <p class="apart"><a href="/make">Your games</a></p>
-  {:else}
-    <p class="apart">Make games? <a href="/make">Add yours to Ruken.</a></p>
-  {/if}
-  <p><a class="plain-link" href="/about">What is Ruken?</a></p>
-  <p class="note"><a href="/me/computers">Your computers</a></p>
-  <!-- A full line of air above it, so a thumb meant for another link never lands on Delete. -->
-  <p class="note apart"><a href="/me/delete">Delete my account</a></p>
+  <!-- A full line of air above it, so a thumb meant for Sign out never lands on Delete. -->
+  <p class="apart"><a class="quiet" href="/me/delete">Delete my account</a></p>
 </main>

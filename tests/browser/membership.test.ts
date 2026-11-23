@@ -9,7 +9,8 @@ test.beforeEach(forgetRateLimits);
 test("someone who has not paid is told so and offered the card", async ({ page }) => {
   await signUp(page);
   await page.goto("/me");
-  await expect(page.getByText("You're not a member.")).toBeVisible();
+  // The red badge beside the number says it (the owner, 2026-11-23).
+  await expect(page.locator(".badged .badge", { hasText: "Not a member" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Join Ruken" })).toHaveAttribute("href", "/join?next=/me");
 });
 
@@ -18,6 +19,7 @@ test("a member sees what they pay and when it renews", async ({ page }, testInfo
   await expect(
     page.getByText(/^You're a member\. \$9\.99 a month\. Renews on \w+, \w+ \d+\.$/),
   ).toBeVisible();
+  await expect(page.locator(".badged .badge.member", { hasText: "Member" })).toBeVisible();
   // One card, one filled button (Change card or cancel), nothing red: the membership action is the card's one main one.
   await expectOneCard(page);
   // The Owner, 2026-11-14, "All six": the button says what it does, and the line under it says where it goes.
@@ -74,18 +76,22 @@ test("a paying member's delete screen says the no-refund line first, and offers 
   const changedMind = await boxOf(changedMindLine);
   expect(noRefund.y).toBeGreaterThan(first.y);
   expect(changedMind.y).toBeGreaterThan(noRefund.y);
-  // The Owner, 2026-11-14, "fine, line it up": the quiet button's words start where the card's other words start, on
-  // every line, on a phone (where they wrap) and on a computer.
+  // The Owner, 2026-11-14, "fine, line it up": the quiet button starts where the card's other words start, on a phone
+  // and on a computer. It is a real button now (the owner, 2026-11-22: no underlined words as buttons), so its edge,
+  // not its words, lines up; its words start a button's padding in, on every line.
   // (NaN if a line were missing, which fails the comparison below rather than passing it.)
   const [cardEdge = Number.NaN] = await lineStarts(changedMindLine);
-  const quietLines = await lineStarts(
-    page.getByRole("button", { name: "Only want to stop paying? Cancel your membership instead." }),
-  );
+  const quiet = page.getByRole("button", {
+    name: "Only want to stop paying? Cancel your membership instead.",
+  });
+  expect((await boxOf(quiet)).x).toBeCloseTo(cardEdge, 0);
+  const quietLines = await lineStarts(quiet);
   expect(quietLines.length).toBeGreaterThan(0);
-  for (const start of quietLines) expect(start).toBeCloseTo(cardEdge, 0);
+  const [firstStart = Number.NaN] = quietLines;
+  for (const start of quietLines) expect(start).toBeCloseTo(firstStart, 0);
   await showTheOwner(page, testInfo, "delete your account, as a paying member");
 
-  // It is a button that looks like a link: opening Stripe's page is a post, which a link cannot make.
+  // It is a button: opening Stripe's page is a post, which a link cannot make.
   await page
     .getByRole("button", { name: "Only want to stop paying? Cancel your membership instead." })
     .click();

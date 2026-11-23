@@ -76,7 +76,7 @@ test("a game's page has the bar, a way back to the feed, and nothing hidden unde
 }, testInfo) => {
   await page.goto(`/g/${game.slug}`);
   await expectTheBar(page, { home: false });
-  await expect(page.getByRole("link", { name: "← Back to the feed" })).toHaveAttribute("href", "/");
+  await expect(page.getByRole("link", { name: "Back to the feed" })).toHaveAttribute("href", "/");
   await wordsHaveSettled(page);
   await page.evaluate(() => {
     window.scrollTo(0, document.documentElement.scrollHeight);

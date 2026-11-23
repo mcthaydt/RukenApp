@@ -9,7 +9,7 @@
 </svelte:head>
 
 <main class="card">
-  <p><a href="/">Back to Ruken</a></p>
+  <p><a class="quiet" href="/">Back to Ruken</a></p>
   <h1>Privacy</h1>
   <p class="note">Last updated 22 November 2026</p>
   <p>
@@ -121,7 +121,7 @@
       does.
     </li>
   </ul>
-  <p><a class="plain-link" href="/help/how-the-feed-works">How the feed works</a></p>
+  <p><a class="go" href="/help/how-the-feed-works">How the feed works</a></p>
 
   <h2>Games you want</h2>
   <p>Before Ruken opens, you can add games to a list. We keep your list.</p>
@@ -243,6 +243,6 @@
   <h2>Changes</h2>
   <p>When Ruken changes what it keeps, this page changes too, and so does the date at the top.</p>
 
-  <p><a href="/terms">Read the terms</a></p>
-  <p><a href="/">Back to Ruken</a></p>
+  <p><a class="go" href="/terms">Read the terms</a></p>
+  <p><a class="quiet" href="/">Back to Ruken</a></p>
 </main>

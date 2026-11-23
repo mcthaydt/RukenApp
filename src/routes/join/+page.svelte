@@ -153,7 +153,7 @@
           <p>First you make an account, then you pay. Then you come straight back.</p>
         {/if}
       </div>
-      <p><a class="plain-link" href="/about">What is Ruken?</a></p>
+      <p><a class="go" href="/about">What is Ruken?</a></p>
     </div>
   {/if}
 </main>

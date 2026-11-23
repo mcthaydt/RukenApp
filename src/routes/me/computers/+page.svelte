@@ -48,5 +48,5 @@
       {/each}
     </ul>
   {/if}
-  <p class="note"><a href="/me">Back to your account</a></p>
+  <p class="note"><a class="quiet" href="/me">Back to your account</a></p>
 </main>

@@ -10,7 +10,7 @@
 </script>
 
 <main class="card">
-  <p><a href={data.back.href}>{data.back.words}</a></p>
+  <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
   <h1>Put your game on GitHub</h1>
   <p>GitHub is a free website that keeps your game's files. Ruken copies your game from there.</p>
   <ol>
@@ -36,5 +36,5 @@
     If index.html sits inside another folder, tell Ruken which one. Choose "Change the branch or folder" and
     write the folder's name, like web/build.
   </p>
-  <p><a href={data.back.href}>{data.back.words}</a></p>
+  <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
 </main>

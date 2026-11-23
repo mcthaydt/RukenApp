@@ -10,6 +10,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import Points from "../../../legal/maker-agreement/Points.svelte";
+  import Icon from "../../../../lib/icon.svelte";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
@@ -53,7 +54,7 @@
       <Points points={data.points} />
     </div>
     <div class="acts">
-      <a class="button safe" href={data.back}>Back</a>
+      <a class="button safe" href={data.back} aria-label="Back"><Icon name="back" /></a>
       <button disabled={saving} aria-busy={saving ? "true" : undefined}>
         {saving ? "Saving…" : "I agree"}
       </button>
