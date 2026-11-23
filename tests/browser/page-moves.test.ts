@@ -185,3 +185,31 @@ test("a browser that skips the slide still shows the maker's next question", asy
   await expect(page.getByText("Question 1 of 6")).toBeVisible();
   await expectNoNewPageLoad(page);
 });
+
+test("Back pressed while a page is still sliding in comes back, and stays back", async ({ page }) => {
+  // The slide holds the new page until the old one has been pictured, which on a busy phone takes a moment (Safari in
+  // CI, Back from a game opened in the feed). Here the picture takes 600 ms, and Back is pressed in that time.
+  await page.addInitScript(() => {
+    (
+      document as unknown as { startViewTransition: (update: () => Promise<void>) => unknown }
+    ).startViewTransition = (update) => {
+      const done = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          void update().then(resolve);
+        }, 600);
+      });
+      return { ready: Promise.resolve(), finished: done, updateCallbackDone: done, skipTransition: () => {} };
+    };
+  });
+  await page.goto("/sign-in");
+  await markThePage(page);
+  await page.getByRole("link", { name: "Create an account" }).click();
+  await expect(page).toHaveURL(/\/sign-up/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/sign-in/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sign in");
+  // Well after the held slide has let its page go: the page that was left behind does not come back over this one.
+  await page.waitForTimeout(1500);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sign in");
+  await expectNoNewPageLoad(page);
+});
