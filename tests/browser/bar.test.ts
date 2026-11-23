@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { addGame } from "./support/game.ts";
+import { addGame, agreeToTheAgreement, giveRealClips, startDraft } from "./support/game.ts";
 import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
-import { givePage } from "./support/database.ts";
+import { fillAnswers, givePage } from "./support/database.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { signInAs, signUp } from "./support/account.ts";
 
@@ -12,12 +12,19 @@ import { signInAs, signUp } from "./support/account.ts";
 
 let game: Awaited<ReturnType<typeof addGame>>;
 let handle: string;
+let link: string;
 
 test.beforeAll(async ({ browser, request }) => {
   test.setTimeout(240_000);
   await forgetRateLimits();
   game = await addGame(browser, request);
-  handle = (await givePage(game.maker, { name: "Night Owl", oneLine: "I make small, hard games." })).handle;
+  const given = await givePage(game.maker, {
+    name: "Night Owl",
+    oneLine: "I make small, hard games.",
+    links: [{ title: "My shop", url: "https://example.com/shop" }],
+  });
+  handle = given.handle;
+  link = given.linkIds[0] ?? "";
 });
 test.beforeEach(forgetRateLimits);
 
@@ -173,14 +180,34 @@ test("no bar where the game or a step has the whole screen: playing, and each st
     `/make/${game.slug}/name`,
     "/make/page/name",
     "/make/page/links/add",
+    "/make/page/links/add/where?title=My%20blog",
+    `/make/page/links/${link}`,
+    `/make/page/links/${link}/where?title=My%20shop`,
   ]) {
     await page.goto(path);
     await expect(page.locator("main, iframe").first()).toBeAttached();
+    // Each address is the step itself, not one it was sent on from.
+    expect(new URL(page.url()).pathname, path).toBe(path.split("?")[0]);
     await expect(bar(page), path).toHaveCount(0);
   }
   // A game's own place in the maker's area is not a step, so the bar is there, over its own buttons.
   await page.goto(`/make/${game.slug}`);
   await expectTheBar(page, { home: false });
+});
+
+test("no bar on the last two steps of adding a game: the agreement, and Check it, then send", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const { slug } = await startDraft(page);
+  await fillAnswers(slug, { files: true, videos: true, age: "age_12" });
+  await giveRealClips(page, slug);
+  await page.goto(`/make/${slug}/agreement`);
+  await expect(page.getByRole("button", { name: "I agree" })).toBeVisible();
+  await expect(bar(page)).toHaveCount(0);
+  await agreeToTheAgreement(page, slug);
+  await expect(page).toHaveURL(`/make/${slug}/check`);
+  await expect(bar(page)).toHaveCount(0);
 });
 
 test("no bar on Your page while there is no page yet: it asks the address, a step", async ({ page }) => {

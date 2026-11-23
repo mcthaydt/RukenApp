@@ -16,6 +16,7 @@ import {
 import {
   boxOf,
   brokenWords,
+  clearOfTheButtons,
   layoutHasSettled,
   heldSideways,
   layoutOf,
@@ -341,10 +342,13 @@ test("the Maker agreement link has a line's room above it", async ({ page }) => 
 });
 
 // ---- L22: a refusal is read with the question it is about -----------------------------------------------------------------------
+// Changed on purpose in the sideways steps follow-up (slice 2 design round 3, note 3): on a phone held sideways Back and
+// Save stand in a column at the right edge, not in a row across the foot, so the sideways journeys in this file ask
+// whether a thing is clear of the buttons and in the window (clearOfTheButtons in support/look.ts), not above a row.
 
 const IPHONE_SE_SIDEWAYS = { width: 568, height: 320 };
 
-/** The question's heading is in the window, and the reason is above the bar: the maker reads both. */
+/** The question's heading is in the window, and the reason is clear of Back and Save: the maker reads both. */
 async function expectQuestionAndReason(page: Page): Promise<void> {
   const heading = page.getByRole("heading", { level: 1 });
   const reason = page.getByRole("alert");
@@ -352,8 +356,7 @@ async function expectQuestionAndReason(page: Page): Promise<void> {
   await expect
     .poll(async () => {
       const question = await boxOf(heading);
-      const why = await boxOf(reason);
-      return question.y >= 0 && why.y + why.height <= (await boxOf(page.locator(".acts"))).y;
+      return question.y >= 0 && (await clearOfTheButtons(page, await boxOf(reason)));
     })
     .toBe(true);
 }
@@ -569,7 +572,7 @@ test.describe("on an iPhone SE held upright", () => {
  */
 const CHOICES_NAME = "Tiny game 1899072e";
 
-/** Goes to the question of who the game is for and checks that the first `count` choices end above the bar, their words with them. */
+/** Goes to the question of who the game is for and checks that the first `count` choices are clear of Back and Save, their words with them. */
 async function expectChoicesAboveTheBar(page: Page, count: number): Promise<void> {
   const { slug } = await startDraft(page);
   await fillAnswers(slug, { files: true, videos: true });
@@ -581,24 +584,24 @@ async function expectChoicesAboveTheBar(page: Page, count: number): Promise<void
     "the heading takes at most three lines",
   ).toBeLessThanOrEqual(3);
 
-  const bar = await boxOf(page.locator(".acts"));
   const picks = page.locator(".pick");
   for (let which = 0; which < count; which += 1) {
     const box = await boxOf(picks.nth(which));
-    expect(box.y + box.height, `choice ${String(which + 1)} ends above the bar`).toBeLessThanOrEqual(bar.y);
+    expect(await clearOfTheButtons(page, box), `choice ${String(which + 1)} is clear of the buttons`).toBe(
+      true,
+    );
   }
 }
 
-/** Goes to Check and send and checks that the name and the line end above the bar, and that the videos come after them. */
+/** Goes to Check and send and checks that the name and the line are clear of Back and Save, and that the videos come after them. */
 async function expectFactsBeforeTheVideos(page: Page, facts: Locator[]): Promise<void> {
   await startAtCheck(page);
   await layoutHasSettled(page);
 
-  const bar = await boxOf(page.locator(".acts"));
   const tiles = await boxOf(page.locator(".tiles"));
   for (const fact of facts) {
     const box = await boxOf(fact);
-    expect(box.y + box.height, "ends above the bar").toBeLessThanOrEqual(bar.y);
+    expect(await clearOfTheButtons(page, box), "is clear of the buttons").toBe(true);
     expect(tiles.y, "the videos come after it").toBeGreaterThan(box.y);
   }
 }
@@ -606,12 +609,12 @@ async function expectFactsBeforeTheVideos(page: Page, facts: Locator[]): Promise
 test.describe("on a phone held sideways", () => {
   test.use({ viewport: { width: 915, height: 412 } });
 
-  test("the choices of who the game is for are both above the bar", async ({ page }) => {
+  test("the choices of who the game is for are both clear of Back and Save", async ({ page }) => {
     onlyInPhone();
     await expectChoicesAboveTheBar(page, 2);
   });
 
-  test("Check and send shows the name, the line and every fact above the bar, and the videos after them", async ({
+  test("Check and send shows the name, the line and every fact clear of Back and Save, and the videos after them", async ({
     page,
   }) => {
     onlyInPhone();
@@ -626,12 +629,12 @@ test.describe("on a phone held sideways", () => {
 test.describe("on an iPhone SE held sideways", () => {
   test.use({ viewport: IPHONE_SE_SIDEWAYS });
 
-  test("the first choice of who the game is for is above the bar, whole", async ({ page }) => {
+  test("the first choice of who the game is for is clear of Back and Save, whole", async ({ page }) => {
     onlyInPhone();
     await expectChoicesAboveTheBar(page, 1);
   });
 
-  test("Check and send shows the name and the line above the bar, and the videos after them", async ({
+  test("Check and send shows the name and the line clear of Back and Save, and the videos after them", async ({
     page,
   }) => {
     onlyInPhone();
@@ -707,26 +710,27 @@ test.describe("on an iPhone SE held upright", () => {
   });
 });
 
-/** The upright video question of a phone held sideways: its frame is whole above the bar, beside the question. */
+/** The upright video question of a phone held sideways: its frame is whole and clear of Back and Save, beside the question. */
 async function expectFrameWholeAboveTheBar(page: Page): Promise<void> {
   await startAtVideo(page, "upright");
   await wordsHaveSettled(page);
-  const bar = await boxOf(page.locator(".acts"));
   const frame = await boxOf(page.locator('[data-frame="upright"]'));
-  expect(frame.y + frame.height, "the frame ends above the bar").toBeLessThanOrEqual(bar.y);
+  expect(await clearOfTheButtons(page, frame), "the frame is whole and clear of the buttons").toBe(true);
 }
 
 test.describe("on an iPhone SE held sideways", () => {
   test.use({ viewport: IPHONE_SE_SIDEWAYS });
 
-  test("the upright video's frame is whole above the bar", async ({ page }) => {
+  test("the upright video's frame is whole and clear of Back and Save", async ({ page }) => {
     onlyInPhone();
     await expectFrameWholeAboveTheBar(page);
   });
 });
 
 function uprightFrameWhole(): void {
-  test("on a phone held sideways the upright video's frame is whole above the bar", async ({ page }) => {
+  test("on a phone held sideways the upright video's frame is whole and clear of Back and Save", async ({
+    page,
+  }) => {
     test.skip(layoutOf(page) !== "phone-sideways", "a phone held sideways, in the projects that have one");
     await expectFrameWholeAboveTheBar(page);
   });

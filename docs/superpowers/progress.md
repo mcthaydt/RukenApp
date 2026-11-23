@@ -121,6 +121,8 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Panels feel like an app: swipes stay in the feed, no zoom, no highlight (lane 2) | #323 | lane 2 review PASS at `7c6b49a` (audit `2a463cf`); full run, then merge | not measured (short path, no plan) |
 | Deploy from a green `main` (lane 3) | spec `2026-11-22-deploy-from-green-main-design.md` on `claude/project-thread-mqcz6h` | spec written, waiting on its plan audit | 0% (0 of 8 plan steps ticked) |
 | "How the feed works" page | #350 | merged as `e50e672` | not measured (short path, no plan) |
+| Bar on every screen, and a phone held sideways (lane 2) | #364 | merged 2026-11-23 14:29 UTC as `f421c37` (head `c0007b0`, review PASS re-pointed to it, full run green) | not measured (short path, no plan) |
+| Sideways steps follow-up: Back and Save in a right-edge column, the slice 2 step checks moved to it, the review's three notes (lane 2) | branch `claude/project-thread-qlb5o2` | building | not measured (short path, no plan) |
 | Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
 | Private move, P0: hooks in RukenPrivate (lane 3) | RukenPrivate #19 | merged at `018ccc9` (head `a52d930`, implementation audit PASS `2bc2b5f`); hooks load only in a session started in a RukenPrivate checkout | 100% |
 | Private move, P1: the spec; the learned spec trimmed, the full one to RukenPrivate (lane 1) | branch `claude/project-thread-t02epm`; RukenPrivate #20 | plan audit 3 PASS at `05e6bfc`; the public learned spec trimmed on the branch; the full copy merged in RukenPrivate #20 (`3526137`); the pull request opened 2026-11-23 | 100% built, not merged |
