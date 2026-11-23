@@ -157,7 +157,7 @@ jobs:
       # A migration may already have run, so nothing rolls back by itself. These say how to do it by hand, and for
       # which Worker: the site if the games step never started, the gate if it did (the site is fine then).
       - name: how to roll back the site
-        if: failure() && steps.target.outputs.deploy == 'true' && steps.deploy.outputs.shipped == 'true' && steps.games.outputs.games_started != 'true'
+        if: failure() && steps.target.outputs.deploy == 'true' && steps.deploy.outputs.shipped == 'true' && steps.games.outcome == 'skipped'
         run: |
           echo "::error::A new version went live but then something failed. To put the previous version back, run: pnpm exec wrangler rollback"
           echo "A migration may already have run, so look at the database before rolling back code that expects the old schema."
