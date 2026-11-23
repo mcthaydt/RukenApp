@@ -48,7 +48,7 @@ async function check(opts: {
   );
   chmodSync(wrangler, 0o755);
   const result = await new Promise<{ status: number | null; text: string }>((done) => {
-    const env: Record<string, string | undefined> = {
+    const base: Record<string, string | undefined> = {
       PATH: process.env.PATH,
       VERSION_ID: opts.versionId ?? VERSION,
       CLOUDFLARE_ACCOUNT_ID: ACCOUNT,
@@ -59,7 +59,7 @@ async function check(opts: {
       INTERVAL: "0.2",
       CURL_MAX_TIME: "1",
     };
-    if (opts.without) delete env[opts.without];
+    const env = Object.fromEntries(Object.entries(base).filter(([key]) => key !== opts.without));
     const p = spawn("bash", [script], { env });
     let text = "";
     p.stdout.on("data", (d: Buffer) => {
@@ -131,6 +131,14 @@ describe("games-check.sh", () => {
     const r = await check({ api: ok({ observability: "off" }) });
     expect(r.status).not.toBe(0);
     expect(r.text).toMatch(/::error::.*observability/i);
+  });
+
+  it("fails when observability is an object with no clear enabled", async () => {
+    for (const observability of [{}, { enabled: "false" }]) {
+      const r = await check({ api: ok({ observability }) });
+      expect(r.status).not.toBe(0);
+      expect(r.text).toMatch(/::error::.*observability/i);
+    }
   });
 
   it("fails with a readable reason when the token or account id is missing", async () => {

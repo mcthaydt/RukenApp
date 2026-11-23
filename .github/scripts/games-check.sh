@@ -68,6 +68,11 @@ keeps_nothing() {
     reason="the games Worker's observability setting is not readable, so logs off cannot be seen"
     return 1
   fi
+  # An object has to say enabled with a real boolean; `{}` or "false" (a string) are not an answer.
+  if jq -e '.result.observability != null and ((.result.observability.enabled | type) != "boolean")' "$work/body" >/dev/null; then
+    reason="the games Worker's observability setting has no clear on/off, so logs off cannot be seen"
+    return 1
+  fi
   if jq -e '.result.observability.enabled == true' "$work/body" >/dev/null; then reason="the games Worker has observability on"; return 1; fi
   if jq -e '.result.observability.logs.enabled == true' "$work/body" >/dev/null; then reason="the games Worker has logs on"; return 1; fi
   if jq -e '.result.observability.traces.enabled == true' "$work/body" >/dev/null; then reason="the games Worker has traces on"; return 1; fi
