@@ -217,14 +217,34 @@ async function watchClip(video: Locator, label: string): Promise<Watched> {
       message: `${label}: the clip plays past 0.5 s and comes back round`,
       timeout: 15_000,
     })
-    .toMatchObject({ cameBack: true });
+    .toMatchObject({ cameBack: true })
+    .catch(async (error: unknown) => {
+      // Says whether the page was stuck or only slow: once it answers (it may take a while on a busy machine), how far
+      // the clip got and how often it jumped. A clip that jumps back to its start over and over shows hundreds of jumps.
+      const asked = Date.now();
+      const late = await video
+        .evaluate(
+          (element: HTMLVideoElement) => ({
+            ...(element as HTMLVideoElement & { watched: Watched }).watched,
+            now: element.currentTime,
+            loop: element.loop,
+            paused: element.paused,
+          }),
+          undefined,
+          { timeout: 40_000 },
+        )
+        .catch(() => "no answer in 40 s");
+      throw new Error(
+        `${String(error)}\nthe page answered after ${String(Date.now() - asked)} ms: ${JSON.stringify(late)}`,
+      );
+    });
   return await seen();
 }
 
 test("the clip on screen plays through and starts again, and again after a person comes back to it", async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   // Safari's engine on Linux, given a looping video whose address names a start time (every clip's `#t=0.001`), jumped
   // back to the start about a hundred times a second and never played (progress.md, Flaky tests).
   await openFeed(page);
