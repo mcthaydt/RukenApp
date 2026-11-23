@@ -187,6 +187,8 @@ interface Watched {
   furthest: number;
   cameBack: boolean;
   jumps: number;
+  /** Whether the browser's own loop was ever on while watched: the clip must loop by hand (`loopByHand`). */
+  loopWasOn: boolean;
 }
 
 /**
@@ -200,8 +202,9 @@ async function watchClip(video: Locator, label: string): Promise<Watched> {
   await video.evaluate((element: HTMLVideoElement) => {
     // A second watch on the same clip first stops the first one, so only one watcher reads it at a time.
     (element as HTMLVideoElement & { stopWatching?: () => void }).stopWatching?.();
-    const seen: Watched = { furthest: 0, cameBack: false, jumps: 0 };
+    const seen: Watched = { furthest: 0, cameBack: false, jumps: 0, loopWasOn: false };
     const look = () => {
+      if (element.loop) seen.loopWasOn = true;
       if (seen.furthest > 0.5 && element.currentTime < 0.5) seen.cameBack = true;
       seen.furthest = Math.max(seen.furthest, element.currentTime);
     };
@@ -268,10 +271,7 @@ test("the clip on screen plays through and starts again, and again after a perso
   const first = await watchClip(video, "the first time");
   expect(first.furthest, "how far the clip played").toBeGreaterThan(0.5);
   expect(first.jumps, "jumps in one round of a two-second clip").toBeLessThanOrEqual(5);
-  await expect(video, "the browser's own loop stays off, even once the clip has played on").toHaveJSProperty(
-    "loop",
-    false,
-  );
+  expect(first.loopWasOn, "the browser's own loop was on while the clip played").toBe(false);
 
   // Away and back: the clip a person left waits at its start, and plays again from there.
   await page.keyboard.press("ArrowDown");
@@ -282,6 +282,7 @@ test("the clip on screen plays through and starts again, and again after a perso
   const again = await watchClip(video, "the second time");
   expect(again.furthest, "how far the clip played the second time").toBeGreaterThan(0.5);
   expect(again.jumps, "jumps in one round, the second time").toBeLessThanOrEqual(5);
+  expect(again.loopWasOn, "the browser's own loop was on, the second time").toBe(false);
 });
 
 test("each key moves one clip, never before the first", async ({ page }) => {
