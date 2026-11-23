@@ -16,7 +16,15 @@ import {
   startDraft,
   TINY_GAME,
 } from "./support/game.ts";
-import { boxOf, expectFrame, heldSideways, layoutHasSettled, layoutOf, lineCount } from "./support/look.ts";
+import {
+  boxOf,
+  clearOfTheButtons,
+  expectFrame,
+  heldSideways,
+  layoutHasSettled,
+  layoutOf,
+  lineCount,
+} from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the screen review of the rebuilt maker screens found (docs/superpowers/audits/2026-11-15-maker-screens-rebuild-
@@ -197,7 +205,7 @@ test("the Choose video button fills the bar wherever the buttons are in a bar", 
 });
 
 function answerBoxAboveTheBar(): void {
-  test("on a sideways phone the answer box is in view above the bar, under a two-line heading", async ({
+  test("on a sideways phone the answer box is in view beside Back and Save, under a two-line heading", async ({
     page,
   }) => {
     test.skip(layoutOf(page) !== "phone-sideways", "only a sideways phone is this short");
@@ -206,9 +214,10 @@ function answerBoxAboveTheBar(): void {
     await pageHasSettled(page);
 
     // The line's box is a growing box (a textarea), so it is found by its class alone.
+    // Changed on purpose in the sideways steps follow-up: Back and Save stand in a column at the right edge here, so
+    // the box is clear of them and in the window, not above a row of them.
     const box = await boxOf(page.locator(".answer"));
-    const bar = await boxOf(page.locator(".acts"));
-    expect(box.y + box.height).toBeLessThanOrEqual(bar.y);
+    expect(await clearOfTheButtons(page, box)).toBe(true);
   });
 }
 
