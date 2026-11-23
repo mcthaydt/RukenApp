@@ -10,6 +10,7 @@ import { describe, expect, test } from "vitest";
 
 /** The features, lowest first (design 7.1). A new feature is added here, in its place, before it is built. */
 const FEATURE_ORDER = [
+  "consent",
   "accounts",
   "membership",
   "games",

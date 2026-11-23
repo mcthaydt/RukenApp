@@ -291,7 +291,7 @@ function addAGameOnTheHeadingsLine(): void {
     await pageHasSettled(page);
 
     const heading = await boxOf(page.getByRole("heading", { level: 1 }));
-    const add = await boxOf(page.getByRole("link", { name: "Add a game" }));
+    const add = await boxOf(page.getByRole("main").getByRole("link", { name: "Add a game" }));
     expect(add.y).toBeLessThan(heading.y + heading.height);
     expect(add.x).toBeGreaterThan(heading.x + heading.width);
   });
@@ -303,8 +303,12 @@ test("the Maker agreement link has a line's room above it", async ({ page }) => 
   await signUp(page);
   await page.goto("/make");
   await pageHasSettled(page);
+  // Each line of the screen rises 28px into place, a little after the one before. Measured while they rose, the link
+  // and what is above it were caught at different points of their rise, and on phone the room read 12.6 to 15.8
+  // (progress.md, Flaky tests). So the screen is measured at rest, and in one look.
+  await wordsHaveSettled(page);
 
-  const { above, layout } = await page.locator("main.games").evaluate((main) => {
+  const { above, wordsTop, layout } = await page.locator("main.games").evaluate((main) => {
     const note = main.querySelector(":scope > .note");
     // The bar of buttons is fixed to the window's bottom on a phone, so it is not something the link sits under.
     const sections = [...main.children].filter(
@@ -317,13 +321,18 @@ test("the Maker agreement link has a line's room above it", async ({ page }) => 
         return `${child.tagName.toLowerCase()}.${child.className} ${getComputedStyle(child).position} top ${String(box.top)} bottom ${String(box.bottom)}`;
       })
       .concat(`fonts ${document.fonts.status}`);
-    return { above: Math.max(...sections.map((child) => child.getBoundingClientRect().bottom)), layout };
-  });
-  // Its words, not its box: a link's 44px box reaches 14px above its line into the air round it, by design.
-  const wordsTop = await page.getByRole("link", { name: "Maker agreement" }).evaluate((link) => {
+    // Its words, not its box: a link's 44px box reaches 14px above its line into the air round it, by design.
+    const link = [...(note?.querySelectorAll("a") ?? [])].find(
+      (a) => a.textContent.trim() === "Maker agreement",
+    );
+    if (link === undefined) throw new Error("there is no Maker agreement link in the note");
     const range = document.createRange();
     range.selectNodeContents(link);
-    return range.getBoundingClientRect().y;
+    return {
+      above: Math.max(...sections.map((child) => child.getBoundingClientRect().bottom)),
+      wordsTop: range.getBoundingClientRect().y,
+      layout,
+    };
   });
   expect(
     wordsTop - above,

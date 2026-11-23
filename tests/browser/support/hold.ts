@@ -30,10 +30,18 @@ export async function holdNextScreen(page: Page): Promise<{ release: () => Promi
   return {
     async release() {
       await page.waitForFunction(() => "__letItStart" in window, undefined, { timeout: 15_000 });
+      // The route is taken away while the held screen is still waiting, before it starts, never as it starts. The
+      // screen's first move once let go is to fetch the root error page's script, which no page sends ahead of time;
+      // taken away in that moment, the route left that one request stopped for good, so the screen never came alive
+      // (runs 45067364220 and 45069502901: the release, then the route taken away 40 to 60 ms later, and no request
+      // for `nodes/1` ever answered). Playwright, turning the route off, forgets a request the browser stopped for it
+      // but had not yet told it about. So: everything the held page asked for has arrived, the route goes, and only
+      // then is the screen let go, with no route left for its requests to pass through.
+      await page.waitForLoadState("load");
+      await page.unrouteAll({ behavior: "wait" });
       await page.evaluate(() => {
         (window as unknown as { __letItStart: () => void }).__letItStart();
       });
-      await page.unrouteAll({ behavior: "wait" });
     },
   };
 }

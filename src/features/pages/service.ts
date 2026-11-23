@@ -277,19 +277,21 @@ export function createPagesService(deps: PagesServiceDeps) {
 
   /**
    * Where a tap on a link goes, or null when there is nowhere to send the visitor: a link that is hidden, is on
-   * another page or is made up. The tap is counted unless the person tapping is the page's maker.
+   * another page or is made up. The tap is counted unless the person tapping is the page's maker, or `counted` is
+   * false (a browser that has not said yes to cookies: the link still opens, nothing is written).
    */
   async function tapLink(
     handle: string,
     linkId: string,
     viewerUserId: string | null,
+    counted: boolean,
   ): Promise<string | null> {
     const link = await db.pageLink.findFirst({
       where: { id: linkId, hidden: false, page: { handle } },
       select: { url: true, page: { select: { userId: true } } },
     });
     if (link === null) return null;
-    if (link.page.userId !== viewerUserId) {
+    if (counted && link.page.userId !== viewerUserId) {
       await db.pageLink.update({ where: { id: linkId }, data: { taps: { increment: 1 } } });
     }
     return link.url;

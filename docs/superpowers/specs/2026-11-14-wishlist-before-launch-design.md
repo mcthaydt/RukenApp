@@ -106,3 +106,11 @@ On `/make/<game>`, under the game's state line, a few plain numbers, counted fro
 - "Only to people whose email is confirmed" goes: every account's number is confirmed at sign-up. A person who texted STOP gets nothing.
 - `WishlistMail` is not built; the text is recorded as a `TextSent` row, which is how it is sent once.
 - The launch text needs Twilio and the carriers' approval of Ruken's number, not Resend's domain.
+
+## Changed on 2026-11-22: Play stays open until launch
+
+The Owner, 2026-11-22 16:03 UTC: "play can stay open for tests until launch"; 16:05 UTC, on what a game shows where Play is before launch: "Wishlist if it's not out, Play if it is".
+
+- "The play route (the play pass) refuses everyone before launch, except the game's own maker and staff" goes. The play address is not refused before launch, so anyone testing can still play by it. Who may play and what counts is as it was (design 6).
+- The screens are as this spec says: before launch, the feed, a maker's page and `/g/<game>` show "Opens 30 November" and the Wishlist button where Play is, and no Play button; from 11:00 on 30 November they show Play and no Wishlist button.
+- "A player who can play before it" is no longer a failure of this work.

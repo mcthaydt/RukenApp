@@ -106,6 +106,21 @@ export function createPlayService(deps: PlayServiceDeps) {
   }
 
   /**
+   * The address of a game's files that are not live yet, for its maker to try before staff say yes. Like `reviewLook`,
+   * under a pass made for that pull and that person, and it records no session: a maker's own play never counts, and
+   * nothing about a test play reaches players, the feed or the game's numbers. Who may test-play is the caller's to
+   * decide (only the game's maker).
+   */
+  async function testPlay(input: {
+    game: { id: string; publicId: string };
+    pull: { id: string; connectHosts: string[] };
+    makerUserId: string;
+  }): Promise<string> {
+    const pass = await passFor(deps, { game: input.game, pull: input.pull, userId: input.makerUserId });
+    return `${deps.address(`g-${input.game.publicId}`)}/${pass}/`;
+  }
+
+  /**
    * One "still here" from a page. It must carry the session's own token (the id alone is not enough, since the id is in
    * the page). A session takes beats for a day, and a beat that comes too soon after the last is dropped, so a page
    * cannot make time pass faster than the clock. The first beat is never too soon: measured from the start it would
@@ -230,7 +245,16 @@ export function createPlayService(deps: PlayServiceDeps) {
     return new Map(rows.map((row) => [row.gameId, Number(row.beats)]));
   }
 
-  return { startPlay, reviewLook, recordBeat, playSummary, sittingOf, playersThisWeek, memberBeatsByGame };
+  return {
+    startPlay,
+    reviewLook,
+    testPlay,
+    recordBeat,
+    playSummary,
+    sittingOf,
+    playersThisWeek,
+    memberBeatsByGame,
+  };
 }
 
 export type PlayService = ReturnType<typeof createPlayService>;

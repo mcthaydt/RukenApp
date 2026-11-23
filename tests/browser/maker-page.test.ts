@@ -6,6 +6,7 @@ import { expectFrame, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { rgb } from "../support/look-tokens.ts";
 import { THEMES } from "../../src/features/pages/themes.ts";
+import { consented } from "./support/consent.ts";
 
 // A maker's page at /<handle> (spec 5.4): who they are, their games, their links, in their colours.
 
@@ -33,7 +34,7 @@ test.beforeAll(async ({ browser, request }) => {
   const liveGame = async (): Promise<{ slug: string; name: string }> => {
     // The sign-ups share one client address's limit, so each starts with it forgotten.
     await forgetRateLimits();
-    const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
     try {
       return await gameWhere(await context.newPage(), { state: "live" });
     } finally {
@@ -192,7 +193,7 @@ test("a visitor's open and tap are counted, the maker's own are not", async ({ p
   expect(await pageCounts(handle)).toEqual({ views: 1, taps: [0] });
 
   // The maker, signed in, opens the page and taps the link.
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     const own = await context.newPage();
     await signInAs(own, owner.number, owner.password);
