@@ -417,6 +417,24 @@ export function layoutOf(page: Page): Layout {
 }
 
 /**
+ * Whether `box` is wholly in view and clear of a step's own Back and Save (`.acts`), so the maker sees it without
+ * scrolling and nothing covers it: it ends above whatever is under it. On a phone or an iPad held upright the buttons are a bar across the window's foot,
+ * so clear is above that bar. On a phone held sideways they are a column at the right edge (slice 2 design round 3,
+ * note 3), so clear is to the left of the column and above the window's foot. Elsewhere the buttons follow the answer,
+ * so clear is above the window's foot.
+ */
+export async function clearOfTheButtons(page: Page, box: Box): Promise<boolean> {
+  const window = page.viewportSize() ?? { width: 0, height: 0 };
+  const layout = layoutOf(page);
+  if (layout === "phone" || layout === "tablet")
+    return box.y + box.height <= (await boxOf(page.locator(".acts"))).y;
+  const inWindow = box.y + box.height <= window.height;
+  if (layout === "phone-sideways")
+    return inWindow && box.x + box.width <= (await boxOf(page.locator(".acts"))).x;
+  return inWindow;
+}
+
+/**
  * Waits until a video has drawn a frame: the browser has read its size, which it can only do from a file it can decode.
  * A video that is a few bytes of the right first letters shows a blank block and never passes this.
  */

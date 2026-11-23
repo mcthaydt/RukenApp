@@ -523,7 +523,7 @@ test("a draft is thrown away: green keeps, red deletes, nothing is blue, and You
   ).toBeVisible();
   await expect(page.getByText("You can't undo this.")).toBeVisible();
   const keep = page.getByRole("link", { name: "Keep it" });
-  await expect(keep).toHaveCSS("background-color", rgb(token("--felt-raised")));
+  await expect(keep).toHaveCSS("background-color", await buttonColour(keep, "--felt-raised"));
   // Enter on this screen must not throw anything away, so the first thing in reach is the safe choice.
   await expect(keep).toBeFocused();
   await expect(page.getByRole("button", { name: "Throw it away" })).toHaveCSS(
