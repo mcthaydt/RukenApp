@@ -43,10 +43,10 @@
   <!-- A long page on a phone: a maker goes straight to the part they need. -->
   <nav aria-label="On this page">
     <ul>
-      <li><a class="quiet" href="#helper">Let an AI helper do it</a></li>
-      <li><a class="quiet" href="#need">What you need</a></li>
-      <li><a class="quiet" href="#steps">Step by step</a></li>
-      <li><a class="quiet" href="#fixes">If Ruken can't start your game</a></li>
+      <li><a class="go" href="#helper">Let an AI helper do it</a></li>
+      <li><a class="go" href="#need">What you need</a></li>
+      <li><a class="go" href="#steps">Step by step</a></li>
+      <li><a class="go" href="#fixes">If Ruken can't start your game</a></li>
     </ul>
   </nav>
 

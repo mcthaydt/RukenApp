@@ -305,6 +305,8 @@ describe("screens wear the look and nothing of their own", () => {
     "button",
     "quiet",
     "ways",
+    "go",
+    "links",
     "safe",
     "danger",
     "outline",

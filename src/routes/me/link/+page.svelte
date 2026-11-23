@@ -18,7 +18,7 @@
   {#if form?.answered === "yes"}
     <h1>Done</h1>
     <p role="status">You can close this page and go back to your terminal.</p>
-    <p class="note"><a class="quiet" href="/me/computers">See your computers</a></p>
+    <p class="note"><a class="go" href="/me/computers">See your computers</a></p>
   {:else if form?.answered === "no"}
     <h1>No problem</h1>
     <p role="status">That computer can't use your Ruken.</p>
@@ -37,7 +37,7 @@
     {#if form?.problem}
       <p class="problem" role="alert">{form.problem}</p>
       {#if form.tooMany}
-        <p><a class="quiet" href="/me/computers">Your computers</a></p>
+        <p><a class="go" href="/me/computers">Your computers</a></p>
       {/if}
     {/if}
     {#if data.warning}

@@ -21,11 +21,11 @@
   <!-- The steps for four devices are a long page on a phone: a maker goes straight to their own. -->
   <nav aria-label="Pick your device">
     <ul>
-      <li><a class="quiet" href="#iphone">iPhone or iPad</a></li>
-      <li><a class="quiet" href="#android">Android phone</a></li>
-      <li><a class="quiet" href="#windows">Windows computer</a></li>
-      <li><a class="quiet" href="#mac">Mac</a></li>
-      <li><a class="quiet" href="#too-big">Video too big?</a></li>
+      <li><a class="go" href="#iphone">iPhone or iPad</a></li>
+      <li><a class="go" href="#android">Android phone</a></li>
+      <li><a class="go" href="#windows">Windows computer</a></li>
+      <li><a class="go" href="#mac">Mac</a></li>
+      <li><a class="go" href="#too-big">Video too big?</a></li>
     </ul>
   </nav>
 

@@ -93,7 +93,7 @@
     </ul>
   </section>
 
-  <p><a class="quiet" href="/privacy">Read what we keep about you</a></p>
-  <p><a class="quiet" href="/terms">Read the terms</a></p>
+  <p><a class="go" href="/privacy">Read what we keep about you</a></p>
+  <p><a class="go" href="/terms">Read the terms</a></p>
   <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
 </main>

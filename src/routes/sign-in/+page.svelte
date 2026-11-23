@@ -33,7 +33,7 @@
     {/if}
     <button>Sign in</button>
   </form>
-  <p><a class="quiet" href="/forgot-password">Forgot your password?</a></p>
-  <p>New here? <a class="quiet" href={signUpLink}>Create an account</a></p>
-  <p><a class="quiet" href="/about">What is Ruken?</a></p>
+  <p><a class="go" href="/forgot-password">Forgot your password?</a></p>
+  <p>New here? <a class="go" href={signUpLink}>Create an account</a></p>
+  <p><a class="go" href="/about">What is Ruken?</a></p>
 </main>
