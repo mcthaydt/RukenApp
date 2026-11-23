@@ -72,7 +72,6 @@
                 src={`${clip.upright}#t=${String(clip.at)}`}
                 preload="none"
                 muted
-                loop
                 playsinline
                 tabindex="-1"
                 use:playOnScreen
