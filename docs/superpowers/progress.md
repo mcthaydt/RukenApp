@@ -195,6 +195,7 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 
 ### Flaky tests
 
+- `tests/browser/real-buttons.test.ts:168` "a maker's screens" [tablet], local cloud run on #345's tree after `00abe4e` (2026-11-23, Postgres freshly restarted): sign-up failed with "no code waiting for +12085557942". Passed on its one rerun. Same words as the known "no code waiting" flakes; cause not looked for.
 - `tests/browser/adults-only.test.ts:149` [phone], CI on `main` at `992c281` (run 45253362674, attempt 1): the sign-up "Text me a code" click timed out at `tests/browser/support/account.ts:116`; it passed on the rerun. Another recurrence of the known sign-up text-code flake.
 
 - `tests/browser/make-after.test.ts:601` "a sent-back game can be thrown away" [computer], local run on the glass branch at `c2d10c87`, five journey files on two profiles: `Expected: true, Received: false`; passed alone on rerun. Cause not found; the glass change does not touch the computer layout.
