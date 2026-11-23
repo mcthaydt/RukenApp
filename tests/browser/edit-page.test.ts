@@ -262,6 +262,11 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   // that the page scrolls on every size.
   const size = page.viewportSize() ?? { width: 1280, height: 720 };
   await page.setViewportSize({ width: size.width, height: 320 });
+  // A phone's window this short is a phone held sideways, and Safari plays the screen's rising lines again when it
+  // turns. The page is scrolled once they have risen: scrolled while they still move, the press waits for the row to
+  // stand still and scrolls it into view, at about half way down, and then Safari's own following of the moved row
+  // (about 150px up) would leave the page at its top whatever the app did.
+  await atRest(page);
   const footOfThePage = await page.evaluate(() => {
     window.scrollTo(0, document.documentElement.scrollHeight);
     return window.scrollY;
