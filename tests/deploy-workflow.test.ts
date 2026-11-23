@@ -72,16 +72,16 @@ describe("deploy.yml: the steps", () => {
   it("skips every step after the target when there is nothing to deploy", () => {
     const targetAt = indexOfStep(/id: target/);
     const after = stepBlocks.slice(targetAt + 1);
-    expect(after).toHaveLength(8);
+    expect(after.length).toBeGreaterThanOrEqual(8);
     for (const step of after) expect(step).toMatch(/\n\s+if: .*steps\.target\.outputs\.deploy == 'true'/);
   });
 
   it("hints at a manual rollback only after a failure with a new version already live", () => {
-    const hint = stepNamed(/how to roll back/);
+    const hint = stepNamed(/how to roll back the site|how to roll back\n|name: how to roll back\n/);
     expect(hint).toContain("failure()");
     expect(hint).toContain("steps.deploy.outputs.shipped == 'true'");
     expect(hint).toContain("pnpm exec wrangler rollback");
-    expect(stepNamed(/id: deploy/)).toContain('echo "shipped=true"');
+    expect(stepNamed(/id: deploy\n/)).toContain('echo "shipped=true"');
     expect(hint).not.toMatch(/secrets\./);
   });
 
@@ -114,12 +114,17 @@ describe("deploy.yml: the steps", () => {
   });
 
   it("names secrets only in the deploy and live-check steps", () => {
-    const withSecrets = stepBlocks.filter((s) => /secrets\./.test(s));
-    expect(withSecrets).toEqual([stepNamed(/id: deploy/), stepNamed(/live-check\.sh/)]);
+    // The games steps (when present) take the same key, and the route only in the games deploy step.
+    const allowed = [/id: deploy\n/, /live-check\.sh/, /id: games\n/, /games-check\.sh/];
+    for (const step of stepBlocks.filter((s) => /secrets\./.test(s))) {
+      expect(allowed.some((a) => a.test(step))).toBe(true);
+    }
+    expect(stepNamed(/id: deploy\n/)).toMatch(/secrets\./);
+    expect(stepNamed(/live-check\.sh/)).toMatch(/secrets\./);
   });
 
   it("gives the database address to the deploy step only", () => {
     const withDatabase = stepBlocks.filter((s) => s.includes("DIRECT_DATABASE_URL"));
-    expect(withDatabase).toEqual([stepNamed(/id: deploy/)]);
+    expect(withDatabase).toEqual([stepNamed(/id: deploy\n/)]);
   });
 });
