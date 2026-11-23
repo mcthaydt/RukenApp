@@ -52,3 +52,7 @@ Audit all of your work for completeness, consistency, cohesion, and harmony, bot
 
 - N1: the cut does not handle an IPv6 literal (masks `[2001`), a multi-host URL (masks the first host only) or an `@` in the query string (masks the text after it, which would garble the log with `***`). None is a Neon shape, and a bad mask never breaks the deploy, so this is recorded only. If the address ever changes provider, revisit.
 - N2: the future tests-only PR should pin that the mask line sits before `pnpm run deploy` in the `deploy` step and that the cut uses the last `@`.
+
+## Re-check (2026-11-23 15:34 UTC)
+
+R1 is fixed. The PR body was edited with no new commit (head still `81b6f461`). Read back via `gh api repos/mcthaydt/RukenApp/pulls/368 --jq .body`: line 1 is the attribution comment, line 2 is the `_Requested by **McThayDT** · [project thread](…)_` line, `## Acceptance criteria` is present, and the last line is `Requested by **McThayDT**`. **Verdict: 81b6f46 PASS.**
