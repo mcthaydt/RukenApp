@@ -154,7 +154,7 @@
           <p>First you make an account, then you pay. Then you come straight back.</p>
         {/if}
       </div>
-      <!-- What is Ruken? (the landing page's link goes here once /about is on main) -->
+      <p><a class="plain-link" href="/about">What is Ruken?</a></p>
     </div>
   {/if}
 </main>

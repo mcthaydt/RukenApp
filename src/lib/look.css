@@ -4022,6 +4022,715 @@ main.playing[data-testing] {
   }
 }
 
+/* The landing page (/about): what Ruken is, for players and makers (src/routes/about/). It is wider than a card
+   screen, so a computer can lay the two audiences side by side. Sections on the felt are plain words; the two
+   audiences and the two closing blocks are paper cards. There is no see-through surface on it. */
+main.about {
+  width: min(100% - 2rem, 72rem);
+  margin-bottom: 4rem;
+}
+
+/* The wordmark above it lines up with the wider page, not with a card's column. */
+header:has(+ main.about) {
+  width: min(100% - 2rem, 72rem);
+}
+
+.about .ways {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* The ways in are round tabs on the Dusky Green, never underlined words (the owner, 2026-11-22: "I'm also not a fan
+   of how often we use the text with underline for buttons"). */
+.about .ways a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-target);
+  margin: 0;
+  padding: 0 1.25rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  font: var(--text-button);
+  text-decoration: none;
+}
+
+/* On the smallest phones the three ways in still fit on one row. */
+@media (max-width: 22.499rem) {
+  .about .ways {
+    gap: 0.375rem;
+  }
+
+  .about .ways a {
+    padding: 0 0.625rem;
+    font-size: 0.9375rem;
+  }
+}
+
+/* A link that goes on (in a card, a band or under the clip) is its words in the button's weight with an arrow after
+   them: no underline, and the arrow says where a tap goes. */
+.about a.more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--size-target);
+  font: var(--text-button);
+  text-decoration: none;
+}
+
+.about a.more::after {
+  content: "→";
+  transition: transform var(--press-time);
+}
+
+.about a.more:hover::after {
+  transform: translateX(0.25rem);
+}
+
+.about .card a.more {
+  color: var(--pay);
+}
+
+.about .sitefoot a {
+  text-decoration: none;
+}
+
+.about .sitefoot a:hover {
+  color: var(--sage);
+}
+
+/* The news is a small box under the blue button, with an arrow: something new to look at, not a line of small print. */
+.about .news a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--size-target);
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-button);
+  background: var(--felt);
+  color: var(--sage);
+  font: var(--text-button);
+  text-decoration: none;
+}
+
+.about .news a::after {
+  content: "→";
+  color: var(--chalk);
+}
+
+.about h2 {
+  margin: 0;
+  font: var(--text-card-title);
+  text-wrap: balance;
+}
+
+.about .forwhom {
+  margin: 0 0 0.5rem;
+  color: var(--sage);
+  font: var(--text-button);
+}
+
+.about .card .forwhom {
+  color: var(--ink-soft);
+}
+
+.about ul,
+.about ol {
+  margin: 1rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.about li + li {
+  margin-top: 0.5rem;
+}
+
+/* The first screen is a stage: live games' clips fill it as a wall of tall columns drifting up and down, and the
+   headline sits on it in solid boxes, so the first thing anyone sees is games playing, not a website. On a phone or
+   a tablet it reaches both edges of the screen; on a computer it is one big rounded panel. */
+.about .hero {
+  position: relative;
+  display: grid;
+  align-content: start;
+  min-height: min(40rem, 100svh - 8rem);
+  margin: 1rem -1rem 0;
+  padding: 1.5rem 1rem 2rem;
+  overflow: hidden;
+  background: var(--felt-deep);
+}
+
+.about .wall {
+  position: absolute;
+  inset: -3rem -2rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  transform: rotate(-6deg);
+}
+
+.about .wall .column {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+/* The middle column starts lower, so the clips are not in rows. */
+.about .wall .column:nth-child(even) {
+  margin-top: -8rem;
+}
+
+/* A phone or a tablet has room for two columns; the third waits for a computer (and, hidden, is never fetched). */
+.about .wall .column:nth-child(3) {
+  display: none;
+}
+
+/* The upright clip carries a dark strip in its own last pixels: the frame is a little shorter than the clip and
+   shows its top, so the strip is cut off. */
+.about .wall video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 9 / 15;
+  object-fit: cover;
+  object-position: top;
+  border-radius: var(--radius-card);
+  background-color: var(--felt);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .about .wall .column {
+    animation: wall-drift 40s ease-in-out infinite alternate;
+  }
+
+  .about .wall .column:nth-child(even) {
+    animation-direction: alternate-reverse;
+  }
+}
+
+@keyframes wall-drift {
+  to {
+    transform: translateY(-10%);
+  }
+}
+
+.about .hero .words {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+  max-width: 52rem;
+}
+
+.about .hero p {
+  margin: 0;
+}
+
+.about .hero h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  line-height: 1.15;
+}
+
+/* The headline's two sentences are two lines, never broken in the middle of one. */
+.about .hero h1 > span {
+  display: block;
+}
+
+/* Each line of the headline sits in a solid box on the clips, and a line that wraps keeps its box on both parts. */
+.about .hero h1 > span > span {
+  padding: 0 0.2em;
+  border-radius: var(--radius-button);
+  background: var(--felt);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.about .hero .say {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 30rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-card);
+  background: var(--felt);
+}
+
+/* A phone over 360 wide has room for a bigger headline. */
+@media (min-width: 22.5rem) {
+  .about .hero h1 {
+    font-size: 2.75rem;
+  }
+}
+
+.about .pair {
+  display: grid;
+  gap: 1rem;
+  margin-top: 3rem;
+}
+
+.about .pair .card {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+/* The two cards are a pair, not two copies: the makers' on paper, the players' on the Dusky Green, each the same
+   height, with its buttons on one line along the bottom whatever the length of the words above. */
+.about .pair .card + .card {
+  background: var(--felt-raised);
+  color: var(--chalk);
+  color-scheme: dark;
+}
+
+.about .pair .card + .card .forwhom {
+  color: var(--sage);
+}
+
+.about .pair .card + .card .outline {
+  border-color: var(--chalk);
+  color: var(--chalk);
+}
+
+.about .pair .card + .card a.more {
+  color: var(--chalk);
+}
+
+/* The button and the link beside it keep a clear gap, side by side or, on a narrow phone, one above the other. */
+.about .pair .links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem 1.75rem;
+  margin-top: auto;
+  padding-top: 2rem;
+}
+
+/* Each point is a line with a tick, not a bullet: a promise, read at a glance. */
+.about .pair ul,
+.about .band > div > ul {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.about .pair li,
+.about .band > div > ul > li {
+  display: grid;
+  grid-template-columns: 1.75rem 1fr;
+  margin: 0;
+}
+
+.about .pair li::before {
+  content: "✓";
+  color: var(--pay);
+  font: var(--text-button);
+}
+
+.about .band > div > ul > li::before {
+  content: "✓";
+  color: var(--sage);
+  font: var(--text-button);
+}
+
+.about .pair .card + .card li::before {
+  color: var(--sage);
+}
+
+/* A button whose words wrap on a small phone keeps them centred, as its single-line neighbours are. */
+.about .button {
+  text-align: center;
+}
+
+/* Under 360 wide a card's title drops to the statement's size, as the screens' card titles do, so it breaks in two
+   lines and not three. */
+@media (max-width: 359px) {
+  .about .card h2 {
+    font: var(--text-statement);
+  }
+}
+
+.about .links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.about .plain {
+  margin-top: 3rem;
+}
+
+/* After the two cards, each section is a band across the whole window, so a person sees where one ends and the next
+   begins: the felt and the Dusky Green take turns (white words are 9.5:1 on it, the notes 5.4:1). The band's colour
+   reaches the window's edges by an outline, cut to the band's height, which never widens the page. */
+.about .band {
+  margin-top: 0;
+  padding-block: 4rem;
+}
+
+.about .pair + .band {
+  margin-top: 3rem;
+}
+
+.about .band:nth-child(odd of .band) {
+  background-color: var(--felt-raised);
+  outline: 100vmax solid var(--felt-raised);
+  clip-path: inset(0 -100vmax);
+}
+
+.about .band + .pair {
+  margin-top: 3rem;
+}
+
+.about .band > div {
+  max-width: var(--width-read);
+}
+
+/* The price panel is as wide as the band, not a column of reading. */
+.about .band > .price {
+  max-width: none;
+}
+
+/* A band's heading is set at the section's size, larger than a card's title, so each band opens with a statement. */
+.about .band h2 {
+  font: var(--text-section);
+}
+
+/* A band's heading has the same room above its panels or steps as above its words. */
+.about .band h2 + ol {
+  margin-top: 2rem;
+}
+
+/* A band's picture (a phone showing Ruken, or the money split) beside the words on a computer and above them on a
+   phone. */
+.about .band:has(figure) {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.about .band figure {
+  order: -1;
+  margin: 0;
+}
+
+/* A phone, drawn: a dark frame round a real screenshot, as Ruken looks in a hand. */
+.about .device {
+  justify-self: center;
+  width: min(100%, 17rem);
+  padding: 0.625rem;
+  border-radius: 2rem;
+  background: var(--felt-deep);
+}
+
+/* The screenshot on the phone: a real picture of Ruken, cut to the screen's rounded corners. */
+.about .device img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 1.5rem;
+  background-color: var(--felt);
+}
+
+/* Where a member's money goes: one bar cut in three, and a line for each part in the same colour. */
+.about .split {
+  padding: 2rem 1.5rem;
+  border-radius: var(--radius-card);
+  background: var(--felt-deep);
+}
+
+.about .split figcaption {
+  font: var(--text-statement);
+}
+
+.about .splitbar {
+  display: flex;
+  gap: 0.25rem;
+  height: 3.5rem;
+  margin-top: 1.5rem;
+}
+
+.about .splitbar span {
+  border-radius: var(--radius-button);
+}
+
+.about .split [data-part="fees"] {
+  --part: var(--sage);
+}
+
+.about .split [data-part="makers"] {
+  --part: var(--pay);
+}
+
+.about .split [data-part="ruken"] {
+  --part: var(--felt-raised);
+}
+
+/* The fees are a thin slice; makers and Ruken share the rest half and half. */
+.about .splitbar [data-part="fees"] {
+  flex: 1;
+  background: var(--part);
+}
+
+.about .splitbar [data-part="makers"],
+.about .splitbar [data-part="ruken"] {
+  flex: 3;
+  background: var(--part);
+}
+
+.about .split ul {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.about .split li {
+  display: grid;
+  grid-template-columns: 1.75rem 1fr;
+  margin: 0;
+}
+
+.about .split li::before {
+  content: "";
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.25rem;
+  border-radius: 0.25rem;
+  background: var(--part);
+}
+
+/* The membership is one panel, not four boxes: the price as the biggest thing in it, the way to join under it, and
+   what a member gets as ticked lines beside it. */
+.about .price {
+  display: grid;
+  gap: 2rem;
+  margin-top: 2rem;
+  padding: 2rem 1.5rem;
+  border-radius: var(--radius-card);
+  background: var(--felt-deep);
+}
+
+.about .price p {
+  margin: 0;
+}
+
+.about .price > div {
+  display: grid;
+  justify-items: start;
+  gap: 1.25rem;
+}
+
+.about .amount {
+  font: var(--text-statement);
+  text-wrap: balance;
+}
+
+/* The monthly price is the size of the headline's words, on a line of its own. */
+.about .amount > span {
+  display: block;
+  font: var(--text-section);
+  font-size: 4rem;
+}
+
+/* What a member gets: each thing on a tile of its own, Dusky Green on the black panel, so the three read as three
+   things you get and no line is needed between the price and them (the owner, 2026-11-22: "that green line, I think
+   that can be improved"). */
+.about .perks {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about .perks li {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  align-items: baseline;
+  margin: 0;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  font: var(--text-statement);
+  text-wrap: balance;
+}
+
+.about .perks li::before {
+  content: "✓";
+  color: var(--sage);
+  font: var(--text-button);
+  line-height: inherit;
+}
+
+/* The steps' numbers sit inside the column, in the text face, so "3." is tight and lines up with the words. */
+.about .steps {
+  padding-left: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.about .steps li {
+  display: grid;
+  grid-template-columns: 3rem 1fr;
+  column-gap: 0.5rem;
+  counter-increment: step;
+}
+
+/* Each step's number is big, in the headings' face, so the three steps read at a glance. Its column is a set width,
+   so the words of all three start at the same place whatever the digit. */
+.about .steps li::before {
+  grid-row: span 2;
+  content: counter(step);
+  color: var(--sage);
+  font: var(--text-section);
+  font-size: 3.5rem;
+}
+
+.about .steps li > strong,
+.about .steps li > span {
+  display: block;
+  grid-column: 2;
+}
+
+.about .sitefoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem 4rem;
+  margin-top: 4rem;
+  padding-top: 2rem;
+}
+
+.about .sitefoot h2 {
+  font: var(--text-button);
+}
+
+.about .sitefoot ul {
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 48rem) {
+  .about .hero {
+    padding: 3rem 2rem;
+  }
+
+  /* The wall takes the right of the stage, and the words sit over its left edge. */
+  .about .wall {
+    inset: -4rem -2rem -4rem 30%;
+  }
+
+  .about .hero h1 {
+    font-size: 4rem;
+  }
+
+  .about .pair {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* On a tablet or a computer the two cards have room to breathe, and their headlines grow to the bands' size. */
+  .about .pair .card {
+    padding: 2.5rem;
+  }
+
+  .about .pair .card h2 {
+    font: var(--text-section);
+  }
+
+  /* Two by two on a tablet, so no panel is a word to a line; four in a row on a computer. */
+  /* The price on the left, what a member gets on the right, with a line between. */
+  .about .price {
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+    padding: 3rem;
+  }
+
+  .about .band {
+    padding-block: 6rem;
+  }
+
+  /* A section with a picture: the words on the left, the picture on the right. */
+  .about .band:has(figure) {
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  .about .band figure {
+    order: 0;
+  }
+
+  .about .split {
+    padding: 2.5rem;
+  }
+
+  /* The three steps side by side, across the hero's width. */
+  .about .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .about .steps li {
+    align-content: start;
+  }
+
+  .about .steps li + li {
+    margin-top: 0;
+  }
+
+  /* The links at the foot are centred under the page. */
+  .about .sitefoot {
+    margin-inline: auto;
+  }
+
+  .about .sitefoot {
+    justify-content: center;
+  }
+}
+
+@media (min-width: 64rem) {
+  .about .amount > span {
+    font-size: 5.5rem;
+  }
+
+  /* A computer's stage is wide enough for the third column. */
+  .about .wall {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .about .wall .column:nth-child(3) {
+    display: grid;
+  }
+
+  /* On a computer the headline is the biggest thing on the screen. */
+  .about .hero h1 {
+    font-size: 5rem;
+  }
+
+  .about .band h2 {
+    font-size: 3.25rem;
+  }
+}
+
+/* A wide window has room for the headline at its biggest, still two lines. */
+@media (min-width: 80rem) {
+  .about .hero h1 {
+    font-size: 6rem;
+  }
+}
+
+/* Where the page stops growing (72rem and its gutters), the stage is a rounded panel inside them. */
+@media (min-width: 74rem) {
+  .about .hero {
+    margin-inline: 0;
+    padding: 4rem 3rem;
+    border-radius: var(--radius-card);
+  }
+}
+
 /* Every wait shows it. A move between pages runs a Blue line across the top of the window and shows a turning
    spinner under it, with no words (src/lib/page-loading.svelte); a button whose form is out shows the spinner after
    its words and cannot be pressed again (src/lib/busy-forms.ts); a picture or a video is a box that slowly brightens
@@ -4136,6 +4845,172 @@ video[data-loading] {
     background-image: var(--spinner-still);
     animation: none;
   }
+}
+
+/* The closing cards sit on a still from Floor Fifty, blurred, dimmed and drifting very slowly, as Live sits on its own clip
+   (the owner, 2026-11-22: "a background image for these, dimmed, boked like how we do for Live", with "a very subtle
+   animation"). Both cards are dark then, so both take the dark card's words and buttons. */
+.about .closing .card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--felt-deep);
+  color: var(--chalk);
+  color-scheme: dark;
+}
+
+.about .closing .glow {
+  position: absolute;
+  inset: -2rem;
+  z-index: -1;
+  width: calc(100% + 4rem);
+  height: calc(100% + 4rem);
+  object-fit: cover;
+  filter: blur(18px) brightness(0.55);
+}
+
+.about .closing .card .outline {
+  border-color: var(--chalk);
+  color: var(--chalk);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .about .closing .glow {
+    animation: glow-drift 24s ease-in-out infinite alternate;
+  }
+
+  .about .closing .card + .card .glow {
+    animation-delay: -12s;
+  }
+}
+
+@keyframes glow-drift {
+  from {
+    transform: scale(1.05) translate(-2%, -1%);
+  }
+
+  to {
+    transform: scale(1.15) translate(2%, 1%);
+  }
+}
+
+/* The way back to the feed, in the bottom corner wherever the page is scrolled: a phone with a swipe going up it, in
+   the main button's blue. */
+.about .tofeed {
+  position: fixed;
+  right: 1rem;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--radius-button);
+  background: var(--pay);
+  color: var(--chalk);
+  transition: transform var(--press-time);
+}
+
+/* Over the first screen it waits below the window's edge, and slides up into the corner once that screen has gone by. */
+.about .tofeed[data-away] {
+  transform: translateY(calc(100% + 2rem));
+}
+
+/* While the cookie card asks at the foot of the window, the corner button waits under it instead of being half hidden. */
+body:has(aside.consent) .about .tofeed {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .about .tofeed {
+    transition: transform 360ms var(--ease);
+  }
+}
+
+.about .tofeed:hover {
+  transform: translateY(-2px);
+}
+
+.about .tofeed:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .about .tofeed .swipe {
+    animation: swipe-up 2.4s var(--ease) infinite;
+  }
+}
+
+/* The finger's swipe: up the phone and back, then a rest, so it reads as a hint and never as a flicker. */
+@keyframes swipe-up {
+  0%,
+  45%,
+  100% {
+    transform: translateY(0);
+  }
+
+  20% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Smooth scrolling (Lenis) needs the page to scroll as one block; these are its own rules. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* On the landing page the scrollbar is Ruken's own: a thin Glaucous Green thumb on black (the owner, 2026-11-22:
+   "a custom scrollbar for this page"). */
+html:has(main.about) {
+  scrollbar-color: var(--sage) var(--felt-deep);
+  scrollbar-width: thin;
+}
+
+html:has(main.about)::-webkit-scrollbar {
+  width: 10px;
+}
+
+html:has(main.about)::-webkit-scrollbar-track {
+  background: var(--felt-deep);
+}
+
+html:has(main.about)::-webkit-scrollbar-thumb {
+  border: 2px solid var(--felt-deep);
+  border-radius: var(--radius-button);
+  background: var(--sage);
+}
+
+/* And the pointer is Ruken's own too, shaped like the usual arrow so nobody has to learn it: black with a white edge,
+   turning the main button's blue over anything that can be pressed. */
+html:has(main.about),
+html:has(main.about) body {
+  cursor:
+    url("/about/cursor.svg") 5 3,
+    auto;
+}
+
+html:has(main.about) :is(a, button, summary, label) {
+  cursor:
+    url("/about/cursor-press.svg") 5 3,
+    pointer;
+}
+
+/* The open-code section stands in the middle of the page, words and button centred, like a sign-off before the foot. */
+.about .opencode > div {
+  display: grid;
+  justify-items: center;
+  margin-inline: auto;
+  text-align: center;
+  text-wrap: balance;
 }
 
 /* The cookie notice (src/features/consent/Notice.svelte): a frosted card at the bottom of every screen until the browser
