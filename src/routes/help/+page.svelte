@@ -1,8 +1,10 @@
 <!--
   Ruken's help for makers. No paper sheet: a big title in chalk on the felt, a line that says what the guides are for,
   and the three guides as three big numbered tiles, one tone each, in the order a maker needs them. A whole tile is the
-  target, and the guide's name is its link, so a screen reader reads each guide by its name. The way back to Ruken is an
-  arrow on its own (the owner, 2026-11-22: an icon on its own wherever people understand it, and no underlined words).
+  target, and the guide's name is its link, so a screen reader reads each guide by its name. Under them, a plain link to
+  How the feed works, which is for players as much as makers, so it is not one of the numbered guides. The way back to
+  Ruken is an arrow on its own (the owner, 2026-11-22: an icon on its own wherever people understand it, and no
+  underlined words).
 -->
 <script lang="ts">
   const guides = [
@@ -46,5 +48,6 @@
       {/each}
     </ol>
   </nav>
+  <p><a class="plain-link" href="/help/how-the-feed-works?from=%2Fhelp">How the feed works</a></p>
   <!-- What is Ruken? (the landing page's link goes here once /about is on main) -->
 </main>

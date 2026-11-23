@@ -60,6 +60,7 @@
     <li>A game plays apart from Ruken. It never gets your sign-in or your account.</li>
     <li>A maker can take their game off Ruken at any time, so a game you like may go away.</li>
   </ul>
+  <p><a class="plain-link" href="/help/how-the-feed-works">How the feed works</a></p>
 
   <h2>What no game may have</h2>
   <ul class="bullets">
