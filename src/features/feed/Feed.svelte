@@ -668,7 +668,8 @@
     color: var(--chalk);
     text-shadow: var(--glass-ink);
   }
-  /* Frosted glass under the words (look.css): chalk on it is 4.5 to 1 or more over even a white clip. */
+  /* Frosted glass under the words (look.css). The glass alone is too clear to hold chalk over a white clip, so the words
+     carry its dark halo (--glass-ink). */
   .band::before {
     content: "";
     position: absolute;
