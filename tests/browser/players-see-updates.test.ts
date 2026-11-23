@@ -2,6 +2,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { pageHasSettled, signInAs } from "./support/account.ts";
 import { addGame, freshName, reviewJob } from "./support/game.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // When a maker changes a live game, the players see it: a new name on the game's page and in Play, and, once staff
 // accept a new version, Play opens the new files. The maker's own screens are checked in make-after.test.ts; these
@@ -26,7 +27,7 @@ async function pullPlayOpens(page: Page, slug: string): Promise<string> {
 
 /** A stranger in a window of their own, with no account. */
 async function asStranger<T>(browser: Browser, look: (page: Page) => Promise<T>): Promise<T> {
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     return await look(await context.newPage());
   } finally {

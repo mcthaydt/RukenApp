@@ -8,6 +8,7 @@
   menu says so, Leave goes back to the maker's game, and no beats are sent (a test play is never counted).
 -->
 <script lang="ts">
+  import { deviceStore } from "../consent/consent.browser.ts";
   import { gameTitle } from "../../lib/titles.ts";
   import { onMount } from "svelte";
   import {
@@ -63,11 +64,8 @@
 
   function remember(next: TabPlace): void {
     place = next;
-    try {
-      localStorage.setItem(PLACE_KEY, JSON.stringify(next));
-    } catch {
-      // A browser that keeps nothing still moves the tab; it just comes back at the first place.
-    }
+    // Kept on the device only after a yes (deviceStore); until then the tab still moves, and comes back at the first place.
+    deviceStore.set(PLACE_KEY, JSON.stringify(next));
   }
 
   function insets(): { top: number; bottom: number } {
@@ -79,13 +77,7 @@
   }
 
   onMount(() => {
-    const kept = (() => {
-      try {
-        return readPlace(localStorage.getItem(PLACE_KEY));
-      } catch {
-        return null;
-      }
-    })();
+    const kept = readPlace(deviceStore.get(PLACE_KEY));
     if (kept !== null) place = kept;
 
     alive = true;

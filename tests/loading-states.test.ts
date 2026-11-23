@@ -92,6 +92,10 @@ describe("every wait shows it", () => {
   test("the layout carries the page bar and the busy plain forms", () => {
     const layout = readFileSync(join(SRC, "routes", "+layout.svelte"), "utf8");
     expect(layout).toContain("<PageLoading />");
-    expect(layout).toContain("onsubmit={markSending}");
+    // Every sent form is marked busy first, then sent from inside the page (src/lib/stay-in-app.ts).
+    expect(layout).toContain("onsubmit={sent}");
+    expect(layout).toMatch(
+      /function sent\(event: SubmitEvent\): void \{\s*markSending\(event\);\s*sendInApp\(event\);/,
+    );
   });
 });

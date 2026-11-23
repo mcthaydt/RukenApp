@@ -3,6 +3,7 @@ import { pageHasSettled, signInAs, signUp } from "./support/account.ts";
 import { changeGame, givePage, makerNumberOf } from "./support/database.ts";
 import { answerAge, chooseVideo, gameWhere, realClip, reviewJob } from "./support/game.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // A live game's videos and rating (unit A of the everything-editable spec): the maker changes them on Live, the new
 // value is held apart and sent for review in the same save, players keep what staff said yes to, and only staff's yes,
@@ -20,7 +21,7 @@ type Shape = "upright" | "wide";
 let adultPlayer: { number: string; password: string } | undefined;
 
 async function playersSee(browser: Browser, slug: string) {
-  const context = await browser.newContext({ baseURL: SITE });
+  const context = await browser.newContext({ ...consented, baseURL: SITE });
   try {
     const page = await context.newPage();
     if (adultPlayer === undefined) adultPlayer = await signUp(page);
@@ -46,7 +47,7 @@ async function playersSee(browser: Browser, slug: string) {
  * of its own each time, since a video the gate said yes to once is kept by the browser's own cache.
  */
 async function gateAnswers(browser: Browser, address: string): Promise<number> {
-  const context = await browser.newContext({ baseURL: SITE });
+  const context = await browser.newContext({ ...consented, baseURL: SITE });
   try {
     return (await (await context.newPage()).goto(address))?.status() ?? 0;
   } finally {
@@ -189,7 +190,7 @@ test("a live game made 18+ is asked its marks first, keeps nothing until they ar
   const { slug } = await gameWhere(page, { state: "live" });
   const owner = { number: await makerNumberOf(slug) };
   const { handle } = await givePage(owner, { name: "Night Owl", oneLine: "Small, hard games." });
-  const stranger = await browser.newContext({ baseURL: SITE });
+  const stranger = await browser.newContext({ ...consented, baseURL: SITE });
   try {
     const visitor = await stranger.newPage();
     await visitor.goto(`/${handle}`, { waitUntil: "domcontentloaded" });
@@ -583,7 +584,7 @@ test("another maker cannot keep the old one of a game that holds a change, and i
 }) => {
   const { slug } = await gameWhere(page, { state: "live" });
   await changeVideo(page, slug, "wide");
-  const other = await browser.newContext({ baseURL: SITE });
+  const other = await browser.newContext({ ...consented, baseURL: SITE });
   try {
     await signUp(await other.newPage());
     for (const question of ["wide", "age"]) {
