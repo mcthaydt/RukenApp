@@ -162,11 +162,12 @@ for (const path of [
   });
 }
 
-test("no bar where the game or a step has the whole screen: playing, and each step of adding a game", async ({
+test("no bar where the game or a step has the whole screen, or on the landing page: playing, and each step of adding a game", async ({
   page,
 }) => {
   await signInAs(page, game.maker.number, game.maker.password);
   for (const path of [
+    "/about",
     `/g/${game.slug}/play`,
     `/make/${game.slug}/play`,
     "/make/new",

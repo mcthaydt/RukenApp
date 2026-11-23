@@ -221,7 +221,7 @@ export const FOOTER: readonly { heading: string; links: readonly Link[] }[] = [
     ],
   },
   {
-    heading: "Ruken",
+    heading: "The small print",
     links: [
       { words: "Terms", href: "/terms" },
       { words: "Privacy", href: "/privacy" },
