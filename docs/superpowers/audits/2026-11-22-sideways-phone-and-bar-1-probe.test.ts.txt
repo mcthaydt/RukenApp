@@ -1,0 +1,31 @@
+import { test } from "@playwright/test";
+import { signInAs } from "./support/account.ts";
+import { givePage } from "./support/database.ts";
+import { addGame } from "./support/game.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+// Review probe (not part of the suite): at an upright phone, with each screen scrolled to its end, which controls does the bar cover?
+test("probe", async ({ page, browser, request }) => {
+  test.setTimeout(300_000); await forgetRateLimits();
+  const game = await addGame(browser, request);
+  await givePage(game.maker, { name: "Night Owl", oneLine: "I make small, hard games.", links: [{ title: "My shop", url: "https://example.com/shop" }] });
+  const look = async (path: string) => {
+    await page.goto(path); await page.waitForTimeout(600);
+    console.log("PROBE", path, JSON.stringify(await page.evaluate(async () => {
+      scrollTo(0, 1e6); await new Promise((r) => setTimeout(r, 300));
+      const box = (e: Element) => { const b = e.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), right: Math.round(b.right) }; };
+      const bar = box(document.querySelector("nav.bar")!);
+      const main = document.querySelector("main")!;
+      const under = [...document.querySelectorAll("main a, main button")].map((e) => ({ t: (e.textContent || "").trim(), ...box(e) })).filter((b) => b.bottom > bar.top && b.top < bar.bottom && b.right > bar.left && b.left < bar.right);
+      return { bar, main: box(main), mainMarginBottom: getComputedStyle(main).marginBottom, screenMarginBottom: getComputedStyle(document.querySelector(".screen") ?? main).marginBottom, under };
+    })));
+  };
+  for (const [w, h] of [[375, 667], [320, 640]] as const) {
+    await page.setViewportSize({ width: w, height: h }); console.log("PROBE size", w, h);
+    await look("/join");
+  }
+  await signInAs(page, game.maker.number, game.maker.password);
+  for (const [w, h] of [[375, 667], [320, 640]] as const) {
+    await page.setViewportSize({ width: w, height: h }); console.log("PROBE size", w, h);
+    for (const p of ["/join", "/make/page", "/make", `/make/${game.slug}`, "/make/page/links", "/me"]) await look(p);
+  }
+});
