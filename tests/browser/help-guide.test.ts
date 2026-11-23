@@ -106,6 +106,10 @@ test("the guide needs no account, and its how-tos come back to it", async ({ pag
   await page.getByRole("link", { name: "Get your game on Ruken" }).click();
   await expect(page).toHaveURL(`${GUIDE}?from=%2Fhelp`);
   await expect(page.getByRole("link", { name: "Back to help" })).toHaveCount(2);
+  // The Owner, 2026-11-22: "No game may have pornography, gambling, or ads."
+  await expect(
+    page.getByText("No game may have pornography, gambling or ads.", { exact: false }),
+  ).toBeVisible();
 
   await page.getByRole("link", { name: "Here's how to put it there" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Put your game on GitHub" })).toBeVisible();

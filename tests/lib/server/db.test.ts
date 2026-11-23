@@ -1,7 +1,9 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import { describe, expect, it, vi } from "vitest";
 import {
+  allowWrites,
   createSharedClient,
+  NoConsentWrite,
   databasePerRequest,
   prisma,
   requestScopedAdapter,
@@ -243,5 +245,96 @@ describe("createSharedClient", () => {
     const probes = notes.filter((note) => note.includes(" got connection "));
     expect(probes.length).toBeGreaterThan(0);
     expect(probes.filter((note) => note.split(" got ")[0] !== note.split(" got ")[1])).toEqual([]);
+  });
+});
+
+// Guard 2 of the cookie consent: a request that may not write (a browser that has not said yes to cookies) fails on
+// every kind of write, and reads untouched.
+describe("the write guard", () => {
+  const NO_ROWS = { columnNames: [], columnTypes: [], rows: [] };
+
+  function guardedClient() {
+    const seen: string[] = [];
+    const connect = () =>
+      Promise.resolve({
+        queryRaw: (query: { sql: string }) => {
+          seen.push(query.sql);
+          return Promise.resolve(NO_ROWS);
+        },
+        executeRaw: (query: { sql: string }) => {
+          seen.push(query.sql);
+          return Promise.resolve(0);
+        },
+        startTransaction: () =>
+          Promise.resolve({
+            provider: "postgres",
+            adapterName: "fake",
+            options: { usePhantomQuery: false },
+            queryRaw: (query: { sql: string }) => {
+              seen.push(query.sql);
+              return Promise.resolve(NO_ROWS);
+            },
+            executeRaw: () => Promise.resolve(0),
+            commit: () => Promise.resolve(),
+            rollback: () => Promise.resolve(),
+          }),
+      } as unknown as RequestConnection);
+    const client = createSharedClient(connect, NodePrismaClient as unknown as typeof PrismaClient);
+    return { client, seen };
+  }
+
+  /** Runs `work` as a request that may, or may not, write. */
+  const asRequest = (client: PrismaClient, writes: boolean, work: () => Promise<unknown>) =>
+    request(
+      () => {
+        allowWrites(writes);
+        return work();
+      },
+      () => client,
+    );
+
+  const user = { name: "N", email: "n@example.test" } as never;
+
+  it.each([
+    ["create", (c: PrismaClient) => c.user.create({ data: user })],
+    ["createMany", (c: PrismaClient) => c.user.createMany({ data: [user] })],
+    ["update", (c: PrismaClient) => c.user.update({ where: { id: "i" }, data: { name: "x" } })],
+    ["updateMany", (c: PrismaClient) => c.user.updateMany({ data: { name: "x" } })],
+    [
+      "upsert",
+      (c: PrismaClient) => c.user.upsert({ where: { id: "i" }, create: user, update: { name: "x" } }),
+    ],
+    ["delete", (c: PrismaClient) => c.user.delete({ where: { id: "i" } })],
+    ["deleteMany", (c: PrismaClient) => c.user.deleteMany()],
+    ["$executeRaw", (c: PrismaClient) => c.$executeRaw`SELECT 1`],
+    [
+      "a write inside a transaction",
+      (c: PrismaClient) =>
+        c.$transaction((tx) => tx.user.update({ where: { id: "i" }, data: { name: "x" } })),
+    ],
+  ])("throws NoConsentWrite on %s when the request may not write", async (_name, write) => {
+    const { client, seen } = guardedClient();
+    await expect(asRequest(client, false, () => write(client))).rejects.toBeInstanceOf(NoConsentWrite);
+    expect(seen).toEqual([]);
+  });
+
+  it("lets a read through", async () => {
+    const { client, seen } = guardedClient();
+    await asRequest(client, false, () => client.user.findMany());
+    await asRequest(client, false, () => client.$queryRaw`SELECT 1`);
+    expect(seen).toHaveLength(2);
+  });
+
+  it("lets a write through when the request may write", async () => {
+    const { client, seen } = guardedClient();
+    await asRequest(client, true, () => client.$executeRaw`SELECT 1`);
+    expect(seen).toHaveLength(1);
+  });
+
+  it("says which model, never a value", async () => {
+    const { client } = guardedClient();
+    await expect(asRequest(client, false, () => client.user.create({ data: user }))).rejects.toThrow(
+      "A write to User was made before the visitor said yes to cookies.",
+    );
   });
 });

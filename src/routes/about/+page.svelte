@@ -5,7 +5,6 @@
   and the links at the foot. Every word comes from sections.ts.
 -->
 <script lang="ts">
-  import { afterNavigate, onNavigate } from "$app/navigation";
   import { onMount } from "svelte";
   import { loads } from "../../lib/loads.ts";
   import { playOnScreen } from "../../lib/on-screen-video.ts";
@@ -24,7 +23,7 @@
     TOP_LINKS,
     TO_FEED,
   } from "./sections.ts";
-  import { arrive, leave, startMotion } from "./motion.ts";
+  import { startMotion } from "./motion.ts";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
@@ -45,11 +44,8 @@
       stop();
     };
   });
-  // From another screen of Ruken the page settles in; leaving for another, it lifts away first. A fresh load just shows.
-  afterNavigate((navigation) => {
-    if (navigation.type !== "enter") arrive(page);
-  });
-  onNavigate((navigation) => (navigation.to?.url.pathname === "/about" ? undefined : leave(page)));
+  // Moving to and from the page is the app's own sideways slide (the layout, src/lib/page-moves.ts): a fade of its own
+  // on top would empty the slide's picture of the page as it leaves.
 </script>
 
 <main class="about" bind:this={page}>

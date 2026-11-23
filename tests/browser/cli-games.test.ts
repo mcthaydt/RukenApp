@@ -68,6 +68,31 @@ async function staffSays(browser: Browser, page: Page, order: object) {
   expect(answer.status()).toBe(200);
 }
 
+/**
+ * How many times a game is in the feed's first round: every live game once, in the feed's order, before the feed goes
+ * round again. The first screen alone cannot say. Its first page stops at 50 clips, so a game is further down once 50
+ * games that went live after it are on the feed (other journeys make games all the time, and a game put back keeps its
+ * first place); and with only a few games live the screen goes round at once and shows a game several times. So the
+ * round is read the way the screen reads it: the first page as `/` sends it, then the later pages from /api/feed, until
+ * the round ends.
+ */
+async function timesInTheFeed(page: Page, slug: string): Promise<number> {
+  const html = await (await page.request.get("/")).text();
+  expect(html).toContain("first:{");
+  // The first page is in the data `/` sends with it: its clips' keys ("<round>~<slug>") and the address of the next page.
+  const keys = Array.from(html.matchAll(/key:"(\d+~[a-z0-9-]+)"/g), (found) => found[1] ?? "");
+  let next = /next:"([^"]+)"/.exec(html)?.[1] ?? null;
+  // A page's address names the round it goes on in, second: round 0 is the feed's order, round 1 the first go round.
+  while (next !== null && next.split("~")[1] === "0") {
+    const later = await page.request.get(`/api/feed?after=${encodeURIComponent(next)}`);
+    expect(later.status()).toBe(200);
+    const { clips, next: after } = (await later.json()) as { clips: { key: string }[]; next: string | null };
+    keys.push(...clips.map((clip) => clip.key));
+    next = after;
+  }
+  return keys.filter((key) => key === `0~${slug}`).length;
+}
+
 test("a maker's games, from the first command to throwing one away", async ({ page, browser }) => {
   const computer = await makerWithTerminal(page);
 
@@ -155,8 +180,7 @@ test("a maker's games, from the first command to throwing one away", async ({ pa
   expect(await stateOf(slug)).toBe("live");
   await page.goto(`/g/${slug}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { level: 1 })).toContainText(name);
-  await page.goto("/");
-  await expect(page.locator(`section[data-slug="${slug}"]`)).toHaveCount(1);
+  expect(await timesInTheFeed(page, slug)).toBe(1);
 
   // The player count, on and then off.
   await addPlays(slug, 1, 1);
@@ -224,13 +248,11 @@ test("a maker's games, from the first command to throwing one away", async ({ pa
   computer.typed.push(name);
   expect((await run(computer, "take-off", slug)).code).toBe(0);
   expect(await stateOf(slug)).toBe("taken_off");
-  await page.goto("/");
-  await expect(page.locator(`section[data-slug="${slug}"]`)).toHaveCount(0);
+  expect(await timesInTheFeed(page, slug)).toBe(0);
   expect((await run(computer, "put-back", slug)).said).toContain("waits for review");
   expect(await stateOf(slug)).toBe("waiting");
   await staffSays(browser, page, { do: "accept", game: slug });
-  await page.goto("/");
-  await expect(page.locator(`section[data-slug="${slug}"]`)).toHaveCount(1);
+  expect(await timesInTheFeed(page, slug)).toBe(1);
   computer.typed.push(slug);
   expect((await run(computer, "take-off", slug)).code).toBe(0);
   computer.typed.push(name);

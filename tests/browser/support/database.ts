@@ -154,6 +154,11 @@ export async function paymentPostingOf(number: string): Promise<{ stripeInvoiceI
   });
 }
 
+/** How many rows the rate limiter keeps, so a journey can see that a refused call wrote none. */
+export function rateLimitRows(): Promise<number> {
+  return db().rateLimit.count();
+}
+
 /** How many rows of Stripe's fee report of one kind (by Stripe's name for it, such as "billing") the site has kept. */
 export function feeRowsKept(product: string): Promise<number> {
   return db().stripeFeeRow.count({ where: { product } });
@@ -174,6 +179,15 @@ export async function filesOf(slug: string): Promise<{ repo: string | null; pull
     select: { repoFullName: true, _count: { select: { pulls: true } } },
   });
   return { repo: game.repoFullName, pulls: game._count.pulls };
+}
+
+/** Which copy of a game's files is live and which waits for review, as the database holds them. */
+export async function pullsOf(slug: string): Promise<{ live: string | null; pending: string | null }> {
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { livePullId: true, pendingPullId: true },
+  });
+  return { live: game.livePullId, pending: game.pendingPullId };
 }
 
 /** Where a game stands: its state, as the database holds it. */

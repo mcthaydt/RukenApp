@@ -1,5 +1,6 @@
 // The landing page's motion, and only the landing page's (the owner, 2026-11-22 19:37 UTC: "Use lenis smooth
-// scrolling, GSAP microanimations and page transitions", then "Everything should be fairly subtle actually"). The
+// scrolling, GSAP microanimations and page transitions", then "Everything should be fairly subtle actually"). The page
+// transitions are the app's own sideways slide, which every screen now has (src/routes/+layout.svelte). The
 // scroll glides a little, each block below the first screen rises a few pixels as it comes into view, the phones drift
 // a touch slower than the page and the money bar fills in. A person who asked for less motion gets none of it: the
 // page is the same, standing still.
@@ -70,18 +71,4 @@ export function startMotion(page: HTMLElement): () => void {
     gsap.ticker.remove(tick);
     lenis.destroy();
   };
-}
-
-/** Leaving the page: it lifts a few pixels and fades in a fifth of a second, and the next page comes in. */
-export function leave(page: HTMLElement): Promise<void> {
-  if (wantsLessMotion()) return Promise.resolve();
-  return new Promise((resolve) => {
-    gsap.to(page, { y: -8, opacity: 0, duration: 0.2, ease: "power1.in", onComplete: resolve });
-  });
-}
-
-/** Arriving from another screen of Ruken (not a fresh load): the page settles in from a few pixels below. */
-export function arrive(page: HTMLElement): void {
-  if (wantsLessMotion()) return;
-  gsap.from(page, { y: 8, opacity: 0, duration: 0.3, ease: "power2.out", clearProps: "transform,opacity" });
 }
