@@ -146,6 +146,8 @@ for (const path of [
   () => "/sign-in",
   () => "/join",
   () => "/help",
+  () => "/help/how-the-feed-works",
+  () => "/cookies",
   () => "/privacy",
   () => "/terms",
   () => "/g/no-such-game",
@@ -166,6 +168,7 @@ test("no bar where the game or a step has the whole screen: playing, and each st
   await signInAs(page, game.maker.number, game.maker.password);
   for (const path of [
     `/g/${game.slug}/play`,
+    `/make/${game.slug}/play`,
     "/make/new",
     `/make/${game.slug}/name`,
     "/make/page/name",

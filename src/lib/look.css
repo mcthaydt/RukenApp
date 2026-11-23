@@ -2734,6 +2734,14 @@ main.helpdesk {
   }
 }
 
+/* A phone held sideways is short: the title is a phone's size, so the plans and the button are near the first screen. */
+@media (orientation: landscape) and (max-height: 449px) {
+  .card.bold h1,
+  .card.bold .cardtop h1 {
+    font-size: 2.25rem;
+  }
+}
+
 /* What a member gets: short chalk lines at the buttons' weight, each after a tick drawn in Glaucous Green. */
 .card.bold .gets {
   display: grid;
@@ -3151,6 +3159,18 @@ main.helpdesk {
   .helpdesk .arrow {
     top: 2rem;
     right: 2rem;
+  }
+}
+
+/* A phone held sideways is short: the title is a phone's size, so the first guide is in the first screen. */
+@media (orientation: landscape) and (max-height: 449px) {
+  .helpdesk h1 {
+    margin-top: 0.75rem;
+    font-size: 2.25rem;
+  }
+
+  .helpdesk ol {
+    margin-top: 1.25rem;
   }
 }
 
@@ -4205,6 +4225,17 @@ video[data-loading] {
   width: 100%;
   min-width: 0;
   margin: 0;
+}
+
+/* A phone held sideways: the bar stands along the right edge, so the card stays at the foot and keeps clear of it. */
+@media (orientation: landscape) and (max-height: 449px) {
+  .consent,
+  .consent.above-bar {
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    left: max(0.75rem, env(safe-area-inset-left));
+    translate: none;
+    width: min(100% - 1.5rem - var(--rail, 0px), var(--width-read));
+  }
 }
 
 @media (max-width: 22rem) {

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signInAs, signUp } from "./support/account.ts";
+import { CONSENTED_STATE, NOT_CONSENTED } from "./support/consent.ts";
 import { givePage } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
@@ -131,6 +132,8 @@ for (const phone of PHONES) {
       for (const path of [
         "/help",
         "/help/get-your-game-on-ruken",
+        "/help/how-the-feed-works",
+        "/cookies",
         "/privacy",
         "/terms",
         "/join",
@@ -175,7 +178,12 @@ for (const phone of PHONES) {
         await expectClearOfTheBar(page, "main", x);
         await showTheOwner(page, testInfo, `${path}, ${phone.name} sideways`);
       }
-      for (const path of [`/make/${game.slug}/name`, "/make/page/name", `/g/${game.slug}/play`]) {
+      for (const path of [
+        `/make/${game.slug}/name`,
+        "/make/page/name",
+        `/g/${game.slug}/play`,
+        `/make/${game.slug}/play`,
+      ]) {
         await page.goto(path);
         await expect(page.locator("main, iframe").first()).toBeAttached();
         await expect(bar(page), path).toHaveCount(0);
@@ -218,10 +226,34 @@ for (const phone of PHONES) {
       }
       // A maker with no page yet is asked its address first: a step, so no bar there either.
       await page.context().clearCookies();
+      await page.context().addCookies(CONSENTED_STATE.cookies);
       await signUp(page);
       await page.goto("/make/page");
       await expect(page.getByRole("heading", { name: "Pick your page's address" })).toBeVisible();
       await expect(bar(page)).toHaveCount(0);
+    });
+  });
+}
+
+for (const phone of PHONES) {
+  test.describe(`on ${phone.name} held sideways, before a yes to cookies`, () => {
+    test.use({ viewport: phone.viewport, storageState: NOT_CONSENTED });
+
+    test("the cookie card sits at the foot, wholly in the window and clear of the bar", async ({
+      page,
+    }, testInfo) => {
+      for (const path of ["/", "/help"]) {
+        await page.goto(path);
+        const card = page.getByRole("complementary").filter({ has: page.locator("#consent-title") });
+        await expect(card, path).toBeVisible();
+        const { x } = await expectBarOnTheRight(page);
+        const box = await boxOf(card);
+        expect(box.x, path).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width, path).toBeLessThanOrEqual(x);
+        expect(box.y + box.height, path).toBeLessThanOrEqual(phone.viewport.height);
+        expect(phone.viewport.height - (box.y + box.height), path).toBeLessThanOrEqual(24);
+        await showTheOwner(page, testInfo, `the cookie card on ${path}, ${phone.name} sideways`);
+      }
     });
   });
 }
