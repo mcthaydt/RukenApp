@@ -20,7 +20,7 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
 
-const AGREEMENT_VERSION_LINE = "Version 2 · Last updated 15 November 2026";
+const AGREEMENT_VERSION_LINE = "Version 3 · Last updated 22 November 2026";
 
 test("a first game: six questions, the agreement, Check and send, then Waiting for review", async ({
   page,

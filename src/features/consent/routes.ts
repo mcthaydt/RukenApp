@@ -15,6 +15,7 @@ const OPEN: readonly string[] = [
   "/help",
   "/help/get-your-game-on-ruken",
   "/help/github",
+  "/help/how-the-feed-works",
   "/help/record-screen",
   "/legal/maker-agreement",
   "/privacy",

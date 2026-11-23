@@ -24,7 +24,7 @@
     <li>We don't keep your birthday. We keep only the day you turn 18.</li>
     <li>Stripe takes your card. We never see your card number.</li>
     <li>We count how long members play each game, so we can pay the people who made it.</li>
-    <li>Ruken has no ads. We don't sell what we know about you.</li>
+    <li>Ruken has no ads, and no game on Ruken may have ads. We don't sell what we know about you.</li>
     <li>You can delete your account at any time. 14 days later, your details are gone.</li>
   </ul>
 
@@ -121,6 +121,7 @@
       does.
     </li>
   </ul>
+  <p><a class="plain-link" href="/help/how-the-feed-works">How the feed works</a></p>
 
   <h2>Games you want</h2>
   <p>Before Ruken opens, you can add games to a list. We keep your list.</p>

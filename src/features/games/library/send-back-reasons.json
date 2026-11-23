@@ -54,6 +54,12 @@
     "maker": "Gambling isn't allowed on Ruken."
   },
   {
+    "parts": ["files"],
+    "code": "ads",
+    "staff": "It has ads.",
+    "maker": "Games on Ruken can't have ads. Take them out on GitHub, then send it again."
+  },
+  {
     "parts": ["plays_on"],
     "code": "needs_keyboard",
     "staff": "It needs a keyboard.",
