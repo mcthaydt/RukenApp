@@ -56,10 +56,19 @@
   <h2>Games on Ruken</h2>
   <ul class="bullets">
     <li>Makers make the games, not Ruken. A person at Ruken checks each game before it goes on Ruken.</li>
-    <li>Games made for adults are shown only to adults. No game may have pornography or gambling.</li>
+    <li>Games made for adults are shown only to adults.</li>
     <li>A game plays apart from Ruken. It never gets your sign-in or your account.</li>
     <li>A maker can take their game off Ruken at any time, so a game you like may go away.</li>
   </ul>
+  <p><a class="plain-link" href="/help/how-the-feed-works">How the feed works</a></p>
+
+  <h2>What no game may have</h2>
+  <ul class="bullets">
+    <li><strong>No pornography.</strong></li>
+    <li><strong>No gambling.</strong></li>
+    <li><strong>No ads.</strong> A game can't show ads of any kind.</li>
+  </ul>
+  <p>A person at Ruken checks for these before a game goes on Ruken. A game that breaks them comes off.</p>
 
   <h2>Play fair</h2>
   <ul class="bullets">

@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { gameWhere } from "./support/game.ts";
 import { boxOf, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // What a person does to the feed (spec 5.1): swipe or press keys to move a clip at a time, press the clip to open its game's
 // page, press the speaker for sound, share
@@ -13,7 +14,7 @@ test.beforeAll(async ({ browser }) => {
   // Three games from rows, so the feed has several clips to move between whatever else the database holds.
   for (let made = 0; made < 3; made += 1) {
     await forgetRateLimits();
-    const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
     try {
       await gameWhere(await context.newPage(), { state: "live" });
     } finally {
@@ -184,6 +185,57 @@ test("each key moves one clip, never before the first", async ({ page }) => {
   }
 });
 
+test("keys pressed faster than the feed slides each still move one clip", async ({ page }) => {
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  // Two keys in one go, before the feed has started to slide: a person tapping Down twice, or a busy phone that hands
+  // the page both at once. The page is given them together so the second always comes while the first is under way;
+  // Playwright's own presses each wait for the browser and could come after the slide has ended.
+  const pressTogether = (keys: string[]) =>
+    page.evaluate((names) => {
+      for (const key of names) window.dispatchEvent(new KeyboardEvent("keydown", { key, cancelable: true }));
+    }, keys);
+
+  await pressTogether(["ArrowDown", "ArrowDown"]);
+  await expect(clips.nth(2)).toHaveAttribute("data-current", "true");
+  await pressTogether(["ArrowUp", "ArrowUp"]);
+  await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
+  // Back and on again at once: the second key counts from where the first was going, not from where the feed still is.
+  await pressTogether(["ArrowDown", "ArrowUp", "ArrowDown"]);
+  await expect(clips.nth(1)).toHaveAttribute("data-current", "true");
+  // And it comes to rest there, the clip's top at the window's top.
+  await expect
+    .poll(() =>
+      clips.nth(1).evaluate((clip) => {
+        const feed = clip.closest("main.feed");
+        return feed === null
+          ? null
+          : Math.round(clip.getBoundingClientRect().top - feed.getBoundingClientRect().top);
+      }),
+    )
+    .toBe(0);
+});
+
+test("a slide that never moves does not hold the keys for long", async ({ page }) => {
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  // The first slide asked for goes nowhere, so no end of it ever comes: the feed must stop waiting for it by itself.
+  await page.evaluate(() => {
+    const slide = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
+    Element.prototype.scrollIntoView = function () {
+      if (slide) Object.defineProperty(Element.prototype, "scrollIntoView", slide);
+    };
+  });
+  await page.keyboard.press("ArrowDown");
+  await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
+  // A few seconds on, a key moves the feed again. Keys pressed before then are still held, so the journey presses until
+  // one is heard, and each press moves at most one clip.
+  await expect(async () => {
+    await page.keyboard.press("ArrowDown");
+    await expect(clips.nth(1)).toHaveAttribute("data-current", "true", { timeout: 1000 });
+  }).toPass({ timeout: 6000 });
+});
+
 test("pressing the clip opens the game's page", async ({ page }) => {
   await openFeed(page);
   const clip = current(page);
@@ -329,9 +381,17 @@ test("a reload whose kept feed is shorter than the fresh one puts back the kept 
   await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
   const slug = (await current(page).getAttribute("data-slug")) ?? "?";
   // While a person is away, more games can go live, so the feed the page comes back with can be longer than the one
-  // it keeps. Here the kept feed is cut to its first two clips, and its keys are moved to a later round, as a place past
-  // the first page is, so the kept clips are the ones put back. (Each kept value is text in SvelteKit's own format: a
+  // it keeps. Here the kept feed is cut to its first two clips, and only the first of them counts as the first page, so
+  // the place is past it and the kept clips are the ones put back. (Each kept value is text in SvelteKit's own format: a
   // list whose first item is the value, with every object, list and string inside it held by its place in the list.)
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/feed?*", async (route) => {
+    await held;
+    await route.continue();
+  });
   await page.addInitScript(() => {
     const name = "sveltekit:navigation-snapshot";
     const kept = JSON.parse(sessionStorage.getItem(name) ?? "{}") as Record<string, Record<string, string>>;
@@ -339,12 +399,11 @@ test("a reload whose kept feed is shorter than the fresh one puts back the kept 
     for (const values of Object.values(kept))
       for (const [id, text] of Object.entries(values)) {
         const parts = JSON.parse(text) as unknown[];
-        const place = parts[0] as { clips?: number } | null;
-        if (typeof place?.clips !== "number") continue;
+        const place = parts[0] as { clips?: number; firstCount?: number } | null;
+        if (typeof place?.clips !== "number" || typeof place.firstCount !== "number") continue;
         parts[place.clips] = (parts[place.clips] as number[]).slice(0, 2);
-        values[id] = JSON.stringify(
-          parts.map((part) => (typeof part === "string" ? part.replace(/^0~/, "7~") : part)),
-        );
+        parts[place.firstCount] = 1;
+        values[id] = JSON.stringify(parts);
         cut++;
       }
     if (cut === 0) throw new Error("the feed kept no clips");
@@ -353,9 +412,51 @@ test("a reload whose kept feed is shorter than the fresh one puts back the kept 
   await page.reload();
   await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
   await expect(current(page)).toHaveAttribute("data-slug", slug);
+  // On to the spinner while the next page is held, and back up: the way up is the last kept clip.
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("progressbar", { name: "Loading more games" })).toBeInViewport();
+  await expect(current(page)).toHaveCount(0);
+  // A touch on the spinner makes the feed forget where the last key sent it, so the way up comes from what is on screen.
+  await page.getByRole("progressbar", { name: "Loading more games" }).dispatchEvent("pointerdown");
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
+  release();
   await page.keyboard.press("ArrowDown");
   await expect(page.locator("section[data-slug]").nth(2)).toHaveAttribute("data-current", "true");
   expect(errors).toEqual([]);
+});
+
+test("a reload on a game that came off while the person was away starts from the top, without that game", async ({
+  page,
+}) => {
+  await openFeed(page);
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
+  // The kept copy of the clip on screen becomes a game that is no longer on Ruken. (SvelteKit's format, as above.)
+  await page.addInitScript(() => {
+    const name = "sveltekit:navigation-snapshot";
+    const kept = JSON.parse(sessionStorage.getItem(name) ?? "{}") as Record<string, Record<string, string>>;
+    let changed = 0;
+    for (const values of Object.values(kept))
+      for (const [id, text] of Object.entries(values)) {
+        const parts = JSON.parse(text) as unknown[];
+        const place = parts[0] as { clips?: number; key?: number } | null;
+        if (typeof place?.clips !== "number" || typeof place.key !== "number") continue;
+        const second = parts[(parts[place.clips] as number[])[1] as number] as { key: number; slug: number };
+        parts[second.key] = "0~a-game-taken-off";
+        parts[second.slug] = "a-game-taken-off";
+        parts[place.key] = "0~a-game-taken-off";
+        values[id] = JSON.stringify(parts);
+        changed++;
+      }
+    if (changed === 0) throw new Error("the feed kept no clips");
+    sessionStorage.setItem(name, JSON.stringify(kept));
+  });
+  await page.reload();
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await expect(page.locator('section[data-slug="a-game-taken-off"]')).toHaveCount(0);
+  // The top is the fresh first page's first clip; other journeys can make games live meanwhile, so it is found by place.
+  await expect(page.locator("section[data-slug]").first()).toHaveAttribute("data-current", "true");
 });
 
 test("pressing the speaker flips sound for every clip, and it stays as set from one game to the next", async ({
@@ -531,7 +632,11 @@ test.describe("the first open's hints", () => {
   });
 
   test("are never there with no script", async ({ browser }) => {
-    const context = await browser.newContext({ javaScriptEnabled: false, baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({
+      ...consented,
+      javaScriptEnabled: false,
+      baseURL: "http://localhost:4173",
+    });
     try {
       const page = await context.newPage();
       await page.goto("/");
@@ -547,7 +652,11 @@ test.describe("the first open's hints", () => {
   });
 
   test("with reduced motion the next clip is simply there, not slid to", async ({ browser }) => {
-    const context = await browser.newContext({ reducedMotion: "reduce", baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({
+      ...consented,
+      reducedMotion: "reduce",
+      baseURL: "http://localhost:4173",
+    });
     try {
       const page = await context.newPage();
       await openFeed(page);

@@ -2,6 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { hashNumber } from "../../../src/features/accounts/phone.ts";
 import { sealState } from "../../../src/features/games/github-connect.ts";
 import type { AgeRating, GamePart } from "../../../src/lib/server/db.ts";
+import { journeyClientAddress } from "./rate-limits.ts";
 import { PrismaClient, type MembershipStart } from "../../support/generated/prisma/client.ts";
 
 // The one place a journey reads the app's database. No screen shows who brought a member, so the journeys that check
@@ -154,6 +155,21 @@ export async function paymentPostingOf(number: string): Promise<{ stripeInvoiceI
   });
 }
 
+/**
+ * How many rate-limit rows hold this worker's client address, so a journey can see that a refused call wrote none.
+ * The whole table is not counted: other workers' journeys clear the rows that hold no address (and their own) while this
+ * one runs, so a count of everything drops under it.
+ */
+export async function rateLimitRows(): Promise<number> {
+  const address = journeyClientAddress();
+  const holdsAddress = new RegExp(`(^|:)${address.replaceAll(".", String.raw`\.`)}([|:]|$)`);
+  const rows = await db().rateLimit.findMany({
+    where: { key: { contains: address } },
+    select: { key: true },
+  });
+  return rows.filter((row) => holdsAddress.test(row.key)).length;
+}
+
 /** How many rows of Stripe's fee report of one kind (by Stripe's name for it, such as "billing") the site has kept. */
 export function feeRowsKept(product: string): Promise<number> {
   return db().stripeFeeRow.count({ where: { product } });
@@ -174,6 +190,15 @@ export async function filesOf(slug: string): Promise<{ repo: string | null; pull
     select: { repoFullName: true, _count: { select: { pulls: true } } },
   });
   return { repo: game.repoFullName, pulls: game._count.pulls };
+}
+
+/** Which copy of a game's files is live and which waits for review, as the database holds them. */
+export async function pullsOf(slug: string): Promise<{ live: string | null; pending: string | null }> {
+  const game = await db().game.findUniqueOrThrow({
+    where: { slug },
+    select: { livePullId: true, pendingPullId: true },
+  });
+  return { live: game.livePullId, pending: game.pendingPullId };
 }
 
 /** Where a game stands: its state, as the database holds it. */

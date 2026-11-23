@@ -1,9 +1,11 @@
 import { sequence } from "@sveltejs/kit/hooks";
 import { authServices, createHandle, httpsOnly, setMoneyCheck } from "./features/accounts/accounts.ts";
-import { cloudflareFiles, cloudflarePlatform } from "./lib/server/cloudflare.ts";
-import { databasePerRequest } from "./lib/server/db.ts";
+import { cloudflareFiles, cloudflarePlatform, cloudflarePrivateFeed } from "./lib/server/cloudflare.ts";
+import { allowWrites, databasePerRequest } from "./lib/server/db.ts";
 import { requireEnv } from "./lib/server/env.ts";
+import { consentGate } from "./features/consent/consent.ts";
 import { setFileStore } from "./lib/server/files.ts";
+import { setPrivateRanker } from "./features/feed/feed.ts";
 import { membershipServices } from "./features/membership/membership.ts";
 import { moneyServices } from "./features/money/money.ts";
 import { setPlatform } from "./lib/server/platform.ts";
@@ -13,6 +15,8 @@ import { setPlatform } from "./lib/server/platform.ts";
 setPlatform(cloudflarePlatform);
 // The bucket that holds games and clips.
 setFileStore(cloudflareFiles);
+// The feed's private order, when this Worker is bound to it; without it the feed runs on its open order.
+setPrivateRanker(cloudflarePrivateFeed);
 // What forgot password needs to know about money: whether a Stripe customer was ever made for the account or any money
 // was booked for it. accounts sits below the features that know, so the answer is handed in here.
 setMoneyCheck(
@@ -23,11 +27,12 @@ setMoneyCheck(
 
 // httpsOnly is first: a plain-http visit is sent to https before anything else runs, because the sign-in cookie is
 // never kept over http. databasePerRequest is next, so every route and form reaches its own request's database
-// client. createHandle
-// then says who sent the request; it builds the sign-in services on the first request that needs them, so
+// client. The consent gate is next: a browser that has not said yes to cookies may not write to the database, keeps no
+// cookie and is sent from a gated page to the notice. createHandle then says who sent the request; it builds the sign-in services on the first request that needs them, so
 // /healthz answers without them.
 export const handle = sequence(
   httpsOnly(() => requireEnv("BETTER_AUTH_URL", process.env)),
   databasePerRequest(),
+  consentGate(allowWrites),
   createHandle(() => authServices().handleDeps),
 );

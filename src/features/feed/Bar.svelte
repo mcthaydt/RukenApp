@@ -1,16 +1,17 @@
 <!--
-  The bar (spec 5.2), floating at the bottom in the middle of the feed, a game's page and a maker's page: Home, a big
-  Add a game button in the middle that goes to Your games, and You. Each is a picture, not a word, so more can join
+  The bar (spec 5.2), floating at the bottom in the middle of every screen but the few the root layout names (on a phone
+  held sideways it stands along the right edge): Home, a big Add a game button in the middle that goes to Your games, and You. It stays still while a page slides
+  in under it, as an app's tabs do. Each is a picture, not a word, so more can join
   later (the owner, 2026-11-22); each picture carries its name for a screen reader and a hover tip. The one for the
   screen a person is on is marked.
 -->
 <script lang="ts">
-  /** Whether the person is on the feed, which is Home. */
-  let { home }: { home: boolean } = $props();
+  /** Which of the bar's places the person is on, if any: the feed (Home), Your games or You. */
+  let { on }: { on: "home" | "make" | "you" | null } = $props();
 </script>
 
 <nav class="bar" aria-label="Ruken">
-  <a href="/" aria-label="Home" title="Home" aria-current={home ? "page" : undefined}>
+  <a href="/" aria-label="Home" title="Home" aria-current={on === "home" ? "page" : undefined}>
     <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
       <path
         d="M3 11.5 12 4l9 7.5M5.5 9.5V20h5v-5.5h3V20h5V9.5"
@@ -22,7 +23,13 @@
       />
     </svg>
   </a>
-  <a href="/make" class="add" aria-label="Add a game" title="Add a game">
+  <a
+    href="/make"
+    class="add"
+    aria-label="Add a game"
+    title="Add a game"
+    aria-current={on === "make" ? "page" : undefined}
+  >
     <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
       <path
         d="M12 5v14M5 12h14"
@@ -33,7 +40,7 @@
       />
     </svg>
   </a>
-  <a href="/me" aria-label="You" title="You">
+  <a href="/me" aria-label="You" title="You" aria-current={on === "you" ? "page" : undefined}>
     <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
       <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2" />
       <path
@@ -60,6 +67,7 @@
     padding: 0.25rem;
     border-radius: calc(var(--radius-button) + 0.25rem);
     background: var(--felt-deep);
+    view-transition-name: tabs;
   }
   .bar a {
     display: flex;
@@ -81,6 +89,31 @@
     min-width: 4.5rem;
     min-height: 3.25rem;
     background: var(--pay);
+  }
+  /* On Your games the big button is the place the person is on: a chalk ring, since its blue is its own. */
+  .bar a.add[aria-current="page"] {
+    box-shadow: inset 0 0 0 3px var(--chalk);
+  }
+  /* A phone held sideways is short, so the bar stands up along the right edge instead (clear of the notch side's safe
+     area), and every screen keeps its whole height for what is on it. look.css keeps the screens clear of it. */
+  @media (orientation: landscape) and (max-height: 449px) {
+    .bar {
+      top: 50%;
+      right: max(0.75rem, env(safe-area-inset-right));
+      bottom: auto;
+      left: auto;
+      translate: 0 -50%;
+      flex-direction: column;
+    }
+    .bar a {
+      min-width: var(--size-target);
+      width: 3.5rem;
+    }
+    .bar a.add {
+      min-width: var(--size-target);
+      width: 3.5rem;
+      min-height: 3.5rem;
+    }
   }
   .bar a:active {
     scale: var(--press-scale);
