@@ -185,6 +185,37 @@ test("each key moves one clip, never before the first", async ({ page }) => {
   }
 });
 
+test("keys pressed faster than the feed slides each still move one clip", async ({ page }) => {
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  // Two keys in one go, before the feed has started to slide: a person tapping Down twice, or a busy phone that hands
+  // the page both at once. The page is given them together so the second always comes while the first is under way;
+  // Playwright's own presses each wait for the browser and could come after the slide has ended.
+  const pressTogether = (keys: string[]) =>
+    page.evaluate((names) => {
+      for (const key of names) window.dispatchEvent(new KeyboardEvent("keydown", { key, cancelable: true }));
+    }, keys);
+
+  await pressTogether(["ArrowDown", "ArrowDown"]);
+  await expect(clips.nth(2)).toHaveAttribute("data-current", "true");
+  await pressTogether(["ArrowUp", "ArrowUp"]);
+  await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
+  // Back and on again at once: the second key counts from where the first was going, not from where the feed still is.
+  await pressTogether(["ArrowDown", "ArrowUp", "ArrowDown"]);
+  await expect(clips.nth(1)).toHaveAttribute("data-current", "true");
+  // And it comes to rest there, the clip's top at the window's top.
+  await expect
+    .poll(() =>
+      clips.nth(1).evaluate((clip) => {
+        const feed = clip.closest("main.feed");
+        return feed === null
+          ? null
+          : Math.round(clip.getBoundingClientRect().top - feed.getBoundingClientRect().top);
+      }),
+    )
+    .toBe(0);
+});
+
 test("pressing the clip opens the game's page", async ({ page }) => {
   await openFeed(page);
   const clip = current(page);

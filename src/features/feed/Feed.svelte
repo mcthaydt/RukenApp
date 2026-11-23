@@ -269,15 +269,48 @@
     },
   });
 
+  /** The screen a step lands on: a clip, or past the last one the screen that waits for the next page. */
+  function screenAt(index: number): { index: number; screen: HTMLElement | null | undefined } {
+    if (index >= clips.length && moreScreen) return { index: clips.length, screen: moreScreen };
+    const clip = clampClip(index, clips.length);
+    return { index: clip, screen: sections[clip] };
+  }
+
+  // Where the keys are sending the feed while it slides there, and whether it is still sliding. A key counts from where
+  // the last key was going, not from the clip on screen, so two quick presses move two clips. And a key that comes
+  // while the feed slides waits for the slide to end: Safari's engine can drop a slide begun in the middle of another
+  // (the feed journey lost a key that came in a slide's last few pixels on a busy machine, twice in CI). Both need the
+  // browser to say when a slide ends (`scrollend`); one that cannot keeps the old way, each key from the clip on screen.
+  const tellsSlideEnd = typeof window !== "undefined" && "onscrollend" in window;
+  let aim: number | null = null;
+  let sliding = false;
+
   function goTo(index: number): void {
+    const { index: landing, screen } = screenAt(index);
+    if (!screen || !feed) return;
+    if (tellsSlideEnd) aim = landing;
+    if (sliding) return;
+    const away = screen.getBoundingClientRect().top - feed.getBoundingClientRect().top;
+    // Already there: nothing slides, so no end will come.
+    if (Math.abs(away) < 1) {
+      aim = null;
+      return;
+    }
+    sliding = tellsSlideEnd;
     // With less motion the next clip is simply there, not slid to.
-    // Past the last clip is the screen that waits for the next page, so a key can go on to it.
-    const target =
-      index >= clips.length && moreScreen ? moreScreen : sections[clampClip(index, clips.length)];
-    target?.scrollIntoView({
-      behavior: mayMove() ? "smooth" : "auto",
-      block: "start",
-    });
+    screen.scrollIntoView({ behavior: mayMove() ? "smooth" : "auto", block: "start" });
+  }
+
+  // A slide has ended. If the keys were sending the feed further (or the slide was dropped), it goes on from here.
+  function slideEnded(): void {
+    sliding = false;
+    if (aim !== null) goTo(aim);
+  }
+
+  // A finger or wheel takes the feed over: where the keys were going no longer counts.
+  function forgetAim(): void {
+    aim = null;
+    sliding = false;
   }
 
   function onKey(event: KeyboardEvent): void {
@@ -290,7 +323,7 @@
     if (target?.closest("input, textarea, select, [contenteditable]") != null) return;
     if (event.key === " " && target?.closest("a, button, summary") != null) return;
     event.preventDefault();
-    goTo(current + step);
+    goTo((aim ?? current) + step);
   }
 
   async function share(clip: FeedClip): Promise<void> {
@@ -318,7 +351,16 @@
     <p class="statement">No games here yet.</p>
   </main>
 {:else}
-  <main class="feed" data-ready={ready ? "true" : "false"} bind:this={feed} onscroll={forgetHints}>
+  <main
+    class="feed"
+    data-ready={ready ? "true" : "false"}
+    bind:this={feed}
+    onscroll={forgetHints}
+    onscrollend={slideEnded}
+    onwheel={forgetAim}
+    ontouchstart={forgetAim}
+    onpointerdown={forgetAim}
+  >
     {#each clips as clip, index (clip.key)}
       <section
         bind:this={sections[index]}

@@ -22,7 +22,10 @@ test.beforeAll(async ({ browser, request }) => {
 test.beforeEach(forgetRateLimits);
 
 const OPENS = "Opens 30 November";
-const clipOf = (page: Page, slug: string): Locator => page.locator(`section[data-slug="${slug}"]`);
+// The feed never ends: past its first page it goes round and shows each game again, so once the next page has come in
+// one game has several clips (four on #348's run at 7648084, where few games were live). The first is the game's place
+// in the feed's first round, the one the journey scrolled to.
+const clipOf = (page: Page, slug: string): Locator => page.locator(`section[data-slug="${slug}"]`).first();
 const makerGameOf = (page: Page, name: string): Locator =>
   page.locator("article.game").filter({ has: page.getByRole("heading", { name }) });
 const wishlist = (within: Page | Locator): Locator =>
