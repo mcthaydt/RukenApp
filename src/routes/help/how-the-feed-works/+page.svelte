@@ -1,9 +1,11 @@
 <!--
   How the feed picks games, in plain words, for anyone. It keeps what works today apart from what is coming, so it never
-  promises ahead of the code: "today" is `src/features/feed/order.ts` and `memberBeatsByGame` in
-  `src/features/play/sessions.ts`; "coming" is the learned feed (spec 2026-11-22-learned-feed-design.md) in the words the
+  promises ahead of the code: "today" is the open ranker, `src/features/feed/public-ranker.ts`, and
+  `memberBeatsByGame` in `src/features/play/sessions.ts`; "coming" is the learned feed (spec 2026-11-22-learned-feed-design.md) in the words the
   Owner approved for this page on 2026-11-15. It names rules, never a number the order is tuned with, so the feed can't be
-  gamed from it. When the feed changes, this page changes in the same pull request. One paper sheet on the felt like the
+  gamed from it. When the feed changes, this page changes in the same pull request. The real order is
+  private (spec 2026-11-22-private-feed-ranking-design.md, section 3): a private ranking change that would make this page
+  untrue merges only after a pull request here that changes the page has merged. One paper sheet on the felt like the
   other help pages, with the way back at the top and again at the foot.
 -->
 <script lang="ts">
