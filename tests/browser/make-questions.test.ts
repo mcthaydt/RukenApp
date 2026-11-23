@@ -17,6 +17,7 @@ import {
   nextButton,
   pageNamedAsVideo,
   quickTimeFile,
+  realClip,
   slugOfPage,
   startAtFiles,
   startAtVideo,
@@ -774,6 +775,38 @@ test("with reduced motion a video does not start by itself", async ({ page }) =>
   const video = page.locator('[data-frame="upright"] video');
   await expect(video).toBeAttached();
   expect(await video.evaluate((element: HTMLVideoElement) => element.paused)).toBe(true);
+});
+
+test("a real video plays through and starts again, without jumping back to its start over and over", async ({
+  page,
+}) => {
+  await startAtVideo(page, "upright");
+  await chooseVideo(page, await realClip(page, "upright"));
+  const video = page.locator('[data-frame="upright"] video');
+  await expect(video).toBeAttached();
+  await pageHasSettled(page);
+
+  // The clip is two seconds long. Safari's engine on Linux, given a looping video whose address names a start time,
+  // jumped back to the start about a hundred times a second and never played (progress.md, Flaky tests).
+  const watched = await video.evaluate(
+    (element: HTMLVideoElement) =>
+      new Promise<{ furthest: number; cameBack: boolean; jumps: number }>((resolve) => {
+        let furthest = 0;
+        let cameBack = false;
+        let jumps = 0;
+        element.addEventListener("seeking", () => (jumps += 1));
+        element.addEventListener("timeupdate", () => {
+          if (furthest > 1.5 && element.currentTime < 0.5) cameBack = true;
+          furthest = Math.max(furthest, element.currentTime);
+        });
+        setTimeout(() => {
+          resolve({ furthest, cameBack, jumps });
+        }, 5_000);
+      }),
+  );
+  expect(watched.furthest, "how far the video played").toBeGreaterThan(1.5);
+  expect(watched.cameBack, "the video started again after its end").toBe(true);
+  expect(watched.jumps, "jumps in five seconds of a two-second clip").toBeLessThanOrEqual(5);
 });
 
 test("the picker is reached and opened from the keyboard", async ({ page }) => {

@@ -63,7 +63,6 @@
             preload="metadata"
             tabindex="-1"
             muted
-            loop
             playsinline
             aria-hidden="true"
             use:quietVideo
