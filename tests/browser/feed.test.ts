@@ -4,6 +4,7 @@ import { addGame, gameWhere } from "./support/game.ts";
 import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { rgb, token } from "../support/look-tokens.ts";
+import { consented } from "./support/consent.ts";
 
 // The feed at / (spec 5.1): full-screen clips of games, one per swipe, each led by the person who made it.
 // The journeys share one database, so the feed holds every game any journey made: each one finds its own game's clip by
@@ -24,7 +25,7 @@ test.beforeAll(async ({ browser, request }) => {
   // Games from rows, each made by a new account in a context of its own (a signed-in context cannot sign up again).
   const liveGame = async (): Promise<{ slug: string; name: string }> => {
     await forgetRateLimits();
-    const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
     try {
       return await gameWhere(await context.newPage(), { state: "live" });
     } finally {

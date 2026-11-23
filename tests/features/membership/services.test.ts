@@ -35,8 +35,11 @@ function build(changes: Record<string, string | undefined> = {}, clock = new Tes
 type CookieOptions = Parameters<Cookies["set"]>[2];
 
 /** A cookie jar that remembers what was set, the way SvelteKit's does. */
-function cookieJar() {
-  const stored = new Map<string, { value: string; options: CookieOptions }>();
+function cookieJar(agreed = true) {
+  // A browser that said yes to cookies, unless a test says otherwise.
+  const stored = new Map<string, { value: string; options: CookieOptions }>(
+    agreed ? [["rk_consent", { value: "v1", options: { path: "/" } }]] : [],
+  );
   return {
     stored,
     set(name: string, value: string, options: CookieOptions) {
@@ -77,6 +80,13 @@ describe("the arrival cookie", () => {
       secure: true,
       maxAge: 34_560_000,
     });
+  });
+
+  it("remembers nothing for a browser that has not said yes to cookies", () => {
+    const { arrival } = build();
+    const jar = cookieJar(false);
+    arrival.remember(jar, { makerUserId: "maker-1", path: "/g/a-game" });
+    expect(jar.stored.size).toBe(0);
   });
 
   it("each new arrival replaces the last", () => {

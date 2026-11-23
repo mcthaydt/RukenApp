@@ -1230,6 +1230,25 @@ form > * + button:not(.quiet) {
   }
 }
 
+/* Your games and You carry the bar of places at the bottom (src/features/feed/Bar.svelte), so their last line ends
+   clear above it, and Your games' Add a game stays under its heading instead of being pinned under the bar. */
+:root:has(nav.bar) :is(main.card, .screen) {
+  margin-bottom: calc(var(--size-target) + 2rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
+  :root:has(nav.bar) .screen {
+    padding-bottom: 0;
+  }
+
+  :root:has(nav.bar) .screen main.games > .acts {
+    position: static;
+    margin-top: 1.5rem;
+    padding: 0;
+    background: none;
+  }
+}
+
 /* A video, in its place: as big as the frame or the card it sits in, cropped to fit, sage until it has a picture. */
 .tile {
   display: block;
@@ -2044,19 +2063,83 @@ html[data-step="back"] .screen main > form > :not(.acts) {
 
 /* Where the browser can make a move a view transition, the old question lifts 12px and fades in 120ms, over the new
    one whose lines are rising. The bar and the track stay where they are. */
-::view-transition-old(root) {
+html[data-step]::view-transition-old(root) {
   z-index: 1;
   mix-blend-mode: normal;
   animation: lift-away 120ms ease-in both;
 }
 
-::view-transition-new(root) {
+html[data-step]::view-transition-new(root) {
   mix-blend-mode: normal;
   animation: none;
 }
 
 html[data-step="back"]::view-transition-old(root) {
   animation-name: drop-away;
+}
+
+/* Every other move between pages slides sideways, as a swipe does in an app (src/lib/page-moves.ts): the old page goes
+   out one side as the new one comes in from the other, together, in 300ms. Going on, the new page comes from the
+   right; going back, from the left. The bar of places and the maker's top bar stay where they are. */
+html[data-move]::view-transition-old(root),
+html[data-move]::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation-duration: 300ms;
+  animation-timing-function: var(--ease);
+  animation-fill-mode: both;
+}
+
+html[data-move="on"]::view-transition-old(root) {
+  animation-name: out-to-left;
+}
+
+html[data-move="on"]::view-transition-new(root) {
+  animation-name: in-from-right;
+}
+
+html[data-move="back"]::view-transition-old(root) {
+  animation-name: out-to-right;
+}
+
+html[data-move="back"]::view-transition-new(root) {
+  animation-name: in-from-left;
+}
+
+/* The maker's top bar, track and buttons slide with their page; only the bar of places stays. */
+html[data-move] .topbar,
+html[data-move] .track,
+html[data-move] .screen .acts {
+  view-transition-name: none;
+}
+
+/* A maker's page that slides in does not also rise line by line: one move at a time. */
+html[data-move] .screen main > :not(form, .acts),
+html[data-move] .screen main > form > :not(.acts) {
+  animation: none;
+}
+
+@keyframes out-to-left {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes out-to-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes in-from-left {
+  from {
+    transform: translateX(-100%);
+  }
 }
 
 /* A numbered list of points (the maker agreement): the number is the list's own, in the display face and hung in the
@@ -3326,6 +3409,71 @@ video[data-loading] {
   video[data-loading] {
     background-image: var(--spinner-still);
     animation: none;
+  }
+}
+
+/* The cookie notice (src/features/consent/Notice.svelte): a frosted card at the bottom of every screen until the browser
+   chooses, above the bar of Home and You where that is shown. Its two answers are one size and one weight: side by side,
+   or one above the other on the smallest phone, each as wide as the other. */
+.consent {
+  position: fixed;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 30;
+  translate: -50% 0;
+  box-sizing: border-box;
+  width: min(100% - 1.5rem, var(--width-read));
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-card);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  color: var(--chalk);
+}
+
+.consent.above-bar {
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.25rem);
+}
+
+.consent h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.consent p {
+  margin: 0.5rem 0 0;
+}
+
+.consent a {
+  color: var(--chalk);
+}
+
+.consent-answers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.consent-answers > form,
+.consent-answers > .button,
+.consent-answers > button {
+  min-width: 0;
+  margin: 0;
+}
+
+.consent-answers button,
+.consent-answers > form > button:not(.quiet),
+.consent-answers .button {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+@media (max-width: 22rem) {
+  .consent-answers {
+    grid-template-columns: 1fr;
   }
 }
 
