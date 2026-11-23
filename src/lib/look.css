@@ -160,7 +160,7 @@ header {
   margin: 0.5rem auto 0;
 }
 
-header + main {
+header ~ main {
   margin-top: 1rem;
 }
 
@@ -169,7 +169,7 @@ header + main {
     margin-top: 3rem;
   }
 
-  header + main {
+  header ~ main {
     margin-top: 1.5rem;
   }
 }
@@ -205,7 +205,7 @@ header + main {
   margin: 0;
 }
 
-.panel + main {
+.panel ~ main {
   margin-top: 1rem;
 }
 
@@ -1238,10 +1238,17 @@ form > * + button:not(.quiet) {
   }
 }
 
-/* Your games and You carry the bar of places at the bottom (src/features/feed/Bar.svelte), so their last line ends
-   clear above it, and Your games' Add a game stays under its heading instead of being pinned under the bar. */
+/* A screen with the bar of places (src/features/feed/Bar.svelte) ends its last line clear above it, and a maker's
+   screen that has the bar keeps its buttons under its words instead of pinned under the bar: only the step-by-step
+   screens, which have no bar, pin theirs. */
+/* The room is padding on the page itself, not a margin on the card: a margin can fall out of the page, and then a
+   card that just fills the window ends under the bar and does not scroll. */
+:root:has(nav.bar) body:has(:is(main.card, main.helpdesk, .screen)) {
+  padding-bottom: calc(var(--size-target) + 2.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 :root:has(nav.bar) :is(main.card, .screen) {
-  margin-bottom: calc(var(--size-target) + 2rem + env(safe-area-inset-bottom, 0px));
+  margin-bottom: 0;
 }
 
 @media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
@@ -1249,11 +1256,89 @@ form > * + button:not(.quiet) {
     padding-bottom: 0;
   }
 
-  :root:has(nav.bar) .screen main.games > .acts {
+  :root:has(nav.bar) .screen .acts {
     position: static;
     margin-top: 1.5rem;
     padding: 0;
     background: none;
+  }
+}
+
+/* A phone held sideways: the window is about 375 to 430 tall, so nothing spends height it does not need. The bar
+   stands along the right edge (Bar.svelte), so screens keep clear of that edge instead of the bottom; the wordmark
+   sits close to the top; headings are the phone's size, not the computer's; and a card whose one form has fields to
+   fill (sign in, join, a new password) puts its heading and words on the left and the form on the right, so the main
+   button is near the first screen. */
+@media (orientation: landscape) and (max-height: 449px) {
+  :root {
+    --rail: 0px;
+  }
+
+  :root:has(nav.bar) {
+    --rail: calc(3.5rem + 1.25rem + max(0.75rem, env(safe-area-inset-right, 0px)));
+  }
+
+  body {
+    padding-right: var(--rail);
+  }
+
+  :root:has(nav.bar) body:has(:is(main.card, main.helpdesk, .screen)) {
+    padding-bottom: 0;
+  }
+
+  :root:has(nav.bar) :is(main.card, .screen) {
+    margin-bottom: 1rem;
+  }
+
+  header {
+    margin-top: 0.25rem;
+  }
+
+  header ~ main,
+  .panel ~ main {
+    margin-top: 0.5rem;
+  }
+
+  main {
+    margin-bottom: 1rem;
+  }
+
+  h1 {
+    font: var(--text-section);
+  }
+
+  .card {
+    padding: 1.25rem 1.5rem;
+  }
+
+  main.card:has(> form :is(input:not([type="hidden"]), select, textarea)):not(:has(> form ~ form)) {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    grid-template-rows: repeat(6, auto) 1fr;
+    column-gap: 2rem;
+    align-items: start;
+  }
+
+  main.card:has(> form :is(input:not([type="hidden"]), select, textarea)):not(:has(> form ~ form)) > * {
+    grid-column: 1;
+  }
+
+  /* The form spans every row; the last row is the stretchy one, so the form's height never spreads the lines on the
+     left apart. */
+  main.card:has(> form :is(input:not([type="hidden"]), select, textarea)):not(:has(> form ~ form)) > form {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    margin-top: 0;
+  }
+
+  main.card:has(> form :is(input:not([type="hidden"]), select, textarea)):not(:has(> form ~ form))
+    > form
+    > :first-child {
+    margin-top: 0;
+  }
+
+  main.card:has(> form :is(input:not([type="hidden"]), select, textarea)):not(:has(> form ~ form)) > h1 {
+    align-self: start;
   }
 }
 
@@ -2619,6 +2704,14 @@ main.helpdesk {
   }
 }
 
+/* A phone held sideways is short: the title is a phone's size, so the plans and the button are near the first screen. */
+@media (orientation: landscape) and (max-height: 449px) {
+  .card.bold h1,
+  .card.bold .cardtop h1 {
+    font-size: 2.25rem;
+  }
+}
+
 /* What a member gets: short chalk lines at the buttons' weight, each after a tick drawn in Glaucous Green. */
 .card.bold .gets {
   display: grid;
@@ -3036,6 +3129,18 @@ main.helpdesk {
   .helpdesk .arrow {
     top: 2rem;
     right: 2rem;
+  }
+}
+
+/* A phone held sideways is short: the title is a phone's size, so the first guide is in the first screen. */
+@media (orientation: landscape) and (max-height: 449px) {
+  .helpdesk h1 {
+    margin-top: 0.75rem;
+    font-size: 2.25rem;
+  }
+
+  .helpdesk ol {
+    margin-top: 1.25rem;
   }
 }
 
@@ -3567,6 +3672,13 @@ main.gamepage {
   .gamepage .clipbox {
     min-height: clamp(20rem, 62dvh, 40rem);
     max-height: calc(100dvh - 2rem);
+  }
+}
+
+/* A phone held sideways has the bar along its right edge, not across the foot, so the page needs no room for it below. */
+@media (orientation: landscape) and (max-height: 449px) {
+  main.gamepage {
+    padding-bottom: 0.75rem;
   }
 }
 
@@ -4958,6 +5070,17 @@ html:has(main.about) :is(a, button, summary, label) {
   width: 100%;
   min-width: 0;
   margin: 0;
+}
+
+/* A phone held sideways: the bar stands along the right edge, so the card stays at the foot and keeps clear of it. */
+@media (orientation: landscape) and (max-height: 449px) {
+  .consent,
+  .consent.above-bar {
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    left: max(0.75rem, env(safe-area-inset-left));
+    translate: none;
+    width: min(100% - 1.5rem - var(--rail, 0px), var(--width-read));
+  }
 }
 
 @media (max-width: 22rem) {

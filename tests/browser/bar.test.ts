@@ -3,11 +3,12 @@ import { addGame } from "./support/game.ts";
 import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
 import { givePage } from "./support/database.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
-import { signUp } from "./support/account.ts";
+import { signInAs, signUp } from "./support/account.ts";
 
-// The bar (spec 5.2): Home, Add a game in the middle and You, each a picture with its name for a screen reader, on the
-// feed, a game's page, a maker's page, Your games and You (tests/browser/page-moves.test.ts), and nowhere else (the
-// owner, 2026-11-22: icons, with room for more; and the bar on all three of its places, like an app's tabs).
+// The bar (spec 5.2): Home, Add a game in the middle and You, each a picture with its name for a screen reader, on every
+// screen but the landing page, the play screen and the maker's step-by-step screens (the owner, 2026-11-22: icons, with
+// room for more; the bar on all three of its places, like an app's tabs; "every page excluding the landing pages"; and,
+// on a card, "Not on the question steps"). A phone held sideways has it along the right edge (sideways-phone.test.ts).
 
 let game: Awaited<ReturnType<typeof addGame>>;
 let handle: string;
@@ -142,15 +143,78 @@ test("signed in, Add a game in the middle of the bar opens Your games, by tap or
 });
 
 for (const path of [
-  () => `/g/${game.slug}/play`,
   () => "/sign-in",
   () => "/join",
+  () => "/help",
+  () => "/help/how-the-feed-works",
+  () => "/cookies",
+  () => "/privacy",
+  () => "/terms",
   () => "/g/no-such-game",
   () => "/nobody-has-this-address",
 ]) {
-  test(`${path.toString().replace(/\(\) => /, "")}: no bar`, async ({ page }) => {
+  test(`${path.toString().replace(/\(\) => /, "")}: the bar, so there is always a way to the three places`, async ({
+    page,
+  }) => {
     await page.goto(path());
     await expect(page.locator("main, h1").first()).toBeAttached();
-    await expect(bar(page)).toHaveCount(0);
+    await expectTheBar(page, { home: false });
   });
 }
+
+test("no bar where the game or a step has the whole screen: playing, and each step of adding a game", async ({
+  page,
+}) => {
+  await signInAs(page, game.maker.number, game.maker.password);
+  for (const path of [
+    `/g/${game.slug}/play`,
+    `/make/${game.slug}/play`,
+    "/make/new",
+    `/make/${game.slug}/name`,
+    "/make/page/name",
+    "/make/page/links/add",
+  ]) {
+    await page.goto(path);
+    await expect(page.locator("main, iframe").first()).toBeAttached();
+    await expect(bar(page), path).toHaveCount(0);
+  }
+  // A game's own place in the maker's area is not a step, so the bar is there, over its own buttons.
+  await page.goto(`/make/${game.slug}`);
+  await expectTheBar(page, { home: false });
+});
+
+test("no bar on Your page while there is no page yet: it asks the address, a step", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/make/page");
+  await expect(page.getByRole("heading", { name: "Pick your page's address" })).toBeVisible();
+  await expect(bar(page)).toHaveCount(0);
+});
+
+test.describe("on an upright phone", () => {
+  test.use({ viewport: { width: 375, height: 667 } });
+
+  test("a card that just fills the window, Help, and a maker's long screen end clear above the bar", async ({
+    page,
+  }) => {
+    /** Scrolled to its end, every button and link of the screen, its whole tap box, is above the bar. */
+    async function expectAllAboveTheBar(path: string): Promise<void> {
+      await page.goto(path);
+      await wordsHaveSettled(page);
+      await page.evaluate(() => {
+        window.scrollTo(0, document.documentElement.scrollHeight);
+      });
+      const barTop = (await boxOf(bar(page))).y;
+      const bottoms = await page.evaluate(() =>
+        [...document.querySelectorAll("main :is(a, button)")].map(
+          (part) => part.getBoundingClientRect().bottom,
+        ),
+      );
+      expect(bottoms.length, path).toBeGreaterThan(0);
+      for (const bottom of bottoms) expect(bottom, path).toBeLessThanOrEqual(barTop);
+    }
+    await expectAllAboveTheBar("/join");
+    await expectAllAboveTheBar("/help");
+    await signInAs(page, game.maker.number, game.maker.password);
+    await expectAllAboveTheBar("/make/page");
+  });
+});

@@ -714,9 +714,14 @@
     width: 100%;
     margin: 0;
   }
+  /* A column of round glass buttons at the right of the clip, starting with Share. */
   .side {
     position: relative;
     flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
   }
   .share {
     display: grid;
@@ -725,8 +730,10 @@
     min-height: var(--size-target);
     padding: 0;
     border-radius: 50%;
-    background: var(--felt-deep);
+    background: var(--glass-bg);
     color: var(--chalk);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
   }
   .sharenote {
     position: absolute;
@@ -745,6 +752,53 @@
   }
   .sharenote:not(:empty) {
     padding: 0.5rem 0.75rem;
+  }
+  /* A phone held sideways: the window is short, so the words take one corner and the clip the rest. The bar stands
+     along the right edge (Bar.svelte), so the band sits at the bottom with Play beside the game's name, Share under
+     the bar, and the first open's hints at the top, where the band cannot cover them. */
+  @media (orientation: landscape) and (max-height: 449px) {
+    .lower {
+      inset: auto 0 0.75rem;
+      padding-right: calc(3.5rem + 1.5rem + max(0.75rem, env(safe-area-inset-right)));
+      padding-left: max(0.75rem, env(safe-area-inset-left));
+    }
+    .band {
+      flex-basis: 26rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      column-gap: 0.75rem;
+      row-gap: 0.25rem;
+      padding: 0.5rem 0.75rem;
+    }
+    .maker {
+      grid-column: 1 / -1;
+    }
+    .play {
+      width: auto;
+      padding-inline: 1.75rem;
+    }
+    .gamelink h2 {
+      font-size: 1.25rem;
+    }
+    .hints {
+      top: 0.75rem;
+    }
+    .sound {
+      left: max(0.75rem, env(safe-area-inset-left));
+    }
+    /* The round buttons stand in the bar's column, under it, centred on it. */
+    .side {
+      position: absolute;
+      right: calc(max(0.75rem, env(safe-area-inset-right)) + 0.5rem);
+      bottom: 0;
+    }
+    .sharenote {
+      top: 50%;
+      right: calc(100% + 0.5rem);
+      bottom: auto;
+      translate: 0 -50%;
+    }
   }
   .maker:focus-visible,
   .gamelink:focus-visible,
