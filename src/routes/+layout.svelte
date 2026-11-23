@@ -14,7 +14,7 @@
   import { Notice } from "../features/consent/consent.screens.ts";
   import { Bar } from "../features/feed/feed.browser.ts";
   import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
-  import { moveBetween, slideWhile } from "../lib/page-moves.ts";
+  import { heldMove, moveBetween, slideWhile } from "../lib/page-moves.ts";
   import PageLoading from "../lib/page-loading.svelte";
   import { sendInApp } from "../lib/stay-in-app.ts";
   import { BASE_TITLE } from "../lib/titles.ts";
@@ -79,6 +79,10 @@
     const move = from === undefined || to === undefined ? null : moveBetween(from, to, back);
     const slid = browserSlid;
     browserSlid = false;
+    // A move made while the last one's slide still holds its page (Back pressed mid-slide) waits for that page to go in
+    // and then comes in after it, at once.
+    const earlier = heldMove();
+    if (earlier !== null) return earlier;
     // A move inside the maker's area is that area's own step (src/routes/make/+layout.svelte).
     if (move === null) return;
     const html = document.documentElement;

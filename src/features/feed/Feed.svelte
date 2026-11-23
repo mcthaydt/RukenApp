@@ -86,6 +86,22 @@
     };
     wide.addEventListener("change", follow);
 
+    // Turning a phone (or any change to the window's size) changes every clip's height, so the feed's scroll offset now
+    // points somewhere else: near the end of what the feed has, past the last clip, at the screen that waits for the next
+    // page. Safari's engine does not always bring the person's clip back, and if that page then comes in while the
+    // waiting screen looks to be on screen, the feed moves the person on to its first clip. So the clip the person was
+    // on is put back here. The resize event runs before the browser works out what is on screen, so `current` is still
+    // that clip and the watcher never sees the in-between place. Only a change of width counts: a phone's browser bars
+    // grow and shrink the height in the middle of a swipe, and putting the clip back then would undo the swipe.
+    let width = window.innerWidth;
+    const keepPlace = () => {
+      if (window.innerWidth === width) return;
+      width = window.innerWidth;
+      const place = current >= clips.length ? moreScreen : sections[current];
+      place?.scrollIntoView({ behavior: "instant", block: "start" });
+    };
+    window.addEventListener("resize", keepPlace);
+
     // The first open's hints, once per device. A browser that has not said yes to cookies, or will not keep a note,
     // shows them again on the next visit (the device store keeps the note for this visit only).
     const seen = deviceStore.get(SEEN_HINTS) !== null;
@@ -111,6 +127,7 @@
     });
     return () => {
       wide.removeEventListener("change", follow);
+      window.removeEventListener("resize", keepPlace);
       watcher?.disconnect();
       clearTimeout(noteTimer);
     };
