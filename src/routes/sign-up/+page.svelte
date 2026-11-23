@@ -112,6 +112,6 @@
       {/if}
       <button>Text me a code</button>
     </form>
-    <p>Already have an account? <a class="quiet" href={signInLink}>Sign in</a></p>
+    <p>Already have an account? <a class="go" href={signInLink}>Sign in</a></p>
   {/if}
 </main>

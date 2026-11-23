@@ -38,7 +38,7 @@
       <button class="safe" disabled={sending} aria-busy={sending}>Take it back</button>
     </form>
     <p class="note">This signs you out here. Your account stays.</p>
-    <p class="note"><a class="quiet" href="/privacy">What we keep</a></p>
+    <p class="note"><a class="go" href="/privacy">What we keep</a></p>
   </main>
 {:else}
   {#if form?.done}

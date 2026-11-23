@@ -11,7 +11,9 @@ import { NOT_CONSENTED } from "./support/consent.ts";
 // professional apps use that very often, if ever." Something a person presses that stands on its own (its own line, a
 // list of guides, the foot of a screen, a fold-out, a Change beside a part) is a real button: no underline, a painted
 // shape and a thumb-sized target. 18:02 UTC: "no text with underline links anywhere": a link inside a sentence is not
-// underlined either; it is told from its words by colour or weight.
+// underlined either; it is told from its words by colour or weight. 2026-11-23: "Primary actions are buttons, but
+// secondary actions are the -> buttons": a side link on its own line (What we keep, What is Ruken?) is its words with
+// an arrow after them, never underlined, and still thumb-sized.
 test.beforeEach(forgetRateLimits);
 
 /** What an action on its own looks like, as the browser paints it. */
@@ -19,6 +21,7 @@ interface Action {
   words: string;
   underlined: boolean;
   painted: boolean;
+  arrow: boolean;
   height: number;
 }
 
@@ -59,6 +62,7 @@ function standaloneActions(page: Page): Promise<Action[]> {
         words,
         underlined: style.textDecorationLine.includes("underline"),
         painted: (fill !== "rgba(0, 0, 0, 0)" && fill !== "transparent") || edge,
+        arrow: getComputedStyle(element, "::after").content.includes("→"),
         height: Math.round(box.height),
       });
     }
@@ -100,7 +104,8 @@ function underlinedOrHiddenLinks(page: Page): Promise<{ underlined: string[]; un
 }
 
 /**
- * Fails, naming each one, for every action on its own that is underlined words, unpainted, or too small to hit, for
+ * Fails, naming each one, for every action on its own that is underlined words, neither a painted button nor an arrow
+ * link, or too small to hit, for
  * anything at all drawn with a line under it, and for a link in words that cannot be told from them.
  */
 async function expectRealButtons(page: Page, { videos = true }: { videos?: boolean } = {}): Promise<void> {
@@ -113,7 +118,9 @@ async function expectRealButtons(page: Page, { videos = true }: { videos?: boole
   const actions = await standaloneActions(page);
   expect(actions.length, "the screen has something to press").toBeGreaterThan(0);
   expect(actions.filter((action) => action.underlined).map((action) => action.words)).toEqual([]);
-  expect(actions.filter((action) => !action.painted).map((action) => action.words)).toEqual([]);
+  expect(actions.filter((action) => !action.painted && !action.arrow).map((action) => action.words)).toEqual(
+    [],
+  );
   expect(actions.filter((action) => action.height < 44).map((action) => action.words)).toEqual([]);
 }
 
@@ -151,7 +158,8 @@ test("your account, its password and its delete screen: every action is a real b
   await expectRealButtons(page);
   await page.goto("/me/computers");
   await expectRealButtons(page);
-  // The cookies page, once a person has said yes to cookies (review round 4): What we keep is a real button there too.
+  // The cookies page, once a person has said yes to cookies (review round 4): What we keep is a blue → link there
+  // too (the owner, 2026-11-23).
   await page.goto("/cookies");
   await expect(page.getByRole("link", { name: "What we keep" })).toBeVisible();
   await expectRealButtons(page);
@@ -269,7 +277,9 @@ test("the landing page: every action on its own is a real button, and nothing is
   await expectRealButtons(page, { videos: false });
 });
 
-test("the cookie notice: What we keep is a real button, and nothing is underlined", async ({ browser }) => {
+test("the cookie notice: What we keep is blue words with an arrow, and nothing is underlined", async ({
+  browser,
+}) => {
   const visitor = await browser.newContext({ storageState: NOT_CONSENTED, baseURL: "http://localhost:4173" });
   try {
     const page = await visitor.newPage();
@@ -277,7 +287,25 @@ test("the cookie notice: What we keep is a real button, and nothing is underline
     const keep = page.locator(".consent").getByRole("link", { name: "What we keep" });
     await expect(keep).toBeVisible();
     await expect(keep).toHaveCSS("text-decoration-line", "none");
+    // The owner, 2026-11-23: "What we keep in blue text with the ->". On glass it is the light blue, to be read.
+    await expect(keep).toHaveCSS("color", rgb(token("--pay-light")));
+    expect(await keep.evaluate((link) => getComputedStyle(link, "::after").content)).toContain("→");
     expect((await keep.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    // The owner, 2026-11-23: "the what we keep is too close to buttons". Its words sit a rem under the buttons, as the
+    // words above sit a rem over them.
+    const gaps = await page.locator(".consent").evaluate((card) => {
+      const answers = card.querySelector(".consent-answers") as Element;
+      const link = card.querySelector(".consent-answers + p a") as Element;
+      const above = answers.previousElementSibling as Element;
+      const words = (element: Element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return range.getBoundingClientRect();
+      };
+      const box = answers.getBoundingClientRect();
+      return { over: box.top - words(above).bottom, under: words(link).top - box.bottom };
+    });
+    expect(Math.abs(gaps.under - gaps.over), JSON.stringify(gaps)).toBeLessThanOrEqual(4);
     await expectRealButtons(page);
   } finally {
     await visitor.close();

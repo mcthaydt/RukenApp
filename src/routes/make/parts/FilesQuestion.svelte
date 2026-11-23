@@ -165,7 +165,7 @@
     </p>
   </div>
   <p class="note">
-    <a class="quiet" href={files.folderHowToAddress}>Here's how to set up your game's folder</a>
+    <a class="go" href={files.folderHowToAddress}>Here's how to set up your game's folder</a>
   </p>
 {/snippet}
 
@@ -288,7 +288,7 @@
       <p class="note">You choose which games on GitHub Ruken can see. It can't see anything else.</p>
     </div>
     <p class="note">
-      New to GitHub? <a class="quiet" href={files.howToAddress}>Here's how to put your game there</a>
+      New to GitHub? <a class="go" href={files.howToAddress}>Here's how to put your game there</a>
     </p>
     {#snippet forward()}
       {@render connectButton("Connect GitHub")}

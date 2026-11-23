@@ -79,18 +79,34 @@ test.describe("sign up", () => {
 });
 
 test.describe("your account", () => {
-  test("the number is printed once, with Change password under it and the membership line a rem under that", async ({
+  // The owner, 2026-11-23: "this is ugly, arrange this better", then "beside the number we can have a green or red badge".
+  // The number with its badge and the one membership button first; then the side links stacked as → links; then Sign
+  // out and Delete at the foot.
+  test("the number is printed once with a red Not a member badge beside it, and the side links stacked as arrow links", async ({
     page,
   }) => {
     const { number } = await signUp(page);
     await visit(page, "/me");
     const shown = page.getByText(shownAs(number), { exact: true });
     await expect(shown).toHaveCount(1);
-    const change = page.locator("p.note", { has: page.getByRole("link", { name: "Change password" }) });
-    // A note sits close under what it is about: its own margin is 0.375rem (6px).
-    closeTo((await boxOf(change)).y - bottomOf(await boxOf(shown)), 6);
-    const membership = await boxOf(page.getByText("You're not a member.", { exact: true }));
-    closeTo(membership.y - bottomOf(await boxOf(change)), 16);
+    const badge = page.locator(".who .badge", { hasText: "Not a member" });
+    await expect(badge).toHaveCSS("background-color", rgb(token("--pip")));
+    const numberBox = await boxOf(shown);
+    const beside = await boxOf(badge);
+    // On the number's line: the badge's middle is level with the number's middle, and it starts after it.
+    closeTo(beside.y + beside.height / 2, numberBox.y + numberBox.height / 2, 2);
+    expect(beside.x).toBeGreaterThan(numberBox.x);
+    await expect(page.getByText("You're not a member.")).toHaveCount(0);
+    const names = ["Add your games to Ruken", "Change password", "Your computers", "What is Ruken?"];
+    let above = bottomOf(await boxOf(page.getByRole("link", { name: "Join Ruken" })));
+    for (const name of names) {
+      const link = page.locator("ul.links a.go", { hasText: name });
+      const box = await boxOf(link);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.y).toBeGreaterThanOrEqual(above);
+      above = bottomOf(box);
+    }
+    expect((await boxOf(page.getByRole("button", { name: "Sign out" }))).y).toBeGreaterThanOrEqual(above);
   });
 
   // The Owner, 2026-11-14, "All six": two tap targets that overlap are one wrong tap from deleting an account.

@@ -64,6 +64,7 @@
   /* Scarlet: only a button that can't be undone (delete, pay out, refund), with white words (5.2:1). */
   --pip: #cb2f43;
   --pay: #006eb8; /* Blue: the main button, with white words (5.4:1); never a field */
+  --pay-light: #7cc4ff; /* Blue words on the felt and on glass, where --pay is too dim to read (7.6:1 on the felt) */
   /* The loading spinner over a picture or a video that has not come yet, drawn in chalk (White). A picture is the
      only way to put it on an <img> or a <video>, which hold nothing else; a picture cannot read a token, so the
      colour is written here with the others. The still one is for reduced motion. */
@@ -372,7 +373,7 @@ strong {
   font: var(--text-button);
 }
 
-/* A list of ways to go on a card (the guides, the record-your-screen page's devices): quiet buttons, one to a line, with no
+/* A list of ways to go on a card (the guides, the record-your-screen page's devices): → links, one to a line, with no
    bullets. */
 .card nav ul {
   display: flex;
@@ -426,7 +427,7 @@ form > * + * {
 
 /* A note that is a quiet button keeps a rem from a button above it (Delete my account under Your games), so two buttons
    never sit a few pixels apart. Under words (Change password under the number) it stays a note's step away. */
-.card :is(p, form):has(button, .button, .quiet) + p.note:not(.apart):has(> .quiet) {
+.card :is(p, form, div):has(button, .button, .quiet) + p.note:not(.apart):has(> :is(.quiet, .go)) {
   margin-top: 1rem;
 }
 
@@ -665,6 +666,56 @@ button,
 
 .quiet:active {
   transform: scale(var(--press-scale));
+}
+
+/* A side link (What we keep, What is Ruken?, Your computers): not an action, so not a button. Its words in the button's
+   weight with an arrow after them, never underlined (the owner, 2026-11-23: primary actions are buttons, secondary
+   actions are the → links, "What we keep in blue text with the ->"). The Blue on a card; a light blue on the felt and
+   on glass, where the Blue is too dim to read. */
+.go {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--size-target);
+  color: var(--pay-light);
+  font: var(--text-button);
+  text-decoration: none;
+}
+
+.go::after {
+  content: "→";
+  /* The arrow is drawn, not read: a screen reader says the link's words alone. */
+  content: "→" / "";
+  transition: transform var(--press-time);
+}
+
+.go:hover::after {
+  transform: translateX(0.25rem);
+}
+
+.card .go {
+  color: var(--pay);
+}
+
+/* Side links stacked under each other, each on its own line, with no gap beyond their own height. */
+.links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Stacked, or in a row of ways, each keeps its whole 48px line: no margin taken back, so two targets never overlap. */
+.links .go,
+.ways .go {
+  margin-block: 0;
+}
+
+/* A stacked list is one block: its 48px lines touch, with no extra air between them. */
+.card .links li + li {
+  margin-top: 0;
 }
 
 /* A quiet button under a form's main button, or alone on a line, keeps a line of its own and its own width. */
@@ -2134,6 +2185,31 @@ a.foot:active {
   gap: 0.25rem;
 }
 
+/* Your account's number, with the membership badge on the same line. */
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Whether the person is a member, beside their number (the owner, 2026-11-23: "a green or red badge"): green for a
+   member, red for not, and the state in words as well as by its fill. White words on both (Dusky Green 9.6:1, Scarlet
+   5.2:1). */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 8px;
+  background: var(--pip);
+  color: var(--chalk);
+  font: var(--text-small);
+  font-weight: 600;
+}
+
+.badge.member {
+  background: var(--felt-raised);
+}
+
 /* A fact in a quiet chip: the same Dusky Green as a green button, white words, 8px corners (no pills). */
 .chip {
   display: inline-block;
@@ -2554,7 +2630,8 @@ button:active,
   details:not(.menu, .accepted) > summary,
   a.foot,
   .screen a.help,
-  .file > span {
+  .file > span,
+  .go::after {
     transition: none;
   }
 
@@ -4326,18 +4403,13 @@ header:has(+ main.about) {
   }
 }
 
-/* A link that goes on (in a card, a band or under the clip) is a real button, Dusky Green on the felt and Glaucous Green
-   with ink words on a card, with an arrow after its words that says where a tap goes (the owner, 2026-11-22: no
-   underlined words, and actions are real buttons). */
+/* A link that goes on (in a card, a band or under the clip) is its words in the button's weight with an arrow after
+   them: no underline, and the arrow says where a tap goes. */
 .about a.more {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   min-height: var(--size-target);
-  padding: 0.5rem 1.25rem;
-  border-radius: var(--radius-button);
-  background: var(--felt-raised);
-  color: var(--chalk);
   font: var(--text-button);
   text-decoration: none;
 }
@@ -4352,8 +4424,7 @@ header:has(+ main.about) {
 }
 
 .about .card a.more {
-  background: var(--sage);
-  color: var(--ink);
+  color: var(--pay);
 }
 
 .about .sitefoot a {
@@ -4553,9 +4624,7 @@ header:has(+ main.about) {
   color: var(--chalk);
 }
 
-/* This card is the Dusky Green itself, so its button is the darker felt, to stand out from it. */
 .about .pair .card + .card a.more {
-  background: var(--felt);
   color: var(--chalk);
 }
 
@@ -5331,8 +5400,7 @@ html:has(main.about) :is(a, button, summary, label) {
   box-shadow: var(--glass-edge);
 }
 
-.consent .safe,
-.consent .quiet {
+.consent .safe {
   background: var(--glass-safe);
   box-shadow: var(--glass-edge);
 }
@@ -5350,8 +5418,18 @@ html:has(main.about) :is(a, button, summary, label) {
   margin: 0.5rem 0 0;
 }
 
+/* What we keep, under I agree and Not now, sits as far below them as the words above sit (the owner, 2026-11-23: "use
+   consistent spacing and margin, the what we keep is too close to buttons"): a rem, to its words. */
+.consent .consent-answers + p {
+  margin-top: 1rem;
+}
+
 .consent a {
   color: var(--chalk);
+}
+
+.consent .go {
+  color: var(--pay-light);
 }
 
 .consent-answers {

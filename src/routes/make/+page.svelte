@@ -25,7 +25,7 @@
   {#if data.games.length === 0}
     <p>You haven't added a game yet.</p>
     <p>You'll need your game on GitHub, ready to run in a browser, and two short videos of it.</p>
-    <p><a class="quiet" href="/help/get-your-game-on-ruken?from=%2Fmake">Here's how, step by step</a></p>
+    <p><a class="go" href="/help/get-your-game-on-ruken?from=%2Fmake">Here's how, step by step</a></p>
   {/if}
   <div class="acts">
     <a class="button" href="/make/new">Add a game</a>
@@ -52,10 +52,10 @@
     {/if}
   {/each}
   <!-- Your page, the agreement a maker accepted before their first game, kept where they can read it again, and the
-       guides: quiet buttons on one line, wrapping on a phone. -->
+       guides: → links on one line, wrapping on a phone. -->
   <p class="ways">
-    <a class="quiet" href="/make/page">Your page</a>
-    <a class="quiet" href="/legal/maker-agreement">Maker agreement</a>
-    <a class="quiet" href="/help">Help for makers</a>
+    <a class="go" href="/make/page">Your page</a>
+    <a class="go" href="/legal/maker-agreement">Maker agreement</a>
+    <a class="go" href="/help">Help for makers</a>
   </p>
 </main>

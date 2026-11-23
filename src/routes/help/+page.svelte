@@ -48,6 +48,6 @@
       {/each}
     </ol>
   </nav>
-  <p><a class="quiet" href="/help/how-the-feed-works?from=%2Fhelp">How the feed works</a></p>
-  <p><a class="quiet" href="/about">What is Ruken?</a></p>
+  <p><a class="go" href="/help/how-the-feed-works?from=%2Fhelp">How the feed works</a></p>
+  <p><a class="go" href="/about">What is Ruken?</a></p>
 </main>
