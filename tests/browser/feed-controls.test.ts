@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { gameWhere } from "./support/game.ts";
 import { boxOf, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -9,6 +9,9 @@ import { consented } from "./support/consent.ts";
 // a game, and meet two hints on the first open. The journeys share one database, so the feed holds every game any
 // journey made; none of them depends on which game is first.
 
+// The games this file made, with clips this browser can play (`realClip`): other files' games may carry the other kind.
+const ours: string[] = [];
+
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(240_000);
   // Three games from rows, so the feed has several clips to move between whatever else the database holds.
@@ -16,7 +19,7 @@ test.beforeAll(async ({ browser }) => {
     await forgetRateLimits();
     const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
     try {
-      await gameWhere(await context.newPage(), { state: "live" });
+      ours.push((await gameWhere(await context.newPage(), { state: "live" })).slug);
     } finally {
       await context.close();
     }
@@ -163,6 +166,108 @@ test("the clip that fills the window is the current one, and only one is; the ot
     .catch(async (error: unknown) => {
       throw new Error(`${String(error)}\n${await clipLogOf(page)}`);
     });
+});
+
+/**
+ * Waits until the clip is really playing: not paused, and its time has moved on from its start. A busy machine can take
+ * a few seconds to hand a clip its data; a clip that stalls stays at its start (0.001 s) and never gets here.
+ */
+async function isPlaying(video: Locator): Promise<void> {
+  await expect(video).toHaveJSProperty("paused", false);
+  await expect
+    .poll(async () => await video.evaluate((element: HTMLVideoElement) => element.currentTime), {
+      message: "the clip's time moves on from its start",
+      timeout: 15_000,
+    })
+    .toBeGreaterThan(0.05);
+}
+
+/** What a clip has done since `watchClip` started on it: how far it got, whether it came back round, how many jumps. */
+interface Watched {
+  furthest: number;
+  cameBack: boolean;
+  jumps: number;
+}
+
+/**
+ * Watches a clip until it has played past 0.5 s and come back round, and gives what it saw. Its time is read every 50
+ * ms as well as on `timeupdate`, which comes only every quarter second or so, and less often on a busy machine. The bar
+ * is low on purpose: in this engine a clip's loops grow shorter after a few rounds (progress.md), and a clip that stalls
+ * never gets past 0 s. The page keeps what it saw and the journey asks for it, rather than the page holding one answer
+ * open for seconds: in WebKit under load, such an answer sometimes never came back (#372's review).
+ */
+async function watchClip(video: Locator, label: string): Promise<Watched> {
+  await video.evaluate((element: HTMLVideoElement) => {
+    const seen: Watched = { furthest: 0, cameBack: false, jumps: 0 };
+    const look = () => {
+      if (seen.furthest > 0.5 && element.currentTime < 0.5) seen.cameBack = true;
+      seen.furthest = Math.max(seen.furthest, element.currentTime);
+    };
+    element.addEventListener("seeking", () => (seen.jumps += 1));
+    element.addEventListener("timeupdate", look);
+    setInterval(look, 50);
+    Object.assign(element, { watched: seen });
+  });
+  const seen = async (): Promise<Watched> =>
+    await video.evaluate((element: HTMLVideoElement) => ({
+      ...(element as HTMLVideoElement & { watched: Watched }).watched,
+    }));
+  await expect
+    .poll(async () => await seen(), {
+      message: `${label}: the clip plays past 0.5 s and comes back round`,
+      timeout: 15_000,
+    })
+    .toMatchObject({ cameBack: true })
+    .catch(async (error: unknown) => {
+      // Says whether the page was stuck or only slow: once it answers (it may take a while on a busy machine), how far
+      // the clip got and how often it jumped. A clip that jumps back to its start over and over shows hundreds of jumps.
+      const asked = Date.now();
+      const late = await video
+        .evaluate(
+          (element: HTMLVideoElement) => ({
+            ...(element as HTMLVideoElement & { watched: Watched }).watched,
+            now: element.currentTime,
+            loop: element.loop,
+            paused: element.paused,
+          }),
+          undefined,
+          { timeout: 40_000 },
+        )
+        .catch(() => "no answer in 40 s");
+      throw new Error(
+        `${String(error)}\nthe page answered after ${String(Date.now() - asked)} ms: ${JSON.stringify(late)}`,
+      );
+    });
+  return await seen();
+}
+
+test("the clip on screen plays through and starts again, and again after a person comes back to it", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  // Safari's engine on Linux, given a looping video whose address names a start time (every clip's `#t=0.001`), jumped
+  // back to the start about a hundred times a second and never played (progress.md, Flaky tests).
+  await openFeed(page);
+  const slug = ours[0] ?? "";
+  const clip = page.locator(`section[data-slug="${slug}"]`).first();
+  await clip.scrollIntoViewIfNeeded();
+  await expect(clip).toHaveAttribute("data-current", "true");
+  const video = clip.locator("video");
+  await isPlaying(video);
+
+  const first = await watchClip(video, "the first time");
+  expect(first.furthest, "how far the clip played").toBeGreaterThan(0.5);
+  expect(first.jumps, "jumps in one round of a two-second clip").toBeLessThanOrEqual(5);
+
+  // Away and back: the clip a person left waits at its start, and plays again from there.
+  await page.keyboard.press("ArrowDown");
+  await expect(clip).toHaveAttribute("data-current", "false");
+  await page.keyboard.press("ArrowUp");
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await isPlaying(video);
+  const again = await watchClip(video, "the second time");
+  expect(again.furthest, "how far the clip played the second time").toBeGreaterThan(0.5);
+  expect(again.jumps, "jumps in one round, the second time").toBeLessThanOrEqual(5);
 });
 
 test("each key moves one clip, never before the first", async ({ page }) => {

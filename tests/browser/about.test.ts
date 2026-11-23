@@ -96,6 +96,39 @@ test("a stranger reads what Ruken is, in order, and goes to the feed", async ({
   await expect(page).toHaveURL("/");
 });
 
+test("the wall's clips play without jumping back to their start over and over", async ({ browser, page }) => {
+  test.setTimeout(120_000);
+  // A live game with clips this browser plays, so the wall has something to play.
+  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  try {
+    await gameWhere(await context.newPage(), { state: "live" });
+  } finally {
+    await context.close();
+  }
+  await page.goto("/about");
+  await expectTheLandingPage(page);
+  await pageHasSettled(page);
+  const wall = page.locator(".hero .wall video");
+  await expect(wall).toHaveCount(6);
+
+  // Safari's engine on Linux, given a looping video whose address names a start time (every wall clip's `#t=`), jumped
+  // back to the start about a hundred times a second and never played (progress.md, Flaky tests). A clip that plays,
+  // loops or is paused jumps a few times at most.
+  const jumps = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        let count = 0;
+        for (const video of document.querySelectorAll(".hero .wall video")) {
+          video.addEventListener("seeking", () => (count += 1));
+        }
+        setTimeout(() => {
+          resolve(count);
+        }, 4_000);
+      }),
+  );
+  expect(jumps, "jumps of the wall's six clips in four seconds").toBeLessThanOrEqual(12);
+});
+
 test("a maker goes from the landing page to the help for makers", async ({ page }) => {
   await page.goto("/about");
   await expectTheLandingPage(page);
