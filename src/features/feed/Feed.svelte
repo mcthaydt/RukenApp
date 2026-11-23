@@ -612,6 +612,8 @@
   .sound svg,
   .share svg {
     filter: var(--glass-icon);
+    /* Its own layer, so its shadow is drawn once, not again each frame the video under the glass moves. */
+    will-change: transform;
   }
   .sound:focus-visible,
   .share:focus-visible {

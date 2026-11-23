@@ -105,19 +105,18 @@
      about a tenth, under the thinnest tint of the darkest felt, so the clip or game reads clearly through it. Its edge
      splits light like a lens: a warm fringe on one side, a cool one on the other and a thin sheen along the top. The
      glass is too clear to keep chalk at 4.5 to 1 over a white clip on its own, so words and pictures on it carry a dark
-     halo: a tight outline and a wider soft shadow (tests/browser/glass.test.ts measures it over a white clip). Read
+     halo (tests/browser/glass.test.ts measures it over a white clip). Every edge, halo and icon shadow is repainted
+     each frame a video plays under the glass, so each is as few layers as gives the look, with no blur on the edge: the
+     stacked, blurred version made the phone journeys about 1.4 times slower in WebKit (#370 review 3). Read
      only through these tokens, never as a colour with see-through of its own (tests/lib/glass.test.ts). */
   --glass-bg: rgb(17 19 20 / 0.04);
   --glass-filter: blur(28px) saturate(1.8) brightness(0.94);
   --glass-edge:
     inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 -1px 0 rgb(255 255 255 / 0.08),
-    inset 3px 0 3px -1px rgb(255 64 96 / 0.5), inset -3px 0 3px -1px rgb(64 200 255 / 0.5),
-    inset 0 3px 4px -2px rgb(255 214 64 / 0.3), inset 0 -3px 4px -2px rgb(120 96 255 / 0.3);
-  --glass-ink:
-    0 0 1px rgb(0 0 0), 0 0 2px rgb(0 0 0 / 0.9), 0 0 4px rgb(0 0 0 / 0.6), 0 1px 4px rgb(0 0 0 / 0.75),
-    0 0 12px rgb(0 0 0 / 0.5);
-  --glass-icon: drop-shadow(0 0 1px rgb(0 0 0 / 0.9)) drop-shadow(0 1px 2px rgb(0 0 0 / 0.7))
-    drop-shadow(0 0 6px rgb(0 0 0 / 0.5));
+    inset 2px 0 0 rgb(255 64 96 / 0.4), inset -2px 0 0 rgb(64 200 255 / 0.4),
+    inset 0 2px 0 rgb(255 214 64 / 0.22), inset 0 -2px 0 rgb(120 96 255 / 0.22);
+  --glass-ink: 0 0 2px rgb(0 0 0 / 0.9), 0 1px 3px rgb(0 0 0 / 0.7);
+  --glass-icon: drop-shadow(0 0 2px rgb(0 0 0 / 0.9));
   /* A button on the glass is coloured glass (the owner, 2026-11-23, picking "Coloured glass buttons": the flat
      buttons "clash against the glass"): its own colour as a strong tint over the glass under it, so the blue still
      reads as the main button, with the lens edge, and its words carry the glass's halo. The place a person is on, in

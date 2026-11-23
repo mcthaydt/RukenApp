@@ -86,6 +86,8 @@
   }
   .bar svg {
     filter: var(--glass-icon);
+    /* Its own layer, so its shadow is drawn once, not again each frame the video under the glass moves. */
+    will-change: transform;
   }
   /* The place the person is on: a brighter pill of the same glass. */
   .bar a[aria-current="page"] {
