@@ -98,7 +98,7 @@ Remaining:
 
 Blockers: none.
 
-Preview: https://ruken.io. Every push to `main` deploys there through Cloudflare's own build, before the tests finish; the games Worker is deployed by the owner. Moving the deploy behind a green CI run: spec `2026-11-22-deploy-from-green-main-design.md`.
+Preview: https://ruken.io. A green `main` deploys itself through `.github/workflows/deploy.yml` (migrations, the site, a live check); until the owner disconnects Cloudflare's own build it also deploys every push, before the tests finish. The games Worker is deployed by the owner.
 
 ## Stages
 
