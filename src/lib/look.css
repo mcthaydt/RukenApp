@@ -698,7 +698,7 @@ button,
 }
 
 /* Side links stacked under each other, each on its own line, with no gap beyond their own height. */
-.links {
+.sidelinks {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -708,13 +708,13 @@ button,
 }
 
 /* Stacked, or in a row of ways, each keeps its whole 48px line: no margin taken back, so two targets never overlap. */
-.links .go,
+.sidelinks .go,
 .ways .go {
   margin-block: 0;
 }
 
 /* A stacked list is one block: its 48px lines touch, with no extra air between them. */
-.card .links li + li {
+.card .sidelinks li + li {
   margin-top: 0;
 }
 
@@ -2186,7 +2186,7 @@ a.foot:active {
 }
 
 /* Your account's number, with the membership badge on the same line. */
-.who {
+.badged {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
