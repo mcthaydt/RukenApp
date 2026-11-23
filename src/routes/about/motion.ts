@@ -30,13 +30,15 @@ export function startMotion(page: HTMLElement): () => void {
   gsap.ticker.lagSmoothing(0);
 
   const context = gsap.context(() => {
-    // Only a block still below the window is hidden to rise in: one already on screen never blinks out and back.
+    // Only a block still below the window is hidden to rise in: one already on screen never blinks out and back. A
+    // block the page's own links jump to ("For players", "For makers") only fades in, so the jump lands on its top
+    // and it never slides up out of the window after.
     const below = gsap.utils
       .toArray<HTMLElement>(".pair .card, .band")
       .filter((block) => block.getBoundingClientRect().top > window.innerHeight);
     for (const block of below) {
       gsap.from(block, {
-        y: 24,
+        y: block.id === "" ? 24 : 0,
         opacity: 0,
         duration: 0.7,
         ease: "power2.out",

@@ -4731,6 +4731,26 @@ header:has(+ main.about) {
   }
 }
 
+/* A phone held sideways has a short window: the headline is smaller and the blue button comes straight under it, so
+   the button is on the first screen; the lines that say what Ruken is follow it. */
+@media (orientation: landscape) and (max-height: 30rem) {
+  .about .hero {
+    padding-block: 1rem;
+  }
+
+  .about .hero h1 {
+    font-size: 2.25rem;
+  }
+
+  .about .hero .say {
+    order: 1;
+  }
+
+  .about .hero .news {
+    order: 2;
+  }
+}
+
 /* Every wait shows it. A move between pages runs a Blue line across the top of the window and shows a turning
    spinner under it, with no words (src/lib/page-loading.svelte); a button whose form is out shows the spinner after
    its words and cannot be pressed again (src/lib/busy-forms.ts); a picture or a video is a box that slowly brightens
@@ -4908,6 +4928,7 @@ video[data-loading] {
   border-radius: var(--radius-button);
   background: var(--pay);
   color: var(--chalk);
+  text-decoration: none;
   transition: transform var(--press-time);
 }
 
