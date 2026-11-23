@@ -216,6 +216,26 @@ test("keys pressed faster than the feed slides each still move one clip", async 
     .toBe(0);
 });
 
+test("a slide that never moves does not hold the keys for long", async ({ page }) => {
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  // The first slide asked for goes nowhere, so no end of it ever comes: the feed must stop waiting for it by itself.
+  await page.evaluate(() => {
+    const slide = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
+    Element.prototype.scrollIntoView = function () {
+      if (slide) Object.defineProperty(Element.prototype, "scrollIntoView", slide);
+    };
+  });
+  await page.keyboard.press("ArrowDown");
+  await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
+  // A few seconds on, a key moves the feed again. Keys pressed before then are still held, so the journey presses until
+  // one is heard, and each press moves at most one clip.
+  await expect(async () => {
+    await page.keyboard.press("ArrowDown");
+    await expect(clips.nth(1)).toHaveAttribute("data-current", "true", { timeout: 1000 });
+  }).toPass({ timeout: 6000 });
+});
+
 test("pressing the clip opens the game's page", async ({ page }) => {
   await openFeed(page);
   const clip = current(page);

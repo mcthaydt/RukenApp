@@ -130,6 +130,7 @@
       window.removeEventListener("resize", keepPlace);
       watcher?.disconnect();
       clearTimeout(noteTimer);
+      clearTimeout(slideTimer);
     };
   });
 
@@ -284,6 +285,11 @@
   const tellsSlideEnd = typeof window !== "undefined" && "onscrollend" in window;
   let aim: number | null = null;
   let sliding = false;
+  // A slide that started but never ends (one that could not move, so no `scrollend` comes) must not hold the keys:
+  // after this long the feed stops waiting and the next key counts from the clip on screen. A slide on a busy CI runner
+  // took about 0.8 s, so this never cuts a real one short.
+  const SLIDE_GIVE_UP_MS = 2000;
+  let slideTimer: ReturnType<typeof setTimeout> | undefined;
 
   function goTo(index: number): void {
     const { index: landing, screen } = screenAt(index);
@@ -297,18 +303,22 @@
       return;
     }
     sliding = tellsSlideEnd;
+    clearTimeout(slideTimer);
+    if (sliding) slideTimer = setTimeout(forgetAim, SLIDE_GIVE_UP_MS);
     // With less motion the next clip is simply there, not slid to.
     screen.scrollIntoView({ behavior: mayMove() ? "smooth" : "auto", block: "start" });
   }
 
   // A slide has ended. If the keys were sending the feed further (or the slide was dropped), it goes on from here.
   function slideEnded(): void {
+    clearTimeout(slideTimer);
     sliding = false;
     if (aim !== null) goTo(aim);
   }
 
   // A finger or wheel takes the feed over: where the keys were going no longer counts.
   function forgetAim(): void {
+    clearTimeout(slideTimer);
     aim = null;
     sliding = false;
   }
