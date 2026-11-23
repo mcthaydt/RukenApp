@@ -54,6 +54,12 @@ const REASONS: [GamePart, string, string, string][] = [
   ["files", "pornography", "It's pornography.", "Ruken doesn't take pornography."],
   ["files", "gambling", "Gambling isn't allowed on Ruken.", "Gambling isn't allowed on Ruken."],
   [
+    "files",
+    "ads",
+    "It has ads.",
+    "Games on Ruken can't have ads. Take them out on GitHub, then send it again.",
+  ],
+  [
     "plays_on",
     "needs_keyboard",
     "It needs a keyboard.",

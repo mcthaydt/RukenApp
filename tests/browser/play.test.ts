@@ -13,6 +13,7 @@ import { addGame } from "./support/game.ts";
 import { pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { token } from "../support/look-tokens.ts";
+import { consented } from "./support/consent.ts";
 
 // Playing (spec 4): a game in a frame on an address of its own, and Ruken's one small Menu tab over it.
 
@@ -335,7 +336,11 @@ test("the menu is reached by the keyboard, with focus showing", async ({ page })
 });
 
 test("with no script, Menu then Leave game still leaves", async ({ browser }) => {
-  const context = await browser.newContext({ baseURL: "http://localhost:4173", javaScriptEnabled: false });
+  const context = await browser.newContext({
+    ...consented,
+    baseURL: "http://localhost:4173",
+    javaScriptEnabled: false,
+  });
   const page = await context.newPage();
   await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await page.locator("details.menu > summary").click();
@@ -365,7 +370,7 @@ test("a game taken off Ruken is gone on the next load", async ({ page, browser, 
   await loaded(page);
   const frameAddress = (await page.locator("iframe.frame").getAttribute("src")) ?? "";
 
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   const maker = await context.newPage();
   await signInAs(maker, own.maker.number, own.maker.password);
   await maker.goto(`/make/${own.slug}/take-off`);
@@ -376,7 +381,7 @@ test("a game taken off Ruken is gone on the next load", async ({ page, browser, 
   expect((await page.goto(`/g/${own.slug}`, { waitUntil: "domcontentloaded" }))?.status()).toBe(404);
   expect((await page.goto(`/g/${own.slug}/play`, { waitUntil: "domcontentloaded" }))?.status()).toBe(404);
   // Asked by a browser that has not seen it before: the player's own browser may still hold the file for the pass's life.
-  const fresh = await browser.newContext();
+  const fresh = await browser.newContext(consented);
   expect((await (await fresh.newPage()).goto(`${frameAddress}main.js`))?.status()).toBe(404);
   await fresh.close();
 });

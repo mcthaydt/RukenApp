@@ -14,6 +14,7 @@ import {
 } from "./support/game.ts";
 import { boxOf } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // Unit B of the everything-editable spec: a game waiting for review can be thrown away from its Waiting screen, and a
 // game its maker took off Ruken can be changed and deleted for good from its Taken off screen.
@@ -39,7 +40,7 @@ async function stateAfterThrowAway(publicId: string): Promise<string> {
 
 /** What players see of a game: its upright video's address and its line, in a window of its own with no account. */
 async function playersSee(browser: Browser, slug: string) {
-  const context = await browser.newContext({ baseURL: SITE });
+  const context = await browser.newContext({ ...consented, baseURL: SITE });
   try {
     const page = await context.newPage();
     await page.goto(`/g/${slug}`, { waitUntil: "domcontentloaded" });
@@ -56,7 +57,7 @@ async function playersSee(browser: Browser, slug: string) {
 
 /** The status the game gate answers for one address, asked in a window of its own (a browser keeps a video it was given). */
 async function gateAnswers(browser: Browser, address: string): Promise<number> {
-  const context = await browser.newContext({ baseURL: SITE });
+  const context = await browser.newContext({ ...consented, baseURL: SITE });
   try {
     return (await (await context.newPage()).goto(address))?.status() ?? 0;
   } finally {
@@ -240,7 +241,7 @@ test("another maker's waiting or taken-off game is not found, and a throw-away p
   await putGameWhereStaffLeaveIt(off.slug, { state: "live" });
   await takeOff(page, off.slug);
 
-  const stranger = await browser.newContext({ baseURL: SITE });
+  const stranger = await browser.newContext({ ...consented, baseURL: SITE });
   try {
     const other = await stranger.newPage();
     await signUp(other);

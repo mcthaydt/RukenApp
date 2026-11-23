@@ -52,7 +52,8 @@ test("the two plans are full-width rows of real radio buttons, each with its pri
   await expect(annual).not.toBeChecked();
   await expect(page.getByText(/Monthly|Yearly/)).toHaveCount(0);
 
-  const card = await boxOf(page.locator("main.card"));
+  // The paper half of the card, which holds the plans (on a computer it sits beside the title).
+  const card = await boxOf(page.locator("main.card .cardbody"));
   const monthlyRow = await boxOf(page.locator("label", { has: monthly }));
   const annualRow = await boxOf(page.locator("label", { has: annual }));
   for (const row of [monthlyRow, annualRow]) {

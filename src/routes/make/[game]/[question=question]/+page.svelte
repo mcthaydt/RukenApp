@@ -155,7 +155,7 @@
         options={MARKS}
         chosen={data.contentMarks}
         several
-        hint="Only adults will see this game. Sex or nudity is fine here. No game may have pornography or gambling."
+        hint="Only adults will see this game. Sex or nudity is fine here. No game may have pornography, gambling or ads."
         {problem}
       />
       {#if data.ratingPlayersSee !== null}

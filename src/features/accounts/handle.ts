@@ -1,6 +1,7 @@
 import type { RequestEvent } from "@sveltejs/kit";
 import type { Handle } from "@sveltejs/kit/hooks";
 import type { StaffRole } from "../../lib/server/db.ts";
+import { hasConsent, routeKind } from "../consent/consent.ts";
 import type { SessionInfo } from "./auth.ts";
 import type { Caller } from "./caller.ts";
 import { copyAuthCookies, type CookiePolicy } from "./cookies.ts";
@@ -21,7 +22,7 @@ export interface HandleDeps {
   computerKey(authorization: string | null): Promise<{ userId: string; keyId: string } | null>;
 }
 
-type CallerEvent = Pick<RequestEvent, "request" | "url" | "locals" | "cookies">;
+type CallerEvent = Pick<RequestEvent, "request" | "url" | "locals" | "cookies" | "route">;
 
 /**
  * The health probe must answer without touching the database, and without needing the sign-in
@@ -56,6 +57,10 @@ async function resolveKey(event: CallerEvent, deps: HandleDeps): Promise<Caller>
 }
 
 async function resolveCaller(event: CallerEvent, deps: HandleDeps): Promise<Caller> {
+  // Until this browser has said yes to cookies, the sign-in cookie it may carry is not read: the person is signed out
+  // for now, no session row is renewed and no cookie is sent. Saying yes signs them in again, nothing lost. Calls from
+  // servers (webhooks, the cron jobs) are not a browser's and never carried one.
+  if (!hasConsent(event.cookies) && routeKind(event.route.id) !== "machine") return { kind: "none" };
   const session = await deps.getSession(event.request.headers);
   if (session === null || session.userStatus !== "active") return { kind: "none" };
 
