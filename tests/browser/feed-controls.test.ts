@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { gameWhere } from "./support/game.ts";
 import { boxOf, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -169,34 +169,56 @@ test("the clip that fills the window is the current one, and only one is; the ot
 });
 
 /**
- * Watches the clip on screen for five seconds: how far it got, whether it came back round after that, and how many
- * times it jumped. Its time is read every 50 ms as well as on `timeupdate`, which comes only every quarter second or so,
- * and less often on a busy machine. The bar is low on purpose: in this engine a clip's loops grow shorter after a few
- * rounds (progress.md), and a clip that stalls never gets past 0 s.
+ * Waits until the clip is really playing: not paused, and its time has moved on from its start. A busy machine can take
+ * a few seconds to hand a clip its data; a clip that stalls stays at its start (0.001 s) and never gets here.
  */
-async function watchCurrentClip(page: Page): Promise<{ furthest: number; cameBack: boolean; jumps: number }> {
-  return await current(page)
-    .locator("video")
-    .evaluate(
-      (element: HTMLVideoElement) =>
-        new Promise<{ furthest: number; cameBack: boolean; jumps: number }>((resolve) => {
-          let furthest = 0;
-          let cameBack = false;
-          let jumps = 0;
-          const look = () => {
-            if (furthest > 0.5 && element.currentTime < 0.5) cameBack = true;
-            furthest = Math.max(furthest, element.currentTime);
-          };
-          element.addEventListener("seeking", () => (jumps += 1));
-          element.addEventListener("timeupdate", look);
-          const polling = setInterval(look, 50);
-          setTimeout(() => {
-            clearInterval(polling);
-            element.removeEventListener("timeupdate", look);
-            resolve({ furthest, cameBack, jumps });
-          }, 5_000);
-        }),
-    );
+async function isPlaying(video: Locator): Promise<void> {
+  await expect(video).toHaveJSProperty("paused", false);
+  await expect
+    .poll(async () => await video.evaluate((element: HTMLVideoElement) => element.currentTime), {
+      message: "the clip's time moves on from its start",
+      timeout: 15_000,
+    })
+    .toBeGreaterThan(0.05);
+}
+
+/** What a clip has done since `watchClip` started on it: how far it got, whether it came back round, how many jumps. */
+interface Watched {
+  furthest: number;
+  cameBack: boolean;
+  jumps: number;
+}
+
+/**
+ * Watches a clip until it has played past 0.5 s and come back round, and gives what it saw. Its time is read every 50
+ * ms as well as on `timeupdate`, which comes only every quarter second or so, and less often on a busy machine. The bar
+ * is low on purpose: in this engine a clip's loops grow shorter after a few rounds (progress.md), and a clip that stalls
+ * never gets past 0 s. The page keeps what it saw and the journey asks for it, rather than the page holding one answer
+ * open for seconds: in WebKit under load, such an answer sometimes never came back (#372's review).
+ */
+async function watchClip(video: Locator, label: string): Promise<Watched> {
+  await video.evaluate((element: HTMLVideoElement) => {
+    const seen: Watched = { furthest: 0, cameBack: false, jumps: 0 };
+    const look = () => {
+      if (seen.furthest > 0.5 && element.currentTime < 0.5) seen.cameBack = true;
+      seen.furthest = Math.max(seen.furthest, element.currentTime);
+    };
+    element.addEventListener("seeking", () => (seen.jumps += 1));
+    element.addEventListener("timeupdate", look);
+    setInterval(look, 50);
+    Object.assign(element, { watched: seen });
+  });
+  const seen = async (): Promise<Watched> =>
+    await video.evaluate((element: HTMLVideoElement) => ({
+      ...(element as HTMLVideoElement & { watched: Watched }).watched,
+    }));
+  await expect
+    .poll(async () => await seen(), {
+      message: `${label}: the clip plays past 0.5 s and comes back round`,
+      timeout: 15_000,
+    })
+    .toMatchObject({ cameBack: true });
+  return await seen();
 }
 
 test("the clip on screen plays through and starts again, and again after a person comes back to it", async ({
@@ -210,23 +232,22 @@ test("the clip on screen plays through and starts again, and again after a perso
   const clip = page.locator(`section[data-slug="${slug}"]`).first();
   await clip.scrollIntoViewIfNeeded();
   await expect(clip).toHaveAttribute("data-current", "true");
-  await expect(clip.locator("video")).toHaveJSProperty("paused", false);
+  const video = clip.locator("video");
+  await isPlaying(video);
 
-  const first = await watchCurrentClip(page);
+  const first = await watchClip(video, "the first time");
   expect(first.furthest, "how far the clip played").toBeGreaterThan(0.5);
-  expect(first.cameBack, "the clip started again after it had played").toBe(true);
-  expect(first.jumps, "jumps in five seconds of a two-second clip").toBeLessThanOrEqual(5);
+  expect(first.jumps, "jumps in one round of a two-second clip").toBeLessThanOrEqual(5);
 
   // Away and back: the clip a person left waits at its start, and plays again from there.
   await page.keyboard.press("ArrowDown");
   await expect(clip).toHaveAttribute("data-current", "false");
   await page.keyboard.press("ArrowUp");
   await expect(clip).toHaveAttribute("data-current", "true");
-  await expect(clip.locator("video")).toHaveJSProperty("paused", false);
-  const again = await watchCurrentClip(page);
+  await isPlaying(video);
+  const again = await watchClip(video, "the second time");
   expect(again.furthest, "how far the clip played the second time").toBeGreaterThan(0.5);
-  expect(again.cameBack, "the clip started again after it had played, the second time").toBe(true);
-  expect(again.jumps, "jumps in five seconds, the second time").toBeLessThanOrEqual(5);
+  expect(again.jumps, "jumps in one round, the second time").toBeLessThanOrEqual(5);
 });
 
 test("each key moves one clip, never before the first", async ({ page }) => {
