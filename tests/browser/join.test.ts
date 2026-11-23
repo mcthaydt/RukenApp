@@ -8,7 +8,7 @@ import {
   signUp,
 } from "./support/account.ts";
 import { addGame } from "./support/game.ts";
-import { boxOf, expectFrame, expectOneCard, pipRed, showTheOwner } from "./support/look.ts";
+import { buttonColour, boxOf, expectFrame, expectOneCard, pipRed, showTheOwner } from "./support/look.ts";
 import { holdNextScreen } from "./support/hold.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -140,7 +140,7 @@ test("Continue to payment is Blue with white words, and nothing on the card is r
   const pay = page.getByRole("button", { name: "Continue to payment" });
   await expect(pay).toBeVisible();
   expect(await pipRed(page)).toEqual([]);
-  await expect(pay).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(pay).toHaveCSS("background-color", await buttonColour(pay, "--pay"));
   await expect(pay).toHaveCSS("color", rgb(token("--chalk")));
   await showTheOwner(page, testInfo, "the paywall card, signed in");
 });

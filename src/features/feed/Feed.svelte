@@ -607,6 +607,13 @@
     color: var(--chalk);
     -webkit-backdrop-filter: var(--glass-filter);
     backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+  }
+  .sound svg,
+  .share svg {
+    filter: var(--glass-icon);
+    /* Its own layer, so its shadow is drawn once, not again each frame the video under the glass moves. */
+    will-change: transform;
   }
   .sound:focus-visible,
   .share:focus-visible {
@@ -622,8 +629,12 @@
     max-width: calc(100% - 2rem);
     padding: 0.5rem 1rem;
     border-radius: var(--radius-button);
-    background: var(--felt-deep);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
     color: var(--chalk);
+    text-shadow: var(--glass-ink);
     text-align: center;
     pointer-events: none;
   }
@@ -657,8 +668,10 @@
     padding: 0.75rem;
     border-radius: var(--radius-button);
     color: var(--chalk);
+    text-shadow: var(--glass-ink);
   }
-  /* Frosted glass under the words (look.css): chalk on it is 4.5 to 1 or more over even a white clip. */
+  /* Frosted glass under the words (look.css). The glass alone is too clear to hold chalk over a white clip, so the words
+     carry its dark halo (--glass-ink). */
   .band::before {
     content: "";
     position: absolute;
@@ -668,6 +681,12 @@
     background: var(--glass-bg);
     -webkit-backdrop-filter: var(--glass-filter);
     backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+  }
+  /* Play is coloured glass on the glass under the words. */
+  .band .button {
+    background: var(--glass-pay);
+    box-shadow: var(--glass-edge);
   }
   .band a,
   .side button {
@@ -741,6 +760,7 @@
     color: var(--chalk);
     -webkit-backdrop-filter: var(--glass-filter);
     backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
   }
   .sharenote {
     position: absolute;
@@ -751,8 +771,12 @@
     margin: 0;
     padding: 0;
     border-radius: var(--radius-button);
-    background: var(--felt-deep);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
     color: var(--chalk);
+    text-shadow: var(--glass-ink);
     font: var(--text-small);
     text-align: end;
     pointer-events: none;

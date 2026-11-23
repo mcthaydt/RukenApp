@@ -78,6 +78,7 @@ Each entry is dated and quotes the owner where the source does; "(paraphrase)" m
 - 2026-11-22 20:22 UTC: "I'm thinking we should perhaps make the algorithm private sourced"; then "Yes" to the coordinator's proposal (move the ranking code into RukenPrivate; keep the plain-words "How the feed works" page public). The coordinator settled the shape at 20:24 UTC as a technical choice: one private Cloudflare Worker, `ruken-private`, reached by a service binding, with a public fallback order; any added cost goes to the owner. Spec `2026-11-22-private-feed-ranking-design.md` on `claude/project-thread-t02epm` (thread "Move gameable rules to the private repo"). The learned spec as merged in #342 stays public in history; it is not rewritten.
 - 2026-11-22 20:25 UTC, answering the coordinator's list: "Yeah let's move all of those private": the engagement pool and payout maths; fraud and bot detection (fake plays, fake accounts, text-code abuse); the exact rate-limit and spam numbers ("the mechanism can stay public"); automatic review and moderation heuristics. Same spec, section 6. Fraud checks and review flags are not built; when they are, they are built in RukenPrivate.
 - 2026-11-22 20:37 UTC, two answers. (1) "Yes": the one pull request that brings the hooks to RukenPrivate (P0) may be opened over the route no hook checks there, its body checked by hand, audited as usual; every later RukenPrivate pull request goes through the hooks. (2) "Yes, but we also have RunPod if we need to": tests may run on GitHub Actions in RukenPrivate (private-repo minutes past the free allowance cost money); RunPod is the fallback runner if minutes run short.
+- 2026-11-22 21:43 to 21:47 UTC, on the glass: "I don't think the glass is done either, it says it's on main, but I can't tell a difference"; "It's there, but only for the name description and play box, nothing else, it should be for all those HUD-like elements"; "Make the glass a lot more transparent too, we can barely see behind it now, it also lacks chromatic abberation"; "Just darken it by like 5%", "maybe 10"; 21:46 UTC "just add it to the queue". Every floating piece over content reads the glass tokens; the glass darkens what is behind it by about a tenth, with a lens edge (warm and cool fringes) and a soft shadow under words and icons. Built 2026-11-23 15:52 UTC on branch `claude/project-thread-6s28wv` (thread "Make the frosted glass actually visible"), draft pull request next.
 
 ## Active milestone: "Finish Ruken"
 
@@ -134,6 +135,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Private move, P6: limit numbers private (lane 3) | none yet | waits on P0 | not started |
 | Private move, P7: the pool maths and play count private (lane 3, money) | none yet | waits on P3; built last, with its own implementation audit | not started |
 | Private move, P8: the `pr-rules` check ported to RukenPrivate (lane 3, CI) | none yet | waits on C10's Actions measure; added on the P0 audit's note | not started |
+| Glass on every floating piece: clearer, lens edge (lane 2) | thread "Make the frosted glass actually visible" | built 2026-11-23 15:52 UTC on `claude/project-thread-6s28wv`; draft pull request, then a fresh lane 2 review | not measured here |
 
 ## Slice 2
 
@@ -190,6 +192,8 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 - First-time setup: the owner's request is the standing permission for the setup check (CLAUDE.md, Risk).
 
 ### Flaky tests
+
+- `tests/browser/make-after.test.ts:601` "a sent-back game can be thrown away" [computer], local run on the glass branch at `c2d10c87`, five journey files on two profiles: `Expected: true, Received: false`; passed alone on rerun. Cause not found; the glass change does not touch the computer layout.
 
 - `tests/browser/feed-controls.test.ts` "each key moves one clip... within a second" [computer], first run on the unit D branch at `aff0cd9`, three profiles side by side: `data-current` was still false on the second clip after the 1-second wait; 8 of 8 passed on a rerun. Cause: the journey asserted a 1-second wall clock on a busy machine. Fix: it waits for the state (the clip becomes current), not the clock. Gap: the journey no longer measures the "within one second" budget (spec section 7), and the same go for the reduced-motion check, which now checks for no in-between scroll positions instead of two frames.
 

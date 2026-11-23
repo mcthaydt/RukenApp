@@ -41,10 +41,18 @@ async function statusFor(browser: Browser, address: string, number?: string): Pr
   }
 }
 
+/** Test play is an outline button: no fill at any size, even in the glass row pinned over a phone's screen, so the
+ * screen's one blue button stays the only one (glass re-review of #370). */
+async function testPlayIsNotASecondBlueButton(page: Page): Promise<void> {
+  for (const testPlay of await page.getByRole("link", { name: "Test play", exact: true }).all())
+    await expect(testPlay).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+}
+
 test("a maker test-plays a draft from Check and send, and goes back to it", async ({ page }, testInfo) => {
   const { slug, name } = await answerEveryQuestion(page);
   await agreeToTheAgreement(page, slug);
 
+  await testPlayIsNotASecondBlueButton(page);
   // Loading a test play hands out a play pass, so a hover never loads it ahead: only a press does.
   await expect(page.getByRole("link", { name: "Test play" }).first()).toHaveAttribute(
     "data-sveltekit-preload-data",
@@ -110,6 +118,7 @@ test("a game waiting for review is test-played from Your games and from Waiting"
   await page.goto(`/make/${slug}`);
   await pageHasSettled(page);
   await expect(page.getByRole("heading", { name: "Waiting for review" })).toBeVisible();
+  await testPlayIsNotASecondBlueButton(page);
   await expect(page.getByRole("link", { name: "Test play" })).toHaveAttribute(
     "data-sveltekit-preload-data",
     "off",

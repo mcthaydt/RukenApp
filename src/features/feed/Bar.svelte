@@ -66,7 +66,10 @@
     gap: 0.5rem;
     padding: 0.25rem;
     border-radius: calc(var(--radius-button) + 0.25rem);
-    background: var(--felt-deep);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
     view-transition-name: tabs;
   }
   .bar a {
@@ -81,18 +84,28 @@
     color: var(--chalk);
     text-decoration: none;
   }
+  .bar svg {
+    filter: var(--glass-icon);
+    /* Its own layer, so its shadow is drawn once, not again each frame the video under the glass moves. */
+    will-change: transform;
+  }
+  /* The place the person is on: a brighter pill of the same glass. */
   .bar a[aria-current="page"] {
-    background: var(--felt-raised);
+    background: var(--glass-lift);
+    box-shadow: var(--glass-edge);
   }
   /* The one main thing to do from the bar: the main button's blue, a little bigger than the others. */
   .bar a.add {
     min-width: 4.5rem;
     min-height: 3.25rem;
-    background: var(--pay);
+    background: var(--glass-pay);
+    box-shadow: var(--glass-edge);
   }
   /* On Your games the big button is the place the person is on: a chalk ring, since its blue is its own. */
   .bar a.add[aria-current="page"] {
-    box-shadow: inset 0 0 0 3px var(--chalk);
+    box-shadow:
+      inset 0 0 0 3px var(--chalk),
+      var(--glass-edge);
   }
   /* A phone held sideways is short, so the bar stands up along the right edge instead (clear of the notch side's safe
      area), and every screen keeps its whole height for what is on it. look.css keeps the screens clear of it. */

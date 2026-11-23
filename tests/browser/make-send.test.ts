@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled } from "./support/account.ts";
 import { fillAnswers } from "./support/database.ts";
 import {
@@ -12,7 +11,7 @@ import {
   startAtCheck,
   startDraft,
 } from "./support/game.ts";
-import { boxOf, showTheOwner } from "./support/look.ts";
+import { buttonColour, boxOf, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The last two screens before a game is sent: the maker agreement (a maker's first game only) and Check and send, where
@@ -38,7 +37,7 @@ test("a first game: six questions, the agreement, Check and send, then Waiting f
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Check it, then send");
   await expect(page.getByRole("button", { name: "Send for review" })).toHaveCSS(
     "background-color",
-    rgb(token("--pay")),
+    await buttonColour(page.getByRole("button", { name: "Send for review" }), "--pay"),
   );
   await showTheOwner(page, testInfo, "Check and send");
   await page.getByRole("button", { name: "Send for review" }).click();
@@ -47,7 +46,7 @@ test("a first game: six questions, the agreement, Check and send, then Waiting f
   await expect(page.getByRole("heading", { name: "Waiting for review" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Back to your games" })).toHaveCSS(
     "background-color",
-    rgb(token("--pay")),
+    await buttonColour(page.getByRole("link", { name: "Back to your games" }), "--pay"),
   );
   await showTheOwner(page, testInfo, "Waiting for review, after sending");
 });
@@ -73,11 +72,11 @@ test("the agreement is shown whole, with its version and date, and one button", 
   await expect(page.getByRole("button")).toHaveCount(1);
   await expect(page.getByRole("button", { name: "I agree" })).toHaveCSS(
     "background-color",
-    rgb(token("--pay")),
+    await buttonColour(page.getByRole("button", { name: "I agree" }), "--pay"),
   );
   await expect(page.getByRole("link", { name: "Back", exact: true })).toHaveCSS(
     "background-color",
-    rgb(token("--felt-raised")),
+    await buttonColour(page.getByRole("link", { name: "Back", exact: true }), "--felt-raised"),
   );
   await showTheOwner(page, testInfo, "the maker agreement");
 

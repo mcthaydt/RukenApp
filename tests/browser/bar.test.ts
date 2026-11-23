@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { addGame, agreeToTheAgreement, giveRealClips, startDraft } from "./support/game.ts";
-import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
+import { buttonColour, boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
 import { fillAnswers, givePage } from "./support/database.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { signInAs, signUp } from "./support/account.ts";
@@ -61,16 +61,8 @@ async function expectTheBar(page: Page, options: { home: boolean }): Promise<voi
   const barBox = await boxOf(bar(page));
   const addBox = await boxOf(add);
   expect(Math.abs(addBox.x + addBox.width / 2 - (barBox.x + barBox.width / 2))).toBeLessThanOrEqual(2);
-  // The browser turns the main button's colour into the same form it reports for the button, so the two compare.
-  const blue = await page.evaluate(() => {
-    const probe = document.createElement("span");
-    probe.style.background = "var(--pay)";
-    document.body.appendChild(probe);
-    const colour = getComputedStyle(probe).backgroundColor;
-    probe.remove();
-    return colour;
-  });
-  await expect(add).toHaveCSS("background-color", blue);
+  // On the bar's glass it is the main button's blue as coloured glass.
+  await expect(add).toHaveCSS("background-color", await buttonColour(add, "--pay"));
 }
 
 test("the feed has the bar, with Home marked", async ({ page }, testInfo) => {

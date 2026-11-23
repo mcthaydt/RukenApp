@@ -13,7 +13,15 @@ import {
   startAtVideo,
   startDraft,
 } from "./support/game.ts";
-import { boxOf, heldSideways, layoutOf, pipRed, showTheOwner, type Layout } from "./support/look.ts";
+import {
+  buttonColour,
+  boxOf,
+  heldSideways,
+  layoutOf,
+  pipRed,
+  showTheOwner,
+  type Layout,
+} from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // How the maker's screens are laid out (spec 4). A window is one of five layouts, and
@@ -70,12 +78,17 @@ function questionSizes(): void {
 
     const next = nextButton(page);
     await expect(next).toHaveCSS("height", `${String(sizes.button)}px`);
-    await expect(next).toHaveCSS("background-color", rgb(token("--pay")));
+    await expect(next).toHaveCSS("background-color", await buttonColour(next, "--pay"));
     const viewport = page.viewportSize();
     const bar = await boxOf(page.locator(".acts"));
     if (sizes.buttons === "bar") {
-      // The buttons sit in a bar whose bottom is the window's bottom, so a thumb finds them in the same place.
-      expect(Math.abs(bar.y + bar.height - (viewport?.height ?? 0))).toBeLessThanOrEqual(1);
+      // The buttons sit in a glass pill floating just above the window's bottom and clear of its sides (the owner,
+      // 2026-11-23: "lets make the footer floating"), so a thumb finds them in the same place.
+      const gap = (viewport?.height ?? 0) - (bar.y + bar.height);
+      expect(gap).toBeGreaterThanOrEqual(8);
+      expect(gap).toBeLessThanOrEqual(24);
+      expect(bar.x).toBeGreaterThanOrEqual(8);
+      expect(bar.x + bar.width).toBeLessThanOrEqual((viewport?.width ?? 0) - 8);
     } else if (sizes.buttons === "column") {
       // A column at the window's right edge, in the middle of its height, the blue button on top, and the answer box
       // wholly to the left of it.
