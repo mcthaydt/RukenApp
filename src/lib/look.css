@@ -1278,8 +1278,9 @@ form > * + button:not(.quiet) {
     flex: 0 0 auto;
   }
 
-  /* Pinned over the screen, the row is glass, so its buttons are coloured glass. */
-  .screen .acts > :is(.button, button):not(.danger) {
+  /* Pinned over the screen, the row is glass, so its filled buttons are coloured glass; an outline or quiet one keeps
+     no fill, so only one button is blue. */
+  .screen .acts > :is(.button, button):not(.danger, .outline, .quiet) {
     background: var(--glass-pay);
     box-shadow: var(--glass-edge);
     text-shadow: var(--glass-ink);
@@ -1607,6 +1608,9 @@ label.vframe {
   .screen .acts > .file > span {
     width: 100%;
     min-width: 0;
+  }
+
+  .screen .acts > .file:not([data-quiet]) > span {
     background: var(--glass-pay);
     box-shadow: var(--glass-edge);
     text-shadow: var(--glass-ink);
