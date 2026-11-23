@@ -25,6 +25,7 @@ async function check(opts: {
   api: Reply | ((sinceStart: number) => Reply);
   wranglerSays?: string;
   versionId?: string;
+  without?: string;
 }) {
   const startedAt = Date.now();
   const seen: string[] = [];
@@ -47,19 +48,19 @@ async function check(opts: {
   );
   chmodSync(wrangler, 0o755);
   const result = await new Promise<{ status: number | null; text: string }>((done) => {
-    const p = spawn("bash", [script], {
-      env: {
-        PATH: process.env.PATH,
-        VERSION_ID: opts.versionId ?? VERSION,
-        CLOUDFLARE_ACCOUNT_ID: ACCOUNT,
-        CLOUDFLARE_API_TOKEN: "secret-token",
-        API_URL: `http://127.0.0.1:${String(port)}`,
-        WRANGLER_CMD: wrangler,
-        WAIT_SECONDS: "2",
-        INTERVAL: "0.2",
-        CURL_MAX_TIME: "1",
-      },
-    });
+    const env: Record<string, string | undefined> = {
+      PATH: process.env.PATH,
+      VERSION_ID: opts.versionId ?? VERSION,
+      CLOUDFLARE_ACCOUNT_ID: ACCOUNT,
+      CLOUDFLARE_API_TOKEN: "secret-token",
+      API_URL: `http://127.0.0.1:${String(port)}`,
+      WRANGLER_CMD: wrangler,
+      WAIT_SECONDS: "2",
+      INTERVAL: "0.2",
+      CURL_MAX_TIME: "1",
+    };
+    if (opts.without) delete env[opts.without];
+    const p = spawn("bash", [script], { env });
     let text = "";
     p.stdout.on("data", (d: Buffer) => {
       text += d.toString();
@@ -117,6 +118,27 @@ describe("games-check.sh", () => {
     const r = await check({ api: ok({}) });
     expect(r.status).not.toBe(0);
     expect(r.text).toMatch(/::error::.*observability.*(missing|not)/i);
+  });
+
+  it("passes when Cloudflare says observability is null, as it does for the live gate with logs off", async () => {
+    const r = await check({
+      api: ok({ observability: null, logpush: false, tags: null, tail_consumers: null }),
+    });
+    expect(r.status).toBe(0);
+  });
+
+  it("fails when observability is neither null nor an object", async () => {
+    const r = await check({ api: ok({ observability: "off" }) });
+    expect(r.status).not.toBe(0);
+    expect(r.text).toMatch(/::error::.*observability/i);
+  });
+
+  it("fails with a readable reason when the token or account id is missing", async () => {
+    for (const name of ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]) {
+      const r = await check({ api: ok(off), without: name });
+      expect(r.status).not.toBe(0);
+      expect(r.text).toContain(`::error::Games check failed: ${name} is not set`);
+    }
   });
 
   it("fails when logpush is on", async () => {
