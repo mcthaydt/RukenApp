@@ -42,8 +42,8 @@ export function feedServices(): FeedServices {
       settings ??= readFeedPublic(optionalEnv("FEED_PUBLIC"), (line) => {
         console.warn(line);
       });
-      // Nobody has said yes to cookies until the consent work merges, and the age and a parent's yes are read with the
-      // learned feed: until then everyone is the crowd, whatever FEED_PUBLIC says.
+      // The cookie yes, the age and a parent's yes are read with the learned feed, which is the first ranker that can use
+      // them: until then everyone is the crowd, whatever FEED_PUBLIC says.
       return askingFor(settings, {
         userId: caller.kind === "user" ? caller.userId : null,
         consented: false,

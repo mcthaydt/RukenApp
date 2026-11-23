@@ -154,7 +154,8 @@ export function createFeedService(deps: FeedServiceDeps) {
       const answer = await askPrivate(bound, request(cursor?.made === "private" ? cursor.rest : null));
       if (answer === "slow" || answer === "threw" || answer === "bad answer") {
         log(`feed: the private ranker did not answer (${answer}); the open order was used.`);
-        ranked = await open.page(request(null));
+        // An open address goes on in the open order, so a lasting outage still scrolls; a private one starts it fresh.
+        ranked = await open.page(request(cursor?.made === "open" ? cursor.rest : null));
         prefix = OPEN_PREFIX;
       } else {
         ranked = answer;

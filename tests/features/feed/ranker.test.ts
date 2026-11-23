@@ -307,6 +307,35 @@ describe("when the private ranker does not answer, the open one does", () => {
     expect(await service.page("p.private-cursor")).toEqual(await openFirst());
   });
 
+  it("while the private ranker stays down, an open address goes on in the open order: the feed still scrolls", async () => {
+    const { ranker } = stubRanker(() => Promise.reject(new Error("down")));
+    const { service, lines } = serviceWith({ privateRanker: () => ranker });
+
+    const first = await service.page(null);
+    const second = await service.page(first.next ?? "");
+    const third = await service.page(second?.next ?? "");
+
+    const open = serviceWith({});
+    const openFirst = await open.service.page(null);
+    const openSecond = await open.service.page(openFirst.next ?? "");
+    expect(second).toEqual(openSecond);
+    const seen = new Set(first.clips.map((clip) => clip.key));
+    expect(second?.clips.length).toBeGreaterThan(0);
+    for (const clip of second?.clips ?? []) expect(seen.has(clip.key)).toBe(false);
+    for (const clip of second?.clips ?? []) seen.add(clip.key);
+    for (const clip of third?.clips ?? []) expect(seen.has(clip.key)).toBe(false);
+    expect(second?.next?.startsWith("o.")).toBe(true);
+    expect(third?.next?.startsWith("o.")).toBe(true);
+    expect(lines).toHaveLength(3);
+  });
+
+  it("while the private ranker is down, an open address the open ranker did not make is still a 400", async () => {
+    const { ranker } = stubRanker(() => Promise.reject(new Error("down")));
+    const { service } = serviceWith({ privateRanker: () => ranker });
+
+    expect(await service.page("o.garbage")).toBeNull();
+  });
+
   it("an open address once the private ranker is back gives the private ranker's fresh first page", async () => {
     const open = await openFirst();
     const { ranker, asked } = stubRanker(() => Promise.resolve(PRIVATE_PAGE));
