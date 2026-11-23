@@ -416,6 +416,8 @@ test("a reload whose kept feed is shorter than the fresh one puts back the kept 
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("progressbar", { name: "Loading more games" })).toBeInViewport();
   await expect(current(page)).toHaveCount(0);
+  // A touch on the spinner makes the feed forget where the last key sent it, so the way up comes from what is on screen.
+  await page.getByRole("progressbar", { name: "Loading more games" }).dispatchEvent("pointerdown");
   await page.keyboard.press("ArrowUp");
   await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
   release();
