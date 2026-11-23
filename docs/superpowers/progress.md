@@ -117,6 +117,7 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Hook follow-ups (the lane reading, the launcher-word refusal) | none yet | not started; lane 3 hooks changes, each its own pull request | not measured |
 | Panels feel like an app: swipes stay in the feed, no zoom, no highlight (lane 2) | #323 | lane 2 review PASS at `7c6b49a` (audit `2a463cf`); full run, then merge | not measured (short path, no plan) |
 | Deploy from a green `main` (lane 3) | spec `2026-11-22-deploy-from-green-main-design.md` on `claude/project-thread-mqcz6h` | spec written, waiting on its plan audit | 0% (0 of 8 plan steps ticked) |
+| "How the feed works" page | #350 | merged as `e50e672` | not measured (short path, no plan) |
 | Slices 4 to 6 and the before-launch list | none | waiting for their turn in the roadmap | not measured |
 
 ## Slice 2
