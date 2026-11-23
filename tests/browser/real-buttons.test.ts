@@ -151,6 +151,10 @@ test("your account, its password and its delete screen: every action is a real b
   await expectRealButtons(page);
   await page.goto("/me/computers");
   await expectRealButtons(page);
+  // The cookies page, once a person has said yes to cookies (review round 4): What we keep is a real button there too.
+  await page.goto("/cookies");
+  await expect(page.getByRole("link", { name: "What we keep" })).toBeVisible();
+  await expectRealButtons(page);
 });
 
 test("a maker's screens: Your games, Your page and its links are real buttons", async ({ page }) => {
