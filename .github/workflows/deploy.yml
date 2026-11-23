@@ -114,9 +114,55 @@ jobs:
           VERSION_ID: ${{ steps.deploy.outputs.version }}
         run: .github/scripts/live-check.sh
 
-      # A migration may already have run, so nothing rolls back by itself. This says how to do it by hand.
-      - name: how to roll back
-        if: failure() && steps.target.outputs.deploy == 'true' && steps.deploy.outputs.shipped == 'true'
+      # The games Worker (the gate) goes after the site is live and checked, so a site that failed never ships a new
+      # gate. The route is not in the repository (it is public and never names the games domain), so it is a secret,
+      # which also masks it in the log. Wrangler puts the new version live before it touches routes and prints its
+      # version id only after them, so `games_started` is written before it runs: a failure from here on may mean a
+      # new gate is already serving.
+      - name: deploy the games Worker
+        id: games
+        if: steps.target.outputs.deploy == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GAMES_ROUTE: ${{ secrets.GAMES_ROUTE }}
+        run: |
+          set -o pipefail
+          if [ -z "$GAMES_ROUTE" ]; then
+            echo "::error::Games route missing: GAMES_ROUTE is not set in the production environment (the owner's setup step)."
+            exit 1
+          fi
+          # Wrangler prints the bare host in some errors, and a secret masks only its exact value.
+          host=${GAMES_ROUTE#*://}
+          host=${host#\*.}
+          host=${host%%/*}
+          echo "::add-mask::$host"
+          echo "games_started=true" >>"$GITHUB_OUTPUT"
+          pnpm run deploy:games --route "$GAMES_ROUTE" 2>&1 | tee games.log
+          version=$(grep -oE 'Current Version ID: [0-9a-f-]{36}' games.log | tail -1 | awk '{print $NF}') || true
+          if [ -z "$version" ]; then
+            echo "::error::The games deploy finished but printed no version id, so the games check cannot run."
+            exit 1
+          fi
+          echo "games_version=$version" >>"$GITHUB_OUTPUT"
+
+      - name: check the games Worker
+        if: steps.target.outputs.deploy == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          VERSION_ID: ${{ steps.games.outputs.games_version }}
+        run: .github/scripts/games-check.sh
+
+      # A migration may already have run, so nothing rolls back by itself. These say how to do it by hand, and for
+      # which Worker: the site if the games step never started, the gate if it did (the site is fine then).
+      - name: how to roll back the site
+        if: failure() && steps.target.outputs.deploy == 'true' && steps.deploy.outputs.shipped == 'true' && steps.games.outputs.games_started != 'true'
         run: |
           echo "::error::A new version went live but then something failed. To put the previous version back, run: pnpm exec wrangler rollback"
           echo "A migration may already have run, so look at the database before rolling back code that expects the old schema."
+
+      - name: how to roll back the games Worker
+        if: failure() && steps.target.outputs.deploy == 'true' && steps.games.outputs.games_started == 'true'
+        run: |
+          echo "::error::The site is live and fine, but the games Worker deploy or its check failed, so a new games Worker may be serving. To put the previous one back, run: pnpm exec wrangler rollback --name ruken-games"
