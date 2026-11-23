@@ -19,6 +19,13 @@ if [ -z "${VERSION_ID:-}" ]; then
   exit 1
 fi
 
+for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+  if [ -z "${!name:-}" ]; then
+    echo "::error::Games check failed: $name is not set for this step"
+    exit 1
+  fi
+done
+
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -51,8 +58,19 @@ keeps_nothing() {
     reason="could not read the games Worker settings: Cloudflare did not say success"
     return 1
   fi
-  if ! jq -e '.result.observability.enabled | type == "boolean"' "$work/body" >/dev/null 2>&1; then
+  # Cloudflare answers `"observability": null` when it is off (seen on the live gate), and an object when it is on.
+  # A missing key is a changed answer, so that still fails: off has to be seen, not assumed.
+  if ! jq -e '.result | has("observability")' "$work/body" >/dev/null 2>&1; then
     reason="the games Worker's observability setting is missing, so logs off cannot be seen"
+    return 1
+  fi
+  if jq -e '.result.observability != null and (.result.observability | type) != "object"' "$work/body" >/dev/null; then
+    reason="the games Worker's observability setting is not readable, so logs off cannot be seen"
+    return 1
+  fi
+  # An object has to say enabled with a real boolean; `{}` or "false" (a string) are not an answer.
+  if jq -e '.result.observability != null and ((.result.observability.enabled | type) != "boolean")' "$work/body" >/dev/null; then
+    reason="the games Worker's observability setting has no clear on/off, so logs off cannot be seen"
     return 1
   fi
   if jq -e '.result.observability.enabled == true' "$work/body" >/dev/null; then reason="the games Worker has observability on"; return 1; fi

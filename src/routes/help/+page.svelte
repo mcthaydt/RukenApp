@@ -49,5 +49,5 @@
     </ol>
   </nav>
   <p><a class="plain-link" href="/help/how-the-feed-works?from=%2Fhelp">How the feed works</a></p>
-  <!-- What is Ruken? (the landing page's link goes here once /about is on main) -->
+  <p><a class="plain-link" href="/about">What is Ruken?</a></p>
 </main>

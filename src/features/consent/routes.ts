@@ -6,6 +6,7 @@
  */
 const OPEN: readonly string[] = [
   "/",
+  "/about",
   "/[handle=handle]",
   "/[handle=handle]/out/[link]",
   "/g/[game]",
