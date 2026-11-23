@@ -109,6 +109,12 @@ describe("the tokens (design 5.8)", () => {
     expect(css).toMatch(/:root\s*\{[^}]*color-scheme:\s*dark;/);
     expect(css).not.toMatch(/gradient\(|box-shadow|text-shadow|text-transform|letter-spacing/);
   });
+
+  it("names each @keyframes once, so one screen's motion never overrides another's", () => {
+    const names = [...css.matchAll(/@keyframes\s+([\w-]+)/g)].map(([, name]) => name);
+    const twice = names.filter((name, at) => names.indexOf(name) !== at);
+    expect(twice).toEqual([]);
+  });
 });
 
 describe("contrast, measured from the tokens (WCAG AA)", () => {
@@ -378,6 +384,32 @@ describe("screens wear the look and nothing of their own", () => {
     "menupanel",
     "agreement",
     "side",
+    // The landing page (/about): its parts, from the ways in at the top to the links at the foot.
+    "about",
+    "ways",
+    "news",
+    "pair",
+    "forwhom",
+    "links",
+    "plain",
+    "perks",
+    "price",
+    "amount",
+    "steps",
+    "sitefoot",
+    "band",
+    "wall",
+    "column",
+    "words",
+    "say",
+    "device",
+    "split",
+    "splitbar",
+    "closing",
+    "glow",
+    "tofeed",
+    "swipe",
+    "opencode",
     // Words only a screen reader meets: the layout's "Sending…" (src/lib/busy-forms.ts).
     "hidden-words",
     // The bold paywall card (src/routes/join): its Dusky Green top and paper half, what a member gets, the close mark, the plans.

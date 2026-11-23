@@ -39,6 +39,8 @@
   {:else}
     <p class="apart">Make games? <a href="/make">Add yours to Ruken.</a></p>
   {/if}
+  <p><a class="plain-link" href="/about">What is Ruken?</a></p>
   <p class="note"><a href="/me/computers">Your computers</a></p>
-  <p class="note"><a href="/me/delete">Delete my account</a></p>
+  <!-- A full line of air above it, so a thumb meant for another link never lands on Delete. -->
+  <p class="note apart"><a href="/me/delete">Delete my account</a></p>
 </main>
