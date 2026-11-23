@@ -159,7 +159,12 @@ test("a visitor who is not signed in cannot see or play an 18+ game, and is aske
   // One button, reached by keyboard straight after the bar's three places, with focus showing.
   const signIn = page.getByRole("link", { name: "Sign in" });
   await expect(signIn).toHaveCount(1);
-  for (let presses = 0; presses < 4; presses += 1) await page.keyboard.press("Tab");
+  const bar = page.getByRole("navigation", { name: "Ruken" });
+  for (const place of ["Home", "Add a game", "You"]) {
+    await page.keyboard.press("Tab");
+    await expect(bar.getByRole("link", { name: place, exact: true })).toBeFocused();
+  }
+  await page.keyboard.press("Tab");
   await expect(signIn).toBeFocused();
   expect(await signIn.evaluate((link) => getComputedStyle(link).outlineStyle)).not.toBe("none");
   await page.keyboard.press("Enter");
