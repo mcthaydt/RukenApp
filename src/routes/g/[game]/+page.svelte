@@ -88,7 +88,6 @@
             tabindex={enhanced ? -1 : undefined}
             controls={!enhanced}
             muted
-            loop
             playsinline
             use:quietVideo
           ></video>
