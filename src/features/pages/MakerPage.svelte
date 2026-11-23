@@ -6,6 +6,7 @@
 <script lang="ts">
   import { loads } from "../../lib/loads.ts";
   import { quietVideo } from "../../lib/quiet-video.ts";
+  import { WishlistButton } from "../launch/launch.browser.ts";
 
   interface Props {
     name: string;
@@ -17,9 +18,11 @@
     colours: { ground: string; text: string; button: string; buttonText: string; all: string[] };
     games: { slug: string; name: string; upright: string }[];
     links: { id: string; kind: "link" | "game_elsewhere"; title: string; site: string }[];
+    /** Before launch: Wishlist where Play goes, the day it opens and the person's list. */
+    launch: { before: false } | { before: true; opens: string; wished: string[] };
   }
 
-  let { name, handle, oneLine, photo, colours, games, links }: Props = $props();
+  let { name, handle, oneLine, photo, colours, games, links, launch }: Props = $props();
 
   // The first letter of the name, for a page with no photo. A name is never empty (the pages service refuses one).
   const initial = $derived(Array.from(name.trim())[0]?.toUpperCase() ?? "");
@@ -66,7 +69,17 @@
             use:quietVideo
           ></video>
           <h2><a href={`/g/${game.slug}`}>{game.name}</a></h2>
-          <a class="play" href={`/g/${game.slug}/play`}>Play</a>
+          {#if launch.before}
+            <WishlistButton
+              slug={game.slug}
+              wished={launch.wished.includes(game.slug)}
+              opens={launch.opens}
+              back={`/${handle}`}
+              buttonClass="play"
+            />
+          {:else}
+            <a class="play" href={`/g/${game.slug}/play`}>Play</a>
+          {/if}
         </article>
       {/each}
     </section>
@@ -207,6 +220,7 @@
     color: inherit;
   }
   .play,
+  .game :global(.wish .play),
   .links a {
     box-sizing: border-box;
     min-height: 48px;
@@ -221,6 +235,11 @@
     font-weight: 700;
     text-decoration: none;
     overflow-wrap: anywhere;
+  }
+  /* The heart sits beside the word, as on the other screens. */
+  .game :global(.wish .play) {
+    flex-direction: row;
+    gap: 0.5rem;
   }
   /* A column that centres its items sizes a long unbroken title to its full length, so the title is held to the
      button's width instead and breaks inside it. */
@@ -239,6 +258,7 @@
     font-size: 0.875rem;
   }
   .play:focus-visible,
+  .game :global(.wish .play:focus-visible),
   .links a:focus-visible,
   .game h2 a:focus-visible {
     outline: 3px solid var(--text);

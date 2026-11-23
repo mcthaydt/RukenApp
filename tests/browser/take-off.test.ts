@@ -4,6 +4,7 @@ import { putGameWhereStaffLeaveIt, stateOf } from "./support/database.ts";
 import { addDraft, addGame, gameWhere, MAKER_ADDRESSES, startDraft } from "./support/game.ts";
 import { boxOf, layoutHasSettled, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 test.beforeEach(forgetRateLimits);
 
@@ -178,7 +179,7 @@ test("another maker's game is a missing page, at the two new actions too", async
 }) => {
   const { slug } = await gameWhere(page, { state: "live" });
   const site = baseURL ?? "http://localhost:4173";
-  const stranger = await browser.newContext({ baseURL: site });
+  const stranger = await browser.newContext({ ...consented, baseURL: site });
   try {
     const other = await stranger.newPage();
     await signUp(other);

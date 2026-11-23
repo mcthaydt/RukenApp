@@ -6,7 +6,7 @@
 <script lang="ts">
   import { onNavigate } from "$app/navigation";
   import { page } from "$app/state";
-  import { slideWhile } from "../../lib/page-moves.ts";
+  import { heldMove, slideWhile } from "../../lib/page-moves.ts";
   import type { LayoutProps } from "./$types";
 
   let { data, children }: LayoutProps = $props();
@@ -48,6 +48,9 @@
     if (!inMakersArea(navigation.to?.url.pathname) || !inMakersArea(navigation.from?.url.pathname)) return;
     // The same page brought up to date (an answer sent from inside it, src/lib/stay-in-app.ts) is no step.
     if (navigation.to?.url.href === navigation.from?.url.href) return;
+    // A move made while the last one's slide still holds its page comes in after it, at once (src/lib/page-moves.ts).
+    const earlier = heldMove();
+    if (earlier !== null) return earlier;
     delete document.documentElement.dataset.move;
     const going = placeOf(navigation.to?.params?.question) < placeOf(navigation.from?.params?.question);
     document.documentElement.dataset.step = going ? "back" : "on";

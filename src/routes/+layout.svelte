@@ -10,9 +10,11 @@
   import "../lib/look.css";
   import { onNavigate } from "$app/navigation";
   import { page } from "$app/state";
+  import { setAgreed } from "../features/consent/consent.browser.ts";
+  import { Notice } from "../features/consent/consent.screens.ts";
   import { Bar } from "../features/feed/feed.browser.ts";
   import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
-  import { moveBetween, slideWhile } from "../lib/page-moves.ts";
+  import { heldMove, moveBetween, slideWhile } from "../lib/page-moves.ts";
   import PageLoading from "../lib/page-loading.svelte";
   import { sendInApp } from "../lib/stay-in-app.ts";
   import { BASE_TITLE } from "../lib/titles.ts";
@@ -30,13 +32,15 @@
   });
 
   // The bar is on every screen (the owner, 2026-11-22: "every page excluding the landing pages") but three kinds:
-  // the landing page, the play screen (the game has the whole window), and the maker's step-by-step screens, which pin
-  // their own Back and Save (src/lib/look.css, .screen .acts: across the bottom, or along the right edge of a phone
-  // held sideways), so a second bar would leave little room for the question. Each of those has its own way back.
-  // Your page is a step too while there is no page yet: it asks the first question, the address.
+  // the landing page, the play screens (a player's and the maker's test play: the game has the whole window), and the
+  // maker's step-by-step screens, which pin their own Back and Save (src/lib/look.css, .screen .acts: across the
+  // bottom, or along the right edge of a phone held sideways), so a second bar would leave little room for the
+  // question. Each of those has its own way back. Your page is a step too while there is no page yet: it asks the first
+  // question, the address.
   const NO_BAR: readonly string[] = [
     "/about",
     "/g/[game]/play",
+    "/make/[game]/play",
     "/make/new",
     "/make/[game]/[question=question]",
     "/make/[game]/agreement",
@@ -51,11 +55,21 @@
     !NO_BAR.includes(page.route.id ?? "") && !(page.route.id === "/make/page" && page.data.rooms === null),
   );
 
-  // A game's own page and its play screen name the game in the tab; every other screen, a missing page included,
-  // has the base title.
+  // A game's own page, its play screen and its maker's test play name the game in the tab; every other screen, a
+  // missing page included, has the base title.
   const gameScreen = $derived(
-    page.status < 400 && (page.route.id === "/g/[game]" || page.route.id === "/g/[game]/play"),
+    page.status < 400 &&
+      (page.route.id === "/g/[game]" ||
+        page.route.id === "/g/[game]/play" ||
+        page.route.id === "/make/[game]/play"),
   );
+
+  // Until this browser says yes to cookies, the card at the bottom asks, once per visit ("Not now" hides it in memory
+  // only, so a reload or a new visit asks again). Nothing is kept on the device until the yes (consent feature).
+  let notNow = $state(false);
+  $effect.pre(() => {
+    setAgreed(data.consented);
+  });
 
   function cameBack(event: PageTransitionEvent): void {
     if (event.persisted) clearSending();
@@ -82,6 +96,10 @@
     const move = from === undefined || to === undefined ? null : moveBetween(from, to, back);
     const slid = browserSlid;
     browserSlid = false;
+    // A move made while the last one's slide still holds its page (Back pressed mid-slide) waits for that page to go in
+    // and then comes in after it, at once.
+    const earlier = heldMove();
+    if (earlier !== null) return earlier;
     // A move inside the maker's area is that area's own step (src/routes/make/+layout.svelte).
     if (move === null) return;
     const html = document.documentElement;
@@ -131,3 +149,13 @@
 {/if}
 
 {@render children()}
+
+{#if !data.consented && !notNow && page.route.id !== "/cookies"}
+  <Notice
+    card
+    aboveBar={barShown}
+    next={page.url.pathname + page.url.search}
+    from={page.url.pathname + page.url.search}
+    onNotNow={() => (notNow = true)}
+  />
+{/if}

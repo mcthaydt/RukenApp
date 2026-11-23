@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { freshNumber, nationalOf, pageHasSettled, signInAs } from "./support/account.ts";
+import { finishSignUpForm, freshNumber, nationalOf, pageHasSettled, signInAs } from "./support/account.ts";
 import { addGame, connectGitHubFromFiles, holdAnswersTo, startAtFiles } from "./support/game.ts";
+import { beforeLaunch } from "./support/launch.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -153,4 +154,36 @@ test("ticking another game on GitHub says the branches are being looked up", asy
   await expect(page.getByText("Looking up branches…")).toBeVisible();
   held.release();
   await expect(page.getByText("Looking up branches…")).toHaveCount(0);
+});
+
+test("Wishlist shows it is busy while it sends, and keeps the keyboard's focus", async ({
+  page,
+  browser,
+  request,
+}) => {
+  test.setTimeout(150_000);
+  const game = await addGame(browser, request);
+  await page.goto("/sign-up");
+  await finishSignUpForm(page, freshNumber());
+  await expect(page).toHaveURL("/");
+  await beforeLaunch(page.context());
+  await page.goto(`/g/${game.slug}`);
+  await pageHasSettled(page);
+  const held = await holdAnswersTo(page, new RegExp(`/g/${game.slug}/wishlist$`));
+
+  const button = page.getByRole("button", { name: "Wishlist", exact: true });
+  await button.focus();
+  await page.keyboard.press("Enter");
+  const busy = page.getByRole("button", { name: "Adding it…" });
+  await expect(busy).toHaveAttribute("aria-busy", "true");
+  await expect(busy).toBeFocused();
+  // A second press while the first is out sends nothing more.
+  await page.keyboard.press("Enter");
+  expect(held.requestsSoFar()).toBe(1);
+
+  held.release();
+  const done = page.getByRole("button", { name: "On your wishlist", exact: true });
+  await expect(done).toBeVisible();
+  await expect(done).not.toHaveAttribute("aria-busy", "true");
+  await expect(done).toBeFocused();
 });

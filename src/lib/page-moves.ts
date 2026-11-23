@@ -34,16 +34,29 @@ export function moveBetween(from: string, to: string, wentBack: boolean): Move |
   return "on";
 }
 
+/** The move whose slide has not yet let its new page in, if there is one. */
+let held: Promise<void> | null = null;
+
+/**
+ * The move still waiting on its slide, for a move that starts meanwhile (Back pressed mid-slide). The router puts a
+ * page in when its move is let go, even after a later move has put its own page in, so the later move must wait for
+ * it and come in last; it comes without a slide of its own.
+ */
+export function heldMove(): Promise<void> | null {
+  return held;
+}
+
 /**
  * Plays one slide while the new page comes in, and answers once the new page may be put in. The new page must come
  * whatever the browser does with the slide: a slide it skips (Safari skipped one leaving the play screen in CI) lets
  * the move go on, and so does a slide that never starts, after a second at most.
  */
 export function slideWhile(arrived: Promise<unknown>): Promise<void> {
-  return new Promise<void>((resolve) => {
+  const move = new Promise<void>((resolve) => {
     const slide = document.startViewTransition(async () => {
       resolve();
-      await arrived;
+      // A move that a later one overtook never arrives; its slide just ends.
+      await arrived.catch(() => undefined);
     });
     slide.ready.catch(() => {
       resolve();
@@ -52,4 +65,9 @@ export function slideWhile(arrived: Promise<unknown>): Promise<void> {
       resolve();
     }, 1000);
   });
+  held = move;
+  void move.then(() => {
+    if (held === move) held = null;
+  });
+  return move;
 }

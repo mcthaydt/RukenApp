@@ -781,6 +781,56 @@ describe("liveGameBySlug", () => {
   });
 });
 
+describe("testPlayOf", () => {
+  it("answers a draft's newest files to its maker, and nothing to anyone else", async () => {
+    const game = await newGame();
+    // An older copy first, pulled a minute before the newest.
+    await db().gamePull.create({
+      data: {
+        id: crypto.randomUUID(),
+        gameId: game.id,
+        commitSha: "b".repeat(40),
+        fileCount: 3,
+        totalBytes: 1000n,
+        connectHosts: [],
+        pulledAt: new Date(Date.now() - 60_000),
+      },
+    });
+    const newest = await addPull(game.id, ["api.example.com"]);
+
+    expect(await service.testPlayOf(game.slug, game.makerUserId)).toEqual({
+      game: { id: game.id, publicId: game.publicId, slug: game.slug, name: "A game", ageRating: "age_12" },
+      pull: { id: newest, connectHosts: ["api.example.com"] },
+    });
+    expect(await service.testPlayOf(game.slug, await createUser(db()))).toBeNull();
+    expect(await service.testPlayOf("no-such-game", game.makerUserId)).toBeNull();
+  });
+
+  it("answers a live game's waiting copy, never its live one, and nothing when no new copy waits", async () => {
+    const game = await newGame();
+    await addBothClips(game.id);
+    const live = await addPull(game.id);
+    await makeLive(game.id, live);
+    expect(await service.testPlayOf(game.slug, game.makerUserId)).toBeNull();
+
+    const waiting = await addPull(game.id);
+    await db().game.update({
+      where: { id: game.id },
+      data: { pendingPullId: waiting, pendingSince: new Date() },
+    });
+    expect((await service.testPlayOf(game.slug, game.makerUserId))?.pull.id).toBe(waiting);
+  });
+
+  it("says so on the maker's list and the maker's view", async () => {
+    const game = await newGame();
+    expect((await service.gamesOf(game.makerUserId))[0]?.testPlay).toBe(false);
+    expect((await service.gameForMaker(game.slug, game.makerUserId))?.testPlay).toBe(false);
+    await addPull(game.id);
+    expect((await service.gamesOf(game.makerUserId))[0]?.testPlay).toBe(true);
+    expect((await service.gameForMaker(game.slug, game.makerUserId))?.testPlay).toBe(true);
+  });
+});
+
 describe("moreLiveGamesBy", () => {
   /** A live game for this maker, with both clips. */
   async function liveGameOf(makerUserId: string) {

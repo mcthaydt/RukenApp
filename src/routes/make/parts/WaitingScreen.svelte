@@ -1,5 +1,6 @@
 <!--
-  A game waiting for a person's yes: the heading, one line, the one blue button back to Your games, and a
+  A game waiting for a person's yes: the heading, one line, the one blue button back to Your games, a Test play button
+  that plays the files that wait (only the maker can), and a
   small way to change something, which goes through Check and send. Under it, at the foot of the page, the quietest link
   throws the game away (its own screen asks first). When the newest copy of its files from GitHub was
   refused, the line says so and leads to the files question, so the refusal is not found only by changing something.
@@ -17,6 +18,7 @@
     filesProblem,
     filesAddress,
     throwAway,
+    testPlay,
   }: {
     game: LaidOutGame;
     /** What the game is told while it waits (when decisions go out, or that someone is looking). */
@@ -29,6 +31,8 @@
     filesAddress: string;
     /** The question asked before a game is thrown away. */
     throwAway: string;
+    /** Where the maker plays the files that wait, or null when there are none to try. */
+    testPlay: string | null;
   } = $props();
 </script>
 
@@ -42,6 +46,9 @@
     {/if}
     <div class="acts">
       <a class="button" href="/make">Back to your games</a>
+      {#if testPlay !== null}
+        <a class="button outline" data-sveltekit-preload-data="off" href={testPlay}>Test play</a>
+      {/if}
     </div>
     <a class="foot" href={changeAddress}>Change something</a>
   </div>

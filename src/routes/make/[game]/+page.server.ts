@@ -13,6 +13,7 @@ import {
   toFixWords,
   type MakerGame,
 } from "../../../features/games/games.ts";
+import { isOpen, launchServices, wishlistCountWords } from "../../../features/launch/launch.ts";
 import { ownGame } from "../own-game.server.ts";
 import type { ChangePart, FixCardData } from "../laid-out.ts";
 import { ALL_PARTS, laidOut } from "../laid-out.server.ts";
@@ -95,7 +96,7 @@ function liveLine(game: MakerGame, send: LiveSend): string {
 }
 
 export const load: PageServerLoad = async (event) => {
-  const { game } = await ownGame(event);
+  const { userId, game } = await ownGame(event);
   if (game.state === "draft") {
     redirect(303, `/make/${game.slug}/${firstUnanswered(answersOf(game)) ?? "check"}`);
   }
@@ -115,6 +116,7 @@ export const load: PageServerLoad = async (event) => {
       // A refused newest copy leaves the older one waiting, so the screen says so and leads to where it is mended.
       filesProblem: game.pullProblem,
       filesAddress: `/make/${game.slug}/files`,
+      testPlay: game.testPlay ? `/make/${game.slug}/play` : null,
     };
   }
 
@@ -141,6 +143,12 @@ export const load: PageServerLoad = async (event) => {
     const accepted = await gamesServices().service.acceptedScreenFor(game.id);
     if (accepted !== null) return { ...base, view: "accepted" as const, count: accepted.count, backdrop };
     const send = liveSendOf(game);
+    // How many people want it, counted from stored rows each time (wishlist spec, "What a maker sees").
+    const launch = launchServices();
+    const wished = wishlistCountWords(
+      await launch.wishlist.countFor(game.id, userId),
+      !isOpen(launch.now(event.cookies)),
+    );
     return {
       ...base,
       view: "live" as const,
@@ -155,6 +163,7 @@ export const load: PageServerLoad = async (event) => {
       backdrop,
       game: liveLaidOut(game),
       showsPlayerCount: game.showsPlayerCount,
+      wished,
     };
   }
 

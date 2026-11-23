@@ -24,6 +24,7 @@ import {
 } from "./support/game.ts";
 import { filledButtons, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // What a maker sees once a game has been sent: Waiting, Sent back and Live (spec 5, 5b "Sent back, now", 5c). Each is two
 // halves: the name, the heading, one line and the buttons on one side, the game on the other. The sizes and colours are in
@@ -80,6 +81,22 @@ test("an old send back for where the game plays opens, asks for nothing, and can
   await expect(page.getByText("Choose Computers only.")).toHaveCount(0);
   await page.getByRole("button", { name: "Send it again" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Waiting for review");
+});
+
+// The Owner, 2026-11-22: "No game may have pornography, gambling, or ads." Staff can send a game back for its ads,
+// and the maker reads what to do about them.
+test("sent back for ads: the maker reads that games on Ruken can't have ads", async ({ page }) => {
+  const { slug } = await gameWhere(page, { state: "sent_back", toFix: [{ part: "files", reason: "ads" }] });
+
+  await page.goto(`/make/${slug}`);
+
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sent back");
+  const card = page.locator("a.fix");
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("Needs fixing");
+  await expect(card).toContainText(
+    "Games on Ruken can't have ads. Take them out on GitHub, then send it again.",
+  );
 });
 
 test("staff's own line shows under the reason", async ({ page }, testInfo) => {
@@ -458,7 +475,7 @@ test("Send it again is not on a live game that was never sent back, and posting 
 test("another maker cannot open any of these", async ({ page, browser, baseURL }) => {
   const { slug } = await gameWhere(page, { state: "sent_back", toFix: [SIDEWAYS] });
   const site = baseURL ?? "http://localhost:4173";
-  const stranger = await browser.newContext({ baseURL: site });
+  const stranger = await browser.newContext({ ...consented, baseURL: site });
   try {
     const other = await stranger.newPage();
     await signUp(other);
