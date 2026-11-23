@@ -154,6 +154,11 @@ export async function paymentPostingOf(number: string): Promise<{ stripeInvoiceI
   });
 }
 
+/** How many rows the rate limiter keeps, so a journey can see that a refused call wrote none. */
+export function rateLimitRows(): Promise<number> {
+  return db().rateLimit.count();
+}
+
 /** How many rows of Stripe's fee report of one kind (by Stripe's name for it, such as "billing") the site has kept. */
 export function feeRowsKept(product: string): Promise<number> {
   return db().stripeFeeRow.count({ where: { product } });

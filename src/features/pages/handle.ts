@@ -34,6 +34,7 @@ export const RESERVED_HANDLES: ReadonlySet<string> = new Set([
   "robots",
   "ruken",
   "about",
+  "cookies",
   "help",
   "support",
   "terms",

@@ -8,6 +8,57 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#112f2c" />
+    <!--
+      Guard 4 of the cookie consent (design 3.3). SvelteKit writes three keys to sessionStorage when a tab is hidden or
+      left, whatever the visitor chose, and its listeners are added last, so clearing afterwards cannot be ordered.
+      This runs before any module: until the server says this browser agreed ("yes"; it fails closed to "no" in any
+      page that was not rendered through the gate), `sessionStorage` is a stand-in that lives in this page only.
+    -->
+    <script data-rk-consent="no">
+      (function () {
+        var yes = document.currentScript && document.currentScript.getAttribute("data-rk-consent") === "yes";
+        var original = Object.getOwnPropertyDescriptor(window, "sessionStorage");
+        var kept = {};
+        var standIn = {
+          getItem: function (key) {
+            return Object.prototype.hasOwnProperty.call(kept, key) ? kept[key] : null;
+          },
+          setItem: function (key, value) {
+            kept[key] = String(value);
+          },
+          removeItem: function (key) {
+            delete kept[key];
+          },
+          clear: function () {
+            kept = {};
+          },
+          key: function (index) {
+            return Object.keys(kept)[index] === undefined ? null : Object.keys(kept)[index];
+          },
+        };
+        Object.defineProperty(standIn, "length", {
+          get: function () {
+            return Object.keys(kept).length;
+          },
+        });
+        function hold() {
+          Object.defineProperty(window, "sessionStorage", {
+            configurable: true,
+            get: function () {
+              return standIn;
+            },
+          });
+        }
+        window.__rkStorage = {
+          hold: hold,
+          restore: function () {
+            if (original) Object.defineProperty(window, "sessionStorage", original);
+            else delete window.sessionStorage;
+          },
+        };
+        if (!yes) hold();
+      })();
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

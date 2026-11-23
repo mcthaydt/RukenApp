@@ -1,6 +1,7 @@
 import { expect, type Browser, type Locator, type Page } from "@playwright/test";
 import { checkoutIdOfPaymentUrl, STAND_IN_URL } from "./stand-in-payment.ts";
 import { codeTo } from "./texts.ts";
+import { consented } from "./consent.ts";
 
 /** The password every journey's new account uses. */
 export const JOURNEY_PASSWORD = "a long enough password";
@@ -171,7 +172,7 @@ const SITE_URL = "http://localhost:4173";
  * in until the maker's own pages exist). The first person's cookies are untouched.
  */
 export async function signUpInItsOwnContext(browser: Browser): Promise<{ number: string; password: string }> {
-  const context = await browser.newContext({ baseURL: SITE_URL });
+  const context = await browser.newContext({ ...consented, baseURL: SITE_URL });
   try {
     return await signUp(await context.newPage());
   } finally {

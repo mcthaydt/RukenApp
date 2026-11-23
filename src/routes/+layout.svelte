@@ -10,6 +10,8 @@
   import "../lib/look.css";
   import { onNavigate } from "$app/navigation";
   import { page } from "$app/state";
+  import { setAgreed } from "../features/consent/consent.browser.ts";
+  import { Notice } from "../features/consent/consent.screens.ts";
   import { Bar } from "../features/feed/feed.browser.ts";
   import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
   import { moveBetween, slideWhile } from "../lib/page-moves.ts";
@@ -44,6 +46,13 @@
         page.route.id === "/g/[game]/play" ||
         page.route.id === "/make/[game]/play"),
   );
+
+  // Until this browser says yes to cookies, the card at the bottom asks, once per visit ("Not now" hides it in memory
+  // only, so a reload or a new visit asks again). Nothing is kept on the device until the yes (consent feature).
+  let notNow = $state(false);
+  $effect.pre(() => {
+    setAgreed(data.consented);
+  });
 
   function cameBack(event: PageTransitionEvent): void {
     if (event.persisted) clearSending();
@@ -118,3 +127,13 @@
 {/if}
 
 {@render children()}
+
+{#if !data.consented && !notNow && page.route.id !== "/cookies"}
+  <Notice
+    card
+    aboveBar={browsing}
+    next={page.url.pathname + page.url.search}
+    from={page.url.pathname + page.url.search}
+    onNotNow={() => (notNow = true)}
+  />
+{/if}
