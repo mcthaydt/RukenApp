@@ -213,6 +213,27 @@ describe("frosted glass", () => {
       expect(block).toContain("--glass-ink: none;");
       expect(block).toContain("--glass-icon: none;");
       expect(block).toContain("--dim-filter: none;");
+      expect(block).toContain("--glass-pay: var(--pay);");
+      expect(block).toContain("--glass-safe: var(--felt-raised);");
+      expect(block).toContain("--glass-lift: var(--felt-raised);");
+    }
+  });
+
+  // The owner chose coloured glass buttons (2026-11-23): a button on glass is glass tinted strongly in its own colour,
+  // so it stays plainly the blue or the green it is, and still reads as one thing to press.
+  it("tints the glass buttons in the button's own colour, strongly enough to stay that colour", () => {
+    const hex = (name: string) => {
+      const value = token(name).replace("#", "");
+      return [0, 2, 4].map((at) => Number.parseInt(value.slice(at, at + 2), 16)).join(" ");
+    };
+    for (const [glass, solid] of [
+      ["--glass-pay", "--pay"],
+      ["--glass-safe", "--felt-raised"],
+    ] as const) {
+      const match = /^rgb\((\d+ \d+ \d+) \/ (0?\.\d+)\)$/.exec(token(glass));
+      expect(match, glass).not.toBeNull();
+      expect(match?.[1], `${glass} is ${solid}`).toBe(hex(solid));
+      expect(Number(match?.[2]), `${glass} is mostly its colour`).toBeGreaterThanOrEqual(0.75);
     }
   });
 });

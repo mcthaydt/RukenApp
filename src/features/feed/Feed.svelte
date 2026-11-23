@@ -681,8 +681,10 @@
     backdrop-filter: var(--glass-filter);
     box-shadow: var(--glass-edge);
   }
+  /* Play is coloured glass on the glass under the words. */
   .band .button {
-    text-shadow: none;
+    background: var(--glass-pay);
+    box-shadow: var(--glass-edge);
   }
   .band a,
   .side button {
