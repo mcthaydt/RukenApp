@@ -712,6 +712,7 @@ describe("what the screens show", () => {
         name: "A game",
         wideClipKey: expect.stringMatching(/^clips\/.*\/wide-/) as string,
         words: "Waiting for review",
+        testPlay: true,
       },
     ]);
     expect(await service.gamesOf(await createUser(db()))).toEqual([]);
