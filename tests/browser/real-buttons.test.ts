@@ -275,6 +275,13 @@ test("the landing page: every action on its own is a real button, and nothing is
   await page.goto("/about");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expectRealButtons(page, { videos: false });
+  // The footer's columns are plain ways round the site, in the regular weight as on main (review round 9): the bold of
+  // a link among words is not theirs.
+  const foot = page.locator(".about .sitefoot a");
+  expect(await foot.count()).toBeGreaterThan(0);
+  expect(
+    await foot.evaluateAll((links) => [...new Set(links.map((link) => getComputedStyle(link).fontWeight))]),
+  ).toEqual(["400"]);
 });
 
 test("the cookie notice: What we keep is blue words with an arrow, and nothing is underlined", async ({

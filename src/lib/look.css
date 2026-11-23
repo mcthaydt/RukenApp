@@ -4428,6 +4428,7 @@ header:has(+ main.about) {
 }
 
 .about .sitefoot a {
+  font-weight: 400;
   text-decoration: none;
 }
 
