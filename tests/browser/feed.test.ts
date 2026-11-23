@@ -96,7 +96,9 @@ test("Ruken opens straight into the feed, with the right clip for the screen", a
   await showTheOwner(page, testInfo, "the feed");
 });
 
-test("turning the window while the next page is on its way keeps the same clip on screen", async ({ page }) => {
+test("turning the window while the next page is on its way keeps the same clip on screen", async ({
+  page,
+}) => {
   // The next page is held until the window has turned, so it comes in at the moment that once moved a person on: the
   // clip's offset in the turned window is past the last clip, where the waiting screen is.
   let asked: () => void = () => undefined;
