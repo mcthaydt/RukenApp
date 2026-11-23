@@ -8,6 +8,7 @@
   screen past the last clip until that page comes. When every game has been shown it goes round again in a new order.
 -->
 <script lang="ts">
+  import { deviceStore } from "../consent/consent.browser.ts";
   import { loads } from "../../lib/loads.ts";
   import { onMount, tick } from "svelte";
   import { snapshot } from "$app/navigation";
@@ -85,13 +86,9 @@
     };
     wide.addEventListener("change", follow);
 
-    // The first open's hints, once per device. A browser that will not keep a note shows them every time.
-    let seen = false;
-    try {
-      seen = localStorage.getItem(SEEN_HINTS) !== null;
-    } catch {
-      // Private browsing: no memory, so no "never again".
-    }
+    // The first open's hints, once per device. A browser that has not said yes to cookies, or will not keep a note,
+    // shows them again on the next visit (the device store keeps the note for this visit only).
+    const seen = deviceStore.get(SEEN_HINTS) !== null;
     if (!seen && clips.length > 0) hint = matchMedia("(pointer: coarse)").matches ? "touch" : "pointer";
 
     // How much of each screen is in the window. The screen past the last clip counts as one after it, so a fast swipe
@@ -210,11 +207,7 @@
   function forgetHints(): void {
     if (hint === null) return;
     hint = null;
-    try {
-      localStorage.setItem(SEEN_HINTS, "1");
-    } catch {
-      // Nothing to keep it in.
-    }
+    deviceStore.set(SEEN_HINTS, "1");
   }
 
   function pressSound(slug: string): void {

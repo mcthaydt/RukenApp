@@ -31,6 +31,8 @@ const PASSED_THROUGH: Record<string, string> = {
   "features/accounts/cookies.ts name": "rk_session",
   // Clears the session cookie when a sign-up cannot finish.
   "features/accounts/forms.ts deps.cookies.sessionCookieName": "rk_session",
+  // The device store keeps the browser-only values (rk_seen_hints, rk_menu_tab) by the key it is handed, and only after a yes.
+  "features/consent/device-store.ts key": "rk_seen_hints",
 };
 
 function sourceFiles(folder: string): string[] {
@@ -92,7 +94,7 @@ describe("the privacy page's cookie list", () => {
   it("finds the names it looks for, so an empty search cannot pass", () => {
     expect(rkNames()).toContain("rk_session");
     expect(setNames().map((call) => call.name)).toEqual(
-      expect.arrayContaining(["rk_arrival", "ruken_sign_up", "page-saved", "thrown-away", "rk_menu_tab"]),
+      expect.arrayContaining(["rk_arrival", "ruken_sign_up", "page-saved", "thrown-away", "rk_consent"]),
     );
   });
 

@@ -29,6 +29,7 @@ import {
 import { boxOf, showTheOwner } from "./support/look.ts";
 import { holdNextScreen } from "./support/hold.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // The maker's questions, one to a screen, and Your games (spec 3, 4, 10.1 and 15.2). A game is asked its name first on
 // `/make/new`; every answer after that is saved the moment it is given. The size and look of each layout are in
@@ -320,6 +321,7 @@ test("a second press of Next while the first is out makes one game", async ({ pa
 test("the questions work with script off", async ({ page, browser, baseURL }) => {
   await signUp(page);
   const context = await browser.newContext({
+    ...consented,
     baseURL: baseURL ?? "http://localhost:4173",
     javaScriptEnabled: false,
     // Nothing here is about motion, and an entrance still moving is not a thing a person presses.
@@ -482,7 +484,7 @@ test("a repository GitHub never listed for her is refused", async ({ page }) => 
 test("another maker cannot open or answer this game's questions", async ({ page, browser, baseURL }) => {
   const { slug } = await startDraft(page);
   const site = baseURL ?? "http://localhost:4173";
-  const stranger = await browser.newContext({ baseURL: site });
+  const stranger = await browser.newContext({ ...consented, baseURL: site });
   try {
     const other = await stranger.newPage();
     await signUp(other);

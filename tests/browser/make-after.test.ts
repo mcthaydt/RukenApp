@@ -24,6 +24,7 @@ import {
 } from "./support/game.ts";
 import { filledButtons, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // What a maker sees once a game has been sent: Waiting, Sent back and Live (spec 5, 5b "Sent back, now", 5c). Each is two
 // halves: the name, the heading, one line and the buttons on one side, the game on the other. The sizes and colours are in
@@ -438,7 +439,7 @@ test("Send it again is not on a live game that was never sent back, and posting 
 test("another maker cannot open any of these", async ({ page, browser, baseURL }) => {
   const { slug } = await gameWhere(page, { state: "sent_back", toFix: [SIDEWAYS] });
   const site = baseURL ?? "http://localhost:4173";
-  const stranger = await browser.newContext({ baseURL: site });
+  const stranger = await browser.newContext({ ...consented, baseURL: site });
   try {
     const other = await stranger.newPage();
     await signUp(other);
