@@ -4804,6 +4804,11 @@ video[data-loading] {
   transform: translateY(calc(100% + 2rem));
 }
 
+/* While the cookie card asks at the foot of the window, the corner button waits under it instead of being half hidden. */
+body:has(aside.consent) .about .tofeed {
+  visibility: hidden;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .about .tofeed {
     transition: transform 360ms var(--ease);
