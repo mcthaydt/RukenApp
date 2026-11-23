@@ -1,6 +1,6 @@
 # Loop videos by hand (#374): implementation audit, round 1
 
-- Pull request: #374, branch `claude/project-thread-cun7hi`, head `274f44d6cb31b7d0873432a65463fb51eaa84470`. `main` at `8cfacf3` (#372 merged).
+- Pull request: #374, branch `claude/project-thread-cun7hi`. Code reviewed and run at `274f44d6cb31b7d0873432a65463fb51eaa84470`; the head then moved to `e4f89a9` (one line added to `docs/superpowers/progress.md`, a flaky-test record, read and no code changed), so the verdict names `e4f89a9`. `main` at `8cfacf3` (#372 merged).
 - Lane 2 (shared `src/lib/quiet-video.ts`, `src/lib/on-screen-video.ts`). One fresh review, Opus 5.5, medium.
 - Where: 4-core cloud container. Journeys in Playwright's image `mcr.microsoft.com/playwright:v1.63.0-noble` (Node 24), Postgres 16 on the host, a fresh database and `.wrangler/state` per batch.
 
@@ -18,7 +18,8 @@
 | `feed-controls`, `about`, `make-questions`, `join`, `feed` journeys, all three devices, `--workers=4` | 274f44d | **303 of 303 passed** |
 | Feed loop journey + wall journey, phone ×3, with `src/` from `main` (#372's `loopOnceStarted`) | 8cfacf3 src, PR tests | Feed **3 of 3 failed**: "the browser's own loop was on while the clip played" (line 274). Wall 3 of 3 passed (#372 had already stopped the wall storm). |
 | Same, with `src/` from before #372 (fixed `loop`, the storm) | 992c281 src, PR tests | Wall **3 of 3 failed**: 53, 50, 53 jumps for one clip in 4 s (limit 5). Feed **3 of 3 failed**: "the clip's time moves on from its start", 0. |
-| CI on 274f44d | GitHub | verify, postgres, browser shards passing; `pr-rules-run` red only for the missing review, which this audit supplies |
+| CI on 274f44d and e4f89a9 | GitHub | verify, postgres and shards 1 to 5 green on both. Shard 6 red once on each head, both times `attach-phone.test.ts:15` [phone]: the "Text me a code" press on `/sign-up` timed out at 5 s (passed on its rerun at 274f44d). `pr-rules-run` red only for the missing review, which this audit supplies. |
+| `attach-phone.test.ts:15`, WebKit phone, `--repeat-each=40 --workers=4` | 274f44d (same code as e4f89a9) | **40 of 40 passed**. `/sign-up` shows no video, so by reading it is not this change; it is the sign-up stall family already in `progress.md` Flaky tests. |
 
 ## What was checked by reading
 
