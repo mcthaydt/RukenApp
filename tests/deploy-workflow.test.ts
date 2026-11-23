@@ -127,4 +127,64 @@ describe("deploy.yml: the steps", () => {
     const withDatabase = stepBlocks.filter((s) => s.includes("DIRECT_DATABASE_URL"));
     expect(withDatabase).toEqual([stepNamed(/id: deploy\n/)]);
   });
+
+  it("masks the database host name before the migration runs, in the deploy step", () => {
+    const deploy = stepNamed(/id: deploy\n/);
+    const maskAt = deploy.indexOf("::add-mask::$dbhost");
+    expect(maskAt).toBeGreaterThan(-1);
+    expect(maskAt).toBeLessThan(deploy.indexOf("pnpm run deploy"));
+    expect(deploy.indexOf("dbhost=${DIRECT_DATABASE_URL")).toBeLessThan(maskAt);
+  });
+});
+
+describe("deploy.yml: the games Worker", () => {
+  const games = () => stepNamed(/id: games\n/);
+
+  it("goes after the site is deployed and checked, and is checked itself", () => {
+    const order = [/id: deploy\n/, /live-check\.sh/, /id: games\n/, /games-check\.sh/].map(indexOfStep);
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(order.at(-1)).toBe(indexOfStep(/games-check\.sh/));
+  });
+
+  it("gives the route to the games step only, never inside its script text", () => {
+    expect(stepBlocks.filter((s) => s.includes("GAMES_ROUTE"))).toEqual([games()]);
+    expect(games()).toContain("GAMES_ROUTE: ${{ secrets.GAMES_ROUTE }}");
+    const run = games().slice(games().indexOf("run: |"));
+    expect(run).not.toContain("secrets.GAMES_ROUTE");
+    expect(run).not.toMatch(/\$\{\{/);
+  });
+
+  it("checks the route is set, masks its host, then writes the started marker, then runs wrangler", () => {
+    const run = games();
+    const at = [
+      'if [ -z "$GAMES_ROUTE" ]',
+      'echo "::add-mask::$host"',
+      'echo "games_started=true"',
+      "pnpm run deploy:games --route",
+    ].map((needle) => run.indexOf(needle));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect(at).toEqual([...at].sort((a, b) => a - b));
+    expect(run).toContain("set -o pipefail");
+  });
+
+  it("fails when the games deploy prints no version id, and hands the id to the check", () => {
+    expect(games()).toContain("Current Version ID");
+    expect(games()).toContain('echo "games_version=$version"');
+    const check = stepNamed(/games-check\.sh/);
+    expect(check).toContain("VERSION_ID: ${{ steps.games.outputs.games_version }}");
+  });
+
+  it("keeps the site hint for a site that went live and the games step never ran, and the gate hint once it started", () => {
+    const site = stepNamed(/name: how to roll back the site/);
+    expect(site).toContain("failure()");
+    expect(site).toContain("steps.deploy.outputs.shipped == 'true'");
+    expect(site).toContain("steps.games.outcome == 'skipped'");
+    expect(site).toContain("pnpm exec wrangler rollback");
+    const gate = stepNamed(/name: how to roll back the games Worker/);
+    expect(gate).toContain("failure()");
+    expect(gate).toContain("steps.games.outputs.games_started == 'true'");
+    expect(gate).toContain("pnpm exec wrangler rollback --name ruken-games");
+    expect(site + gate).not.toMatch(/secrets\./);
+  });
 });
