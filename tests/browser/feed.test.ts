@@ -96,6 +96,42 @@ test("Ruken opens straight into the feed, with the right clip for the screen", a
   await showTheOwner(page, testInfo, "the feed");
 });
 
+test("turning the window while the next page is on its way keeps the same clip on screen", async ({ page }) => {
+  // The next page is held until the window has turned, so it comes in at the moment that once moved a person on: the
+  // clip's offset in the turned window is past the last clip, where the waiting screen is.
+  let asked: () => void = () => undefined;
+  const nextPageAsked = new Promise<void>((resolve) => (asked = resolve));
+  let letGo: () => void = () => undefined;
+  const turned = new Promise<void>((resolve) => (letGo = resolve));
+  await page.route("**/api/feed?**", async (route) => {
+    asked();
+    await turned;
+    await route.continue();
+  });
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const clips = page.locator("section[data-slug]");
+  const count = await clips.count();
+  // The last clip of the first page: the feed asks for the next page as soon as a person is on it.
+  const last = clips.nth(count - 1);
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toHaveAttribute("data-current", "true");
+  await nextPageAsked;
+
+  const size = page.viewportSize();
+  if (size === null) throw new Error("the window has a size");
+  await page.setViewportSize({ width: size.height, height: size.width });
+  // Two frames: the browser has handled the new size and worked out what is on screen before the page comes in.
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  letGo();
+  await expect.poll(() => clips.count()).toBeGreaterThan(count);
+  await expect(last).toHaveAttribute("data-current", "true");
+  const other = isUpright(page) ? "upright" : "wide";
+  await expect(last.locator("video")).toHaveAttribute("src", new RegExp(`/${other}-[0-9a-f]{16}\\.`));
+});
+
 test("a maker with no page has no maker line; the game has its own", async ({ page }) => {
   await page.goto("/");
   const clip = clipOf(page, withoutPage.slug);
