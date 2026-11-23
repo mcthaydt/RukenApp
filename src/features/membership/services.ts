@@ -4,6 +4,7 @@ import type { Clock } from "../../lib/clock.ts";
 import { optionalEnv, requireEnv } from "../../lib/server/env.ts";
 import { createRateLimiter } from "../../lib/server/rate-limit.ts";
 import { authServices } from "../accounts/accounts.ts";
+import { hasConsent } from "../consent/consent.ts";
 import {
   ARRIVAL_COOKIE,
   ARRIVAL_MAX_AGE_SECONDS,
@@ -36,9 +37,9 @@ export interface ArrivalCookie {
   /**
    * Remembers that a visitor just landed on this maker's link. Each new arrival replaces the last,
    * so the cookie always holds the last one. Slice 2's `/g/<game>` and slice 3's `/<handle>` call
-   * this; nothing in slice 1 does.
+   * this; nothing in slice 1 does. Only for a browser that said yes to cookies: without it nothing is remembered.
    */
-  remember(cookies: Pick<Cookies, "set">, link: { makerUserId: string; path: string }): void;
+  remember(cookies: Pick<Cookies, "get" | "set">, link: { makerUserId: string; path: string }): void;
   /** The last arrival, or null when there is none or the cookie was not written by the server. */
   read(cookies: Pick<Cookies, "get">): Arrival | null;
 }
@@ -150,6 +151,7 @@ export function createMembershipServices(source: Settings, auth: AuthParts): Mem
 function arrivalCookie(secret: string, clock: Clock, secure: boolean): ArrivalCookie {
   return {
     remember(cookies, link) {
+      if (!hasConsent(cookies)) return;
       const value = sealArrival({ ...link, atMs: clock.epochMs() }, secret);
       // httpOnly: page scripts cannot read or write it, only the server. SameSite=Lax: it is sent
       // when someone follows a link to Ruken, which is the whole point.

@@ -11,6 +11,7 @@ import { forgetCodeLimits, paperEmailOf, pauseOf } from "./support/database.ts";
 import { countMailsTo, mailTo } from "./support/mail.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { codesKept, codeTo, countCodesTo, sayChangedHands, textTo } from "./support/texts.ts";
+import { clearCookiesKeepingConsent, consented } from "./support/consent.ts";
 
 test.beforeEach(forgetRateLimits);
 
@@ -36,7 +37,7 @@ test("a number with an account and a number with none get the same second screen
   page,
 }) => {
   const { number } = await signUp(page);
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   const stranger = freshNumber();
 
   await askForCode(page, number);
@@ -57,7 +58,7 @@ test("a reset by code saves the new password, signs every device out, and texts 
 }) => {
   const { number, password } = await signUp(page);
   // A second device is signed in too.
-  const other = await browser.newContext({ baseURL: baseURL ?? "http://localhost:4173" });
+  const other = await browser.newContext({ ...consented, baseURL: baseURL ?? "http://localhost:4173" });
   try {
     const device = await other.newPage();
     await device.goto("/sign-in");
@@ -66,7 +67,7 @@ test("a reset by code saves the new password, signs every device out, and texts 
     await device.getByRole("button", { name: "Sign in" }).click();
     await expect(device).toHaveURL("/");
 
-    await page.context().clearCookies();
+    await clearCookiesKeepingConsent(page.context());
     await askForCode(page, number);
     await chooseNewPassword(page, await codeTo(number));
     await expect(page).toHaveURL("/sign-in?reset=1");
@@ -102,7 +103,7 @@ test("a wrong code, a short password and two different passwords each say what t
   page,
 }) => {
   const { number } = await signUp(page);
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   await askForCode(page, number);
 
   await chooseNewPassword(page, "000000");
@@ -124,7 +125,7 @@ test("a wrong code, a short password and two different passwords each say what t
 test("Text it again sends a new code and the old one stops working", async ({ page }) => {
   await page.clock.install();
   const { number } = await signUp(page);
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   // The sign-up's own code is one of the kept ones, so what is counted is what comes after it.
   const before = (await codesKept(number)).length;
   await askForCode(page, number);
@@ -148,7 +149,7 @@ test("Text it again sends a new code and the old one stops working", async ({ pa
 
 test("a number that changed hands gets no code, and the screen reads the same", async ({ page }) => {
   const { number } = await signUp(page);
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   await sayChangedHands(number, "yes");
   const before = await countCodesTo(number);
 
@@ -166,7 +167,7 @@ test("a member whose number Twilio cannot vouch for gets the code at the email t
   const paidWith = await paperEmailOf(number);
   expect(paidWith).toMatch(/@example\.test$/);
   if (paidWith === null) throw new Error("the member's email was not kept");
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   const before = await countCodesTo(number);
 
   await askForCode(page, number);
@@ -181,7 +182,7 @@ test("a member whose number Twilio cannot vouch for gets the code at the email t
 
 test("a reset lifts a sign-in pause", async ({ page }) => {
   const { number } = await signUp(page);
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   for (let guess = 0; guess < 10; guess += 1) {
     await page.goto("/sign-in");
     await page.getByLabel("Phone number").fill(nationalOf(number));

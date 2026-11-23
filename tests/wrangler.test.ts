@@ -42,6 +42,11 @@ describe("wrangler.jsonc", () => {
     expect(wrangler().compatibility_flags).toContain("nodejs_compat");
   });
 
+  // Nothing is kept about a visitor before they say yes to cookies, and Cloudflare's logs keep request details.
+  it("keeps no Cloudflare logs", () => {
+    expect(wrangler().observability).toEqual({ enabled: false });
+  });
+
   it("binds the database as HYPERDRIVE", () => {
     expect(wrangler().hyperdrive?.[0]?.binding).toBe("HYPERDRIVE");
   });
@@ -210,5 +215,12 @@ describe("Netlify is gone", () => {
   it("no file the site is built or tested from names it", () => {
     const naming = [...FILES, ...sources].filter((path) => /netlify/i.test(read(path)));
     expect(naming).toEqual([]);
+  });
+});
+
+describe("the games Worker", () => {
+  it("keeps no Cloudflare logs", () => {
+    const gate = JSON.parse(jsoncText("cloudflare/games/wrangler.jsonc")) as WranglerConfig;
+    expect(gate.observability).toEqual({ enabled: false });
   });
 });

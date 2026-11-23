@@ -289,6 +289,7 @@ describe("screens wear the look and nothing of their own", () => {
     "row",
     "button",
     "quiet",
+    "plain-link",
     "safe",
     "danger",
     "outline",
@@ -379,15 +380,43 @@ describe("screens wear the look and nothing of their own", () => {
     "side",
     // Words only a screen reader meets: the layout's "Sending…" (src/lib/busy-forms.ts).
     "hidden-words",
+    // The bold paywall card (src/routes/join): its Dusky Green top and paper half, what a member gets, the close mark, the plans.
+    "bold",
+    "cardtop",
+    "cardbody",
+    "gets",
+    "close",
+    "plans",
+    "plan",
+    "mark",
+    "price",
+    "saves",
+    "small",
+    // Help for makers (src/routes/help): the felt page, its way back, its lead line and its numbered guides.
+    "helpdesk",
+    "lead",
+    "guide",
+    "titlerow",
+    "number",
+    "arrow",
+    // A maker's test play: the button under a game in Your games, and the strip across the top of the test play.
+    "testplay",
+    "teststrip",
     // A list of short points on a reading page (privacy, terms).
     "bullets",
   ];
   const ROUTES = "src/routes";
 
-  /** Every .svelte file under src/routes, as a path from the repository's root. */
-  const screens = readdirSync(ROUTES, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".svelte"))
-    .map((entry) => join(entry.parentPath, entry.name));
+  /**
+   * Every .svelte file under src/routes, as a path from the repository's root, and the play screen, which a game's Play
+   * and a maker's test play share from the play feature.
+   */
+  const screens = [
+    ...readdirSync(ROUTES, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".svelte"))
+      .map((entry) => join(entry.parentPath, entry.name)),
+    "src/features/play/PlayScreen.svelte",
+  ];
 
   const classNamesOf = (text: string) =>
     [...text.matchAll(/class="([^"]*)"/g)].flatMap((match) => (match[1] ?? "").split(/\s+/).filter(Boolean));

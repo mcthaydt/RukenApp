@@ -28,6 +28,7 @@ import { pullGame, type Pull } from "./pull.ts";
 import { counterOf, firstUnanswered, type Answers } from "./questions.ts";
 import { listWords, sentBackStillOpen, stateParts, stateWords } from "./review.ts";
 import { isReasonFor, makerWords, partTitle } from "./send-back.ts";
+import { testPlayPullId } from "./test-play.ts";
 import {
   dayWords,
   decisionDaysDue,
@@ -101,6 +102,8 @@ export interface MakerGameRow {
   name: string;
   wideClipKey: string | null;
   words: string;
+  /** True when the maker has files to test-play before staff say yes (see `testPlayPullId`). */
+  testPlay: boolean;
 }
 
 /** A video a game holds, as the screens need it: where it is in the bucket and how big it was when saved. */
@@ -168,6 +171,14 @@ export interface MakerGame {
   sentBackLast: boolean;
   /** For a game that is off Ruken: whether some of its files are still in the bucket. False for every other state. */
   filesLeft: boolean;
+  /** True when the maker has files to test-play before staff say yes (see `testPlayPullId`). */
+  testPlay: boolean;
+}
+
+/** A game its maker is about to test-play, and the copy of its files that loads. */
+export interface TestPlay {
+  game: { id: string; publicId: string; slug: string; name: string; ageRating: AgeRating | null };
+  pull: { id: string; connectHosts: string[] };
 }
 
 /** What staff see of a game waiting for review: the maker's view, and the files that wait. */
@@ -949,7 +960,7 @@ export function createGamesService(deps: GamesServiceDeps) {
           // database refuses an 18+ game that is past draft without, and the maker would be told nothing.
           const known = (answer.contentMarks ?? []).filter((mark) => CONTENT_MARKS.includes(mark));
           const problem = marksProblem(known);
-          if (problem !== undefined) throw new GameError("INVALID", problem);
+          if (problem !== undefined) throw new GameError("INVALID", problem, "marks");
           marks = known.includes("none") ? ["none"] : [...new Set(known)];
         }
         if (holds) {
@@ -1175,7 +1186,8 @@ export function createGamesService(deps: GamesServiceDeps) {
    * else's game it is the same "not found" as every other change.
    */
   async function setShowsPlayerCount(gameId: string, makerUserId: string, on: boolean): Promise<void> {
-    await ownGame(gameId, makerUserId);
+    const game = await ownGame(gameId, makerUserId);
+    if (game.state !== "live") throw new GameError("NOT_READY", "This game isn't live.");
     await deps.db.game.update({ where: { id: gameId }, data: { showsPlayerCount: on } });
   }
 
@@ -1521,6 +1533,13 @@ export function createGamesService(deps: GamesServiceDeps) {
       }),
       // Asking the bucket is `withFilesLeft`'s job, and only for a game that is off.
       filesLeft: false,
+      testPlay:
+        testPlayPullId({
+          state: row.state,
+          pendingPullId: row.pendingPullId,
+          livePullId: row.livePullId,
+          newestPullId: newest?.id ?? null,
+        }) !== null,
     };
   }
 
@@ -1612,6 +1631,13 @@ export function createGamesService(deps: GamesServiceDeps) {
             newestPullIsLive: row.livePullId !== null && row.pulls[0]?.id === row.livePullId,
           }),
         }),
+        testPlay:
+          testPlayPullId({
+            state: row.state,
+            pendingPullId: row.pendingPullId,
+            livePullId: row.livePullId,
+            newestPullId: row.pulls[0]?.id ?? null,
+          }) !== null,
       };
     });
   }
@@ -1623,6 +1649,45 @@ export function createGamesService(deps: GamesServiceDeps) {
       select: gameSelect,
     });
     return row === null ? null : withFilesLeft(makerView(row));
+  }
+
+  /**
+   * What one of a maker's games test-plays: the game, and the copy of its files to load (see `testPlayPullId`). Null for
+   * someone else's game, a game that is not there, or one with nothing to test, so the page is missing for them all
+   * alike and a stranger learns nothing.
+   */
+  async function testPlayOf(slug: string, makerUserId: string): Promise<TestPlay | null> {
+    const row = await deps.db.game.findFirst({
+      where: { slug, makerUserId },
+      select: {
+        id: true,
+        publicId: true,
+        slug: true,
+        name: true,
+        state: true,
+        ageRating: true,
+        pendingPullId: true,
+        livePullId: true,
+        pulls: { orderBy: NEWEST_FIRST, take: 1, select: { id: true } },
+      },
+    });
+    if (row === null) return null;
+    const pullId = testPlayPullId({
+      state: row.state,
+      pendingPullId: row.pendingPullId,
+      livePullId: row.livePullId,
+      newestPullId: row.pulls[0]?.id ?? null,
+    });
+    if (pullId === null) return null;
+    const pull = await deps.db.gamePull.findUnique({
+      where: { id: pullId },
+      select: { id: true, connectHosts: true },
+    });
+    if (pull === null) return null;
+    return {
+      game: { id: row.id, publicId: row.publicId, slug: row.slug, name: row.name, ageRating: row.ageRating },
+      pull,
+    };
   }
 
   /** The view with `filesLeft` asked of the bucket, which only a game that is off Ruken needs. */
@@ -1902,6 +1967,7 @@ export function createGamesService(deps: GamesServiceDeps) {
     gameForMaker,
     gameForReview,
     liveGameBySlug,
+    testPlayOf,
     liveGames,
     moreLiveGamesBy,
     rememberConnection,
