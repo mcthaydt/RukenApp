@@ -9,6 +9,7 @@ import {
 } from "@playwright/test";
 import { pageHasSettled, signUp, signUpInItsOwnContext } from "./account.ts";
 import { changeGame, fillAnswers, idsOf, putGameWhereStaffLeaveIt } from "./database.ts";
+import { consented } from "./consent.ts";
 
 // The steps every maker journey shares: a maker with a game, the answers a screen asks for, and the videos. GitHub is
 // the stand-in on this machine (support/fake-github-server.ts), which lists `ruken-test/tiny-game` and
@@ -390,7 +391,7 @@ export async function reviewJob(
 export async function submitGame(
   browser: Browser,
 ): Promise<{ slug: string; name: string; maker: { number: string; password: string } }> {
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     const page = await context.newPage();
     const { slug, name, maker } = await answerEveryQuestion(page);

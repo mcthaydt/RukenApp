@@ -8,6 +8,7 @@
   screen past the last clip until that page comes. When every game has been shown it goes round again in a new order.
 -->
 <script lang="ts">
+  import { deviceStore } from "../consent/consent.browser.ts";
   import { loads } from "../../lib/loads.ts";
   import { onMount, tick } from "svelte";
   import { snapshot } from "$app/navigation";
@@ -15,8 +16,16 @@
   import { clampClip, currentOf, stepFor } from "./current.ts";
   import { shareLink, type ShareTools } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
+  import { WishlistButton } from "../launch/launch.browser.ts";
 
-  let { first }: { first: FeedPage } = $props();
+  let {
+    first,
+    launch,
+  }: {
+    first: FeedPage;
+    /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
+    launch: { before: false } | { before: true; opens: string; wished: string[] };
+  } = $props();
 
   /** How many clips before the end of what the feed has it asks for the next page, so a person rarely meets the spinner. */
   const ASK_AHEAD = 3;
@@ -77,13 +86,25 @@
     };
     wide.addEventListener("change", follow);
 
-    // The first open's hints, once per device. A browser that will not keep a note shows them every time.
-    let seen = false;
-    try {
-      seen = localStorage.getItem(SEEN_HINTS) !== null;
-    } catch {
-      // Private browsing: no memory, so no "never again".
-    }
+    // Turning a phone (or any change to the window's size) changes every clip's height, so the feed's scroll offset now
+    // points somewhere else: near the end of what the feed has, past the last clip, at the screen that waits for the next
+    // page. Safari's engine does not always bring the person's clip back, and if that page then comes in while the
+    // waiting screen looks to be on screen, the feed moves the person on to its first clip. So the clip the person was
+    // on is put back here. The resize event runs before the browser works out what is on screen, so `current` is still
+    // that clip and the watcher never sees the in-between place. Only a change of width counts: a phone's browser bars
+    // grow and shrink the height in the middle of a swipe, and putting the clip back then would undo the swipe.
+    let width = window.innerWidth;
+    const keepPlace = () => {
+      if (window.innerWidth === width) return;
+      width = window.innerWidth;
+      const place = current >= clips.length ? moreScreen : sections[current];
+      place?.scrollIntoView({ behavior: "instant", block: "start" });
+    };
+    window.addEventListener("resize", keepPlace);
+
+    // The first open's hints, once per device. A browser that has not said yes to cookies, or will not keep a note,
+    // shows them again on the next visit (the device store keeps the note for this visit only).
+    const seen = deviceStore.get(SEEN_HINTS) !== null;
     if (!seen && clips.length > 0) hint = matchMedia("(pointer: coarse)").matches ? "touch" : "pointer";
 
     // How much of each screen is in the window. The screen past the last clip counts as one after it, so a fast swipe
@@ -106,6 +127,7 @@
     });
     return () => {
       wide.removeEventListener("change", follow);
+      window.removeEventListener("resize", keepPlace);
       watcher?.disconnect();
       clearTimeout(noteTimer);
     };
@@ -202,11 +224,7 @@
   function forgetHints(): void {
     if (hint === null) return;
     hint = null;
-    try {
-      localStorage.setItem(SEEN_HINTS, "1");
-    } catch {
-      // Nothing to keep it in.
-    }
+    deviceStore.set(SEEN_HINTS, "1");
   }
 
   function pressSound(slug: string): void {
@@ -399,8 +417,18 @@
               <h2>{clip.name}</h2>
               <p>{clip.oneLine}</p>
             </a>
-            <!-- Opening the game counts a play, so it never loads ahead of a press. -->
-            <a class="button play" data-sveltekit-preload-data="off" href={`/g/${clip.slug}/play`}>Play</a>
+            {#if launch.before}
+              <WishlistButton
+                slug={clip.slug}
+                wished={launch.wished.includes(clip.slug)}
+                opens={launch.opens}
+                back="/"
+                buttonClass="button play"
+              />
+            {:else}
+              <!-- Opening the game counts a play, so it never loads ahead of a press. -->
+              <a class="button play" data-sveltekit-preload-data="off" href={`/g/${clip.slug}/play`}>Play</a>
+            {/if}
           </div>
           <div class="side">
             <p class="sharenote" role="status">{note?.key === clip.key ? note.words : ""}</p>
@@ -629,7 +657,8 @@
     margin: 0.25rem 0 0;
     overflow-wrap: anywhere;
   }
-  .play {
+  .play,
+  .band :global(.wish .play) {
     width: 100%;
     margin: 0;
   }
@@ -667,7 +696,8 @@
   }
   .maker:focus-visible,
   .gamelink:focus-visible,
-  .play:focus-visible {
+  .play:focus-visible,
+  .band :global(.wish .play:focus-visible) {
     outline-color: var(--chalk);
   }
 </style>

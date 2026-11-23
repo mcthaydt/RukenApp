@@ -3,13 +3,14 @@ import { freshNumber, JOURNEY_PASSWORD, nationalOf, signUp, SITE_ANSWER_TIMEOUT 
 import { pauseOf } from "./support/database.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { textTo } from "./support/texts.ts";
+import { clearCookiesKeepingConsent } from "./support/consent.ts";
 
 test.beforeEach(forgetRateLimits);
 
 // A person who has an account but is signed out: the cookies are gone, the account stays.
 async function signedOutWithAccount(page: Page): Promise<{ number: string; password: string }> {
   const account = await signUp(page);
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   return account;
 }
 
@@ -45,7 +46,7 @@ test("the number can be typed with brackets, dashes, spaces or a leading 1", asy
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
     await expect(page, typed).toHaveURL("/");
-    await page.context().clearCookies();
+    await clearCookiesKeepingConsent(page.context());
   }
 });
 

@@ -7,5 +7,5 @@
 
 <!-- A new first page (coming back to the feed) starts the feed again from it. -->
 {#key data.first}
-  <Feed first={data.first} />
+  <Feed first={data.first} launch={data.launch} />
 {/key}

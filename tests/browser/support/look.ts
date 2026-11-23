@@ -262,12 +262,25 @@ export function filledButtons(page: Page): Locator {
 export async function expectOneCard(page: Page, options: { red?: string[] } = {}): Promise<void> {
   const card = page.locator("main.card");
   await expect(card).toHaveCount(1);
-  await expect(card).toHaveCSS("background-color", rgb(token("--paper")));
-  await expect(card).toHaveCSS("color", rgb(token("--ink")));
-  await expect(card).toHaveCSS("border-top-left-radius", "20px");
+  // The bold card (the paywall) is in two halves: its paper is the half under (or beside) its Dusky Green top, and the
+  // paper half's corners are the card's. Every other card is paper all over.
+  const bold = await card.evaluate((node) => node.classList.contains("bold"));
+  const paper = bold ? card.locator(".cardbody") : card;
+  await expect(paper).toHaveCSS("background-color", rgb(token("--paper")));
+  await expect(paper).toHaveCSS("color", rgb(token("--ink")));
+  await expect(paper).toHaveCSS("border-bottom-right-radius", "20px");
+  if (!bold) await expect(card).toHaveCSS("border-top-left-radius", "20px");
   await expect(card).toHaveCSS("border-top-width", "0px");
   await expect(card).toHaveCSS("box-shadow", "none");
-  await expect(card.getByRole("heading", { level: 1 })).toHaveCSS("font-size", "32px");
+  // The paywall is the one bold card (the owner, 2026-11-22: the plain one was "boring"): its title is 44px or more.
+  // Every other card's title is the card title's 32px.
+  const title = card.getByRole("heading", { level: 1 });
+  if (bold) {
+    const size = await title.evaluate((node) => parseFloat(getComputedStyle(node).fontSize));
+    expect(size).toBeGreaterThanOrEqual(44);
+  } else {
+    await expect(title).toHaveCSS("font-size", "32px");
+  }
   expect(await filledButtons(page).count()).toBeLessThanOrEqual(1);
   expect(await pipRed(page)).toEqual(options.red ?? []);
   expect(

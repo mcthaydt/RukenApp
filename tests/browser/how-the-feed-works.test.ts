@@ -15,7 +15,9 @@ test("a person finds how the feed works from help, reads today apart from what's
   page,
 }, testInfo) => {
   await page.goto("/help");
-  await page.getByRole("link", { name: "How the feed works" }).click();
+  const fromHelp = page.getByRole("link", { name: "How the feed works" });
+  await expect(fromHelp).toHaveCSS("text-decoration-line", "none");
+  await fromHelp.click();
 
   await expect(page).toHaveURL(`${PAGE}?from=%2Fhelp`);
   await expect(page.getByRole("heading", { level: 1, name: "How the feed works" })).toBeVisible();

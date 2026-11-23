@@ -1238,6 +1238,25 @@ form > * + button:not(.quiet) {
   }
 }
 
+/* Your games and You carry the bar of places at the bottom (src/features/feed/Bar.svelte), so their last line ends
+   clear above it, and Your games' Add a game stays under its heading instead of being pinned under the bar. */
+:root:has(nav.bar) :is(main.card, .screen) {
+  margin-bottom: calc(var(--size-target) + 2rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
+  :root:has(nav.bar) .screen {
+    padding-bottom: 0;
+  }
+
+  :root:has(nav.bar) .screen main.games > .acts {
+    position: static;
+    margin-top: 1.5rem;
+    padding: 0;
+    background: none;
+  }
+}
+
 /* A video, in its place: as big as the frame or the card it sits in, cropped to fit, sage until it has a picture. */
 .tile {
   display: block;
@@ -1927,6 +1946,11 @@ a.game {
   transition: transform var(--press-time);
 }
 
+/* Test play, under its game's card in Your games. */
+.games .testplay {
+  margin-top: 0.5rem;
+}
+
 a.game > .tile {
   flex: none;
   width: 96px;
@@ -2047,19 +2071,83 @@ html[data-step="back"] .screen main > form > :not(.acts) {
 
 /* Where the browser can make a move a view transition, the old question lifts 12px and fades in 120ms, over the new
    one whose lines are rising. The bar and the track stay where they are. */
-::view-transition-old(root) {
+html[data-step]::view-transition-old(root) {
   z-index: 1;
   mix-blend-mode: normal;
   animation: lift-away 120ms ease-in both;
 }
 
-::view-transition-new(root) {
+html[data-step]::view-transition-new(root) {
   mix-blend-mode: normal;
   animation: none;
 }
 
 html[data-step="back"]::view-transition-old(root) {
   animation-name: drop-away;
+}
+
+/* Every other move between pages slides sideways, as a swipe does in an app (src/lib/page-moves.ts): the old page goes
+   out one side as the new one comes in from the other, together, in 300ms. Going on, the new page comes from the
+   right; going back, from the left. The bar of places and the maker's top bar stay where they are. */
+html[data-move]::view-transition-old(root),
+html[data-move]::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation-duration: 300ms;
+  animation-timing-function: var(--ease);
+  animation-fill-mode: both;
+}
+
+html[data-move="on"]::view-transition-old(root) {
+  animation-name: out-to-left;
+}
+
+html[data-move="on"]::view-transition-new(root) {
+  animation-name: in-from-right;
+}
+
+html[data-move="back"]::view-transition-old(root) {
+  animation-name: out-to-right;
+}
+
+html[data-move="back"]::view-transition-new(root) {
+  animation-name: in-from-left;
+}
+
+/* The maker's top bar, track and buttons slide with their page; only the bar of places stays. */
+html[data-move] .topbar,
+html[data-move] .track,
+html[data-move] .screen .acts {
+  view-transition-name: none;
+}
+
+/* A maker's page that slides in does not also rise line by line: one move at a time. */
+html[data-move] .screen main > :not(form, .acts),
+html[data-move] .screen main > form > :not(.acts) {
+  animation: none;
+}
+
+@keyframes out-to-left {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes out-to-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes in-from-left {
+  from {
+    transform: translateX(-100%);
+  }
 }
 
 /* A numbered list of points (the maker agreement): the number is the list's own, in the display face and hung in the
@@ -2343,6 +2431,612 @@ a.sheet.fix {
   background: var(--dim-bg);
   -webkit-backdrop-filter: var(--dim-filter);
   backdrop-filter: var(--dim-filter);
+}
+
+/* The bold card: the paywall (src/routes/join). The owner, 2026-11-22, on the plain card: "boring". It is one card in
+   the same place, in two halves: a top of Dusky Green holds a big chalk title, what a member gets and the close mark;
+   the paper half holds the plans, the one blue button and the small print. When the game the person tapped plays
+   behind the card, the top has no surface of its own, so the game moves behind the title. On a computer the halves sit side by
+   side and the card takes the width of the window's middle, so it is not a narrow sheet on empty felt. */
+.card.bold {
+  --card-pad: 1.5rem;
+
+  display: grid;
+  padding: 0;
+  background: none;
+}
+
+@media (min-width: 48rem) {
+  .card.bold {
+    --card-pad: 2rem;
+  }
+}
+
+/* The space between the halves is their own padding, not the card's one-rem rhythm. */
+.card.bold > * + * {
+  margin-top: 0;
+}
+
+.card.bold .cardtop {
+  padding: var(--card-pad);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: var(--felt-raised);
+  color: var(--chalk);
+}
+
+.card.bold .cardbody {
+  padding: var(--card-pad);
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+  background: var(--paper);
+}
+
+.card.bold .cardbody > * + * {
+  margin-top: 1rem;
+}
+
+/* Over the game's clip the top has no surface of its own: the title and its lines sit straight on the clip's dim, which is
+   already the frosted glass every see-through surface is (the owner, 2026-11-22), so the game plays behind the title.
+   A second layer of glass on the dim made a near-black slab that hid the game (design round 2). White on the dim is
+   5.9 to 1 at the brightest clip measured. The card sits as close under the wordmark as it does on its own. */
+.behindcard ~ main.card.bold .cardtop {
+  background: none;
+}
+
+/* With no top behind it, the paper half has all four of the card's corners. */
+.behindcard ~ main.card.bold .cardbody {
+  border-radius: var(--radius-card);
+}
+
+header ~ .behindcard + main.card.bold {
+  margin-top: 1rem;
+}
+
+@media (min-width: 48rem) {
+  header ~ .behindcard + main.card.bold {
+    margin-top: 1.5rem;
+  }
+}
+
+/* The card fills the window down to a gutter at the bottom, so a short card is never a strip on empty felt (the owner,
+   2026-11-22: "the white space makes it look incomplete, especially on desktop"). The space above it is the wordmark's row:
+   half a rem, the 48px wordmark and a rem on a phone; three rems, the wordmark and a rem and a half from 48rem. On a phone
+   and a tablet the top grows and the paper half sits at the foot of the screen, as a sheet does; on a computer both halves
+   take the full height. A card taller than the window just runs on and scrolls, as before. */
+main.card.bold,
+main.helpdesk {
+  --above-main: 4.5rem;
+  --below-main: 1rem;
+
+  min-height: calc(100vh - var(--above-main) - var(--below-main));
+  min-height: calc(100dvh - var(--above-main) - var(--below-main));
+  margin-bottom: var(--below-main);
+}
+
+@media (min-width: 48rem) {
+  main.card.bold,
+  main.helpdesk {
+    --above-main: 7.5rem;
+    --below-main: 2rem;
+  }
+}
+
+.card.bold {
+  grid-template-rows: 1fr auto;
+}
+
+/* A tall top does not leave its lines at the top and a gap under them: the title stays at the top and what a member gets
+   sits at the top's foot, by the plans. */
+.card.bold .cardtop:has(.gets) {
+  display: flex;
+  flex-direction: column;
+}
+
+.card.bold .cardtop:has(.gets) .gets {
+  margin-top: auto;
+  padding-top: 1.5rem;
+}
+
+/* With one thing to do (already a member, or paused) the top holds only the title: it sits at the top's foot, right over
+   the button, and is as big as the screen lets it be, so the top is a poster, not a green field with a line at its head.
+   The close mark keeps the corner, and the top keeps the mark's row clear above the title. */
+.card.bold:not(:has(.plans)) .cardtop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.card.bold:not(:has(.plans)) .cardtop:has(.close) {
+  padding-top: calc(var(--card-pad) + var(--size-target) + 1rem);
+}
+
+.card.bold:not(:has(.plans)) .cardtop .close {
+  position: absolute;
+  top: var(--card-pad);
+  right: var(--card-pad);
+}
+
+/* From a tablet up the title is as big as the top lets it be. */
+@media (min-width: 48rem) {
+  .card.bold .cardtop h1 {
+    font-size: clamp(4.5rem, 12vw, 8rem);
+  }
+}
+
+@media (min-width: 60rem) {
+  main.card.bold,
+  header:has(~ main.card.bold) {
+    width: min(100% - 4rem, 64rem);
+  }
+
+  /* Two even halves: a long title word never widens its half. */
+  .card.bold {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: 1fr;
+  }
+
+  .card.bold .cardtop {
+    border-radius: var(--radius-card) 0 0 var(--radius-card);
+  }
+
+  /* The plans and the button at the top of the paper half, the small print at its foot, level with the last of what a
+     member gets: the half is laid out from edge to edge, not a block floating in white. */
+  .card.bold .cardbody {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-radius: 0 var(--radius-card) var(--radius-card) 0;
+  }
+
+  /* With one thing to do (already a member, or paused) there is nothing to set beside the title: the card is one tall
+     panel with the title big across it and the paper strip at its foot, as on a tablet. */
+  .card.bold:not(:has(.plans)) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 1fr auto;
+  }
+
+  .card.bold:not(:has(.plans)) .cardtop {
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+  }
+
+  .card.bold:not(:has(.plans)) .cardbody {
+    display: block;
+    border-radius: 0 0 var(--radius-card) var(--radius-card);
+  }
+}
+
+/* The title is the size of a section heading and more: the first thing anyone sees. Whole words only: a card's long
+   addresses may wrap anywhere, a title never does. On the smallest phone it is small enough for "membership". */
+.card.bold h1 {
+  font: 400 clamp(2.25rem, 12vw, 4.5rem) / 0.95 var(--font-display);
+  overflow-wrap: normal;
+}
+
+/* On a computer the title grows to the size of its half. */
+@media (min-width: 60rem) {
+  .card.bold .cardtop h1 {
+    font-size: clamp(4rem, 7.5vw, 7rem);
+  }
+}
+
+/* What a member gets: short chalk lines at the buttons' weight, each after a tick drawn in Glaucous Green. */
+.card.bold .gets {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  font: var(--text-button);
+}
+
+.card.bold .gets li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+/* The tick: two edges of a small box, turned, so no picture and no font is needed. */
+.card.bold .gets li::before {
+  content: "";
+  flex: none;
+  width: 0.5rem;
+  height: 0.9rem;
+  margin: 0 0.3rem 0.2rem 0.4rem;
+  border: solid var(--sage);
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+
+/* Not now, as the close mark: a square the size of a button in the top's corner, a tone darker than the top. It
+   floats, so only the title's first line makes room for it and the lines under it use the whole width. */
+.card.bold .close {
+  float: right;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-target);
+  height: var(--size-target);
+  margin: -0.5rem -0.5rem 0.5rem 0.75rem;
+  border-radius: var(--radius-button);
+  background: var(--felt);
+  color: var(--chalk);
+  text-decoration: none;
+  transition: transform var(--press-time);
+}
+
+.card.bold .close:active {
+  transform: scale(var(--press-scale));
+}
+
+.card.bold .close svg,
+.helpdesk svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* On the Dusky Green top the ring is chalk, as it is on the felt. */
+.card.bold .cardtop :focus-visible {
+  outline-color: var(--chalk);
+}
+
+/* The two plans: big rows, a gap apart, the price in the display face. The chosen row turns ink with chalk words, so it
+   is seen at a glance and without colour. */
+.card.bold .plans {
+  display: grid;
+  gap: 1rem;
+}
+
+.card.bold .plan {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 4.5rem;
+  padding: 0.75rem clamp(1rem, 4vw, 1.25rem);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-field);
+  cursor: pointer;
+  transition: transform var(--press-time);
+}
+
+.card.bold .plan:active {
+  transform: scale(var(--press-scale));
+}
+
+.card.bold .plan:has(input:checked) {
+  background: var(--ink);
+  color: var(--chalk);
+}
+
+/* The keyboard's ring goes round the whole row, drawn by the price's own layer laid over the row. Tab gives it
+   :focus-visible; the arrow keys give it the group's data-keys (set by any key, cleared by any press), since WebKit takes :focus-visible off a radio the arrow
+   keys move to, though it keeps :focus (measured on the phone, #348). A press or a click shows no ring. */
+.card.bold .plan input:focus-visible ~ .price::before,
+.card.bold .plans[data-keys] .plan input:focus ~ .price::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: var(--radius-field);
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+  pointer-events: none;
+}
+
+/* The real radio button lies over the whole row, unseen, so a press anywhere on the row is a press on it and the
+   keyboard and a reader still use it; the row's mark is Ruken's own: an empty rounded square, and a Glaucous Green
+   one with an ink tick when the row is chosen. */
+.card.bold .plan input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.card.bold .mark {
+  position: relative;
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 2px solid currentColor;
+  border-radius: 8px;
+}
+
+.card.bold .plan:has(input:checked) .mark {
+  border-color: var(--sage);
+  background: var(--sage);
+}
+
+.card.bold .plan:has(input:checked) .mark::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  left: 0.5rem;
+  width: 0.45rem;
+  height: 0.85rem;
+  border: solid var(--ink);
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+
+/* A price never breaks inside itself, and on the smallest phone it is a little smaller so "a month" fits beside it. */
+.card.bold .price {
+  flex: none;
+  font: 400 clamp(1.625rem, 8vw, 2rem) / 1 var(--font-display);
+  white-space: nowrap;
+}
+
+/* What the yearly plan saves: a tab on the row's top edge, Glaucous Green with ink words on paper and on ink alike. */
+.card.bold .saves {
+  position: absolute;
+  top: -0.8rem;
+  right: 1rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 8px;
+  background: var(--sage);
+  color: var(--ink);
+  font: var(--text-button);
+  font-size: 0.875rem;
+}
+
+/* The one blue button, a form's or a link's, spans the card at every size and stands a little taller: it is the
+   card's only action. On the smallest phone its words are a little smaller, so "Continue to payment" is one line. */
+.card.bold form > button,
+.card.bold p > a.button:only-child {
+  width: 100%;
+  min-height: 3.5rem;
+  font-size: 1.25rem;
+}
+
+@media (max-width: 359px) {
+  .card.bold form > button,
+  .card.bold p > a.button:only-child {
+    font-size: 1.125rem;
+  }
+}
+
+.card.bold .small p {
+  margin-top: 0.25rem;
+  color: var(--ink-soft);
+  font: var(--text-small);
+}
+
+.card.bold .small p:first-child {
+  margin-top: 0;
+}
+
+/* On a computer the plans grow to the size of their half. */
+@media (min-width: 60rem) {
+  .card.bold .plan {
+    min-height: 5.5rem;
+  }
+
+  .card.bold .price {
+    font-size: 2.5rem;
+  }
+}
+
+/* A short window (a small phone, a tablet held sideways) packs the card tighter, so the blue button is in view without
+   scrolling. On a computer the halves sit side by side and have room. */
+@media (max-height: 740px) and (max-width: 59.99rem) {
+  .card.bold .gets {
+    gap: 0.25rem;
+    margin-top: 1rem;
+  }
+
+  .card.bold .plans {
+    gap: 0.75rem;
+  }
+
+  .card.bold .plan {
+    min-height: 3.75rem;
+    padding-block: 0.5rem;
+  }
+
+  .card.bold .cardbody > * + * {
+    margin-top: 0.75rem;
+  }
+
+  .card.bold form > button {
+    margin-top: 1rem;
+  }
+}
+
+/* Help for makers (src/routes/help): no sheet. A huge chalk title on the felt and three numbered tiles, one tone each,
+   wider than the reading column so the three sit side by side on a computer. The wordmark above keeps to the same
+   width, so it still starts where the page starts. */
+main.helpdesk,
+header:has(~ main.helpdesk) {
+  width: min(100% - 2rem, 72rem);
+}
+
+@media (min-width: 48rem) {
+  main.helpdesk,
+  header:has(~ main.helpdesk) {
+    width: min(100% - 4rem, 72rem);
+  }
+}
+
+.helpdesk .back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-target);
+  height: var(--size-target);
+  margin: 0;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  text-decoration: none;
+  transition: transform var(--press-time);
+}
+
+.helpdesk .back:active {
+  transform: scale(var(--press-scale));
+}
+
+.helpdesk h1 {
+  margin-top: 1.5rem;
+  font: 400 clamp(3rem, 12vw, 7rem) / 0.92 var(--font-display);
+  text-wrap: balance;
+}
+
+.helpdesk .lead {
+  margin-top: 1.25rem;
+  color: var(--sage);
+  font: var(--text-statement);
+}
+
+/* The tiles take what the window has left under the title, so the page ends at the window's foot, not partway down. */
+main.helpdesk {
+  display: flex;
+  flex-direction: column;
+}
+
+.helpdesk nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.helpdesk ol {
+  display: grid;
+  flex: 1;
+  grid-auto-rows: 1fr;
+  gap: 1rem;
+  margin: 2.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 48rem) {
+  .helpdesk ol {
+    gap: 1.25rem;
+  }
+}
+
+/* Side by side only where a tile is wide enough to read across; on a tablet three narrow columns were tall strips with
+   nothing in their middles, so the tiles stack as wide rows there, as on a phone. */
+@media (min-width: 60rem) {
+  .helpdesk ol {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* A tile: the whole of it is the guide's link (its name's link stretches over it), pressed like a button. Paper, then
+   Glaucous Green, then Dusky Green: the first guide is the brightest, as it is the one to start with. */
+.helpdesk .guide {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  color: var(--ink);
+  transition: transform var(--press-time);
+}
+
+.helpdesk .guide:nth-child(2) {
+  background: var(--sage);
+}
+
+.helpdesk .guide:nth-child(3) {
+  background: var(--felt-raised);
+  color: var(--chalk);
+}
+
+.helpdesk .guide:active {
+  transform: scale(var(--press-scale));
+}
+
+@media (min-width: 48rem) {
+  .helpdesk .guide {
+    padding: 2rem;
+  }
+}
+
+@media (min-width: 60rem) {
+  .helpdesk .guide {
+    min-height: 19rem;
+  }
+}
+
+.helpdesk .number {
+  font: 400 4.5rem/0.9 var(--font-display);
+}
+
+.helpdesk .guide:nth-child(1) .number {
+  color: var(--pay);
+}
+
+.helpdesk .guide:nth-child(2) .number {
+  color: var(--felt-raised);
+}
+
+.helpdesk .guide:nth-child(3) .number {
+  color: var(--sage);
+}
+
+.helpdesk .guide h2 {
+  margin-top: auto;
+  padding-top: 1.5rem;
+  font: 400 1.75rem/1.1 var(--font-display);
+  text-wrap: balance;
+}
+
+@media (min-width: 48rem) {
+  .helpdesk .guide h2 {
+    padding-top: 2rem;
+  }
+}
+
+.helpdesk .guide a {
+  display: inline;
+  min-height: 0;
+  margin: 0;
+  text-decoration: none;
+}
+
+.helpdesk .guide a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+}
+
+/* The keyboard's ring goes round the whole tile: the link's own layer covers the tile, so the ring is drawn on it (not
+   with :has(), which WebKit did not redraw). */
+.helpdesk .guide a:focus-visible {
+  outline: none;
+}
+
+.helpdesk .guide a:focus-visible::after {
+  outline: 3px solid var(--paper);
+  outline-offset: 3px;
+}
+
+.helpdesk .guide p {
+  margin-top: 0.5rem;
+}
+
+.helpdesk .arrow {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+}
+
+@media (min-width: 48rem) {
+  .helpdesk .arrow {
+    top: 2rem;
+    right: 2rem;
+  }
 }
 
 /* The statement piece, only on Live (spec 5c): the game's own video fills the screen behind everything, blurred, dimmed and
@@ -2934,6 +3628,31 @@ main.playing {
   height: 100%;
 }
 
+/* A maker's test play: a strip across the top says so, and the game fills the rest. The strip stays over the
+   starting screen too, so the label is the first thing seen. */
+main.playing[data-testing] {
+  display: flex;
+  flex-direction: column;
+}
+
+.playing[data-testing] .frame {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+.playing .teststrip {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding: calc(0.5rem + var(--inset-top)) 1rem 0.5rem;
+  /* Ruken's own dark, so it never melts into a white game and is read as Ruken's words, not the game's. */
+  background: var(--felt-deep);
+  color: var(--chalk);
+  font-weight: 700;
+  text-align: center;
+}
+
 /* While the game starts: its name in the middle of the dark window, and words if it is slow. */
 .playing .starting {
   position: absolute;
@@ -3304,6 +4023,71 @@ video[data-loading] {
   video[data-loading] {
     background-image: var(--spinner-still);
     animation: none;
+  }
+}
+
+/* The cookie notice (src/features/consent/Notice.svelte): a frosted card at the bottom of every screen until the browser
+   chooses, above the bar of Home and You where that is shown. Its two answers are one size and one weight: side by side,
+   or one above the other on the smallest phone, each as wide as the other. */
+.consent {
+  position: fixed;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 30;
+  translate: -50% 0;
+  box-sizing: border-box;
+  width: min(100% - 1.5rem, var(--width-read));
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-card);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  color: var(--chalk);
+}
+
+.consent.above-bar {
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.25rem);
+}
+
+.consent h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.consent p {
+  margin: 0.5rem 0 0;
+}
+
+.consent a {
+  color: var(--chalk);
+}
+
+.consent-answers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.consent-answers > form,
+.consent-answers > .button,
+.consent-answers > button {
+  min-width: 0;
+  margin: 0;
+}
+
+.consent-answers button,
+.consent-answers > form > button:not(.quiet),
+.consent-answers .button {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+@media (max-width: 22rem) {
+  .consent-answers {
+    grid-template-columns: 1fr;
   }
 }
 

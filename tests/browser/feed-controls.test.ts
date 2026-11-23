@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { gameWhere } from "./support/game.ts";
 import { boxOf, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // What a person does to the feed (spec 5.1): swipe or press keys to move a clip at a time, press the clip to open its game's
 // page, press the speaker for sound, share
@@ -13,7 +14,7 @@ test.beforeAll(async ({ browser }) => {
   // Three games from rows, so the feed has several clips to move between whatever else the database holds.
   for (let made = 0; made < 3; made += 1) {
     await forgetRateLimits();
-    const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
     try {
       await gameWhere(await context.newPage(), { state: "live" });
     } finally {
@@ -531,7 +532,11 @@ test.describe("the first open's hints", () => {
   });
 
   test("are never there with no script", async ({ browser }) => {
-    const context = await browser.newContext({ javaScriptEnabled: false, baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({
+      ...consented,
+      javaScriptEnabled: false,
+      baseURL: "http://localhost:4173",
+    });
     try {
       const page = await context.newPage();
       await page.goto("/");
@@ -547,7 +552,11 @@ test.describe("the first open's hints", () => {
   });
 
   test("with reduced motion the next clip is simply there, not slid to", async ({ browser }) => {
-    const context = await browser.newContext({ reducedMotion: "reduce", baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({
+      ...consented,
+      reducedMotion: "reduce",
+      baseURL: "http://localhost:4173",
+    });
     try {
       const page = await context.newPage();
       await openFeed(page);

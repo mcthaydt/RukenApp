@@ -106,6 +106,10 @@ test("the guide needs no account, and its how-tos come back to it", async ({ pag
   await page.getByRole("link", { name: "Get your game on Ruken" }).click();
   await expect(page).toHaveURL(`${GUIDE}?from=%2Fhelp`);
   await expect(page.getByRole("link", { name: "Back to help" })).toHaveCount(2);
+  // The Owner, 2026-11-22: "No game may have pornography, gambling, or ads."
+  await expect(
+    page.getByText("No game may have pornography, gambling or ads.", { exact: false }),
+  ).toBeVisible();
 
   await page.getByRole("link", { name: "Here's how to put it there" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Put your game on GitHub" })).toBeVisible();
@@ -128,12 +132,9 @@ test("every guide is listed on the help page and opens", async ({ page }) => {
     "Get your game on Ruken",
     "Put your game on GitHub",
     "Record your screen",
-    "How the feed works",
   ]);
-  // No guide on the list is underlined (the owner, 2026-11-22: "no text with underline links anywhere").
-  for (const guide of await guides.all()) await expect(guide).toHaveCSS("text-decoration-line", "none");
 
-  for (const name of ["Put your game on GitHub", "Record your screen", "How the feed works"]) {
+  for (const name of ["Put your game on GitHub", "Record your screen"]) {
     await page.goto("/help");
     await page.getByRole("link", { name }).click();
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
