@@ -268,6 +268,26 @@ test("a live game GitHub stopped showing: the refusal points to Change, and savi
 
 // Spec 5c: beside the headline sit the game's one video (the shape of this window), its name and line, and where it plays;
 // the rating is added, and the files and websites, which she may change there. The other video is not drawn on Live.
+test("a refusal on Live goes once the player count switch's answer brings the page back", async ({
+  page,
+}) => {
+  // The switch's answer sends the maker back to the page they are on, and the page is brought in where they are
+  // (src/lib/stay-in-app.ts): what it says must be what a fresh page says, with no refusal from before.
+  test.setTimeout(90_000);
+  const { slug, maker } = await answerEveryQuestion(page);
+  if (maker === undefined) throw new Error("a new maker was signed up, so there is an account");
+  await putGameWhereStaffLeaveIt(slug, { state: "live" });
+  await forgetTheirRepositories(maker.number);
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+  await page.getByRole("button", { name: "Send a new version" }).click();
+  await expect(page.getByRole("alert")).toBeVisible({ timeout: 20_000 });
+  const playerCount = page.getByRole("button", { name: /^Show how many people played it: (On|Off)$/ });
+  await playerCount.click();
+  await expect(playerCount).toHaveAccessibleName("Show how many people played it: On");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
 test("Live shows the one video for this window, the name, the line and three chips", async ({ page }) => {
   const { slug, name } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}`);

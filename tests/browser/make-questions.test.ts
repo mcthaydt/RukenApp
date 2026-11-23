@@ -52,7 +52,7 @@ test("Your games, with none, says what a maker needs and has one blue button", a
   await expect(
     page.getByText("You'll need your game on GitHub, ready to run in a browser, and two short videos of it."),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Add a game" })).toHaveCSS(
+  await expect(page.getByRole("main").getByRole("link", { name: "Add a game" })).toHaveCSS(
     "background-color",
     rgb(token("--pay")),
   );
