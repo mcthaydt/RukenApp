@@ -1495,6 +1495,20 @@ label.vframe {
   }
 }
 
+/* The smallest phones held sideways (an iPhone SE, 568 wide): with Back and Save in their column at the right edge, a
+   wide frame beside the question left its heading about 90px, a word to a line. There the wide frame goes under the
+   question's words instead, as on an upright phone, and the heading has the whole width. */
+@media (orientation: landscape) and (max-height: 449px) and (max-width: 699px) {
+  .screen main > form:has(> [data-frame="wide"]) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .vframe[data-frame="wide"] {
+    width: min(100%, 320px);
+  }
+}
+
 /* A short phone held upright (an iPhone SE is 568 tall, a large iPhone 739): the frame is as tall as the window, so the notes and the link that
    says how to record were under the bar. They come first and the frame after them; the frame keeps its height. */
 @media (max-width: 499px) and (max-height: 799px) {
@@ -4235,16 +4249,6 @@ video[data-loading] {
     left: max(0.75rem, env(safe-area-inset-left));
     translate: none;
     width: min(100% - 1.5rem - var(--rail, 0px), var(--width-read));
-  }
-
-  /* A step has no bar, but its Back and Save stand in a column at the right edge (10rem wide, see the steps above), so
-     the card keeps clear of that column the same way, with the same gap. */
-  :root:not(:has(nav.bar)):has(.screen .acts) .consent {
-    width: min(
-      100% - max(0.75rem, env(safe-area-inset-left)) - max(0.75rem, env(safe-area-inset-right)) - 10rem -
-        0.75rem,
-      var(--width-read)
-    );
   }
 }
 

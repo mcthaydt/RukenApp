@@ -256,7 +256,7 @@ for (const phone of PHONES) {
       }
     });
 
-    test("on a step, the cookie card keeps clear of Back and Save at the right edge", async ({
+    test("a step never has the cookie card over Back and Save: it asks for the yes on a screen of its own", async ({
       page,
     }, testInfo) => {
       // A maker signed in on another visit, and this browser has not answered cookies since.
@@ -264,15 +264,12 @@ for (const phone of PHONES) {
       await signInAs(page, game.maker.number, game.maker.password);
       await page.context().clearCookies({ name: "rk_consent" });
       await page.goto(`/make/${game.slug}/name`);
-      const card = page.getByRole("complementary").filter({ has: page.locator("#consent-title") });
-      await expect(card).toBeVisible();
-      await expect(bar(page)).toHaveCount(0);
-      const box = await boxOf(card);
-      const acts = await boxOf(page.locator(".screen .acts"));
-      expect(box.x).toBeGreaterThanOrEqual(0);
-      expect(box.x + box.width).toBeLessThanOrEqual(acts.x);
-      expect(box.y + box.height).toBeLessThanOrEqual(phone.viewport.height);
-      await showTheOwner(page, testInfo, `the cookie card on a step, ${phone.name} sideways`);
+      await expect(page.getByRole("heading", { name: "Cookies?", level: 1 })).toBeVisible();
+      await expect(
+        page.getByRole("complementary").filter({ has: page.locator("#consent-title") }),
+      ).toHaveCount(0);
+      await expect(page.locator(".screen .acts")).toHaveCount(0);
+      await showTheOwner(page, testInfo, `a step before a yes to cookies, ${phone.name} sideways`);
     });
   });
 }
