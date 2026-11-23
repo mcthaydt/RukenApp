@@ -89,7 +89,7 @@ test.describe("your account", () => {
     await visit(page, "/me");
     const shown = page.getByText(shownAs(number), { exact: true });
     await expect(shown).toHaveCount(1);
-    const badge = page.locator(".who .badge", { hasText: "Not a member" });
+    const badge = page.locator(".badged .badge", { hasText: "Not a member" });
     await expect(badge).toHaveCSS("background-color", rgb(token("--pip")));
     const numberBox = await boxOf(shown);
     const beside = await boxOf(badge);
@@ -100,7 +100,7 @@ test.describe("your account", () => {
     const names = ["Add your games to Ruken", "Change password", "Your computers", "What is Ruken?"];
     let above = bottomOf(await boxOf(page.getByRole("link", { name: "Join Ruken" })));
     for (const name of names) {
-      const link = page.locator("ul.links a.go", { hasText: name });
+      const link = page.locator("ul.sidelinks a.go", { hasText: name });
       const box = await boxOf(link);
       expect(box.height).toBeGreaterThanOrEqual(44);
       expect(box.y).toBeGreaterThanOrEqual(above);

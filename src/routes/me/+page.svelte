@@ -20,7 +20,7 @@
   <!-- The number with a badge beside it that says at a glance whether this is a member (the owner, 2026-11-23: "beside
        the number we can have a green or red badge"). "You're not a member." is then the badge alone; any other line
        (renews on, ends on, card failed) still says what it needs to. -->
-  <p class="who">
+  <p class="badged">
     <span>{data.phone}</span>
     {#if data.member}
       <span class="badge member">Member</span>
@@ -44,7 +44,7 @@
   {/if}
   <!-- Side links, one under another: each goes to a page of its own (the owner, 2026-11-23: secondary actions are the →
        links). -->
-  <ul class="links apart">
+  <ul class="sidelinks apart">
     <li><a class="go" href="/make">{data.makesGames ? "Your games" : "Add your games to Ruken"}</a></li>
     <li><a class="go" href="/me/password">Change password</a></li>
     <li><a class="go" href="/me/computers">Your computers</a></li>
