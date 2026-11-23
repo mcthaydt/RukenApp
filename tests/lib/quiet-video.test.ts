@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loopByHand, mayAutoplay, startOf } from "../../src/lib/quiet-video.ts";
+import { atEnd, loopByHand, mayAutoplay, restartAt, startOf } from "../../src/lib/quiet-video.ts";
 
 // Whether a video may start by itself. A person who asked for less motion, a person saving data, and a small device
 // are never made to carry a video they did not choose to play.
@@ -45,10 +45,12 @@ describe("startOf", () => {
 });
 
 /** A stand-in video: the events and the few fields the hand loop uses. */
-function videoAt(address: string, currentTime: number) {
+function videoAt(address: string, currentTime: number, duration = 10) {
   const played: number[] = [];
   const video = Object.assign(new EventTarget(), {
     loop: true,
+    ended: false,
+    duration,
     currentTime,
     currentSrc: "",
     getAttribute: (name: string) => (name === "src" ? address : null),
@@ -70,22 +72,77 @@ describe("loopByHand", () => {
   it("goes back to the start the address names and plays again when the video ends", () => {
     const { video, played } = videoAt("/clip.mp4#t=2", 9.5);
     loopByHand(video as unknown as HTMLVideoElement);
+    video.ended = true;
     video.dispatchEvent(new Event("ended"));
     expect(video.currentTime).toBe(2);
     expect(played).toEqual([2]);
   });
 
+  it("plays again when it reaches its end without the browser saying it ended", () => {
+    // Safari's engine on Linux sometimes stops at the last frame, still "playing", sends `stalled` and never `ended`.
+    const { video, played } = videoAt("/clip.mp4#t=0.001", 1.999999999, 2);
+    loopByHand(video as unknown as HTMLVideoElement);
+    video.dispatchEvent(new Event("timeupdate"));
+    expect(played).toEqual([0.001]);
+    // The `ended` that may still follow does not send it back a second time.
+    video.dispatchEvent(new Event("ended"));
+    expect(played).toEqual([0.001]);
+  });
+
+  it("leaves a video alone while it plays on before its end", () => {
+    const { video, played } = videoAt("/clip.mp4", 1.5, 2);
+    loopByHand(video as unknown as HTMLVideoElement);
+    video.dispatchEvent(new Event("timeupdate"));
+    video.dispatchEvent(new Event("stalled"));
+    expect(played).toEqual([]);
+  });
+
+  it("goes back to the beginning where the start the address names is past the end", () => {
+    const { video, played } = videoAt("/clip.mp4#t=4", 2, 2);
+    loopByHand(video as unknown as HTMLVideoElement);
+    video.dispatchEvent(new Event("timeupdate"));
+    expect(played).toEqual([0]);
+  });
+
   it("goes back to 0 for an address with no start time", () => {
-    const { video, played } = videoAt("/clip.mp4", 1.99);
+    const { video, played } = videoAt("/clip.mp4", 10);
     loopByHand(video as unknown as HTMLVideoElement);
     video.dispatchEvent(new Event("ended"));
     expect(played).toEqual([0]);
   });
 
   it("stops looping once the video is taken away", () => {
-    const { video, played } = videoAt("/clip.mp4", 1.99);
+    const { video, played } = videoAt("/clip.mp4", 10);
     loopByHand(video as unknown as HTMLVideoElement).destroy();
     video.dispatchEvent(new Event("ended"));
     expect(played).toEqual([]);
+  });
+});
+
+describe("atEnd", () => {
+  it("is true at the end, and within a hundredth of a second of it", () => {
+    expect(atEnd(2, 2)).toBe(true);
+    expect(atEnd(1.999999999, 2)).toBe(true);
+    expect(atEnd(1.995, 2)).toBe(true);
+  });
+
+  it("is false before the end, or where the length is not known yet", () => {
+    expect(atEnd(1.9, 2)).toBe(false);
+    expect(atEnd(0, Number.NaN)).toBe(false);
+    expect(atEnd(5, Number.POSITIVE_INFINITY)).toBe(false);
+    expect(atEnd(0, 0)).toBe(false);
+  });
+});
+
+describe("restartAt", () => {
+  it("starts again at the start the address names", () => {
+    expect(restartAt(2, 10)).toBe(2);
+    expect(restartAt(0.001, 2)).toBe(0.001);
+  });
+
+  it("starts again at the very beginning where that start is at or past the end", () => {
+    // The landing wall gives each clip a later start (`#t=2`, `#t=4`); a two-second clip would end where it starts.
+    expect(restartAt(2, 2)).toBe(0);
+    expect(restartAt(4, 2)).toBe(0);
   });
 });
