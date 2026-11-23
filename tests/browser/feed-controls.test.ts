@@ -9,6 +9,9 @@ import { consented } from "./support/consent.ts";
 // a game, and meet two hints on the first open. The journeys share one database, so the feed holds every game any
 // journey made; none of them depends on which game is first.
 
+// The games this file made, with clips this browser can play (`realClip`): other files' games may carry the other kind.
+const ours: string[] = [];
+
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(240_000);
   // Three games from rows, so the feed has several clips to move between whatever else the database holds.
@@ -16,7 +19,7 @@ test.beforeAll(async ({ browser }) => {
     await forgetRateLimits();
     const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
     try {
-      await gameWhere(await context.newPage(), { state: "live" });
+      ours.push((await gameWhere(await context.newPage(), { state: "live" })).slug);
     } finally {
       await context.close();
     }
@@ -163,6 +166,60 @@ test("the clip that fills the window is the current one, and only one is; the ot
     .catch(async (error: unknown) => {
       throw new Error(`${String(error)}\n${await clipLogOf(page)}`);
     });
+});
+
+/**
+ * Watches the clip on screen for five seconds: how far it got, whether it came back round after its end, and how many
+ * times it jumped. The clips are two seconds long.
+ */
+async function watchCurrentClip(page: Page): Promise<{ furthest: number; cameBack: boolean; jumps: number }> {
+  return await current(page)
+    .locator("video")
+    .evaluate(
+      (element: HTMLVideoElement) =>
+        new Promise<{ furthest: number; cameBack: boolean; jumps: number }>((resolve) => {
+          let furthest = 0;
+          let cameBack = false;
+          let jumps = 0;
+          element.addEventListener("seeking", () => (jumps += 1));
+          element.addEventListener("timeupdate", () => {
+            if (furthest > 1.5 && element.currentTime < 0.5) cameBack = true;
+            furthest = Math.max(furthest, element.currentTime);
+          });
+          setTimeout(() => {
+            resolve({ furthest, cameBack, jumps });
+          }, 5_000);
+        }),
+    );
+}
+
+test("the clip on screen plays through and starts again, and again after a person comes back to it", async ({
+  page,
+}) => {
+  // Safari's engine on Linux, given a looping video whose address names a start time (every clip's `#t=0.001`), jumped
+  // back to the start about a hundred times a second and never played (progress.md, Flaky tests).
+  await openFeed(page);
+  const slug = ours[0] ?? "";
+  const clip = page.locator(`section[data-slug="${slug}"]`).first();
+  await clip.scrollIntoViewIfNeeded();
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await expect(clip.locator("video")).toHaveJSProperty("paused", false);
+
+  const first = await watchCurrentClip(page);
+  expect(first.furthest, "how far the clip played").toBeGreaterThan(1.5);
+  expect(first.cameBack, "the clip started again after its end").toBe(true);
+  expect(first.jumps, "jumps in five seconds of a two-second clip").toBeLessThanOrEqual(5);
+
+  // Away and back: the clip a person left waits at its start, and plays again from there.
+  await page.keyboard.press("ArrowDown");
+  await expect(clip).toHaveAttribute("data-current", "false");
+  await page.keyboard.press("ArrowUp");
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await expect(clip.locator("video")).toHaveJSProperty("paused", false);
+  const again = await watchCurrentClip(page);
+  expect(again.furthest, "how far the clip played the second time").toBeGreaterThan(1.5);
+  expect(again.cameBack, "the clip started again after its end, the second time").toBe(true);
+  expect(again.jumps, "jumps in five seconds, the second time").toBeLessThanOrEqual(5);
 });
 
 test("each key moves one clip, never before the first", async ({ page }) => {

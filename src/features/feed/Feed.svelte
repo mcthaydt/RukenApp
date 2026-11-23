@@ -12,7 +12,7 @@
   import { loads } from "../../lib/loads.ts";
   import { onMount, tick } from "svelte";
   import { snapshot } from "$app/navigation";
-  import { mayMove } from "../../lib/quiet-video.ts";
+  import { loopOnceStarted, mayMove } from "../../lib/quiet-video.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
   import { shareLink, type ShareTools } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
@@ -380,6 +380,7 @@
       >
         <video
           use:loads
+          use:loopOnceStarted
           bind:this={videos[index]}
           onplay={() => {
             stopIfOffScreen(index);
@@ -387,7 +388,6 @@
           src={fetches(index) ? clipAddress(clip) : undefined}
           preload={preloads(index)}
           muted
-          loop
           playsinline
           tabindex="-1"
           aria-hidden="true"

@@ -39,20 +39,33 @@ export function mayMove(): boolean {
 /** How far a video has played, in seconds, before it is told to loop: past the start time its address may name. */
 const LOOP_AFTER_SECONDS = 0.1;
 
+/**
+ * A Svelte action: the video loops, but only while it is past its start. Safari's engine on Linux (GStreamer), given a
+ * looping video whose address names a start time (`#t=0.001`, which makes a still video draw its first frame), jumps
+ * back to the start about a hundred times a second and never plays, and keeps the page too busy to answer. So looping
+ * is off at the start: when the video is first loaded, when it is given a new address, and when it is rewound (the feed
+ * rewinds the clip a person left). It is on again once the video has played on.
+ */
+export function loopOnceStarted(node: HTMLVideoElement): { destroy(): void } {
+  const follow = (): void => {
+    node.loop = node.currentTime >= LOOP_AFTER_SECONDS;
+  };
+  follow();
+  const events = ["timeupdate", "seeked", "loadstart"] as const;
+  for (const name of events) node.addEventListener(name, follow);
+  return {
+    destroy() {
+      for (const name of events) node.removeEventListener(name, follow);
+    },
+  };
+}
+
 /** A Svelte action: starts a muted, looping video only where mayAutoplay says so. Without script a video shows its first frame. */
-export function quietVideo(node: HTMLVideoElement): void {
+export function quietVideo(node: HTMLVideoElement): { destroy(): void } {
   node.muted = true;
   node.playsInline = true;
-  // Looping is turned on only once the video has played on from its start. Safari's engine on Linux (GStreamer), given
-  // a looping video whose address names a start time (`#t=0.001`, which makes a still video draw its first frame),
-  // jumps back to the start about a hundred times a second and never plays, and keeps the page too busy to answer.
-  node.loop = false;
-  const loopOncePlaying = (): void => {
-    if (node.currentTime < LOOP_AFTER_SECONDS) return;
-    node.loop = true;
-    node.removeEventListener("timeupdate", loopOncePlaying);
-  };
-  node.addEventListener("timeupdate", loopOncePlaying);
+  const looping = loopOnceStarted(node);
   // A refused play (the browser's own autoplay rules) leaves the first frame showing, which is the quiet answer.
   if (mayMove()) node.play().catch(() => undefined);
+  return looping;
 }
