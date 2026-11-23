@@ -11,6 +11,7 @@ import { adultsOnlyRefusal } from "../../features/accounts/accounts.ts";
 import { gamesServices } from "../../features/games/games.ts";
 import { backFromPaywall, gameSlugOfNext } from "../../features/play/play.ts";
 import { safeNextPath } from "../../lib/safe-next.ts";
+import { yearlySaving } from "./saving.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
 // The paywall card. Slice 2's Play button sends a person who is not a member here, with `next` set to the game
@@ -48,7 +49,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     notNow: backFromPaywall(next),
     plan: planOf(url.searchParams.get("plan")),
     // The prices are the rules' (plans.ts), written out in words here, never typed on the page.
-    prices: { monthly: dollars(PREMIUM_PRICES_CENTS.monthly), annual: dollars(PREMIUM_PRICES_CENTS.annual) },
+    prices: {
+      monthly: dollars(PREMIUM_PRICES_CENTS.monthly),
+      annual: dollars(PREMIUM_PRICES_CENTS.annual),
+      // What a year costs paid month by month, less the yearly price: worked out from the same two prices, and
+      // left out if the yearly plan ever stops being the cheaper one.
+      annualSaves: yearlySaving(PREMIUM_PRICES_CENTS.monthly, PREMIUM_PRICES_CENTS.annual),
+    },
     signedIn: caller.kind === "user",
     // Asked only of someone signed in, so a stranger can read the card before the site has any Stripe settings.
     card: paywallCard(caller.kind === "user" ? await membershipServices().service.view(caller.userId) : null),
