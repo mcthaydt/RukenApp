@@ -96,6 +96,12 @@ jobs:
               exit 1
             fi
           done
+          # The log is public because the repository is. The migration step prints the database's host name, and a
+          # secret masks only its exact value, so the bare host is masked here, before anything runs.
+          dbhost=${DIRECT_DATABASE_URL#*://}
+          dbhost=${dbhost##*@}
+          dbhost=${dbhost%%[/?:]*}
+          [ -n "$dbhost" ] && echo "::add-mask::$dbhost"
           pnpm run deploy 2>&1 | tee deploy.log
           # From here a new version is live, so a later failure is worth a rollback hint.
           echo "shipped=true" >>"$GITHUB_OUTPUT"
