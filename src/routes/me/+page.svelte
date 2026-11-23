@@ -17,8 +17,20 @@
 
 <main class="card">
   <h1>Your account</h1>
-  <p>{data.phone}</p>
-  <p>{data.membership.line}</p>
+  <!-- The number with a badge beside it that says at a glance whether this is a member (the owner, 2026-11-23: "beside
+       the number we can have a green or red badge"). "You're not a member." is then the badge alone; any other line
+       (renews on, ends on, card failed) still says what it needs to. -->
+  <p class="who">
+    <span>{data.phone}</span>
+    {#if data.member}
+      <span class="badge member">Member</span>
+    {:else}
+      <span class="badge">Not a member</span>
+    {/if}
+  </p>
+  {#if data.membership.button !== "join"}
+    <p>{data.membership.line}</p>
+  {/if}
   {#if data.membership.button === "join"}
     <p><a class="button" href="/join?next=/me">Join Ruken</a></p>
   {:else}

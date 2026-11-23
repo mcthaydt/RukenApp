@@ -427,7 +427,7 @@ form > * + * {
 
 /* A note that is a quiet button keeps a rem from a button above it (Delete my account under Your games), so two buttons
    never sit a few pixels apart. Under words (Change password under the number) it stays a note's step away. */
-.card :is(p, form):has(button, .button, .quiet) + p.note:not(.apart):has(> .quiet) {
+.card :is(p, form, div):has(button, .button, .quiet) + p.note:not(.apart):has(> :is(.quiet, .go)) {
   margin-top: 1rem;
 }
 
@@ -2183,6 +2183,31 @@ a.foot:active {
   display: flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+/* Your account's number, with the membership badge on the same line. */
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Whether the person is a member, beside their number (the owner, 2026-11-23: "a green or red badge"): green for a
+   member, red for not, and the state in words as well as by its fill. White words on both (Dusky Green 9.6:1, Scarlet
+   5.2:1). */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 8px;
+  background: var(--pip);
+  color: var(--chalk);
+  font: var(--text-small);
+  font-weight: 600;
+}
+
+.badge.member {
+  background: var(--felt-raised);
 }
 
 /* A fact in a quiet chip: the same Dusky Green as a green button, white words, 8px corners (no pills). */
@@ -5391,6 +5416,12 @@ html:has(main.about) :is(a, button, summary, label) {
 
 .consent p {
   margin: 0.5rem 0 0;
+}
+
+/* What we keep, under I agree and Not now, sits as far below them as the words above sit (the owner, 2026-11-23: "use
+   consistent spacing and margin, the what we keep is too close to buttons"): a rem, to its words. */
+.consent .consent-answers + p {
+  margin-top: 1rem;
 }
 
 .consent a {

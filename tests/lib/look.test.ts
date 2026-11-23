@@ -100,8 +100,10 @@ describe("the tokens (design 5.8)", () => {
       expect(declarationsOf(".card .outline")).toMatch(/var\(--pay\)/);
     });
 
-    it("red is only the danger button: no other rule uses the pip", () => {
-      expect(withoutComments.match(/var\(--pip\)/g)).toHaveLength(1);
+    // The one other red is the Not a member badge on Your account (the owner, 2026-11-23: "a green or red badge").
+    it("red is only the danger button and the Not a member badge: no other rule uses the pip", () => {
+      expect(withoutComments.match(/var\(--pip\)/g)).toHaveLength(2);
+      expect(withoutComments).toMatch(/\.badge\s*\{[^}]*background:\s*var\(--pip\)/);
     });
   });
 
@@ -307,6 +309,9 @@ describe("screens wear the look and nothing of their own", () => {
     "ways",
     "go",
     "links",
+    "who",
+    "badge",
+    "member",
     "safe",
     "danger",
     "outline",

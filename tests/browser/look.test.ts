@@ -154,7 +154,8 @@ test("your account: one card, and a quiet button is a real button, not underline
   await signUp(page);
   await page.goto("/me");
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
-  await expectOneCard(page);
+  // The one red is the Not a member badge beside the number (the owner, 2026-11-23: "a green or red badge").
+  await expectOneCard(page, { red: ["Not a member"] });
   await showTheOwner(page, testInfo, "your account");
   const signOut = page.getByRole("button", { name: "Sign out" });
   // The owner, 2026-11-22: underlined words are not buttons. A quiet button on a card is Glaucous Green with ink words.

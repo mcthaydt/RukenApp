@@ -291,6 +291,21 @@ test("the cookie notice: What we keep is blue words with an arrow, and nothing i
     await expect(keep).toHaveCSS("color", rgb(token("--pay-light")));
     expect(await keep.evaluate((link) => getComputedStyle(link, "::after").content)).toContain("→");
     expect((await keep.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    // The owner, 2026-11-23: "the what we keep is too close to buttons". Its words sit a rem under the buttons, as the
+    // words above sit a rem over them.
+    const gaps = await page.locator(".consent").evaluate((card) => {
+      const answers = card.querySelector(".consent-answers") as Element;
+      const link = card.querySelector(".consent-answers + p a") as Element;
+      const above = answers.previousElementSibling as Element;
+      const words = (element: Element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return range.getBoundingClientRect();
+      };
+      const box = answers.getBoundingClientRect();
+      return { over: box.top - words(above).bottom, under: words(link).top - box.bottom };
+    });
+    expect(Math.abs(gaps.under - gaps.over), JSON.stringify(gaps)).toBeLessThanOrEqual(4);
     await expectRealButtons(page);
   } finally {
     await visitor.close();

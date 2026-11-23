@@ -9,7 +9,8 @@ test.beforeEach(forgetRateLimits);
 test("someone who has not paid is told so and offered the card", async ({ page }) => {
   await signUp(page);
   await page.goto("/me");
-  await expect(page.getByText("You're not a member.")).toBeVisible();
+  // The red badge beside the number says it (the owner, 2026-11-23).
+  await expect(page.locator(".who .badge", { hasText: "Not a member" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Join Ruken" })).toHaveAttribute("href", "/join?next=/me");
 });
 
@@ -18,6 +19,7 @@ test("a member sees what they pay and when it renews", async ({ page }, testInfo
   await expect(
     page.getByText(/^You're a member\. \$9\.99 a month\. Renews on \w+, \w+ \d+\.$/),
   ).toBeVisible();
+  await expect(page.locator(".who .badge.member", { hasText: "Member" })).toBeVisible();
   // One card, one filled button (Change card or cancel), nothing red: the membership action is the card's one main one.
   await expectOneCard(page);
   // The Owner, 2026-11-14, "All six": the button says what it does, and the line under it says where it goes.
