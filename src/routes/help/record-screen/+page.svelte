@@ -11,7 +11,7 @@
 </script>
 
 <main class="card">
-  <p><a href={data.back.href}>{data.back.words}</a></p>
+  <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
   <h1>Record your screen</h1>
   <p>
     Play your game while your phone or computer records. Keep it to 10 to 30 seconds. Ruken takes videos up to
@@ -21,11 +21,11 @@
   <!-- The steps for four devices are a long page on a phone: a maker goes straight to their own. -->
   <nav aria-label="Pick your device">
     <ul>
-      <li><a href="#iphone">iPhone or iPad</a></li>
-      <li><a href="#android">Android phone</a></li>
-      <li><a href="#windows">Windows computer</a></li>
-      <li><a href="#mac">Mac</a></li>
-      <li><a href="#too-big">Video too big?</a></li>
+      <li><a class="go" href="#iphone">iPhone or iPad</a></li>
+      <li><a class="go" href="#android">Android phone</a></li>
+      <li><a class="go" href="#windows">Windows computer</a></li>
+      <li><a class="go" href="#mac">Mac</a></li>
+      <li><a class="go" href="#too-big">Video too big?</a></li>
     </ul>
   </nav>
 
@@ -93,5 +93,5 @@
   </ol>
 
   <p>Then come back to Ruken and press Choose video.</p>
-  <p><a href={data.back.href}>{data.back.words}</a></p>
+  <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
 </main>

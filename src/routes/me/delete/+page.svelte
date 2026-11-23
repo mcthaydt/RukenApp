@@ -28,7 +28,7 @@
         back.
       </p>
       <!-- Someone who only wants to stop paying gets the same Stripe page "Change card or cancel" opens on /me. It is
-           a post, which a link cannot make, so it is a quiet button, which looks like a link. -->
+           a post, which a link cannot make, so it is a quiet button. -->
       <form method="POST" action="/me?/portal">
         <button class="quiet">Only want to stop paying? Cancel your membership instead.</button>
       </form>

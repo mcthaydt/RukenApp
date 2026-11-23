@@ -148,15 +148,21 @@ test("a refusal is in heavier ink, not in red", async ({ page }) => {
   await expect(refusal).toHaveCSS("color", rgb(token("--ink")));
 });
 
-test("your account: one card, and a quiet button looks like a link", async ({ page }, testInfo) => {
+test("your account: one card, and a quiet button is a real button, not underlined words", async ({
+  page,
+}, testInfo) => {
   await signUp(page);
   await page.goto("/me");
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
-  await expectOneCard(page);
+  // The one red is the Not a member badge beside the number (the owner, 2026-11-23: "a green or red badge").
+  await expectOneCard(page, { red: ["Not a member"] });
   await showTheOwner(page, testInfo, "your account");
   const signOut = page.getByRole("button", { name: "Sign out" });
-  await expect(signOut).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-  await expect(signOut).toHaveCSS("text-decoration-line", "underline");
+  // The owner, 2026-11-22: underlined words are not buttons. A quiet button on a card is Glaucous Green with ink words.
+  await expect(signOut).toHaveCSS("background-color", rgb(token("--sage")));
+  await expect(signOut).toHaveCSS("color", rgb(token("--ink")));
+  await expect(signOut).toHaveCSS("text-decoration-line", "none");
+  expect((await signOut.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(48);
 });
 
 test("a link that looks like a button is as easy to hit, and gives when pressed", async ({ page }) => {

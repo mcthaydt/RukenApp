@@ -64,6 +64,7 @@
   /* Scarlet: only a button that can't be undone (delete, pay out, refund), with white words (5.2:1). */
   --pip: #cb2f43;
   --pay: #006eb8; /* Blue: the main button, with white words (5.4:1); never a field */
+  --pay-light: #7cc4ff; /* Blue words on the felt and on glass, where --pay is too dim to read (7.6:1 on the felt) */
   /* The loading spinner over a picture or a video that has not come yet, drawn in chalk (White). A picture is the
      only way to put it on an <img> or a <video>, which hold nothing else; a picture cannot read a token, so the
      colour is written here with the others. The still one is for reduced motion. */
@@ -282,17 +283,28 @@ p {
   margin: 1rem 0 0;
 }
 
+/* No line under any words, anywhere (the owner, 2026-11-22: "no text with underline links anywhere"). A link inside a line
+   of words is told from the words around it by weight, and on a card by the blue that means go on (5.4:1 on paper); on
+   the felt it is the heavier chalk. The focus ring shows where the keyboard is, as it does for a button. */
 a {
   color: inherit;
-  text-decoration: underline;
+  text-decoration: none;
+}
+
+:is(p, li, small, span, dd, td, q, label) > a:not([class]) {
+  font-weight: 600;
+}
+
+.card :is(p, li, small, span, dd, td, q, label) > a:not([class]) {
+  color: var(--pay);
 }
 
 /* A link in a line of words, or on a line of its own, is as easy to tap as a button. The words stay one line
    tall, so the height a target adds is taken back from the margins above and below it: the line keeps its
    place and the lines around it keep their rhythm (one rem between the words). Two such lines in a row
-   overlap by a few pixels of air, never of words. A quiet button is the same thing as a link. */
-a:not(.button, .wordmark),
-.quiet {
+   overlap by a few pixels of air, never of words. An action that stands on its own is a button, not a link in words
+   (below). */
+a:not(.button, .wordmark, .quiet) {
   display: inline-flex;
   align-items: center;
   min-height: var(--size-target);
@@ -306,14 +318,6 @@ a:not(.button, .wordmark),
 /* Bold is the heavier face we load (600), not a face the browser makes by smearing the lighter one. */
 strong {
   font-weight: 600;
-}
-
-/* A link on a line of its own that is not underlined (How the feed works, and the ways to it from help, privacy and
-   terms): the owner, 2026-11-22 18:02 UTC, "no text with underline links anywhere". Its weight sets it apart from the
-   words around it. */
-a.plain-link {
-  font-weight: 600;
-  text-decoration: none;
 }
 
 /* The focus ring on felt. */
@@ -369,16 +373,20 @@ a.plain-link {
   font: var(--text-button);
 }
 
-/* A list of ways to go on a card, one to a line, with no bullets (the record-your-screen page's devices). */
+/* A list of ways to go on a card (the guides, the record-your-screen page's devices): → links, one to a line, with no
+   bullets. */
 .card nav ul {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
   margin: 1rem 0 0;
   padding: 0;
   list-style: none;
 }
 
-/* Each device link is a target wide as well as tall: "Mac" is three letters and was 36 wide. */
-.card nav a {
-  min-width: var(--size-target);
+.card nav li + li {
+  margin-top: 0;
 }
 
 /* The code a computer shows (Let this computer use your Ruken?): big letters, so it is read across a desk. */
@@ -415,6 +423,12 @@ form > * + * {
 
 .card .note {
   color: var(--ink-soft);
+}
+
+/* A note that is a quiet button keeps a rem from a button above it (Delete my account under Your games), so two buttons
+   never sit a few pixels apart. Under words (Change password under the number) it stays a note's step away. */
+.card :is(p, form, div):has(button, .button, .quiet) + p.note:not(.apart):has(> :is(.quiet, .go)) {
+  margin-top: 1rem;
 }
 
 /* The acceptance label on Your games is read, not skimmed past: chalk on the felt, not the dimmer sage of a note. It is
@@ -469,9 +483,9 @@ textarea {
   font: inherit;
 }
 
-/* A fold-out ("My game uses other websites") is a line to press, as easy to hit as a button. It has an arrow where the
-   browser draws its own triangle: pointing right while it is shut, and down while it is open, the usual sign for "opens
-   here" (a plus read as "add"). */
+/* A fold-out ("Change the branch or folder") is a quiet button (below) that opens what is under it. It has an arrow where
+   the browser draws its own triangle: pointing right while it is shut, and down while it is open, the usual sign for
+   "opens here" (a plus read as "add"). */
 summary {
   display: flex;
   align-items: center;
@@ -481,10 +495,31 @@ summary {
      line above and not two. */
   margin-block: calc((var(--size-target) - 1lh) / -2);
   list-style: none;
-  text-decoration: underline;
   cursor: pointer;
 }
 
+details:not(.menu, .accepted) > summary {
+  width: fit-content;
+  margin-block: 0;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-button);
+  transition: transform var(--press-time);
+}
+
+.card details:not(.menu, .accepted) > summary {
+  background: var(--sage);
+  color: var(--ink);
+}
+
+details:not(.menu, .accepted) > summary:active {
+  transform: scale(var(--press-scale));
+}
+
+/* The play screen's RKN tab and the folded "accepted" card draw their own summary: only the base rule above reaches
+   them, as before. */
 summary::-webkit-details-marker {
   display: none;
 }
@@ -602,17 +637,116 @@ button,
   color: var(--pay);
 }
 
-/* A second action that must not draw the eye: no fill, it looks like a link. No padding, so its words start
-   where the words above it start. Words start at the left on every line: a browser centres a button's words by
-   default, which shows only once they wrap onto a second line, as on a phone. */
-.quiet,
-.card .quiet {
-  padding: 0;
+/* A second action that must not draw the eye (Sign out, Not now, Forgot your password?): a real button, never words
+   with a line under them (the owner, 2026-11-22: professional apps do not use underlined words as buttons). It is a
+   tone step off what it stands on, so the one blue button still leads: Dusky Green on the felt, as Back is, and
+   Glaucous Green with ink words on a card. As wide as its words; a long one wraps with its words at the left. */
+.quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: var(--size-target);
+  margin-block: 0;
+  padding: 0.5rem 1.25rem;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-button);
   text-align: start;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
+  text-decoration: none;
+  transition: transform var(--press-time);
+  cursor: pointer;
+}
+
+.card .quiet {
+  background: var(--sage);
+  color: var(--ink);
+}
+
+.quiet:active {
+  transform: scale(var(--press-scale));
+}
+
+/* A side link (What we keep, What is Ruken?, Your computers): not an action, so not a button. Its words in the button's
+   weight with an arrow after them, never underlined (the owner, 2026-11-23: primary actions are buttons, secondary
+   actions are the → links, "What we keep in blue text with the ->"). The Blue on a card; a light blue on the felt and
+   on glass, where the Blue is too dim to read. */
+.go {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--size-target);
+  color: var(--pay-light);
+  font: var(--text-button);
+  text-decoration: none;
+}
+
+.go::after {
+  content: "→";
+  /* The arrow is drawn, not read: a screen reader says the link's words alone. */
+  content: "→" / "";
+  transition: transform var(--press-time);
+}
+
+.go:hover::after {
+  transform: translateX(0.25rem);
+}
+
+.card .go {
+  color: var(--pay);
+}
+
+/* Side links stacked under each other, each on its own line, with no gap beyond their own height. */
+.sidelinks {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Stacked, or in a row of ways, each keeps its whole 48px line: no margin taken back, so two targets never overlap. */
+.sidelinks .go,
+.ways .go {
+  margin-block: 0;
+}
+
+/* A stacked list is one block: its 48px lines touch, with no extra air between them. */
+.card .sidelinks li + li {
+  margin-top: 0;
+}
+
+/* A quiet button under a form's main button, or alone on a line, keeps a line of its own and its own width. */
+form > .quiet {
+  display: flex;
+  width: fit-content;
+}
+
+/* Several quiet buttons on one line (the foot of Your games), with room between them. */
+.ways {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+/* An icon in place of a word (src/lib/icon.svelte): lines in the colour of the words, the weight of the button's letters. A
+   button that holds only an icon is a square, the size of every other target, so it is as easy to hit. */
+.icon {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:is(button, .button, .quiet, a):has(> .icon:only-child) {
+  justify-content: center;
+  min-width: var(--size-target);
+  padding-inline: 0;
 }
 
 /* The main button of a form is a step and a half under the last field. On a phone it spans the card, so a
@@ -694,13 +828,15 @@ form > * + button:not(.quiet) {
 }
 
 .file[data-quiet] > span {
-  width: auto;
-  padding: 0;
+  width: fit-content;
   justify-content: flex-start;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
+  background: var(--felt-raised);
+  color: var(--chalk);
+}
+
+.card .file[data-quiet] > span {
+  background: var(--sage);
+  color: var(--ink);
 }
 
 .file:active > span {
@@ -860,8 +996,22 @@ form > * + button:not(.quiet) {
   width: fit-content;
   min-height: 44px;
   margin-block: 0;
-  color: var(--sage);
-  font: var(--text-small);
+  padding: 0.25rem 1rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-button);
+  font-size: 1rem;
+  text-decoration: none;
+  transition: transform var(--press-time);
+}
+
+.screen a.help + a.help {
+  margin-top: 0.5rem;
+}
+
+.screen a.help:active {
+  transform: scale(var(--press-scale));
 }
 
 .screen :is(input, textarea, select).answer {
@@ -1277,7 +1427,8 @@ form > * + button:not(.quiet) {
     flex: 0 0 auto;
   }
 
-  /* Pinned over the screen, the row is glass, so its filled buttons are coloured glass; an outline or quiet one keeps
+  /* Pinned over the screen, the row is glass, so its filled buttons are coloured glass: blue for the main one, green
+     glass for a safe or quiet one (a quiet button is a real, filled button: no underlined words); an outline one keeps
      no fill, so only one button is blue. */
   .screen .acts > :is(.button, button):not(.danger, .outline, .quiet) {
     background: var(--glass-pay);
@@ -1285,8 +1436,11 @@ form > * + button:not(.quiet) {
     text-shadow: var(--glass-ink);
   }
 
-  .screen .acts > :is(.button, button).safe {
+  .screen .acts > :is(.button, button).safe,
+  .screen .acts > .quiet {
     background: var(--glass-safe);
+    box-shadow: var(--glass-edge);
+    text-shadow: var(--glass-ink);
   }
 }
 
@@ -1676,12 +1830,26 @@ html:has(dialog.viewer[open]) {
   right: 1rem;
 }
 
-/* The small link at the foot: throwing a game away, which has its own screen. */
+/* The small button at the foot: throwing a game away, which has its own screen. A quiet button a size smaller, so it is
+   there to be found and never read as the main thing. */
 a.foot {
+  display: inline-flex;
+  align-items: center;
   align-self: flex-start;
+  min-height: 44px;
   margin: 1.5rem 0 1rem 1.25rem;
-  color: var(--sage);
-  font: var(--text-small);
+  padding: 0.25rem 1rem;
+  border-radius: var(--radius-button);
+  background: var(--felt-raised);
+  color: var(--chalk);
+  font: var(--text-button);
+  font-size: 1rem;
+  text-decoration: none;
+  transition: transform var(--press-time);
+}
+
+a.foot:active {
+  transform: scale(var(--press-scale));
 }
 
 /* On the maker's screens it stands in the column of words, at the left edge they start from, and at the foot of the page
@@ -1689,13 +1857,13 @@ a.foot {
    computer, and under the answer on a phone. */
 .screen > a.foot {
   align-self: center;
-  width: min(100% - 2.5rem, var(--column));
-  margin: auto auto 1rem;
+  width: fit-content;
+  margin: auto auto 1rem calc((100% - min(100% - 2.5rem, var(--column))) / 2);
 }
 
 @media (min-width: 500px) and (orientation: landscape) and (min-height: 450px) {
   .screen:has(.asks) > a.foot {
-    width: min(100% - 5rem, 1200px);
+    margin-left: calc((100% - min(100% - 5rem, 1200px)) / 2);
   }
 }
 
@@ -1751,19 +1919,18 @@ a.foot {
   }
 }
 
-/* On Live, "Back to your games" is a little larger than the link that takes the game off Ruken. That one is the quietest thing
-   on the screen: last, a size smaller and dimmer, and a step below the way back, so a thumb that aims for one does not land
+/* On Live, "Back to your games" is a little larger than the button that takes the game off Ruken. That one is the quietest
+   thing on the screen: last, a size smaller and with dimmer words, and a step below the way back, so a thumb that aims for one does not land
    on the other and it is never read as part of the blue button's note above. Each is on its own line. */
 .live a.foot {
   display: flex;
   width: fit-content;
-  font-size: 1rem;
 }
 
 .live a.foot[data-off] {
   margin-top: 1.5rem;
+  color: var(--sage);
   font-size: 0.875rem;
-  opacity: 0.75;
 }
 
 @media (orientation: landscape) and (min-width: 700px) {
@@ -2018,6 +2185,31 @@ a.foot {
   gap: 0.25rem;
 }
 
+/* Your account's number, with the membership badge on the same line. */
+.badged {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Whether the person is a member, beside their number (the owner, 2026-11-23: "a green or red badge"): green for a
+   member, red for not, and the state in words as well as by its fill. White words on both (Dusky Green 9.6:1, Scarlet
+   5.2:1). */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 8px;
+  background: var(--pip);
+  color: var(--chalk);
+  font: var(--text-small);
+  font-weight: 600;
+}
+
+.badge.member {
+  background: var(--felt-raised);
+}
+
 /* A fact in a quiet chip: the same Dusky Green as a green button, white words, 8px corners (no pills). */
 .chip {
   display: inline-block;
@@ -2029,7 +2221,7 @@ a.foot {
   overflow-wrap: break-word;
 }
 
-/* A small Change beside a part. A link, not a button, and still a 44 by 44 target. */
+/* A small Change beside a part: a small quiet button, still a 44 by 44 target. */
 .laid .change {
   /* Beside or under a part's words, it keeps the space it is given: the pull a link takes on its margins is for a line of words.
      The `.laid` in front lets this win over the rule for every link, whatever order the two are read in. */
@@ -2039,9 +2231,14 @@ a.foot {
   justify-content: center;
   min-width: 44px;
   min-height: 44px;
-  color: var(--sage);
-  font: var(--text-small);
-  text-decoration: underline;
+  padding: 0 0.875rem;
+  /* A chalk edge and no fill, the outline look on the felt: the chips it sits beside are filled, so it is not read as one. */
+  border: 2px solid var(--chalk);
+  border-radius: var(--radius-button);
+  color: var(--chalk);
+  font: var(--text-button);
+  font-size: 0.875rem;
+  text-decoration: none;
   /* One word, never cut: where there is no room beside the words it belongs to, it drops to the next line whole. */
   white-space: nowrap;
 }
@@ -2058,8 +2255,17 @@ a.foot {
 }
 
 .laid .other a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   margin-block: 0;
-  color: var(--sage);
+  padding: 0.25rem 1rem;
+  border: 2px solid var(--chalk);
+  border-radius: var(--radius-button);
+  color: var(--chalk);
+  font: var(--text-button);
+  font-size: 1rem;
+  text-decoration: none;
 }
 
 /* On a phone the mark wraps under its link: close to it, so it reads as the link's. */
@@ -2076,7 +2282,7 @@ a.foot {
 /* "Keep the old one" on a question: under the buttons, not in them, so the bar keeps one main action. It comes after the
    Save button in the form, so Enter still saves. */
 .asks .keep {
-  margin-top: 1.5rem;
+  margin-top: 0.75rem;
 }
 
 /* What a live game's maker changed and staff have not said yes to yet: a quiet label beside it, so nobody reads it as
@@ -2420,12 +2626,21 @@ button:active,
 
   button,
   .button,
-  .file > span {
+  .quiet,
+  details:not(.menu, .accepted) > summary,
+  a.foot,
+  .screen a.help,
+  .file > span,
+  .go::after {
     transition: none;
   }
 
   button:active,
   .button:active,
+  .quiet:active,
+  details:not(.menu, .accepted) > summary:active,
+  a.foot:active,
+  .screen a.help:active,
   .file:active > span,
   a.game:active {
     transform: none;
@@ -2516,7 +2731,6 @@ a.sheet.fix {
 .fixgo {
   color: var(--pay);
   font: 600 1rem / 1.3 var(--font-text);
-  text-decoration: underline;
 }
 
 /* What passed, folded away in one green card; opened, it is the game laid out. Its chips sit one tone down, on the felt,
@@ -2546,7 +2760,6 @@ a.sheet.fix {
   content: "Show";
   flex: none;
   font: var(--text-small);
-  text-decoration: underline;
   white-space: nowrap;
 }
 
@@ -3598,12 +3811,19 @@ main.gamepage {
   gap: 0.25rem;
 }
 
+/* Join, after the cost: a small button with a chalk edge, never an underlined word, so the white Play stays the main one. */
 .gamepage .costrow .joinlink {
-  display: inline;
-  min-height: 0;
-  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem 1rem;
+  border: 2px solid var(--chalk);
+  border-radius: var(--radius-button);
   color: var(--chalk);
-  text-decoration: underline;
+  font: var(--text-button);
+  font-size: 1rem;
+  text-decoration: none;
 }
 
 .gamepage .playtile > .outline {
@@ -4208,6 +4428,7 @@ header:has(+ main.about) {
 }
 
 .about .sitefoot a {
+  font-weight: 400;
   text-decoration: none;
 }
 
@@ -5182,6 +5403,7 @@ html:has(main.about) :is(a, button, summary, label) {
 
 .consent .safe {
   background: var(--glass-safe);
+  box-shadow: var(--glass-edge);
 }
 
 .consent.above-bar {
@@ -5197,8 +5419,18 @@ html:has(main.about) :is(a, button, summary, label) {
   margin: 0.5rem 0 0;
 }
 
+/* What we keep, under I agree and Not now, sits as far below them as the words above sit (the owner, 2026-11-23: "use
+   consistent spacing and margin, the what we keep is too close to buttons"): a rem, to its words. */
+.consent .consent-answers + p {
+  margin-top: 1rem;
+}
+
 .consent a {
   color: var(--chalk);
+}
+
+.consent .go {
+  color: var(--pay-light);
 }
 
 .consent-answers {

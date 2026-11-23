@@ -25,7 +25,8 @@ test("a member whose membership has ended is offered the card again, pays, and i
 
   await letMembershipRunOut(first);
   await page.reload();
-  await expect(page.getByText("You're not a member.")).toBeVisible();
+  // The red badge beside the number says it (the owner, 2026-11-23).
+  await expect(page.locator(".badged .badge", { hasText: "Not a member" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Join Ruken" })).toHaveAttribute("href", "/join?next=/me");
 
   // The price card is back, with its button, as for someone who never joined.
