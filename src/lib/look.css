@@ -426,7 +426,7 @@ form > * + * {
 
 /* A note that is a quiet button keeps a rem from a button above it (Delete my account under Your games), so two buttons
    never sit a few pixels apart. Under words (Change password under the number) it stays a note's step away. */
-.card :is(p, form):has(button, .button, .quiet) + p.note:has(> .quiet) {
+.card :is(p, form):has(button, .button, .quiet) + p.note:not(.apart):has(> .quiet) {
   margin-top: 1rem;
 }
 
@@ -4553,8 +4553,9 @@ header:has(+ main.about) {
   color: var(--chalk);
 }
 
+/* This card is the Dusky Green itself, so its button is the darker felt, to stand out from it. */
 .about .pair .card + .card a.more {
-  background: var(--felt-raised);
+  background: var(--felt);
   color: var(--chalk);
 }
 
