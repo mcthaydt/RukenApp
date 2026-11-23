@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { feedOrder, NEW_GAME_DAYS, type Orderable } from "../../../src/features/feed/order.ts";
+import { feedOrder, NEW_GAME_DAYS, type Orderable } from "../../../src/features/feed/public-ranker.ts";
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-11-21T12:00:00Z");

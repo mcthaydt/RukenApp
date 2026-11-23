@@ -54,7 +54,6 @@
       src={`${src}#t=0.001`}
       preload="metadata"
       muted
-      loop
       playsinline
       use:quietVideo
     ></video>

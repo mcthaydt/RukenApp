@@ -244,6 +244,28 @@ export function pipRed(page: Page): Promise<string[]> {
   }, pip);
 }
 
+/**
+ * The colour a button of the main blue (`--pay`) or the safe green (`--felt-raised`) is painted as the browser reports
+ * it: solid, or the same colour as coloured glass (`--glass-pay`, `--glass-safe`) when the button sits on glass, as
+ * Play on a clip, Add a game in the bar and the row of buttons pinned over a phone's screen do (the owner,
+ * 2026-11-23: "Coloured glass buttons").
+ */
+export async function buttonColour(button: Locator, solid: "--pay" | "--felt-raised"): Promise<string> {
+  const onGlass = await button.evaluate((element) => {
+    const blurs = (style: CSSStyleDeclaration) => {
+      const filter = style.backdropFilter || style.getPropertyValue("-webkit-backdrop-filter");
+      return filter !== "" && filter !== "none";
+    };
+    for (let at = element.parentElement; at !== null; at = at.parentElement)
+      if (blurs(getComputedStyle(at)) || blurs(getComputedStyle(at, "::before"))) return true;
+    return false;
+  });
+  if (!onGlass) return rgb(token(solid));
+  const glass = token(solid === "--pay" ? "--glass-pay" : "--glass-safe");
+  const [red = "0", green = "0", blue = "0", alpha = "1"] = glass.match(/[\d.]+/g) ?? [];
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
 /** The main buttons on a card: every button or link-button that is not the quiet, green, red or outline kind, and a
  * file picker's words when the picker is not the quiet one. */
 export function filledButtons(page: Page): Locator {
@@ -262,12 +284,25 @@ export function filledButtons(page: Page): Locator {
 export async function expectOneCard(page: Page, options: { red?: string[] } = {}): Promise<void> {
   const card = page.locator("main.card");
   await expect(card).toHaveCount(1);
-  await expect(card).toHaveCSS("background-color", rgb(token("--paper")));
-  await expect(card).toHaveCSS("color", rgb(token("--ink")));
-  await expect(card).toHaveCSS("border-top-left-radius", "20px");
+  // The bold card (the paywall) is in two halves: its paper is the half under (or beside) its Dusky Green top, and the
+  // paper half's corners are the card's. Every other card is paper all over.
+  const bold = await card.evaluate((node) => node.classList.contains("bold"));
+  const paper = bold ? card.locator(".cardbody") : card;
+  await expect(paper).toHaveCSS("background-color", rgb(token("--paper")));
+  await expect(paper).toHaveCSS("color", rgb(token("--ink")));
+  await expect(paper).toHaveCSS("border-bottom-right-radius", "20px");
+  if (!bold) await expect(card).toHaveCSS("border-top-left-radius", "20px");
   await expect(card).toHaveCSS("border-top-width", "0px");
   await expect(card).toHaveCSS("box-shadow", "none");
-  await expect(card.getByRole("heading", { level: 1 })).toHaveCSS("font-size", "32px");
+  // The paywall is the one bold card (the owner, 2026-11-22: the plain one was "boring"): its title is 44px or more.
+  // Every other card's title is the card title's 32px.
+  const title = card.getByRole("heading", { level: 1 });
+  if (bold) {
+    const size = await title.evaluate((node) => parseFloat(getComputedStyle(node).fontSize));
+    expect(size).toBeGreaterThanOrEqual(44);
+  } else {
+    await expect(title).toHaveCSS("font-size", "32px");
+  }
   expect(await filledButtons(page).count()).toBeLessThanOrEqual(1);
   expect(await pipRed(page)).toEqual(options.red ?? []);
   expect(
@@ -379,6 +414,24 @@ export function layoutOf(page: Page): Layout {
   if (height > width) return "tablet";
   if (width < 1200) return "tablet-sideways";
   return "computer";
+}
+
+/**
+ * Whether `box` is wholly in view and clear of a step's own Back and Save (`.acts`), so the maker sees it without
+ * scrolling and nothing covers it: it ends above whatever is under it. On a phone or an iPad held upright the buttons are a bar across the window's foot,
+ * so clear is above that bar. On a phone held sideways they are a column at the right edge (slice 2 design round 3,
+ * note 3), so clear is to the left of the column and above the window's foot. Elsewhere the buttons follow the answer,
+ * so clear is above the window's foot.
+ */
+export async function clearOfTheButtons(page: Page, box: Box): Promise<boolean> {
+  const window = page.viewportSize() ?? { width: 0, height: 0 };
+  const layout = layoutOf(page);
+  if (layout === "phone" || layout === "tablet")
+    return box.y + box.height <= (await boxOf(page.locator(".acts"))).y;
+  const inWindow = box.y + box.height <= window.height;
+  if (layout === "phone-sideways")
+    return inWindow && box.x + box.width <= (await boxOf(page.locator(".acts"))).x;
+  return inWindow;
 }
 
 /**

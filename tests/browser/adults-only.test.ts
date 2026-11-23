@@ -14,6 +14,7 @@ import { addGame } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
 import { codeTo } from "./support/texts.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { clearCookiesKeepingConsent, consented } from "./support/consent.ts";
 
 // An 18+ game is only for people Ruken knows are 18 or over. Everyone else (signed out, under 18, or with no age on
 // their account) meets the same refusal on every address that shows or plays it: its page, its play screen, the price
@@ -62,7 +63,7 @@ async function signUpAgedElsewhere(
   browser: Browser,
   years: number,
 ): Promise<{ number: string; password: string }> {
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     return await signUpAged(await context.newPage(), years);
   } finally {
@@ -98,7 +99,7 @@ async function takeOffAsMaker(
   maker: { number: string; password: string },
   slug: string,
 ): Promise<void> {
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     const page = await context.newPage();
     await signInAs(page, maker.number, maker.password);
@@ -155,9 +156,14 @@ test("a visitor who is not signed in cannot see or play an 18+ game, and is aske
   await page.goto(`/g/${adultsGame.slug}`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   await showTheOwner(page, testInfo, "an 18+ game, to someone not signed in");
-  // One button, reached by keyboard, with focus showing.
+  // One button, reached by keyboard straight after the bar's three places, with focus showing.
   const signIn = page.getByRole("link", { name: "Sign in" });
   await expect(signIn).toHaveCount(1);
+  const bar = page.getByRole("navigation", { name: "Ruken" });
+  for (const place of ["Home", "Add a game", "You"]) {
+    await page.keyboard.press("Tab");
+    await expect(bar.getByRole("link", { name: place, exact: true })).toBeFocused();
+  }
   await page.keyboard.press("Tab");
   await expect(signIn).toBeFocused();
   expect(await signIn.evaluate((link) => getComputedStyle(link).outlineStyle)).not.toBe("none");
@@ -178,7 +184,7 @@ test("an adult who signs in from the refusal lands back on the 18+ game, on its 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(adultsGame.name);
 
   // Signed out again, the play screen's refusal sends them back to the play screen, and the game starts.
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   await page.goto(`/g/${adultsGame.slug}/play`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   await signInFromTheRefusal(page, adult);
@@ -186,7 +192,7 @@ test("an adult who signs in from the refusal lands back on the 18+ game, on its 
   await expect(page.frameLocator("iframe.frame").locator("body")).toHaveAttribute("data-loaded", "yes");
 
   // An address on another site is never followed: signing in from it lands on Ruken's front page.
-  await page.context().clearCookies();
+  await clearCookiesKeepingConsent(page.context());
   await page.goto(`/sign-in?next=${encodeURIComponent("https://evil.example/")}`, {
     waitUntil: "domcontentloaded",
   });
@@ -233,7 +239,7 @@ test("an 18+ game is not in the feed for a visitor, a person under 18, a person 
 
   // Each person has a browser of their own, so one's sign-in never carries to the next.
   for (const years of [15, 30, 18]) {
-    const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
     try {
       const person = await context.newPage();
       const account = await signUpAged(person, years);
@@ -304,7 +310,7 @@ test("changing a game's rating opens it to under-18s and closes it again, and ta
   await takeOffAsMaker(browser, game.maker, game.slug);
   expect(await stateOf(game.slug)).toBe("taken_off");
   expect(await statusOf(page, `/g/${game.slug}`)).toBe(404);
-  const adult = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const adult = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     const adultPage = await adult.newPage();
     await signUpAged(adultPage, 30);

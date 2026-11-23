@@ -18,6 +18,7 @@ import {
 import {
   boxOf,
   brokenWords,
+  clearOfTheButtons,
   layoutHasSettled,
   layoutOf,
   lineCount,
@@ -55,11 +56,9 @@ async function longGameAtCheck(page: Page): Promise<{ slug: string }> {
   return { slug };
 }
 
-/** Where the bar of buttons starts, or the window's foot where the buttons are not in a bar. */
-async function barTop(page: Page): Promise<number> {
-  const inABar = ["phone", "phone-sideways", "tablet"].includes(layoutOf(page));
-  return inABar ? (await boxOf(page.locator(".acts"))).y : (page.viewportSize()?.height ?? 0);
-}
+// Changed on purpose in the sideways steps follow-up (slice 2 design round 3, note 3): "above the bar" was the top of the
+// row of Back and Save across the foot. On a phone held sideways those stand in a column at the right edge, so the
+// journeys ask whether a thing is clear of the buttons, whichever way they stand (clearOfTheButtons in support/look.ts).
 
 /** The right-most edge of anything inside `scope`, which must not pass the window. */
 function rightmostEdge(page: Page, scope: string): Promise<number> {
@@ -159,7 +158,7 @@ async function expectReasonAboveBar(page: Page): Promise<void> {
   await expect
     .poll(async () => {
       const box = await boxOf(reason);
-      return box.y + box.height <= (await barTop(page));
+      return clearOfTheButtons(page, box);
     })
     .toBe(true);
 }
@@ -209,7 +208,7 @@ test.describe("on an iPhone SE", () => {
 test.describe("on an iPhone SE held sideways", () => {
   test.use({ viewport: IPHONE_SE_SIDEWAYS });
 
-  test("a refusal of the first answer is read above the bar", async ({ page }) => {
+  test("a refusal of the first answer is read beside Back and Save, in the window", async ({ page }) => {
     onlyIn("phone");
     const { slug } = await startDraft(page);
     await page.goto(`/make/${slug}/name`);
@@ -274,20 +273,20 @@ test.describe("a 56-letter name in a question's heading", () => {
       expect(await lineCount(heading)).toBeLessThanOrEqual(5);
       expect(await brokenWords(heading)).toEqual([]);
       const box = await boxOf(page.locator(".answer"));
-      expect(box.y + box.height).toBeLessThanOrEqual(await barTop(page));
+      expect(await clearOfTheButtons(page, box)).toBe(true);
     });
   });
 
   test.describe("on an iPhone SE held sideways", () => {
     test.use({ viewport: IPHONE_SE_SIDEWAYS });
 
-    test("the box is above the bar", async ({ page }) => {
+    test("the box is beside Back and Save, in the window", async ({ page }) => {
       onlyIn("phone");
       await draftWithLongName(page);
       await pageHasSettled(page);
 
       const box = await boxOf(page.locator(".answer"));
-      expect(box.y + box.height).toBeLessThanOrEqual(await barTop(page));
+      expect(await clearOfTheButtons(page, box)).toBe(true);
     });
   });
 

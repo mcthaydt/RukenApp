@@ -7,6 +7,7 @@ import { holdNextScreen } from "./support/hold.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { rgb } from "../support/look-tokens.ts";
 import { THEMES } from "../../src/features/pages/themes.ts";
+import { consented } from "./support/consent.ts";
 
 // Editing your page (spec 5.5): a maker makes her page from nothing, reads it where visitors see it, changes every part
 // of it and takes the parts away again, all on the real screens.
@@ -57,7 +58,7 @@ async function atRest(page: Page): Promise<void> {
  * new address.
  */
 async function statusOf(page: Page, address: string | null): Promise<number> {
-  const context = await page.context().browser()?.newContext();
+  const context = await page.context().browser()?.newContext(consented);
   if (context === undefined) throw new Error("the page has no browser");
   try {
     return (await (await context.newPage()).goto(new URL(address ?? "", page.url()).href))?.status() ?? 0;
@@ -256,8 +257,32 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(rows.nth(0)).toContainText("Tapped 0 times");
   await expect(rows.nth(1)).toContainText("My other game");
 
+  // An answer in place keeps the maker where they pressed, as an app does (src/lib/stay-in-app.ts): the page is
+  // scrolled to its foot first, and is not back at its top after Up has moved the row. The window is made short for this, so
+  // that the page scrolls on every size.
+  const size = page.viewportSize() ?? { width: 1280, height: 720 };
+  await page.setViewportSize({ width: size.width, height: 320 });
+  // A phone's window this short is a phone held sideways, and Safari plays the screen's rising lines again when it
+  // turns. The page is scrolled once they have risen: scrolled while they still move, the press waits for the row to
+  // stand still and scrolls it into view, at about half way down, and then Safari's own following of the moved row
+  // (about 150px up) would leave the page at its top whatever the app did.
+  await atRest(page);
+  const footOfThePage = await page.evaluate(() => {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    return window.scrollY;
+  });
+  expect(footOfThePage).toBeGreaterThan(0);
+  // Nor does it play the maker area's step between two questions: it is the same page, brought up to date.
+  await page.evaluate(() => {
+    delete document.documentElement.dataset.step;
+  });
   await rows.nth(1).getByRole("button", { name: "Up" }).click();
   await expect(rows.nth(0)).toContainText("My other game");
+  await expect(rows.nth(0).getByRole("button", { name: "Down" })).not.toHaveAttribute("aria-busy", /.*/);
+  // Not sent back to the top. The browser may nudge the page a little to keep the row in view as the rows swap places.
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.documentElement.dataset.step)).toBeUndefined();
+  await page.setViewportSize(size);
   await rows.nth(0).getByRole("button", { name: "Hide" }).click();
   await expect(rows.nth(0)).toContainText("Hidden");
   await page.goto(`/${moved}`);
@@ -343,7 +368,7 @@ test("nobody changes another maker's links, and thirty is the most", async ({ pa
   const [victim = ""] = linkIds;
 
   // The other maker posts every change at my link: each is the missing page, and my link stays.
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     const theirs = await context.newPage();
     await signInAs(theirs, other.number, other.password);
@@ -389,7 +414,7 @@ test("nobody changes another maker's links, and thirty is the most", async ({ pa
       url: `https://full.example.com/${String(index + 1)}`,
     })),
   });
-  const context2 = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context2 = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     const fullPage = await context2.newPage();
     await signInAs(fullPage, full.number, full.password);

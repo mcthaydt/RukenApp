@@ -13,7 +13,15 @@ import {
   startAtVideo,
   startDraft,
 } from "./support/game.ts";
-import { boxOf, heldSideways, layoutOf, pipRed, showTheOwner, type Layout } from "./support/look.ts";
+import {
+  buttonColour,
+  boxOf,
+  heldSideways,
+  layoutOf,
+  pipRed,
+  showTheOwner,
+  type Layout,
+} from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // How the maker's screens are laid out (spec 4). A window is one of five layouts, and
@@ -23,13 +31,20 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
 
-/** What each layout draws a question with: the heading, the answer box and the buttons, in px. */
-const SIZES: Record<Layout, { heading: number; box: number; button: number; inBar: boolean }> = {
-  phone: { heading: 36, box: 64, button: 56, inBar: true },
-  "phone-sideways": { heading: 32, box: 56, button: 52, inBar: true },
-  tablet: { heading: 64, box: 72, button: 60, inBar: true },
-  "tablet-sideways": { heading: 48, box: 72, button: 60, inBar: false },
-  computer: { heading: 64, box: 72, button: 60, inBar: false },
+/**
+ * What each layout draws a question with: the heading, the answer box and the buttons, in px, and where the buttons
+ * stand: in a bar across the window's foot, under the answer, or (a phone held sideways, changed on purpose in the
+ * sideways steps follow-up, slice 2 design round 3, note 3) in a column at the right edge, beside the answer.
+ */
+const SIZES: Record<
+  Layout,
+  { heading: number; box: number; button: number; buttons: "bar" | "under" | "column" }
+> = {
+  phone: { heading: 36, box: 64, button: 56, buttons: "bar" },
+  "phone-sideways": { heading: 32, box: 56, button: 52, buttons: "column" },
+  tablet: { heading: 64, box: 72, button: 60, buttons: "bar" },
+  "tablet-sideways": { heading: 48, box: 72, button: 60, buttons: "under" },
+  computer: { heading: 64, box: 72, button: 60, buttons: "under" },
 };
 
 /** A game whose first question not answered is the one asked, so a journey can open that question alone. */
@@ -63,12 +78,26 @@ function questionSizes(): void {
 
     const next = nextButton(page);
     await expect(next).toHaveCSS("height", `${String(sizes.button)}px`);
-    await expect(next).toHaveCSS("background-color", rgb(token("--pay")));
+    await expect(next).toHaveCSS("background-color", await buttonColour(next, "--pay"));
     const viewport = page.viewportSize();
     const bar = await boxOf(page.locator(".acts"));
-    if (sizes.inBar) {
-      // The buttons sit in a bar whose bottom is the window's bottom, so a thumb finds them in the same place.
-      expect(Math.abs(bar.y + bar.height - (viewport?.height ?? 0))).toBeLessThanOrEqual(1);
+    if (sizes.buttons === "bar") {
+      // The buttons sit in a glass pill floating just above the window's bottom and clear of its sides (the owner,
+      // 2026-11-23: "lets make the footer floating"), so a thumb finds them in the same place.
+      const gap = (viewport?.height ?? 0) - (bar.y + bar.height);
+      expect(gap).toBeGreaterThanOrEqual(8);
+      expect(gap).toBeLessThanOrEqual(24);
+      expect(bar.x).toBeGreaterThanOrEqual(8);
+      expect(bar.x + bar.width).toBeLessThanOrEqual((viewport?.width ?? 0) - 8);
+    } else if (sizes.buttons === "column") {
+      // A column at the window's right edge, in the middle of its height, the blue button on top, and the answer box
+      // wholly to the left of it.
+      expect(Math.abs(bar.x + bar.width - (viewport?.width ?? 0))).toBeLessThanOrEqual(24);
+      expect(Math.abs(bar.y + bar.height / 2 - (viewport?.height ?? 0) / 2)).toBeLessThanOrEqual(2);
+      const back = await boxOf(page.locator(".acts").getByRole("link", { name: "Back" }));
+      expect((await boxOf(next)).y).toBeLessThan(back.y);
+      const answer = await boxOf(box);
+      expect(answer.x + answer.width).toBeLessThanOrEqual(bar.x);
     } else {
       // Under the answer, the blue button at least 168 wide.
       expect((await boxOf(next)).width).toBeGreaterThanOrEqual(168);

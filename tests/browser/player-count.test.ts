@@ -3,6 +3,7 @@ import { pageHasSettled, signUp } from "./support/account.ts";
 import { addPlays, showsPlayerCountOf } from "./support/database.ts";
 import { gameWhere } from "./support/game.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 test.beforeEach(forgetRateLimits);
 
@@ -46,7 +47,8 @@ test("the switch works by keyboard, shows its focus and is at least 44 by 44", a
   await pageHasSettled(page);
 
   let reached = false;
-  for (let tabs = 0; tabs < 15 && !reached; tabs += 1) {
+  // The bar of places comes first, three stops.
+  for (let tabs = 0; tabs < 18 && !reached; tabs += 1) {
     await page.keyboard.press("Tab");
     reached = await switchButton(page).evaluate((button) => button === document.activeElement);
   }
@@ -65,6 +67,7 @@ test("the switch works by keyboard, shows its focus and is at least 44 by 44", a
 test("with no script the form still posts", async ({ page, browser, baseURL }) => {
   const { slug } = await gameWhere(page, { state: "live" });
   const quiet = await browser.newContext({
+    ...consented,
     baseURL: baseURL ?? "http://localhost:4173",
     javaScriptEnabled: false,
     storageState: await page.context().storageState(),
@@ -87,7 +90,7 @@ test("with no script the form still posts", async ({ page, browser, baseURL }) =
 test("another account's post is refused and changes nothing", async ({ page, browser, baseURL }) => {
   const { slug } = await gameWhere(page, { state: "live" });
   const site = baseURL ?? "http://localhost:4173";
-  const stranger = await browser.newContext({ baseURL: site });
+  const stranger = await browser.newContext({ ...consented, baseURL: site });
   try {
     await signUp(await stranger.newPage());
     const posted = await stranger.request.post(`/make/${slug}?/playerCount`, {

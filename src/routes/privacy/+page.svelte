@@ -24,7 +24,7 @@
     <li>We don't keep your birthday. We keep only the day you turn 18.</li>
     <li>Stripe takes your card. We never see your card number.</li>
     <li>We count how long members play each game, so we can pay the people who made it.</li>
-    <li>Ruken has no ads. We don't sell what we know about you.</li>
+    <li>Ruken has no ads, and no game on Ruken may have ads. We don't sell what we know about you.</li>
     <li>You can delete your account at any time. 14 days later, your details are gone.</li>
   </ul>
 
@@ -53,7 +53,7 @@
     <li>
       <strong>Your computers.</strong> If you let a computer use your Ruken (<code>npx ruken sign-in</code>),
       we keep its name, a scrambled copy of its key, and when it was let in and last used. A key stops working
-      after 90 days unused, or when you remove it.
+      after 90 days unused, or when you remove it. Changing or resetting your password removes every computer.
     </li>
     <li>
       <strong>While a computer asks to sign in.</strong> We keep the city and country it asked from, to show you
@@ -121,6 +121,7 @@
       does.
     </li>
   </ul>
+  <p><a class="quiet" href="/help/how-the-feed-works">How the feed works</a></p>
 
   <h2>Games you want</h2>
   <p>Before Ruken opens, you can add games to a list. We keep your list.</p>
@@ -141,8 +142,13 @@
   </ul>
 
   <h2>Cookies and your browser</h2>
-  <p>Ruken has no cookies for ads, and none that follow you to other websites.</p>
+  <p>
+    Ruken has no cookies for ads, and none that follow you to other websites. Until you say "I agree" on the
+    notice, Ruken keeps nothing on your browser and writes nothing about your visit. You can take your yes
+    back any time on the <a href="/cookies">cookies page</a>.
+  </p>
   <ul class="bullets">
+    <li><strong>rk_consent</strong> remembers that you said yes, and the day. 180 days.</li>
     <li><strong>rk_session</strong> keeps you signed in. Up to 30 days.</li>
     <li>
       <strong>rk_arrival</strong> remembers the last maker's page or game you opened. 400 days from the last time.
@@ -153,11 +159,15 @@
     <li>
       <strong>rk_welcome_back</strong> says "Welcome back" once, after you undo deleting your account. 5 minutes.
     </li>
+    <li>
+      <strong>rk_wish_pressed</strong> remembers which game you pressed Wishlist on while signed out, so it goes
+      on your list after you sign up. 30 minutes.
+    </li>
     <li><strong>thrown-away</strong> tells a maker which game they just threw away. 1 minute.</li>
     <li><strong>page-saved</strong> says "Saved." once, after a maker saves their page. 1 minute.</li>
     <li>
-      <strong>rk_seen_hints</strong> and <strong>rk_menu_tab</strong> stay in your browser and never reach us. They
-      remember that you saw the feed's first hints, and where you put a game's menu.
+      <strong>rk_seen_hints</strong> and <strong>rk_menu_tab</strong> stay in your browser, only after you say yes,
+      and never reach us. They remember that you saw the feed's first hints, and where you put a game's menu.
     </li>
   </ul>
   <p>When you pay, you're on Stripe's own page, and Stripe uses its own cookies there.</p>
@@ -166,7 +176,8 @@
   <p>These companies handle some of your details for us:</p>
   <ul class="bullets">
     <li>
-      <strong>Cloudflare</strong> runs the website, keeps game files, clips and photos, and keeps our logs.
+      <strong>Cloudflare</strong> runs the website, keeps game files, clips and photos. Its network sees your internet
+      address to bring you each page.
     </li>
     <li><strong>Neon</strong> keeps our database.</li>
     <li><strong>Stripe</strong> takes payments and works out tax.</li>
@@ -179,11 +190,10 @@
   <h2>Logs</h2>
   <ul class="bullets">
     <li>
-      Cloudflare keeps a short record of each visit: the page, the time, your internet address and your
-      browser.
+      Ruken keeps no log of visits. What we keep about an account is what this page lists above. Cloudflare's
+      network sees your internet address only to bring you the page, and our logs there are switched off.
     </li>
-    <li>When something goes wrong, the website adds a note about it, so we can fix it.</li>
-    <li>When a maker connects GitHub, we note which GitHub accounts it showed.</li>
+    <li>Nothing about a visit is written down before you say "I agree".</li>
   </ul>
 
   <h2>How long we keep it</h2>

@@ -8,7 +8,7 @@ import {
   signUp,
 } from "./support/account.ts";
 import { addGame } from "./support/game.ts";
-import { boxOf, expectFrame, expectOneCard, pipRed, showTheOwner } from "./support/look.ts";
+import { buttonColour, boxOf, expectFrame, expectOneCard, pipRed, showTheOwner } from "./support/look.ts";
 import { holdNextScreen } from "./support/hold.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -52,7 +52,8 @@ test("the two plans are full-width rows of real radio buttons, each with its pri
   await expect(annual).not.toBeChecked();
   await expect(page.getByText(/Monthly|Yearly/)).toHaveCount(0);
 
-  const card = await boxOf(page.locator("main.card"));
+  // The paper half of the card, which holds the plans (on a computer it sits beside the title).
+  const card = await boxOf(page.locator("main.card .cardbody"));
   const monthlyRow = await boxOf(page.locator("label", { has: monthly }));
   const annualRow = await boxOf(page.locator("label", { has: annual }));
   for (const row of [monthlyRow, annualRow]) {
@@ -139,7 +140,7 @@ test("Continue to payment is Blue with white words, and nothing on the card is r
   const pay = page.getByRole("button", { name: "Continue to payment" });
   await expect(pay).toBeVisible();
   expect(await pipRed(page)).toEqual([]);
-  await expect(pay).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(pay).toHaveCSS("background-color", await buttonColour(pay, "--pay"));
   await expect(pay).toHaveCSS("color", rgb(token("--chalk")));
   await showTheOwner(page, testInfo, "the paywall card, signed in");
 });

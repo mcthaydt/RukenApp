@@ -1,6 +1,6 @@
 <!--
   Check and send, the last step: "Last step" over the heading, the one blue button, and beside them the game laid out as
-  members will see it, with a Change on each part. With script, a press says it is sending and cannot be pressed twice.
+  members will see it, with a Change on each part. A Test play button beside the blue one plays the files first. With script, a press says it is sending and cannot be pressed twice.
   Two halves on a wide window, stacked on a narrow one with the button in the bar (spec 15.2).
   Sending cannot be taken back by the maker herself, so only a press on the button sends: there is no "press Enter" hint here.
   A game that was sent already (it waits for review) is changed here instead: what is changed is saved at once, so the
@@ -25,6 +25,9 @@
       <p>Your changes are saved. Staff see them.</p>
       <div class="acts">
         <a class="button" href={data.doneAddress}>Done</a>
+        {#if data.testPlay !== null}
+          <a class="button outline" data-sveltekit-preload-data="off" href={data.testPlay}>Test play</a>
+        {/if}
       </div>
     </div>
   {:else}
@@ -51,6 +54,9 @@
         <button disabled={sending} aria-busy={sending ? "true" : undefined}>
           {sending ? "Sending your game…" : "Send for review"}
         </button>
+        {#if data.testPlay !== null}
+          <a class="button outline" data-sveltekit-preload-data="off" href={data.testPlay}>Test play</a>
+        {/if}
       </div>
     </form>
   {/if}

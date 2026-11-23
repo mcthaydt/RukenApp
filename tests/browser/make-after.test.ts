@@ -22,8 +22,9 @@ import {
   TINY_GAME,
   videoFile,
 } from "./support/game.ts";
-import { filledButtons, pipRed, showTheOwner } from "./support/look.ts";
+import { buttonColour, filledButtons, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // What a maker sees once a game has been sent: Waiting, Sent back and Live (spec 5, 5b "Sent back, now", 5c). Each is two
 // halves: the name, the heading, one line and the buttons on one side, the game on the other. The sizes and colours are in
@@ -52,7 +53,7 @@ test("sent back for one thing: the screen leads with it, the blue button names i
   await expect(card).toContainText("It's sideways. Turn it the right way up.");
   await expect(card.locator("video")).toHaveCount(1);
   const fix = page.getByRole("link", { name: "Fix the upright video" });
-  await expect(fix).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(fix).toHaveCSS("background-color", await buttonColour(fix, "--pay"));
   await expect(page.getByRole("button", { name: "Send it again" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Send it again" })).toHaveCount(0);
   // What passed is folded away: six of the seven parts.
@@ -80,6 +81,22 @@ test("an old send back for where the game plays opens, asks for nothing, and can
   await expect(page.getByText("Choose Computers only.")).toHaveCount(0);
   await page.getByRole("button", { name: "Send it again" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Waiting for review");
+});
+
+// The Owner, 2026-11-22: "No game may have pornography, gambling, or ads." Staff can send a game back for its ads,
+// and the maker reads what to do about them.
+test("sent back for ads: the maker reads that games on Ruken can't have ads", async ({ page }) => {
+  const { slug } = await gameWhere(page, { state: "sent_back", toFix: [{ part: "files", reason: "ads" }] });
+
+  await page.goto(`/make/${slug}`);
+
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sent back");
+  const card = page.locator("a.fix");
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("Needs fixing");
+  await expect(card).toContainText(
+    "Games on Ruken can't have ads. Take them out on GitHub, then send it again.",
+  );
 });
 
 test("staff's own line shows under the reason", async ({ page }, testInfo) => {
@@ -216,7 +233,7 @@ test("a live game: Send a new version is the blue button, and a new version goes
   await expect(page.getByText("Players can find it on Ruken.")).toBeVisible();
   const again = page.getByRole("button", { name: "Send a new version" });
   // A send waiting on the maker is what to do next, so it is the blue button, as on Sent back (the design pass, S8).
-  await expect(again).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(again).toHaveCSS("background-color", await buttonColour(again, "--pay"));
   // The rating chip is the rating players see, and a change to it waits for staff's yes.
   await expect(page.locator(".chip", { hasText: "12+" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Change who it's for" })).toHaveCount(1);
@@ -267,6 +284,26 @@ test("a live game GitHub stopped showing: the refusal points to Change, and savi
 
 // Spec 5c: beside the headline sit the game's one video (the shape of this window), its name and line, and where it plays;
 // the rating is added, and the files and websites, which she may change there. The other video is not drawn on Live.
+test("a refusal on Live goes once the player count switch's answer brings the page back", async ({
+  page,
+}) => {
+  // The switch's answer sends the maker back to the page they are on, and the page is brought in where they are
+  // (src/lib/stay-in-app.ts): what it says must be what a fresh page says, with no refusal from before.
+  test.setTimeout(90_000);
+  const { slug, maker } = await answerEveryQuestion(page);
+  if (maker === undefined) throw new Error("a new maker was signed up, so there is an account");
+  await putGameWhereStaffLeaveIt(slug, { state: "live" });
+  await forgetTheirRepositories(maker.number);
+  await page.goto(`/make/${slug}`);
+  await pageHasSettled(page);
+  await page.getByRole("button", { name: "Send a new version" }).click();
+  await expect(page.getByRole("alert")).toBeVisible({ timeout: 20_000 });
+  const playerCount = page.getByRole("button", { name: /^Show how many people played it: (On|Off)$/ });
+  await playerCount.click();
+  await expect(playerCount).toHaveAccessibleName("Show how many people played it: On");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
 test("Live shows the one video for this window, the name, the line and three chips", async ({ page }) => {
   const { slug, name } = await gameWhere(page, { state: "live" });
   await page.goto(`/make/${slug}`);
@@ -397,7 +434,7 @@ test("a live game's update that was sent back and mended is sent again from the 
   await expect(page.getByRole("button", { name: "Send a new version" })).toHaveCount(0);
   const again = page.getByRole("button", { name: "Send it again" });
   // It is the one forward action there is (See it on Ruken is only a quiet link), so it is the blue button.
-  await expect(again).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(again).toHaveCSS("background-color", await buttonColour(again, "--pay"));
   await expect(
     page.getByText("Sends your update for review again. Players can still play it while you wait."),
   ).toBeVisible();
@@ -438,7 +475,7 @@ test("Send it again is not on a live game that was never sent back, and posting 
 test("another maker cannot open any of these", async ({ page, browser, baseURL }) => {
   const { slug } = await gameWhere(page, { state: "sent_back", toFix: [SIDEWAYS] });
   const site = baseURL ?? "http://localhost:4173";
-  const stranger = await browser.newContext({ baseURL: site });
+  const stranger = await browser.newContext({ ...consented, baseURL: site });
   try {
     const other = await stranger.newPage();
     await signUp(other);
@@ -486,7 +523,7 @@ test("a draft is thrown away: green keeps, red deletes, nothing is blue, and You
   ).toBeVisible();
   await expect(page.getByText("You can't undo this.")).toBeVisible();
   const keep = page.getByRole("link", { name: "Keep it" });
-  await expect(keep).toHaveCSS("background-color", rgb(token("--felt-raised")));
+  await expect(keep).toHaveCSS("background-color", await buttonColour(keep, "--felt-raised"));
   // Enter on this screen must not throw anything away, so the first thing in reach is the safe choice.
   await expect(keep).toBeFocused();
   await expect(page.getByRole("button", { name: "Throw it away" })).toHaveCSS(

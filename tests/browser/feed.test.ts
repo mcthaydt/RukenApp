@@ -1,9 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { changeGame, givePage } from "./support/database.ts";
 import { addGame, gameWhere } from "./support/game.ts";
-import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
+import { buttonColour, boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { rgb, token } from "../support/look-tokens.ts";
+import { consented } from "./support/consent.ts";
 
 // The feed at / (spec 5.1): full-screen clips of games, one per swipe, each led by the person who made it.
 // The journeys share one database, so the feed holds every game any journey made: each one finds its own game's clip by
@@ -24,7 +25,7 @@ test.beforeAll(async ({ browser, request }) => {
   // Games from rows, each made by a new account in a context of its own (a signed-in context cannot sign up again).
   const liveGame = async (): Promise<{ slug: string; name: string }> => {
     await forgetRateLimits();
-    const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+    const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
     try {
       return await gameWhere(await context.newPage(), { state: "live" });
     } finally {
@@ -37,7 +38,8 @@ test.beforeAll(async ({ browser, request }) => {
 });
 test.beforeEach(forgetRateLimits);
 
-const clipOf = (page: Page, slug: string) => page.locator(`section[data-slug="${slug}"]`);
+// The feed goes round, so a game can be on it more than once once a later page has come: the journeys look at its first.
+const clipOf = (page: Page, slug: string) => page.locator(`section[data-slug="${slug}"]`).first();
 const isUpright = (page: Page): boolean => {
   const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
   return height > width;
@@ -83,7 +85,7 @@ test("Ruken opens straight into the feed, with the right clip for the screen", a
 
   // Play is the Blue of every main button, white words, 48px tall at least, 12px corners; it is the only thing with words
   // to press that is not a link to a page (the Sound and Share marks are marks).
-  await expect(play).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(play).toHaveCSS("background-color", await buttonColour(play, "--pay"));
   await expect(play).toHaveCSS("color", rgb(token("--chalk")));
   await expect(play).toHaveCSS("border-top-left-radius", "12px");
   expect((await boxOf(play)).height).toBeGreaterThanOrEqual(48);
@@ -93,6 +95,44 @@ test("Ruken opens straight into the feed, with the right clip for the screen", a
   }
   await wordsHaveSettled(page);
   await showTheOwner(page, testInfo, "the feed");
+});
+
+test("turning the window while the next page is on its way keeps the same clip on screen", async ({
+  page,
+}) => {
+  // The next page is held until the window has turned, so it comes in at the moment that once moved a person on: the
+  // clip's offset in the turned window is past the last clip, where the waiting screen is.
+  let asked: () => void = () => undefined;
+  const nextPageAsked = new Promise<void>((resolve) => (asked = resolve));
+  let letGo: () => void = () => undefined;
+  const turned = new Promise<void>((resolve) => (letGo = resolve));
+  await page.route("**/api/feed?**", async (route) => {
+    asked();
+    await turned;
+    await route.continue();
+  });
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const clips = page.locator("section[data-slug]");
+  const count = await clips.count();
+  // The last clip of the first page: the feed asks for the next page as soon as a person is on it.
+  const last = clips.nth(count - 1);
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toHaveAttribute("data-current", "true");
+  await nextPageAsked;
+
+  const size = page.viewportSize();
+  if (size === null) throw new Error("the window has a size");
+  await page.setViewportSize({ width: size.height, height: size.width });
+  // Two frames: the browser has handled the new size and worked out what is on screen before the page comes in.
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  letGo();
+  await expect.poll(() => clips.count()).toBeGreaterThan(count);
+  await expect(last).toHaveAttribute("data-current", "true");
+  const other = isUpright(page) ? "upright" : "wide";
+  await expect(last.locator("video")).toHaveAttribute("src", new RegExp(`/${other}-[0-9a-f]{16}\\.`));
 });
 
 test("a maker with no page has no maker line; the game has its own", async ({ page }) => {
@@ -118,35 +158,4 @@ test("a game's name of 60 letters pushes nothing sideways", async ({ page }) => 
       return main === null ? -1 : main.scrollWidth - main.clientWidth;
     }),
   ).toBe(0);
-});
-
-test("the band's chalk words read on a white clip: 4.5 to 1 or more", async ({ page }) => {
-  await page.goto("/");
-  const band = clipOf(page, withPage.slug).locator(".band");
-  await expect(band).toBeAttached();
-  // The band is frosted glass behind its words: what is behind is darkened by the filter, then under a thin tint. Put it
-  // over white and measure the chalk on what that makes.
-  const { tint, brightness, chalk } = await band.evaluate((element) => {
-    const behind = getComputedStyle(element, "::before");
-    const filter = behind.backdropFilter || behind.getPropertyValue("-webkit-backdrop-filter");
-    return {
-      tint: behind.backgroundColor,
-      brightness: Number(/brightness\(([\d.]+)\)/.exec(filter)?.[1] ?? 1),
-      chalk: getComputedStyle(element).color,
-    };
-  });
-  const channels = (colour: string): number[] => (colour.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
-  const linear = (value: number): number => {
-    const unit = value / 255;
-    return unit <= 0.03928 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4;
-  };
-  const luminance = (rgbValues: number[]): number =>
-    0.2126 * linear(rgbValues[0] ?? 0) +
-    0.7152 * linear(rgbValues[1] ?? 0) +
-    0.0722 * linear(rgbValues[2] ?? 0);
-  const alpha = Number((tint.match(/[\d.]+/g) ?? [])[3] ?? 1);
-  const overWhite = channels(tint).map((value) => value * alpha + 255 * brightness * (1 - alpha));
-  const lighter = Math.max(luminance(overWhite), luminance(channels(chalk)));
-  const darker = Math.min(luminance(overWhite), luminance(channels(chalk)));
-  expect((lighter + 0.05) / (darker + 0.05)).toBeGreaterThanOrEqual(4.5);
 });

@@ -35,4 +35,5 @@
   </form>
   <p><a class="quiet" href="/forgot-password">Forgot your password?</a></p>
   <p>New here? <a class="quiet" href={signUpLink}>Create an account</a></p>
+  <p><a class="quiet" href="/about">What is Ruken?</a></p>
 </main>

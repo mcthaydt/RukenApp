@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { contrast, lookCss, token } from "../support/look-tokens.ts";
+import { lookCss, token } from "../support/look-tokens.ts";
 
 // Frosted glass wherever something is see-through (the owner, 2026-11-22: "whenever we use transparency, let's go
 // with an Apple-like Frosted Glass"). The values live once, as tokens in src/lib/look.css; every see-through surface
@@ -157,19 +157,48 @@ describe("frosted glass", () => {
     expect(token("--dim-bg").startsWith(`rgb(${channels} /`)).toBe(true);
   });
 
-  // The worst case is a white clip behind: darkened by the filter, then under the tint. Chalk must still read.
-  it("keeps chalk at 4.5 to 1 or more over a white clip", () => {
+  // The owner, 2026-11-22 21:45 to 21:47 UTC: the glass is "a lot more transparent", and darkens what is behind it by
+  // "like 5%", then "maybe 10". A white clip behind, darkened by the filter and then under the tint, comes out between
+  // 5% and 12% darker: clear, and never the near-black it was.
+  it("darkens what is behind by about a tenth", () => {
     const brightness = Number(/brightness\(([\d.]+)\)/.exec(token("--glass-filter"))?.[1]);
-    const [red = 0, green = 0, blue = 0, alpha = 1] = (token("--glass-bg").match(/[\d.]+/g) ?? []).map(
-      Number,
-    );
-    const behind = 255 * brightness;
-    const mixed = [red, green, blue].map((channel) => Math.round(alpha * channel + (1 - alpha) * behind));
-    const hex = `#${mixed.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
-    expect(contrast(token("--chalk"), hex)).toBeGreaterThanOrEqual(4.5);
+    const [red = 0, , , alpha = 1] = (token("--glass-bg").match(/[\d.]+/g) ?? []).map(Number);
+    const white = 255;
+    const after = alpha * red + (1 - alpha) * white * brightness;
+    const darker = 1 - after / white;
+    expect(darker).toBeGreaterThanOrEqual(0.05);
+    expect(darker).toBeLessThanOrEqual(0.12);
   });
 
-  it("falls back to the solid darkest felt where there is no blur, less see-through or more contrast", () => {
+  // Glass that clear cannot keep chalk at 4.5 to 1 over a white clip by darkening alone, so the words and pictures on it
+  // carry a soft dark shadow, and its edge splits light like a lens ("it also lacks chromatic abberation"): every glass
+  // surface reads the edge, and the edge holds a warm and a cool fringe.
+  it("gives every glass surface the lens edge, with a warm and a cool fringe", () => {
+    const found: string[] = [];
+    for (const [path, selector, body] of rules) {
+      if (
+        /(?:^|[;\s])background\s*:\s*var\(--glass-bg\)/.test(body) &&
+        !/box-shadow\s*:\s*var\(--glass-edge\)/.test(body)
+      )
+        found.push(`${path} ${selector}`);
+    }
+    expect(found).toEqual([]);
+    const fringes = [...token("--glass-edge").matchAll(/rgb\((\d+) (\d+) (\d+)/g)].map((m) =>
+      m.slice(1).map(Number),
+    );
+    expect(
+      fringes.some(([r = 0, , b = 0]) => r > 200 && b < 128),
+      "a warm fringe",
+    ).toBe(true);
+    expect(
+      fringes.some(([r = 0, , b = 0]) => r < 128 && b > 200),
+      "a cool fringe",
+    ).toBe(true);
+    expect(token("--glass-ink")).toMatch(/rgb\(0 0 0 \/ 0?\.\d+\)/);
+    expect(token("--glass-icon")).toMatch(/^drop-shadow\(/);
+  });
+
+  it("falls back to the solid darkest felt, with no edge or shadow, where there is no blur, less see-through or more contrast", () => {
     const css = lookCss();
     for (const condition of [
       "@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)))",
@@ -180,7 +209,31 @@ describe("frosted glass", () => {
       const block = css.slice(at, css.indexOf("}\n}", at));
       expect(block).toContain("--glass-bg: var(--felt-deep);");
       expect(block).toContain("--glass-filter: none;");
+      expect(block).toContain("--glass-edge: none;");
+      expect(block).toContain("--glass-ink: none;");
+      expect(block).toContain("--glass-icon: none;");
       expect(block).toContain("--dim-filter: none;");
+      expect(block).toContain("--glass-pay: var(--pay);");
+      expect(block).toContain("--glass-safe: var(--felt-raised);");
+      expect(block).toContain("--glass-lift: var(--felt-raised);");
+    }
+  });
+
+  // The owner chose coloured glass buttons (2026-11-23): a button on glass is glass tinted strongly in its own colour,
+  // so it stays plainly the blue or the green it is, and still reads as one thing to press.
+  it("tints the glass buttons in the button's own colour, strongly enough to stay that colour", () => {
+    const hex = (name: string) => {
+      const value = token(name).replace("#", "");
+      return [0, 2, 4].map((at) => Number.parseInt(value.slice(at, at + 2), 16)).join(" ");
+    };
+    for (const [glass, solid] of [
+      ["--glass-pay", "--pay"],
+      ["--glass-safe", "--felt-raised"],
+    ] as const) {
+      const match = /^rgb\((\d+ \d+ \d+) \/ (0?\.\d+)\)$/.exec(token(glass));
+      expect(match, glass).not.toBeNull();
+      expect(match?.[1], `${glass} is ${solid}`).toBe(hex(solid));
+      expect(Number(match?.[2]), `${glass} is mostly its colour`).toBeGreaterThanOrEqual(0.75);
     }
   });
 });

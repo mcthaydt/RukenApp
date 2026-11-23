@@ -1,6 +1,7 @@
 <!--
   The maker's area. Each game is one paper card and the whole card is a link: its picture, its name, and where it
   stands with the one next step, in words. With none, what a maker needs ready. The one blue button is "Add a game".
+  A game with files staff have not said yes to has a Test play button under its card.
 -->
 <script lang="ts">
   import VideoTile from "./parts/VideoTile.svelte";
@@ -38,6 +39,17 @@
         <span data-sent-back={game.words.startsWith("Sent back") ? "" : undefined}>{game.words}</span>
       </span>
     </a>
+    {#if game.testPlay}
+      <!-- Beside the card, never inside it: the card is one link to the game. The name is in the label for a screen
+           reader, since every game's button says the same words. It is not loaded ahead on hover: loading it hands out a
+           play pass, so only a press should. -->
+      <a
+        class="button outline testplay"
+        data-sveltekit-preload-data="off"
+        href={`/make/${game.slug}/play`}
+        aria-label={`Test play ${game.name}`}>Test play</a
+      >
+    {/if}
   {/each}
   <!-- Your page, the agreement a maker accepted before their first game, kept where they can read it again, and the
        guides: quiet buttons on one line, wrapping on a phone. -->

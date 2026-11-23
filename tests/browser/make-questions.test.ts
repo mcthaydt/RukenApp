@@ -17,6 +17,7 @@ import {
   nextButton,
   pageNamedAsVideo,
   quickTimeFile,
+  realClip,
   slugOfPage,
   startAtFiles,
   startAtVideo,
@@ -26,9 +27,10 @@ import {
   videoField,
   videoFile,
 } from "./support/game.ts";
-import { boxOf, showTheOwner } from "./support/look.ts";
+import { buttonColour, boxOf, showTheOwner } from "./support/look.ts";
 import { holdNextScreen } from "./support/hold.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 // The maker's questions, one to a screen, and Your games (spec 3, 4, 10.1 and 15.2). A game is asked its name first on
 // `/make/new`; every answer after that is saved the moment it is given. The size and look of each layout are in
@@ -51,9 +53,9 @@ test("Your games, with none, says what a maker needs and has one blue button", a
   await expect(
     page.getByText("You'll need your game on GitHub, ready to run in a browser, and two short videos of it."),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Add a game" })).toHaveCSS(
+  await expect(page.getByRole("main").getByRole("link", { name: "Add a game" })).toHaveCSS(
     "background-color",
-    rgb(token("--pay")),
+    await buttonColour(page.getByRole("main").getByRole("link", { name: "Add a game" }), "--pay"),
   );
   await showTheOwner(page, testInfo, "Your games, none");
 
@@ -228,7 +230,7 @@ test("an 18+ game is asked one more question, and a 12+ game is not", async ({ p
   await expect(page.getByText("Question 7 of 7")).toBeVisible();
   await expect(
     page.getByText(
-      "Only adults will see this game. Sex or nudity is fine here. No game may have pornography or gambling.",
+      "Only adults will see this game. Sex or nudity is fine here. No game may have pornography, gambling or ads.",
     ),
   ).toBeVisible();
   // "None of these" stands alone: choosing it unticks the others, and choosing another unticks it.
@@ -320,6 +322,7 @@ test("a second press of Next while the first is out makes one game", async ({ pa
 test("the questions work with script off", async ({ page, browser, baseURL }) => {
   await signUp(page);
   const context = await browser.newContext({
+    ...consented,
     baseURL: baseURL ?? "http://localhost:4173",
     javaScriptEnabled: false,
     // Nothing here is about motion, and an entrance still moving is not a thing a person presses.
@@ -482,7 +485,7 @@ test("a repository GitHub never listed for her is refused", async ({ page }) => 
 test("another maker cannot open or answer this game's questions", async ({ page, browser, baseURL }) => {
   const { slug } = await startDraft(page);
   const site = baseURL ?? "http://localhost:4173";
-  const stranger = await browser.newContext({ baseURL: site });
+  const stranger = await browser.newContext({ ...consented, baseURL: site });
   try {
     const other = await stranger.newPage();
     await signUp(other);
@@ -517,7 +520,7 @@ test("a waiting game says so, and its one blue button goes back to Your games", 
   await expect(page.locator(".laid .title")).toHaveText(name);
   await expect(page.getByText("We're looking at it. Come back here to see when it's live.")).toBeVisible();
   const back = page.getByRole("link", { name: "Back to your games" });
-  await expect(back).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(back).toHaveCSS("background-color", await buttonColour(back, "--pay"));
   await showTheOwner(page, testInfo, "a game waiting for review");
 
   await back.click();
@@ -548,7 +551,10 @@ test("the upright question shows its frame before anything is chosen, in the rig
   ).toBeVisible();
   await expect(page.getByText("For phones: taller than wide. MP4, WebM or MOV, up to 30 MB.")).toBeVisible();
   await expect(pickerButton(page)).toHaveText("Choose video");
-  await expect(pickerButton(page)).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(pickerButton(page)).toHaveCSS(
+    "background-color",
+    await buttonColour(pickerButton(page), "--pay"),
+  );
   // The blue button opens a picker, not a form post, so Enter does not press it.
   await expect(page.getByText("press Enter")).toHaveCount(0);
   await showTheOwner(page, testInfo, "Question 5, the upright video");
@@ -568,7 +574,7 @@ test("a video is added the moment it is chosen, then Next is the blue button", a
   await expect(video).toHaveAttribute("src", /\/clips\//);
   expect(held.requestsSoFar()).toBe(1);
   await expect(nextButton(page)).toHaveText("Next");
-  await expect(nextButton(page)).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(nextButton(page)).toHaveCSS("background-color", await buttonColour(nextButton(page), "--pay"));
   await expect(page.getByRole("link", { name: "Choose a different video" })).toBeVisible();
   await showTheOwner(page, testInfo, "Question 5, the video is in");
 
@@ -750,7 +756,7 @@ test("choosing the video opens it full size, and Close and Escape close it", asy
   await expect(full).toBeVisible();
   await expect(full.locator("video")).toHaveAttribute("controls", "");
   const close = full.getByRole("button", { name: "Close" });
-  await expect(close).toHaveCSS("background-color", rgb(token("--felt-raised")));
+  await expect(close).toHaveCSS("background-color", await buttonColour(close, "--felt-raised"));
   await close.click();
   await expect(page.locator("dialog[open]")).toHaveCount(0);
 
@@ -772,6 +778,38 @@ test("with reduced motion a video does not start by itself", async ({ page }) =>
   const video = page.locator('[data-frame="upright"] video');
   await expect(video).toBeAttached();
   expect(await video.evaluate((element: HTMLVideoElement) => element.paused)).toBe(true);
+});
+
+test("a real video plays through and starts again, without jumping back to its start over and over", async ({
+  page,
+}) => {
+  await startAtVideo(page, "upright");
+  await chooseVideo(page, await realClip(page, "upright"));
+  const video = page.locator('[data-frame="upright"] video');
+  await expect(video).toBeAttached();
+  await pageHasSettled(page);
+
+  // The clip is two seconds long. Safari's engine on Linux, given a looping video whose address names a start time,
+  // jumped back to the start about a hundred times a second and never played (progress.md, Flaky tests).
+  const watched = await video.evaluate(
+    (element: HTMLVideoElement) =>
+      new Promise<{ furthest: number; cameBack: boolean; jumps: number }>((resolve) => {
+        let furthest = 0;
+        let cameBack = false;
+        let jumps = 0;
+        element.addEventListener("seeking", () => (jumps += 1));
+        element.addEventListener("timeupdate", () => {
+          if (furthest > 1.5 && element.currentTime < 0.5) cameBack = true;
+          furthest = Math.max(furthest, element.currentTime);
+        });
+        setTimeout(() => {
+          resolve({ furthest, cameBack, jumps });
+        }, 5_000);
+      }),
+  );
+  expect(watched.furthest, "how far the video played").toBeGreaterThan(1.5);
+  expect(watched.cameBack, "the video started again after its end").toBe(true);
+  expect(watched.jumps, "jumps in five seconds of a two-second clip").toBeLessThanOrEqual(5);
 });
 
 test("the picker is reached and opened from the keyboard", async ({ page }) => {

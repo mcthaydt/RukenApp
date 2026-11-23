@@ -16,7 +16,16 @@ import {
   startDraft,
   TINY_GAME,
 } from "./support/game.ts";
-import { boxOf, expectFrame, heldSideways, layoutHasSettled, layoutOf, lineCount } from "./support/look.ts";
+import {
+  buttonColour,
+  boxOf,
+  clearOfTheButtons,
+  expectFrame,
+  heldSideways,
+  layoutHasSettled,
+  layoutOf,
+  lineCount,
+} from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the screen review of the rebuilt maker screens found (docs/superpowers/audits/2026-11-15-maker-screens-rebuild-
@@ -197,7 +206,7 @@ test("the Choose video button fills the bar wherever the buttons are in a bar", 
 });
 
 function answerBoxAboveTheBar(): void {
-  test("on a sideways phone the answer box is in view above the bar, under a two-line heading", async ({
+  test("on a sideways phone the answer box is in view beside Back and Save, under a two-line heading", async ({
     page,
   }) => {
     test.skip(layoutOf(page) !== "phone-sideways", "only a sideways phone is this short");
@@ -206,9 +215,10 @@ function answerBoxAboveTheBar(): void {
     await pageHasSettled(page);
 
     // The line's box is a growing box (a textarea), so it is found by its class alone.
+    // Changed on purpose in the sideways steps follow-up: Back and Save stand in a column at the right edge here, so
+    // the box is clear of them and in the window, not above a row of them.
     const box = await boxOf(page.locator(".answer"));
-    const bar = await boxOf(page.locator(".acts"));
-    expect(box.y + box.height).toBeLessThanOrEqual(bar.y);
+    expect(await clearOfTheButtons(page, box)).toBe(true);
   });
 }
 
@@ -247,7 +257,7 @@ test("on a computer 'Add a game' is on the heading's line", async ({ page }) => 
   await pageHasSettled(page);
 
   const heading = await boxOf(page.getByRole("heading", { level: 1 }));
-  const add = await boxOf(page.getByRole("link", { name: "Add a game" }));
+  const add = await boxOf(page.getByRole("main").getByRole("link", { name: "Add a game" }));
   expect(add.y).toBeLessThan(heading.y + heading.height);
   expect(add.x).toBeGreaterThan(heading.x + heading.width);
 });
@@ -301,7 +311,7 @@ test("on Live an update that was sent back has the fix as its blue button", asyn
 
   const fix = page.getByRole("link", { name: /^Fix / });
   await expect(fix).toHaveAttribute("href", /\/line/);
-  await expect(fix).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(fix).toHaveCSS("background-color", await buttonColour(fix, "--pay"));
 });
 
 test("the GitHub how-to has the way back at its foot as well as at its top", async ({ page }) => {

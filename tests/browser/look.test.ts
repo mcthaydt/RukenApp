@@ -1,7 +1,14 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { rgb, token } from "../support/look-tokens.ts";
 import { freshNumber, nationalOf, signUp } from "./support/account.ts";
-import { CARD_SCREENS, expectOneCard, pipRed, showTheOwner, startsWithFamily } from "./support/look.ts";
+import {
+  buttonColour,
+  CARD_SCREENS,
+  expectOneCard,
+  pipRed,
+  showTheOwner,
+  startsWithFamily,
+} from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Every journey starts as a new visitor (branch D's helper): the site's limits stay as they are, only the
@@ -106,7 +113,7 @@ test("the main button on a card is blue, 12px corners, a white label in Schibste
   page.on("request", (request) => asked.push(new URL(request.url()).pathname));
   await page.goto("/sign-up");
   const button = page.getByRole("button", { name: "Text me a code" });
-  await expect(button).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(button).toHaveCSS("background-color", await buttonColour(button, "--pay"));
   await expect(button).toHaveCSS("color", rgb(token("--chalk")));
   await expect(button).toHaveCSS("border-top-left-radius", "12px");
   await expect(button).toHaveCSS("border-top-width", "0px");
@@ -160,7 +167,7 @@ test("your account: one card, and a quiet button is a real button, not underline
 test("a link that looks like a button is as easy to hit, and gives when pressed", async ({ page }) => {
   await page.goto("/no-such-page");
   const back = page.getByRole("link", { name: "Back to Ruken" });
-  await expect(back).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(back).toHaveCSS("background-color", await buttonColour(back, "--pay"));
   expect((await back.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(48);
   await whilePressed(page, back, () => expect(back).toHaveCSS("transform", "matrix(0.97, 0, 0, 0.97, 0, 0)"));
 });
