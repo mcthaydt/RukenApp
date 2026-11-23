@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mayAutoplay, mayLoop, startOf } from "../../src/lib/quiet-video.ts";
+import { loopByHand, mayAutoplay, startOf } from "../../src/lib/quiet-video.ts";
 
 // Whether a video may start by itself. A person who asked for less motion, a person saving data, and a small device
 // are never made to carry a video they did not choose to play.
@@ -44,18 +44,48 @@ describe("startOf", () => {
   });
 });
 
-describe("mayLoop", () => {
-  it("does not loop at the start, or at a start time the address names", () => {
-    expect(mayLoop(0, 0.001)).toBe(false);
-    expect(mayLoop(0.001, 0.001)).toBe(false);
-    expect(mayLoop(2, 2)).toBe(false);
-    // Rewound to 0 under a later start: still not past it.
-    expect(mayLoop(0, 2)).toBe(false);
+/** A stand-in video: the events and the few fields the hand loop uses. */
+function videoAt(address: string, currentTime: number) {
+  const played: number[] = [];
+  const video = Object.assign(new EventTarget(), {
+    loop: true,
+    currentTime,
+    currentSrc: "",
+    getAttribute: (name: string) => (name === "src" ? address : null),
+    play: () => {
+      played.push(video.currentTime);
+      return Promise.resolve();
+    },
+  });
+  return { video, played };
+}
+
+describe("loopByHand", () => {
+  it("never asks the browser to loop", () => {
+    const { video } = videoAt("/clip.mp4#t=0.001", 0);
+    loopByHand(video as unknown as HTMLVideoElement);
+    expect(video.loop).toBe(false);
   });
 
-  it("loops once the video has played on past its start", () => {
-    expect(mayLoop(0.2, 0.001)).toBe(true);
-    expect(mayLoop(1.9, 0.001)).toBe(true);
-    expect(mayLoop(2.2, 2)).toBe(true);
+  it("goes back to the start the address names and plays again when the video ends", () => {
+    const { video, played } = videoAt("/clip.mp4#t=2", 9.5);
+    loopByHand(video as unknown as HTMLVideoElement);
+    video.dispatchEvent(new Event("ended"));
+    expect(video.currentTime).toBe(2);
+    expect(played).toEqual([2]);
+  });
+
+  it("goes back to 0 for an address with no start time", () => {
+    const { video, played } = videoAt("/clip.mp4", 1.99);
+    loopByHand(video as unknown as HTMLVideoElement);
+    video.dispatchEvent(new Event("ended"));
+    expect(played).toEqual([0]);
+  });
+
+  it("stops looping once the video is taken away", () => {
+    const { video, played } = videoAt("/clip.mp4", 1.99);
+    loopByHand(video as unknown as HTMLVideoElement).destroy();
+    video.dispatchEvent(new Event("ended"));
+    expect(played).toEqual([]);
   });
 });

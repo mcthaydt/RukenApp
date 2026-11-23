@@ -36,9 +36,6 @@ export function mayMove(): boolean {
   });
 }
 
-/** How far past its start, in seconds, a video has played before it is told to loop. */
-const LOOP_AFTER_SECONDS = 0.1;
-
 /** The start time, in seconds, that a video's address names (`#t=2`, `#t=0.001`), or 0 where it names none. */
 export function startOf(address: string): number {
   const named = /#t=([0-9.]+)/.exec(address)?.[1];
@@ -46,28 +43,26 @@ export function startOf(address: string): number {
   return Number.isFinite(seconds) ? seconds : 0;
 }
 
-/** Whether a video at this time may loop: only once it has played on past the start its address names. */
-export function mayLoop(currentTime: number, start: number): boolean {
-  return currentTime >= start + LOOP_AFTER_SECONDS;
-}
-
 /**
- * A Svelte action: the video loops, but only while it is past its start. Safari's engine on Linux (GStreamer), given a
- * looping video whose address names a start time (`#t=0.001`, which makes a still video draw its first frame, or the
- * landing page's `#t=2`), jumps back to the start about a hundred times a second and never plays, and keeps the page
- * too busy to answer. So looping is off at the start: when the video is first loaded, when it is given a new address,
- * and when it is rewound (the feed rewinds the clip a person left). It is on again once the video has played on.
+ * A Svelte action: when the video ends, it goes back to the start its address names and plays again. It never sets
+ * `loop`, because Safari's engine on Linux (GStreamer) mishandles the browser's own loop in two ways. A looping video
+ * whose address names a start time (`#t=0.001`, which makes a still video draw its first frame, or the landing page's
+ * `#t=2`), or one rewound while looping (the feed rewinds the clip a person left), jumps back to its start about a
+ * hundred times a second and never plays. And a video whose `loop` is switched on while it plays sometimes stops the
+ * whole page at its end, for good (about 1 to 4 views in 100). A video that loops by hand did neither in 100 runs
+ * (progress.md, Flaky tests).
  */
-export function loopOnceStarted(node: HTMLVideoElement): { destroy(): void } {
-  const follow = (): void => {
-    node.loop = mayLoop(node.currentTime, startOf(node.getAttribute("src") ?? node.currentSrc));
+export function loopByHand(node: HTMLVideoElement): { destroy(): void } {
+  node.loop = false;
+  const playAgain = (): void => {
+    node.currentTime = startOf(node.getAttribute("src") ?? node.currentSrc);
+    // A refused play leaves the clip still at its start, which is the quiet answer.
+    node.play().catch(() => undefined);
   };
-  follow();
-  const events = ["timeupdate", "seeked", "loadstart"] as const;
-  for (const name of events) node.addEventListener(name, follow);
+  node.addEventListener("ended", playAgain);
   return {
     destroy() {
-      for (const name of events) node.removeEventListener(name, follow);
+      node.removeEventListener("ended", playAgain);
     },
   };
 }
@@ -76,7 +71,7 @@ export function loopOnceStarted(node: HTMLVideoElement): { destroy(): void } {
 export function quietVideo(node: HTMLVideoElement): { destroy(): void } {
   node.muted = true;
   node.playsInline = true;
-  const looping = loopOnceStarted(node);
+  const looping = loopByHand(node);
   // A refused play (the browser's own autoplay rules) leaves the first frame showing, which is the quiet answer.
   if (mayMove()) node.play().catch(() => undefined);
   return looping;

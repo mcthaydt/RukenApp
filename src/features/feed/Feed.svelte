@@ -12,7 +12,7 @@
   import { loads } from "../../lib/loads.ts";
   import { onMount, tick } from "svelte";
   import { snapshot } from "$app/navigation";
-  import { loopOnceStarted, mayMove } from "../../lib/quiet-video.ts";
+  import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
   import { shareLink, type ShareTools } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
@@ -387,7 +387,7 @@
       >
         <video
           use:loads
-          use:loopOnceStarted
+          use:loopByHand
           bind:this={videos[index]}
           onplay={() => {
             stopIfOffScreen(index);

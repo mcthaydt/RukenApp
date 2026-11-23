@@ -198,15 +198,23 @@ interface Watched {
  */
 async function watchClip(video: Locator, label: string): Promise<Watched> {
   await video.evaluate((element: HTMLVideoElement) => {
+    // A second watch on the same clip first stops the first one, so only one watcher reads it at a time.
+    (element as HTMLVideoElement & { stopWatching?: () => void }).stopWatching?.();
     const seen: Watched = { furthest: 0, cameBack: false, jumps: 0 };
     const look = () => {
       if (seen.furthest > 0.5 && element.currentTime < 0.5) seen.cameBack = true;
       seen.furthest = Math.max(seen.furthest, element.currentTime);
     };
-    element.addEventListener("seeking", () => (seen.jumps += 1));
+    const jumped = () => (seen.jumps += 1);
+    element.addEventListener("seeking", jumped);
     element.addEventListener("timeupdate", look);
-    setInterval(look, 50);
-    Object.assign(element, { watched: seen });
+    const reader = setInterval(look, 50);
+    const stopWatching = () => {
+      clearInterval(reader);
+      element.removeEventListener("seeking", jumped);
+      element.removeEventListener("timeupdate", look);
+    };
+    Object.assign(element, { watched: seen, stopWatching });
   });
   const seen = async (): Promise<Watched> =>
     await video.evaluate((element: HTMLVideoElement) => ({
@@ -246,9 +254,11 @@ test("the clip on screen plays through and starts again, and again after a perso
 }) => {
   test.setTimeout(120_000);
   // Safari's engine on Linux, given a looping video whose address names a start time (every clip's `#t=0.001`), jumped
-  // back to the start about a hundred times a second and never played (progress.md, Flaky tests).
+  // back to the start about a hundred times a second and never played, and a clip whose `loop` was switched on while it
+  // played sometimes stopped the page for good at its end (progress.md, Flaky tests). So the clip loops by hand.
+  const [slug] = ours;
+  if (slug === undefined) throw new Error("this file's beforeAll made no game, so there is no clip to watch");
   await openFeed(page);
-  const slug = ours[0] ?? "";
   const clip = page.locator(`section[data-slug="${slug}"]`).first();
   await clip.scrollIntoViewIfNeeded();
   await expect(clip).toHaveAttribute("data-current", "true");
@@ -258,6 +268,10 @@ test("the clip on screen plays through and starts again, and again after a perso
   const first = await watchClip(video, "the first time");
   expect(first.furthest, "how far the clip played").toBeGreaterThan(0.5);
   expect(first.jumps, "jumps in one round of a two-second clip").toBeLessThanOrEqual(5);
+  await expect(video, "the browser's own loop stays off, even once the clip has played on").toHaveJSProperty(
+    "loop",
+    false,
+  );
 
   // Away and back: the clip a person left waits at its start, and plays again from there.
   await page.keyboard.press("ArrowDown");
