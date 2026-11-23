@@ -10,6 +10,7 @@
   import { loads } from "../../../lib/loads.ts";
   import { onMount } from "svelte";
   import { quietVideo } from "../../../lib/quiet-video.ts";
+  import { WishlistButton } from "../../../features/launch/launch.browser.ts";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
@@ -111,7 +112,17 @@
 
     <div class="side">
       <div class="card cell playtile">
-        <a class="button" href={`/g/${data.slug}/play`}>Play</a>
+        {#if data.launch.before}
+          <WishlistButton
+            slug={data.slug}
+            wished={data.launch.wished.includes(data.slug)}
+            opens={data.launch.opens}
+            back={`/g/${data.slug}`}
+            buttonClass="button"
+          />
+        {:else}
+          <a class="button" href={`/g/${data.slug}/play`}>Play</a>
+        {/if}
         <div class="costrow">
           {#if data.cost === "join"}
             <p class="costline">

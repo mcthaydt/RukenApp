@@ -15,7 +15,11 @@
   // dashboard this goes back to false, so the custom domain is the one address. No preview addresses either way.
   "workers_dev": true,
   "preview_urls": false,
-  "observability": { "enabled": true },
+  // Cloudflare's Workers Logs keep request details (the address asked for, the country) beside what a Worker writes, and
+  // Cloudflare's own pages do not say which of them stay with a plain console line. Ruken keeps nothing about a visitor
+  // before they say yes to cookies (the owner, 2026-11-22), so the logs are off. Ruken's own error lines go unseen until
+  // that is solved on its own.
+  "observability": { "enabled": false },
   // Once a day, at 09:17 UTC, early morning in Chicago; and every hour, on the hour, which is when decision day goes
   // out (Friday noon New York time). cloudflare/crons.js says which jobs each one knocks on; the handler is in
   // cloudflare/worker.js.

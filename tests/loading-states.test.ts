@@ -34,7 +34,7 @@ const browserModules = filesEndingIn(SRC, ".browser.ts").map((path) => ({
 const BACKGROUND_FETCHES: Record<string, string> = {
   // The play screen tells the site, now and then, that the game is still being played. The person is playing, not
   // waiting; the game frame's own "Starting…" screen covers the wait for the game.
-  "src/routes/g/[game]/play/+page.svelte": "the play-time beat",
+  "src/features/play/PlayScreen.svelte": "the play-time beat",
 };
 
 /** Each opening tag of this element in the text, attributes and all. */
@@ -92,6 +92,10 @@ describe("every wait shows it", () => {
   test("the layout carries the page bar and the busy plain forms", () => {
     const layout = readFileSync(join(SRC, "routes", "+layout.svelte"), "utf8");
     expect(layout).toContain("<PageLoading />");
-    expect(layout).toContain("onsubmit={markSending}");
+    // Every sent form is marked busy first, then sent from inside the page (src/lib/stay-in-app.ts).
+    expect(layout).toContain("onsubmit={sent}");
+    expect(layout).toMatch(
+      /function sent\(event: SubmitEvent\): void \{\s*markSending\(event\);\s*sendInApp\(event\);/,
+    );
   });
 });

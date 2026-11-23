@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { freshNumber, nationalOf, pageHasSettled, signInAs } from "./support/account.ts";
+import { finishSignUpForm, freshNumber, nationalOf, pageHasSettled, signInAs } from "./support/account.ts";
 import { addGame, connectGitHubFromFiles, holdAnswersTo, startAtFiles } from "./support/game.ts";
+import { beforeLaunch } from "./support/launch.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -58,7 +59,11 @@ test("a plain form shows its button busy while it sends, and a second press send
   // The press leaves the page, and the answer is held, so the click does not wait for the page to load.
   await page.getByRole("button", { name: "Sign in" }).click({ noWaitAfter: true });
 
-  await expect.poll(() => seen).toEqual(["busy=true", "second press stopped=true"]);
+  // The form is sent from inside the page (src/lib/stay-in-app.ts), which sends it once more through SvelteKit's own
+  // sender; that send and the second press are each stopped from going out as a plain page load.
+  await expect.poll(() => seen.length).toBeGreaterThanOrEqual(3);
+  expect(seen[0]).toBe("busy=true");
+  expect(new Set(seen.slice(1))).toEqual(new Set(["second press stopped=true"]));
   // The page's words and the held post reach the journey by separate messages, in either order, so the post is waited
   // for too (run on #315: read at once, it was still 0 while a recording slowed the browser).
   await expect.poll(() => held.requestsSoFar()).toBe(1);
@@ -149,4 +154,36 @@ test("ticking another game on GitHub says the branches are being looked up", asy
   await expect(page.getByText("Looking up branches…")).toBeVisible();
   held.release();
   await expect(page.getByText("Looking up branches…")).toHaveCount(0);
+});
+
+test("Wishlist shows it is busy while it sends, and keeps the keyboard's focus", async ({
+  page,
+  browser,
+  request,
+}) => {
+  test.setTimeout(150_000);
+  const game = await addGame(browser, request);
+  await page.goto("/sign-up");
+  await finishSignUpForm(page, freshNumber());
+  await expect(page).toHaveURL("/");
+  await beforeLaunch(page.context());
+  await page.goto(`/g/${game.slug}`);
+  await pageHasSettled(page);
+  const held = await holdAnswersTo(page, new RegExp(`/g/${game.slug}/wishlist$`));
+
+  const button = page.getByRole("button", { name: "Wishlist", exact: true });
+  await button.focus();
+  await page.keyboard.press("Enter");
+  const busy = page.getByRole("button", { name: "Adding it…" });
+  await expect(busy).toHaveAttribute("aria-busy", "true");
+  await expect(busy).toBeFocused();
+  // A second press while the first is out sends nothing more.
+  await page.keyboard.press("Enter");
+  expect(held.requestsSoFar()).toBe(1);
+
+  held.release();
+  const done = page.getByRole("button", { name: "On your wishlist", exact: true });
+  await expect(done).toBeVisible();
+  await expect(done).not.toHaveAttribute("aria-busy", "true");
+  await expect(done).toBeFocused();
 });

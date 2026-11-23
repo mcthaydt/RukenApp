@@ -13,6 +13,7 @@ import { changeGame, givePage, idsOf, membershipStartsOf, userIdOf } from "./sup
 import { gameWhere } from "./support/game.ts";
 import { rgb, token } from "../support/look-tokens.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { consented } from "./support/consent.ts";
 
 test.beforeEach(forgetRateLimits);
 
@@ -62,7 +63,7 @@ test("when Stripe's news is late, the page says so and goes on by itself", async
 
 /** A live game with its own maker, made in a context of its own; its page is a real link a visitor can land on. */
 async function liveGameOfItsOwnMaker(browser: Browser): Promise<{ slug: string; makerUserId: string }> {
-  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
   try {
     const { slug } = await gameWhere(await context.newPage(), { state: "live" });
     return { slug, makerUserId: (await idsOf(slug)).makerUserId };

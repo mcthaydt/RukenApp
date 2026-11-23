@@ -89,6 +89,8 @@ interface RequestDatabase {
   connection: Promise<RequestConnection> | undefined;
   /** This request's own Prisma DataLoader, made by its first call (see `batchPerRequest`). */
   loader: PrismaDataLoader | undefined;
+  /** False for a visitor who has not said yes to cookies: every write then throws (see `refuseWritesWithoutConsent`). */
+  writesAllowed: boolean;
 }
 
 const requests = new AsyncLocalStorage<RequestDatabase>();
@@ -179,7 +181,9 @@ export function createSharedClient(
 ): PrismaClient {
   const client = new Client({ adapter: requestScopedAdapter(connect) });
   batchPerRequest(client);
-  return client;
+  // Guarded once, with the one shared client, never per request: an extended client is a new object, and the Worker
+  // has no memory to spare for one on every request.
+  return refuseWritesWithoutConsent(client);
 }
 
 // The one client the whole Worker uses, made when the first request needs it.
@@ -201,7 +205,66 @@ function sharedClient(): PrismaClient {
  */
 export function databasePerRequest(open: () => PrismaClient = sharedClient): Handle {
   return ({ event, resolve }) =>
-    requests.run({ open, client: undefined, connection: undefined, loader: undefined }, () => resolve(event));
+    requests.run(
+      { open, client: undefined, connection: undefined, loader: undefined, writesAllowed: true },
+      () => resolve(event),
+    );
+}
+
+/**
+ * Says whether the running request may write. The consent gate calls it first thing: a browser that has not said yes to
+ * cookies may read but not write (guard 2 of the cookie consent). A request starts out allowed, so a test or a job
+ * that is not a visitor's browser needs nothing.
+ */
+export function allowWrites(allowed: boolean): void {
+  const request = requests.getStore();
+  if (request !== undefined) request.writesAllowed = allowed;
+}
+
+/** Thrown by a write made for a visitor who has not said yes to cookies. It names the model, never a value. */
+export class NoConsentWrite extends Error {
+  constructor(what: string) {
+    super(`A write to ${what} was made before the visitor said yes to cookies.`);
+    this.name = "NoConsentWrite";
+  }
+}
+
+const WRITE_OPERATIONS = new Set([
+  "create",
+  "createMany",
+  "createManyAndReturn",
+  "update",
+  "updateMany",
+  "updateManyAndReturn",
+  "upsert",
+  "delete",
+  "deleteMany",
+]);
+
+function refuseWrite(what: string): void {
+  if (requests.getStore()?.writesAllowed === false) throw new NoConsentWrite(what);
+}
+
+/**
+ * The client with the write guard: every write, `$executeRaw*` and each write inside a transaction passes through here
+ * first, and throws `NoConsentWrite` when the running request may not write. A throw rather than a skip: a write that
+ * slipped through is a bug the journeys must see as a failed page, never a silent record. Reads pass untouched.
+ */
+function refuseWritesWithoutConsent(client: PrismaClient): PrismaClient {
+  return client.$extends({
+    query: {
+      $allModels: {
+        $allOperations({ model, operation, args, query }) {
+          if (WRITE_OPERATIONS.has(operation)) refuseWrite(model);
+          return query(args);
+        },
+      },
+      $allOperations({ operation, args, query }) {
+        if (operation === "$executeRaw" || operation === "$executeRawUnsafe") refuseWrite("the database");
+        return query(args);
+      },
+    },
+  }) as unknown as PrismaClient;
 }
 
 function currentClient(): PrismaClient {
