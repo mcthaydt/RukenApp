@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { rgb, token } from "../support/look-tokens.ts";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import {
   connectStateFor,
@@ -8,7 +7,7 @@ import {
   userIdOf,
 } from "./support/database.ts";
 import { connectGitHubFromFiles, startAtFiles, startDraft } from "./support/game.ts";
-import { boxOf, showTheOwner } from "./support/look.ts";
+import { buttonColour, boxOf, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { consented } from "./support/consent.ts";
 
@@ -101,7 +100,7 @@ test("before GitHub is connected, the files question says what Ruken will see, w
     `/help/github?from=${encodeURIComponent(`/make/${slug}/files`)}`,
   );
   const connect = page.getByRole("link", { name: "Connect GitHub" });
-  await expect(connect).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(connect).toHaveCSS("background-color", await buttonColour(connect, "--pay"));
   await expect(connect).toHaveAttribute("href", `/make/github?choose=1&game=${slug}`);
   // One blue button: the link, and nothing that submits.
   await expect(page.locator("main button")).toHaveCount(0);
@@ -235,7 +234,7 @@ test("connected with nothing chosen, she is told, with one way to choose some", 
   const choose = page.getByRole("link", { name: "Choose on GitHub" });
   // One centred line like every other bar button, not two lines on a phone.
   expect((await choose.boundingBox())?.height ?? 999).toBeLessThanOrEqual(64);
-  await expect(choose).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(choose).toHaveCSS("background-color", await buttonColour(choose, "--pay"));
   await expect(choose).toHaveAttribute("href", `/make/github?choose=1&game=${slug}`);
   await showTheOwner(page, testInfo, "question 3, connected, nothing chosen on GitHub");
 });

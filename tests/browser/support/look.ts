@@ -244,6 +244,28 @@ export function pipRed(page: Page): Promise<string[]> {
   }, pip);
 }
 
+/**
+ * The colour a button of the main blue (`--pay`) or the safe green (`--felt-raised`) is painted as the browser reports
+ * it: solid, or the same colour as coloured glass (`--glass-pay`, `--glass-safe`) when the button sits on glass, as
+ * Play on a clip, Add a game in the bar and the row of buttons pinned over a phone's screen do (the owner,
+ * 2026-11-23: "Coloured glass buttons").
+ */
+export async function buttonColour(button: Locator, solid: "--pay" | "--felt-raised"): Promise<string> {
+  const onGlass = await button.evaluate((element) => {
+    const blurs = (style: CSSStyleDeclaration) => {
+      const filter = style.backdropFilter || style.getPropertyValue("-webkit-backdrop-filter");
+      return filter !== "" && filter !== "none";
+    };
+    for (let at = element.parentElement; at !== null; at = at.parentElement)
+      if (blurs(getComputedStyle(at)) || blurs(getComputedStyle(at, "::before"))) return true;
+    return false;
+  });
+  if (!onGlass) return rgb(token(solid));
+  const glass = token(solid === "--pay" ? "--glass-pay" : "--glass-safe");
+  const [red = "0", green = "0", blue = "0", alpha = "1"] = glass.match(/[\d.]+/g) ?? [];
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
 /** The main buttons on a card: every button or link-button that is not the quiet, green, red or outline kind, and a
  * file picker's words when the picker is not the quiet one. */
 export function filledButtons(page: Page): Locator {

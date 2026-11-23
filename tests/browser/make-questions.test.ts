@@ -26,7 +26,7 @@ import {
   videoField,
   videoFile,
 } from "./support/game.ts";
-import { boxOf, showTheOwner } from "./support/look.ts";
+import { buttonColour, boxOf, showTheOwner } from "./support/look.ts";
 import { holdNextScreen } from "./support/hold.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { consented } from "./support/consent.ts";
@@ -54,7 +54,7 @@ test("Your games, with none, says what a maker needs and has one blue button", a
   ).toBeVisible();
   await expect(page.getByRole("main").getByRole("link", { name: "Add a game" })).toHaveCSS(
     "background-color",
-    rgb(token("--pay")),
+    await buttonColour(page.getByRole("main").getByRole("link", { name: "Add a game" }), "--pay"),
   );
   await showTheOwner(page, testInfo, "Your games, none");
 
@@ -519,7 +519,7 @@ test("a waiting game says so, and its one blue button goes back to Your games", 
   await expect(page.locator(".laid .title")).toHaveText(name);
   await expect(page.getByText("We're looking at it. Come back here to see when it's live.")).toBeVisible();
   const back = page.getByRole("link", { name: "Back to your games" });
-  await expect(back).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(back).toHaveCSS("background-color", await buttonColour(back, "--pay"));
   await showTheOwner(page, testInfo, "a game waiting for review");
 
   await back.click();
@@ -550,7 +550,10 @@ test("the upright question shows its frame before anything is chosen, in the rig
   ).toBeVisible();
   await expect(page.getByText("For phones: taller than wide. MP4, WebM or MOV, up to 30 MB.")).toBeVisible();
   await expect(pickerButton(page)).toHaveText("Choose video");
-  await expect(pickerButton(page)).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(pickerButton(page)).toHaveCSS(
+    "background-color",
+    await buttonColour(pickerButton(page), "--pay"),
+  );
   // The blue button opens a picker, not a form post, so Enter does not press it.
   await expect(page.getByText("press Enter")).toHaveCount(0);
   await showTheOwner(page, testInfo, "Question 5, the upright video");
@@ -570,7 +573,7 @@ test("a video is added the moment it is chosen, then Next is the blue button", a
   await expect(video).toHaveAttribute("src", /\/clips\//);
   expect(held.requestsSoFar()).toBe(1);
   await expect(nextButton(page)).toHaveText("Next");
-  await expect(nextButton(page)).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(nextButton(page)).toHaveCSS("background-color", await buttonColour(nextButton(page), "--pay"));
   await expect(page.getByRole("link", { name: "Choose a different video" })).toBeVisible();
   await showTheOwner(page, testInfo, "Question 5, the video is in");
 
@@ -752,7 +755,7 @@ test("choosing the video opens it full size, and Close and Escape close it", asy
   await expect(full).toBeVisible();
   await expect(full.locator("video")).toHaveAttribute("controls", "");
   const close = full.getByRole("button", { name: "Close" });
-  await expect(close).toHaveCSS("background-color", rgb(token("--felt-raised")));
+  await expect(close).toHaveCSS("background-color", await buttonColour(close, "--felt-raised"));
   await close.click();
   await expect(page.locator("dialog[open]")).toHaveCount(0);
 

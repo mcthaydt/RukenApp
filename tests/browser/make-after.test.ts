@@ -22,7 +22,7 @@ import {
   TINY_GAME,
   videoFile,
 } from "./support/game.ts";
-import { filledButtons, pipRed, showTheOwner } from "./support/look.ts";
+import { buttonColour, filledButtons, pipRed, showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { consented } from "./support/consent.ts";
 
@@ -53,7 +53,7 @@ test("sent back for one thing: the screen leads with it, the blue button names i
   await expect(card).toContainText("It's sideways. Turn it the right way up.");
   await expect(card.locator("video")).toHaveCount(1);
   const fix = page.getByRole("link", { name: "Fix the upright video" });
-  await expect(fix).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(fix).toHaveCSS("background-color", await buttonColour(fix, "--pay"));
   await expect(page.getByRole("button", { name: "Send it again" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Send it again" })).toHaveCount(0);
   // What passed is folded away: six of the seven parts.
@@ -233,7 +233,7 @@ test("a live game: Send a new version is the blue button, and a new version goes
   await expect(page.getByText("Players can find it on Ruken.")).toBeVisible();
   const again = page.getByRole("button", { name: "Send a new version" });
   // A send waiting on the maker is what to do next, so it is the blue button, as on Sent back (the design pass, S8).
-  await expect(again).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(again).toHaveCSS("background-color", await buttonColour(again, "--pay"));
   // The rating chip is the rating players see, and a change to it waits for staff's yes.
   await expect(page.locator(".chip", { hasText: "12+" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Change who it's for" })).toHaveCount(1);
@@ -434,7 +434,7 @@ test("a live game's update that was sent back and mended is sent again from the 
   await expect(page.getByRole("button", { name: "Send a new version" })).toHaveCount(0);
   const again = page.getByRole("button", { name: "Send it again" });
   // It is the one forward action there is (See it on Ruken is only a quiet link), so it is the blue button.
-  await expect(again).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(again).toHaveCSS("background-color", await buttonColour(again, "--pay"));
   await expect(
     page.getByText("Sends your update for review again. Players can still play it while you wait."),
   ).toBeVisible();

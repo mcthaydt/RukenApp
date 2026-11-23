@@ -16,7 +16,15 @@ import {
   startDraft,
   TINY_GAME,
 } from "./support/game.ts";
-import { boxOf, expectFrame, heldSideways, layoutHasSettled, layoutOf, lineCount } from "./support/look.ts";
+import {
+  buttonColour,
+  boxOf,
+  expectFrame,
+  heldSideways,
+  layoutHasSettled,
+  layoutOf,
+  lineCount,
+} from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // What the screen review of the rebuilt maker screens found (docs/superpowers/audits/2026-11-15-maker-screens-rebuild-
@@ -301,7 +309,7 @@ test("on Live an update that was sent back has the fix as its blue button", asyn
 
   const fix = page.getByRole("link", { name: /^Fix / });
   await expect(fix).toHaveAttribute("href", /\/line/);
-  await expect(fix).toHaveCSS("background-color", rgb(token("--pay")));
+  await expect(fix).toHaveCSS("background-color", await buttonColour(fix, "--pay"));
 });
 
 test("the GitHub how-to has the way back at its foot as well as at its top", async ({ page }) => {

@@ -13,7 +13,15 @@ import {
   startAtVideo,
   startDraft,
 } from "./support/game.ts";
-import { boxOf, heldSideways, layoutOf, pipRed, showTheOwner, type Layout } from "./support/look.ts";
+import {
+  buttonColour,
+  boxOf,
+  heldSideways,
+  layoutOf,
+  pipRed,
+  showTheOwner,
+  type Layout,
+} from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // How the maker's screens are laid out (spec 4). A window is one of five layouts, and
@@ -63,7 +71,7 @@ function questionSizes(): void {
 
     const next = nextButton(page);
     await expect(next).toHaveCSS("height", `${String(sizes.button)}px`);
-    await expect(next).toHaveCSS("background-color", rgb(token("--pay")));
+    await expect(next).toHaveCSS("background-color", await buttonColour(next, "--pay"));
     const viewport = page.viewportSize();
     const bar = await boxOf(page.locator(".acts"));
     if (sizes.inBar) {

@@ -6,7 +6,8 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 // clip the glass alone leaves chalk on near-white. What keeps the words and pictures on it readable is the dark halo
 // they carry (--glass-ink, --glass-icon in src/lib/look.css). This measures that halo in the drawn pixels: with every
 // clip turned plain white, the darkest pixels around each glyph must stand off the chalk by 4.5 to 1 or more, and the
-// glyph itself must still be chalk. The first review of #370 found the hint line and the outline icons nearly gone.
+// glyph itself must still be chalk. The first review of #370 found the hint line and the outline icons nearly gone. This replaces the band's sum in
+// tests/browser/feed.test.ts, which counted the glass alone and so cannot pass on glass this clear.
 
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(240_000);
@@ -75,6 +76,7 @@ test("words and pictures on the glass stand out over a white clip", async ({ pag
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
 
   const things: [string, Locator][] = [
+    ["the game's name on the band", first.locator(".band h2")],
     ["the hint line", first.locator(".hints p").first()],
     ["the small hint line", first.locator(".hints p").nth(1)],
     [
