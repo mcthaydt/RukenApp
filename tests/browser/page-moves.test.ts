@@ -93,7 +93,7 @@ test("Feed, Your games and You slide sideways the way the bar runs, without a pa
   await expect(place(page, "You")).toHaveAttribute("aria-current", "page");
   expect(await lastSlide(page)).toBe("on");
   await page.evaluate(() => {
-    window.scrollTo(0, document.documentElement.scrollHeight);
+    document.body.scrollTo(0, document.body.scrollHeight);
   });
   const lastLine = await boxOf(page.getByRole("link", { name: "Delete my account" }));
   expect(lastLine.y + lastLine.height).toBeLessThanOrEqual((await boxOf(bar(page))).y);

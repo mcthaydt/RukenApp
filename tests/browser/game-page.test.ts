@@ -25,7 +25,9 @@ test.beforeAll(async ({ browser, request }) => {
 test.beforeEach(forgetRateLimits);
 
 const noSideways = (page: Page) =>
-  page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+  page.evaluate(() =>
+    [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+  );
 
 test("a game's page shows its clip, its name, its line, its rating and Play", async ({ page }, testInfo) => {
   await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });

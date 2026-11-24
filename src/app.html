@@ -9,6 +9,15 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#112f2c" />
     <!--
+      Opened from the Home Screen, Ruken is an app with the whole window and no browser bar (manifest.webmanifest,
+      display standalone). Safari on an iPhone reads these tags for the same, and its own status bar stays black over
+      the top so nothing slides under the clock.
+    -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Ruken" />
+    <!--
       Guard 4 of the cookie consent (design 3.3). SvelteKit writes three keys to sessionStorage when a tab is hidden or
       left, whatever the visitor chose, and its listeners are added last, so clearing afterwards cannot be ordered.
       This runs before any module: until the server says this browser agreed ("yes"; it fails closed to "no" in any
@@ -61,7 +70,7 @@
     </script>
     %sveltekit.head%
   </head>
-  <body data-sveltekit-preload-data="hover">
+  <body data-sveltekit-preload-data="hover" tabindex="-1">
     <div style="display: contents">%sveltekit.body%</div>
   </body>
 </html>
