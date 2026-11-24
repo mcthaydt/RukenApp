@@ -744,29 +744,51 @@ test.describe("Share", () => {
     await openFeed(page);
     const clips = page.locator("section[data-slug]");
     await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
+    // Every scroll of the feed is counted, the feed's own moves and the browser's own key scrolling alike.
+    await page.evaluate(() => {
+      const moved = { scrolls: 0 };
+      (window as unknown as { moved: typeof moved }).moved = moved;
+      document.querySelector("main.feed")?.addEventListener("scroll", () => (moved.scrolls += 1));
+    });
     await current(page).getByRole("button", { name: "Share" }).click();
     const sheet = sheetOf(page);
     await expect(sheet.getByRole("button", { name: "Copy link" })).toBeFocused();
-    // The feed takes a key it moves on (it stops the browser's own use of it), so a key it left alone was never its.
-    await page.evaluate(() => {
-      const taken: string[] = [];
-      (window as unknown as { taken: string[] }).taken = taken;
-      window.addEventListener("keydown", (event) => {
-        if (event.defaultPrevented) taken.push(event.key);
-      });
-    });
     for (const key of ["ArrowDown", "PageDown", "ArrowUp", "PageUp"]) await page.keyboard.press(key);
     // A sheet can lose its focus to the page while it stays open (a button inside it goes away when it changes what
-    // it shows, as Report's Send does). The keys are still not the feed's.
+    // it shows, as Report's Send does). The keys still move nothing behind it.
     await page.evaluate(() => {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     });
     expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
-    for (const key of ["ArrowDown", "PageDown"]) await page.keyboard.press(key);
-    expect(await page.evaluate(() => (window as unknown as { taken: string[] }).taken)).toEqual([]);
+    for (const key of ["ArrowDown", "PageDown", "End", "Space"]) await page.keyboard.press(key);
     await expect(sheet).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(sheet).toBeHidden();
+    // A smooth scroll the keys started lands a while later, so the check waits until the feed has been still for a
+    // whole second (or 5 seconds have gone) before it looks.
+    await page.evaluate(
+      () =>
+        new Promise<void>((done) => {
+          const moved = (window as unknown as { moved: { scrolls: number } }).moved;
+          let seen = moved.scrolls;
+          let still = 0;
+          const timer = setInterval(() => {
+            still = moved.scrolls === seen ? still + 1 : 0;
+            seen = moved.scrolls;
+            if (still >= 10) {
+              clearInterval(timer);
+              done();
+            }
+          }, 100);
+          setTimeout(() => {
+            clearInterval(timer);
+            done();
+          }, 5000);
+        }),
+    );
+    expect(
+      await page.evaluate(() => (window as unknown as { moved: { scrolls: number } }).moved.scrolls),
+    ).toBe(0);
     await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
   });
 

@@ -336,17 +336,25 @@
     sliding = false;
   }
 
+  /** The keys a browser scrolls a page with. */
+  const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
+
   function onKey(event: KeyboardEvent): void {
     forgetHints();
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    const target = event.target instanceof Element ? event.target : null;
+    // While a sheet (Share, Report) is open the feed behind it stays where it is, wherever the focus is: a button inside
+    // a sheet can go away as the sheet changes what it shows, and the focus then falls to the page. A key inside the
+    // sheet keeps its own job there; a key aimed at the page is stopped too, or the browser scrolls the feed itself.
+    const sheet = document.querySelector("dialog[open]");
+    if (sheet !== null) {
+      if (SCROLL_KEYS.has(event.key) && (target === null || !sheet.contains(target))) event.preventDefault();
+      return;
+    }
     const step = stepFor(event.key, event.shiftKey);
     if (step === 0) return;
-    const target = event.target instanceof Element ? event.target : null;
     // A field keeps its keys. Space presses a focused link or button, so it moves the clip only from nothing in particular.
     if (target?.closest("input, textarea, select, [contenteditable]") != null) return;
-    // While a sheet (Share, Report) is open the feed behind it stays where it is, wherever the focus is: a button inside
-    // a sheet can go away as the sheet changes what it shows, and the focus then falls to the page.
-    if (document.querySelector("dialog[open]") != null) return;
     if (event.key === " " && target?.closest("a, button, summary") != null) return;
     event.preventDefault();
     goTo((aim ?? current) + step);
