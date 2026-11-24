@@ -8,13 +8,7 @@
   let { form }: PageProps = $props();
 </script>
 
-<QuestionScreen
-  heading="What should the link say?"
-  counter={null}
-  back="/make/page/links"
-  action="?/words"
-  busyWords="Saving…"
->
+<QuestionScreen heading="What should the link say?" counter={null} back="/make/page/links" action="?/words">
   <TextAnswer name="title" value={form?.title ?? ""} hint="Like: My Discord." problem={form?.problem} />
   <Picks
     name="kind"

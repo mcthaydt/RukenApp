@@ -33,7 +33,7 @@
     <p>Your payment went through. Your membership will show on your account in a minute.</p>
     <p><a class="button" href="/me">Go to my account</a></p>
   {:else}
-    <h1>Finishing up…</h1>
-    <p>Your payment went through. One moment.</p>
+    <h1>Your payment went through.</h1>
+    <p><span class="spinner" role="progressbar" aria-label="Finishing up"></span></p>
   {/if}
 </main>

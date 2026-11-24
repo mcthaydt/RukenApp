@@ -333,7 +333,7 @@
         </div>
       {:else}
         <p class="statement">{name}</p>
-        <p class="note">Starting {name}…</p>
+        <p class="note"><span class="spinner" role="progressbar" aria-label={`Starting ${name}`}></span></p>
       {/if}
     </div>
   {/if}

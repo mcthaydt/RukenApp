@@ -51,9 +51,7 @@
       <!-- Every game plays on both, so this is said once, above the button, and never asked. -->
       <p class="note">Your game must work on phones and computers.</p>
       <div class="acts">
-        <button disabled={sending} aria-busy={sending ? "true" : undefined}>
-          {sending ? "Sending your game…" : "Send for review"}
-        </button>
+        <button disabled={sending} aria-busy={sending ? "true" : undefined}> Send for review </button>
         {#if data.testPlay !== null}
           <a class="button outline" data-sveltekit-preload-data="off" href={data.testPlay}>Test play</a>
         {/if}

@@ -127,7 +127,7 @@ test("press Enter goes while the blue button is off, as it saves", async ({ page
   await page.getByLabel("What's your game called?").fill(freshName());
   await nextButton(page).click();
 
-  await expect(page.getByRole("button", { name: "Saving…" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
   await expect(page.getByText("press Enter")).toBeHidden();
 
   held.release();
