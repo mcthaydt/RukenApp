@@ -27,3 +27,9 @@
 1. **The 400 ms fallback can cut the slide short on a slow device.** The timer starts when `closing` is set, not when the slide starts. In this container's WebKit (software drawing, about one frame per 300 ms) the slide started 100 to 340 ms after `closing`, and in 3 of 9 phone closes the timer closed the sheet mid-slide (`animationcancel share-down` after `close`, e.g. cross: `closing` 1277, `animationstart` 1427, `close` 1701). Chromium profiles always finished first. Real phones draw far faster, so this is recorded, not red. If wanted: start the fallback at `animationstart`, or wait on `sheet.getAnimations()`'s `finished` with a longer cap.
 2. The journey checks Close and Escape; the dimmed-screen press and More (criterion 2) are covered only by this probe.
 3. A press inside the sheet while it slides away (220 ms) still reaches its buttons. Harmless as built.
+
+## Re-pointed to `72a8eedc673f983d80fc2762cca2fe5ad3f54d1f` (2026-11-24 14:37 UTC)
+
+- `72a8eed` merges main `eaaf8a7` (#390, spinner only) into `10edaff`. `git diff 10edaff 72a8eed` equals `git diff <merge-base> eaaf8a7` once index lines are dropped: only main's changes come in.
+- It does not touch `ShareSheet.svelte`, `Feed.svelte`, `src/routes/g/[game]/+page.svelte` or `tests/browser/feed-controls.test.ts`. In `look.css` it changes only the loading-line rules (one `var(--ease)` use removed), nothing on `.screen`, `--ease`, dialogs, the dim or glass.
+- The PASS above holds for `72a8eed`.
