@@ -181,11 +181,7 @@
           aria-disabled={sending !== null ? "true" : undefined}
           aria-busy={sending === "save" ? "true" : undefined}
         >
-          {#if sending === "save"}
-            Sending…
-          {:else}
-            {reported ? "Save changes" : "Send report"}
-          {/if}
+          {reported ? "Save changes" : "Send report"}
         </button>
         {#if reported}
           <button
@@ -195,7 +191,7 @@
             aria-busy={sending === "withdraw" ? "true" : undefined}
             onclick={() => void withdraw()}
           >
-            {sending === "withdraw" ? "Taking it back…" : "Take back my report"}
+            Take back my report
           </button>
         {/if}
       </form>

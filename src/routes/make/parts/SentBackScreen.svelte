@@ -55,9 +55,7 @@
         }}
       >
         <div class="acts">
-          <button disabled={sending} aria-busy={sending ? "true" : undefined}>
-            {sending ? "Sending your game…" : "Send it again"}
-          </button>
+          <button disabled={sending} aria-busy={sending ? "true" : undefined}> Send it again </button>
         </div>
       </form>
     {:else if first.href !== null}
