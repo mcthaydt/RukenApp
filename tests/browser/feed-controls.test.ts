@@ -739,6 +739,29 @@ test.describe("Share", () => {
     await expect(sheet.getByRole("status")).toHaveText("");
   });
 
+  test("keys pressed while the sheet is open never move the feed behind it", async ({ page }) => {
+    await standIns(page, { share: "none", clipboard: "works" });
+    await openFeed(page);
+    const clips = page.locator("section[data-slug]");
+    await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
+    await current(page).getByRole("button", { name: "Share" }).click();
+    const sheet = sheetOf(page);
+    await expect(sheet.getByRole("button", { name: "Copy link" })).toBeFocused();
+    // The feed takes a key it moves on (it stops the browser's own use of it), so a key it left alone was never its.
+    await page.evaluate(() => {
+      const taken: string[] = [];
+      (window as unknown as { taken: string[] }).taken = taken;
+      window.addEventListener("keydown", (event) => {
+        if (event.defaultPrevented) taken.push(event.key);
+      });
+    });
+    for (const key of ["ArrowDown", "PageDown", "ArrowUp", "PageUp"]) await page.keyboard.press(key);
+    expect(await page.evaluate(() => (window as unknown as { taken: string[] }).taken)).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
+  });
+
   test("the cross, Escape and the dimmed screen each close it, and focus goes back to Share", async ({
     page,
   }) => {
