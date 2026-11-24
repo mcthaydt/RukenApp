@@ -1,3 +1,4 @@
+import { asInstalled } from "./installed.ts";
 import { expect, type Browser, type Locator, type Page } from "@playwright/test";
 import { checkoutIdOfPaymentUrl, STAND_IN_URL } from "./stand-in-payment.ts";
 import { codeTo } from "./texts.ts";
@@ -173,6 +174,8 @@ const SITE_URL = "http://localhost:4173";
  */
 export async function signUpInItsOwnContext(browser: Browser): Promise<{ number: string; password: string }> {
   const context = await browser.newContext({ ...consented, baseURL: SITE_URL });
+  // From the Home Screen, so a journey whose window is held sideways still gets its second person (support/installed.ts).
+  await asInstalled(context);
   try {
     return await signUp(await context.newPage());
   } finally {

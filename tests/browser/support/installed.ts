@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 
 /**
  * Makes the page believe it was opened from the Home Screen, as an installed app (display-mode standalone).
@@ -6,9 +6,11 @@ import type { Page } from "@playwright/test";
  * A phone held sideways in a browser tab is asked to turn upright (src/lib/turn-upright.svelte); opened from the Home
  * Screen it works sideways. Playwright always opens a tab, and neither engine lets a journey switch the display mode,
  * so the journeys that look at the sideways screens answer the page's one question, matchMedia("(display-mode:
- * standalone)"), as an installed app's browser would. Every other media query is the browser's own.
+ * standalone)"), as an installed app's browser would. Every other media query is the browser's own. A whole context
+ * can be given too: the helpers that set up a second person in a browser of their own do, so a journey that holds its
+ * window sideways does not stop that setup.
  */
-export async function asInstalled(page: Page): Promise<void> {
+export async function asInstalled(page: Page | BrowserContext): Promise<void> {
   await page.addInitScript(() => {
     const own = window.matchMedia.bind(window);
     window.matchMedia = (query: string): MediaQueryList => {

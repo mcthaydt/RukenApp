@@ -88,8 +88,11 @@
   beforeNavigate(({ from }) => {
     if (from !== null) leftAt[from.url.href] = document.body.scrollTop;
   });
-  afterNavigate(({ to, type }) => {
-    if (to === null || to.url.hash !== "") return;
+  afterNavigate(({ from, to, type }) => {
+    // A page that has just opened is at its top already, and a person may have scrolled it before it started. An answer
+    // sent from a screen that comes back to the same screen keeps the person where they pressed (src/lib/stay-in-app.ts).
+    if (to === null || type === "enter" || to.url.hash !== "") return;
+    if (type !== "popstate" && from?.url.pathname === to.url.pathname) return;
     document.body.scrollTop = type === "popstate" ? (leftAt[to.url.href] ?? 0) : 0;
   });
 

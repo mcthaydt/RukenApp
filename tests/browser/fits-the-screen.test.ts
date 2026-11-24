@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { signUp } from "./support/account.ts";
+import { pageHasSettled, signUp } from "./support/account.ts";
 import { CONSENTED_STATE } from "./support/consent.ts";
 import { asInstalled } from "./support/installed.ts";
 import { boxOf, showTheOwner } from "./support/look.ts";
@@ -25,7 +25,10 @@ async function overflow(page: Page): Promise<{ page: number; view: number }> {
   }));
 }
 
-/** Every button, link and field on the screen that the browser draws: none may sit under the bar. */
+/**
+ * Every button, link and field the bar covers. The view (the body) is cut off above the bar, so a line runs under it
+ * only if the view itself reaches the bar: what is drawn of each line is the part inside the view.
+ */
 async function underTheBar(page: Page): Promise<string[]> {
   const top = (await boxOf(bar(page))).y;
   return page.evaluate(
@@ -34,29 +37,40 @@ async function underTheBar(page: Page): Promise<string[]> {
         .filter((thing) => {
           const box = thing.getBoundingClientRect();
           const view = document.body.getBoundingClientRect();
-          // Only what is in the view: a line scrolled out of it is not drawn, so the bar cannot cover it.
-          return box.width > 0 && box.bottom > barTop && box.top < Math.min(view.bottom, innerHeight);
+          const drawnTop = Math.max(box.top, view.top);
+          const drawnBottom = Math.min(box.bottom, view.bottom);
+          return box.width > 0 && drawnBottom > drawnTop && drawnBottom > barTop;
         })
         .map((thing) => thing.textContent.trim() || (thing.getAttribute("aria-label") ?? "")),
     top,
   );
 }
 
+/** The view ends above the bar, so the bar has nothing of the screen under it. */
+async function expectViewAboveTheBar(page: Page, path: string): Promise<void> {
+  const viewBottom = await page.evaluate(() => document.body.getBoundingClientRect().bottom);
+  expect(viewBottom, path).toBeLessThanOrEqual((await boxOf(bar(page))).y);
+  expect(await underTheBar(page), path).toEqual([]);
+}
+
 async function opened(page: Page, path: string): Promise<void> {
   await page.goto(path);
-  await page.locator("main").first().waitFor();
+  // Started, so a press is the app's own move and not a whole new page load.
+  await pageHasSettled(page);
   await expect(bar(page)).toBeVisible();
 }
 
 test.describe("signed out", () => {
   test.use({ storageState: CONSENTED_STATE });
 
-  test("each screen fits the window with nothing to scroll", async ({ page }) => {
+  test("no screen scrolls the page, the bar covers nothing, and Cookies fits", async ({ page }) => {
+    // Sign in, Join and Forgot password are forms taller than a small phone: they scroll inside their view.
     for (const path of ["/sign-in", "/sign-up", "/forgot-password", "/cookies"]) {
       await opened(page, path);
-      expect(await overflow(page), path).toEqual({ page: 0, view: 0 });
-      expect(await underTheBar(page), path).toEqual([]);
+      expect((await overflow(page)).page, path).toBe(0);
+      await expectViewAboveTheBar(page, path);
     }
+    expect((await overflow(page)).view).toBe(0);
   });
 });
 
@@ -65,7 +79,7 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
   for (const path of ["/me", "/make", "/me/password", "/me/computers", "/me/delete"]) {
     await opened(page, path);
     expect(await overflow(page), path).toEqual({ page: 0, view: 0 });
-    expect(await underTheBar(page), path).toEqual([]);
+    await expectViewAboveTheBar(page, path);
   }
   await opened(page, "/me");
   await expect(page.getByRole("link", { name: "Delete my account" })).toBeInViewport();
