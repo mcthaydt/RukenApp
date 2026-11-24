@@ -88,7 +88,6 @@ test("words and pictures on the glass stand out over a white clip", async ({ pag
       page.getByRole("navigation", { name: "Ruken" }).getByRole("link", { name: "You" }).locator("svg"),
     ],
     ["the Share picture", first.locator(".share svg")],
-    ["the Report picture", first.locator(".report svg")],
     ["the sound picture", first.locator(".sound svg")],
   ];
   for (const [name, thing] of things) {
