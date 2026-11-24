@@ -147,8 +147,8 @@ test("until a wall clip plays, its still shows in the clip's own place", async (
     await context.close();
   }
   // The journeys' site has no media tool, so it makes no stills (the still address answers 404 there; the unit tests
-  // make them with a stand-in). Here the browser is handed a magenta stand-in for every still, and the clips never come,
-  // so what shows in each clip's place can only be its still.
+  // make them with a stand-in). Here the browser is handed a magenta stand-in for every still, and the clips never
+  // arrive, so what shows in each clip's place can only be its still.
   const stills: string[] = [];
   await page.route(
     (url) => url.pathname.startsWith("/api/still/"),
@@ -158,8 +158,11 @@ test("until a wall clip plays, its still shows in the clip's own place", async (
     },
   );
   await page.route(
-    (url) => /\/clips\/[^/]+\/upright-[0-9a-f]{16}\.(mp4|webm|mov)$/.test(url.pathname),
-    (route) => route.abort(),
+    (url) =>
+      !url.pathname.startsWith("/api/still/") &&
+      /\/clips\/[^/]+\/upright-[0-9a-f]{16}\.(mp4|webm|mov)$/.test(url.pathname),
+    // Held, never answered: the clip is still on its way, which is the wait the still covers.
+    () => new Promise<void>(() => undefined),
   );
   await page.goto("/about");
   await expectTheLandingPage(page);
@@ -169,26 +172,36 @@ test("until a wall clip plays, its still shows in the clip's own place", async (
   await expect(wall).toHaveCount(6);
   for (const video of await wall.all()) {
     if (!(await video.isVisible())) continue;
-    // The still is the clip's own poster, so it is cut and placed by the clip's own box: it cannot sit anywhere else.
-    // It is of the second the clip opens on (its address's `#t=`), at a width made for the screen.
-    const { poster, src } = await video.evaluate((node: HTMLVideoElement) => ({
-      poster: node.getAttribute("poster") ?? "",
+    // The still is the clip's own background, cut and placed as its frames are, so it cannot sit anywhere else. It is
+    // of the second the clip opens on (its address's `#t=`), at a width made for the screen.
+    const { still, src, fit } = await video.evaluate((node: HTMLVideoElement) => ({
+      still: node.style.getPropertyValue("--still"),
       src: node.getAttribute("src") ?? "",
+      fit: [
+        getComputedStyle(node).backgroundSize,
+        getComputedStyle(node).backgroundPosition,
+        getComputedStyle(node).objectPosition,
+      ],
     }));
     const opensAt = /#t=(\d+)$/.exec(src)?.[1];
-    expect(poster).toMatch(
-      /^\/api\/still\/clips\/[a-z2-7]{10}\/upright-[0-9a-f]{16}\.(mp4|webm|mov)\?at=\d+&width=\d+$/,
+    expect(still).toMatch(
+      /^url\("http:\/\/localhost:4173\/api\/still\/clips\/[a-z2-7]{10}\/upright-[0-9a-f]{16}\.(mp4|webm|mov)\?at=\d+&width=\d+"\)$/,
     );
-    expect(poster).toContain(`?at=${opensAt ?? "none"}&`);
-    await expect.poll(() => middleColour(video)).toEqual("magenta");
+    expect(still).toContain(`?at=${opensAt ?? "none"}&`);
+    // Cut as the clip's frames are (object-fit: cover) and placed where they are (object-position).
+    expect(fit[0]).toBe("cover");
+    expect(fit[1]).toBe(fit[2]);
+    // Part of a clip may sit under the headline's boxes or off the screen, so the share of its box that shows the still is
+    // counted: without a still, none of it is magenta.
+    await expect.poll(() => magentaShare(video)).toBeGreaterThan(0.1);
   }
   expect(stills.length).toBeGreaterThan(0);
 });
 
-/** The colour in the middle of a thing as the screen shows it: magenta (the stand-in still) or something else. */
-async function middleColour(thing: Locator): Promise<string> {
+/** The share of a thing's pixels, as the screen shows it, that are the magenta stand-in still. */
+async function magentaShare(thing: Locator): Promise<number> {
   const png = await thing.screenshot({ animations: "disabled" });
-  const [r, g, b] = await thing.page().evaluate(async (data) => {
+  return thing.page().evaluate(async (data) => {
     const image = new Image();
     image.src = `data:image/png;base64,${data}`;
     await image.decode();
@@ -196,13 +209,16 @@ async function middleColour(thing: Locator): Promise<string> {
     canvas.width = image.width;
     canvas.height = image.height;
     const context = canvas.getContext("2d");
-    if (context === null) return [0, 0, 0];
+    if (context === null) return 0;
     context.drawImage(image, 0, 0);
-    return [...context.getImageData(Math.floor(image.width / 2), Math.floor(image.height / 2), 1, 1).data];
+    const pixels = context.getImageData(0, 0, image.width, image.height).data;
+    let magenta = 0;
+    for (let at = 0; at + 3 < pixels.length; at += 4) {
+      if ((pixels[at] ?? 0) > 200 && (pixels[at + 1] ?? 255) < 60 && (pixels[at + 2] ?? 0) > 200)
+        magenta += 1;
+    }
+    return magenta / (pixels.length / 4);
   }, png.toString("base64"));
-  return (r ?? 0) > 200 && (g ?? 255) < 60 && (b ?? 0) > 200
-    ? "magenta"
-    : `rgb(${String(r)}, ${String(g)}, ${String(b)})`;
 }
 
 test("the still address answers nothing for what is not a stored clip, or where there is no media tool", async ({
