@@ -209,14 +209,14 @@ test("Check and send opened with a question unanswered leads to that question", 
   await expect(page).toHaveURL(`/make/${slug}/upright`);
 });
 
-test("while a game is sent the button says so and cannot be pressed again", async ({ page }) => {
+test("while a game is sent the button spins and cannot be pressed again", async ({ page }) => {
   const { slug } = await startAtCheck(page);
   const held = await holdAnswersTo(page, /\?\/send/);
 
   const send = page.getByRole("button", { name: "Send for review" });
   await send.click();
 
-  const sending = page.getByRole("button", { name: "Sending your game…" });
+  const sending = page.getByRole("button", { name: "Send for review" });
   await expect(sending).toBeDisabled();
   held.release();
   await expect(page).toHaveURL(`/make/${slug}`);
