@@ -49,7 +49,9 @@ async function slides(page: Page): Promise<string[]> {
 
 const lastMove = (page: Page) => page.evaluate(() => document.documentElement.dataset.move);
 
-test("a game opened from the feed slides in from the right, and Back slides the feed back", async ({ page }) => {
+test("a game opened from the feed slides in from the right, and Back slides the feed back", async ({
+  page,
+}) => {
   test.skip(
     !(await page.evaluate(() => "startViewTransition" in document)),
     "this browser has no view transitions, so every move comes at once",
