@@ -3,13 +3,15 @@
   site answers, and the browser shows nothing for it, so without this a slow line looks like a tap that did nothing.
   Only the spinner, with no line and no words: the owner, 2026-11-22, "We don't need the Loading... text", and "show
   ONLY the spinner (no second indicator alongside it)".
-  It waits a moment before it shows, so a quick page never flashes it.
+  It shows only once a move has taken over 2 seconds (the owner, 2026-11-24: "only show the spinner if more than 2
+  seconds have elapsed", for pages only), so a page that comes in that time never flashes it. Buttons, pictures and
+  videos inside a page keep their own spinners as they are.
 -->
 <script lang="ts">
   import { navigating } from "$app/state";
 
   /** How long a move goes on before the spinner shows. */
-  const SHOW_AFTER_MS = 150;
+  const SHOW_AFTER_MS = 2_000;
 
   let shown = $state(false);
 

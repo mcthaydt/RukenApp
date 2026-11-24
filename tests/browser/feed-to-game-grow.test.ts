@@ -200,6 +200,101 @@ test("going back to the feed plays the move out backwards, with the browser's Ba
   await expect.poll(() => namedLeft(page)).toBe(0);
 });
 
+/** How far two pictures of the same size differ: the mean difference per colour, 0 to 255. */
+async function pictureGap(page: Page, one: Buffer, other: Buffer): Promise<number> {
+  return page.evaluate(
+    async ({ first, second }) => {
+      const pixels = async (png: string) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${png}`;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const pen = canvas.getContext("2d");
+        if (pen === null) throw new Error("no 2d canvas");
+        pen.drawImage(image, 0, 0);
+        return pen.getImageData(0, 0, image.width, image.height).data;
+      };
+      const a = await pixels(first);
+      const b = await pixels(second);
+      let gap = 0;
+      for (let at = 0; at < a.length; at += 4)
+        for (let colour = 0; colour < 3; colour++)
+          gap += Math.abs((a[at + colour] ?? 0) - (b[at + colour] ?? 0));
+      return gap / ((a.length / 4) * 3);
+    },
+    { first: one.toString("base64"), second: other.toString("base64") },
+  );
+}
+
+test("the bar is drawn at the end of Back, as it is once the feed has settled", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !(await page.evaluate(() => "startViewTransition" in document)),
+    "this browser has no view transitions, so every move comes at once",
+  );
+  // Safari's engine never draws the new picture of the bar during the move (progress.md, Known issues, #399): it pops
+  // in when the move ends, as on main. Confirm on a real iPhone before fixing.
+  test.fixme(
+    testInfo.project.name === "phone",
+    "Safari's engine does not draw the bar's new picture during the move",
+  );
+  const clip = await openFeedAt(page);
+  const bar = page.getByRole("navigation", { name: "Ruken" });
+  const where = await bar.boundingBox();
+  if (where === null) throw new Error("the feed has no bar");
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await pageHasSettled(page);
+
+  // Back, held at its last moment: every animation of the move paused at its end.
+  await page.evaluate(() => {
+    const start = document.startViewTransition.bind(document);
+    document.startViewTransition = ((update: ViewTransitionUpdateCallback) => {
+      const move = start(update);
+      void move.ready.then(() => {
+        for (const one of document.documentElement.getAnimations({ subtree: true })) {
+          const end = Number(one.effect?.getComputedTiming().endTime);
+          if (!Number.isFinite(end)) continue;
+          one.pause();
+          one.currentTime = end - 1;
+        }
+        document.documentElement.dataset.held = "yes";
+      });
+      return move;
+    }) as typeof document.startViewTransition;
+  });
+  await page.getByRole("link", { name: "Back to the feed" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
+  const held = await page.screenshot({ clip: where, animations: "allow" });
+  await page.evaluate(() => {
+    for (const one of document.documentElement.getAnimations({ subtree: true }))
+      if (Number.isFinite(Number(one.effect?.getComputedTiming().endTime))) one.finish();
+  });
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await pageHasSettled(page);
+  const settled = await page.screenshot({ clip: where, animations: "allow" });
+  // The same place with the bar hidden: the held picture must be nearer the settled bar than the bare clip, so a clip
+  // that has moved on a frame does not decide it.
+  // A hidden bar leaves the accessibility tree, so it is held by its handle while it is hidden.
+  const shown = await bar.elementHandle();
+  await shown.evaluate((element) => {
+    element.style.visibility = "hidden";
+  });
+  const bare = await page.screenshot({ clip: where, animations: "allow" });
+  await shown.evaluate((element) => {
+    element.style.visibility = "";
+  });
+  await testInfo.attach("held", { body: held, contentType: "image/png" });
+  await testInfo.attach("settled", { body: settled, contentType: "image/png" });
+  await testInfo.attach("bare", { body: bare, contentType: "image/png" });
+  const toBar = await pictureGap(page, held, settled);
+  const toBare = await pictureGap(page, held, bare);
+  expect(toBar, `the held picture is ${String(toBare)} from the bare clip`).toBeLessThan(toBare / 2);
+});
+
 test("the back arrow on a game's page opened another way goes to the feed with a slide", async ({ page }) => {
   test.skip(
     !(await page.evaluate(() => "startViewTransition" in document)),

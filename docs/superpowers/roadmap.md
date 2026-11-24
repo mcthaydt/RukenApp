@@ -102,3 +102,7 @@ Later. New wants with no design yet. Nothing here is built until the owner says 
 
 1. Six must-have languages: English, Spanish, Korean, Japanese, Chinese and Portuguese.
 2. Jev everywhere Ruken uses AI. The help chat and AI review already have it. Anything new with AI needs it too.
+
+## Not yet placed: found while building
+
+- WebKit: the new picture of a named view transition group other than root and the clip never draws (the bar of places pops in on phone, both directions, between the feed and a game page). Confirm on a real iPhone first, since it may be an artifact of Playwright's WebKit. Findings: `progress.md`, Known issues (#399).

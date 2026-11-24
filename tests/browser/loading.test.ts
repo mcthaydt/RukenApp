@@ -10,14 +10,24 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
 
-test("moving to another page shows only the spinner until the page arrives", async ({ page }, testInfo) => {
+test("moving to another page shows only the spinner, once the page has taken over 2 seconds", async ({
+  page,
+}, testInfo) => {
+  // The page's own clock, so the 2 seconds are counted exactly rather than waited out.
+  await page.clock.install();
   await page.goto("/sign-in");
   await pageHasSettled(page);
   const held = await holdAnswersTo(page, /\/sign-up\/__data\.json/);
 
   await page.getByRole("link", { name: "Create an account" }).click();
+  await expect.poll(() => held.requestsSoFar()).toBe(1);
 
+  // The owner, 2026-11-24: "only show the spinner if more than 2 seconds have elapsed", for pages. A page that comes
+  // inside 2 seconds never shows it.
   const bar = page.getByRole("progressbar", { name: "Loading the page" });
+  await page.clock.runFor(1_900);
+  await expect(bar).toHaveCount(0);
+  await page.clock.runFor(200);
   await expect(bar).toBeVisible();
   await expect(page.locator(".page-loading")).toHaveCount(0);
   await showTheOwner(page, testInfo, "the spinner while a page loads");
