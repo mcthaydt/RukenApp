@@ -170,6 +170,11 @@ test("a maker's screens: Your games, Your page and its links are real buttons", 
   await page.goto("/make");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expectRealButtons(page);
+  // The owner, 2026-11-23, on a card: the top bar's one more link (Your account, Finish later) is a blue → link, not a
+  // button: it goes to another page and does nothing there.
+  const more = page.locator(".topbar a.go", { hasText: "Your account" });
+  await expect(more).toHaveCSS("color", rgb(token("--pay-light")));
+  expect(await more.evaluate((link) => getComputedStyle(link, "::after").content)).toContain("→");
   await givePage(account, {
     name: "Button Tester",
     oneLine: "Makes games.",

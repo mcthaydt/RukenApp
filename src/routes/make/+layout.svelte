@@ -64,7 +64,7 @@
   <div class="topbar">
     <a class="wordmark" href="/">Ruken</a>
     {#if more !== null}
-      <a class="quiet" href={more.href}>{more.words}</a>
+      <a class="go" href={more.href}>{more.words}</a>
     {/if}
   </div>
   {@render children()}

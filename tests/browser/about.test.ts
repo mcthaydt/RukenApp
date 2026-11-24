@@ -113,20 +113,26 @@ test("the wall's clips play without jumping back to their start over and over", 
 
   // Safari's engine on Linux, given a looping video whose address names a start time (every wall clip's `#t=`), jumped
   // back to the start about a hundred times a second and never played (progress.md, Flaky tests). A clip that plays,
-  // loops or is paused jumps a few times at most.
+  // loops or is paused jumps a few times at most: the test clip is two seconds long, so in four seconds a clip that
+  // loops goes back to its start two or three times. Each clip is counted on its own, so six clips looping as they
+  // should never add up to look like one that jumps over and over.
   const jumps = await page.evaluate(
     () =>
-      new Promise<number>((resolve) => {
-        let count = 0;
-        for (const video of document.querySelectorAll(".hero .wall video")) {
-          video.addEventListener("seeking", () => (count += 1));
-        }
+      new Promise<number[]>((resolve) => {
+        const videos = [...document.querySelectorAll(".hero .wall video")];
+        const counts = videos.map(() => 0);
+        videos.forEach((video, index) => {
+          video.addEventListener("seeking", () => (counts[index] = (counts[index] ?? 0) + 1));
+        });
         setTimeout(() => {
-          resolve(count);
+          resolve(counts);
         }, 4_000);
       }),
   );
-  expect(jumps, "jumps of the wall's six clips in four seconds").toBeLessThanOrEqual(12);
+  expect(
+    Math.max(...jumps),
+    `jumps of each wall clip in four seconds: ${jumps.join(", ")}`,
+  ).toBeLessThanOrEqual(5);
 });
 
 test("a maker goes from the landing page to the help for makers", async ({ page }) => {
