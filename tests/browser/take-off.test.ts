@@ -154,7 +154,9 @@ test("nothing scrolls sideways, and the blue button is in view", async ({ page }
   await layoutHasSettled(page);
 
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    await page.evaluate(() =>
+      [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+    ),
   ).toBe(true);
   const button = await boxOf(page.getByRole("button", { name: "Put it back on Ruken" }));
   const window = page.viewportSize();

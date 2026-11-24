@@ -225,6 +225,8 @@ test("a very long number, typed by mistake, is refused in words and wraps inside
     page.getByText("That doesn't look like a phone number. Check it and try again."),
   ).toBeVisible();
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    await page.evaluate(() =>
+      [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+    ),
   ).toBe(true);
 });

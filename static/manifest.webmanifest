@@ -1,7 +1,9 @@
 {
   "name": "Ruken - The Everyday Console",
   "short_name": "Ruken",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#112f2c",
   "theme_color": "#112f2c",

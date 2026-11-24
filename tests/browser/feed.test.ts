@@ -5,6 +5,11 @@ import { buttonColour, boxOf, showTheOwner, wordsHaveSettled } from "./support/l
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { rgb, token } from "../support/look-tokens.ts";
 import { consented } from "./support/consent.ts";
+import { asInstalled } from "./support/installed.ts";
+
+// Some of these journeys turn a phone sideways, which in a browser tab asks for the phone upright; they look at Ruken
+// opened from the Home Screen, where it works sideways (fits-the-screen.test.ts holds the tab).
+test.beforeEach(({ page }) => asInstalled(page));
 
 // The feed at / (spec 5.1): full-screen clips of games, one per swipe, each led by the person who made it.
 // The journeys share one database, so the feed holds every game any journey made: each one finds its own game's clip by
@@ -156,7 +161,9 @@ test("a game's name of 60 letters pushes nothing sideways", async ({ page }) => 
   await expect(clipOf(page, longName.slug)).toBeAttached();
   await wordsHaveSettled(page);
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
+    await page.evaluate(() =>
+      Math.max(...[document.documentElement, document.body].map((box) => box.scrollWidth - box.clientWidth)),
+    ),
   ).toBe(0);
   expect(
     await page.evaluate(() => {

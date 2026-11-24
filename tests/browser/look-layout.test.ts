@@ -109,7 +109,9 @@ test.describe("your account", () => {
     expect((await boxOf(page.getByRole("button", { name: "Sign out" }))).y).toBeGreaterThanOrEqual(above);
   });
 
-  // The Owner, 2026-11-14, "All six": two tap targets that overlap are one wrong tap from deleting an account.
+  // The Owner, 2026-11-14, "All six": two tap targets that overlap are one wrong tap from deleting an account. They sit
+  // side by side so Your account fits a phone (the owner, 2026-11-24), with a gap between them; on a window too narrow
+  // for one row, Delete wraps below Sign out.
   test("Sign out and Delete my account have room between them, so their tap areas do not overlap", async ({
     page,
   }) => {
@@ -119,7 +121,11 @@ test.describe("your account", () => {
     const remove = await boxOf(page.getByRole("link", { name: "Delete my account" }));
     expect(signOut.height).toBeGreaterThanOrEqual(48);
     expect(remove.height).toBeGreaterThanOrEqual(48);
-    expect(remove.y).toBeGreaterThanOrEqual(bottomOf(signOut));
+    if (Math.abs(remove.y - signOut.y) < 1) {
+      expect(remove.x - (signOut.x + signOut.width)).toBeGreaterThanOrEqual(8);
+    } else {
+      expect(remove.y).toBeGreaterThanOrEqual(bottomOf(signOut));
+    }
   });
 
   test("a quiet button is never stretched across the card", async ({ page }) => {

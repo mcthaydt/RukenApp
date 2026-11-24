@@ -1,3 +1,4 @@
+import { asInstalled } from "./installed.ts";
 import { readFile, writeFile } from "node:fs/promises";
 import {
   expect,
@@ -392,6 +393,8 @@ export async function submitGame(
   browser: Browser,
 ): Promise<{ slug: string; name: string; maker: { number: string; password: string } }> {
   const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
+  // From the Home Screen, so a journey whose window is held sideways still gets its game sent (support/installed.ts).
+  await asInstalled(context);
   try {
     const page = await context.newPage();
     const { slug, name, maker } = await answerEveryQuestion(page);

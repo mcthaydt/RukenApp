@@ -25,6 +25,7 @@ import {
 } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 import { rgb, token } from "../support/look-tokens.ts";
+import { asInstalled } from "./support/installed.ts";
 
 // What the second look at the submission screens found (docs/superpowers/audits/2026-11-15-submission-screens-second-look.md),
 // one journey for each thing that was wrong and can be measured. Each measures the page in the window it runs in. The one
@@ -367,6 +368,8 @@ async function expectQuestionAndReason(page: Page): Promise<void> {
 
 test.describe("on an iPhone SE held sideways, a refusal", () => {
   test.use({ viewport: IPHONE_SE_SIDEWAYS });
+  // Opened from the Home Screen: in a browser tab a phone held sideways is asked to turn upright.
+  test.beforeEach(({ page }) => asInstalled(page));
 
   test("of the first answer is read with its heading and its box", async ({ page }) => {
     test.skip(test.info().project.name !== "phone", "one project is enough for a window of its own");
@@ -612,6 +615,8 @@ async function expectFactsBeforeTheVideos(page: Page, facts: Locator[]): Promise
 
 test.describe("on a phone held sideways", () => {
   test.use({ viewport: { width: 915, height: 412 } });
+  // Opened from the Home Screen: in a browser tab a phone held sideways is asked to turn upright.
+  test.beforeEach(({ page }) => asInstalled(page));
 
   test("the choices of who the game is for are both clear of Back and Save", async ({ page }) => {
     onlyInPhone();
@@ -632,6 +637,8 @@ test.describe("on a phone held sideways", () => {
 
 test.describe("on an iPhone SE held sideways", () => {
   test.use({ viewport: IPHONE_SE_SIDEWAYS });
+  // Opened from the Home Screen: in a browser tab a phone held sideways is asked to turn upright.
+  test.beforeEach(({ page }) => asInstalled(page));
 
   test("the first choice of who the game is for is clear of Back and Save, whole", async ({ page }) => {
     onlyInPhone();
@@ -724,6 +731,8 @@ async function expectFrameWholeAboveTheBar(page: Page): Promise<void> {
 
 test.describe("on an iPhone SE held sideways", () => {
   test.use({ viewport: IPHONE_SE_SIDEWAYS });
+  // Opened from the Home Screen: in a browser tab a phone held sideways is asked to turn upright.
+  test.beforeEach(({ page }) => asInstalled(page));
 
   test("the upright video's frame is whole and clear of Back and Save", async ({ page }) => {
     onlyInPhone();
