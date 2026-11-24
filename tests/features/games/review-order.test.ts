@@ -3,7 +3,7 @@ import { readReviewOrder } from "../../../src/features/games/review-order.ts";
 
 // What the Owner's review command says, read from a body that arrives from outside and is never believed.
 
-const WHAT_TO_DO = 'Say what to do: "do" is "list", "look", "accept" or "send-back".';
+const WHAT_TO_DO = 'Say what to do: "do" is "list", "reports", "look", "accept" or "send-back".';
 const WHICH_GAME = 'Say which game: "game" is its address from the list.';
 const WHAT_IS_WRONG =
   'Say what\'s wrong: "parts" is a list like [{ "part": "files", "words": "It doesn\'t start." }].';
@@ -19,6 +19,7 @@ describe("readReviewOrder", () => {
       { do: "accept", game: "tiny-game" },
       { do: "accept", game: "tiny-game" },
     ],
+    [{ do: "reports" }, { do: "reports" }],
     [
       { do: "send-back", game: "tiny-game", parts: [{ part: "files", words: "It doesn't start." }] },
       { do: "send-back", game: "tiny-game", parts: [{ part: "files", words: "It doesn't start." }] },
