@@ -444,6 +444,16 @@ form > * + * {
   margin-top: 2rem;
 }
 
+/* Two quiet buttons side by side at the foot of a card (Sign out and Delete my account): a little less padding at their
+   sides, so the pair fits across a phone on one line and the whole card fits with no scrolling (the owner, 2026-11-24). */
+.card .side-by-side {
+  margin-top: 1.5rem;
+}
+
+.card .side-by-side .quiet {
+  padding-inline: 0.75rem;
+}
+
 /* A refusal is seen by its weight, not by a colour: red means money and nothing else. */
 .problem {
   font-weight: 600;
@@ -862,7 +872,8 @@ form > * + button:not(.quiet) {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  /* The whole view: the window above the pinned buttons or the bar (--foot, the app view). */
+  min-height: calc(100dvh - var(--foot, 0px));
   overflow-x: clip;
 }
 
@@ -1393,8 +1404,10 @@ form > * + button:not(.quiet) {
 }
 
 @media (orientation: portrait), (max-height: 449px), (max-width: 499px) {
-  .screen {
-    padding-bottom: calc(var(--button) + 3.5rem + env(safe-area-inset-bottom, 0px));
+  /* The screen's view ends above the pinned row (the app view, at the end of this file), so the row never covers a
+     line of the step. */
+  :root:not(:has(nav.bar)):has(.screen .acts) {
+    --foot: calc(var(--button) + 1.5rem + max(0.75rem, env(safe-area-inset-bottom, 0px)));
   }
 
   /* The row floats over the screen as a pill of glass, clear of its edges, as the bar of places does (the owner,
@@ -1447,10 +1460,11 @@ form > * + button:not(.quiet) {
 /* A screen with the bar of places (src/features/feed/Bar.svelte) ends its last line clear above it, and a maker's
    screen that has the bar keeps its buttons under its words instead of pinned under the bar: only the step-by-step
    screens, which have no bar, pin theirs. */
-/* The room is padding on the page itself, not a margin on the card: a margin can fall out of the page, and then a
-   card that just fills the window ends under the bar and does not scroll. */
-:root:has(nav.bar) body:has(:is(main.card, main.helpdesk, .screen)) {
-  padding-bottom: calc(var(--size-target) + 2.5rem + env(safe-area-inset-bottom, 0px));
+/* The screen's view ends above the bar (the app view, at the end of this file): the bar's 3.75rem, its gap to the
+   window's foot, and half a rem of air. The feed, a game's page and a maker's page are pictures from edge to edge, so
+   they run on under the glass and keep their own room at the end instead. */
+:root:has(nav.bar):not(:has(main:is(.feed, .empty, .gamepage, .makerpage))) {
+  --foot: calc(3.75rem + max(0.75rem, env(safe-area-inset-bottom, 0px)) + 0.5rem);
 }
 
 :root:has(nav.bar) :is(main.card, .screen) {
@@ -1488,8 +1502,10 @@ form > * + button:not(.quiet) {
     padding-right: var(--rail);
   }
 
-  :root:has(nav.bar) body:has(:is(main.card, main.helpdesk, .screen)) {
-    padding-bottom: 0;
+  /* Sideways the bar and a step's buttons stand along the right edge, so the view keeps the whole height. */
+  :root:has(nav.bar):not(:has(main:is(.feed, .empty, .gamepage, .makerpage))),
+  :root:not(:has(nav.bar)):has(.screen .acts) {
+    --foot: 0px;
   }
 
   :root:has(nav.bar) :is(main.card, .screen) {
@@ -2908,8 +2924,8 @@ main.helpdesk {
   --above-main: 4.5rem;
   --below-main: 1rem;
 
-  min-height: calc(100vh - var(--above-main) - var(--below-main));
-  min-height: calc(100dvh - var(--above-main) - var(--below-main));
+  min-height: calc(100vh - var(--foot, 0px) - var(--above-main) - var(--below-main));
+  min-height: calc(100dvh - var(--foot, 0px) - var(--above-main) - var(--below-main));
   margin-bottom: var(--below-main);
 }
 
@@ -5507,4 +5523,75 @@ html {
 
 :is(img, video) {
   -webkit-user-drag: none;
+}
+
+/* Inside the app the page itself never scrolls; it works like an app's one window (the owner, 2026-11-24: "within the
+   app ... it functions like a single page app and we shouldn't ever need to scroll, and if we do, it should still be
+   single page but it scrolls within the view, but even then that should be rare"). The window holds the screen, so a
+   phone's browser never slides its address bar in and out. The screen's own view is the body: it ends above the bar of
+   places, or above a step's pinned Back and Save (--foot, set beside each), so neither ever covers what is on the
+   screen. A screen taller than its view (a long help guide, the terms) scrolls inside it, by touch, wheel and keys, with
+   no bar showing. The landing page is a web page and keeps its own scrolling. */
+:root:not(:has(main.about)) {
+  height: 100%;
+  overflow: hidden;
+}
+
+:root:not(:has(main.about)) body {
+  height: calc(100% - var(--foot, 0px));
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* The last line of a screen ends a little above its view's foot, never flush against it. */
+:root:not(:has(main.about)) main:is(.card:not(.bold), .games, .halves) {
+  margin-bottom: 0.5rem;
+}
+
+/* A phone held sideways in a browser tab: the browser's own bars leave the screen too little height (the owner,
+   2026-11-24: "perhaps we block horizontal and tell them to save it to homepage if they want to use it that way"). A
+   dim of frosted glass covers everything and asks for the phone upright; opened from the Home Screen, Ruken has the
+   whole window and works sideways (src/lib/turn-upright.svelte decides which). A computer's short window is not a phone
+   on its side, so only a touch screen is asked. */
+.upright {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 449px) and (pointer: coarse) {
+  .upright {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: var(--dim-bg);
+    -webkit-backdrop-filter: var(--dim-filter);
+    backdrop-filter: var(--dim-filter);
+  }
+
+  .upright > div {
+    display: grid;
+    justify-items: center;
+    gap: 0.5rem;
+    max-width: 34rem;
+    padding: 1.25rem 2rem;
+    border-radius: var(--radius-card);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+    color: var(--chalk);
+    text-align: center;
+    text-shadow: var(--glass-ink);
+  }
+
+  .upright svg {
+    filter: var(--glass-icon);
+  }
+
+  .upright h2 {
+    font: var(--text-section);
+  }
 }

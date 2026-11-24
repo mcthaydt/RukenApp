@@ -25,6 +25,7 @@ import {
   wordsHaveSettled,
 } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { asInstalled } from "./support/installed.ts";
 
 // What the design pass of the submission screens found (docs/superpowers/audits/2026-11-15-submission-screens-design-pass.md),
 // one journey for each thing that was wrong. Each measures the page in the window it runs in, as the journeys of the screen
@@ -207,6 +208,8 @@ test.describe("on an iPhone SE", () => {
 
 test.describe("on an iPhone SE held sideways", () => {
   test.use({ viewport: IPHONE_SE_SIDEWAYS });
+  // Opened from the Home Screen: in a browser tab a phone held sideways is asked to turn upright.
+  test.beforeEach(({ page }) => asInstalled(page));
 
   test("a refusal of the first answer is read beside Back and Save, in the window", async ({ page }) => {
     onlyIn("phone");
@@ -279,6 +282,8 @@ test.describe("a 56-letter name in a question's heading", () => {
 
   test.describe("on an iPhone SE held sideways", () => {
     test.use({ viewport: IPHONE_SE_SIDEWAYS });
+    // Opened from the Home Screen: in a browser tab a phone held sideways is asked to turn upright.
+    test.beforeEach(({ page }) => asInstalled(page));
 
     test("the box is beside Back and Save, in the window", async ({ page }) => {
       onlyIn("phone");

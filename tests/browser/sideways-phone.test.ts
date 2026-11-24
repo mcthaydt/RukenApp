@@ -5,6 +5,11 @@ import { givePage } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { asInstalled } from "./support/installed.ts";
+
+// Some of these journeys turn a phone sideways, which in a browser tab asks for the phone upright; they look at Ruken
+// opened from the Home Screen, where it works sideways (fits-the-screen.test.ts holds the tab).
+test.beforeEach(({ page }) => asInstalled(page));
 
 // A phone held sideways (the owner, 2026-11-14: "mobile landscape" is first class; 2026-11-22: "things aren't
 // appropriately sized there"). Three phones: the small iPhone, a common iPhone and the biggest one, each on its side.
@@ -56,7 +61,9 @@ async function expectBarOnTheRight(page: Page): Promise<{ x: number }> {
 /** Nothing scrolls sideways, and every heading is at most the phone's 36px. */
 async function expectPhoneSized(page: Page): Promise<void> {
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    await page.evaluate(() =>
+      [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+    ),
   ).toBe(true);
   const sizes = await page.evaluate(() =>
     [...document.querySelectorAll("h1")].map((heading) => parseFloat(getComputedStyle(heading).fontSize)),

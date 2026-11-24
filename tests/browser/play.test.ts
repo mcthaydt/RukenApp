@@ -390,7 +390,9 @@ test("nothing on the play screen is red, and nothing scrolls sideways", async ({
   await page.goto(`/g/${free.slug}/play`, { waitUntil: "domcontentloaded" });
   await loaded(page);
   const sideways = () =>
-    page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+    page.evaluate(() =>
+      [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+    );
   expect(await pipRed(page)).toEqual([]);
   expect(await sideways()).toBe(true);
   await tabOf(page).click();

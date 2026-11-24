@@ -9,6 +9,10 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 const BASE = "Ruken - The Everyday Console";
 
 type Manifest = {
+  id: string;
+  start_url: string;
+  scope: string;
+  display: string;
   name: string;
   short_name: string;
   theme_color: string;
@@ -55,6 +59,38 @@ test("every screen points the browser at the RKN icon, in each size a browser or
     expect(await pngSize(request, icon.src)).toEqual({ width, height });
   }
   expect(manifest.icons.some((icon) => icon.purpose === "maskable")).toBe(true);
+});
+
+test("added to the Home Screen, Ruken opens as an app with the whole window and no browser bar", async ({
+  page,
+  request,
+  browserName,
+}) => {
+  // The owner, 2026-11-24: a phone held sideways in a browser tab is asked to add Ruken to the Home Screen, so from
+  // there it must open full screen, as an app. A journey cannot press Add to Home Screen, so it checks what every
+  // browser reads to decide, and asks Chrome's own check whether it would install Ruken as an app.
+  await page.goto("/sign-in");
+  const manifestHref = await page.locator('link[rel="manifest"]').getAttribute("href");
+  const manifest = (await (await request.get(manifestHref ?? "")).json()) as Manifest;
+  expect(manifest.display).toBe("standalone");
+  expect(manifest.start_url).toBe("/");
+  expect(manifest.scope).toBe("/");
+  expect(manifest.id).toBe("/");
+  // Safari on an iPhone reads its own tags for the same.
+  for (const name of ["apple-mobile-web-app-capable", "mobile-web-app-capable"]) {
+    await expect(page.locator(`meta[name="${name}"]`)).toHaveAttribute("content", "yes");
+  }
+  await expect(page.locator('meta[name="apple-mobile-web-app-status-bar-style"]')).toHaveAttribute(
+    "content",
+    "black",
+  );
+  if (browserName === "chromium") {
+    const chrome = await page.context().newCDPSession(page);
+    const { installabilityErrors } = (await chrome.send("Page.getInstallabilityErrors")) as {
+      installabilityErrors: { errorId: string }[];
+    };
+    expect(installabilityErrors.map((error) => error.errorId)).toEqual([]);
+  }
 });
 
 test("a game's page and its play screen name the game, and the tab goes back to Ruken after", async ({

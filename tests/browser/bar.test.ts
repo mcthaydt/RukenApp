@@ -79,7 +79,7 @@ test("a game's page has the bar, a way back to the feed, and nothing hidden unde
   await expect(page.getByRole("link", { name: "Back to the feed" })).toHaveAttribute("href", "/");
   await wordsHaveSettled(page);
   await page.evaluate(() => {
-    window.scrollTo(0, document.documentElement.scrollHeight);
+    document.body.scrollTo(0, document.body.scrollHeight);
   });
   const barBox = await boxOf(bar(page));
   const lastBottom = await page.evaluate(() => {
@@ -95,7 +95,7 @@ test("a maker's page has the bar, and nothing hidden under it", async ({ page },
   await expectTheBar(page, { home: false });
   await wordsHaveSettled(page);
   await page.evaluate(() => {
-    window.scrollTo(0, document.documentElement.scrollHeight);
+    document.body.scrollTo(0, document.body.scrollHeight);
   });
   const barBox = await boxOf(bar(page));
   const lastBottom = await page.evaluate(() => {
@@ -221,7 +221,7 @@ test.describe("on an upright phone", () => {
       await page.goto(path);
       await wordsHaveSettled(page);
       await page.evaluate(() => {
-        window.scrollTo(0, document.documentElement.scrollHeight);
+        document.body.scrollTo(0, document.body.scrollHeight);
       });
       const barTop = (await boxOf(bar(page))).y;
       const bottoms = await page.evaluate(() =>

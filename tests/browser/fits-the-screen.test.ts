@@ -1,0 +1,159 @@
+import { expect, test, type Page } from "@playwright/test";
+import { signUp } from "./support/account.ts";
+import { CONSENTED_STATE } from "./support/consent.ts";
+import { asInstalled } from "./support/installed.ts";
+import { boxOf, showTheOwner } from "./support/look.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+// Inside the app the page never scrolls; it works like an app's one window (the owner, 2026-11-24: "within the app ... it
+// functions like a single page app and we shouldn't ever need to scroll, and if we do, it should still be single page
+// but it scrolls within the view, but even then that should be rare"). A screen's view ends above the bar, so the bar
+// never covers a button (the owner's picture: on Your account the bar covered Delete my account). A phone held sideways
+// in a browser tab is asked to turn upright and add Ruken to the Home Screen ("we block horizontal and tell them to save
+// it to homepage"); opened from there it works sideways. Nothing here is made or saved, so there is no create, update or
+// delete: the journeys that make an account and delete it are me.test.ts and delete-account.test.ts.
+
+test.beforeEach(forgetRateLimits);
+
+const bar = (page: Page) => page.getByRole("navigation", { name: "Ruken" });
+
+/** How far the page itself and the screen's view run past the window: both 0 when the screen fits. */
+async function overflow(page: Page): Promise<{ page: number; view: number }> {
+  return page.evaluate(() => ({
+    page: document.documentElement.scrollHeight - innerHeight,
+    view: document.body.scrollHeight - document.body.clientHeight,
+  }));
+}
+
+/** Every button, link and field on the screen that the browser draws: none may sit under the bar. */
+async function underTheBar(page: Page): Promise<string[]> {
+  const top = (await boxOf(bar(page))).y;
+  return page.evaluate(
+    (barTop) =>
+      [...document.querySelectorAll("main :is(a, button, input, select, textarea, summary)")]
+        .filter((thing) => {
+          const box = thing.getBoundingClientRect();
+          const view = document.body.getBoundingClientRect();
+          // Only what is in the view: a line scrolled out of it is not drawn, so the bar cannot cover it.
+          return box.width > 0 && box.bottom > barTop && box.top < Math.min(view.bottom, innerHeight);
+        })
+        .map((thing) => thing.textContent.trim() || (thing.getAttribute("aria-label") ?? "")),
+    top,
+  );
+}
+
+async function opened(page: Page, path: string): Promise<void> {
+  await page.goto(path);
+  await page.locator("main").first().waitFor();
+  await expect(bar(page)).toBeVisible();
+}
+
+test.describe("signed out", () => {
+  test.use({ storageState: CONSENTED_STATE });
+
+  test("each screen fits the window with nothing to scroll", async ({ page }) => {
+    for (const path of ["/sign-in", "/sign-up", "/forgot-password", "/cookies"]) {
+      await opened(page, path);
+      expect(await overflow(page), path).toEqual({ page: 0, view: 0 });
+      expect(await underTheBar(page), path).toEqual([]);
+    }
+  });
+});
+
+test("Your account and Your games fit the window, and the bar covers nothing", async ({ page }, testInfo) => {
+  await signUp(page);
+  for (const path of ["/me", "/make", "/me/password", "/me/computers", "/me/delete"]) {
+    await opened(page, path);
+    expect(await overflow(page), path).toEqual({ page: 0, view: 0 });
+    expect(await underTheBar(page), path).toEqual([]);
+  }
+  await opened(page, "/me");
+  await expect(page.getByRole("link", { name: "Delete my account" })).toBeInViewport();
+  await showTheOwner(page, testInfo, "Your account fits the window");
+});
+
+test.describe("a long screen", () => {
+  test.use({ storageState: CONSENTED_STATE });
+
+  test("scrolls inside its view, never the page, and its end clears the bar", async ({ page, isMobile }) => {
+    await opened(page, "/privacy");
+    expect((await overflow(page)).page).toBe(0);
+    expect((await overflow(page)).view).toBeGreaterThan(0);
+
+    // The keys move the view. Safari glides there, and a key pressed mid-glide is lost, so wait until it rests.
+    await page.locator("main h1").click();
+    await page.keyboard.press("End");
+    await expect
+      .poll(() => page.evaluate(() => Math.ceil(document.body.scrollTop + document.body.clientHeight)))
+      .toBeGreaterThanOrEqual(await page.evaluate(() => document.body.scrollHeight - 1));
+    expect(await page.evaluate(() => scrollY)).toBe(0);
+    expect(await underTheBar(page)).toEqual([]);
+    await page.keyboard.press("Home");
+    await expect.poll(() => page.evaluate(() => document.body.scrollTop)).toBe(0);
+
+    if (!isMobile) {
+      await page.mouse.move(200, 200);
+      await page.mouse.wheel(0, 600);
+      await expect.poll(() => page.evaluate(() => document.body.scrollTop)).toBeGreaterThan(0);
+      expect(await page.evaluate(() => scrollY)).toBe(0);
+    }
+  });
+
+  test("the next screen opens at its top, and Back finds the last one where it was left", async ({
+    page,
+  }) => {
+    await opened(page, "/privacy");
+    await page.evaluate(() => {
+      document.body.scrollTo(0, 400);
+    });
+    await expect.poll(() => page.evaluate(() => document.body.scrollTop)).toBe(400);
+    await page.getByRole("link", { name: "You" }).click();
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.body.scrollTop)).toBe(0);
+    await page.goBack();
+    await expect(page).toHaveURL("/privacy");
+    await expect.poll(() => page.evaluate(() => document.body.scrollTop)).toBe(400);
+  });
+});
+
+test.describe("a phone held sideways", () => {
+  test.use({ storageState: CONSENTED_STATE, viewport: { width: 667, height: 375 } });
+  test.beforeEach(() => {
+    test.skip(
+      test.info().project.name !== "phone",
+      "the window is set here, so the phone's engine is enough",
+    );
+  });
+
+  const turnUpright = (page: Page) => page.getByRole("dialog", { name: "Turn your phone upright" });
+
+  test("in a browser tab, it asks for the phone upright and how to use Ruken sideways", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/sign-in");
+    await expect(turnUpright(page)).toBeVisible();
+    await expect(turnUpright(page)).toContainText("add it to your Home Screen");
+    await showTheOwner(page, testInfo, "sideways in a browser tab");
+
+    // Turned upright, the screen is there as it was.
+    await page.setViewportSize({ width: 375, height: 667 });
+    await expect(turnUpright(page)).toBeHidden();
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+
+    // The landing page is a web page, and reads sideways.
+    await page.setViewportSize({ width: 667, height: 375 });
+    await page.goto("/about");
+    await page.locator("main.about").waitFor();
+    await expect(turnUpright(page)).toHaveCount(0);
+  });
+
+  test("opened from the Home Screen, it works sideways with the bar on the right", async ({ page }) => {
+    await asInstalled(page);
+    await page.goto("/sign-in");
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+    await expect(turnUpright(page)).toBeHidden();
+    const box = await boxOf(bar(page));
+    expect(box.height).toBeGreaterThan(box.width);
+    expect(box.x + box.width).toBeGreaterThan(667 - 24);
+  });
+});

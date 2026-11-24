@@ -59,7 +59,9 @@ test.beforeAll(async ({ browser, request }) => {
 test.beforeEach(forgetRateLimits);
 
 const noSideways = (page: Page) =>
-  page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+  page.evaluate(() =>
+    [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+  );
 
 test("a maker's page shows who they are, their games and their links, in their colours", async ({
   page,

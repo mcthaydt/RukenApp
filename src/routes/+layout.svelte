@@ -8,7 +8,7 @@
 -->
 <script lang="ts">
   import "../lib/look.css";
-  import { onNavigate } from "$app/navigation";
+  import { afterNavigate, beforeNavigate, onNavigate } from "$app/navigation";
   import { page } from "$app/state";
   import { setAgreed } from "../features/consent/consent.browser.ts";
   import { Notice } from "../features/consent/consent.screens.ts";
@@ -16,6 +16,7 @@
   import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
   import { heldMove, moveBetween, slideWhile } from "../lib/page-moves.ts";
   import PageLoading from "../lib/page-loading.svelte";
+  import TurnUpright from "../lib/turn-upright.svelte";
   import { sendInApp } from "../lib/stay-in-app.ts";
   import { BASE_TITLE } from "../lib/titles.ts";
   import type { LayoutProps } from "./$types";
@@ -79,6 +80,18 @@
     markSending(event);
     sendInApp(event);
   }
+
+  // Inside the app the screen scrolls inside its own view, the body, not the page (look.css, the app view), so the
+  // browser's own scroll keeping does not reach it: each screen opens at its top, and Back finds a screen where it was
+  // left. A link to a place on a screen (#…) is the browser's to scroll to.
+  const leftAt: Record<string, number | undefined> = {};
+  beforeNavigate(({ from }) => {
+    if (from !== null) leftAt[from.url.href] = document.body.scrollTop;
+  });
+  afterNavigate(({ to, type }) => {
+    if (to === null || to.url.hash !== "") return;
+    document.body.scrollTop = type === "popstate" ? (leftAt[to.url.href] ?? 0) : 0;
+  });
 
   // Safari's own swipe back already slides the page; a second slide after it would play the move twice.
   let browserSlid = false;
@@ -149,6 +162,10 @@
 {/if}
 
 {@render children()}
+
+{#if page.route.id !== "/about"}
+  <TurnUpright />
+{/if}
 
 {#if !data.consented && !notNow && page.route.id !== "/cookies"}
   <Notice

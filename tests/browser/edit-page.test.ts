@@ -8,6 +8,11 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 import { rgb } from "../support/look-tokens.ts";
 import { THEMES } from "../../src/features/pages/themes.ts";
 import { consented } from "./support/consent.ts";
+import { asInstalled } from "./support/installed.ts";
+
+// Some of these journeys turn a phone sideways, which in a browser tab asks for the phone upright; they look at Ruken
+// opened from the Home Screen, where it works sideways (fits-the-screen.test.ts holds the tab).
+test.beforeEach(({ page }) => asInstalled(page));
 
 // Editing your page (spec 5.5): a maker makes her page from nothing, reads it where visitors see it, changes every part
 // of it and takes the parts away again, all on the real screens.
@@ -268,8 +273,8 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   // (about 150px up) would leave the page at its top whatever the app did.
   await atRest(page);
   const footOfThePage = await page.evaluate(() => {
-    window.scrollTo(0, document.documentElement.scrollHeight);
-    return window.scrollY;
+    document.body.scrollTo(0, document.body.scrollHeight);
+    return document.body.scrollTop;
   });
   expect(footOfThePage).toBeGreaterThan(0);
   // Nor does it play the maker area's step between two questions: it is the same page, brought up to date.
@@ -280,7 +285,7 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(rows.nth(0)).toContainText("My other game");
   await expect(rows.nth(0).getByRole("button", { name: "Down" })).not.toHaveAttribute("aria-busy", /.*/);
   // Not sent back to the top. The browser may nudge the page a little to keep the row in view as the rows swap places.
-  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.body.scrollTop)).toBeGreaterThan(0);
   expect(await page.evaluate(() => document.documentElement.dataset.step)).toBeUndefined();
   await page.setViewportSize(size);
   await rows.nth(0).getByRole("button", { name: "Hide" }).click();
