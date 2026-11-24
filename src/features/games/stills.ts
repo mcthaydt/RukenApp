@@ -41,10 +41,23 @@ export function stillKeyFor(clipKey: string, second: number, width: StillWidth):
 /**
  * The mark left where a still could not be made: `<folder>/<second>s-<width>.none`. The media tool may bill each call,
  * and the still address keeps no answer of "nothing" in anyone's browser, so without it every view of the clip would
- * ask the tool again. Kept in the clip's still folder, so the clip's removal (or a new clip) clears it.
+ * ask the tool again. It holds the time of the failed try, and a day later the still is tried again, so a bad day of the
+ * tool (a missing permission, an outage) never leaves a clip without a still for good. Kept in the clip's still folder,
+ * so the clip's removal (or a new clip) clears it.
  */
 export function failedMarkFor(clipKey: string, second: number, width: StillWidth): string {
   return `${stillFolderOf(clipKey)}${String(second)}s-${String(width)}.none`;
+}
+
+/** How long a failed still waits before the media tool is asked again. */
+export const STILL_RETRY_MS = 24 * 60 * 60 * 1000;
+
+/** When the still behind a mark last failed, in ms since 1970; a mark that cannot be read counts as just now. */
+async function failedAt(files: FileStore, mark: string, now: number): Promise<number | null> {
+  const kept = await files.get(mark);
+  if (kept === null) return null;
+  const at = Number(await new Response(kept.body).text());
+  return Number.isFinite(at) ? at : now;
 }
 
 /** Removes a clip's file and every still made from it. */
@@ -59,10 +72,10 @@ export type StillAnswer = { kind: "still"; bytes: Uint8Array<ArrayBuffer> } | { 
 /**
  * The still of `clipKey` at `second`, `width` wide: the kept one, or a new one made from the clip and kept. Nothing
  * for a key that is not a clip's, a clip that is not stored, or a site with no frame maker; and nothing when making it
- * fails, so a still can never stop a page. A failure is marked and never tried again for that clip.
+ * fails, so a still can never stop a page. A failure is marked and not tried again for a day.
  */
 export async function stillOf(
-  deps: { files: FileStore; frame: FrameMaker | null; log?: (line: string) => void },
+  deps: { files: FileStore; frame: FrameMaker | null; log?: (line: string) => void; now?: () => number },
   clipKey: string,
   second: number,
   width: number,
@@ -77,7 +90,9 @@ export async function stillOf(
   // With no frame maker nothing is asked and nothing is marked, so the media tool can still make it later.
   if (deps.frame === null) return { kind: "none" };
   const failed = failedMarkFor(clipKey, second, width);
-  if ((await deps.files.head(failed)) !== null) return { kind: "none" };
+  const now = (deps.now ?? Date.now)();
+  const lastFailed = await failedAt(deps.files, failed, now);
+  if (lastFailed !== null && now - lastFailed < STILL_RETRY_MS) return { kind: "none" };
   const clip = await deps.files.get(clipKey);
   if (clip === null) return { kind: "none" };
   try {
@@ -88,7 +103,7 @@ export async function stillOf(
     (deps.log ?? console.error)(
       `A still could not be made: ${error instanceof Error ? error.message : String(error)}`,
     );
-    await deps.files.put(failed, new Uint8Array());
+    await deps.files.put(failed, new TextEncoder().encode(String(now)));
     return { kind: "none" };
   }
 }

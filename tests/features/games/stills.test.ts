@@ -115,6 +115,33 @@ describe("a clip's still", () => {
     expect(await files.hasAny(stillFolderOf(CLIP))).toBe(false);
   });
 
+  test("that failed is tried again a day later, so one bad day of the media tool never leaves a clip without one", async () => {
+    const files = await storeWithClip();
+    let now = Date.UTC(2026, 10, 24, 3, 0);
+    let fails = true;
+    let calls = 0;
+    const frame: FrameMaker = () => {
+      calls += 1;
+      return fails ? Promise.reject(new Error("no permission")) : Promise.resolve(new Uint8Array(PICTURE));
+    };
+    const deps = { files, frame, log: () => undefined, now: () => now };
+    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
+    now += 24 * 60 * 60 * 1000 - 1;
+    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
+    expect(calls).toBe(1);
+    now += 1;
+    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
+    expect(calls).toBe(2);
+    // Failed again, so it waits another full day from this try.
+    now += 24 * 60 * 60 * 1000 - 1;
+    fails = false;
+    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
+    expect(calls).toBe(2);
+    now += 1;
+    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "still", bytes: PICTURE });
+    expect(calls).toBe(3);
+  });
+
   test("is not marked as failed on a site with no frame maker, so the media tool can make it later", async () => {
     const files = await storeWithClip();
     expect(await stillOf({ files, frame: null }, CLIP, 2, 360)).toEqual({ kind: "none" });

@@ -128,7 +128,12 @@ export function createGamesServices(
     address: (name) => gameAddress(pattern, name),
     media: (key) => `${gameAddress(pattern, "media")}/${key}`,
     still: (key, second, width) =>
-      stillOf({ files: parts.files, frame: parts.frame?.() ?? null }, key, second, width),
+      stillOf(
+        { files: parts.files, frame: parts.frame?.() ?? null, now: () => parts.clock.epochMs() },
+        key,
+        second,
+        width,
+      ),
   };
 }
 
