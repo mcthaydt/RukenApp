@@ -31,3 +31,12 @@
 ## CI re-run
 
 - Run 45430944406, attempt 2 (failed jobs only): browser shards 1, 2 and 3 success, gate (quick, draft) success at 2026-11-24 16:14 UTC. `feed-controls.test.ts:438` (computer) failed once and passed on the re-run: a flaky test, unrelated to this diff, to record under "Flaky tests".
+
+## Re-pointed to `9491b94f52abafbbed905a058cf0a71f76c37321` (2026-11-24 16:36 UTC)
+
+- `c1a754d` adds only the `feed-controls.test.ts:438` line under "Flaky tests" in `progress.md`.
+- `9491b94` merges main `eeb7a68` (#392, #393). Against `c1a754d` it adds exactly main's changes since `c6ee45d` (diffs equal once index and hunk lines are dropped); `progress.md`'s conflict was resolved with every line main added kept. `Feed.svelte` at `9491b94` is byte-identical to main's (#393's change intact, nothing of this PR in it). No conflict markers in `src` or `tests`.
+- The share change is unchanged: `git diff eeb7a68 9491b94 -- src tests` equals `git diff c6ee45d e0d9d92 -- src tests` once index and hunk lines are dropped.
+- Here at `9491b94`: `share.test.ts` 8 passed; `feed-controls.test.ts` and `feed-to-game-grow.test.ts` on phone, tablet and computer, 102 passed.
+- PR CI at `9491b94` (quick, draft): gate, verify, postgres, browser shards 1 to 6, pr-rules, commit-authors all success.
+- The PASS above holds for `9491b94`.
