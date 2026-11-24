@@ -9,6 +9,8 @@ enum ReportReason {
   copied
   broken
   other
+  violence
+  scam
 }
 
 /// A player's report on a game: one per person and game. Sending again changes it; taking it back deletes the row, and
