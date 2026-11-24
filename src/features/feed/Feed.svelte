@@ -601,6 +601,7 @@
     min-height: var(--size-target);
     padding: 0;
     border-radius: 50%;
+    --corner: round;
     background: var(--glass-bg);
     color: var(--chalk);
     -webkit-backdrop-filter: var(--glass-filter);
@@ -704,6 +705,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
+    --corner: round;
     object-fit: cover;
   }
   .initial {
@@ -754,6 +756,7 @@
     min-height: var(--size-target);
     padding: 0;
     border-radius: 50%;
+    --corner: round;
     background: var(--glass-bg);
     color: var(--chalk);
     -webkit-backdrop-filter: var(--glass-filter);

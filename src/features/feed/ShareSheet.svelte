@@ -336,6 +336,7 @@
     width: var(--size-target);
     height: var(--size-target);
     border-radius: 50%;
+    --corner: round;
     background: var(--glass-safe);
     box-shadow: var(--glass-edge);
   }
