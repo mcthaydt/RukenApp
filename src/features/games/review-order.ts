@@ -5,6 +5,8 @@ import type { GamePart } from "../../lib/server/db.ts";
 
 export type ReviewOrder =
   | { do: "list" }
+  /** Every game players reported (report-a-game spec). */
+  | { do: "reports" }
   | { do: "look"; game: string }
   /** `seen` is the time a look answered; an update that holds a video or rating is accepted only with it. */
   | { do: "accept"; game: string; seen?: string }
@@ -20,7 +22,7 @@ const GAME_PARTS: readonly GamePart[] = [
   "other_websites",
 ];
 
-const WHAT_TO_DO = 'Say what to do: "do" is "list", "look", "accept" or "send-back".';
+const WHAT_TO_DO = 'Say what to do: "do" is "list", "reports", "look", "accept" or "send-back".';
 const WHICH_GAME = 'Say which game: "game" is its address from the list.';
 const WHAT_IS_WRONG =
   'Say what\'s wrong: "parts" is a list like [{ "part": "files", "words": "It doesn\'t start." }].';
@@ -34,6 +36,7 @@ export function readReviewOrder(body: unknown): ReviewOrder | { problem: string 
   if (!isRecord(body)) return { problem: WHAT_TO_DO };
   const action = body.do;
   if (action === "list") return { do: "list" };
+  if (action === "reports") return { do: "reports" };
   if (action !== "look" && action !== "accept" && action !== "send-back") return { problem: WHAT_TO_DO };
 
   const game = body.game;
