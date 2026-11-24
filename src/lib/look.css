@@ -2605,6 +2605,42 @@ html[data-move="back"]::view-transition-new(root) {
   animation-name: in-from-left;
 }
 
+/* Between the feed and a game's page nothing slides: the page fades across in the same 300ms while the game's clip moves
+   from the feed into its box on the game's page, or back (src/lib/page-moves.ts). The two pictures of the clip keep
+   their shape as the box changes, cut to fit like the clip itself. The picture the person pressed stays on top for the
+   whole move and gives way only at its end, since the clip arriving may not have its first frame yet and a fade would
+   dim the clip in flight. */
+html[data-move="grow"]::view-transition-group(clip) {
+  animation-duration: 300ms;
+  animation-timing-function: var(--ease);
+}
+
+html[data-move="grow"]::view-transition-old(clip),
+html[data-move="grow"]::view-transition-new(clip) {
+  height: 100%;
+  object-fit: cover;
+  mix-blend-mode: normal;
+}
+
+html[data-move="grow"]::view-transition-old(clip) {
+  z-index: 1;
+  animation: clip-hands-over 300ms linear both;
+}
+
+html[data-move="grow"]::view-transition-new(clip) {
+  animation: none;
+}
+
+@keyframes clip-hands-over {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* The maker's top bar, track and buttons slide with their page; only the bar of places stays. */
 html[data-move] .topbar,
 html[data-move] .track,

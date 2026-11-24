@@ -2,8 +2,11 @@
 // transition like a swipe when we go from Feed, Submit Game, You; we should almost never have page reload
 // transitions"). This file only decides which way a move goes; the layout starts the slide and look.css draws it.
 
-/** Which way the new page comes in: "on" from the right, "back" from the left. */
-export type Move = "on" | "back";
+/**
+ * How the new page comes in: "on" from the right, "back" from the left, or "grow": the page fades across while the
+ * game's clip moves between the feed and its box on the game's page.
+ */
+export type Move = "on" | "back" | "grow";
 
 /** The bar's places, left to right: Home (the feed), Your games, You. */
 const PLACES = ["/", "/make", "/me"] as const;
@@ -34,6 +37,27 @@ export function moveBetween(from: string, to: string, wentBack: boolean): Move |
   return "on";
 }
 
+// Opening a game from the feed, its clip grows from the feed into its box on the game's page, and going back to the feed
+// it shrinks back (the owner, 2026-11-24: "the page transitions to the game page via the video moving into the
+// container"). The feed's clip on screen and the game page's box each carry `data-grows` with the game's address name;
+// for one move both are given the same view transition name, so the browser moves one into the other.
+const GAME_PAGE = /^\/g\/([^/]+)$/;
+
+/** The game whose clip moves on a move between the feed and that game's page, or null for any other move. */
+export function grownGame(from: string, to: string): string | null {
+  if (from === "/") return GAME_PAGE.exec(to)?.[1] ?? null;
+  if (to === "/") return GAME_PAGE.exec(from)?.[1] ?? null;
+  return null;
+}
+
+/** The view transition name the moving clip takes for its move (look.css draws it). */
+const CLIP = "clip";
+
+/** The element on screen now that stands for a game's clip, if the page has one. */
+export function clipOf(game: string): HTMLElement | null {
+  return document.querySelector<HTMLElement>(`[data-grows="${CSS.escape(game)}"]`);
+}
+
 /** The move whose slide has not yet let its new page in, if there is one. */
 let held: Promise<void> | null = null;
 
@@ -51,13 +75,27 @@ export function heldMove(): Promise<void> | null {
  * whatever the browser does with the slide: a slide it skips (Safari skipped one leaving the play screen in CI) lets
  * the move go on, and so does a slide that never starts, after a second at most.
  */
-export function slideWhile(arrived: Promise<unknown>): Promise<void> {
+export function slideWhile(arrived: Promise<unknown>, game: string | null = null): Promise<void> {
+  // The clip that moves is named in the old page before the browser pictures it, and in the new page once it is in;
+  // the old one loses its name first, since two elements with one name would make the browser drop the whole move.
+  const old = game === null ? null : clipOf(game);
+  if (old !== null) old.style.viewTransitionName = CLIP;
   const move = new Promise<void>((resolve) => {
+    let fresh: HTMLElement | null = null;
     const slide = document.startViewTransition(async () => {
       resolve();
       // A move that a later one overtook never arrives; its slide just ends.
       await arrived.catch(() => undefined);
+      if (old !== null) old.style.viewTransitionName = "";
+      fresh = game === null ? null : clipOf(game);
+      if (fresh !== null) fresh.style.viewTransitionName = CLIP;
     });
+    void slide.finished
+      .catch(() => undefined)
+      .then(() => {
+        if (old !== null) old.style.viewTransitionName = "";
+        if (fresh !== null) fresh.style.viewTransitionName = "";
+      });
     slide.ready.catch(() => {
       resolve();
     });

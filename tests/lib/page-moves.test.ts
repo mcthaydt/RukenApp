@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { moveBetween } from "../../src/lib/page-moves.ts";
+import { grownGame, moveBetween } from "../../src/lib/page-moves.ts";
 
 // Moving between pages slides sideways, like an app. Between the bar's three places (Home, Your games, You) the new
 // page comes from the side its place is on; elsewhere a new page comes in from the right and Back takes it out the
@@ -48,5 +48,20 @@ describe("moveBetween", () => {
   it("does not take a path that only starts with a place's letters for that place", () => {
     expect(moveBetween("/", "/mekong", false)).toBe("on");
     expect(moveBetween("/mekong", "/make", false)).toBe("on");
+  });
+});
+
+describe("grownGame", () => {
+  it("names the game whose clip moves between the feed and that game's page, either way", () => {
+    expect(grownGame("/", "/g/tiny")).toBe("tiny");
+    expect(grownGame("/g/tiny", "/")).toBe("tiny");
+  });
+
+  it("names none for any other move, the play screen and a maker's page included", () => {
+    expect(grownGame("/", "/g/tiny/play")).toBeNull();
+    expect(grownGame("/g/tiny/play", "/")).toBeNull();
+    expect(grownGame("/", "/night")).toBeNull();
+    expect(grownGame("/make", "/g/tiny")).toBeNull();
+    expect(grownGame("/g/tiny", "/g/other")).toBeNull();
   });
 });

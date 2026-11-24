@@ -14,7 +14,7 @@
   import { Notice } from "../features/consent/consent.screens.ts";
   import { Bar } from "../features/feed/feed.browser.ts";
   import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
-  import { heldMove, moveBetween, slideWhile } from "../lib/page-moves.ts";
+  import { clipOf, grownGame, heldMove, moveBetween, slideWhile } from "../lib/page-moves.ts";
   import PageLoading from "../lib/page-loading.svelte";
   import TurnUpright from "../lib/turn-upright.svelte";
   import { sendInApp } from "../lib/stay-in-app.ts";
@@ -134,8 +134,11 @@
       return;
     // The mark stays until the next move: while it is on, the maker area's rising lines keep still, so a page that
     // slides in does not also rise (look.css).
-    html.dataset.move = move;
-    return slideWhile(navigation.complete);
+    // Between the feed and a game's page the game's clip moves instead, when the page being left shows it.
+    const game = grownGame(from ?? "", to ?? "");
+    const grows = game !== null && clipOf(game) !== null;
+    html.dataset.move = grows ? "grow" : move;
+    return slideWhile(navigation.complete, grows ? game : null);
   });
 </script>
 
