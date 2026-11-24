@@ -45,3 +45,7 @@ None.
 ## Re-review: head `e4c4c0054f74f271de90a50582057fbbd4426082`
 
 `git diff 85cfce2 e4c4c00`: one commit, only `tests/browser/scrollbar.test.ts` (+6 −1); `src/lib/look.css` unchanged, so the findings above stand. After End, the journey now waits until the page has reached its end (`ceil(scrollY + innerHeight) >= scrollHeight - 1`) instead of merely `scrollY > 0`, then presses Home. That is a stronger check, not a weaker one: it still proves End scrolls (now all the way) and Home returns to 0, and it removes the race where WebKit's smooth End glide swallowed the Home press. It still fails on `main` at the first assertion. No red findings. **e4c4c00 PASS.** CI's full run on this head was in progress when this was written; merge waits on `gate` as always.
+
+## Re-point after main merge: head `9cf857fe27045a70c84327ad8f8f3197aa68da83`
+
+`9cf857f` merges `main` at `f3af84d` (after #374 and #375) into `e4c4c00`. `git diff origin/main...9cf857f` still shows only `src/lib/look.css` (+13) and `tests/browser/scrollbar.test.ts`, and the `look.css` hunk is the same, line for line, as the one reviewed at `85cfce2`. What main brought in (`git diff e4c4c00 9cf857f`) has no `scrollbar`, `overflow` or `scroll-` lines: it covers video looping (`quiet-video.ts`, `on-screen-video.ts`, `Feed.svelte`), one `.quiet` → `.go` link in `make/+layout.svelte`, and test updates. `git merge-tree` with `main` is clean. Nothing the change depends on moved. **9cf857f PASS.**
