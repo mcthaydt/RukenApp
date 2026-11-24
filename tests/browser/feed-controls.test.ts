@@ -724,7 +724,9 @@ test.describe("Share", () => {
     await expect(sheet.getByRole("status")).toHaveText(/copy it\.$/);
   });
 
-  test("More opens the phone's own sheet with the game's page, and closing it says nothing", async ({ page }) => {
+  test("More opens the phone's own sheet with the game's page, and closing it says nothing", async ({
+    page,
+  }) => {
     await standIns(page, { share: "closes", clipboard: "works" });
     await openFeed(page);
     const slug = await currentSlug(page);
@@ -737,7 +739,9 @@ test.describe("Share", () => {
     await expect(sheet.getByRole("status")).toHaveText("");
   });
 
-  test("the cross, Escape and the dimmed screen each close it, and focus goes back to Share", async ({ page }) => {
+  test("the cross, Escape and the dimmed screen each close it, and focus goes back to Share", async ({
+    page,
+  }) => {
     await standIns(page, { share: "none", clipboard: "works" });
     await openFeed(page);
     const share = current(page).getByRole("button", { name: "Share" });

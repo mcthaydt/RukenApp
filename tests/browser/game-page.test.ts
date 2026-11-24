@@ -257,7 +257,9 @@ test("Share opens Ruken's own sheet with the game's link to copy", async ({ page
   const share = page.getByRole("button", { name: "Share" });
   await share.click();
   const sheet = page.getByRole("dialog", { name: "Share" });
-  await expect(sheet.getByText(`${new URL(page.url()).origin}/g/${game.slug}`, { exact: true })).toBeVisible();
+  await expect(
+    sheet.getByText(`${new URL(page.url()).origin}/g/${game.slug}`, { exact: true }),
+  ).toBeVisible();
   // No clipboard here, so it says how to copy the link by hand.
   await sheet.getByRole("button", { name: "Copy link" }).click();
   await expect(sheet.getByRole("status")).toHaveText(/copy it\.$/);

@@ -68,11 +68,16 @@ export async function copyLink(tools: ShareTools, url: string): Promise<"copied"
 
 /** A person closing the phone's share sheet is an answer, not a failure. */
 function isClosed(failure: unknown): boolean {
-  return typeof failure === "object" && failure !== null && "name" in failure && failure.name === "AbortError";
+  return (
+    typeof failure === "object" && failure !== null && "name" in failure && failure.name === "AbortError"
+  );
 }
 
 /** The phone's own share sheet, behind "More": used, closed by the person, or broken. */
-export async function shareByPhone(tools: ShareTools, link: ShareLink): Promise<"shared" | "closed" | "failed"> {
+export async function shareByPhone(
+  tools: ShareTools,
+  link: ShareLink,
+): Promise<"shared" | "closed" | "failed"> {
   if (tools.share === undefined) return "failed";
   try {
     await tools.share(link);

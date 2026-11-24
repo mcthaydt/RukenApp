@@ -7,7 +7,13 @@ const link = { title: "Floor & Fifty?", url: "https://ruken.io/g/floor-fifty" };
 
 describe("shareTargets", () => {
   it("offers Text, WhatsApp, Email, X and Facebook, in that order", () => {
-    expect(shareTargets(link).map((target) => target.words)).toEqual(["Text", "WhatsApp", "Email", "X", "Facebook"]);
+    expect(shareTargets(link).map((target) => target.words)).toEqual([
+      "Text",
+      "WhatsApp",
+      "Email",
+      "X",
+      "Facebook",
+    ]);
   });
 
   it("puts the game's whole address in every app's link, safely written", () => {
@@ -28,7 +34,9 @@ describe("shareTargets", () => {
 describe("copyLink", () => {
   it("copies the link", async () => {
     const copied: string[] = [];
-    expect(await copyLink({ copy: (text) => Promise.resolve(void copied.push(text)) }, link.url)).toBe("copied");
+    expect(await copyLink({ copy: (text) => Promise.resolve(void copied.push(text)) }, link.url)).toBe(
+      "copied",
+    );
     expect(copied).toEqual([link.url]);
   });
 
@@ -41,7 +49,9 @@ describe("copyLink", () => {
 describe("shareByPhone", () => {
   it("hands the link to the phone's sheet", async () => {
     const shared: unknown[] = [];
-    expect(await shareByPhone({ share: (data) => Promise.resolve(void shared.push(data)) }, link)).toBe("shared");
+    expect(await shareByPhone({ share: (data) => Promise.resolve(void shared.push(data)) }, link)).toBe(
+      "shared",
+    );
     expect(shared).toEqual([link]);
   });
 

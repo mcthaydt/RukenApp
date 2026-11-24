@@ -98,13 +98,17 @@
                   <path d="M4 5h16v11H10l-6 4V5z" />
                 {:else if target.key === "whatsapp"}
                   <path d="M12 3.5a8.5 8.5 0 0 0-7.3 12.8L3.5 20.5l4.3-1.1A8.5 8.5 0 1 0 12 3.5z" />
-                  <path d="M9 8.5c0 3.5 3 6.5 6.5 6.5l.8-1.6-2-1-1 1c-1.3-.5-2.7-1.9-3.2-3.2l1-1-1-2L9 8.5z" />
+                  <path
+                    d="M9 8.5c0 3.5 3 6.5 6.5 6.5l.8-1.6-2-1-1 1c-1.3-.5-2.7-1.9-3.2-3.2l1-1-1-2L9 8.5z"
+                  />
                 {:else if target.key === "email"}
                   <path d="M3.5 6h17v12h-17zM3.5 6l8.5 7 8.5-7" />
                 {:else if target.key === "x"}
                   <path d="M4.5 4h4L19.5 20h-4zM19 4l-6.2 7M5 20l6.2-7" />
                 {:else}
-                  <path d="M14 21v-8h3l.5-3.5H14V7.6c0-1 .4-1.6 1.7-1.6h1.8V3H15c-3 0-4.5 1.7-4.5 4.4v2.1H8V13h2.5v8" />
+                  <path
+                    d="M14 21v-8h3l.5-3.5H14V7.6c0-1 .4-1.6 1.7-1.6h1.8V3H15c-3 0-4.5 1.7-4.5 4.4v2.1H8V13h2.5v8"
+                  />
                 {/if}
               </svg>
             </span>
@@ -220,16 +224,21 @@
     font-weight: 600;
     text-align: center;
   }
+  /* Empty, it takes no room but the gap, and stays in place so a screen reader hears what it says next. */
   .said:empty {
-    display: none;
+    margin-block: -0.375rem;
   }
   .apps {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(4.25rem, 1fr));
-    gap: 0.5rem;
+    /* Six to a row where there is room, three to a row on an upright phone (below), so no app stands alone. */
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.75rem 0.5rem;
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+  .apps > li {
+    display: flex;
   }
   /* Each app is a round glass button with its name under it; the whole of it is the press. */
   .app {
@@ -239,6 +248,8 @@
     gap: 0.375rem;
     width: 100%;
     min-height: var(--size-target);
+    /* Not the pull-in margins a link in a line of words gets (look.css): this one stands on its own. */
+    margin: 0;
     padding: 0.25rem 0;
     border: 0;
     border-radius: var(--radius-button);
@@ -280,6 +291,9 @@
     }
     .sharesheet[open] {
       animation-name: share-up;
+    }
+    .apps {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .inside {
       padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
