@@ -805,11 +805,14 @@
   }
   /* A phone held sideways: the window is short, so the words take one corner and the clip the rest. The bar stands
      along the right edge (Bar.svelte), so the band sits at the bottom with Play beside the game's name, Share under
-     the bar, and the first open's hints at the top, where the band cannot cover them. */
+     the bar with Report beside it, and the first open's hints at the top, where the band cannot cover them. */
   @media (orientation: landscape) and (max-height: 449px) {
     .lower {
       inset: auto 0 0.75rem;
-      padding-right: calc(3.5rem + 1.5rem + max(0.75rem, env(safe-area-inset-right)));
+      /* Room for the two round buttons side by side (Share in the bar's column, Report left of it) and a gap. */
+      padding-right: calc(
+        3.5rem + 1.5rem + var(--size-target) + 0.75rem + max(0.75rem, env(safe-area-inset-right))
+      );
       padding-left: max(0.75rem, env(safe-area-inset-left));
     }
     .band {
@@ -837,11 +840,13 @@
     .sound {
       left: max(0.75rem, env(safe-area-inset-left));
     }
-    /* The round buttons stand in the bar's column, under it, centred on it. */
+    /* Share stands in the bar's column, under it, centred on it; there is no room under the bar for a second round
+       button on a small phone, so Report stands to Share's left on the same row. */
     .side {
       position: absolute;
       right: calc(max(0.75rem, env(safe-area-inset-right)) + 0.5rem);
       bottom: 0;
+      flex-direction: row-reverse;
     }
     .sharenote {
       top: 50%;
