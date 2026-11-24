@@ -4312,7 +4312,7 @@ main.playing[data-testing] {
 /* While the menu is open the tab steps out of the way: it would cover the panel's edge, and Keep playing, Escape and
    Leave game already close or leave it. */
 .playing .menu[open] > summary {
-  opacity: 0;
+  visibility: hidden;
 }
 
 /* While it is carried, the tab's rounded edge points to the side it will snap to, not the side it came from. */
@@ -5409,7 +5409,7 @@ video[data-still][data-loading] {
 
 /* While the cookie card asks at the foot of the window, the corner button waits under it instead of being half hidden. */
 body:has(aside.consent) .about .tofeed {
-  opacity: 0;
+  visibility: hidden;
 }
 
 @media (prefers-reduced-motion: no-preference) {
