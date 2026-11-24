@@ -148,7 +148,7 @@ test("fixing the one thing brings back Send it again, and sending makes it wait"
   await showTheOwner(page, testInfo, "Sent back, fixed");
   const held = await holdAnswersTo(page, /\?\/send/);
   await page.getByRole("button", { name: "Send it again" }).click();
-  await expect(page.getByRole("button", { name: "Sending your game…" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Send it again" })).toBeDisabled();
   held.release();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Waiting for review");
 });
@@ -443,7 +443,7 @@ test("a live game's update that was sent back and mended is sent again from the 
   await again.click();
 
   // The press still sends the game to staff, which took over five seconds in Safari's engine on the tablet screens
-  // (the button was still "Sending your update…"); it waits as long as the other Send tests on this screen do.
+  // (the button was still busy); it waits as long as the other Send tests on this screen do.
   await expect(page.getByText("Your update is waiting for review.")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("button", { name: "Send it again" })).toHaveCount(0);
   await showTheOwner(page, testInfo, "Live, an update sent again");

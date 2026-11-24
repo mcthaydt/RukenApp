@@ -10,7 +10,7 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 test.beforeEach(forgetRateLimits);
 
-test("moving to another page shows the loading bar until the page arrives", async ({ page }, testInfo) => {
+test("moving to another page shows only the spinner until the page arrives", async ({ page }, testInfo) => {
   await page.goto("/sign-in");
   await pageHasSettled(page);
   const held = await holdAnswersTo(page, /\/sign-up\/__data\.json/);
@@ -19,7 +19,8 @@ test("moving to another page shows the loading bar until the page arrives", asyn
 
   const bar = page.getByRole("progressbar", { name: "Loading the page" });
   await expect(bar).toBeVisible();
-  await showTheOwner(page, testInfo, "loading bar while a page loads");
+  await expect(page.locator(".page-loading")).toHaveCount(0);
+  await showTheOwner(page, testInfo, "the spinner while a page loads");
   held.release();
   await expect(page.getByRole("heading", { name: "Join Ruken" })).toBeVisible();
   await expect(bar).toHaveCount(0);
@@ -151,9 +152,10 @@ test("ticking another game on GitHub says the branches are being looked up", asy
   const unticked = (await radios.nth(0).isChecked()) ? radios.nth(1) : radios.nth(0);
   await unticked.check();
 
-  await expect(page.getByText("Looking up branches…")).toBeVisible();
+  const spinner = page.getByRole("progressbar", { name: "Looking up branches" });
+  await expect(spinner).toBeVisible();
   held.release();
-  await expect(page.getByText("Looking up branches…")).toHaveCount(0);
+  await expect(spinner).toHaveCount(0);
 });
 
 test("Wishlist shows it is busy while it sends, and keeps the keyboard's focus", async ({
@@ -174,7 +176,7 @@ test("Wishlist shows it is busy while it sends, and keeps the keyboard's focus",
   const button = page.getByRole("button", { name: "Wishlist", exact: true });
   await button.focus();
   await page.keyboard.press("Enter");
-  const busy = page.getByRole("button", { name: "Adding it…" });
+  const busy = page.getByRole("button", { name: "Wishlist", exact: true });
   await expect(busy).toHaveAttribute("aria-busy", "true");
   await expect(busy).toBeFocused();
   // A second press while the first is out sends nothing more.

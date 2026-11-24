@@ -453,6 +453,8 @@ describe("screens wear the look and nothing of their own", () => {
     "teststrip",
     // A list of short points on a reading page (privacy, terms).
     "bullets",
+    // The turning spinner, the only sign of a wait (owner, 2026-11-22: "show ONLY the spinner").
+    "spinner",
   ];
   const ROUTES = "src/routes";
 
@@ -597,7 +599,7 @@ describe("the maker's screens", () => {
   it("has no pill or circle shape, except the drifting circles behind Live and the loading spinner", () => {
     const withoutDrift = withoutComments
       .replace(/\.drift\s*\{[^}]*\}/, "")
-      .replace(/\.spinner,\s*:is\(button, \.button\)\[aria-busy="true"\]::after\s*\{[^}]*\}/, "")
+      .replace(/\.spinner,\s*:is\(button, \.button\)\[aria-busy="true"\]::after,[^{]*\{[^}]*\}/, "")
       // A maker's photo on a game's page is round, as people's photos are (spec 3.2).
       .replace(/\.gamepage \.madeby img\s*\{[^}]*\}/, "");
     expect(withoutDrift).not.toMatch(/border-radius:\s*(999|9999|50%|100%)/);

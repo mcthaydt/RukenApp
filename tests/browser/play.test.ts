@@ -355,7 +355,7 @@ test("starting says the game's name, and says so when it is slow", async ({ page
   await page.route(/g-[^/]*\.localhost:8788/, () => new Promise(() => undefined));
   await page.clock.install();
   await page.goto(`/g/${free.slug}/play`, { waitUntil: "commit" });
-  await expect(page.getByText(`Starting ${free.name}…`)).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: `Starting ${free.name}` })).toBeVisible();
   await pageHasSettled(page);
   await page.clock.runFor(20_000);
   await expect(page.getByText(`${free.name} is taking a while.`)).toBeVisible();

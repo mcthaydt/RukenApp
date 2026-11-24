@@ -52,7 +52,8 @@ test("when Stripe's news is late, the page says so and goes on by itself", async
   // The stand-in's own page, asked to hold its news back until this journey lets it go.
   await page.goto(`${page.url()}?events=later`);
   await pressPay(page);
-  await expect(page.getByRole("heading", { name: "Finishing up…" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your payment went through." })).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Finishing up" })).toBeVisible();
   // Looked at while the news is still held, and with values only: the page moves on to /me by itself once it
   // arrives (design 5.8).
   await expect(page.locator("main.card")).toHaveCSS("background-color", rgb(token("--paper")));
