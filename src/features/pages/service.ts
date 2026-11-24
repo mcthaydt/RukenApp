@@ -41,6 +41,9 @@ export interface OwnPage {
   links: { id: string; kind: PageLinkKind; title: string; url: string; hidden: boolean; taps: number }[];
 }
 
+/** What a game's page shows of its maker (`cardOf`). */
+export type MakerCard = Pick<OwnPage, "handle" | "name" | "oneLine" | "photoKey">;
+
 /** A visitor's view: no address of a link, no count, no hidden link. */
 export interface PublicPage {
   id: string;
@@ -227,6 +230,17 @@ export function createPagesService(deps: PagesServiceDeps) {
   }
 
   /**
+   * The few things a game's page shows of its maker: name, line, photo and where their page is. Null for a person
+   * with no page. One statement and no links, because a game's page waits on it.
+   */
+  async function cardOf(userId: string): Promise<MakerCard | null> {
+    return db.makerPage.findUnique({
+      where: { userId },
+      select: { handle: true, name: true, oneLine: true, photoKey: true },
+    });
+  }
+
+  /**
    * A visitor's view of a page: only the links that are not hidden, and for each one no address and no count. The
    * address stays on the server; a tap goes through `tapLink`, which counts it first.
    */
@@ -372,6 +386,7 @@ export function createPagesService(deps: PagesServiceDeps) {
     setHidden,
     removeLink,
     pageOf,
+    cardOf,
     pageByHandle,
     countView,
     tapLink,

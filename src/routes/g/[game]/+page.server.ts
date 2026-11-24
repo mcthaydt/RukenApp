@@ -39,9 +39,10 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
 
   const caller = locals.caller;
   const now = new Date();
-  // Everything below needs only the game, so it is asked for at once rather than one after another: the feed slides
-  // this page in only once its data has come (src/routes/+layout.svelte), and each wait in a row was a pause after the
-  // tap before the slide (the owner, 2026-11-23, asked for the feed to slide to a game like every other move).
+  // The feed slides this page in only once its data has come (src/routes/+layout.svelte), so every wait here is a pause
+  // after the tap before the slide (the owner, 2026-11-23, asked for the feed to slide to a game like every other move).
+  // A request holds one database connection, so statements wait for each other however they are asked: what keeps the
+  // page quick is that each question below is one statement (tests/features/*/ "asks the database once").
   const ownOrStaff =
     caller.kind === "user" &&
     (caller.userId === game.makerUserId || caller.staffRoles.some((role) => GAME_STAFF_ROLES.includes(role)));
@@ -49,7 +50,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
     caller.kind === "user" && !ownOrStaff && !game.freeToPlay
       ? membershipServices().service.isMember(caller.userId)
       : false,
-    pagesServices().service.pageOf(game.makerUserId),
+    pagesServices().service.cardOf(game.makerUserId),
     // The maker's other games, with their videos: an 18+ one only to someone known to be 18 or over. They show under the
     // maker's page only, but are asked for alongside it so the two waits are one.
     games.service.moreLiveGamesBy(game.makerUserId, game.slug).then(async (others) => {

@@ -6,6 +6,7 @@ import { createGamesService, type Answer, type GamesService } from "../../../src
 import { systemClock } from "../../../src/lib/clock.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
+import { queriesAsked } from "../../support/count-queries.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
 import { tarGz } from "../../support/tar.ts";
@@ -30,6 +31,22 @@ let service: GamesService;
 function db(): PrismaClient {
   if (database === undefined) throw new Error("the database did not start");
   return database.prisma;
+}
+
+function databaseUrl(): string {
+  if (database === undefined) throw new Error("the database did not start");
+  return database.url;
+}
+
+/** The same service over another client, for a test that counts what it asks. */
+function serviceOver(client: PrismaClient): GamesService {
+  return createGamesService({
+    db: client,
+    clock: systemClock,
+    files,
+    github: noGitHub,
+    schedule: decisionsOff,
+  });
 }
 
 beforeAll(async () => {
@@ -779,6 +796,48 @@ describe("liveGameBySlug", () => {
       clips: { upright: keyOf("upright"), wide: keyOf("wide") },
     });
   });
+  it("answers an 18+ game's marks as they are saved", async () => {
+    const game = await newGame();
+    await addBothClips(game.id);
+    await db().game.update({
+      where: { id: game.id },
+      data: { ageRating: "age_18", contentMarks: ["gore", "drugs"] },
+    });
+    await makeLive(game.id, await addPull(game.id));
+
+    expect(await service.liveGameBySlug(game.slug)).toMatchObject({
+      ageRating: "age_18",
+      contentMarks: ["gore", "drugs"],
+    });
+  });
+
+  it("answers nothing for a game that is not there, not live, or lacks a clip", async () => {
+    const draft = await newGame();
+    await addBothClips(draft.id);
+    const noWide = await newGame();
+    await service.saveClip(noWide.id, "upright", { contentType: "video/mp4", bytes: mp4Bytes() });
+    await makeLive(noWide.id, await addPull(noWide.id));
+
+    expect(await service.liveGameBySlug("no-such-game")).toBeNull();
+    expect(await service.liveGameBySlug(draft.slug)).toBeNull();
+    expect(await service.liveGameBySlug(noWide.slug)).toBeNull();
+  });
+
+  // The game's page, its play address, Report and Wishlist all start here, and each statement is a wait on the site.
+  it("asks the database once", async () => {
+    const game = await newGame();
+    await addBothClips(game.id);
+    await makeLive(game.id, await addPull(game.id));
+    let found: unknown = null;
+
+    const asked = await queriesAsked(databaseUrl(), async (counted) => {
+      found = await serviceOver(counted).liveGameBySlug(game.slug);
+    });
+
+    expect(found).toEqual(await service.liveGameBySlug(game.slug));
+    expect(found).not.toBeNull();
+    expect(asked).toHaveLength(1);
+  });
 });
 
 describe("testPlayOf", () => {
@@ -929,6 +988,77 @@ describe("moreLiveGamesBy", () => {
     await liveGameOf(await createUser(db()));
 
     expect(await service.moreLiveGamesBy(mine.makerUserId, mine.slug)).toEqual([]);
+  });
+  // A twin: the order must agree with liveGames, whose dating (liveSinceOf) is the plain, already proven version.
+  it("puts games in the same order liveGames dates them, whatever their reviews", async () => {
+    const mine = await newGame();
+    const makerUserId = mine.makerUserId;
+    await makeLive(mine.id, await addPull(mine.id, []));
+    const day = 86_400_000;
+    const at = (days: number) => new Date(Date.UTC(2026, 9, 1) + days * day);
+    const review = async (game: { id: string }, decidedAt: Date, held?: { out: Date; applied: boolean }) => {
+      const goesOutOn = held === undefined ? null : new Date(held.out.toISOString().slice(0, 10));
+      const made = await db().gameReview.create({
+        data: {
+          gameId: game.id,
+          pullId: await addPull(game.id, []),
+          staffUserId: makerUserId,
+          decision: "accepted",
+          decidedAt,
+          goesOutOn,
+        },
+      });
+      if (held !== undefined && goesOutOn !== null) {
+        await db().decisionDay.upsert({
+          where: { day: goesOutOn },
+          update: {},
+          create: { day: goesOutOn, seats: 10, wentOutAt: held.out },
+        });
+        if (held.applied)
+          await db().decisionOutcome.create({ data: { reviewId: made.id, result: "applied" } });
+      }
+    };
+    const games = [];
+    for (let i = 0; i < 8; i += 1) games.push(await liveGameOf(makerUserId));
+    const [a, b, c, d, e, f] = games as [
+      typeof mine,
+      typeof mine,
+      typeof mine,
+      typeof mine,
+      typeof mine,
+      typeof mine,
+    ];
+    await review(a, at(3));
+    await review(a, at(30));
+    await review(b, at(1), { out: at(9), applied: true });
+    // Held but never put out: it does not date the game, so its files do.
+    await review(c, at(2), { out: at(4), applied: false });
+    await review(d, at(5), { out: at(6), applied: true });
+    await review(d, at(7));
+    await review(e, at(8));
+    await review(f, at(11), { out: at(12), applied: true });
+
+    const dated = (await service.liveGames({ makerUserId }))
+      .filter((one) => one.slug !== mine.slug)
+      .sort((one, other) => other.liveSince.getTime() - one.liveSince.getTime())
+      .slice(0, 6)
+      .map((one) => one.slug);
+
+    expect((await service.moreLiveGamesBy(makerUserId, mine.slug)).map((one) => one.slug)).toEqual(dated);
+  });
+
+  it("asks the database once", async () => {
+    const mine = await newGame();
+    await makeLive(mine.id, await addPull(mine.id, []));
+    for (let i = 0; i < 3; i += 1) await liveGameOf(mine.makerUserId);
+    let more: unknown[] = [];
+
+    const asked = await queriesAsked(databaseUrl(), async (counted) => {
+      more = await serviceOver(counted).moreLiveGamesBy(mine.makerUserId, mine.slug);
+    });
+
+    expect(more).toHaveLength(3);
+    expect(asked).toHaveLength(1);
   });
 });
 

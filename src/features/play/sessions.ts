@@ -185,17 +185,30 @@ export function createPlayService(deps: PlayServiceDeps) {
    */
   async function sittingOf(gameId: string, now: Date): Promise<number | null> {
     const since = new Date(now.getTime() - SITTING_DAYS * 24 * 60 * 60 * 1000);
-    const sessions = await deps.db.playSession.findMany({
-      where: { gameId, basis: { in: ["member", "free_game"] }, startedAt: { gte: since, lte: now } },
-      orderBy: { startedAt: "desc" },
-      take: SITTING_PLAYS_READ,
-      select: { startedAt: true, beats: { select: { receivedAt: true, attentive: true } } },
-    });
+    // One statement, the plays with their beats folded in: a game's page waits on this, and on the site a request
+    // holds one connection, so each statement is a wait (Prisma's `select` with beats sends two). JSON carries a beat's
+    // time as text, so it is read back with `new Date`.
+    const sessions = await deps.db.$queryRaw<
+      { startedAt: Date; beats: { receivedAt: string; attentive: boolean }[] }[]
+    >`
+      SELECT s."startedAt",
+             COALESCE(
+               (SELECT json_agg(json_build_object('receivedAt', b."receivedAt", 'attentive', b."attentive"))
+                FROM "PlayBeat" b WHERE b."sessionId" = s."id"),
+               '[]'::json) AS "beats"
+      FROM "PlaySession" s
+      WHERE s."gameId" = ${gameId} AND s."basis"::text IN ('member', 'free_game')
+        AND s."startedAt" >= ${since} AND s."startedAt" <= ${now}
+      ORDER BY s."startedAt" DESC
+      LIMIT ${SITTING_PLAYS_READ}`;
     const counted = sessions
       .map((session) =>
         countedMs(
           session.startedAt.getTime(),
-          session.beats.map((beat) => ({ atMs: beat.receivedAt.getTime(), attentive: beat.attentive })),
+          session.beats.map((beat) => ({
+            atMs: new Date(beat.receivedAt).getTime(),
+            attentive: beat.attentive,
+          })),
         ),
       )
       .filter((ms) => ms > 0);
