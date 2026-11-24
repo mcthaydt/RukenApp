@@ -34,7 +34,7 @@ const browserModules = filesEndingIn(SRC, ".browser.ts").map((path) => ({
 /** Fetches nobody waits on, so they show nothing. Each says why; a new entry needs the same. */
 const BACKGROUND_FETCHES: Record<string, string> = {
   // The play screen tells the site, now and then, that the game is still being played. The person is playing, not
-  // waiting; the game frame's own "Starting…" screen covers the wait for the game.
+  // waiting; the game frame's own starting spinner covers the wait for the game.
   "src/features/play/PlayScreen.svelte": "the play-time beat",
 };
 
@@ -75,7 +75,15 @@ describe("every wait shows it", () => {
         .replaceAll(/<!--[\s\S]*?-->/g, "")
         .split("\n")
         .filter((line) => !line.trim().startsWith("//") && !line.trim().startsWith("*"))
-        .filter((line) => line.includes("…") || /\b(busyWords|busyLine)\b/.test(line))
+        .filter(
+          (line) =>
+            line.includes("…") ||
+            /\b(busyWords|busyLine)\b/.test(line) ||
+            // A branch that shows something else while a form is out ("{#if sending}", "{:else if saving}"), or words
+            // chosen by it ('sending ? "Sending…" : "Send"'): the busy button's spinner is the only sign.
+            /\{(#if|:else if)\s+(sending|saving)\b/.test(line) ||
+            (/\b(sending|saving)\b[^?]*\?\s*"(?!true")/.test(line) && !line.includes("aria-")),
+        )
         .map((line) => `${name}: ${line.trim()}`),
     );
     expect(words).toEqual([]);
