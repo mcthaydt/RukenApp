@@ -4,6 +4,7 @@ import { prisma, type PrismaClient } from "../../lib/server/db.ts";
 import { isThisMachine } from "../../lib/this-machine.ts";
 import { optionalEnv, requireEnv } from "../../lib/server/env.ts";
 import { fileStore } from "../../lib/server/files.ts";
+import { frameMaker } from "../../lib/server/frames.ts";
 import { checkAddressPattern, gameAddress } from "./addresses.ts";
 import {
   connectionOf,
@@ -16,6 +17,7 @@ import {
 import { createGitHub } from "./github.ts";
 import { decisionSchedule, type DecisionSchedule } from "./seats.ts";
 import { createGamesService, type GamesService } from "./service.ts";
+import { stillOf, type FrameMaker, type StillAnswer } from "./stills.ts";
 
 // Everything the games feature needs, built once per server process from the settings. Routes call
 // gamesServices(); tests build their own with createGamesServices.
@@ -40,6 +42,8 @@ export interface GamesServices {
   address(name: string): string;
   /** The address of a clip, from its key in the bucket: the media address, a slash, the key. */
   media(key: string): string;
+  /** A clip's still at `second`, `width` wide, made once and kept (stills.ts). */
+  still(key: string, second: number, width: number): Promise<StillAnswer>;
 }
 
 /**
@@ -79,7 +83,7 @@ function standInAddress(name: string, source: Settings): string | undefined {
  */
 export function createGamesServices(
   source: Settings,
-  parts: { db: PrismaClient; clock: Clock; files: FileStore },
+  parts: { db: PrismaClient; clock: Clock; files: FileStore; frame?: () => FrameMaker | null },
 ): GamesServices {
   const appId = requireEnv("GITHUB_APP_ID", source);
   const privateKeyPem = requireEnv("GITHUB_APP_PRIVATE_KEY", source);
@@ -123,6 +127,13 @@ export function createGamesServices(
     connect,
     address: (name) => gameAddress(pattern, name),
     media: (key) => `${gameAddress(pattern, "media")}/${key}`,
+    still: (key, second, width) =>
+      stillOf(
+        { files: parts.files, frame: parts.frame?.() ?? null, now: () => parts.clock.epochMs() },
+        key,
+        second,
+        width,
+      ),
   };
 }
 
@@ -141,6 +152,11 @@ let shared: GamesServices | undefined;
 
 /** The process-wide games services, created on first use. */
 export function gamesServices(): GamesServices {
-  shared ??= createGamesServices(process.env, { db: prisma(), clock: systemClock, files: currentFiles });
+  shared ??= createGamesServices(process.env, {
+    db: prisma(),
+    clock: systemClock,
+    files: currentFiles,
+    frame: frameMaker,
+  });
   return shared;
 }

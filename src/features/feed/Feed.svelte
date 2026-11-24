@@ -13,6 +13,7 @@
   import { onMount, tick } from "svelte";
   import { snapshot } from "$app/navigation";
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
+  import { stillPoster } from "../../lib/still-poster.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
   import { shareLink, type ShareTools } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
@@ -79,6 +80,9 @@
   // a person has passed.
   const near = (index: number): boolean => warm && index >= current - 1 && index <= current + 1;
   const fetches = near;
+  // A clip's still is fetched a little further ahead than its video, so it is there before the video starts to come:
+  // three clips on, a picture of a few dozen kilobytes each, and never the whole feed.
+  const stillNear = (index: number): boolean => warm && index >= current - 1 && index <= current + 3;
   const preloads = (index: number): "metadata" | "none" => (near(index) ? "metadata" : "none");
 
   onMount(() => {
@@ -391,6 +395,7 @@
       >
         <video
           use:loads
+          use:stillPoster={stillNear(index) ? clipAddress(clip) : undefined}
           use:loopByHand
           bind:this={videos[index]}
           onplay={() => {

@@ -107,9 +107,12 @@ const currentSlug = async (page: Page): Promise<string | null> =>
 
 test("only the clip on screen and the next are fetched before a person scrolls", async ({ page }) => {
   const asked = new Set<string>();
+  // A clip's still is asked for at /api/still/clips/…: a small picture, not the clip, so it is counted on its own.
+  const stills = new Set<string>();
   page.on("request", (request) => {
     const url = request.url().split("#")[0] ?? "";
-    if (url.includes("/clips/")) asked.add(url);
+    if (url.includes("/api/still/")) stills.add(url);
+    else if (url.includes("/clips/")) asked.add(url);
   });
   await openFeed(page);
   // The clip on screen has asked for its first bytes (the browser read its size), and the network has gone quiet.
@@ -126,6 +129,8 @@ test("only the clip on screen and the next are fetched before a person scrolls",
     .toBe(true);
   expect(asked.size).toBeGreaterThanOrEqual(1);
   expect(asked.size).toBeLessThanOrEqual(2);
+  // Stills are asked for only near the clip on screen: it and the three after it, at the top of the feed.
+  expect(stills.size).toBeLessThanOrEqual(4);
   const preloads = await page
     .locator("section video")
     .evaluateAll((videos) => videos.map((video) => (video as HTMLVideoElement).preload));

@@ -43,6 +43,15 @@ test("a game's page shows its clip, its name, its line, its rating and Play", as
   await expect(page).toHaveTitle(`Ruken - ${game.name}`);
   await expect(page.getByRole("button", { name: "Watch the upright video" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Watch the wide video" })).toBeVisible();
+  // Every clip on the page, the big one and the tiles, shows its own still until its first frame comes.
+  for (const video of await page.locator("main video").all()) {
+    if (!(await video.isVisible())) continue;
+    const clipKey = /(clips\/[^#]+)/.exec((await video.getAttribute("src")) ?? "")?.[1] ?? "no clip";
+    await expect(video).toHaveAttribute("data-still", "");
+    expect(await video.evaluate((node) => node.style.getPropertyValue("--still"))).toContain(
+      `/api/still/${clipKey}?at=0&`,
+    );
+  }
   expect(await noSideways(page)).toBe(true);
   await showTheOwner(page, testInfo, "a game's page");
 });

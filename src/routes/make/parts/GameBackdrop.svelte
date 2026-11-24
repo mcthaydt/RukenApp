@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
   import { loads } from "../../../lib/loads.ts";
+  import { stillPoster } from "../../../lib/still-poster.ts";
   import { onMount } from "svelte";
   import { mayMove, quietVideo } from "../../../lib/quiet-video.ts";
 
@@ -23,7 +24,7 @@
 {#if src !== null}
   <div class="backdrop" aria-hidden="true" data-drifting={drifting ? "" : undefined}>
     {#key src}
-      <video use:loads {src} preload="metadata" muted playsinline use:quietVideo></video>
+      <video use:loads use:stillPoster {src} preload="metadata" muted playsinline use:quietVideo></video>
     {/key}
     <!-- Five soft circles between the video and the dark layer (Owner, 2026-11-15: circles are allowed here only). -->
     {#each [1, 2, 3, 4, 5] as circle (circle)}

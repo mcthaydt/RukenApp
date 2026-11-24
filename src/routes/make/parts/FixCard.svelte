@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { loads } from "../../../lib/loads.ts";
+  import { stillPoster } from "../../../lib/still-poster.ts";
   import { quietVideo } from "../../../lib/quiet-video.ts";
   import type { FixCardData } from "../laid-out.ts";
 
@@ -22,6 +23,7 @@
   {#if fix.video !== null}
     <video
       use:loads
+      use:stillPoster
       data-shape={fix.video.shape}
       src={`${fix.video.src}#t=0.001`}
       preload="metadata"
