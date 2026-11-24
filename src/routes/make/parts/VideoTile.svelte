@@ -7,6 +7,7 @@
 <script lang="ts">
   import Icon from "../../../lib/icon.svelte";
   import { loads } from "../../../lib/loads.ts";
+  import { stillPoster } from "../../../lib/still-poster.ts";
   import { quietVideo } from "../../../lib/quiet-video.ts";
 
   let {
@@ -37,6 +38,7 @@
   <!-- The first frame is asked for by name: some browsers draw none until a video has been given a time. -->
   <video
     use:loads
+    use:stillPoster
     class="tile"
     data-shape={shape}
     src={`${src}#t=0.001`}
@@ -49,6 +51,7 @@
   <a href={src} onclick={open} aria-label={`Watch the ${shape} video full size`}>
     <video
       use:loads
+      use:stillPoster
       class="tile"
       data-shape={shape}
       src={`${src}#t=0.001`}
@@ -68,7 +71,7 @@
     {#if opened}
       <!-- A game's videos are silent, so there is nothing to caption. -->
       <!-- svelte-ignore a11y_media_has_caption -->
-      <video use:loads {src} controls autoplay playsinline></video>
+      <video use:loads use:stillPoster {src} controls autoplay playsinline></video>
     {/if}
     <!-- Not a form: the question's own form is around this, and a form inside a form is not allowed. -->
     <button type="button" class="safe" onclick={() => viewer?.close()} aria-label="Close"

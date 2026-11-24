@@ -9,6 +9,7 @@
   import Icon from "../../../lib/icon.svelte";
   import { gameTitle } from "../../../lib/titles.ts";
   import { loads } from "../../../lib/loads.ts";
+  import { stillPoster } from "../../../lib/still-poster.ts";
   import { onMount } from "svelte";
   import { quietVideo } from "../../../lib/quiet-video.ts";
   import { WishlistButton } from "../../../features/launch/launch.browser.ts";
@@ -84,6 +85,7 @@
         {#key shape}
           <video
             use:loads
+            use:stillPoster
             src={`${data.clips[shape]}#t=0.001`}
             preload="metadata"
             tabindex={enhanced ? -1 : undefined}
@@ -176,6 +178,7 @@
             >
               <video
                 use:loads
+                use:stillPoster
                 class="tile"
                 src={`${data.clips.upright}#t=0.001`}
                 preload="metadata"
@@ -193,6 +196,7 @@
             >
               <video
                 use:loads
+                use:stillPoster
                 class="tile"
                 src={`${data.clips.wide}#t=0.001`}
                 preload="metadata"
@@ -230,6 +234,7 @@
               <a href={`/g/${game.slug}`}>
                 <video
                   use:loads
+                  use:stillPoster
                   class="tile"
                   src={`${game.wideClip}#t=0.001`}
                   preload="metadata"
@@ -252,7 +257,7 @@
   {#if opened}
     <!-- A game's videos are silent, so there is nothing to caption. -->
     <!-- svelte-ignore a11y_media_has_caption -->
-    <video use:loads src={data.clips[shape]} controls autoplay playsinline></video>
+    <video use:loads use:stillPoster src={data.clips[shape]} controls autoplay playsinline></video>
   {/if}
   <button type="button" class="safe" onclick={() => viewer?.close()} aria-label="Close"
     ><Icon name="close" /></button

@@ -1,6 +1,6 @@
 import type { FileStore } from "../../lib/files/store.ts";
 import type { MakeFrame } from "../../lib/server/frames.ts";
-import { isStillWidth, type StillWidth } from "../../lib/still-widths.ts";
+import { isStillWidth, type StillWidth } from "../../lib/stills.ts";
 import { isClipKey } from "./clips.ts";
 
 // A clip's still: one frame of the clip as a small picture, shown in the video's own place until the video plays, so a
@@ -10,9 +10,6 @@ import { isClipKey } from "./clips.ts";
 // The still is made from the stored clip itself, never sent in by a maker, so it can only ever show what the video
 // shows. It is made the first time anyone asks for it and kept beside the clip, so each one is made once. A clip that is
 // gone (replaced, sent back, taken off) has no still, whatever is left in the bucket.
-
-/** The site's address a still is asked for at: this, then the clip's key, `?at=<second>&width=<width>`. */
-export const STILL_PATH = "/api/still/";
 
 /** A still is of a whole second of the clip, from its start up to this. The landing page starts its clips a few in. */
 export const STILL_LAST_SECOND = 60;

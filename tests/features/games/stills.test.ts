@@ -70,7 +70,10 @@ describe("a clip's still", () => {
       ["clips/abcdefghij/upright-ffffffffffffffff.mp4", 0, 540],
     ];
     for (const [key, at, width] of asks) {
-      expect(await stillOf({ files, frame }, key, at, width), `${key} ${String(at)} ${String(width)}`).toEqual({
+      expect(
+        await stillOf({ files, frame }, key, at, width),
+        `${key} ${String(at)} ${String(width)}`,
+      ).toEqual({
         kind: "none",
       });
     }

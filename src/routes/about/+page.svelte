@@ -76,7 +76,7 @@
                 muted
                 playsinline
                 tabindex="-1"
-                use:stillPoster={{ address: clip.still, second: clip.at }}
+                use:stillPoster
                 use:playOnScreen
               ></video>
             {/each}

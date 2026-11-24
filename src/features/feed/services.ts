@@ -36,7 +36,6 @@ export function feedServices(): FeedServices {
       memberBeatsByGame: (since, now) => playServices().service.memberBeatsByGame(since, now),
       makersOf: (userIds) => pagesServices().service.makersOf(userIds),
       media: (key) => gamesServices().media(key),
-      still: (key) => gamesServices().stillAddress(key),
       privateRanker: () => bound(),
     }),
     askingOf: (caller) => {

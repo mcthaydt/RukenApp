@@ -17,7 +17,7 @@ import {
 import { createGitHub } from "./github.ts";
 import { decisionSchedule, type DecisionSchedule } from "./seats.ts";
 import { createGamesService, type GamesService } from "./service.ts";
-import { STILL_PATH, stillOf, type FrameMaker, type StillAnswer } from "./stills.ts";
+import { stillOf, type FrameMaker, type StillAnswer } from "./stills.ts";
 
 // Everything the games feature needs, built once per server process from the settings. Routes call
 // gamesServices(); tests build their own with createGamesServices.
@@ -42,8 +42,6 @@ export interface GamesServices {
   address(name: string): string;
   /** The address of a clip, from its key in the bucket: the media address, a slash, the key. */
   media(key: string): string;
-  /** Where a page asks for a clip's still, from the clip's key; the page adds the second and the width it wants. */
-  stillAddress(key: string): string;
   /** A clip's still at `second`, `width` wide, made once and kept (stills.ts). */
   still(key: string, second: number, width: number): Promise<StillAnswer>;
 }
@@ -129,7 +127,6 @@ export function createGamesServices(
     connect,
     address: (name) => gameAddress(pattern, name),
     media: (key) => `${gameAddress(pattern, "media")}/${key}`,
-    stillAddress: (key) => `${STILL_PATH}${key}`,
     still: (key, second, width) =>
       stillOf({ files: parts.files, frame: parts.frame?.() ?? null }, key, second, width),
   };

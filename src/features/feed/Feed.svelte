@@ -76,6 +76,9 @@
   // a person has passed.
   const near = (index: number): boolean => warm && index >= current - 1 && index <= current + 1;
   const fetches = near;
+  // A clip's still is fetched a little further ahead than its video, so it is there before the video starts to come:
+  // two clips on, a picture of a few dozen kilobytes each, and never the whole feed.
+  const stillNear = (index: number): boolean => warm && index >= current - 1 && index <= current + 3;
   const preloads = (index: number): "metadata" | "none" => (near(index) ? "metadata" : "none");
 
   onMount(() => {
@@ -388,16 +391,13 @@
       >
         <video
           use:loads
+          use:stillPoster={stillNear(index) ? clipAddress(clip) : undefined}
           use:loopByHand
           bind:this={videos[index]}
           onplay={() => {
             stopIfOffScreen(index);
           }}
           src={fetches(index) ? clipAddress(clip) : undefined}
-          use:stillPoster={{
-            address: ready && shape === "wide" ? clip.wideStill : clip.uprightStill,
-            second: 0,
-          }}
           preload={preloads(index)}
           muted
           playsinline

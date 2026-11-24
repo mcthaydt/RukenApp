@@ -38,8 +38,6 @@ export interface FeedServiceDeps {
   ): Promise<Map<string, { handle: string; name: string; photoKey: string | null }>>;
   /** The whole address of a file in the bucket, from its key. */
   media(key: string): string;
-  /** Where a page asks for a clip's still, from the clip's key; left out, clips come without stills. */
-  still?: (key: string) => string;
   /** The private ranker, when this app has one bound; left out or null, the open ranker answers every page. */
   privateRanker?: () => Ranker | null;
   /** The open ranker; left out, the feed's own (public-ranker.ts). */
@@ -59,9 +57,6 @@ export interface FeedClip {
   oneLine: string;
   upright: string;
   wide: string;
-  /** Where to ask for each clip's still (a page adds `?at=<second>&width=<width>`); absent where the site has none. */
-  uprightStill?: string;
-  wideStill?: string;
   maker: { handle: string; name: string; photo: string | null } | null;
 }
 
@@ -190,9 +185,6 @@ export function createFeedService(deps: FeedServiceDeps) {
           oneLine: game.oneLine,
           upright: deps.media(game.clips.upright),
           wide: deps.media(game.clips.wide),
-          ...(deps.still === undefined
-            ? {}
-            : { uprightStill: deps.still(game.clips.upright), wideStill: deps.still(game.clips.wide) }),
           maker:
             maker === undefined
               ? null
