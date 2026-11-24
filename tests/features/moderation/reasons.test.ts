@@ -18,6 +18,20 @@ describe("readReport", () => {
     expect(REPORT_REASONS.slice(0, 3)).toEqual(["sexual", "gambling", "ads"]);
   });
 
+  it("shows the nine reasons in order, in plain words", () => {
+    expect(REPORT_REASONS.map((reason) => REASON_WORDS[reason])).toEqual([
+      "Sexual content",
+      "Gambling",
+      "Ads",
+      "Graphic violence",
+      "Hate or bullying",
+      "A scam or steals your info",
+      "Copied from someone else",
+      "It doesn't work",
+      "Something else",
+    ]);
+  });
+
   it("keeps the note, trimmed, and an empty one as none", () => {
     expect(readReport({ reason: "ads", note: "  Ads every level. " })).toEqual({
       reason: "ads",
