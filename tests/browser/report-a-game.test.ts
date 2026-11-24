@@ -1,6 +1,7 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { consented, NOT_CONSENTED } from "./support/consent.ts";
+import { changeGame } from "./support/database.ts";
 import { gameWhere, reviewJob } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -261,13 +262,14 @@ test("the site believes nothing the sheet sends", async ({ page }) => {
   expect(await (await page.request.get(`/g/${live.slug}/report`)).json()).toEqual({ state: "none" });
 });
 
-test("the sheet fits the window, and the page behind it never scrolls", async ({ page }) => {
+test("the sheet fits the window, and the page behind it never scrolls", async ({ page }, testInfo) => {
   await signUp(page);
   await page.goto(`/g/${live.slug}`);
   await pageHasSettled(page);
-  const before = await page.evaluate(() => window.scrollY);
   await page.getByRole("button", { name: "Report", exact: true }).click();
   await expect(sheet(page).getByRole("radio").first()).toBeVisible();
+  // Read once the sheet is open: pressing Report may have brought the button into view.
+  const before = await page.evaluate(() => window.scrollY);
   const box = await sheet(page).boundingBox();
   const view = page.viewportSize();
   if (box === null || view === null) throw new Error("no sheet or window size");
@@ -275,11 +277,53 @@ test("the sheet fits the window, and the page behind it never scrolls", async ({
   expect(box.y + box.height).toBeLessThanOrEqual(view.height + 1);
   expect(box.x + box.width).toBeLessThanOrEqual(view.width + 1);
 
-  // The wheel over the sheet moves only what is inside it.
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.wheel(0, 2000);
+  // What does not fit scrolls inside the sheet, which keeps the scroll to itself.
+  const inside = sheet(page).locator(".inside");
+  await expect(inside).toHaveCSS("overscroll-behavior-y", "contain");
+  if (testInfo.project.use.isMobile === true) {
+    // Mobile Safari has no wheel: scroll the sheet's own content as a finger would move it.
+    await inside.evaluate((element) => {
+      element.scrollBy(0, 2000);
+    });
+  } else {
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.wheel(0, 2000);
+  }
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(before);
   // The button at the end is reachable inside the sheet.
   await sheet(page).getByRole("button", { name: "Send report" }).scrollIntoViewIfNeeded();
   await expect(sheet(page).getByRole("button", { name: "Send report" })).toBeInViewport();
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
+});
+
+test("a game that is not live is missing, and an 18+ game refuses anyone not known to be 18", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(180_000);
+  // Each game has a maker of its own, in a browser of its own.
+  const made: { slug: string }[] = [];
+  for (const state of ["waiting", "live"] as const) {
+    await forgetRateLimits();
+    const maker = await browser.newContext({ ...consented, baseURL: SITE });
+    try {
+      made.push(await gameWhere(await maker.newPage(), { state }));
+    } finally {
+      await maker.close();
+    }
+  }
+  const [waiting, grownUp] = made as [{ slug: string }, { slug: string }];
+  await changeGame(grownUp.slug, { ageRating: "age_18", contentMarks: ["gore"] });
+
+  // Signed out: the 18+ game refuses before anything else; the waiting game is a missing page.
+  expect((await page.request.get(`/g/${grownUp.slug}/report`)).status()).toBe(403);
+  expect((await page.request.get(`/g/${waiting.slug}/report`)).status()).toBe(404);
+
+  // A signed-in adult (30) may report the 18+ game; the waiting game stays missing, and nothing is saved for it.
+  await signUp(page);
+  expect((await page.request.get(`/g/${waiting.slug}/report`)).status()).toBe(404);
+  expect((await page.request.put(`/g/${waiting.slug}/report`, { data: { reason: "ads" } })).status()).toBe(
+    404,
+  );
+  expect(await (await page.request.get(`/g/${grownUp.slug}/report`)).json()).toEqual({ state: "none" });
 });
