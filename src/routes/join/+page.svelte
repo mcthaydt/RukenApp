@@ -10,6 +10,7 @@
 -->
 <script lang="ts">
   import { loads } from "../../lib/loads.ts";
+  import { stillPoster } from "../../lib/still-poster.ts";
   import { onMount } from "svelte";
   import { quietVideo } from "../../lib/quiet-video.ts";
   import type { PageProps } from "./$types";
@@ -53,6 +54,7 @@
     {#key wide}
       <video
         use:loads
+        use:stillPoster
         src={wide ? data.backdrop.wide : data.backdrop.upright}
         preload="metadata"
         tabindex="-1"

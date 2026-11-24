@@ -2,7 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Inside the app no scrollbar shows (the owner, 2026-11-23: "The scrollbar shouldn't show once you're in the app, like
-// the feed, scrollbar is for landing page only"). The page still scrolls by touch, wheel and keys; only the bar is gone.
+// the feed, scrollbar is for landing page only"). A long screen still scrolls inside its view (the body; the page itself
+// never scrolls, fits-the-screen.test.ts) by touch, wheel and keys; only the bar is gone.
 // The landing page (/about) keeps its own thin green one. Nothing here is made or saved, so there is no create, update
 // or delete.
 
@@ -19,7 +20,7 @@ async function withABar(page: Page): Promise<string[]> {
   );
 }
 
-test("no scrollbar shows inside the app, and the page still scrolls", async ({ page, isMobile }) => {
+test("no scrollbar shows inside the app, and a long screen still scrolls", async ({ page, isMobile }) => {
   for (const screen of ["/", "/help", LONG, "/sign-in"]) {
     await page.goto(screen);
     await page.locator("main").first().waitFor();
@@ -30,21 +31,25 @@ test("no scrollbar shows inside the app, and the page still scrolls", async ({ p
   await expect(page.getByRole("heading", { level: 1, name: "How the feed works" })).toBeVisible();
   // The bar takes no room at the side either.
   expect(await page.evaluate(() => innerWidth - document.documentElement.clientWidth)).toBe(0);
-  expect(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight)).toBe(true);
+  expect(await page.evaluate(() => innerWidth - document.body.clientWidth)).toBe(0);
+  expect(await page.evaluate(() => document.body.scrollHeight > document.body.clientHeight)).toBe(true);
 
   await page.keyboard.press("End");
   // Safari's engine glides there, and a key pressed mid-glide is lost, so wait until the page has come to rest at the end.
   await expect
     .poll(() =>
-      page.evaluate(() => Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight - 1),
+      page.evaluate(
+        () =>
+          Math.ceil(document.body.scrollTop + document.body.clientHeight) >= document.body.scrollHeight - 1,
+      ),
     )
     .toBe(true);
   await page.keyboard.press("Home");
-  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  await expect.poll(() => page.evaluate(() => document.body.scrollTop)).toBe(0);
   if (!isMobile) {
     await page.mouse.move(200, 200);
     await page.mouse.wheel(0, 600);
-    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+    await expect.poll(() => page.evaluate(() => document.body.scrollTop)).toBeGreaterThan(0);
   }
 });
 

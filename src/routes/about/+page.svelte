@@ -8,6 +8,7 @@
   import { onMount } from "svelte";
   import { loads } from "../../lib/loads.ts";
   import { playOnScreen } from "../../lib/on-screen-video.ts";
+  import { stillPoster } from "../../lib/still-poster.ts";
   import {
     AUDIENCES,
     CLOSING,
@@ -62,7 +63,8 @@
     {#if data.wall.length > 0}
       <!-- The first screen: the feed's own clips as a wall, drifting slowly, so the first thing anyone sees is games
            playing. It only decorates (a reader skips it); each clip plays only while it is on screen, and the wall stands
-           still for a person who asked for less motion. -->
+           still for a person who asked for less motion. Until a clip plays, its still (the frame it opens on) shows in
+           its place. -->
       <div class="wall" aria-hidden="true">
         {#each data.wall as column, columnAt (columnAt)}
           <div class="column">
@@ -74,6 +76,7 @@
                 muted
                 playsinline
                 tabindex="-1"
+                use:stillPoster
                 use:playOnScreen
               ></video>
             {/each}

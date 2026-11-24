@@ -3,6 +3,7 @@ import { THEMES } from "../../../src/features/pages/themes.ts";
 import { createPagesService, PageError, type PagesService } from "../../../src/features/pages/service.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
+import { queriesAsked } from "../../support/count-queries.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { MemoryFileStore } from "../../support/memory-file-store.ts";
 
@@ -478,5 +479,33 @@ describe("taking a page down", () => {
     const other = await makerWithPage();
     await expect(service.removePage(lonely)).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(await service.pageOf(other.userId)).not.toBeNull();
+  });
+});
+
+describe("cardOf", () => {
+  it("answers the few things a game's page shows of its maker, or nothing for a person with no page", async () => {
+    const { userId, handle } = await makerWithPage();
+    await service.savePage(userId, { handle, name: "Night Owl", oneLine: "Hard games." });
+
+    expect(await service.cardOf(userId)).toEqual({
+      handle,
+      name: "Night Owl",
+      oneLine: "Hard games.",
+      photoKey: null,
+    });
+    expect(await service.cardOf(await createUser(db()))).toBeNull();
+  });
+
+  // A game's page waits on this, and each statement is a wait on the site: the page's links are not asked for.
+  it("asks the database once", async () => {
+    const { userId } = await makerWithPage();
+    let card: unknown = null;
+
+    const asked = await queriesAsked(database?.url ?? "", async (counted) => {
+      card = await createPagesService({ db: counted, files }).cardOf(userId);
+    });
+
+    expect(card).not.toBeNull();
+    expect(asked).toHaveLength(1);
   });
 });

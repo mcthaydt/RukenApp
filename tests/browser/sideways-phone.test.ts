@@ -5,6 +5,11 @@ import { givePage } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { asInstalled } from "./support/installed.ts";
+
+// Some of these journeys turn a phone sideways, which in a browser tab asks for the phone upright; they look at Ruken
+// opened from the Home Screen, where it works sideways (fits-the-screen.test.ts holds the tab).
+test.beforeEach(({ page }) => asInstalled(page));
 
 // A phone held sideways (the owner, 2026-11-14: "mobile landscape" is first class; 2026-11-22: "things aren't
 // appropriately sized there"). Three phones: the small iPhone, a common iPhone and the biggest one, each on its side.
@@ -56,7 +61,9 @@ async function expectBarOnTheRight(page: Page): Promise<{ x: number }> {
 /** Nothing scrolls sideways, and every heading is at most the phone's 36px. */
 async function expectPhoneSized(page: Page): Promise<void> {
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    await page.evaluate(() =>
+      [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+    ),
   ).toBe(true);
   const sizes = await page.evaluate(() =>
     [...document.querySelectorAll("h1")].map((heading) => parseFloat(getComputedStyle(heading).fontSize)),
@@ -93,19 +100,11 @@ for (const phone of PHONES) {
       expect(Math.abs(share.x + share.width / 2 - (rail.x + rail.width / 2))).toBeLessThanOrEqual(2);
       expect(share.y).toBeGreaterThanOrEqual(rail.y + rail.height);
       expect(share.y + share.height).toBeLessThanOrEqual(phone.viewport.height);
-      // Report stands on Share's row, to its left, clear of the bar, of Share and of the words, inside the window.
-      const report = await boxOf(clip.getByRole("button", { name: "Report" }));
-      expect(report.y).toBeGreaterThanOrEqual(rail.y + rail.height);
-      expect(report.y + report.height).toBeLessThanOrEqual(phone.viewport.height);
-      expect(report.x).toBeGreaterThanOrEqual(0);
-      expect(report.x + report.width).toBeLessThanOrEqual(share.x);
-      expect(Math.abs(report.y - share.y)).toBeLessThanOrEqual(2);
       // The words sit at the foot and take at most half the window's height, so the clip shows above them.
       const band = await boxOf(clip.locator(".band"));
       const window = page.viewportSize() ?? { width: 0, height: 0 };
       expect(band.height).toBeLessThanOrEqual(window.height / 2);
       expect(band.y + band.height).toBeLessThanOrEqual(window.height);
-      expect(band.x + band.width).toBeLessThanOrEqual(report.x);
       // Play is on the same row as the game's name.
       const play = await boxOf(clip.getByRole("link", { name: "Play", exact: true }));
       const name = await boxOf(clip.getByRole("heading", { level: 2 }));

@@ -26,7 +26,9 @@ function underlined(page: Page): Promise<string[]> {
 
 async function nothingSideways(page: Page): Promise<void> {
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    await page.evaluate(() =>
+      [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+    ),
   ).toBe(true);
 }
 

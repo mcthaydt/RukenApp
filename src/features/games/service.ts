@@ -10,6 +10,7 @@ import type {
 } from "../../lib/server/db.ts";
 import { countAcceptance, type AcceptanceCounts } from "./acceptance.ts";
 import { clipKeyFor, clipProblem, type ClipContentType } from "./clips.ts";
+import { deleteClipFile } from "./stills.ts";
 import { connectHostsFrom } from "./files-check.ts";
 import { GameError } from "./game-error.ts";
 import type { Connection } from "./github-connect.ts";
@@ -325,7 +326,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       update: { key, contentType, bytes: upload.bytes.length },
     });
     await takeOutOfToFix(gameId, shape === "upright" ? "upright_video" : "wide_video");
-    if (replaced !== null) await deps.files.delete(replaced.key);
+    if (replaced !== null) await deleteClipFile(deps.files, replaced.key);
   }
 
   /**
@@ -364,7 +365,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       });
       await takeOutOfToFix(gameId, shape === "upright" ? "upright_video" : "wide_video", tx);
     });
-    if (replaced.key !== null) await deps.files.delete(replaced.key);
+    if (replaced.key !== null) await deleteClipFile(deps.files, replaced.key);
     await settleLive(gameId, game.makerUserId, { dropped: false });
   }
 
@@ -717,7 +718,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       return made;
     });
     // After the yes has been kept. A delete that fails leaves a file no row points at, never a game without its video.
-    for (const key of replacedKeys) await deps.files.delete(key).catch(() => undefined);
+    for (const key of replacedKeys) await deleteClipFile(deps.files, key).catch(() => undefined);
     return made;
   }
 
@@ -1137,7 +1138,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       });
       return { dropped: wasHeld };
     });
-    if (held.key !== null) await deps.files.delete(held.key);
+    if (held.key !== null) await deleteClipFile(deps.files, held.key);
     if (outcome !== null) await settleLive(gameId, makerUserId, outcome);
   }
 
@@ -1177,7 +1178,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       return keys;
     });
     await deps.files.deleteAll(`files/${game.publicId}/`);
-    for (const clip of held) await deps.files.delete(clip.key);
+    for (const clip of held) await deleteClipFile(deps.files, clip.key);
     return { name: game.name };
   }
 
@@ -1786,10 +1787,50 @@ export function createGamesService(deps: GamesServiceDeps) {
     };
   }
 
-  /** The game at `/g/<slug>`, only while it is live. */
+  /**
+   * The game at `/g/<slug>`, only while it is live. One statement, its live copy and clips joined in: on the site a
+   * request holds one connection, so each statement is a wait before the page can show, and Prisma's `select` with
+   * relations sends one for the game and one for each relation.
+   */
   async function liveGameBySlug(slug: string): Promise<LiveGame | null> {
-    const game = await deps.db.game.findUnique({ where: { slug }, select: liveGameSelect });
-    return game === null ? null : asLiveGame(game);
+    const rows = await deps.db.$queryRaw<
+      {
+        id: string;
+        publicId: string;
+        slug: string;
+        name: string;
+        oneLine: string | null;
+        freeToPlay: boolean;
+        showsPlayerCount: boolean;
+        makerUserId: string;
+        state: string;
+        ageRating: AgeRating | null;
+        contentMarks: ContentMark[];
+        livePullId: string | null;
+        connectHosts: string[] | null;
+        uprightKey: string | null;
+        wideKey: string | null;
+      }[]
+    >`
+      SELECT g."id", g."publicId", g."slug", g."name", g."oneLine", g."freeToPlay", g."showsPlayerCount",
+             g."makerUserId", g."state"::text AS "state", g."ageRating"::text AS "ageRating",
+             g."contentMarks"::text[] AS "contentMarks",
+             p."id" AS "livePullId", p."connectHosts",
+             upright."key" AS "uprightKey", wide."key" AS "wideKey"
+      FROM "Game" g
+      LEFT JOIN "GamePull" p ON p."id" = g."livePullId"
+      LEFT JOIN "GameClip" upright ON upright."gameId" = g."id" AND upright."shape" = 'upright'
+      LEFT JOIN "GameClip" wide ON wide."gameId" = g."id" AND wide."shape" = 'wide'
+      WHERE g."slug" = ${slug}`;
+    const row = rows[0];
+    if (row === undefined) return null;
+    const clips = [
+      ...(row.uprightKey === null ? [] : [{ shape: "upright", key: row.uprightKey }]),
+      ...(row.wideKey === null ? [] : [{ shape: "wide", key: row.wideKey }]),
+    ];
+    const livePull =
+      row.livePullId === null ? null : { id: row.livePullId, connectHosts: row.connectHosts ?? [] };
+    return asLiveGame({ ...row, livePull, clips });
   }
 
   /**
@@ -1848,31 +1889,31 @@ export function createGamesService(deps: GamesServiceDeps) {
     makerUserId: string,
     exceptSlug: string,
   ): Promise<{ slug: string; name: string; wideClip: string; ageRating: AgeRating }[]> {
-    const rows = await deps.db.game.findMany({
-      where: { makerUserId, state: "live", slug: { not: exceptSlug }, livePullId: { not: null } },
-      select: {
-        slug: true,
-        name: true,
-        ageRating: true,
-        clips: { where: { shape: "wide" }, select: { key: true } },
-        livePull: { select: { createdAt: true } },
-        reviews: {
-          where: { decision: "accepted", ...tookEffect },
-          select: { decidedAt: true, goesOutOn: true },
-        },
-      },
-    });
-    const liveSince = await liveSinceOf(rows);
-    return rows
-      .map((row) => ({ row, at: liveSince(row).getTime() }))
-      .sort((one, other) => other.at - one.at)
-      .slice(0, 6)
-      .flatMap(({ row }) => {
-        const wideClip = row.clips[0]?.key;
-        return wideClip === undefined || row.ageRating === null
-          ? []
-          : [{ slug: row.slug, name: row.name, wideClip, ageRating: row.ageRating }];
-      });
+    // One statement, so a game's page waits on it once (see `liveGameBySlug`). "First went live" is worked out here
+    // the way `liveSinceOf` does it for the other lists: the earliest accepted review that took effect (a held yes
+    // dated by its decision day going out, or by its decision when that day has no row), else the live copy.
+    const rows = await deps.db.$queryRaw<
+      { slug: string; name: string; ageRating: AgeRating | null; wideClip: string | null }[]
+    >`
+      SELECT g."slug", g."name", g."ageRating"::text AS "ageRating", wide."key" AS "wideClip"
+      FROM "Game" g
+      JOIN "GamePull" p ON p."id" = g."livePullId"
+      LEFT JOIN "GameClip" wide ON wide."gameId" = g."id" AND wide."shape" = 'wide'
+      WHERE g."makerUserId" = ${makerUserId} AND g."state" = 'live' AND g."slug" <> ${exceptSlug}
+      ORDER BY COALESCE(
+        (SELECT MIN(CASE WHEN r."goesOutOn" IS NULL THEN r."decidedAt" ELSE COALESCE(d."wentOutAt", r."decidedAt") END)
+         FROM "GameReview" r
+         LEFT JOIN "DecisionDay" d ON d."day" = r."goesOutOn"
+         WHERE r."gameId" = g."id" AND r."decision" = 'accepted'
+           AND (r."goesOutOn" IS NULL
+                OR EXISTS (SELECT 1 FROM "DecisionOutcome" o WHERE o."reviewId" = r."id" AND o."result" = 'applied'))),
+        p."createdAt") DESC, g."slug"
+      LIMIT 6`;
+    return rows.flatMap((row) =>
+      row.wideClip === null || row.ageRating === null
+        ? []
+        : [{ slug: row.slug, name: row.name, wideClip: row.wideClip, ageRating: row.ageRating }],
+    );
   }
 
   /**

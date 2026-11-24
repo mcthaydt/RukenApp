@@ -9,10 +9,12 @@
   import Icon from "../../../lib/icon.svelte";
   import { gameTitle } from "../../../lib/titles.ts";
   import { loads } from "../../../lib/loads.ts";
+  import { stillPoster } from "../../../lib/still-poster.ts";
   import { onMount } from "svelte";
   import { quietVideo } from "../../../lib/quiet-video.ts";
   import { WishlistButton } from "../../../features/launch/launch.browser.ts";
   import { ReportSheet, type ReportSheetControl } from "../../../features/moderation/moderation.browser.ts";
+  import { ShareSheet, type ShareSheetControl } from "../../../features/feed/feed.browser.ts";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
@@ -26,7 +28,7 @@
   let tablet = $state(false);
   let viewer = $state<HTMLDialogElement>();
   let opened = $state(false);
-  let sharedNote = $state("");
+  let shareSheet = $state<ShareSheetControl>();
   let reportSheet = $state<ReportSheetControl>();
 
   const device = $derived(data.device === "computer" && tablet ? "tablet" : data.device);
@@ -57,22 +59,6 @@
     opened = true;
     viewer?.showModal();
   }
-
-  async function share(): Promise<void> {
-    sharedNote = "";
-    try {
-      if (typeof navigator.share === "function") {
-        await navigator.share({ title: data.name, url: location.href });
-        return;
-      }
-      await navigator.clipboard.writeText(location.href);
-      sharedNote = "Link copied.";
-    } catch (failure) {
-      // A person closing the share sheet is an answer, not a failure.
-      if (failure instanceof DOMException && failure.name === "AbortError") return;
-      sharedNote = "Copy the address from the bar at the top.";
-    }
-  }
 </script>
 
 <svelte:head>
@@ -86,6 +72,7 @@
         {#key shape}
           <video
             use:loads
+            use:stillPoster
             src={`${data.clips[shape]}#t=0.001`}
             preload="metadata"
             tabindex={enhanced ? -1 : undefined}
@@ -136,7 +123,13 @@
           {/if}
         </div>
         <div class="ways">
-          <button type="button" class="outline" onclick={share}>Share</button>
+          <button
+            type="button"
+            class="outline"
+            onclick={(event) => {
+              shareSheet?.open({ slug: data.slug, name: data.name }, event.currentTarget);
+            }}>Share</button
+          >
           {#if enhanced}
             <button
               type="button"
@@ -147,9 +140,6 @@
             >
           {/if}
         </div>
-        {#if sharedNote !== ""}
-          <p class="note" role="status">{sharedNote}</p>
-        {/if}
       </div>
 
       <div class="card cell fact">
@@ -189,6 +179,7 @@
             >
               <video
                 use:loads
+                use:stillPoster
                 class="tile"
                 src={`${data.clips.upright}#t=0.001`}
                 preload="metadata"
@@ -206,6 +197,7 @@
             >
               <video
                 use:loads
+                use:stillPoster
                 class="tile"
                 src={`${data.clips.wide}#t=0.001`}
                 preload="metadata"
@@ -243,6 +235,7 @@
               <a href={`/g/${game.slug}`}>
                 <video
                   use:loads
+                  use:stillPoster
                   class="tile"
                   src={`${game.wideClip}#t=0.001`}
                   preload="metadata"
@@ -265,7 +258,7 @@
   {#if opened}
     <!-- A game's videos are silent, so there is nothing to caption. -->
     <!-- svelte-ignore a11y_media_has_caption -->
-    <video use:loads src={data.clips[shape]} controls autoplay playsinline></video>
+    <video use:loads use:stillPoster src={data.clips[shape]} controls autoplay playsinline></video>
   {/if}
   <button type="button" class="safe" onclick={() => viewer?.close()} aria-label="Close"
     ><Icon name="close" /></button
@@ -273,3 +266,4 @@
 </dialog>
 
 <ReportSheet bind:this={reportSheet} />
+<ShareSheet bind:this={shareSheet} />

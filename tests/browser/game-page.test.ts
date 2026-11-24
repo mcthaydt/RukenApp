@@ -25,7 +25,9 @@ test.beforeAll(async ({ browser, request }) => {
 test.beforeEach(forgetRateLimits);
 
 const noSideways = (page: Page) =>
-  page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+  page.evaluate(() =>
+    [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+  );
 
 test("a game's page shows its clip, its name, its line, its rating and Play", async ({ page }, testInfo) => {
   await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
@@ -43,6 +45,15 @@ test("a game's page shows its clip, its name, its line, its rating and Play", as
   await expect(page).toHaveTitle(`Ruken - ${game.name}`);
   await expect(page.getByRole("button", { name: "Watch the upright video" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Watch the wide video" })).toBeVisible();
+  // Every clip on the page, the big one and the tiles, shows its own still until its first frame comes.
+  for (const video of await page.locator("main video").all()) {
+    if (!(await video.isVisible())) continue;
+    const clipKey = /(clips\/[^#]+)/.exec((await video.getAttribute("src")) ?? "")?.[1] ?? "no clip";
+    await expect(video).toHaveAttribute("data-still", "");
+    expect(await video.evaluate((node) => node.style.getPropertyValue("--still"))).toContain(
+      `/api/still/${clipKey}?at=0&`,
+    );
+  }
   expect(await noSideways(page)).toBe(true);
   await showTheOwner(page, testInfo, "a game's page");
 });
@@ -238,15 +249,25 @@ test("the device line names a tablet that says it is a computer", async ({ brows
   await context.close();
 });
 
-test("Share gives the link", async ({ page }) => {
+test("Share opens Ruken's own sheet with the game's link to copy", async ({ page }) => {
   await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   await page.evaluate(() => {
     Object.defineProperty(navigator, "share", { value: undefined, configurable: true });
     Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
   });
-  await page.getByRole("button", { name: "Share" }).click();
-  await expect(page.getByText(/^(Link copied\.|Copy the address from the bar at the top\.)$/)).toBeVisible();
+  const share = page.getByRole("button", { name: "Share" });
+  await share.click();
+  const sheet = page.getByRole("dialog", { name: "Share" });
+  await expect(
+    sheet.getByText(`${new URL(page.url()).origin}/g/${game.slug}`, { exact: true }),
+  ).toBeVisible();
+  // No clipboard here, so it says how to copy the link by hand.
+  await sheet.getByRole("button", { name: "Copy link" }).click();
+  await expect(sheet.getByRole("status")).toHaveText(/copy it\.$/);
+  await sheet.getByRole("button", { name: "Close" }).click();
+  await expect(sheet).toBeHidden();
+  await expect(share).toBeFocused();
 });
 
 test("nothing on the page is red, and nothing scrolls sideways", async ({ page }) => {

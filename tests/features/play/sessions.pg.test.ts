@@ -8,9 +8,12 @@ import {
   type PlayService,
   type StartedPlay,
 } from "../../../src/features/play/sessions.ts";
+import { countedMs } from "../../../src/features/play/time.ts";
+import { medianMs } from "../../../src/features/games/games.ts";
 import { createRateLimiter } from "../../../src/lib/server/rate-limit.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
+import { queriesAsked } from "../../support/count-queries.ts";
 import { startTestDatabase, type TestDatabase } from "../../support/database.ts";
 import { TestClock } from "../../support/test-clock.ts";
 
@@ -497,6 +500,66 @@ describe("sittingOf", () => {
     await addPlay(game, { minutes: 12, attentive: false });
     await addPlay(game, { minutes: 12, daysAgo: 31 });
     expect(await service.sittingOf(game.id, NOW)).toBeNull();
+  });
+  // Old against new: the Prisma read that came before the one-statement read, kept here as the yardstick. On the same
+  // plays, made from a fixed seed, the two must give the same answer.
+  it("agrees with the read it replaced, on many mixed plays", async () => {
+    async function oldSittingOf(gameId: string, now: Date): Promise<number | null> {
+      const since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sessions = await db().playSession.findMany({
+        where: { gameId, basis: { in: ["member", "free_game"] }, startedAt: { gte: since, lte: now } },
+        orderBy: { startedAt: "desc" },
+        take: 500,
+        select: { startedAt: true, beats: { select: { receivedAt: true, attentive: true } } },
+      });
+      const counted = sessions
+        .map((session) =>
+          countedMs(
+            session.startedAt.getTime(),
+            session.beats.map((beat) => ({ atMs: beat.receivedAt.getTime(), attentive: beat.attentive })),
+          ),
+        )
+        .filter((ms) => ms > 0);
+      return counted.length < 20 ? null : medianMs(counted);
+    }
+    let seed = 7;
+    const next = (below: number) => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+      // The high bits: the low bits of this kind of generator repeat in short cycles.
+      return Math.floor((seed / 2_147_483_648) * below);
+    };
+    const bases = ["member", "member", "free_game", "free_game", "staff", "own_game"] as const;
+    const game = await newGame();
+    for (let i = 0; i < 70; i += 1) {
+      await addPlay(game, {
+        minutes: next(4) === 0 ? 0 : 1 + next(20),
+        basis: bases[next(bases.length)] ?? "member",
+        daysAgo: next(34),
+        attentive: next(5) !== 0,
+      });
+      if (i % 10 === 9) expect(await service.sittingOf(game.id, NOW)).toBe(await oldSittingOf(game.id, NOW));
+    }
+    expect(await oldSittingOf(game.id, NOW)).not.toBeNull();
+  });
+
+  // A game's page waits on this, and each statement is a wait on the site: the plays and their beats come together.
+  it("asks the database once", async () => {
+    const game = await newGame();
+    for (let i = 0; i < 20; i += 1) await addPlay(game, { minutes: 12 });
+    let sitting: number | null = null;
+
+    const asked = await queriesAsked(database?.url ?? "", async (counted) => {
+      sitting = await createPlayService({
+        db: counted,
+        clock,
+        rateLimiter: createRateLimiter(counted, clock),
+        passSecret: SECRET,
+        address: (name) => `https://${name}.games.test`,
+      }).sittingOf(game.id, NOW);
+    });
+
+    expect(sitting).toBe(12 * 60_000);
+    expect(asked).toHaveLength(1);
   });
 });
 
