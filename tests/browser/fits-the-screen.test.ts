@@ -84,6 +84,13 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
   await opened(page, "/me");
   await expect(page.getByRole("link", { name: "Delete my account" })).toBeInViewport();
   await showTheOwner(page, testInfo, "Your account fits the window");
+
+  // The smallest phone still in use (320 by 568): Your account fits with nothing to scroll.
+  await page.setViewportSize({ width: 320, height: 568 });
+  await expect.poll(async () => (await overflow(page)).view).toBe(0);
+  expect((await overflow(page)).page).toBe(0);
+  await expectViewAboveTheBar(page, "/me at 320 by 568");
+  await expect(page.getByRole("link", { name: "Delete my account" })).toBeInViewport();
 });
 
 test.describe("a long screen", () => {
@@ -94,8 +101,14 @@ test.describe("a long screen", () => {
     expect((await overflow(page)).page).toBe(0);
     expect((await overflow(page)).view).toBeGreaterThan(0);
 
-    // The keys move the view. Safari glides there, and a key pressed mid-glide is lost, so wait until it rests.
-    await page.locator("main h1").click();
+    // The keys move the view straight away, with nothing pressed first: the view holds the focus. Safari glides there,
+    // and a key pressed mid-glide is lost, so wait until it rests.
+    const top = () => page.evaluate(() => document.body.scrollTop);
+    for (const key of ["ArrowDown", "PageDown", "Space"]) {
+      const before = await top();
+      await page.keyboard.press(key);
+      await expect.poll(top, key).toBeGreaterThan(before);
+    }
     await page.keyboard.press("End");
     await expect
       .poll(() => page.evaluate(() => Math.ceil(document.body.scrollTop + document.body.clientHeight)))
@@ -103,9 +116,18 @@ test.describe("a long screen", () => {
     expect(await page.evaluate(() => scrollY)).toBe(0);
     expect(await underTheBar(page)).toEqual([]);
     await page.keyboard.press("Home");
-    await expect.poll(() => page.evaluate(() => document.body.scrollTop)).toBe(0);
+    await expect.poll(top).toBe(0);
+
+    // After a move inside the app, the next long screen takes the keys too.
+    await page.getByRole("link", { name: "Read the terms" }).click();
+    await expect(page).toHaveURL("/terms");
+    await expect.poll(top).toBe(0);
+    await page.keyboard.press("PageDown");
+    await expect.poll(top).toBeGreaterThan(0);
 
     if (!isMobile) {
+      await page.keyboard.press("Home");
+      await expect.poll(top).toBe(0);
       await page.mouse.move(200, 200);
       await page.mouse.wheel(0, 600);
       await expect.poll(() => page.evaluate(() => document.body.scrollTop)).toBeGreaterThan(0);

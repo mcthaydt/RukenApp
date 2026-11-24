@@ -89,6 +89,11 @@
     if (from !== null) leftAt[from.url.href] = document.body.scrollTop;
   });
   afterNavigate(({ from, to, type }) => {
+    // The view takes the keys (arrows, Page Down, Space, End) only when it has the focus: the page around it never
+    // scrolls, so a key with nothing focused would move nothing. The body can take the focus (tabindex -1, src/app.html);
+    // a field or button a person or the screen has focused keeps it.
+    const focused = document.activeElement;
+    if (focused === null || focused === document.body) document.body.focus({ preventScroll: true });
     // A page that has just opened is at its top already, and a person may have scrolled it before it started. An answer
     // sent from a screen that comes back to the same screen keeps the person where they pressed (src/lib/stay-in-app.ts).
     if (to === null || type === "enter" || to.url.hash !== "") return;

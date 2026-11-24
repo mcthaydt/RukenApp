@@ -34,7 +34,6 @@ test("no scrollbar shows inside the app, and a long screen still scrolls", async
   expect(await page.evaluate(() => innerWidth - document.body.clientWidth)).toBe(0);
   expect(await page.evaluate(() => document.body.scrollHeight > document.body.clientHeight)).toBe(true);
 
-  await page.locator("main h1").click();
   await page.keyboard.press("End");
   // Safari's engine glides there, and a key pressed mid-glide is lost, so wait until the page has come to rest at the end.
   await expect

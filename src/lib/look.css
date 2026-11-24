@@ -454,6 +454,41 @@ form > * + * {
   padding-inline: 0.75rem;
 }
 
+/* The smallest phones (an iPhone SE of the first kind, 320 by 568): the card's padding and Your account's gaps close
+   up, so the whole account still fits above the bar with no scrolling (the owner, 2026-11-24: scrolling is rare). Every
+   button and link keeps its whole 48px target; only the air between them shrinks. */
+@media (max-width: 359px) and (max-height: 639px) {
+  header ~ main {
+    margin-top: 0.5rem;
+  }
+
+  .card {
+    padding: 0.75rem;
+  }
+
+  /* The number and its badge stay on one line, whatever the number's digits. */
+  .card:has(.side-by-side) .badged {
+    column-gap: 0.5rem;
+  }
+
+  .card:has(.side-by-side) :is(.badged, .badged + *) {
+    margin-top: 0.75rem;
+  }
+
+  .card:has(.side-by-side) .sidelinks.apart {
+    margin-top: 0.5rem;
+  }
+
+  .card .ways.side-by-side {
+    margin-top: 0;
+    column-gap: 0.5rem;
+  }
+
+  .card .side-by-side .quiet {
+    padding-inline: 0.25rem;
+  }
+}
+
 /* A refusal is seen by its weight, not by a colour: red means money and nothing else. */
 .problem {
   font-weight: 600;
@@ -3052,13 +3087,17 @@ main.helpdesk {
     --card-pad: 1rem;
   }
 
+  .card.bold .gets {
+    margin-top: 0.75rem;
+  }
+}
+
+/* The narrowest of those (320 wide), where the title already steps down with the width: a little smaller again, so the
+   blue button is in the first screen. A wider phone keeps the full title. */
+@media (max-width: 359px) and (max-height: 700px) {
   .card.bold h1,
   .card.bold .cardtop h1 {
     font-size: 2.25rem;
-  }
-
-  .card.bold .gets {
-    margin-top: 0.75rem;
   }
 }
 
@@ -5560,6 +5599,11 @@ html {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+/* The view holds the focus so the keys scroll it (src/routes/+layout.svelte); it is not a control, so it shows no ring. */
+body:focus {
+  outline: none;
 }
 
 /* The last line of a screen ends a little above its view's foot, never flush against it. */
