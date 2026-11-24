@@ -68,7 +68,7 @@
 <main class="gamepage">
   <div class="bento">
     <div class="cell hero">
-      <div class="clipbox" data-shape={shape}>
+      <div class="clipbox" data-shape={shape} data-grows={data.slug}>
         {#key shape}
           <video
             use:loads
