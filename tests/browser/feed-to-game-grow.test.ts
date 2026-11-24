@@ -118,6 +118,25 @@ test("Play in the feed still slides to the game, with no clip moving", async ({ 
   expect(await moves(page)).toEqual(["played"]);
 });
 
+test("a game's page opened another way slides back to the feed, with no clip moving", async ({ page }) => {
+  test.skip(
+    !(await page.evaluate(() => "startViewTransition" in document)),
+    "this browser has no view transitions, so every move comes at once",
+  );
+  await watchMoves(page);
+  await page.goto(`/g/${game.slug}`);
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await pageHasSettled(page);
+  await page
+    .getByRole("navigation", { name: "Ruken" })
+    .getByRole("link", { name: "Home", exact: true })
+    .click();
+  await expect(page).toHaveURL("/");
+  expect(await lastMove(page)).toBe("back");
+  expect(await moves(page)).toEqual(["played"]);
+  await expect.poll(() => namedLeft(page)).toBe(0);
+});
+
 test("with less motion asked for, opening a game from the feed moves nothing", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   const clip = await openFeedAt(page);

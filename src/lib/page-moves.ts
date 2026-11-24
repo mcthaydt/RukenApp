@@ -58,6 +58,54 @@ export function clipOf(game: string): HTMLElement | null {
   return document.querySelector<HTMLElement>(`[data-grows="${CSS.escape(game)}"]`);
 }
 
+/**
+ * The game whose clip last grew out of the feed, until the person is on the feed again. Going back to the feed, the clip
+ * shrinks into it only for that game and only with the browser's Back, which puts the feed back on the clip that was
+ * left; any other way to the feed (Home, the game's back arrow, a game page opened from a link) opens the feed at its
+ * top, where the clip on screen is another game's, so that move slides like any other.
+ */
+let openedFromFeed: string | null = null;
+
+/** Whether a move between the feed and a game's page moves the clip. */
+export function clipMoves(game: string, toFeed: boolean, wentBack: boolean): boolean {
+  if (toFeed) return wentBack && openedFromFeed === game;
+  return clipOf(game) !== null;
+}
+
+/** Notes where a move went: the game opened from the feed, or none once the person is on the feed again. */
+export function noteMove(game: string | null, to: string): void {
+  if (game !== null && to !== "/") openedFromFeed = game;
+  else if (to === "/") openedFromFeed = null;
+}
+
+/** Each move that names a clip names it as its own, so a move that ends late never takes a later move's name away. */
+let lastNaming = 0;
+
+function name(element: HTMLElement, naming: number): void {
+  element.style.viewTransitionName = CLIP;
+  element.dataset.named = String(naming);
+}
+
+function unname(element: HTMLElement | null, naming: number): void {
+  if (element === null || element.dataset.named !== String(naming)) return;
+  element.style.viewTransitionName = "";
+  delete element.dataset.named;
+}
+
+/**
+ * The new page's clip, once the page has placed it. The feed coming back puts itself back on the clip that was left a
+ * moment after it is in (src/features/feed/Feed.svelte, its snapshot), so it is looked for a few times, for at most a
+ * fifth of a second, while the browser holds the picture still.
+ */
+async function arrivedClip(game: string): Promise<HTMLElement | null> {
+  for (let tries = 0; tries < 12; tries++) {
+    const found = clipOf(game);
+    if (found !== null) return found;
+    await new Promise((wait) => setTimeout(wait, 16));
+  }
+  return null;
+}
+
 /** The move whose slide has not yet let its new page in, if there is one. */
 let held: Promise<void> | null = null;
 
@@ -78,23 +126,24 @@ export function heldMove(): Promise<void> | null {
 export function slideWhile(arrived: Promise<unknown>, game: string | null = null): Promise<void> {
   // The clip that moves is named in the old page before the browser pictures it, and in the new page once it is in;
   // the old one loses its name first, since two elements with one name would make the browser drop the whole move.
+  const naming = ++lastNaming;
   const old = game === null ? null : clipOf(game);
-  if (old !== null) old.style.viewTransitionName = CLIP;
+  if (old !== null) name(old, naming);
   const move = new Promise<void>((resolve) => {
     let fresh: HTMLElement | null = null;
     const slide = document.startViewTransition(async () => {
       resolve();
       // A move that a later one overtook never arrives; its slide just ends.
       await arrived.catch(() => undefined);
-      if (old !== null) old.style.viewTransitionName = "";
-      fresh = game === null ? null : clipOf(game);
-      if (fresh !== null) fresh.style.viewTransitionName = CLIP;
+      unname(old, naming);
+      fresh = game === null ? null : await arrivedClip(game);
+      if (fresh !== null) name(fresh, naming);
     });
     void slide.finished
       .catch(() => undefined)
       .then(() => {
-        if (old !== null) old.style.viewTransitionName = "";
-        if (fresh !== null) fresh.style.viewTransitionName = "";
+        unname(old, naming);
+        unname(fresh, naming);
       });
     slide.ready.catch(() => {
       resolve();
