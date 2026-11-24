@@ -2,7 +2,17 @@
 // the sheet shows these words, and the server reads the same list.
 
 /** The reasons, in the order the sheet shows them. The owner's rule (no pornography, gambling or ads) comes first. */
-export const REPORT_REASONS = ["sexual", "gambling", "ads", "hateful", "copied", "broken", "other"] as const;
+export const REPORT_REASONS = [
+  "sexual",
+  "gambling",
+  "ads",
+  "violence",
+  "hateful",
+  "scam",
+  "copied",
+  "broken",
+  "other",
+] as const;
 
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
@@ -10,7 +20,9 @@ export const REASON_WORDS: Readonly<Record<ReportReason, string>> = {
   sexual: "Sexual content",
   gambling: "Gambling",
   ads: "Ads",
+  violence: "Graphic violence",
   hateful: "Hate or bullying",
+  scam: "A scam or steals your info",
   copied: "Copied from someone else",
   broken: "It doesn't work",
   other: "Something else",

@@ -31,3 +31,22 @@ describe("the reports migration", () => {
     expect(statements.filter((one) => !ADDING.some((kind) => kind.test(one)))).toEqual([]);
   });
 });
+
+// The two later reasons (two-more-report-reasons spec): their migration only adds the two values to the type.
+const MORE = readFileSync(
+  join(import.meta.dirname, "../../../prisma/migrations/20261124160301_more_report_reasons/migration.sql"),
+  "utf8",
+);
+
+describe("the more-reasons migration", () => {
+  it("only adds the values violence and scam to the reasons", () => {
+    const statements = MORE.replace(/--.*$/gm, "")
+      .split(";")
+      .map((one) => one.trim().replace(/\s+/g, " "))
+      .filter((one) => one !== "");
+    expect(statements).toEqual([
+      `ALTER TYPE "ReportReason" ADD VALUE 'violence'`,
+      `ALTER TYPE "ReportReason" ADD VALUE 'scam'`,
+    ]);
+  });
+});

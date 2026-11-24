@@ -144,6 +144,34 @@ test("a player goes from the feed to a game's page, reports it, sees it again, c
   expect(read.entry).toBeUndefined();
 });
 
+test("the sheet lists nine reasons, and the two later ones are sent and read in words", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  await signUp(page);
+  await reportFromGamePage(page, other.slug);
+  await expect(sheet(page).getByRole("radio")).toHaveCount(9);
+  await sheet(page).getByLabel("Graphic violence").check();
+  await sheet(page).getByRole("button", { name: "Send report" }).click();
+  await expect(sheet(page).getByText("Thanks. We'll take a look.")).toBeVisible();
+  let read = await reportedOf(page, browser, other.slug);
+  expect(read.entry).toMatchObject({ count: 1, reports: [{ reason: "Graphic violence" }] });
+
+  await sheet(page).getByRole("button", { name: "Done" }).click();
+  await reportFromGamePage(page, other.slug);
+  await expect(sheet(page).getByLabel("Graphic violence")).toBeChecked();
+  await sheet(page).getByLabel("A scam or steals your info").check();
+  await sheet(page).getByRole("button", { name: "Save changes" }).click();
+  await expect(sheet(page).getByText("Thanks. We'll take a look.")).toBeVisible();
+  read = await reportedOf(page, browser, other.slug);
+  expect(read.entry).toMatchObject({ count: 1, reports: [{ reason: "A scam or steals your info" }] });
+
+  // Taken back again, so the review list stays as other journeys expect it.
+  const gone = await page.request.delete(`/g/${other.slug}/report`, FROM_THE_SITE);
+  expect(gone.status()).toBe(200);
+});
+
 test("the same sheet works from the game's page, with the keyboard alone", async ({ page }) => {
   await signUp(page);
   await page.goto(`/g/${other.slug}`);
