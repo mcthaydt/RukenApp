@@ -14,6 +14,7 @@
   import { quietVideo } from "../../../lib/quiet-video.ts";
   import { WishlistButton } from "../../../features/launch/launch.browser.ts";
   import { ReportSheet, type ReportSheetControl } from "../../../features/moderation/moderation.browser.ts";
+  import { ShareSheet, type ShareSheetControl } from "../../../features/feed/feed.browser.ts";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
@@ -27,7 +28,7 @@
   let tablet = $state(false);
   let viewer = $state<HTMLDialogElement>();
   let opened = $state(false);
-  let sharedNote = $state("");
+  let shareSheet = $state<ShareSheetControl>();
   let reportSheet = $state<ReportSheetControl>();
 
   const device = $derived(data.device === "computer" && tablet ? "tablet" : data.device);
@@ -57,22 +58,6 @@
   function watchFullSize(): void {
     opened = true;
     viewer?.showModal();
-  }
-
-  async function share(): Promise<void> {
-    sharedNote = "";
-    try {
-      if (typeof navigator.share === "function") {
-        await navigator.share({ title: data.name, url: location.href });
-        return;
-      }
-      await navigator.clipboard.writeText(location.href);
-      sharedNote = "Link copied.";
-    } catch (failure) {
-      // A person closing the share sheet is an answer, not a failure.
-      if (failure instanceof DOMException && failure.name === "AbortError") return;
-      sharedNote = "Copy the address from the bar at the top.";
-    }
   }
 </script>
 
@@ -138,7 +123,13 @@
           {/if}
         </div>
         <div class="ways">
-          <button type="button" class="outline" onclick={share}>Share</button>
+          <button
+            type="button"
+            class="outline"
+            onclick={(event) => {
+              shareSheet?.open({ slug: data.slug, name: data.name }, event.currentTarget);
+            }}>Share</button
+          >
           {#if enhanced}
             <button
               type="button"
@@ -149,9 +140,6 @@
             >
           {/if}
         </div>
-        {#if sharedNote !== ""}
-          <p class="note" role="status">{sharedNote}</p>
-        {/if}
       </div>
 
       <div class="card cell fact">
@@ -278,3 +266,4 @@
 </dialog>
 
 <ReportSheet bind:this={reportSheet} />
+<ShareSheet bind:this={shareSheet} />

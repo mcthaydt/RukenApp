@@ -1,67 +1,54 @@
-import { describe, expect, test } from "vitest";
-import { shareLink, type ShareTools } from "../../../src/features/feed/share.ts";
+import { describe, expect, it } from "vitest";
+import { copyLink, shareByPhone, shareTargets } from "../../../src/features/feed/share.ts";
 
-const LINK = { title: "Floor Fifty", url: "https://ruken.example/g/floor-fifty" };
+// The share sheet's plain parts: the apps' addresses, the clipboard and the phone's own sheet, with stand-in tools.
 
-/** The error a browser throws when a person closes the share sheet. */
-const closed = () => Object.assign(new Error("closed"), { name: "AbortError" });
+const link = { title: "Floor & Fifty?", url: "https://ruken.io/g/floor-fifty" };
 
-describe("shareLink", () => {
-  test("is `shared` when the share sheet took the link, and hands it the title and the address", async () => {
-    const seen: unknown[] = [];
-    const tools: ShareTools = {
-      share: (data) => {
-        seen.push(data);
-        return Promise.resolve();
-      },
-    };
-    expect(await shareLink(tools, LINK)).toBe("shared");
-    expect(seen).toEqual([LINK]);
+describe("shareTargets", () => {
+  it("offers Text, WhatsApp, Email, X and Facebook, in that order", () => {
+    expect(shareTargets(link).map((target) => target.words)).toEqual(["Text", "WhatsApp", "Email", "X", "Facebook"]);
   });
 
-  test("is `closed` when the person closed the sheet, and copies nothing", async () => {
+  it("puts the game's whole address in every app's link, safely written", () => {
+    for (const target of shareTargets(link)) {
+      const decoded = decodeURIComponent(target.href);
+      expect(decoded, target.words).toContain(link.url);
+      // A name's & or ? never breaks the app's address.
+      expect(target.href, target.words).not.toContain("Floor & Fifty?");
+    }
+  });
+
+  it("writes the game's name into the message where the app takes words", () => {
+    const text = shareTargets(link).find((target) => target.key === "text");
+    expect(decodeURIComponent(text?.href ?? "")).toBe(`sms:?&body=Play Floor & Fifty? on Ruken ${link.url}`);
+  });
+});
+
+describe("copyLink", () => {
+  it("copies the link", async () => {
     const copied: string[] = [];
-    const tools: ShareTools = {
-      share: () => Promise.reject(closed()),
-      copy: (text) => {
-        copied.push(text);
-        return Promise.resolve();
-      },
-    };
-    expect(await shareLink(tools, LINK)).toBe("closed");
-    expect(copied).toEqual([]);
+    expect(await copyLink({ copy: (text) => Promise.resolve(void copied.push(text)) }, link.url)).toBe("copied");
+    expect(copied).toEqual([link.url]);
   });
 
-  test("copies the address when there is no share sheet", async () => {
-    const copied: string[] = [];
-    const tools: ShareTools = {
-      copy: (text) => {
-        copied.push(text);
-        return Promise.resolve();
-      },
-    };
-    expect(await shareLink(tools, LINK)).toBe("copied");
-    expect(copied).toEqual([LINK.url]);
+  it("asks for a copy by hand where the clipboard refuses or is missing", async () => {
+    expect(await copyLink({ copy: () => Promise.reject(new Error("not allowed")) }, link.url)).toBe("manual");
+    expect(await copyLink({}, link.url)).toBe("manual");
+  });
+});
+
+describe("shareByPhone", () => {
+  it("hands the link to the phone's sheet", async () => {
+    const shared: unknown[] = [];
+    expect(await shareByPhone({ share: (data) => Promise.resolve(void shared.push(data)) }, link)).toBe("shared");
+    expect(shared).toEqual([link]);
   });
 
-  test("copies the address when the sheet breaks for any other reason", async () => {
-    const tools: ShareTools = {
-      share: () => Promise.reject(new Error("no sheet here")),
-      copy: () => Promise.resolve(),
-    };
-    expect(await shareLink(tools, LINK)).toBe("copied");
-  });
-
-  test("is `manual` when the clipboard refuses", async () => {
-    const tools: ShareTools = { copy: () => Promise.reject(new Error("not allowed")) };
-    expect(await shareLink(tools, LINK)).toBe("manual");
-  });
-
-  test("is `manual` with neither tool", async () => {
-    expect(await shareLink({}, LINK)).toBe("manual");
-  });
-
-  test("is `manual` when the sheet breaks and there is no clipboard", async () => {
-    expect(await shareLink({ share: () => Promise.reject(new Error("no")) }, LINK)).toBe("manual");
+  it("tells a person closing the sheet from a broken sheet", async () => {
+    const closes = () => Promise.reject(new DOMException("closed", "AbortError"));
+    expect(await shareByPhone({ share: closes }, link)).toBe("closed");
+    expect(await shareByPhone({ share: () => Promise.reject(new Error("no sheet")) }, link)).toBe("failed");
+    expect(await shareByPhone({}, link)).toBe("failed");
   });
 });

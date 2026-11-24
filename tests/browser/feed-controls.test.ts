@@ -641,6 +641,8 @@ test("the press that opens the game never covers the speaker, Play, Share, Repor
 });
 
 test.describe("Share", () => {
+  // Share opens Ruken's own sheet (the owner, 2026-11-24: "our share uses native and not a custom share"): Copy link,
+  // the apps, and the phone's own sheet as "More" where there is one.
   /** A phone's share sheet and clipboard, as the journey's own. The page asks `navigator` at the moment of the press. */
   async function standIns(
     page: Page,
@@ -677,44 +679,108 @@ test.describe("Share", () => {
     page.evaluate(
       () => (window as unknown as { seen: { shared: { url: string }[]; copied: string[] } }).seen,
     );
+  const sheetOf = (page: Page) => page.getByRole("dialog", { name: "Share" });
 
-  test("copies the link and says so for a few seconds, where there is no share sheet", async ({ page }) => {
-    await standIns(page, { share: "none", clipboard: "works" });
-    await openFeed(page);
-    const slug = await currentSlug(page);
-    const clip = current(page);
-    await clip.getByRole("button", { name: "Share" }).click();
-    await expect(clip.getByRole("status")).toHaveText("Link copied.");
-    expect((await seenOf(page)).copied).toEqual([`${new URL(page.url()).origin}/g/${String(slug)}`]);
-    // It goes by itself, in about four seconds.
-    await expect(clip.getByRole("status")).toHaveText("", { timeout: 8000 });
-  });
-
-  test("says where to copy the address from when nothing works", async ({ page }) => {
-    await standIns(page, { share: "none", clipboard: "refuses" });
-    await openFeed(page);
-    const clip = current(page);
-    await clip.getByRole("button", { name: "Share" }).click();
-    await expect(clip.getByRole("status")).toHaveText("Copy the address from the bar at the top.");
-  });
-
-  test("opens the device's share sheet with the game's page, and says nothing more", async ({ page }) => {
+  test("opens Ruken's own sheet with the game's link, never the phone's sheet first, and copies the link", async ({
+    page,
+  }) => {
     await standIns(page, { share: "works", clipboard: "works" });
     await openFeed(page);
     const slug = await currentSlug(page);
+    const name = (await current(page).getByRole("heading", { level: 2 }).textContent()) ?? "";
+    const address = `${new URL(page.url()).origin}/g/${String(slug)}`;
     await current(page).getByRole("button", { name: "Share" }).click();
-    await expect.poll(async () => (await seenOf(page)).shared.length).toBe(1);
-    expect((await seenOf(page)).shared[0]?.url).toBe(`${new URL(page.url()).origin}/g/${String(slug)}`);
-    await expect(current(page).getByRole("status")).toHaveText("");
+    const sheet = sheetOf(page);
+    await expect(sheet).toBeVisible();
+    expect((await seenOf(page)).shared).toEqual([]);
+    await expect(sheet.getByText(name, { exact: true })).toBeVisible();
+    await expect(sheet.getByText(address, { exact: true })).toBeVisible();
+    await sheet.getByRole("button", { name: "Copy link" }).click();
+    await expect(sheet.getByRole("status")).toHaveText("Link copied.");
+    expect((await seenOf(page)).copied).toEqual([address]);
   });
 
-  test("says nothing to a person who closed the sheet", async ({ page }) => {
-    await standIns(page, { share: "closes", clipboard: "works" });
+  test("offers the apps, each with the game's link written in", async ({ page }) => {
+    await standIns(page, { share: "none", clipboard: "works" });
+    await openFeed(page);
+    const slug = await currentSlug(page);
+    const address = `${new URL(page.url()).origin}/g/${String(slug)}`;
+    await current(page).getByRole("button", { name: "Share" }).click();
+    const sheet = sheetOf(page);
+    for (const app of ["Text", "WhatsApp", "Email", "X", "Facebook"]) {
+      const href = (await sheet.getByRole("link", { name: app, exact: true }).getAttribute("href")) ?? "";
+      expect(decodeURIComponent(href), app).toContain(address);
+    }
+    // No phone sheet here, so no More.
+    await expect(sheet.getByRole("button", { name: "More" })).toHaveCount(0);
+  });
+
+  test("says how to copy the link by hand when the clipboard refuses", async ({ page }) => {
+    await standIns(page, { share: "none", clipboard: "refuses" });
     await openFeed(page);
     await current(page).getByRole("button", { name: "Share" }).click();
+    const sheet = sheetOf(page);
+    await sheet.getByRole("button", { name: "Copy link" }).click();
+    await expect(sheet.getByRole("status")).toHaveText(/copy it\.$/);
+  });
+
+  test("More opens the phone's own sheet with the game's page, and closing it says nothing", async ({ page }) => {
+    await standIns(page, { share: "closes", clipboard: "works" });
+    await openFeed(page);
+    const slug = await currentSlug(page);
+    await current(page).getByRole("button", { name: "Share" }).click();
+    const sheet = sheetOf(page);
+    await sheet.getByRole("button", { name: "More" }).click();
     await expect.poll(async () => (await seenOf(page)).shared.length).toBe(1);
-    await expect(current(page).getByRole("status")).toHaveText("");
-    expect((await seenOf(page)).copied).toEqual([]);
+    expect((await seenOf(page)).shared[0]?.url).toBe(`${new URL(page.url()).origin}/g/${String(slug)}`);
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByRole("status")).toHaveText("");
+  });
+
+  test("the cross, Escape and the dimmed screen each close it, and focus goes back to Share", async ({ page }) => {
+    await standIns(page, { share: "none", clipboard: "works" });
+    await openFeed(page);
+    const share = current(page).getByRole("button", { name: "Share" });
+    const sheet = sheetOf(page);
+
+    await share.click();
+    await sheet.getByRole("button", { name: "Close" }).click();
+    await expect(sheet).toBeHidden();
+    await expect(share).toBeFocused();
+
+    await share.press("Enter");
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Copy link" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(share).toBeFocused();
+
+    await share.click();
+    await expect(sheet).toBeVisible();
+    // A press on the dimmed screen, well above the panel.
+    await page.mouse.click(5, 5);
+    await expect(sheet).toBeHidden();
+  });
+
+  test("fits the window with nothing to scroll", async ({ page }) => {
+    await standIns(page, { share: "works", clipboard: "works" });
+    await openFeed(page);
+    await current(page).getByRole("button", { name: "Share" }).click();
+    const sheet = sheetOf(page);
+    await expect(sheet).toBeVisible();
+    await sheet.evaluate(async (dialog) => {
+      await Promise.all(dialog.getAnimations({ subtree: true }).map((one) => one.finished));
+    });
+    const box = (await sheet.boundingBox()) ?? { y: -1, height: Infinity };
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual((page.viewportSize()?.height ?? 0) + 1);
+    const inside = sheet.locator(".inside");
+    expect(await inside.evaluate((element) => element.scrollHeight <= element.clientHeight + 1)).toBe(true);
+    for (const target of await sheet.locator("a, button").all()) {
+      const size = await target.boundingBox();
+      expect(size?.width ?? 0).toBeGreaterThanOrEqual(44);
+      expect(size?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
   });
 });
 
