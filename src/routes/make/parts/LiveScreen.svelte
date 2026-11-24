@@ -75,9 +75,9 @@
   >
     {#snippet label()}
       {#if send === "again"}
-        {sending ? "Sending your update…" : "Send it again"}
+        Send it again
       {:else}
-        {sending ? "Copying your game…" : "Send a new version"}
+        Send a new version
       {/if}
     {/snippet}
     {#if main}

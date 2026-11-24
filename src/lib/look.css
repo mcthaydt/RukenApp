@@ -5209,29 +5209,12 @@ header:has(+ main.about) {
   }
 }
 
-/* Every wait shows it. A move between pages runs a Blue line across the top of the window and shows a turning
-   spinner under it, with no words (src/lib/page-loading.svelte); a button whose form is out shows the spinner after
-   its words and cannot be pressed again (src/lib/busy-forms.ts); a picture or a video is a box that slowly brightens
-   and dims, with the spinner turning in its middle, until it has loaded (src/lib/loads.ts). With reduced motion
-   nothing turns or runs: the line is drawn whole, and the spinners stand still. */
-.page-loading {
-  position: fixed;
-  inset: 0 0 auto;
-  z-index: 100;
-  height: 4px;
-  overflow: hidden;
-  background: var(--felt-raised);
-}
-
-.page-loading::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 40%;
-  background: var(--pay);
-  animation: running-line 1.1s var(--ease) infinite;
-}
-
+/* Every wait shows it, and shows only a spinner: no line, no words beside it. Owner, 2026-11-22: "Async actions:
+   remove the double feedback; show ONLY the spinner". A move between pages shows a turning spinner at the top of the
+   window (src/lib/page-loading.svelte); a pressed button turns into the spinner, its words hidden but still read out,
+   and cannot be pressed again (src/lib/busy-forms.ts); a picture or a video is a box that slowly brightens and dims,
+   with the spinner turning in its middle, until it has loaded (src/lib/loads.ts). With reduced motion the spinners
+   stand still. */
 .page-loading-spinner {
   position: fixed;
   top: 16px;
@@ -5254,7 +5237,8 @@ header:has(+ main.about) {
 /* The spinner. Owner, 2026-11-22: "let's use a spinner too, or at least some obvious indication that something is
    loading". It is the one round thing besides the circles behind Live and a person's photo. */
 .spinner,
-:is(button, .button)[aria-busy="true"]::after {
+:is(button, .button)[aria-busy="true"]::after,
+.file:has(> [aria-busy="true"]) > span::after {
   content: "";
   flex: none;
   width: 1.1em;
@@ -5265,24 +5249,31 @@ header:has(+ main.about) {
   animation: spinner 0.8s linear infinite;
 }
 
-:is(button, .button)[aria-busy="true"] {
-  gap: 0.6em;
+/* A busy button is only the spinner, in the middle where its words were. The words stay, unseen, so the button keeps
+   its size and its name for a screen reader; the spinner is drawn in the words' own colour. */
+:is(button, .button)[aria-busy="true"],
+.file:has(> [aria-busy="true"]) > span {
+  position: relative;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
   cursor: progress;
+}
+
+:is(button, .button)[aria-busy="true"] > *,
+.file:has(> [aria-busy="true"]) > span > * {
+  visibility: hidden;
+}
+
+:is(button, .button)[aria-busy="true"]::after,
+.file:has(> [aria-busy="true"]) > span::after {
+  position: absolute;
+  inset: 0;
+  margin: auto;
 }
 
 @keyframes spinner {
   to {
     transform: rotate(1turn);
-  }
-}
-
-@keyframes running-line {
-  from {
-    transform: translateX(-100%);
-  }
-
-  to {
-    transform: translateX(250%);
   }
 }
 
@@ -5311,13 +5302,9 @@ video[data-loading] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-loading::before {
-    width: 100%;
-    animation: none;
-  }
-
   .spinner,
-  :is(button, .button)[aria-busy="true"]::after {
+  :is(button, .button)[aria-busy="true"]::after,
+  .file:has(> [aria-busy="true"]) > span::after {
     animation: none;
   }
 

@@ -170,14 +170,7 @@
 {/snippet}
 
 {#if screen === "pick"}
-  <QuestionScreen
-    heading="Where are your game's files?"
-    {counter}
-    {back}
-    {throwAway}
-    busyWords="Copying your game…"
-    busyLine="Copying your game can take a minute. Keep this page open."
-  >
+  <QuestionScreen heading="Where are your game's files?" {counter} {back} {throwAway}>
     {#if refusal !== null}
       {@render refusalCard(refusal)}
     {/if}
@@ -192,7 +185,9 @@
       />
     </div>
     {#if lookingUp !== null}
-      <p class="note" role="status" aria-busy="true">Looking up branches…</p>
+      <p class="note" aria-busy="true">
+        <span class="spinner" role="progressbar" aria-label="Looking up branches"></span>
+      </p>
     {/if}
     {#if files.sendsForReview}
       <p class="note">

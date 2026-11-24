@@ -112,7 +112,6 @@
   {throwAway}
   enterHint={!choosing}
   {keepOld}
-  busyWords="Saving…"
   bind:saving
   forward={choosing ? picker : undefined}
 >
@@ -144,9 +143,6 @@
   {#if chosen !== null && choosing}
     <p>{chosen.name} · {sizeWords(chosen.size)}</p>
   {/if}
-  {#if saving}
-    <p class="note" role="status">Adding your video. Keep this page open.</p>
-  {/if}
   {#if shown !== null}
     <p class="problem" id="problem" role="alert">
       {shown}
@@ -174,7 +170,7 @@
         takeChoice(event.currentTarget);
       }}
     />
-    <span id="clip-words">{saving ? "Adding your video…" : "Choose video"}</span>
+    <span id="clip-words">Choose video</span>
   </label>
   <!-- The button without script. With script the field sends itself, and this one only says where to send it. -->
   <button hidden={woke} bind:this={adder} formaction="?/clip" formenctype="multipart/form-data">

@@ -67,6 +67,20 @@ describe("every wait shows it", () => {
     expect(missing).toEqual([]);
   });
 
+  // Owner, 2026-11-22: "Async actions: remove the double feedback; show ONLY the spinner". A busy button keeps its own
+  // words (the look hides them and draws the spinner in their place), and no screen says it is waiting in words.
+  test("a wait shows only the spinner: no waiting words", () => {
+    const words = screens.flatMap(({ name, text }) =>
+      text
+        .replaceAll(/<!--[\s\S]*?-->/g, "")
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("//") && !line.trim().startsWith("*"))
+        .filter((line) => line.includes("…") || /\b(busyWords|busyLine)\b/.test(line))
+        .map((line) => `${name}: ${line.trim()}`),
+    );
+    expect(words).toEqual([]);
+  });
+
   test("every form with its own script has a busy button", () => {
     // Each such form on its own, from <form to </form> (forms never nest): a busy button in one form of a file does not
     // cover another.

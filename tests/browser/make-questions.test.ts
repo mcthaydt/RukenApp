@@ -307,9 +307,11 @@ test("a second press of Next while the first is out makes one game", async ({ pa
 
   await nextButton(page).click();
 
-  const busy = page.getByRole("button", { name: "Saving…" });
+  const busy = page.getByRole("button", { name: "Next" });
   await expect(busy).toBeDisabled();
   await expect(busy).toHaveAttribute("aria-busy", "true");
+  // Only the spinner shows: the button keeps its name, but its words are not drawn (owner: "show ONLY the spinner").
+  await expect(busy).toHaveCSS("-webkit-text-fill-color", "rgba(0, 0, 0, 0)");
   // Another press, from the keyboard, is not taken either.
   await box.press("Enter");
   expect(held.requestsSoFar()).toBe(1);
@@ -391,10 +393,10 @@ test("while the game is copied the button says so and cannot be pressed again", 
 
   await nextButton(page).click();
 
-  const busy = page.getByRole("button", { name: "Copying your game…" });
+  const busy = page.getByRole("button", { name: "Next" });
   await expect(busy).toBeDisabled();
   await expect(busy).toHaveAttribute("aria-busy", "true");
-  await expect(page.getByText("Copying your game can take a minute. Keep this page open.")).toBeVisible();
+  await expect(busy).toHaveCSS("-webkit-text-fill-color", "rgba(0, 0, 0, 0)");
   expect(held.requestsSoFar()).toBe(1);
   await showTheOwner(page, testInfo, "question 3, copying your game");
 
@@ -565,7 +567,8 @@ test("a video is added the moment it is chosen, then Next is the blue button", a
   const held = await holdAnswersTo(page, /\?\/clip/);
 
   await chooseVideo(page, videoFile("my-game-upright.mp4"));
-  await expect(pickerButton(page)).toHaveText("Adding your video…");
+  // The picker turns into the spinner: its words stay, but are not drawn.
+  await expect(pickerButton(page)).toHaveCSS("-webkit-text-fill-color", "rgba(0, 0, 0, 0)");
   await expect(videoField(page)).toBeDisabled();
   await showTheOwner(page, testInfo, "Question 5, a video being added");
   held.release();

@@ -66,9 +66,7 @@
       }}
     >
       <div class="acts">
-        <button disabled={sending} aria-busy={sending ? "true" : undefined}>
-          {sending ? "Copying your game…" : "Put it back on Ruken"}
-        </button>
+        <button disabled={sending} aria-busy={sending ? "true" : undefined}> Put it back on Ruken </button>
       </div>
       <p class="note">
         {#if sending}
