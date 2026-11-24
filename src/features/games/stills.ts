@@ -39,14 +39,15 @@ export function stillKeyFor(clipKey: string, second: number, width: StillWidth):
 }
 
 /**
- * The mark left where a still could not be made: `<folder>/<second>s-<width>.none`. The media tool may bill each call,
- * and the still address keeps no answer of "nothing" in anyone's browser, so without it every view of the clip would
- * ask the tool again. It holds the time of the failed try, and a day later the still is tried again, so a bad day of the
- * tool (a missing permission, an outage) never leaves a clip without a still for good. Kept in the clip's still folder,
- * so the clip's removal (or a new clip) clears it.
+ * The mark left where a still could not be made, at its moment or at the clip's start:
+ * `<folder>/<second>s-<width>.failed`. The media tool may bill each call, and the still address keeps no answer of
+ * "nothing" in anyone's browser, so without it every view of the clip would ask the tool again. It holds the time of the
+ * failed try, and a day later the still is tried again, so a bad day of the tool (a missing permission, an outage) never
+ * leaves a clip without a still for good. Kept in the clip's still folder, so the clip's removal (or a new clip) clears
+ * it. Marks named `.none` were left before the clip's start was tried too; they are not read, and go with the clip.
  */
 export function failedMarkFor(clipKey: string, second: number, width: StillWidth): string {
-  return `${stillFolderOf(clipKey)}${String(second)}s-${String(width)}.none`;
+  return `${stillFolderOf(clipKey)}${String(second)}s-${String(width)}.failed`;
 }
 
 /** How long a failed still waits before the media tool is asked again. */
@@ -93,17 +94,22 @@ export async function stillOf(
   const now = (deps.now ?? Date.now)();
   const lastFailed = await failedAt(deps.files, failed, now);
   if (lastFailed !== null && now - lastFailed < STILL_RETRY_MS) return { kind: "none" };
-  const clip = await deps.files.get(clipKey);
-  if (clip === null) return { kind: "none" };
-  try {
-    const bytes = await deps.frame(clip.body, { second, width });
-    await deps.files.put(key, bytes);
-    return { kind: "still", bytes };
-  } catch (error) {
-    (deps.log ?? console.error)(
-      `A still could not be made: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    await deps.files.put(failed, new TextEncoder().encode(String(now)));
-    return { kind: "none" };
+  // A moment past the end of a short clip (the landing page starts its repeats further in) has no frame, and a clip
+  // asked to start there plays from its beginning (loopByHand's restartAt), so that is the still it gets.
+  const tries = second === 0 ? [0] : [second, 0];
+  for (const at of tries) {
+    const clip = await deps.files.get(clipKey);
+    if (clip === null) return { kind: "none" };
+    try {
+      const bytes = await deps.frame(clip.body, { second: at, width });
+      await deps.files.put(key, bytes);
+      return { kind: "still", bytes };
+    } catch (error) {
+      (deps.log ?? console.error)(
+        `A still could not be made: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
+  await deps.files.put(failed, new TextEncoder().encode(String(now)));
+  return { kind: "none" };
 }
