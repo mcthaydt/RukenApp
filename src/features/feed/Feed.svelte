@@ -344,8 +344,9 @@
     const target = event.target instanceof Element ? event.target : null;
     // A field keeps its keys. Space presses a focused link or button, so it moves the clip only from nothing in particular.
     if (target?.closest("input, textarea, select, [contenteditable]") != null) return;
-    // An open sheet (Share, Report) keeps its keys: the feed behind it stays where it is.
-    if (target?.closest("dialog[open]") != null) return;
+    // While a sheet (Share, Report) is open the feed behind it stays where it is, wherever the focus is: a button inside
+    // a sheet can go away as the sheet changes what it shows, and the focus then falls to the page.
+    if (document.querySelector("dialog[open]") != null) return;
     if (event.key === " " && target?.closest("a, button, summary") != null) return;
     event.preventDefault();
     goTo((aim ?? current) + step);

@@ -756,7 +756,15 @@ test.describe("Share", () => {
       });
     });
     for (const key of ["ArrowDown", "PageDown", "ArrowUp", "PageUp"]) await page.keyboard.press(key);
+    // A sheet can lose its focus to the page while it stays open (a button inside it goes away when it changes what
+    // it shows, as Report's Send does). The keys are still not the feed's.
+    await page.evaluate(() => {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    });
+    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+    for (const key of ["ArrowDown", "PageDown"]) await page.keyboard.press(key);
     expect(await page.evaluate(() => (window as unknown as { taken: string[] }).taken)).toEqual([]);
+    await expect(sheet).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(sheet).toBeHidden();
     await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
