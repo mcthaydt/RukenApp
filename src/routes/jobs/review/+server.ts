@@ -16,6 +16,7 @@ import {
   sendBackSays,
   websitesWords,
 } from "../../../features/games/games.ts";
+import { moderationServices } from "../../../features/moderation/moderation.ts";
 import { playServices } from "../../../features/play/play.ts";
 import { prisma } from "../../../lib/server/db.ts";
 import { hasJobSecret } from "../../../lib/server/job-secret.ts";
@@ -63,6 +64,18 @@ export const POST: RequestHandler = async ({ request }) => {
         since: one.sentAt.toISOString(),
       })),
     });
+  }
+
+  if (order.do === "reports") {
+    // What players reported, until the admin portal takes reports over (slice 5). It names no reporter.
+    const reported = await moderationServices().reports.forReview();
+    const says =
+      reported.length === 0
+        ? "No game has been reported."
+        : reported.length === 1
+          ? "1 game has been reported."
+          : `${String(reported.length)} games have been reported.`;
+    return answer({ says, reported });
   }
 
   const game = await games.service.gameForReview(order.game);

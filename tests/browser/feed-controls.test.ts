@@ -107,9 +107,12 @@ const currentSlug = async (page: Page): Promise<string | null> =>
 
 test("only the clip on screen and the next are fetched before a person scrolls", async ({ page }) => {
   const asked = new Set<string>();
+  // A clip's still is asked for at /api/still/clips/…: a small picture, not the clip, so it is counted on its own.
+  const stills = new Set<string>();
   page.on("request", (request) => {
     const url = request.url().split("#")[0] ?? "";
-    if (url.includes("/clips/")) asked.add(url);
+    if (url.includes("/api/still/")) stills.add(url);
+    else if (url.includes("/clips/")) asked.add(url);
   });
   await openFeed(page);
   // The clip on screen has asked for its first bytes (the browser read its size), and the network has gone quiet.
@@ -126,6 +129,8 @@ test("only the clip on screen and the next are fetched before a person scrolls",
     .toBe(true);
   expect(asked.size).toBeGreaterThanOrEqual(1);
   expect(asked.size).toBeLessThanOrEqual(2);
+  // Stills are asked for only near the clip on screen: it and the three after it, at the top of the feed.
+  expect(stills.size).toBeLessThanOrEqual(4);
   const preloads = await page
     .locator("section video")
     .evaluateAll((videos) => videos.map((video) => (video as HTMLVideoElement).preload));
@@ -610,7 +615,7 @@ test("pressing the speaker flips sound for every clip, and it stays as set from 
     await expect(button).toHaveAttribute("aria-pressed", "false");
 });
 
-test("the press that opens the game never covers the speaker, Play, Share, the two links or the bar", async ({
+test("the press that opens the game never covers the speaker, Play, Share, Report, the two links or the bar", async ({
   page,
 }) => {
   await openFeed(page);
@@ -619,6 +624,7 @@ test("the press that opens the game never covers the speaker, Play, Share, the t
     clip.getByRole("button", { name: "Sound" }),
     clip.getByRole("link", { name: "Play", exact: true }),
     clip.getByRole("button", { name: "Share" }),
+    clip.getByRole("button", { name: "Report" }),
     clip.locator("a.gamelink"),
     page.getByRole("link", { name: "Home", exact: true }),
     page.getByRole("link", { name: "Add a game", exact: true }),
@@ -819,7 +825,7 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   await openFeed(page);
   const names: string[] = [];
   const outlines: string[] = [];
-  for (let presses = 0; presses < 9; presses += 1) {
+  for (let presses = 0; presses < 10; presses += 1) {
     await page.keyboard.press("Tab");
     const focused = await page.evaluate(() => {
       const element = document.activeElement;
@@ -838,7 +844,8 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   const play = names.indexOf("Play");
   expect(play).toBeGreaterThan(3);
   expect(names[play + 1]).toBe("Share");
-  expect(names[play + 2]).toBe("Sound");
+  expect(names[play + 2]).toBe("Report");
+  expect(names[play + 3]).toBe("Sound");
   for (const outline of outlines) expect(outline).not.toMatch(/^none/);
 });
 

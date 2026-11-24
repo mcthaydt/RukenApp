@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
   import { loads } from "../../lib/loads.ts";
+  import { stillPoster } from "../../lib/still-poster.ts";
   import { quietVideo } from "../../lib/quiet-video.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
 
@@ -59,6 +60,7 @@
         <article class="game">
           <video
             use:loads
+            use:stillPoster
             src={`${game.upright}#t=0.001`}
             preload="metadata"
             tabindex="-1"

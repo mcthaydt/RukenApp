@@ -1,0 +1,32 @@
+// The moderation feature's tables: what players tell Ruken about a game.
+
+/// What is wrong with a game, as the player picked it. The words people see are in src/features/moderation/reasons.ts.
+enum ReportReason {
+  sexual
+  gambling
+  ads
+  hateful
+  copied
+  broken
+  other
+}
+
+/// A player's report on a game: one per person and game. Sending again changes it; taking it back deletes the row, and
+/// so does deleting the account. A game is never deleted, so its reports stay until staff read them (slice 5).
+model GameReport {
+  id        String       @id @default(cuid(2))
+  userId    String
+  gameId    String
+  reason    ReportReason
+  /// The player's own words, 500 characters at most; null when they wrote nothing.
+  note      String?
+  /// When the report was first sent and last changed, on the server's clock.
+  madeAt    DateTime     @db.Timestamptz
+  changedAt DateTime     @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, gameId])
+  @@index([gameId])
+}

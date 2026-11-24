@@ -708,17 +708,30 @@ describe("a picture or a video while it loads", () => {
   });
 
   // Review of the video spinner, round 1: `.sheet.fix video { background: var(--sage) }` wiped the spinner off the
-  // Needs fixing card. Only the loading rules may draw a picture's or a video's background picture.
+  // Needs fixing card. Only the loading rules, and a video's still (which keeps the spinner on top of it, below), may
+  // draw a picture's or a video's background picture.
   it("no other rule on a picture or a video sets its background picture, or the background shorthand", () => {
     const rules = [...withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
     const others = rules
       .filter(([, selector = "", body = ""]) => {
         const media = /(^|[\s,>+~(])(img|video)\b/.test(selector);
         const loading = /img\[data-loading\],\s*video\[data-loading\]/.test(selector);
-        return media && !loading && /background(-image)?\s*:/.test(body);
+        const still = /^\s*video\[data-still\](\[data-loading\])?\s*$/.test(selector);
+        return media && !loading && !still && /background(-image)?\s*:/.test(body);
       })
       .map(([, selector = ""]) => selector.trim());
     expect(others).toEqual([]);
+  });
+
+  // A video's still sits under the video until its first frame comes (src/lib/still-poster.ts); while the video loads,
+  // the spinner still turns, on top of the still.
+  it("a loading video's still keeps the spinner on top of it, turning, and standing still for less motion", () => {
+    const rules = [...withoutComments.matchAll(/video\[data-still\]\[data-loading\]\s*\{([^{}]*)\}/g)].map(
+      (found) => found[1] ?? "",
+    );
+    expect(rules.length).toBe(2);
+    expect(rules[0]).toMatch(/background:\s*var\(--spinner-turning\)[^;]*?no-repeat,\s*var\(--still\)/);
+    expect(rules[1]).toMatch(/background-image:\s*var\(--spinner-still\),\s*var\(--still\)/);
   });
 
   it("under reduced motion, the spinner stands still and the shimmer stops", () => {

@@ -1,6 +1,6 @@
 <!--
   A game's page (spec 3, the Bento page): one grid of tiles. The clip with the name and the one line over it, a tile
-  for Play and what it costs, one each for the age, where it plays and Share, the two clips to pick from, who made
+  for Play and what it costs with Share and Report, one each for the age and where it plays, the two clips to pick from, who made
   it, and more from the maker. Everything a person needs before pressing Play is a plain sentence. It reads without script: the upright clip shows with its own controls and Play is a link. With
   script the clip box takes the window's shape, the two tiles switch clips, pressing the clip opens it full size with
   sound, and a coarse pointer makes "computer" read "tablet".
@@ -9,9 +9,11 @@
   import Icon from "../../../lib/icon.svelte";
   import { gameTitle } from "../../../lib/titles.ts";
   import { loads } from "../../../lib/loads.ts";
+  import { stillPoster } from "../../../lib/still-poster.ts";
   import { onMount } from "svelte";
   import { quietVideo } from "../../../lib/quiet-video.ts";
   import { WishlistButton } from "../../../features/launch/launch.browser.ts";
+  import { ReportSheet, type ReportSheetControl } from "../../../features/moderation/moderation.browser.ts";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
@@ -26,6 +28,7 @@
   let viewer = $state<HTMLDialogElement>();
   let opened = $state(false);
   let sharedNote = $state("");
+  let reportSheet = $state<ReportSheetControl>();
 
   const device = $derived(data.device === "computer" && tablet ? "tablet" : data.device);
   const joinAt = $derived(`/join?next=${encodeURIComponent(`/g/${data.slug}`)}`);
@@ -84,6 +87,7 @@
         {#key shape}
           <video
             use:loads
+            use:stillPoster
             src={`${data.clips[shape]}#t=0.001`}
             preload="metadata"
             tabindex={enhanced ? -1 : undefined}
@@ -133,7 +137,18 @@
             <p class="costline">{COST_WORDS[data.cost]}</p>
           {/if}
         </div>
-        <button type="button" class="outline" onclick={share}>Share</button>
+        <div class="ways">
+          <button type="button" class="outline" onclick={share}>Share</button>
+          {#if enhanced}
+            <button
+              type="button"
+              class="outline"
+              onclick={(event) => {
+                reportSheet?.open({ slug: data.slug, name: data.name }, event.currentTarget);
+              }}>Report</button
+            >
+          {/if}
+        </div>
         {#if sharedNote !== ""}
           <p class="note" role="status">{sharedNote}</p>
         {/if}
@@ -176,6 +191,7 @@
             >
               <video
                 use:loads
+                use:stillPoster
                 class="tile"
                 src={`${data.clips.upright}#t=0.001`}
                 preload="metadata"
@@ -193,6 +209,7 @@
             >
               <video
                 use:loads
+                use:stillPoster
                 class="tile"
                 src={`${data.clips.wide}#t=0.001`}
                 preload="metadata"
@@ -230,6 +247,7 @@
               <a href={`/g/${game.slug}`}>
                 <video
                   use:loads
+                  use:stillPoster
                   class="tile"
                   src={`${game.wideClip}#t=0.001`}
                   preload="metadata"
@@ -252,9 +270,11 @@
   {#if opened}
     <!-- A game's videos are silent, so there is nothing to caption. -->
     <!-- svelte-ignore a11y_media_has_caption -->
-    <video use:loads src={data.clips[shape]} controls autoplay playsinline></video>
+    <video use:loads use:stillPoster src={data.clips[shape]} controls autoplay playsinline></video>
   {/if}
   <button type="button" class="safe" onclick={() => viewer?.close()} aria-label="Close"
     ><Icon name="close" /></button
   >
 </dialog>
+
+<ReportSheet bind:this={reportSheet} />

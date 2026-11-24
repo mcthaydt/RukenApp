@@ -69,6 +69,12 @@ test("Ruken opens straight into the feed, with the right clip for the screen", a
   const first = isUpright(page) ? "upright" : "wide";
   const other = first === "upright" ? "wide" : "upright";
   await expect(video).toHaveAttribute("src", new RegExp(`/${first}-[0-9a-f]{16}\\.`));
+  // Until its first frame comes, the clip shows its still: the same clip's opening frame, under the video.
+  const clipKey = /(clips\/[^#]+)/.exec((await video.getAttribute("src")) ?? "")?.[1] ?? "no clip";
+  await expect(video).toHaveAttribute("data-still", "");
+  expect(await video.evaluate((node) => node.style.getPropertyValue("--still"))).toContain(
+    `/api/still/${clipKey}?at=0&width=`,
+  );
   const size = page.viewportSize();
   if (size === null) throw new Error("the window has a size");
   await page.setViewportSize({ width: size.height, height: size.width });
