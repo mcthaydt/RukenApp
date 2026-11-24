@@ -56,3 +56,13 @@ CRUD: reports are still created, read, updated and deleted in the browser journe
 
 - **N1. The `flag` picture is now unused.** UNIT: `src/lib/icon.svelte`. REASON: #378 added `"flag"` to the `name` union, its path and the comment "a flag (report)" for the feed button only; the game page's Report is a word button and never used it. EVIDENCE: `grep -rn 'name="flag"' src` finds nothing. EXPECTED: no picture with no user. FIX: drop `"flag"` from the union, its `{:else if}` branch and the comment's "and a flag (report)"; file `src/lib/icon.svelte` only. No criterion covers it, so it does not block.
 - **N2. The spec's older lines still describe the feed flag.** UNIT: `docs/superpowers/specs/2026-11-24-report-a-game-design.md`. The new dated line says the feed flag is gone and criterion 1 starts on the game's page, but the "Where" bullet still describes the flag under Share, and criterion 1 still reads "presses Report on a clip in the feed". A reader who skips the dated line gets the old design. A strike-through or a short edit of those two lines would settle it.
+
+## Re-point to `d7ac076` (2026-11-24 15:21 UTC)
+
+The PASS above now covers `d7ac076`, the merge of `main` at `c6ee45d` (#390 spinner-only buttons, #391 share sheet slide) into the branch.
+
+- The pull request's own change is unchanged: `git diff d5988b3 4b832c2` and `git diff c6ee45d d7ac076`, outside `progress.md`, differ only in `feed-controls.test.ts` hunk line numbers (#391 added share-sheet tests above the Tab test). The merge's `progress.md` keeps both sides' Stages rows.
+- What `main` brought in touches the feed and report code only through its own reviewed changes: `ShareSheet.svelte` (the slide) and `ReportSheet.svelte` (busy words replaced by the spinner, #390). No line names a Report on the feed (`grep -n Report` over `tests/browser/feed-controls.test.ts` and `src/features/feed/*.svelte`: only `ShareSheet.svelte:3`'s mention of the Report sheet).
+- At `d7ac076`, in the same image: `sideways-phone`, `feed-controls`, `report-a-game`, `glass` and `game-page` journeys on phone, tablet and computer, 216 of 216 pass.
+- CI's quick run on `d7ac076`: gate, verify, postgres, browser shards 1 to 6, pr-rules and commit-authors all green.
+- Notes N1 and N2 stand.
