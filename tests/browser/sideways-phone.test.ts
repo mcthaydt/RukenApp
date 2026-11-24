@@ -100,19 +100,11 @@ for (const phone of PHONES) {
       expect(Math.abs(share.x + share.width / 2 - (rail.x + rail.width / 2))).toBeLessThanOrEqual(2);
       expect(share.y).toBeGreaterThanOrEqual(rail.y + rail.height);
       expect(share.y + share.height).toBeLessThanOrEqual(phone.viewport.height);
-      // Report stands on Share's row, to its left, clear of the bar, of Share and of the words, inside the window.
-      const report = await boxOf(clip.getByRole("button", { name: "Report" }));
-      expect(report.y).toBeGreaterThanOrEqual(rail.y + rail.height);
-      expect(report.y + report.height).toBeLessThanOrEqual(phone.viewport.height);
-      expect(report.x).toBeGreaterThanOrEqual(0);
-      expect(report.x + report.width).toBeLessThanOrEqual(share.x);
-      expect(Math.abs(report.y - share.y)).toBeLessThanOrEqual(2);
       // The words sit at the foot and take at most half the window's height, so the clip shows above them.
       const band = await boxOf(clip.locator(".band"));
       const window = page.viewportSize() ?? { width: 0, height: 0 };
       expect(band.height).toBeLessThanOrEqual(window.height / 2);
       expect(band.y + band.height).toBeLessThanOrEqual(window.height);
-      expect(band.x + band.width).toBeLessThanOrEqual(report.x);
       // Play is on the same row as the game's name.
       const play = await boxOf(clip.getByRole("link", { name: "Play", exact: true }));
       const name = await boxOf(clip.getByRole("heading", { level: 2 }));

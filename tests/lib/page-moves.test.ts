@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { moveBetween } from "../../src/lib/page-moves.ts";
+import { clipMoves, grownGame, moveBetween, noteMove } from "../../src/lib/page-moves.ts";
 
 // Moving between pages slides sideways, like an app. Between the bar's three places (Home, Your games, You) the new
 // page comes from the side its place is on; elsewhere a new page comes in from the right and Back takes it out the
@@ -48,5 +48,43 @@ describe("moveBetween", () => {
   it("does not take a path that only starts with a place's letters for that place", () => {
     expect(moveBetween("/", "/mekong", false)).toBe("on");
     expect(moveBetween("/mekong", "/make", false)).toBe("on");
+  });
+});
+
+describe("grownGame", () => {
+  it("names the game whose clip moves between the feed and that game's page, either way", () => {
+    expect(grownGame("/", "/g/tiny")).toBe("tiny");
+    expect(grownGame("/g/tiny", "/")).toBe("tiny");
+  });
+
+  it("names none for any other move, the play screen and a maker's page included", () => {
+    expect(grownGame("/", "/g/tiny/play")).toBeNull();
+    expect(grownGame("/g/tiny/play", "/")).toBeNull();
+    expect(grownGame("/", "/night")).toBeNull();
+    expect(grownGame("/make", "/g/tiny")).toBeNull();
+    expect(grownGame("/g/tiny", "/g/other")).toBeNull();
+  });
+});
+
+describe("clipMoves, back to the feed", () => {
+  it("shrinks the clip only with Back, and only for the game opened from the feed", () => {
+    noteMove("tiny", "/g/tiny");
+    expect(clipMoves("tiny", true, true)).toBe(true);
+    expect(clipMoves("tiny", true, false)).toBe(false);
+    expect(clipMoves("other", true, true)).toBe(false);
+  });
+
+  it("forgets the game once the person is on the feed again, so a game page opened another way slides back", () => {
+    noteMove("tiny", "/g/tiny");
+    noteMove(null, "/");
+    expect(clipMoves("tiny", true, true)).toBe(false);
+  });
+
+  it("keeps the game through moves that are not to the feed, such as the play screen and back", () => {
+    noteMove("tiny", "/g/tiny");
+    noteMove(null, "/g/tiny/play");
+    noteMove(null, "/g/tiny");
+    expect(clipMoves("tiny", true, true)).toBe(true);
+    noteMove(null, "/");
   });
 });

@@ -6,7 +6,7 @@ import { gameWhere, reviewJob } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
-// Reporting a game (report-a-game spec): a player says what is wrong from the feed or the game's page, sees it again,
+// Reporting a game (report-a-game spec): a player says what is wrong from the game's page, sees it again,
 // changes it and takes it back; the owner reads reports through the review command, which names no reporter.
 
 const SITE = "http://localhost:4173";
@@ -63,24 +63,34 @@ async function reportedOf(
   return { entry: body.reported.find((one) => one.game === slug), text };
 }
 
-/** Opens the game's clip in the feed and presses its Report. */
-async function reportFromFeed(page: Page, slug: string): Promise<void> {
-  await page.goto("/");
-  const clip = page.locator(`section[data-slug="${slug}"]`).first();
-  await clip.scrollIntoViewIfNeeded();
-  await clip.getByRole("button", { name: "Report" }).click();
+/** Opens the game's page and presses its Report. */
+async function reportFromGamePage(page: Page, slug: string): Promise<void> {
+  await page.goto(`/g/${slug}`);
+  await pageHasSettled(page);
+  await page.getByRole("button", { name: "Report", exact: true }).click();
   await expect(sheet(page).getByRole("heading", { name: "Report this game" })).toBeVisible();
 }
 
-test("a player reports a game from the feed, sees it again, changes it and takes it back", async ({
+test("a player goes from the feed to a game's page, reports it, sees it again, changes it and takes it back", async ({
   page,
   browser,
 }, testInfo) => {
   test.setTimeout(120_000);
   const player = await signUp(page);
 
+  // The feed has no Report (owner, 2026-11-24): a press on the game's name opens its page, where Report is.
+  await page.goto("/");
+  const clip = page.locator(`section[data-slug="${live.slug}"]`).first();
+  await clip.scrollIntoViewIfNeeded();
+  await expect(clip.getByRole("button", { name: "Share" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Report" })).toHaveCount(0);
+  await clip.locator("a.gamelink").click();
+  await expect(page).toHaveURL(`/g/${live.slug}`);
+  await pageHasSettled(page);
+
   // Create.
-  await reportFromFeed(page, live.slug);
+  await page.getByRole("button", { name: "Report", exact: true }).click();
+  await expect(sheet(page).getByRole("heading", { name: "Report this game" })).toBeVisible();
   await expect(sheet(page).getByText(live.name)).toBeVisible();
   await showTheOwner(page, testInfo, "the Report sheet");
   await sheet(page).getByLabel("Gambling").check();
@@ -100,7 +110,7 @@ test("a player reports a game from the feed, sees it again, changes it and takes
   expect(read.text).not.toContain(player.number.slice(2));
 
   // Read: opening it again shows what was sent.
-  await reportFromFeed(page, live.slug);
+  await reportFromGamePage(page, live.slug);
   await expect(sheet(page).getByText("You reported this game.")).toBeVisible();
   await expect(sheet(page).getByLabel("Gambling")).toBeChecked();
   await expect(sheet(page).getByLabel("Tell us more (you don't have to)")).toHaveValue(
@@ -127,7 +137,7 @@ test("a player reports a game from the feed, sees it again, changes it and takes
 
   // Delete.
   await sheet(page).getByRole("button", { name: "Done" }).click();
-  await reportFromFeed(page, live.slug);
+  await reportFromGamePage(page, live.slug);
   await sheet(page).getByRole("button", { name: "Take back my report" }).click();
   await expect(sheet(page).getByText("Your report is gone.")).toBeVisible();
   read = await reportedOf(page, browser, live.slug);
