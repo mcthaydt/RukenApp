@@ -6,20 +6,20 @@ The owner, 2026-11-24 14:22 UTC, on the reasons card ("Add two more report reaso
 
 Lane 3: the reasons are a Postgres enum (`ReportReason`), so adding two is a migration (`prisma/migrations/`). It also touches `prisma/schema/` (lane 2). Plan audit on this brief, implementation audit on the build, both in one pull request. Merge permission: the owner's standing permission of 2026-11-21 19:16 UTC once the audits pass and CI is green. No new dependency, tool, service or spend.
 
-**The migration only adds.** Two statements, `ALTER TYPE "ReportReason" ADD VALUE 'violence';` and `ALTER TYPE "ReportReason" ADD VALUE 'scam';`, nothing else. Postgres cannot drop an enum value, so the way back is forward only; the values stay in the type either way.
+**The migration only adds.** Two statements, `ALTER TYPE "ReportReason" ADD VALUE 'violence';` and `ALTER TYPE "ReportReason" ADD VALUE 'scam';`, nothing else. Postgres cannot drop an enum value, so the values stay in the type either way.
 
-**Rolling the site back.** Old code (today's `main`) on the new schema is safe until someone sends one of the new reasons. After that, old code would read a row it has no words for: the review command would show an empty reason for it, and the sheet would open that person's report with nothing picked. Nothing breaks and nothing is lost. A rollback (`pnpm exec wrangler rollback`) is safe, and those few reports show their full words again once the site rolls forward. The database test checks that a row with a new reason reads back through the service and the review command.
+**Forward only.** This change cannot be safely rolled back once anyone has sent one of the new reasons. Today's code (the `main` before this change) reads a report's reason through the generated client, which knows only the seven old values. A `violence` or `scam` row makes it throw in `reports.mine` (the sheet would fail to open for that person on that game) and in `forReview` (the review command would fail for everyone). So the way out of a bad deploy is a fix forward, not `pnpm exec wrangler rollback`. A rollback is safe only in the window before the first new-reason report. After that it would first need the new-reason rows changed to `other`, a write of real data that waits for the owner. The change is small (two enum values, two words) and is checked on three devices before it merges, so fixing forward is the plan.
 
 Expected duration: about 1 hour of building, plus the audits.
 
 ## What a person sees
 
-The sheet's list, in this order (the owner's rule about porn, gambling and ads comes first, harm next, then the rest):
+The sheet's list, in this order. The owner's three rules (no porn, gambling or ads) stay first, as `reasons.test.ts` holds; the owner did not choose an order for the rest:
 
 1. Sexual content
-2. Graphic violence (new)
-3. Gambling
-4. Ads
+2. Gambling
+3. Ads
+4. Graphic violence (new)
 5. Hate or bullying
 6. A scam or steals your info (new)
 7. Copied from someone else
