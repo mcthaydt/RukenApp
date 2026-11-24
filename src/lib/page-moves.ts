@@ -61,7 +61,8 @@ export function clipOf(game: string): HTMLElement | null {
 /**
  * The game whose clip last grew out of the feed, until the person is on the feed again. Going back to the feed, the clip
  * shrinks into it only for that game and only with the browser's Back, which puts the feed back on the clip that was
- * left; any other way to the feed (Home, the game's back arrow, a game page opened from a link) opens the feed at its
+ * left (the game page's back arrow is that Back when it can be, see backToFeed); any other way to the feed (Home, a game
+ * page opened from a link) opens the feed at its
  * top, where the clip on screen is another game's, so that move slides like any other.
  */
 let openedFromFeed: string | null = null;
@@ -72,10 +73,31 @@ export function clipMoves(game: string, toFeed: boolean, wentBack: boolean): boo
   return clipOf(game) !== null;
 }
 
-/** Notes where a move went: the game opened from the feed, or none once the person is on the feed again. */
-export function noteMove(game: string | null, to: string): void {
-  if (game !== null && to !== "/") openedFromFeed = game;
-  else if (to === "/") openedFromFeed = null;
+/** How many pages deep the person is in this visit's history: each page opened adds one, Back takes one away. */
+let depth = 0;
+
+/** The depth of the feed the game in `openedFromFeed` was opened from. */
+let feedDepth = 0;
+
+/**
+ * Notes where a move went: the game opened from the feed, or none once the person is on the feed again. `steps` is how
+ * far the move went in the history: one for a page opened, the browser's own count for Back or Forward.
+ */
+export function noteMove(game: string | null, to: string, steps = 1): void {
+  depth += steps;
+  if (game !== null && to !== "/") {
+    openedFromFeed = game;
+    feedDepth = depth - steps;
+  } else if (to === "/") openedFromFeed = null;
+}
+
+/**
+ * Whether the game's page now on screen was opened straight from the feed's clip, so its back arrow can be the browser's
+ * Back: the feed comes back on the clip that was left and the clip shrinks into it (the owner, 2026-11-24: "it also
+ * only transitions one way, not from game page back to feed"). A page opened any other way keeps the plain link.
+ */
+export function backToFeed(game: string): boolean {
+  return openedFromFeed === game && depth === feedDepth + 1;
 }
 
 /** Each move that names a clip names it as its own, so a move that ends late never takes a later move's name away. */

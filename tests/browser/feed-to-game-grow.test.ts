@@ -102,6 +102,46 @@ test("a game opened from the feed grows out of its clip, and Back shrinks it int
   await expect.poll(() => namedLeft(page)).toBe(0);
 });
 
+test("the game page's back arrow shrinks the clip into the feed, on the clip that was left", async ({
+  page,
+}) => {
+  test.skip(
+    !(await page.evaluate(() => "startViewTransition" in document)),
+    "this browser has no view transitions, so every move comes at once",
+  );
+  await watchMoves(page);
+  const clip = await openFeedAt(page);
+
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  expect(await moves(page)).toEqual(["clip moved"]);
+
+  await page.getByRole("link", { name: "Back to the feed" }).click();
+  await expect(page).toHaveURL("/");
+  await expect(clip).toHaveAttribute("data-current", "true");
+  expect(await lastMove(page)).toBe("grow");
+  expect(await moves(page)).toEqual(["clip moved", "clip moved"]);
+  await expect.poll(() => namedLeft(page)).toBe(0);
+  // It was the browser's Back: nothing ahead of the feed was added, so Forward opens the game again.
+  await page.goForward();
+  await expect(page).toHaveURL(`/g/${game.slug}`);
+});
+
+test("the back arrow on a game's page opened another way goes to the feed with a slide", async ({ page }) => {
+  test.skip(
+    !(await page.evaluate(() => "startViewTransition" in document)),
+    "this browser has no view transitions, so every move comes at once",
+  );
+  await watchMoves(page);
+  await page.goto(`/g/${game.slug}`);
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await pageHasSettled(page);
+  await page.getByRole("link", { name: "Back to the feed" }).click();
+  await expect(page).toHaveURL("/");
+  expect(await lastMove(page)).toBe("back");
+  expect(await moves(page)).toEqual(["played"]);
+});
+
 test("Play in the feed still slides to the game, with no clip moving", async ({ page }) => {
   test.skip(
     !(await page.evaluate(() => "startViewTransition" in document)),
