@@ -228,7 +228,7 @@ async function pictureGap(page: Page, one: Buffer, other: Buffer): Promise<numbe
   );
 }
 
-test("the bar is drawn at the end of Back, as it is once the feed has settled", async ({
+test("the bar is drawn four fifths of the way through Back, as strongly as on the settled feed", async ({
   page,
 }, testInfo) => {
   test.skip(
@@ -245,21 +245,38 @@ test("the bar is drawn at the end of Back, as it is once the feed has settled", 
   const bar = page.getByRole("navigation", { name: "Ruken" });
   const where = await bar.boundingBox();
   if (where === null) throw new Error("the feed has no bar");
+  // How much the bar shows on the settled feed: its place with the bar, against the same place with it hidden. A hidden
+  // bar leaves the accessibility tree, so it is held by its handle while it is hidden.
+  const shown = await bar.elementHandle();
+  const withBar = await page.screenshot({ clip: where, animations: "allow" });
+  await shown.evaluate((element) => {
+    element.style.visibility = "hidden";
+  });
+  const withoutBar = await page.screenshot({ clip: where, animations: "allow" });
+  await shown.evaluate((element) => {
+    element.style.visibility = "";
+  });
+  await shown.dispose();
   await clip.getByRole("link", { name: game.name }).click();
   await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
   await pageHasSettled(page);
 
-  // Back, held at its last moment: every animation of the move paused at its end.
+  // Back, held four fifths of the way through, with the bar over the clip: its place must show the bar at least three
+  // quarters as strongly as the settled feed does. In Chrome's engine the bar shows there at every moment of Back, on
+  // main as here (the order of the bar's pictures is checked by the journey above); this check is for an engine that
+  // leaves the bar out during the move.
   await page.evaluate(() => {
     const start = document.startViewTransition.bind(document);
     document.startViewTransition = ((update: ViewTransitionUpdateCallback) => {
       const move = start(update);
       void move.ready.then(() => {
-        for (const one of document.documentElement.getAnimations({ subtree: true })) {
-          const end = Number(one.effect?.getComputedTiming().endTime);
-          if (!Number.isFinite(end)) continue;
+        const timed = document.documentElement
+          .getAnimations({ subtree: true })
+          .filter((one) => Number.isFinite(Number(one.effect?.getComputedTiming().endTime)));
+        const end = Math.max(...timed.map((one) => Number(one.effect?.getComputedTiming().endTime)));
+        for (const one of timed) {
           one.pause();
-          one.currentTime = end - 1;
+          one.currentTime = end * 0.8;
         }
         document.documentElement.dataset.held = "yes";
       });
@@ -269,30 +286,22 @@ test("the bar is drawn at the end of Back, as it is once the feed has settled", 
   await page.getByRole("link", { name: "Back to the feed" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
   const held = await page.screenshot({ clip: where, animations: "allow" });
+  // The same held moment with the bar's pictures hidden: what is left is the clip and the page.
+  await page.addStyleTag({ content: "::view-transition-group(tabs) { visibility: hidden; }" });
+  const heldBare = await page.screenshot({ clip: where, animations: "allow" });
   await page.evaluate(() => {
     for (const one of document.documentElement.getAnimations({ subtree: true }))
       if (Number.isFinite(Number(one.effect?.getComputedTiming().endTime))) one.finish();
   });
   await expect(clip).toHaveAttribute("data-current", "true");
-  await pageHasSettled(page);
-  const settled = await page.screenshot({ clip: where, animations: "allow" });
-  // The same place with the bar hidden: the held picture must be nearer the settled bar than the bare clip, so a clip
-  // that has moved on a frame does not decide it.
-  // A hidden bar leaves the accessibility tree, so it is held by its handle while it is hidden.
-  const shown = await bar.elementHandle();
-  await shown.evaluate((element) => {
-    element.style.visibility = "hidden";
-  });
-  const bare = await page.screenshot({ clip: where, animations: "allow" });
-  await shown.evaluate((element) => {
-    element.style.visibility = "";
-  });
-  await testInfo.attach("held", { body: held, contentType: "image/png" });
-  await testInfo.attach("settled", { body: settled, contentType: "image/png" });
-  await testInfo.attach("bare", { body: bare, contentType: "image/png" });
-  const toBar = await pictureGap(page, held, settled);
-  const toBare = await pictureGap(page, held, bare);
-  expect(toBar, `the held picture is ${String(toBare)} from the bare clip`).toBeLessThan(toBare / 2);
+
+  for (const [name, body] of Object.entries({ withBar, withoutBar, held, heldBare }))
+    await testInfo.attach(name, { body, contentType: "image/png" });
+  const settledBar = await pictureGap(page, withBar, withoutBar);
+  const heldBar = await pictureGap(page, held, heldBare);
+  expect(heldBar, `the settled bar stands ${String(settledBar)} from the clip`).toBeGreaterThan(
+    settledBar * 0.75,
+  );
 });
 
 test("the back arrow on a game's page opened another way goes to the feed with a slide", async ({ page }) => {
