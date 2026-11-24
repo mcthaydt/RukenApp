@@ -5329,6 +5329,19 @@ html.lenis body {
   overflow: hidden;
 }
 
+/* Inside the app no scrollbar shows (the owner, 2026-11-23: "scrollbar is for landing page only"), like an app on a
+   phone. Every screen still scrolls by touch, wheel and keys; only the bar is gone. Safari before 18.2 knows only the
+   -webkit- form, so both are here. */
+:root:not(:has(main.about)),
+:root:not(:has(main.about)) * {
+  scrollbar-width: none;
+}
+
+:root:not(:has(main.about))::-webkit-scrollbar,
+:root:not(:has(main.about)) ::-webkit-scrollbar {
+  display: none;
+}
+
 /* On the landing page the scrollbar is Ruken's own: a thin Glaucous Green thumb on black (the owner, 2026-11-22:
    "a custom scrollbar for this page"). */
 html:has(main.about) {
