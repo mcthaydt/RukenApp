@@ -12,6 +12,7 @@ Expected duration: about 4 hours of building, plus the audits.
 
 ## What a person sees
 
+- **Changed 2026-11-24 14:11 UTC (owner):** "We don't need the report button on the feed view, we can click to go to the game to see that." Report is on the game's page only; the feed flag below is gone, and criterion 1 starts on the game's page.
 - **Where.** A Report button on every clip in the feed (a round glass flag under Share, named "Report" by its `aria-label` only, as Share is: design 5.1 keeps Play the only button with words) and on every game's page (an outline "Report" button beside Share). Both open the same sheet. Both are there only once the page's script runs, since the sheet needs it. Design 5.1's sketch gives ⚑ to Save and "⋯" to report; a flag is the clearer sign for Report, so Report takes it, and Save (later) takes a bookmark.
 - **The sheet.** A frosted-glass panel over a dimmed screen, built from the glass tokens (no browser `alert`, `confirm` or `prompt`, and no new kind of surface). It fits the window: on a short phone its list scrolls inside the sheet, never the page behind. Escape and the close icon shut it, and focus goes back to the button that opened it.
   - Heading "Report this game", then "What's wrong?" and one big choice per reason:
