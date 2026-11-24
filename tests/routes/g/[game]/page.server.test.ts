@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 // ends, and this test fails on its timeout.
 
 const asked: string[] = [];
-const EVERY_QUESTION = ["isMember", "pageOf", "moreLiveGamesBy", "screenFor", "sittingOf", "playersThisWeek"];
+const EVERY_QUESTION = ["isMember", "cardOf", "moreLiveGamesBy", "screenFor", "sittingOf", "playersThisWeek"];
 let allAsked: () => void = () => {};
 let gate = new Promise<void>((open) => {
   allAsked = open;
@@ -61,7 +61,7 @@ vi.mock("../../../../src/features/pages/pages.ts", async (original) => ({
   ...(await original<object>()),
   pagesServices: () => ({
     service: {
-      pageOf: question("pageOf", {
+      cardOf: question("cardOf", {
         handle: "night",
         name: "Night Owl",
         oneLine: "Hard games.",
