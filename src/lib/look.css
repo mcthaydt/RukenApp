@@ -87,12 +87,19 @@
   --text-small: 400 0.875rem/1.45 var(--font-text); /* notes only, 14px */
   --text-button: 600 1.125rem/1.2 var(--font-text); /* buttons */
 
-  /* Shape. Cards and panels have 20px corners and every button 12px ones. No borders or hairline
-     rules except on real form fields; no shadow at rest, but for the glass's lens edge and the shadow under words
-     on it (below). */
-  --radius-card: 20px;
-  --radius-field: 14px;
-  --radius-button: 12px;
+  /* Shape. Ruken's own corner (the owner, 2026-11-24: "a long ease ... twice as far out, then melt into the
+     edge"; "soft"): a superellipse whose curve starts twice as far from the corner as the old round one and eases
+     into the straight edge, so it never shows where the curve begins. 1.4 is soft; 2 would be a boxy squircle and 1
+     a plain circle. Every rounded corner reads these tokens and nothing else; a small button's corners meet in the
+     middle, so it is nearly a pill. A true circle sets `--corner: round` (below).
+     No borders or hairline rules except on real form fields; no shadow at rest, but for the glass's lens edge and
+     the shadow under words on it (below). */
+  --corner-shape: superellipse(1.4);
+  --radius-card: 40px;
+  --radius-field: 28px;
+  --radius-button: 24px;
+  --radius-small: 16px;
+  --radius-tiny: 8px;
   --size-target: 48px; /* the least height of a button or a field */
   --width-read: 40rem; /* the widest a column of reading goes */
 
@@ -160,12 +167,32 @@
   }
 }
 
+/* A browser that cannot draw the shape draws plain round corners instead, at about four fifths of the reach, so they
+   sit as deep as the shape's would and never turn into blobs. */
+@supports not (corner-shape: superellipse(1.4)) {
+  :root {
+    --radius-card: 32px;
+    --radius-field: 22px;
+    --radius-button: 19px;
+    --radius-small: 13px;
+    --radius-tiny: 6px;
+  }
+}
+
+/* One element's own corner, where it is not Ruken's: a true circle (a photo, the spinner, a round mark) sets
+   `--corner: round` beside its 50%. It is not handed down, so what sits inside a circle keeps Ruken's corner. */
+@property --corner {
+  syntax: "*";
+  inherits: false;
+}
+
 /* The page itself. Space comes only from the rules here: the browser's own margins on headings and
-   paragraphs are dropped. */
+   paragraphs are dropped. Every corner takes Ruken's shape; it changes only what has a radius. */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+  corner-shape: var(--corner, var(--corner-shape));
 }
 
 body {
@@ -1347,7 +1374,7 @@ form > * + button:not(.quiet) {
   place-items: center;
   width: 1.75rem;
   height: 1.75rem;
-  border-radius: 8px;
+  border-radius: var(--radius-small);
   color: var(--pay);
   font: 600 1.25rem / 1 var(--font-text);
 }
@@ -1472,7 +1499,7 @@ form > * + button:not(.quiet) {
 .key kbd {
   margin-left: 0.25rem;
   padding: 0.3125rem 0.5rem;
-  border-radius: 6px;
+  border-radius: var(--radius-small);
   background: var(--felt-raised);
   color: var(--chalk);
   font: 600 0.875rem / 1 var(--font-text);
@@ -1651,7 +1678,7 @@ form > * + button:not(.quiet) {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius-small);
   background: var(--sage);
   object-fit: cover;
 }
@@ -1666,7 +1693,7 @@ form > * + button:not(.quiet) {
   align-items: center;
   justify-content: center;
   margin-top: 1.5rem;
-  border-radius: 12px;
+  border-radius: var(--radius-button);
   background: var(--felt-raised);
   color: var(--chalk);
   font: var(--text-statement);
@@ -2144,7 +2171,7 @@ a.foot:active {
 .tiles figure > div {
   height: var(--tile-height);
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--radius-small);
 }
 
 .tiles figure > [data-shape="upright"] {
@@ -2297,7 +2324,7 @@ a.foot:active {
 .badge {
   display: inline-block;
   padding: 0.25rem 0.625rem;
-  border-radius: 8px;
+  border-radius: var(--radius-small);
   background: var(--pip);
   color: var(--chalk);
   font: var(--text-small);
@@ -2312,7 +2339,7 @@ a.foot:active {
 .chip {
   display: inline-block;
   padding: 0.375rem 0.75rem;
-  border-radius: 8px;
+  border-radius: var(--radius-small);
   background: var(--felt-raised);
   color: var(--chalk);
   font: var(--text-small);
@@ -2826,7 +2853,7 @@ a.sheet.fix {
 .sheet.fix video {
   display: block;
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius-small);
   object-fit: cover;
 }
 
@@ -3330,7 +3357,7 @@ main.helpdesk {
   width: 1.75rem;
   height: 1.75rem;
   border: 2px solid currentColor;
-  border-radius: 8px;
+  border-radius: var(--radius-small);
 }
 
 .card.bold .plan:has(input:checked) .mark {
@@ -3363,7 +3390,7 @@ main.helpdesk {
   top: -0.8rem;
   right: 1rem;
   padding: 0.125rem 0.625rem;
-  border-radius: 8px;
+  border-radius: var(--radius-small);
   background: var(--sage);
   color: var(--ink);
   font: var(--text-button);
@@ -3660,6 +3687,7 @@ main.helpdesk {
   width: 38vmin;
   height: 38vmin;
   border-radius: 50%;
+  --corner: round;
   background: var(--sage);
   opacity: 0.12;
 }
@@ -4068,6 +4096,7 @@ main.gamepage {
 .gamepage .madeby img {
   flex: none;
   border-radius: 50%;
+  --corner: round;
   object-fit: cover;
 }
 
@@ -4931,7 +4960,7 @@ header:has(+ main.about) {
   justify-self: center;
   width: min(100%, 17rem);
   padding: 0.625rem;
-  border-radius: 2rem;
+  border-radius: calc(var(--radius-card) + 0.625rem);
   background: var(--felt-deep);
 }
 
@@ -4940,7 +4969,7 @@ header:has(+ main.about) {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 1.5rem;
+  border-radius: var(--radius-card);
   background-color: var(--felt);
 }
 
@@ -5009,7 +5038,7 @@ header:has(+ main.about) {
   width: 1rem;
   height: 1rem;
   margin-top: 0.25rem;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-tiny);
   background: var(--part);
 }
 
@@ -5301,6 +5330,7 @@ header:has(+ main.about) {
   border: 3px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
+  --corner: round;
   animation: spinner 0.8s linear infinite;
 }
 

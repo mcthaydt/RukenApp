@@ -74,7 +74,7 @@
     gap: 0.375rem;
     min-height: 3rem;
     padding: 0.75rem;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-button);
     background: var(--ground);
     color: var(--text);
     /* A tile is told from the felt by an edge, so a combination whose ground is the felt's own colour still shows. */
@@ -108,7 +108,7 @@
   .bar {
     display: block;
     height: 1.5rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-small);
     background: var(--button);
     box-shadow: inset 0 0 0 0.5rem var(--button);
   }

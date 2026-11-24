@@ -72,7 +72,7 @@ function questionSizes(): void {
     );
     await expect(box).toHaveCSS("height", `${String(sizes.box)}px`);
     await expect(box).toHaveCSS("font-size", "24px");
-    await expect(box).toHaveCSS("border-top-left-radius", "12px");
+    await expect(box).toHaveCSS("border-top-left-radius", token("--radius-button"));
     await expect(box).toHaveCSS("border-top-width", "0px");
     await expect(box).toHaveCSS("background-color", rgb(token("--paper")));
 
@@ -427,13 +427,13 @@ videosSameHeight();
 heldSideways("tablet", videosSameHeight);
 heldSideways("phone", videosSameHeight);
 
-test("the facts are quiet chips: Dusky Green, white words, 8px corners", async ({ page }) => {
+test("the facts are quiet chips: Dusky Green, white words, small corners", async ({ page }) => {
   await startAtCheck(page);
   const chip = page.locator(".chip").first();
 
   await expect(chip).toHaveCSS("background-color", rgb(token("--felt-raised")));
   await expect(chip).toHaveCSS("color", rgb(token("--chalk")));
-  await expect(chip).toHaveCSS("border-top-left-radius", "8px");
+  await expect(chip).toHaveCSS("border-top-left-radius", token("--radius-small"));
 });
 
 test("the name is a title in the display face, and the line a tagline in sage", async ({ page }) => {

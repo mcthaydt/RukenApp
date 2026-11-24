@@ -291,8 +291,8 @@ export async function expectOneCard(page: Page, options: { red?: string[] } = {}
   const paper = bold ? card.locator(".cardbody") : card;
   await expect(paper).toHaveCSS("background-color", rgb(token("--paper")));
   await expect(paper).toHaveCSS("color", rgb(token("--ink")));
-  await expect(paper).toHaveCSS("border-bottom-right-radius", "20px");
-  if (!bold) await expect(card).toHaveCSS("border-top-left-radius", "20px");
+  await expect(paper).toHaveCSS("border-bottom-right-radius", token("--radius-card"));
+  if (!bold) await expect(card).toHaveCSS("border-top-left-radius", token("--radius-card"));
   await expect(card).toHaveCSS("border-top-width", "0px");
   await expect(card).toHaveCSS("box-shadow", "none");
   // The paywall is the one bold card (the owner, 2026-11-22: the plain one was "boring"): its title is 44px or more.
