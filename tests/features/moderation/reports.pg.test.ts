@@ -135,6 +135,22 @@ describe("reports", () => {
     expect(await reports.mine(second, game.id)).toBeNull();
   });
 
+  it("keeps the two later reasons, Graphic violence and A scam, and reads them back in words", async () => {
+    await db().gameReport.deleteMany({});
+    const player = await createUser(db());
+    const game = await newGame();
+    expect(await reports.save(player, game, { reason: "violence", note: null })).toBe("made");
+    expect(await reports.mine(player, game.id)).toEqual({ reason: "violence", note: null });
+    expect((await reports.forReview())[0]?.reports).toMatchObject([{ reason: "Graphic violence" }]);
+    expect(await reports.save(player, game, { reason: "scam", note: "Asks for a card number." })).toBe(
+      "changed",
+    );
+    expect(await reports.mine(player, game.id)).toEqual({ reason: "scam", note: "Asks for a card number." });
+    expect((await reports.forReview())[0]?.reports).toMatchObject([
+      { reason: "A scam or steals your info", note: "Asks for a card number." },
+    ]);
+  });
+
   it("refuses an unknown reason in the table too", async () => {
     const player = await createUser(db());
     const game = await newGame();

@@ -1,7 +1,7 @@
 <!--
   Ruken's own share sheet (the owner, 2026-11-24: "our share uses native and not a custom share"): a glass panel over a
   dimmed screen, the same kind as the Report sheet. One main button copies the game's link; under it, round buttons
-  open a text, WhatsApp, an email, X or Facebook with the link written in, and "More" hands over to the phone's own
+  open a text, WhatsApp, an email or X with the link written in, or copy it and open Instagram to paste it, and "More" hands over to the phone's own
   share sheet where the browser has one. The link stays on show as words, so it can always be copied by hand. One sheet
   serves a whole screen: the screen calls `open` with the game and the button that was pressed.
 -->
@@ -43,10 +43,11 @@
     copyButton?.focus();
   }
 
-  async function copy(): Promise<void> {
+  /** Copies the link and says so. `then` is said after "Link copied." when the link is to be pasted somewhere. */
+  async function copy(then = ""): Promise<void> {
     if (link === null) return;
     const result = await copyLink(tools(), link.url);
-    if (result === "copied") said = "Link copied.";
+    if (result === "copied") said = then === "" ? "Link copied." : `Link copied. ${then}`;
     else if (matchMedia("(pointer: coarse)").matches) said = "Press and hold the link above to copy it.";
     else said = "Select the link above to copy it.";
   }
@@ -122,6 +123,10 @@
             href={target.href}
             target={target.href.startsWith("https:") ? "_blank" : undefined}
             rel="noopener noreferrer"
+            onclick={() => {
+              // The copy starts inside the press, as the clipboard asks; the app opens beside the sheet.
+              if (target.pasteFirst) void copy(`Paste it in ${target.words}.`);
+            }}
           >
             <span class="round" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="24" height="24" focusable="false">
@@ -132,14 +137,14 @@
                   <path
                     d="M9 8.5c0 3.5 3 6.5 6.5 6.5l.8-1.6-2-1-1 1c-1.3-.5-2.7-1.9-3.2-3.2l1-1-1-2L9 8.5z"
                   />
+                {:else if target.key === "instagram"}
+                  <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+                  <circle cx="12" cy="12" r="4" />
+                  <path class="dots" d="M17 7h.01" />
                 {:else if target.key === "email"}
                   <path d="M3.5 6h17v12h-17zM3.5 6l8.5 7 8.5-7" />
-                {:else if target.key === "x"}
-                  <path d="M4.5 4h4L19.5 20h-4zM19 4l-6.2 7M5 20l6.2-7" />
                 {:else}
-                  <path
-                    d="M14 21v-8h3l.5-3.5H14V7.6c0-1 .4-1.6 1.7-1.6h1.8V3H15c-3 0-4.5 1.7-4.5 4.4v2.1H8V13h2.5v8"
-                  />
+                  <path d="M4.5 4h4L19.5 20h-4zM19 4l-6.2 7M5 20l6.2-7" />
                 {/if}
               </svg>
             </span>
