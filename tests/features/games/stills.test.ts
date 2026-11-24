@@ -106,8 +106,9 @@ describe("a clip's still", () => {
       return Promise.reject(new Error("bad video"));
     };
     const deps = { files, frame: broken, log: () => undefined };
-    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
-    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
+    // At the clip's start, so there is no earlier frame to fall back to: one try is one call.
+    expect(await stillOf(deps, CLIP, 0, 360)).toEqual({ kind: "none" });
+    expect(await stillOf(deps, CLIP, 0, 360)).toEqual({ kind: "none" });
     expect(calls).toBe(1);
     // The mark is kept with the clip's stills, so the clip's removal takes it too.
     expect(await files.hasAny(stillFolderOf(CLIP))).toBe(true);
@@ -125,21 +126,55 @@ describe("a clip's still", () => {
       return fails ? Promise.reject(new Error("no permission")) : Promise.resolve(new Uint8Array(PICTURE));
     };
     const deps = { files, frame, log: () => undefined, now: () => now };
-    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
+    // At the clip's start, so there is no earlier frame to fall back to: one try is one call.
+    expect(await stillOf(deps, CLIP, 0, 360)).toEqual({ kind: "none" });
     now += 24 * 60 * 60 * 1000 - 1;
-    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
+    expect(await stillOf(deps, CLIP, 0, 360)).toEqual({ kind: "none" });
     expect(calls).toBe(1);
     now += 1;
-    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
+    expect(await stillOf(deps, CLIP, 0, 360)).toEqual({ kind: "none" });
     expect(calls).toBe(2);
     // Failed again, so it waits another full day from this try.
     now += 24 * 60 * 60 * 1000 - 1;
     fails = false;
-    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
+    expect(await stillOf(deps, CLIP, 0, 360)).toEqual({ kind: "none" });
     expect(calls).toBe(2);
     now += 1;
-    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "still", bytes: PICTURE });
+    expect(await stillOf(deps, CLIP, 0, 360)).toEqual({ kind: "still", bytes: PICTURE });
     expect(calls).toBe(3);
+  });
+
+  test("past the end of a short clip is its first frame, where the clip starts again once it reaches its end", async () => {
+    const files = await storeWithClip();
+    const asked: number[] = [];
+    // The media tool refuses a moment past the clip's end, as it does for a 15-second clip asked for its 18th.
+    const frame: FrameMaker = (video, at) => {
+      asked.push(at.second);
+      void video.cancel();
+      return at.second > 15
+        ? Promise.reject(new Error("past the end"))
+        : Promise.resolve(new Uint8Array(PICTURE));
+    };
+    const deps = { files, frame, log: () => undefined };
+    expect(await stillOf(deps, CLIP, 18, 360)).toEqual({ kind: "still", bytes: PICTURE });
+    expect(asked).toEqual([18, 0]);
+    // Kept under the moment asked for, so the next view asks the tool nothing.
+    expect(await stillOf(deps, CLIP, 18, 360)).toEqual({ kind: "still", bytes: PICTURE });
+    expect(asked).toEqual([18, 0]);
+    expect(await files.head(stillKeyFor(CLIP, 18, 360))).not.toBeNull();
+  });
+
+  test("that fails at its moment and at the clip's start too is marked, after two calls", async () => {
+    const files = await storeWithClip();
+    let calls = 0;
+    const broken: FrameMaker = () => {
+      calls += 1;
+      return Promise.reject(new Error("bad video"));
+    };
+    const deps = { files, frame: broken, log: () => undefined };
+    expect(await stillOf(deps, CLIP, 18, 360)).toEqual({ kind: "none" });
+    expect(await stillOf(deps, CLIP, 18, 360)).toEqual({ kind: "none" });
+    expect(calls).toBe(2);
   });
 
   test("is not marked as failed on a site with no frame maker, so the media tool can make it later", async () => {
