@@ -33,7 +33,12 @@ test("no scrollbar shows inside the app, and the page still scrolls", async ({ p
   expect(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight)).toBe(true);
 
   await page.keyboard.press("End");
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  // Safari's engine glides there, and a key pressed mid-glide is lost, so wait until the page has come to rest at the end.
+  await expect
+    .poll(() =>
+      page.evaluate(() => Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight - 1),
+    )
+    .toBe(true);
   await page.keyboard.press("Home");
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
   if (!isMobile) {
