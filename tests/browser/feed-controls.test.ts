@@ -615,7 +615,7 @@ test("pressing the speaker flips sound for every clip, and it stays as set from 
     await expect(button).toHaveAttribute("aria-pressed", "false");
 });
 
-test("the press that opens the game never covers the speaker, Play, Share, Report, the two links or the bar", async ({
+test("the press that opens the game never covers the speaker, Play, Share, the two links or the bar", async ({
   page,
 }) => {
   await openFeed(page);
@@ -624,7 +624,6 @@ test("the press that opens the game never covers the speaker, Play, Share, Repor
     clip.getByRole("button", { name: "Sound" }),
     clip.getByRole("link", { name: "Play", exact: true }),
     clip.getByRole("button", { name: "Share" }),
-    clip.getByRole("button", { name: "Report" }),
     clip.locator("a.gamelink"),
     page.getByRole("link", { name: "Home", exact: true }),
     page.getByRole("link", { name: "Add a game", exact: true }),
@@ -755,7 +754,7 @@ test.describe("Share", () => {
     await expect(sheet.getByRole("button", { name: "Copy link" })).toBeFocused();
     for (const key of ["ArrowDown", "PageDown", "ArrowUp", "PageUp"]) await page.keyboard.press(key);
     // A sheet can lose its focus to the page while it stays open (a button inside it goes away when it changes what
-    // it shows, as Report's Send does). The keys still move nothing behind it.
+    // it shows). The keys still move nothing behind it.
     await page.evaluate(() => {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     });
@@ -948,7 +947,7 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   await openFeed(page);
   const names: string[] = [];
   const outlines: string[] = [];
-  for (let presses = 0; presses < 10; presses += 1) {
+  for (let presses = 0; presses < 9; presses += 1) {
     await page.keyboard.press("Tab");
     const focused = await page.evaluate(() => {
       const element = document.activeElement;
@@ -967,8 +966,7 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   const play = names.indexOf("Play");
   expect(play).toBeGreaterThan(3);
   expect(names[play + 1]).toBe("Share");
-  expect(names[play + 2]).toBe("Report");
-  expect(names[play + 3]).toBe("Sound");
+  expect(names[play + 2]).toBe("Sound");
   for (const outline of outlines) expect(outline).not.toMatch(/^none/);
 });
 

@@ -1,7 +1,7 @@
 <!--
   The feed (spec 5.1): one game to a screen, full-window clips that snap one at a time. Each clip leads with the person
   who made it, then the game and Play. A press on the clip opens the game's page; the speaker in the corner flips sound
-  for every clip, and Share (Ruken's own share sheet) and Report are the marks on the right. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
+  for every clip, and Share (Ruken's own share sheet) is the one mark on the right. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
   With script it fetches only the clip on screen and the next, plays the one on screen where a video may move, shows
   the window's shape of clip, and moves a clip at a time on the arrow keys, Page Up, Page Down and Space.
   The feed never ends: a few clips before the end of what it has, it asks for the next page, and a spinner fills the
@@ -19,16 +19,12 @@
   import type { ShareSheetControl } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
-  import Icon from "../../lib/icon.svelte";
 
   let {
     first,
     launch,
-    onreport,
   }: {
     first: FeedPage;
-    /** Opens the screen's Report sheet for a clip (the sheet is moderation's, above the feed, so the screen holds it). */
-    onreport?: (clip: FeedClip, from: HTMLElement) => void;
     /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
     launch: { before: false } | { before: true; opens: string; wished: string[] };
   } = $props();
@@ -343,7 +339,7 @@
     forgetHints();
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
     const target = event.target instanceof Element ? event.target : null;
-    // While a sheet (Share, Report) is open the feed behind it stays where it is, wherever the focus is: a button inside
+    // While the Share sheet is open the feed behind it stays where it is, wherever the focus is: a button inside
     // a sheet can go away as the sheet changes what it shows, and the focus then falls to the page. A key inside the
     // sheet keeps its own job there; a key aimed at the page is stopped too, or the browser scrolls the feed itself.
     const sheet = document.querySelector("dialog[open]");
@@ -503,18 +499,6 @@
                 <path d="M3 11l18-8-8 18-2-8-8-2z" fill="currentColor" />
               </svg>
             </button>
-            {#if ready && onreport !== undefined}
-              <button
-                type="button"
-                class="report"
-                aria-label="Report"
-                onclick={(event) => {
-                  onreport(clip, event.currentTarget);
-                }}
-              >
-                <Icon name="flag" />
-              </button>
-            {/if}
           </div>
         </div>
       </section>
@@ -623,15 +607,13 @@
     box-shadow: var(--glass-edge);
   }
   .sound svg,
-  .share svg,
-  .report :global(.icon) {
+  .share svg {
     filter: var(--glass-icon);
     /* Its own layer, so its shadow is drawn once, not again each frame the video under the glass moves. */
     will-change: transform;
   }
   .sound:focus-visible,
-  .share:focus-visible,
-  .report:focus-visible {
+  .share:focus-visible {
     outline-offset: -6px;
   }
   .hints {
@@ -764,8 +746,7 @@
     align-items: center;
     gap: 0.75rem;
   }
-  .share,
-  .report {
+  .share {
     display: grid;
     place-items: center;
     width: var(--size-target);
@@ -780,14 +761,11 @@
   }
   /* A phone held sideways: the window is short, so the words take one corner and the clip the rest. The bar stands
      along the right edge (Bar.svelte), so the band sits at the bottom with Play beside the game's name, Share under
-     the bar with Report beside it, and the first open's hints at the top, where the band cannot cover them. */
+     the bar, and the first open's hints at the top, where the band cannot cover them. */
   @media (orientation: landscape) and (max-height: 449px) {
     .lower {
       inset: auto 0 0.75rem;
-      /* Room for the two round buttons side by side (Share in the bar's column, Report left of it) and a gap. */
-      padding-right: calc(
-        3.5rem + 1.5rem + var(--size-target) + 0.75rem + max(0.75rem, env(safe-area-inset-right))
-      );
+      padding-right: calc(3.5rem + 1.5rem + max(0.75rem, env(safe-area-inset-right)));
       padding-left: max(0.75rem, env(safe-area-inset-left));
     }
     .band {
@@ -815,13 +793,11 @@
     .sound {
       left: max(0.75rem, env(safe-area-inset-left));
     }
-    /* Share stands in the bar's column, under it, centred on it; there is no room under the bar for a second round
-       button on a small phone, so Report stands to Share's left on the same row. */
+    /* The round buttons stand in the bar's column, under it, centred on it. */
     .side {
       position: absolute;
       right: calc(max(0.75rem, env(safe-area-inset-right)) + 0.5rem);
       bottom: 0;
-      flex-direction: row-reverse;
     }
   }
   .maker:focus-visible,
