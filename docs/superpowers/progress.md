@@ -200,6 +200,9 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 
 ### Flaky tests
 
+- `tests/browser/cookie-consent.test.ts:204` "Take it back" [tablet], CI on #383 (run 45325009190, job 138212483955): after clearing, sessionStorage still held `sveltekit:history-info`, `sveltekit:snapshot` and `sveltekit:navigation-snapshot`. Likely cause: SvelteKit writes its navigation keys after the journey's clear. Root cause not fixed yet. Recorded from the coordinator's report, 2026-11-24.
+- `tests/browser/make-after.test.ts:211` and `:213`, reported by the coordinator on 2026-11-24 during the #385 reviews. Run, device and error text were not passed on; to be filled in by whoever next sees it fail.
+- `tests/browser/adults-only.test.ts:289` "changing a game's rating..." [phone]: `Test timeout of 30000ms exceeded` (glass branch reviews, 2026-11-23, audits 3 and 4 of glass-on-every-floating-piece); main's own CI has run it at 18.6 s and 19.5 s of its 30 s. A slow journey near its budget rather than a wrong result. Recorded 2026-11-24.
 - `tests/browser/adults-only.test.ts:289` "no code waiting", seen by the round 5 review of #379 at `adc39f8` (2026-11-24): sign-up found no text code waiting. #379 changes no sign-up or text-code code. Same words as the known "no code waiting" flakes; cause not looked for.
 - `tests/browser/feed-controls.test.ts:849` "the feed never ends" [phone], CI on #378 at `e3eae42` (run 45318672137, shard 6): failed again; the full run at `26cf209` (run 45325005509) passed. Same test as the known `:832` entry below (line moved); cause still not found.
 - `tests/browser/report-a-game.test.ts:74` [tablet], local cloud run on the report-a-game branch (2026-11-24): sign-up failed with "no code waiting for +12135552373" (`support/texts.ts:66`). Passed on its one rerun. Same words as the known "no code waiting" flakes; cause not looked for.

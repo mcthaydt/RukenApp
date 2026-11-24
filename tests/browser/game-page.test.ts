@@ -249,15 +249,25 @@ test("the device line names a tablet that says it is a computer", async ({ brows
   await context.close();
 });
 
-test("Share gives the link", async ({ page }) => {
+test("Share opens Ruken's own sheet with the game's link to copy", async ({ page }) => {
   await page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   await page.evaluate(() => {
     Object.defineProperty(navigator, "share", { value: undefined, configurable: true });
     Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
   });
-  await page.getByRole("button", { name: "Share" }).click();
-  await expect(page.getByText(/^(Link copied\.|Copy the address from the bar at the top\.)$/)).toBeVisible();
+  const share = page.getByRole("button", { name: "Share" });
+  await share.click();
+  const sheet = page.getByRole("dialog", { name: "Share" });
+  await expect(
+    sheet.getByText(`${new URL(page.url()).origin}/g/${game.slug}`, { exact: true }),
+  ).toBeVisible();
+  // No clipboard here, so it says how to copy the link by hand.
+  await sheet.getByRole("button", { name: "Copy link" }).click();
+  await expect(sheet.getByRole("status")).toHaveText(/copy it\.$/);
+  await sheet.getByRole("button", { name: "Close" }).click();
+  await expect(sheet).toBeHidden();
+  await expect(share).toBeFocused();
 });
 
 test("nothing on the page is red, and nothing scrolls sideways", async ({ page }) => {

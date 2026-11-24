@@ -1,7 +1,7 @@
 <!--
   The feed (spec 5.1): one game to a screen, full-window clips that snap one at a time. Each clip leads with the person
   who made it, then the game and Play. A press on the clip opens the game's page; the speaker in the corner flips sound
-  for every clip, and Share and Report are the marks on the right. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
+  for every clip, and Share (Ruken's own share sheet) and Report are the marks on the right. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
   With script it fetches only the clip on screen and the next, plays the one on screen where a video may move, shows
   the window's shape of clip, and moves a clip at a time on the arrow keys, Page Up, Page Down and Space.
   The feed never ends: a few clips before the end of what it has, it asks for the next page, and a spinner fills the
@@ -15,7 +15,8 @@
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
   import { stillPoster } from "../../lib/still-poster.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
-  import { shareLink, type ShareTools } from "./share.ts";
+  import ShareSheet from "./ShareSheet.svelte";
+  import type { ShareSheetControl } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
   import Icon from "../../lib/icon.svelte";
@@ -44,8 +45,6 @@
 
   /** Where a first open's hints are remembered, so they show once on a device and never again. */
   const SEEN_HINTS = "rk_seen_hints";
-  /** How long "Link copied." stays. */
-  const NOTE_MS = 4000;
 
   let feed = $state<HTMLElement>();
   // An element bound here is null once it has gone (a clip put back from Back, or the spinner screen when no page is
@@ -65,11 +64,11 @@
   let started = $state<string[]>([]);
   let autoplay = $state(false);
   let hint = $state<"touch" | "pointer" | null>(null);
-  let note = $state<{ key: string; words: string } | null>(null);
   let watcher = $state.raw<IntersectionObserver>();
   // The screen past the last clip, while there is a next page: the spinner, or "Try again".
   let moreScreen = $state<HTMLElement | null>();
-  let noteTimer: ReturnType<typeof setTimeout> | undefined;
+  // One share sheet for the whole feed; each clip's Share opens it for that game.
+  let shareSheet = $state<ShareSheetControl>();
 
   const initialOf = (name: string): string => Array.from(name.trim())[0]?.toUpperCase() ?? "";
   const clipAddress = (clip: FeedClip): string =>
@@ -138,7 +137,6 @@
       wide.removeEventListener("change", follow);
       window.removeEventListener("resize", keepPlace);
       watcher?.disconnect();
-      clearTimeout(noteTimer);
       clearTimeout(slideTimer);
     };
   });
@@ -338,34 +336,28 @@
     sliding = false;
   }
 
+  /** The keys a browser scrolls a page with. */
+  const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
+
   function onKey(event: KeyboardEvent): void {
     forgetHints();
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    const target = event.target instanceof Element ? event.target : null;
+    // While a sheet (Share, Report) is open the feed behind it stays where it is, wherever the focus is: a button inside
+    // a sheet can go away as the sheet changes what it shows, and the focus then falls to the page. A key inside the
+    // sheet keeps its own job there; a key aimed at the page is stopped too, or the browser scrolls the feed itself.
+    const sheet = document.querySelector("dialog[open]");
+    if (sheet !== null) {
+      if (SCROLL_KEYS.has(event.key) && (target === null || !sheet.contains(target))) event.preventDefault();
+      return;
+    }
     const step = stepFor(event.key, event.shiftKey);
     if (step === 0) return;
-    const target = event.target instanceof Element ? event.target : null;
     // A field keeps its keys. Space presses a focused link or button, so it moves the clip only from nothing in particular.
     if (target?.closest("input, textarea, select, [contenteditable]") != null) return;
     if (event.key === " " && target?.closest("a, button, summary") != null) return;
     event.preventDefault();
     goTo((aim ?? current) + step);
-  }
-
-  async function share(clip: FeedClip): Promise<void> {
-    // A page that is not on https has no clipboard, and some browsers have no share sheet.
-    const clipboard = (navigator as { clipboard?: Clipboard }).clipboard;
-    const tools: ShareTools = {
-      share: typeof navigator.share === "function" ? (data) => navigator.share(data) : undefined,
-      copy: clipboard === undefined ? undefined : (text) => clipboard.writeText(text),
-    };
-    const result = await shareLink(tools, { title: clip.name, url: `${location.origin}/g/${clip.slug}` });
-    if (result !== "copied" && result !== "manual") return;
-    clearTimeout(noteTimer);
-    note = {
-      key: clip.key,
-      words: result === "copied" ? "Link copied." : "Copy the address from the bar at the top.",
-    };
-    noteTimer = setTimeout(() => (note = null), NOTE_MS);
   }
 </script>
 
@@ -499,13 +491,12 @@
             {/if}
           </div>
           <div class="side">
-            <p class="sharenote" role="status">{note?.key === clip.key ? note.words : ""}</p>
             <button
               type="button"
               class="share"
               aria-label="Share"
-              onclick={() => {
-                void share(clip);
+              onclick={(event) => {
+                shareSheet?.open({ slug: clip.slug, name: clip.name }, event.currentTarget);
               }}
             >
               <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
@@ -548,6 +539,7 @@
     {/if}
   </main>
 {/if}
+<ShareSheet bind:this={shareSheet} />
 
 <style>
   .feed {
@@ -786,28 +778,6 @@
     backdrop-filter: var(--glass-filter);
     box-shadow: var(--glass-edge);
   }
-  .sharenote {
-    position: absolute;
-    right: 0;
-    bottom: calc(100% + 0.5rem);
-    width: max-content;
-    max-width: 14rem;
-    margin: 0;
-    padding: 0;
-    border-radius: var(--radius-button);
-    background: var(--glass-bg);
-    -webkit-backdrop-filter: var(--glass-filter);
-    backdrop-filter: var(--glass-filter);
-    box-shadow: var(--glass-edge);
-    color: var(--chalk);
-    text-shadow: var(--glass-ink);
-    font: var(--text-small);
-    text-align: end;
-    pointer-events: none;
-  }
-  .sharenote:not(:empty) {
-    padding: 0.5rem 0.75rem;
-  }
   /* A phone held sideways: the window is short, so the words take one corner and the clip the rest. The bar stands
      along the right edge (Bar.svelte), so the band sits at the bottom with Play beside the game's name, Share under
      the bar with Report beside it, and the first open's hints at the top, where the band cannot cover them. */
@@ -852,12 +822,6 @@
       right: calc(max(0.75rem, env(safe-area-inset-right)) + 0.5rem);
       bottom: 0;
       flex-direction: row-reverse;
-    }
-    .sharenote {
-      top: 50%;
-      right: calc(100% + 0.5rem);
-      bottom: auto;
-      translate: 0 -50%;
     }
   }
   .maker:focus-visible,
