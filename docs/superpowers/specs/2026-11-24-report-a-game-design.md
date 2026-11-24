@@ -4,11 +4,15 @@ The owner, 2026-11-23 23:51 UTC: "we have no way of reporting a game". This is t
 
 ## Lane
 
-Lane 3: it adds a table, so it adds a migration (`prisma/migrations/`). It also touches lane 2 paths (`prisma/schema/`, `src/lib/icon.svelte`, `src/lib/look.css` if a token is needed). Lane 3 takes a plan audit on this spec and an implementation audit on the build. Merge permission: the owner's standing permission of 2026-11-21 19:16 UTC (every pull request, lane 3 included, merges once its audits pass and CI is green). No new dependency, tool, service or spend. Expected duration: about 4 hours of building, plus the audits.
+Lane 3: it adds a table, so it adds a migration (`prisma/migrations/`). It also touches lane 2 paths (`prisma/schema/`, `src/lib/icon.svelte`, `src/lib/look.css` if a token is needed). Lane 3 takes a plan audit on this spec and an implementation audit on the build. Merge permission: the owner's standing permission of 2026-11-21 19:16 UTC (every pull request, lane 3 included, merges once its audits pass and CI is green). No new dependency, tool, service or spend. The brief and the build share one pull request (#378): the plan audit reads the brief, the implementation audit the build.
+
+**The migration only adds.** It creates the `ReportReason` type, the `GameReport` table, its indexes and its own keys and checks; it alters and drops no other table (the back-relations on `User` and `Game` are Prisma-only and write no SQL to those tables). Its keys are `onDelete: Restrict`, like `Wishlist`: games are never deleted, and a purged person's reports are deleted first, in `deletion.ts`. So old code runs on the new schema, and the way back from a bad deploy is `pnpm exec wrangler rollback` with the table left in place; removing the table would be a later forward migration. A unit test reads the migration's SQL and fails on anything but `CREATE TYPE`, `CREATE TABLE`, `CREATE [UNIQUE] INDEX` and `ALTER TABLE "GameReport" ADD CONSTRAINT`.
+
+Expected duration: about 4 hours of building, plus the audits.
 
 ## What a person sees
 
-- **Where.** A Report button on every clip in the feed (a round glass flag under Share, labelled "Report") and on every game's page (an outline "Report" button beside Share). Both open the same sheet. Both are there only once the page's script runs, since the sheet needs it.
+- **Where.** A Report button on every clip in the feed (a round glass flag under Share, named "Report" by its `aria-label` only, as Share is: design 5.1 keeps Play the only button with words) and on every game's page (an outline "Report" button beside Share). Both open the same sheet. Both are there only once the page's script runs, since the sheet needs it. Design 5.1's sketch gives ⚑ to Save and "⋯" to report; a flag is the clearer sign for Report, so Report takes it, and Save (later) takes a bookmark.
 - **The sheet.** A frosted-glass panel over a dimmed screen, built from the glass tokens (no browser `alert`, `confirm` or `prompt`, and no new kind of surface). It fits the window: on a short phone its list scrolls inside the sheet, never the page behind. Escape and the close icon shut it, and focus goes back to the button that opened it.
   - Heading "Report this game", then "What's wrong?" and one big choice per reason:
     - Sexual content
@@ -21,7 +25,7 @@ Lane 3: it adds a table, so it adds a migration (`prisma/migrations/`). It also 
   - A box "Tell us more (you don't have to)", 500 characters at most.
   - One main button: "Send report". Pressing it with no reason picked says "Pick what's wrong." and sends nothing. While it sends, the button is busy with a spinner and takes no second press.
   - Sent: "Thanks. We'll take a look." and a "Done" button.
-- **Seeing it again (read), changing it (update), taking it back (delete).** Opening the sheet on a game the person already reported shows "You reported this game." with their reason picked and their words in the box. The main button reads "Save changes"; under it an outline button "Take back my report" removes it ("Your report is gone." and "Done").
+- **Seeing it again (read), changing it (update), taking it back (delete).** Opening the sheet on a game the person already reported shows "You reported this game." with their reason picked and their words in the box. The main button reads "Save changes"; under it a quiet button (`.quiet`, the "take something back" kind) "Take back my report" removes it ("Your report is gone." and "Done").
 - **Signed out.** The sheet says "Sign in to report a game." with a "Sign in" button that comes back to the same game's page.
 - **Your own game.** The sheet says "This is your game, so you can't report it." with "Done".
 - **Too many.** Past the limit the sheet says "You've sent a lot of reports. Try again later." and keeps what the person picked.
@@ -29,6 +33,8 @@ Lane 3: it adds a table, so it adds a migration (`prisma/migrations/`). It also 
 
 ## Rules
 
+- **The site believes nothing the sheet sends.** `PUT /g/<game>/report` with a reason outside `reasons.ts`, or a note over 500 characters, answers 400 and saves nothing; a PUT or DELETE from someone signed out answers 401 and saves nothing. The table refuses anything else as well: the reason is a Postgres enum (`ReportReason`) and the note's length is a `CHECK` (`GameReport_note_length`).
+- **Nobody sees another person's report.** `GET /g/<game>/report` answers only the caller's own report. The review answer names no reporter.
 - **One report per person per game.** A second send changes the first (one row, `@@unique([userId, gameId])`). Two sends at once still make one row.
 - **Only live games the person may see.** The same gate as the game's page: a game that is not live is a missing page, an 18+ game refuses anyone not known to be 18 or over.
 - **Limits.** Each send (new or changed) counts against the person's limits on the shared `RateLimit` table (keys `api:report:…`). Taking a report back does not count. The numbers live in one small file, `src/features/moderation/limits.ts`, handed to the service as `limits`, so a later change can bring them from the private Worker without touching the rest (owner, 2026-11-22 20:25 UTC: "the exact rate-limit and spam numbers" go private, "the mechanism can stay public"). Today's numbers: 10 an hour and 30 a day per person.
@@ -52,13 +58,17 @@ Lane 3: it adds a table, so it adds a migration (`prisma/migrations/`). It also 
 12. Two sends at once for one person and game make one row; a send past the limit is refused with 429 and saves nothing; taking a report back is not counted. (database tests)
 13. A report on a game that is not live answers 404; on an 18+ game for a person not known to be 18, 403. (database or journey)
 14. Deleting an account deletes its reports. (database test)
-15. Lint, typecheck, unit, database and browser suites pass in CI; the layer test passes with `moderation` importing only features below it.
+15. A send with an unknown reason or a note over 500 characters answers 400; a signed-out PUT or DELETE answers 401; none saves anything; the table itself refuses an unknown reason and a note over 500 characters. (journey and database tests)
+16. The `{"do":"reports"}` answer, read as one piece of text, holds none of the reporter's id, phone number, handle or name; a second signed-in person's `GET /g/<game>/report` on the same game answers "none", never the first person's report. (database and journey tests)
+17. The migration's SQL holds only `CREATE TYPE`, `CREATE TABLE`, `CREATE [UNIQUE] INDEX` and `ALTER TABLE "GameReport" ADD CONSTRAINT`. (unit test)
+18. When a send fails or is refused for too many, the sheet keeps the reason picked and the words typed. (journey, with the answer held by the test)
+19. Lint, typecheck, unit, database and browser suites pass in CI; the layer test passes with `moderation` importing only features below it.
 
 ## Plan
 
 | # | Unit | Files it owns | Check |
 |---|---|---|---|
-| 1 | Table | `prisma/schema/moderation.prisma`, `prisma/migrations/<stamp>_game_reports/`, `User`/`Game` back-relations | `prisma migrate diff` empty after deploy; schema test |
+| 1 | Table | `prisma/schema/moderation.prisma`, `prisma/migrations/<stamp>_game_reports/`, `User`/`Game` back-relations | `prisma migrate diff` empty after deploy; the additive-only unit test (criterion 17); the table's own refusals (criterion 15) |
 | 2 | Service | `src/features/moderation/` (`reasons.ts`, `limits.ts`, `reports.ts`, `services.ts`, `moderation.ts`) | `tests/features/moderation/*.pg.test.ts`, criteria 7, 12, 14 |
 | 3 | Address | `src/routes/g/[game]/report/+server.ts` (GET, PUT, DELETE, JSON), `deletion.ts` line | database and journey tests |
 | 4 | Review order | `readReviewOrder` gains `reports`; `src/routes/jobs/review/+server.ts` | journey through `reviewJob` |
@@ -66,4 +76,6 @@ Lane 3: it adds a table, so it adds a migration (`prisma/migrations/`). It also 
 | 6 | Buttons | `Feed.svelte` gets an `onreport` callback (the route owns the sheet, so `feed` never imports `moderation`, which sits above it), `src/routes/+page.svelte`, `src/routes/g/[game]/+page.svelte` | journeys |
 | 7 | Words | `/privacy`, `/about` `sections.ts` | their existing tests |
 
-Units run in this order on one branch; each waits on the one before it.
+Units run in this order on one branch; each waits on the one before it. The live-state file is deleted in the last commit before each hand-off to an audit.
+
+Left for later, on purpose: nobody is told when a report arrives (the owner runs the review command; the pull request gives the one-line command); a report on a game that later goes off can no longer be read or taken back from the sheet, and still goes at account deletion (slice 5, take-downs, decides the rest); Report on maker pages goes with slice 4 Pages.
