@@ -1,0 +1,85 @@
+import { expect, test, type Page } from "@playwright/test";
+import { addGame } from "./support/game.ts";
+import { pageHasSettled } from "./support/account.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+// Review probe for #399: samples each move frame by frame (paused) and checks Back at t equals out at 1 - t.
+let game: Awaited<ReturnType<typeof addGame>>;
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(240_000);
+  await forgetRateLimits();
+  game = await addGame(browser, request);
+});
+test.beforeEach(forgetRateLimits);
+
+type Frame = Record<string, string>;
+async function sampleMoves(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const all: Frame[][] = [];
+    (window as unknown as { frames: Frame[][] }).frames = all;
+    const start = document.startViewTransition.bind(document);
+    document.startViewTransition = ((update: ViewTransitionUpdateCallback) => {
+      const move = start(update);
+      move.ready.then(() => {
+        const anims = document.documentElement.getAnimations({ subtree: true }).filter((a) => {
+          const p = (a.effect as KeyframeEffect).pseudoElement ?? "";
+          return p.startsWith("::view-transition");
+        });
+        anims.forEach((a) => a.pause());
+        const frames: Frame[] = [];
+        for (let i = 0; i <= 20; i++) {
+          anims.forEach((a) => (a.currentTime = (450 * i) / 20));
+          const f: Frame = {};
+          const html = document.documentElement;
+          for (const p of ["old(root)", "new(root)", "old(clip)", "new(clip)", "old(bar)", "new(bar)"]) {
+            const cs = getComputedStyle(html, `::view-transition-${p}`);
+            f[p] = `${(+cs.opacity).toFixed(3)} z${cs.zIndex}`;
+          }
+          const g = getComputedStyle(html, "::view-transition-group(clip)");
+          f.group = `${g.width} ${g.height} ${g.transform}`;
+          frames.push(f);
+        }
+        (frames as any).names = anims.map((a) => `${(a.effect as KeyframeEffect).pseudoElement} ${(a as CSSAnimation).animationName ?? "-"} ${(a.effect as KeyframeEffect).getTiming().duration} ${(a.effect as KeyframeEffect).getTiming().easing}`);
+        (window as any).names = ((window as any).names ?? []).concat([(frames as any).names]);
+        all.push(frames);
+        anims.forEach((a) => a.finish());
+      }, () => {});
+      return move;
+    }) as typeof document.startViewTransition;
+  });
+}
+
+test("probe: back is out played backwards", async ({ page }, info) => {
+  test.skip(!(await page.evaluate(() => "startViewTransition" in document)));
+  await sampleMoves(page);
+  await page.goto("/");
+  const clip = page.locator(`section[data-slug="${game.slug}"]`).first();
+  await clip.scrollIntoViewIfNeeded();
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await pageHasSettled(page);
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as any).frames.length)).toBe(1);
+  await page.waitForTimeout(500);
+  await page.getByRole("link", { name: "Back to the feed" }).click();
+  await expect(page).toHaveURL("/");
+  await expect.poll(() => page.evaluate(() => (window as any).frames.length)).toBe(2);
+  const [out, back] = await page.evaluate(() => (window as any).frames as Frame[][]);
+  const rows: string[] = [];
+  const num = (s: string) => (s.match(/-?\d+(\.\d+)?(e-?\d+)?/g) ?? []).map(Number);
+  let worst = 0;
+  for (let i = 0; i <= 20; i++) {
+    const o = out[i], b = back[20 - i];
+    // feed page: out old(root) vs back new(root); game page: out new(root) vs back old(root); same for clips.
+    const pairs: [string, string][] = [[o["old(root)"], b["new(root)"]], [o["new(root)"], b["old(root)"]],
+      [o["old(clip)"], b["new(clip)"]], [o["new(clip)"], b["old(clip)"]]];
+    for (const [x, y] of pairs) worst = Math.max(worst, Math.abs(num(x)[0] - num(y)[0]));
+    const gx = num(o.group), gy = num(b.group);
+    for (let k = 0; k < Math.max(gx.length, gy.length); k++) worst = Math.max(worst, Math.abs((gx[k] ?? 0) - (gy[k] ?? 0)) / 100);
+    rows.push(`t=${(i / 20).toFixed(2)} OUT ${JSON.stringify(o)}\n       BACK(1-t) ${JSON.stringify(b)}`);
+  }
+  console.log(JSON.stringify(await page.evaluate(() => (window as any).names), null, 1));
+  for (let i = 0; i <= 20; i += 4) console.log(`bar t=${i/20} OUT old ${out[i]["old(bar)"]} new ${out[i]["new(bar)"]} | BACK t=${(20-i)/20} old ${back[20-i]["old(bar)"]} new ${back[20-i]["new(bar)"]}`);
+  console.log(`[${info.project.name}] worst=${worst}\n` + rows.join("\n"));
+  expect(worst).toBeLessThan(0.02);
+});
