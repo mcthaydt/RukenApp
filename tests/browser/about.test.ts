@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { fileURLToPath } from "node:url";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { gameWhere } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
@@ -11,6 +12,8 @@ import { BASE_TITLE } from "../../src/lib/titles.ts";
 // a person can save, so it has no create, update or delete of its own.
 
 test.beforeEach(forgetRateLimits);
+
+const STAND_IN_STILL = fileURLToPath(new URL("../fixtures/clips/stand-in-still.jpg", import.meta.url));
 
 const SECTIONS = [
   "Made a game? Let people play it.",
@@ -133,6 +136,103 @@ test("the wall's clips play without jumping back to their start over and over", 
     Math.max(...jumps),
     `jumps of each wall clip in four seconds: ${jumps.join(", ")}`,
   ).toBeLessThanOrEqual(5);
+});
+
+test("until a wall clip plays, its still shows in the clip's own place", async ({ browser, page }) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({ baseURL: "http://localhost:4173" });
+  try {
+    await gameWhere(await context.newPage(), { state: "live" });
+  } finally {
+    await context.close();
+  }
+  // The journeys' site has no media tool, so it makes no stills (the still address answers 404 there; the unit tests
+  // make them with a stand-in). Here the browser is handed a magenta stand-in for every still, and the clips never
+  // arrive, so what shows in each clip's place can only be its still.
+  const stills: string[] = [];
+  await page.route(
+    (url) => url.pathname.startsWith("/api/still/"),
+    async (route) => {
+      stills.push(route.request().url());
+      await route.fulfill({ path: STAND_IN_STILL, contentType: "image/jpeg" });
+    },
+  );
+  await page.route(
+    (url) =>
+      !url.pathname.startsWith("/api/still/") &&
+      /\/clips\/[^/]+\/upright-[0-9a-f]{16}\.(mp4|webm|mov)$/.test(url.pathname),
+    // Held, never answered: the clip is still on its way, which is the wait the still covers.
+    () => new Promise<void>(() => undefined),
+  );
+  await page.goto("/about");
+  await expectTheLandingPage(page);
+  await pageHasSettled(page);
+
+  const wall = page.locator(".hero .wall video");
+  await expect(wall).toHaveCount(6);
+  for (const video of await wall.all()) {
+    if (!(await video.isVisible())) continue;
+    // The still is the clip's own background, cut and placed as its frames are, so it cannot sit anywhere else. It is
+    // of the second the clip opens on (its address's `#t=`), at a width made for the screen.
+    const { still, src, fit } = await video.evaluate((node: HTMLVideoElement) => ({
+      still: node.style.getPropertyValue("--still"),
+      src: node.getAttribute("src") ?? "",
+      fit: [
+        getComputedStyle(node).backgroundSize,
+        getComputedStyle(node).backgroundPosition,
+        getComputedStyle(node).objectPosition,
+      ],
+    }));
+    const opensAt = /#t=(\d+)$/.exec(src)?.[1];
+    expect(still).toMatch(
+      /^url\("http:\/\/localhost:4173\/api\/still\/clips\/[a-z2-7]{10}\/upright-[0-9a-f]{16}\.(mp4|webm|mov)\?at=\d+&width=\d+"\)$/,
+    );
+    expect(still).toContain(`?at=${opensAt ?? "none"}&`);
+    // Cut as the clip's frames are (object-fit: cover) and placed where they are (object-position).
+    expect(fit[0]).toBe("cover");
+    expect(fit[1]).toBe(fit[2]);
+    // Part of a clip may sit under the headline's boxes or off the screen, so the share of its box that shows the still is
+    // counted: without a still, none of it is magenta.
+    await expect.poll(() => magentaShare(video)).toBeGreaterThan(0.1);
+  }
+  expect(stills.length).toBeGreaterThan(0);
+});
+
+/** The share of a thing's pixels, as the screen shows it, that are the magenta stand-in still. */
+async function magentaShare(thing: Locator): Promise<number> {
+  const png = await thing.screenshot({ animations: "disabled" });
+  return thing.page().evaluate(async (data) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${data}`;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext("2d");
+    if (context === null) return 0;
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(0, 0, image.width, image.height).data;
+    let magenta = 0;
+    for (let at = 0; at + 3 < pixels.length; at += 4) {
+      if ((pixels[at] ?? 0) > 200 && (pixels[at + 1] ?? 255) < 60 && (pixels[at + 2] ?? 0) > 200)
+        magenta += 1;
+    }
+    return magenta / (pixels.length / 4);
+  }, png.toString("base64"));
+}
+
+test("the still address answers nothing for what is not a stored clip, or where there is no media tool", async ({
+  request,
+}) => {
+  for (const address of [
+    "/api/still/files/abcdefghij/index.html?at=0&width=540",
+    "/api/still/clips/abcdefghij/upright-0123456789abcdef.mp4?at=0&width=540",
+    "/api/still/clips/abcdefghij/upright-0123456789abcdef.mp4?at=0&width=7",
+  ]) {
+    const answer = await request.get(address);
+    expect(answer.status(), address).toBe(404);
+    expect(answer.headers()["cache-control"]).toBe("no-store");
+  }
 });
 
 test("a maker goes from the landing page to the help for makers", async ({ page }) => {

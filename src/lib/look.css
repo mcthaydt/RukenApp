@@ -5207,6 +5207,28 @@ video[data-loading] {
   }
 }
 
+/* A video's still (src/lib/still-poster.ts): its opening frame, under the video, cut and placed as the video's own frames
+   are, so it fills the box until the first frame comes and nothing moves when it does. While the video loads, the
+   spinner turns on top of it (the owner, 2026-11-24: "use the first frame until the rest of it loads"). */
+video[data-still] {
+  background-image: var(--still);
+  background-position: var(--still-at);
+  background-size: var(--still-fit);
+  background-repeat: no-repeat;
+}
+
+video[data-still][data-loading] {
+  background:
+    var(--spinner-turning) center / min(40px, 50%) no-repeat,
+    var(--still) var(--still-at) / var(--still-fit) no-repeat var(--felt-raised);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  video[data-still][data-loading] {
+    background-image: var(--spinner-still), var(--still);
+  }
+}
+
 /* The closing cards sit on a still from Floor Fifty, blurred, dimmed and drifting very slowly, as Live sits on its own clip
    (the owner, 2026-11-22: "a background image for these, dimmed, boked like how we do for Live", with "a very subtle
    animation"). Both cards are dark then, so both take the dark card's words and buttons. */

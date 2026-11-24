@@ -1,6 +1,7 @@
 // Every wait shows it (this-repo, "Every wait shows it"). The journeys in tests/browser/loading.test.ts show each loading
 // sign working; this test keeps a new screen from leaving one out:
 // - every <img> and <video> takes `use:loads`, the shimmer until it has loaded (a <noscript> copy has no script to run it);
+// - every <video> takes `use:stillPoster`, its still until it has a frame of its own;
 // - every form with its own script (`use:enhance`) has a busy button: plain forms get theirs from the layout;
 // - every <iframe> says when it has loaded, so its screen can show it is starting until then;
 // - every `fetch(` in a screen or a browser module (`*.browser.ts`) sits in a file that shows the wait with `aria-busy`,
@@ -51,6 +52,16 @@ describe("every wait shows it", () => {
     const missing = screens.flatMap(({ name, text }) =>
       [...tagsOf(text, "img"), ...tagsOf(text, "video")]
         .filter((tag) => !tag.includes("use:loads"))
+        .map((tag) => `${name}: ${tag.slice(0, 60)}`),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  test("every video shows its still until it has a frame of its own", () => {
+    // The still is the video's poster, made from the clip it plays (the owner, 2026-11-24: "do all videos like that").
+    const missing = screens.flatMap(({ name, text }) =>
+      tagsOf(text, "video")
+        .filter((tag) => !tag.includes("use:stillPoster"))
         .map((tag) => `${name}: ${tag.slice(0, 60)}`),
     );
     expect(missing).toEqual([]);

@@ -13,6 +13,7 @@ const OPEN: readonly string[] = [
   "/goodbye",
   "/cookies",
   "/api/feed",
+  "/api/still/[...key]",
   "/help",
   "/help/get-your-game-on-ruken",
   "/help/github",
