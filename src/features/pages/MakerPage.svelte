@@ -157,6 +157,7 @@
     width: 96px;
     height: 96px;
     border-radius: 50%;
+    --corner: round;
     object-fit: cover;
   }
   .initial {
@@ -182,6 +183,7 @@
     width: 0.75rem;
     height: 0.75rem;
     border-radius: 50%;
+    --corner: round;
     border: 1px solid var(--text);
   }
   .games {
@@ -206,7 +208,7 @@
     width: 100%;
     aspect-ratio: 9 / 16;
     object-fit: cover;
-    border-radius: 12px;
+    border-radius: var(--radius-button);
     background: #111314;
   }
   .game h2 {
@@ -230,7 +232,7 @@
     align-items: center;
     justify-content: center;
     padding: 0.5rem 1rem;
-    border-radius: 12px;
+    border-radius: var(--radius-button);
     background: var(--button);
     color: var(--button-text);
     font-weight: 700;

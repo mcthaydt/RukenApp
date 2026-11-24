@@ -94,11 +94,11 @@ test("Ruken opens straight into the feed, with the right clip for the screen", a
   const play = clip.getByRole("link", { name: "Play", exact: true });
   await expect(play).toHaveAttribute("href", `/g/${withPage.slug}/play`);
 
-  // Play is the Blue of every main button, white words, 48px tall at least, 12px corners; it is the only thing with words
+  // Play is the Blue of every main button, white words, 48px tall at least, button corners; it is the only thing with words
   // to press that is not a link to a page (the Sound and Share marks are marks).
   await expect(play).toHaveCSS("background-color", await buttonColour(play, "--pay"));
   await expect(play).toHaveCSS("color", rgb(token("--chalk")));
-  await expect(play).toHaveCSS("border-top-left-radius", "12px");
+  await expect(play).toHaveCSS("border-top-left-radius", token("--radius-button"));
   expect((await boxOf(play)).height).toBeGreaterThanOrEqual(48);
   for (const button of await clip.getByRole("button").all()) {
     expect((await button.innerText()).trim()).toBe("");

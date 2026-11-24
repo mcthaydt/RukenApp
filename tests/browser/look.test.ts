@@ -106,7 +106,7 @@ test("your games sits on the felt, with no card and no red", async ({ page }, te
   await showTheOwner(page, testInfo, "your games");
 });
 
-test("the main button on a card is blue, 12px corners, a white label in Schibsted Grotesk 600", async ({
+test("the main button on a card is blue, button corners, a white label in Schibsted Grotesk 600", async ({
   page,
 }) => {
   const asked: string[] = [];
@@ -115,7 +115,7 @@ test("the main button on a card is blue, 12px corners, a white label in Schibste
   const button = page.getByRole("button", { name: "Text me a code" });
   await expect(button).toHaveCSS("background-color", await buttonColour(button, "--pay"));
   await expect(button).toHaveCSS("color", rgb(token("--chalk")));
-  await expect(button).toHaveCSS("border-top-left-radius", "12px");
+  await expect(button).toHaveCSS("border-top-left-radius", token("--radius-button"));
   await expect(button).toHaveCSS("border-top-width", "0px");
   await expect(button).toHaveCSS("font-weight", "600");
   expect((await button.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(48);
@@ -131,7 +131,7 @@ test("a field has an ink edge and is easy to hit; a note is small and soft", asy
   await expect(field).toHaveCSS("border-top-width", "1px");
   // Owner, 2026-11-14 ("fix all the issues"): the soft edge made fields look faint, so the edge is ink.
   await expect(field).toHaveCSS("border-top-color", rgb(token("--ink")));
-  await expect(field).toHaveCSS("border-top-left-radius", "14px");
+  await expect(field).toHaveCSS("border-top-left-radius", token("--radius-field"));
   expect((await field.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(48);
   const note = page.getByText("At least 10 characters.");
   await expect(note).toHaveCSS("font-size", "14px");
