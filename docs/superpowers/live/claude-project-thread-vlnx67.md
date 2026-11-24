@@ -1,5 +1,0 @@
-- Task: #399 review round 3 fix (bar check able to fail).
-- Last commit: 1c7e65ee
-- Next step: push, hand the head to review.
-- Open decisions: none.
-- Updated: 2026-11-24 21:38 UTC
