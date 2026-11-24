@@ -1,0 +1,5 @@
+- Task: #399, Back to the feed as the exact reverse of the move out; review round 2 fixes (fixme bar check, Safari note).
+- Last commit: 96b9e9ab
+- Next step: push, hand the head to review.
+- Open decisions: none.
+- Updated: 2026-11-24 21:00 UTC
