@@ -386,6 +386,7 @@
           use:stillPoster={stillNear(index) ? clipAddress(clip) : undefined}
           use:loopByHand
           bind:this={videos[index]}
+          data-grows={index === current ? clip.slug : undefined}
           onplay={() => {
             stopIfOffScreen(index);
           }}
