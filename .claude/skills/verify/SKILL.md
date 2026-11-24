@@ -33,7 +33,7 @@ export TWILIO_ACCOUNT_SID=AC_test_fake TWILIO_API_KEY=SK_test_fake TWILIO_API_SE
 export PLAY_PASS_SECRET=test-only-play-pass-secret GITHUB_APP_ID=1 GITHUB_APP_SLUG=ruken-test-app GITHUB_APP_CLIENT_ID=test-client GITHUB_APP_CLIENT_SECRET=test-only-client-secret
 export GITHUB_API_BASE=http://127.0.0.1:12112 GITHUB_WEB_BASE=http://127.0.0.1:12112 "GAME_ADDRESS_PATTERN=http://{name}.localhost:8788" LAUNCH_TEST_SWITCH=on DECISION_DAYS_TEST_OFF=on
 # the app on 4173, then the game gate on 8788, which waits for the app (two Workers opening one storage folder at once fail)
-(pnpm exec prisma migrate deploy && pnpm build && exec pnpm exec wrangler dev cloudflare/worker.js --port 4173 --test-scheduled --persist-to .wrangler/state) > /tmp/verify-ruken/app.log 2>&1 &
+(pnpm exec prisma migrate deploy && pnpm build && exec pnpm exec wrangler dev cloudflare/worker.js --local --port 4173 --test-scheduled --persist-to .wrangler/state) > /tmp/verify-ruken/app.log 2>&1 &
 (env -u GITHUB_APP_PRIVATE_KEY SITE_ORIGIN=http://localhost:4173 PATH_HOST=localhost:8788 sh -c 'node tests/browser/support/when-up.ts http://localhost:4173/healthz && exec pnpm exec wrangler dev --config cloudflare/games/wrangler.jsonc --port 8788 --persist-to .wrangler/state') > /tmp/verify-ruken/gate.log 2>&1 &
 # wait up to 4 minutes (120 tries, 2 seconds apart), then fail loudly
 tries=0
