@@ -26,6 +26,7 @@ async function watchMoves(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const seen: string[] = [];
     (window as unknown as { moves: string[] }).moves = seen;
+    (window as unknown as { drawn: string[][] }).drawn = [];
     const start = document.startViewTransition.bind(document);
     document.startViewTransition = ((update: ViewTransitionUpdateCallback) => {
       const move = start(update);
@@ -40,6 +41,18 @@ async function watchMoves(page: Page): Promise<void> {
                 one.effect.pseudoElement === "::view-transition-group(clip)",
             );
           seen[at] = clipMoves ? "clip moved" : "played";
+          // How the move draws: which picture of the page and of the clip fades, and the clip's curve.
+          const drawn: string[] = [];
+          for (const one of document.documentElement.getAnimations({ subtree: true })) {
+            if (!(one.effect instanceof KeyframeEffect)) continue;
+            const where = one.effect.pseudoElement ?? "";
+            const name = one instanceof CSSAnimation ? one.animationName : "";
+            if (/^::view-transition-(old|new)\((root|clip)\)$/.test(where) && name !== "")
+              drawn.push(`${where.replace("::view-transition-", "")} ${name}`);
+            if (where === "::view-transition-group(clip)")
+              drawn.push(`curve ${one.effect.getKeyframes()[0]?.easing ?? ""}`);
+          }
+          (window as unknown as { drawn: string[][] }).drawn.push(drawn.sort());
         },
         (why: unknown) => {
           seen[at] = why instanceof Error ? `${why.name}: ${why.message}` : String(why);
@@ -125,6 +138,42 @@ test("the game page's back arrow shrinks the clip into the feed, on the clip tha
   // It was the browser's Back: nothing ahead of the feed was added, so Forward opens the game again.
   await page.goForward();
   await expect(page).toHaveURL(`/g/${game.slug}`);
+});
+
+test("going back to the feed plays the move out backwards, with the browser's Back and with the arrow", async ({
+  page,
+}) => {
+  test.skip(
+    !(await page.evaluate(() => "startViewTransition" in document)),
+    "this browser has no view transitions, so every move comes at once",
+  );
+  await watchMoves(page);
+  const clip = await openFeedAt(page);
+  // Out: the feed and its clip are on top and fade, on the quick-start curve.
+  const out = ["curve cubic-bezier(0.22, 1, 0.36, 1)", "old(clip) clip-hands-over", "old(root) page-fades"];
+  // Back: the same pictures, the other way: the feed and its clip on top come in, on the mirrored curve.
+  const back = ["curve cubic-bezier(0.64, 0, 0.78, 0)", "new(clip) clip-takes-over", "new(root) page-shows"];
+
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL("/");
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await page.getByRole("link", { name: "Back to the feed" }).click();
+  await expect(page).toHaveURL("/");
+  // The arrow is the browser's Back: the address changes before the feed comes in and its move starts.
+  await expect.poll(async () => (await moves(page)).length).toBe(4);
+
+  expect(await moves(page)).toEqual(["clip moved", "clip moved", "clip moved", "clip moved"]);
+  expect(await page.evaluate(() => (window as unknown as { drawn: string[][] }).drawn)).toEqual([
+    out,
+    back,
+    out,
+    back,
+  ]);
+  await expect.poll(() => namedLeft(page)).toBe(0);
 });
 
 test("the back arrow on a game's page opened another way goes to the feed with a slide", async ({ page }) => {
