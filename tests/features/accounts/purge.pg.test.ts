@@ -420,6 +420,31 @@ describe("purgeDueAccounts", () => {
     expect(await db().wishlist.count({ where: { userId: staying.id } })).toBe(1);
   });
 
+  // What a person told Ruken about games is theirs (report-a-game spec): it goes with the account, after the 14 days.
+  it("removes a person's reports after the 14 days, and leaves everyone else's", async () => {
+    const leaving = await seedPerson();
+    const staying = await seedPerson();
+    const maker = await seedPerson();
+    const game = await db().game.create({
+      data: { publicId: newPublicId(), slug: "reported-game", makerUserId: maker.id, name: "A game" },
+    });
+    for (const userId of [leaving.id, staying.id]) {
+      await db().gameReport.create({
+        data: { userId, gameId: game.id, reason: "ads", madeAt: new Date(START), changedAt: new Date(START) },
+      });
+    }
+    const clock = await askToBeDeleted(leaving.id);
+
+    clock.advance(13 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
+    expect(await db().gameReport.count({ where: { userId: leaving.id } })).toBe(1);
+
+    clock.advance(2 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
+    expect(await db().gameReport.count({ where: { userId: leaving.id } })).toBe(0);
+    expect(await db().gameReport.count({ where: { userId: staying.id } })).toBe(1);
+  });
+
   // The owner's decision (2026-11-21): a maker's games come off Ruken with their account, once the 14 days are over.
   it("takes the person's games off after the 14 days, with their files and videos, and leaves everyone else's", async () => {
     const leaving = await seedPerson();
