@@ -73,13 +73,7 @@
         stroke-linejoin="round"
       />
     </svg>
-    <span>
-      {#if sending}
-        {on ? "Taking it off…" : "Adding it…"}
-      {:else}
-        {on ? "On your wishlist" : "Wishlist"}
-      {/if}
-    </span>
+    <span>{on ? "On your wishlist" : "Wishlist"}</span>
   </button>
   {#if problem !== ""}
     <p class="problem" role="alert">{problem}</p>

@@ -818,6 +818,77 @@ test.describe("Share", () => {
     await expect(sheet).toBeHidden();
   });
 
+  test("slides up and fades in, and slides away when it closes; with reduced motion it simply comes and goes", async ({
+    page,
+    browser,
+  }) => {
+    // The animations the sheet runs as it opens and closes are written down, by name, from before the first press.
+    const played = async (on: Page) => {
+      await on.evaluate(() => {
+        const names: string[] = [];
+        (window as unknown as { played: string[] }).played = names;
+        // Each time the sheet opens or starts to close, the animations it then runs are asked for.
+        new MutationObserver((changes) => {
+          for (const change of changes) {
+            const dialog = change.target as Element;
+            if (!dialog.matches("dialog.sharesheet")) continue;
+            for (const animation of dialog.getAnimations()) {
+              if ((animation.effect as KeyframeEffect | null)?.pseudoElement) continue;
+              // Without the mark Svelte adds to a screen's own animation names.
+              const name = (animation as CSSAnimation).animationName.replace(/^svelte-[a-z0-9]+-/, "");
+              if (names.at(-1) !== name) names.push(name);
+            }
+          }
+        }).observe(document.body, { subtree: true, attributeFilter: ["open", "class"] });
+      });
+      return () => on.evaluate(() => (window as unknown as { played: string[] }).played);
+    };
+    await standIns(page, { share: "none", clipboard: "works" });
+    await openFeed(page);
+    const names = await played(page);
+    const upright = (await page.evaluate(
+      () => matchMedia("(orientation: portrait) and (max-width: 47.99rem)").matches,
+    ))
+      ? { open: "share-up", shut: "share-down" }
+      : { open: "share-in", shut: "share-out" };
+    const share = current(page).getByRole("button", { name: "Share" });
+    const sheet = sheetOf(page);
+    await share.click();
+    await expect(sheet).toBeVisible();
+    await expect.poll(names).toEqual([upright.open]);
+    await sheet.getByRole("button", { name: "Close" }).click();
+    await expect(sheet).toBeHidden();
+    await expect(share).toBeFocused();
+    expect(await names()).toEqual([upright.open, upright.shut]);
+    // Escape slides it away the same way.
+    await share.press("Enter");
+    await expect(sheet).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(share).toBeFocused();
+    expect(await names()).toEqual([upright.open, upright.shut, upright.open, upright.shut]);
+
+    const context = await browser.newContext({
+      ...consented,
+      reducedMotion: "reduce",
+      baseURL: "http://localhost:4173",
+    });
+    try {
+      const still = await context.newPage();
+      await openFeed(still);
+      const stillNames = await played(still);
+      const stillShare = current(still).getByRole("button", { name: "Share" });
+      await stillShare.click();
+      await expect(sheetOf(still)).toBeVisible();
+      await sheetOf(still).getByRole("button", { name: "Close" }).click();
+      await expect(sheetOf(still)).toBeHidden();
+      await expect(stillShare).toBeFocused();
+      expect(await stillNames()).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
   test("fits the window with nothing to scroll", async ({ page }) => {
     await standIns(page, { share: "works", clipboard: "works" });
     await openFeed(page);

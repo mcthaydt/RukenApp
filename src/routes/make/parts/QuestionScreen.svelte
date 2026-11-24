@@ -23,12 +23,10 @@
     throwAway,
     enterHint = true,
     keepOld = false,
-    busyWords = "Saving…",
     action = "?/answer",
     enctype,
     submit,
     quiet,
-    busyLine,
     forward,
     saving = $bindable(false),
     children,
@@ -44,8 +42,6 @@
     enterHint?: boolean;
     /** A live game's change that waits for a yes: a quiet button drops it, and players keep what they see. */
     keepOld?: boolean;
-    /** What the blue button says from the press until the answer comes. */
-    busyWords?: string;
     /** Where the form posts. */
     action?: string;
     /** `multipart/form-data` for a question that sends a file. */
@@ -54,8 +50,6 @@
     quiet?: { words: string; action: string } | undefined;
     /** Runs when the form is sent, before it goes; the form's data may be changed (a photo cut to a square). */
     submit?: ((data: FormData) => Promise<void>) | undefined;
-    /** A line shown under the answer while it waits, for an answer that can take a minute. */
-    busyLine?: string;
     /** The blue button when it is not a submit: a link that goes elsewhere. */
     forward?: Snippet | undefined;
     /** True from the press until the answer comes; a question that shows it itself (a video being added) binds it. */
@@ -103,16 +97,13 @@
       {/if}
       <h1 id="question" data-long={heading.length > LONG_HEADING ? "" : undefined}>{heading}</h1>
       {@render children()}
-      {#if saving && busyLine !== undefined}
-        <p class="note" role="status">{busyLine}</p>
-      {/if}
       <div class="acts">
         <a class="button safe" href={back} aria-label="Back"><Icon name="back" /></a>
         {#if forward !== undefined}
           {@render forward()}
         {:else}
           <button disabled={saving} aria-busy={saving ? "true" : undefined}>
-            {saving ? busyWords : counter === null ? "Save" : "Next"}
+            {counter === null ? "Save" : "Next"}
           </button>
         {/if}
         {#if enterHint && forward === undefined && !saving}

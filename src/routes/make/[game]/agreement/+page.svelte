@@ -55,9 +55,7 @@
     </div>
     <div class="acts">
       <a class="button safe" href={data.back} aria-label="Back"><Icon name="back" /></a>
-      <button disabled={saving} aria-busy={saving ? "true" : undefined}>
-        {saving ? "Saving…" : "I agree"}
-      </button>
+      <button disabled={saving} aria-busy={saving ? "true" : undefined}> I agree </button>
     </div>
   </form>
 </main>
