@@ -119,15 +119,23 @@
     browserSlid = false;
     // A move made while the last one's slide still holds its page (Back pressed mid-slide) waits for that page to go in
     // and then comes in after it, at once.
+    // How far the move goes in the history: Back or Forward by the browser's own count, any other move one page on.
+    const steps = navigation.type === "popstate" ? navigation.delta : 1;
     const earlier = heldMove();
-    if (earlier !== null) return earlier;
+    if (earlier !== null) {
+      noteMove(null, to ?? "", steps);
+      return earlier;
+    }
     // A move inside the maker's area is that area's own step (src/routes/make/+layout.svelte).
-    if (move === null) return;
+    if (move === null) {
+      noteMove(null, to ?? "", steps);
+      return;
+    }
     // Between the feed and a game's page the game's clip moves instead: opening it from the feed's clip, and with Back
     // to the feed it was opened from (src/lib/page-moves.ts).
     const game = grownGame(from ?? "", to ?? "");
     const grows = game !== null && clipMoves(game, to === "/", back);
-    noteMove(grows ? game : null, to ?? "");
+    noteMove(grows ? game : null, to ?? "", steps);
     const html = document.documentElement;
     delete html.dataset.step;
     delete html.dataset.move;

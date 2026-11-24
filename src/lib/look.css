@@ -2605,14 +2605,27 @@ html[data-move="back"]::view-transition-new(root) {
   animation-name: in-from-left;
 }
 
-/* Between the feed and a game's page nothing slides: the page fades across in the same 300ms while the game's clip moves
-   from the feed into its box on the game's page, or back (src/lib/page-moves.ts). The two pictures of the clip keep
-   their shape as the box changes, cut to fit like the clip itself. The picture the person pressed stays on top for the
-   whole move and gives way only at its end, since the clip arriving may not have its first frame yet and a fade would
-   dim the clip in flight. */
+/* Between the feed and a game's page nothing slides: the game's clip moves from the feed into its box on the game's
+   page, or back (src/lib/page-moves.ts), while the page changes under it. The owner (2026-11-24): "speed up fast then
+   slow down at the end and make it go into the panel smoothly", so the move starts quick and settles slowly, over a
+   little longer than a slide. The old page fades away over the new one, which stays whole beneath it, so the screen
+   never dims halfway. The two pictures of the clip keep their shape as the box changes, cut to fit like the clip
+   itself; the picture the person pressed stays on top while it flies and melts into the arriving clip as it settles,
+   since the arriving one may not have its first frame yet. */
+html[data-move="grow"]::view-transition-old(root),
+html[data-move="grow"]::view-transition-new(root),
 html[data-move="grow"]::view-transition-group(clip) {
-  animation-duration: 300ms;
-  animation-timing-function: var(--ease);
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html[data-move="grow"]::view-transition-old(root) {
+  z-index: 1;
+  animation-name: page-fades;
+}
+
+html[data-move="grow"]::view-transition-new(root) {
+  animation: none;
 }
 
 html[data-move="grow"]::view-transition-old(clip),
@@ -2624,16 +2637,22 @@ html[data-move="grow"]::view-transition-new(clip) {
 
 html[data-move="grow"]::view-transition-old(clip) {
   z-index: 1;
-  animation: clip-hands-over 300ms linear both;
+  animation: clip-hands-over 450ms linear both;
 }
 
 html[data-move="grow"]::view-transition-new(clip) {
   animation: none;
 }
 
+@keyframes page-fades {
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes clip-hands-over {
   0%,
-  80% {
+  55% {
     opacity: 1;
   }
   100% {

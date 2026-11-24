@@ -15,9 +15,19 @@
   import { WishlistButton } from "../../../features/launch/launch.browser.ts";
   import { ReportSheet, type ReportSheetControl } from "../../../features/moderation/moderation.browser.ts";
   import { ShareSheet, type ShareSheetControl } from "../../../features/feed/feed.browser.ts";
+  import { backToFeed } from "../../../lib/page-moves.ts";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
+
+  // Opened straight from the feed, the back arrow is the browser's Back, so the feed comes back on this game's clip and
+  // the clip shrinks into it (src/lib/page-moves.ts). Opened any other way, it is a plain link to the feed.
+  function backFromHere(event: MouseEvent): void {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (!backToFeed(data.slug)) return;
+    event.preventDefault();
+    history.back();
+  }
 
   // Whether the script has started: the clip's own controls and the plain Play link are what a page without script has.
   let enhanced = $state(false);
@@ -92,7 +102,7 @@
           </button>
         {/if}
       </div>
-      <a class="back" href="/" aria-label="Back to the feed"><Icon name="back" /></a>
+      <a class="back" href="/" aria-label="Back to the feed" onclick={backFromHere}><Icon name="back" /></a>
       <div class="heroname">
         <h1>{data.name}</h1>
         <p>{data.oneLine}</p>

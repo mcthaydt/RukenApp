@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clipMoves, grownGame, moveBetween, noteMove } from "../../src/lib/page-moves.ts";
+import { backToFeed, clipMoves, grownGame, moveBetween, noteMove } from "../../src/lib/page-moves.ts";
 
 // Moving between pages slides sideways, like an app. Between the bar's three places (Home, Your games, You) the new
 // page comes from the side its place is on; elsewhere a new page comes in from the right and Back takes it out the
@@ -86,5 +86,31 @@ describe("clipMoves, back to the feed", () => {
     noteMove(null, "/g/tiny");
     expect(clipMoves("tiny", true, true)).toBe(true);
     noteMove(null, "/");
+  });
+});
+
+describe("backToFeed", () => {
+  it("is Back only on the game's page opened straight from the feed", () => {
+    noteMove(null, "/");
+    noteMove("tiny", "/g/tiny");
+    expect(backToFeed("tiny")).toBe(true);
+    expect(backToFeed("other")).toBe(false);
+  });
+
+  it("is Back again after the play screen and Back, but not once another page was opened on top", () => {
+    noteMove(null, "/");
+    noteMove("tiny", "/g/tiny");
+    noteMove(null, "/g/tiny/play");
+    noteMove(null, "/g/tiny", -1);
+    expect(backToFeed("tiny")).toBe(true);
+    noteMove(null, "/g/tiny/play");
+    noteMove(null, "/g/tiny");
+    expect(backToFeed("tiny")).toBe(false);
+  });
+
+  it("is a plain link once the person has been on the feed again", () => {
+    noteMove("tiny", "/g/tiny");
+    noteMove(null, "/", -1);
+    expect(backToFeed("tiny")).toBe(false);
   });
 });
