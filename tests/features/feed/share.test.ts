@@ -6,18 +6,29 @@ import { copyLink, shareByPhone, shareTargets } from "../../../src/features/feed
 const link = { title: "Floor & Fifty?", url: "https://ruken.io/g/floor-fifty" };
 
 describe("shareTargets", () => {
-  it("offers Text, WhatsApp, Email, X and Facebook, in that order", () => {
+  it("offers Text, WhatsApp, Instagram, Email and X, in that order", () => {
     expect(shareTargets(link).map((target) => target.words)).toEqual([
       "Text",
       "WhatsApp",
+      "Instagram",
       "Email",
       "X",
-      "Facebook",
     ]);
   });
 
-  it("puts the game's whole address in every app's link, safely written", () => {
-    for (const target of shareTargets(link)) {
+  it("opens Instagram's messages with the link to paste, since Instagram takes no words in its address", () => {
+    const instagram = shareTargets(link).find((target) => target.key === "instagram");
+    expect(instagram?.href).toBe("https://www.instagram.com/direct/inbox/");
+    expect(instagram?.pasteFirst).toBe(true);
+    expect(
+      shareTargets(link)
+        .filter((target) => target.pasteFirst)
+        .map((target) => target.key),
+    ).toEqual(["instagram"]);
+  });
+
+  it("puts the game's whole address in every other app's link, safely written", () => {
+    for (const target of shareTargets(link).filter((one) => one.pasteFirst !== true)) {
       const decoded = decodeURIComponent(target.href);
       expect(decoded, target.words).toContain(link.url);
       // A name's & or ? never breaks the app's address.

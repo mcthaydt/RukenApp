@@ -700,17 +700,32 @@ test.describe("Share", () => {
     expect((await seenOf(page)).copied).toEqual([address]);
   });
 
-  test("offers the apps, each with the game's link written in", async ({ page }) => {
+  test("offers the apps, each with the game's link written in, and Instagram with it copied to paste", async ({
+    page,
+  }) => {
     await standIns(page, { share: "none", clipboard: "works" });
     await openFeed(page);
     const slug = await currentSlug(page);
     const address = `${new URL(page.url()).origin}/g/${String(slug)}`;
     await current(page).getByRole("button", { name: "Share" }).click();
     const sheet = sheetOf(page);
-    for (const app of ["Text", "WhatsApp", "Email", "X", "Facebook"]) {
+    for (const app of ["Text", "WhatsApp", "Email", "X"]) {
       const href = (await sheet.getByRole("link", { name: app, exact: true }).getAttribute("href")) ?? "";
       expect(decodeURIComponent(href), app).toContain(address);
     }
+    await expect(sheet.getByRole("link", { name: "Facebook" })).toHaveCount(0);
+    // Instagram takes no words in its address: the press copies the link and opens Instagram's messages beside the
+    // sheet, and the sheet says to paste it there.
+    const instagram = sheet.getByRole("link", { name: "Instagram", exact: true });
+    await expect(instagram).toHaveAttribute("href", "https://www.instagram.com/direct/inbox/");
+    await expect(instagram).toHaveAttribute("target", "_blank");
+    // The new tab is not followed: Instagram is outside this test's reach.
+    await page.context().route("https://www.instagram.com/**", (route) => route.fulfill({ body: "" }));
+    const opened = page.context().waitForEvent("page");
+    await instagram.click();
+    await (await opened).close();
+    await expect(sheet.getByRole("status")).toHaveText("Link copied. Paste it in Instagram.");
+    expect((await seenOf(page)).copied).toEqual([address]);
     // No phone sheet here, so no More.
     await expect(sheet.getByRole("button", { name: "More" })).toHaveCount(0);
   });

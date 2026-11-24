@@ -19,17 +19,20 @@ export interface ShareLink {
   url: string;
 }
 
-/** An app the sheet can open with the link already written in. */
+/** An app the sheet can open with the link already written in, or, where the app has no way to be handed words, with
+ *  the link copied first so it can be pasted there (`pasteFirst`). */
 export interface ShareTarget {
-  key: "text" | "whatsapp" | "email" | "x" | "facebook";
+  key: "text" | "whatsapp" | "instagram" | "email" | "x";
   words: string;
   href: string;
+  pasteFirst?: true;
 }
 
 /** What the person is asked to do with the link, in words they would say. */
 export const messageFor = (link: ShareLink): string => `Play ${link.title} on Ruken`;
 
-/** The apps, in the order people reach for them: a text, WhatsApp, an email, then the two big public feeds. */
+/** The apps, in the order people reach for them: a text, WhatsApp, Instagram, an email, then X. Facebook made way for
+ *  Instagram (the owner, 2026-11-24: "Replace Facebook with Whatsapp", after "Replace whatsapp with instagram"). */
 export function shareTargets(link: ShareLink): ShareTarget[] {
   const message = messageFor(link);
   const both = encodeURIComponent(`${message} ${link.url}`);
@@ -37,6 +40,15 @@ export function shareTargets(link: ShareLink): ShareTarget[] {
     // `sms:?&body=` is the form both iPhone and Android read.
     { key: "text", words: "Text", href: `sms:?&body=${both}` },
     { key: "whatsapp", words: "WhatsApp", href: `https://wa.me/?text=${both}` },
+    // Instagram has no address that writes a message in, so
+    // the sheet copies the link and opens Instagram's messages, where it is pasted. On a phone with the app, this
+    // address opens the app.
+    {
+      key: "instagram",
+      words: "Instagram",
+      href: "https://www.instagram.com/direct/inbox/",
+      pasteFirst: true,
+    },
     {
       key: "email",
       words: "Email",
@@ -46,11 +58,6 @@ export function shareTargets(link: ShareLink): ShareTarget[] {
       key: "x",
       words: "X",
       href: `https://x.com/intent/post?text=${encodeURIComponent(message)}&url=${encodeURIComponent(link.url)}`,
-    },
-    {
-      key: "facebook",
-      words: "Facebook",
-      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link.url)}`,
     },
   ];
 }
