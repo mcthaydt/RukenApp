@@ -41,8 +41,9 @@ export const cloudflarePrivateFeed = () => env.PRIVATE?.feed ?? null;
 export const cloudflareFiles = (): FileStore => r2FileStore(env.GAME_FILES);
 
 /**
- * A video's still, made by Cloudflare's media tool (bound as MEDIA, wrangler.jsonc). `wrangler dev` has no copy of the
- * tool, so a failure there is caught by the caller and the page shows its videos without stills.
+ * A video's still, made by Cloudflare's media tool (bound as MEDIA, wrangler.jsonc). `wrangler dev --local` has no copy
+ * of the tool: the binding is there, but every call throws ("needs to be run remotely"). The caller catches that, marks
+ * the still as failed and shows the video without it.
  */
 export const cloudflareFrames = (): MakeFrame | null => {
   const media = (env as { MEDIA?: MediaBinding }).MEDIA;

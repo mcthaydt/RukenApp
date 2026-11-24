@@ -96,7 +96,32 @@ describe("a clip's still", () => {
     const answer = await stillOf({ files, frame: broken, log: (line) => lines.push(line) }, CLIP, 0, 360);
     expect(answer).toEqual({ kind: "none" });
     expect(lines).toEqual(["A still could not be made: no such tool"]);
+  });
+
+  test("that failed is never asked of the media tool again, since each call may be billed", async () => {
+    const files = await storeWithClip();
+    let calls = 0;
+    const broken: FrameMaker = () => {
+      calls += 1;
+      return Promise.reject(new Error("bad video"));
+    };
+    const deps = { files, frame: broken, log: () => undefined };
+    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
+    expect(await stillOf(deps, CLIP, 2, 360)).toEqual({ kind: "none" });
+    expect(calls).toBe(1);
+    // The mark is kept with the clip's stills, so the clip's removal takes it too.
+    expect(await files.hasAny(stillFolderOf(CLIP))).toBe(true);
+    await deleteClipFile(files, CLIP);
     expect(await files.hasAny(stillFolderOf(CLIP))).toBe(false);
+  });
+
+  test("is not marked as failed on a site with no frame maker, so the media tool can make it later", async () => {
+    const files = await storeWithClip();
+    expect(await stillOf({ files, frame: null }, CLIP, 2, 360)).toEqual({ kind: "none" });
+    expect(await files.hasAny(stillFolderOf(CLIP))).toBe(false);
+    const { frame, calls } = countingMaker();
+    expect((await stillOf({ files, frame }, CLIP, 2, 360)).kind).toBe("still");
+    expect(calls).toHaveLength(1);
   });
 });
 

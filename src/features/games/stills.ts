@@ -38,6 +38,15 @@ export function stillKeyFor(clipKey: string, second: number, width: StillWidth):
   return `${stillFolderOf(clipKey)}${String(second)}s-${String(width)}.jpg`;
 }
 
+/**
+ * The mark left where a still could not be made: `<folder>/<second>s-<width>.none`. The media tool may bill each call,
+ * and the still address keeps no answer of "nothing" in anyone's browser, so without it every view of the clip would
+ * ask the tool again. Kept in the clip's still folder, so the clip's removal (or a new clip) clears it.
+ */
+export function failedMarkFor(clipKey: string, second: number, width: StillWidth): string {
+  return `${stillFolderOf(clipKey)}${String(second)}s-${String(width)}.none`;
+}
+
 /** Removes a clip's file and every still made from it. */
 export async function deleteClipFile(files: FileStore, clipKey: string): Promise<void> {
   await files.delete(clipKey);
@@ -50,7 +59,7 @@ export type StillAnswer = { kind: "still"; bytes: Uint8Array<ArrayBuffer> } | { 
 /**
  * The still of `clipKey` at `second`, `width` wide: the kept one, or a new one made from the clip and kept. Nothing
  * for a key that is not a clip's, a clip that is not stored, or a site with no frame maker; and nothing when making it
- * fails, so a still can never stop a page.
+ * fails, so a still can never stop a page. A failure is marked and never tried again for that clip.
  */
 export async function stillOf(
   deps: { files: FileStore; frame: FrameMaker | null; log?: (line: string) => void },
@@ -65,7 +74,10 @@ export async function stillOf(
   const kept = await deps.files.get(key);
   if (kept !== null)
     return { kind: "still", bytes: new Uint8Array(await new Response(kept.body).arrayBuffer()) };
+  // With no frame maker nothing is asked and nothing is marked, so the media tool can still make it later.
   if (deps.frame === null) return { kind: "none" };
+  const failed = failedMarkFor(clipKey, second, width);
+  if ((await deps.files.head(failed)) !== null) return { kind: "none" };
   const clip = await deps.files.get(clipKey);
   if (clip === null) return { kind: "none" };
   try {
@@ -76,6 +88,7 @@ export async function stillOf(
     (deps.log ?? console.error)(
       `A still could not be made: ${error instanceof Error ? error.message : String(error)}`,
     );
+    await deps.files.put(failed, new Uint8Array());
     return { kind: "none" };
   }
 }

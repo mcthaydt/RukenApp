@@ -89,8 +89,9 @@ export default defineConfig({
     },
     {
       // The app reads a database, so the migrations run before the build, as the deploy command does. `--local` keeps
-      // Cloudflare's media tool (which makes video stills, and has no local copy) from reaching for a Cloudflare login:
-      // the journeys run without stills, as a copy of the app does.
+      // Cloudflare's media tool (which makes video stills, and has no local copy) from reaching for a Cloudflare login.
+      // Under `--local` the binding is there but every call throws ("needs to be run remotely"), so the site answers no
+      // still, marks it as failed and never asks again: the journeys run without stills, as a copy of the app does.
       command:
         "pnpm exec prisma migrate deploy && pnpm build && pnpm exec wrangler dev cloudflare/worker.js --local --port 4173 --test-scheduled --persist-to .wrangler/state",
       url: "http://localhost:4173",
