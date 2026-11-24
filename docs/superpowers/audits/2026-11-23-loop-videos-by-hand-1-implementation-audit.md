@@ -37,3 +37,11 @@
 2. UNIT: `tests/browser/about.test.ts` wall check. VERDICT: note. REASON: the wall's journey alone does not notice `loop` being switched on (it passed 3 of 3 on #372's code); only the feed journey does. Both use the same `loopByHand`, so the feed journey covers it today. FIX (if wanted): sample `video.loop` in the wall check too; touches that test only.
 
 Not shown here, as the body says: real Safari on an iPhone. Everything above is Safari's engine on Linux.
+
+## Re-pointed to f919557 (main merged in), 2026-11-24 00:07 UTC
+
+- New head `f919557e67f7d0644100746af2b202faff34b816`: a merge of `main` at `9a92d0e` (#345, real buttons) into `e4f89a9`. `main` is fully contained.
+- The PR's own diff against `main` in `src/` and `tests/` is byte-for-byte the diff reviewed at `274f44d` against `8cfacf3` (compared with `diff`). The only conflict file was `docs/superpowers/progress.md`; read.
+- What #345 brought in touches links, buttons, icons and `look.css`; none of it touches `loop`, `currentTime`, `quietVideo`, `playOnScreen` or `loopByHand` (grep of the `8cfacf3..9a92d0e` src diff).
+- WebKit phone on `f919557`, both loop journeys and the wall, `--repeat-each=5 --workers=4`: 14 of 15. The one red was `make-questions.test.ts:783` hitting the 30 s test budget on the cold first wave: its trace shows sign-up and setup took ~42 s of page time, the 5 s watch then started and **returned on time** (its three expects ran at +5.1 s), so the page answered and did not freeze. That test alone, `--repeat-each=20 --workers=4`: **20 of 20 passed**.
+- Verdict stands: PASS at `f919557`.
