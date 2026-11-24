@@ -51,8 +51,17 @@ async function watchMoves(page: Page): Promise<void> {
               drawn.push(`${where.replace("::view-transition-", "")} ${name}`);
             if (where === "::view-transition-group(clip)")
               drawn.push(`curve ${one.effect.getKeyframes()[0]?.easing ?? ""}`);
+            // The bar of places: when each of its pictures fades (each has two animations, its fade and its blend).
+            if (/^::view-transition-(old|new)\(tabs\)$/.test(where)) {
+              const timing = one.effect.getComputedTiming();
+              drawn.push(
+                `${where.replace("::view-transition-", "")} from ${String(timing.delay)}ms for ${String(timing.duration)}ms`,
+              );
+            }
           }
-          (window as unknown as { drawn: string[][] }).drawn.push(drawn.sort());
+          const bar = getComputedStyle(document.documentElement, "::view-transition-group(tabs)").zIndex;
+          drawn.push(`tabs ${bar === "auto" ? "under the clip" : "over the clip"}`);
+          (window as unknown as { drawn: string[][] }).drawn.push([...new Set(drawn)].sort());
         },
         (why: unknown) => {
           seen[at] = why instanceof Error ? `${why.name}: ${why.message}` : String(why);
@@ -150,9 +159,24 @@ test("going back to the feed plays the move out backwards, with the browser's Ba
   await watchMoves(page);
   const clip = await openFeedAt(page);
   // Out: the feed and its clip are on top and fade, on the quick-start curve.
-  const out = ["curve cubic-bezier(0.22, 1, 0.36, 1)", "old(clip) clip-hands-over", "old(root) page-fades"];
+  const out = [
+    "curve cubic-bezier(0.22, 1, 0.36, 1)",
+    "new(tabs) from 0ms for 250ms",
+    "old(clip) clip-hands-over",
+    "old(root) page-fades",
+    "old(tabs) from 0ms for 250ms",
+    "tabs under the clip",
+  ];
   // Back: the same pictures, the other way: the feed and its clip on top come in, on the mirrored curve.
-  const back = ["curve cubic-bezier(0.64, 0, 0.78, 0)", "new(clip) clip-takes-over", "new(root) page-shows"];
+  // The bar of places too: its pictures fade over the last 250ms, where they faded over the first going out.
+  const back = [
+    "curve cubic-bezier(0.64, 0, 0.78, 0)",
+    "new(clip) clip-takes-over",
+    "new(root) page-shows",
+    "new(tabs) from 200ms for 250ms",
+    "old(tabs) from 200ms for 250ms",
+    "tabs over the clip",
+  ];
 
   await clip.getByRole("link", { name: game.name }).click();
   await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();

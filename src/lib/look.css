@@ -2698,6 +2698,22 @@ html[data-move="grow"][data-way="back"]::view-transition-new(clip) {
   animation: clip-takes-over 450ms linear both;
 }
 
+/* The bar of places plays backwards too: going out, the feed's bar sits over the clip and gives way to the game page's
+   in the move's first 250ms; coming back, the feed's bar sits over the clip and takes over from the game page's in the
+   move's last 250ms, on the reversed curve. */
+html[data-move="grow"][data-way="back"]::view-transition-group(tabs) {
+  z-index: 1;
+}
+
+html[data-move="grow"][data-way="back"]::view-transition-group(tabs),
+html[data-move="grow"][data-way="back"]::view-transition-old(tabs),
+html[data-move="grow"][data-way="back"]::view-transition-new(tabs) {
+  animation-duration: 250ms;
+  animation-delay: 200ms;
+  animation-timing-function: cubic-bezier(0.75, 0, 0.75, 0.9);
+  animation-fill-mode: both;
+}
+
 @keyframes page-shows {
   from {
     opacity: 0;
