@@ -30,4 +30,8 @@
   // Games and their clips (design 7.3). The Owner makes the bucket once, by hand, before this is deployed (a deploy
   // fails if it is missing); `wrangler dev` gives a local one and never reaches this one.
   "r2_buckets": [{ "binding": "GAME_FILES", "bucket_name": "ruken-games" }],
+  // Cloudflare's media tool, which makes a video's still: one frame of a stored clip, shown in the video's place until it
+  // plays (src/features/games/stills.ts). It has no local copy, so `wrangler dev` and the journeys run without stills,
+  // as a copy of the app does.
+  "media": { "binding": "MEDIA" },
 }

@@ -13,6 +13,7 @@
   import { onMount, tick } from "svelte";
   import { snapshot } from "$app/navigation";
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
+  import { stillPoster } from "../../lib/still-poster.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
   import { shareLink, type ShareTools } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
@@ -393,6 +394,10 @@
             stopIfOffScreen(index);
           }}
           src={fetches(index) ? clipAddress(clip) : undefined}
+          use:stillPoster={{
+            address: ready && shape === "wide" ? clip.wideStill : clip.uprightStill,
+            second: 0,
+          }}
           preload={preloads(index)}
           muted
           playsinline

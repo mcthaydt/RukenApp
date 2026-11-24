@@ -1,6 +1,7 @@
 import { env, waitUntil } from "cloudflare:workers";
 import { r2FileStore } from "../files/r2-store.ts";
 import type { FileStore } from "../files/store.ts";
+import type { MakeFrame } from "./frames.ts";
 import type { Place, Platform } from "./platform.ts";
 
 // The only file that imports `cloudflare:workers`, and only src/hooks.server.ts imports this one, so no test
@@ -38,3 +39,19 @@ export const cloudflarePrivateFeed = () => env.PRIVATE?.feed ?? null;
 
 /** Games and clips live in one R2 bucket, bound as GAME_FILES (wrangler.jsonc). */
 export const cloudflareFiles = (): FileStore => r2FileStore(env.GAME_FILES);
+
+/**
+ * A video's still, made by Cloudflare's media tool (bound as MEDIA, wrangler.jsonc). `wrangler dev` has no copy of the
+ * tool, so a failure there is caught by the caller and the page shows its videos without stills.
+ */
+export const cloudflareFrames = (): MakeFrame | null => {
+  const media = (env as { MEDIA?: MediaBinding }).MEDIA;
+  if (media === undefined) return null;
+  return async (video, { second, width }) => {
+    const result = media
+      .input(video)
+      .transform({ width })
+      .output({ mode: "frame", time: `${String(second)}s`, format: "jpg" });
+    return new Uint8Array(await (await result.response()).arrayBuffer());
+  };
+};

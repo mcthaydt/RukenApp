@@ -10,6 +10,7 @@ import type {
 } from "../../lib/server/db.ts";
 import { countAcceptance, type AcceptanceCounts } from "./acceptance.ts";
 import { clipKeyFor, clipProblem, type ClipContentType } from "./clips.ts";
+import { deleteClipFile } from "./stills.ts";
 import { connectHostsFrom } from "./files-check.ts";
 import { GameError } from "./game-error.ts";
 import type { Connection } from "./github-connect.ts";
@@ -325,7 +326,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       update: { key, contentType, bytes: upload.bytes.length },
     });
     await takeOutOfToFix(gameId, shape === "upright" ? "upright_video" : "wide_video");
-    if (replaced !== null) await deps.files.delete(replaced.key);
+    if (replaced !== null) await deleteClipFile(deps.files, replaced.key);
   }
 
   /**
@@ -364,7 +365,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       });
       await takeOutOfToFix(gameId, shape === "upright" ? "upright_video" : "wide_video", tx);
     });
-    if (replaced.key !== null) await deps.files.delete(replaced.key);
+    if (replaced.key !== null) await deleteClipFile(deps.files, replaced.key);
     await settleLive(gameId, game.makerUserId, { dropped: false });
   }
 
@@ -717,7 +718,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       return made;
     });
     // After the yes has been kept. A delete that fails leaves a file no row points at, never a game without its video.
-    for (const key of replacedKeys) await deps.files.delete(key).catch(() => undefined);
+    for (const key of replacedKeys) await deleteClipFile(deps.files, key).catch(() => undefined);
     return made;
   }
 
@@ -1137,7 +1138,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       });
       return { dropped: wasHeld };
     });
-    if (held.key !== null) await deps.files.delete(held.key);
+    if (held.key !== null) await deleteClipFile(deps.files, held.key);
     if (outcome !== null) await settleLive(gameId, makerUserId, outcome);
   }
 
@@ -1177,7 +1178,7 @@ export function createGamesService(deps: GamesServiceDeps) {
       return keys;
     });
     await deps.files.deleteAll(`files/${game.publicId}/`);
-    for (const clip of held) await deps.files.delete(clip.key);
+    for (const clip of held) await deleteClipFile(deps.files, clip.key);
     return { name: game.name };
   }
 

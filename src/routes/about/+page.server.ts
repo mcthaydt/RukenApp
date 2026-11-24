@@ -25,7 +25,11 @@ export const load: PageServerLoad = async ({ locals }) => {
               // Along the top row first, so a feed of three shows all three before any repeats.
               const slot = row * WALL_COLUMNS + column;
               const game = clips[slot % clips.length] ?? top;
-              return { upright: game.upright, at: 2 + Math.floor(slot / clips.length) * 4 };
+              return {
+                upright: game.upright,
+                still: game.uprightStill,
+                at: 2 + Math.floor(slot / clips.length) * 4,
+              };
             }),
           ),
     prices: { monthly: dollars(PREMIUM_PRICES_CENTS.monthly), annual: dollars(PREMIUM_PRICES_CENTS.annual) },

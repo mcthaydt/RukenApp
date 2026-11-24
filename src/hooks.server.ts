@@ -1,10 +1,16 @@
 import { sequence } from "@sveltejs/kit/hooks";
 import { authServices, createHandle, httpsOnly, setMoneyCheck } from "./features/accounts/accounts.ts";
-import { cloudflareFiles, cloudflarePlatform, cloudflarePrivateFeed } from "./lib/server/cloudflare.ts";
+import {
+  cloudflareFiles,
+  cloudflareFrames,
+  cloudflarePlatform,
+  cloudflarePrivateFeed,
+} from "./lib/server/cloudflare.ts";
 import { allowWrites, databasePerRequest } from "./lib/server/db.ts";
 import { requireEnv } from "./lib/server/env.ts";
 import { consentGate } from "./features/consent/consent.ts";
 import { setFileStore } from "./lib/server/files.ts";
+import { setFrameMaker } from "./lib/server/frames.ts";
 import { setPrivateRanker } from "./features/feed/feed.ts";
 import { membershipServices } from "./features/membership/membership.ts";
 import { moneyServices } from "./features/money/money.ts";
@@ -15,6 +21,8 @@ import { setPlatform } from "./lib/server/platform.ts";
 setPlatform(cloudflarePlatform);
 // The bucket that holds games and clips.
 setFileStore(cloudflareFiles);
+// What makes a video's still, one frame of a stored clip.
+setFrameMaker(cloudflareFrames);
 // The feed's private order, when this Worker is bound to it; without it the feed runs on its open order.
 setPrivateRanker(cloudflarePrivateFeed);
 // What forgot password needs to know about money: whether a Stripe customer was ever made for the account or any money
