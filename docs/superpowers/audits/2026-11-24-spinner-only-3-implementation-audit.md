@@ -20,3 +20,7 @@
 ## Findings
 
 None.
+
+## Re-pointed to 0ab5002
+
+- `git diff --name-status 6d1d749 0ab5002`: only `D docs/superpowers/live/claude-project-thread-zo5n98.md` (one commit, "Remove live state before merge"). No code changed, so the PASS stands for `0ab5002`.
