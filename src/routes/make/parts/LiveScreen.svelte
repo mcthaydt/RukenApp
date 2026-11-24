@@ -92,8 +92,6 @@
     <p class="note">
       {#if send === "again"}
         Send it again sends your update for review again. Players can still play it while you wait.
-      {:else if sending}
-        Copying your game can take a minute. Keep this page open.
       {:else}
         Send a new version copies the newest version of your game from GitHub and sends it for review.
         {#if updateWaiting}

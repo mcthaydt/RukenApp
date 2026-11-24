@@ -69,11 +69,7 @@
         <button disabled={sending} aria-busy={sending ? "true" : undefined}> Put it back on Ruken </button>
       </div>
       <p class="note">
-        {#if sending}
-          Copying your game can take a minute. Keep this page open.
-        {:else}
-          Put it back on Ruken copies the newest version of your game from GitHub and sends it for review.
-        {/if}
+        Put it back on Ruken copies the newest version of your game from GitHub and sends it for review.
       </p>
     </form>
     {#if filesLeft}
