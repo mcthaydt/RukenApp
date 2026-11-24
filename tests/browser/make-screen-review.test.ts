@@ -109,7 +109,7 @@ test("the folded 'accepted' card has small corners, is not underlined, and keeps
   await layoutHasSettled(page);
 
   const accepted = page.locator("details.accepted");
-  await expect(accepted).toHaveCSS("border-top-left-radius", "12px");
+  await expect(accepted).toHaveCSS("border-top-left-radius", token("--radius-button"));
   await expect(accepted.locator("summary")).toHaveCSS("text-decoration-line", "none");
   const card = await boxOf(page.locator("a.sheet.fix"));
   expect((await boxOf(accepted)).y - (card.y + card.height)).toBeGreaterThanOrEqual(16);
