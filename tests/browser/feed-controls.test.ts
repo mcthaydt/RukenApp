@@ -187,6 +187,8 @@ interface Watched {
   furthest: number;
   cameBack: boolean;
   jumps: number;
+  /** Whether the browser's own loop was ever on while watched: the clip must loop by hand (`loopByHand`). */
+  loopWasOn: boolean;
 }
 
 /**
@@ -198,15 +200,24 @@ interface Watched {
  */
 async function watchClip(video: Locator, label: string): Promise<Watched> {
   await video.evaluate((element: HTMLVideoElement) => {
-    const seen: Watched = { furthest: 0, cameBack: false, jumps: 0 };
+    // A second watch on the same clip first stops the first one, so only one watcher reads it at a time.
+    (element as HTMLVideoElement & { stopWatching?: () => void }).stopWatching?.();
+    const seen: Watched = { furthest: 0, cameBack: false, jumps: 0, loopWasOn: false };
     const look = () => {
+      if (element.loop) seen.loopWasOn = true;
       if (seen.furthest > 0.5 && element.currentTime < 0.5) seen.cameBack = true;
       seen.furthest = Math.max(seen.furthest, element.currentTime);
     };
-    element.addEventListener("seeking", () => (seen.jumps += 1));
+    const jumped = () => (seen.jumps += 1);
+    element.addEventListener("seeking", jumped);
     element.addEventListener("timeupdate", look);
-    setInterval(look, 50);
-    Object.assign(element, { watched: seen });
+    const reader = setInterval(look, 50);
+    const stopWatching = () => {
+      clearInterval(reader);
+      element.removeEventListener("seeking", jumped);
+      element.removeEventListener("timeupdate", look);
+    };
+    Object.assign(element, { watched: seen, stopWatching });
   });
   const seen = async (): Promise<Watched> =>
     await video.evaluate((element: HTMLVideoElement) => ({
@@ -246,9 +257,11 @@ test("the clip on screen plays through and starts again, and again after a perso
 }) => {
   test.setTimeout(120_000);
   // Safari's engine on Linux, given a looping video whose address names a start time (every clip's `#t=0.001`), jumped
-  // back to the start about a hundred times a second and never played (progress.md, Flaky tests).
+  // back to the start about a hundred times a second and never played, and a clip whose `loop` was switched on while it
+  // played sometimes stopped the page for good at its end (progress.md, Flaky tests). So the clip loops by hand.
+  const [slug] = ours;
+  if (slug === undefined) throw new Error("this file's beforeAll made no game, so there is no clip to watch");
   await openFeed(page);
-  const slug = ours[0] ?? "";
   const clip = page.locator(`section[data-slug="${slug}"]`).first();
   await clip.scrollIntoViewIfNeeded();
   await expect(clip).toHaveAttribute("data-current", "true");
@@ -258,6 +271,7 @@ test("the clip on screen plays through and starts again, and again after a perso
   const first = await watchClip(video, "the first time");
   expect(first.furthest, "how far the clip played").toBeGreaterThan(0.5);
   expect(first.jumps, "jumps in one round of a two-second clip").toBeLessThanOrEqual(5);
+  expect(first.loopWasOn, "the browser's own loop was on while the clip played").toBe(false);
 
   // Away and back: the clip a person left waits at its start, and plays again from there.
   await page.keyboard.press("ArrowDown");
@@ -268,6 +282,7 @@ test("the clip on screen plays through and starts again, and again after a perso
   const again = await watchClip(video, "the second time");
   expect(again.furthest, "how far the clip played the second time").toBeGreaterThan(0.5);
   expect(again.jumps, "jumps in one round, the second time").toBeLessThanOrEqual(5);
+  expect(again.loopWasOn, "the browser's own loop was on, the second time").toBe(false);
 });
 
 test("each key moves one clip, never before the first", async ({ page }) => {

@@ -1,7 +1,7 @@
 // A video that plays only while a person can see it. A page with many clips (the landing page's wall and bands) would
 // otherwise play and fetch every one at once, on screen or not. It keeps quiet-video.ts's rules: nothing plays by
 // itself for a person who asked for less motion, is saving data or is on a small device.
-import { loopOnceStarted, mayMove } from "./quiet-video.ts";
+import { loopByHand, mayMove } from "./quiet-video.ts";
 
 /** What a clip does when it comes on or goes off the screen. */
 export type ClipStep = "play" | "pause" | "still";
@@ -16,7 +16,7 @@ export function clipStep(onScreen: boolean, mayPlay: boolean): ClipStep {
 export function playOnScreen(node: HTMLVideoElement): { destroy(): void } {
   node.muted = true;
   node.playsInline = true;
-  const looping = loopOnceStarted(node);
+  const looping = loopByHand(node);
   const mayPlay = mayMove();
   if (clipStep(true, mayPlay) === "still") {
     // A clip that never plays still shows a picture: its first frame, which is all it fetches.
