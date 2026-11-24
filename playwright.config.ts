@@ -25,6 +25,9 @@ const planned = (project: string) =>
 // the real site runs in.
 export default defineConfig({
   testDir: TEST_DIR,
+  // Draws one page in Safari's engine once the site is up, so no journey pays for a fresh machine's drawing cache
+  // (tests/browser/support/warm-webkit.ts).
+  globalSetup: "./tests/browser/support/warm-webkit.ts",
   ...(piece && "shard" in piece ? { shard: piece.shard } : {}),
   forbidOnly: true,
   retries: 0,
