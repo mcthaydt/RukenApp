@@ -1,4 +1,4 @@
-**7bfb122 PASS**
+**8b48549 PASS** (re-pointed from 7bfb122)
 
 # Warm Safari's drawing cache before the journeys: lane 2 review, round 1
 
@@ -69,3 +69,9 @@ The change adds nothing a user can make. Not applicable.
 ## Probes
 
 The probe runner and the global setups used for the timings are in the project files, `audits/2026-11-24-warm-phone-drawing-cache-1-probe-*.txt`. They change nothing in the repo; they swap `globalSetup` in a scratch worktree and put it back.
+
+## Re-point after main was merged in: 8b48549
+
+- `8b48549` merges main `715b88a` (#376) into `7bfb122`, with no conflicts. Main brought only `src/lib/look.css` (+13, the in-app scrollbar rule) and `tests/browser/scrollbar.test.ts` (new).
+- The PR's own diff against main is byte-for-byte the same as before: `git diff f3af84d 7bfb122` equals `git diff 715b88a 8b48549` (3 files, +41).
+- Nothing from main touches the global setup, the Playwright config or the sign-up press, and hiding a scrollbar does not change what the warm-up does. The verdict and the timings above stand for `8b48549`. Criterion 4 (full CI green) is still open until the PR is marked ready.
