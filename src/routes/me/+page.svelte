@@ -50,9 +50,12 @@
     <li><a class="go" href="/me/computers">Your computers</a></li>
     <li><a class="go" href="/about">What is Ruken?</a></li>
   </ul>
-  <form class="apart" method="POST" action="/sign-out">
-    <button class="quiet">Sign out</button>
-  </form>
-  <!-- A full line of air above it, so a thumb meant for Sign out never lands on Delete. -->
-  <p class="apart"><a class="quiet" href="/me/delete">Delete my account</a></p>
+  <!-- Side by side, so the whole account fits on a phone with no scrolling (the owner, 2026-11-24); the row's gap keeps
+       a thumb meant for Sign out off Delete. -->
+  <div class="ways apart side-by-side">
+    <form method="POST" action="/sign-out">
+      <button class="quiet">Sign out</button>
+    </form>
+    <a class="quiet" href="/me/delete">Delete my account</a>
+  </div>
 </main>

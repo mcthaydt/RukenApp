@@ -1,3 +1,4 @@
+import { asInstalled } from "./installed.ts";
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { relative } from "node:path";
 import { rgb, token } from "../../support/look-tokens.ts";
@@ -306,7 +307,9 @@ export async function expectOneCard(page: Page, options: { red?: string[] } = {}
   expect(await filledButtons(page).count()).toBeLessThanOrEqual(1);
   expect(await pipRed(page)).toEqual(options.red ?? []);
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
+    await page.evaluate(() =>
+      [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+    ),
   ).toBe(true);
 }
 
@@ -399,8 +402,10 @@ export const SIDEWAYS = { phone: { width: 915, height: 412 }, tablet: { width: 1
 export function heldSideways(device: keyof typeof SIDEWAYS, define: () => void): void {
   test.describe(`on ${device === "phone" ? "a phone" : "an iPad"} held sideways`, () => {
     test.use({ viewport: SIDEWAYS[device] });
-    test.beforeEach(() => {
+    test.beforeEach(async ({ page }) => {
       test.skip(test.info().project.name !== device, "one project is enough for a window of its own");
+      // Opened from the Home Screen: in a browser tab a phone held sideways is asked to turn upright.
+      await asInstalled(page);
     });
     define();
   });

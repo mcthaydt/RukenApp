@@ -134,6 +134,7 @@ test("every screen feels like an app: no grey flash, no double-tap zoom, no boun
     const html = look("html");
     return {
       pageOverflow: html.overflow,
+      viewOverflow: look("body").overflowY,
       pageBounce: html.overscrollBehaviorY,
       gestures: html.touchAction,
       pressFlash: html.getPropertyValue("-webkit-tap-highlight-color"),
@@ -142,8 +143,15 @@ test("every screen feels like an app: no grey flash, no double-tap zoom, no boun
       wordsSelect: look("main p").userSelect,
     };
   });
-  // A reading screen still scrolls, and a pinch still zooms it; a double tap does not.
-  expect(rules.pageOverflow).toBe("visible");
+  // A reading screen still scrolls, inside its own view (the body; the page around it never scrolls, so it works like
+  // an app's one window: fits-the-screen.test.ts), and a pinch still zooms it; a double tap does not.
+  expect(rules.pageOverflow).toBe("hidden");
+  expect(rules.viewOverflow).toBe("auto");
+  await page.evaluate(() => {
+    document.body.scrollTo(0, 200);
+  });
+  await expect.poll(() => page.evaluate(() => document.body.scrollTop)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
   expect(rules.gestures).toBe("manipulation");
   expect(rules.pageBounce).toBe("none");
   expect(rules.pressFlash).toBe("rgba(0, 0, 0, 0)");

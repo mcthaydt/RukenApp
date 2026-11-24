@@ -209,7 +209,9 @@ test("a 60-letter name with no space wraps, and nothing scrolls sideways", async
   await expect(page).toHaveURL(/\/line$/);
 
   const inWindow = () =>
-    page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+    page.evaluate(() =>
+      [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+    );
   expect(await inWindow()).toBe(true);
   const viewport = page.viewportSize() ?? { width: 0, height: 0 };
   const next = await boxOf(nextButton(page));
@@ -311,7 +313,11 @@ function uprightFrameHeight(): void {
           ? Math.min(UPRIGHT_HEIGHT.phone, height / 2)
           : UPRIGHT_HEIGHT[layout];
     expect((await boxOf(frame)).height).toBeCloseTo(planned, 0);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(
+      await page.evaluate(() =>
+        [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+      ),
+    ).toBe(true);
   });
 }
 
@@ -373,7 +379,11 @@ function checkAndSendButtonInView(): void {
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
     expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(
+      await page.evaluate(() =>
+        [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+      ),
+    ).toBe(true);
   });
 }
 
@@ -480,7 +490,11 @@ test("on Sent back the blue button is in the window without scrolling, and nothi
   expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
   expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(
+    await page.evaluate(() =>
+      [document.documentElement, document.body].every((box) => box.scrollWidth <= box.clientWidth),
+    ),
+  ).toBe(true);
   expect(await pipRed(page)).toEqual([]);
 });
 
