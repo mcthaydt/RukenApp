@@ -134,7 +134,7 @@ test("a mistake answers with what to type", async ({ request, page, browser }) =
   const nothing = await post({});
   expect(nothing.status()).toBe(400);
   expect(await asJson(nothing)).toEqual({
-    problem: 'Say what to do: "do" is "list", "look", "accept" or "send-back".',
+    problem: 'Say what to do: "do" is "list", "reports", "look", "accept" or "send-back".',
   });
 
   const noParts = await post({ do: "send-back", game: waiting.slug, parts: [] });

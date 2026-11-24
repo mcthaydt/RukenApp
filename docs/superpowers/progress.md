@@ -195,6 +195,7 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 
 ### Flaky tests
 
+- `tests/browser/report-a-game.test.ts:74` [tablet], local cloud run on the report-a-game branch (2026-11-24): sign-up failed with "no code waiting for +12135552373" (`support/texts.ts:66`). Passed on its one rerun. Same words as the known "no code waiting" flakes; cause not looked for.
 - `tests/browser/attach-phone.test.ts:15` [phone] again on #345 at `b3b969f` (run 45287060724, shard 6, attempt 1): the sign-up "Text me a code" click never became stable (`support/account.ts:116`). Passed on the rerun. The same line as the known sign-up text-code flake.
 - `tests/browser/feed-controls.test.ts:832` "the feed never ends" [phone], CI on #345: failed at `2126888` (run 45266726668, both attempts) and `f08e9da` (run 45278940517): "clips.nth(before)" never became current. Passed in CI shard 3 at `8ca99df` (run 45282074589), 3 of 3 alone and with its whole shard (930 tests) in the Playwright WebKit image locally. #345 changes no feed code; the review found no styling cause. Cause not found; suspected timing.
 - `tests/browser/page-moves.test.ts:115` [phone], CI on #345 at `8ca99df` (run 45282074589, shard 1): after Sign out, You stayed on "/" not /sign-in. And `tests/browser/attach-phone.test.ts:15` [phone], same run, shard 6: a sign-up click timed out. Both passed 2 of 2 in the Playwright WebKit image locally.

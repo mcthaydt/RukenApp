@@ -1,7 +1,7 @@
 <!--
   The feed (spec 5.1): one game to a screen, full-window clips that snap one at a time. Each clip leads with the person
   who made it, then the game and Play. A press on the clip opens the game's page; the speaker in the corner flips sound
-  for every clip, and Share is the one mark on the right. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
+  for every clip, and Share and Report are the marks on the right. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
   With script it fetches only the clip on screen and the next, plays the one on screen where a video may move, shows
   the window's shape of clip, and moves a clip at a time on the arrow keys, Page Up, Page Down and Space.
   The feed never ends: a few clips before the end of what it has, it asks for the next page, and a spinner fills the
@@ -17,12 +17,16 @@
   import { shareLink, type ShareTools } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
+  import Icon from "../../lib/icon.svelte";
 
   let {
     first,
     launch,
+    onreport,
   }: {
     first: FeedPage;
+    /** Opens the screen's Report sheet for a clip (the sheet is moderation's, above the feed, so the screen holds it). */
+    onreport?: (clip: FeedClip, from: HTMLElement) => void;
     /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
     launch: { before: false } | { before: true; opens: string; wished: string[] };
   } = $props();
@@ -503,6 +507,18 @@
                 <path d="M3 11l18-8-8 18-2-8-8-2z" fill="currentColor" />
               </svg>
             </button>
+            {#if ready && onreport !== undefined}
+              <button
+                type="button"
+                class="report"
+                aria-label="Report"
+                onclick={(event) => {
+                  onreport(clip, event.currentTarget);
+                }}
+              >
+                <Icon name="flag" />
+              </button>
+            {/if}
           </div>
         </div>
       </section>
@@ -610,13 +626,15 @@
     box-shadow: var(--glass-edge);
   }
   .sound svg,
-  .share svg {
+  .share svg,
+  .report :global(.icon) {
     filter: var(--glass-icon);
     /* Its own layer, so its shadow is drawn once, not again each frame the video under the glass moves. */
     will-change: transform;
   }
   .sound:focus-visible,
-  .share:focus-visible {
+  .share:focus-visible,
+  .report:focus-visible {
     outline-offset: -6px;
   }
   .hints {
@@ -749,7 +767,8 @@
     align-items: center;
     gap: 0.75rem;
   }
-  .share {
+  .share,
+  .report {
     display: grid;
     place-items: center;
     width: var(--size-target);

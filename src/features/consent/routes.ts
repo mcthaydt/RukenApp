@@ -10,6 +10,8 @@ const OPEN: readonly string[] = [
   "/[handle=handle]",
   "/[handle=handle]/out/[link]",
   "/g/[game]",
+  // A report: anyone may ask, so the sheet can say "Sign in". Only a signed-in person, who said yes to sign in, keeps one.
+  "/g/[game]/report",
   "/goodbye",
   "/cookies",
   "/api/feed",
