@@ -454,15 +454,11 @@ form > * + * {
   padding-inline: 0.75rem;
 }
 
-/* A short phone (an iPhone SE, 375 by 667, or smaller): Your account's padding and gaps close up, so the whole account
-   fits above the bar with no scrolling, a member's too, with its renewal line and the button that manages it (the
-   owner, 2026-11-24: scrolling is rare). Every button and link keeps its whole 48px target; only the air between them
-   shrinks. */
-@media (max-width: 499px) and (max-height: 700px) {
-  header ~ main.card:has(.side-by-side) {
-    margin-top: 0.5rem;
-  }
-
+/* A short window (an iPhone SE, 375 by 667, a laptop's 1280 by 720, or anything under 800 tall): Your account's padding
+   and gaps close up, so the whole account fits above the bar with no scrolling, a member's too, with its renewal line
+   and the button that manages it (the owner, 2026-11-24: scrolling is rare). Every button and link keeps its whole 48px
+   target; only the air between them shrinks. The wordmark stays where it is on every screen. */
+@media (max-height: 800px) {
   .card:has(.side-by-side) {
     padding: 0.75rem;
   }
@@ -476,7 +472,7 @@ form > * + * {
     margin-top: 0.75rem;
   }
 
-  /* A member's renewal line runs to three lines on a narrow phone: they sit a little closer. */
+  /* A member's renewal line runs to two or three lines: they sit a little closer. */
   .card:has(.side-by-side) .badged + p {
     line-height: 1.35;
   }
@@ -496,6 +492,13 @@ form > * + * {
   .card .ways.side-by-side {
     margin-top: 0;
     column-gap: 0.5rem;
+  }
+}
+
+/* On a short phone the card also comes a little closer to the wordmark. */
+@media (max-width: 499px) and (max-height: 700px) {
+  header ~ main.card:has(.side-by-side) {
+    margin-top: 0.5rem;
   }
 }
 
