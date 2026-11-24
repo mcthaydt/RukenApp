@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { pageHasSettled, signUp } from "./support/account.ts";
+import { pageHasSettled, payAsNewMember, signUp } from "./support/account.ts";
 import { CONSENTED_STATE } from "./support/consent.ts";
 import { asInstalled } from "./support/installed.ts";
-import { boxOf, showTheOwner } from "./support/look.ts";
+import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Inside the app the page never scrolls; it works like an app's one window (the owner, 2026-11-24: "within the app ... it
@@ -58,6 +58,8 @@ async function opened(page: Page, path: string): Promise<void> {
   // Started, so a press is the app's own move and not a whole new page load.
   await pageHasSettled(page);
   await expect(bar(page)).toBeVisible();
+  // Each line rises into place as a screen opens; measured mid-rise, a line still below its place counts as overflow.
+  await wordsHaveSettled(page);
 }
 
 test.describe("signed out", () => {
@@ -90,6 +92,33 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
   await expect.poll(async () => (await overflow(page)).view).toBe(0);
   expect((await overflow(page)).page).toBe(0);
   await expectViewAboveTheBar(page, "/me at 320 by 568");
+  await expect(page.getByRole("link", { name: "Delete my account" })).toBeInViewport();
+});
+
+test("a member's Your account fits too, down to an iPhone SE", async ({ page }) => {
+  // A member's account has more on it than a newcomer's: the line that says when it renews, the button that manages
+  // the membership and the note under it, in place of Join Ruken.
+  test.setTimeout(90_000);
+  await payAsNewMember(page);
+  await expect(page.getByText("Member", { exact: true })).toBeVisible();
+  for (const size of [page.viewportSize(), { width: 375, height: 667 }]) {
+    if (size === null) continue;
+    await page.setViewportSize(size);
+    const where = `a member's /me at ${String(size.width)} by ${String(size.height)}`;
+    await expect.poll(async () => (await overflow(page)).view, where).toBe(0);
+    expect((await overflow(page)).page, where).toBe(0);
+    await expectViewAboveTheBar(page, where);
+    await expect(page.getByRole("link", { name: "Delete my account" })).toBeInViewport();
+  }
+
+  // On the smallest phone (320 by 568) a member's account is a little taller than the window: it scrolls inside its
+  // view (the owner, 2026-11-24: "rare scroll is fine"), the page never does, and its end clears the bar.
+  await page.setViewportSize({ width: 320, height: 568 });
+  await expect.poll(async () => (await overflow(page)).page).toBe(0);
+  await page.evaluate(() => {
+    document.body.scrollTo(0, document.body.scrollHeight);
+  });
+  await expectViewAboveTheBar(page, "a member's /me at 320 by 568");
   await expect(page.getByRole("link", { name: "Delete my account" })).toBeInViewport();
 });
 
