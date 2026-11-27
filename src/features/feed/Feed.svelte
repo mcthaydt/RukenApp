@@ -2,31 +2,45 @@
   The feed (spec 5.1): one game to a screen, full-window clips that snap one at a time. Each clip shows the game and
   Play at the bottom, and the person who made it at the top of the column on the right, with a plus to follow them, above
   Share (Ruken's own share sheet). A press on the clip opens the game's page; the speaker in the corner flips sound for
-  every clip. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
+  every clip. The top bar (FeedTop.svelte) holds the Fresh and Followed tabs and Search. It reads without script: every
+  clip is a plain video, every name and Play a plain link, and swiping scrolls.
   With script it fetches only the clip on screen and the next, plays the one on screen where a video may move, shows
   the window's shape of clip, and moves a clip at a time on the arrow keys, Page Up, Page Down and Space.
   The feed never ends: a few clips before the end of what it has, it asks for the next page, and a spinner fills the
   screen past the last clip until that page comes. When every game has been shown it goes round again in a new order.
 -->
 <script lang="ts">
-  import { deviceStore } from "../consent/consent.browser.ts";
+  import MovingBehind from "../../lib/moving-behind.svelte";
+  import { askForYes, deviceStore, hasAgreed } from "../consent/consent.browser.ts";
+  import { goto } from "$app/navigation";
   import { loads } from "../../lib/loads.ts";
   import { onMount, tick } from "svelte";
   import { snapshot } from "$app/navigation";
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
   import { stillPoster } from "../../lib/still-poster.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
+  import GoodPick from "./GoodPick.svelte";
+  import FeedTop from "./FeedTop.svelte";
   import FollowBadge from "./FollowBadge.svelte";
   import ShareSheet from "./ShareSheet.svelte";
+  import TasteSheet from "./TasteSheet.svelte";
   import type { ShareSheetControl } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
+  import type { ClipMarks, MarkKind } from "./marks.ts";
+  import type { TabKey } from "./tabs.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
 
   let {
     first,
     launch,
+    tab = "fresh",
+    tune = false,
   }: {
     first: FeedPage;
+    /** Which of the top bar's tabs this is: every game, or the makers the person follows (Followed.svelte). */
+    tab?: TabKey;
+    /** Whether this person's feed is learning from them, so each clip offers More and Less like this (•••). */
+    tune?: boolean;
     /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
     launch: { before: false } | { before: true; opens: string; wished: string[] };
   } = $props();
@@ -67,8 +81,87 @@
   let moreScreen = $state<HTMLElement | null>();
   // One share sheet for the whole feed; each clip's Share opens it for that game.
   let shareSheet = $state<ShareSheetControl>();
+  // One ••• sheet too, and "Got it." for two seconds after a press on it.
+  // The ••• sheet opens the same way the Share sheet does.
+  let tasteSheet = $state<ShareSheetControl>();
+  let gotIt = $state(false);
+  let gotItTimer: ReturnType<typeof setTimeout> | undefined;
+  // The Good pick cards still to answer, by the key of the clip each sits on.
+  // svelte-ignore state_referenced_locally
+  let asks = $state<Partial<Record<string, { slug: string; name: string }>>>(
+    first.ask ? { [first.ask.key]: first.ask } : {},
+  );
+
+  function sayGotIt(): void {
+    gotIt = true;
+    clearTimeout(gotItTimer);
+    gotItTimer = setTimeout(() => {
+      gotIt = false;
+    }, 2000);
+  }
+
+  // An answered card goes, and the feed moves on to the next clip.
+  function answered(key: string, index: number): void {
+    asks = Object.fromEntries(Object.entries(asks).filter(([other]) => other !== key));
+    goTo(index + 1);
+  }
   // A press on one clip's plus changes every clip by that maker, on this page and on pages still to come.
   let followed = $state<Record<string, boolean>>({});
+
+  // What a press changed, by game: a game can be on the feed twice, and both of its clips show the same marks.
+  let pressed = $state<Record<string, ClipMarks>>({});
+  // The marks being sent, as "slug kind", so a second press waits for the first to come back.
+  let sendingMarks = $state<string[]>([]);
+  // The game whose press failed, for the line under its buttons.
+  let markProblem = $state<string | null>(null);
+  const marksOf = (clip: FeedClip): ClipMarks => pressed[clip.slug] ?? clip.marks;
+  const FIELD: Record<MarkKind, "liked" | "saved" | "reposted"> = {
+    like: "liked",
+    save: "saved",
+    repost: "reposted",
+  };
+
+  // A press shows its answer at once and is sent behind it, so a like never waits; if the site says no, the button goes
+  // back and the clip says so. Without the cookie yes the person is asked first, in place (the card says what for), and
+  // signed out they sign in and the press is made on the way back (pressed.ts).
+  async function press(clip: FeedClip, kind: MarkKind): Promise<void> {
+    const busyKey = `${clip.slug} ${kind}`;
+    if (sendingMarks.includes(busyKey)) return;
+    forgetHints();
+    if (!hasAgreed()) {
+      // The card asks in place and, on "I agree", this same press goes on (consent/ask.svelte.ts).
+      askForYes(kind, () => void press(clip, kind));
+      return;
+    }
+    const before = marksOf(clip);
+    const on = !before[FIELD[kind]];
+    const likes = kind === "like" ? before.likes + (on ? 1 : -1) : before.likes;
+    pressed[clip.slug] = { ...before, [FIELD[kind]]: on, likes: Math.max(0, likes) };
+    sendingMarks = [...sendingMarks, busyKey];
+    markProblem = null;
+    try {
+      const answer = await fetch("/api/feed/marks", {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ game: clip.slug, kind, on }),
+      });
+      if (answer.status === 401) {
+        // Signed out: sign in, and the press is made on the way back.
+        pressed[clip.slug] = before;
+        const said = await answer.json<{ go?: string }>().catch(() => ({ go: undefined }));
+        await goto(said.go ?? `/sign-in?next=${encodeURIComponent("/")}`);
+        return;
+      }
+      if (!answer.ok) throw new Error(`the site answered ${String(answer.status)}`);
+      const said = await answer.json<{ on: boolean; likes: number }>();
+      pressed[clip.slug] = { ...marksOf(clip), [FIELD[kind]]: said.on, likes: said.likes };
+    } catch {
+      pressed[clip.slug] = { ...marksOf(clip), [FIELD[kind]]: before[FIELD[kind]], likes: before.likes };
+      markProblem = clip.slug;
+    } finally {
+      sendingMarks = sendingMarks.filter((one) => one !== busyKey);
+    }
+  }
 
   const initialOf = (name: string): string => Array.from(name.trim())[0]?.toUpperCase() ?? "";
   const clipAddress = (clip: FeedClip): string =>
@@ -130,6 +223,15 @@
     ready = true;
     mounted = true;
     if (returning !== undefined) returnTo(returning);
+    else {
+      // Back from a press that waited (the cookie yes, sign-in): the feed opens at that game's clip.
+      const at = new URL(location.href).searchParams.get("at");
+      const index = at === null ? -1 : clips.findIndex((clip) => clip.slug === at);
+      if (index > 0) {
+        current = index;
+        void tick().then(() => sections[index]?.scrollIntoView({ behavior: "instant", block: "start" }));
+      }
+    }
     void tick().then(() => {
       warm = true;
     });
@@ -138,6 +240,7 @@
       window.removeEventListener("resize", keepPlace);
       watcher?.disconnect();
       clearTimeout(slideTimer);
+      clearTimeout(gotItTimer);
     };
   });
 
@@ -166,6 +269,7 @@
       // without a move they would stay on the spinner as it went down the page, and it would ask again and again.
       const waiting = current >= had;
       clips = [...clips, ...page.clips.filter((clip) => !have.has(clip.key))];
+      if (page.ask) asks = { ...asks, [page.ask.key]: page.ask };
       next = page.next;
       more = "idle";
       if (waiting) {
@@ -298,9 +402,10 @@
   const tellsSlideEnd = typeof window !== "undefined" && "onscrollend" in window;
   let aim: number | null = null;
   let sliding = false;
-  // A slide that started but never ends (one that could not move, so no `scrollend` comes) must not hold the keys:
-  // after this long the feed stops waiting and the next key counts from the clip on screen. A slide on a busy CI runner
-  // took about 0.8 s, so this never cuts a real one short.
+  // A slide that started but never ends (one that could not move, or one Safari's engine sends no `scrollend` for) must
+  // not hold the keys: after this long the feed stops waiting and moves one clip from the one on screen toward where the
+  // keys were sending it, so a key that waited is never dropped and keys held by a stuck slide never jump the feed
+  // several clips at once. A slide on a busy CI runner took about 0.8 s, so this never cuts a real one short.
   const SLIDE_GIVE_UP_MS = 2000;
   let slideTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -317,7 +422,7 @@
     }
     sliding = tellsSlideEnd;
     clearTimeout(slideTimer);
-    if (sliding) slideTimer = setTimeout(forgetAim, SLIDE_GIVE_UP_MS);
+    if (sliding) slideTimer = setTimeout(stopWaiting, SLIDE_GIVE_UP_MS);
     // With less motion the next clip is simply there, not slid to.
     screen.scrollIntoView({ behavior: mayMove() ? "smooth" : "auto", block: "start" });
   }
@@ -327,6 +432,13 @@
     clearTimeout(slideTimer);
     sliding = false;
     if (aim !== null) goTo(aim);
+  }
+
+  // A slide never said it ended: one step toward where the keys were going, counted from the clip on screen.
+  function stopWaiting(): void {
+    const going = aim;
+    forgetAim();
+    if (going !== null && going !== current) goTo(current + Math.sign(going - current));
   }
 
   // A finger or wheel takes the feed over: where the keys were going no longer counts.
@@ -363,6 +475,43 @@
 
 <svelte:window onkeydown={onKey} onpointerdown={forgetHints} />
 
+<!-- One speaker for the whole feed, in the top bar beside the tabs and Search, so it stays put as the clips move under
+     it (the owner, 2026-11-27: "they need to be grouped together as a unit"). -->
+{#snippet speaker()}
+  <button
+    type="button"
+    class="sound"
+    aria-label="Sound"
+    aria-pressed={soundOn}
+    onclick={() => {
+      pressSound(clips[current]?.slug ?? "");
+    }}
+  >
+    <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+      <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor" />
+      {#if soundOn}
+        <path
+          d="M15 9a4 4 0 0 1 0 6M17.5 6.5a8 8 0 0 1 0 11"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+      {:else}
+        <path
+          d="M16 9l5 6M21 9l-5 6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+      {/if}
+    </svg>
+  </button>
+{/snippet}
+
+<FeedTop on={tab} sound={clips.length > 0 ? speaker : undefined} />
+
 {#if clips.length === 0}
   <main class="empty">
     <p class="statement">No games here yet.</p>
@@ -378,6 +527,7 @@
     ontouchstart={forgetAim}
     onpointerdown={forgetAim}
   >
+    <MovingBehind />
     {#each clips as clip, index (clip.key)}
       <section
         bind:this={sections[index]}
@@ -422,36 +572,14 @@
           tabindex="-1"
           aria-hidden="true"
         ></a>
-        <button
-          type="button"
-          class="sound"
-          aria-label="Sound"
-          aria-pressed={soundOn}
-          onclick={() => {
-            pressSound(clip.slug);
+
+        <!-- The Good pick card, on the clip the feed asked it on, until it is answered. -->
+        <GoodPick
+          ask={asks[clip.key]}
+          onanswered={() => {
+            answered(clip.key, index);
           }}
-        >
-          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
-            <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor" />
-            {#if soundOn}
-              <path
-                d="M15 9a4 4 0 0 1 0 6M17.5 6.5a8 8 0 0 1 0 11"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            {:else}
-              <path
-                d="M16 9l5 6M21 9l-5 6"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            {/if}
-          </svg>
-        </button>
+        />
 
         {#if index === 0 && hint !== null}
           <div class="hints">
@@ -473,7 +601,7 @@
                 slug={clip.slug}
                 wished={launch.wished.includes(clip.slug)}
                 opens={launch.opens}
-                back="/"
+                back={tab === "followed" ? "/followed" : "/"}
                 buttonClass="button play"
               />
             {:else}
@@ -498,13 +626,89 @@
                     handle={maker.handle}
                     name={maker.name}
                     following={followed[maker.handle] ?? maker.following}
-                    back="/"
+                    back={tab === "followed" ? "/followed" : "/"}
                     onchange={(now: boolean) => {
                       followed[maker.handle] = now;
                     }}
                   />
                 {/if}
               </div>
+            {/if}
+            {#if ready}
+              {@const marks = marksOf(clip)}
+              {#if markProblem === clip.slug}
+                <p class="markproblem" role="alert">That didn't work. Try again.</p>
+              {/if}
+              <button
+                type="button"
+                class="mark"
+                aria-label="Like"
+                aria-pressed={marks.liked}
+                aria-disabled={sendingMarks.includes(`${clip.slug} like`) ? "true" : undefined}
+                onclick={() => {
+                  void press(clip, "like");
+                }}
+              >
+                <span class="disc">
+                  <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                    <path
+                      d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"
+                      fill={marks.liked ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span class="word" aria-hidden="true">{marks.likes > 0 ? marks.likes : "Like"}</span>
+              </button>
+              <button
+                type="button"
+                class="mark"
+                aria-label="Save"
+                aria-pressed={marks.saved}
+                aria-disabled={sendingMarks.includes(`${clip.slug} save`) ? "true" : undefined}
+                onclick={() => {
+                  void press(clip, "save");
+                }}
+              >
+                <span class="disc">
+                  <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                    <path
+                      d="M6 3.5h12v17l-6-4.5-6 4.5z"
+                      fill={marks.saved ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span class="word" aria-hidden="true">Save</span>
+              </button>
+              <button
+                type="button"
+                class="mark"
+                aria-label="Repost"
+                aria-pressed={marks.reposted}
+                aria-disabled={sendingMarks.includes(`${clip.slug} repost`) ? "true" : undefined}
+                onclick={() => {
+                  void press(clip, "repost");
+                }}
+              >
+                <span class="disc">
+                  <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                    <path
+                      d="M4 11V9a3 3 0 0 1 3-3h12m-3-3 3 3-3 3M20 13v2a3 3 0 0 1-3 3H5m3 3-3-3 3-3"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width={marks.reposted ? 3 : 2}
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span class="word" aria-hidden="true">Repost</span>
+              </button>
             {/if}
             <button
               type="button"
@@ -518,6 +722,25 @@
                 <path d="M3 11l18-8-8 18-2-8-8-2z" fill="currentColor" />
               </svg>
             </button>
+            {#if tune}
+              <button
+                type="button"
+                class="tunes"
+                aria-label="More or less like this"
+                onclick={(event) => {
+                  tasteSheet?.open({ slug: clip.slug, name: clip.name }, event.currentTarget);
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                  <path
+                    d="M5 12h.01M12 12h.01M19 12h.01"
+                    stroke="currentColor"
+                    stroke-width="3.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+            {/if}
           </div>
         </div>
       </section>
@@ -543,6 +766,10 @@
   </main>
 {/if}
 <ShareSheet bind:this={shareSheet} />
+{#if tune}
+  <TasteSheet bind:this={tasteSheet} onsaved={sayGotIt} />
+{/if}
+<p class="gotit" role="status">{gotIt ? "Got it." : ""}</p>
 
 <style>
   .feed {
@@ -607,12 +834,8 @@
     display: block;
     margin: 0;
   }
-  /* The speaker in the top corner flips sound, and shows which it is. */
+  /* The speaker in the top bar flips sound, and shows which it is. */
   .sound {
-    position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
-    z-index: 2;
     display: grid;
     place-items: center;
     width: var(--size-target);
@@ -627,14 +850,66 @@
     box-shadow: var(--glass-edge);
   }
   .sound svg,
-  .share svg {
+  .share svg,
+  .tunes svg,
+  .mark svg {
     filter: var(--glass-icon);
     /* Its own layer, so its shadow is drawn once, not again each frame the video under the glass moves. */
     will-change: transform;
   }
   .sound:focus-visible,
-  .share:focus-visible {
+  .share:focus-visible,
+  .tunes:focus-visible {
     outline-offset: -6px;
+  }
+  /* Like, Save and Repost: a round glass button each, with its word (or the like count) under it on the clip. Pressed,
+     the glass is the bar's brighter marked pill and the picture is filled in. */
+  .mark {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    min-width: var(--size-target);
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--chalk);
+  }
+  .disc {
+    display: grid;
+    place-items: center;
+    width: var(--size-target);
+    height: var(--size-target);
+    border-radius: 50%;
+    --corner: round;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+  }
+  .mark[aria-pressed="true"] .disc {
+    background: var(--glass-lift);
+  }
+  .word {
+    font: var(--text-small);
+    font-weight: 600;
+    text-shadow: var(--glass-ink);
+  }
+  .markproblem {
+    max-width: 7rem;
+    margin: 0;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-button);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+    font: var(--text-small);
+    text-align: center;
+    text-shadow: var(--glass-ink);
   }
   .hints {
     position: absolute;
@@ -790,7 +1065,30 @@
     align-items: center;
     gap: 0.75rem;
   }
-  .share {
+  /* "Got it." after a press on the ••• sheet: one frosted line near the top, for two seconds. Empty, it is not drawn,
+     but stays in place so a screen reader hears it. */
+  .gotit {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    z-index: 5;
+    translate: -50% 0;
+    margin: 0;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-button);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+    color: var(--chalk);
+    text-shadow: var(--glass-ink);
+    pointer-events: none;
+  }
+  .gotit:empty {
+    display: none;
+  }
+  .share,
+  .tunes {
     display: grid;
     place-items: center;
     width: var(--size-target);
@@ -829,11 +1127,9 @@
     .gamelink h2 {
       font-size: 1.25rem;
     }
+    /* Under the top bar, where the band cannot cover them either. */
     .hints {
-      top: 0.75rem;
-    }
-    .sound {
-      left: max(0.75rem, env(safe-area-inset-left));
+      top: calc(0.75rem + var(--size-target) + 0.5rem);
     }
     /* The round buttons stand in the bar's column, under it, centred on it. */
     .side {

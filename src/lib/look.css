@@ -90,16 +90,17 @@
   /* Shape. Ruken's own corner (the owner, 2026-11-24: "a long ease ... twice as far out, then melt into the
      edge"; "soft"): a superellipse whose curve starts twice as far from the corner as the old round one and eases
      into the straight edge, so it never shows where the curve begins. 1.4 is soft; 2 would be a boxy squircle and 1
-     a plain circle. Every rounded corner reads these tokens and nothing else; a small button's corners meet in the
-     middle, so it is nearly a pill. A true circle sets `--corner: round` (below).
+     a plain circle. Less rounded (the owner, 2026-11-27: "make them less rounded", "this is also too rounded"): half
+     the reach of 2026-11-24, so a button's corners stay well short of its middle and it never reads as a pill. Every
+     rounded corner reads these tokens and nothing else. A true circle sets `--corner: round` (below).
      No borders or hairline rules except on real form fields; no shadow at rest, but for the glass's lens edge and
      the shadow under words on it (below). */
   --corner-shape: superellipse(1.4);
-  --radius-card: 40px;
-  --radius-field: 28px;
-  --radius-button: 24px;
-  --radius-small: 16px;
-  --radius-tiny: 8px;
+  --radius-card: 20px;
+  --radius-field: 14px;
+  --radius-button: 12px;
+  --radius-small: 8px;
+  --radius-tiny: 4px;
   --size-target: 48px; /* the least height of a button or a field */
   --width-read: 40rem; /* the widest a column of reading goes */
 
@@ -167,15 +168,34 @@
   }
 }
 
+/* Glass only where what is behind it moves (the owner, 2026-11-27: "The glass button effect should not be for pages
+   with a static color background"). What moves marks the page (src/lib/moving-behind.svelte), which puts `data-glass`
+   on <html>: the feed's clips, a game's page, the play screen, a live game's video behind its screens, a clip behind
+   Join and the landing page's wall of clips. On any other page, plain felt or a maker's own colour, the bar and every
+   button are solid in the same colours, with no edge, halo or blur. A dim still dims. The mark is read from <html>
+   alone: a rule that searched the page with `:has()` held back Safari's first frame of the feed. The edge is an empty
+   shadow rather than `none`, so a rule that adds a ring before it (the bar's Your games mark) stays a list the browser
+   can draw. */
+:root:not([data-glass]) {
+  --glass-bg: var(--felt-deep);
+  --glass-filter: none;
+  --glass-edge: 0 0 transparent;
+  --glass-ink: none;
+  --glass-icon: none;
+  --glass-pay: var(--pay);
+  --glass-safe: var(--felt-raised);
+  --glass-lift: var(--felt-raised);
+}
+
 /* A browser that cannot draw the shape draws plain round corners instead, at about four fifths of the reach, so they
    sit as deep as the shape's would and never turn into blobs. */
 @supports not (corner-shape: superellipse(1.4)) {
   :root {
-    --radius-card: 32px;
-    --radius-field: 22px;
-    --radius-button: 19px;
-    --radius-small: 13px;
-    --radius-tiny: 6px;
+    --radius-card: 16px;
+    --radius-field: 11px;
+    --radius-button: 10px;
+    --radius-small: 6px;
+    --radius-tiny: 3px;
   }
 }
 
@@ -516,6 +536,13 @@ form > * + * {
     margin-top: 0.5rem;
   }
 
+  /* Your account's side links run on in lines, as many to a line as fit, so the account still fits with Your feed
+     among them. */
+  .card:has(.side-by-side) .sidelinks {
+    flex-flow: row wrap;
+    column-gap: 1.5rem;
+  }
+
   .card .ways.side-by-side {
     margin-top: 0;
     column-gap: 0.5rem;
@@ -542,6 +569,22 @@ form > * + * {
 
   .card .side-by-side .quiet {
     padding-inline: 0.25rem;
+  }
+
+  /* Too narrow for two links to share a line by their words alone: the four after the first sit two to a line, a
+     link whose words run to two lines keeping its 48px target. */
+  .card:has(.side-by-side) .sidelinks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 0.75rem;
+  }
+
+  .card:has(.side-by-side) .sidelinks li:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .card:has(.side-by-side) .sidelinks .go {
+    line-height: 1.15;
   }
 }
 
@@ -812,6 +855,13 @@ button,
 .sidelinks .go,
 .ways .go {
   margin-block: 0;
+}
+
+/* Two short side links that belong together on one line (Saved and Your reposts on Your account), with room between. */
+.sidelinks .pair {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.5rem;
 }
 
 /* A stacked list is one block: its 48px lines touch, with no extra air between them. */
@@ -2710,6 +2760,12 @@ html[data-move="grow"][data-way="back"]::view-transition-old(clip) {
 html[data-move="grow"][data-way="back"]::view-transition-new(clip) {
   z-index: 1;
   animation: clip-takes-over 450ms linear both;
+}
+
+/* A feed clip that has no picture of its own yet (src/lib/page-moves.ts) stays out of sight, so the game's picture of
+   the clip carries on beneath it instead of an empty box; it comes in once its first frame has. */
+html[data-move="grow"][data-clip-waits]::view-transition-new(clip) {
+  opacity: 0 !important;
 }
 
 /* The bar of places plays backwards too: going out, the feed's bar sits over the clip and gives way to the game page's
@@ -5726,6 +5782,9 @@ html:has(main.about) :is(a, button, summary, label) {
   font-size: 1.25rem;
 }
 
+.consent .why {
+  font-weight: 600;
+}
 .consent p {
   margin: 0.5rem 0 0;
 }

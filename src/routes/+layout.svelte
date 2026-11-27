@@ -10,11 +10,19 @@
   import "../lib/look.css";
   import { afterNavigate, beforeNavigate, onNavigate } from "$app/navigation";
   import { page } from "$app/state";
-  import { setAgreed } from "../features/consent/consent.browser.ts";
+  import { answerAsk, consentAsk, setAgreed } from "../features/consent/consent.browser.ts";
   import { Notice } from "../features/consent/consent.screens.ts";
   import { Bar } from "../features/feed/feed.browser.ts";
   import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
-  import { clipMoves, grownGame, heldMove, moveBetween, noteMove, slideWhile } from "../lib/page-moves.ts";
+  import {
+    clipMoves,
+    grownGame,
+    heldMove,
+    isFeed,
+    moveBetween,
+    noteMove,
+    slideWhile,
+  } from "../lib/page-moves.ts";
   import PageLoading from "../lib/page-loading.svelte";
   import TurnUpright from "../lib/turn-upright.svelte";
   import { sendInApp } from "../lib/stay-in-app.ts";
@@ -26,7 +34,8 @@
   // Which of the bar's places the person is on: the feed, Your games or You, like an app's tabs (the owner, 2026-11-22).
   const place = $derived.by(() => {
     if (page.status >= 400) return null;
-    if (page.route.id === "/") return "home";
+    // Followed is the feed's other tab, so it is Home too.
+    if (page.route.id === "/" || page.route.id === "/followed") return "home";
     if (page.route.id === "/make") return "make";
     if (page.route.id === "/me") return "you";
     return null;
@@ -55,6 +64,9 @@
   const barShown = $derived(
     !NO_BAR.includes(page.route.id ?? "") && !(page.route.id === "/make/page" && page.data.rooms === null),
   );
+
+  // The feed, its Followed tab and Search fill the window with their own top bar, so they have no wordmark above them.
+  const FULL_SCREENS: readonly string[] = ["/", "/followed", "/search"];
 
   // A game's own page, its play screen and its maker's test play name the game in the tab; every other screen, a
   // missing page included, has the base title.
@@ -134,7 +146,7 @@
     // Between the feed and a game's page the game's clip moves instead: opening it from the feed's clip, and with Back
     // to the feed it was opened from (src/lib/page-moves.ts).
     const game = grownGame(from ?? "", to ?? "");
-    const grows = game !== null && clipMoves(game, to === "/", back);
+    const grows = game !== null && clipMoves(game, isFeed(to ?? ""), back);
     noteMove(grows ? game : null, to ?? "", steps);
     const html = document.documentElement;
     delete html.dataset.step;
@@ -150,7 +162,7 @@
     // slides in does not also rise (look.css).
     html.dataset.move = grows ? "grow" : move;
     // Back to the feed the clip's move plays as the exact reverse of the move out (look.css).
-    if (grows && to === "/") html.dataset.way = "back";
+    if (grows && isFeed(to ?? "")) html.dataset.way = "back";
     return slideWhile(navigation.complete, grows ? game : null);
   });
 </script>
@@ -168,7 +180,7 @@
 <!-- Says "Sending…" to a screen reader when a plain form is sent (src/lib/busy-forms.ts). -->
 <p class="hidden-words" id={SENDING_NEWS} aria-live="polite"></p>
 
-{#if page.url.pathname !== "/" && !page.url.pathname.startsWith("/make") && !page.url.pathname.startsWith("/g/") && !(page.route.id === "/[handle=handle]" && page.status < 400)}
+{#if !FULL_SCREENS.includes(page.url.pathname) && !page.url.pathname.startsWith("/make") && !page.url.pathname.startsWith("/g/") && !(page.route.id === "/[handle=handle]" && page.status < 400)}
   <header><a class="wordmark" href="/">Ruken</a></header>
 {/if}
 
@@ -191,12 +203,20 @@
   <TurnUpright />
 {/if}
 
-{#if !data.consented && !notNow && page.route.id !== "/cookies"}
+<!-- A press that needs the yes opens the card again, even after "Not now", and says what for (consent/ask.svelte.ts). -->
+{#if !data.consented && (!notNow || consentAsk.reason !== null) && page.route.id !== "/cookies"}
   <Notice
     card
     aboveBar={barShown}
+    reason={consentAsk.reason}
     next={page.url.pathname + page.url.search}
     from={page.url.pathname + page.url.search}
-    onNotNow={() => (notNow = true)}
+    onNotNow={() => {
+      notNow = true;
+      answerAsk(false);
+    }}
+    onAgreed={() => {
+      answerAsk(true);
+    }}
   />
 {/if}

@@ -11,6 +11,9 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 let game: Awaited<ReturnType<typeof addGame>>;
 
+/** A video that has its picture for now (HTMLMediaElement.HAVE_CURRENT_DATA, which only a page can read). */
+const HAS_A_PICTURE = 2;
+
 test.beforeAll(async ({ browser, request }) => {
   test.setTimeout(240_000);
   await forgetRateLimits();
@@ -339,7 +342,9 @@ async function letGo(page: Page): Promise<void> {
 /**
  * Where the held move's clip is, and how much of its pictures show outside it: the held frame against the same frame
  * with the clip's pictures hidden, as the mean difference per colour (0 to 255) outside the clip's box, and in a
- * 4 by 4 patch at each of its corners, which a rounded box leaves out; and inside it, to show the clip is drawn at all.
+ * patch at each of its corners, which a rounded box leaves out; and inside it, to show the clip is drawn at all. The patch
+ * is 2 by 2: the card's corner reaches 20px (the owner, 2026-11-27: "less rounded"), about 13px a third of the way out,
+ * and a 4 by 4 patch reaches past the part that corner leaves out.
  */
 async function clipSpill(
   page: Page,
@@ -358,7 +363,7 @@ async function clipSpill(
     (tag as Element).remove();
   });
   const spill = await page.evaluate(
-    async ({ first, second, box }) => {
+    async ({ first, second, box, CORNER_PATCH }) => {
       const pixels = async (png: string) => {
         const image = new Image();
         image.src = `data:image/png;base64,${png}`;
@@ -403,22 +408,23 @@ async function clipSpill(
       let corners = 0;
       const x0 = Math.ceil(box.x);
       const y0 = Math.ceil(box.y);
-      const x1 = Math.floor(box.x + box.width) - 4;
-      const y1 = Math.floor(box.y + box.height) - 4;
+      const x1 = Math.floor(box.x + box.width) - CORNER_PATCH;
+      const y1 = Math.floor(box.y + box.height) - CORNER_PATCH;
       for (const [cx, cy] of [
         [x0, y0],
         [x1, y0],
         [x0, y1],
         [x1, y1],
       ] as const)
-        for (let y = cy; y < cy + 4; y++) for (let x = cx; x < cx + 4; x++) corners += gapAt(x, y);
+        for (let y = cy; y < cy + CORNER_PATCH; y++)
+          for (let x = cx; x < cx + CORNER_PATCH; x++) corners += gapAt(x, y);
       return {
         inside: inside / within,
         outside: counted === 0 ? 0 : outside / counted,
-        corners: corners / 64,
+        corners: corners / (4 * CORNER_PATCH * CORNER_PATCH),
       };
     },
-    { first: shown.toString("base64"), second: bare.toString("base64"), box },
+    { first: shown.toString("base64"), second: bare.toString("base64"), box, CORNER_PATCH: 2 },
   );
   return {
     box: `${String(box.width)} by ${String(box.height)} at ${String(box.x)}, ${String(box.y)}`,
@@ -455,6 +461,111 @@ test("the moving clip is cut to its box and rounds its corners as it goes, both 
   expect(back.outside, `coming back, the clip at ${back.box}`).toBeLessThan(0.5);
   expect(out.corners, `going out, the clip at ${out.box}`).toBeLessThan(4);
   expect(back.corners, `coming back, the clip at ${back.box}`).toBeLessThan(4);
+});
+
+test("Back keeps the game's picture until the feed's clip has one of its own, so the clip never goes dark", async ({
+  page,
+}) => {
+  test.skip(
+    !(await page.evaluate(() => "startViewTransition" in document)),
+    "this browser has no view transitions, so every move comes at once",
+  );
+  const clip = await openFeedAt(page);
+  const address = await clip
+    .locator("video")
+    .evaluate((video) => new URL((video as HTMLVideoElement).currentSrc).pathname);
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await pageHasSettled(page);
+
+  // The feed's clip comes back as a new video that must fetch its picture again; on a slow line that takes a while.
+  const theClip = (url: URL) => url.pathname === address;
+  await page.route(theClip, async (route) => {
+    await new Promise((done) => setTimeout(done, 3000));
+    await route.continue().catch(() => undefined);
+  });
+  await holdNextMove(page, 1 / 3);
+  await page.goBack();
+  await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
+  expect(
+    await clip.locator("video").evaluate((video) => (video as HTMLVideoElement).readyState),
+  ).toBeLessThan(HAS_A_PICTURE);
+  // The held frame against the same frame showing only the game's picture of the clip.
+  const shown = await page.screenshot({ animations: "allow", scale: "css" });
+  const onlyOld = await page.addStyleTag({ content: "::view-transition-new(clip) { visibility: hidden; }" });
+  const old = await page.screenshot({ animations: "allow", scale: "css" });
+  await onlyOld.evaluate((tag) => {
+    (tag as Element).remove();
+  });
+  const gap = await pictureGap(page, shown, old);
+  await letGo(page);
+  await page.unroute(theClip);
+  await expect(clip).toHaveAttribute("data-current", "true");
+  expect(gap, "the feed's clip with no picture yet covers the game's picture").toBeLessThan(1);
+});
+
+test("a picture that comes late from an earlier Back does not end the wait of the next Back", async ({
+  page,
+}) => {
+  test.skip(
+    !(await page.evaluate(() => "startViewTransition" in document)),
+    "this browser has no view transitions, so every move comes at once",
+  );
+  const clip = await openFeedAt(page);
+  const address = await clip
+    .locator("video")
+    .evaluate((video) => new URL((video as HTMLVideoElement).currentSrc).pathname);
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await pageHasSettled(page);
+
+  // On a slow line, the first Back's clip gets its picture late: only once the second Back is under way, whatever
+  // time the steps between take in this browser. The second Back's clip gets its picture only when the test ends.
+  let secondBack = false;
+  let letFirstIn = () => {};
+  let letSecondIn = () => {};
+  const firstMayCome = new Promise<void>((done) => (letFirstIn = done));
+  const secondMayCome = new Promise<void>((done) => (letSecondIn = done));
+  const firstWaiting: Promise<void>[] = [];
+  const theClip = (url: URL) => url.pathname === address;
+  await page.route(theClip, async (route) => {
+    const answered = (async () => {
+      await (secondBack ? secondMayCome : firstMayCome);
+      await route.continue().catch(() => undefined);
+    })();
+    if (!secondBack) firstWaiting.push(answered);
+    await answered;
+  });
+  await page.goBack();
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await pageHasSettled(page);
+  // Straight back into the game and out again, while the first Back's picture is still on its way.
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await pageHasSettled(page);
+  expect(firstWaiting.length, "the first Back asked for its clip").toBeGreaterThan(0);
+  secondBack = true;
+  await holdNextMove(page, 1 / 3);
+  await page.goBack();
+  await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
+  // Now the first Back's picture comes, in the middle of the second Back.
+  letFirstIn();
+  await Promise.all(firstWaiting);
+  await page.waitForTimeout(500);
+  expect(
+    await clip.locator("video").evaluate((video) => (video as HTMLVideoElement).readyState),
+  ).toBeLessThan(HAS_A_PICTURE);
+  const shown = await page.screenshot({ animations: "allow", scale: "css" });
+  const onlyOld = await page.addStyleTag({ content: "::view-transition-new(clip) { visibility: hidden; }" });
+  const old = await page.screenshot({ animations: "allow", scale: "css" });
+  await onlyOld.evaluate((tag) => {
+    (tag as Element).remove();
+  });
+  const gap = await pictureGap(page, shown, old);
+  await letGo(page);
+  letSecondIn();
+  await page.unroute(theClip);
+  expect(gap, "the second Back's clip with no picture yet covers the game's picture").toBeLessThan(1);
 });
 
 test("the back arrow on a game's page opened another way goes to the feed with a slide", async ({ page }) => {

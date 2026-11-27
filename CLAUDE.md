@@ -50,7 +50,7 @@ The owner stays informed throughout, and updates never wait for an answer: conti
 
 ## Verification
 
-Checks let work be handed off; the owner reads the evidence. A change that alters the product is run like a person, through the `verify` skill, before it is called done. The test hardest to fool comes first. The journeys create, read, update and delete everything a user can make, and a review or audit fails a change that leaves one of the four out (CRUD in `build`). A test that fails once and passes on retry is a defect: record it under "Flaky tests" in `docs/superpowers/progress.md`. A change does not quietly edit its own check. Lessons carry a trigger, and each retrospective prunes. The full rules are in `build`.
+Checks let work be handed off; the owner reads the evidence. A change that alters the product is run like a person, through the `verify` skill, before it is called done. The test hardest to fool comes first. The journeys create, read, update and delete everything a user can make, and a review or audit fails a change that leaves one of the four out (CRUD in `build`). A test that fails once and passes on retry is a defect: record it under "Flaky tests" in `docs/superpowers/progress.md`. Main's browser journeys retry a failed test up to "Retries on main" in Settings, so a flake does not hold the deploy, and the run lists each one for the merging session to record; pull request runs and sessions never retry. A change does not quietly edit its own check. Lessons carry a trigger, and each retrospective prunes. The full rules are in `build`.
 
 ## Risk
 
@@ -73,6 +73,7 @@ Change a number or a model here and nowhere else.
 
 - Owner update interval: 5 minutes during active work. Meaningful milestones and material changes are reported sooner. Short tasks normally need only a start update and completion.
 - Check-in interval: 20 minutes while work is running. A check-in that finds nothing wrong says nothing.
+- Retries on main: 2, for the browser journeys on a push to `main` only, so a flaky test does not hold the deploy. Pull request runs and sessions: 0.
 - Tries per problem: 3. After that, stop that approach and reassess: try another with a reason, or move to independent work. Include material setbacks in the owner update, with what was tried and what it showed. Pause for an owner decision only when their decision, access or a change to an agreed budget is needed.
 - Design review rounds: 2 before the owner's first look at the screens page, then 1 on the owner's notes before the second look. A round is shoot, check by a fresh reviewer, fix. Round 1 is checked on Fable 5.2, medium; rounds 2 and 3 on Opus 5.5, medium.
 - Overrun: a task that has taken twice the duration its brief estimated. Reassess the estimate and the approach, and report the changed outlook. Request a decision only if the authorized budget or scope must change.

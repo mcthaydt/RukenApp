@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { backToFeed, clipMoves, grownGame, moveBetween, noteMove } from "../../src/lib/page-moves.ts";
+import { backToFeed, clipMoves, grownGame, isFeed, moveBetween, noteMove } from "../../src/lib/page-moves.ts";
 
 // Moving between pages slides sideways, like an app. Between the bar's three places (Home, Your games, You) the new
 // page comes from the side its place is on; elsewhere a new page comes in from the right and Back takes it out the
@@ -55,6 +55,9 @@ describe("grownGame", () => {
   it("names the game whose clip moves between the feed and that game's page, either way", () => {
     expect(grownGame("/", "/g/tiny")).toBe("tiny");
     expect(grownGame("/g/tiny", "/")).toBe("tiny");
+    // Followed is the feed's other tab: its clips grow into a game's page and back the same way.
+    expect(grownGame("/followed", "/g/tiny")).toBe("tiny");
+    expect(grownGame("/g/tiny", "/followed")).toBe("tiny");
   });
 
   it("names none for any other move, the play screen and a maker's page included", () => {
@@ -112,5 +115,14 @@ describe("backToFeed", () => {
     noteMove("tiny", "/g/tiny");
     noteMove(null, "/", -1);
     expect(backToFeed("tiny")).toBe(false);
+  });
+});
+
+describe("isFeed", () => {
+  it("is both of the feed's tabs, and nothing else", () => {
+    expect(isFeed("/")).toBe(true);
+    expect(isFeed("/followed")).toBe(true);
+    expect(isFeed("/search")).toBe(false);
+    expect(isFeed("/g/tiny")).toBe(false);
   });
 });

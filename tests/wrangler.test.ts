@@ -76,6 +76,28 @@ describe("wrangler.jsonc", () => {
     expect(wrangler().preview_urls).toBe(false);
   });
 
+  // The private Worker is bound in the deploy only, so `wrangler dev`, the journeys and anyone's copy of the app run on
+  // the open order, with no binding at all rather than a dead one (private-feed-ranking spec, C6 and C16).
+  it("binds the private Worker as PRIVATE in the deploy only, as the same Worker with every other binding", () => {
+    const top = wrangler();
+    expect(top).not.toHaveProperty("services");
+    const production = (top.env as Record<string, WranglerConfig> | undefined)?.production;
+    expect(production?.name).toBe("ruken");
+    expect(production?.services).toEqual([{ binding: "PRIVATE", service: "ruken-private" }]);
+    // Wrangler passes no binding down to an environment: each one the top level has is repeated, unchanged.
+    for (const key of [
+      "hyperdrive",
+      "r2_buckets",
+      "media",
+      "kv_namespaces",
+      "d1_databases",
+      "vars",
+      "queues",
+    ]) {
+      expect(production?.[key], key).toEqual(top[key]);
+    }
+  });
+
   it("holds no variables and no route: those are the Owner's, set in Cloudflare", () => {
     for (const key of ["vars", "route", "routes"]) expect(wrangler()).not.toHaveProperty(key);
   });
@@ -152,6 +174,10 @@ describe("deploying", () => {
   it("the game gate has a deploy script of its own", () => {
     const gateDeploy = scripts()["deploy:games"] ?? "";
     expect(gateDeploy).toBe("wrangler deploy --config cloudflare/games/wrangler.jsonc");
+  });
+
+  it("the deploy is the production environment, the one with the private Worker bound", () => {
+    expect(scripts().deploy).toContain("wrangler deploy cloudflare/worker.js --env production");
   });
 
   it("the build never migrates", () => {

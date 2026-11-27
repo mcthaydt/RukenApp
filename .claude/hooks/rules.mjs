@@ -654,8 +654,9 @@ function checkBypassFlags(cmd, config, deny) {
   }
   if (hasFlag(cmd.args, ['--passWithNoTests', '--pass-with-no-tests'])) deny(refusal(rule, `${cmd.prog} --passWithNoTests`, 'run the tests that exist; a run with no tests is a failure'));
   if (RUNNERS.test(cmd.prog)) {
-    const n = flagValues(cmd.args, ['--retries', '--retry']).map(Number).find((x) => x > 0);
-    if (n) deny(refusal(rule, `${cmd.prog} --retries ${n}`, 'run once; a test that passes only on retry is a flaky-test defect to record in progress.md'));
+    // Anything but a plain 0 is refused, so a value the shell fills in later ($N, ${R}) is refused too.
+    const n = flagValues(cmd.args, ['--retries', '--retry']).find((v) => !/^0+$/.test(v));
+    if (n !== undefined) deny(refusal(rule, `${cmd.prog} --retries ${n}`, 'run once; a test that passes only on retry is a flaky-test defect to record in progress.md'));
   }
 }
 
@@ -979,9 +980,9 @@ function laneOfFiles(config, cwd, repo, n, pr) {
 const PIN_RULE = 'A merge lands only on the head commit that was checked (release; the merge permission rule).';
 // pin: { sha } makes a merge name the head it was checked on (expectedHeadSha); it holds
 // even when review checks are switched off, and uses the same pull request read.
-function checkReviewed(config, cwd, repo, number, what, deny, pin = null) {
+function checkReviewed(config, cwd, repo, number, what, deny, pin = null, floor = 0) {
   const f = config.prFlow;
-  const reviewOn = !!f && f.enabled !== false && f.requireReview !== false;
+  const reviewOn = !!f && f.enabled !== false && (f.requireReview !== false || floor > 0);
   if (!repo || (!reviewOn && !pin)) return;
   let n = number;
   if (!n) { const b = currentBranch(cwd); const list = ghJson(`repos/${repo}/pulls?head=${repo.split('/')[0]}:${b}`, cwd); n = list?.[0]?.number; }
@@ -995,7 +996,7 @@ function checkReviewed(config, cwd, repo, number, what, deny, pin = null) {
   if (!reviewOn) return;
   let lane = laneOf(pr.body);
   if (!lane) { deny(refusal(FLOW_RULE, `${what}: the body of #${n} names no lane`, 'add the lane to the body (gh pr edit --body-file), then retry')); return; }
-  lane = Math.max(lane, laneOfFiles(config, cwd, repo, n, pr) ?? 0);
+  lane = Math.max(lane, laneOfFiles(config, cwd, repo, n, pr) ?? 0, floor);
   if (lane < 2) return;
   const sha = String(pr.head?.sha ?? '').slice(0, 7);
   const comments = ghPages(`repos/${repo}/issues/${n}/comments`, cwd) ?? [];
@@ -1045,13 +1046,25 @@ function checkLiveState(config, cwd, repo, number, what, deny) {
 }
 function checkMergeGreen(config, cwd, repo, number, deny) {
   const need = config.mergeGreen?.statuses ?? [];
-  if (!config.mergeGreen || config.mergeGreen.enabled === false || !need.length) return;
+  const runs = config.mergeGreen?.checkRuns ?? [];
+  if (!config.mergeGreen || config.mergeGreen.enabled === false || (!need.length && !runs.length)) return;
   const rule = 'Green means every required check is successful on the pull request\'s current head; a missing, pending or unreadable check blocks the merge (release, Lanes and merging).';
   if (!repo) { deny(refusal(rule, 'the repo could not be worked out', 'run from inside the repo or pass -R owner/repo')); return; }
   let n = number;
   if (!n) { const b = currentBranch(cwd); const list = ghJson(`repos/${repo}/pulls?head=${repo.split('/')[0]}:${b}`, cwd); n = list?.[0]?.number; }
   const pr = n ? ghJson(`repos/${repo}/pulls/${n}`, cwd) : null;
-  const status = pr ? ghJson(`repos/${repo}/commits/${pr.head.sha}/status`, cwd) : null;
+  if (!pr) { deny(refusal(rule, `pull request ${n ?? '(unknown)'} could not be read`, 'read it yourself and merge once its checks are green')); return; }
+  // Named check runs (GitHub Actions jobs): the newest run of each name on the head must have finished with success.
+  if (runs.length) {
+    const got = ghJson(`repos/${repo}/commits/${pr.head.sha}/check-runs?per_page=100`, cwd);
+    if (!Array.isArray(got?.check_runs)) { deny(refusal(rule, `the check runs of pull request ${n} could not be read`, 'read them yourself (GH_PAGER=cat gh api repos/<repo>/commits/<sha>/check-runs) and merge once they are green')); return; }
+    for (const name of runs) {
+      const run = got.check_runs.filter((x) => x.name === name).sort((a, b) => Number(b.id ?? 0) - Number(a.id ?? 0))[0];
+      if (!run || run.status !== 'completed' || run.conclusion !== 'success') { deny(refusal(rule, `${name} on ${pr.head.sha.slice(0, 7)} is ${run ? (run.status === 'completed' ? run.conclusion : run.status) : 'missing'}`, 'wait for it in the foreground, then merge')); return; }
+    }
+  }
+  if (!need.length) return;
+  const status = ghJson(`repos/${repo}/commits/${pr.head.sha}/status`, cwd);
   if (!status) { deny(refusal(rule, `the statuses of pull request ${n ?? '(unknown)'} could not be read`, 'read them yourself (GH_PAGER=cat gh api repos/<repo>/commits/<sha>/status) and merge once they are green')); return; }
   for (const s of need) {
     const got = (status.statuses ?? []).find((x) => x.context === s.context);
@@ -1157,6 +1170,27 @@ function resultingText(input) {
   }
   return { path, before, after };
 }
+// The first added line that loosens a check, or null. A retries value other than a plain 0 counts, an expression
+// included; the owner's one allowed line (rules.json bypassFlags.allowedLines: exact file, exact trimmed line) lifts
+// only the retries refusal (owner, 2026-11-27: retry flaky journeys on main).
+const NO_TESTS = /passWithNoTests\s*:\s*true|--pass-?[wW]ith-?[nN]o-?[tT]ests/;
+// The value may sit on the next line (or after a backslash line end), so the added lines are read as one text.
+// The value is the whole shell word, quoted parts included, read as the shell would after its quotes go. After a
+// space only a word that starts the way a number can reach Playwright (a digit, + or a - before a digit, a quote, $,
+// a backtick, a backslash) is a value; anything else is prose ("never pass --retries here", "--retries (see ...)").
+const RETRY_FLAG = /--retr(?:y|ies)(?:=|\s+(?=[0-9"'`$\\+]|-[0-9]))((?:"[^"\n]*"|'[^'\n]*'|`[^`\n]*`|\\\n[ \t]*|[^\s'"`,;)])+)/g;
+const retryValue = (word) => word.replace(/\\\n[ \t]*|["'`\\]/g, '');
+const RETRY_KEY = /\bretr(?:y|ies)\s*:\s*(?!0\s*,?\s*(\/\/.*)?$)\S.*/m;
+function loosenedCheck(rel, added, allowedLines) {
+  const noTests = NO_TESTS.exec(added.join('\n'));
+  if (noTests) return noTests[0];
+  // The allowed line stays as a stop, so no value is read across it.
+  const rest = added.map((line) => (allowedLines.some((a) => a?.file === rel && a?.line === line.trim()) ? '#' : line)).join('\n');
+  const flag = [...rest.matchAll(RETRY_FLAG)].find((x) => !/^0+$/.test(retryValue(x[1])));
+  if (flag) return flag[0];
+  const key = RETRY_KEY.exec(rest);
+  return key ? key[0] : null;
+}
 function checkFileWrite(input, config, root, deny) {
   const t = resultingText(input);
   if (!t) return;
@@ -1171,15 +1205,39 @@ function checkFileWrite(input, config, root, deny) {
     if (hit) deny(refusal(hostedRule, `${rel}: ${hit}`, hostedInstead(config)));
   }
   if (on(config, 'bypassFlags') && matchesAny(rel, config.bypassFlags?.configFiles ?? [])) {
-    const added = addedLines(t.before, t.after).join('\n');
-    const m = /passWithNoTests\s*:\s*true|--pass-?[wW]ith-?[nN]o-?[tT]ests|--retr(?:y|ies)(?:=|\s+)0*[1-9]|\bretr(?:y|ies)\s*:\s*(?!0\s*,?\s*(\/\/.*)?$)\S.*/m.exec(added);
-    if (m) deny(refusal('Never loosen a check: no passing with no tests, no retries until green (build skill).', `${rel} gains "${m[0]}"`, 'leave the setting at its strict value; fix the test instead'));
+    const m = loosenedCheck(rel, addedLines(t.before, t.after), config.bypassFlags?.allowedLines ?? []);
+    if (m) deny(refusal('Never loosen a check: no passing with no tests, no retries until green (build skill).', `${rel} gains "${m}"`, 'leave the setting at its strict value; fix the test instead'));
   }
 }
 
 // ---------- the checks: MCP tools ----------
 
 const toolMatches = (name, patterns = []) => patterns.some((p) => new RegExp(p).test(name));
+// alsoMerges entries: "owner/repo", or { "repo": "owner/repo", "checkRuns": ["check"] } where GitHub cannot require checks.
+const mergeRepoOf = (x) => String((x && typeof x === 'object' ? x.repo : x) ?? '').toLowerCase();
+const mergeRuleFor = (list, slug) => {
+  if (!slug) return null;
+  const x = (list ?? []).find((e) => mergeRepoOf(e) === slug.toLowerCase());
+  return x === undefined ? null : { repo: mergeRepoOf(x), checkRuns: x && typeof x === 'object' ? (x.checkRuns ?? []) : [] };
+};
+// In a repo another config lets sessions merge in, the review, the check runs and the merge method are checked on
+// merge_pull_request only, so the shell's routes to a merge (gh pr merge, gh pr ready, gh api .../merge or
+// .../auto_merge) are refused there, from any folder.
+const SHELL_MERGE_RULE = 'In a repo this hook lets sessions merge in from elsewhere, a merge goes through merge_pull_request, where the hook checks its review, its check runs and the merge method (the merge permission rule).';
+function checkShellMerges(cmd, config, lists, deny) {
+  if (cmd.prog !== 'gh' || !lists.some((l) => (l ?? []).length)) return;
+  const p = ghParts(cmd);
+  const api = ghApi(cmd, config);
+  const a = p.rest.slice(1);
+  const viaApi = api && api.method !== 'GET' && api.method !== 'DELETE' && /pulls\/\d+\/(merge|ready_for_review|[a-z/]*auto_?merge)$/.test(api.path ?? '');
+  const viaPr = p.sub === 'pr' && ((p.sub2 === 'merge' && !hasFlag(a, ['--disable-auto'])) || (p.sub2 === 'ready' && !hasFlag(a, ['--undo'])));
+  if (!viaApi && !viaPr) return;
+  // A GraphQL merge names no repo; checkPrRoutes already refuses GraphQL writes.
+  let slug = p.repo;
+  if (!slug) { const r = findRoot(cmd.cwd ?? '.'); const c = r ? loadConfig(r).config : null; slug = c ? repoSlug(c, r) : null; }
+  if (!slug || !lists.some((l) => mergeRuleFor(l, slug))) return;
+  deny(refusal(SHELL_MERGE_RULE, `${['gh', ...cmd.args].join(' ').slice(0, 160)} (${slug})`, 'mcp__github__merge_pull_request with merge_method "merge" and expectedHeadSha, or update_pull_request with draft false to mark it ready'));
+}
 function checkMcp(name, input, config, root, deny, ctx) {
   const repo = input.owner && input.repo ? `${input.owner}/${input.repo}` : repoSlug(config, root);
   if (config.agnostic && !(input.owner && input.repo)) return;
@@ -1198,10 +1256,21 @@ function checkMcp(name, input, config, root, deny, ctx) {
   else if (on(config, 'mergeMethod') && (isMerge || isAuto) && method && String(method).toLowerCase() !== 'merge') deny(refusal('Merge with a merge commit, never a squash or a rebase (CLAUDE.md, Identity).', `${name} with merge_method ${method}`, 'merge_method "merge"'));
   const number = input.pullNumber ?? input.pull_number ?? input.number;
   const readyCall = toolMatches(name, config.mcp?.updatePrTools ?? ['update_pull_request$']) && input.draft === false;
-  // The merge permission rule: this repo only, no base changes, a merge names its head.
+  // The merge permission rule: this repo and the owner's repos rules.json names in alsoMerges only, no base changes,
+  // a merge names its head. This repo's lane paths say nothing about another repo's files, so a pull request there
+  // always needs a passing review on its head, whatever lane its body names.
   const thisRepo = String(ctx.thisRepo ?? config.repo ?? '').toLowerCase();
+  const target = String(repo ?? '').toLowerCase();
+  const alsoMerges = (ctx.alsoMerges ?? []).map(mergeRepoOf);
+  const elsewhere = !!thisRepo && target !== thisRepo;
+  // ctx.mergeRule: the target is named in the alsoMerges of the config judging the call or of the one next to this
+  // hook. Whatever folder the session works from, a merge there then needs a PASS on its head and its check runs green.
+  const mergeRule = ctx.mergeRule ?? null;
+  // A repo's own config may name itself in alsoMerges (RukenPrivate does), so its own copy of this hook holds it the same way.
+  const green = mergeRule ? { ...config, mergeGreen: { enabled: true, statuses: on(config, 'mergeGreen') ? (config.mergeGreen?.statuses ?? []) : [], checkRuns: mergeRule.checkRuns } } : config;
+  const floor = elsewhere || mergeRule ? 2 : 0;
   const guardedNow = isMerge || toolMatches(name, config.mcp?.disableAutoMergeTools ?? ['disable_pr_auto_merge$']) || readyCall;
-  if (guardedNow && thisRepo && String(repo ?? '').toLowerCase() !== thisRepo) {
+  if (guardedNow && elsewhere && !alsoMerges.includes(target)) {
     deny(refusal(`This permission covers ${ctx.thisRepo ?? config.repo} only; the owner merges pull requests elsewhere.`, `${name} on ${repo ?? '(unknown repo)'}`, 'ask the owner to do it'));
     return;
   }
@@ -1211,9 +1280,11 @@ function checkMcp(name, input, config, root, deny, ctx) {
   }
   const pin = isMerge ? { sha: input.expectedHeadSha } : null;
   if (isMerge || isAuto || readyCall) checkLiveState(config, root, repo, number, readyCall ? 'marking it ready' : name, deny);
-  if (isMerge || isAuto || readyCall) checkReviewed(config, root, repo, number, readyCall ? 'marking it ready' : name, deny, pin);
+  if (isMerge || isAuto || readyCall) checkReviewed(config, root, repo, number, readyCall ? 'marking it ready' : name, deny, pin, floor);
+  // GitHub holds an auto-merge until green only where branch protection names the checks; where this hook checks them, a session merges by hand.
+  if (isAuto && on(green, 'mergeGreen') && (green.mergeGreen?.checkRuns ?? []).length) deny(refusal('Green means every required check is successful on the pull request\'s current head; a missing, pending or unreadable check blocks the merge (release, Lanes and merging).', `${name} on ${repo}, where GitHub does not hold the merge for ${green.mergeGreen.checkRuns.join(', ')}`, 'wait for the checks in the foreground, then merge with merge_pull_request'));
   if (toolMatches(name, config.mcp?.createPrTools ?? ['create_pull_request$'])) checkPrCreate(config, root, repo, typeof input.body === 'string' ? input.body : '', input.draft === true, deny);
-  if (isMerge) checkMergeGreen(config, root, repo, number, deny);
+  if (isMerge) checkMergeGreen(green, root, repo, number, deny);
   // Pull request bodies.
   if (on(config, 'prBody') && toolMatches(name, config.mcp?.prBodyTools ?? ['create_pull_request$', 'update_pull_request$']) && typeof input.body === 'string') {
     const problems = judgeBody(input.body, config, false);
@@ -1418,6 +1489,11 @@ function preToolUse(root, config, input, ctx) {
   const deny = (r) => { if (!reasons.includes(r)) reasons.push(r); };
   const name = input.tool_name;
   const ti = input.tool_input ?? {};
+  // The repos sessions may merge in, from this config and from the config next to the hook that runs, so the
+  // folder a session works in never loosens the rule (see mergeRuleFor).
+  const homeRoot = resolve(SCRIPT_DIR, '..', '..');
+  const home = homeRoot === resolve(root) ? config : (existsSync(join(homeRoot, '.claude', 'hooks', 'rules.json')) ? loadConfig(homeRoot).config : null);
+  const mergeLists = [config.alsoMerges, home?.alsoMerges];
   if (name === 'Bash') {
     const written = new Set(); // files an earlier part of this same command writes
     for (const cmd of simpleCommands(String(ti.command ?? ''), input.cwd ?? root)) {
@@ -1426,6 +1502,7 @@ function preToolUse(root, config, input, ctx) {
       if (cmd.prog === 'tee') for (const w of cmd.args.filter((a) => !a.startsWith('-'))) written.add(resolve(cmd.cwd, w));
       // The allowlist holds for every repo and every program: where a write goes is not scoped to one repo.
       if (!reasons.length) checkPrRoutes(cmd, base, deny);
+      if (!reasons.length) checkShellMerges(cmd, base, mergeLists, deny);
       const scope = cmd.prog === 'git' ? scopeFor(root, config, gitParts(cmd).cwd, null) : cmd.prog === 'gh' ? scopeFor(root, config, cmd.cwd, ghParts(cmd).repo) : { root, config: base };
       if (!scope) continue;
       for (const check of [checkIdentity, checkAttribution, checkForcePush, checkDefaultBranchPush, checkMergeMethod, checkBypassFlags, checkGpu, checkBanned, checkHostedRunnersOnPush, checkRuleMix, checkPrBodyBash, checkPrFlowBash]) {
@@ -1438,8 +1515,14 @@ function preToolUse(root, config, input, ctx) {
   } else if (name?.startsWith('mcp__') || toolMatches(name ?? '', (config.sessionTools?.tools ?? []).map((t) => t.tool))) {
     const slug = ti.owner && ti.repo ? `${ti.owner}/${ti.repo}` : null;
     const scope = config.detached && !slug ? { root, config: base } : scopeFor(root, config, root, slug);
-    const cfg = scope?.config ?? { ...config, identity: { enabled: false }, mergeMethod: { enabled: false }, prBody: { enabled: false }, liveState: { enabled: false }, mergeGreen: { enabled: false } };
-    checkMcp(name, ti, cfg, scope?.root ?? root, deny, { ...ctx, thisRepo: config.repo });
+    // A repo with no rules here gets no repo-specific checks; one this config lets sessions merge in keeps the merge method.
+    // The rule for a repo sessions may merge in comes from this config's alsoMerges or, when another repo's config
+    // judges the call (the session works in that repo's folder), from the config next to this hook, so the folder
+    // a session starts in never loosens it.
+    const mergeRule = mergeRuleFor(mergeLists[0], slug) ?? mergeRuleFor(mergeLists[1], slug);
+    const judged = scope?.config ?? { ...config, identity: { enabled: false }, mergeMethod: mergeRule ? config.mergeMethod : { enabled: false }, prBody: { enabled: false }, liveState: { enabled: false }, mergeGreen: { enabled: false } };
+    const cfg = mergeRule ? { ...judged, mergeMethod: { enabled: true } } : judged;
+    checkMcp(name, ti, cfg, scope?.root ?? root, deny, { ...ctx, thisRepo: config.repo, alsoMerges: config.alsoMerges, mergeRule });
   }
   if (!reasons.length) return null;
   return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reasons.join('\n\n') } };
@@ -1474,7 +1557,9 @@ function rootForCall(input) {
   if (input.tool_name === 'Bash') for (const c of simpleCommands(String(ti.command ?? ''), input.cwd ?? '.')) starts.push(c.prog === 'git' ? gitParts(c).cwd : c.cwd);
   if (input.cwd) starts.push(input.cwd);
   for (const s of starts) { const r = findRoot(s); if (r) return r; }
-  const slug = ti.owner && ti.repo ? `${ti.owner}/${ti.repo}`.toLowerCase() : null;
+  // The repo a call names: an MCP call's owner and repo, or a gh command's -R, GH_REPO or api path.
+  const ghSlug = input.tool_name === 'Bash' ? simpleCommands(String(ti.command ?? ''), input.cwd ?? '.').filter((c) => c.prog === 'gh').map((c) => ghParts(c).repo).find(Boolean) : null;
+  const slug = ti.owner && ti.repo ? `${ti.owner}/${ti.repo}`.toLowerCase() : ghSlug ? String(ghSlug).toLowerCase() : null;
   for (const r of rootsBelow(input.cwd ?? '.')) {
     if (!slug) continue;
     const c = loadConfig(r).config;
@@ -1598,7 +1683,8 @@ function main() {
   if (findRepo) {
     roots = event === 'SessionStart' ? rootsBelow(input.cwd ?? '.').concat(findRoot(input.cwd ?? '.') ?? []) : [rootForCall(input)].filter(Boolean);
     // A call that acts in no repo still meets the checks that need none, under the one config below.
-    if (!roots.length && event === 'PreToolUse') { const below = rootsBelow(input.cwd ?? '.'); if (below.length === 1) { roots = below; detached = true; } }
+    // With several repos below (the cloud start folder), the one this hook belongs to gives that config.
+    if (!roots.length && event === 'PreToolUse') { const below = rootsBelow(input.cwd ?? '.'); const mine = below.find((r) => resolve(r) === resolve(SCRIPT_DIR, '..', '..')); if (below.length === 1 || mine) { roots = [mine ?? below[0]]; detached = true; } }
   }
   else roots = [process.env.CLAUDE_PROJECT_DIR || resolve(SCRIPT_DIR, '..', '..')];
   roots = [...new Set(roots)];

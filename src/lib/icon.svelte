@@ -4,10 +4,11 @@
   button or link that holds it carries the words as its aria-label, so a screen reader and the journeys still read them.
 -->
 <script lang="ts">
-  /** Which picture: an arrow back, a pencil (change), arrows up and down, a bin (remove), a cross (close) and a flag (report). No eye:
+  /** Which picture: an arrow back, a pencil (change), arrows up and down, a bin (remove), a cross (close), a flag (report) and a magnifying glass (search). No eye:
    *  an open or shut eye reads as the link's state, not as what pressing does (review 2026-11-22), so Show and Hide stay
    *  words. */
-  let { name }: { name: "back" | "change" | "up" | "down" | "remove" | "close" | "flag" } = $props();
+  let { name }: { name: "back" | "change" | "up" | "down" | "remove" | "close" | "flag" | "search" } =
+    $props();
 </script>
 
 <svg class="icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
@@ -23,6 +24,8 @@
     <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
   {:else if name === "flag"}
     <path d="M5 21V4M5 4h12l-2.5 4.5L17 13H5" />
+  {:else if name === "search"}
+    <path d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5 20 20" />
   {:else}
     <path d="M6 6l12 12M18 6L6 18" />
   {/if}

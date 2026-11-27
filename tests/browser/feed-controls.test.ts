@@ -310,6 +310,30 @@ test("each key moves one clip, never before the first", async ({ page }) => {
   }
 });
 
+test("a key pressed while the feed slides still moves it when the browser never says the slide ended", async ({
+  page,
+}) => {
+  // Safari's engine on a busy machine sometimes sends no `scrollend` for a slide. A key that waited for that slide
+  // must still be carried out once the feed stops waiting, never dropped.
+  await page.addInitScript(() => {
+    window.addEventListener(
+      "scrollend",
+      (event) => {
+        event.stopImmediatePropagation();
+      },
+      { capture: true },
+    );
+  });
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  await page.keyboard.press("ArrowUp");
+  await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowUp");
+  await expect(clips.nth(1)).toHaveAttribute("data-current", "true");
+  await expect(clips.nth(0)).toHaveAttribute("data-current", "true", { timeout: 10_000 });
+});
+
 test("keys pressed faster than the feed slides each still move one clip", async ({ page }) => {
   await openFeed(page);
   const clips = page.locator("section[data-slug]");
@@ -588,31 +612,34 @@ test("pressing the speaker flips sound for every clip, and it stays as set from 
   page,
 }) => {
   await openFeed(page);
-  await expect(soundButtons(page).first()).toHaveAttribute("aria-pressed", "false");
-  const first = current(page).getByRole("button", { name: "Sound" });
+  // One speaker for the whole feed, in the top bar with the tabs and Search (the owner, 2026-11-27: "they need to be
+  // grouped together as a unit"), so it never travels with the clips.
+  const speaker = soundButtons(page);
+  await expect(speaker).toHaveCount(1);
+  await expect(speaker).toHaveAttribute("aria-pressed", "false");
   // The speaker is a mark in the corner, big enough for a thumb, not the whole clip.
-  const box = await boxOf(first);
-  expect(box.width).toBeGreaterThanOrEqual(44);
-  expect(box.height).toBeGreaterThanOrEqual(44);
+  const box = await boxOf(speaker);
+  expect(box.width).toBeGreaterThanOrEqual(48);
+  expect(box.height).toBeGreaterThanOrEqual(48);
   expect(box.width).toBeLessThan((page.viewportSize()?.width ?? 0) / 2);
   // It is frosted glass, as every see-through surface is (look.css).
-  const filter = await first.evaluate((element) => {
+  const filter = await speaker.evaluate((element) => {
     const style = getComputedStyle(element);
     return style.backdropFilter || style.getPropertyValue("-webkit-backdrop-filter");
   });
   expect(filter).toMatch(/blur\(/);
 
-  await first.click();
-  for (const button of await soundButtons(page).all())
-    await expect(button).toHaveAttribute("aria-pressed", "true");
+  await speaker.click();
+  await expect(speaker).toHaveAttribute("aria-pressed", "true");
   await expect(page).toHaveURL(/\/$/);
   await page.keyboard.press("ArrowDown");
   await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
-  await expect(soundButtons(page).nth(1)).toHaveAttribute("aria-pressed", "true");
+  await expect(speaker).toHaveAttribute("aria-pressed", "true");
+  // The next clip has come up, and the speaker is where it was.
+  expect(await boxOf(speaker)).toEqual(box);
 
-  await current(page).getByRole("button", { name: "Sound" }).click();
-  for (const button of await soundButtons(page).all())
-    await expect(button).toHaveAttribute("aria-pressed", "false");
+  await speaker.click();
+  await expect(speaker).toHaveAttribute("aria-pressed", "false");
 });
 
 test("the press that opens the game never covers the speaker, Play, Share, the two links or the bar", async ({
@@ -621,7 +648,7 @@ test("the press that opens the game never covers the speaker, Play, Share, the t
   await openFeed(page);
   const clip = current(page);
   const things = [
-    clip.getByRole("button", { name: "Sound" }),
+    soundButtons(page),
     clip.getByRole("link", { name: "Play", exact: true }),
     clip.getByRole("button", { name: "Share" }),
     clip.locator("a.gamelink"),
@@ -961,7 +988,7 @@ test.describe("the first open's hints", () => {
   test("go at the first press on the speaker", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByText(/for sound$/)).toBeVisible();
-    await soundButtons(page).first().click();
+    await soundButtons(page).click();
     await expect(page.getByText(/for sound$/)).toHaveCount(0);
   });
 
@@ -1018,7 +1045,7 @@ test.describe("the first open's hints", () => {
       // A clip that may not move by itself waits at its first frame, and the speaker starts it without leaving the feed.
       const video = current(page).locator("video");
       await expect.poll(() => video.evaluate((clip: HTMLVideoElement) => clip.paused)).toBe(true);
-      await current(page).getByRole("button", { name: "Sound" }).click();
+      await soundButtons(page).click();
       await expect(page).toHaveURL(/\/$/);
       await expect.poll(() => video.evaluate((clip: HTMLVideoElement) => clip.paused)).toBe(false);
     } finally {
@@ -1033,7 +1060,7 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   await openFeed(page);
   const names: string[] = [];
   const outlines: string[] = [];
-  for (let presses = 0; presses < 11; presses += 1) {
+  for (let presses = 0; presses < 17; presses += 1) {
     await page.keyboard.press("Tab");
     const focused = await page.evaluate(() => {
       const element = document.activeElement;
@@ -1046,18 +1073,21 @@ test("everything is reachable with Tab, in an order that follows the screen, and
     names.push(focused?.label ?? "");
     outlines.push(focused?.outline ?? "");
   }
-  // The bar first (it is always there), then the first clip's controls: the band (the game, Play), then the column on the
-  // right from its top, which starts with the maker and their plus when the game's maker has a page, then Share, then the
-  // next clip's.
-  expect(names.slice(0, 4)).toEqual(["Home", "Add a game", "You", "Sound"]);
+  // The bar first (it is always there), then the feed's top bar from the left (the speaker, the tabs and Search, there
+  // once for the whole feed), then the first clip's controls: the band (the game, Play), then the column on the right
+  // from its top, which starts with the maker and their plus when the game's maker has a page, then the marks and Share,
+  // then the next clip's, from its game and Play again.
+  expect(names.slice(0, 7)).toEqual(["Home", "Add a game", "You", "Sound", "Fresh", "Followed", "Search"]);
   const play = names.indexOf("Play");
-  expect(play).toBeGreaterThan(3);
+  expect(play).toBeGreaterThan(6);
   const plus = names[play + 2] ?? "";
-  const share = plus.startsWith("Follow ") ? play + 3 : play + 1;
+  const marks = plus.startsWith("Follow ") ? play + 3 : play + 1;
   // The link's words include the first letter drawn when the maker has no photo, so the name is looked for inside them.
-  if (share === play + 3) expect(names[play + 1]).toContain(plus.slice("Follow ".length));
-  expect(names[share]).toBe("Share");
-  expect(names[share + 1]).toBe("Sound");
+  if (marks === play + 3) expect(names[play + 1]).toContain(plus.slice("Follow ".length));
+  // Like, Save and Repost stand above Share in the clip's right column (learned-feed spec 6.1), under the maker; then
+  // the next clip's game and its Play.
+  expect(names.slice(marks, marks + 4)).toEqual(["Like", "Save", "Repost", "Share"]);
+  expect(names[marks + 5]).toBe("Play");
   for (const outline of outlines) expect(outline).not.toMatch(/^none/);
 });
 
