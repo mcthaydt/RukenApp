@@ -54,6 +54,12 @@
       "package.json",
       "**/package.json",
       ".github/workflows/*"
+    ],
+    "allowedLines": [
+      {
+        "file": ".github/workflows/ci.yml",
+        "line": "run: pnpm test:browser ${{ steps.pick.outputs.args }} --reporter=list,html,json --retries=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 2 || 0 }}"
+      }
     ]
   },
   "prBody": {

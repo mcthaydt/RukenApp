@@ -14,8 +14,8 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Like, Save and Repost on a clip, and Saved and Your reposts on You (learned-feed spec, unit G): a player makes each
 // mark, sees it again after a reload and on its list, and takes it back from the feed and from the list. Signed out or
-// without the cookie yes, the press waits for sign-in and "I agree" and is made on the way back; on their own game,
-// nothing is kept.
+// without the cookie yes, the press waits for sign-in and "I agree" and is made on the way back. A maker may mark their own
+// game too.
 
 const SITE = "http://localhost:4173";
 
@@ -162,15 +162,22 @@ test("a link to the way back presses nothing that the person did not press", asy
   await expect(mark(clip, "Like")).toHaveAttribute("aria-pressed", "false");
 });
 
-test("a maker's own clip has no Like, Save or Repost, and the site refuses one", async () => {
+test("a maker likes, saves and reposts their own game, sees it after a reload, and takes it back", async () => {
+  // The owner, 2026-11-27: "Makers can do all those engagements ... they just can't follow themselves".
   const page = await makerContext.newPage();
   try {
-    const clip = await clipOnFeed(page);
-    for (const name of ["Like", "Save", "Repost"] as const) await expect(mark(clip, name)).toHaveCount(0);
-    const answer = await page.request.post("/api/feed/marks", {
-      data: { game: live.slug, kind: "save", on: true },
-    });
-    expect(answer.status()).toBe(403);
+    let clip = await clipOnFeed(page);
+    for (const name of ["Like", "Save", "Repost"] as const) {
+      await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "false");
+      await press(clip, name, page);
+      await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "true");
+    }
+    clip = await clipOnFeed(page);
+    for (const name of ["Like", "Save", "Repost"] as const) {
+      await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "true");
+      await press(clip, name, page);
+      await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "false");
+    }
   } finally {
     await page.close();
   }

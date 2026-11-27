@@ -14,7 +14,6 @@ export const GET: RequestHandler = async ({ url, locals, cookies }) => {
   if (takePress(cookies, press)) {
     const game = await gamesServices().service.liveGameBySlug(press.game);
     if (game !== null && (await adultsOnlyRefusal(game.ageRating, locals.caller)) === null) {
-      // The maker's own game answers "own" and keeps nothing.
       await feedServices().marks.set(userId, game, press.kind, true);
     }
   }
