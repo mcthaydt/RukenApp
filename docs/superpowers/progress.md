@@ -212,6 +212,7 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 
 ### Flaky tests
 
+- `tests/browser/feed-controls.test.ts:809` "the cross, Escape and the dimmed screen each close it, and focus goes back to Share" [tablet or computer], seen by the lane 2 review of #402 at `691c7db` (2026-11-27): failed once at Escape, then passed 5 of 5. #402 does not touch the share sheet. Cause not looked for.
 - `tests/browser/edit-page.test.ts:448` "a colour tapped before the screen has come alive is still the one picked, and is saved" [computer]: the colour tap flaked once, around #395: run 45442311506, job 138616513898, browser shard 3. Recorded from the coordinator's report, 2026-11-24.
 - `tests/browser/play.test.ts:182` "the Menu tab turns to the side it will snap to…" [computer], CI on #392 at `d7ac076` (run 45424611032, attempt 1, shard 2): the menu panel stayed hidden (line 221). Passed on the one rerun. #392 does not touch the play screen; cause not looked for.
 - `tests/browser/join-and-help-look.test.ts:101` [phone], CI on #391 (run 45416813086, job 138525153653, shard 4): the paywall price row's `::before` outline stayed `none` instead of `solid` at line 118. Passed on its one rerun. Cause not found. Recorded from the coordinator's report, 2026-11-24.

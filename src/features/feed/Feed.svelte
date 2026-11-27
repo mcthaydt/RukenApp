@@ -795,9 +795,9 @@
     .gamelink h2 {
       font-size: 1.25rem;
     }
-    /* Under the top bar, where the band cannot cover them either. */
+    /* Under the top bar (its 48px tabs inside the pill's 0.125rem edge), where the band cannot cover them either. */
     .hints {
-      top: calc(0.75rem + var(--size-target) + 0.5rem);
+      top: calc(0.75rem + var(--size-target) + 0.25rem + 0.5rem);
     }
     .sound {
       left: max(0.75rem, env(safe-area-inset-left));

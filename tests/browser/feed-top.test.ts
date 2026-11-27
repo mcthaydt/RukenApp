@@ -60,8 +60,9 @@ test("the feed's top bar holds For you, Following and Search, clear of the sound
   expect(search.x + search.width).toBeGreaterThan(window.width - 120);
   expect(sound.x + sound.width).toBeLessThanOrEqual(tabs.x);
   expect(tabs.x + tabs.width).toBeLessThanOrEqual(search.x);
-  expect(search.width).toBeGreaterThanOrEqual(44);
-  expect((await boxOf(bar.following)).height).toBeGreaterThanOrEqual(44);
+  expect(search.width).toBeGreaterThanOrEqual(48);
+  expect((await boxOf(bar.forYou)).height).toBeGreaterThanOrEqual(48);
+  expect((await boxOf(bar.following)).height).toBeGreaterThanOrEqual(48);
   // The bar of places at the bottom is well under it.
   const places = await boxOf(page.getByRole("navigation", { name: "Ruken" }));
   expect(places.y).toBeGreaterThan(tabs.y + tabs.height);

@@ -50,7 +50,7 @@
   .tabs a {
     display: flex;
     align-items: center;
-    min-height: 2.75rem;
+    min-height: var(--size-target);
     margin: 0;
     padding: 0 0.875rem;
     border-radius: var(--radius-button);
