@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import { invalidateAll } from "$app/navigation";
   import Icon from "../../lib/icon.svelte";
   import { loads } from "../../lib/loads.ts";
   import { SEND_WORDS, whenWords } from "./words.ts";
@@ -69,7 +70,29 @@
   let stopping = $state<Row | null>(null);
   let stopOpener: HTMLElement | null = null;
 
+  // Stop is sent from here, not as a plain form: the answer is the route's own, and the list is read again after, so
+  // every game from that person goes at once. A failure keeps the card open and says so.
+  let stopFailed = $state(false);
+  async function stop(event: SubmitEvent & { currentTarget: HTMLFormElement }): Promise<void> {
+    event.preventDefault();
+    const form = event.currentTarget;
+    stopFailed = false;
+    try {
+      const answer = await fetch(form.action, {
+        method: "POST",
+        body: new FormData(form),
+        headers: { accept: "application/json" },
+      });
+      if (!answer.ok) throw new Error(`the site answered ${String(answer.status)}`);
+      await invalidateAll();
+      stopCard?.close();
+    } catch {
+      stopFailed = true;
+    }
+  }
+
   function askStop(row: Row, from: HTMLElement): void {
+    stopFailed = false;
     stopping = row;
     stopOpener = from;
     stopCard?.showModal();
@@ -134,11 +157,14 @@
 >
   {#if stopping !== null}
     <h2 id="stop-title">{SEND_WORDS.stopAsk(from(stopping))}</h2>
-    <form method="POST" action="/your-turn/stop">
+    <form method="POST" action="/your-turn/stop" onsubmit={(event) => void stop(event)}>
       <input type="hidden" name="id" value={stopping.id} />
       <button class="danger">{SEND_WORDS.stopYes}</button>
     </form>
     <button type="button" class="quiet" onclick={() => stopCard?.close()}>{SEND_WORDS.stopNo}</button>
+    {#if stopFailed}
+      <p class="problem" role="alert">{SEND_WORDS.failed}</p>
+    {/if}
   {/if}
 </dialog>
 
