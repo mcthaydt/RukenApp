@@ -74,6 +74,22 @@ test("on the feed, down and up change the clip and land on its main button; left
   await expect(page).not.toHaveURL("/");
 });
 
+test("the shoulder buttons go from Fresh to Followed and back", async ({ page }) => {
+  await openFeed(page);
+  const tabs = page.getByRole("navigation", { name: "Feeds" });
+  await pressPad(page, PAD.lb);
+  await expect(page).toHaveURL("/");
+  await pressPad(page, PAD.rb);
+  await expect(page).toHaveURL("/followed");
+  await expect(tabs.getByRole("link", { name: "Followed" })).toHaveAttribute("aria-current", "page");
+  await wordsHaveSettled(page);
+  await pressPad(page, PAD.rb);
+  await expect(page).toHaveURL("/followed");
+  await pressPad(page, PAD.lb);
+  await expect(page).toHaveURL("/");
+  await expect(tabs.getByRole("link", { name: "Fresh" })).toHaveAttribute("aria-current", "page");
+});
+
 test("A opens a game's page from the feed, and B comes back to the feed", async ({ page }) => {
   await openFeed(page);
   await pressPad(page, PAD.right);
@@ -181,7 +197,17 @@ test("over a game, Home opens Ruken's menu, B closes it back into the game, and 
 });
 
 // Every screen a signed-out person can open: the pad reaches every control the Tab key does.
-for (const path of ["/sign-in", "/sign-up", "/forgot-password", "/about", "/help", "/cookies", "/privacy"]) {
+for (const path of [
+  "/followed",
+  "/search",
+  "/sign-in",
+  "/sign-up",
+  "/forgot-password",
+  "/about",
+  "/help",
+  "/cookies",
+  "/privacy",
+]) {
   test(`the pad reaches everything on ${path}`, async ({ page }) => {
     test.setTimeout(120_000);
     await page.goto(path);

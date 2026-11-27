@@ -3,7 +3,8 @@
   2026-11-27 names of Ruken's own, not TikTok's, and easy to translate): two tabs in one frosted pill in the middle,
   Fresh (every game, the feed at /) and Followed (games from makers the person follows, at /followed), and Search,
   a round glass button on the right. The speaker for sound stays in the top left corner (Feed.svelte), so the bar keeps clear of it. The tabs are links, so they work without script, and moving between
-  them slides sideways as the bar's places do (src/lib/page-moves.ts).
+  them slides sideways as the bar's places do (src/lib/page-moves.ts). A gamepad's shoulder buttons pick the tab before or
+  after (`data-pad-tabs`, src/lib/pad-focus.ts).
 -->
 <script lang="ts">
   import Icon from "../../lib/icon.svelte";
@@ -13,7 +14,7 @@
 </script>
 
 <div class="top">
-  <nav class="tabs" aria-label="Feeds">
+  <nav class="tabs" aria-label="Feeds" data-pad-tabs>
     <a href="/" aria-current={on === "fresh" ? "page" : undefined}>Fresh</a>
     <a href="/followed" aria-current={on === "followed" ? "page" : undefined}>Followed</a>
   </nav>
