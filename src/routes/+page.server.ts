@@ -7,7 +7,7 @@ import type { PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ locals, cookies }) => {
   const feed = feedServices();
   return {
-    first: await feed.service.page(null, feed.askingOf(locals.caller)),
+    first: await feed.service.page(null, feed.askingOf(locals.caller), feed.viewerOf(locals.caller)),
     launch: await launchServices().screenFor(
       locals.caller.kind === "user" ? locals.caller.userId : null,
       cookies,

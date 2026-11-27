@@ -119,7 +119,7 @@ describe("the feed through a ranker", () => {
       oneLine: "About c.",
       upright: "https://media.test/clips/c-up.mp4",
       wide: "https://media.test/clips/c-wide.mp4",
-      maker: { handle: "h-maker-c", name: "maker-c", photo: null },
+      maker: { handle: "h-maker-c", name: "maker-c", photo: null, following: false, mine: false },
     });
     expect(page.next).toBe("p.private-cursor");
     expect(page.caughtUpAt).toBe(NOW - 1000);
@@ -153,6 +153,25 @@ describe("the feed through a ranker", () => {
         memberBeatsSince: NOW - 7 * DAY,
       },
     });
+  });
+
+  // Who the page is for (to mark the makers they follow) is not who the ranker is told: without the cookie yes the
+  // ranker only ever sees the crowd (maker-credit-and-follow spec).
+  it("marks a signed-in person's follows and own games while the ranker is still told the crowd", async () => {
+    const { ranker, asked } = stubRanker(() => Promise.resolve(PRIVATE_PAGE));
+    const { service } = serviceWith({
+      privateRanker: () => ranker,
+      followedAmong: (_followerId, makerIds) =>
+        Promise.resolve(new Set(makerIds.filter((id) => id === "maker-c"))),
+    });
+
+    const page = await service.page(null, undefined, "maker-a");
+
+    expect(asked.map((request) => request.viewer)).toEqual([{ kind: "crowd", seed: "2026-11-21" }]);
+    expect(page.clips.map((clip) => [clip.slug, clip.maker?.following, clip.maker?.mine])).toEqual([
+      ["c", true, false],
+      ["a", false, true],
+    ]);
   });
 
   it("gives the private ranker back its own address, without the prefix", async () => {

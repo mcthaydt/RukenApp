@@ -76,8 +76,10 @@ model User {
   gameReviews    GameReview[]   @relation("GameReviewStaff")
   makerAgreements MakerAgreement[]
 
-  // The pages feature's table points at a person; it is declared in pages.prisma.
+  // The pages feature's tables point at a person (a page, and who follows whom); they are declared in pages.prisma.
   makerPage MakerPage?
+  follows   MakerFollow[] @relation("MakerFollowFollower")
+  followers MakerFollow[] @relation("MakerFollowMaker")
 
   // The launch feature's tables point at a person; they are declared in launch.prisma.
   wishlist     Wishlist[]
