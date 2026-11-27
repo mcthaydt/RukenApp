@@ -281,7 +281,10 @@ export function createFeedService(deps: FeedServiceDeps) {
       );
     const [makers, marks] =
       games.length === 0
-        ? [new Map<string, { handle: string; name: string; photoKey: string | null }>(), new Map<string, ClipMarks>()]
+        ? [
+            new Map<string, { handle: string; name: string; photoKey: string | null }>(),
+            new Map<string, ClipMarks>(),
+          ]
         : await Promise.all([
             deps.makersOf([...new Set(games.map((game) => game.makerUserId))]),
             deps.marksOf?.(viewerId, games) ?? new Map<string, ClipMarks>(),

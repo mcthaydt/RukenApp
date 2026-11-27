@@ -278,6 +278,31 @@ test("Followed plays the live games of the makers a person follows, and says whe
   await expect(topBar(page).followed).toHaveAttribute("aria-current", "page");
   await expect(page.locator(`section[data-slug="${game.slug}"]`)).toHaveAttribute("data-current", "true");
 
+  // Like, Save and Repost work on Followed's clips as on the feed's: made here, still there after a reload, and taken back.
+  const marks = ["Like", "Save", "Repost"] as const;
+  const markOf = (name: (typeof marks)[number]) =>
+    page.locator(`section[data-slug="${game.slug}"]`).getByRole("button", { name, exact: true });
+  const pressMark = async (name: (typeof marks)[number]) => {
+    const kept = page.waitForResponse((answer) => answer.url().endsWith("/api/feed/marks"));
+    await markOf(name).click();
+    expect((await kept).status()).toBe(200);
+  };
+  for (const name of marks) {
+    await expect(markOf(name)).toHaveAttribute("aria-pressed", "false");
+    await pressMark(name);
+    await expect(markOf(name)).toHaveAttribute("aria-pressed", "true");
+  }
+  await page.reload();
+  await pageHasSettled(page);
+  for (const name of marks) await expect(markOf(name)).toHaveAttribute("aria-pressed", "true");
+  for (const name of marks) {
+    await pressMark(name);
+    await expect(markOf(name)).toHaveAttribute("aria-pressed", "false");
+  }
+  await page.reload();
+  await pageHasSettled(page);
+  for (const name of marks) await expect(markOf(name)).toHaveAttribute("aria-pressed", "false");
+
   // A maker with nothing a person may see here says so.
   await changeGame(game.slug, { ageRating: "age_18", contentMarks: ["gore"] });
   try {
