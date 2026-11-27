@@ -150,18 +150,24 @@ export function heldMove(): Promise<void> | null {
  * also goes black when we transition to feed from game"). Until it has one, the move keeps showing the game's picture
  * of the clip (look.css, `data-clip-waits`), so it never covers that with an empty box.
  */
-function waitForPicture(video: HTMLVideoElement): void {
-  const html = document.documentElement;
+function waitForPicture(video: HTMLVideoElement, naming: number): void {
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-    delete html.dataset.clipWaits;
+    endWait(naming);
     return;
   }
-  html.dataset.clipWaits = "";
+  document.documentElement.dataset.clipWaits = String(naming);
+  // A clip from an earlier move that gets its picture late must not end this move's wait, so each wait ends only
+  // its own move's mark.
   const shown = () => {
-    delete html.dataset.clipWaits;
+    endWait(naming);
   };
   video.addEventListener("loadeddata", shown, { once: true });
   video.addEventListener("error", shown, { once: true });
+}
+
+function endWait(naming: number): void {
+  const html = document.documentElement;
+  if (html.dataset.clipWaits === String(naming)) delete html.dataset.clipWaits;
 }
 
 export function slideWhile(arrived: Promise<unknown>, game: string | null = null): Promise<void> {
@@ -179,14 +185,14 @@ export function slideWhile(arrived: Promise<unknown>, game: string | null = null
       unname(old, naming);
       fresh = game === null ? null : await arrivedClip(game);
       if (fresh !== null) name(fresh, naming);
-      if (fresh instanceof HTMLVideoElement) waitForPicture(fresh);
+      if (fresh instanceof HTMLVideoElement) waitForPicture(fresh, naming);
     });
     void slide.finished
       .catch(() => undefined)
       .then(() => {
         unname(old, naming);
         unname(fresh, naming);
-        delete document.documentElement.dataset.clipWaits;
+        endWait(naming);
       });
     slide.ready.catch(() => {
       resolve();

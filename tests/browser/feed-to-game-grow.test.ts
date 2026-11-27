@@ -501,6 +501,60 @@ test("Back keeps the game's picture until the feed's clip has one of its own, so
   expect(gap, "the feed's clip with no picture yet covers the game's picture").toBeLessThan(1);
 });
 
+test("a picture that comes late from an earlier Back does not end the wait of the next Back", async ({
+  page,
+}) => {
+  test.skip(
+    !(await page.evaluate(() => "startViewTransition" in document)),
+    "this browser has no view transitions, so every move comes at once",
+  );
+  const clip = await openFeedAt(page);
+  const address = await clip
+    .locator("video")
+    .evaluate((video) => new URL((video as HTMLVideoElement).currentSrc).pathname);
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await pageHasSettled(page);
+
+  // On a slow line, the first Back's clip gets its picture a few seconds late; every later one takes longer still.
+  let asked = 0;
+  let firstCame = false;
+  const theClip = (url: URL) => url.pathname === address;
+  await page.route(theClip, async (route) => {
+    asked += 1;
+    const first = asked === 1;
+    await new Promise((done) => setTimeout(done, first ? 4000 : 30_000));
+    await route.continue().catch(() => undefined);
+    if (first) firstCame = true;
+  });
+  await page.goBack();
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await pageHasSettled(page);
+  // Straight back into the game and out again, while the first Back's picture is still on its way.
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await pageHasSettled(page);
+  await holdNextMove(page, 1 / 3);
+  await page.goBack();
+  await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
+  expect(firstCame, "the first Back's picture came before the second Back began").toBe(false);
+  await expect.poll(() => firstCame, { timeout: 10_000 }).toBe(true);
+  await page.waitForTimeout(500);
+  expect(
+    await clip.locator("video").evaluate((video) => (video as HTMLVideoElement).readyState),
+  ).toBeLessThan(HAS_A_PICTURE);
+  const shown = await page.screenshot({ animations: "allow", scale: "css" });
+  const onlyOld = await page.addStyleTag({ content: "::view-transition-new(clip) { visibility: hidden; }" });
+  const old = await page.screenshot({ animations: "allow", scale: "css" });
+  await onlyOld.evaluate((tag) => {
+    (tag as Element).remove();
+  });
+  const gap = await pictureGap(page, shown, old);
+  await letGo(page);
+  await page.unroute(theClip);
+  expect(gap, "the second Back's clip with no picture yet covers the game's picture").toBeLessThan(1);
+});
+
 test("the back arrow on a game's page opened another way goes to the feed with a slide", async ({ page }) => {
   test.skip(
     !(await page.evaluate(() => "startViewTransition" in document)),
