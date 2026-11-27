@@ -16,7 +16,7 @@ export const PAD_MENU = "rk-pad-menu";
 
 const CONTROLS =
   "a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), " +
-  "textarea:not([disabled]), summary, [tabindex]";
+  "textarea:not([disabled]), summary, iframe[data-pad-first], [tabindex]";
 
 /** A screen's main control, where a first press lands: one marked itself, or the main button inside a marked part. */
 const FIRST = "[data-pad-first], [data-pad-first] .button";
@@ -42,9 +42,44 @@ function isControl(element: HTMLElement): boolean {
   return element.checkVisibility({ visibilityProperty: true });
 }
 
+/** Whether the element stays put while the screen scrolls under it (the bar of places, a step's Back and Save). */
+function pinned(element: Element): boolean {
+  for (let at: Element | null = element; at !== null; at = at.parentElement)
+    if (getComputedStyle(at).position === "fixed") return true;
+  return false;
+}
+
+/**
+ * Whether a person can see the element: in the window, and inside the part of each scrolled box that shows. A control
+ * scrolled under a step's pinned Back and Save is in the window but hidden at the foot of its view, so it is not.
+ */
 function onScreen(element: Element): boolean {
   const box = element.getBoundingClientRect();
-  return box.bottom > 0 && box.right > 0 && box.top < innerHeight && box.left < innerWidth;
+  let [top, right, bottom, left] = [0, innerWidth, innerHeight, 0];
+  for (
+    let at = element.parentElement;
+    at !== null && at !== document.documentElement;
+    at = at.parentElement
+  ) {
+    const look = getComputedStyle(at);
+    if (look.position === "fixed") break;
+    if (look.overflowX === "visible" && look.overflowY === "visible") continue;
+    const view = at.getBoundingClientRect();
+    [top, right, bottom, left] = [
+      Math.max(top, view.top),
+      Math.min(right, view.right),
+      Math.min(bottom, view.top + at.clientHeight),
+      Math.max(left, view.left),
+    ];
+  }
+  if (pinned(element))
+    return box.bottom > 0 && box.right > 0 && box.top < innerHeight && box.left < innerWidth;
+  if (!(box.bottom > top && box.right > left && box.top < bottom && box.left < right)) return false;
+  // Nor is one whose middle lies under the bar or a pinned foot: the person sees the bar there.
+  const x = (Math.max(box.left, left) + Math.min(box.right, right)) / 2;
+  const y = (Math.max(box.top, top) + Math.min(box.bottom, bottom)) / 2;
+  const hit = document.elementFromPoint(x, y);
+  return hit === null || element.contains(hit) || !pinned(hit);
 }
 
 /** Where the focus may go: inside an open sheet, inside a menu that holds the focus, or anywhere on the screen. */
@@ -90,6 +125,11 @@ function offerKey(key: string): boolean {
   target.dispatchEvent(down);
   target.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true }));
   return down.defaultPrevented;
+}
+
+/** Whether a gamepad is plugged in and has been seen by this page. */
+export function padConnected(): boolean {
+  return [...navigator.getGamepads()].some((pad) => pad?.connected === true);
 }
 
 export function startPad(options: PadOptions): () => void {
@@ -151,9 +191,24 @@ export function startPad(options: PadOptions): () => void {
       shown.map((control) => control.getBoundingClientRect()),
       way,
     );
-    if (index !== -1) {
-      const target = shown[index];
-      if (target !== undefined) focusOn(target);
+    const target = shown[index];
+    // From the screen itself, the pinned bar or foot comes only once the screen has nothing more that way, even
+    // scrolled out of sight: down goes on through a long page, as a console's does, before it drops to the bar.
+    if (target !== undefined && pinned(target) && !pinned(from)) {
+      const rest = others.filter((control) => !pinned(control));
+      const further =
+        rest[
+          nextBox(
+            box,
+            rest.map((control) => control.getBoundingClientRect()),
+            way,
+          )
+        ];
+      focusOn(further ?? target);
+      return;
+    }
+    if (target !== undefined) {
+      focusOn(target);
       return;
     }
     // Nothing that way on screen: the screen's own scrolled box may hold more below or above.
@@ -162,8 +217,8 @@ export function startPad(options: PadOptions): () => void {
       others.map((control) => control.getBoundingClientRect()),
       way,
     );
-    const target = others[index];
-    if (target !== undefined) focusOn(target);
+    const hidden = others[index];
+    if (hidden !== undefined) focusOn(hidden);
   }
 
   function press(): void {
@@ -200,8 +255,11 @@ export function startPad(options: PadOptions): () => void {
       if (where.dispatchEvent(ask)) where.close();
       return;
     }
+    // A menu that holds the focus may name its own way out (`data-pad-back`: over a game, back into the game).
     if (where !== document) {
-      offerKey("Escape");
+      const out = where.querySelector<HTMLElement>("[data-pad-back]");
+      if (out !== null) out.click();
+      else offerKey("Escape");
       return;
     }
     const own = controlsIn(document).find(

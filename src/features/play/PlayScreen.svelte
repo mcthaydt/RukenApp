@@ -10,7 +10,7 @@
 <script lang="ts">
   import { deviceStore } from "../consent/consent.browser.ts";
   import { gameTitle } from "../../lib/titles.ts";
-  import { PAD_MENU } from "../../lib/pad-focus.ts";
+  import { PAD_MENU, padConnected } from "../../lib/pad-focus.ts";
   import { onMount } from "svelte";
   import {
     dragSpot,
@@ -331,9 +331,13 @@
     allow={frameRules.allow}
     referrerpolicy="no-referrer"
     bind:this={frame}
+    data-pad-first
     onload={() => {
       started = true;
       slow = false;
+      // With a gamepad the game takes it once it has loaded, as Keep playing gives it; with nothing focused the
+      // pad's presses would move Ruken's focus instead, and never reach the game (src/lib/pad-focus.ts).
+      if (padConnected() && menu?.open !== true) frame?.focus();
     }}
   ></iframe>
 
@@ -373,7 +377,7 @@
         {:else}
           <p class="note">{makerName === null ? "Made on Ruken" : `by ${makerName}`}</p>
         {/if}
-        <button type="button" onclick={keepPlaying}>Keep playing</button>
+        <button type="button" data-pad-back onclick={keepPlaying}>Keep playing</button>
         {#if canFullScreen}
           <button type="button" class="outline" onclick={toggleFullScreen}>
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"

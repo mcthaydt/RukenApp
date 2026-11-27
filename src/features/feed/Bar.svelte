@@ -128,6 +128,24 @@
       min-height: 3.5rem;
     }
   }
+  /* A tap or a click shows no ring and no grey flash on the bar (the owner, 2026-11-27: a full rectangle showed on a
+     tap). The ring for the keyboard and the gamepad is a shadow, not an outline: a shadow takes the button's own
+     superellipse in every browser, where an outline can be drawn square. It sits in the bar's own padding. */
+  .bar a {
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+  }
+  .bar a:focus-visible {
+    box-shadow:
+      0 0 0 3px var(--paper),
+      var(--glass-edge);
+  }
+  .bar a.add[aria-current="page"]:focus-visible {
+    box-shadow:
+      inset 0 0 0 3px var(--chalk),
+      0 0 0 3px var(--paper),
+      var(--glass-edge);
+  }
   .bar a:active {
     scale: var(--press-scale);
     transition: scale var(--press-time);
