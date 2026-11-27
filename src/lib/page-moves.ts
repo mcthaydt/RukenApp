@@ -145,6 +145,25 @@ export function heldMove(): Promise<void> | null {
  * whatever the browser does with the slide: a slide it skips (Safari skipped one leaving the play screen in CI) lets
  * the move go on, and so does a slide that never starts, after a second at most.
  */
+/**
+ * Back in the feed, the clip is a new video that may have no picture of its own yet (the owner, 2026-11-27: "The video
+ * also goes black when we transition to feed from game"). Until it has one, the move keeps showing the game's picture
+ * of the clip (look.css, `data-clip-waits`), so it never covers that with an empty box.
+ */
+function waitForPicture(video: HTMLVideoElement): void {
+  const html = document.documentElement;
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    delete html.dataset.clipWaits;
+    return;
+  }
+  html.dataset.clipWaits = "";
+  const shown = () => {
+    delete html.dataset.clipWaits;
+  };
+  video.addEventListener("loadeddata", shown, { once: true });
+  video.addEventListener("error", shown, { once: true });
+}
+
 export function slideWhile(arrived: Promise<unknown>, game: string | null = null): Promise<void> {
   // The clip that moves is named in the old page before the browser pictures it, and in the new page once it is in;
   // the old one loses its name first, since two elements with one name would make the browser drop the whole move.
@@ -160,12 +179,14 @@ export function slideWhile(arrived: Promise<unknown>, game: string | null = null
       unname(old, naming);
       fresh = game === null ? null : await arrivedClip(game);
       if (fresh !== null) name(fresh, naming);
+      if (fresh instanceof HTMLVideoElement) waitForPicture(fresh);
     });
     void slide.finished
       .catch(() => undefined)
       .then(() => {
         unname(old, naming);
         unname(fresh, naming);
+        delete document.documentElement.dataset.clipWaits;
       });
     slide.ready.catch(() => {
       resolve();

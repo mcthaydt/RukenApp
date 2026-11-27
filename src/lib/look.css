@@ -2712,6 +2712,12 @@ html[data-move="grow"][data-way="back"]::view-transition-new(clip) {
   animation: clip-takes-over 450ms linear both;
 }
 
+/* A feed clip that has no picture of its own yet (src/lib/page-moves.ts) stays out of sight, so the game's picture of
+   the clip carries on beneath it instead of an empty box; it comes in once its first frame has. */
+html[data-move="grow"][data-clip-waits]::view-transition-new(clip) {
+  opacity: 0 !important;
+}
+
 /* The bar of places plays backwards too: going out, the feed's bar sits over the clip and gives way to the game page's
    in the move's first 250ms; coming back, the feed's bar sits over the clip and takes over from the game page's in the
    move's last 250ms, on the reversed curve. */
