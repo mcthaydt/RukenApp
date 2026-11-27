@@ -264,7 +264,8 @@ test("the place the person is on shows the same tinted tile on every bar button,
   await wordsHaveSettled(page);
   const add = await lookOf("Add a game");
   expect(add.fill).toBe(you.fill);
-  expect(add.edge).not.toContain("inset");
+  // The glass edge only: no chalk ring inside, and the same edge as You's tile.
+  expect(add.edge).not.toMatch(/0px 0px 0px 3px/);
   expect(add.edge).toBe(you.edge);
   expect(add.outline).toBe("none");
   await page.goto("/");

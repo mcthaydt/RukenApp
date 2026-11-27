@@ -136,7 +136,13 @@ function focusOn(element: HTMLElement, scroll = true): void {
 /** The control a first press lands on: the screen's main one (`data-pad-first`), else the first in its main part. */
 function startingControl(where: Element | Document): HTMLElement | null {
   const shown = controlsIn(where).filter(onScreen);
+  // A main control wholly in the window first: on the feed the clip on screen, not the edge of the one sliding away.
+  const whole = (control: HTMLElement) => {
+    const box = control.getBoundingClientRect();
+    return box.top >= 0 && box.bottom <= innerHeight;
+  };
   return (
+    shown.find((control) => control.matches(FIRST) && whole(control)) ??
     shown.find((control) => control.matches(FIRST)) ??
     shown.find((control) => control.closest("main") !== null) ??
     shown[0] ??

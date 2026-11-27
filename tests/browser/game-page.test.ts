@@ -190,7 +190,13 @@ test("Play and every tile are reached by the keyboard, with focus showing", asyn
       if (now === null || now === document.body) return null;
       return {
         name: now.getAttribute("aria-label") ?? now.textContent.trim(),
-        outline: getComputedStyle(now).outlineStyle,
+        // The bar's ring is a shadow in the button's own shape (the owner, 2026-11-27: no square ring there).
+        outline:
+          now.closest("nav.bar") !== null
+            ? getComputedStyle(now).boxShadow.includes("0px 0px 0px 3px")
+              ? "shadow"
+              : "none"
+            : getComputedStyle(now).outlineStyle,
       };
     });
     if (visit === null) continue;
