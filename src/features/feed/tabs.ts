@@ -27,6 +27,19 @@ export function stepOfSwipe(dx: number, dy: number): 1 | -1 | null {
   return dx < 0 ? 1 : -1;
 }
 
+/**
+ * How near the screen's left or right edge, in CSS pixels, a finger starts the browser's own Back or Forward swipe
+ * (Safari on a phone, and Android's back gesture). A swipe that starts there is the browser's: it slides the page
+ * itself, so the feed taking it as a tab step too would move twice for one swipe (the owner, 2026-11-27: "The feed like
+ * does a double swipe on page transition out", "When I leave it and swipe").
+ */
+export const BROWSER_EDGE = 40;
+
+/** Whether a finger that started `x` pixels from the left of a window `width` wide started on the browser's edge. */
+export function onBrowserEdge(x: number, width: number): boolean {
+  return x < BROWSER_EDGE || x > width - BROWSER_EDGE;
+}
+
 /** The standard gamepad's shoulder buttons: LB (4) steps left, RB (5) steps right. */
 export const LB = 4;
 export const RB = 5;

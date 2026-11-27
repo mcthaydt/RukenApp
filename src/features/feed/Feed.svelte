@@ -519,6 +519,7 @@
 {:else}
   <main
     class="feed"
+    data-pad="line"
     data-ready={ready ? "true" : "false"}
     bind:this={feed}
     onscroll={forgetHints}
@@ -589,7 +590,7 @@
         {/if}
 
         <div class="lower">
-          <div class="band">
+          <div class="band" data-pad-first>
             <!-- A swipe can start on the name too, so it never loads the game's page (and who brought this person)
                  ahead of a press. -->
             <a class="gamelink" data-sveltekit-preload-data="off" href={`/g/${clip.slug}`}>

@@ -2826,6 +2826,25 @@ html[data-move="grow"][data-way="back"]::view-transition-new(tabs) {
   }
 }
 
+/* The bar while a page slides (the owner, 2026-11-27, of a slide from Fresh to Followed: "That weird rectangle outline",
+   "This is the second time it's happened with that bottom bar"). The bar stays still while the pages slide under it, so
+   it is drawn on its own, from a picture taken as the move starts. A picture of glass would keep the blur of what was
+   under it then, a square patch that stays while the page goes. So while a page slides the bar keeps no blur of its
+   own (src/lib/page-moves.ts marks <html> with `data-sliding` for that one move), and the place it stands blurs what
+   slides under it, in the bar's own shape, with the glass of the page the move goes to. Its glass tint, edge and
+   buttons, or its solid felt on a plain page, fade across above that as before. The journey
+   tests/browser/bar-through-moves.test.ts checks every frame of every move for a patch round the bar. */
+html[data-sliding] .bar {
+  --glass-filter: none;
+}
+
+html[data-sliding]::view-transition-group(tabs) {
+  border-radius: calc(var(--radius-button) + 0.25rem);
+  corner-shape: var(--corner-shape);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+}
+
 /* The maker's top bar, track and buttons slide with their page; only the bar of places stays. */
 html[data-move] .topbar,
 html[data-move] .track,
