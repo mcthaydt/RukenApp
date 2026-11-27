@@ -127,6 +127,28 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
     expect(Math.abs(last.y - first.y), `${region}: one line`).toBeLessThanOrEqual(2);
     await expect(side.getByRole("button", { name: "Add", exact: true })).toBeInViewport();
   }
+  // A chip slid out of sight is still reached by moving focus, as a keyboard or a gamepad's pad does: each button in
+  // a line is reached in turn, and the line slides it fully into view.
+  await page.getByRole("switch", { name: "Learn from what I do" }).focus();
+  const reached: string[] = [];
+  for (let press = 0; press < 40; press++) {
+    await page.keyboard.press("Tab");
+    const focused = await page.evaluate(() => {
+      const thing = document.activeElement;
+      if (!(thing instanceof HTMLElement)) return null;
+      const line = thing.closest(".chips");
+      const box = thing.getBoundingClientRect();
+      const lineBox = line?.getBoundingClientRect();
+      return {
+        name: thing.getAttribute("aria-label") ?? thing.textContent.trim(),
+        inLine: lineBox === undefined || (box.left >= lineBox.left - 1 && box.right <= lineBox.right + 1),
+      };
+    });
+    if (focused === null || focused.name === "Start over") break;
+    expect(focused.inLine, `${focused.name} slides into view when focused`).toBe(true);
+    reached.push(focused.name);
+  }
+  for (const words of [...more, ...less]) expect(reached).toContain(`Remove ${words}`);
   await wordsHaveSettled(page);
   expect(await overflow(page), "/settings/feed with chips at 375 by 667").toEqual({ page: 0, view: 0 });
   await expectViewAboveTheBar(page, "/settings/feed with chips at 375 by 667");

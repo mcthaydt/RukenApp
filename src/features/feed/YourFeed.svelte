@@ -67,7 +67,14 @@
   <!-- One line per side, however many chips: the chips slide sideways inside it, and Add stays at its end in view,
        so the page never grows past the screen (audit round 3). -->
   <div class="side">
-    <ul class="chips">
+    <!-- Moving focus (a keyboard's Tab, a gamepad's pad) slides the focused chip fully into the line, clear of the fade. -->
+    <ul
+      class="chips"
+      onfocusin={(event) => {
+        if (event.target instanceof HTMLElement)
+          event.target.closest("li")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }}
+    >
       {#each list as chip (chip.id)}
         <li class="chip-on">
           <span>{chip.words}</span>
@@ -246,6 +253,7 @@
     padding: 0 1rem 0 0;
     overflow-x: auto;
     overscroll-behavior-x: contain;
+    scroll-padding-inline: 0 1rem;
     list-style: none;
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1rem), transparent);
     mask-image: linear-gradient(to right, #000 calc(100% - 1rem), transparent);
