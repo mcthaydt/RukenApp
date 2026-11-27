@@ -113,7 +113,7 @@ describe("feed", () => {
         mine: false,
       },
       // No marks were read (the stand-in has none), so the clip shows none.
-      marks: { likes: 0, liked: false, saved: false, reposted: false, own: false },
+      marks: { likes: 0, liked: false, saved: false, reposted: false },
     });
     expect(clips[1]?.maker).toBeNull();
   });
@@ -126,7 +126,7 @@ describe("feed", () => {
       marksOf: (viewerId, games) => {
         asked.push({ viewerId, ids: games.map((game) => game.id) });
         return Promise.resolve(
-          new Map([["id-two", { likes: 3, liked: true, saved: false, reposted: true, own: false }]]),
+          new Map([["id-two", { likes: 3, liked: true, saved: false, reposted: true }]]),
         );
       },
     });
@@ -141,7 +141,6 @@ describe("feed", () => {
       liked: true,
       saved: false,
       reposted: true,
-      own: false,
     });
     expect(clips.find((clip) => clip.slug === "one")?.marks.likes).toBe(0);
   });

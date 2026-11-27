@@ -7,7 +7,7 @@ import { startTestDatabase, type TestDatabase } from "../../support/database.ts"
 import { TestClock } from "../../support/test-clock.ts";
 
 // Like, Save and Repost against Postgres (learned-feed spec, unit G1): one row per person, game and kind; pressing
-// again takes it back; nobody marks their own game; a count is a count of rows.
+// again takes it back; a maker may mark their own game; a count is a count of rows.
 
 let database: TestDatabase | undefined;
 const clock = new TestClock("2026-11-27T12:00:00Z");
@@ -76,22 +76,27 @@ describe("marks", () => {
     expect(await marks.set(two, game, "like", true)).toEqual({ on: true, likes: 2 });
 
     const seen = await marks.ofClips(one, [game]);
-    expect(seen.get(game.id)).toEqual({ likes: 2, liked: true, saved: true, reposted: false, own: false });
+    expect(seen.get(game.id)).toEqual({ likes: 2, liked: true, saved: true, reposted: false });
     const signedOut = await marks.ofClips(null, [game]);
     expect(signedOut.get(game.id)).toEqual({
       likes: 2,
       liked: false,
       saved: false,
       reposted: false,
-      own: false,
     });
   });
 
-  it("refuses a mark on a person's own game, and says the clip is theirs", async () => {
+  it("lets a maker like, save and repost their own game", async () => {
     const game = await newGame();
-    expect(await marks.set(game.makerUserId, game, "like", true)).toBe("own");
-    expect(await db().gameMark.count({ where: { gameId: game.id } })).toBe(0);
-    expect((await marks.ofClips(game.makerUserId, [game])).get(game.id)?.own).toBe(true);
+    expect(await marks.set(game.makerUserId, game, "like", true)).toEqual({ on: true, likes: 1 });
+    await marks.set(game.makerUserId, game, "save", true);
+    await marks.set(game.makerUserId, game, "repost", true);
+    expect((await marks.ofClips(game.makerUserId, [game])).get(game.id)).toEqual({
+      likes: 1,
+      liked: true,
+      saved: true,
+      reposted: true,
+    });
   });
 
   it("lists saves and reposts apart, the latest first, and takes one off by the game's address", async () => {
