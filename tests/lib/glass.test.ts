@@ -170,6 +170,42 @@ describe("frosted glass", () => {
     expect(darker).toBeLessThanOrEqual(0.12);
   });
 
+  // The panels that rise over a screen (Share, •••, Report and any later one: `dialog.rises`) are a darker, more
+  // blurred glass than the rest (the owner, 2026-11-27 19:22 UTC, after seeing Share over a clip: "the glass panel
+  // needs to be darker and more blurred"). They read the same glass tokens as every surface, which `dialog.rises`
+  // points at the panel's own pair, so a panel and its fallbacks stay one rule.
+  it("makes the rising panels darker and more blurred than the rest of the glass", () => {
+    const blur = (filter: string) => Number(/blur\((\d+)px\)/.exec(filter)?.[1]);
+    const brightness = (filter: string) => Number(/brightness\(([\d.]+)\)/.exec(filter)?.[1]);
+    const alpha = (colour: string) => Number(/\/ (0?\.\d+)\)$/.exec(colour)?.[1]);
+    expect(token("--glass-panel-bg")).toMatch(/^rgb\(\d+ \d+ \d+ \/ 0?\.\d+\)$/);
+    expect(token("--glass-panel-bg").split("/")[0]).toBe(token("--glass-bg").split("/")[0]);
+    expect(blur(token("--glass-panel-filter"))).toBeGreaterThanOrEqual(1.5 * blur(token("--glass-filter")));
+    expect(brightness(token("--glass-panel-filter"))).toBeLessThan(brightness(token("--glass-filter")));
+    expect(alpha(token("--glass-panel-bg"))).toBeGreaterThan(alpha(token("--glass-bg")));
+    const css = lookCss().replace(/\/\*[\s\S]*?\*\//g, "");
+    const panel = /(?:^|\n)dialog\.rises\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(panel).toContain("--glass-bg: var(--glass-panel-bg);");
+    expect(panel).toContain("--glass-filter: var(--glass-panel-filter);");
+    for (const sheet of [
+      "src/features/feed/ShareSheet.svelte",
+      "src/features/feed/TasteSheet.svelte",
+      "src/features/moderation/ReportSheet.svelte",
+    ])
+      expect(readFileSync(join(ROOT, sheet), "utf8"), sheet).toMatch(/class="[^"]*\brises\b/);
+  });
+
+  // A white clip behind a panel comes out between a third and a half darker: plainly darker than the rest of the
+  // glass, and still glass, not a solid sheet.
+  it("darkens what is behind a panel by a third to a half", () => {
+    const brightness = Number(/brightness\(([\d.]+)\)/.exec(token("--glass-panel-filter"))?.[1]);
+    const [red = 0, , , alpha = 1] = (token("--glass-panel-bg").match(/[\d.]+/g) ?? []).map(Number);
+    const after = alpha * red + (1 - alpha) * 255 * brightness;
+    const darker = 1 - after / 255;
+    expect(darker).toBeGreaterThanOrEqual(0.33);
+    expect(darker).toBeLessThanOrEqual(0.5);
+  });
+
   // Glass that clear cannot keep chalk at 4.5 to 1 over a white clip by darkening alone, so the words and pictures on it
   // carry a soft dark shadow, and its edge splits light like a lens ("it also lacks chromatic abberation"): every glass
   // surface reads the edge, and the edge holds a warm and a cool fringe.
@@ -209,6 +245,8 @@ describe("frosted glass", () => {
       const block = css.slice(at, css.indexOf("}\n}", at));
       expect(block).toContain("--glass-bg: var(--felt-deep);");
       expect(block).toContain("--glass-filter: none;");
+      expect(block).toContain("--glass-panel-bg: var(--felt-deep);");
+      expect(block).toContain("--glass-panel-filter: none;");
       expect(block).toContain("--glass-edge: none;");
       expect(block).toContain("--glass-ink: none;");
       expect(block).toContain("--glass-icon: none;");
@@ -248,6 +286,8 @@ describe("frosted glass", () => {
     for (const line of [
       "--glass-bg: var(--felt-deep);",
       "--glass-filter: none;",
+      "--glass-panel-bg: var(--felt-deep);",
+      "--glass-panel-filter: none;",
       "--glass-edge: 0 0 transparent;",
       "--glass-ink: none;",
       "--glass-icon: none;",
