@@ -25,7 +25,7 @@
   import type { Snippet } from "svelte";
   import { goto } from "$app/navigation";
   import Icon from "../../lib/icon.svelte";
-  import { LB, RB, TABS, stepOfSwipe, tabFrom, type TabKey } from "./tabs.ts";
+  import { LB, RB, TABS, onBrowserEdge, stepOfSwipe, tabFrom, type TabKey } from "./tabs.ts";
 
   let {
     on,
@@ -51,12 +51,16 @@
     });
   }
 
-  // Where a one-finger touch started; a second finger, or a touch that starts on an open sheet, is not a swipe.
+  // Where a one-finger touch started; a second finger, a touch that starts on an open sheet, or one that starts on the
+  // screen's edge, where the browser's own Back and Forward swipe lives (tabs.ts), is not a swipe.
   let start: { x: number; y: number } | null = null;
   function touchStarted(event: TouchEvent): void {
     const touch = event.touches[0];
     start =
-      event.touches.length === 1 && touch !== undefined && document.querySelector("dialog[open]") === null
+      event.touches.length === 1 &&
+      touch !== undefined &&
+      !onBrowserEdge(touch.clientX, window.innerWidth) &&
+      document.querySelector("dialog[open]") === null
         ? { x: touch.clientX, y: touch.clientY }
         : null;
   }
