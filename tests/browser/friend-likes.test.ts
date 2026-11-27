@@ -48,6 +48,15 @@ async function clipOnFeed(page: Page): Promise<Locator> {
 
 const bubbles = (clip: Locator) => clip.getByRole("img", { name: /^Liked by your friend/ });
 
+/** The cluster ends above the top of the game's name, and starts at the band's left like the name. */
+async function facesAboveTheName(clip: Locator): Promise<void> {
+  const faces = await bubbles(clip).boundingBox();
+  const name = await clip.getByRole("heading", { level: 2 }).boundingBox();
+  if (faces === null || name === null) throw new Error("the faces or the name are not on screen");
+  expect(faces.y + faces.height).toBeLessThanOrEqual(name.y);
+  expect(Math.abs(faces.x - name.x)).toBeLessThanOrEqual(1);
+}
+
 async function friendsWith(meId: string, name: string, photo?: string): Promise<string> {
   const friend = await personWithPage(name, photo);
   await followById(meId, friend.id);
@@ -91,6 +100,12 @@ test("a clip shows up to three faces of friends who liked it, then +N, and loses
   expect(box?.height).toBe(28);
   await expect(bubbles(clip).locator("a, button")).toHaveCount(0);
   await showTheOwner(page, testInfo, "friend bubbles on a clip");
+  // The faces sit above the game's name, upright and on a phone held sideways (where the name and Play share a row).
+  await facesAboveTheName(clip);
+  const upright = page.viewportSize();
+  await page.setViewportSize({ width: 667, height: 375 });
+  await facesAboveTheName(await clipOnFeed(page));
+  if (upright !== null) await page.setViewportSize(upright);
 
   // Update: Dee takes the like back, so Ana's face comes in and the +N goes.
   await likeById(dee, live.slug, false);

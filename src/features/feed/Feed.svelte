@@ -1258,6 +1258,10 @@
       row-gap: 0.25rem;
       padding: 0.5rem 0.75rem;
     }
+    /* Friends' faces take a row of their own above the name and Play. */
+    .friends {
+      grid-column: 1 / -1;
+    }
     .play {
       width: auto;
       padding-inline: 1.75rem;
