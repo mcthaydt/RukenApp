@@ -232,8 +232,8 @@ test("the credit fits the column on every screen, held either way", async ({ pag
     await page.setViewportSize(size);
     const clip = await feedAt(page, first.slug);
     const badge = await boxOf(badgeOf(clip));
-    expect(badge.width).toBeGreaterThanOrEqual(44);
-    expect(badge.height).toBeGreaterThanOrEqual(44);
+    expect(badge.width).toBeGreaterThanOrEqual(48);
+    expect(badge.height).toBeGreaterThanOrEqual(48);
     // The plus is drawn over the picture's bottom edge and ends above the name, never on it.
     const dot = await boxOf(clip.locator(".credit .dot"));
     const photo = await boxOf(clip.locator(".credit .maker").locator("img, .initial").first());

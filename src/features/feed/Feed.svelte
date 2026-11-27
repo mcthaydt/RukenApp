@@ -499,7 +499,7 @@
                     name={maker.name}
                     following={followed[maker.handle] ?? maker.following}
                     back="/"
-                    onchange={(now) => {
+                    onchange={(now: boolean) => {
                       followed[maker.handle] = now;
                     }}
                   />
