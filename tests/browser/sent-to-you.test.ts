@@ -334,7 +334,29 @@ test("with no yes to cookies yet, a swipe from Followed still lands on Your turn
   }
 });
 
-test("Your turn works from the keyboard alone: Remove, and the stop card with Escape", async ({
+/**
+ * Presses Tab, as a person would, until this control has the focus, and checks the focus shows. Fails if it never comes
+ * within the presses given.
+ */
+async function tabTo(page: Page, control: Locator, presses = 40): Promise<void> {
+  for (let pressed = 0; pressed < presses; pressed += 1) {
+    await page.keyboard.press("Tab");
+    if (await control.evaluate((element) => element === document.activeElement)) {
+      const ring = await control.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { style: style.outlineStyle, width: style.outlineWidth, shadow: style.boxShadow };
+      });
+      expect(
+        (ring.style !== "none" && ring.width !== "0px") || ring.shadow !== "none",
+        `the focus shows on ${String(await control.getAttribute("aria-label"))}`,
+      ).toBe(true);
+      return;
+    }
+  }
+  throw new Error(`Tab never reached ${control.toString()} in ${String(presses)} presses`);
+}
+
+test("from the keyboard alone: Tab reaches a friend's face and Enter sends; Tab reaches each row, Remove and Stop, and Enter opens, removes and asks", async ({
   page,
   browser,
 }) => {
@@ -344,27 +366,65 @@ test("Your turn works from the keyboard alone: Remove, and the stop card with Es
   const sender = await person(browser, "Max Mouse");
   try {
     await makeFriends(receiver, sender);
-    await send(sender.page, first.slug, "Kay Keys");
-    await send(sender.page, second.slug, "Kay Keys");
+    // The sender, by keys only: Tab to Share, Enter opens the sheet, Tab to the face, Enter sends.
+    for (const game of [first, second]) {
+      await sender.page.goto(`/g/${game.slug}`, { waitUntil: "domcontentloaded" });
+      await pageHasSettled(sender.page);
+      await sender.page.evaluate(() => {
+        document.body.focus();
+      });
+      await tabTo(sender.page, sender.page.getByRole("button", { name: "Share" }));
+      await sender.page.keyboard.press("Enter");
+      const sheet = sender.page.getByRole("dialog", { name: "Share" });
+      await expect(sheet).toBeVisible();
+      await tabTo(sender.page, sheet.getByRole("button", { name: "Send to Kay Keys" }));
+      await sender.page.keyboard.press("Enter");
+      await expect(sheet.getByRole("button", { name: "Sent: Kay Keys" })).toBeVisible();
+    }
   } finally {
     await sender.context.close();
   }
+  expect((await sentTo(receiver.number)).map((one) => one.game)).toEqual([second.slug, first.slug]);
+
+  // The receiver, by keys only. The Your turn tab is a stop of its own.
   await page.goto("/your-turn");
   await pageHasSettled(page);
+  await page.evaluate(() => {
+    document.body.focus();
+  });
+  await tabTo(
+    page,
+    page.getByRole("navigation", { name: "Feeds" }).getByRole("link", { name: /^Your turn/ }),
+  );
+  // The newest row first: its game, its Remove (Enter takes it off), then the next row's Stop.
+  await tabTo(page, rowOf(page, second.name).getByRole("link"));
+  await tabTo(
+    page,
+    rowOf(page, second.name).getByRole("button", { name: `Remove ${second.name} from Your turn` }),
+  );
+  await page.keyboard.press("Enter");
+  await expect(rowOf(page, second.name)).toHaveCount(0);
+  await expect.poll(async () => (await sentTo(receiver.number)).map((one) => one.game)).toEqual([first.slug]);
+
+  // Enter on Stop asks; Escape keeps them and gives the focus back to Stop.
+  await page.evaluate(() => {
+    document.body.focus();
+  });
   const stop = rowOf(page, first.name).getByRole("button", { name: "Stop games from Max Mouse" });
-  await stop.focus();
+  await tabTo(page, stop);
   await page.keyboard.press("Enter");
   const card = page.getByRole("dialog", { name: "Stop games from Max Mouse? They won't be told." });
   await expect(card).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(card).toBeHidden();
   await expect(stop).toBeFocused();
+  expect(await stopsOf(receiver.number)).toBe(0);
 
-  const remove = rowOf(page, second.name).getByRole("button", {
-    name: `Remove ${second.name} from Your turn`,
+  // Enter on a row opens its game.
+  await page.evaluate(() => {
+    document.body.focus();
   });
-  await remove.focus();
+  await tabTo(page, rowOf(page, first.name).getByRole("link"));
   await page.keyboard.press("Enter");
-  await expect(rowOf(page, second.name)).toHaveCount(0);
-  await expect.poll(async () => (await sentTo(receiver.number)).map((one) => one.game)).toEqual([first.slug]);
+  await expect(page).toHaveURL(`/g/${first.slug}`);
 });

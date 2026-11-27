@@ -87,8 +87,11 @@
 </script>
 
 <!-- A press on the dimmed screen around the panel closes it; the keyboard has Escape and the cross. -->
+<!-- Never a Tab stop of its own: WebKit otherwise stops on the sheet itself between its buttons, a stop the pad's
+     arrows cannot reach (implementation audit 1 of Your turn, R2). -->
 <dialog
   class="sharesheet"
+  tabindex="-1"
   bind:this={sheet}
   aria-labelledby="share-title"
   class:closing
