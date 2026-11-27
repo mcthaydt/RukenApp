@@ -42,11 +42,23 @@ function isControl(element: HTMLElement): boolean {
   return element.checkVisibility({ visibilityProperty: true });
 }
 
-/** Whether the element stays put while the screen scrolls under it (the bar of places, a step's Back and Save). */
+/**
+ * What the element is fixed to the window with, when it stays put while the screen scrolls under it (the bar of places,
+ * a step's Back and Save, the search box over its list): the fixed part, with no box that scrolls between it and the
+ * element. The results inside a screen that is itself fixed to the window still scroll, so they are not pinned.
+ */
+function pinnedIn(element: Element): Element | null {
+  for (let at: Element | null = element; at !== null; at = at.parentElement) {
+    const look = getComputedStyle(at);
+    if (look.position === "fixed") return at;
+    if (at !== element && (/auto|scroll/.test(look.overflowY) || /auto|scroll/.test(look.overflowX)))
+      return null;
+  }
+  return null;
+}
+
 function pinned(element: Element): boolean {
-  for (let at: Element | null = element; at !== null; at = at.parentElement)
-    if (getComputedStyle(at).position === "fixed") return true;
-  return false;
+  return pinnedIn(element) !== null;
 }
 
 /** The box the element scrolls in (a list of results, a long page), or null when nothing round it scrolls. */
@@ -66,11 +78,14 @@ function scrollerOf(element: Element): Element | null {
 }
 
 /**
- * Whether a move from `from` to `to` leaves the part of the screen it is in: onto the pinned bar or foot, or out of the
- * box it scrolls in (from a result to the search box above the list).
+ * Whether a move from `from` to `to` leaves the part of the screen it is in: onto another pinned part (the bar, a foot), out of the
+ * box it scrolls in (from a result to the search box above the list), or, going along a pinned row (a step's Back and
+ * Save), off it into the screen behind.
  */
-function leaves(from: Element, to: Element): boolean {
-  if (pinned(to) && !pinned(from)) return true;
+function leaves(from: Element, to: Element, way: Way): boolean {
+  const layer = pinnedIn(to);
+  if (layer !== null && layer !== pinnedIn(from)) return true;
+  if (pinned(from) && !pinned(to) && (way === "left" || way === "right")) return true;
   const box = scrollerOf(from);
   return box !== null && !box.contains(to);
 }
@@ -226,8 +241,8 @@ export function startPad(options: PadOptions): () => void {
     const target = shown[index];
     // A move stays in its part of the screen while that part has more that way, even scrolled out of sight: down goes
     // on through a long page before it drops to the pinned bar, and up through a list of results before the search box.
-    if (target !== undefined && leaves(from, target)) {
-      const rest = others.filter((control) => !leaves(from, control));
+    if (target !== undefined && leaves(from, target, way)) {
+      const rest = others.filter((control) => !leaves(from, control, way));
       const further =
         rest[
           nextBox(
@@ -243,13 +258,16 @@ export function startPad(options: PadOptions): () => void {
       focusOn(target);
       return;
     }
-    // Nothing that way on screen: the screen's own scrolled box may hold more below or above.
+    // Nothing that way on screen: the box the focus scrolls in may hold more below or above. Only that box: a result
+    // scrolled up out of its list is not above the search page's Back, which scrolls in no box of its own.
+    const sameBox = scrollerOf(from);
+    const inBox = others.filter((control) => scrollerOf(control) === sameBox && !pinned(control));
     index = nextBox(
       box,
-      others.map((control) => control.getBoundingClientRect()),
+      inBox.map((control) => control.getBoundingClientRect()),
       way,
     );
-    const hidden = others[index];
+    const hidden = inBox[index];
     if (hidden !== undefined) focusOn(hidden);
   }
 

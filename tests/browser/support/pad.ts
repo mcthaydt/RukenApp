@@ -30,20 +30,39 @@ export async function plugInPad(page: Page): Promise<void> {
       axes: [0, 0, 0, 0],
       buttons,
     };
+    const set = (index: number, down: boolean) => {
+      const button = buttons[index];
+      if (button === undefined) return;
+      button.pressed = down;
+      button.touched = down;
+      button.value = down ? 1 : 0;
+      pad.timestamp = performance.now();
+    };
+    // A quick press is down for exactly one reading of the pad, however long a busy machine takes between frames: a
+    // press held over two readings 450 ms apart would count as held, and repeat (review 3 of #409).
+    let tapping: number | null = null;
     Object.defineProperty(navigator, "getGamepads", {
-      value: () => [pad, null, null, null],
+      value: () => {
+        if (tapping !== null) {
+          const index = tapping;
+          tapping = null;
+          // Let go once the page has read this one (its reading runs on before any queued work).
+          queueMicrotask(() => {
+            set(index, false);
+          });
+        }
+        return [pad, null, null, null];
+      },
       configurable: true,
     });
     Object.assign(window, {
       standInPad: {
-        hold(index: number, down: boolean) {
-          const button = buttons[index];
-          if (button === undefined) return;
-          button.pressed = down;
-          button.touched = down;
-          button.value = down ? 1 : 0;
-          pad.timestamp = performance.now();
+        hold: set,
+        tap(index: number) {
+          set(index, true);
+          tapping = index;
         },
+        up: (index: number) => !(buttons[index]?.pressed ?? false),
         frames: (count: number) =>
           new Promise<void>((done) => {
             const step = (left: number) => {
@@ -62,18 +81,28 @@ export async function plugInPad(page: Page): Promise<void> {
 
 interface StandIn {
   hold(index: number, down: boolean): void;
+  tap(index: number): void;
+  up(index: number): boolean;
   frames(count: number): Promise<void>;
 }
 
-/** Holds a button for `ms` (a quick press by default), then lets go and lets the page see it. */
+/**
+ * Presses a button: a quick press by default, down for one reading of the pad; or held for `ms`, then let go. Either
+ * way it waits for the page to see it.
+ */
 export async function pressPad(page: Page, button: number, ms = 0): Promise<void> {
   await page.evaluate(
     async ({ button, ms }) => {
       const pad = (window as unknown as { standInPad: StandIn }).standInPad;
-      pad.hold(button, true);
-      await pad.frames(2);
-      if (ms > 0) await new Promise((done) => setTimeout(done, ms));
-      pad.hold(button, false);
+      if (ms === 0) {
+        pad.tap(button);
+        while (!pad.up(button)) await pad.frames(1);
+      } else {
+        pad.hold(button, true);
+        await pad.frames(2);
+        await new Promise((done) => setTimeout(done, ms));
+        pad.hold(button, false);
+      }
       await pad.frames(2);
     },
     { button, ms },

@@ -245,11 +245,12 @@ test("on a scrolled list of search results, up and down go from result to result
   page,
 }) => {
   test.setTimeout(120_000);
-  // Three games only this run has, in a window short enough that their list scrolls.
+  // Three games only this run has, in a window short enough that their list scrolls. Upright: a phone or tablet held
+  // sideways in a browser is asked to turn upright, and that covers the screen.
   const word = `zq${crypto.randomUUID().replaceAll("-", "").slice(0, 8)}`;
   for (const [index, slug] of [free.slug, ours[0]?.slug ?? "", ours[1]?.slug ?? ""].entries())
     await changeGame(slug, { name: `${word} Game ${String(index + 1)}` });
-  await page.setViewportSize({ width: 375, height: 360 });
+  await page.setViewportSize({ width: 320, height: 340 });
   await page.goto(`/search?q=${word}`);
   const rows = page.locator(".results a");
   await expect(rows).toHaveCount(3);
@@ -280,6 +281,55 @@ test("on a scrolled list of search results, up and down go from result to result
   }
   await pressPad(page, PAD.up);
   await expect(field).toBeFocused();
+
+  // Up from Back, above the list, with the list scrolled down: nothing is above Back, so it stays, and never goes to a
+  // result hidden above the list.
+  await page.locator(".results").evaluate((list) => {
+    list.scrollTop = list.scrollHeight;
+  });
+  const back = page.getByRole("link", { name: "Back" });
+  await back.focus();
+  await pressPad(page, PAD.up);
+  await expect(back).toBeFocused();
+});
+
+test("on your page's rooms the pad reaches every control, and right from Back is Save", async ({ page }) => {
+  test.setTimeout(240_000);
+  const account = await signUp(page);
+  // A page of their own, so each room shows what it edits (every colour on Your colours).
+  await givePage(account, { name: "Pad Rooms", oneLine: "Rooms with a pad." });
+  for (const path of [
+    "/make/page",
+    "/make/page/address",
+    "/make/page/name",
+    "/make/page/line",
+    "/make/page/photo",
+    "/make/page/colours",
+    "/make/page/links",
+  ]) {
+    await page.goto(path);
+    await wordsHaveSettled(page);
+    await padReachesEverything(page);
+  }
+  // Your colours, at rest (not scrolled to its end): the tiles above the pinned Back and Save are not beside them.
+  await page.goto("/make/page/colours");
+  await wordsHaveSettled(page);
+  await pageHasSettled(page);
+  expect(await page.locator("input[type=radio]").count(), "every colour is shown").toBeGreaterThan(20);
+  const back = page.getByRole("link", { name: "Back" });
+  for (const where of ["top", "middle"] as const) {
+    await page.evaluate((where) => {
+      const scroller = document.scrollingElement ?? document.documentElement;
+      scroller.scrollTop = where === "top" ? 0 : (scroller.scrollHeight - scroller.clientHeight) / 2;
+    }, where);
+    // Where Back is pinned (phone, tablet) this leaves the page where it is; a computer's Back scrolls into view.
+    await back.focus();
+    await pressPad(page, PAD.right);
+    await expect(
+      page.getByRole("button", { name: "Save" }),
+      `right from Back, scrolled to the ${where}`,
+    ).toBeFocused();
+  }
 });
 
 // Every screen a signed-out person can open: the pad reaches every control the Tab key does.
