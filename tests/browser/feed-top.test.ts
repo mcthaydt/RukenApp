@@ -139,6 +139,80 @@ for (const device of ["Galaxy S9+", "Galaxy S8", "Pixel 7"] as const) {
   });
 }
 
+/** A one-finger touch from one point to another, as a quick swipe; false where the browser has no touch at all. */
+async function swipe(page: Page, from: [number, number], to: [number, number]): Promise<boolean> {
+  return page.evaluate(
+    ([x0, y0, x1, y1]) => {
+      if (typeof Touch === "undefined") return false;
+      const target = document.elementFromPoint(x0, y0) ?? document.body;
+      const finger = (clientX: number, clientY: number) => new Touch({ identifier: 1, target, clientX, clientY });
+      const begun = finger(x0, y0);
+      target.dispatchEvent(new TouchEvent("touchstart", { touches: [begun], changedTouches: [begun], bubbles: true }));
+      const ended = finger(x1, y1);
+      target.dispatchEvent(new TouchEvent("touchend", { touches: [], changedTouches: [ended], bubbles: true }));
+      return true;
+    },
+    [...from, ...to] as [number, number, number, number],
+  );
+}
+
+// The owner, 2026-11-27: "Swiping left and right should go between fresh, followed, and your turn".
+test("swiping sideways goes between Fresh and Followed, and a swipe up and down never does", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+  const middle = height / 2;
+  test.skip(!(await swipe(page, [width / 2, middle], [width / 2, middle])), "this browser has no touch");
+
+  // Mostly up and down, or too short: still Fresh.
+  await swipe(page, [width / 2, middle + 150], [width / 2 - 70, middle - 150]);
+  await swipe(page, [width / 2, middle], [width / 2 - 40, middle]);
+  await expect(topBar(page).fresh).toHaveAttribute("aria-current", "page");
+  await expect(page).toHaveURL("/");
+
+  // To the left brings the tab on the right, as turning a page does; past the last tab nothing happens.
+  await swipe(page, [width * 0.8, middle], [width * 0.2, middle]);
+  await expect(page).toHaveURL("/followed");
+  await expect(topBar(page).followed).toHaveAttribute("aria-current", "page");
+  await pageHasSettled(page);
+  await swipe(page, [width * 0.8, middle], [width * 0.2, middle]);
+  await swipe(page, [width * 0.2, middle], [width * 0.8, middle]);
+  await expect(page).toHaveURL("/");
+  await expect(topBar(page).fresh).toHaveAttribute("aria-current", "page");
+});
+
+test("a gamepad's shoulder buttons go between Fresh and Followed", async ({ page }) => {
+  // One standard gamepad, its buttons set by the journey (no browser lets a test plug a real one in).
+  await page.addInitScript(() => {
+    const buttons = Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 }));
+    const pad = { id: "journey pad", index: 0, connected: true, mapping: "standard", axes: [0, 0, 0, 0], buttons };
+    Object.assign(window, { journeyPad: pad });
+    navigator.getGamepads = () => [pad as unknown as Gamepad];
+  });
+  const press = (button: number, down: boolean) =>
+    page.evaluate(
+      ([index, pressed]) => {
+        const pad = (window as unknown as { journeyPad: { buttons: { pressed: boolean }[] } }).journeyPad;
+        const button = pad.buttons[index];
+        if (button !== undefined) button.pressed = pressed;
+      },
+      [button, down] as [number, boolean],
+    );
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await page.bringToFront();
+
+  await press(5, true);
+  await expect(page).toHaveURL("/followed");
+  await pageHasSettled(page);
+  // Still held as Followed opens: that press is spent, so it never steps on past the tab it brought the person to.
+  await press(5, false);
+  await press(4, true);
+  await expect(page).toHaveURL("/");
+  await expect(topBar(page).fresh).toHaveAttribute("aria-current", "page");
+  await press(4, false);
+});
+
 test("Followed says to sign in, and signed in that the person follows nobody yet", async ({
   page,
 }, testInfo) => {

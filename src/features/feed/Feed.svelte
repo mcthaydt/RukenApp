@@ -26,6 +26,7 @@
   import type { ShareSheetControl } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
   import type { ClipMarks, MarkKind } from "./marks.ts";
+  import type { TabKey } from "./tabs.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
 
   let {
@@ -36,7 +37,7 @@
   }: {
     first: FeedPage;
     /** Which of the top bar's tabs this is: every game, or the makers the person follows (Followed.svelte). */
-    tab?: "fresh" | "followed";
+    tab?: TabKey;
     /** Whether this person's feed is learning from them, so each clip offers More and Less like this (•••). */
     tune?: boolean;
     /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
