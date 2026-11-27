@@ -78,7 +78,7 @@ test.describe("signed out", () => {
 
 test("Your account and Your games fit the window, and the bar covers nothing", async ({ page }, testInfo) => {
   await signUp(page);
-  for (const path of ["/me", "/make", "/me/password", "/me/computers", "/me/delete"]) {
+  for (const path of ["/me", "/make", "/me/password", "/me/computers", "/me/delete", "/settings/feed"]) {
     await opened(page, path);
     expect(await overflow(page), path).toEqual({ page: 0, view: 0 });
     await expectViewAboveTheBar(page, path);
@@ -93,6 +93,13 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
   expect((await overflow(page)).page).toBe(0);
   await expectViewAboveTheBar(page, "/me at 320 by 568");
   await expect(page.getByRole("link", { name: "Delete my account" })).toBeInViewport();
+
+  // Your feed fits an iPhone SE too, with Start over above the bar.
+  await page.setViewportSize({ width: 375, height: 667 });
+  await opened(page, "/settings/feed");
+  expect(await overflow(page), "/settings/feed at 375 by 667").toEqual({ page: 0, view: 0 });
+  await expectViewAboveTheBar(page, "/settings/feed at 375 by 667");
+  await expect(page.getByRole("button", { name: "Start over" })).toBeInViewport();
 });
 
 test("a member's Your account fits too, down to an iPhone SE", async ({ page }) => {

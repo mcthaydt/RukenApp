@@ -46,26 +46,33 @@ async function openYourFeed(page: Page): Promise<void> {
   await pageHasSettled(page);
 }
 
-/** Presses ••• on the clip at the top of the feed and one of the sheet's two buttons; answers the game it was for. */
+/**
+ * Presses ••• on a game's clip in the feed (the one at the top, or the one named) and one of the sheet's two buttons;
+ * answers the game it was for. Other journeys add games as this one runs, so a second press names its game.
+ */
 async function tellTheFeed(
   page: Page,
   choice: "More like this" | "Less like this",
-  shoot?: () => Promise<void>,
-): Promise<string> {
+  options: { slug?: string; shoot?: () => Promise<void> } = {},
+): Promise<{ slug: string; name: string }> {
   await page.goto("/");
-  const clip = page.locator('section[data-current="true"]');
+  const clip =
+    options.slug === undefined
+      ? page.locator('section[data-current="true"]')
+      : page.locator(`section[data-slug="${options.slug}"]`).first();
   await expect(clip).toBeAttached();
+  await clip.scrollIntoViewIfNeeded();
   const slug = (await clip.getAttribute("data-slug")) ?? "";
   await clip.getByRole("button", { name: "More or less like this" }).click();
   const sheet = page.locator("dialog.tastesheet");
   await expect(sheet).toBeVisible();
   const name = (await sheet.getByRole("heading").textContent()) ?? "";
-  await shoot?.();
+  await options.shoot?.();
   await sheet.getByRole("button", { name: choice }).click();
   await expect(sheet).toBeHidden();
   await expect(page.getByRole("status").filter({ hasText: "Got it." })).toBeVisible();
   expect(slug).not.toBe("");
-  return name.trim();
+  return { slug, name: name.trim() };
 }
 
 test.describe("with cookies said yes to", () => {
@@ -80,18 +87,18 @@ test.describe("with cookies said yes to", () => {
     await openYourFeed(page);
     await expect(learnSwitch(page)).toHaveAttribute("aria-checked", "true");
     await expect(page.getByText("Play a few games and we'll learn what you like.")).toBeVisible();
-    await expect(less(page).getByText("Nothing yet.")).toBeVisible();
+    await expect(less(page).getByRole("button", { name: /^Remove / })).toHaveCount(0);
     await showTheOwner(page, testInfo, "Your feed, new");
 
     // Create from a clip: More like this keeps the game on the more side.
-    const game = await tellTheFeed(page, "More like this", () =>
-      showTheOwner(page, testInfo, "the ••• sheet"),
-    );
+    const { slug, name: game } = await tellTheFeed(page, "More like this", {
+      shoot: () => showTheOwner(page, testInfo, "the ••• sheet"),
+    });
     await openYourFeed(page);
     await expect(more(page).getByText(game, { exact: true })).toBeVisible();
 
     // Update: Less like this on the same game moves it to the less side; it is never on both.
-    await tellTheFeed(page, "Less like this");
+    await tellTheFeed(page, "Less like this", { slug });
     await openYourFeed(page);
     await expect(less(page).getByText(game, { exact: true })).toBeVisible();
     await expect(more(page).getByText(game, { exact: true })).toHaveCount(0);

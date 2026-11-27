@@ -81,17 +81,17 @@
         <li>{@render choiceForm(choice, "more", true)}</li>
       {/each}
     {/if}
+    <!-- Add sits at the end of the row, as the spec's sketch has it, so an empty side is one line, not two. -->
+    <li>
+      <button
+        type="button"
+        class="outline add"
+        onclick={() => {
+          openAdd(direction);
+        }}>Add</button
+      >
+    </li>
   </ul>
-  {#if list.length === 0 && direction === "less"}
-    <p class="note">Nothing yet.</p>
-  {/if}
-  <button
-    type="button"
-    class="outline add"
-    onclick={() => {
-      openAdd(direction);
-    }}>Add</button
-  >
 {/snippet}
 
 <main class="card yourfeed">
@@ -132,11 +132,15 @@
         <h2 id="less-title">What you want to see less of</h2>
         {@render chips("less")}
       </section>
-
-      <button type="button" class="danger" onclick={() => startOverSheet?.showModal()}>Start over</button>
     {/if}
   {/if}
-  <p class="note"><a class="quiet" href="/me">Back to your account</a></p>
+  <!-- Side by side, so the whole page fits an iPhone SE with no scrolling, as Your account does. -->
+  <div class="foot">
+    {#if feed.learning === "on"}
+      <button type="button" class="danger" onclick={() => startOverSheet?.showModal()}>Start over</button>
+    {/if}
+    <a class="quiet" href="/me">Back to your account</a>
+  </div>
 </main>
 
 <dialog
@@ -187,14 +191,16 @@
 
 <style>
   .yourfeed section {
-    margin-top: 1.5rem;
+    margin-top: 1rem;
   }
-  h2 {
-    margin: 0 0 0.75rem;
-    font: var(--text-statement);
+  /* A side's name is a label over its chips, in the body's size: in the statement's it ran to two lines on a phone. */
+  .yourfeed h2 {
+    margin: 0 0 0.5rem;
+    font: var(--text-body);
+    font-weight: 600;
   }
   .sentence {
-    margin-top: 1rem;
+    margin-top: 0.75rem;
   }
   /* The switch: the words on the left and the state on the right, said in words as well as by its fill. */
   .learn button {
@@ -221,7 +227,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin: 0 0 0.75rem;
+    margin: 0;
     padding: 0;
     list-style: none;
   }
@@ -285,11 +291,39 @@
     border-color: var(--chalk);
     color: var(--chalk);
   }
-  .add {
+  .chips .add {
+    margin: 0;
+    padding-inline: 1rem;
+  }
+  .foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+  }
+  .foot > * {
     margin: 0;
   }
-  .yourfeed > .danger {
-    margin-top: 2rem;
+  /* A short window (an iPhone SE, a laptop): the air closes up, as on Your account, so the page fits above the bar
+     with no scrolling. Every button keeps its whole 48px target. */
+  @media (max-height: 820px) {
+    .yourfeed {
+      padding: 0.75rem;
+    }
+    .sentence {
+      margin-top: 0.5rem;
+    }
+    .yourfeed section {
+      margin-top: 0.75rem;
+    }
+    .yourfeed h2 {
+      margin-bottom: 0.25rem;
+    }
+    .foot {
+      margin-top: 0.75rem;
+      gap: 0.5rem;
+    }
   }
   .sheet {
     width: min(28rem, calc(100vw - 2rem));
