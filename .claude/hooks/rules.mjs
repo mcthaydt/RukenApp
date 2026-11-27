@@ -1004,7 +1004,7 @@ function checkReviewed(config, cwd, repo, number, what, deny, pin = null, floor 
   // The latest verdict on a commit stands; a passing one covers the head when it is the
   // head or only clean merges of the default branch lie between them. Only the owner's
   // account writes verdicts that count (rules.json, prFlow.verdictAuthor).
-  const { ok } = reviewPasses([...comments, ...reviews], f, pr.head.sha, (at) => onlyCleanMerges(cwd, at, pr.head.sha, defaultBranch(config)));
+  const { ok } = reviewPasses([...comments, ...reviews], f, pr.head.sha, (at) => onlyCleanMerges(cwd, at, pr.head.sha, defaultBranch(config), config.prFlow?.notesPaths ?? []));
   if (!ok) deny(refusal(FLOW_RULE, `${what}: lane ${lane} pull request #${n} has no passing review that names its head ${sha}`, `have the coordinator start the ${lane === 3 ? 'implementation audit' : 'fresh review'} of ${sha}; it posts its verdict on the pull request with "${sha} PASS" or "${sha} FAIL" as the first line`));
 }
 

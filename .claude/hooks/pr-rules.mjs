@@ -117,7 +117,7 @@ async function judge(pr, action, closeNow) {
     let fetched = false;
     const r = reviewPasses(items, f, pr.head.sha, (at) => {
       if (!fetched) { fetchHead(n, pr.head.sha); fetched = true; }
-      return onlyCleanMerges(process.cwd(), at, pr.head.sha, config.defaultBranch ?? 'main');
+      return onlyCleanMerges(process.cwd(), at, pr.head.sha, config.defaultBranch ?? 'main', config.prFlow?.notesPaths ?? []);
     });
     if (!r.ok) failures.push(`lane ${lane} pull request is not a draft and has no passing review that names its head ${r.head7}`);
   }

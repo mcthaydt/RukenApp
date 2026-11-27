@@ -69,20 +69,19 @@ const setState = (s: Partial<State>) => {
   );
 };
 
-function hook(tool: string, input: unknown, raw?: string): Answer {
+function hook(tool: string, input: unknown, raw?: string, at = { dir: scratch, head: HEAD }): Answer {
   const payload =
-    raw ??
-    JSON.stringify({ hook_event_name: "PreToolUse", tool_name: tool, tool_input: input, cwd: scratch });
+    raw ?? JSON.stringify({ hook_event_name: "PreToolUse", tool_name: tool, tool_input: input, cwd: at.dir });
   const r = spawnSync(process.execPath, [join(scratch, ".claude", "hooks", "rules.mjs")], {
     input: payload,
     encoding: "utf8",
-    cwd: scratch,
+    cwd: at.dir,
     env: {
       ...process.env,
-      CLAUDE_PROJECT_DIR: scratch,
+      CLAUDE_PROJECT_DIR: at.dir,
       PATH: `${join(scratch, "bin")}:${process.env.PATH ?? ""}`,
       STUB_STATE: stateFile,
-      STUB_HEAD: HEAD,
+      STUB_HEAD: at.head,
     },
   });
   let deny: string | null = null;
@@ -747,5 +746,86 @@ describe("the RukenPrivate merge rule holds from every working folder", () => {
     } finally {
       rmSync(alone, { recursive: true, force: true });
     }
+  });
+});
+
+// docs/superpowers/specs/2026-11-27-keep-reviews-through-clean-merges-design.md, criterion 9: the client hook carries a
+// PASS through a progress.md conflict and a notes-only commit, and not through a conflict in another file.
+describe("a review carries through notes-only changes (keep-reviews criterion 9)", () => {
+  const NOTES = "docs/superpowers/progress.md";
+  let repoDir = "";
+  let reviewed = "";
+  const heads: Record<string, string> = {};
+  beforeAll(() => {
+    const top = mkdtempSync(join(tmpdir(), "rules-merge-notes-"));
+    repoDir = join(top, "app");
+    const origin = join(top, "origin.git");
+    const g = (...a: string[]) =>
+      spawnSync(
+        "git",
+        ["-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false", ...a],
+        {
+          cwd: repoDir,
+          encoding: "utf8",
+        },
+      ).stdout.trim();
+    const put = (file: string, text: string) => {
+      mkdirSync(join(repoDir, file, ".."), { recursive: true });
+      writeFileSync(join(repoDir, file), text);
+    };
+    const commit = (msg: string) => {
+      g("add", "-A");
+      g("commit", "-q", "-m", msg);
+      return g("rev-parse", "HEAD");
+    };
+    const mergeFixing = (what: string, files: Record<string, string>) => {
+      g("checkout", "-q", "-B", "h", reviewed);
+      g("merge", "-q", "--no-ff", "--no-commit", what);
+      for (const [f, t] of Object.entries(files)) put(f, t);
+      return commit("merge main");
+    };
+    mkdirSync(repoDir, { recursive: true });
+    spawnSync("git", ["init", "-q", "--bare", "-b", "main", origin]);
+    g("init", "-q", "-b", "main");
+    g("remote", "add", "origin", origin);
+    put("r.txt", "r\n");
+    put(NOTES, "p0\n");
+    commit("A");
+    g("checkout", "-q", "-b", "pr");
+    put("r.txt", "pr's r\n");
+    put(NOTES, "p0\npr\n");
+    reviewed = commit("R");
+    g("checkout", "-q", "main");
+    put(NOTES, "p0\nmain\n");
+    const m1 = commit("M1");
+    put("r.txt", "main's r\n");
+    commit("M2");
+    g("push", "-q", "origin", "main");
+    g("fetch", "-q", "origin");
+    heads.notesConflict = mergeFixing(m1, { [NOTES]: "p0\npr\nmain\n" });
+    heads.otherConflict = mergeFixing("origin/main", { [NOTES]: "p0\npr\nmain\n", "r.txt": "pr's r\n" });
+    g("checkout", "-q", "-B", "h", reviewed);
+    put(NOTES, "p0\npr\nnote\n");
+    heads.notesOnly = commit("note");
+    g("checkout", "-q", "main");
+    // the hook and its stub gh sit in the repo's folder, untracked, as in the scratch copy above
+    cpSync(join(ROOT, ".claude", "hooks"), join(repoDir, ".claude", "hooks"), { recursive: true });
+    cpSync(join(ROOT, "CLAUDE.md"), join(repoDir, "CLAUDE.md"));
+    mkdirSync(join(repoDir, "bin"));
+    writeFileSync(join(repoDir, "bin", "gh"), STUB);
+    chmodSync(join(repoDir, "bin", "gh"), 0o755);
+  });
+  const mergeAt = (head: string) => {
+    setState({ body: "Lane 2", files: ["src/lib/a.ts"], comments: [`${reviewed.slice(0, 7)} PASS`] });
+    const at = heads[head] ?? "";
+    const input = { ...APP, merge_method: "merge", expectedHeadSha: at };
+    return hook("mcp__github__merge_pull_request", input, undefined, { dir: repoDir, head: at }).deny;
+  };
+  test("merging is allowed on a progress.md-conflict merge and on a notes-only commit", () => {
+    expect(mergeAt("notesConflict")).toBeNull();
+    expect(mergeAt("notesOnly")).toBeNull();
+  });
+  test("merging is refused when the merge of main conflicted in another file", () => {
+    expect(mergeAt("otherConflict")).toContain(NO_REVIEW);
   });
 });
