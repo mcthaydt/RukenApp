@@ -1,0 +1,74 @@
+// Reviewer's probe for #410 at cbc3a58 (not part of the PR): Like, Save and Repost show and work on a Followed clip.
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import { pageHasSettled, signUp } from "./support/account.ts";
+import { changeGame, givePage } from "./support/database.ts";
+import { addGame } from "./support/game.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+import { asInstalled } from "./support/installed.ts";
+
+test.beforeEach(({ page }) => asInstalled(page));
+test.beforeEach(forgetRateLimits);
+
+let game: Awaited<ReturnType<typeof addGame>>;
+const WORD = `zq${crypto.randomUUID().replaceAll("-", "").slice(0, 8)}`;
+
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(240_000);
+  await forgetRateLimits();
+  game = await addGame(browser, request);
+  await changeGame(game.slug, { name: `Probe ${WORD}` });
+  await givePage(game.maker, { name: `Hawk ${WORD}`, oneLine: "Probe maker." });
+});
+
+const mark = (clip: Locator, name: "Like" | "Save" | "Repost") => clip.getByRole("button", { name, exact: true });
+async function press(clip: Locator, name: "Like" | "Save" | "Repost", page: Page) {
+  const kept = page.waitForResponse((a) => a.url().endsWith("/api/feed/marks"));
+  await mark(clip, name).click();
+  expect((await kept).status()).toBe(200);
+}
+
+test("marks show and work on a Followed clip, and agree with Fresh", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signUp(page);
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const onFeed = page.locator(`section[data-slug="${game.slug}"]`).first();
+  await onFeed.scrollIntoViewIfNeeded();
+  await onFeed.getByRole("button", { name: `Follow Hawk ${WORD}` }).click();
+  await expect(onFeed.getByRole("button", { name: `Follow Hawk ${WORD}` })).toHaveAttribute("aria-pressed", "true");
+
+  await page.goto("/followed");
+  await pageHasSettled(page);
+  let clip = page.locator(`section[data-slug="${game.slug}"]`).first();
+  for (const name of ["Like", "Save", "Repost"] as const) {
+    await expect(mark(clip, name)).toBeVisible();
+    await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "false");
+  }
+  // More/Less like this (•••) is Fresh-only.
+  await expect(clip.getByRole("button", { name: "More or less like this" })).toHaveCount(0);
+  await press(clip, "Like", page);
+  await press(clip, "Save", page);
+  await press(clip, "Repost", page);
+  await expect(mark(clip, "Like").locator(".word")).toHaveText("1");
+
+  // Read back on Followed after a reload, and on Fresh.
+  await page.reload();
+  await pageHasSettled(page);
+  clip = page.locator(`section[data-slug="${game.slug}"]`).first();
+  for (const name of ["Like", "Save", "Repost"] as const) await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/");
+  await pageHasSettled(page);
+  const fresh = page.locator(`section[data-slug="${game.slug}"]`).first();
+  await fresh.scrollIntoViewIfNeeded();
+  for (const name of ["Like", "Save", "Repost"] as const) await expect(mark(fresh, name)).toHaveAttribute("aria-pressed", "true");
+
+  // Take each back on Followed.
+  await page.goto("/followed");
+  await pageHasSettled(page);
+  clip = page.locator(`section[data-slug="${game.slug}"]`).first();
+  for (const name of ["Like", "Save", "Repost"] as const) await press(clip, name, page);
+  await page.reload();
+  await pageHasSettled(page);
+  clip = page.locator(`section[data-slug="${game.slug}"]`).first();
+  for (const name of ["Like", "Save", "Repost"] as const) await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "false");
+});

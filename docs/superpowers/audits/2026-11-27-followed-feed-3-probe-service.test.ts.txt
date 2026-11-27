@@ -1,0 +1,34 @@
+// Reviewer's probe for #410 at cbc3a58: followedPage asks marksOf for the viewer and carries each clip's marks.
+import { expect, it } from "vitest";
+import type { ListedGame } from "../../../src/features/games/games.ts";
+import { createFeedService } from "../../../src/features/feed/service.ts";
+import { TestClock } from "../../support/test-clock.ts";
+
+const game = (slug: string, maker: string): ListedGame => ({
+  id: `id-${slug}`, publicId: `pub-${slug}`, slug, name: slug, oneLine: "x", freeToPlay: false,
+  showsPlayerCount: false, makerUserId: maker, livePullId: "p", connectHosts: [], ageRating: "age_12",
+  contentMarks: [], clips: { upright: "u", wide: "w" }, liveSince: new Date("2026-11-20T00:00:00Z"),
+});
+
+it("Followed clips carry the viewer's marks, and NO_MARKS where marksOf has none", async () => {
+  const asked: (string | null)[] = [];
+  const liked = { liked: true, saved: true, reposted: false, likes: 7, own: false };
+  const service = createFeedService({
+    clock: new TestClock("2026-11-21T15:00:00Z"),
+    liveGames: () => Promise.resolve([game("a", "m1"), game("b", "m1")]),
+    memberBeatsByGame: () => Promise.resolve(new Map()),
+    makersOf: () => Promise.resolve(new Map([["m1", { handle: "h", name: "H", photoKey: null }]])),
+    followedMakerIds: () => Promise.resolve(["m1"]),
+    media: (k) => k,
+    marksOf: (viewer, games) => {
+      asked.push(viewer);
+      expect(games.map((g) => g.id).sort()).toEqual(["id-a", "id-b"]);
+      return Promise.resolve(new Map([["id-a", liked]]));
+    },
+  });
+  const { page } = await service.followedPage("me");
+  expect(asked).toEqual(["me"]);
+  const bySlug = Object.fromEntries(page.clips.map((c) => [c.slug, c.marks]));
+  expect(bySlug.a).toEqual(liked);
+  expect(bySlug.b).toMatchObject({ liked: false, saved: false, reposted: false });
+});
