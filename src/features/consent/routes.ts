@@ -15,6 +15,9 @@ const OPEN: readonly string[] = [
   "/goodbye",
   "/cookies",
   "/api/feed",
+  // The feed's Following tab and Search only read: nothing is kept on the device or about the person.
+  "/following",
+  "/search",
   "/api/still/[...key]",
   "/help",
   "/help/get-your-game-on-ruken",
