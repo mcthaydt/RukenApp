@@ -1,0 +1,110 @@
+import { expect, test } from "@playwright/test";
+import { signUp } from "./support/account.ts";
+import { givePage } from "./support/database.ts";
+import { addGame } from "./support/game.ts";
+import { asInstalled } from "./support/installed.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+// Review 4 probe (not committed): the clip's right column with the maker credit, Like, Save, Repost and Share all
+// together must stay on screen, clear of the top bar and the bottom bar, with 48px targets and no page scroll.
+
+let slug: string;
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(240_000);
+  await forgetRateLimits();
+  const game = await addGame(browser, request);
+  await givePage(game.maker, { name: "Probe Maker", oneLine: "Probe." });
+  slug = game.slug;
+});
+
+const SIZES: { name: string; size: { width: number; height: number } | null }[] = [
+  { name: "default", size: null },
+  { name: "old-se-320", size: { width: 320, height: 568 } },
+  { name: "short-computer", size: { width: 1280, height: 600 } },
+];
+
+for (const { name, size } of SIZES) {
+  test(`column fits: ${name}`, async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
+    await forgetRateLimits();
+    await asInstalled(page);
+    if (size !== null) await page.setViewportSize(size);
+    await signUp(page);
+    await page.goto("/");
+    await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+    const clip = page.locator(`section[data-slug="${slug}"]`).first();
+    await clip.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(800);
+    const view = page.viewportSize()!;
+    const clipBox = (await clip.boundingBox())!;
+    const names = ["Like", "Save", "Repost", "Share"];
+    const boxes: Record<string, { x: number; y: number; width: number; height: number }> = {};
+    for (const n of names) boxes[n] = (await clip.getByRole("button", { name: n, exact: true }).boundingBox())!;
+    boxes.plus = (await clip.getByRole("button", { name: "Follow Probe Maker" }).boundingBox())!;
+    boxes.credit = (await clip.locator(".credit").boundingBox())!;
+    const top = await page.locator("div.top:has(nav.tabs)").boundingBox();
+    const bar = await page.locator("nav.bar").boundingBox();
+    const scroll = await page.evaluate(() => ({
+      doc: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+      docW: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }));
+    await page.screenshot({ path: `/tmp/review4-${testInfo.project.name}-${name}.png` });
+    const report = { project: testInfo.project.name, name, view, clipBox, top, bar, boxes, scroll };
+    console.log(`PROBE ${JSON.stringify(report)}`);
+    // Relative to the clip (which fills the screen), each piece must be inside the visible clip.
+    for (const [n, b] of Object.entries(boxes)) {
+      expect.soft(b.y - clipBox.y, `${n} top on screen`).toBeGreaterThanOrEqual(0);
+      expect.soft(b.y - clipBox.y + b.height, `${n} bottom on screen`).toBeLessThanOrEqual(view.height);
+      if (top !== null) expect.soft(b.y - clipBox.y, `${n} clear of the top bar`).toBeGreaterThanOrEqual(top.y + top.height - 1);
+      if (bar !== null && bar.width < view.width / 2 === false)
+        expect.soft(b.y - clipBox.y + b.height, `${n} clear of the bottom bar`).toBeLessThanOrEqual(bar.y + 1);
+    }
+    for (const n of [...names, "plus"]) {
+      expect.soft(boxes[n]!.width, `${n} wide`).toBeGreaterThanOrEqual(48);
+      expect.soft(boxes[n]!.height, `${n} tall`).toBeGreaterThanOrEqual(48);
+    }
+    expect.soft(scroll.docW, "no sideways scroll").toBeLessThanOrEqual(0);
+  });
+}
+
+test("another site presses nothing: follow and marks", async ({ page }) => {
+  test.setTimeout(120_000);
+  await forgetRateLimits();
+  await asInstalled(page);
+  const player = await signUp(page);
+  const EVIL = { origin: "https://elsewhere.example" };
+  // Find the maker's handle from the feed card link.
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const href = await page.locator(`section[data-slug="${slug}"] .credit a.maker`).first().getAttribute("href");
+  const h = href!.slice(1);
+  const follow = await page.request.post(`/${h}/follow`, { headers: EVIL, form: { want: "on", back: "/" }, maxRedirects: 0 });
+  const followJson = await page.request.post(`/${h}/follow`, {
+    headers: { ...EVIL, "content-type": "text/plain" }, data: "want=on", maxRedirects: 0,
+  });
+  const mark = await page.request.post("/api/feed/marks", {
+    headers: { ...EVIL, "content-type": "text/plain" }, data: JSON.stringify({ game: slug, kind: "like", on: true }),
+  });
+  const markForm = await page.request.post("/api/feed/marks", { headers: EVIL, form: { game: slug, kind: "like", on: "true" } });
+  const { followsOf } = await import("./support/database.ts");
+  const follows = await followsOf(player.number);
+  console.log(`PROBE-FORGED ${JSON.stringify({ follow: follow.status(), followText: followJson.status(), mark: mark.status(), markForm: markForm.status(), follows })}`);
+  expect.soft(follow.status()).toBe(403);
+  expect.soft(mark.status()).toBeGreaterThanOrEqual(400);
+  expect.soft(markForm.status()).toBe(403);
+  expect.soft(follows).toEqual([]);
+  // The like button still says Like with no count: nothing was pressed.
+  await page.reload();
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const like = page.locator(`section[data-slug="${slug}"]`).first().getByRole("button", { name: "Like", exact: true });
+  await expect(like).toHaveAttribute("aria-pressed", "false");
+  // Signed out, a cross-site form leaves no rk_follow_pressed note.
+  const { consented } = await import("./support/consent.ts");
+  const out = await page.context().browser()!.newContext({ ...consented, baseURL: "http://localhost:4173" });
+  const anon = await out.newPage();
+  const r = await anon.request.post(`/${h}/follow`, { headers: EVIL, form: { want: "on", back: "/" }, maxRedirects: 0 });
+  const notes = (await anon.context().cookies()).map((c) => c.name);
+  console.log(`PROBE-FORGED-OUT ${JSON.stringify({ status: r.status(), notes })}`);
+  expect.soft(notes).not.toContain("rk_follow_pressed");
+  await out.close();
+});
