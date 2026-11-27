@@ -1033,7 +1033,7 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   await openFeed(page);
   const names: string[] = [];
   const outlines: string[] = [];
-  for (let presses = 0; presses < 9; presses += 1) {
+  for (let presses = 0; presses < 12; presses += 1) {
     await page.keyboard.press("Tab");
     const focused = await page.evaluate(() => {
       const element = document.activeElement;
@@ -1046,11 +1046,11 @@ test("everything is reachable with Tab, in an order that follows the screen, and
     names.push(focused?.label ?? "");
     outlines.push(focused?.outline ?? "");
   }
-  // The bar first (it is always there), then the first clip's controls from the top of the screen to the bottom, then the
-  // next clip's.
-  expect(names.slice(0, 4)).toEqual(["Home", "Add a game", "You", "Sound"]);
+  // The bar first (it is always there), then the feed's top bar (its tabs and Search, there once for the whole feed),
+  // then the first clip's controls from the top of the screen to the bottom, then the next clip's.
+  expect(names.slice(0, 7)).toEqual(["Home", "Add a game", "You", "For you", "Following", "Search", "Sound"]);
   const play = names.indexOf("Play");
-  expect(play).toBeGreaterThan(3);
+  expect(play).toBeGreaterThan(6);
   expect(names[play + 1]).toBe("Share");
   expect(names[play + 2]).toBe("Sound");
   for (const outline of outlines) expect(outline).not.toMatch(/^none/);

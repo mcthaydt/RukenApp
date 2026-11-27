@@ -152,6 +152,11 @@
     margin: 0;
     border-color: var(--sage);
   }
+  /* Ruken draws its own field (the owner, 2026-11-22: "EVERYTHING should be custom"), so not the browser's clear cross. */
+  input::-webkit-search-cancel-button,
+  input::-webkit-search-decoration {
+    appearance: none;
+  }
   input::placeholder {
     color: var(--sage);
     opacity: 1;
@@ -243,6 +248,8 @@
   @media (orientation: landscape) and (max-height: 449px) {
     .search {
       inset: 0 var(--rail, 0) 0 0;
+      width: auto;
+      margin: 0;
     }
   }
 </style>
