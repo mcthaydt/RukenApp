@@ -67,11 +67,12 @@
   }
 </script>
 
-<section class="friendpick" aria-labelledby="pick-title">
-  <h3 id="pick-title">{SEND_WORDS.pickTitle}</h3>
+<!-- The sheet's own title says "Send to friends" while this shows, so it reads like the other pull-up panels: one title,
+     the game's name, then what to do. -->
+<section class="friendpick" aria-labelledby="share-title">
   {#if friends === null}
     <p>{SEND_WORDS.signInToSend}</p>
-    <a class="button" bind:this={first} href={`/sign-in?next=${encodeURIComponent(`/g/${game}`)}`}
+    <a class="button main" bind:this={first} href={`/sign-in?next=${encodeURIComponent(`/g/${game}`)}`}
       >{SEND_WORDS.signIn}</a
     >
   {:else if friends.length === 0}
@@ -145,10 +146,6 @@
     display: grid;
     gap: 0.75rem;
   }
-  h3 {
-    margin: 0;
-    font: var(--text-statement);
-  }
   p {
     margin: 0;
   }
@@ -190,8 +187,8 @@
     height: var(--size-target);
     border-radius: 50%;
     --corner: round;
-    background: var(--paper);
-    color: var(--ink);
+    background: var(--glass-safe);
+    color: var(--chalk);
     box-shadow: var(--glass-edge);
   }
   .round img {
@@ -249,7 +246,10 @@
   .said:empty {
     margin-block: -0.375rem;
   }
+  /* The same coloured glass as the sheet's other buttons: Send in the pay blue, Back in the quiet green. */
   .back {
     width: 100%;
+    background: var(--glass-safe);
+    box-shadow: var(--glass-edge);
   }
 </style>

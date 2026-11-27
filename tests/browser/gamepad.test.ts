@@ -445,7 +445,7 @@ test("on Your turn the pad reaches every row's controls, opens the stop card and
   await page.goto(`/g/${game.slug}`);
   await expect(page.getByRole("button", { name: "Watch the video full size" })).toBeVisible();
   await page.getByRole("button", { name: "Share" }).click();
-  const sheet = page.getByRole("dialog", { name: "Share" });
+  const sheet = page.getByRole("dialog", { name: /^(Share|Send to friends)$/ });
   await padReachesEverything(page);
   // Its Your turn, by the pad alone: A on Your turn shows the friends, A picks, and the pad reaches Send and Back.
   await sheet.getByRole("button", { name: "Your turn", exact: true }).focus();

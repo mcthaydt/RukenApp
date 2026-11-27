@@ -135,7 +135,7 @@
 >
   <div class="inside">
     <div class="top">
-      <h2 id="share-title">Share</h2>
+      <h2 id="share-title">{picking ? SEND_WORDS.pickTitle : "Share"}</h2>
       <button type="button" class="close" aria-label="Close" onclick={close}><Icon name="close" /></button>
     </div>
     {#if link !== null}

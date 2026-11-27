@@ -79,7 +79,7 @@ async function shareSheetFor(page: Page, slug: string): Promise<Locator> {
   await page.goto(`/g/${slug}`, { waitUntil: "domcontentloaded" });
   await pageHasSettled(page);
   await page.getByRole("button", { name: "Share" }).click();
-  const sheet = page.getByRole("dialog", { name: "Share" });
+  const sheet = page.getByRole("dialog", { name: /^(Share|Send to friends)$/ });
   await expect(sheet).toBeVisible();
   return sheet;
 }
@@ -87,7 +87,9 @@ async function shareSheetFor(page: Page, slug: string): Promise<Locator> {
 /** The share sheet's Your turn, in Email's old place: it shows the friends to pick. */
 async function pickFriendsIn(sheet: Locator): Promise<void> {
   await sheet.getByRole("button", { name: "Your turn", exact: true }).click();
+  // The sheet's title says so, as the other pull-up panels have one title; there is no second heading.
   await expect(sheet.getByRole("heading", { name: "Send to friends" })).toBeVisible();
+  await expect(sheet.getByRole("heading")).toHaveCount(1);
   // It sits on the sheet's own glass, in the sheet's own white words, never a card of another colour.
   await expect(sheet.getByRole("region", { name: "Send to friends" })).toHaveCSS(
     "background-color",
@@ -415,7 +417,7 @@ test("from the keyboard alone: Tab reaches a friend's face and Enter sends; Tab 
       });
       await tabTo(sender.page, sender.page.getByRole("button", { name: "Share" }));
       await sender.page.keyboard.press("Enter");
-      const sheet = sender.page.getByRole("dialog", { name: "Share" });
+      const sheet = sender.page.getByRole("dialog", { name: /^(Share|Send to friends)$/ });
       await expect(sheet).toBeVisible();
       await tabTo(sender.page, sheet.getByRole("button", { name: "Your turn", exact: true }));
       await sender.page.keyboard.press("Enter");
