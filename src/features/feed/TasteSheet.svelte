@@ -1,9 +1,11 @@
 <!--
   The ••• sheet on a clip (learned feed spec 6.1): two big buttons, More like this and Less like this, and Cancel, on
-  glass over a dimmed screen like the Share sheet. A press keeps a chip for the game on Your feed, closes the sheet and
+  glass over a dimmed screen like the Share sheet, sliding in and away as it does. A press keeps a chip for the game on Your feed, closes the sheet and
   the feed says "Got it." for two seconds. One sheet serves the whole feed: the feed calls `open` with the clip's game.
 -->
 <script lang="ts">
+  import { slideAway, slideAwayOnCancel, stopSliding } from "../../lib/sheet.ts";
+
   let { onsaved }: { onsaved: () => void } = $props();
 
   let sheet = $state<HTMLDialogElement>();
@@ -19,7 +21,9 @@
     opener = from;
     problem = "";
     busy = null;
-    sheet?.showModal();
+    if (sheet === undefined) return;
+    stopSliding(sheet);
+    sheet.showModal();
     moreButton?.focus();
   }
 
@@ -38,7 +42,7 @@
         problem = answer.problem ?? "That didn't work. Try again.";
         return;
       }
-      sheet?.close();
+      close();
       onsaved();
     } catch {
       problem = "That didn't work. Check your connection and try again.";
@@ -46,16 +50,21 @@
       busy = null;
     }
   }
+
+  function close(): void {
+    if (sheet !== undefined) slideAway(sheet);
+  }
 </script>
 
 <!-- A press on the dimmed screen around the panel closes it; the keyboard has Escape and Cancel. -->
 <dialog
-  class="tastesheet"
+  class="tastesheet rises"
   bind:this={sheet}
   aria-labelledby="taste-title"
   onclick={(event) => {
-    if (event.target === sheet) sheet.close();
+    if (event.target === sheet) close();
   }}
+  oncancel={slideAwayOnCancel}
   onclose={() => {
     opener?.focus();
   }}
@@ -78,7 +87,7 @@
     {#if problem !== ""}
       <p class="problem" role="alert">{problem}</p>
     {/if}
-    <button type="button" class="quiet cancel" onclick={() => sheet?.close()}>Cancel</button>
+    <button type="button" class="quiet cancel" onclick={close}>Cancel</button>
   </div>
 </dialog>
 
@@ -99,19 +108,10 @@
     color: var(--chalk);
     text-shadow: var(--glass-ink);
   }
-  .tastesheet[open] {
-    animation: taste-in 320ms var(--ease, cubic-bezier(0.32, 0.72, 0, 1)) backwards;
-  }
   .tastesheet::backdrop {
     background: var(--dim-bg);
     -webkit-backdrop-filter: var(--dim-filter);
     backdrop-filter: var(--dim-filter);
-  }
-  @keyframes taste-in {
-    from {
-      opacity: 0;
-      transform: translateY(2.5rem);
-    }
   }
   .inside {
     display: flex;
@@ -145,11 +145,6 @@
     }
     .inside {
       padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .tastesheet[open] {
-      animation: none;
     }
   }
 </style>

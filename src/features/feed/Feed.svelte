@@ -714,8 +714,17 @@
                       stroke-linejoin="round"
                     />
                   </svg>
+                  {#if marks.reposted}
+                    <!-- Reposted is told at a glance: a small green check in the button's corner, like a followed maker's. -->
+                    <span class="done" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="14" height="14">
+                        <path d="M5 12.5l4.5 4.5L19 7.5" />
+                      </svg>
+                    </span>
+                  {/if}
                 </span>
-                <span class="word" aria-hidden="true">Repost</span>
+                <!-- The button keeps its name, Repost, and says it is pressed; the word under it says what happened. -->
+                <span class="word" aria-hidden="true">{marks.reposted ? "Reposted" : "Repost"}</span>
               </button>
             {/if}
             <button
@@ -887,6 +896,7 @@
     color: var(--chalk);
   }
   .disc {
+    position: relative;
     display: grid;
     place-items: center;
     width: var(--size-target);
@@ -901,9 +911,40 @@
   .mark[aria-pressed="true"] .disc {
     background: var(--glass-lift);
   }
+  /* The check on a reposted clip's button: small, green glass, over the top right of the round button. */
+  .done {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    --corner: round;
+    background: var(--glass-safe);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+  }
+  .mark .done svg {
+    filter: none;
+    will-change: auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  /* The word keeps to the button's width and spills evenly past both sides when it is longer ("Reposted"), so the
+     column and the game's card beside it never move when it changes. */
   .word {
+    display: flex;
+    justify-content: center;
+    width: var(--size-target);
     font: var(--text-small);
     font-weight: 600;
+    white-space: nowrap;
     text-shadow: var(--glass-ink);
   }
   .markproblem {

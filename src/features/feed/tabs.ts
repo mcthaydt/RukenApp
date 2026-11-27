@@ -30,6 +30,39 @@ export function stepOfSwipe(dx: number, dy: number): 1 | -1 | null {
 }
 
 /**
+ * How long, in milliseconds, the wheel rests before a new two-finger swipe on a trackpad can begin. A trackpad keeps
+ * sending wheel moves while a swipe coasts to a stop after the fingers lift, a frame or so apart for up to a second or
+ * two, so one swipe is every move until the wheel has been still this long (the owner, 2026-11-27: "swiping left/right
+ * on the trackpad does not switch tabs like on mobile").
+ */
+export const WHEEL_REST = 200;
+
+/** The wheel moves of one swipe so far: how far sideways and up and down, when the last came, and whether it stepped. */
+export type WheelSwipe = { dx: number; dy: number; last: number; stepped: boolean };
+
+/** No swipe under way. */
+export const WHEEL_STILL: WheelSwipe = { dx: 0, dy: 0, last: Number.NEGATIVE_INFINITY, stepped: false };
+
+/**
+ * Adds one wheel move (`dx`, `dy` in CSS pixels, `at` in milliseconds) to the swipe under way, and gives the step it
+ * asks for, if any. A swipe steps at most once, however long it coasts: so it moves one tab, as a finger's swipe does.
+ * Wheel moves point the way the page would scroll, against the fingers, so a move to the right (the fingers going left)
+ * brings in the tab on the right, as a finger's swipe to the left does.
+ */
+export function stepOfWheel(
+  swipe: WheelSwipe,
+  dx: number,
+  dy: number,
+  at: number,
+): { swipe: WheelSwipe; step: 1 | -1 | null } {
+  const under = at - swipe.last > WHEEL_REST ? WHEEL_STILL : swipe;
+  const next = { dx: under.dx + dx, dy: under.dy + dy, last: at, stepped: under.stepped };
+  if (next.stepped) return { swipe: next, step: null };
+  const step = stepOfSwipe(-next.dx, -next.dy);
+  return { swipe: { ...next, stepped: step !== null }, step };
+}
+
+/**
  * How near the screen's left or right edge, in CSS pixels, a finger starts the browser's own Back or Forward swipe
  * (Safari on a phone, and Android's back gesture). A swipe that starts there is the browser's: it slides the page
  * itself, so the feed taking it as a tab step too would move twice for one swipe (the owner, 2026-11-27: "The feed like

@@ -7,11 +7,12 @@
   right. The three share one centre line and never move with the clips under them (the owner, 2026-11-27: "they need
   to be grouped together as a unit"). The pill is no taller than the round buttons and its tabs are tight, so a third
   tab fits beside them on a 360px phone. The tabs are links, so they work without script, and moving between them
-  slides sideways as the bar's places do (src/lib/page-moves.ts). A finger swiped sideways anywhere on the screen, or a
-  gamepad's shoulder buttons (LB, RB), step to the tab beside this one (tabs.ts).
+  slides sideways as the bar's places do (src/lib/page-moves.ts). A finger swiped sideways anywhere on the screen, two
+  fingers swiped sideways on a computer's trackpad, or a gamepad's shoulder buttons (LB, RB), step to the tab beside this
+  one (tabs.ts).
 -->
 <script lang="ts" module>
-  import type { TabKey as Key } from "./tabs.ts";
+  import { WHEEL_STILL, type TabKey as Key, type WheelSwipe } from "./tabs.ts";
 
   // Kept across tabs, not per bar: the bar for the new tab starts a moment after the move (most on Safari's engine),
   // and sampling the pad then would take a fresh press for the one that brought the person here. Only a button seen
@@ -19,13 +20,16 @@
   let held: readonly number[] = [];
   // The tab a move is on its way to, so a second press or swipe made before it arrives steps on from there.
   let heading: Key | null = null;
+  // The trackpad swipe under way. Kept across tabs too: a swipe goes on coasting after it has brought the next tab in,
+  // and that tab's bar must see the same swipe, or the coast would step again.
+  let wheeling: WheelSwipe = WHEEL_STILL;
 </script>
 
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { goto } from "$app/navigation";
   import Icon from "../../lib/icon.svelte";
-  import { LB, RB, TABS, onBrowserEdge, stepOfSwipe, tabFrom, type TabKey } from "./tabs.ts";
+  import { LB, RB, TABS, onBrowserEdge, stepOfSwipe, stepOfWheel, tabFrom, type TabKey } from "./tabs.ts";
 
   let {
     on,
@@ -71,6 +75,32 @@
     start = null;
     if (step !== null) stepTab(step);
   }
+
+  // Two fingers swiped sideways on a trackpad come as wheel moves. A move more sideways than up and down is the feed's,
+  // so the browser does not also take it: a sideways swipe is the browser's own Back and Forward on a computer, which
+  // would leave the feed. Up and down is left to scroll the clips; a pinch (which comes with Ctrl) is left to zoom.
+  $effect(() => {
+    function wheeled(event: WheelEvent): void {
+      if (event.ctrlKey || document.querySelector("dialog[open]") !== null) return;
+      const size =
+        event.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? 16
+          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? window.innerHeight
+            : 1;
+      const dx = event.deltaX * size;
+      const dy = event.deltaY * size;
+      if (Math.abs(dx) > Math.abs(dy)) event.preventDefault();
+      const { swipe, step } = stepOfWheel(wheeling, dx, dy, event.timeStamp);
+      wheeling = swipe;
+      if (step !== null) stepTab(step);
+    }
+    // Not passive, so it may stop the browser's own Back and Forward.
+    window.addEventListener("wheel", wheeled, { passive: false });
+    return () => {
+      window.removeEventListener("wheel", wheeled);
+    };
+  });
 
   // A gamepad is read while one is plugged in, each frame, and a shoulder button counts once as it goes down. Games are
   // played on their own page, so the feed's reading never takes a press meant for a game.

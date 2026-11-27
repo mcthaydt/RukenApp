@@ -894,8 +894,8 @@ test.describe("Share", () => {
     const upright = (await page.evaluate(
       () => matchMedia("(orientation: portrait) and (max-width: 47.99rem)").matches,
     ))
-      ? { open: "share-up", shut: "share-down" }
-      : { open: "share-in", shut: "share-out" };
+      ? { open: "sheet-up", shut: "sheet-down" }
+      : { open: "sheet-in", shut: "sheet-out" };
     const share = current(page).getByRole("button", { name: "Share" });
     const sheet = sheetOf(page);
     await share.click();
