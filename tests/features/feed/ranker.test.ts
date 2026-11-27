@@ -358,3 +358,58 @@ describe("when the private ranker does not answer, the open one does", () => {
     expect(second?.next?.startsWith("o.")).toBe(true);
   });
 });
+
+describe("the feed's health, for /healthz/feed", () => {
+  const healthOf = (answer: () => Promise<unknown>) =>
+    ({
+      page: () => Promise.resolve(PRIVATE_PAGE),
+      notes: () => Promise.resolve({}),
+      health: answer,
+    }) as unknown as Ranker;
+
+  it("with no private ranker bound, is the open order on its defaults, with no line", async () => {
+    const { service, lines } = serviceWith({ privateRanker: () => null });
+    expect(await service.health()).toEqual({ ranker: "open", health: "defaults" });
+    expect(lines).toEqual([]);
+  });
+
+  it("is what the private ranker says of itself, when it answers", async () => {
+    for (const health of ["private", "partial", "defaults"] as const) {
+      const { service, lines } = serviceWith({
+        privateRanker: () => healthOf(() => Promise.resolve(health)),
+      });
+      expect(await service.health()).toEqual({ ranker: "private", health });
+      expect(lines).toEqual([]);
+    }
+  });
+
+  it("is the open order, with one line saying why, when the private ranker throws or answers nonsense", async () => {
+    for (const [answer, why] of [
+      [() => Promise.reject(new Error("user-1 broke")), "threw"],
+      [() => Promise.resolve("fine"), "bad answer"],
+    ] as const) {
+      const { service, lines } = serviceWith({ privateRanker: () => healthOf(answer) });
+      expect(await service.health()).toEqual({ ranker: "open", health: "defaults" });
+      expect(lines).toEqual([`feed: the private ranker did not answer its health (${why}).`]);
+    }
+  });
+
+  it(`is the open order when the private ranker takes longer than ${String(PRIVATE_WAIT_MS)} ms`, async () => {
+    vi.useFakeTimers();
+    const late = () =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          resolve("private");
+        }, PRIVATE_WAIT_MS + 1);
+      });
+    const { service, lines } = serviceWith({ privateRanker: () => healthOf(late) });
+
+    const pending = service.health();
+    await vi.advanceTimersByTimeAsync(PRIVATE_WAIT_MS + 1);
+    const health = await pending;
+
+    vi.useRealTimers();
+    expect(health).toEqual({ ranker: "open", health: "defaults" });
+    expect(lines).toEqual(["feed: the private ranker did not answer its health (slow)."]);
+  });
+});

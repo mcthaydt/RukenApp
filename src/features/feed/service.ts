@@ -71,6 +71,15 @@ export interface FeedPage {
   ask?: { index: number; gameId: string };
 }
 
+/** Which ranker answers the feed, and what it says of its own settings. */
+export interface FeedHealth {
+  ranker: "private" | "open";
+  health: "private" | "partial" | "defaults";
+}
+
+const isHealth = (value: unknown): value is FeedHealth["health"] =>
+  value === "private" || value === "partial" || value === "defaults";
+
 /** Why the private ranker's answer was not used. Never the viewer or anything they did. */
 type Miss = "threw" | "slow" | "bad answer";
 
@@ -83,8 +92,8 @@ export function createFeedService(deps: FeedServiceDeps) {
       console.warn(line);
     });
 
-  /** The private ranker's page, or why there is none. It is given PRIVATE_WAIT_MS, and its answer is checked. */
-  async function askPrivate(ranker: Ranker, request: RankRequest): Promise<RankedPage | "bad-cursor" | Miss> {
+  /** What a call to the private ranker answered within PRIVATE_WAIT_MS, or why it did not. */
+  async function within(call: () => Promise<unknown>): Promise<{ answer: unknown } | "slow" | "threw"> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const slow = new Promise<"slow">((resolve) => {
       timer = setTimeout(() => {
@@ -92,14 +101,36 @@ export function createFeedService(deps: FeedServiceDeps) {
       }, PRIVATE_WAIT_MS);
     });
     try {
-      const answer: unknown = await Promise.race([ranker.page(request), slow]);
-      if (answer === "slow") return "slow";
-      return isRankedPageOrBadCursor(answer) ? answer : "bad answer";
+      return await Promise.race([call().then((answer) => ({ answer })), slow]);
     } catch {
       return "threw";
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /** The private ranker's page, or why there is none. Its answer is checked before anything is built from it. */
+  async function askPrivate(ranker: Ranker, request: RankRequest): Promise<RankedPage | "bad-cursor" | Miss> {
+    const result = await within(() => ranker.page(request));
+    if (result === "slow" || result === "threw") return result;
+    return isRankedPageOrBadCursor(result.answer) ? result.answer : "bad answer";
+  }
+
+  /**
+   * Which ranker the feed is using now, and what that ranker says of its own settings: what /healthz/feed answers, so a
+   * check on the live site can see the private ranker answering, or the open order standing in for it.
+   */
+  async function health(): Promise<FeedHealth> {
+    const bound = privateRanker();
+    if (bound !== null) {
+      const result = await within(() => bound.health());
+      if (result !== "slow" && result !== "threw" && isHealth(result.answer))
+        return { ranker: "private", health: result.answer };
+      log(
+        `feed: the private ranker did not answer its health (${result === "slow" || result === "threw" ? result : "bad answer"}).`,
+      );
+    }
+    return { ranker: "open", health: await open.health() };
   }
 
   /**
@@ -201,7 +232,7 @@ export function createFeedService(deps: FeedServiceDeps) {
     return result;
   }
 
-  return { page };
+  return { page, health };
 }
 
 export type FeedService = ReturnType<typeof createFeedService>;
