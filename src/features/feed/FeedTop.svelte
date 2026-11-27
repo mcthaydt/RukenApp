@@ -76,12 +76,30 @@
     if (step !== null) stepTab(step);
   }
 
+  /**
+   * Whether a box under `target` can still scroll sideways the way `dx` points, so the move is its own scroll. A box
+   * at its end does not count: the browser would hand the rest of the swipe on to its own Back and Forward.
+   */
+  function scrollsSideways(target: EventTarget | null, dx: number): boolean {
+    for (let box = target instanceof Element ? target : null; box !== null; box = box.parentElement) {
+      if (box === document.scrollingElement) return false;
+      const { overflowX } = getComputedStyle(box);
+      if (overflowX !== "auto" && overflowX !== "scroll") continue;
+      const room = box.scrollWidth - box.clientWidth;
+      if (dx > 0 ? box.scrollLeft < room - 1 : box.scrollLeft > 0) return true;
+    }
+    return false;
+  }
+
   // Two fingers swiped sideways on a trackpad come as wheel moves. A move more sideways than up and down is the feed's,
   // so the browser does not also take it: a sideways swipe is the browser's own Back and Forward on a computer, which
-  // would leave the feed. Up and down is left to scroll the clips; a pinch (which comes with Ctrl) is left to zoom.
+  // would leave the feed. That holds with a panel up over the feed too, and while one slides away: the swipe changes no
+  // tab then, but must still not reach the browser, whose Back would leave the page behind the panel.
+  // Only a box that can scroll sideways under the fingers takes the move as its own scroll. Up and down is left to
+  // scroll the clips; a pinch (which comes with Ctrl) is left to zoom.
   $effect(() => {
     function wheeled(event: WheelEvent): void {
-      if (event.ctrlKey || document.querySelector("dialog[open]") !== null) return;
+      if (event.ctrlKey) return;
       const size =
         event.deltaMode === WheelEvent.DOM_DELTA_LINE
           ? 16
@@ -90,10 +108,15 @@
             : 1;
       const dx = event.deltaX * size;
       const dy = event.deltaY * size;
-      if (Math.abs(dx) > Math.abs(dy)) event.preventDefault();
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (scrollsSideways(event.target, dx)) return;
+        event.preventDefault();
+      }
       const { swipe, step } = stepOfWheel(wheeling, dx, dy, event.timeStamp);
-      wheeling = swipe;
-      if (step !== null) stepTab(step);
+      // A swipe that comes over a panel is spent there, so its coast does not change the tab once the panel has gone.
+      const overPanel = document.querySelector("dialog[open]") !== null;
+      wheeling = overPanel ? { ...swipe, stepped: true } : swipe;
+      if (step !== null && !overPanel) stepTab(step);
     }
     // Not passive, so it may stop the browser's own Back and Forward.
     window.addEventListener("wheel", wheeled, { passive: false });
