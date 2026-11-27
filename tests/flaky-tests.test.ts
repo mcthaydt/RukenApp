@@ -100,13 +100,13 @@ describe("lists the tests that passed only on a retry", () => {
 
 describe("fails, naming the piece, when a report is missing or unreadable", () => {
   test.each([
-    [3, "no report", [empty, empty, empty, undefined, empty, empty]],
-    [1, "could not be read", [empty, "{ not json", empty, empty, empty, empty]],
-    [4, "no suites", [empty, empty, empty, empty, { stats: {} }, empty]],
-  ] as const)("case %#: piece %s's report: %s", (index, words, entries) => {
+    [4, "no report", [empty, empty, empty, undefined, empty, empty]],
+    [2, "could not be read", [empty, "{ not json", empty, empty, empty, empty]],
+    [5, "no suites", [empty, empty, empty, empty, { stats: {} }, empty]],
+  ] as const)("piece %s's report: %s", (piece, words, entries) => {
     const r = run(pieces([...entries]), "6");
     expect(r.status).toBe(1);
-    expect(r.stderr).toContain(`::error::piece ${String(index + 1)}: `);
+    expect(r.stderr).toContain(`::error::piece ${String(piece)}: `);
     expect(r.stderr).toContain(words);
   });
 

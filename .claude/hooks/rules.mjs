@@ -1174,19 +1174,17 @@ function resultingText(input) {
 // included; the owner's one allowed line (rules.json bypassFlags.allowedLines: exact file, exact trimmed line) lifts
 // only the retries refusal (owner, 2026-11-27: retry flaky journeys on main).
 const NO_TESTS = /passWithNoTests\s*:\s*true|--pass-?[wW]ith-?[nN]o-?[tT]ests/;
-const RETRY_FLAG = /--retr(?:y|ies)(?:=|\s+)([^\s'"`,;)]+)/g;
-const RETRY_KEY = /\bretr(?:y|ies)\s*:\s*(?!0\s*,?\s*(\/\/.*)?$)\S.*/;
+// The value may sit on the next line or behind a quote, so the added lines are read as one text.
+const RETRY_FLAG = /--retr(?:y|ies)(?:=|\s+)["'`]?([^\s'"`,;)]+)/g;
+const RETRY_KEY = /\bretr(?:y|ies)\s*:\s*(?!0\s*,?\s*(\/\/.*)?$)\S.*/m;
 function loosenedCheck(rel, added, allowedLines) {
-  for (const line of added) {
-    const noTests = NO_TESTS.exec(line);
-    if (noTests) return noTests[0];
-    if (allowedLines.some((a) => a?.file === rel && a?.line === line.trim())) continue;
-    const flag = [...line.matchAll(RETRY_FLAG)].find((x) => !/^0+$/.test(x[1]));
-    if (flag) return flag[0];
-    const key = RETRY_KEY.exec(line);
-    if (key) return key[0];
-  }
-  return null;
+  const noTests = NO_TESTS.exec(added.join('\n'));
+  if (noTests) return noTests[0];
+  const rest = added.filter((line) => !allowedLines.some((a) => a?.file === rel && a?.line === line.trim())).join('\n');
+  const flag = [...rest.matchAll(RETRY_FLAG)].find((x) => !/^0+$/.test(x[1]));
+  if (flag) return flag[0];
+  const key = RETRY_KEY.exec(rest);
+  return key ? key[0] : null;
 }
 function checkFileWrite(input, config, root, deny) {
   const t = resultingText(input);

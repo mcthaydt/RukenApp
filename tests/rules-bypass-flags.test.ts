@@ -73,6 +73,8 @@ describe("on the command line, any retries value but a plain 0 is refused (A2)",
     "pnpm exec playwright test --retries=2",
     "pnpm test:browser --retries=$N",
     "pnpm exec playwright test --retries ${R}",
+    "pnpm exec playwright test --retries 2",
+    "pnpm exec playwright test --retry=1",
   ])("refuses %s", (c) => {
     expect(command(c)).toContain("no retries until green");
   });
@@ -93,15 +95,25 @@ describe("in a config file, only the one allowed line may add retries (A3)", () 
     [".github/workflows/ci.yml", `name: CI\n        ${LINE.replace("--retries=", "--retries ")}\n`],
     [".github/workflows/deploy.yml", `name: Deploy\n        ${LINE}\n`],
     [".github/workflows/ci.yml", `name: CI\n        ${LINE}\n        run: vitest --passWithNoTests\n`],
+    // A value on the next line, or behind a quote, is still a retry.
+    [".github/workflows/ci.yml", "name: CI\n        run: pnpm exec playwright test --retries\n          2\n"],
+    [
+      ".github/workflows/ci.yml",
+      "name: CI\n        run: >\n          pnpm exec playwright test --retries\n          2\n",
+    ],
+    ["playwright.config.ts", "export default {\n  retries:\n    2,\n};\n"],
+    [".github/workflows/ci.yml", 'name: CI\n        run: pnpm exec playwright test --retries="2"\n'],
+    [".github/workflows/ci.yml", "name: CI\n        run: pnpm exec playwright test --retries='2'\n"],
+    [".github/workflows/ci.yml", `name: CI\n        ${LINE}\n        run: y --retries=2\n`],
   ])("refuses %s gaining a retry or a no-tests pass (case %#)", (file, content) => {
     expect(write(file, content)).toContain("Never loosen a check");
   });
   test("allows the allowed line, indented, in ci.yml", () => {
     expect(write(".github/workflows/ci.yml", `name: CI\n        ${LINE}\n`)).toBeNull();
   });
-  test("allows a plain --retries=0 in a workflow", () => {
+  test.each(["--retries=0", '--retries="0"'])("allows a plain %s in a workflow", (flag) => {
     expect(
-      write(".github/workflows/ci.yml", "name: CI\n        run: pnpm exec playwright test --retries=0\n"),
+      write(".github/workflows/ci.yml", `name: CI\n        run: pnpm exec playwright test ${flag}\n`),
     ).toBeNull();
   });
 });
