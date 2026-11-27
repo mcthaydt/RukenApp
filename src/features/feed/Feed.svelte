@@ -841,6 +841,13 @@
       right: calc(max(0.75rem, env(safe-area-inset-right)) + 0.5rem);
       bottom: 0;
     }
+    /* The window is too short for the maker above them there, so the maker stands just left of the column, at the
+       bottom, clear of the bar. */
+    .credit {
+      position: absolute;
+      right: calc(100% + 0.75rem);
+      bottom: 0;
+    }
   }
   .maker:focus-visible,
   .gamelink:focus-visible,

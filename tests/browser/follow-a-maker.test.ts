@@ -236,8 +236,12 @@ test("the credit fits the column on every screen, held either way", async ({ pag
     expect(badge.height).toBeGreaterThanOrEqual(44);
     const credit = await boxOf(clip.locator(".credit"));
     const share = await boxOf(clip.getByRole("button", { name: "Share" }));
-    // Above Share, inside the window, and at the right.
-    expect(credit.y + credit.height, `${String(size.width)}x${String(size.height)}`).toBeLessThanOrEqual(share.y);
+    const where = `${String(size.width)}x${String(size.height)}`;
+    // Above Share; on a phone held sideways, where the window is short, just left of it. Inside the window, at the right.
+    if (size.height < 450 && size.width > size.height)
+      expect(credit.x + credit.width, where).toBeLessThanOrEqual(share.x);
+    else expect(credit.y + credit.height, where).toBeLessThanOrEqual(share.y);
+    expect(credit.y + credit.height).toBeLessThanOrEqual(size.height);
     expect(credit.y).toBeGreaterThanOrEqual(0);
     expect(credit.x + credit.width).toBeLessThanOrEqual(size.width);
     expect(credit.x).toBeGreaterThan(size.width / 2);
@@ -247,8 +251,8 @@ test("the credit fits the column on every screen, held either way", async ({ pag
       const under = await boxOf(bar);
       const overlaps = (a: typeof credit, b: typeof credit) =>
         a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-      expect(overlaps(credit, under)).toBe(false);
-      expect(overlaps(share, under)).toBe(false);
+      expect(overlaps(credit, under), where).toBe(false);
+      expect(overlaps(share, under), where).toBe(false);
     }
   }
 });

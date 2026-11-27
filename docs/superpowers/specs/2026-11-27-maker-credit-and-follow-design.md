@@ -19,7 +19,7 @@ Expected duration: about 3 hours of building, plus the audits.
 - **Signed out.** Pressing the plus goes to the short sign-up (which links to sign-in), and coming back lands on the feed with the maker followed, the same way Wishlist works for a signed-out press (a 30-minute `rk_follow_pressed` cookie naming the maker, so only a real press follows on the way back).
 - **No cookie yes yet.** As with Wishlist, the follow address waits for the cookie yes: pressing the plus before it shows the cookie notice, which says "To follow this maker, Ruken needs to keep a few small things in your browser." After the yes the person is back on the feed and presses the plus again.
 - **No script.** The badge is a plain form, so it works with no script: the site follows or unfollows and sends the person back to the page it was on.
-- **Sideways phone.** The column already stands under the bar on the right; the credit sits at its top, above Share, and the column still fits a 667 by 375 window with nothing cut off.
+- **Sideways phone.** The column already stands under the bar on the right. **Changed while building (2026-11-27):** the window is too short for the credit above Share there (measured: it ran into the bar at 667 by 375), so on a sideways phone the credit stands just left of Share, at the bottom, clear of the bar, and Share stays under the bar as before. Nothing is cut off.
 
 ## Rules
 
@@ -43,7 +43,7 @@ Expected duration: about 3 hours of building, plus the audits.
 6. Signed out (with the cookie yes), pressing the plus leads to sign-up, and after signing up the person is back on the feed with that maker followed. A GET of the way back without the cookie follows nobody. (journey)
 7. With script off, pressing the plus follows and returns to the feed showing the check. (journey)
 8. The badge works with the keyboard alone: Tab reaches the maker link, then the badge, then Share, each with a visible focus ring; Enter and Space follow and unfollow. (journey)
-9. The badge's pressable area is at least 48 by 48px, the credit sits above Share on the right on a 375 by 667 phone, a tablet, a computer and a 667 by 375 sideways phone, and nothing in the column is cut off or overlaps the bar. (journey) The Like, Save and Repost thread adds buttons to the same column: whichever of the two merges second merges `main` and runs this criterion again with every button in the column.
+9. The badge's pressable area is at least 48 by 48px, the credit sits above Share on the right on a 375 by 667 phone, a tablet and a computer, and just left of Share on a 667 by 375 sideways phone, and nothing in the column is cut off or overlaps the bar. (journey) The Like, Save and Repost thread adds buttons to the same column: whichever of the two merges second merges `main` and runs this criterion again with every button in the column.
 10. The badge reads the glass tokens (`--glass-pay`, `--glass-safe`, `--glass-edge`); `tests/lib/glass.test.ts` passes with it. (unit)
 11. Two follows at once for one person and maker make one row; unfollowing someone not followed is not an error; following a handle with no page answers 404. (database tests)
 12. Deleting an account deletes the follows it made and the follows made of it. (database test)
