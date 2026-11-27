@@ -208,6 +208,11 @@ test("the Menu tab turns to the side it will snap to while it is carried, and th
   const sheet = view.width < 768 && view.height > view.width;
   if (sheet) return;
   const panel = page.locator(".menupanel");
+  // The tab glides to its side, and a press it slides away from before the release opens nothing. So, like a person,
+  // the test presses it once it is resting where it went (on a busy machine the glide can start late).
+  const restsAt = (x: number) =>
+    expect.poll(async () => Math.round((await tab.boundingBox())?.x ?? -1)).toBe(x);
+  await restsAt(view.width - 48);
   await tab.click();
   await expect(panel).toBeVisible();
   await expect
@@ -217,6 +222,7 @@ test("the Menu tab turns to the side it will snap to while it is carried, and th
   await tab.focus();
   await page.keyboard.press("ArrowLeft");
   await expect(menu).toHaveAttribute("data-side", "left");
+  await restsAt(0);
   await tab.click();
   await expect(panel).toBeVisible();
   await expect.poll(async () => Math.round((await panel.boundingBox())?.x ?? 99)).toBeLessThan(2);
