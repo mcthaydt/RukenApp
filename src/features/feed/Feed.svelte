@@ -402,9 +402,10 @@
   const tellsSlideEnd = typeof window !== "undefined" && "onscrollend" in window;
   let aim: number | null = null;
   let sliding = false;
-  // A slide that started but never ends (one that could not move, so no `scrollend` comes) must not hold the keys:
-  // after this long the feed stops waiting and the next key counts from the clip on screen. A slide on a busy CI runner
-  // took about 0.8 s, so this never cuts a real one short.
+  // A slide that started but never ends (one that could not move, or one Safari's engine sends no `scrollend` for) must
+  // not hold the keys: after this long the feed stops waiting and moves one clip from the one on screen toward where the
+  // keys were sending it, so a key that waited is never dropped and keys held by a stuck slide never jump the feed
+  // several clips at once. A slide on a busy CI runner took about 0.8 s, so this never cuts a real one short.
   const SLIDE_GIVE_UP_MS = 2000;
   let slideTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -421,7 +422,7 @@
     }
     sliding = tellsSlideEnd;
     clearTimeout(slideTimer);
-    if (sliding) slideTimer = setTimeout(forgetAim, SLIDE_GIVE_UP_MS);
+    if (sliding) slideTimer = setTimeout(stopWaiting, SLIDE_GIVE_UP_MS);
     // With less motion the next clip is simply there, not slid to.
     screen.scrollIntoView({ behavior: mayMove() ? "smooth" : "auto", block: "start" });
   }
@@ -431,6 +432,13 @@
     clearTimeout(slideTimer);
     sliding = false;
     if (aim !== null) goTo(aim);
+  }
+
+  // A slide never said it ended: one step toward where the keys were going, counted from the clip on screen.
+  function stopWaiting(): void {
+    const going = aim;
+    forgetAim();
+    if (going !== null && going !== current) goTo(current + Math.sign(going - current));
   }
 
   // A finger or wheel takes the feed over: where the keys were going no longer counts.

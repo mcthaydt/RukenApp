@@ -310,6 +310,30 @@ test("each key moves one clip, never before the first", async ({ page }) => {
   }
 });
 
+test("a key pressed while the feed slides still moves it when the browser never says the slide ended", async ({
+  page,
+}) => {
+  // Safari's engine on a busy machine sometimes sends no `scrollend` for a slide. A key that waited for that slide
+  // must still be carried out once the feed stops waiting, never dropped.
+  await page.addInitScript(() => {
+    window.addEventListener(
+      "scrollend",
+      (event) => {
+        event.stopImmediatePropagation();
+      },
+      { capture: true },
+    );
+  });
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  await page.keyboard.press("ArrowUp");
+  await expect(clips.nth(0)).toHaveAttribute("data-current", "true");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowUp");
+  await expect(clips.nth(1)).toHaveAttribute("data-current", "true");
+  await expect(clips.nth(0)).toHaveAttribute("data-current", "true", { timeout: 10_000 });
+});
+
 test("keys pressed faster than the feed slides each still move one clip", async ({ page }) => {
   await openFeed(page);
   const clips = page.locator("section[data-slug]");
