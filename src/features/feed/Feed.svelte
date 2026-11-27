@@ -2,7 +2,8 @@
   The feed (spec 5.1): one game to a screen, full-window clips that snap one at a time. Each clip shows the game and
   Play at the bottom, and the person who made it at the top of the column on the right, with a plus to follow them, above
   Share (Ruken's own share sheet). A press on the clip opens the game's page; the speaker in the corner flips sound for
-  every clip. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
+  every clip. The top bar (FeedTop.svelte) holds the Fresh and Followed tabs and Search. It reads without script: every
+  clip is a plain video, every name and Play a plain link, and swiping scrolls.
   With script it fetches only the clip on screen and the next, plays the one on screen where a video may move, shows
   the window's shape of clip, and moves a clip at a time on the arrow keys, Page Up, Page Down and Space.
   The feed never ends: a few clips before the end of what it has, it asks for the next page, and a spinner fills the
@@ -16,6 +17,7 @@
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
   import { stillPoster } from "../../lib/still-poster.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
+  import FeedTop from "./FeedTop.svelte";
   import FollowBadge from "./FollowBadge.svelte";
   import ShareSheet from "./ShareSheet.svelte";
   import type { ShareSheetControl } from "./share.ts";
@@ -362,6 +364,8 @@
 </script>
 
 <svelte:window onkeydown={onKey} onpointerdown={forgetHints} />
+
+<FeedTop on="fresh" />
 
 {#if clips.length === 0}
   <main class="empty">
@@ -829,8 +833,9 @@
     .gamelink h2 {
       font-size: 1.25rem;
     }
+    /* Under the top bar (its 48px tabs inside the pill's 0.125rem edge), where the band cannot cover them either. */
     .hints {
-      top: 0.75rem;
+      top: calc(0.75rem + var(--size-target) + 0.25rem + 0.5rem);
     }
     .sound {
       left: max(0.75rem, env(safe-area-inset-left));
