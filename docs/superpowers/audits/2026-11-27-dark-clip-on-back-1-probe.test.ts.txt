@@ -1,0 +1,270 @@
+import { expect, test, type Page } from "@playwright/test";
+import { addGame } from "./support/game.ts";
+import { pageHasSettled } from "./support/account.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+// Opening a game from the feed, the clip itself grows from the feed into its box on the game's page while the rest of
+// the page fades across, and Back shrinks it into the feed again (the owner, 2026-11-24: "when you click on a game page
+// for the feed, the page transitions to the game page via the video moving into the container"). A move the browser
+// starts and then throws away looks to a person like no move at all, so the journey checks that each one really played
+// and that the clip was the thing that moved.
+
+let game: Awaited<ReturnType<typeof addGame>>;
+
+/** A video that has its picture for now (HTMLMediaElement.HAVE_CURRENT_DATA, which only a page can read). */
+const HAS_A_PICTURE = 2;
+
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(240_000);
+  await forgetRateLimits();
+  game = await addGame(browser, request);
+});
+test.beforeEach(forgetRateLimits);
+
+/**
+ * Keeps, for each move the page starts, "clip moved" when it played with the clip moving on its own, "played" when it
+ * played without, or the reason the browser threw it away.
+ */
+async function watchMoves(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { moves: string[] }).moves = seen;
+    (window as unknown as { drawn: string[][] }).drawn = [];
+    const start = document.startViewTransition.bind(document);
+    document.startViewTransition = ((update: ViewTransitionUpdateCallback) => {
+      const move = start(update);
+      const at = seen.push("started") - 1;
+      move.ready.then(
+        () => {
+          const clipMoves = document.documentElement
+            .getAnimations({ subtree: true })
+            .some(
+              (one) =>
+                one.effect instanceof KeyframeEffect &&
+                one.effect.pseudoElement === "::view-transition-group(clip)",
+            );
+          seen[at] = clipMoves ? "clip moved" : "played";
+          // How the move draws: which picture of the page and of the clip fades, and the clip's curve.
+          const drawn: string[] = [];
+          for (const one of document.documentElement.getAnimations({ subtree: true })) {
+            if (!(one.effect instanceof KeyframeEffect)) continue;
+            const where = one.effect.pseudoElement ?? "";
+            const name = one instanceof CSSAnimation ? one.animationName : "";
+            if (/^::view-transition-(old|new)\((root|clip)\)$/.test(where) && name !== "")
+              drawn.push(`${where.replace("::view-transition-", "")} ${name}`);
+            if (where === "::view-transition-group(clip)")
+              drawn.push(`curve ${one.effect.getKeyframes()[0]?.easing ?? ""}`);
+            // The bar of places: when each of its pictures fades (each has two animations, its fade and its blend).
+            if (/^::view-transition-(old|new)\(tabs\)$/.test(where)) {
+              const timing = one.effect.getComputedTiming();
+              drawn.push(
+                `${where.replace("::view-transition-", "")} from ${String(timing.delay)}ms for ${String(timing.duration)}ms`,
+              );
+            }
+          }
+          const bar = getComputedStyle(document.documentElement, "::view-transition-group(tabs)").zIndex;
+          drawn.push(`tabs ${bar === "auto" ? "under the clip" : "over the clip"}`);
+          (window as unknown as { drawn: string[][] }).drawn.push([...new Set(drawn)].sort());
+        },
+        (why: unknown) => {
+          seen[at] = why instanceof Error ? `${why.name}: ${why.message}` : String(why);
+        },
+      );
+      return move;
+    }) as typeof document.startViewTransition;
+  });
+}
+
+/** What became of each move so far, once none is still starting. */
+async function moves(page: Page): Promise<string[]> {
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { moves: string[] }).moves.includes("started")))
+    .toBe(false);
+  return page.evaluate(() => [...(window as unknown as { moves: string[] }).moves]);
+}
+
+const lastMove = (page: Page) => page.evaluate(() => document.documentElement.dataset.move);
+/** The elements that still carry a view transition name of their own once a move is over: none should. */
+const namedLeft = (page: Page) =>
+  page.evaluate(
+    () =>
+      [...document.querySelectorAll<HTMLElement>("[data-grows]")].filter(
+        (one) => one.style.viewTransitionName !== "",
+      ).length,
+  );
+
+async function openFeedAt(page: Page): Promise<ReturnType<Page["locator"]>> {
+  await page.goto("/");
+  const clip = page.locator(`section[data-slug="${game.slug}"]`).first();
+  await clip.scrollIntoViewIfNeeded();
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await pageHasSettled(page);
+  return clip;
+}
+
+async function pictureGap(page: Page, one: Buffer, other: Buffer): Promise<number> {
+  return page.evaluate(
+    async ({ first, second }) => {
+      const pixels = async (png: string) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${png}`;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const pen = canvas.getContext("2d");
+        if (pen === null) throw new Error("no 2d canvas");
+        pen.drawImage(image, 0, 0);
+        return pen.getImageData(0, 0, image.width, image.height).data;
+      };
+      const a = await pixels(first);
+      const b = await pixels(second);
+      let gap = 0;
+      for (let at = 0; at < a.length; at += 4)
+        for (let colour = 0; colour < 3; colour++)
+          gap += Math.abs((a[at + colour] ?? 0) - (b[at + colour] ?? 0));
+      return gap / ((a.length / 4) * 3);
+    },
+    { first: one.toString("base64"), second: other.toString("base64") },
+  );
+}
+async function holdNextMove(page: Page, share: number): Promise<void> {
+  await page.evaluate((at) => {
+    const start = document.startViewTransition.bind(document);
+    document.startViewTransition = ((update: ViewTransitionUpdateCallback) => {
+      document.startViewTransition = start;
+      const move = start(update);
+      void move.ready.then(() => {
+        const timed = document.documentElement
+          .getAnimations({ subtree: true })
+          .filter((one) => Number.isFinite(Number(one.effect?.getComputedTiming().endTime)));
+        const end = Math.max(...timed.map((one) => Number(one.effect?.getComputedTiming().endTime)));
+        for (const one of timed) {
+          one.pause();
+          one.currentTime = end * at;
+        }
+        document.documentElement.dataset.held = "yes";
+      });
+      return move;
+    }) as typeof document.startViewTransition;
+  }, share);
+}
+async function letGo(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    for (const one of document.documentElement.getAnimations({ subtree: true }))
+      if (Number.isFinite(Number(one.effect?.getComputedTiming().endTime))) one.finish();
+    delete document.documentElement.dataset.held;
+  });
+}
+
+const waits = (page: Page) => page.evaluate(() => "clipWaits" in document.documentElement.dataset);
+
+async function toGame(page: Page) {
+  const clip = await openFeedAt(page);
+  const address = await clip
+    .locator("video")
+    .evaluate((video) => new URL((video as HTMLVideoElement).currentSrc).pathname);
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await pageHasSettled(page);
+  return { clip, theClip: (url: URL) => url.pathname === address };
+}
+
+test.beforeEach(async ({ page }) => {
+  test.skip(!(await page.evaluate(() => "startViewTransition" in document)), "no view transitions");
+});
+
+test("PROBE a clip that never loads: the mark clears when the move ends", async ({ page }) => {
+  const { clip, theClip } = await toGame(page);
+  await page.route(theClip, () => new Promise(() => undefined));
+  await holdNextMove(page, 1 / 3);
+  await page.goBack();
+  await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
+  const during = await waits(page);
+  await letGo(page);
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await expect.poll(() => waits(page)).toBe(false);
+  console.log("PROBE never-loads: mark during move =", during, "; after =", await waits(page));
+});
+
+test("PROBE a clip that errors: the mark clears at once, even mid-move", async ({ page }) => {
+  const { clip, theClip } = await toGame(page);
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((done) => (release = done));
+  await page.route(theClip, async (route) => {
+    await gate;
+    await route.abort().catch(() => undefined);
+  });
+  await holdNextMove(page, 1 / 3);
+  await page.goBack();
+  await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
+  const before = await waits(page);
+  release();
+  await expect.poll(() => waits(page), { timeout: 5000 }).toBe(false);
+  const err = await clip.locator("video").evaluate((v) => (v as HTMLVideoElement).error?.code ?? null);
+  console.log("PROBE error: mark before =", before, "; cleared while held; video error code =", err);
+  await letGo(page);
+});
+
+test("PROBE fast repeat Backs: no mark left, clip on screen", async ({ page }) => {
+  const { clip, theClip } = await toGame(page);
+  await page.route(theClip, async (route) => {
+    await new Promise((done) => setTimeout(done, 3000));
+    await route.continue().catch(() => undefined);
+  });
+  await page.goBack();
+  await page.waitForTimeout(100);
+  await page.goForward();
+  await page.waitForTimeout(100);
+  await page.goBack();
+  await page.waitForTimeout(800);
+  console.log("PROBE repeat url", page.url(), "current", await clip.getAttribute("data-current"));
+  await expect.poll(() => waits(page)).toBe(false);
+  console.log("PROBE repeat: mark after =", await waits(page), "move =", await page.evaluate(() => document.documentElement.dataset.move));
+});
+
+test("PROBE navigate away while the clip waits", async ({ page }) => {
+  const { theClip } = await toGame(page);
+  await page.route(theClip, () => new Promise(() => undefined));
+  await page.goBack();
+  await page.waitForTimeout(150);
+  const mid = await waits(page);
+  await page.goto("/make");
+  await page.waitForTimeout(500);
+  console.log("PROBE away: mark mid-move =", mid, "; after leaving =", await waits(page));
+  expect(await waits(page)).toBe(false);
+});
+
+test("PROBE an earlier feed video's late first frame does not lift a later move's mark", async ({ page }) => {
+  const { theClip } = await toGame(page);
+  let calls = 0;
+  await page.route(theClip, async (route) => {
+    calls += 1;
+    await new Promise((done) => setTimeout(done, calls === 1 ? 4000 : 20000));
+    await route.continue().catch(() => undefined);
+  });
+  const t0 = Date.now();
+  await page.goBack();
+  const clip = page.locator(`section[data-slug="${game.slug}"]`).first();
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await expect.poll(() => waits(page)).toBe(false);
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await holdNextMove(page, 1 / 3);
+  await page.goBack();
+  await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
+  const atHold = await waits(page);
+  const heldAt = Date.now() - t0;
+  await page.waitForTimeout(Math.max(0, 5500 - (Date.now() - t0)));
+  const later = await waits(page);
+  const rs = await clip.locator("video").evaluate((v) => (v as HTMLVideoElement).readyState);
+  const shown = await page.screenshot({ animations: "allow", scale: "css" });
+  const onlyOld = await page.addStyleTag({ content: "::view-transition-new(clip) { visibility: hidden; }" });
+  const old = await page.screenshot({ animations: "allow", scale: "css" });
+  await onlyOld.evaluate((tag) => (tag as Element).remove());
+  const gap = await pictureGap(page, shown, old);
+  await page.screenshot({ path: test.info().outputPath("stale-held.png"), animations: "allow" });
+  console.log(`PROBE stale: readyState at 5.5s=${rs} gap=${gap.toFixed(2)}`);
+  console.log(`PROBE stale: calls=${calls} held at ${heldAt}ms, mark at hold=${atHold}, mark after first video's answer (5.5s)=${later}`);
+  await letGo(page);
+});
