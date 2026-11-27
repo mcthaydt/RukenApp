@@ -64,35 +64,35 @@
 
 {#snippet chips(direction: "more" | "less")}
   {@const list = direction === "more" ? feed.more : feed.less}
-  <ul class="chips">
-    {#each list as chip (chip.id)}
-      <li class="chip-on">
-        <span>{chip.words}</span>
-        <form method="POST" action="?/remove" use:enhance={send(`remove:${chip.id}`)}>
-          <input type="hidden" name="id" value={chip.id} />
-          <button class="remove" aria-busy={busy(`remove:${chip.id}`)} aria-label={`Remove ${chip.words}`}
-            ><Icon name="close" /></button
-          >
-        </form>
-      </li>
-    {/each}
-    {#if direction === "more"}
-      <!-- Two suggestions, or one once three or more chips are kept, so the side stays two lines on a phone. -->
-      {#each feed.suggestions.slice(0, feed.more.length >= 3 ? 1 : 2) as choice (`${choice.kind}:${choice.value}`)}
-        <li>{@render choiceForm(choice, "more", true)}</li>
+  <!-- One line per side, however many chips: the chips slide sideways inside it, and Add stays at its end in view,
+       so the page never grows past the screen (audit round 3). -->
+  <div class="side">
+    <ul class="chips">
+      {#each list as chip (chip.id)}
+        <li class="chip-on">
+          <span>{chip.words}</span>
+          <form method="POST" action="?/remove" use:enhance={send(`remove:${chip.id}`)}>
+            <input type="hidden" name="id" value={chip.id} />
+            <button class="remove" aria-busy={busy(`remove:${chip.id}`)} aria-label={`Remove ${chip.words}`}
+              ><Icon name="close" /></button
+            >
+          </form>
+        </li>
       {/each}
-    {/if}
-    <!-- Add sits at the end of the row, as the spec's sketch has it, so an empty side is one line, not two. -->
-    <li>
-      <button
-        type="button"
-        class="outline add"
-        onclick={() => {
-          openAdd(direction);
-        }}>Add</button
-      >
-    </li>
-  </ul>
+      {#if direction === "more"}
+        {#each feed.suggestions as choice (`${choice.kind}:${choice.value}`)}
+          <li>{@render choiceForm(choice, "more", true)}</li>
+        {/each}
+      {/if}
+    </ul>
+    <button
+      type="button"
+      class="outline add"
+      onclick={() => {
+        openAdd(direction);
+      }}>Add</button
+    >
+  </div>
 {/snippet}
 
 <main class="card yourfeed">
@@ -223,7 +223,6 @@
   .learn button[data-on] .state {
     background: var(--pay);
   }
-  .chips,
   .picks {
     display: flex;
     flex-wrap: wrap;
@@ -231,6 +230,32 @@
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+  /* A side is one line: its chips slide sideways under a soft fade at the right, and Add keeps its place after them. */
+  .side {
+    display: flex;
+    align-items: center;
+  }
+  /* The fade lies over the list's own right padding, so it only falls on a chip when there are more to slide to. */
+  .chips {
+    display: flex;
+    flex: 0 1 auto;
+    gap: 0.5rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0 1rem 0 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    list-style: none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 1rem), transparent);
+  }
+  .chips:empty {
+    padding: 0;
+  }
+  .chips li {
+    flex: none;
+    white-space: nowrap;
   }
   /* A chip is not a line of a card's list: no space above it, so the row's gap is the only space. */
   .chips li,
@@ -292,8 +317,10 @@
     border-color: var(--chalk);
     color: var(--chalk);
   }
-  .chips .add {
-    margin: 0;
+  .side .add {
+    flex: none;
+    width: auto;
+    margin: 0 0 0 0.25rem;
     padding-inline: 1rem;
   }
   .foot {

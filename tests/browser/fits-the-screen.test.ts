@@ -101,13 +101,14 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
   await expectViewAboveTheBar(page, "/settings/feed at 375 by 667");
   await expect(page.getByRole("button", { name: "Start over" })).toBeInViewport();
 
-  // And with the chips the spec's sketch of Your feed shows (6.2): three on the more side, one on the less side.
+  // And with more chips than a line holds on both sides, the longest words first (audit round 3): each side stays one
+  // line, its chips sliding sideways, so the page still fits and Back and Start over stay above the bar.
+  const more = ["Racing and sports", "Building and life", "Puzzle", "Spooky", "Adventurous", "Heartfelt"];
+  const less = ["Party and board", "Role-playing", "Cosy", "Bold", "Strategy"];
   for (const [side, words] of [
-    ["See more of", "Cosy"],
-    ["See more of", "Puzzle"],
-    ["See more of", "Spooky"],
-    ["See less of", "Racing and sports"],
-  ] as const) {
+    ...more.map((words) => ["See more of", words] as const),
+    ...less.map((words) => ["See less of", words] as const),
+  ]) {
     const region = side === "See more of" ? "What you want to see more of" : "What you want to see less of";
     await page
       .getByRole("region", { name: region })
@@ -116,7 +117,15 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
     const sheet = page.getByRole("dialog", { name: side });
     await sheet.getByRole("button", { name: words, exact: true }).click();
     await expect(sheet).toBeHidden();
-    await expect(page.getByRole("button", { name: `Remove ${words}` })).toBeVisible();
+    await expect(page.getByRole("button", { name: `Remove ${words}` })).toBeAttached();
+  }
+  for (const region of ["What you want to see more of", "What you want to see less of"]) {
+    const side = page.getByRole("region", { name: region });
+    const chips = side.locator("li");
+    const first = await boxOf(chips.first());
+    const last = await boxOf(chips.last());
+    expect(Math.abs(last.y - first.y), `${region}: one line`).toBeLessThanOrEqual(2);
+    await expect(side.getByRole("button", { name: "Add", exact: true })).toBeInViewport();
   }
   await wordsHaveSettled(page);
   expect(await overflow(page), "/settings/feed with chips at 375 by 667").toEqual({ page: 0, view: 0 });
