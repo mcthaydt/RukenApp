@@ -2671,6 +2671,65 @@ html[data-move="grow"]::view-transition-new(clip) {
   animation: none;
 }
 
+/* Back to the feed the move is the one out played backwards (the owner, 2026-11-24: "doesn't look like the reverse
+   transition"): the same path the other way, on the mirrored curve (slow to leave the panel, quick to land in the feed),
+   with the feed and its clip on top coming in where they went out. */
+html[data-move="grow"][data-way="back"]::view-transition-group(clip) {
+  animation-timing-function: cubic-bezier(0.64, 0, 0.78, 0);
+}
+
+html[data-move="grow"][data-way="back"]::view-transition-old(root) {
+  z-index: auto;
+  animation: none;
+}
+
+html[data-move="grow"][data-way="back"]::view-transition-new(root) {
+  z-index: 1;
+  animation: page-shows 450ms cubic-bezier(0.64, 0, 0.78, 0) both;
+}
+
+html[data-move="grow"][data-way="back"]::view-transition-old(clip) {
+  z-index: auto;
+  animation: none;
+}
+
+html[data-move="grow"][data-way="back"]::view-transition-new(clip) {
+  z-index: 1;
+  animation: clip-takes-over 450ms linear both;
+}
+
+/* The bar of places plays backwards too: going out, the feed's bar sits over the clip and gives way to the game page's
+   in the move's first 250ms; coming back, the feed's bar sits over the clip and takes over from the game page's in the
+   move's last 250ms, on the reversed curve. */
+html[data-move="grow"][data-way="back"]::view-transition-group(tabs) {
+  z-index: 1;
+}
+
+html[data-move="grow"][data-way="back"]::view-transition-group(tabs),
+html[data-move="grow"][data-way="back"]::view-transition-old(tabs),
+html[data-move="grow"][data-way="back"]::view-transition-new(tabs) {
+  animation-duration: 250ms;
+  animation-delay: 200ms;
+  animation-timing-function: cubic-bezier(0.75, 0, 0.75, 0.9);
+  animation-fill-mode: both;
+}
+
+@keyframes page-shows {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes clip-takes-over {
+  0% {
+    opacity: 0;
+  }
+  45%,
+  100% {
+    opacity: 1;
+  }
+}
+
 @keyframes page-fades {
   to {
     opacity: 0;
