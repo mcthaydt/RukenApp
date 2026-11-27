@@ -1,0 +1,357 @@
+import { expect, test, type Page } from "@playwright/test";
+import { pageHasSettled, signUp, signUpInItsOwnContext } from "./support/account.ts";
+import { consented } from "./support/consent.ts";
+import { addGame, gameWhere, startAtCheck } from "./support/game.ts";
+import { changeGame, givePage } from "./support/database.ts";
+import { wordsHaveSettled } from "./support/look.ts";
+import { PAD, padReachesEverything, plugInPad, pressPad } from "./support/zz-pad-review.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+// Reviewer's probe for #409 review 3 at b2036f4 (not part of the PR).
+
+let live: { slug: string; name: string };
+let handle = "";
+let free: Awaited<ReturnType<typeof addGame>>;
+const MAKER = `Probe3 Maker ${crypto.randomUUID().slice(0, 6)}`;
+const WORD = `zr${crypto.randomUUID().replaceAll("-", "").slice(0, 8)}`;
+const android = () => test.info().project.name === "android";
+
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(400_000);
+  if (test.info().project.name === "android") return;
+  await forgetRateLimits();
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
+  try {
+    live = await gameWhere(await context.newPage(), { state: "live" });
+  } finally {
+    await context.close();
+  }
+  await forgetRateLimits();
+  const account = await signUpInItsOwnContext(browser);
+  handle = (
+    await givePage(account, {
+      name: "Probe Maker",
+      oneLine: "Makes games.",
+      links: [{ title: "My site", url: "https://example.com/" }],
+    })
+  ).handle;
+  await forgetRateLimits();
+  free = await addGame(browser, request, { free: true });
+  await givePage(free.maker, { name: MAKER, oneLine: "I make small games." });
+});
+test.beforeEach(async ({ page }) => {
+  await forgetRateLimits();
+  await plugInPad(page);
+});
+
+async function reachAll(page: Page, paths: string[], missed: string[]): Promise<void> {
+  for (const path of paths) {
+    await page.goto(path);
+    await pageHasSettled(page);
+    await wordsHaveSettled(page);
+    try {
+      await padReachesEverything(page);
+      console.log(`reach ok: ${path}`);
+    } catch (error) {
+      missed.push(`${path}: ${String(error).slice(0, 700)}`);
+    }
+  }
+}
+
+const where = (page: Page) =>
+  page.evaluate(() => {
+    const one = document.activeElement as HTMLElement;
+    return `${one.tagName} ${(one.getAttribute("aria-label") ?? one.innerText).slice(0, 30).replace(/\n/g, " ")}`;
+  });
+
+test("probe: signed out, every other screen", async ({ page }) => {
+  test.skip(android());
+  test.setTimeout(600_000);
+  const missed: string[] = [];
+  await reachAll(
+    page,
+    [
+      "/",
+      "/terms",
+      "/legal/maker-agreement",
+      "/help/get-your-game-on-ruken",
+      "/help/github",
+      "/help/how-the-feed-works",
+      "/help/record-screen",
+      "/join",
+      "/goodbye",
+      `/${handle}`,
+      `/search?q=${encodeURIComponent(live.name.slice(0, 6))}`,
+      "/search?q=zzzznothing",
+    ],
+    missed,
+  );
+  expect(missed).toEqual([]);
+});
+
+test("probe: signed in, You with saved and reposted games, page rooms, Followed with a follow", async ({
+  page,
+}) => {
+  test.skip(android());
+  test.setTimeout(700_000);
+  const account = await signUp(page);
+  const { linkIds } = await givePage(account, {
+    name: "Probe Two",
+    oneLine: "Two.",
+    links: [{ title: "Site", url: "https://example.com/" }],
+  });
+  // Save, repost and follow the free game's maker with the pad itself, from the feed.
+  await page.goto("/");
+  await pageHasSettled(page);
+  const clip = page.locator(`section[data-slug="${free.slug}"]`).first();
+  await clip.scrollIntoViewIfNeeded();
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await wordsHaveSettled(page);
+  const pressByPad = async (label: string) => {
+    await clip.locator(".band .button").focus();
+    for (let step = 0; step < 14; step += 1) {
+      const name = await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "");
+      if (name === label) break;
+      await pressPad(page, PAD.right);
+    }
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))).toBe(label);
+    const kept = page.waitForResponse((answer) => answer.request().method() === "POST", { timeout: 15_000 });
+    await pressPad(page, PAD.a);
+    await kept;
+  };
+  await pressByPad("Save");
+  await pressByPad("Repost");
+  await pressByPad(`Follow ${MAKER}`);
+  const missed: string[] = [];
+  await reachAll(
+    page,
+    [
+      "/me/saved",
+      "/me/reposts",
+      "/followed",
+      "/settings/feed",
+      "/search",
+      `/search?q=${encodeURIComponent(live.name.slice(0, 6))}`,
+      "/me/password",
+      "/me/computers",
+      "/me/delete",
+      "/me/link",
+      "/make/page",
+      "/make/page/address",
+      "/make/page/name",
+      "/make/page/line",
+      "/make/page/photo",
+      "/make/page/colours",
+      "/make/page/links",
+      `/make/page/links/${linkIds[0] ?? ""}`,
+      `/make/page/links/${linkIds[0] ?? ""}/where`,
+      "/make/page/links/add",
+      "/make/page/take-down",
+    ],
+    missed,
+  );
+  expect(missed).toEqual([]);
+});
+
+test("probe: a draft's questions, agreement, Check and send, Throw away", async ({ page }) => {
+  test.skip(android());
+  test.setTimeout(600_000);
+  const { slug } = await startAtCheck(page);
+  const missed: string[] = [];
+  await reachAll(
+    page,
+    ["line", "files", "upright", "wide", "age", "agreement", "check", "throw-away", ""].map(
+      (step) => `/make/${slug}${step === "" ? "" : `/${step}`}`,
+    ),
+    missed,
+  );
+  expect(missed).toEqual([]);
+});
+
+test("probe: a live game's Take off screen and own page", async ({ page }) => {
+  test.skip(android());
+  test.setTimeout(300_000);
+  const { slug } = await gameWhere(page, { state: "live" });
+  const missed: string[] = [];
+  await reachAll(page, [`/make/${slug}/take-off`, `/make/${slug}`], missed);
+  expect(missed).toEqual([]);
+});
+
+/** A Search with many results that scroll, at the device's own size. */
+async function longSearch(page: Page): Promise<number> {
+  await page.goto(`/search?q=${encodeURIComponent("Tiny g")}`);
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+  const count = await page.locator(".results a").count();
+  const scrolls = await page.locator(".results").evaluate((list) => list.scrollHeight > list.clientHeight + 1);
+  console.log(`${test.info().project.name}: ${String(count)} results, scrolls=${String(scrolls)}`);
+  return count;
+}
+
+test("probe: long Search, down through the list then all the way back up, one result at a time", async ({
+  page,
+}) => {
+  test.skip(android());
+  test.setTimeout(300_000);
+  const count = await longSearch(page);
+  test.skip(count < 4, "too few results");
+  const rows = page.locator(".results a");
+  const field = page.getByRole("searchbox", { name: "Search games and makers" });
+  await field.focus();
+  const log: string[] = [];
+  for (let row = 0; row < count; row += 1) {
+    await pressPad(page, PAD.down);
+    const at = await rows.evaluateAll((all) => all.indexOf(document.activeElement as HTMLAnchorElement));
+    log.push(`down -> ${String(at)}`);
+    expect(at, log.join(", ")).toBe(row);
+  }
+  for (let row = count - 2; row >= 0; row -= 1) {
+    await pressPad(page, PAD.up);
+    const at = await rows.evaluateAll((all) => all.indexOf(document.activeElement as HTMLAnchorElement));
+    log.push(`up -> ${String(at)}`);
+    expect(at, log.join(", ")).toBe(row);
+  }
+  await pressPad(page, PAD.up);
+  await expect(field).toBeFocused();
+});
+
+test("probe: long Search, reach with the list scrolled to its end first", async ({ page }) => {
+  test.skip(android());
+  test.setTimeout(400_000);
+  const count = await longSearch(page);
+  test.skip(count < 4, "too few results");
+  await page.locator(".results").evaluate((list) => {
+    list.scrollTop = list.scrollHeight;
+  });
+  await padReachesEverything(page);
+});
+
+test("probe: long Search, list scrolled to its middle by hand, then a first press and up from there", async ({
+  page,
+}) => {
+  test.skip(android());
+  test.setTimeout(300_000);
+  const count = await longSearch(page);
+  test.skip(count < 6, "too few results");
+  await page.locator(".results").evaluate((list) => {
+    list.scrollTop = (list.scrollHeight - list.clientHeight) / 2;
+  });
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+  });
+  await pressPad(page, PAD.down);
+  const log = [`first: ${await where(page)}`];
+  const rows = page.locator(".results a");
+  let last = await rows.evaluateAll((all) => all.indexOf(document.activeElement as HTMLAnchorElement));
+  for (let step = 0; step < count + 2; step += 1) {
+    await pressPad(page, PAD.up);
+    const at = await rows.evaluateAll((all) => all.indexOf(document.activeElement as HTMLAnchorElement));
+    log.push(`up -> ${String(at)} ${await where(page)}`);
+    if (at === -1) break;
+    expect(at, log.join("\n")).toBe(last - 1);
+    last = at;
+  }
+  console.log(log.join("\n"));
+  expect(last, log.join("\n")).toBe(0);
+});
+
+test("probe: feed, after a swipe by touch or wheel, the first pad press lands on the clip wholly on screen", async ({
+  page,
+}) => {
+  test.skip(android());
+  await page.goto("/");
+  await pageHasSettled(page);
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await wordsHaveSettled(page);
+  for (let move = 0; move < 2; move += 1) {
+    await page.locator("main.feed").evaluate((feed) => {
+      feed.scrollBy({ top: feed.clientHeight, behavior: "instant" });
+    });
+    await page.waitForTimeout(800);
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur();
+    });
+    await pressPad(page, PAD.right);
+    const current = page.locator('section[data-current="true"]');
+    await expect(current.locator(".band .button")).toBeFocused();
+  }
+  // Wishlist/Play gets A: it acts (opens the game, the price card or wishlist) and the page changes or a sheet opens.
+});
+
+test("probe: Search name changed so a name holds the search word, then B from a result's page back to Search", async ({
+  page,
+}) => {
+  test.skip(android());
+  await changeGame(live.slug, { name: `${WORD} Probe` });
+  await page.goto(`/search?q=${WORD}`);
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+  await page.getByRole("searchbox", { name: "Search games and makers" }).focus();
+  await pressPad(page, PAD.down);
+  await pressPad(page, PAD.a);
+  await expect(page).toHaveURL(`/g/${live.slug}`);
+  await wordsHaveSettled(page);
+  const before = await page.evaluate(() => `len=${String(history.length)} active=${(document.activeElement as HTMLElement)?.getAttribute("aria-label") ?? document.activeElement?.tagName}`);
+  const urls: string[] = [];
+  page.on("framenavigated", (frame) => { if (frame === page.mainFrame()) urls.push(frame.url()); });
+  await pressPad(page, PAD.b);
+  await page.waitForTimeout(2500);
+  console.log(`B-PROBE ${test.info().project.name} ${before} -> ${urls.join(" , ")} final=${page.url()}`);
+  await expect(page).toHaveURL(new RegExp(`/search`));
+});
+
+// The owner's tap "rectangle": the chalk ring on Add once Your games opens. Android profile (Chrome's engine, touch).
+test("probe: Android tap on each bar button; the place you are on has the tile, no ring", async ({ page }) => {
+  test.skip(!android());
+  test.setTimeout(240_000);
+  await signUp(page);
+  const dir = test.info().outputPath("");
+  const cdp = await page.context().newCDPSession(page);
+  const looks: Record<string, unknown> = {};
+  for (const [from, name, to] of [
+    ["/me", "Add a game", "/make"],
+    ["/make", "Home", "/"],
+    ["/", "You", "/me"],
+  ] as const) {
+    await page.goto(from);
+    await pageHasSettled(page);
+    await wordsHaveSettled(page);
+    const bar = page.getByRole("navigation", { name: "Ruken" });
+    const link = bar.getByRole("link", { name });
+    const box = await link.boundingBox();
+    if (box === null) throw new Error("no bar");
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
+    await page.waitForTimeout(120);
+    await page.screenshot({ path: `${dir}/${name}-held.png`, clip: { x: box.x - 20, y: box.y - 20, width: box.width + 40, height: box.height + 40 } });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(page).toHaveURL(to);
+    await pageHasSettled(page);
+    await wordsHaveSettled(page);
+    await page.waitForTimeout(600);
+    const after = await link.boundingBox();
+    if (after === null) throw new Error("no bar after");
+    await page.screenshot({ path: `${dir}/${name}-on.png`, clip: { x: after.x - 20, y: after.y - 20, width: after.width + 40, height: after.height + 40 } });
+    looks[name] = await link.evaluate((one) => {
+      const look = getComputedStyle(one);
+      return {
+        current: one.getAttribute("aria-current"),
+        focused: one === document.activeElement,
+        focusVisible: one.matches(":focus-visible"),
+        outline: `${look.outlineStyle} ${look.outlineWidth}`,
+        shadow: look.boxShadow,
+        background: look.backgroundColor,
+        backgroundImage: look.backgroundImage,
+        width: one.getBoundingClientRect().width,
+        height: one.getBoundingClientRect().height,
+      };
+    });
+  }
+  console.log(JSON.stringify(looks, null, 1));
+  for (const look of Object.values(looks) as { current: string; shadow: string; outline: string; height: number }[]) {
+    expect(look.current).toBe("page");
+    expect(look.shadow).not.toMatch(/0px 0px 0px 3px/);
+    expect(look.outline.startsWith("none") || look.outline.endsWith(" 0px")).toBe(true);
+    expect(look.height).toBeGreaterThanOrEqual(48);
+  }
+});

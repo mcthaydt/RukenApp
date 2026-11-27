@@ -1,0 +1,112 @@
+import { expect, test, type Page } from "@playwright/test";
+import { pageHasSettled, signUp } from "./support/account.ts";
+import { addGame } from "./support/game.ts";
+import { givePage } from "./support/database.ts";
+import { wordsHaveSettled } from "./support/look.ts";
+import { PAD, padReachesEverything, plugInPad, pressPad } from "./support/zz-pad-review.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+let free: Awaited<ReturnType<typeof addGame>>;
+const MAKER = `Dbg Maker ${crypto.randomUUID().slice(0, 6)}`;
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(300_000);
+  await forgetRateLimits();
+  free = await addGame(browser, request, { free: true });
+  await givePage(free.maker, { name: MAKER, oneLine: "I make small games." });
+});
+test.beforeEach(async ({ page }) => {
+  await forgetRateLimits();
+  await plugInPad(page);
+});
+const name = (page: Page) =>
+  page.evaluate(() => {
+    const f = document.activeElement as HTMLElement | null;
+    return (f?.getAttribute("aria-label") ?? f?.innerText ?? "").replace(/\s+/g, " ").trim().slice(0, 30);
+  });
+
+test.skip("debug: /followed with a follow, walk and reach", async ({ page }) => {
+  test.setTimeout(300_000);
+  await signUp(page);
+  await page.goto("/");
+  await pageHasSettled(page);
+  const clip = page.locator(`section[data-slug="${free.slug}"]`).first();
+  await clip.scrollIntoViewIfNeeded();
+  const kept = page.waitForResponse((answer) => answer.request().method() === "POST");
+  await clip.getByRole("button", { name: `Follow ${MAKER}` }).click();
+  console.log("follow answer", (await kept).status(), (await kept).url());
+  await page.goto("/followed");
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+  const clips = await page.locator("section[data-slug]").count();
+  await pressPad(page, PAD.right);
+  const log = [`clips=${String(clips)} first: ${await name(page)}`];
+  for (let i = 0; i < 16; i += 1) {
+    await pressPad(page, PAD.right);
+    log.push(`right: ${await name(page)}`);
+  }
+  for (let i = 0; i < 16; i += 1) {
+    await pressPad(page, PAD.left);
+    log.push(`left: ${await name(page)}`);
+  }
+  console.log(log.join("\n"));
+  await padReachesEverything(page);
+});
+
+test("debug: colours room", async ({ page }) => {
+  test.setTimeout(300_000);
+  const account = await signUp(page);
+  await givePage(account, { name: "Dbg", oneLine: "Two." });
+  await page.goto("/make/page/colours");
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+  const info = await page.evaluate(() => {
+    const save = [...document.querySelectorAll<HTMLElement>("button")].find((b) => b.innerText.trim() === "Save");
+    const r = save?.getBoundingClientRect();
+    let fixed = false;
+    for (let at: Element | null = save ?? null; at; at = at.parentElement) if (getComputedStyle(at).position === "fixed") fixed = true;
+    const scroller = document.scrollingElement;
+    return `save=${JSON.stringify(r)} fixed=${String(fixed)} vh=${String(innerHeight)} bodyScroll=${String(document.body.scrollHeight)}/${String(document.body.clientHeight)} radios=${String(document.querySelectorAll("input[type=radio]").length)} se=${String(scroller?.scrollHeight)}`;
+  });
+  console.log(info);
+  const desc = () => page.evaluate(() => { const f = document.activeElement as HTMLElement; const r = f.getBoundingClientRect(); return `${f.tagName} ${(f.getAttribute("aria-label") ?? f.innerText).slice(0,20)} at ${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)} scrollY=${document.body.scrollTop}/${document.scrollingElement?.scrollTop}`; });
+  const tiles = page.locator("input[type=radio]");
+  const n = await tiles.count();
+  for (const at of [n - 1, n - 2, n - 3, n - 4]) {
+    await tiles.nth(at).focus();
+    const before = await page.evaluate(() => {
+      const f = document.activeElement as HTMLElement;
+      const r = f.getBoundingClientRect();
+      const hit = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+      return `focused tile y=${Math.round(r.top)}-${Math.round(r.bottom)} hit=${hit?.tagName}.${String(hit?.className).slice(0, 30)}`;
+    });
+    await pressPad(page, PAD.down);
+    console.log(`tile ${String(at)}: ${before} -> down -> ${await name(page)}`);
+  }
+  for (const top of [0, 800, 1600]) {
+    await page.evaluate((t) => { document.body.scrollTop = t; }, top);
+    await page.waitForTimeout(300);
+    const backs = page.getByRole("link", { name: "Back" });
+    console.log("backs", await backs.count());
+    await backs.last().focus();
+    const b = await desc();
+    await pressPad(page, PAD.right);
+    console.log(`scroll ${String(top)}: from ${b} right -> ${await desc()}`);
+  }
+  await padReachesEverything(page).catch((e) => { console.log("REACH FAILED", String(e).slice(0, 300)); });
+  await tiles.nth(n - 1).focus();
+  await pressPad(page, PAD.down);
+  console.log("after down from last:", await desc());
+  for (const [label, way] of [["right", PAD.right], ["right", PAD.right], ["left", PAD.left], ["up", PAD.up]] as const) {
+    await pressPad(page, way);
+    console.log(label, "->", await desc());
+  }
+  await page.getByRole("button", { name: "Save" }).focus();
+  console.log("save focused:", await desc());
+  for (const [label, way] of [["left", PAD.left], ["up", PAD.up]] as const) {
+    await page.getByRole("button", { name: "Save" }).focus();
+    await pressPad(page, way);
+    console.log("from save", label, "->", await desc());
+  }
+  await page.screenshot({ path: test.info().outputPath("colours.png") });
+  await padReachesEverything(page);
+});
