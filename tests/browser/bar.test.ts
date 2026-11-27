@@ -135,8 +135,9 @@ test("signed in, Add a game in the middle of the bar opens Your games, by tap or
   // Focus is put on it straight away: Safari's Tab skips links unless a person turns that on.
   await add.focus();
   await expect(add).toBeFocused();
-  const outline = await add.evaluate((element) => getComputedStyle(element).outlineStyle);
-  expect(outline).not.toBe("none");
+  // The ring is a shadow in the button's own shape, not an outline (the owner, 2026-11-27: no square ring on the bar).
+  const ring = await add.evaluate((element) => getComputedStyle(element).boxShadow);
+  expect(ring).toMatch(/0px 0px 0px 3px/);
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL("/make");
 });
@@ -237,4 +238,36 @@ test.describe("on an upright phone", () => {
     await signInAs(page, game.maker.number, game.maker.password);
     await expectAllAboveTheBar("/make/page");
   });
+});
+
+// The owner, 2026-11-27, of the white ring round + on Your games: "a fully rectangle outline". Every place the person is
+// on shows it the same way, the brighter tile You has on /me, with no ring round it.
+test("the place the person is on shows the same tinted tile on every bar button, with no ring", async ({
+  page,
+}) => {
+  await signUp(page);
+  const lookOf = (name: string) =>
+    bar(page)
+      .getByRole("link", { name, exact: true })
+      .evaluate((one) => {
+        const look = getComputedStyle(one);
+        return {
+          fill: `${look.backgroundColor} ${look.backgroundImage}`,
+          edge: look.boxShadow,
+          outline: look.outlineStyle,
+        };
+      });
+  await page.goto("/me");
+  await wordsHaveSettled(page);
+  const you = await lookOf("You");
+  await page.goto("/make");
+  await wordsHaveSettled(page);
+  const add = await lookOf("Add a game");
+  expect(add.fill).toBe(you.fill);
+  expect(add.edge).not.toContain("inset");
+  expect(add.edge).toBe(you.edge);
+  expect(add.outline).toBe("none");
+  await page.goto("/");
+  await wordsHaveSettled(page);
+  expect((await lookOf("Home")).fill).toBe(you.fill);
 });

@@ -1041,7 +1041,11 @@ test("everything is reachable with Tab, in an order that follows the screen, and
       const label =
         element.getAttribute("aria-label") ?? (element as HTMLElement).innerText.replace(/\s+/g, " ").trim();
       const style = getComputedStyle(element);
-      return { label, outline: `${style.outlineStyle} ${style.outlineWidth}` };
+      // The bar's ring is a shadow in the button's own shape (the owner, 2026-11-27: no square ring there); the rest is an
+      // outline.
+      const ring =
+        element.closest("nav.bar") !== null ? style.boxShadow : `${style.outlineStyle} ${style.outlineWidth}`;
+      return { label, outline: ring };
     });
     names.push(focused?.label ?? "");
     outlines.push(focused?.outline ?? "");
@@ -1058,7 +1062,8 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   if (marks === play + 3) expect(names[play + 1]).toContain(plus.slice("Follow ".length));
   // Like, Save and Repost stand above Share in the clip's right column (learned-feed spec 6.1), under the maker.
   expect(names.slice(marks, marks + 5)).toEqual(["Like", "Save", "Repost", "Share", "Sound"]);
-  for (const outline of outlines) expect(outline).not.toMatch(/^none/);
+  for (const outline of outlines.slice(0, 3)) expect(outline).toMatch(/0px 0px 0px 3px/);
+  for (const outline of outlines.slice(3)) expect(outline).not.toMatch(/^none/);
 });
 
 // The feed never ends (owner, 2026-11-22: "the feed should be infinite"). Near the end of what it has, it asks for the next

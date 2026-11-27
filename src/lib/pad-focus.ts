@@ -49,6 +49,32 @@ function pinned(element: Element): boolean {
   return false;
 }
 
+/** The box the element scrolls in (a list of results, a long page), or null when nothing round it scrolls. */
+function scrollerOf(element: Element): Element | null {
+  for (
+    let at = element.parentElement;
+    at !== null && at !== document.documentElement;
+    at = at.parentElement
+  ) {
+    const look = getComputedStyle(at);
+    if (look.position === "fixed") return null;
+    const down = /auto|scroll/.test(look.overflowY) && at.scrollHeight > at.clientHeight + 1;
+    const across = /auto|scroll/.test(look.overflowX) && at.scrollWidth > at.clientWidth + 1;
+    if (down || across) return at;
+  }
+  return null;
+}
+
+/**
+ * Whether a move from `from` to `to` leaves the part of the screen it is in: onto the pinned bar or foot, or out of the
+ * box it scrolls in (from a result to the search box above the list).
+ */
+function leaves(from: Element, to: Element): boolean {
+  if (pinned(to) && !pinned(from)) return true;
+  const box = scrollerOf(from);
+  return box !== null && !box.contains(to);
+}
+
 /**
  * Whether a person can see the element: in the window, and inside the part of each scrolled box that shows. A control
  * scrolled under a step's pinned Back and Save is in the window but hidden at the foot of its view, so it is not.
@@ -192,10 +218,10 @@ export function startPad(options: PadOptions): () => void {
       way,
     );
     const target = shown[index];
-    // From the screen itself, the pinned bar or foot comes only once the screen has nothing more that way, even
-    // scrolled out of sight: down goes on through a long page, as a console's does, before it drops to the bar.
-    if (target !== undefined && pinned(target) && !pinned(from)) {
-      const rest = others.filter((control) => !pinned(control));
+    // A move stays in its part of the screen while that part has more that way, even scrolled out of sight: down goes
+    // on through a long page before it drops to the pinned bar, and up through a list of results before the search box.
+    if (target !== undefined && leaves(from, target)) {
+      const rest = others.filter((control) => !leaves(from, control));
       const further =
         rest[
           nextBox(

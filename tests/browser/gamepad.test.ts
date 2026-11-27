@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { consented } from "./support/consent.ts";
+import { changeGame, givePage } from "./support/database.ts";
 import { addGame, gameWhere, startAtCheck } from "./support/game.ts";
 import { wordsHaveSettled } from "./support/look.ts";
 import { PAD, padReachesEverything, plugInPad, pressPad } from "./support/pad.ts";
@@ -12,12 +13,15 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 // a game. The feed keeps up and down for its clips.
 
 const ours: { slug: string; name: string }[] = [];
+const MAKER = `Pad Maker ${crypto.randomUUID().slice(0, 6)}`;
 let free: Awaited<ReturnType<typeof addGame>>;
 
 test.beforeAll(async ({ browser, request }) => {
   test.setTimeout(240_000);
   await forgetRateLimits();
   free = await addGame(browser, request, { free: true });
+  // The free game's maker has a page, so its clip has the maker's name and the follow plus.
+  await givePage(free.maker, { name: MAKER, oneLine: "I make small games." });
   for (let made = 0; made < 2; made += 1) {
     await forgetRateLimits();
     const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
@@ -72,6 +76,47 @@ test("on the feed, down and up change the clip and land on its main button; left
 
   await pressPad(page, PAD.a);
   await expect(page).not.toHaveURL("/");
+});
+
+test("on a clip, left and right reach the maker, the follow plus, Like, Save, Repost and Share", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  // Signed in, so A on Like marks the game rather than asking the person to join.
+  await signUp(page);
+  await openFeed(page);
+  const clip = page.locator(`section[data-slug="${free.slug}"]`).first();
+  await clip.scrollIntoViewIfNeeded();
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await wordsHaveSettled(page);
+  // The first press lands on the clip's main button; right goes on through the clip's own controls to the bar.
+  await pressPad(page, PAD.right);
+  await expect(clip.locator(".band .button")).toBeFocused();
+  const reached: string[] = [];
+  for (let step = 0; step < 14; step += 1) {
+    await pressPad(page, PAD.right);
+    const name = await page.evaluate(() => {
+      const focused = document.activeElement as HTMLElement | null;
+      return (focused?.getAttribute("aria-label") ?? focused?.innerText ?? "").replace(/\s+/g, " ").trim();
+    });
+    reached.push(name);
+    if (name === "You") break;
+  }
+  expect(reached).toEqual(
+    expect.arrayContaining([`Follow ${MAKER}`, "Like", "Save", "Repost", "Share", "You"]),
+  );
+  expect(reached.some((name) => name.includes(MAKER) && !name.startsWith("Follow"))).toBe(true);
+  // And each is pressed with A: Like, here, reached from the main button with the pad.
+  const pressedNow = () =>
+    page.evaluate(() => {
+      const focused = document.activeElement;
+      return focused?.getAttribute("aria-label") === "Like" ? focused.getAttribute("aria-pressed") : null;
+    });
+  await clip.locator(".band .button").focus();
+  for (let step = 0; step < 10 && (await pressedNow()) === null; step += 1) await pressPad(page, PAD.right);
+  expect(await pressedNow()).toBe("false");
+  await pressPad(page, PAD.a);
+  await expect.poll(pressedNow).toBe("true");
 });
 
 test("the shoulder buttons go from Fresh to Followed and back", async ({ page }) => {
@@ -196,6 +241,47 @@ test("over a game, Home opens Ruken's menu, B closes it back into the game, and 
   await expect(page).not.toHaveURL(/\/play$/);
 });
 
+test("on a scrolled list of search results, up and down go from result to result, not to the search box", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  // Three games only this run has, in a window short enough that their list scrolls.
+  const word = `zq${crypto.randomUUID().replaceAll("-", "").slice(0, 8)}`;
+  for (const [index, slug] of [free.slug, ours[0]?.slug ?? "", ours[1]?.slug ?? ""].entries())
+    await changeGame(slug, { name: `${word} Game ${String(index + 1)}` });
+  await page.setViewportSize({ width: 375, height: 360 });
+  await page.goto(`/search?q=${word}`);
+  const rows = page.locator(".results a");
+  await expect(rows).toHaveCount(3);
+  await wordsHaveSettled(page);
+  await pageHasSettled(page);
+  expect(
+    await page.locator(".results").evaluate((list) => list.scrollHeight > list.clientHeight),
+    "the results scroll",
+  ).toBe(true);
+  const field = page.getByRole("searchbox", { name: "Search games and makers" });
+
+  // Down from the box goes through every result, scrolling the list.
+  await field.focus();
+  for (let row = 0; row < 3; row += 1) {
+    await pressPad(page, PAD.down);
+    await expect(rows.nth(row)).toBeFocused();
+  }
+  // Up from the last, with the first scrolled out of sight, goes back one result at a time, and only then to the box.
+  await page.locator(".results").evaluate((list) => {
+    list.scrollTop = list.scrollHeight;
+  });
+  expect(await rows.nth(0).evaluate((one) => one.getBoundingClientRect().bottom)).toBeLessThan(
+    await page.locator(".results").evaluate((list) => list.getBoundingClientRect().top + 1),
+  );
+  for (let row = 1; row >= 0; row -= 1) {
+    await pressPad(page, PAD.up);
+    await expect(rows.nth(row)).toBeFocused();
+  }
+  await pressPad(page, PAD.up);
+  await expect(field).toBeFocused();
+});
+
 // Every screen a signed-out person can open: the pad reaches every control the Tab key does.
 for (const path of [
   "/followed",
@@ -233,12 +319,12 @@ test("the pad reaches everything on a game's page", async ({ page }) => {
   await padReachesEverything(page);
 });
 
-test("signed in, the pad reaches everything on You, Your games and a new game's first question, and B goes back", async ({
+test("signed in, the pad reaches everything on You, Saved, Reposts, Your feed, Your games and a new game's first question, and B goes back", async ({
   page,
 }) => {
   test.setTimeout(240_000);
   await signUp(page);
-  for (const path of ["/me", "/make", "/make/new"]) {
+  for (const path of ["/me", "/me/saved", "/me/reposts", "/settings/feed", "/make", "/make/new"]) {
     await page.goto(path);
     await wordsHaveSettled(page);
     await padReachesEverything(page);
