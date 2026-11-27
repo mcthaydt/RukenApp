@@ -12,7 +12,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const form = await request.formData();
   const game = form.get("game");
   const to = form.get("to");
-  if (typeof game !== "string" || typeof to !== "string" || game === "" || to === "") return said("Not found.", 404);
+  if (typeof game !== "string" || typeof to !== "string" || game === "" || to === "")
+    return said("Not found.", 404);
   const outcome = await sendsServices().send(locals.caller.userId, game, to);
   if (outcome === "no game" || outcome === "no person") return said("Not found.", 404);
   if (outcome === "self") return said("That's you.", 400);

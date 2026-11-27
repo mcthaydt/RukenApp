@@ -7,7 +7,8 @@ import type { RequestHandler } from "./$types";
 export const POST: RequestHandler = async ({ request, locals }) => {
   if (locals.caller.kind !== "user") error(401);
   const id = (await request.formData()).get("id");
-  if (typeof id !== "string" || (await sendsServices().stop(locals.caller.userId, id)) === "not found") error(404);
+  if (typeof id !== "string" || (await sendsServices().stop(locals.caller.userId, id)) === "not found")
+    error(404);
   const script = (request.headers.get("accept") ?? "").includes("application/json");
   return script ? Response.json({ stopped: true }) : redirect(303, "/your-turn");
 };

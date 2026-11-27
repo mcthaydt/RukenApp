@@ -17,7 +17,9 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
     launchServices().screenFor(userId, cookies),
     userId === null ? Promise.resolve(null) : feed.taste.learningOf(userId),
     // Your turn: the tab's dot, and the faces for "Send to a friend" in the share sheet.
-    userId === null ? Promise.resolve(false) : sendsServices().hasNew(userId, () => isKnownAdultCaller(caller)),
+    userId === null
+      ? Promise.resolve(false)
+      : sendsServices().hasNew(userId, () => isKnownAdultCaller(caller)),
     userId === null ? Promise.resolve([]) : sendsServices().friendsOf(userId),
   ]);
   return { first, launch, tune: learning === "on", news, friends };

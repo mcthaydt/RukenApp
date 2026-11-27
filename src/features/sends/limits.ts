@@ -31,7 +31,9 @@ export function isSendLimits(value: unknown): value is SendLimits {
       const { name, rule } = one as { name?: unknown; rule?: unknown };
       if (typeof name !== "string" || name === "" || typeof rule !== "object" || rule === null) return false;
       const { max, windowMs } = rule as { max?: unknown; windowMs?: unknown };
-      return Number.isInteger(max) && (max as number) > 0 && Number.isInteger(windowMs) && (windowMs as number) > 0;
+      return (
+        Number.isInteger(max) && (max as number) > 0 && Number.isInteger(windowMs) && (windowMs as number) > 0
+      );
     })
   );
 }

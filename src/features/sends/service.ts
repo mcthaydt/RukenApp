@@ -29,7 +29,6 @@ export interface SendsDeps {
   media(key: string): string;
 }
 
-
 /** One game on a person's Your turn list. */
 export interface SentGame {
   id: string;
@@ -39,7 +38,6 @@ export interface SentGame {
   from: string | null;
   sentAt: Date;
 }
-
 
 export type SendOutcome = "sent" | "no game" | "no person" | "self" | "not friends" | { limited: number };
 
@@ -76,7 +74,9 @@ export function createSends(deps: SendsDeps) {
     const wanted = new Set(ids);
     const live = (await deps.liveGames()).filter((game) => wanted.has(game.id));
     const adult = live.some((game) => game.ageRating === "age_18") && (await isAdult());
-    return new Map(live.filter((game) => adult || game.ageRating !== "age_18").map((game) => [game.id, game]));
+    return new Map(
+      live.filter((game) => adult || game.ageRating !== "age_18").map((game) => [game.id, game]),
+    );
   }
 
   /** The pages of these accounts, asking nothing when there are none. */
@@ -104,7 +104,10 @@ export function createSends(deps: SendsDeps) {
      */
     async send(fromId: string, gameSlug: string, toHandle: string): Promise<SendOutcome> {
       const [game, page] = await Promise.all([
-        db.game.findFirst({ where: { slug: gameSlug, state: "live", livePullId: { not: null } }, select: { id: true } }),
+        db.game.findFirst({
+          where: { slug: gameSlug, state: "live", livePullId: { not: null } },
+          select: { id: true },
+        }),
         db.makerPage.findUnique({ where: { handle: toHandle }, select: { userId: true } }),
       ]);
       if (game === null) return "no game";
@@ -160,7 +163,10 @@ export function createSends(deps: SendsDeps) {
 
     /** Marks every game on this person's list as seen, keeping the first time each was. */
     async markSeen(toId: string): Promise<void> {
-      await db.gameSend.updateMany({ where: { toId, seenAt: null }, data: { seenAt: new Date(clock.epochMs()) } });
+      await db.gameSend.updateMany({
+        where: { toId, seenAt: null },
+        data: { seenAt: new Date(clock.epochMs()) },
+      });
     },
 
     /** Takes one game off this person's list. Someone else's row is "not found", and nothing changes. */
@@ -174,7 +180,10 @@ export function createSends(deps: SendsDeps) {
      * again. Stopping twice is one row. Someone else's row is "not found", and nothing changes.
      */
     async stop(stopperId: string, sendId: string): Promise<"stopped" | "not found"> {
-      const row = await db.gameSend.findFirst({ where: { id: sendId, toId: stopperId }, select: { fromId: true } });
+      const row = await db.gameSend.findFirst({
+        where: { id: sendId, toId: stopperId },
+        select: { fromId: true },
+      });
       if (row === null) return "not found";
       await db.$transaction([
         db.sendStop.createMany({

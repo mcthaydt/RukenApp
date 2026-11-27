@@ -41,7 +41,10 @@ beforeAll(async () => {
         (game) =>
           ({
             ...game,
-            clips: { upright: `https://media.test/clips/${game.publicId}/upright-0000000000000000.mp4`, wide: "" },
+            clips: {
+              upright: `https://media.test/clips/${game.publicId}/upright-0000000000000000.mp4`,
+              wide: "",
+            },
           }) as unknown as ListedGame,
       ),
     makersOf: async (userIds) =>
@@ -87,7 +90,10 @@ async function adult(id: string): Promise<void> {
 }
 
 /** A live game by its own maker; `state` other than live makes one that is not. */
-async function game(ageRating: "age_12" | "age_18" = "age_12", live = true): Promise<{ id: string; slug: string }> {
+async function game(
+  ageRating: "age_12" | "age_18" = "age_12",
+  live = true,
+): Promise<{ id: string; slug: string }> {
   made += 1;
   const makerId = await createUser(db());
   const row = await db().game.create({
@@ -161,7 +167,11 @@ describe("who may send to whom", () => {
     expect(faces.map((face) => face.handle)).toEqual(
       [first, ...pals.slice(1).reverse()].slice(0, 8).map((pal) => pal.handle),
     );
-    expect(faces[0]).toEqual({ handle: first.handle, name: first.name, photo: "https://media.test/pages/photo.webp" });
+    expect(faces[0]).toEqual({
+      handle: first.handle,
+      name: first.name,
+      photo: "https://media.test/pages/photo.webp",
+    });
     expect(faces[1]?.photo).toBeNull();
   });
 });
@@ -184,10 +194,9 @@ describe("sending a game", () => {
     const ben = await person();
     await friends(ana.id, ben.id);
     const g = await game();
-    expect(await Promise.all([sends.send(ana.id, g.slug, ben.handle), sends.send(ana.id, g.slug, ben.handle)])).toEqual([
-      "sent",
-      "sent",
-    ]);
+    expect(
+      await Promise.all([sends.send(ana.id, g.slug, ben.handle), sends.send(ana.id, g.slug, ben.handle)]),
+    ).toEqual(["sent", "sent"]);
     expect(await db().gameSend.count({ where: { toId: ben.id } })).toBe(1);
   });
 

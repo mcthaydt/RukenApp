@@ -30,9 +30,12 @@ export const SEND_WORDS = {
 
 /** The calendar day of a moment where the person is, as "2026-11-27", so two moments compare by day. */
 function dayOf(moment: Date, timeZone: string | undefined): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(
-    moment,
-  );
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(moment);
 }
 
 /** When a game was sent, as a person says it: "Today", "Yesterday", or the date ("Nov 3"). */

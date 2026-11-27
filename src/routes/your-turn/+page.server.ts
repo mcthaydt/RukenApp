@@ -10,7 +10,10 @@ export const load: PageServerLoad = async ({ locals }) => {
   if (caller.kind !== "user") return { signedIn: false as const };
   const sends = sendsServices();
   const adult = () => isKnownAdultCaller(caller);
-  const [games, news] = await Promise.all([sends.listOf(caller.userId, adult), sends.hasNew(caller.userId, adult)]);
+  const [games, news] = await Promise.all([
+    sends.listOf(caller.userId, adult),
+    sends.hasNew(caller.userId, adult),
+  ]);
   return {
     signedIn: true as const,
     news,
