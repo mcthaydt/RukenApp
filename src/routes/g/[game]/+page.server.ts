@@ -19,6 +19,7 @@ import {
 import { launchServices } from "../../../features/launch/launch.ts";
 import { pagesServices } from "../../../features/pages/pages.ts";
 import { deviceOf, playServices } from "../../../features/play/play.ts";
+import { sendsServices } from "../../../features/sends/sends.ts";
 import type { PageServerLoad } from "./$types";
 
 // A live game's page (spec 3). A game that is not live is not here at all: the missing page.
@@ -46,7 +47,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
   const ownOrStaff =
     caller.kind === "user" &&
     (caller.userId === game.makerUserId || caller.staffRoles.some((role) => GAME_STAFF_ROLES.includes(role)));
-  const [member, makerPage, more, launch, sitting, players] = await Promise.all([
+  const [member, makerPage, more, launch, sitting, players, friends] = await Promise.all([
     caller.kind === "user" && !ownOrStaff && !game.freeToPlay
       ? membershipServices().service.isMember(caller.userId)
       : false,
@@ -64,6 +65,8 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
     game.showsPlayerCount
       ? playServices().service.playersThisWeek(game.id, now).then(playersWords)
       : Promise.resolve(null),
+    // The faces for "Send to a friend" in the share sheet: one statement, asked only for a signed-in person.
+    caller.kind === "user" ? sendsServices().friendsOf(caller.userId) : Promise.resolve([]),
   ]);
 
   let cost: Cost = "join";
@@ -77,6 +80,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
     name: game.name,
     slug: game.slug,
     oneLine: game.oneLine,
+    friends,
     rating: { chip: ratingWords(game.ageRating, game.contentMarks) ?? "", line: ratingLine(game.ageRating) },
     clips: { upright: games.media(game.clips.upright), wide: games.media(game.clips.wide) },
     // The server knows a phone from its User-Agent; the page's script says "tablet" where the pointer is coarse.

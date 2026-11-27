@@ -1,0 +1,35 @@
+/// A game one friend sent another: one row per sender, receiver and game, so sending again is the same row. The
+/// receiver removing it, or stopping the sender, deletes it; deleting either account deletes every row it is in
+/// (deletion.ts). Your turn (src/features/sends/) reads it.
+model GameSend {
+  id     String    @id @default(cuid(2))
+  fromId String
+  toId   String
+  gameId String
+  sentAt DateTime  @db.Timestamptz
+  /// When the receiver first opened Your turn with this row on it; null until then, which is what the tab's dot counts.
+  seenAt DateTime? @db.Timestamptz
+
+  // Restrict: the account purge removes these rows first, in its own transaction, never by a cascade.
+  from User @relation("GameSendFrom", fields: [fromId], references: [id], onDelete: Restrict)
+  to   User @relation("GameSendTo", fields: [toId], references: [id], onDelete: Restrict)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Restrict)
+
+  @@unique([fromId, toId, gameId])
+  @@index([toId, sentAt])
+  @@index([gameId])
+}
+
+/// A person who no longer takes games from another. The sender is never told: their sends answer as if they went.
+model SendStop {
+  id        String   @id @default(cuid(2))
+  stopperId String
+  stoppedId String
+  stoppedAt DateTime @db.Timestamptz
+
+  stopper User @relation("SendStopStopper", fields: [stopperId], references: [id], onDelete: Restrict)
+  stopped User @relation("SendStopStopped", fields: [stoppedId], references: [id], onDelete: Restrict)
+
+  @@unique([stopperId, stoppedId])
+  @@index([stoppedId])
+}

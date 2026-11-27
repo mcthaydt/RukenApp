@@ -7,11 +7,16 @@
 -->
 <script lang="ts">
   import Icon from "../../lib/icon.svelte";
+  import { SendRow, type Friend } from "../sends/sends.browser.ts";
   import { copyLink, shareByPhone, shareTargets, type ShareLink, type ShareTools } from "./share.ts";
+
+  // The person's friends, for "Send to a friend" at the top; none (or signed out), and that row is not there.
+  let { friends = [] }: { friends?: readonly Friend[] } = $props();
 
   let sheet = $state<HTMLDialogElement>();
   let copyButton = $state<HTMLButtonElement>();
   let link = $state<ShareLink | null>(null);
+  let slug = $state("");
   let opener: HTMLElement | null = null;
   // Whether this browser has a share sheet of its own, for "More". Asked at each open: a test or a browser may change it.
   let phoneSheet = $state(false);
@@ -34,6 +39,7 @@
   /** Opens the sheet for a game. Focus goes back to `from` when it closes. */
   export function open(game: { slug: string; name: string }, from: HTMLElement | null): void {
     link = { title: game.name, url: `${location.origin}/g/${game.slug}` };
+    slug = game.slug;
     opener = from;
     said = "";
     phoneSheet = typeof navigator.share === "function";
@@ -112,6 +118,9 @@
     {#if link !== null}
       <p class="which">{link.title}</p>
       <p class="link">{link.url}</p>
+    {/if}
+    {#if slug !== ""}
+      <SendRow game={slug} {friends} />
     {/if}
     <button type="button" class="main" bind:this={copyButton} onclick={() => void copy()}>Copy link</button>
     <p class="said" role="status">{said}</p>

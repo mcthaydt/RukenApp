@@ -546,6 +546,47 @@ describe("purgeDueAccounts", () => {
     ).toEqual([{ followerId: fan.id, makerId: maker.id }]);
   });
 
+  // Every Your turn row names two accounts (games-sent-to-you brief, "What is kept"): the games a person sent and was
+  // sent, and whom they stopped or were stopped by, go with the account both ways; nobody else's rows are touched.
+  it("removes the games a person sent and was sent, and their stops both ways, after the 14 days", async () => {
+    const leaving = await seedPerson();
+    const friend = await seedPerson();
+    const other = await seedPerson();
+    const game = await seedGame(other.id, "live");
+    const at = new Date(START);
+    await db().gameSend.createMany({
+      data: [
+        { fromId: leaving.id, toId: friend.id, gameId: game.id, sentAt: at },
+        { fromId: friend.id, toId: leaving.id, gameId: game.id, sentAt: at },
+        { fromId: friend.id, toId: other.id, gameId: game.id, sentAt: at },
+      ],
+    });
+    await db().sendStop.createMany({
+      data: [
+        { stopperId: leaving.id, stoppedId: friend.id, stoppedAt: at },
+        { stopperId: other.id, stoppedId: leaving.id, stoppedAt: at },
+        { stopperId: other.id, stoppedId: friend.id, stoppedAt: at },
+      ],
+    });
+    const clock = await askToBeDeleted(leaving.id);
+
+    clock.advance(13 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
+    expect(await db().gameSend.count({ where: { gameId: game.id } })).toBe(3);
+
+    clock.advance(2 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
+    expect(
+      await db().gameSend.findMany({ where: { gameId: game.id }, select: { fromId: true, toId: true } }),
+    ).toEqual([{ fromId: friend.id, toId: other.id }]);
+    expect(
+      await db().sendStop.findMany({
+        where: { OR: [{ stopperId: { in: [leaving.id, other.id] } }, { stoppedId: leaving.id }] },
+        select: { stopperId: true, stoppedId: true },
+      }),
+    ).toEqual([{ stopperId: other.id, stoppedId: friend.id }]);
+  });
+
   // What a person liked, saved and reposted is theirs (learned-feed spec, unit G), and every mark on a leaving maker's
   // games goes with the games, for every player.
   it("removes a person's marks and every mark on their games after the 14 days, and leaves everyone else's", async () => {

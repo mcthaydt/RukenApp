@@ -18,6 +18,7 @@ const FEATURE_ORDER = [
   "play",
   "money",
   "pages",
+  "sends",
   "feed",
   "make",
   "moderation",

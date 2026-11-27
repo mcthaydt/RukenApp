@@ -278,4 +278,4 @@
 </dialog>
 
 <ReportSheet bind:this={reportSheet} />
-<ShareSheet bind:this={shareSheet} />
+<ShareSheet bind:this={shareSheet} friends={data.friends} />

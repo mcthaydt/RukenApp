@@ -6,7 +6,15 @@ import { describe, expect, it, vi } from "vitest";
 // ends, and this test fails on its timeout.
 
 const asked: string[] = [];
-const EVERY_QUESTION = ["isMember", "cardOf", "moreLiveGamesBy", "screenFor", "sittingOf", "playersThisWeek"];
+const EVERY_QUESTION = [
+  "isMember",
+  "cardOf",
+  "moreLiveGamesBy",
+  "screenFor",
+  "sittingOf",
+  "playersThisWeek",
+  "friendsOf",
+];
 let allAsked: () => void = () => {};
 let gate = new Promise<void>((open) => {
   allAsked = open;
@@ -81,6 +89,11 @@ vi.mock("../../../../src/features/play/play.ts", async (original) => ({
   }),
 }));
 
+vi.mock("../../../../src/features/sends/sends.ts", async (original) => ({
+  ...(await original<object>()),
+  sendsServices: () => ({ friendsOf: question("friendsOf", [{ handle: "pal", name: "Pal", photo: null }]) }),
+}));
+
 const { load } = await import("../../../../src/routes/g/[game]/+page.server.ts");
 
 describe("a game's page", () => {
@@ -101,5 +114,6 @@ describe("a game's page", () => {
     expect(data.maker).toEqual({ handle: "night", name: "Night Owl", oneLine: "Hard games.", photo: null });
     expect(data.more).toEqual([{ slug: "other", name: "Other", wideClip: "/media/o.mp4" }]);
     expect(data.launch).toEqual({ before: false });
+    expect(data.friends).toEqual([{ handle: "pal", name: "Pal", photo: null }]);
   }, 2_000);
 });

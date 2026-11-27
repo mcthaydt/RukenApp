@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { SWIPE_DISTANCE, TABS, stepOfSwipe, tabFrom } from "../../../src/features/feed/tabs.ts";
 
 describe("the feed's tabs", () => {
-  it("are Fresh then Followed, each with its own address", () => {
+  it("are Fresh, Followed then Your turn, each with its own address", () => {
     expect(TABS.map((tab) => [tab.name, tab.href])).toEqual([
       ["Fresh", "/"],
       ["Followed", "/followed"],
+      ["Your turn", "/your-turn"],
     ]);
   });
 
@@ -13,7 +14,9 @@ describe("the feed's tabs", () => {
     expect(tabFrom("fresh", 1)?.key).toBe("followed");
     expect(tabFrom("followed", -1)?.key).toBe("fresh");
     expect(tabFrom("fresh", -1)).toBeNull();
-    expect(tabFrom("followed", 1)).toBeNull();
+    expect(tabFrom("followed", 1)?.key).toBe("your-turn");
+    expect(tabFrom("your-turn", -1)?.key).toBe("followed");
+    expect(tabFrom("your-turn", 1)).toBeNull();
   });
 });
 

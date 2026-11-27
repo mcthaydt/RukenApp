@@ -123,6 +123,8 @@ model Game {
   pendingPull GamePull?    @relation("GamePendingPull", fields: [pendingPullId], references: [id], onDelete: Restrict)
   pulls       GamePull[]   @relation("GamePulls")
   clips       GameClip[]
+  /// Friends' sends of this game (sends.prisma).
+  sends       GameSend[]
   heldClips   GameHeldClip[]
   reviews     GameReview[]
 

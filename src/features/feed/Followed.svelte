@@ -8,6 +8,7 @@
   import Feed from "./Feed.svelte";
   import FeedTop from "./FeedTop.svelte";
   import type { FeedPage } from "./service.ts";
+  import type { Friend } from "../sends/sends.browser.ts";
 
   let props:
     | { signedIn: false }
@@ -17,13 +18,16 @@
         following: number;
         first: FeedPage;
         launch: { before: false } | { before: true; opens: string; wished: string[] };
+        /** Friends sent games the person has not looked at: the dot on the Your turn tab. */
+        news: boolean;
+        friends: readonly Friend[];
       } = $props();
 </script>
 
 {#if props.signedIn && props.first.clips.length > 0}
-  <Feed first={props.first} launch={props.launch} tab="followed" />
+  <Feed first={props.first} launch={props.launch} tab="followed" news={props.news} friends={props.friends} />
 {:else}
-  <FeedTop on="followed" />
+  <FeedTop on="followed" news={props.signedIn && props.news} />
 
   <main class="empty">
     {#if props.signedIn && props.following === 0}
