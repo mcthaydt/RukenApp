@@ -1,0 +1,94 @@
+import { expect, test } from "@playwright/test";
+import { signUp } from "./support/account.ts";
+import { wordsHaveSettled } from "./support/look.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+test.beforeEach(forgetRateLimits);
+const OUT = "/tmp/claude-0/-home-user/cdd55b4f-830a-522e-9dc7-0298c2de2923/scratchpad/shots";
+
+test("review 6 probe", async ({ page, isMobile }, info) => {
+  await signUp(page);
+  await page.setViewportSize(isMobile ? { width: 320, height: 568 } : { width: 1280, height: 720 });
+  await page.goto("/settings/feed");
+  await wordsHaveSettled(page);
+  const add = async (region: string, side: string, words: string) => {
+    await page.getByRole("region", { name: region }).getByRole("button", { name: "Add", exact: true }).click();
+    const sheet = page.getByRole("dialog", { name: side });
+    await sheet.getByRole("button", { name: words, exact: true }).click();
+    await expect(sheet).toBeHidden();
+  };
+  const more = ["Racing and sports", "Building and life", "Puzzle", "Spooky", "Adventurous", "Heartfelt"];
+  const less = ["Party and board", "Role-playing", "Cosy", "Bold", "Strategy", "Weird", "Story"];
+  for (const w of more) await add("What you want to see more of", "See more of", w);
+  for (const w of less) await add("What you want to see less of", "See less of", w);
+  await page.evaluate(() => document.querySelector("main .tastes")?.scrollTo({ top: 0 }));
+  await wordsHaveSettled(page);
+  await page.screenshot({ path: `${OUT}/${info.project.name}-320-top.png` });
+  // scroll partway into less side: is the less name pinned and opaque over chips?
+  const pin = await page.evaluate(() => {
+    const box = document.querySelector("main .tastes")!;
+    box.scrollTo({ top: box.scrollHeight });
+    return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const b = box.getBoundingClientRect();
+      const hs = [...box.querySelectorAll("h2")].map((h) => { const x = h.getBoundingClientRect(); return { t: h.textContent, top: x.top - b.top, h: x.height, bg: getComputedStyle(h).backgroundColor }; });
+      r({ boxBg: getComputedStyle(box).backgroundColor, hs, scrollPad: getComputedStyle(box).scrollPaddingTop });
+    })));
+  });
+  console.log("PIN", info.project.name, JSON.stringify(pin));
+  await page.screenshot({ path: `${OUT}/${info.project.name}-320-bottom.png` });
+  // target sizes
+  const small = await page.evaluate(() => [...document.querySelectorAll("main button, main a, main [role=switch]")].map((e) => { const r = e.getBoundingClientRect(); return { n: e.getAttribute("aria-label") ?? e.textContent?.trim(), w: Math.round(r.width), h: Math.round(r.height) }; }).filter((x) => x.w < 48 || x.h < 48));
+  console.log("SMALL", info.project.name, JSON.stringify(small));
+  // Remove last in less list -> focus to previous (Weird)
+  await page.getByRole("button", { name: "Remove Story" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "Remove Story" })).toHaveCount(0);
+  console.log("AFTER-LAST", info.project.name, await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent?.trim()));
+  // Remove first more chip by click (mouse/tap)
+  await page.getByRole("button", { name: "Remove Racing and sports" }).click();
+  await expect(page.getByRole("button", { name: "Remove Racing and sports" })).toHaveCount(0);
+  console.log("AFTER-CLICK", info.project.name, await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent?.trim()));
+  // Remove all more chips by keys, the last should land on Add
+  for (const w of more.slice(1)) {
+    await page.getByRole("button", { name: `Remove ${w}` }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: `Remove ${w}` })).toHaveCount(0);
+  }
+  console.log("AFTER-ALL-MORE", info.project.name, await page.evaluate(() => { const a = document.activeElement; return (a?.getAttribute("aria-label") ?? a?.textContent?.trim()) + " in " + a?.closest("section")?.getAttribute("data-side"); }));
+  await wordsHaveSettled(page);
+  const ov = await page.evaluate(() => ({ page: document.documentElement.scrollHeight - innerHeight, view: document.body.scrollHeight - document.body.clientHeight }));
+  console.log("OVERFLOW", info.project.name, JSON.stringify(ov));
+  await page.screenshot({ path: `${OUT}/${info.project.name}-320-after.png` });
+});
+
+test("review 6 probe: focus at 320 clears the pinned name", async ({ page, isMobile }) => {
+  test.skip(!isMobile);
+  await signUp(page);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/settings/feed");
+  await wordsHaveSettled(page);
+  for (const [region, side, w] of [["What you want to see more of","See more of","Racing and sports"],["What you want to see more of","See more of","Building and life"],["What you want to see more of","See more of","Puzzle"],["What you want to see more of","See more of","Spooky"],["What you want to see less of","See less of","Party and board"],["What you want to see less of","See less of","Role-playing"],["What you want to see less of","See less of","Cosy"],["What you want to see less of","See less of","Bold"],["What you want to see less of","See less of","Strategy"]]) {
+    await page.getByRole("region", { name: region }).getByRole("button", { name: "Add", exact: true }).click();
+    const sheet = page.getByRole("dialog", { name: side });
+    await sheet.getByRole("button", { name: w, exact: true }).click();
+    await expect(sheet).toBeHidden();
+  }
+  await page.getByRole("switch", { name: "Learn from what I do" }).focus();
+  const bad: string[] = [];
+  for (let i = 0; i < 40; i++) {
+    await page.keyboard.press("Tab");
+    await page.waitForTimeout(400);
+    const r = await page.evaluate(() => {
+      const a = document.activeElement as HTMLElement;
+      const box = document.querySelector("main .tastes")?.getBoundingClientRect();
+      const name = a.closest("section")?.querySelector("h2")?.getBoundingClientRect();
+      const at = a.getBoundingClientRect();
+      return { n: a.getAttribute("aria-label") ?? a.textContent?.trim(), top: at.top, bottom: at.bottom, boxTop: box?.top, boxBottom: box?.bottom, nameBottom: name?.bottom, nameH: name?.height };
+    });
+    if (r.n === "Start over") break;
+    if (r.boxTop !== undefined && a(r)) bad.push(JSON.stringify(r));
+  }
+  function a(r: any) { return r.nameBottom !== undefined && (r.top < Math.max(r.boxTop, r.nameBottom) - 1 || r.bottom > r.boxBottom - 11); }
+  console.log("AT320", JSON.stringify(bad));
+  await page.screenshot({ path: `${OUT}/phone-320-focus.png` });
+});
