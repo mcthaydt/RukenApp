@@ -5945,3 +5945,70 @@ body:focus {
     font: var(--text-section);
   }
 }
+
+/* The panels that rise over a screen (Share, ••• and Report: `dialog.rises`) slide up and fade in, and the screen behind
+   dims with them. Closing plays it backwards (`closing`, set by src/lib/sheet.ts, which closes the dialog when it ends):
+   coming in it starts fast and settles, so going away it starts gently and speeds off, on a softer curve than an exact
+   mirror so a press is seen to move it at once. On an upright phone the panel sits on the bottom edge and comes up from, and goes back down
+   past, it; elsewhere it sits in the middle and moves a little. The easing is the app's own, written out too, since the
+   feed is not inside the `.screen` that sets it. */
+dialog.rises[open] {
+  animation: sheet-in 320ms var(--ease, cubic-bezier(0.32, 0.72, 0, 1)) backwards;
+}
+dialog.rises[open]::backdrop {
+  animation: sheet-dim 320ms var(--ease, cubic-bezier(0.32, 0.72, 0, 1)) backwards;
+}
+dialog.rises.closing {
+  animation: sheet-out 260ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+dialog.rises.closing::backdrop {
+  animation: sheet-undim 260ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(2.5rem);
+  }
+}
+@keyframes sheet-out {
+  to {
+    opacity: 0;
+    transform: translateY(2.5rem);
+  }
+}
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+@keyframes sheet-down {
+  to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+@keyframes sheet-dim {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sheet-undim {
+  to {
+    opacity: 0;
+  }
+}
+@media (orientation: portrait) and (max-width: 47.99rem) {
+  dialog.rises[open] {
+    animation-name: sheet-up;
+  }
+  dialog.rises.closing {
+    animation-name: sheet-down;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.rises[open],
+  dialog.rises[open]::backdrop {
+    animation: none;
+  }
+}

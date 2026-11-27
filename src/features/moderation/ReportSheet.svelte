@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
   import Icon from "../../lib/icon.svelte";
+  import { slideAway, slideAwayOnCancel, stopSliding } from "../../lib/sheet.ts";
   import { NOTE_MAX, REASON_WORDS, REPORT_REASONS, type ReportReason } from "./reasons.ts";
 
   type Phase = "loading" | "failed" | "signed-out" | "own" | "form" | "thanks" | "gone";
@@ -34,7 +35,9 @@
     reason = null;
     note = "";
     reported = false;
-    sheet?.showModal();
+    if (sheet === undefined) return;
+    stopSliding(sheet);
+    sheet.showModal();
     void load();
   }
 
@@ -116,14 +119,15 @@
   }
 
   function close(): void {
-    sheet?.close();
+    if (sheet !== undefined) slideAway(sheet);
   }
 </script>
 
 <dialog
-  class="reportsheet"
+  class="reportsheet rises"
   bind:this={sheet}
   aria-labelledby="report-title"
+  oncancel={slideAwayOnCancel}
   onclose={() => {
     opener?.focus();
   }}
