@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { devices, expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { changeGame, givePage } from "./support/database.ts";
 import { addGame, gameWhere } from "./support/game.ts";
@@ -56,7 +56,7 @@ test("the feed's top bar holds Fresh, Followed and Search, clear of the sound bu
   const window = page.viewportSize() ?? { width: 0, height: 0 };
   const tabs = await boxOf(bar.tabs);
   const search = await boxOf(bar.search);
-  const sound = await boxOf(page.locator('section[data-current="true"] button.sound'));
+  const sound = await boxOf(page.getByRole("button", { name: "Sound" }));
   expect(Math.abs(tabs.x + tabs.width / 2 - window.width / 2)).toBeLessThan(2);
   expect(search.x + search.width).toBeGreaterThan(window.width - 120);
   expect(sound.x + sound.width).toBeLessThanOrEqual(tabs.x);
@@ -69,6 +69,71 @@ test("the feed's top bar holds Fresh, Followed and Search, clear of the sound bu
   expect(places.y).toBeGreaterThan(tabs.y + tabs.height);
   await showTheOwner(page, testInfo, "feed-top-bar");
 });
+
+/** Where the middles of the speaker, the pill of tabs and Search sit, top to bottom, in the window's pixels. */
+async function middlesOf(page: Page): Promise<number[]> {
+  const bar = topBar(page);
+  const boxes = [
+    await boxOf(page.getByRole("button", { name: "Sound" })),
+    await boxOf(bar.tabs),
+    await boxOf(bar.search),
+  ];
+  return boxes.map((box) => box.y + box.height / 2);
+}
+
+/** Checks the top bar lines up as one row: the same middle, nothing overlapping, the pill in the middle, 48px to press. */
+async function barLinesUp(page: Page): Promise<void> {
+  const bar = topBar(page);
+  const window = page.viewportSize() ?? { width: 0, height: 0 };
+  const sound = await boxOf(page.getByRole("button", { name: "Sound" }));
+  const tabs = await boxOf(bar.tabs);
+  const search = await boxOf(bar.search);
+  const middles = await middlesOf(page);
+  expect(Math.max(...middles) - Math.min(...middles), `middles ${middles.join(", ")}`).toBeLessThanOrEqual(1);
+  expect(sound.x).toBeGreaterThanOrEqual(0);
+  expect(sound.x + sound.width).toBeLessThanOrEqual(tabs.x);
+  expect(tabs.x + tabs.width).toBeLessThanOrEqual(search.x);
+  expect(search.x + search.width).toBeLessThanOrEqual(window.width);
+  expect(Math.abs(tabs.x + tabs.width / 2 - window.width / 2)).toBeLessThan(2);
+  for (const box of [sound, search, await boxOf(bar.fresh), await boxOf(bar.followed)]) {
+    expect(box.width).toBeGreaterThanOrEqual(48);
+    expect(box.height).toBeGreaterThanOrEqual(48);
+  }
+}
+
+// The owner, 2026-11-27, from an Android phone: "Why is the top bar not aligned". The speaker sat in each clip, so it
+// moved with the feed while the bar stood still, and the pill was 2px taller than the round buttons beside it.
+test("the speaker, the tabs and Search line up as one bar that stays put while the feed moves", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await barLinesUp(page);
+  const before = await middlesOf(page);
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
+  expect(await middlesOf(page)).toEqual(before);
+});
+
+// Android Chrome's common widths, as Chrome's own engine draws them, with touch: the narrowest the bar must hold.
+for (const device of ["Galaxy S8", "Pixel 7"] as const) {
+  test(`the top bar lines up on Android Chrome (${device})`, async ({ browser, browserName }) => {
+    test.skip(browserName !== "chromium", "Android's Chrome is Chrome's engine; the phone project's Safari is not");
+    const context = await browser.newContext({
+      ...devices[device],
+      ...consented,
+      baseURL: "http://localhost:4173",
+    });
+    try {
+      const page = await context.newPage();
+      await page.goto("/");
+      await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+      await barLinesUp(page);
+    } finally {
+      await context.close();
+    }
+  });
+}
 
 test("Followed says to sign in, and signed in that the person follows nobody yet", async ({
   page,

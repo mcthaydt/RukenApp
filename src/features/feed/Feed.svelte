@@ -465,7 +465,42 @@
 
 <svelte:window onkeydown={onKey} onpointerdown={forgetHints} />
 
-<FeedTop on={tab} />
+<!-- One speaker for the whole feed, in the top bar beside the tabs and Search, so it stays put as the clips move under
+     it (the owner, 2026-11-27: "they need to be grouped together as a unit"). -->
+{#snippet speaker()}
+  <button
+    type="button"
+    class="sound"
+    aria-label="Sound"
+    aria-pressed={soundOn}
+    onclick={() => {
+      pressSound(clips[current]?.slug ?? "");
+    }}
+  >
+    <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+      <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor" />
+      {#if soundOn}
+        <path
+          d="M15 9a4 4 0 0 1 0 6M17.5 6.5a8 8 0 0 1 0 11"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+      {:else}
+        <path
+          d="M16 9l5 6M21 9l-5 6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        />
+      {/if}
+    </svg>
+  </button>
+{/snippet}
+
+<FeedTop on={tab} sound={clips.length > 0 ? speaker : undefined} />
 
 {#if clips.length === 0}
   <main class="empty">
@@ -526,36 +561,6 @@
           tabindex="-1"
           aria-hidden="true"
         ></a>
-        <button
-          type="button"
-          class="sound"
-          aria-label="Sound"
-          aria-pressed={soundOn}
-          onclick={() => {
-            pressSound(clip.slug);
-          }}
-        >
-          <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
-            <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor" />
-            {#if soundOn}
-              <path
-                d="M15 9a4 4 0 0 1 0 6M17.5 6.5a8 8 0 0 1 0 11"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            {:else}
-              <path
-                d="M16 9l5 6M21 9l-5 6"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            {/if}
-          </svg>
-        </button>
 
         <!-- The Good pick card, on the clip the feed asked it on, until it is answered. -->
         <GoodPick
@@ -818,12 +823,8 @@
     display: block;
     margin: 0;
   }
-  /* The speaker in the top corner flips sound, and shows which it is. */
+  /* The speaker in the top bar flips sound, and shows which it is. */
   .sound {
-    position: absolute;
-    top: 0.75rem;
-    left: 0.75rem;
-    z-index: 2;
     display: grid;
     place-items: center;
     width: var(--size-target);
@@ -1115,12 +1116,9 @@
     .gamelink h2 {
       font-size: 1.25rem;
     }
-    /* Under the top bar (its 48px tabs inside the pill's 0.125rem edge), where the band cannot cover them either. */
+    /* Under the top bar, where the band cannot cover them either. */
     .hints {
-      top: calc(0.75rem + var(--size-target) + 0.25rem + 0.5rem);
-    }
-    .sound {
-      left: max(0.75rem, env(safe-area-inset-left));
+      top: calc(0.75rem + var(--size-target) + 0.5rem);
     }
     /* The round buttons stand in the bar's column, under it, centred on it. */
     .side {

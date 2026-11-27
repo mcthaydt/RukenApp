@@ -1,18 +1,32 @@
 <!--
   The feed's top bar (the owner, 2026-11-22: "search icon on the right; For You | Following in the middle", then on
-  2026-11-27 names of Ruken's own, not TikTok's, and easy to translate): two tabs in one frosted pill in the middle,
-  Fresh (every game, the feed at /) and Followed (games from makers the person follows, at /followed), and Search,
-  a round glass button on the right. The speaker for sound stays in the top left corner (Feed.svelte), so the bar keeps clear of it. The tabs are links, so they work without script, and moving between
-  them slides sideways as the bar's places do (src/lib/page-moves.ts).
+  2026-11-27 names of Ruken's own, not TikTok's, and easy to translate): one row fixed at the top that holds the speaker
+  on the left (given by the feed, Feed.svelte), two tabs in one frosted pill in the middle, Fresh (every game, the feed
+  at /) and Followed (games from makers the person follows, at /followed), and Search, a round glass button on the
+  right. The three share one centre line and never move with the clips under them (the owner, 2026-11-27: "they need
+  to be grouped together as a unit"). The pill is no taller than the round buttons and its tabs are tight, so a third
+  tab fits beside them on a 360px phone. The tabs are links, so they work without script, and moving between them
+  slides sideways as the bar's places do (src/lib/page-moves.ts).
 -->
 <script lang="ts">
+  import type { Snippet } from "svelte";
   import Icon from "../../lib/icon.svelte";
 
-  /** Which tab the person is on. */
-  let { on }: { on: "fresh" | "followed" } = $props();
+  let {
+    on,
+    sound,
+  }: {
+    /** Which tab the person is on. */
+    on: "fresh" | "followed";
+    /** The speaker, where the screen has clips to play; its place stays empty otherwise, so the pill stays centred. */
+    sound?: Snippet | undefined;
+  } = $props();
 </script>
 
 <div class="top">
+  <div class="left">
+    {#if sound}{@render sound()}{/if}
+  </div>
   <nav class="tabs" aria-label="Feeds">
     <a href="/" aria-current={on === "fresh" ? "page" : undefined}>Fresh</a>
     <a href="/followed" aria-current={on === "followed" ? "page" : undefined}>Followed</a>
@@ -21,27 +35,34 @@
 </div>
 
 <style>
+  /* Three columns: the speaker's and Search's are the same width, so the pill sits in the very middle of the window. */
   .top {
     position: fixed;
     top: max(0.75rem, env(safe-area-inset-top));
     right: 0;
     left: 0;
     z-index: 5;
-    display: flex;
-    justify-content: center;
-    padding: 0 0.75rem;
-    /* Only the tabs and Search take a press: a swipe or a press between them reaches the clip underneath. */
+    display: grid;
+    grid-template-columns: var(--size-target) 1fr var(--size-target);
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 max(0.75rem, env(safe-area-inset-right)) 0 max(0.75rem, env(safe-area-inset-left));
+    /* Only the controls take a press: a swipe or a press between them reaches the clip underneath. */
     pointer-events: none;
   }
+  .left {
+    display: grid;
+  }
+  .left > :global(*),
   .tabs,
   .search {
     pointer-events: auto;
   }
   .tabs {
+    justify-self: center;
     display: flex;
-    gap: 0.125rem;
-    padding: 0.125rem;
-    border-radius: calc(var(--radius-button) + 0.125rem);
+    min-width: 0;
+    border-radius: var(--radius-button);
     background: var(--glass-bg);
     -webkit-backdrop-filter: var(--glass-filter);
     backdrop-filter: var(--glass-filter);
@@ -52,9 +73,10 @@
     align-items: center;
     min-height: var(--size-target);
     margin: 0;
-    padding: 0 0.875rem;
+    padding: 0 0.625rem;
     border-radius: var(--radius-button);
     color: var(--chalk);
+    font-size: 0.9375rem;
     font-weight: 600;
     text-decoration: none;
     text-shadow: var(--glass-ink);
@@ -66,9 +88,6 @@
     box-shadow: var(--glass-edge);
   }
   .search {
-    position: absolute;
-    top: 0;
-    right: max(0.75rem, env(safe-area-inset-right));
     display: grid;
     place-items: center;
     width: var(--size-target);
@@ -102,8 +121,8 @@
   }
   /* A phone held sideways: the bar stands along the right edge, so Search sits at the top of that column, centred on it. */
   @media (orientation: landscape) and (max-height: 449px) {
-    .search {
-      right: calc(max(0.75rem, env(safe-area-inset-right)) + 0.625rem);
+    .top {
+      padding-right: calc(max(0.75rem, env(safe-area-inset-right)) + 0.625rem);
     }
   }
 </style>
