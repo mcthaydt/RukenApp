@@ -276,7 +276,7 @@ test("the place the person is on shows the same tinted tile on every bar button,
   const tint = await page.evaluate(() => {
     const probe = document.createElement("div");
     probe.style.background = "var(--glass-lift)";
-    document.body.append(probe);
+    document.body.appendChild(probe);
     const colour = getComputedStyle(probe).backgroundColor;
     probe.remove();
     return colour;
