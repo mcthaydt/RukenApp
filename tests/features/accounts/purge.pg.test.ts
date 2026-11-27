@@ -445,6 +445,74 @@ describe("purgeDueAccounts", () => {
     expect(await db().gameReport.count({ where: { userId: staying.id } })).toBe(1);
   });
 
+  // Your feed (learned feed spec, unit D): a person's chips and Good pick answers go with them, and so does every other
+  // player's chip for them or one of their games.
+  it("removes a person's feed chips and Good pick answers, and others' chips for them, after the 14 days", async () => {
+    const leaving = await seedPerson();
+    const staying = await seedPerson();
+    const theirGame = await seedGame(leaving.id, "live");
+    const otherGame = await seedGame(staying.id, "live");
+    const at = new Date(START);
+    await db().feedTaste.createMany({
+      data: [
+        { userId: leaving.id, direction: "more", kind: "mood", value: "cosy", createdAt: at },
+        { userId: staying.id, direction: "more", kind: "mood", value: "cosy", createdAt: at },
+        {
+          userId: staying.id,
+          direction: "more",
+          kind: "maker",
+          value: leaving.id,
+          makerUserId: leaving.id,
+          createdAt: at,
+        },
+        {
+          userId: staying.id,
+          direction: "less",
+          kind: "game",
+          value: theirGame.id,
+          gameId: theirGame.id,
+          createdAt: at,
+        },
+        {
+          userId: staying.id,
+          direction: "more",
+          kind: "game",
+          value: otherGame.id,
+          gameId: otherGame.id,
+          createdAt: at,
+        },
+      ],
+    });
+    await db().goodPickAsked.createMany({
+      data: [
+        { userId: leaving.id, gameId: otherGame.id, askedAt: at },
+        { userId: staying.id, gameId: otherGame.id, askedAt: at },
+      ],
+    });
+    const clock = await askToBeDeleted(leaving.id);
+
+    clock.advance(13 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
+    expect(await db().feedTaste.count()).toBeGreaterThanOrEqual(5);
+
+    clock.advance(2 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
+    expect(await db().feedTaste.count({ where: { userId: leaving.id } })).toBe(0);
+    expect(await db().goodPickAsked.count({ where: { userId: leaving.id } })).toBe(0);
+    const left = await db().feedTaste.findMany({
+      where: { userId: staying.id },
+      select: { kind: true, value: true },
+    });
+    expect(left).toEqual(
+      expect.arrayContaining([
+        { kind: "mood", value: "cosy" },
+        { kind: "game", value: otherGame.id },
+      ]),
+    );
+    expect(left).toHaveLength(2);
+    expect(await db().goodPickAsked.count({ where: { userId: staying.id } })).toBe(1);
+  });
+
   // Both sides of a follow name an account (maker-credit-and-follow spec): whom the person followed and who followed
   // them both go with the account, after the 14 days, and nobody else's follows are touched.
   it("removes the follows a person made and the follows of them after the 14 days", async () => {
@@ -476,6 +544,43 @@ describe("purgeDueAccounts", () => {
         select: { followerId: true, makerId: true },
       }),
     ).toEqual([{ followerId: fan.id, makerId: maker.id }]);
+  });
+
+  // What a person liked, saved and reposted is theirs (learned-feed spec, unit G), and every mark on a leaving maker's
+  // games goes with the games, for every player.
+  it("removes a person's marks and every mark on their games after the 14 days, and leaves everyone else's", async () => {
+    const leaving = await seedPerson();
+    const staying = await seedPerson();
+    const maker = await seedPerson();
+    const others = await db().game.create({
+      data: { publicId: newPublicId(), slug: "marked-game", makerUserId: maker.id, name: "A game" },
+    });
+    const theirs = await db().game.create({
+      data: { publicId: newPublicId(), slug: "leaving-makers-game", makerUserId: leaving.id, name: "A game" },
+    });
+    for (const kind of ["like", "save", "repost"] as const) {
+      await db().gameMark.create({
+        data: { userId: leaving.id, gameId: others.id, kind, madeAt: new Date(START) },
+      });
+      await db().gameMark.create({
+        data: { userId: staying.id, gameId: others.id, kind, madeAt: new Date(START) },
+      });
+      await db().gameMark.create({
+        data: { userId: staying.id, gameId: theirs.id, kind, madeAt: new Date(START) },
+      });
+    }
+    const clock = await askToBeDeleted(leaving.id);
+
+    clock.advance(13 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
+    expect(await db().gameMark.count({ where: { userId: leaving.id } })).toBe(3);
+    expect(await db().gameMark.count({ where: { gameId: theirs.id } })).toBe(3);
+
+    clock.advance(2 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
+    expect(await db().gameMark.count({ where: { userId: leaving.id } })).toBe(0);
+    expect(await db().gameMark.count({ where: { gameId: theirs.id } })).toBe(0);
+    expect(await db().gameMark.count({ where: { userId: staying.id, gameId: others.id } })).toBe(3);
   });
 
   // The owner's decision (2026-11-21): a maker's games come off Ruken with their account, once the 14 days are over.

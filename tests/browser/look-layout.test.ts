@@ -97,16 +97,32 @@ test.describe("your account", () => {
     closeTo(beside.y + beside.height / 2, numberBox.y + numberBox.height / 2, 2);
     expect(beside.x).toBeGreaterThan(numberBox.x);
     await expect(page.getByText("You're not a member.")).toHaveCount(0);
-    const names = ["Add your games to Ruken", "Change password", "Your computers", "What is Ruken?"];
+    // In reading order, each under the one before it or beside it on its right. On a short window (an iPhone SE, a
+    // laptop) the four after the first sit two to a line, so the account fits with Your feed among them; on a taller
+    // one they stack.
+    const names = [
+      "Add your games to Ruken",
+      "Your feed",
+      "Change password",
+      "Your computers",
+      "What is Ruken?",
+    ];
     let above = bottomOf(await boxOf(page.getByRole("link", { name: "Join Ruken" })));
+    let last: Awaited<ReturnType<typeof boxOf>> | undefined;
+    let lowest = above;
     for (const name of names) {
       const link = page.locator("ul.sidelinks a.go", { hasText: name });
       const box = await boxOf(link);
-      expect(box.height).toBeGreaterThanOrEqual(44);
-      expect(box.y).toBeGreaterThanOrEqual(above);
-      above = bottomOf(box);
+      expect(box.height, name).toBeGreaterThanOrEqual(44);
+      const besideLast = last !== undefined && Math.abs(box.y - last.y) <= 2 && box.x >= last.x + last.width;
+      if (!besideLast) {
+        expect(box.y, name).toBeGreaterThanOrEqual(above);
+        above = bottomOf(box);
+      }
+      lowest = Math.max(lowest, bottomOf(box));
+      last = box;
     }
-    expect((await boxOf(page.getByRole("button", { name: "Sign out" }))).y).toBeGreaterThanOrEqual(above);
+    expect((await boxOf(page.getByRole("button", { name: "Sign out" }))).y).toBeGreaterThanOrEqual(lowest);
   });
 
   // The Owner, 2026-11-14, "All six": two tap targets that overlap are one wrong tap from deleting an account. They sit

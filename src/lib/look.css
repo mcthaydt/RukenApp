@@ -516,6 +516,13 @@ form > * + * {
     margin-top: 0.5rem;
   }
 
+  /* Your account's side links run on in lines, as many to a line as fit, so the account still fits with Your feed
+     among them. */
+  .card:has(.side-by-side) .sidelinks {
+    flex-flow: row wrap;
+    column-gap: 1.5rem;
+  }
+
   .card .ways.side-by-side {
     margin-top: 0;
     column-gap: 0.5rem;
@@ -542,6 +549,22 @@ form > * + * {
 
   .card .side-by-side .quiet {
     padding-inline: 0.25rem;
+  }
+
+  /* Too narrow for two links to share a line by their words alone: the four after the first sit two to a line, a
+     link whose words run to two lines keeping its 48px target. */
+  .card:has(.side-by-side) .sidelinks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 0.75rem;
+  }
+
+  .card:has(.side-by-side) .sidelinks li:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .card:has(.side-by-side) .sidelinks .go {
+    line-height: 1.15;
   }
 }
 
@@ -812,6 +835,13 @@ button,
 .sidelinks .go,
 .ways .go {
   margin-block: 0;
+}
+
+/* Two short side links that belong together on one line (Saved and Your reposts on Your account), with room between. */
+.sidelinks .pair {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.5rem;
 }
 
 /* A stacked list is one block: its 48px lines touch, with no extra air between them. */
@@ -5732,6 +5762,9 @@ html:has(main.about) :is(a, button, summary, label) {
   font-size: 1.25rem;
 }
 
+.consent .why {
+  font-weight: 600;
+}
 .consent p {
   margin: 0.5rem 0 0;
 }
