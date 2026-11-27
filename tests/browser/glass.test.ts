@@ -88,7 +88,7 @@ test("words and pictures on the glass stand out over a white clip", async ({ pag
       page.getByRole("navigation", { name: "Ruken" }).getByRole("link", { name: "You" }).locator("svg"),
     ],
     ["the Share picture", first.locator(".share svg")],
-    ["the sound picture", first.locator(".sound svg")],
+    ["the sound picture", page.getByRole("button", { name: "Sound" }).locator("svg")],
   ];
   for (const [name, thing] of things) {
     await expect(thing, name).toBeVisible();
