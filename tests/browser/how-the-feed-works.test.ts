@@ -28,6 +28,9 @@ test("a person finds how the feed works from help, reads today apart from what's
   await expect(today).toContainText("Everyone sees the same feed.");
   await expect(today).toContainText("A maker playing their own game adds nothing.");
   await expect(today).toContainText("The feed never ends.");
+  await expect(today).toContainText("New games go near the top until enough members have played them");
+  await expect(today).toContainText("more when they come back to it on another day");
+  await expect(today).toContainText("Now and then we slip in a game you might not expect");
   const coming = page.getByRole("region", { name: "Coming soon" });
   await expect(coming).toContainText("Your feed doesn't learn from what you do until a parent says yes.");
   await expect(coming).toContainText('until you press "I agree"');

@@ -1,7 +1,8 @@
 <!--
   How the feed picks games, in plain words, for anyone. It keeps what works today apart from what is coming, so it never
-  promises ahead of the code: "today" is the open ranker, `src/features/feed/public-ranker.ts`, and
-  `memberBeatsByGame` in `src/features/play/sessions.ts`; "coming" is the learned feed (spec 2026-11-22-learned-feed-design.md) in the words the
+  promises ahead of the code: "today" is the private order's crowd feed (standing, a fair first showing, surprises,
+  read from `playDays` in `src/features/play/sessions.ts`), which the open ranker, `src/features/feed/public-ranker.ts`,
+  stands in for when it does not answer; "coming" is the learned feed (spec 2026-11-22-learned-feed-design.md) in the words the
   Owner approved for this page on 2026-11-15. It names rules, never a number the order is tuned with, so the feed can't be
   gamed from it. When the feed changes, this page changes in the same pull request. The real order is
   private (spec 2026-11-22-private-feed-ranking-design.md, section 3): a private ranking change that would make this page
@@ -17,7 +18,7 @@
 <main class="card">
   <p><a class="quiet" href={data.back.href}>{data.back.words}</a></p>
   <h1>How the feed works</h1>
-  <p class="note">Last updated 22 November 2026</p>
+  <p class="note">Last updated 27 November 2026</p>
   <p>
     This is how Ruken picks the games you see. Some of it works today, and the rest is coming soon. We say
     which is which.
@@ -27,10 +28,14 @@
     <h2 id="today">How it works today</h2>
     <ul class="bullets">
       <li>Everyone sees the same feed. It doesn't learn anything about you yet.</li>
-      <li>New games go near the top for their first week, so every new game gets seen.</li>
+      <li>New games go near the top until enough members have played them, so every new game gets seen.</li>
       <li>
-        After that, a game moves up when members play it. The more they have played it lately, the higher it
-        goes.
+        After that, a game moves up when members play it, and more when they come back to it on another day.
+        What they played lately counts most.
+      </li>
+      <li>
+        Now and then we slip in a game you might not expect, so good games that fewer people play still get
+        seen.
       </li>
       <li>
         Only real play counts: the game is on your screen and you're using it. A game left in a hidden tab
