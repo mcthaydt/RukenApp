@@ -1,4 +1,5 @@
 import { systemClock } from "../../lib/clock.ts";
+import { prisma } from "../../lib/server/db.ts";
 import { optionalEnv } from "../../lib/server/env.ts";
 import type { Caller } from "../accounts/accounts.ts";
 import { gamesServices } from "../games/games.ts";
@@ -7,12 +8,15 @@ import { playServices } from "../play/play.ts";
 import { askingFor, readFeedPublic, type Asking, type FeedPublic } from "./feed-public.ts";
 import type { Ranker } from "./ranker.ts";
 import { createFeedService, type FeedService } from "./service.ts";
+import { createTaste, type Taste } from "./taste.ts";
 
 // Everything the feed needs, built once per server process. Routes call feedServices(); tests build their own service
 // with createFeedService.
 
 export interface FeedServices {
   service: FeedService;
+  /** What a person tells the feed: Your feed's chips and switch, More or Less like this, Good pick. */
+  taste: Taste;
   /** Who the ranker is told is asking, from who sent the request and FEED_PUBLIC. */
   askingOf(caller: Caller): Asking;
 }
@@ -29,7 +33,13 @@ export function setPrivateRanker(get: () => Ranker | null): void {
 
 /** The process-wide feed services, created on first use. Each neighbour is asked for only when the feed is read. */
 export function feedServices(): FeedServices {
-  shared ??= {
+  shared ??= buildServices(createTaste({ db: prisma(), clock: systemClock }));
+  return shared;
+}
+
+function buildServices(taste: Taste): FeedServices {
+  return {
+    taste,
     service: createFeedService({
       clock: systemClock,
       liveGames: () => gamesServices().service.liveGames(),
@@ -37,6 +47,7 @@ export function feedServices(): FeedServices {
       makersOf: (userIds) => pagesServices().service.makersOf(userIds),
       media: (key) => gamesServices().media(key),
       privateRanker: () => bound(),
+      asking: (userId, gameId) => taste.asking(userId, gameId),
     }),
     askingOf: (caller) => {
       settings ??= readFeedPublic(optionalEnv("FEED_PUBLIC"), (line) => {
@@ -49,8 +60,8 @@ export function feedServices(): FeedServices {
         consented: false,
         adult: false,
         parentSaidYes: false,
+        learnFromMe: true,
       });
     },
   };
-  return shared;
 }

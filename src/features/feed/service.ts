@@ -42,6 +42,11 @@ export interface FeedServiceDeps {
   privateRanker?: () => Ranker | null;
   /** The open ranker; left out, the feed's own (public-ranker.ts). */
   openRanker?: Ranker;
+  /**
+   * Notes that a person is being asked "Good pick?" about a game; false when they were asked before, and the card is
+   * then left out. Left out, nobody is asked.
+   */
+  asking?: (userId: string, gameId: string) => Promise<boolean>;
   /** Where a line goes when the private ranker did not answer; left out, the Worker's log. */
   log?: (line: string) => void;
 }
@@ -61,14 +66,15 @@ export interface FeedClip {
 }
 
 /**
- * A page of the feed, and the address of the one after it (null only when no game is live). `caughtUpAt` and `ask` are
- * there only when the ranker gave them.
+ * A page of the feed, and the address of the one after it (null only when no game is live). `caughtUpAt` is there only
+ * when the ranker gave it. `ask` is the Good pick card: shown on the clip `key`, about the game `slug`; only a person the
+ * feed learns from is asked, and only once about a game.
  */
 export interface FeedPage {
   clips: FeedClip[];
   next: string | null;
   caughtUpAt?: number;
-  ask?: { index: number; gameId: string };
+  ask?: { key: string; slug: string; name: string };
 }
 
 /** Why the private ranker's answer was not used. Never the viewer or anything they did. */
@@ -197,7 +203,15 @@ export function createFeedService(deps: FeedServiceDeps) {
       }),
     };
     if (ranked.caughtUpAt !== null) result.caughtUpAt = ranked.caughtUpAt;
-    if (ranked.ask !== null && byId.has(ranked.ask.gameId)) result.ask = ranked.ask;
+    const ask = ranked.ask;
+    if (ask !== null && asking.kind === "full" && deps.asking !== undefined) {
+      const asked = byId.get(ask.gameId);
+      const at = ranked.items[ask.index]?.key;
+      if (asked !== undefined && at !== undefined && shown.some((one) => one.key === at)) {
+        if (await deps.asking(asking.id, asked.id))
+          result.ask = { key: at, slug: asked.slug, name: asked.name };
+      }
+    }
     return result;
   }
 

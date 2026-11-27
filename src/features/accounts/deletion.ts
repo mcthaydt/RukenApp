@@ -177,6 +177,12 @@ async function purgeOne(deps: PurgeDeps, id: string, userId: string, now: Date):
     await tx.wishlist.deleteMany({ where: { userId } });
     // What the person told Ruken about games is theirs too.
     await tx.gameReport.deleteMany({ where: { userId } });
+    // What the person told the feed is theirs, and so is everyone's chip for them or their games: a maker who has left
+    // is no one to see more or less of. The rows are deleted here because the account's row stays, so no cascade runs.
+    await tx.feedTaste.deleteMany({
+      where: { OR: [{ userId }, { makerUserId: userId }, { game: { makerUserId: userId } }] },
+    });
+    await tx.goodPickAsked.deleteMany({ where: { userId } });
     // The person's page, and its links with it, so the address is free for someone else. It stays up for the 14
     // days of the wait, and goes only here.
     await tx.makerPage.deleteMany({ where: { userId } });
