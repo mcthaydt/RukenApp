@@ -89,6 +89,31 @@ test("the feed keeps its glass over the clips", async ({ page }) => {
   expect(blur).toMatch(/blur\(/);
 });
 
+test("moving between the feed and a plain page inside the app turns the glass off and on again", async ({
+  page,
+}) => {
+  await signInAs(page, game.maker.number, game.maker.password);
+  await page.goto("/");
+  await expect(page.locator("section[data-slug]").first()).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-glass", "");
+  await bar(page).getByRole("link", { name: "Add a game", exact: true }).click();
+  await expect(page).toHaveURL("/make");
+  await expect(page.locator("html")).not.toHaveAttribute("data-glass");
+  expect(await glassOnThePage(page)).toEqual([]);
+  await bar(page).getByRole("link", { name: "Home" }).click();
+  await expect(page).toHaveURL("/");
+  await expect(page.locator("html")).toHaveAttribute("data-glass", "");
+  await expect
+    .poll(() =>
+      bar(page).evaluate(
+        (element) =>
+          getComputedStyle(element).backdropFilter ||
+          getComputedStyle(element).getPropertyValue("-webkit-backdrop-filter"),
+      ),
+    )
+    .toMatch(/blur\(/);
+});
+
 test.describe("before anyone has said yes to cookies", () => {
   test.use({ storageState: NOT_CONSENTED });
 
