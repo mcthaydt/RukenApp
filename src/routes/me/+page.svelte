@@ -46,6 +46,7 @@
        links). -->
   <ul class="sidelinks apart">
     <li><a class="go" href="/make">{data.makesGames ? "Your games" : "Add your games to Ruken"}</a></li>
+    <li><a class="go" href="/settings/feed">Your feed</a></li>
     <li><a class="go" href="/me/password">Change password</a></li>
     <li><a class="go" href="/me/computers">Your computers</a></li>
     <li><a class="go" href="/about">What is Ruken?</a></li>

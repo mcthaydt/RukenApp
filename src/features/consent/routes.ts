@@ -50,7 +50,11 @@ export const GATED: readonly string[] = [
   "/g/[game]/wishlist",
   "/api/auth",
   "/me",
+  "/settings",
   "/make",
+  // More like this, Less like this and Good pick, from a clip: kept about a signed-in person only.
+  "/api/feed/taste",
+  "/api/feed/good-pick",
 ];
 
 export type RouteKind = "open" | "machine" | "gated";

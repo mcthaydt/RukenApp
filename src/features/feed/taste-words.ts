@@ -43,8 +43,7 @@ export const isGenre = (value: string): value is Genre => Object.hasOwn(GENRES, 
 export function tasteSentence(more: readonly string[]): string {
   const words = more
     .filter((key) => key !== "other")
-    .map((key) => (isMood(key) ? MOODS[key] : isGenre(key) ? GENRES[key] : null))
-    .filter((word): word is string => word !== null)
+    .flatMap((key): string[] => (isMood(key) ? [MOODS[key]] : isGenre(key) ? [GENRES[key]] : []))
     .slice(0, 3)
     .map((word) => word.toLowerCase());
   if (words.length === 0) return "Play a few games and we'll learn what you like.";
