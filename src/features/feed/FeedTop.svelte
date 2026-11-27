@@ -54,19 +54,17 @@
   $effect(() => {
     let frame = 0;
     // A button already down when this tab opens (the press that brought the person here) waits to be let go first.
-    let held: Set<number> | null = null;
-    function pressed(): { pads: number; down: Set<number> } {
+    let held: readonly number[] | null = null;
+    function pressed(): { pads: number; down: number[] } {
       const pads = navigator.getGamepads().filter((pad) => pad !== null);
-      const down = new Set<number>();
-      for (const pad of pads)
-        for (const button of [LB, RB]) if (pad.buttons[button]?.pressed === true) down.add(button);
+      const down = [LB, RB].filter((button) => pads.some((pad) => pad.buttons[button]?.pressed === true));
       return { pads: pads.length, down };
     }
     function read(): void {
       const { pads, down } = pressed();
       if (held !== null && document.hasFocus()) {
-        if (down.has(LB) && !held.has(LB)) stepTab(-1);
-        else if (down.has(RB) && !held.has(RB)) stepTab(1);
+        if (down.includes(LB) && !held.includes(LB)) stepTab(-1);
+        else if (down.includes(RB) && !held.includes(RB)) stepTab(1);
       }
       held = down;
       frame = pads > 0 ? requestAnimationFrame(read) : 0;

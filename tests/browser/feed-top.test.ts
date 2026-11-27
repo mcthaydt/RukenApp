@@ -145,11 +145,16 @@ async function swipe(page: Page, from: [number, number], to: [number, number]): 
     ([x0, y0, x1, y1]) => {
       if (typeof Touch === "undefined") return false;
       const target = document.elementFromPoint(x0, y0) ?? document.body;
-      const finger = (clientX: number, clientY: number) => new Touch({ identifier: 1, target, clientX, clientY });
+      const finger = (clientX: number, clientY: number) =>
+        new Touch({ identifier: 1, target, clientX, clientY });
       const begun = finger(x0, y0);
-      target.dispatchEvent(new TouchEvent("touchstart", { touches: [begun], changedTouches: [begun], bubbles: true }));
+      target.dispatchEvent(
+        new TouchEvent("touchstart", { touches: [begun], changedTouches: [begun], bubbles: true }),
+      );
       const ended = finger(x1, y1);
-      target.dispatchEvent(new TouchEvent("touchend", { touches: [], changedTouches: [ended], bubbles: true }));
+      target.dispatchEvent(
+        new TouchEvent("touchend", { touches: [], changedTouches: [ended], bubbles: true }),
+      );
       return true;
     },
     [...from, ...to] as [number, number, number, number],
@@ -157,7 +162,9 @@ async function swipe(page: Page, from: [number, number], to: [number, number]): 
 }
 
 // The owner, 2026-11-27: "Swiping left and right should go between fresh, followed, and your turn".
-test("swiping sideways goes between Fresh and Followed, and a swipe up and down never does", async ({ page }) => {
+test("swiping sideways goes between Fresh and Followed, and a swipe up and down never does", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
   const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
@@ -185,7 +192,14 @@ test("a gamepad's shoulder buttons go between Fresh and Followed", async ({ page
   // One standard gamepad, its buttons set by the journey (no browser lets a test plug a real one in).
   await page.addInitScript(() => {
     const buttons = Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 }));
-    const pad = { id: "journey pad", index: 0, connected: true, mapping: "standard", axes: [0, 0, 0, 0], buttons };
+    const pad = {
+      id: "journey pad",
+      index: 0,
+      connected: true,
+      mapping: "standard",
+      axes: [0, 0, 0, 0],
+      buttons,
+    };
     Object.assign(window, { journeyPad: pad });
     navigator.getGamepads = () => [pad as unknown as Gamepad];
   });
