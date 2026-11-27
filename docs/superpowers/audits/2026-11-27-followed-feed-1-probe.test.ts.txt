@@ -1,0 +1,110 @@
+import { expect, test, type Page } from "@playwright/test";
+import { pageHasSettled, signUp } from "./support/account.ts";
+import { changeGame, givePage } from "./support/database.ts";
+import { addGame } from "./support/game.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+import { asInstalled } from "./support/installed.ts";
+
+// Reviewer's probe for #410 at 90c40a5 (not part of the PR).
+test.beforeEach(({ page }) => asInstalled(page));
+test.beforeEach(forgetRateLimits);
+
+let game: Awaited<ReturnType<typeof addGame>>;
+const WORD = `zq${crypto.randomUUID().replaceAll("-", "").slice(0, 8)}`;
+
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(240_000);
+  await forgetRateLimits();
+  game = await addGame(browser, request);
+  await changeGame(game.slug, { name: `Probe ${WORD}` });
+  await givePage(game.maker, { name: `Owl ${WORD}`, oneLine: "I make games." });
+});
+
+const badge = (page: Page) =>
+  page.locator(`section[data-slug="${game.slug}"]`).first().getByRole("button", { name: `Follow Owl ${WORD}` });
+
+async function follow(page: Page): Promise<void> {
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await page.locator(`section[data-slug="${game.slug}"]`).first().scrollIntoViewIfNeeded();
+  await badge(page).click();
+  await expect(badge(page)).toHaveAttribute("aria-pressed", "true");
+}
+
+async function pageScroll(page: Page) {
+  return page.evaluate(() => ({
+    scroll: document.scrollingElement?.scrollHeight ?? 0,
+    inner: window.innerHeight,
+    wide: document.scrollingElement?.scrollWidth ?? 0,
+    innerW: window.innerWidth,
+  }));
+}
+
+test("probe: the game page's back arrow from Followed", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signUp(page);
+  await follow(page);
+  await page.goto("/followed");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const s = await pageScroll(page);
+  console.log(`PROBE scroll with games ${JSON.stringify(s)}`);
+  await page.locator("section[data-slug] a.gamelink").first().click();
+  await expect(page).toHaveURL(new RegExp(`/g/${game.slug}$`));
+  await pageHasSettled(page);
+  await page.waitForTimeout(1500);
+  await page.getByRole("link", { name: "Back to the feed" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/g/"), { timeout: 15_000 }).catch(() => {});
+  await page.waitForTimeout(1000);
+  console.log(`PROBE back arrow href ${await page.getByRole("link", { name: "Back to the feed" }).getAttribute("href").catch(() => "gone")}`);
+  console.log(`PROBE back arrow landed on ${new URL(page.url()).pathname}`);
+});
+
+test("probe: keyboard on Followed, empty-state sizes and page scroll", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signUp(page);
+  await page.goto("/followed");
+  await expect(page.getByText("You don't follow anyone yet.")).toBeVisible();
+  const button = page.getByRole("link", { name: "See every game" });
+  const box = await button.boundingBox();
+  console.log(`PROBE empty See every game ${JSON.stringify(box)} scroll ${JSON.stringify(await pageScroll(page))}`);
+  await follow(page);
+  await page.goto("/followed");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const reached: string[] = [];
+  for (let i = 0; i < 14; i++) {
+    await page.keyboard.press("Tab");
+    reached.push(
+      await page.evaluate(() => {
+        const el = document.activeElement as HTMLElement | null;
+        if (!el) return "none";
+        const r = el.getBoundingClientRect();
+        return `${el.tagName}:${el.getAttribute("aria-label") ?? el.textContent?.trim().slice(0, 20)}:${Math.round(r.width)}x${Math.round(r.height)}`;
+      }),
+    );
+  }
+  console.log(`PROBE tab order ${reached.join(" | ")}`);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.waitForTimeout(800);
+  console.log(
+    `PROBE after ArrowDown x2: sections=${await page.locator("section[data-slug]").count()} spinner=${await page.getByRole("progressbar").count()} url=${new URL(page.url()).pathname}`,
+  );
+});
+
+test("probe: unfollow on Followed without script", async ({ browser, page }) => {
+  test.setTimeout(120_000);
+  await signUp(page);
+  await follow(page);
+  const state = await page.context().storageState();
+  const plain = await browser.newContext({ storageState: state, javaScriptEnabled: false, baseURL: "http://localhost:4173" });
+  try {
+    const p = await plain.newPage();
+    await p.goto("/followed");
+    await p.getByRole("button", { name: `Follow Owl ${WORD}` }).first().click();
+    await p.waitForLoadState("load");
+    console.log(`PROBE no-script unfollow landed on ${new URL(p.url()).pathname}`);
+  } finally {
+    await plain.close();
+  }
+});
