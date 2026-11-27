@@ -14,9 +14,9 @@ help-page scrollbar test [phone] and a cookie test [tablet].
 ## 2. Outcome
 
 On a push to `main`, a browser journey that fails is tried up to 2 more times. A journey that passes on a later try
-counts as passed, so CI goes green and the deploy runs; it is listed as flaky in the run's summary, with a line ready
-to paste under "Flaky tests" in `progress.md`. A journey that fails all 3 tries fails CI as today, and nothing deploys.
-Pull request runs (draft and full) and sessions keep the strict rule: no retries.
+counts as passed, so CI goes green and the deploy runs; it is listed as flaky in the run's summary. A journey that
+fails all 3 tries fails CI as today, and nothing deploys. Pull request runs (draft and full) and sessions keep the
+strict rule: no retries.
 
 Lint, typecheck, unit tests, the Postgres tests, the pieces-ran-every-journey check and `pr-rules` stay as they are.
 `deploy.yml` does not change: it deploys only a green CI run on `main`, then runs the live check (which `/healthz/feed`
@@ -24,33 +24,50 @@ joins when #411 merges, with no change here).
 
 ## 3. Lane
 
-Lane 3: `.github/workflows/ci.yml`, the rule hooks (`.claude/hooks/`), and the shared `build` and `release` skills and
-`CLAUDE.md` Settings, which decide what passes. Plan audit and implementation audit, green CI, and the owner's approval
-to merge (the card above approves the direction; the merge still needs the owner's word or a standing permission).
+Lane 3: the rule hooks (`.claude/hooks/`), `.github/workflows/ci.yml`, `CLAUDE.md` and the shared `build` and
+`release` skills, which decide what passes. Each lane 3 pull request below gets this plan audit, an implementation
+audit, green CI, and the owner's word to merge (the 07:18 UTC card approves the direction, not the merges).
 
 ## 4. Design
 
-1. **The setting lives in Settings.** `CLAUDE.md` Settings gains: "Retries on main: 2, for the browser journeys on a
-   push to `main` only." `ci.yml` uses that number; a unit test fails when the two differ.
-2. **ci.yml.** "Run the journeys" passes `--retries=${{ github.event_name == 'push' && 2 || 0 }}`. Nothing else in the
-   pieces changes: Playwright's run passes when every test passed or was flaky (Playwright 1.63
-   `lib/runner/index.js`, `result()`: failed only on failed tests, worker errors, max failures, or `failOnFlakyTests`,
-   which stays off). Drafts' `--max-failures=1` is a draft-only argument, so it never meets a retry.
+1. **The number lives in Settings.** `CLAUDE.md` Settings gains: "Retries on main: 2, for the browser journeys on a
+   push to `main` only. Pull request runs and sessions: 0." `ci.yml` and the hook's allowed line carry the same number;
+   the sync test (pull request C) reads all three and fails when they differ.
+2. **ci.yml.** "Run the journeys" passes exactly
+   `--retries=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 2 || 0 }}`. The `github.ref` term
+   keeps it to `main` even if `on.push.branches` is widened later. Nothing else in the pieces changes: Playwright's run
+   passes when every test passed or was flaky (Playwright 1.63 `lib/runner/index.js:6287-6290`, `result()`: failed
+   only on a failed test, worker errors, max failures, or `failOnFlakyTests`, which stays off). Drafts'
+   `--max-failures=1` is added only when `CHANGED_ONLY` is true, which a push never is.
 3. **The report.** A new script, `.github/scripts/flaky-tests.js <report.json>...`, reads Playwright JSON reports and
    prints a Markdown section listing each test whose status is `flaky`: device, `file:line`, title, and the try it
-   passed on. With none it prints that no test needed a retry. It never fails for flakes; it fails only on an
-   unreadable report. On a push run the `gate` job downloads the pieces' `ran-*` artifacts (they already hold each
-   piece's `report.json`), runs the script into `$GITHUB_STEP_SUMMARY`, and prints one `::warning::` per flaky test, so
-   it shows on the run's page. The step runs with `always()` and reports; it never decides the gate. Sessions copy the
-   lines into `progress.md` "Flaky tests"; CI cannot write to `main`.
-4. **The hook.** `bypassFlags` keeps refusing retries on the command line and in config files, with one exception named
-   in `rules.json`: `bypassFlags.allowedLines`, a list of `{ file, line }` pairs whose exact added line may pass. Its one
-   entry is the ci.yml line above. The hook also closes a gap found here: a `--retries=` value that is not a plain
-   number (an expression such as `${{ ... }}`) was not caught; now any non-`0` value is refused unless allowed.
-5. **The rules text.** `build` (Quick and steady) and `release` (Never hide a failure) say: main's browser journeys
-   retry a failed test up to the number in Settings so a flake does not hold the deploy; a pass on a retry is still a
+   passed on (the count of its results), and one `::warning::` line per flaky test. With none it prints "No test
+   needed a retry." It exits 0 whatever the tests did; it exits 1 when a report is missing, unreadable, or not a
+   Playwright JSON report (no `suites` array), or when no report is given.
+   In `gate`, a new last step "List the tests that passed only on a retry" runs with
+   `if: always() && github.event_name == 'push'`. It downloads on its own (the `ran-*` artifacts into its own folder,
+   `flaky-reports`), since the existing download sits in a step that is skipped once an earlier step fails. It passes
+   the six `flaky-reports/ran-*/playwright-json/report.json` files to the script, appends the Markdown to
+   `$GITHUB_STEP_SUMMARY`, and prints the warnings. **The rule:** a flaky test never fails the gate; a missing or
+   unreadable report on a push run does, since otherwise a flaky pass could deploy unlisted. Fewer than 6 reports also
+   fails it. The other gate steps ("Every check passed", "The pieces ran every journey exactly once") are unchanged.
+4. **The hook.** Two changes in `checkBypassFlags` and `checkFileWrite` (`.claude/hooks/rules.mjs`):
+   - Command line: for a test runner, any `--retries`/`--retry` value other than a plain `0` is refused, so
+     `--retries=$N`, `--retries ${R}` and `--retries=2` are all refused and `--retries=0` passes. Today only numbers
+     over 0 are refused.
+   - File writes: any added `--retries`/`--retry` value other than a plain `0` is refused in a config file (today an
+     expression such as `${{ ... }}` passes), with one exception: `rules.json` `bypassFlags.allowedLines`, a list of
+     `{ "file", "line" }`. An added line is let through only when its repo-relative path equals `file` exactly and the
+     whole line, trimmed, equals `line` exactly. The exception lifts only the retries refusal (a `passWithNoTests` on
+     the same line is still refused). The list holds exactly one entry: `.github/workflows/ci.yml` and the trimmed
+     `run:` line of 4.2.
+5. **The rules text.** `CLAUDE.md` Verification, `build` (Quick and steady) and `release` (Never hide a failure) say
+   the same thing, and each keeps "one rerun to diagnose" and "a pass on retry is a defect": main's browser journeys
+   retry a failed test up to the number in Settings, so a flake does not hold the deploy; a pass on a retry is still a
    defect, recorded under "Flaky tests" and fixed at its cause in its own thread; pull request runs and sessions never
-   retry.
+   retry. `release` also names who logs them: **the session that merges** reads the gate summary of `main`'s run after
+   its merge (it already watches that run), records each flaky line under "Flaky tests" in `progress.md` in its next
+   pull request, and reports them to the coordinator.
 6. **progress.md.** The owner's two instructions above go under "The owner's instructions".
 
 Test times: `TEST_TIMES` sums every result, so a flaky test's retries add to its file's time on that run. That only
@@ -58,36 +75,60 @@ nudges the next split; left as it is.
 
 ## 5. Acceptance criteria
 
-- C1. `ci.yml` "Run the journeys" carries exactly `--retries=${{ github.event_name == 'push' && N || 0 }}` with N the
-  Settings number, and no other job or step passes a retry (unit test reading `ci.yml` and `CLAUDE.md`).
-- C2. A pull request run passes 0 retries: the expression gives 0 for `pull_request` events (same test).
-- C3. `flaky-tests.js` lists every `flaky` test in one or more reports with device, `file:line`, title and passing try;
-  lists no `expected`, `unexpected` or `skipped` test; says so when there are none; exits 0 for flakes and non-zero on
-  an unreadable report (unit tests with built reports).
-- C4. The `gate` job, on push runs only, runs the script with `always()`, writes to the job summary and a warning per
-  flaky test, and the gate's pass/fail still comes from "Every check passed" alone (unit test reading `ci.yml`).
-- C5. `deploy.yml` is unchanged (`git diff` shows nothing; the existing `deploy-workflow.test.ts` passes).
-- C6. The hook: refuses `playwright test --retries=2` on the command line; refuses a write adding `retries: 2` to
-  `playwright.config.ts`; refuses a write adding `--retries=${{ x }}` or `--retries=3` to a workflow; allows the write
-  adding exactly the C1 line to `ci.yml`, and only to `ci.yml` (unit tests running the real hook on a scratch copy).
-- C7. `build` and `release` carry the new rule text; `CLAUDE.md` Settings has the number.
-- C8. Lint, typecheck, unit tests and the full CI run are green on the pull request.
-- C9. After merge, the first push run on `main` shows the summary section (with "no test needed a retry" or a list).
-  This can only be checked after the merge; it is reported then.
+Pull request A (hook and script):
+
+- A1. `flaky-tests.js` lists every `flaky` test across one or more reports with device, `file:line`, title and passing
+  try, with one `::warning::` each; lists no `expected`, `unexpected` or `skipped` test; prints "No test needed a
+  retry." when there are none; exits 0 with flaky and failed tests; exits 1 on a missing file, bad JSON, a JSON without
+  `suites`, or no arguments (`tests/flaky-tests.test.ts`, built reports).
+- A2. The hook on the command line refuses `pnpm exec playwright test --retries=2`, `pnpm test:browser --retries=$N`
+  and `pnpm exec playwright test --retries ${R}`, and allows `pnpm exec playwright test --retries=0`
+  (`tests/rules-bypass-flags.test.ts`, the real hook on a scratch copy).
+- A3. The hook on file writes refuses: `retries: 2` added to `playwright.config.ts`; `--retries=3` and
+  `--retries=${{ vars.R }}` added to a workflow; the allowed line with extra text after it; the allowed line in its
+  space form (`--retries ${{ ... }}`); the allowed line in `.github/workflows/deploy.yml`. It allows the allowed line,
+  indented, added to `.github/workflows/ci.yml` (same test).
+- A4. `rules.json` `bypassFlags.allowedLines` has exactly one entry, with that file and that line (same test).
+
+Pull request B (the rule, after A merges):
+
+- B1. `ci.yml` "Run the journeys" carries the 4.2 line; the gate's new step is as 4.3 says; no other step passes a
+  retry. `deploy.yml` is unchanged (`git diff main -- .github/workflows/deploy.yml` is empty; `deploy-workflow.test.ts`
+  passes).
+- B2. `CLAUDE.md` Settings and Verification, `build` and `release` carry the 4.1 and 4.5 text; `progress.md` has the
+  owner's words.
+- B3. The full CI run is green on the pull request (pull request runs give 0 retries, so this also shows the strict
+  path is unchanged). Its implementation audit checks B1 and B2 by reading, since pull request C's test lands after it.
+
+Pull request C (the sync test, after B merges):
+
+- C1. `tests/ci-retries.test.ts`: the `ci.yml` line equals the `allowedLines` entry; its number equals the Settings
+  number; the expression holds both `github.event_name == 'push'` and `github.ref == 'refs/heads/main'` and ends in
+  `|| 0`; `on` has only `pull_request` and `push`, and `on.push.branches` is exactly `[main]`; no other step in any
+  workflow passes `--retries` or `--retry`.
+- C2. The gate step runs with `always()` and `github.event_name == 'push'`, downloads into its own folder, passes the
+  reports to `flaky-tests.js` and appends to `$GITHUB_STEP_SUMMARY` (same test).
+- C3. After B merges, the first push run on `main` shows the summary section ("No test needed a retry." or a list).
+  Reported by the session that merges B.
+
+Every pull request: lint, typecheck and unit tests green, and the full CI run green.
 
 ## 6. Plan
 
-| Unit | Files | Check |
-|---|---|---|
-| 1. Hook allowance and gap | `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `tests/rules-bypass-flags.test.ts` | C6 |
-| 2. Report script | `.github/scripts/flaky-tests.js`, `tests/flaky-tests.test.ts` | C3 |
-| 3. CI | `.github/workflows/ci.yml`, `tests/ci-retries.test.ts` | C1, C2, C4, C5 |
-| 4. Rules text | `CLAUDE.md`, `.claude/skills/build/SKILL.md`, `.claude/skills/release/SKILL.md` | C7 |
-| 5. Records | `docs/superpowers/progress.md` | owner's words recorded |
+The `ruleMix` hook refuses a branch that mixes rules files (`ci.yml`, `CLAUDE.md`, the shared skills) with tests or
+scripts, so the work is three pull requests, in order. Each starts from a `main` that holds the one before it.
 
-In order, one branch, one pull request. Unit 1 comes first, since the hook refuses unit 3's line until it is allowed.
+| PR | Files | Lane | Checks | Waits on |
+|---|---|---|---|---|
+| A. Hook and report script | this spec, `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.github/scripts/flaky-tests.js`, `tests/rules-bypass-flags.test.ts`, `tests/flaky-tests.test.ts` | 3 (hooks) | A1 to A4; implementation audit; owner's word | this plan audit |
+| B. The rule | `.github/workflows/ci.yml`, `CLAUDE.md`, `.claude/skills/build/SKILL.md`, `.claude/skills/release/SKILL.md`, `docs/superpowers/progress.md` | 3 (CI, rules) | B1 to B3; implementation audit; owner's word | A on `main` (its hook lets the `ci.yml` line through; its script is what the step runs) |
+| C. The sync test | `tests/ci-retries.test.ts` | 1 (a test) | C1, C2 green; C3 after | B on `main` (the test reads B's files) |
 
-Boundaries: no new dependency, tool, environment or spend. Expected duration: about 2 hours of work, plus the audits.
+PR A is this pull request (#415); the spec rides with it. Between A and B, `main` has a hook that allows a line no
+workflow carries yet and a script nothing runs; both are harmless.
+
+Boundaries: no new dependency, tool, environment or spend. Expected duration: about 3 hours of work in all (A about
+1.5, B about 1, C about 0.5), plus two implementation audits and the owner's two merge words.
 
 ## 7. Open decisions
 
