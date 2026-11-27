@@ -120,6 +120,12 @@
      only through these tokens, never as a colour with see-through of its own (tests/lib/glass.test.ts). */
   --glass-bg: rgb(17 19 20 / 0.04);
   --glass-filter: blur(28px) saturate(1.8) brightness(0.94);
+  /* The panels that rise over a screen (Share, •••, Report) are a darker, more blurred glass (the owner, 2026-11-27
+     19:22 UTC, after seeing Share over a clip: "the glass panel needs to be darker and more blurred"): twice the blur,
+     so the clip behind is colour and no shapes, and about two fifths darker over a white clip, where the rest of the
+     glass is about a tenth. `dialog.rises` (below) points the glass tokens at this pair. */
+  --glass-panel-bg: rgb(17 19 20 / 0.35);
+  --glass-panel-filter: blur(56px) saturate(1.6) brightness(0.75);
   --glass-edge:
     inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 -1px 0 rgb(255 255 255 / 0.08),
     inset 2px 0 0 rgb(255 64 96 / 0.4), inset -2px 0 0 rgb(64 200 255 / 0.4),
@@ -144,6 +150,8 @@
   :root {
     --glass-bg: var(--felt-deep);
     --glass-filter: none;
+    --glass-panel-bg: var(--felt-deep);
+    --glass-panel-filter: none;
     --glass-edge: none;
     --glass-ink: none;
     --glass-icon: none;
@@ -158,6 +166,8 @@
   :root {
     --glass-bg: var(--felt-deep);
     --glass-filter: none;
+    --glass-panel-bg: var(--felt-deep);
+    --glass-panel-filter: none;
     --glass-edge: none;
     --glass-ink: none;
     --glass-icon: none;
@@ -179,6 +189,8 @@
 :root:not([data-glass]) {
   --glass-bg: var(--felt-deep);
   --glass-filter: none;
+  --glass-panel-bg: var(--felt-deep);
+  --glass-panel-filter: none;
   --glass-edge: 0 0 transparent;
   --glass-ink: none;
   --glass-icon: none;
@@ -5971,6 +5983,12 @@ body:focus {
    mirror so a press is seen to move it at once. On an upright phone the panel sits on the bottom edge and comes up from, and goes back down
    past, it; elsewhere it sits in the middle and moves a little. The easing is the app's own, written out too, since the
    feed is not inside the `.screen` that sets it. */
+/* A rising panel is the darker, more blurred panel glass. Each panel reads the ordinary glass tokens; here they point
+   at the panel's pair, which the fallbacks above make solid like the rest. */
+dialog.rises {
+  --glass-bg: var(--glass-panel-bg);
+  --glass-filter: var(--glass-panel-filter);
+}
 dialog.rises[open] {
   animation: sheet-in 320ms var(--ease, cubic-bezier(0.32, 0.72, 0, 1)) backwards;
 }
