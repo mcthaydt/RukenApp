@@ -105,4 +105,4 @@ Later. New wants with no design yet. Nothing here is built until the owner says 
 
 ## Not yet placed: found while building
 
-- WebKit: the new picture of a named view transition group other than root and the clip never draws (the bar of places pops in on phone, both directions, between the feed and a game page). Confirm on a real iPhone first, since it may be an artifact of Playwright's WebKit. Findings: `progress.md`, Known issues (#399).
+- WebKit: the new picture of a named view transition group other than root and the clip never draws (on phone the bar of places shows at about half strength for most of a move between the feed and a game page, in both directions, then pops in at the end). Confirm on a real iPhone first, since it may be an artifact of Playwright's WebKit. Findings: `progress.md`, Known issues (#399).
