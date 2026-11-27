@@ -34,4 +34,17 @@
   // plays (src/features/games/stills.ts). It has no local copy: `wrangler dev --local` gives a binding whose every call
   // throws ("needs to be run remotely"), so `wrangler dev` and the journeys run without stills, as a copy of the app does.
   "media": { "binding": "MEDIA" },
+  // The deploy, and only the deploy (`pnpm run deploy` names it): the same Worker, plus PRIVATE, the private Worker
+  // `ruken-private` (built from the private repo), which puts the feed in order over Workers RPC. `wrangler dev` and the
+  // journeys read the top level and never see it, so a copy of the app runs on its own open order. Wrangler does not pass
+  // bindings down to an environment, so each one above is repeated here, and `name` keeps the Worker the same one.
+  "env": {
+    "production": {
+      "name": "ruken",
+      "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "eb64483c638e4f5eab2ce9dd1b7ea081" }],
+      "r2_buckets": [{ "binding": "GAME_FILES", "bucket_name": "ruken-games" }],
+      "media": { "binding": "MEDIA" },
+      "services": [{ "binding": "PRIVATE", "service": "ruken-private" }],
+    },
+  },
 }
