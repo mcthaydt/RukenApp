@@ -1,5 +1,0 @@
-- Task: smooth the clip's cropping in the feed to game move (owner 2026-11-27 01:35 UTC).
-- Last commit: 82c09f0f
-- Next step: open the draft PR, hand to review.
-- Open decisions: none.
-- Updated: 2026-11-27 01:59 UTC
