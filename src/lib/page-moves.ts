@@ -43,10 +43,15 @@ export function moveBetween(from: string, to: string, wentBack: boolean): Move |
 // for one move both are given the same view transition name, so the browser moves one into the other.
 const GAME_PAGE = /^\/g\/([^/]+)$/;
 
+/** Whether an address is one of the feed's tabs: every game (Fresh, `/`) or the makers a person follows (`/followed`). */
+export function isFeed(path: string): boolean {
+  return path === "/" || path === "/followed";
+}
+
 /** The game whose clip moves on a move between the feed and that game's page, or null for any other move. */
 export function grownGame(from: string, to: string): string | null {
-  if (from === "/") return GAME_PAGE.exec(to)?.[1] ?? null;
-  if (to === "/") return GAME_PAGE.exec(from)?.[1] ?? null;
+  if (isFeed(from)) return GAME_PAGE.exec(to)?.[1] ?? null;
+  if (isFeed(to)) return GAME_PAGE.exec(from)?.[1] ?? null;
   return null;
 }
 
@@ -85,10 +90,10 @@ let feedDepth = 0;
  */
 export function noteMove(game: string | null, to: string, steps = 1): void {
   depth += steps;
-  if (game !== null && to !== "/") {
+  if (game !== null && !isFeed(to)) {
     openedFromFeed = game;
     feedDepth = depth - steps;
-  } else if (to === "/") openedFromFeed = null;
+  } else if (isFeed(to)) openedFromFeed = null;
 }
 
 /**

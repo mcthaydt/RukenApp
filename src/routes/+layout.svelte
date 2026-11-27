@@ -14,7 +14,15 @@
   import { Notice } from "../features/consent/consent.screens.ts";
   import { Bar } from "../features/feed/feed.browser.ts";
   import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
-  import { clipMoves, grownGame, heldMove, moveBetween, noteMove, slideWhile } from "../lib/page-moves.ts";
+  import {
+    clipMoves,
+    grownGame,
+    heldMove,
+    isFeed,
+    moveBetween,
+    noteMove,
+    slideWhile,
+  } from "../lib/page-moves.ts";
   import PageLoading from "../lib/page-loading.svelte";
   import TurnUpright from "../lib/turn-upright.svelte";
   import { sendInApp } from "../lib/stay-in-app.ts";
@@ -147,7 +155,7 @@
     // Between the feed and a game's page the game's clip moves instead: opening it from the feed's clip, and with Back
     // to the feed it was opened from (src/lib/page-moves.ts).
     const game = grownGame(from ?? "", to ?? "");
-    const grows = game !== null && clipMoves(game, to === "/", back);
+    const grows = game !== null && clipMoves(game, isFeed(to ?? ""), back);
     noteMove(grows ? game : null, to ?? "", steps);
     const html = document.documentElement;
     delete html.dataset.step;
@@ -163,7 +171,7 @@
     // slides in does not also rise (look.css).
     html.dataset.move = grows ? "grow" : move;
     // Back to the feed the clip's move plays as the exact reverse of the move out (look.css).
-    if (grows && to === "/") html.dataset.way = "back";
+    if (grows && isFeed(to ?? "")) html.dataset.way = "back";
     return slideWhile(navigation.complete, grows ? game : null);
   });
 </script>

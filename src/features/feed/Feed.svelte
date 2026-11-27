@@ -31,9 +31,12 @@
   let {
     first,
     launch,
+    tab = "fresh",
     tune = false,
   }: {
     first: FeedPage;
+    /** Which of the top bar's tabs this is: every game, or the makers the person follows (Followed.svelte). */
+    tab?: "fresh" | "followed";
     /** Whether this person's feed is learning from them, so each clip offers More and Less like this (•••). */
     tune?: boolean;
     /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
@@ -462,7 +465,7 @@
 
 <svelte:window onkeydown={onKey} onpointerdown={forgetHints} />
 
-<FeedTop on="fresh" />
+<FeedTop on={tab} />
 
 {#if clips.length === 0}
   <main class="empty">
@@ -583,7 +586,7 @@
                 slug={clip.slug}
                 wished={launch.wished.includes(clip.slug)}
                 opens={launch.opens}
-                back="/"
+                back={tab === "followed" ? "/followed" : "/"}
                 buttonClass="button play"
               />
             {:else}
@@ -608,7 +611,7 @@
                     handle={maker.handle}
                     name={maker.name}
                     following={followed[maker.handle] ?? maker.following}
-                    back="/"
+                    back={tab === "followed" ? "/followed" : "/"}
                     onchange={(now: boolean) => {
                       followed[maker.handle] = now;
                     }}
