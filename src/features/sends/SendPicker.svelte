@@ -250,6 +250,7 @@
   /* The same coloured glass as the sheet's other buttons: Send in the pay blue, Back in the quiet green. */
   .back {
     width: 100%;
+    justify-content: center;
     background: var(--glass-safe);
     box-shadow: var(--glass-edge);
   }

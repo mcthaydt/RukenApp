@@ -99,6 +99,11 @@ async function pickFriendsIn(sheet: Locator): Promise<void> {
     "color",
     "rgb(255, 255, 255)",
   );
+  // Back's word sits in the middle of its button, as Send's and the other panels' do (implementation audit 3, R1).
+  await expect(sheet.getByRole("button", { name: "Back", exact: true })).toHaveCSS(
+    "justify-content",
+    "center",
+  );
 }
 
 /** Sends this game to a friend from the share sheet's Your turn: pick their face, press Send, and it says so. */
