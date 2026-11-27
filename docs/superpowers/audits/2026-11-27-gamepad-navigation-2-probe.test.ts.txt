@@ -1,0 +1,370 @@
+import { expect, test, type Page } from "@playwright/test";
+import { pageHasSettled, signUp, signUpInItsOwnContext } from "./support/account.ts";
+import { consented } from "./support/consent.ts";
+import { addGame, gameWhere, startAtCheck } from "./support/game.ts";
+import { givePage } from "./support/database.ts";
+import { wordsHaveSettled } from "./support/look.ts";
+import { PAD, padReachesEverything, plugInPad, pressPad } from "./support/pad.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+// Reviewer's probe for #409 review 2 (not part of the PR).
+
+let live: { slug: string; name: string };
+let handle = "";
+const android = () => test.info().project.name === "android";
+
+test.beforeAll(async ({ browser }) => {
+  test.setTimeout(300_000);
+  if (test.info().project.name === "android") return;
+  await forgetRateLimits();
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
+  try {
+    live = await gameWhere(await context.newPage(), { state: "live" });
+  } finally {
+    await context.close();
+  }
+  await forgetRateLimits();
+  const account = await signUpInItsOwnContext(browser);
+  handle = (
+    await givePage(account, {
+      name: "Probe Maker",
+      oneLine: "Makes games.",
+      links: [{ title: "My site", url: "https://example.com/" }],
+    })
+  ).handle;
+});
+test.beforeEach(async ({ page }) => {
+  await forgetRateLimits();
+  await plugInPad(page);
+});
+
+async function reachAll(page: Page, paths: string[], missed: string[]): Promise<void> {
+  for (const path of paths) {
+    await page.goto(path);
+    await pageHasSettled(page);
+    await wordsHaveSettled(page);
+    try {
+      await padReachesEverything(page);
+      console.log(`reach ok: ${path}`);
+    } catch (error) {
+      missed.push(`${path}: ${String(error).slice(0, 700)}`);
+    }
+  }
+}
+
+test("probe: signed out, every other screen", async ({ page }) => {
+  test.skip(android());
+  test.setTimeout(600_000);
+  const missed: string[] = [];
+  await reachAll(
+    page,
+    [
+      "/terms",
+      "/legal/maker-agreement",
+      "/help/get-your-game-on-ruken",
+      "/help/github",
+      "/help/how-the-feed-works",
+      "/help/record-screen",
+      "/join",
+      "/goodbye",
+      `/${handle}`,
+      `/search?q=${encodeURIComponent(live.name.slice(0, 6))}`,
+      "/search?q=Probe",
+      "/search?q=zzzznothing",
+    ],
+    missed,
+  );
+  expect(missed).toEqual([]);
+});
+
+test("probe: signed in, You, page editing, Followed and Search", async ({ page }) => {
+  test.skip(android());
+  test.setTimeout(600_000);
+  const account = await signUp(page);
+  const { linkIds } = await givePage(account, {
+    name: "Probe Two",
+    oneLine: "Two.",
+    links: [{ title: "Site", url: "https://example.com/" }],
+  });
+  const missed: string[] = [];
+  await reachAll(
+    page,
+    [
+      "/followed",
+      "/search",
+      `/search?q=${encodeURIComponent(live.name.slice(0, 6))}`,
+      "/me/password",
+      "/me/computers",
+      "/me/delete",
+      "/me/link",
+      "/make/page",
+      "/make/page/links",
+      `/make/page/links/${linkIds[0] ?? ""}`,
+      `/make/page/links/${linkIds[0] ?? ""}/where`,
+      "/make/page/links/add",
+      "/make/page/take-down",
+    ],
+    missed,
+  );
+  expect(missed).toEqual([]);
+});
+
+test("probe: a draft's questions, agreement, Check and send, Throw away", async ({ page }) => {
+  test.skip(android());
+  test.setTimeout(600_000);
+  const { slug } = await startAtCheck(page);
+  const missed: string[] = [];
+  await reachAll(
+    page,
+    ["line", "files", "upright", "wide", "age", "agreement", "check", "throw-away", ""].map(
+      (step) => `/make/${slug}${step === "" ? "" : `/${step}`}`,
+    ),
+    missed,
+  );
+  expect(missed).toEqual([]);
+});
+
+test("probe: a live game's Take off screen", async ({ page }) => {
+  test.skip(android());
+  test.setTimeout(300_000);
+  const { slug } = await gameWhere(page, { state: "live" });
+  const missed: string[] = [];
+  await reachAll(page, [`/make/${slug}/take-off`, `/make/${slug}`], missed);
+  expect(missed).toEqual([]);
+});
+
+test("probe: Search with the pad alone: type is left to the field, down reaches a result, A opens it, B comes back", async ({
+  page,
+}) => {
+  test.skip(android());
+  await page.goto(`/search?q=${encodeURIComponent(live.name.slice(0, 6))}`);
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+  const log: string[] = [];
+  const where = () =>
+    page.evaluate(() => {
+      const one = document.activeElement as HTMLElement;
+      return `${one.tagName} ${(one.getAttribute("aria-label") ?? one.innerText).slice(0, 40).replace(/\n/g, " ")}`;
+    });
+  log.push(`opened: ${await where()}`);
+  await pressPad(page, PAD.down);
+  log.push(`down: ${await where()}`);
+  await pressPad(page, PAD.down);
+  log.push(`down: ${await where()}`);
+  await pressPad(page, PAD.a);
+  await page.waitForTimeout(1500);
+  log.push(`A: ${page.url()}`);
+  await pressPad(page, PAD.b);
+  await page.waitForTimeout(1500);
+  log.push(`B: ${page.url()} focus ${await where()}`);
+  console.log(log.join("\n"));
+  expect(page.url()).toContain("/search");
+});
+
+test("probe: Followed with the pad: LB to Fresh, RB back, A on its button", async ({ page }) => {
+  test.skip(android());
+  await page.goto("/followed");
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+  await pressPad(page, PAD.right);
+  const first = await page.evaluate(() => (document.activeElement as HTMLElement).innerText);
+  console.log("followed first press:", first);
+  await pressPad(page, PAD.lb);
+  await expect(page).toHaveURL("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await pressPad(page, PAD.rb);
+  await expect(page).toHaveURL("/followed");
+  await pressPad(page, PAD.b);
+  await page.waitForTimeout(1000);
+  console.log("followed B:", page.url());
+});
+
+// The owner's Android report: a rectangle round a bar button on a tap. Pixel 7 profile (Chrome's engine, touch).
+async function tapAndWatch(page: Page, name: string, label: string, undoFix: boolean): Promise<void> {
+  await page.goto("/me");
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+  if (undoFix)
+    console.log(
+      label,
+      "removed rules:",
+      JSON.stringify(await page.evaluate(() => {
+        // As main had it: drop the PR's bar rules (tap colour, outline none, the shadow ring).
+        const gone: string[] = [];
+        const sweep = (list: CSSRuleList, owner: CSSStyleSheet | CSSGroupingRule) => {
+          for (let i = list.length - 1; i >= 0; i -= 1) {
+            const rule = list[i];
+            if (rule instanceof CSSGroupingRule) sweep(rule.cssRules, rule);
+            else if (
+              rule instanceof CSSStyleRule &&
+              rule.selectorText.includes(".bar") &&
+              (rule.cssText.includes("tap-highlight") || rule.selectorText.includes("focus-visible"))
+            ) {
+              gone.push(rule.cssText.slice(0, 90));
+              owner.deleteRule(i);
+            }
+          }
+        };
+        for (const sheet of [...document.styleSheets]) sweep(sheet.cssRules, sheet);
+        return gone;
+      })),
+    );
+  if (label.includes("tabfirst")) await page.keyboard.press("Tab");
+  if (label.startsWith("red"))
+    await page.addStyleTag({ content: ".bar a { -webkit-tap-highlight-color: rgba(255,0,0,0.8) !important; }" });
+  const bar = page.getByRole("navigation", { name: "Ruken" });
+  const link = bar.getByRole("link", { name });
+  const box = await link.boundingBox();
+  if (box === null) throw new Error("no bar");
+  const clip = { x: box.x - 20, y: box.y - 20, width: box.width + 40, height: box.height + 40 };
+  const cdp = await page.context().newCDPSession(page);
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const state = () =>
+    link.evaluate((one) => {
+      const look = getComputedStyle(one);
+      return `focused=${String(one === document.activeElement)} fv=${String(one.matches(":focus-visible"))} outline=${look.outlineStyle} ${look.outlineWidth} tap=${look.getPropertyValue("-webkit-tap-highlight-color")} shadow=${look.boxShadow.slice(0, 60)}`;
+    });
+  const dir = test.info().outputPath("");
+  await page.screenshot({ path: `${dir}/${label}-0-before.png`, clip });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
+  await page.waitForTimeout(120);
+  await page.screenshot({ path: `${dir}/${label}-1-held.png`, clip });
+  console.log(label, "held:", await state());
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await page.waitForTimeout(40);
+  await page.screenshot({ path: `${dir}/${label}-2-up.png`, clip }).catch(() => undefined);
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${dir}/${label}-3-later.png`, clip }).catch(() => undefined);
+  console.log(label, "url after:", page.url());
+}
+
+test("probe: Android tap on the bar, with the fix and with main's rules", async ({ page }) => {
+  test.skip(!android());
+  test.setTimeout(240_000);
+  await signUp(page);
+  // With the fix: tap Add a game (it navigates), then tap Home.
+  await tapAndWatch(page, "Add a game", "fix-add", false);
+  await tapAndWatch(page, "Home", "fix-home", false);
+  await tapAndWatch(page, "Add a game", "main-add", true);
+  await tapAndWatch(page, "Home", "main-home", true);
+  await tapAndWatch(page, "Add a game", "red-add", true);
+  await tapAndWatch(page, "Add a game", "main-tabfirst-add", true);
+  await tapAndWatch(page, "Add a game", "fix-tabfirst-add", false);
+});
+
+test("probe: Search results walk on a small screen", async ({ page }) => {
+  test.skip(android());
+  await page.goto(`/search?q=${encodeURIComponent("Tiny g")}`);
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+  const where = () =>
+    page.evaluate(() => {
+      const one = document.activeElement as HTMLElement;
+      const r = document.querySelector(".results");
+      return `${(one.getAttribute("aria-label") ?? one.innerText).slice(0, 22).replace(/\n/g, " ")} | resultsTop=${String(r?.scrollTop)} of ${String((r?.scrollHeight ?? 0) - (r?.clientHeight ?? 0))}`;
+    });
+  const count = await page.locator(".results a").count();
+  const log = [`results: ${String(count)}`, `opened: ${await where()}`];
+  for (let i = 0; i < 12; i += 1) {
+    await pressPad(page, PAD.down);
+    log.push(`down: ${await where()}`);
+  }
+  console.log(log.join("\n"));
+});
+
+test("probe: reach on a long Search", async ({ page }) => {
+  test.skip(android());
+  test.setTimeout(300_000);
+  await page.goto(`/search?q=${encodeURIComponent("Tiny g")}`);
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+  await padReachesEverything(page);
+});
+
+test("probe: debug long Search", async ({ page }) => {
+  test.skip(android());
+  await page.goto(`/search?q=${encodeURIComponent("Tiny g")}`);
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+  const where = () =>
+    page.evaluate(() => {
+      const one = document.activeElement as HTMLElement;
+      return `${one.tagName} ${(one.getAttribute("aria-label") ?? one.innerText).slice(0, 22).replace(/\n/g, " ")}`;
+    });
+  const log: string[] = [`opened: ${await where()}`];
+  for (let i = 0; i < 25; i += 1) await page.keyboard.press("Tab");
+  log.push(`after 25 tabs: ${await where()} top=${await page.evaluate(() => String(document.querySelector(".results")?.scrollTop))}`);
+  await page.evaluate(() => { (document.activeElement as HTMLElement).blur(); document.body.focus(); });
+  await pressPad(page, PAD.right);
+  log.push(`first: ${await where()}`);
+  await page.locator("input[type=search]").focus();
+  await pressPad(page, PAD.down);
+  log.push(`field down: ${await where()}`);
+  await page.locator("a.back").focus();
+  await pressPad(page, PAD.down);
+  log.push(`back down: ${await where()}`);
+  console.log(log.join("\n"));
+});
+
+test("probe: Search, down the list then back up", async ({ page }) => {
+  test.skip(android());
+  await page.goto(`/search?q=${encodeURIComponent("Tiny g")}`);
+  await pageHasSettled(page);
+  await wordsHaveSettled(page);
+  const where = () =>
+    page.evaluate(() => {
+      const one = document.activeElement as HTMLElement;
+      const r = document.querySelector(".results");
+      return `${(one.getAttribute("aria-label") ?? one.innerText).slice(0, 22).replace(/\n/g, " ")} | top=${String(r?.scrollTop)}`;
+    });
+  const log: string[] = [];
+  for (let i = 0; i < 10; i += 1) await pressPad(page, PAD.down);
+  log.push(`after 10 downs: ${await where()}`);
+  for (let i = 0; i < 10; i += 1) {
+    await pressPad(page, PAD.up);
+    log.push(`up: ${await where()}`);
+  }
+  console.log(log.join("\n"));
+});
+
+test("probe: Android default tap colour, and taps elsewhere", async ({ page }) => {
+  test.skip(!android());
+  test.setTimeout(240_000);
+  await page.goto("/");
+  await pageHasSettled(page);
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await wordsHaveSettled(page);
+  const colours = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("a, button")].slice(0, 12).map(
+      (one) => `${(one.getAttribute("aria-label") ?? one.innerText).slice(0, 14)}: ${getComputedStyle(one).getPropertyValue("-webkit-tap-highlight-color")}`,
+    ),
+  );
+  console.log("tap colours:", colours.join(" | "));
+  const cdp = await page.context().newCDPSession(page);
+  const dir = test.info().outputPath("");
+  for (const [label, target] of [
+    ["followed-tab", page.getByRole("navigation", { name: "Feeds" }).getByRole("link", { name: "Followed" })],
+    ["search", page.getByRole("link", { name: "Search" })],
+    ["share", page.locator('section[data-current="true"]').getByRole("button", { name: "Share" })],
+    ["play", page.locator('section[data-current="true"] .band .button')],
+  ] as const) {
+    const box = await target.boundingBox();
+    if (box === null) continue;
+    // Keep it from going anywhere, so the screen stays.
+    await target.evaluate((one) => {
+      one.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }, { capture: true });
+    });
+    const clip = { x: Math.max(box.x - 16, 0), y: Math.max(box.y - 16, 0), width: box.width + 32, height: box.height + 32 };
+    const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
+    await page.waitForTimeout(120);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await page.waitForTimeout(40);
+    await page.screenshot({ path: `${dir}/${label}-up.png`, clip });
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: `${dir}/${label}-later.png`, clip });
+  }
+});
