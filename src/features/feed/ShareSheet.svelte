@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
   import Icon from "../../lib/icon.svelte";
+  import { slideAway, slideAwayOnCancel, stopSliding } from "../../lib/sheet.ts";
   import { copyLink, shareByPhone, shareTargets, type ShareLink, type ShareTools } from "./share.ts";
 
   let sheet = $state<HTMLDialogElement>();
@@ -16,9 +17,6 @@
   // Whether this browser has a share sheet of its own, for "More". Asked at each open: a test or a browser may change it.
   let phoneSheet = $state(false);
   let said = $state("");
-  // True while the sheet slides away; it closes for real when that ends.
-  let closing = $state(false);
-  let closeTimer: ReturnType<typeof setTimeout> | undefined;
 
   const targets = $derived(link === null ? [] : shareTargets(link));
 
@@ -37,8 +35,9 @@
     opener = from;
     said = "";
     phoneSheet = typeof navigator.share === "function";
-    finishClosing();
-    sheet?.showModal();
+    if (sheet === undefined) return;
+    stopSliding(sheet);
+    sheet.showModal();
     // The one main action takes the focus, not the cross that comes first.
     copyButton?.focus();
   }
@@ -60,47 +59,21 @@
     else if (result === "failed") said = "That didn't work. Copy the link instead.";
   }
 
-  /** Slides the sheet away and fades the dimmed screen, then closes it. With reduced motion it closes at once. */
   function close(): void {
-    if (sheet === undefined || !sheet.open || closing) return;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      sheet.close();
-      return;
-    }
-    closing = true;
-    // In case the slide never reports its end (a hidden tab, say), it still closes.
-    closeTimer = setTimeout(finishClosing, 400);
-  }
-
-  function finishClosing(): void {
-    clearTimeout(closeTimer);
-    if (!closing) return;
-    closing = false;
-    sheet?.close();
+    if (sheet !== undefined) slideAway(sheet);
   }
 </script>
 
 <!-- A press on the dimmed screen around the panel closes it; the keyboard has Escape and the cross. -->
 <dialog
-  class="sharesheet"
+  class="sharesheet rises"
   bind:this={sheet}
   aria-labelledby="share-title"
-  class:closing
   onclick={(event) => {
     if (event.target === sheet) close();
   }}
-  oncancel={(event) => {
-    // Escape slides it away too, where the browser lets the page do that; otherwise it closes at once.
-    if (!event.cancelable) return;
-    event.preventDefault();
-    close();
-  }}
-  onanimationend={(event) => {
-    if (event.target === sheet && closing) finishClosing();
-  }}
+  oncancel={slideAwayOnCancel}
   onclose={() => {
-    clearTimeout(closeTimer);
-    closing = false;
     opener?.focus();
   }}
 >
@@ -187,59 +160,10 @@
     color: var(--chalk);
     text-shadow: var(--glass-ink);
   }
-  /* It slides up and fades in, and the screen behind dims with it; closing plays it backwards, a little quicker. The
-     easing is the app's own, written out too, since the feed is not inside the `.screen` that look.css sets it on. */
-  .sharesheet[open] {
-    animation: share-in 320ms var(--ease, cubic-bezier(0.32, 0.72, 0, 1)) backwards;
-  }
-  .sharesheet[open]::backdrop {
-    animation: share-dim 320ms var(--ease, cubic-bezier(0.32, 0.72, 0, 1)) backwards;
-  }
-  .sharesheet.closing {
-    animation: share-out 220ms var(--ease, cubic-bezier(0.32, 0.72, 0, 1)) forwards;
-  }
-  .sharesheet.closing::backdrop {
-    animation: share-undim 220ms var(--ease, cubic-bezier(0.32, 0.72, 0, 1)) forwards;
-  }
   .sharesheet::backdrop {
     background: var(--dim-bg);
     -webkit-backdrop-filter: var(--dim-filter);
     backdrop-filter: var(--dim-filter);
-  }
-  @keyframes share-in {
-    from {
-      opacity: 0;
-      transform: translateY(2.5rem);
-    }
-  }
-  @keyframes share-out {
-    to {
-      opacity: 0;
-      transform: translateY(2.5rem);
-    }
-  }
-  /* On an upright phone it comes up from, and goes back down past, the bottom edge. */
-  @keyframes share-up {
-    from {
-      opacity: 0;
-      transform: translateY(100%);
-    }
-  }
-  @keyframes share-down {
-    to {
-      opacity: 0;
-      transform: translateY(100%);
-    }
-  }
-  @keyframes share-dim {
-    from {
-      opacity: 0;
-    }
-  }
-  @keyframes share-undim {
-    to {
-      opacity: 0;
-    }
   }
   .inside {
     display: flex;
@@ -360,23 +284,11 @@
       margin: auto 0 0;
       border-radius: var(--radius-card) var(--radius-card) 0 0;
     }
-    .sharesheet[open] {
-      animation-name: share-up;
-    }
-    .sharesheet.closing {
-      animation-name: share-down;
-    }
     .apps {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .inside {
       padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .sharesheet[open],
-    .sharesheet[open]::backdrop {
-      animation: none;
     }
   }
 </style>

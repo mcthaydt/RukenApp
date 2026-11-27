@@ -66,10 +66,16 @@ test("a player likes, saves and reposts a clip, sees each again, and takes each 
   const likesBefore = Number((await mark(clip, "Like").locator(".word").textContent())?.replace("Like", "0"));
   await press(clip, "Like", page);
   await press(clip, "Save", page);
+  const columnBefore = await mark(clip, "Like").boundingBox();
   await press(clip, "Repost", page);
   for (const name of ["Like", "Save", "Repost"] as const)
     await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "true");
+  // The longer word does not move the column of buttons.
+  expect((await mark(clip, "Like").boundingBox())?.x).toBe(columnBefore?.x);
   await expect(mark(clip, "Like").locator(".word")).toHaveText(String(likesBefore + 1));
+  // Reposted is plain to see: the word under the button changes and a check sits on its corner.
+  await expect(mark(clip, "Repost").locator(".word")).toHaveText("Reposted");
+  await expect(mark(clip, "Repost").locator(".done")).toBeVisible();
   await showTheOwner(page, testInfo, "a clip liked, saved and reposted");
 
   // Read: a fresh feed shows the same, and the lists on You hold the game.
@@ -77,6 +83,8 @@ test("a player likes, saves and reposts a clip, sees each again, and takes each 
   for (const name of ["Like", "Save", "Repost"] as const)
     await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "true");
   await expect(mark(clip, "Like").locator(".word")).toHaveText(String(likesBefore + 1));
+  await expect(mark(clip, "Repost").locator(".word")).toHaveText("Reposted");
+  await expect(mark(clip, "Repost").locator(".done")).toBeVisible();
 
   await page.goto("/me");
   await page.getByRole("link", { name: "Saved" }).click();
@@ -98,6 +106,8 @@ test("a player likes, saves and reposts a clip, sees each again, and takes each 
   // Delete from the feed: the like and the save go back, and the count with them.
   clip = await clipOnFeed(page);
   await expect(mark(clip, "Repost")).toHaveAttribute("aria-pressed", "false");
+  await expect(mark(clip, "Repost").locator(".word")).toHaveText("Repost");
+  await expect(mark(clip, "Repost").locator(".done")).toHaveCount(0);
   await press(clip, "Like", page);
   await press(clip, "Save", page);
   await expect(mark(clip, "Like")).toHaveAttribute("aria-pressed", "false");
@@ -178,6 +188,9 @@ test("a maker likes, saves and reposts their own game, sees it after a reload, a
       await press(clip, name, page);
       await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "false");
     }
+    // Taking the repost back on the clip puts the word back and takes the check off.
+    await expect(mark(clip, "Repost").locator(".word")).toHaveText("Repost");
+    await expect(mark(clip, "Repost").locator(".done")).toHaveCount(0);
   } finally {
     await page.close();
   }

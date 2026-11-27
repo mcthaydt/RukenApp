@@ -306,6 +306,10 @@ test("the sheet fits the window, and the page behind it never scrolls", async ({
   await pageHasSettled(page);
   await page.getByRole("button", { name: "Report", exact: true }).click();
   await expect(sheet(page).getByRole("radio").first()).toBeVisible();
+  // Measured where it comes to rest, once it has slid in.
+  await sheet(page).evaluate(async (dialog) => {
+    await Promise.all(dialog.getAnimations({ subtree: true }).map((one) => one.finished));
+  });
   // Read once the sheet is open: pressing Report may have brought the button into view.
   const before = await page.evaluate(() => window.scrollY);
   const box = await sheet(page).boundingBox();
