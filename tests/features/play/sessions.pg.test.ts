@@ -727,3 +727,139 @@ describe("memberBeatsByGame", () => {
     expect((await service.memberBeatsByGame(SINCE, NOW)).has(game.id)).toBe(false);
   });
 });
+
+describe("playDays", () => {
+  // 18:00 UTC is noon in Chicago, so a few hours either side stays on one Chicago day unless a test means to cross.
+  const NOW = new Date("2026-11-14T18:00:00Z");
+  const SINCE = new Date(NOW.getTime() - 7 * 86_400_000);
+
+  async function addPlay(
+    game: LiveGame,
+    options: {
+      userId?: string | null;
+      basis?: "member" | "free_game" | "staff" | "own_game";
+      startedAt: Date;
+      beats: { at: Date; attentive?: boolean }[];
+    },
+  ): Promise<string | null> {
+    const userId = options.userId === undefined ? await createUser(db()) : options.userId;
+    const pass = await db().playPass.create({
+      data: {
+        id: crypto.randomUUID().replaceAll("-", "").slice(0, 22),
+        gameId: game.id,
+        pullId: game.livePullId,
+        userId: null,
+        madeAt: options.startedAt,
+        expiresAt: new Date(NOW.getTime() + 86_400_000),
+      },
+    });
+    const session = await db().playSession.create({
+      data: {
+        id: crypto.randomUUID(),
+        gameId: game.id,
+        pullId: game.livePullId,
+        passId: pass.id,
+        userId,
+        basis: options.basis ?? "member",
+        tokenHash: "0".repeat(64),
+        startedAt: options.startedAt,
+      },
+    });
+    for (const beat of options.beats) {
+      await db().playBeat.create({
+        data: { sessionId: session.id, receivedAt: beat.at, attentive: beat.attentive ?? true },
+      });
+    }
+    return userId;
+  }
+
+  const hoursAgo = (hours: number) => new Date(NOW.getTime() - hours * 3_600_000);
+  const rowsOf = async (gameId: string) =>
+    (await service.playDays(SINCE, NOW, [gameId])).sort(
+      (one, other) => one.day.localeCompare(other.day) || one.userId.localeCompare(other.userId),
+    );
+
+  it("answers each person's attentive beats per game and Chicago day, with how they played", async () => {
+    const game = await newGame();
+    const member = await addPlay(game, {
+      startedAt: hoursAgo(3),
+      beats: [{ at: hoursAgo(3) }, { at: hoursAgo(2) }, { at: hoursAgo(1), attentive: false }],
+    });
+    const free = await addPlay(game, {
+      basis: "free_game",
+      startedAt: hoursAgo(2),
+      beats: [{ at: hoursAgo(2) }],
+    });
+    // A second sitting the same day adds to the same row.
+    await addPlay(game, { userId: member, startedAt: hoursAgo(1), beats: [{ at: hoursAgo(1) }] });
+
+    expect(await rowsOf(game.id)).toEqual(
+      expect.arrayContaining([
+        { userId: member, gameId: game.id, day: "2026-11-14", beats: 3, basis: "member" },
+        { userId: free, gameId: game.id, day: "2026-11-14", beats: 1, basis: "free_game" },
+      ]),
+    );
+    expect(await rowsOf(game.id)).toHaveLength(2);
+  });
+
+  it("puts a sitting that crosses Chicago's midnight on both days", async () => {
+    const game = await newGame();
+    // 05:30 and 06:30 UTC on the 14th are 23:30 on the 13th and 00:30 on the 14th in Chicago.
+    const at = (iso: string) => new Date(iso);
+    const member = await addPlay(game, {
+      startedAt: at("2026-11-14T05:20:00Z"),
+      beats: [
+        { at: at("2026-11-14T05:30:00Z") },
+        { at: at("2026-11-14T05:50:00Z") },
+        { at: at("2026-11-14T06:30:00Z") },
+      ],
+    });
+
+    expect(await rowsOf(game.id)).toEqual([
+      { userId: member, gameId: game.id, day: "2026-11-13", beats: 2, basis: "member" },
+      { userId: member, gameId: game.id, day: "2026-11-14", beats: 1, basis: "member" },
+    ]);
+  });
+
+  it("leaves out staff, a maker's own play, play by nobody, and beats outside the window", async () => {
+    const game = await newGame();
+    for (const basis of ["staff", "own_game"] as const) {
+      await addPlay(game, { basis, startedAt: hoursAgo(2), beats: [{ at: hoursAgo(2) }] });
+    }
+    await addPlay(game, {
+      userId: null,
+      basis: "free_game",
+      startedAt: hoursAgo(2),
+      beats: [{ at: hoursAgo(2) }],
+    });
+    await addPlay(game, {
+      startedAt: hoursAgo(7 * 24 + 5),
+      beats: [{ at: hoursAgo(7 * 24 + 4) }, { at: new Date(NOW.getTime() + 60_000) }],
+    });
+
+    expect(await rowsOf(game.id)).toEqual([]);
+  });
+
+  it("reads only the games it is asked about, in one statement", async () => {
+    const wanted = await newGame();
+    const other = await newGame();
+    await addPlay(wanted, { startedAt: hoursAgo(2), beats: [{ at: hoursAgo(2) }] });
+    await addPlay(other, { startedAt: hoursAgo(2), beats: [{ at: hoursAgo(2) }] });
+
+    let gameIds: string[] = [];
+    const asked = await queriesAsked(database?.url ?? "", async (counted) => {
+      const rows = await createPlayService({
+        db: counted,
+        clock,
+        rateLimiter: createRateLimiter(counted, clock),
+        passSecret: SECRET,
+        address: (name) => `https://${name}.games.test`,
+      }).playDays(SINCE, NOW, [wanted.id]);
+      gameIds = rows.map((row) => row.gameId);
+    });
+
+    expect(gameIds).toEqual([wanted.id]);
+    expect(asked).toHaveLength(1);
+    expect(await service.playDays(SINCE, NOW, [])).toEqual([]);
+  });
+});

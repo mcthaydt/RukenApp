@@ -1,11 +1,12 @@
 import { chicagoDayOf, type Clock } from "../../lib/clock.ts";
 import type { ListedGame } from "../games/games.ts";
-import { CROWD, type Asking } from "./feed-public.ts";
+import { CROWD, FEED_PUBLIC_DEFAULTS, type Asking } from "./feed-public.ts";
 import type { ClipMarks } from "./marks.ts";
 import { openRanker } from "./public-ranker.ts";
 import {
   isRankedPageOrBadCursor,
   type FeedFacts,
+  type FeedPlayDay,
   type RankedPage,
   type Ranker,
   type RankRequest,
@@ -34,6 +35,10 @@ export interface FeedServiceDeps {
   clock: Clock;
   liveGames(): Promise<ListedGame[]>;
   memberBeatsByGame(since: Date, now: Date): Promise<Map<string, number>>;
+  /** Who played what, per person, game and Chicago day; read only for the private ranker. Left out, nobody. */
+  playDays?: (since: Date, now: Date, gameIds: readonly string[]) => Promise<FeedPlayDay[]>;
+  /** How many days of play the private ranker is handed (FEED_PUBLIC's `windowDays`); left out, its safe side. */
+  windowDays?: () => number;
   makersOf(
     userIds: readonly string[],
   ): Promise<Map<string, { handle: string; name: string; photoKey: string | null }>>;
@@ -198,6 +203,17 @@ export function createFeedService(deps: FeedServiceDeps) {
       memberBeats: Object.fromEntries(beats),
       memberBeatsSince: since,
     };
+    const bound = privateRanker();
+    if (bound !== null && deps.playDays !== undefined) {
+      const playDaysSince =
+        nowMs - (deps.windowDays?.() ?? FEED_PUBLIC_DEFAULTS.windowDays) * 24 * 60 * 60 * 1000;
+      facts.playDays = await deps.playDays(
+        new Date(playDaysSince),
+        new Date(nowMs),
+        facts.games.map((game) => game.id),
+      );
+      facts.playDaysSince = playDaysSince;
+    }
     const seed = chicagoDayOf(nowMs);
     const viewer: Viewer =
       asking.kind === "crowd" ? { kind: "crowd", seed } : { kind: "full", seed, id: asking.id };
@@ -205,7 +221,6 @@ export function createFeedService(deps: FeedServiceDeps) {
 
     let ranked: RankedPage | "bad-cursor";
     let prefix: string;
-    const bound = privateRanker();
     if (bound === null) {
       // No private ranker here: a private address is from before, and starts the feed again.
       ranked = await open.page(request(cursor?.made === "open" ? cursor.rest : null));

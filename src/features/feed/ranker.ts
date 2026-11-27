@@ -31,6 +31,21 @@ export interface FeedFacts {
   /** Attentive beats from members per game id, since `memberBeatsSince` (epoch ms) up to `asOf`. */
   memberBeats: Record<string, number>;
   memberBeatsSince: number;
+  /**
+   * Who played what, since `playDaysSince` (epoch ms) up to `asOf`: per signed-in person, game and Chicago day, their
+   * attentive beats as a member or free. Never staff's or a maker's own play. Sent only to the private ranker.
+   */
+  playDays?: FeedPlayDay[];
+  playDaysSince?: number;
+}
+
+/** One person's play of one game on one Chicago day (`YYYY-MM-DD`). */
+export interface FeedPlayDay {
+  userId: string;
+  gameId: string;
+  day: string;
+  beats: number;
+  basis: "member" | "free_game";
 }
 
 export interface RankRequest {

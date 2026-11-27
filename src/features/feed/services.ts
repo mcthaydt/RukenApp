@@ -48,6 +48,14 @@ export function setPrivateRanker(get: () => Ranker | null): void {
   bound = get;
 }
 
+/** FEED_PUBLIC, read once per process. */
+function publicSettings(): FeedPublic {
+  settings ??= readFeedPublic(optionalEnv("FEED_PUBLIC"), (line) => {
+    console.warn(line);
+  });
+  return settings;
+}
+
 /** The process-wide feed services, created on first use. Each neighbour is asked for only when the feed is read. */
 export function feedServices(): FeedServices {
   if (shared !== undefined) return shared;
@@ -72,6 +80,8 @@ export function feedServices(): FeedServices {
       clock: systemClock,
       liveGames: () => gamesServices().service.liveGames(),
       memberBeatsByGame: (since, now) => playServices().service.memberBeatsByGame(since, now),
+      playDays: (since, now, gameIds) => playServices().service.playDays(since, now, gameIds),
+      windowDays: () => publicSettings().windowDays,
       makersOf: (userIds) => pagesServices().service.makersOf(userIds),
       followedAmong: (followerId, makerIds) => pagesServices().follows.followedAmong(followerId, makerIds),
       followedMakerIds: (followerId) => pagesServices().follows.followedMakerIds(followerId),
@@ -87,9 +97,7 @@ export function feedServices(): FeedServices {
     }),
     viewerOf: (caller) => (caller.kind === "user" ? caller.userId : null),
     askingOf: (caller) => {
-      settings ??= readFeedPublic(optionalEnv("FEED_PUBLIC"), (line) => {
-        console.warn(line);
-      });
+      const settings = publicSettings();
       // The cookie yes, the age and a parent's yes are read with the learned feed, which is the first ranker that can use
       // them: until then everyone is the crowd, whatever FEED_PUBLIC says.
       return askingFor(settings, {

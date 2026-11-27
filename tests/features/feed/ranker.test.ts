@@ -210,6 +210,46 @@ describe("the feed through a ranker", () => {
     });
   });
 
+  it("hands the private ranker who played what over FEED_PUBLIC's window, for the live games it may show", async () => {
+    const { ranker, asked } = stubRanker(() => Promise.resolve(PRIVATE_PAGE));
+    const adults = { ...listed("adults", 1), ageRating: "age_18" as const };
+    const read: { since: Date; now: Date; gameIds: readonly string[] }[] = [];
+    const day = { userId: "u1", gameId: "id-a", day: "2026-11-20", beats: 12, basis: "member" as const };
+    const { service } = serviceWith(
+      {
+        privateRanker: () => ranker,
+        windowDays: () => 30,
+        playDays: (since, now, gameIds) => {
+          read.push({ since, now, gameIds });
+          return Promise.resolve([day]);
+        },
+      },
+      [...GAMES, adults],
+    );
+
+    await service.page(null);
+
+    expect(read).toEqual([
+      { since: new Date(NOW - 30 * DAY), now: new Date(NOW), gameIds: GAMES.map((game) => game.id) },
+    ]);
+    expect(asked[0]?.facts.playDays).toEqual([day]);
+    expect(asked[0]?.facts.playDaysSince).toBe(NOW - 30 * DAY);
+  });
+
+  it("does not read who played what when only the open ranker answers, which never uses it", async () => {
+    let reads = 0;
+    const { service } = serviceWith({
+      playDays: () => {
+        reads += 1;
+        return Promise.resolve([]);
+      },
+    });
+
+    await service.page(null);
+
+    expect(reads).toBe(0);
+  });
+
   // Who the page is for (to mark the makers they follow) is not who the ranker is told: without the cookie yes the
   // ranker only ever sees the crowd (maker-credit-and-follow spec).
   it("marks a signed-in person's follows and own games while the ranker is still told the crowd", async () => {
