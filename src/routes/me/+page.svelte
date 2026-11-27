@@ -45,8 +45,13 @@
   <!-- Side links, one under another: each goes to a page of its own (the owner, 2026-11-23: secondary actions are the →
        links). -->
   <ul class="sidelinks apart">
-    <li><a class="go" href="/me/saved">Saved</a></li>
-    <li><a class="go" href="/me/reposts">Your reposts</a></li>
+    <!-- Only once there is something on them, so a new account keeps its one screen (the owner, 2026-11-24). -->
+    {#if data.saved || data.reposted}
+      <li class="pair">
+        {#if data.saved}<a class="go" href="/me/saved">Saved</a>{/if}
+        {#if data.reposted}<a class="go" href="/me/reposts">Your reposts</a>{/if}
+      </li>
+    {/if}
     <li><a class="go" href="/make">{data.makesGames ? "Your games" : "Add your games to Ruken"}</a></li>
     <li><a class="go" href="/me/password">Change password</a></li>
     <li><a class="go" href="/me/computers">Your computers</a></li>
