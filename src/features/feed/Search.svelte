@@ -83,12 +83,32 @@
         <ul>
           {#each found.games as game (game.slug)}
             <li>
-              <a class="row" href={`/g/${game.slug}`} data-sveltekit-preload-data="off">
-                <span class="name">{game.name}</span>
-                <span class="line">{game.oneLine}</span>
-                {#if game.maker !== null}
-                  <span class="by">by {game.maker}</span>
-                {/if}
+              <a class="row game" href={`/g/${game.slug}`} data-sveltekit-preload-data="off">
+                <!-- The game's opening frame, so a person sees it before reading its name. A site that makes no stills
+                     answers 404, and the tile stays as plain felt. -->
+                <span class="thumb" aria-hidden="true">
+                  {#if game.still !== null}
+                    <img
+                      use:loads
+                      src={game.still}
+                      alt=""
+                      width="64"
+                      height="80"
+                      loading="lazy"
+                      onerror={(event) => {
+                        if (event.currentTarget instanceof HTMLImageElement)
+                          event.currentTarget.hidden = true;
+                      }}
+                    />
+                  {/if}
+                </span>
+                <span class="who">
+                  <span class="name">{game.name}</span>
+                  <span class="line">{game.oneLine}</span>
+                  {#if game.maker !== null}
+                    <span class="by">by {game.maker}</span>
+                  {/if}
+                </span>
               </a>
             </li>
           {/each}
@@ -207,10 +227,29 @@
     scale: var(--press-scale);
     transition: scale var(--press-time);
   }
-  .row.maker {
+  .row.maker,
+  .row.game {
     flex-direction: row;
     align-items: center;
     gap: 0.75rem;
+  }
+  .row.game {
+    padding-left: 0.5rem;
+  }
+  /* An upright clip's frame, cut to 4 by 5 like a post, on felt until it comes. */
+  .thumb {
+    flex: none;
+    width: 64px;
+    height: 80px;
+    overflow: hidden;
+    border-radius: var(--radius-small);
+    background: var(--felt);
+  }
+  .thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
   .who {
     display: flex;

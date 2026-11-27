@@ -126,6 +126,11 @@ test("Search finds a live game and its maker as the person types, and never an 1
   await expect(results.getByRole("link", { name: new RegExp(`Café ${WORD} Rush`) })).toBeVisible();
   await expect(results.getByText(`Night ${WORD} Club`)).toHaveCount(0);
   await expect(results.getByRole("link")).toHaveCount(2);
+  // The game shows a small picture of its clip's opening frame beside its name.
+  const thumb = results.getByRole("link", { name: new RegExp(`Café ${WORD} Rush`) }).locator(".thumb");
+  await expect(thumb).toBeVisible();
+  expect((await boxOf(thumb)).width).toBe(64);
+  await expect(thumb.locator("img")).toHaveAttribute("src", /^\/api\/still\/clips\/.+\?at=0&width=240$/);
   await showTheOwner(page, testInfo, "search-results");
 
   // A search replaces the last in the history: Back from a game it opens comes back here, and Back again to the feed.

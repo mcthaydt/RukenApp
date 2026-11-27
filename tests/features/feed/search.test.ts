@@ -74,7 +74,14 @@ describe("search", () => {
       name: "Café Rush",
       oneLine: "A line about cafe.",
       maker: "Night Owl",
+      still: null,
     });
+  });
+
+  it("shows each game with the opening frame of its upright clip", async () => {
+    const upright = "clips/abcdefghij/upright-0123456789abcdef.mp4";
+    const { search } = searchOver([game("cafe", "Café Rush", { clips: { upright, wide: upright } })]);
+    expect((await search.find("cafe")).games[0]?.still).toBe(`/api/still/${upright}?at=0&width=240`);
   });
 
   it("puts games whose name matches before games found by their line or maker", async () => {

@@ -1,3 +1,4 @@
+import { stillOfClip } from "../../lib/stills.ts";
 import type { ListedGame } from "../games/games.ts";
 
 // Search, from the feed's top bar: the games on the feed and the makers who made them, found by what a person types.
@@ -24,12 +25,23 @@ export interface FoundGame {
   oneLine: string;
   /** Who made it, when they have a page. */
   maker: string | null;
+  /** The opening frame of its upright clip, as a small picture beside its name; null when the clip is not a stored one. */
+  still: string | null;
 }
 
 export interface FoundMaker {
   handle: string;
   name: string;
   photo: string | null;
+}
+
+/** How wide a result's still is fetched: the smallest still made, about twice the 64px it is shown at. */
+const THUMBNAIL_WIDTH = 240;
+
+/** A clip's opening frame (the second the feed starts it on), from the clip's whole address. */
+function thumbnailOf(clip: string): string | null {
+  const still = stillOfClip(clip);
+  return still === null ? null : `${still.address}?at=0&width=${String(THUMBNAIL_WIDTH)}`;
 }
 
 export interface Found {
@@ -101,7 +113,13 @@ export function createSearch(deps: SearchDeps) {
       return [
         {
           rank,
-          item: { slug: game.slug, name: game.name, oneLine: game.oneLine, maker: maker?.name ?? null },
+          item: {
+            slug: game.slug,
+            name: game.name,
+            oneLine: game.oneLine,
+            maker: maker?.name ?? null,
+            still: thumbnailOf(deps.media(game.clips.upright)),
+          },
         },
       ];
     });
