@@ -39,6 +39,8 @@ export interface FeedServiceDeps {
   ): Promise<Map<string, { handle: string; name: string; photoKey: string | null }>>;
   /** Which of these makers' accounts a person follows; left out, nobody follows anyone. */
   followedAmong?(followerId: string, makerIds: readonly string[]): Promise<Set<string>>;
+  /** Every maker account a person follows, newest follow first; left out, nobody follows anyone. */
+  followedMakerIds?(followerId: string): Promise<string[]>;
   /** The whole address of a file in the bucket, from its key. */
   media(key: string): string;
   /** What each game's clip shows of likes, saves and reposts for this viewer (null when signed out); left out, none. */
@@ -243,28 +245,9 @@ export function createFeedService(deps: FeedServiceDeps) {
         : await deps.followedAmong(viewerId, [...makers.keys()]);
     const result: FeedPage = {
       next: ranked.next === null ? null : `${prefix}${ranked.next}`,
-      clips: shown.map(({ key, game }) => {
-        const maker = makers.get(game.makerUserId);
-        return {
-          key,
-          slug: game.slug,
-          name: game.name,
-          oneLine: game.oneLine,
-          upright: deps.media(game.clips.upright),
-          wide: deps.media(game.clips.wide),
-          maker:
-            maker === undefined
-              ? null
-              : {
-                  handle: maker.handle,
-                  name: maker.name,
-                  photo: maker.photoKey === null ? null : deps.media(maker.photoKey),
-                  following: followed.has(game.makerUserId),
-                  mine: game.makerUserId === viewerId,
-                },
-          marks: marks.get(game.id) ?? NO_MARKS,
-        };
-      }),
+      clips: shown.map(({ key, game }) =>
+        clipOf(key, game, makers.get(game.makerUserId), followed.has(game.makerUserId), viewerId, marks),
+      ),
     };
     if (ranked.caughtUpAt !== null) result.caughtUpAt = ranked.caughtUpAt;
     const ask = ranked.ask;
@@ -279,7 +262,74 @@ export function createFeedService(deps: FeedServiceDeps) {
     return result;
   }
 
-  return { page, health };
+  /**
+   * The Followed tab: every live game by the makers a person follows, the maker they followed last first and each
+   * maker's newest game first, all on one page (a person follows a few makers, not the whole of Ruken), so it ends.
+   * `following` is how many makers they follow (0 says so on the screen), so the screen can say so; no game of theirs live is an empty page.
+   */
+  async function followedPage(viewerId: string): Promise<{ following: number; page: FeedPage }> {
+    const makerIds = deps.followedMakerIds === undefined ? [] : await deps.followedMakerIds(viewerId);
+    if (makerIds.length === 0) return { following: 0, page: { clips: [], next: null } };
+    const order = new Map(makerIds.map((id, index) => [id, index]));
+    const games = (await deps.liveGames())
+      .filter((game) => game.ageRating !== "age_18" && order.has(game.makerUserId))
+      .sort(
+        (a, b) =>
+          (order.get(a.makerUserId) ?? 0) - (order.get(b.makerUserId) ?? 0) ||
+          b.liveSince.getTime() - a.liveSince.getTime() ||
+          a.slug.localeCompare(b.slug, "en"),
+      );
+    const [makers, marks] =
+      games.length === 0
+        ? [
+            new Map<string, { handle: string; name: string; photoKey: string | null }>(),
+            new Map<string, ClipMarks>(),
+          ]
+        : await Promise.all([
+            deps.makersOf([...new Set(games.map((game) => game.makerUserId))]),
+            deps.marksOf?.(viewerId, games) ?? new Map<string, ClipMarks>(),
+          ]);
+    return {
+      following: makerIds.length,
+      page: {
+        next: null,
+        clips: games.map((game) =>
+          clipOf(`followed-${game.publicId}`, game, makers.get(game.makerUserId), true, viewerId, marks),
+        ),
+      },
+    };
+  }
+
+  function clipOf(
+    key: string,
+    game: ListedGame,
+    maker: { handle: string; name: string; photoKey: string | null } | undefined,
+    following: boolean,
+    viewerId: string | null,
+    marks: ReadonlyMap<string, ClipMarks>,
+  ): FeedClip {
+    return {
+      key,
+      slug: game.slug,
+      name: game.name,
+      oneLine: game.oneLine,
+      upright: deps.media(game.clips.upright),
+      wide: deps.media(game.clips.wide),
+      maker:
+        maker === undefined
+          ? null
+          : {
+              handle: maker.handle,
+              name: maker.name,
+              photo: maker.photoKey === null ? null : deps.media(maker.photoKey),
+              following,
+              mine: game.makerUserId === viewerId,
+            },
+      marks: marks.get(game.id) ?? NO_MARKS,
+    };
+  }
+
+  return { page, followedPage, health };
 }
 
 export type FeedService = ReturnType<typeof createFeedService>;
