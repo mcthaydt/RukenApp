@@ -219,7 +219,9 @@ test("on a slow machine the new page waits until the browser has pictured the ol
   await page.getByRole("link", { name: "Create an account" }).click();
   await expect(page).toHaveURL(/\/sign-up/);
   await expect
-    .poll(() => page.evaluate(() => (window as unknown as { oldPageWhenPictured?: string }).oldPageWhenPictured))
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { oldPageWhenPictured?: string }).oldPageWhenPictured),
+    )
     .toBe("Sign in");
   await expect(page.getByRole("heading", { level: 1 })).not.toHaveText("Sign in");
   await expectNoNewPageLoad(page);
