@@ -1,7 +1,7 @@
 # Live state: claude/project-thread-ox3tgl
 
-- Task: fix implementation audit 1 of PR #424 (FAIL at ba8beb7): formatting, share sheet must fit and be pad-reachable on a phone, criterion 12 keyboard journey.
-- Last commit: ba8beb7
-- Next step: format, fix the share sheet, rewrite the keyboard journey, run checks, hand the head to a re-audit.
+- Task: fix implementation audit 1 of PR #424 (FAIL at ba8beb7) and the owner's 14:48 UTC change: Email in the share sheet becomes Your turn with a friend picker.
+- Last commit: e5d4c6d
+- Next step: run the touched journeys on phone, tablet and computer, update the PR body, push, hand the head to a fresh re-audit.
 - Open decisions: none for the owner.
-- Updated: 2026-11-27 14:41 UTC
+- Updated: 2026-11-27 14:58 UTC

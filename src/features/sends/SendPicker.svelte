@@ -198,6 +198,7 @@
     width: 100%;
     height: 100%;
     border-radius: 50%;
+    --corner: round;
     object-fit: cover;
   }
   /* Picked: a ring round the face and a green tick on it. */
