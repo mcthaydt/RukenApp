@@ -146,3 +146,49 @@ test("with reduced motion the panels simply come and go", async ({ browser }) =>
     await context.close();
   }
 });
+
+test("a late first frame does not cut the slide away short", async ({ page }) => {
+  // A busy phone can draw the first frame after a press late (#377). The panel still slides all the way away, and only
+  // then closes.
+  await signUp(page);
+  await page.goto(`/?at=${live.slug}`);
+  await pageHasSettled(page);
+  const opener = page
+    .locator(`section[data-slug="${live.slug}"]`)
+    .first()
+    .getByRole("button", { name: "More or less like this" });
+  const panel = page.locator("dialog.tastesheet");
+  await opener.click();
+  await expect(panel).toBeVisible();
+  await panel.evaluate(async (dialog) => {
+    await Promise.all(dialog.getAnimations().map((one) => one.finished));
+  });
+  await panel.evaluate((dialog: HTMLDialogElement) => {
+    const said: string[] = [];
+    (window as unknown as { said: string[] }).said = said;
+    let stalled = false;
+    // The moment the slide away is asked for, the page is held busy for 200ms, so its first frame comes late.
+    new MutationObserver(() => {
+      if (stalled || !dialog.classList.contains("closing")) return;
+      stalled = true;
+      const until = performance.now() + 200;
+      while (performance.now() < until) {
+        // Busy, as a phone that is still working on the press.
+      }
+    }).observe(dialog, { attributeFilter: ["class"] });
+    dialog.addEventListener("animationend", (event) => {
+      if (event.pseudoElement === "") said.push(`end ${event.animationName}`);
+    });
+    dialog.addEventListener("animationcancel", (event) => {
+      if (event.pseudoElement === "") said.push(`cut ${event.animationName}`);
+    });
+    dialog.addEventListener("close", () => said.push("closed"));
+  });
+  await panel.getByRole("button", { name: "Cancel" }).click();
+  await expect(panel).toBeHidden();
+  const { shut } = await slidesHere(page);
+  expect(await page.evaluate(() => (window as unknown as { said: string[] }).said)).toEqual([
+    `end ${shut}`,
+    "closed",
+  ]);
+});

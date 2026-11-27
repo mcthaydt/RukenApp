@@ -888,6 +888,7 @@
     color: var(--chalk);
   }
   .disc {
+    position: relative;
     display: grid;
     place-items: center;
     width: var(--size-target);
@@ -901,9 +902,6 @@
   }
   .mark[aria-pressed="true"] .disc {
     background: var(--glass-lift);
-  }
-  .disc {
-    position: relative;
   }
   /* The check on a reposted clip's button: small, green glass, over the top right of the round button. */
   .done {
@@ -930,9 +928,15 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
+  /* The word keeps to the button's width and spills evenly past both sides when it is longer ("Reposted"), so the
+     column and the game's card beside it never move when it changes. */
   .word {
+    display: flex;
+    justify-content: center;
+    width: var(--size-target);
     font: var(--text-small);
     font-weight: 600;
+    white-space: nowrap;
     text-shadow: var(--glass-ink);
   }
   .markproblem {
