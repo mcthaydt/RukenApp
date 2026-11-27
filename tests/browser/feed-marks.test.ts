@@ -1,13 +1,21 @@
 import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
-import { pageHasSettled, signUp } from "./support/account.ts";
+import {
+  JOURNEY_PASSWORD,
+  nationalOf,
+  pageHasSettled,
+  SITE_ANSWER_TIMEOUT,
+  signUp,
+  signUpInItsOwnContext,
+} from "./support/account.ts";
 import { consented, NOT_CONSENTED } from "./support/consent.ts";
 import { gameWhere } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Like, Save and Repost on a clip, and Saved and Your reposts on You (learned-feed spec, unit G): a player makes each
-// mark, sees it again after a reload and on its list, and takes it back from the feed and from the list. Signed out,
-// without the cookie yes, and on their own game, nothing is kept.
+// mark, sees it again after a reload and on its list, and takes it back from the feed and from the list. Signed out or
+// without the cookie yes, the press waits for sign-in and "I agree" and is made on the way back; on their own game,
+// nothing is kept.
 
 const SITE = "http://localhost:4173";
 
@@ -27,8 +35,8 @@ test.afterAll(async () => {
 test.beforeEach(forgetRateLimits);
 
 /** The game's clip on the feed, brought on screen, once the feed's script has started. */
-async function clipOnFeed(page: Page): Promise<Locator> {
-  await page.goto("/");
+async function clipOnFeed(page: Page, open = true): Promise<Locator> {
+  if (open) await page.goto("/");
   await pageHasSettled(page);
   const clip = page.locator(`section[data-slug="${live.slug}"]`).first();
   await clip.scrollIntoViewIfNeeded();
@@ -112,18 +120,46 @@ test("the marks work with the keyboard alone, with a visible focus ring", async 
   await page.keyboard.press("Enter");
   expect((await kept).status()).toBe(200);
   await expect(mark(clip, "Save")).toHaveAttribute("aria-pressed", "true");
+  // A second press waits for the first to come back (the button says so while it is sent).
+  await expect(mark(clip, "Save")).not.toHaveAttribute("aria-disabled", "true");
   await page.keyboard.press("Enter");
   await expect(mark(clip, "Save")).toHaveAttribute("aria-pressed", "false");
 });
 
-test("signed out, a press goes to sign in and keeps nothing", async ({ page }) => {
-  const clip = await clipOnFeed(page);
+/** Signs in on the sign-in screen the press was sent to, as a person would. */
+async function signInHere(page: Page, number: string): Promise<void> {
+  await page.getByLabel("Phone number").fill(nationalOf(number));
+  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+}
+
+test("signed out, a press goes to sign in, and once signed in the press is made on that game", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(90_000);
+  const { number } = await signUpInItsOwnContext(browser);
+  let clip = await clipOnFeed(page);
   await mark(clip, "Like").click();
-  await expect(page).toHaveURL(/\/sign-in\?next=%2F$/);
+  await expect(page).toHaveURL(/\/sign-in\?next=%2Fme%2Fpress%3F/);
+  // Signed out, the site itself keeps nothing for a press: it only says where to sign in.
   const answer = await page.request.post("/api/feed/marks", {
     data: { game: live.slug, kind: "like", on: true },
   });
   expect(answer.status()).toBe(401);
+  await signInHere(page, number);
+  await expect(page).toHaveURL(`/?at=${live.slug}`);
+  clip = await clipOnFeed(page, false);
+  await expect(mark(clip, "Like")).toHaveAttribute("aria-pressed", "true");
+  await expect(mark(clip, "Save")).toHaveAttribute("aria-pressed", "false");
+});
+
+test("a link to the way back presses nothing that the person did not press", async ({ page }) => {
+  await signUp(page);
+  await page.goto(`/me/press?game=${live.slug}&kind=like`);
+  await expect(page).toHaveURL(`/?at=${live.slug}`);
+  const clip = await clipOnFeed(page, false);
+  await expect(mark(clip, "Like")).toHaveAttribute("aria-pressed", "false");
 });
 
 test("a maker's own clip has no Like, Save or Repost, and the site refuses one", async () => {
@@ -164,6 +200,13 @@ test("the site believes nothing a press sends that is not a press", async ({ pag
 test.describe("without the cookie yes", () => {
   test.use({ storageState: NOT_CONSENTED });
 
+  /** The feed with the cookie card put away, as a person on a small phone does to reach the buttons under it. */
+  async function feedWithoutCard(page: Page): Promise<Locator> {
+    const clip = await clipOnFeed(page);
+    await page.getByRole("button", { name: "Not now" }).click();
+    return clip;
+  }
+
   for (const [name, words] of [
     ["Like", "To like this game"],
     ["Save", "To save this game"],
@@ -172,7 +215,7 @@ test.describe("without the cookie yes", () => {
     test(`${name} opens the cookie notice, which says what it is for, and keeps nothing`, async ({
       page,
     }) => {
-      const clip = await clipOnFeed(page);
+      const clip = await feedWithoutCard(page);
       await mark(clip, name).click();
       await expect(page).toHaveURL(/\/cookies\?for=/);
       await expect(page.getByText(words, { exact: false })).toBeVisible();
@@ -182,4 +225,23 @@ test.describe("without the cookie yes", () => {
       expect(answer.status()).toBe(403);
     });
   }
+
+  test('"I agree" carries on to sign in and to the press, which shows on the feed and on Saved', async ({
+    page,
+    browser,
+  }) => {
+    test.setTimeout(90_000);
+    const { number } = await signUpInItsOwnContext(browser);
+    let clip = await feedWithoutCard(page);
+    await mark(clip, "Save").click();
+    await expect(page.getByText("To save this game", { exact: false })).toBeVisible();
+    await page.getByRole("button", { name: "I agree" }).click();
+    await expect(page).toHaveURL(/\/sign-in\?next=%2Fme%2Fpress%3F/);
+    await signInHere(page, number);
+    await expect(page).toHaveURL(`/?at=${live.slug}`);
+    clip = await clipOnFeed(page, false);
+    await expect(mark(clip, "Save")).toHaveAttribute("aria-pressed", "true");
+    await page.goto("/me/saved");
+    await expect(page.getByRole("link", { name: new RegExp(live.name) })).toBeVisible();
+  });
 });

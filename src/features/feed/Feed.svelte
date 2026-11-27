@@ -89,7 +89,9 @@
     if (sendingMarks.includes(busyKey)) return;
     forgetHints();
     if (!hasAgreed()) {
-      await goto(`/cookies?for=${kind}&next=${encodeURIComponent("/")}`);
+      // "I agree" carries on to the press: the way back makes it, signing in first when need be (pressed.ts).
+      const back = `/me/press?game=${encodeURIComponent(clip.slug)}&kind=${kind}`;
+      await goto(`/cookies?for=${kind}&next=${encodeURIComponent(back)}`);
       return;
     }
     const before = marksOf(clip);
@@ -105,8 +107,10 @@
         body: JSON.stringify({ game: clip.slug, kind, on }),
       });
       if (answer.status === 401) {
+        // Signed out: sign in, and the press is made on the way back.
         pressed[clip.slug] = before;
-        await goto(`/sign-in?next=${encodeURIComponent("/")}`);
+        const said = await answer.json<{ go?: string }>().catch(() => ({ go: undefined }));
+        await goto(said.go ?? `/sign-in?next=${encodeURIComponent("/")}`);
         return;
       }
       if (!answer.ok) throw new Error(`the site answered ${String(answer.status)}`);
@@ -180,6 +184,15 @@
     ready = true;
     mounted = true;
     if (returning !== undefined) returnTo(returning);
+    else {
+      // Back from a press that waited (the cookie yes, sign-in): the feed opens at that game's clip.
+      const at = new URL(location.href).searchParams.get("at");
+      const index = at === null ? -1 : clips.findIndex((clip) => clip.slug === at);
+      if (index > 0) {
+        current = index;
+        void tick().then(() => sections[index]?.scrollIntoView({ behavior: "instant", block: "start" }));
+      }
+    }
     void tick().then(() => {
       warm = true;
     });
