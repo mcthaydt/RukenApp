@@ -47,19 +47,17 @@ async function openYourFeed(page: Page): Promise<void> {
 }
 
 /**
- * Presses ••• on a game's clip in the feed (the one at the top, or the one named) and one of the sheet's two buttons;
- * answers the game it was for. Other journeys add games as this one runs, so a second press names its game.
+ * Presses ••• on the journey's own game's clip in the feed and one of the sheet's two buttons; answers the game it was
+ * for. Never the clip at the top: other journeys add games and take them off as this one runs, and a game taken off
+ * between the feed loading and the press is answered "That game isn't on Ruken now." with the sheet left open.
  */
 async function tellTheFeed(
   page: Page,
   choice: "More like this" | "Less like this",
-  options: { slug?: string; shoot?: () => Promise<void> } = {},
+  options: { shoot?: () => Promise<void> } = {},
 ): Promise<{ slug: string; name: string }> {
   await page.goto("/");
-  const clip =
-    options.slug === undefined
-      ? page.locator('section[data-current="true"]')
-      : page.locator(`section[data-slug="${options.slug}"]`).first();
+  const clip = page.locator(`section[data-slug="${live.slug}"]`).first();
   await expect(clip).toBeAttached();
   await clip.scrollIntoViewIfNeeded();
   const slug = (await clip.getAttribute("data-slug")) ?? "";
@@ -91,14 +89,14 @@ test.describe("with cookies said yes to", () => {
     await showTheOwner(page, testInfo, "Your feed, new");
 
     // Create from a clip: More like this keeps the game on the more side.
-    const { slug, name: game } = await tellTheFeed(page, "More like this", {
+    const { name: game } = await tellTheFeed(page, "More like this", {
       shoot: () => showTheOwner(page, testInfo, "the ••• sheet"),
     });
     await openYourFeed(page);
     await expect(more(page).getByText(game, { exact: true })).toBeVisible();
 
     // Update: Less like this on the same game moves it to the less side; it is never on both.
-    await tellTheFeed(page, "Less like this", { slug });
+    await tellTheFeed(page, "Less like this");
     await openYourFeed(page);
     await expect(less(page).getByText(game, { exact: true })).toBeVisible();
     await expect(more(page).getByText(game, { exact: true })).toHaveCount(0);
