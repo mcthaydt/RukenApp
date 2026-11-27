@@ -1,0 +1,84 @@
+// The feed feature's tables: what a player pressed on a game's clip; what a person told the feed they want more or
+// less of, and the Good pick questions it asked. Which rows exist is public on purpose (what a person is told is kept);
+// how they move the order is private.
+
+/// Which press it was. The words people see are in src/features/feed/Feed.svelte.
+enum MarkKind {
+  like
+  save
+  repost
+}
+
+/// A person liked, saved or reposted a game: one row per person, game and kind. Pressing again deletes the row, and so
+/// does deleting the account (deletion.ts), which also takes off every mark on that person's games. A count on screen
+/// is a count of these rows and nothing else.
+model GameMark {
+  id     String   @id @default(cuid(2))
+  userId String
+  gameId String
+  kind   MarkKind
+  /// When the person pressed it, on the server's clock.
+  madeAt DateTime @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId, kind])
+  @@index([gameId, kind])
+}
+
+enum TasteDirection {
+  more
+  less
+}
+
+enum TasteKind {
+  mood
+  genre
+  maker
+  game
+}
+
+enum GoodPickAnswer {
+  yes
+  no
+}
+
+/// One chip on Your feed: more or less of a mood, a genre, a maker or a game. Pressing × deletes the row; Start over
+/// deletes them all. `value` is the mood or genre word's key, or for a maker or a game its id, which is also in
+/// `makerUserId` or `gameId` so the row goes with that person or game.
+/// SQL: CHECK "FeedTaste_kind_columns" (a maker row names its maker, a game row its game, and the rest neither).
+model FeedTaste {
+  id          String         @id @default(cuid(2))
+  userId      String
+  direction   TasteDirection
+  kind        TasteKind
+  value       String
+  makerUserId String?
+  gameId      String?
+  createdAt   DateTime       @db.Timestamptz
+
+  user  User  @relation("FeedTasteOwner", fields: [userId], references: [id], onDelete: Cascade)
+  maker User? @relation("FeedTasteMaker", fields: [makerUserId], references: [id], onDelete: Cascade)
+  game  Game? @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, direction, kind, value])
+  @@index([makerUserId])
+  @@index([gameId])
+}
+
+/// A Good pick question the feed showed a person about a game, so it is asked once; `answer` is null until they press
+/// Yes or No.
+model GoodPickAsked {
+  id      String          @id @default(cuid(2))
+  userId  String
+  gameId  String
+  askedAt DateTime        @db.Timestamptz
+  answer  GoodPickAnswer?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId])
+  @@index([gameId])
+}

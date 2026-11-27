@@ -64,7 +64,7 @@ function depsFor(
     followedMakerIds: (followerId) => Promise.resolve(options.follows?.[followerId] ?? []),
     media: (key) => `https://media.test/${key}`,
   };
-  return { service: createFeedService(deps), asked };
+  return { service: createFeedService(deps), asked, deps };
 }
 
 /** The first page's clips. */
@@ -112,8 +112,38 @@ describe("feed", () => {
         following: false,
         mine: false,
       },
+      // No marks were read (the stand-in has none), so the clip shows none.
+      marks: { likes: 0, liked: false, saved: false, reposted: false, own: false },
     });
     expect(clips[1]?.maker).toBeNull();
+  });
+
+  it("asks for each shown game's marks once, for the viewer, and puts them on its clip", async () => {
+    const { deps } = depsFor([listed("one", 1), listed("two", 2)]);
+    const asked: { viewerId: string | null; ids: string[] }[] = [];
+    const withMarks = createFeedService({
+      ...deps,
+      marksOf: (viewerId, games) => {
+        asked.push({ viewerId, ids: games.map((game) => game.id) });
+        return Promise.resolve(
+          new Map([["id-two", { likes: 3, liked: true, saved: false, reposted: true, own: false }]]),
+        );
+      },
+    });
+
+    const clips = (await withMarks.page(null, undefined, "viewer-1")).clips;
+
+    expect(asked).toHaveLength(1);
+    expect(asked[0]?.viewerId).toBe("viewer-1");
+    expect(new Set(asked[0]?.ids)).toEqual(new Set(["id-one", "id-two"]));
+    expect(clips.find((clip) => clip.slug === "two")?.marks).toEqual({
+      likes: 3,
+      liked: true,
+      saved: false,
+      reposted: true,
+      own: false,
+    });
+    expect(clips.find((clip) => clip.slug === "one")?.marks.likes).toBe(0);
   });
 
   it("gives a maker with no photo a null photo", async () => {

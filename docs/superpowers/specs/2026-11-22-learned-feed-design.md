@@ -207,12 +207,12 @@ Steps:
 - **D5.** Journey (CRUD): turn Learn from what I do off and on, add a chip, read it back, remove it, add a less chip, press More and Less on a clip and see the chips change, answer a Good pick, Start over and see the empty state; a second account cannot read or change the first's chips.
 
 Steps:
-- [ ] 1. Journey D5, failing.
-- [ ] 2. Migration and purge.
-- [ ] 3. The ••• sheet.
-- [ ] 4. `/me/feed`.
-- [ ] 5. Good pick: `ask` passed through, test first.
-- [ ] 6. `verify`; shots.
+- [x] 1. Journey D5, failing.
+- [x] 2. Migration and purge.
+- [x] 3. The ••• sheet.
+- [x] 4. `/me/feed`, built at `/settings/feed` (the Owner, 2026-11-27 00:43 UTC: feed settings live under Settings; the Me to Settings move waits for member pages).
+- [x] 5. Good pick: `ask` passed through, test first.
+- [x] 6. `verify`; shots.
 
 ### Unit G: Like, Save, Repost (public half)
 

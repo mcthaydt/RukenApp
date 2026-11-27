@@ -54,8 +54,13 @@ export const GATED: readonly string[] = [
   // Following a maker keeps a row, and signed out a cookie for the way back from sign-up.
   "/[handle=handle]/follow",
   "/api/auth",
+  "/api/feed/marks",
   "/me",
+  "/settings",
   "/make",
+  // More like this, Less like this and Good pick, from a clip: kept about a signed-in person only.
+  "/api/feed/taste",
+  "/api/feed/good-pick",
 ];
 
 export type RouteKind = "open" | "machine" | "gated";

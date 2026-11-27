@@ -101,8 +101,61 @@ describe("the open ranker gives the feed #329 shipped (old against new)", () => 
   }
 });
 
+describe("Good pick?", () => {
+  const FULL = { kind: "full", id: "viewer-1" } as const;
+  const ASKS = { ...PRIVATE_PAGE, ask: { index: 0, gameId: "id-a" } };
+
+  function asking(before: string[] = []) {
+    const notes: string[] = [];
+    const asked = new Set(before);
+    return {
+      notes,
+      asking: (userId: string, gameId: string) => {
+        notes.push(`${userId}:${gameId}`);
+        const fresh = !asked.has(gameId);
+        asked.add(gameId);
+        return Promise.resolve(fresh);
+      },
+    };
+  }
+
+  it("shows a full viewer the card on the clip the ranker names, about the game it names, and notes it once", async () => {
+    const { ranker } = stubRanker(() => Promise.resolve(ASKS));
+    const kept = asking();
+    const { service } = serviceWith({ privateRanker: () => ranker, asking: kept.asking });
+
+    expect((await service.page(null, FULL)).ask).toEqual({ key: "k1", slug: "a", name: "Game a" });
+    expect(kept.notes).toEqual(["viewer-1:id-a"]);
+    // Asked before: the card is left out.
+    expect((await service.page(null, FULL)).ask).toBeUndefined();
+  });
+
+  it("asks nobody in the crowd, and notes nothing", async () => {
+    const { ranker } = stubRanker(() => Promise.resolve(ASKS));
+    const kept = asking();
+    const { service } = serviceWith({ privateRanker: () => ranker, asking: kept.asking });
+
+    expect((await service.page(null)).ask).toBeUndefined();
+    expect(kept.notes).toEqual([]);
+  });
+
+  it("leaves the card out when its clip or its game is not shown", async () => {
+    const kept = asking();
+    for (const ask of [
+      { index: 1, gameId: "id-a" },
+      { index: 0, gameId: "id-gone" },
+      { index: 9, gameId: "id-a" },
+    ]) {
+      const { ranker } = stubRanker(() => Promise.resolve({ ...PRIVATE_PAGE, ask }));
+      const { service } = serviceWith({ privateRanker: () => ranker, asking: kept.asking });
+      expect((await service.page(null, FULL)).ask).toBeUndefined();
+    }
+    expect(kept.notes).toEqual([]);
+  });
+});
+
 describe("the feed through a ranker", () => {
-  it("turns the ranker's ids into clips, passes caughtUpAt and ask, and leaves out a game no longer live", async () => {
+  it("turns the ranker's ids into clips, passes caughtUpAt, and leaves out a game no longer live", async () => {
     const { ranker } = stubRanker(() => Promise.resolve(PRIVATE_PAGE));
     const { service, lines } = serviceWith({ privateRanker: () => ranker });
 
@@ -120,10 +173,12 @@ describe("the feed through a ranker", () => {
       upright: "https://media.test/clips/c-up.mp4",
       wide: "https://media.test/clips/c-wide.mp4",
       maker: { handle: "h-maker-c", name: "maker-c", photo: null, following: false, mine: false },
+      marks: { likes: 0, liked: false, saved: false, reposted: false, own: false },
     });
     expect(page.next).toBe("p.private-cursor");
     expect(page.caughtUpAt).toBe(NOW - 1000);
-    expect(page.ask).toEqual({ index: 1, gameId: "id-a" });
+    // The crowd is never asked Good pick: nothing about them is kept (learned feed spec D4).
+    expect(page.ask).toBeUndefined();
     expect(lines).toEqual([]);
   });
 
@@ -375,5 +430,60 @@ describe("when the private ranker does not answer, the open one does", () => {
     expect(first.next?.startsWith("o.")).toBe(true);
     expect(second?.clips.length).toBeGreaterThan(0);
     expect(second?.next?.startsWith("o.")).toBe(true);
+  });
+});
+
+describe("the feed's health, for /healthz/feed", () => {
+  const healthOf = (answer: () => Promise<unknown>) =>
+    ({
+      page: () => Promise.resolve(PRIVATE_PAGE),
+      notes: () => Promise.resolve({}),
+      health: answer,
+    }) as unknown as Ranker;
+
+  it("with no private ranker bound, is the open order on its defaults, with no line", async () => {
+    const { service, lines } = serviceWith({ privateRanker: () => null });
+    expect(await service.health()).toEqual({ ranker: "open", health: "defaults" });
+    expect(lines).toEqual([]);
+  });
+
+  it("is what the private ranker says of itself, when it answers", async () => {
+    for (const health of ["private", "partial", "defaults"] as const) {
+      const { service, lines } = serviceWith({
+        privateRanker: () => healthOf(() => Promise.resolve(health)),
+      });
+      expect(await service.health()).toEqual({ ranker: "private", health });
+      expect(lines).toEqual([]);
+    }
+  });
+
+  it("is the open order, with one line saying why, when the private ranker throws or answers nonsense", async () => {
+    for (const [answer, why] of [
+      [() => Promise.reject(new Error("user-1 broke")), "threw"],
+      [() => Promise.resolve("fine"), "bad answer"],
+    ] as const) {
+      const { service, lines } = serviceWith({ privateRanker: () => healthOf(answer) });
+      expect(await service.health()).toEqual({ ranker: "open", health: "defaults" });
+      expect(lines).toEqual([`feed: the private ranker did not answer its health (${why}).`]);
+    }
+  });
+
+  it(`is the open order when the private ranker takes longer than ${String(PRIVATE_WAIT_MS)} ms`, async () => {
+    vi.useFakeTimers();
+    const late = () =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          resolve("private");
+        }, PRIVATE_WAIT_MS + 1);
+      });
+    const { service, lines } = serviceWith({ privateRanker: () => healthOf(late) });
+
+    const pending = service.health();
+    await vi.advanceTimersByTimeAsync(PRIVATE_WAIT_MS + 1);
+    const health = await pending;
+
+    vi.useRealTimers();
+    expect(health).toEqual({ ranker: "open", health: "defaults" });
+    expect(lines).toEqual(["feed: the private ranker did not answer its health (slow)."]);
   });
 });
