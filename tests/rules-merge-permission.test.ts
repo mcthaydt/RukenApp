@@ -608,7 +608,7 @@ describe("the RukenPrivate merge rule holds from every working folder", () => {
       {
         input: JSON.stringify({
           hook_event_name: "PreToolUse",
-          tool_name: `mcp__github__${tool}`,
+          tool_name: tool === "Bash" ? tool : `mcp__github__${tool}`,
           tool_input: input,
           cwd,
         }),
@@ -655,27 +655,66 @@ describe("the RukenPrivate merge rule holds from every working folder", () => {
       expect(mergeFrom(cwd)).toContain("check on abc1234 is missing");
     });
   }
-  test("RukenPrivate's own config can ask for the same floor and check, for a session where its own hook runs", () => {
+  // The shell's routes to a merge skip merge_pull_request's checks, so in RukenPrivate they are refused.
+  const SHELL = "a merge goes through merge_pull_request";
+  const shell = (cwd: string, command: string) => from(cwd, "Bash", { command });
+  for (const where of ["RukenApp", "RukenPrivate", "the folder above both"]) {
+    test(`shell merges in RukenPrivate are refused from ${where}`, () => {
+      const cwd = where === "the folder above both" ? top : join(top, where);
+      setState({ body: "Lane 1", files: ["LICENSE"], comments: [`${SHORT} PASS`] });
+      for (const c of [
+        "gh pr merge 999 -R mcthaydt/RukenPrivate --merge",
+        "gh pr merge 999 -R mcthaydt/RukenPrivate --squash",
+        "gh pr merge 999 -R mcthaydt/RukenPrivate --merge --auto",
+        "gh pr ready 999 -R mcthaydt/RukenPrivate",
+        "gh api -X PUT repos/mcthaydt/RukenPrivate/pulls/999/merge -f merge_method=merge",
+        "GH_REPO=mcthaydt/RukenPrivate gh pr merge 999 --merge",
+      ])
+        expect(shell(cwd, c), c).toContain(SHELL);
+      // A GraphQL merge names no repo; the route check already refuses it.
+      expect(
+        shell(
+          cwd,
+          "gh api graphql -f query='mutation { mergePullRequest(input: {pullRequestId: \"x\"}) { clientMutationId } }'",
+        ),
+      ).toContain("Pull request and repository writes go");
+      // Reading, and turning auto-merge off, merge nothing.
+      for (const c of [
+        "gh api repos/mcthaydt/RukenPrivate/pulls/999",
+        "gh pr view 999 -R mcthaydt/RukenPrivate",
+        "gh pr merge 999 -R mcthaydt/RukenPrivate --disable-auto",
+      ])
+        expect(shell(cwd, c) ?? "", c).not.toContain(SHELL);
+    });
+  }
+  test("a shell merge in RukenPrivate's own folder needs no -R to be refused", () => {
+    setState({ body: "Lane 1", files: ["LICENSE"], comments: [`${SHORT} PASS`] });
+    expect(shell(join(top, "RukenPrivate"), "gh pr merge 999 --merge")).toContain(SHELL);
+  });
+  test("this repo's shell merges are not refused by it", () => {
+    setState({ body: "Lane 1", files: ["docs/x.md"] });
+    expect(shell(join(top, "RukenApp"), "gh pr merge 999 -R mcthaydt/RukenApp --merge") ?? "").not.toContain(
+      SHELL,
+    );
+  });
+  // A session started in RukenPrivate's folder runs RukenPrivate's own copy of this hook with its own config.
+  // That config names RukenPrivate itself in alsoMerges, so the copy holds the same rule.
+  test("RukenPrivate's own copy of the hook, naming itself in alsoMerges, holds the same rule", () => {
     const path = join(top, "RukenPrivate", ".claude", "hooks", "rules.json");
-    const cfg = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown> & { prFlow: object };
-    const own = {
-      ...cfg,
-      prFlow: { ...cfg.prFlow, minLane: 2 },
-      mergeGreen: { enabled: true, statuses: [], checkRuns: ["check"] },
-    };
-    // Run the hook as RukenPrivate's own: a copy of the script next to RukenPrivate's config, nothing above it.
+    const cfg = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+    const own = { ...cfg, alsoMerges: [{ repo: "mcthaydt/RukenPrivate", checkRuns: ["check"] }] };
     const alone = mkdtempSync(join(tmpdir(), "rules-merge-alone-"));
     try {
       cpSync(join(ROOT, ".claude", "hooks"), join(alone, ".claude", "hooks"), { recursive: true });
       cpSync(join(ROOT, "CLAUDE.md"), join(alone, "CLAUDE.md"));
       writeFileSync(join(alone, ".claude", "hooks", "rules.json"), JSON.stringify(own));
-      const run = (s: Partial<State>) => {
+      const run = (s: Partial<State>, tool: string, toolInput: object) => {
         setState(s);
         const r = spawnSync(process.execPath, [join(alone, ".claude", "hooks", "rules.mjs")], {
           input: JSON.stringify({
             hook_event_name: "PreToolUse",
-            tool_name: "mcp__github__merge_pull_request",
-            tool_input: { ...PRIV, merge_method: "merge", expectedHeadSha: HEAD },
+            tool_name: tool,
+            tool_input: toolInput,
             cwd: alone,
           }),
           encoding: "utf8",
@@ -690,11 +729,21 @@ describe("the RukenPrivate merge rule holds from every working folder", () => {
         });
         return r.stdout.includes('"deny"') ? r.stdout : null;
       };
-      expect(run({ body: "Lane 1", files: ["LICENSE"] })).toContain(NO_REVIEW);
-      expect(run({ body: "Lane 1", files: ["LICENSE"], comments: [`${SHORT} PASS`], runs: [] })).toContain(
-        "check on abc1234 is missing",
+      const m = (s: Partial<State>) =>
+        run(s, "mcp__github__merge_pull_request", { ...PRIV, merge_method: "merge", expectedHeadSha: HEAD });
+      const lic = { body: "Lane 1", files: ["LICENSE"] };
+      expect(m(lic)).toContain(NO_REVIEW);
+      expect(
+        m({ ...lic, comments: [`${SHORT} PASS`], runs: [{ ...CHECK_OK, conclusion: "failure" }] }),
+      ).toContain("check on abc1234 is failure");
+      expect(m({ ...lic, comments: [`${SHORT} PASS`], runs: [] })).toContain("check on abc1234 is missing");
+      expect(run(lic, "mcp__github__enable_pr_auto_merge", { ...PRIV, mergeMethod: "MERGE" })).toContain(
+        "GitHub does not hold the merge",
       );
-      expect(run({ body: "Lane 1", files: ["LICENSE"], comments: [`${SHORT} PASS`] })).toBeNull();
+      expect(run(lic, "Bash", { command: "gh pr merge 999 -R mcthaydt/RukenPrivate --merge" })).toContain(
+        SHELL,
+      );
+      expect(m({ ...lic, comments: [`${SHORT} PASS`] })).toBeNull();
     } finally {
       rmSync(alone, { recursive: true, force: true });
     }

@@ -1199,6 +1199,24 @@ const mergeRuleFor = (list, slug) => {
   const x = (list ?? []).find((e) => mergeRepoOf(e) === slug.toLowerCase());
   return x === undefined ? null : { repo: mergeRepoOf(x), checkRuns: x && typeof x === 'object' ? (x.checkRuns ?? []) : [] };
 };
+// In a repo another config lets sessions merge in, the review, the check runs and the merge method are checked on
+// merge_pull_request only, so the shell's routes to a merge (gh pr merge, gh pr ready, gh api .../merge or
+// .../auto_merge) are refused there, from any folder.
+const SHELL_MERGE_RULE = 'In a repo this hook lets sessions merge in from elsewhere, a merge goes through merge_pull_request, where the hook checks its review, its check runs and the merge method (the merge permission rule).';
+function checkShellMerges(cmd, config, lists, deny) {
+  if (cmd.prog !== 'gh' || !lists.some((l) => (l ?? []).length)) return;
+  const p = ghParts(cmd);
+  const api = ghApi(cmd, config);
+  const a = p.rest.slice(1);
+  const viaApi = api && api.method !== 'GET' && api.method !== 'DELETE' && /pulls\/\d+\/(merge|ready_for_review|[a-z/]*auto_?merge)$/.test(api.path ?? '');
+  const viaPr = p.sub === 'pr' && ((p.sub2 === 'merge' && !hasFlag(a, ['--disable-auto'])) || (p.sub2 === 'ready' && !hasFlag(a, ['--undo'])));
+  if (!viaApi && !viaPr) return;
+  // A GraphQL merge names no repo; checkPrRoutes already refuses GraphQL writes.
+  let slug = p.repo;
+  if (!slug) { const r = findRoot(cmd.cwd ?? '.'); const c = r ? loadConfig(r).config : null; slug = c ? repoSlug(c, r) : null; }
+  if (!slug || !lists.some((l) => mergeRuleFor(l, slug))) return;
+  deny(refusal(SHELL_MERGE_RULE, `${['gh', ...cmd.args].join(' ').slice(0, 160)} (${slug})`, 'mcp__github__merge_pull_request with merge_method "merge" and expectedHeadSha, or update_pull_request with draft false to mark it ready'));
+}
 function checkMcp(name, input, config, root, deny, ctx) {
   const repo = input.owner && input.repo ? `${input.owner}/${input.repo}` : repoSlug(config, root);
   if (config.agnostic && !(input.owner && input.repo)) return;
@@ -1227,9 +1245,9 @@ function checkMcp(name, input, config, root, deny, ctx) {
   // ctx.mergeRule: the target is named in the alsoMerges of the config judging the call or of the one next to this
   // hook. Whatever folder the session works from, a merge there then needs a PASS on its head and its check runs green.
   const mergeRule = ctx.mergeRule ?? null;
-  const ownRuns = on(config, 'mergeGreen') ? (config.mergeGreen?.checkRuns ?? []) : [];
-  const green = mergeRule ? { ...config, mergeGreen: { enabled: true, statuses: on(config, 'mergeGreen') ? (config.mergeGreen?.statuses ?? []) : [], checkRuns: [...new Set([...ownRuns, ...mergeRule.checkRuns])] } } : config;
-  const floor = Math.max(elsewhere || mergeRule ? 2 : 0, Number(config.prFlow?.minLane ?? 0) || 0);
+  // A repo's own config may name itself in alsoMerges (RukenPrivate does), so its own copy of this hook holds it the same way.
+  const green = mergeRule ? { ...config, mergeGreen: { enabled: true, statuses: on(config, 'mergeGreen') ? (config.mergeGreen?.statuses ?? []) : [], checkRuns: mergeRule.checkRuns } } : config;
+  const floor = elsewhere || mergeRule ? 2 : 0;
   const guardedNow = isMerge || toolMatches(name, config.mcp?.disableAutoMergeTools ?? ['disable_pr_auto_merge$']) || readyCall;
   if (guardedNow && elsewhere && !alsoMerges.includes(target)) {
     deny(refusal(`This permission covers ${ctx.thisRepo ?? config.repo} only; the owner merges pull requests elsewhere.`, `${name} on ${repo ?? '(unknown repo)'}`, 'ask the owner to do it'));
@@ -1450,6 +1468,11 @@ function preToolUse(root, config, input, ctx) {
   const deny = (r) => { if (!reasons.includes(r)) reasons.push(r); };
   const name = input.tool_name;
   const ti = input.tool_input ?? {};
+  // The repos sessions may merge in, from this config and from the config next to the hook that runs, so the
+  // folder a session works in never loosens the rule (see mergeRuleFor).
+  const homeRoot = resolve(SCRIPT_DIR, '..', '..');
+  const home = homeRoot === resolve(root) ? config : (existsSync(join(homeRoot, '.claude', 'hooks', 'rules.json')) ? loadConfig(homeRoot).config : null);
+  const mergeLists = [config.alsoMerges, home?.alsoMerges];
   if (name === 'Bash') {
     const written = new Set(); // files an earlier part of this same command writes
     for (const cmd of simpleCommands(String(ti.command ?? ''), input.cwd ?? root)) {
@@ -1458,6 +1481,7 @@ function preToolUse(root, config, input, ctx) {
       if (cmd.prog === 'tee') for (const w of cmd.args.filter((a) => !a.startsWith('-'))) written.add(resolve(cmd.cwd, w));
       // The allowlist holds for every repo and every program: where a write goes is not scoped to one repo.
       if (!reasons.length) checkPrRoutes(cmd, base, deny);
+      if (!reasons.length) checkShellMerges(cmd, base, mergeLists, deny);
       const scope = cmd.prog === 'git' ? scopeFor(root, config, gitParts(cmd).cwd, null) : cmd.prog === 'gh' ? scopeFor(root, config, cmd.cwd, ghParts(cmd).repo) : { root, config: base };
       if (!scope) continue;
       for (const check of [checkIdentity, checkAttribution, checkForcePush, checkDefaultBranchPush, checkMergeMethod, checkBypassFlags, checkGpu, checkBanned, checkHostedRunnersOnPush, checkRuleMix, checkPrBodyBash, checkPrFlowBash]) {
@@ -1474,9 +1498,7 @@ function preToolUse(root, config, input, ctx) {
     // The rule for a repo sessions may merge in comes from this config's alsoMerges or, when another repo's config
     // judges the call (the session works in that repo's folder), from the config next to this hook, so the folder
     // a session starts in never loosens it.
-    const homeRoot = resolve(SCRIPT_DIR, '..', '..');
-    const home = homeRoot === resolve(root) ? config : (existsSync(join(homeRoot, '.claude', 'hooks', 'rules.json')) ? loadConfig(homeRoot).config : null);
-    const mergeRule = mergeRuleFor(config.alsoMerges, slug) ?? mergeRuleFor(home?.alsoMerges, slug);
+    const mergeRule = mergeRuleFor(mergeLists[0], slug) ?? mergeRuleFor(mergeLists[1], slug);
     const judged = scope?.config ?? { ...config, identity: { enabled: false }, mergeMethod: mergeRule ? config.mergeMethod : { enabled: false }, prBody: { enabled: false }, liveState: { enabled: false }, mergeGreen: { enabled: false } };
     const cfg = mergeRule ? { ...judged, mergeMethod: { enabled: true } } : judged;
     checkMcp(name, ti, cfg, scope?.root ?? root, deny, { ...ctx, thisRepo: config.repo, alsoMerges: config.alsoMerges, mergeRule });
@@ -1514,7 +1536,9 @@ function rootForCall(input) {
   if (input.tool_name === 'Bash') for (const c of simpleCommands(String(ti.command ?? ''), input.cwd ?? '.')) starts.push(c.prog === 'git' ? gitParts(c).cwd : c.cwd);
   if (input.cwd) starts.push(input.cwd);
   for (const s of starts) { const r = findRoot(s); if (r) return r; }
-  const slug = ti.owner && ti.repo ? `${ti.owner}/${ti.repo}`.toLowerCase() : null;
+  // The repo a call names: an MCP call's owner and repo, or a gh command's -R, GH_REPO or api path.
+  const ghSlug = input.tool_name === 'Bash' ? simpleCommands(String(ti.command ?? ''), input.cwd ?? '.').filter((c) => c.prog === 'gh').map((c) => ghParts(c).repo).find(Boolean) : null;
+  const slug = ti.owner && ti.repo ? `${ti.owner}/${ti.repo}`.toLowerCase() : ghSlug ? String(ghSlug).toLowerCase() : null;
   for (const r of rootsBelow(input.cwd ?? '.')) {
     if (!slug) continue;
     const c = loadConfig(r).config;
@@ -1638,7 +1662,8 @@ function main() {
   if (findRepo) {
     roots = event === 'SessionStart' ? rootsBelow(input.cwd ?? '.').concat(findRoot(input.cwd ?? '.') ?? []) : [rootForCall(input)].filter(Boolean);
     // A call that acts in no repo still meets the checks that need none, under the one config below.
-    if (!roots.length && event === 'PreToolUse') { const below = rootsBelow(input.cwd ?? '.'); if (below.length === 1) { roots = below; detached = true; } }
+    // With several repos below (the cloud start folder), the one this hook belongs to gives that config.
+    if (!roots.length && event === 'PreToolUse') { const below = rootsBelow(input.cwd ?? '.'); const mine = below.find((r) => resolve(r) === resolve(SCRIPT_DIR, '..', '..')); if (below.length === 1 || mine) { roots = [mine ?? below[0]]; detached = true; } }
   }
   else roots = [process.env.CLAUDE_PROJECT_DIR || resolve(SCRIPT_DIR, '..', '..')];
   roots = [...new Set(roots)];
