@@ -1,0 +1,5 @@
+- Task: the clip goes dark on Back to the feed (owner 2026-11-27 04:35 UTC).
+- Last commit: e60f3112
+- Next step: open the draft PR, hand to review.
+- Open decisions: none.
+- Updated: 2026-11-27 04:58 UTC
