@@ -71,6 +71,8 @@
   .tabs a {
     display: flex;
     align-items: center;
+    justify-content: center;
+    min-width: var(--size-target);
     min-height: var(--size-target);
     margin: 0;
     padding: 0 0.5rem;
@@ -118,6 +120,14 @@
   .search:active {
     scale: var(--press-scale);
     transition: scale var(--press-time);
+  }
+  /* The narrowest phones (320 wide): smaller words and padding, so three tabs still fit beside the speaker and Search,
+     whole and 48px tall. */
+  @media (max-width: 359px) {
+    .tabs a {
+      padding: 0 0.25rem;
+      font-size: 0.8125rem;
+    }
   }
   /* A phone held sideways: the bar stands along the right edge, so Search sits at the top of that column, centred on it. */
   @media (orientation: landscape) and (max-height: 449px) {

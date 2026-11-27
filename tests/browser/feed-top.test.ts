@@ -115,8 +115,9 @@ test("the speaker, the tabs and Search line up as one bar that stays put while t
   expect(await middlesOf(page)).toEqual(before);
 });
 
-// Android Chrome's common widths, as Chrome's own engine draws them, with touch: the narrowest the bar must hold.
-for (const device of ["Galaxy S8", "Pixel 7"] as const) {
+// Android Chrome's common widths, as Chrome's own engine draws them, with touch, down to the narrowest phone the bar
+// must hold (320 wide).
+for (const device of ["Galaxy S9+", "Galaxy S8", "Pixel 7"] as const) {
   test(`the top bar lines up on Android Chrome (${device})`, async ({ browser, browserName }) => {
     test.skip(browserName !== "chromium", "Android's Chrome is Chrome's engine; the phone project's Safari is not");
     const context = await browser.newContext({
