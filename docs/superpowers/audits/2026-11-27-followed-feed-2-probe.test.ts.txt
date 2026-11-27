@@ -1,0 +1,140 @@
+import { expect, test, type Page } from "@playwright/test";
+import { pageHasSettled, signUp } from "./support/account.ts";
+import { givePage } from "./support/database.ts";
+import { addGame } from "./support/game.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+import { asInstalled } from "./support/installed.ts";
+import { beforeLaunch } from "./support/launch.ts";
+
+// Review 2 probe for #410 at c011f86 (not part of the PR).
+test.beforeEach(({ page }) => asInstalled(page));
+test.beforeEach(forgetRateLimits);
+let game: Awaited<ReturnType<typeof addGame>>;
+const WORD = `zr${crypto.randomUUID().replaceAll("-", "").slice(0, 8)}`;
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(240_000);
+  await forgetRateLimits();
+  game = await addGame(browser, request);
+  await givePage(game.maker, { name: `Pug ${WORD}`, oneLine: "Probe maker." });
+});
+
+async function watch(page: Page) {
+  await page.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { moves: string[] }).moves = seen;
+    if (!("startViewTransition" in document)) return;
+    const start = document.startViewTransition.bind(document);
+    document.startViewTransition = ((u: ViewTransitionUpdateCallback) => {
+      const m = start(u);
+      const at = seen.push("started") - 1;
+      m.ready.then(
+        () => {
+          const clip = document.documentElement.getAnimations({ subtree: true }).some(
+            (a) => a.effect instanceof KeyframeEffect && a.effect.pseudoElement === "::view-transition-group(clip)",
+          );
+          seen[at] = `${clip ? "clip moved" : "played"} move=${document.documentElement.dataset.move} way=${document.documentElement.dataset.way ?? "-"}`;
+        },
+        (e: unknown) => (seen[at] = String(e)),
+      );
+      return m;
+    }) as typeof document.startViewTransition;
+  });
+}
+const moves = async (page: Page) => {
+  await expect.poll(() => page.evaluate(() => (window as unknown as { moves: string[] }).moves.includes("started"))).toBe(false);
+  return page.evaluate(() => [...(window as unknown as { moves: string[] }).moves]);
+};
+const badge = (p: Page | ReturnType<Page["locator"]>) => p.getByRole("button", { name: `Follow Pug ${WORD}` });
+
+test("probe: grow out of Followed and shrink back into Followed", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signUp(page);
+  await page.goto("/");
+  const onFeed = page.locator(`section[data-slug="${game.slug}"]`).first();
+  await onFeed.scrollIntoViewIfNeeded();
+  await badge(onFeed).click();
+  await expect(badge(onFeed)).toHaveAttribute("aria-pressed", "true");
+  await watch(page);
+  await page.goto("/followed");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await pageHasSettled(page);
+  const vt = await page.evaluate(() => "startViewTransition" in document);
+  await page.locator(`section[data-slug="${game.slug}"] a.gamelink`).click();
+  await expect(page).toHaveURL(`/g/${game.slug}`);
+  await pageHasSettled(page);
+  await page.getByRole("link", { name: "Back to the feed" }).click();
+  await expect(page).toHaveURL("/followed");
+  await expect(page.locator(`section[data-slug="${game.slug}"]`)).toHaveAttribute("data-current", "true");
+  const seen = await moves(page);
+  console.log(`PROBE vt=${vt} moves=${JSON.stringify(seen)}`);
+  if (vt) expect(seen).toEqual(["clip moved move=grow way=-", "clip moved move=grow way=back"]);
+  // Browser Back also returns to Followed.
+  await page.locator(`section[data-slug="${game.slug}"] a.gamelink`).click();
+  await expect(page).toHaveURL(`/g/${game.slug}`);
+  await pageHasSettled(page);
+  await page.goBack();
+  await expect(page).toHaveURL("/followed");
+  console.log(`PROBE goBack moves=${JSON.stringify(await moves(page))}`);
+});
+
+test("probe: without script, Wishlist on Followed stays on Followed", async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  await signUp(page);
+  await page.goto("/");
+  const onFeed = page.locator(`section[data-slug="${game.slug}"]`).first();
+  await onFeed.scrollIntoViewIfNeeded();
+  await badge(onFeed).click();
+  await expect(badge(onFeed)).toHaveAttribute("aria-pressed", "true");
+  const plain = await browser.newContext({
+    storageState: await page.context().storageState(),
+    javaScriptEnabled: false,
+    baseURL: "http://localhost:4173",
+  });
+  try {
+    await beforeLaunch(plain);
+    const p = await plain.newPage();
+    await p.goto("/followed");
+    const clip = p.locator(`section[data-slug="${game.slug}"]`);
+    await clip.getByRole("button", { name: "Wishlist", exact: true }).click();
+    await expect(p).toHaveURL("/followed");
+    await expect(p.locator(`section[data-slug="${game.slug}"]`).getByRole("button", { name: "On your wishlist", exact: true })).toBeVisible();
+    console.log(`PROBE wishlist landed ${new URL(p.url()).pathname}`);
+    await p.locator(`section[data-slug="${game.slug}"]`).getByRole("button", { name: "On your wishlist", exact: true }).click();
+    await expect(p).toHaveURL("/followed");
+    await expect(p.locator(`section[data-slug="${game.slug}"]`).getByRole("button", { name: "Wishlist", exact: true })).toBeVisible();
+  } finally {
+    await plain.close();
+  }
+});
+
+for (const start of ["/", "/followed"]) {
+  test(`probe: open, back arrow, open again, browser Back, from ${start}`, async ({ page }) => {
+    test.setTimeout(120_000);
+    await signUp(page);
+    await page.goto("/");
+    const onFeed = page.locator(`section[data-slug="${game.slug}"]`).first();
+    await onFeed.scrollIntoViewIfNeeded();
+    await badge(onFeed).click();
+    await expect(badge(onFeed)).toHaveAttribute("aria-pressed", "true");
+    await watch(page);
+    await page.goto(start);
+    const clip = page.locator(`section[data-slug="${game.slug}"]`).first();
+    await clip.scrollIntoViewIfNeeded();
+    await expect(clip).toHaveAttribute("data-current", "true");
+    await pageHasSettled(page);
+    await clip.locator("a.gamelink").click();
+    await expect(page).toHaveURL(`/g/${game.slug}`);
+    await pageHasSettled(page);
+    await page.getByRole("link", { name: "Back to the feed" }).click();
+    await expect(page).toHaveURL(start);
+    await pageHasSettled(page);
+    await page.locator(`section[data-slug="${game.slug}"]`).first().locator("a.gamelink").click();
+    await expect(page).toHaveURL(`/g/${game.slug}`);
+    await pageHasSettled(page);
+    await page.goBack();
+    await expect(page).toHaveURL(start);
+    await pageHasSettled(page);
+    await expect.poll(() => page.evaluate(() => (window as unknown as { moves: string[] }).moves.length), { timeout: 5000 }).toBeGreaterThanOrEqual(4).catch(() => {});
+    console.log(`PROBE4 ${start} ${JSON.stringify(await moves(page))}`);
+  });
+}
