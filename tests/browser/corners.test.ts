@@ -3,7 +3,7 @@ import { token } from "../support/look-tokens.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Ruken's own corner (the owner, 2026-11-24): every rounded corner is drawn in one soft shape whose curve starts
-// twice as far out as a plain round corner and melts into the edge, and a small button is nearly a pill. The browsers
+// far out and melts into the edge, and a button keeps most of its ends straight. The browsers
 // the journeys run (Chromium and Safari's engine) both draw it, so here it must be the drawn shape, not the fallback.
 
 test.beforeEach(forgetRateLimits);
@@ -25,7 +25,8 @@ test("a card, its buttons and the glass bar are drawn in Ruken's own corner shap
   }
   await expect(bar).toHaveCSS("corner-top-left-shape", token("--corner-shape"));
 
-  // Nearly a pill: the button's corners reach at least half its height, so they meet in the middle of its ends.
+  // Not a pill (the owner, 2026-11-27: "make them less rounded"): the corners reach a quarter of its height or less, so
+  // most of each end is straight.
   const height = (await send.boundingBox())?.height ?? 0;
-  expect(Number.parseFloat(token("--radius-button"))).toBeGreaterThanOrEqual(height / 2);
+  expect(Number.parseFloat(token("--radius-button"))).toBeLessThanOrEqual(height / 4);
 });

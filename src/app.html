@@ -69,6 +69,15 @@
       })();
     </script>
     %sveltekit.head%
+    <!--
+      Glass only where what is behind it moves (src/lib/moving-behind.svelte): a page that has a moving screen says so in
+      its head, and this marks <html> before anything is drawn, so look.css draws its bar and buttons as glass from the
+      first frame.
+    -->
+    <script>
+      if (document.head.querySelector('meta[name="glass"]'))
+        document.documentElement.setAttribute("data-glass", "");
+    </script>
   </head>
   <body data-sveltekit-preload-data="hover" tabindex="-1">
     <div style="display: contents">%sveltekit.body%</div>

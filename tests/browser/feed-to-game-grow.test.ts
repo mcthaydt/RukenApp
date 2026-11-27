@@ -342,7 +342,9 @@ async function letGo(page: Page): Promise<void> {
 /**
  * Where the held move's clip is, and how much of its pictures show outside it: the held frame against the same frame
  * with the clip's pictures hidden, as the mean difference per colour (0 to 255) outside the clip's box, and in a
- * 4 by 4 patch at each of its corners, which a rounded box leaves out; and inside it, to show the clip is drawn at all.
+ * patch at each of its corners, which a rounded box leaves out; and inside it, to show the clip is drawn at all. The patch
+ * is 2 by 2: the card's corner reaches 20px (the owner, 2026-11-27: "less rounded"), about 13px a third of the way out,
+ * and a 4 by 4 patch reaches past the part that corner leaves out.
  */
 async function clipSpill(
   page: Page,
@@ -361,7 +363,7 @@ async function clipSpill(
     (tag as Element).remove();
   });
   const spill = await page.evaluate(
-    async ({ first, second, box }) => {
+    async ({ first, second, box, CORNER_PATCH }) => {
       const pixels = async (png: string) => {
         const image = new Image();
         image.src = `data:image/png;base64,${png}`;
@@ -406,22 +408,23 @@ async function clipSpill(
       let corners = 0;
       const x0 = Math.ceil(box.x);
       const y0 = Math.ceil(box.y);
-      const x1 = Math.floor(box.x + box.width) - 4;
-      const y1 = Math.floor(box.y + box.height) - 4;
+      const x1 = Math.floor(box.x + box.width) - CORNER_PATCH;
+      const y1 = Math.floor(box.y + box.height) - CORNER_PATCH;
       for (const [cx, cy] of [
         [x0, y0],
         [x1, y0],
         [x0, y1],
         [x1, y1],
       ] as const)
-        for (let y = cy; y < cy + 4; y++) for (let x = cx; x < cx + 4; x++) corners += gapAt(x, y);
+        for (let y = cy; y < cy + CORNER_PATCH; y++)
+          for (let x = cx; x < cx + CORNER_PATCH; x++) corners += gapAt(x, y);
       return {
         inside: inside / within,
         outside: counted === 0 ? 0 : outside / counted,
-        corners: corners / 64,
+        corners: corners / (4 * CORNER_PATCH * CORNER_PATCH),
       };
     },
-    { first: shown.toString("base64"), second: bare.toString("base64"), box },
+    { first: shown.toString("base64"), second: bare.toString("base64"), box, CORNER_PATCH: 2 },
   );
   return {
     box: `${String(box.width)} by ${String(box.height)} at ${String(box.x)}, ${String(box.y)}`,
@@ -516,16 +519,22 @@ test("a picture that comes late from an earlier Back does not end the wait of th
   await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
   await pageHasSettled(page);
 
-  // On a slow line, the first Back's clip gets its picture a few seconds late; every later one takes longer still.
-  let asked = 0;
-  let firstCame = false;
+  // On a slow line, the first Back's clip gets its picture late: only once the second Back is under way, whatever
+  // time the steps between take in this browser. The second Back's clip gets its picture only when the test ends.
+  let secondBack = false;
+  let letFirstIn = () => {};
+  let letSecondIn = () => {};
+  const firstMayCome = new Promise<void>((done) => (letFirstIn = done));
+  const secondMayCome = new Promise<void>((done) => (letSecondIn = done));
+  const firstWaiting: Promise<void>[] = [];
   const theClip = (url: URL) => url.pathname === address;
   await page.route(theClip, async (route) => {
-    asked += 1;
-    const first = asked === 1;
-    await new Promise((done) => setTimeout(done, first ? 4000 : 30_000));
-    await route.continue().catch(() => undefined);
-    if (first) firstCame = true;
+    const answered = (async () => {
+      await (secondBack ? secondMayCome : firstMayCome);
+      await route.continue().catch(() => undefined);
+    })();
+    if (!secondBack) firstWaiting.push(answered);
+    await answered;
   });
   await page.goBack();
   await expect(clip).toHaveAttribute("data-current", "true");
@@ -534,11 +543,14 @@ test("a picture that comes late from an earlier Back does not end the wait of th
   await clip.getByRole("link", { name: game.name }).click();
   await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
   await pageHasSettled(page);
+  expect(firstWaiting.length, "the first Back asked for its clip").toBeGreaterThan(0);
+  secondBack = true;
   await holdNextMove(page, 1 / 3);
   await page.goBack();
   await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
-  expect(firstCame, "the first Back's picture came before the second Back began").toBe(false);
-  await expect.poll(() => firstCame, { timeout: 10_000 }).toBe(true);
+  // Now the first Back's picture comes, in the middle of the second Back.
+  letFirstIn();
+  await Promise.all(firstWaiting);
   await page.waitForTimeout(500);
   expect(
     await clip.locator("video").evaluate((video) => (video as HTMLVideoElement).readyState),
@@ -551,6 +563,7 @@ test("a picture that comes late from an earlier Back does not end the wait of th
   });
   const gap = await pictureGap(page, shown, old);
   await letGo(page);
+  letSecondIn();
   await page.unroute(theClip);
   expect(gap, "the second Back's clip with no picture yet covers the game's picture").toBeLessThan(1);
 });

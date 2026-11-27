@@ -6,6 +6,7 @@
   sound, and a coarse pointer makes "computer" read "tablet".
 -->
 <script lang="ts">
+  import MovingBehind from "../../../lib/moving-behind.svelte";
   import Icon from "../../../lib/icon.svelte";
   import { gameTitle } from "../../../lib/titles.ts";
   import { loads } from "../../../lib/loads.ts";
@@ -76,6 +77,7 @@
 </svelte:head>
 
 <main class="gamepage">
+  <MovingBehind />
   <div class="bento">
     <div class="cell hero">
       <div class="clipbox" data-shape={shape} data-grows={data.slug}>

@@ -55,18 +55,20 @@ describe("Ruken's corners", () => {
     expect(everything?.[2]).toMatch(/corner-shape:\s*var\(--corner,\s*var\(--corner-shape\)\)/);
   });
 
-  it("reach twice as far as the old round corners (20, 14, 12, 8 and 4px)", () => {
+  // Less rounded (the owner, 2026-11-27: "make them less rounded", "this is also too rounded" on Your games and Your
+  // account): half the reach they had, so a button reads as a button with soft corners, not a pill.
+  it("reach half as far as they did on 2026-11-24 (40, 28, 24, 16 and 8px)", () => {
     expect([token("--radius-card"), token("--radius-field"), token("--radius-button")]).toEqual([
-      "40px",
-      "28px",
-      "24px",
+      "20px",
+      "14px",
+      "12px",
     ]);
-    expect([token("--radius-small"), token("--radius-tiny")]).toEqual(["16px", "8px"]);
+    expect([token("--radius-small"), token("--radius-tiny")]).toEqual(["8px", "4px"]);
   });
 
-  it("make a button's corners meet in the middle, so it is nearly a pill", () => {
-    // A button is at least --size-target tall; corners reaching half of that take its whole end.
-    expect(Number.parseFloat(token("--radius-button")) * 2).toBeGreaterThanOrEqual(
+  it("keep a button's corners well short of its middle, so it never reads as a pill", () => {
+    // A button is at least --size-target tall; corners reaching a quarter of that leave most of its ends straight.
+    expect(Number.parseFloat(token("--radius-button")) * 4).toBeLessThanOrEqual(
       Number.parseFloat(token("--size-target")),
     );
   });

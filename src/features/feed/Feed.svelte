@@ -10,6 +10,7 @@
   screen past the last clip until that page comes. When every game has been shown it goes round again in a new order.
 -->
 <script lang="ts">
+  import MovingBehind from "../../lib/moving-behind.svelte";
   import { askForYes, deviceStore, hasAgreed } from "../consent/consent.browser.ts";
   import { goto } from "$app/navigation";
   import { loads } from "../../lib/loads.ts";
@@ -518,6 +519,7 @@
     ontouchstart={forgetAim}
     onpointerdown={forgetAim}
   >
+    <MovingBehind />
     {#each clips as clip, index (clip.key)}
       <section
         bind:this={sections[index]}
