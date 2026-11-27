@@ -143,6 +143,7 @@
     const html = document.documentElement;
     delete html.dataset.step;
     delete html.dataset.move;
+    delete html.dataset.way;
     if (
       slid ||
       !("startViewTransition" in document) ||
@@ -152,6 +153,8 @@
     // The mark stays until the next move: while it is on, the maker area's rising lines keep still, so a page that
     // slides in does not also rise (look.css).
     html.dataset.move = grows ? "grow" : move;
+    // Back to the feed the clip's move plays as the exact reverse of the move out (look.css).
+    if (grows && to === "/") html.dataset.way = "back";
     return slideWhile(navigation.complete, grows ? game : null);
   });
 </script>

@@ -26,6 +26,7 @@ async function watchMoves(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const seen: string[] = [];
     (window as unknown as { moves: string[] }).moves = seen;
+    (window as unknown as { drawn: string[][] }).drawn = [];
     const start = document.startViewTransition.bind(document);
     document.startViewTransition = ((update: ViewTransitionUpdateCallback) => {
       const move = start(update);
@@ -40,6 +41,27 @@ async function watchMoves(page: Page): Promise<void> {
                 one.effect.pseudoElement === "::view-transition-group(clip)",
             );
           seen[at] = clipMoves ? "clip moved" : "played";
+          // How the move draws: which picture of the page and of the clip fades, and the clip's curve.
+          const drawn: string[] = [];
+          for (const one of document.documentElement.getAnimations({ subtree: true })) {
+            if (!(one.effect instanceof KeyframeEffect)) continue;
+            const where = one.effect.pseudoElement ?? "";
+            const name = one instanceof CSSAnimation ? one.animationName : "";
+            if (/^::view-transition-(old|new)\((root|clip)\)$/.test(where) && name !== "")
+              drawn.push(`${where.replace("::view-transition-", "")} ${name}`);
+            if (where === "::view-transition-group(clip)")
+              drawn.push(`curve ${one.effect.getKeyframes()[0]?.easing ?? ""}`);
+            // The bar of places: when each of its pictures fades (each has two animations, its fade and its blend).
+            if (/^::view-transition-(old|new)\(tabs\)$/.test(where)) {
+              const timing = one.effect.getComputedTiming();
+              drawn.push(
+                `${where.replace("::view-transition-", "")} from ${String(timing.delay)}ms for ${String(timing.duration)}ms`,
+              );
+            }
+          }
+          const bar = getComputedStyle(document.documentElement, "::view-transition-group(tabs)").zIndex;
+          drawn.push(`tabs ${bar === "auto" ? "under the clip" : "over the clip"}`);
+          (window as unknown as { drawn: string[][] }).drawn.push([...new Set(drawn)].sort());
         },
         (why: unknown) => {
           seen[at] = why instanceof Error ? `${why.name}: ${why.message}` : String(why);
@@ -125,6 +147,161 @@ test("the game page's back arrow shrinks the clip into the feed, on the clip tha
   // It was the browser's Back: nothing ahead of the feed was added, so Forward opens the game again.
   await page.goForward();
   await expect(page).toHaveURL(`/g/${game.slug}`);
+});
+
+test("going back to the feed plays the move out backwards, with the browser's Back and with the arrow", async ({
+  page,
+}) => {
+  test.skip(
+    !(await page.evaluate(() => "startViewTransition" in document)),
+    "this browser has no view transitions, so every move comes at once",
+  );
+  await watchMoves(page);
+  const clip = await openFeedAt(page);
+  // Out: the feed and its clip are on top and fade, on the quick-start curve.
+  const out = [
+    "curve cubic-bezier(0.22, 1, 0.36, 1)",
+    "new(tabs) from 0ms for 250ms",
+    "old(clip) clip-hands-over",
+    "old(root) page-fades",
+    "old(tabs) from 0ms for 250ms",
+    "tabs under the clip",
+  ];
+  // Back: the same pictures, the other way: the feed and its clip on top come in, on the mirrored curve.
+  // The bar of places too: its pictures fade over the last 250ms, where they faded over the first going out.
+  const back = [
+    "curve cubic-bezier(0.64, 0, 0.78, 0)",
+    "new(clip) clip-takes-over",
+    "new(root) page-shows",
+    "new(tabs) from 200ms for 250ms",
+    "old(tabs) from 200ms for 250ms",
+    "tabs over the clip",
+  ];
+
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL("/");
+  await expect(clip).toHaveAttribute("data-current", "true");
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await page.getByRole("link", { name: "Back to the feed" }).click();
+  await expect(page).toHaveURL("/");
+  // The arrow is the browser's Back: the address changes before the feed comes in and its move starts.
+  await expect.poll(async () => (await moves(page)).length).toBe(4);
+
+  expect(await moves(page)).toEqual(["clip moved", "clip moved", "clip moved", "clip moved"]);
+  expect(await page.evaluate(() => (window as unknown as { drawn: string[][] }).drawn)).toEqual([
+    out,
+    back,
+    out,
+    back,
+  ]);
+  await expect.poll(() => namedLeft(page)).toBe(0);
+});
+
+/** How far two pictures of the same size differ: the mean difference per colour, 0 to 255. */
+async function pictureGap(page: Page, one: Buffer, other: Buffer): Promise<number> {
+  return page.evaluate(
+    async ({ first, second }) => {
+      const pixels = async (png: string) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${png}`;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const pen = canvas.getContext("2d");
+        if (pen === null) throw new Error("no 2d canvas");
+        pen.drawImage(image, 0, 0);
+        return pen.getImageData(0, 0, image.width, image.height).data;
+      };
+      const a = await pixels(first);
+      const b = await pixels(second);
+      let gap = 0;
+      for (let at = 0; at < a.length; at += 4)
+        for (let colour = 0; colour < 3; colour++)
+          gap += Math.abs((a[at + colour] ?? 0) - (b[at + colour] ?? 0));
+      return gap / ((a.length / 4) * 3);
+    },
+    { first: one.toString("base64"), second: other.toString("base64") },
+  );
+}
+
+test("the bar is drawn four fifths of the way through Back, as strongly as on the settled feed", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !(await page.evaluate(() => "startViewTransition" in document)),
+    "this browser has no view transitions, so every move comes at once",
+  );
+  // Safari's engine never draws the new picture of the bar during the move (progress.md, Known issues, #399): it pops
+  // in when the move ends, as on main. Confirm on a real iPhone before fixing.
+  test.fixme(
+    testInfo.project.name === "phone",
+    "Safari's engine does not draw the bar's new picture during the move",
+  );
+  const clip = await openFeedAt(page);
+  const bar = page.getByRole("navigation", { name: "Ruken" });
+  const where = await bar.boundingBox();
+  if (where === null) throw new Error("the feed has no bar");
+  // How much the bar shows on the settled feed: its place with the bar, against the same place with it hidden. A hidden
+  // bar leaves the accessibility tree, so it is held by its handle while it is hidden.
+  const shown = await bar.elementHandle();
+  const withBar = await page.screenshot({ clip: where, animations: "allow" });
+  await shown.evaluate((element) => {
+    element.style.visibility = "hidden";
+  });
+  const withoutBar = await page.screenshot({ clip: where, animations: "allow" });
+  await shown.evaluate((element) => {
+    element.style.visibility = "";
+  });
+  await shown.dispose();
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await pageHasSettled(page);
+
+  // Back, held four fifths of the way through, with the bar over the clip: its place must show the bar at least three
+  // quarters as strongly as the settled feed does. In Chrome's engine the bar shows there at every moment of Back, on
+  // main as here (the order of the bar's pictures is checked by the journey above); this check is for an engine that
+  // leaves the bar out during the move.
+  await page.evaluate(() => {
+    const start = document.startViewTransition.bind(document);
+    document.startViewTransition = ((update: ViewTransitionUpdateCallback) => {
+      const move = start(update);
+      void move.ready.then(() => {
+        const timed = document.documentElement
+          .getAnimations({ subtree: true })
+          .filter((one) => Number.isFinite(Number(one.effect?.getComputedTiming().endTime)));
+        const end = Math.max(...timed.map((one) => Number(one.effect?.getComputedTiming().endTime)));
+        for (const one of timed) {
+          one.pause();
+          one.currentTime = end * 0.8;
+        }
+        document.documentElement.dataset.held = "yes";
+      });
+      return move;
+    }) as typeof document.startViewTransition;
+  });
+  await page.getByRole("link", { name: "Back to the feed" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
+  const held = await page.screenshot({ clip: where, animations: "allow" });
+  // The same held moment with the bar's pictures hidden: what is left is the clip and the page.
+  await page.addStyleTag({ content: "::view-transition-group(tabs) { visibility: hidden; }" });
+  const heldBare = await page.screenshot({ clip: where, animations: "allow" });
+  await page.evaluate(() => {
+    for (const one of document.documentElement.getAnimations({ subtree: true }))
+      if (Number.isFinite(Number(one.effect?.getComputedTiming().endTime))) one.finish();
+  });
+  await expect(clip).toHaveAttribute("data-current", "true");
+
+  for (const [name, body] of Object.entries({ withBar, withoutBar, held, heldBare }))
+    await testInfo.attach(name, { body, contentType: "image/png" });
+  const settledBar = await pictureGap(page, withBar, withoutBar);
+  const heldBar = await pictureGap(page, held, heldBare);
+  expect(heldBar, `the settled bar stands ${String(settledBar)} from the clip`).toBeGreaterThan(
+    settledBar * 0.75,
+  );
 });
 
 test("the back arrow on a game's page opened another way goes to the feed with a slide", async ({ page }) => {
