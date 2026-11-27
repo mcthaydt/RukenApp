@@ -33,7 +33,7 @@ const SWIPE = [12, 30, 45, 50, 40, 30, 22, 16, 12, 9, 7, 5, 4, 3, 2, 2, 1, 1, 1,
  */
 const realWheel = (page: Page) => page.context().browser()?.browserType().name() !== "webkit";
 
-/** One wheel move over the middle of the screen. */
+/** One wheel move under the pointer, which the journey keeps over the middle of the screen unless it says otherwise. */
 async function wheel(page: Page, dx: number, dy: number): Promise<void> {
   if (realWheel(page)) {
     await page.mouse.wheel(dx, dy);
@@ -41,33 +41,71 @@ async function wheel(page: Page, dx: number, dy: number): Promise<void> {
   }
   await page.evaluate(
     ([deltaX, deltaY]) => {
-      const target = document.elementFromPoint(innerWidth / 2, innerHeight / 2) ?? document.body;
+      const { x, y } = (window as unknown as { pointer?: { x: number; y: number } }).pointer ?? {
+        x: innerWidth / 2,
+        y: innerHeight / 2,
+      };
+      const target = document.elementFromPoint(x, y) ?? document.body;
       target.dispatchEvent(new WheelEvent("wheel", { deltaX, deltaY, bubbles: true, cancelable: true }));
     },
     [dx, dy] as [number, number],
   );
 }
 
-/** A two-finger swipe on the trackpad, over the middle of the screen: the fingers go left (`"left"`) or right. */
+/** Puts the pointer at `x`, `y`, where the next wheel moves land. */
+async function pointAt(page: Page, x: number, y: number): Promise<void> {
+  await page.mouse.move(x, y);
+  await page.evaluate(([px, py]) => ((window as unknown as { pointer: object }).pointer = { x: px, y: py }), [
+    x,
+    y,
+  ] as [number, number]);
+}
+
+/** A two-finger swipe on the trackpad, under the pointer: the fingers go left (`"left"`) or right. */
 async function trackpadSwipe(page: Page, way: "left" | "right"): Promise<void> {
   // The fingers going left scroll the page to the right: the wheel moves are the other way from the fingers.
   const sign = way === "left" ? 1 : -1;
-  for (const size of SWIPE) await wheel(page, sign * size, 0);
+  if (realWheel(page)) {
+    for (const size of SWIPE) await wheel(page, sign * size, 0);
+    return;
+  }
+  // The page's own events are stamped when the page makes them, not when the fingers moved, as a trackpad's are. Sent
+  // one call at a time, a busy moment in the page (700 ms once in CI, run 46051556495) put a gap past the wheel's rest
+  // inside the swipe, so the feed rightly took it as two swipes and moved two tabs. So the whole swipe goes in one call.
+  await page.evaluate(
+    ([sizes, side]) => {
+      const { x, y } = (window as unknown as { pointer?: { x: number; y: number } }).pointer ?? {
+        x: innerWidth / 2,
+        y: innerHeight / 2,
+      };
+      for (const size of sizes) {
+        const target = document.elementFromPoint(x, y) ?? document.body;
+        target.dispatchEvent(
+          new WheelEvent("wheel", { deltaX: side * size, bubbles: true, cancelable: true }),
+        );
+      }
+    },
+    [SWIPE, sign] as [number[], number],
+  );
 }
 
 /** Every sideways wheel move the browser was left to act on, counted once the page has answered it. */
 async function watchWheel(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    const count = { sideways: 0, passed: 0, upDown: 0, upDownStopped: 0 };
+    const count = { sideways: 0, passed: 0, upDown: 0, upDownStopped: 0, overPanel: 0, passedOverPanel: 0 };
     (window as unknown as { wheels: typeof count }).wheels = count;
     window.addEventListener(
       "wheel",
       (event) => {
+        // Whether a panel is up (or still sliding away) as the move comes, read before the feed can act on it.
+        const panel = document.querySelector("dialog[open]") !== null;
         // Read after every listener on the way has had its turn.
         setTimeout(() => {
           if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
             count.sideways += 1;
             if (!event.defaultPrevented) count.passed += 1;
+            if (panel) count.overPanel += 1;
+            if (panel && !event.defaultPrevented) count.passedOverPanel += 1;
           } else {
             count.upDown += 1;
             if (event.defaultPrevented) count.upDownStopped += 1;
@@ -84,7 +122,14 @@ const wheels = (page: Page) =>
     () =>
       (
         window as unknown as {
-          wheels: { sideways: number; passed: number; upDown: number; upDownStopped: number };
+          wheels: {
+            sideways: number;
+            passed: number;
+            upDown: number;
+            upDownStopped: number;
+            overPanel: number;
+            passedOverPanel: number;
+          };
         }
       ).wheels,
   );
@@ -99,7 +144,7 @@ test("a two-finger swipe on a trackpad goes between Fresh and Followed, one tab 
   await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
   await pageHasSettled(page);
   const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
-  await page.mouse.move(width / 2, height / 2);
+  await pointAt(page, width / 2, height / 2);
   const onFresh = () => expect(tab(page, "Fresh")).toHaveAttribute("aria-current", "page");
   const onFollowed = () => expect(tab(page, "Followed")).toHaveAttribute("aria-current", "page");
 
@@ -150,5 +195,90 @@ test("a two-finger swipe on a trackpad goes between Fresh and Followed, one tab 
   // None of the sideways moves reached the browser as its own Back or Forward; every up and down one scrolled.
   await expect
     .poll(() => wheels(page))
-    .toEqual({ sideways: 3 * SWIPE.length, passed: 0, upDown: expect.any(Number), upDownStopped: 0 });
+    .toMatchObject({ sideways: 3 * SWIPE.length, passed: 0, upDown: expect.any(Number), upDownStopped: 0 });
+});
+
+// With a panel up over the feed (Share, here), a sideways swipe neither changes the tab nor reaches the browser, whose
+// own Back would leave the page behind the panel; and the same while the panel slides away after Close, when it is
+// still up for a moment. A box inside a panel that scrolls sideways still scrolls: no panel has one today, so the
+// journey puts one in, to hold the rule for the first that does.
+test("a two-finger swipe over a panel, or one sliding away, stays on the page", async ({ page }) => {
+  test.setTimeout(120_000);
+  await watchMoves(page);
+  await watchWheel(page);
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await pageHasSettled(page);
+  const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+  const onFresh = () => expect(tab(page, "Fresh")).toHaveAttribute("aria-current", "page");
+  await onFresh();
+  const pages = await page.evaluate(() => history.length);
+
+  const sheet = page.getByRole("dialog", { name: "Share" });
+  const openSheet = async () => {
+    await page
+      .locator("main.feed section[data-current='true']")
+      .getByRole("button", { name: "Share" })
+      .click();
+    await expect(sheet).toBeVisible();
+  };
+  await openSheet();
+
+  // Over the dim above the panel, and over the panel itself, both ways.
+  const box = await sheet.boundingBox();
+  if (box === null) throw new Error("The Share panel has no box.");
+  await pointAt(page, width / 2, Math.max(4, box.y / 2));
+  await trackpadSwipe(page, "left");
+  await trackpadSwipe(page, "right");
+  await pointAt(page, box.x + box.width / 2, box.y + Math.min(box.height / 2, 40));
+  await trackpadSwipe(page, "left");
+  await trackpadSwipe(page, "right");
+  await expect.poll(() => wheels(page)).toMatchObject({ overPanel: 4 * SWIPE.length, passedOverPanel: 0 });
+
+  // A box in the panel that scrolls sideways takes the move as its own scroll, and only once it is at its end does
+  // the feed hold the move back from the browser.
+  await page.evaluate(() => {
+    const panel = document.querySelector("dialog[open]");
+    const strip = document.createElement("div");
+    strip.dataset.testid = "strip";
+    strip.style.cssText = "overflow-x:auto;width:120px;height:40px";
+    strip.innerHTML = '<div style="width:600px;height:40px"></div>';
+    panel?.insertBefore(strip, panel.firstChild);
+  });
+  const strip = page.getByTestId("strip");
+  const stripBox = await strip.boundingBox();
+  if (stripBox === null) throw new Error("The strip has no box.");
+  await pointAt(page, stripBox.x + stripBox.width / 2, stripBox.y + stripBox.height / 2);
+  const before = await wheels(page);
+  await wheel(page, 40, 0);
+  await expect.poll(() => wheels(page)).toMatchObject({ passedOverPanel: before.passedOverPanel + 1 });
+  if (realWheel(page)) await expect.poll(() => strip.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+  await strip.evaluate((el) => (el.scrollLeft = el.scrollWidth));
+  await wheel(page, 40, 0);
+  await expect
+    .poll(() => wheels(page))
+    .toMatchObject({ overPanel: before.overPanel + 2, passedOverPanel: before.passedOverPanel + 1 });
+  // And from its start, back towards it, is the feed's to hold too.
+  await strip.evaluate((el) => (el.scrollLeft = 0));
+  await wheel(page, -40, 0);
+  await expect
+    .poll(() => wheels(page))
+    .toMatchObject({ overPanel: before.overPanel + 3, passedOverPanel: before.passedOverPanel + 1 });
+  await strip.evaluate((el) => el.remove());
+
+  // Close, and swipe at once, while the panel is still sliding away: still nothing reaches the browser, and the swipe
+  // does not change the tab once the panel has gone either.
+  await pointAt(page, width / 2, height / 2);
+  const closing = await wheels(page);
+  await sheet.getByRole("button", { name: "Close" }).click();
+  await trackpadSwipe(page, "left");
+  await expect(sheet).toBeHidden();
+  const after = await wheels(page);
+  expect(after.overPanel, "some of the swipe came while the panel slid away").toBeGreaterThan(
+    closing.overPanel,
+  );
+  expect(after.passed).toBe(closing.passed);
+  await onFresh();
+  await expect(page).toHaveURL("/");
+  expect(await page.evaluate(() => history.length)).toBe(pages);
 });
