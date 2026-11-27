@@ -42,12 +42,14 @@ included, merges once its audits pass and CI is green; `progress.md`, History).
 1. **`onlyCleanMerges(cwd, from, head, defaultBranch, notes = [])`** in `pr-rules-lib.mjs` gains the `notes` list (glob
    strings, matched with the file's existing `matchesAny`). With `notes` empty it behaves exactly as today. For each
    commit in `git rev-list --parents from..head --not origin/<default>`:
-   - one parent: `git diff --name-only <parent> <commit>`; every name must match `notes`.
+   - one parent: `git diff --no-renames --name-only <parent> <commit>`; every name must match `notes`.
    - two parents, the second an ancestor of `origin/<default>`: `git merge-tree --write-tree --name-only p1 p2`; exit
      0 or 1 only (anything else fails); the first line is the tree, the lines after it up to the first blank line are
-     the conflicted files, and each must match `notes`; then `git diff --name-only <that tree> <commit>`, and every
-     name must match `notes`.
+     the conflicted files, and each must match `notes`; then `git diff --no-renames --name-only <that tree> <commit>`, and
+     every name must match `notes`.
    - anything else: false.
+   Both diffs pass `--no-renames`, so a file moved onto or off a notes path lists both its old and its new path, and
+   the path that is not a notes file refuses the carry (a code file renamed to `progress.md` is not a notes change).
    It keeps the existing `from` is-ancestor-of `head` check first. Any git call that fails gives false.
 2. **Both callers pass the list:** `rules.mjs` `checkReviewed` and `pr-rules.mjs` pass `config.prFlow?.notesPaths ?? []`.
    No other caller exists (`grep -rn onlyCleanMerges` outside `node_modules`, `docs` and `tests`).
@@ -73,6 +75,9 @@ git fixture like the existing clean-merge one:
    request's own version.
 5. It does not carry when a merge of `main` is clean but the merge commit also hand-edits another file.
 6. It does not carry when a later commit touches `progress.md` and any other file.
+6b. It does not carry when a later commit renames a code file onto `docs/superpowers/progress.md` (or
+    `progress.md` onto a code path), in a plain commit or as a merge commit's hand edit, even where git would count
+    it as a rename.
 7. It does not carry through a merge of a branch that is not `main`, or a code commit (the existing tests keep passing).
 8. `onlyCleanMerges` with no `notes` list refuses criteria 1 and 2's heads (today's behaviour is unchanged for any
    caller that does not pass the list).
