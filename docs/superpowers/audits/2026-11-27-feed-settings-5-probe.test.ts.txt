@@ -1,0 +1,142 @@
+// Audit 5 probe for #405. Not committed: a copy goes to the audit branch as .txt.
+import { expect, test, type Page } from "@playwright/test";
+import { signUp } from "./support/account.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+import { wordsHaveSettled } from "./support/look.ts";
+
+test.beforeEach(forgetRateLimits);
+const SHOTS = process.env.SHOTS ?? "/tmp/shots";
+
+const MOODS = ["Bold", "Cosy", "Clever", "Heartfelt", "Showy", "Tidy", "Friendly", "Spooky", "Adventurous", "Tough", "Weird", "Dreamy"];
+const GENRES = ["Action", "Adventure", "Puzzle", "Story", "Strategy", "Role-playing", "Platformer", "Racing and sports", "Building and life", "Party and board", "Other"];
+
+const state = (page: Page) =>
+  page.evaluate(() => {
+    const box = document.querySelector("main .tastes") as HTMLElement | null;
+    const bar = document.querySelector('nav[aria-label="Ruken"]')?.getBoundingClientRect();
+    const small = [...document.querySelectorAll("main button, main a")]
+      .map((b) => {
+        const r = b.getBoundingClientRect();
+        return { n: b.getAttribute("aria-label") ?? b.textContent.trim(), w: Math.round(r.width), h: Math.round(r.height) };
+      })
+      .filter((b) => b.w > 0 && (b.w < 48 || b.h < 48));
+    const foot = document.querySelector("main .foot")?.getBoundingClientRect();
+    return {
+      page: document.documentElement.scrollHeight - innerHeight,
+      view: document.body.scrollHeight - document.body.clientHeight,
+      box: box && { top: box.scrollTop, sh: box.scrollHeight, ch: box.clientHeight, oy: getComputedStyle(box).overflowY },
+      footBottom: foot?.bottom,
+      barTop: bar?.top,
+      small,
+    };
+  });
+
+const inBox = (page: Page, label: string) =>
+  page.evaluate((l) => {
+    const b = [...document.querySelectorAll("main button")].find((x) => x.getAttribute("aria-label") === l);
+    const box = document.querySelector("main .tastes")!.getBoundingClientRect();
+    if (!b) return "missing";
+    const r = b.getBoundingClientRect();
+    return r.top >= box.top - 1 && r.bottom <= box.bottom - 11 ? "in" : `out ${r.top}-${r.bottom} box ${box.top}-${box.bottom}`;
+  }, label);
+
+async function addAll(page: Page, tag: string): Promise<string[]> {
+  const problems: string[] = [];
+  for (const [side, region, list] of [
+    ["See more of", "What you want to see more of", MOODS],
+    ["See less of", "What you want to see less of", GENRES],
+  ] as const) {
+    for (const words of list) {
+      const add = page.getByRole("region", { name: region }).getByRole("button", { name: "Add", exact: true });
+      await add.scrollIntoViewIfNeeded();
+      await add.click();
+      const sheet = page.getByRole("dialog", { name: side });
+      const pick = sheet.getByRole("button", { name: words, exact: true });
+      if ((await pick.count()) === 0) continue;
+      await pick.click();
+      await expect(sheet).toBeHidden();
+      await expect(page.getByRole("button", { name: `Remove ${words}` })).toBeAttached();
+      await page.waitForTimeout(400);
+      const where = await inBox(page, `Remove ${words}`);
+      if (where !== "in") problems.push(`${tag} ${words}: ${where}`);
+    }
+  }
+  return problems;
+}
+
+test("audit5: full box, fit, R5, R6, focus, sizes", async ({ page, isMobile, browserName }, info) => {
+  const tag = `${info.project.name}-${browserName}`;
+  await signUp(page);
+  await page.goto("/settings/feed");
+  await wordsHaveSettled(page);
+  await page.screenshot({ path: `${SHOTS}/${tag}-empty.png` });
+  const empty = await state(page);
+  const r5 = await addAll(page, tag);
+  await wordsHaveSettled(page);
+  const full = await state(page);
+  await page.screenshot({ path: `${SHOTS}/${tag}-full.png` });
+  console.log(JSON.stringify({ tag, empty, full, r5 }));
+
+  // Wheel over the less side and over the foot-adjacent area (R6), not on a phone.
+  let wheel = "n/a";
+  if (!isMobile) {
+    await page.evaluate(() => document.querySelector("main .tastes")!.scrollTo({ top: 0 }));
+    await page.getByRole("region", { name: "What you want to see less of" }).hover();
+    await page.mouse.wheel(0, 400);
+    await page.waitForTimeout(500);
+    const t1 = (await state(page)).box?.top;
+    await page.mouse.wheel(0, 4000);
+    await page.waitForTimeout(500);
+    const t2 = await state(page);
+    await page.screenshot({ path: `${SHOTS}/${tag}-wheel-bottom.png` });
+    wheel = `after 400: ${t1}; after more: ${t2.box?.top} of ${(t2.box?.sh ?? 0) - (t2.box?.ch ?? 0)}; page ${t2.page}`;
+  }
+  // Keyboard: Tab to the last chip, then a focus ring shot.
+  await page.evaluate(() => document.querySelector("main .tastes")!.scrollTo({ top: 0 }));
+  await page.getByRole("button", { name: "Remove Bold" }).focus();
+  await page.screenshot({ path: `${SHOTS}/${tag}-focus-first.png` });
+  await page.getByRole("button", { name: "Remove Other" }).focus();
+  await page.waitForTimeout(400);
+  const lastIn = await inBox(page, "Remove Other");
+  await page.screenshot({ path: `${SHOTS}/${tag}-focus-last.png` });
+  // Remove one chip deep in the box by keyboard Enter.
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "Remove Other" })).toHaveCount(0);
+  const afterRemove = await state(page);
+  console.log(JSON.stringify({ tag, wheel, lastIn, afterRemove: afterRemove.box, focusAfter: await page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent?.trim() ?? document.activeElement?.tagName) }));
+  // At 1280x720 too, and a short computer window.
+  if (!isMobile) {
+    for (const [w, h] of [[1280, 720], [1280, 600]] as const) {
+      await page.setViewportSize({ width: w, height: h });
+      await wordsHaveSettled(page);
+      const s = await state(page);
+      await page.screenshot({ path: `${SHOTS}/${tag}-${w}x${h}.png` });
+      console.log(JSON.stringify({ tag, w, h, s }));
+    }
+  }
+  // Gamepad: does the site listen at all?
+  const pads = await page.evaluate(() => typeof (window as unknown as { onGamepadConnected?: unknown }).onGamepadConnected);
+  console.log(JSON.stringify({ tag, pads }));
+});
+
+test("audit5: touch drag scrolls the box (Chromium touch)", async ({ browser, browserName }, info) => {
+  test.skip(browserName !== "chromium" || info.project.name !== "tablet", "CDP touch only once");
+  const context = await browser.newContext({ viewport: { width: 375, height: 667 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  const page = await context.newPage();
+  await signUp(page);
+  await page.goto("/settings/feed");
+  await addAll(page, "touch");
+  await page.evaluate(() => document.querySelector("main .tastes")!.scrollTo({ top: 0 }));
+  const box = (await page.locator("main .tastes").boundingBox())!;
+  const cdp = await context.newCDPSession(page);
+  const x = box.x + box.width / 2;
+  const y0 = box.y + box.height - 20;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y: y0 }] });
+  for (let i = 1; i <= 10; i++) await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y0 - i * 15 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await page.waitForTimeout(800);
+  const s = await state(page);
+  console.log(JSON.stringify({ tag: "touch", s }));
+  expect(s.box?.top ?? 0).toBeGreaterThan(0);
+  expect(s.page).toBe(0);
+});
