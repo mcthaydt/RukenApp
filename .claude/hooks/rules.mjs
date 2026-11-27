@@ -1174,14 +1174,19 @@ function resultingText(input) {
 // included; the owner's one allowed line (rules.json bypassFlags.allowedLines: exact file, exact trimmed line) lifts
 // only the retries refusal (owner, 2026-11-27: retry flaky journeys on main).
 const NO_TESTS = /passWithNoTests\s*:\s*true|--pass-?[wW]ith-?[nN]o-?[tT]ests/;
-// The value may sit on the next line or behind a quote, so the added lines are read as one text.
-const RETRY_FLAG = /--retr(?:y|ies)(?:=|\s+)["'`]?([^\s'"`,;)]+)/g;
+// The value may sit on the next line (or after a backslash line end), so the added lines are read as one text. The value is the whole shell word,
+// quoted parts included, read as the shell would after its quotes go. After a space only a word that starts the way a
+// number can reach Playwright (a digit, a quote, $, a backtick, a backslash) is a value; anything else is prose
+// ("never pass --retries here", "with --retries (see CLAUDE.md)").
+const RETRY_FLAG = /--retr(?:y|ies)(?:=|\s+(?=[0-9"'`$\\]))((?:"[^"\n]*"|'[^'\n]*'|`[^`\n]*`|\\\n[ \t]*|[^\s'"`,;)])+)/g;
+const retryValue = (word) => word.replace(/\\\n[ \t]*|["'`\\]/g, '');
 const RETRY_KEY = /\bretr(?:y|ies)\s*:\s*(?!0\s*,?\s*(\/\/.*)?$)\S.*/m;
 function loosenedCheck(rel, added, allowedLines) {
   const noTests = NO_TESTS.exec(added.join('\n'));
   if (noTests) return noTests[0];
-  const rest = added.filter((line) => !allowedLines.some((a) => a?.file === rel && a?.line === line.trim())).join('\n');
-  const flag = [...rest.matchAll(RETRY_FLAG)].find((x) => !/^0+$/.test(x[1]));
+  // The allowed line stays as a stop, so no value is read across it.
+  const rest = added.map((line) => (allowedLines.some((a) => a?.file === rel && a?.line === line.trim()) ? '#' : line)).join('\n');
+  const flag = [...rest.matchAll(RETRY_FLAG)].find((x) => !/^0+$/.test(retryValue(x[1])));
   if (flag) return flag[0];
   const key = RETRY_KEY.exec(rest);
   return key ? key[0] : null;

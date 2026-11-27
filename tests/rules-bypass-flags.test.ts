@@ -116,6 +116,35 @@ describe("in a config file, only the one allowed line may add retries (A3)", () 
       write(".github/workflows/ci.yml", `name: CI\n        run: pnpm exec playwright test ${flag}\n`),
     ).toBeNull();
   });
+  // The shell joins quoted parts to the digits beside them, so each of these gives Playwright 1 or 2 retries.
+  test.each([
+    `--retries=0"2"`,
+    "--retries=0'1'",
+    `--retries="0"2`,
+    `--retries="0""2"`,
+    "--retries=''2",
+    "--retries=0\\\n          2",
+    `--retries=" 2"`,
+  ])("refuses %s in a workflow", (flag) => {
+    expect(
+      write(".github/workflows/ci.yml", `name: CI\n        run: pnpm exec playwright test ${flag}\n`),
+    ).toContain("Never loosen a check");
+  });
+  test.each([
+    [".github/workflows/ci.yml", "name: CI\n# Pull request runs never pass --retries here\n"],
+    [
+      ".github/workflows/ci.yml",
+      "name: CI\n      # main retries with --retries (see CLAUDE.md)\n      - run: pnpm test\n",
+    ],
+    [
+      ".github/workflows/ci.yml",
+      `name: CI\n        run: >\n          x --retries\n          ${LINE}\n          2\n`,
+    ],
+    ["playwright.config.ts", "export default { retries: 0 };\n// keep --retry off\n"],
+    ["package.json", '{\n  "description": "no --retries anywhere"\n}\n'],
+  ])("allows prose that only names the flag in %s", (file, content) => {
+    expect(write(file, content)).toBeNull();
+  });
 });
 
 describe("the exception is one exact line (A4, A5)", () => {
