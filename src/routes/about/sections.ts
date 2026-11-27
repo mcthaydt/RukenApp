@@ -148,7 +148,7 @@ export const MORE: readonly Section[] = [
       "See something wrong? Report the game, and we'll take a look.",
       "Like a maker? Press the plus on their picture to follow them.",
       "Send a game to a friend, someone you follow who follows you back. It shows up on their Your turn.",
-      "See which friends liked a game: their faces sit on its clip.",
+      "See which friends liked a game: their faces float on its clip.",
     ],
     links: [{ words: "Watch the feed", href: "/" }],
     picture: {

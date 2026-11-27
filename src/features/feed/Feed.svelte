@@ -606,37 +606,31 @@
         {/if}
 
         <div class="lower">
-          <div class="band" data-pad-first>
-            {#if clip.friends.faces.length > 0}
-              <!-- Friends who liked it: up to three faces, newest like first, then +N. A picture to look at, not a
-                   control, so Tab and a gamepad pass over it. -->
-              <div class="friends" role="img" aria-label={friendsWords(clip.friends)}>
-                <svg class="liked" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                  <path
-                    d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"
-                    fill="currentColor"
-                  />
-                </svg>
-                {#each clip.friends.faces as face, at (at)}
-                  {#if face.photo !== null}
-                    <img
-                      class="face"
-                      use:loads
-                      src={face.photo}
-                      alt=""
-                      width="28"
-                      height="28"
-                      loading="lazy"
-                    />
-                  {:else}
-                    <span class="face" aria-hidden="true">{initialOf(face.name)}</span>
-                  {/if}
-                {/each}
-                {#if clip.friends.more > 0}
-                  <span class="others" aria-hidden="true">+{clip.friends.more}</span>
+          {#if clip.friends.faces.length > 0}
+            <!-- Friends who liked it: up to three faces, newest like first, then +N, floating over the clip above the
+                 game's card and behind it (the owner, 2026-11-27: "floating in the air behind the floating UI, but in
+                 front of the video like instagram"). A picture to look at, not a control, so Tab and a gamepad pass
+                 over it and a press goes through to the clip. -->
+            <div class="friends" role="img" aria-label={friendsWords(clip.friends)}>
+              <svg class="liked" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path
+                  d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"
+                  fill="currentColor"
+                />
+              </svg>
+              {#each clip.friends.faces as face, at (at)}
+                {#if face.photo !== null}
+                  <img class="face" use:loads src={face.photo} alt="" width="28" height="28" loading="lazy" />
+                {:else}
+                  <span class="face" aria-hidden="true">{initialOf(face.name)}</span>
                 {/if}
-              </div>
-            {/if}
+              {/each}
+              {#if clip.friends.more > 0}
+                <span class="others" aria-hidden="true">+{clip.friends.more}</span>
+              {/if}
+            </div>
+          {/if}
+          <div class="band" data-pad-first>
             <!-- A swipe can start on the name too, so it never loads the game's page (and who brought this person)
                  ahead of a press. -->
             <a class="gamelink" data-sveltekit-preload-data="off" href={`/g/${clip.slug}`}>
@@ -1064,33 +1058,22 @@
     box-shadow: var(--glass-edge);
   }
   /* Friends who liked the game: small round faces overlapping a little, like a stack of coins, with a heart before them
-     to say what they did, and +N after them. */
+     to say what they did, and +N after them. They float in the air over the clip, just above the game's card, under
+     every button: a picture, never in the way of a press. */
   .friends {
+    position: absolute;
+    bottom: calc(100% + 0.5rem);
+    left: 0.75rem;
+    z-index: -1;
     display: flex;
     align-items: center;
-    grid-row: 2;
-    grid-column: 1;
-  }
-  /* With friends' faces, they sit beside Play under the game's name, so the band grows no taller (the owner,
-     2026-11-27: a row of its own was too much on a 320px phone). */
-  .band:has(.friends) {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    column-gap: 0.75rem;
-  }
-  .band:has(.friends) .gamelink {
-    grid-row: 1;
-    grid-column: 1 / -1;
-  }
-  .band:has(.friends) > :last-child {
-    grid-row: 2;
-    grid-column: 2;
+    pointer-events: none;
   }
   .liked {
     flex: none;
     margin-right: 0.375rem;
     color: var(--chalk);
+    filter: var(--glass-icon);
   }
   .face,
   .others {
@@ -1258,12 +1241,14 @@
     box-shadow: var(--glass-edge);
   }
   /* A phone held sideways: the window is short, so the words take one corner and the clip the rest. The bar stands
-     along the right edge (Bar.svelte), so the band sits at the bottom with Play beside the game's name, Share under
-     the bar, and the first open's hints at the top, where the band cannot cover them. */
+     along the right edge (Bar.svelte), so the band sits at the bottom with Play beside the game's name, the round
+     buttons in a column left of the bar, and the first open's hints at the top, where the band cannot cover them. */
   @media (orientation: landscape) and (max-height: 449px) {
     .lower {
+      --clear-of-bar: calc(3.5rem + 1.5rem + max(0.75rem, env(safe-area-inset-right)));
       inset: auto 0 0.75rem;
-      padding-right: calc(3.5rem + 1.5rem + max(0.75rem, env(safe-area-inset-right)));
+      /* Clear of the bar, the column of round buttons left of it, and the maker left of those. */
+      padding-right: calc(var(--clear-of-bar) + var(--size-target) + 0.75rem + 5.5rem + 0.75rem);
       padding-left: max(0.75rem, env(safe-area-inset-left));
     }
     .band {
@@ -1275,21 +1260,8 @@
       row-gap: 0.25rem;
       padding: 0.5rem 0.75rem;
     }
-    /* Friends' faces take a row of their own above the name and Play, which share the row under them here. */
-    .band:has(.friends) {
-      grid-template-columns: minmax(0, 1fr) auto;
-    }
     .friends {
-      grid-row: 1;
-      grid-column: 1 / -1;
-    }
-    .band:has(.friends) .gamelink {
-      grid-row: 2;
-      grid-column: 1;
-    }
-    .band:has(.friends) > :last-child {
-      grid-row: 2;
-      grid-column: 2;
+      left: max(0.75rem, env(safe-area-inset-left));
     }
     .play {
       width: auto;
@@ -1302,10 +1274,11 @@
     .hints {
       top: calc(0.75rem + var(--size-target) + 0.5rem);
     }
-    /* The round buttons stand in the bar's column, under it, centred on it. */
+    /* The round buttons stand in a column of their own just left of the bar, from the bottom up: the bar takes the
+       middle of the right edge, so under it there is no room for them (the owner, 2026-11-27: they sat on each other). */
     .side {
       position: absolute;
-      right: calc(max(0.75rem, env(safe-area-inset-right)) + 0.5rem);
+      right: var(--clear-of-bar);
       bottom: 0;
     }
     /* The window is too short for the maker above them there, so the maker stands just left of the column, at the

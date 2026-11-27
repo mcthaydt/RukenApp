@@ -10,6 +10,7 @@ import {
   userIdOf,
 } from "./support/database.ts";
 import { gameWhere } from "./support/game.ts";
+import { asInstalled } from "./support/installed.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
@@ -49,26 +50,34 @@ async function clipOnFeed(page: Page): Promise<Locator> {
 const bubbles = (clip: Locator) => clip.getByRole("img", { name: /^Liked by your friend/ });
 
 /**
- * Where the faces sit: upright, under the game's name and beside Play, so the band grows no taller (the owner,
- * 2026-11-27, of a row of their own on a 320px phone: "isn't gonna work"); on a phone held sideways, where the name
- * and Play share a row, on a row above them. Either way they start at the band's left, like the name.
+ * Where the faces sit: floating over the clip, just above the game's card at its left, in front of the video and behind
+ * every button (the owner, 2026-11-27: "floating in the air behind the floating UI, but in front of the video like
+ * instagram"). So the card is the same size with faces or without, and a press on them goes through to the clip, which
+ * opens the game like a press anywhere else on it.
  */
-async function facesPlaced(clip: Locator, sideways: boolean): Promise<void> {
+async function facesPlaced(clip: Locator): Promise<void> {
   const faces = await bubbles(clip).boundingBox();
-  const name = await clip.getByRole("heading", { level: 2 }).boundingBox();
-  const play = await clip.locator(".band .play").boundingBox();
-  if (faces === null || name === null || play === null)
-    throw new Error("the faces, the name or Play are not on screen");
-  expect(Math.abs(faces.x - name.x)).toBeLessThanOrEqual(1);
-  if (sideways) {
-    expect(faces.y + faces.height).toBeLessThanOrEqual(name.y);
-    return;
-  }
-  expect(faces.y).toBeGreaterThanOrEqual(name.y + name.height);
-  expect(faces.x + faces.width).toBeLessThanOrEqual(play.x);
-  const middle = faces.y + faces.height / 2;
-  expect(middle).toBeGreaterThan(play.y);
-  expect(middle).toBeLessThan(play.y + play.height);
+  const card = await clip.locator(".band").boundingBox();
+  if (faces === null || card === null) throw new Error("the faces or the game's card are not on screen");
+  expect(Math.abs(faces.x - card.x)).toBeLessThanOrEqual(1);
+  expect(faces.y + faces.height).toBeLessThanOrEqual(card.y);
+  expect(faces.y).toBeGreaterThanOrEqual(0);
+  const under = await clip.evaluate(
+    (section, at) => {
+      const thing = document.elementFromPoint(at.x, at.y);
+      if (thing === null || !section.contains(thing)) return "outside the clip";
+      return thing.matches("a.open") ? "the clip's link" : thing.outerHTML.slice(0, 80);
+    },
+    { x: faces.x + faces.width / 2, y: faces.y + faces.height / 2 },
+  );
+  expect(under).toBe("the clip's link");
+}
+
+/** The game's card is as tall as it would be with no friends' faces. */
+async function cardHeight(clip: Locator): Promise<number> {
+  const card = await clip.locator(".band").boundingBox();
+  if (card === null) throw new Error("the game's card is not on screen");
+  return card.height;
 }
 
 async function friendsWith(meId: string, name: string, photo?: string): Promise<string> {
@@ -82,6 +91,8 @@ test("a clip shows up to three faces of friends who liked it, then +N, and loses
   page,
 }, testInfo) => {
   test.setTimeout(120_000);
+  // Opened from the Home Screen, so a phone held sideways shows the feed (a browser tab asks for it upright).
+  await asInstalled(page);
   const account = await signUp(page);
   await givePage(account, { name: "Mo Viewer", oneLine: "I play games." });
   const meId = await userIdOf(account.number);
@@ -89,6 +100,7 @@ test("a clip shows up to three faces of friends who liked it, then +N, and loses
   // No friend liked it yet: no cluster.
   let clip = await clipOnFeed(page);
   await expect(bubbles(clip)).toHaveCount(0);
+  const plainCard = await cardHeight(clip);
 
   // Four friends like it, oldest like first; two people who only follow one way like it too and are never shown.
   const ana = await friendsWith(meId, "Ana Able", PHOTO);
@@ -114,13 +126,14 @@ test("a clip shows up to three faces of friends who liked it, then +N, and loses
   expect(box?.height).toBe(28);
   await expect(bubbles(clip).locator("a, button")).toHaveCount(0);
   await showTheOwner(page, testInfo, "friend bubbles on a clip");
-  // Beside Play upright, on the smallest phone too; on a row of their own on a phone held sideways.
-  await facesPlaced(clip, false);
+  // Floating above the card, which grows no taller, on the smallest phone too, and on a phone held sideways.
+  await facesPlaced(clip);
+  expect(await cardHeight(clip)).toBe(plainCard);
   const upright = page.viewportSize();
   await page.setViewportSize({ width: 320, height: 568 });
-  await facesPlaced(await clipOnFeed(page), false);
+  await facesPlaced(await clipOnFeed(page));
   await page.setViewportSize({ width: 667, height: 375 });
-  await facesPlaced(await clipOnFeed(page), true);
+  await facesPlaced(await clipOnFeed(page));
   if (upright !== null) await page.setViewportSize(upright);
 
   // Update: Dee takes the like back, so Ana's face comes in and the +N goes.
