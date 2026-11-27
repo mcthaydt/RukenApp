@@ -32,21 +32,28 @@ export interface FeedFacts {
   memberBeats: Record<string, number>;
   memberBeatsSince: number;
   /**
-   * Who played what, since `playDaysSince` (epoch ms) up to `asOf`: per signed-in person, game and Chicago day, their
-   * attentive beats as a member or free. Never staff's or a maker's own play. Sent only to the private ranker.
+   * Who played what, sent only to the private ranker. Only people the feed may learn from are in it (known adults with
+   * Learn from what I do on, since their last Start over), never staff's or a maker's own play, and nobody by name.
    */
-  playDays?: FeedPlayDay[];
-  playDaysSince?: number;
+  plays?: FeedPlays;
 }
 
-/** One person's play of one game on one Chicago day (`YYYY-MM-DD`). */
-export interface FeedPlayDay {
-  userId: string;
-  gameId: string;
-  day: string;
-  beats: number;
-  basis: "member" | "free_game";
+/**
+ * Play since `since` (epoch ms) up to `asOf`, as plain numbers so a page stays small: `rows` holds five numbers for each
+ * person, game and Chicago day.
+ */
+export interface FeedPlays {
+  since: number;
+  /**
+   * Per row: the game, as its place in `games`; the person, as a number that stands for them in this request only (0 is
+   * the viewer, when the viewer is a person the feed learns from); the day, as how many days before `asOf`'s Chicago
+   * day (0 is today); their attentive beats; and 1 when they played as a member, 0 free.
+   */
+  rows: number[];
 }
+
+/** How many numbers make one row of `FeedPlays.rows`. */
+export const PLAY_ROW = 5;
 
 export interface RankRequest {
   v: 1;

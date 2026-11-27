@@ -247,7 +247,8 @@ export function createPlayService(deps: PlayServiceDeps) {
   /**
    * Who played what, for the learned feed: per signed-in person, game and Chicago day from `since` to `now`, their
    * attentive beats and whether they played as a member or free. Staff's and a maker's own plays are left out, and so is
-   * play by nobody. A beat counts on the Chicago day it arrived, so a sitting across midnight counts on both days. Only
+   * play by nobody. Only a person the feed may learn from is read (learned spec 4.1 and 10): known to be 18 or over
+   * today in Chicago, with Learn from what I do on, and only beats after their last Start over. A beat counts on the Chicago day it arrived, so a sitting across midnight counts on both days. Only
    * `gameIds` are read: the live games the feed may show. A person plays a game as one of the two at a time, so a
    * day that has both answers two rows. One query, bounded to recent sessions as `memberBeatsByGame` is.
    */
@@ -257,20 +258,25 @@ export function createPlayService(deps: PlayServiceDeps) {
     const rows = await deps.db.$queryRaw<
       { userId: string; gameId: string; day: string; beats: bigint; basis: PlayDay["basis"] }[]
     >`
-      SELECT s."userId", s."gameId", s.basis::text AS basis,
-        to_char(b."receivedAt" AT TIME ZONE ${CALENDAR_ZONE}, 'YYYY-MM-DD') AS day,
-        COUNT(*) AS beats
-      FROM "PlaySession" s
-      JOIN "PlayBeat" b ON b."sessionId" = s.id
-      WHERE s.basis::text IN ('member', 'free_game')
-        AND s."userId" IS NOT NULL
-        AND s."gameId" = ANY(${[...gameIds]})
-        AND s."startedAt" >= ${earliestStart}
-        AND s."startedAt" <= ${now}
-        AND b.attentive
-        AND b."receivedAt" >= ${since}
-        AND b."receivedAt" <= ${now}
-      GROUP BY s."userId", s."gameId", s.basis, day`;
+      SELECT "userId", "gameId", basis, to_char(day, 'YYYY-MM-DD') AS day, COUNT(*) AS beats
+      FROM (
+        SELECT s."userId", s."gameId", s.basis::text AS basis,
+          (b."receivedAt" AT TIME ZONE ${CALENDAR_ZONE})::date AS day
+        FROM "PlaySession" s
+        JOIN "PlayBeat" b ON b."sessionId" = s.id
+        JOIN "User" u ON u.id = s."userId"
+        WHERE s.basis::text IN ('member', 'free_game')
+          AND u."adultOn" <= (${now}::timestamptz AT TIME ZONE ${CALENDAR_ZONE})::date
+          AND u."feedPersonal"
+          AND (u."feedResetAt" IS NULL OR b."receivedAt" > u."feedResetAt")
+          AND s."gameId" = ANY(${[...gameIds]})
+          AND s."startedAt" >= ${earliestStart}
+          AND s."startedAt" <= ${now}
+          AND b.attentive
+          AND b."receivedAt" >= ${since}
+          AND b."receivedAt" <= ${now}
+      ) beat
+      GROUP BY "userId", "gameId", basis, day`;
     return rows.map((row) => ({
       userId: row.userId,
       gameId: row.gameId,

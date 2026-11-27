@@ -4,6 +4,8 @@ import type { ListedGame } from "../../../src/features/games/games.ts";
 import type { RankedPage, Ranker, RankRequest } from "../../../src/features/feed/ranker.ts";
 import {
   createFeedService,
+  packPlays,
+  PLAYS_KEPT_MS,
   PRIVATE_WAIT_MS,
   type FeedPage,
   type FeedServiceDeps,
@@ -232,8 +234,95 @@ describe("the feed through a ranker", () => {
     expect(read).toEqual([
       { since: new Date(NOW - 30 * DAY), now: new Date(NOW), gameIds: GAMES.map((game) => game.id) },
     ]);
-    expect(asked[0]?.facts.playDays).toEqual([day]);
-    expect(asked[0]?.facts.playDaysSince).toBe(NOW - 30 * DAY);
+    // id-a is the first game; the person is 1, since the crowd viewer is nobody; 2026-11-20 is a day before today.
+    expect(asked[0]?.facts.plays).toEqual({ since: NOW - 30 * DAY, rows: [0, 1, 1, 12, 1] });
+  });
+
+  it("sends play as numbers only, the viewer 0 and everyone else by a number that names nobody", () => {
+    const rows = [
+      { userId: "zed", gameId: "id-b", day: "2026-11-21", beats: 3, basis: "free_game" as const },
+      { userId: "viewer-1", gameId: "id-a", day: "2026-11-19", beats: 7, basis: "member" as const },
+      { userId: "amy", gameId: "id-c", day: "2026-11-21", beats: 1, basis: "member" as const },
+      { userId: "amy", gameId: "id-gone", day: "2026-11-21", beats: 1, basis: "member" as const },
+    ];
+    const packed = packPlays(rows, ["id-a", "id-b", "id-c"], "viewer-1", NOW - 30 * DAY, NOW);
+    expect(packed).toEqual({ since: NOW - 30 * DAY, rows: [1, 2, 0, 3, 0, 0, 0, 2, 7, 1, 2, 1, 0, 1, 1] });
+    expect(JSON.stringify(packed)).not.toMatch(/zed|amy|viewer-1/);
+  });
+
+  it("reads who played what once in five minutes, and again after a read that failed", async () => {
+    const { ranker } = stubRanker(() => Promise.resolve(PRIVATE_PAGE));
+    const clock = new TestClock(START);
+    let reads = 0;
+    let fail = false;
+    const { service } = serviceWith({
+      clock,
+      privateRanker: () => ranker,
+      playDays: () => {
+        reads += 1;
+        return fail ? Promise.reject(new Error("database gone")) : Promise.resolve([]);
+      },
+    });
+
+    await service.page(null);
+    clock.advance(PLAYS_KEPT_MS / 2);
+    await service.page(null);
+    expect(reads).toBe(1);
+    clock.advance(PLAYS_KEPT_MS);
+    fail = true;
+    await service.page(null);
+    fail = false;
+    await service.page(null);
+    expect(reads).toBe(3);
+  });
+
+  it("gives the page the open order, with nothing of who played what, when the play read fails", async () => {
+    const { ranker, asked } = stubRanker(() => Promise.resolve(PRIVATE_PAGE));
+    const opened: RankRequest[] = [];
+    const { service, lines } = serviceWith({
+      privateRanker: () => ranker,
+      playDays: () => Promise.reject(new Error("database gone")),
+      openRanker: {
+        page: (request) => {
+          opened.push(request);
+          return Promise.resolve({ items: [], next: "x", caughtUpAt: null, ask: null });
+        },
+        notes: () => Promise.resolve({}),
+        health: () => Promise.resolve("defaults"),
+      },
+    });
+
+    const page = await service.page(null);
+
+    expect(asked).toHaveLength(0);
+    expect(opened[0]?.facts.plays).toBeUndefined();
+    expect(page.next).toBe("o.x");
+    expect(lines).toEqual(["feed: the play read failed; the open order was used."]);
+  });
+
+  it("never hands who played what to the open order when the private ranker does not answer", async () => {
+    const { ranker } = stubRanker(() => Promise.reject(new Error("down")));
+    const opened: RankRequest[] = [];
+    const { service } = serviceWith({
+      privateRanker: () => ranker,
+      playDays: () =>
+        Promise.resolve([
+          { userId: "u1", gameId: "id-a", day: "2026-11-20", beats: 1, basis: "member" as const },
+        ]),
+      openRanker: {
+        page: (request) => {
+          opened.push(request);
+          return Promise.resolve({ items: [], next: "x", caughtUpAt: null, ask: null });
+        },
+        notes: () => Promise.resolve({}),
+        health: () => Promise.resolve("defaults"),
+      },
+    });
+
+    await service.page(null);
+
+    expect(opened).toHaveLength(1);
+    expect(opened[0]?.facts.plays).toBeUndefined();
   });
 
   it("does not read who played what when only the open ranker answers, which never uses it", async () => {

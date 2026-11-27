@@ -10,6 +10,7 @@ import {
 } from "../../../src/features/play/sessions.ts";
 import { countedMs } from "../../../src/features/play/time.ts";
 import { medianMs } from "../../../src/features/games/games.ts";
+import { packPlays } from "../../../src/features/feed/service.ts";
 import { createRateLimiter } from "../../../src/lib/server/rate-limit.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
@@ -742,7 +743,7 @@ describe("playDays", () => {
       beats: { at: Date; attentive?: boolean }[];
     },
   ): Promise<string | null> {
-    const userId = options.userId === undefined ? await createUser(db()) : options.userId;
+    const userId = options.userId === undefined ? await adult() : options.userId;
     const pass = await db().playPass.create({
       data: {
         id: crypto.randomUUID().replaceAll("-", "").slice(0, 22),
@@ -771,6 +772,13 @@ describe("playDays", () => {
       });
     }
     return userId;
+  }
+
+  /** A person known to be 18 or over, with Learn from what I do on: the only kind the read answers about. */
+  async function adult(data: { adultOn?: Date | null; feedPersonal?: boolean; feedResetAt?: Date } = {}) {
+    const id = await createUser(db());
+    await db().user.update({ where: { id }, data: { adultOn: new Date("2000-01-01T00:00:00Z"), ...data } });
+    return id;
   }
 
   const hoursAgo = (hours: number) => new Date(NOW.getTime() - hours * 3_600_000);
@@ -839,6 +847,132 @@ describe("playDays", () => {
 
     expect(await rowsOf(game.id)).toEqual([]);
   });
+
+  it("leaves out anyone under 18 or of unknown age, anyone with learning off, and play before Start over", async () => {
+    const game = await newGame();
+    const play = async (userId: string) => {
+      await addPlay(game, {
+        userId,
+        startedAt: hoursAgo(3),
+        beats: [{ at: hoursAgo(3) }, { at: hoursAgo(1) }],
+      });
+    };
+    // 18 tomorrow in Chicago, so still 17 today.
+    await play(await adult({ adultOn: new Date("2026-11-15T00:00:00Z") }));
+    await play(await adult({ adultOn: null }));
+    await play(await adult({ feedPersonal: false }));
+    const restarted = await adult({ feedResetAt: hoursAgo(2) });
+    await play(restarted);
+    // 18 today counts.
+    const birthday = await adult({ adultOn: new Date("2026-11-14T00:00:00Z") });
+    await play(birthday);
+
+    expect(await rowsOf(game.id)).toEqual(
+      [
+        { userId: restarted, gameId: game.id, day: "2026-11-14", beats: 1, basis: "member" },
+        { userId: birthday, gameId: game.id, day: "2026-11-14", beats: 2, basis: "member" },
+      ].sort((one, other) => one.userId.localeCompare(other.userId)),
+    );
+  });
+
+  // A10: the read and what it sends, at launch scale (250 games, 1,000 players, 20,000 play days), measured and printed.
+  // The ranking itself is timed in the private Worker's own budget test. The feed keeps a read for five minutes
+  // (PLAYS_KEPT_MS), so only the first page in each five minutes waits for it.
+  it("reads 20,000 play days, measured and printed, and sends them small", async () => {
+    const maker = await createUser(db());
+    const users = Array.from({ length: 1_000 }, (_, n) => ({
+      id: `scale-user-${String(n)}`,
+      name: "Person",
+      email: `scale-${String(n)}@example.test`,
+      adultOn: new Date("2000-01-01T00:00:00Z"),
+    }));
+    await db().user.createMany({ data: users });
+    const games = Array.from({ length: 250 }, (_, n) => ({
+      id: `scale-game-${String(n)}`,
+      publicId: newPublicId(),
+      slug: `scale-game-${String(n)}`,
+      makerUserId: maker,
+      name: "A game",
+      oneLine: "A game about a thing.",
+      playsOn: "phone_and_computer" as const,
+      repoFullName: "acme/game",
+    }));
+    await db().game.createMany({ data: games });
+    await db().gamePull.createMany({
+      data: games.map((game) => ({
+        id: `${game.id}-pull`,
+        gameId: game.id,
+        commitSha: "a".repeat(40),
+        fileCount: 3,
+        totalBytes: 1000n,
+        connectHosts: [],
+        pulledAt: SINCE,
+      })),
+    });
+    const passOf = new Map(
+      games.map((game) => [game.id, crypto.randomUUID().replaceAll("-", "").slice(0, 22)]),
+    );
+    await db().playPass.createMany({
+      data: games.map((game) => ({
+        id: passOf.get(game.id) ?? "",
+        gameId: game.id,
+        pullId: `${game.id}-pull`,
+        userId: null,
+        madeAt: SINCE,
+        expiresAt: new Date(NOW.getTime() + 86_400_000),
+      })),
+    });
+    // 20,000 different person, game and day sittings over 29 days, each of 20 beats (five minutes).
+    const sittings = new Map<string, { userId: string; gameId: string; daysAgo: number }>();
+    let n = 0;
+    while (sittings.size < 20_000) {
+      n += 1;
+      const userId = `scale-user-${String((n * 7919) % 1_000)}`;
+      const gameId = `scale-game-${String((n * 104_729) % 250)}`;
+      const daysAgo = (n * 31) % 29;
+      sittings.set(`${userId}~${gameId}~${String(daysAgo)}`, { userId, gameId, daysAgo });
+    }
+    await db().playSession.createMany({
+      data: [...sittings.values()].map((sitting, index) => ({
+        id: `scale-session-${String(index)}`,
+        gameId: sitting.gameId,
+        pullId: `${sitting.gameId}-pull`,
+        passId: passOf.get(sitting.gameId) ?? "",
+        userId: sitting.userId,
+        basis: index % 5 === 0 ? ("free_game" as const) : ("member" as const),
+        tokenHash: "0".repeat(64),
+        startedAt: new Date(NOW.getTime() - sitting.daysAgo * 86_400_000 - 2 * 3_600_000),
+      })),
+    });
+    await db().$executeRaw`
+      INSERT INTO "PlayBeat" ("sessionId", "receivedAt", attentive)
+      SELECT s.id, s."startedAt" + k * interval '15 seconds', true
+      FROM "PlaySession" s, generate_series(1, 20) k
+      WHERE s.id LIKE 'scale-session-%'`;
+    await db().$executeRaw`ANALYZE`;
+
+    const since = new Date(NOW.getTime() - 30 * 86_400_000);
+    const gameIds = games.map((game) => game.id);
+    const times: number[] = [];
+    let sent = "";
+    let rows = 0;
+    for (let run = 0; run < 5; run += 1) {
+      const start = performance.now();
+      const read = await service.playDays(since, NOW, gameIds);
+      sent = JSON.stringify(packPlays(read, gameIds, "scale-user-7", since.getTime(), NOW.getTime()));
+      times.push(performance.now() - start);
+      rows = read.length;
+    }
+    const warm = times.slice(1).sort((one, other) => one - other);
+    const median = ((warm[1] ?? 0) + (warm[2] ?? 0)) / 2;
+    console.info(
+      `play read: ${String(rows)} rows, warm median ${median.toFixed(1)} ms (first ${(times[0] ?? 0).toFixed(1)} ms), sent ${String(Math.round(sent.length / 1024))} KB`,
+    );
+    expect(rows).toBe(20_000);
+    // The time is printed, not held to a number: it depends on how busy the machine is (155 ms alone here, about
+    // 340 ms beside the other test files), which is why the feed keeps a read for five minutes.
+    expect(sent.length).toBeLessThan(400_000);
+  }, 120_000);
 
   it("reads only the games it is asked about, in one statement", async () => {
     const wanted = await newGame();
