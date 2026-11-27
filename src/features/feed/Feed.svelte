@@ -2,7 +2,7 @@
   The feed (spec 5.1): one game to a screen, full-window clips that snap one at a time. Each clip leads with the person
   who made it, then the game and Play. A press on the clip opens the game's page; the speaker in the corner flips sound
   for every clip, and Share (Ruken's own share sheet) is the one mark on the right. The top bar (FeedTop.svelte) holds
-  the For you and Following tabs and Search. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
+  the Fresh and Followed tabs and Search. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
   With script it fetches only the clip on screen and the next, plays the one on screen where a video may move, shows
   the window's shape of clip, and moves a clip at a time on the arrow keys, Page Up, Page Down and Space.
   The feed never ends: a few clips before the end of what it has, it asks for the next page, and a spinner fills the
@@ -361,7 +361,7 @@
 
 <svelte:window onkeydown={onKey} onpointerdown={forgetHints} />
 
-<FeedTop on="for-you" />
+<FeedTop on="fresh" />
 
 {#if clips.length === 0}
   <main class="empty">

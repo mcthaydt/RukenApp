@@ -3,7 +3,7 @@
 // reaches a `.svelte` file of this feature.
 export { default as Feed } from "./Feed.svelte";
 export { default as Bar } from "./Bar.svelte";
-export { default as Following } from "./Following.svelte";
+export { default as Followed } from "./Followed.svelte";
 export { default as Search } from "./Search.svelte";
 export { default as ShareSheet } from "./ShareSheet.svelte";
 

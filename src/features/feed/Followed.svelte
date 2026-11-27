@@ -1,7 +1,7 @@
 <!--
-  The Following tab (FeedTop.svelte): the games of makers the person follows. Following a maker is not built yet, so
+  The Followed tab (FeedTop.svelte): the games of makers the person follows. Following a maker is not built yet, so
   for now it says how to get here: sign in, or, signed in, that the person follows nobody yet, with a way back to every
-  game. The top bar stays, so For you is one press away.
+  game. The top bar stays, so Fresh is one press away.
 -->
 <script lang="ts">
   import FeedTop from "./FeedTop.svelte";
@@ -9,7 +9,7 @@
   let { signedIn }: { signedIn: boolean } = $props();
 </script>
 
-<FeedTop on="following" />
+<FeedTop on="followed" />
 
 <main class="empty">
   {#if signedIn}
@@ -18,7 +18,7 @@
     <a class="button" href="/">See every game</a>
   {:else}
     <p class="statement">Sign in to see games from makers you follow.</p>
-    <a class="button" href="/sign-in?next=%2Ffollowing">Sign in</a>
+    <a class="button" href="/sign-in?next=%2Ffollowed">Sign in</a>
   {/if}
 </main>
 

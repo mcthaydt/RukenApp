@@ -7,8 +7,9 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 import { consented } from "./support/consent.ts";
 import { asInstalled } from "./support/installed.ts";
 
-// The feed's top bar (the owner, 2026-11-22: "search icon on the right; For You | Following in the middle"): the For you
-// and Following tabs, and Search, which finds live games and their makers as a person types.
+// The feed's top bar (the owner, 2026-11-22: "search icon on the right; For You | Following in the middle", renamed
+// Fresh and Followed on 2026-11-27): the two tabs, and Search, which finds live games and their makers as a person
+// types.
 
 test.beforeEach(({ page }) => asInstalled(page));
 test.beforeEach(forgetRateLimits);
@@ -37,18 +38,18 @@ test.beforeAll(async ({ browser, request }) => {
 
 const topBar = (page: Page) => ({
   tabs: page.getByRole("navigation", { name: "Feeds" }),
-  forYou: page.getByRole("navigation", { name: "Feeds" }).getByRole("link", { name: "For you" }),
-  following: page.getByRole("navigation", { name: "Feeds" }).getByRole("link", { name: "Following" }),
+  fresh: page.getByRole("navigation", { name: "Feeds" }).getByRole("link", { name: "Fresh" }),
+  followed: page.getByRole("navigation", { name: "Feeds" }).getByRole("link", { name: "Followed" }),
   search: page.getByRole("link", { name: "Search", exact: true }),
 });
 
-test("the feed's top bar holds For you, Following and Search, clear of the sound button", async ({
+test("the feed's top bar holds Fresh, Followed and Search, clear of the sound button", async ({
   page,
 }, testInfo) => {
   await page.goto("/");
   const bar = topBar(page);
-  await expect(bar.forYou).toHaveAttribute("aria-current", "page");
-  await expect(bar.following).not.toHaveAttribute("aria-current", "page");
+  await expect(bar.fresh).toHaveAttribute("aria-current", "page");
+  await expect(bar.followed).not.toHaveAttribute("aria-current", "page");
   await expect(bar.search).toBeVisible();
 
   // The pill sits in the middle, Search at the right edge, and the speaker in the top left: none of them overlap.
@@ -61,44 +62,44 @@ test("the feed's top bar holds For you, Following and Search, clear of the sound
   expect(sound.x + sound.width).toBeLessThanOrEqual(tabs.x);
   expect(tabs.x + tabs.width).toBeLessThanOrEqual(search.x);
   expect(search.width).toBeGreaterThanOrEqual(48);
-  expect((await boxOf(bar.forYou)).height).toBeGreaterThanOrEqual(48);
-  expect((await boxOf(bar.following)).height).toBeGreaterThanOrEqual(48);
+  expect((await boxOf(bar.fresh)).height).toBeGreaterThanOrEqual(48);
+  expect((await boxOf(bar.followed)).height).toBeGreaterThanOrEqual(48);
   // The bar of places at the bottom is well under it.
   const places = await boxOf(page.getByRole("navigation", { name: "Ruken" }));
   expect(places.y).toBeGreaterThan(tabs.y + tabs.height);
   await showTheOwner(page, testInfo, "feed-top-bar");
 });
 
-test("Following says to sign in, and signed in that the person follows nobody yet", async ({
+test("Followed says to sign in, and signed in that the person follows nobody yet", async ({
   page,
 }, testInfo) => {
   await page.goto("/");
   await pageHasSettled(page);
-  await topBar(page).following.click();
-  await expect(page).toHaveURL("/following");
-  await expect(topBar(page).following).toHaveAttribute("aria-current", "page");
+  await topBar(page).followed.click();
+  await expect(page).toHaveURL("/followed");
+  await expect(topBar(page).followed).toHaveAttribute("aria-current", "page");
   // It is the feed's other tab: Home stays marked in the bar at the bottom.
   await expect(
     page.getByRole("navigation", { name: "Ruken" }).getByRole("link", { name: "Home" }),
   ).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("Sign in to see games from makers you follow.")).toBeVisible();
-  await showTheOwner(page, testInfo, "following-signed-out");
+  await showTheOwner(page, testInfo, "followed-signed-out");
   await page.getByRole("link", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/sign-in\?next=%2Ffollowing$/);
+  await expect(page).toHaveURL(/\/sign-in\?next=%2Ffollowed$/);
 
   await signUp(page);
-  await page.goto("/following");
+  await page.goto("/followed");
   await expect(page.getByText("You don't follow anyone yet.")).toBeVisible();
-  await showTheOwner(page, testInfo, "following-signed-in");
+  await showTheOwner(page, testInfo, "followed-signed-in");
   await page.getByRole("link", { name: "See every game" }).click();
   await expect(page).toHaveURL("/");
 
-  // For you on the Following tab goes back to the feed too.
-  await page.goto("/following");
+  // Fresh on the Followed tab goes back to the feed too.
+  await page.goto("/followed");
   await pageHasSettled(page);
-  await topBar(page).forYou.click();
+  await topBar(page).fresh.click();
   await expect(page).toHaveURL("/");
-  await expect(topBar(page).forYou).toHaveAttribute("aria-current", "page");
+  await expect(topBar(page).fresh).toHaveAttribute("aria-current", "page");
 });
 
 test("Search finds a live game and its maker as the person types, and never an 18+ game", async ({
@@ -141,7 +142,7 @@ test("Search finds a live game and its maker as the person types, and never an 1
   await page.goBack();
   await expect(page).toHaveURL("/");
   // The feed has come back before the next address is opened (a move still going would cut it off).
-  await expect(topBar(page).forYou).toHaveAttribute("aria-current", "page");
+  await expect(topBar(page).fresh).toHaveAttribute("aria-current", "page");
   await expect(page.locator("section[data-slug]").first()).toBeVisible();
 
   // A maker is found by their address too, @ or not, and opens their page.
@@ -177,7 +178,7 @@ test("Search works with the keyboard alone, and without script", async ({ page, 
     );
     if (reached.at(-1) === "Search") break;
   }
-  expect(reached).toEqual(expect.arrayContaining(["For you", "Following", "Search"]));
+  expect(reached).toEqual(expect.arrayContaining(["Fresh", "Followed", "Search"]));
   await expect(topBar(page).search).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL("/search");

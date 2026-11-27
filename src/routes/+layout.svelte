@@ -26,8 +26,8 @@
   // Which of the bar's places the person is on: the feed, Your games or You, like an app's tabs (the owner, 2026-11-22).
   const place = $derived.by(() => {
     if (page.status >= 400) return null;
-    // Following is the feed's other tab, so it is Home too.
-    if (page.route.id === "/" || page.route.id === "/following") return "home";
+    // Followed is the feed's other tab, so it is Home too.
+    if (page.route.id === "/" || page.route.id === "/followed") return "home";
     if (page.route.id === "/make") return "make";
     if (page.route.id === "/me") return "you";
     return null;
@@ -57,8 +57,8 @@
     !NO_BAR.includes(page.route.id ?? "") && !(page.route.id === "/make/page" && page.data.rooms === null),
   );
 
-  // The feed, its Following tab and Search fill the window with their own top bar, so they have no wordmark above them.
-  const FULL_SCREENS: readonly string[] = ["/", "/following", "/search"];
+  // The feed, its Followed tab and Search fill the window with their own top bar, so they have no wordmark above them.
+  const FULL_SCREENS: readonly string[] = ["/", "/followed", "/search"];
 
   // A game's own page, its play screen and its maker's test play name the game in the tab; every other screen, a
   // missing page included, has the base title.

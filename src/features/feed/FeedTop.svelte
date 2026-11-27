@@ -1,21 +1,21 @@
 <!--
-  The feed's top bar (the owner, 2026-11-22: "search icon on the right; For You | Following in the middle"): two tabs in
-  one frosted pill in the middle, For you (every game, the feed at /) and Following (games from makers the person
-  follows, at /following), and Search, a round glass button on the right. The speaker for sound stays in the top left
-  corner (Feed.svelte), so the bar keeps clear of it. The tabs are links, so they work without script, and moving between
+  The feed's top bar (the owner, 2026-11-22: "search icon on the right; For You | Following in the middle", then on
+  2026-11-27 names of Ruken's own, not TikTok's, and easy to translate): two tabs in one frosted pill in the middle,
+  Fresh (every game, the feed at /) and Followed (games from makers the person follows, at /followed), and Search,
+  a round glass button on the right. The speaker for sound stays in the top left corner (Feed.svelte), so the bar keeps clear of it. The tabs are links, so they work without script, and moving between
   them slides sideways as the bar's places do (src/lib/page-moves.ts).
 -->
 <script lang="ts">
   import Icon from "../../lib/icon.svelte";
 
   /** Which tab the person is on. */
-  let { on }: { on: "for-you" | "following" } = $props();
+  let { on }: { on: "fresh" | "followed" } = $props();
 </script>
 
 <div class="top">
   <nav class="tabs" aria-label="Feeds">
-    <a href="/" aria-current={on === "for-you" ? "page" : undefined}>For you</a>
-    <a href="/following" aria-current={on === "following" ? "page" : undefined}>Following</a>
+    <a href="/" aria-current={on === "fresh" ? "page" : undefined}>Fresh</a>
+    <a href="/followed" aria-current={on === "followed" ? "page" : undefined}>Followed</a>
   </nav>
   <a class="search" href="/search" aria-label="Search" title="Search"><Icon name="search" /></a>
 </div>
