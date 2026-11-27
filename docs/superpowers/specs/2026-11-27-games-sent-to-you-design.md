@@ -6,8 +6,8 @@ The owner, 2026-11-27 02:07 UTC: "Let's add an Inbox (use a better name) too for
 
 These two are the owner's. Each is asked as a card with a recommendation; the build follows the recommended option until the owner answers, and changes only words or one rule if the answer differs.
 
-- **D1, the name.** Options: **"Sent to you"** (recommended: plain words that say what it is; the action in the share sheet is "Send to someone"), "Your turn" (playful, like handing over the controller), "Mailbox". "Inbox" is not used. Every name in this brief is written as "Sent to you"; a different answer changes the words only (`src/features/sends/words.ts`).
-- **D2, who can send to whom.** Options: **people you follow and people who follow you** (recommended: nobody gets a game from a stranger; today that means a player can send to the makers they follow and a maker to the people who follow them, and players reach each other once slice 4 lets people follow any person's page), anyone on Ruken with a page (wider, but strangers can send you games), or wait for friends in slice 4. A different answer changes one function, `canSend` in `src/features/sends/who.ts`.
+- **D1, the name.** Options: **"Sent to you"** (recommended: plain words that say what it is; the action in the share sheet is "Send to a friend"), "Your turn" (playful, like handing over the controller), "Mailbox". "Inbox" is not used. Every name in this brief is written as "Sent to you"; a different answer changes the words only (`src/features/sends/words.ts`).
+- **D2, who can send to whom. Decided** (the owner, 2026-11-27 02:10 UTC): "friends just means you follow each other, friends can send games to the \"inbox\"". Only friends, two people who follow each other, can send each other games. Today only a person with a page can be followed (`MakerFollow`), so for now friends are two makers who follow each other; once slice 4 gives every person a page that can be followed, every person can have friends with no change here. The rule is one function, `canSend` in `src/features/sends/who.ts`.
 
 ## Lane
 
@@ -21,7 +21,7 @@ Expected duration: about 5 hours of building, plus the audits.
 
 ## What a person sees
 
-- **Sending.** The share sheet (feed and game page) gains one row above the apps: "Send to someone", with up to 8 round faces of the people this person can send to (D2), most recently followed first, each 48px with the first name under it. Pressing a face sends the game: the face shows the spinner alone while it sends, then a green check and "Sent" under it; pressing it again does nothing. If it fails: "That didn't work. Try again." under the face (`role="alert"`), and the face can be pressed again. A person with nobody to send to sees no row (the sheet is as today). Signed out, the row is not there. Sending the same game to the same person twice is one row; the second press says "Sent" too.
+- **Sending.** The share sheet (feed and game page) gains one row above the apps: "Send to a friend", with up to 8 round faces of this person's friends (people they follow who follow them back, D2), most recently befriended first, each 48px with the first name under it. Pressing a face sends the game: the face shows the spinner alone while it sends, then a green check and "Sent" under it; pressing it again does nothing. If it fails: "That didn't work. Try again." under the face (`role="alert"`), and the face can be pressed again. A person with no friends yet sees no row (the sheet is as today). Signed out, the row is not there. Sending the same game to the same person twice is one row; the second press says "Sent" too.
 - **Where they land.** A paper-plane icon button, "Sent to you" by its `aria-label`, sits on the left of the feed's top bar (opposite Search), coloured glass like the other top-bar buttons. When games have come in that the person has not looked at, a small green dot sits on it, and the label says "Sent to you, new games". It opens `/sent`.
 - **The list, `/sent`.** One screen that fits the view with no page scroll (the list scrolls inside its box, with no scrollbar): a title "Sent to you", then one row per game, newest first: the game's still (64px), its name in bold, "From <sender's name>" and when ("Today", "Yesterday", or the date). The whole row opens the game's page. On the row's right, a Remove icon button ("Remove <game> from Sent to you"). Opening the list marks every game on it as seen, and the dot goes.
 - **Empty.** "Nothing yet. When someone sends you a game, it shows up here." and a Back to the feed button.
@@ -35,26 +35,26 @@ Every screen passes the drunk-grandma test: one main action per screen (the rows
 ## Rules
 
 - **The site believes nothing the form sends.** `POST /sent/send` with `game` (a slug) and `to` (a handle). Signed out: 401. A game that is not live, or a handle with no page: 404. Sending to yourself: 400. `canSend(from, to)` false: 403, and nothing is saved. Stopped by the receiver: 200 with `{ sent: true }`, and nothing is saved, so the sender is never told.
-- **Who can send to whom** is one function, `canSend(fromUserId, toUserId)` (D2). With the recommended answer it is true when either follows the other (`MakerFollow`, either way round). The faces in the sheet come from the same rule, so a face never shows that the site would refuse.
+- **Who can send to whom** is one function, `canSend(fromUserId, toUserId)` (D2). It is true only when each follows the other (two `MakerFollow` rows, one each way). The faces in the sheet come from the same rule, so a face never shows that the site would refuse.
 - **One send per sender, receiver and game.** `@@unique([fromId, toId, gameId])`; sending again is `createMany` with `skipDuplicates`. Removing deletes the row, so the same person may send it again later and it shows as new.
 - **A limit on sending.** Through the shared `RateLimiter`, the way reports do (`src/features/moderation/limits.ts`): the numbers sit in `src/features/sends/limits.ts` (30 an hour, 100 a day for each sender), so they can move to the private Worker with the other spam numbers later. Over the limit: 429, "You've sent a lot today. Try again later."
 - **Only the receiver reads and changes their list.** `/sent`, Remove and Stop act only on rows whose `toId` is the caller. Remove or Stop on someone else's row answers 404 and changes nothing. The sender is never shown whether a game was seen, removed, or stopped.
 - **What is kept.** Who sent which game to whom, when (`sentAt`, from the injected clock), and when the receiver first saw it (`seenAt`). Who stopped whom, and when. Deleting either account deletes every row it is in (`deletion.ts`). `/privacy` says so, with its "Last updated" date. No new cookie and no browser-kept value: sending and the list need a sign-in, which already sits behind the cookie yes.
-- **Pages that keep up.** `/about` (`sections.ts`) gets one line for players: send a game to someone you follow. `/privacy` as above.
+- **Pages that keep up.** `/about` (`sections.ts`) gets one line: send a game to a friend, someone you follow who follows you back. `/privacy` as above.
 
 ## Acceptance criteria
 
-1. A signed-in player who follows a maker opens Share on a clip, presses that maker's face: it shows "Sent", and the database holds one `GameSend` row (create). (journey)
-2. The maker signs in: the top bar's button shows the dot and its label says "new games"; `/sent` shows the game with "From <player's name>"; the row opens the game's page; coming back, the dot is gone and the row has `seenAt` (read, update). (journey)
+1. A signed-in maker whose friend (another maker; they follow each other) has a page opens Share on a clip, presses the friend's face: it shows "Sent", and the database holds one `GameSend` row (create). (journey)
+2. The friend signs in: the top bar's button shows the dot and its label says "new games"; `/sent` shows the game with "From <sender's name>"; the row opens the game's page; coming back, the dot is gone and the row has `seenAt` (read, update). (journey)
 3. Remove takes the row off, the database row is gone, and a reload shows the empty words (delete). (journey)
 4. Stop: the card asks, Stop removes the sender's rows from the list; a new send from them saves nothing and the sender still sees "Sent"; `/sent/stopped` lists them; Undo lets a new send through (create, read, delete of a stop). (journey)
-5. A person with nobody to send to sees no "Send to someone" row; a signed-out person sees no row; `/sent` signed out goes to sign-in and back. (journey)
+5. A person with no friends yet sees no "Send to a friend" row; a signed-out person sees no row; `/sent` signed out goes to sign-in and back. (journey)
 6. `POST /sent/send` answers 401 signed out, 404 for a game that is not live or a handle with no page, 400 to yourself, 403 when `canSend` is false, 429 over the limit, and saves nothing in each. (route or database tests)
 7. Remove or Stop on another person's row answers 404 and changes nothing; `/sent` never lists a row whose `toId` is someone else. (database and route tests)
 8. Two sends at once of one game to one person make one row. (database test)
 9. An 18+ game sent to a person whose age is unknown does not show on their list; it shows for a known adult. A taken-off game shows on no list. (database or service test)
 10. Deleting an account deletes the sends and stops it is in, both ways. (database test)
-11. `canSend` is true when either person follows the other and false otherwise; the sheet's faces are exactly the people `canSend` allows, at most 8, newest follow first. (database test)
+11. `canSend` is true only when each person follows the other, and false when only one follows or neither does; the sheet's faces are exactly the people `canSend` allows, at most 8, newest friendship first (the later of the two follows). (database test)
 12. Everything works with the keyboard alone, with visible focus: Tab reaches the faces in the sheet, the top-bar button, each row, its Remove and its Stop link; Enter sends, opens and removes; Escape closes the Stop card. (journey)
 13. Every button is at least 48 by 48px to press; `/sent` and `/sent/stopped` fit a 375 by 667 phone, a tablet and a computer with no page scroll, and a sideways phone as the other screens do; nothing is underlined. (journeys, including `fits-the-screen` and `real-buttons`)
 14. The new floating pieces read the glass tokens; `tests/lib/glass.test.ts` passes. Every wait shows only the spinner; `tests/loading-states.test.ts` passes. (unit)
@@ -74,4 +74,4 @@ Every screen passes the drunk-grandma test: one main action per screen (the rows
 
 Test files named in a unit's Check column belong to that unit. Units run in this order on one branch. Existing tests that change are named in the pull request body. The live-state file is deleted in the last commit before each hand-off to an audit.
 
-Left for later, on purpose: a note with the game (there is no chat, apps spec "Not in this"); telling a person by text that a game came in (not asked for); sending to people you don't follow (D2); a count of how often a game was sent.
+Left for later, on purpose: a note with the game (there is no chat, apps spec "Not in this"); telling a person by text that a game came in (not asked for); sending to anyone who is not a friend (D2); a count of how often a game was sent.
