@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type CDPSession, type Locator, type Page } from "@playwright/test";
+import { WHEEL_REST } from "../../src/features/feed/tabs.ts";
 import { addGame } from "./support/game.ts";
 import { oneMove, watchMoves } from "./support/moves.ts";
 import { pageHasSettled } from "./support/account.ts";
@@ -33,10 +34,54 @@ const SWIPE = [12, 30, 45, 50, 40, 30, 22, 16, 12, 9, 7, 5, 4, 3, 2, 2, 1, 1, 1,
  */
 const realWheel = (page: Page) => page.context().browser()?.browserType().name() !== "webkit";
 
-/** One wheel move under the pointer, which the journey keeps over the middle of the screen unless it says otherwise. */
+/**
+ * A computer's trackpad, sending wheel moves through the browser's own input with the stamps a trackpad gives them. A
+ * trackpad's moves are stamped by the system as the fingers move, so a busy page never splits one swipe. Moves sent one
+ * call at a time are stamped as each call lands, and a busy moment (700 ms once in CI, run 46051556495; 209 to 330 ms
+ * in #431's review) opened a gap past the wheel's rest inside a swipe, so the feed rightly took it as two swipes and
+ * moved two tabs; or closed a gap between a scroll and the next swipe, which the feed rightly took as one gesture. So
+ * the moves of one gesture come 8 ms apart, as a trackpad's do, and each new gesture comes after a rest.
+ */
+type Pad = { cdp: CDPSession; at: number; x: number; y: number };
+const pads = new WeakMap<Page, Pad>();
+
+/** How long the fingers rest between gestures, in seconds: longer than the feed's wheel rest. */
+const REST = (2 * WHEEL_REST) / 1000;
+
+async function padOf(page: Page): Promise<Pad> {
+  let pad = pads.get(page);
+  if (pad === undefined) {
+    const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+    pad = { cdp: await page.context().newCDPSession(page), at: 0, x: width / 2, y: height / 2 };
+    pads.set(page, pad);
+  }
+  return pad;
+}
+
+/** Lifts the fingers: the next move starts a new gesture. */
+function rest(pad: Pad): void {
+  pad.at = Math.max(Date.now() / 1000, pad.at + REST);
+}
+
+/** Sends the next move of the gesture under way, 8 ms after the last. */
+function move(pad: Pad, dx: number, dy: number): Promise<unknown> {
+  pad.at += 0.008;
+  return pad.cdp.send("Input.dispatchMouseEvent", {
+    type: "mouseWheel",
+    x: pad.x,
+    y: pad.y,
+    deltaX: dx,
+    deltaY: dy,
+    timestamp: pad.at,
+  });
+}
+
+/** One wheel move under the pointer, as a gesture of its own. */
 async function wheel(page: Page, dx: number, dy: number): Promise<void> {
   if (realWheel(page)) {
-    await page.mouse.wheel(dx, dy);
+    const pad = await padOf(page);
+    rest(pad);
+    await move(pad, dx, dy);
     return;
   }
   await page.evaluate(
@@ -55,38 +100,70 @@ async function wheel(page: Page, dx: number, dy: number): Promise<void> {
 /** Puts the pointer at `x`, `y`, where the next wheel moves land. */
 async function pointAt(page: Page, x: number, y: number): Promise<void> {
   await page.mouse.move(x, y);
+  if (realWheel(page)) Object.assign(await padOf(page), { x, y });
   await page.evaluate(([px, py]) => ((window as unknown as { pointer: object }).pointer = { x: px, y: py }), [
     x,
     y,
   ] as [number, number]);
 }
 
+/** The page's own wheel moves for a whole swipe, in one call, so nothing can come between them. */
+const SWIPE_IN_PAGE = ([sizes, side, press]: [number[], number, string | null]) => {
+  if (press !== null) document.querySelector<HTMLElement>(press)?.click();
+  const { x, y } = (window as unknown as { pointer?: { x: number; y: number } }).pointer ?? {
+    x: innerWidth / 2,
+    y: innerHeight / 2,
+  };
+  for (const size of sizes) {
+    const target = document.elementFromPoint(x, y) ?? document.body;
+    target.dispatchEvent(new WheelEvent("wheel", { deltaX: side * size, bubbles: true, cancelable: true }));
+  }
+};
+
 /** A two-finger swipe on the trackpad, under the pointer: the fingers go left (`"left"`) or right. */
 async function trackpadSwipe(page: Page, way: "left" | "right"): Promise<void> {
   // The fingers going left scroll the page to the right: the wheel moves are the other way from the fingers.
   const sign = way === "left" ? 1 : -1;
   if (realWheel(page)) {
-    for (const size of SWIPE) await wheel(page, sign * size, 0);
+    const pad = await padOf(page);
+    rest(pad);
+    for (const size of SWIPE) await move(pad, sign * size, 0);
     return;
   }
-  // The page's own events are stamped when the page makes them, not when the fingers moved, as a trackpad's are. Sent
-  // one call at a time, a busy moment in the page (700 ms once in CI, run 46051556495) put a gap past the wheel's rest
-  // inside the swipe, so the feed rightly took it as two swipes and moved two tabs. So the whole swipe goes in one call.
-  await page.evaluate(
-    ([sizes, side]) => {
-      const { x, y } = (window as unknown as { pointer?: { x: number; y: number } }).pointer ?? {
-        x: innerWidth / 2,
-        y: innerHeight / 2,
-      };
-      for (const size of sizes) {
-        const target = document.elementFromPoint(x, y) ?? document.body;
-        target.dispatchEvent(
-          new WheelEvent("wheel", { deltaX: side * size, bubbles: true, cancelable: true }),
-        );
-      }
-    },
-    [SWIPE, sign] as [number[], number],
-  );
+  // The page's own events are stamped when the page makes them, so on the phone the whole swipe goes in one call.
+  await page.evaluate(SWIPE_IN_PAGE, [SWIPE, sign, null] as [number[], number, string | null]);
+}
+
+/**
+ * Presses `button` and swipes the fingers to the left at once, with no wait between. With a real wheel the press and
+ * the push of the swipe go to the browser together, and the swipe's coast comes once `gone` says the press has done its
+ * work, still as one gesture. On the phone the press and the whole swipe go in one call.
+ */
+async function pressAndSwipe(
+  page: Page,
+  button: Locator,
+  selector: string,
+  gone: () => Promise<void>,
+): Promise<void> {
+  if (!realWheel(page)) {
+    await page.evaluate(SWIPE_IN_PAGE, [SWIPE, 1, selector] as [number[], number, string | null]);
+    await gone();
+    return;
+  }
+  const box = await button.boundingBox();
+  if (box === null) throw new Error("The button has no box.");
+  const pad = await padOf(page);
+  rest(pad);
+  const at = { x: box.x + box.width / 2, y: box.y + box.height / 2, button: "left", clickCount: 1 } as const;
+  const push = SWIPE.slice(0, 5);
+  const coast = SWIPE.slice(5);
+  await Promise.all([
+    pad.cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", ...at, timestamp: pad.at }),
+    pad.cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", ...at, timestamp: pad.at }),
+    ...push.map((size) => move(pad, size, 0)),
+  ]);
+  await gone();
+  for (const size of coast) await move(pad, size, 0);
 }
 
 /** Every sideways wheel move the browser was left to act on, counted once the page has answered it. */
@@ -267,12 +344,13 @@ test("a two-finger swipe over a panel, or one sliding away, stays on the page", 
   await strip.evaluate((el) => el.remove());
 
   // Close, and swipe at once, while the panel is still sliding away: still nothing reaches the browser, and the swipe
-  // does not change the tab once the panel has gone either.
+  // does not change the tab once the panel has gone either, though its coast goes on after (where the browser sends real
+  // wheel moves).
   await pointAt(page, width / 2, height / 2);
   const closing = await wheels(page);
-  await sheet.getByRole("button", { name: "Close" }).click();
-  await trackpadSwipe(page, "left");
-  await expect(sheet).toBeHidden();
+  await pressAndSwipe(page, sheet.getByRole("button", { name: "Close" }), "dialog[open] button.close", () =>
+    expect(sheet).toBeHidden(),
+  );
   const after = await wheels(page);
   expect(after.overPanel, "some of the swipe came while the panel slid away").toBeGreaterThan(
     closing.overPanel,
