@@ -10,6 +10,7 @@
 <script lang="ts">
   import { deviceStore } from "../consent/consent.browser.ts";
   import { gameTitle } from "../../lib/titles.ts";
+  import { PAD_MENU } from "../../lib/pad-focus.ts";
   import { onMount } from "svelte";
   import {
     dragSpot,
@@ -198,6 +199,19 @@
     }
   }
 
+  // The gamepad's Home (or View held) opens the menu over the game, and closes it again (src/lib/pad-focus.ts).
+  function padMenu(): void {
+    if (menu === undefined) return;
+    if (menu.open) keepPlaying();
+    else menu.open = true;
+  }
+  $effect(() => {
+    addEventListener(PAD_MENU, padMenu);
+    return () => {
+      removeEventListener(PAD_MENU, padMenu);
+    };
+  });
+
   // The tab. A press that moves more than 8px is a drag; one that moves less is a press and opens the menu.
   let dragFrom: { x: number; y: number; grabX: number; grabY: number } | null = null;
   let dragged = false;
@@ -352,7 +366,7 @@
       <span aria-hidden="true">RKN</span>
     </summary>
     <div class="menusheet">
-      <div class="menupanel" bind:this={panel}>
+      <div class="menupanel" bind:this={panel} data-pad-scope={open ? "" : undefined}>
         <h2>{name}</h2>
         {#if testPlay}
           <p class="note">Test play. Only you can see this.</p>

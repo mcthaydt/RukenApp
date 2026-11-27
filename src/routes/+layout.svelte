@@ -18,6 +18,7 @@
   import PageLoading from "../lib/page-loading.svelte";
   import TurnUpright from "../lib/turn-upright.svelte";
   import { sendInApp } from "../lib/stay-in-app.ts";
+  import { startPad } from "../lib/pad-focus.ts";
   import { BASE_TITLE } from "../lib/titles.ts";
   import type { LayoutProps } from "./$types";
 
@@ -80,6 +81,14 @@
     markSending(event);
     sendInApp(event);
   }
+
+  // How many pages into Ruken this tab is, so the gamepad's B goes back only to a page of Ruken's, never out of it.
+  // Counted as each move starts, not once its slide has ended, so a B pressed while a page slides in still counts it.
+  let depth = 0;
+  onNavigate((navigation) => {
+    depth = navigation.type === "popstate" ? Math.max(depth + navigation.delta, 0) : depth + 1;
+  });
+  $effect(() => startPad({ canGoBack: () => depth > 0 }));
 
   // Inside the app the screen scrolls inside its own view, the body, not the page (look.css, the app view), so the
   // browser's own scroll keeping does not reach it: each screen opens at its top, and Back finds a screen where it was
