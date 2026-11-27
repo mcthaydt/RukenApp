@@ -6,6 +6,7 @@ import { gamesServices } from "../games/games.ts";
 import { pagesServices } from "../pages/pages.ts";
 import { playServices } from "../play/play.ts";
 import { askingFor, readFeedPublic, type Asking, type FeedPublic } from "./feed-public.ts";
+import { createMarks, type Marks } from "./marks.ts";
 import type { Ranker } from "./ranker.ts";
 import { createSearch, type Search } from "./search.ts";
 import { createFeedService, type FeedService } from "./service.ts";
@@ -18,12 +19,23 @@ export interface FeedServices {
   service: FeedService;
   /** What a person tells the feed: Your feed's chips and switch, More or Less like this, Good pick. */
   taste: Taste;
+  /** Like, Save and Repost. */
+  marks: Marks;
+  /** The live games a person saved (or reposted), the latest first, as Saved and Your reposts list them. */
+  listOf(userId: string, kind: "save" | "repost"): Promise<MarkedGame[]>;
   /** Search from the feed's top bar: live games and their makers. */
   search: Search;
   /** Who the ranker is told is asking, from who sent the request and FEED_PUBLIC. */
   askingOf(caller: Caller): Asking;
-  /** The signed-in person a page is for, so it can mark the makers they follow; null for anyone else. */
+  /** The signed-in person a page is for, so it can mark the makers they follow and what they pressed; null for anyone else. */
   viewerOf(caller: Caller): string | null;
+}
+
+/** A game on Saved or Your reposts. */
+export interface MarkedGame {
+  slug: string;
+  name: string;
+  oneLine: string;
 }
 
 let shared: FeedServices | undefined;
@@ -38,13 +50,24 @@ export function setPrivateRanker(get: () => Ranker | null): void {
 
 /** The process-wide feed services, created on first use. Each neighbour is asked for only when the feed is read. */
 export function feedServices(): FeedServices {
-  shared ??= buildServices(createTaste({ db: prisma(), clock: systemClock }));
-  return shared;
-}
-
-function buildServices(taste: Taste): FeedServices {
-  return {
+  if (shared !== undefined) return shared;
+  const marks = createMarks({ db: prisma(), clock: systemClock });
+  const taste = createTaste({ db: prisma(), clock: systemClock });
+  shared = {
     taste,
+    marks,
+    async listOf(userId, kind) {
+      const [ids, live] = await Promise.all([
+        marks.gameIdsOf(userId, kind),
+        gamesServices().service.liveGames(),
+      ]);
+      const byId = new Map(live.map((game) => [game.id, game]));
+      // A game that is no longer live is left off the list; its row stays until the person or the account goes.
+      return ids.flatMap((id) => {
+        const game = byId.get(id);
+        return game === undefined ? [] : [{ slug: game.slug, name: game.name, oneLine: game.oneLine }];
+      });
+    },
     service: createFeedService({
       clock: systemClock,
       liveGames: () => gamesServices().service.liveGames(),
@@ -52,6 +75,7 @@ function buildServices(taste: Taste): FeedServices {
       makersOf: (userIds) => pagesServices().service.makersOf(userIds),
       followedAmong: (followerId, makerIds) => pagesServices().follows.followedAmong(followerId, makerIds),
       media: (key) => gamesServices().media(key),
+      marksOf: (viewerId, games) => marks.ofClips(viewerId, games),
       privateRanker: () => bound(),
       asking: (userId, gameId) => taste.asking(userId, gameId),
     }),
@@ -76,4 +100,5 @@ function buildServices(taste: Taste): FeedServices {
       });
     },
   };
+  return shared;
 }

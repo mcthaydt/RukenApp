@@ -89,6 +89,7 @@ model User {
   wishlist     Wishlist[]
   wishlistMail WishlistMail?
   gameReports  GameReport[]
+  gameMarks    GameMark[]
 
   // The feed feature's tables point at a person; they are declared in feed.prisma.
   feedTastes      FeedTaste[]     @relation("FeedTasteOwner")

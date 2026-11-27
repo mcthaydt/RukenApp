@@ -1,6 +1,7 @@
 import { chicagoDayOf, type Clock } from "../../lib/clock.ts";
 import type { ListedGame } from "../games/games.ts";
 import { CROWD, type Asking } from "./feed-public.ts";
+import type { ClipMarks } from "./marks.ts";
 import { openRanker } from "./public-ranker.ts";
 import {
   isRankedPageOrBadCursor,
@@ -40,6 +41,11 @@ export interface FeedServiceDeps {
   followedAmong?(followerId: string, makerIds: readonly string[]): Promise<Set<string>>;
   /** The whole address of a file in the bucket, from its key. */
   media(key: string): string;
+  /** What each game's clip shows of likes, saves and reposts for this viewer (null when signed out); left out, none. */
+  marksOf?(
+    viewerId: string | null,
+    games: readonly { id: string; makerUserId: string }[],
+  ): Promise<Map<string, ClipMarks>>;
   /** The private ranker, when this app has one bound; left out or null, the open ranker answers every page. */
   privateRanker?: () => Ranker | null;
   /** The open ranker; left out, the feed's own (public-ranker.ts). */
@@ -69,6 +75,8 @@ export interface FeedClip {
    * game is their own (they cannot follow themselves). Both are false for someone signed out.
    */
   maker: { handle: string; name: string; photo: string | null; following: boolean; mine: boolean } | null;
+  /** The like count and what the viewer pressed. */
+  marks: ClipMarks;
 }
 
 /**
@@ -83,6 +91,18 @@ export interface FeedPage {
   ask?: { key: string; slug: string; name: string };
 }
 
+/** A clip's marks when none were read for it. */
+const NO_MARKS: ClipMarks = { likes: 0, liked: false, saved: false, reposted: false, own: false };
+
+/** Which ranker answers the feed, and what it says of its own settings. */
+export interface FeedHealth {
+  ranker: "private" | "open";
+  health: "private" | "partial" | "defaults";
+}
+
+const isHealth = (value: unknown): value is FeedHealth["health"] =>
+  value === "private" || value === "partial" || value === "defaults";
+
 /** Why the private ranker's answer was not used. Never the viewer or anything they did. */
 type Miss = "threw" | "slow" | "bad answer";
 
@@ -95,8 +115,8 @@ export function createFeedService(deps: FeedServiceDeps) {
       console.warn(line);
     });
 
-  /** The private ranker's page, or why there is none. It is given PRIVATE_WAIT_MS, and its answer is checked. */
-  async function askPrivate(ranker: Ranker, request: RankRequest): Promise<RankedPage | "bad-cursor" | Miss> {
+  /** What a call to the private ranker answered within PRIVATE_WAIT_MS, or why it did not. */
+  async function within(call: () => Promise<unknown>): Promise<{ answer: unknown } | "slow" | "threw"> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const slow = new Promise<"slow">((resolve) => {
       timer = setTimeout(() => {
@@ -104,14 +124,36 @@ export function createFeedService(deps: FeedServiceDeps) {
       }, PRIVATE_WAIT_MS);
     });
     try {
-      const answer: unknown = await Promise.race([ranker.page(request), slow]);
-      if (answer === "slow") return "slow";
-      return isRankedPageOrBadCursor(answer) ? answer : "bad answer";
+      return await Promise.race([call().then((answer) => ({ answer })), slow]);
     } catch {
       return "threw";
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /** The private ranker's page, or why there is none. Its answer is checked before anything is built from it. */
+  async function askPrivate(ranker: Ranker, request: RankRequest): Promise<RankedPage | "bad-cursor" | Miss> {
+    const result = await within(() => ranker.page(request));
+    if (result === "slow" || result === "threw") return result;
+    return isRankedPageOrBadCursor(result.answer) ? result.answer : "bad answer";
+  }
+
+  /**
+   * Which ranker the feed is using now, and what that ranker says of its own settings: what /healthz/feed answers, so a
+   * check on the live site can see the private ranker answering, or the open order standing in for it.
+   */
+  async function health(): Promise<FeedHealth> {
+    const bound = privateRanker();
+    if (bound !== null) {
+      const result = await within(() => bound.health());
+      if (result !== "slow" && result !== "threw" && isHealth(result.answer))
+        return { ranker: "private", health: result.answer };
+      log(
+        `feed: the private ranker did not answer its health (${result === "slow" || result === "threw" ? result : "bad answer"}).`,
+      );
+    }
+    return { ranker: "open", health: await open.health() };
   }
 
   /**
@@ -187,11 +229,14 @@ export function createFeedService(deps: FeedServiceDeps) {
       const game = byId.get(item.gameId);
       return game === undefined ? [] : [{ key: item.key, game }];
     });
-    const makerIds = [...new Set(shown.map(({ game }) => game.makerUserId))];
-    const makers =
+    const shownGames = [...new Map(shown.map(({ game }) => [game.id, game])).values()];
+    const makerIds = [...new Set(shownGames.map((game) => game.makerUserId))];
+    const [makers, marks] = await Promise.all([
       shown.length === 0
         ? new Map<string, { handle: string; name: string; photoKey: string | null }>()
-        : await deps.makersOf(makerIds);
+        : deps.makersOf(makerIds),
+      deps.marksOf?.(viewerId, shownGames) ?? new Map<string, ClipMarks>(),
+    ]);
     const followed =
       viewerId === null || deps.followedAmong === undefined || makers.size === 0
         ? new Set<string>()
@@ -217,6 +262,7 @@ export function createFeedService(deps: FeedServiceDeps) {
                   following: followed.has(game.makerUserId),
                   mine: game.makerUserId === viewerId,
                 },
+          marks: marks.get(game.id) ?? NO_MARKS,
         };
       }),
     };
@@ -233,7 +279,7 @@ export function createFeedService(deps: FeedServiceDeps) {
     return result;
   }
 
-  return { page };
+  return { page, health };
 }
 
 export type FeedService = ReturnType<typeof createFeedService>;

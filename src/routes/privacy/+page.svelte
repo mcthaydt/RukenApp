@@ -56,6 +56,11 @@
       after 90 days unused, or when you remove it. Changing or resetting your password removes every computer.
     </li>
     <li>
+      <strong>Games you like, save or repost.</strong> When you press Like, Save or Repost on a game, we keep which
+      game, which one you pressed, and when. Everyone sees how many people like a game, never who. It's gone when
+      you press it again, or when you delete your account.
+    </li>
+    <li>
       <strong>Games you report.</strong> If you report a game, we keep which game, what you said was wrong, any
       words you wrote, and when. Only Ruken's staff read it. The game's maker never sees who reported it. It's gone
       when you take it back, or when you delete your account.
@@ -186,6 +191,10 @@
     <li>
       <strong>rk_wish_pressed</strong> remembers which game you pressed Wishlist on while signed out, so it goes
       on your list after you sign up. 30 minutes.
+    </li>
+    <li>
+      <strong>rk_mark_pressed</strong> remembers which game you pressed Like, Save or Repost on while signed out,
+      so it is made once you sign in. 30 minutes.
     </li>
     <li>
       <strong>rk_follow_pressed</strong> remembers which maker you pressed follow on while signed out, so you follow

@@ -136,8 +136,8 @@ One row per open stage or unit. Percentages come from the plan's ticked steps; a
 | Private move, P0: hooks in RukenPrivate (lane 3) | RukenPrivate #19 | merged at `018ccc9` (head `a52d930`, implementation audit PASS `2bc2b5f`); hooks load only in a session started in a RukenPrivate checkout | 100% |
 | Private move, P1: the spec; the learned spec trimmed, the full one to RukenPrivate (lane 1) | branch `claude/project-thread-t02epm`; RukenPrivate #20 | plan audit 3 PASS at `05e6bfc`; the public learned spec trimmed on the branch; the full copy merged in RukenPrivate #20 (`3526137`); the pull request opened 2026-11-23 | 100% built, not merged |
 | Private move, P2: the `Ranker` seam and the public ranker (lane 2) | #361 | merged as `e0a9fdc` (2026-11-23 14:13 UTC): the `FEED_PUBLIC` reader, the optional `PRIVATE` type and the binding hand-in landed with it | done |
-| Private move, P3: the private Worker `ruken-private` (lane 3) | none yet | waits on P0, P2; its deploy on the Cloudflare token on RukenPrivate | not started |
-| Private move, P4: the binding, deploy-only (lane 3) | none yet | waits on P3 deployed; after #361 it needs only `env.production` with its services in `wrangler.jsonc`, `FEED_PUBLIC` in `playwright.config.ts`, and the deploy | not started |
+| Private move, P3: the private Worker `ruken-private` (lane 3) | RukenPrivate #22, #24, #25, #26 | merged; deploys from RukenPrivate's own runner on RunPod; live since 2026-11-27 02:41 UTC, version `30cd48e1-50aa-416b-bfef-429e7b793dc0`, no public address | done |
+| Private move, P4: the binding, deploy-only (lane 3) | #403 | `env.production` with `PRIVATE` in `wrangler.jsonc`, the deploy names it, `/healthz/feed` says which order answers; `FEED_PUBLIC` left out until the learned order needs it; waits on its implementation audit | 90% |
 | Private move, P5: the learned feed's execution prompt | project files `prompts/learned-feed-unit-execution.md` | rewritten 2026-11-22: each unit's repo, which half first, the "stays true" rule; the progress records in this commit | done (prompt), this row's records with P1 |
 | Private move, P6: limit numbers private (lane 3) | none yet | waits on P0 | not started |
 | Private move, P7: the pool maths and play count private (lane 3, money) | none yet | waits on P3; built last, with its own implementation audit | not started |
@@ -171,6 +171,8 @@ Spec `2026-11-21-everything-editable-design.md`: merged (#269, 2d00e7e, 15:15 UT
 ## Slice 3
 
 Resuming. The owner's 2026-11-21 03:12 UTC "Let's park slice 3 until we confirm slice 2 is perfect" is replaced by their 14:32 UTC word: slice 3 unparks once the editing work lands. That work has landed: #274, #276 and #282. Merged so far: the plan (#245), the feed's order and service (#246, #248), the clip behind the price card (#247), the maker's page (#249), editing your page, unit I (#286, 2026-11-22 00:30 UTC). The parked feed screen draft (#251) was closed unmerged on the owner's 15:33 UTC word. The feed screen, unit D, merged (#285). No pull request is open for unit K or the learned feed's spec. The spec is `2026-11-21-feed-and-makers-page-design.md`.
+
+Learned feed, unit G (Like, Save and Repost on a clip; Saved and Your reposts on You; spec `2026-11-22-learned-feed-design.md`): #404, lane 3 (a migration that only adds the `GameMark` table); implementation audit 3 PASS at `b4e09e4` after two rounds of fixes (a press now waits through the cookie yes, asked in place on the feed, and through sign-in). It reads nothing from the private ordering Worker. Follow-up from audit 3, not blocking and older than #404: the site sends no `frame-ancestors` (or `X-Frame-Options`) header, so another site can put Ruken in a frame; add one so other sites cannot embed Ruken. Follow-up from audit 4, not blocking: at 320 wide, the first open's one-time "Swipe up" tip now covers the maker's name and Like in the clip's column.
 
 ## Approved screens
 

@@ -81,7 +81,16 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
   isMobile,
 }, testInfo) => {
   await signUp(page);
-  for (const path of ["/me", "/make", "/me/password", "/me/computers", "/me/delete", "/settings/feed"]) {
+  for (const path of [
+    "/me",
+    "/make",
+    "/me/password",
+    "/me/computers",
+    "/me/delete",
+    "/me/saved",
+    "/me/reposts",
+    "/settings/feed",
+  ]) {
     await opened(page, path);
     expect(await overflow(page), path).toEqual({ page: 0, view: 0 });
     await expectViewAboveTheBar(page, path);
