@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { consented } from "./support/consent.ts";
-import { changeGame, givePage } from "./support/database.ts";
+import { changeGame, givePage, makeFriends } from "./support/database.ts";
 import { addGame, gameWhere, startAtCheck } from "./support/game.ts";
 import { wordsHaveSettled } from "./support/look.ts";
 import { PAD, padReachesEverything, plugInPad, pressPad } from "./support/pad.ts";
@@ -119,7 +119,7 @@ test("on a clip, left and right reach the maker, the follow plus, Like, Save, Re
   await expect.poll(pressedNow).toBe("true");
 });
 
-test("the shoulder buttons go from Fresh to Followed and back", async ({ page }) => {
+test("the shoulder buttons go from Fresh to Followed to Your turn and back", async ({ page }) => {
   await openFeed(page);
   const tabs = page.getByRole("navigation", { name: "Feeds" });
   await pressPad(page, PAD.lb);
@@ -129,7 +129,15 @@ test("the shoulder buttons go from Fresh to Followed and back", async ({ page })
   await expect(tabs.getByRole("link", { name: "Followed" })).toHaveAttribute("aria-current", "page");
   await wordsHaveSettled(page);
   await pressPad(page, PAD.rb);
+  await expect(page).toHaveURL("/your-turn");
+  await expect(tabs.getByRole("link", { name: /^Your turn/ })).toHaveAttribute("aria-current", "page");
+  await wordsHaveSettled(page);
+  // Your turn is the last tab: RB stays.
+  await pressPad(page, PAD.rb);
+  await expect(page).toHaveURL("/your-turn");
+  await pressPad(page, PAD.lb);
   await expect(page).toHaveURL("/followed");
+  await wordsHaveSettled(page);
   await pressPad(page, PAD.lb);
   await expect(page).toHaveURL("/");
   await expect(tabs.getByRole("link", { name: "Fresh" })).toHaveAttribute("aria-current", "page");
@@ -335,6 +343,7 @@ test("on your page's rooms the pad reaches every control, and right from Back is
 // Every screen a signed-out person can open: the pad reaches every control the Tab key does.
 for (const path of [
   "/followed",
+  "/your-turn",
   "/search",
   "/sign-in",
   "/sign-up",
@@ -387,6 +396,58 @@ test("signed in, the pad reaches everything on You, Saved, Reposts, Your feed, Y
   await wordsHaveSettled(page);
   await pressPad(page, PAD.b);
   await expect(page).toHaveURL("/me");
+});
+
+test("on Your turn the pad reaches every row's controls, opens the stop card and B closes it; the share sheet's friends too", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(240_000);
+  const [game] = ours;
+  if (game === undefined) throw new Error("no game made");
+  const receiver = await signUp(page);
+  const { handle: receiverHandle } = await givePage(receiver, {
+    name: "Pad Robin",
+    oneLine: "I play games.",
+  });
+  const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
+  try {
+    const sender = await context.newPage();
+    const account = await signUp(sender);
+    await givePage(account, { name: "Pad Sam", oneLine: "I play games." });
+    await makeFriends(receiver, account);
+    const sent = await sender.request.post("/your-turn/send", {
+      headers: { origin: "http://localhost:4173" },
+      form: { game: game.slug, to: receiverHandle },
+    });
+    expect(sent.status()).toBe(200);
+  } finally {
+    await context.close();
+  }
+
+  await page.goto("/your-turn");
+  await wordsHaveSettled(page);
+  await padReachesEverything(page);
+  const stop = page.getByRole("button", { name: "Stop games from Pad Sam" });
+  await stop.focus();
+  await pressPad(page, PAD.a);
+  const card = page.getByRole("dialog", { name: "Stop games from Pad Sam? They won't be told." });
+  await expect(card).toBeVisible();
+  await pressPad(page, PAD.b);
+  await expect(card).toBeHidden();
+  await expect(stop).toBeFocused();
+
+  await page.goto("/your-turn/stopped");
+  await wordsHaveSettled(page);
+  await padReachesEverything(page);
+
+  // The share sheet's faces are reached like its other buttons.
+  await page.goto(`/g/${game.slug}`);
+  await expect(page.getByRole("button", { name: "Watch the video full size" })).toBeVisible();
+  await page.getByRole("button", { name: "Share" }).click();
+  const sheet = page.getByRole("dialog", { name: "Share" });
+  await expect(sheet.getByRole("button", { name: "Send to Pad Sam" })).toBeVisible();
+  await padReachesEverything(page);
 });
 
 test("a maker's questions and Check and send: the pad reaches every control", async ({ page }) => {
