@@ -248,7 +248,7 @@ describe("frosted glass", () => {
     for (const line of [
       "--glass-bg: var(--felt-deep);",
       "--glass-filter: none;",
-      "--glass-edge: none;",
+      "--glass-edge: 0 0 transparent;",
       "--glass-ink: none;",
       "--glass-icon: none;",
       "--glass-pay: var(--pay);",

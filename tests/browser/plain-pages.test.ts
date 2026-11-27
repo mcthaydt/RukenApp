@@ -64,6 +64,11 @@ for (const [screen, path, signedIn] of [
       rgb(token("--pay")),
     );
     if (path === "/make") {
+      // The bar's mark for Your games is still drawn: a chalk ring inside its blue.
+      await expect(bar(page).getByRole("link", { name: "Add a game", exact: true })).toHaveCSS(
+        "box-shadow",
+        /inset/,
+      );
       const add = page.getByRole("main").getByRole("link", { name: "Add a game" });
       await expect(add).toHaveCSS("background-color", rgb(token("--pay")));
       await expect(add).toHaveCSS("text-shadow", "none");

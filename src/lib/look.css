@@ -172,11 +172,12 @@
    with a static color background"). What moves marks itself with `data-glass`: the feed's clips, a game's page, the
    play screen, a live game's video behind its screens and a clip behind Join. On any other page, plain felt or a
    maker's own colour, the bar and every button are solid in the same colours, with no edge, halo or blur. A dim still
-   dims. */
+   dims. The edge is an empty shadow rather than `none`, so a rule that adds a ring before it (the bar's Your games
+   mark) stays a list the browser can draw. */
 :root:not(:has([data-glass])) {
   --glass-bg: var(--felt-deep);
   --glass-filter: none;
-  --glass-edge: none;
+  --glass-edge: 0 0 transparent;
   --glass-ink: none;
   --glass-icon: none;
   --glass-pay: var(--pay);
