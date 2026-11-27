@@ -56,6 +56,7 @@
   <form method="get" action="/search" role="search">
     <a class="back" href="/" aria-label="Back"><Icon name="back" /></a>
     <!-- The person pressed Search to type here, so the field takes the keys at once. -->
+    <!-- svelte-ignore a11y_autofocus -->
     <input
       type="search"
       name="q"

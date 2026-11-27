@@ -134,6 +134,9 @@ test("Search finds a live game and its maker as the person types, and never an 1
   await expect(page).toHaveURL(`/search?q=${WORD}`);
   await page.goBack();
   await expect(page).toHaveURL("/");
+  // The feed has come back before the next address is opened (a move still going would cut it off).
+  await expect(topBar(page).forYou).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("section[data-slug]").first()).toBeVisible();
 
   // A maker is found by their address too, @ or not, and opens their page.
   await page.goto(`/search?q=%40${handle}`);
