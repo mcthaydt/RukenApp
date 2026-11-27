@@ -268,7 +268,19 @@ test("the place the person is on shows the same tinted tile on every bar button,
   expect(add.edge).not.toMatch(/0px 0px 0px 3px/);
   expect(add.edge).toBe(you.edge);
   expect(add.outline).toBe("none");
+  // On the feed the bar is glass, so Home's tile is the glass tint rather than the plain pages' solid one: still a
+  // tile, still no ring.
   await page.goto("/");
   await wordsHaveSettled(page);
-  expect((await lookOf("Home")).fill).toBe(you.fill);
+  const home = await lookOf("Home");
+  const tint = await page.evaluate(() => {
+    const probe = document.createElement("div");
+    probe.style.background = "var(--glass-lift)";
+    document.body.append(probe);
+    const colour = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return colour;
+  });
+  expect(home.fill).toBe(`${tint} none`);
+  expect(home.edge).not.toMatch(/0px 0px 0px 3px/);
 });

@@ -58,15 +58,16 @@ for (const [screen, path, signedIn] of [
     await page.goto(path === "maker" ? `/${handle}` : path);
     await expect(bar(page)).toBeVisible();
     expect(await glassOnThePage(page)).toEqual([]);
-    // Solid in the same colours: the bar is the darkest felt and its Add a game the main button's blue.
+    // Solid in the same colours: the bar is the darkest felt and its Add a game the main button's blue, except on Your
+    // games, where it is the place the person is on and shows the same solid tile as every bar button there, with no
+    // ring (the owner, 2026-11-27: "a fully rectangle outline"; tests/browser/bar.test.ts).
     await expect(bar(page)).toHaveCSS("background-color", rgb(token("--felt-deep")));
     await expect(bar(page).getByRole("link", { name: "Add a game", exact: true })).toHaveCSS(
       "background-color",
-      rgb(token("--pay")),
+      rgb(token(path === "/make" ? "--felt-raised" : "--pay")),
     );
     if (path === "/make") {
-      // The bar's mark for Your games is still drawn: a chalk ring inside its blue.
-      await expect(bar(page).getByRole("link", { name: "Add a game", exact: true })).toHaveCSS(
+      await expect(bar(page).getByRole("link", { name: "Add a game", exact: true })).not.toHaveCSS(
         "box-shadow",
         /inset/,
       );
