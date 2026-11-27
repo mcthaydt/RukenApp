@@ -245,6 +245,8 @@ test("a friend with a photo shows it; nobody else sees the row, and a game stays
       sheet.getByText("No friends here yet. A friend is someone you follow who follows you back."),
     ).toBeVisible();
     await expect(sheet.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
+    // The focus lands on Back, the one thing to press (implementation audit 2, N1).
+    await expect(sheet.getByRole("button", { name: "Back", exact: true })).toBeFocused();
 
     // Following one way is not a friend.
     await makeFriends(receiver, sender);

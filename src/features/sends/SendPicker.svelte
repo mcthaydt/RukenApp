@@ -17,10 +17,11 @@
   let sending = $state(false);
   let said = $state("");
   let first = $state<HTMLElement>();
+  let backButton = $state<HTMLButtonElement>();
 
-  /** Puts the focus on the first thing to press: a face, or the way to sign in. */
+  /** Puts the focus on the first thing to press: a face, or the way to sign in; with no friends, Back. */
   export function focusFirst(): void {
-    first?.focus();
+    (first ?? backButton)?.focus();
   }
 
   const initialOf = (name: string): string => Array.from(name.trim())[0]?.toUpperCase() ?? "";
@@ -120,7 +121,7 @@
     >
   {/if}
   <p class="said" role="status">{said}</p>
-  <button type="button" class="quiet back" onclick={onback}>{SEND_WORDS.back}</button>
+  <button type="button" class="quiet back" bind:this={backButton} onclick={onback}>{SEND_WORDS.back}</button>
 </section>
 
 {#snippet face(friend: Friend, on: boolean)}
