@@ -21,6 +21,7 @@ describe("what every route does before a yes", () => {
       "/join/done",
       "/g/[game]/play",
       "/g/[game]/play/beat",
+      "/[handle=handle]/follow",
       "/api/auth/[...path]",
       "/me",
       "/make/new",

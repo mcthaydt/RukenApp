@@ -82,7 +82,7 @@ test("Ruken opens straight into the feed, with the right clip for the screen", a
   await page.setViewportSize(size);
   await expect(video).toHaveAttribute("src", new RegExp(`/${first}-[0-9a-f]{16}\\.`));
 
-  // The band leads with the maker, then the game, then Play (D4). Each of the things in it is one link to one place.
+  // The maker is at the top of the column on the right; the band holds the game, then Play. Each is one link to one place.
   await clip.scrollIntoViewIfNeeded();
   const maker = clip.getByRole("link", { name: new RegExp(MAKER.name) });
   await expect(maker).toHaveAttribute("href", `/${pageOf.handle}`);

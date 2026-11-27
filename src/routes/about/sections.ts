@@ -143,6 +143,7 @@ export const MORE: readonly Section[] = [
       "Ruken is for people 13 and up. Games marked 18+ are for adults only.",
       "No game may have pornography, gambling or ads.",
       "See something wrong? Report the game, and we'll take a look.",
+      "Like a maker? Press the plus on their picture to follow them.",
     ],
     links: [{ words: "Watch the feed", href: "/" }],
     picture: {
