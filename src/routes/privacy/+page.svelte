@@ -57,8 +57,9 @@
     </li>
     <li>
       <strong>Games you like, save or repost.</strong> When you press Like, Save or Repost on a game, we keep which
-      game, which one you pressed, and when. Everyone sees how many people like a game, never who. It's gone when
-      you press it again, or when you delete your account.
+      game, which one you pressed, and when. Everyone sees how many people like a game. Your friends (people you
+      follow who follow you back) also see your name and picture on the games you like; nobody else sees who. It's
+      gone when you press it again, or when you delete your account.
     </li>
     <li>
       <strong>Games you report.</strong> If you report a game, we keep which game, what you said was wrong, any

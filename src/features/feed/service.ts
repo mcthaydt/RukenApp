@@ -1,7 +1,7 @@
 import { chicagoDayOf, type Clock } from "../../lib/clock.ts";
 import type { ListedGame } from "../games/games.ts";
 import { CROWD, type Asking } from "./feed-public.ts";
-import type { ClipMarks } from "./marks.ts";
+import type { ClipMarks, FriendLikes } from "./marks.ts";
 import { openRanker } from "./public-ranker.ts";
 import {
   isRankedPageOrBadCursor,
@@ -48,6 +48,8 @@ export interface FeedServiceDeps {
     viewerId: string | null,
     games: readonly { id: string; makerUserId: string }[],
   ): Promise<Map<string, ClipMarks>>;
+  /** The viewer's friends who liked each of these games (none when signed out); left out, nobody. */
+  friendLikesOf?(viewerId: string | null, gameIds: readonly string[]): Promise<Map<string, FriendLikes>>;
   /** The private ranker, when this app has one bound; left out or null, the open ranker answers every page. */
   privateRanker?: () => Ranker | null;
   /** The open ranker; left out, the feed's own (public-ranker.ts). */
@@ -79,6 +81,8 @@ export interface FeedClip {
   maker: { handle: string; name: string; photo: string | null; following: boolean; mine: boolean } | null;
   /** The like count and what the viewer pressed. */
   marks: ClipMarks;
+  /** The viewer's friends who liked the game: up to three faces, newest like first, and how many more. */
+  friends: { faces: { name: string; photo: string | null }[]; more: number };
 }
 
 /**
@@ -95,6 +99,8 @@ export interface FeedPage {
 
 /** A clip's marks when none were read for it. */
 const NO_MARKS: ClipMarks = { likes: 0, liked: false, saved: false, reposted: false };
+/** A clip no friend of the viewer liked. */
+const NO_FRIENDS: FriendLikes = { faces: [], more: 0 };
 
 /** Which ranker answers the feed, and what it says of its own settings. */
 export interface FeedHealth {
@@ -233,11 +239,12 @@ export function createFeedService(deps: FeedServiceDeps) {
     });
     const shownGames = [...new Map(shown.map(({ game }) => [game.id, game])).values()];
     const makerIds = [...new Set(shownGames.map((game) => game.makerUserId))];
-    const [makers, marks] = await Promise.all([
+    const [makers, marks, friends] = await Promise.all([
       shown.length === 0
         ? new Map<string, { handle: string; name: string; photoKey: string | null }>()
         : deps.makersOf(makerIds),
       deps.marksOf?.(viewerId, shownGames) ?? new Map<string, ClipMarks>(),
+      friendLikesOf(viewerId, shownGames),
     ]);
     const followed =
       viewerId === null || deps.followedAmong === undefined || makers.size === 0
@@ -246,7 +253,15 @@ export function createFeedService(deps: FeedServiceDeps) {
     const result: FeedPage = {
       next: ranked.next === null ? null : `${prefix}${ranked.next}`,
       clips: shown.map(({ key, game }) =>
-        clipOf(key, game, makers.get(game.makerUserId), followed.has(game.makerUserId), viewerId, marks),
+        clipOf(
+          key,
+          game,
+          makers.get(game.makerUserId),
+          followed.has(game.makerUserId),
+          viewerId,
+          marks,
+          friends,
+        ),
       ),
     };
     if (ranked.caughtUpAt !== null) result.caughtUpAt = ranked.caughtUpAt;
@@ -279,22 +294,32 @@ export function createFeedService(deps: FeedServiceDeps) {
           b.liveSince.getTime() - a.liveSince.getTime() ||
           a.slug.localeCompare(b.slug, "en"),
       );
-    const [makers, marks] =
+    const [makers, marks, friends] =
       games.length === 0
         ? [
             new Map<string, { handle: string; name: string; photoKey: string | null }>(),
             new Map<string, ClipMarks>(),
+            new Map<string, FriendLikes>(),
           ]
         : await Promise.all([
             deps.makersOf([...new Set(games.map((game) => game.makerUserId))]),
             deps.marksOf?.(viewerId, games) ?? new Map<string, ClipMarks>(),
+            friendLikesOf(viewerId, games),
           ]);
     return {
       following: makerIds.length,
       page: {
         next: null,
         clips: games.map((game) =>
-          clipOf(`followed-${game.publicId}`, game, makers.get(game.makerUserId), true, viewerId, marks),
+          clipOf(
+            `followed-${game.publicId}`,
+            game,
+            makers.get(game.makerUserId),
+            true,
+            viewerId,
+            marks,
+            friends,
+          ),
         ),
       },
     };
@@ -307,7 +332,9 @@ export function createFeedService(deps: FeedServiceDeps) {
     following: boolean,
     viewerId: string | null,
     marks: ReadonlyMap<string, ClipMarks>,
+    friends: ReadonlyMap<string, FriendLikes>,
   ): FeedClip {
+    const liked = friends.get(game.id) ?? NO_FRIENDS;
     return {
       key,
       slug: game.slug,
@@ -326,7 +353,26 @@ export function createFeedService(deps: FeedServiceDeps) {
               mine: game.makerUserId === viewerId,
             },
       marks: marks.get(game.id) ?? NO_MARKS,
+      friends: {
+        faces: liked.faces.map((face) => ({
+          name: face.name,
+          photo: face.photoKey === null ? null : deps.media(face.photoKey),
+        })),
+        more: liked.more,
+      },
     };
+  }
+
+  /** The friends who liked these games, or nobody when signed out, nothing was shown, or no reader was given. */
+  async function friendLikesOf(
+    viewerId: string | null,
+    games: readonly { id: string }[],
+  ): Promise<Map<string, FriendLikes>> {
+    if (viewerId === null || games.length === 0 || deps.friendLikesOf === undefined) return new Map();
+    return deps.friendLikesOf(
+      viewerId,
+      games.map((game) => game.id),
+    );
   }
 
   return { page, followedPage, health };

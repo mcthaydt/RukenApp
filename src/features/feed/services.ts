@@ -77,6 +77,7 @@ export function feedServices(): FeedServices {
       followedMakerIds: (followerId) => pagesServices().follows.followedMakerIds(followerId),
       media: (key) => gamesServices().media(key),
       marksOf: (viewerId, games) => marks.ofClips(viewerId, games),
+      friendLikesOf: (viewerId, gameIds) => marks.friendsWhoLiked(viewerId, gameIds),
       privateRanker: () => bound(),
       asking: (userId, gameId) => taste.asking(userId, gameId),
     }),

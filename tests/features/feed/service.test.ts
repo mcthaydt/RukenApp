@@ -114,6 +114,8 @@ describe("feed", () => {
       },
       // No marks were read (the stand-in has none), so the clip shows none.
       marks: { likes: 0, liked: false, saved: false, reposted: false },
+      // Nobody is signed in, so no friend liked it.
+      friends: { faces: [], more: 0 },
     });
     expect(clips[1]?.maker).toBeNull();
   });
@@ -143,6 +145,49 @@ describe("feed", () => {
       reposted: true,
     });
     expect(clips.find((clip) => clip.slug === "one")?.marks.likes).toBe(0);
+  });
+
+  it("asks once for the viewer's friends who liked the shown games, and puts their faces on each clip", async () => {
+    const { deps } = depsFor([listed("one", 1), listed("two", 2)]);
+    const asked: { viewerId: string | null; ids: string[] }[] = [];
+    const withFriends = createFeedService({
+      ...deps,
+      friendLikesOf: (viewerId, gameIds) => {
+        asked.push({ viewerId, ids: [...gameIds] });
+        return Promise.resolve(
+          new Map([
+            [
+              "id-two",
+              {
+                faces: [
+                  { name: "Ana", photoKey: "photos/ana.webp" },
+                  { name: "Ben", photoKey: null },
+                ],
+                more: 4,
+              },
+            ],
+          ]),
+        );
+      },
+    });
+
+    const clips = (await withFriends.page(null, undefined, "viewer-1")).clips;
+
+    expect(asked).toHaveLength(1);
+    expect(asked[0]?.viewerId).toBe("viewer-1");
+    expect(new Set(asked[0]?.ids)).toEqual(new Set(["id-one", "id-two"]));
+    expect(clips.find((clip) => clip.slug === "two")?.friends).toEqual({
+      faces: [
+        { name: "Ana", photo: "https://media.test/photos/ana.webp" },
+        { name: "Ben", photo: null },
+      ],
+      more: 4,
+    });
+    expect(clips.find((clip) => clip.slug === "one")?.friends).toEqual({ faces: [], more: 0 });
+
+    // Signed out, nobody is asked about.
+    await withFriends.page(null);
+    expect(asked).toHaveLength(1);
   });
 
   it("gives a maker with no photo a null photo", async () => {
@@ -412,6 +457,24 @@ describe("the Followed tab", () => {
       mine: false,
     });
     expect(new Set(page.clips.map((clip) => clip.key)).size).toBe(3);
+  });
+
+  it("puts the faces of friends who liked a game on its clip there too", async () => {
+    const { deps } = depsFor([listed("b", 5, { makerUserId: "maker-b" })], {
+      makers,
+      follows: { me: ["maker-b"] },
+    });
+    const withFriends = createFeedService({
+      ...deps,
+      friendLikesOf: (viewerId) =>
+        Promise.resolve(
+          viewerId === "me"
+            ? new Map([["id-b", { faces: [{ name: "Cy", photoKey: null }], more: 0 }]])
+            : new Map(),
+        ),
+    });
+    const { page } = await withFriends.followedPage("me");
+    expect(page.clips[0]?.friends).toEqual({ faces: [{ name: "Cy", photo: null }], more: 0 });
   });
 
   it("never holds a game rated 18+, so a maker whose only game is one leaves the tab empty", async () => {

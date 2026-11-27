@@ -171,6 +171,15 @@
   }
 
   const initialOf = (name: string): string => Array.from(name.trim())[0]?.toUpperCase() ?? "";
+
+  /** What the friends' faces on a clip say to a screen reader: who liked it, and how many more. */
+  function friendsWords(friends: FeedClip["friends"]): string {
+    const names = friends.faces.map((face) => face.name);
+    if (friends.more > 0) names.push(`${String(friends.more)} more`);
+    const last = names.pop() ?? "";
+    const list = names.length === 0 ? last : `${names.join(", ")} and ${last}`;
+    return `Liked by your ${friends.faces.length + friends.more === 1 ? "friend" : "friends"} ${list}`;
+  }
   const clipAddress = (clip: FeedClip): string =>
     `${ready && shape === "wide" ? clip.wide : clip.upright}#t=0.001`;
   // The clip on screen, the one before and the next are fetched; every other clip waits until a person is close.
@@ -598,6 +607,36 @@
 
         <div class="lower">
           <div class="band" data-pad-first>
+            {#if clip.friends.faces.length > 0}
+              <!-- Friends who liked it: up to three faces, newest like first, then +N. A picture to look at, not a
+                   control, so Tab and a gamepad pass over it. -->
+              <div class="friends" role="img" aria-label={friendsWords(clip.friends)}>
+                <svg class="liked" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path
+                    d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"
+                    fill="currentColor"
+                  />
+                </svg>
+                {#each clip.friends.faces as face, at (at)}
+                  {#if face.photo !== null}
+                    <img
+                      class="face"
+                      use:loads
+                      src={face.photo}
+                      alt=""
+                      width="28"
+                      height="28"
+                      loading="lazy"
+                    />
+                  {:else}
+                    <span class="face" aria-hidden="true">{initialOf(face.name)}</span>
+                  {/if}
+                {/each}
+                {#if clip.friends.more > 0}
+                  <span class="others" aria-hidden="true">+{clip.friends.more}</span>
+                {/if}
+              </div>
+            {/if}
             <!-- A swipe can start on the name too, so it never loads the game's page (and who brought this person)
                  ahead of a press. -->
             <a class="gamelink" data-sveltekit-preload-data="off" href={`/g/${clip.slug}`}>
@@ -1023,6 +1062,56 @@
     -webkit-backdrop-filter: var(--glass-filter);
     backdrop-filter: var(--glass-filter);
     box-shadow: var(--glass-edge);
+  }
+  /* Friends who liked the game: small round faces overlapping a little, like a stack of coins, with a heart before them
+     to say what they did, and +N after them. */
+  .friends {
+    display: flex;
+    align-items: center;
+    align-self: flex-start;
+  }
+  .liked {
+    flex: none;
+    margin-right: 0.375rem;
+    color: var(--chalk);
+  }
+  .face,
+  .others {
+    flex: none;
+    box-sizing: border-box;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    --corner: round;
+    box-shadow: var(--glass-edge);
+  }
+  .face + .face,
+  .face + .others {
+    margin-left: -8px;
+  }
+  .face {
+    display: grid;
+    place-items: center;
+    object-fit: cover;
+    background: var(--paper);
+    color: var(--ink);
+    font: var(--text-small);
+    font-weight: 600;
+    text-shadow: none;
+  }
+  .others {
+    display: grid;
+    place-items: center;
+    width: auto;
+    min-width: 28px;
+    padding: 0 0.25rem;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+    color: var(--chalk);
+    font: var(--text-small);
+    font-weight: 600;
   }
   /* Play is coloured glass on the glass under the words. */
   .band .button {

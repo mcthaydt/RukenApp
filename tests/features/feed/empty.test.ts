@@ -21,6 +21,7 @@ test("without script the feed ends at its last clip: no spinner that would turn 
     wide: "https://media.test/wide.mp4",
     maker: null,
     marks: { likes: 0, liked: false, saved: false, reposted: false },
+    friends: { faces: [], more: 0 },
   };
   const { body } = render(Feed, {
     props: { first: { clips: [clip], next: "2026-11-22~1~0~0~one" }, launch: { before: false } },
