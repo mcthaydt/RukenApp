@@ -40,17 +40,17 @@ export async function plugInPad(page: Page): Promise<void> {
     };
     // A quick press is down for exactly one frame of the page's reading, however long a busy machine takes between
     // frames: a press held over two readings 450 ms apart would count as held, and repeat (review 3 of #409). Every
-    // reader of the pad in that frame sees it (Ruken's own and the feed top bar's shoulder buttons); a frame asked for
-    // during this one comes after them all, and lets go.
+    // reader of the pad in that frame sees it (Ruken's own and the feed top bar's shoulder buttons); a timer set during
+    // the frame runs only once all of them have, and lets go.
     let tapping: number | null = null;
     Object.defineProperty(navigator, "getGamepads", {
       value: () => {
         if (tapping !== null) {
           const index = tapping;
           tapping = null;
-          requestAnimationFrame(() => {
+          setTimeout(() => {
             set(index, false);
-          });
+          }, 0);
         }
         return [pad, null, null, null];
       },
