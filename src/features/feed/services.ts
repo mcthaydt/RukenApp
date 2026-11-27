@@ -41,6 +41,7 @@ export function feedServices(): FeedServices {
       memberBeatsByGame: (since, now) => playServices().service.memberBeatsByGame(since, now),
       makersOf: (userIds) => pagesServices().service.makersOf(userIds),
       followedAmong: (followerId, makerIds) => pagesServices().follows.followedAmong(followerId, makerIds),
+      followedMakerIds: (followerId) => pagesServices().follows.followedMakerIds(followerId),
       media: (key) => gamesServices().media(key),
       privateRanker: () => bound(),
     }),

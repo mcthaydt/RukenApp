@@ -5,4 +5,7 @@
   let { data }: PageProps = $props();
 </script>
 
-<Followed signedIn={data.signedIn} />
+<!-- A new first page (coming back to the tab) starts it again from it. -->
+{#key data}
+  <Followed {...data} />
+{/key}

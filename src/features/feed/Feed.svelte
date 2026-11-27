@@ -27,8 +27,11 @@
   let {
     first,
     launch,
+    tab = "fresh",
   }: {
     first: FeedPage;
+    /** Which of the top bar's tabs this is: every game, or the makers the person follows (Followed.svelte). */
+    tab?: "fresh" | "followed";
     /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
     launch: { before: false } | { before: true; opens: string; wished: string[] };
   } = $props();
@@ -365,7 +368,7 @@
 
 <svelte:window onkeydown={onKey} onpointerdown={forgetHints} />
 
-<FeedTop on="fresh" />
+<FeedTop on={tab} />
 
 {#if clips.length === 0}
   <main class="empty">

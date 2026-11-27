@@ -235,3 +235,55 @@ test("Search fits the window: only the results scroll, clear of the bar", async 
   const row = await boxOf(page.locator(".results a").first());
   expect(row.x + row.width).toBeLessThanOrEqual(rail.x);
 });
+
+test("Followed plays the live games of the makers a person follows, and says when there are none", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await signUp(page);
+  const badge = (clip: ReturnType<Page["locator"]>) =>
+    clip.getByRole("button", { name: `Follow Owl ${WORD}` });
+
+  // Follow the maker with the plus on their clip in the feed.
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const onFeed = page.locator(`section[data-slug="${game.slug}"]`).first();
+  await onFeed.scrollIntoViewIfNeeded();
+  await badge(onFeed).click();
+  await expect(badge(onFeed)).toHaveAttribute("aria-pressed", "true");
+
+  // Followed holds their game, played like the feed, with this tab marked, and nothing else.
+  await page.goto("/");
+  await pageHasSettled(page);
+  await topBar(page).followed.click();
+  await expect(page).toHaveURL("/followed");
+  await expect(topBar(page).followed).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const clips = page.locator("section[data-slug]");
+  await expect(clips).toHaveCount(1);
+  const onTab = clips.first();
+  await expect(onTab).toHaveAttribute("data-slug", game.slug);
+  await expect(onTab.getByRole("link", { name: "Play" })).toBeVisible();
+  // It ends after the last game: nothing waits to load past it.
+  await expect(page.getByRole("progressbar", { name: "Loading more games" })).toHaveCount(0);
+  await showTheOwner(page, testInfo, "followed-with-games");
+
+  // A maker with nothing a person may see here says so.
+  await changeGame(game.slug, { ageRating: "age_18", contentMarks: ["gore"] });
+  try {
+    await page.reload();
+    await expect(page.getByText("No games here yet.")).toBeVisible();
+    await expect(page.getByText("The makers you follow have nothing to play right now.")).toBeVisible();
+    await showTheOwner(page, testInfo, "followed-nothing-live");
+  } finally {
+    await changeGame(game.slug, { ageRating: "age_12", contentMarks: [] });
+  }
+
+  // Unfollowing with the check on the tab's own clip empties it.
+  await page.reload();
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await badge(page.locator("section[data-slug]").first()).click();
+  await expect(badge(page.locator("section[data-slug]").first())).toHaveAttribute("aria-pressed", "false");
+  await page.reload();
+  await expect(page.getByText("You don't follow anyone yet.")).toBeVisible();
+});
