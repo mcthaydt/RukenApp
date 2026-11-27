@@ -2,7 +2,7 @@
   "defaultBranch": "main",
   "repo": "mcthaydt/RukenApp",
   "alsoGuards": [],
-  "alsoMerges": ["mcthaydt/RukenPrivate"],
+  "alsoMerges": [{ "repo": "mcthaydt/RukenPrivate", "checkRuns": ["check"] }],
   "identity": {
     "enabled": true,
     "commitTools": [

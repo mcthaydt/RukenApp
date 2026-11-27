@@ -1045,13 +1045,25 @@ function checkLiveState(config, cwd, repo, number, what, deny) {
 }
 function checkMergeGreen(config, cwd, repo, number, deny) {
   const need = config.mergeGreen?.statuses ?? [];
-  if (!config.mergeGreen || config.mergeGreen.enabled === false || !need.length) return;
+  const runs = config.mergeGreen?.checkRuns ?? [];
+  if (!config.mergeGreen || config.mergeGreen.enabled === false || (!need.length && !runs.length)) return;
   const rule = 'Green means every required check is successful on the pull request\'s current head; a missing, pending or unreadable check blocks the merge (release, Lanes and merging).';
   if (!repo) { deny(refusal(rule, 'the repo could not be worked out', 'run from inside the repo or pass -R owner/repo')); return; }
   let n = number;
   if (!n) { const b = currentBranch(cwd); const list = ghJson(`repos/${repo}/pulls?head=${repo.split('/')[0]}:${b}`, cwd); n = list?.[0]?.number; }
   const pr = n ? ghJson(`repos/${repo}/pulls/${n}`, cwd) : null;
-  const status = pr ? ghJson(`repos/${repo}/commits/${pr.head.sha}/status`, cwd) : null;
+  if (!pr) { deny(refusal(rule, `pull request ${n ?? '(unknown)'} could not be read`, 'read it yourself and merge once its checks are green')); return; }
+  // Named check runs (GitHub Actions jobs): the newest run of each name on the head must have finished with success.
+  if (runs.length) {
+    const got = ghJson(`repos/${repo}/commits/${pr.head.sha}/check-runs?per_page=100`, cwd);
+    if (!Array.isArray(got?.check_runs)) { deny(refusal(rule, `the check runs of pull request ${n} could not be read`, 'read them yourself (GH_PAGER=cat gh api repos/<repo>/commits/<sha>/check-runs) and merge once they are green')); return; }
+    for (const name of runs) {
+      const run = got.check_runs.filter((x) => x.name === name).sort((a, b) => Number(b.id ?? 0) - Number(a.id ?? 0))[0];
+      if (!run || run.status !== 'completed' || run.conclusion !== 'success') { deny(refusal(rule, `${name} on ${pr.head.sha.slice(0, 7)} is ${run ? (run.status === 'completed' ? run.conclusion : run.status) : 'missing'}`, 'wait for it in the foreground, then merge')); return; }
+    }
+  }
+  if (!need.length) return;
+  const status = ghJson(`repos/${repo}/commits/${pr.head.sha}/status`, cwd);
   if (!status) { deny(refusal(rule, `the statuses of pull request ${n ?? '(unknown)'} could not be read`, 'read them yourself (GH_PAGER=cat gh api repos/<repo>/commits/<sha>/status) and merge once they are green')); return; }
   for (const s of need) {
     const got = (status.statuses ?? []).find((x) => x.context === s.context);
@@ -1180,6 +1192,13 @@ function checkFileWrite(input, config, root, deny) {
 // ---------- the checks: MCP tools ----------
 
 const toolMatches = (name, patterns = []) => patterns.some((p) => new RegExp(p).test(name));
+// alsoMerges entries: "owner/repo", or { "repo": "owner/repo", "checkRuns": ["check"] } where GitHub cannot require checks.
+const mergeRepoOf = (x) => String((x && typeof x === 'object' ? x.repo : x) ?? '').toLowerCase();
+const mergeRuleFor = (list, slug) => {
+  if (!slug) return null;
+  const x = (list ?? []).find((e) => mergeRepoOf(e) === slug.toLowerCase());
+  return x === undefined ? null : { repo: mergeRepoOf(x), checkRuns: x && typeof x === 'object' ? (x.checkRuns ?? []) : [] };
+};
 function checkMcp(name, input, config, root, deny, ctx) {
   const repo = input.owner && input.repo ? `${input.owner}/${input.repo}` : repoSlug(config, root);
   if (config.agnostic && !(input.owner && input.repo)) return;
@@ -1203,8 +1222,14 @@ function checkMcp(name, input, config, root, deny, ctx) {
   // always needs a passing review on its head, whatever lane its body names.
   const thisRepo = String(ctx.thisRepo ?? config.repo ?? '').toLowerCase();
   const target = String(repo ?? '').toLowerCase();
-  const alsoMerges = (ctx.alsoMerges ?? []).map((x) => String(x).toLowerCase());
+  const alsoMerges = (ctx.alsoMerges ?? []).map(mergeRepoOf);
   const elsewhere = !!thisRepo && target !== thisRepo;
+  // ctx.mergeRule: the target is named in the alsoMerges of the config judging the call or of the one next to this
+  // hook. Whatever folder the session works from, a merge there then needs a PASS on its head and its check runs green.
+  const mergeRule = ctx.mergeRule ?? null;
+  const ownRuns = on(config, 'mergeGreen') ? (config.mergeGreen?.checkRuns ?? []) : [];
+  const green = mergeRule ? { ...config, mergeGreen: { enabled: true, statuses: on(config, 'mergeGreen') ? (config.mergeGreen?.statuses ?? []) : [], checkRuns: [...new Set([...ownRuns, ...mergeRule.checkRuns])] } } : config;
+  const floor = Math.max(elsewhere || mergeRule ? 2 : 0, Number(config.prFlow?.minLane ?? 0) || 0);
   const guardedNow = isMerge || toolMatches(name, config.mcp?.disableAutoMergeTools ?? ['disable_pr_auto_merge$']) || readyCall;
   if (guardedNow && elsewhere && !alsoMerges.includes(target)) {
     deny(refusal(`This permission covers ${ctx.thisRepo ?? config.repo} only; the owner merges pull requests elsewhere.`, `${name} on ${repo ?? '(unknown repo)'}`, 'ask the owner to do it'));
@@ -1216,9 +1241,11 @@ function checkMcp(name, input, config, root, deny, ctx) {
   }
   const pin = isMerge ? { sha: input.expectedHeadSha } : null;
   if (isMerge || isAuto || readyCall) checkLiveState(config, root, repo, number, readyCall ? 'marking it ready' : name, deny);
-  if (isMerge || isAuto || readyCall) checkReviewed(config, root, repo, number, readyCall ? 'marking it ready' : name, deny, pin, elsewhere ? 2 : 0);
+  if (isMerge || isAuto || readyCall) checkReviewed(config, root, repo, number, readyCall ? 'marking it ready' : name, deny, pin, floor);
+  // GitHub holds an auto-merge until green only where branch protection names the checks; where this hook checks them, a session merges by hand.
+  if (isAuto && on(green, 'mergeGreen') && (green.mergeGreen?.checkRuns ?? []).length) deny(refusal('Green means every required check is successful on the pull request\'s current head; a missing, pending or unreadable check blocks the merge (release, Lanes and merging).', `${name} on ${repo}, where GitHub does not hold the merge for ${green.mergeGreen.checkRuns.join(', ')}`, 'wait for the checks in the foreground, then merge with merge_pull_request'));
   if (toolMatches(name, config.mcp?.createPrTools ?? ['create_pull_request$'])) checkPrCreate(config, root, repo, typeof input.body === 'string' ? input.body : '', input.draft === true, deny);
-  if (isMerge) checkMergeGreen(config, root, repo, number, deny);
+  if (isMerge) checkMergeGreen(green, root, repo, number, deny);
   // Pull request bodies.
   if (on(config, 'prBody') && toolMatches(name, config.mcp?.prBodyTools ?? ['create_pull_request$', 'update_pull_request$']) && typeof input.body === 'string') {
     const problems = judgeBody(input.body, config, false);
@@ -1444,9 +1471,15 @@ function preToolUse(root, config, input, ctx) {
     const slug = ti.owner && ti.repo ? `${ti.owner}/${ti.repo}` : null;
     const scope = config.detached && !slug ? { root, config: base } : scopeFor(root, config, root, slug);
     // A repo with no rules here gets no repo-specific checks; one this config lets sessions merge in keeps the merge method.
-    const mergesThere = !!slug && (config.alsoMerges ?? []).some((x) => String(x).toLowerCase() === slug.toLowerCase());
-    const cfg = scope?.config ?? { ...config, identity: { enabled: false }, mergeMethod: mergesThere ? config.mergeMethod : { enabled: false }, prBody: { enabled: false }, liveState: { enabled: false }, mergeGreen: { enabled: false } };
-    checkMcp(name, ti, cfg, scope?.root ?? root, deny, { ...ctx, thisRepo: config.repo, alsoMerges: config.alsoMerges });
+    // The rule for a repo sessions may merge in comes from this config's alsoMerges or, when another repo's config
+    // judges the call (the session works in that repo's folder), from the config next to this hook, so the folder
+    // a session starts in never loosens it.
+    const homeRoot = resolve(SCRIPT_DIR, '..', '..');
+    const home = homeRoot === resolve(root) ? config : (existsSync(join(homeRoot, '.claude', 'hooks', 'rules.json')) ? loadConfig(homeRoot).config : null);
+    const mergeRule = mergeRuleFor(config.alsoMerges, slug) ?? mergeRuleFor(home?.alsoMerges, slug);
+    const judged = scope?.config ?? { ...config, identity: { enabled: false }, mergeMethod: mergeRule ? config.mergeMethod : { enabled: false }, prBody: { enabled: false }, liveState: { enabled: false }, mergeGreen: { enabled: false } };
+    const cfg = mergeRule ? { ...judged, mergeMethod: { enabled: true } } : judged;
+    checkMcp(name, ti, cfg, scope?.root ?? root, deny, { ...ctx, thisRepo: config.repo, alsoMerges: config.alsoMerges, mergeRule });
   }
   if (!reasons.length) return null;
   return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reasons.join('\n\n') } };

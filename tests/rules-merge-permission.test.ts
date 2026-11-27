@@ -25,7 +25,9 @@ const HEAD = "abc1234" + "0123456789abcdef0123456789abcdef0"; // 40 hex digits
 const SHORT = "abc1234";
 const APP = { owner: "mcthaydt", repo: "RukenApp", pullNumber: 999 };
 
-type State = { body: string; files: string[] | null; comments: string[] };
+type Run = { id: number; name: string; status: string; conclusion: string | null };
+type State = { body: string; files: string[] | null; comments: string[]; runs: Run[] | null };
+const CHECK_OK: Run = { id: 1, name: "check", status: "completed", conclusion: "success" };
 type Answer = { status: number | null; deny: string | null; stderr: string };
 
 // A stand-in for `gh api <path>` that serves pull request 999 from a state file.
@@ -38,6 +40,7 @@ const fail = (m) => { process.stderr.write(m); process.exit(1); };
 if (/\\/contents\\//.test(path)) fail("gh: Not Found (HTTP 404)");
 if (/\\/pulls\\/999\\/files/.test(path)) { if (s.files === null) fail("boom"); out(s.files.map((f) => ({ filename: f }))); }
 if (/\\/pulls\\/999\\/reviews/.test(path)) out([]);
+if (/\\/commits\\/[0-9a-f]+\\/check-runs/.test(path)) { if (s.runs === null) fail("boom"); out({ check_runs: s.runs }); }
 if (/\\/issues\\/999\\/comments/.test(path)) out(s.comments.map((b, i) => ({ body: b, user: { login: "mcthaydt" }, created_at: "2026-11-21T00:0" + i + ":00Z" })));
 if (/\\/pulls\\/999$/.test(path)) out({ number: 999, body: s.body, head: { sha: process.env.STUB_HEAD, ref: "feature" }, changed_files: (s.files ?? []).length });
 fail("stub: unknown path " + path);
@@ -60,7 +63,10 @@ afterAll(() => {
 });
 
 const setState = (s: Partial<State>) => {
-  writeFileSync(stateFile, JSON.stringify({ body: "Lane 1", files: ["docs/x.md"], comments: [], ...s }));
+  writeFileSync(
+    stateFile,
+    JSON.stringify({ body: "Lane 1", files: ["docs/x.md"], comments: [], runs: [CHECK_OK], ...s }),
+  );
 };
 
 function hook(tool: string, input: unknown, raw?: string): Answer {
@@ -124,6 +130,43 @@ describe("only this repo and the ones rules.json names (3.2), and no base change
       comments: [`${SHORT} PASS`, `${SHORT} FAIL`],
     });
     expect(merge({}, "RukenPrivate").deny).toContain(NO_REVIEW);
+  });
+  // GitHub cannot require checks on RukenPrivate's plan, so the hook reads its `check` run on the head.
+  test("RukenPrivate merges only when its check run on the head is green", () => {
+    const passed = { body: "Lane 3", files: ["worker/src/index.ts"], comments: [`${SHORT} PASS`] };
+    const runs: [string, Run[] | null, string | null][] = [
+      ["success", [CHECK_OK], null],
+      ["failure", [{ ...CHECK_OK, conclusion: "failure" }], "check on abc1234 is failure"],
+      [
+        "pending",
+        [{ ...CHECK_OK, status: "in_progress", conclusion: null }],
+        "check on abc1234 is in_progress",
+      ],
+      ["missing", [{ ...CHECK_OK, name: "deploy ruken-private" }], "check on abc1234 is missing"],
+      ["unreadable", null, "check runs of pull request 999 could not be read"],
+      ["an older green run", [CHECK_OK, { ...CHECK_OK, id: 2, conclusion: "failure" }], "is failure"],
+      [
+        "a newer green run",
+        [
+          { ...CHECK_OK, conclusion: "failure" },
+          { ...CHECK_OK, id: 2 },
+        ],
+        null,
+      ],
+    ];
+    for (const [, r, want] of runs) {
+      setState({ ...passed, runs: r });
+      const a = merge({}, "RukenPrivate");
+      if (want) expect(a.deny).toContain(want);
+      else expect(a.deny).toBeNull();
+    }
+    setState(passed);
+    expect(
+      call("enable_pr_auto_merge", { ...APP, repo: "RukenPrivate", mergeMethod: "MERGE" }).deny,
+    ).toContain("GitHub does not hold the merge for check");
+    // This repo's own merges are unchanged: GitHub's branch protection holds its checks.
+    setState({ body: "Lane 1", files: ["docs/x.md"], runs: [] });
+    expect(merge().deny).toBeNull();
   });
   test("other updates on another repo are not denied by it (j)", () => {
     setState({});
@@ -524,5 +567,136 @@ describe("the cloud setup script writes user settings (3.7, 6)", () => {
       expect(r.status).toBe(0);
       expect(r.stdout.trim()).toBe("");
     });
+  });
+});
+
+// In a cloud session the hook that runs is this repo's (the launcher finds it first), but a call made from
+// RukenPrivate's folder, or from the folder above both where sessions start, is judged by RukenPrivate's own
+// rules.json. The merge rule this repo's alsoMerges names must hold there too.
+describe("the RukenPrivate merge rule holds from every working folder", () => {
+  let top = "";
+  const PRIVATE_CFG = (app: Record<string, unknown>) => ({
+    ...app,
+    repo: "mcthaydt/RukenPrivate",
+    alsoMerges: [],
+    liveState: { enabled: false },
+    mergeGreen: { enabled: true, statuses: [] },
+    prFlow: { ...(app.prFlow as object), lanePaths: { "2": ["worker/src/**"], "3": [".claude/**"] } },
+  });
+  beforeAll(() => {
+    top = mkdtempSync(join(tmpdir(), "rules-merge-top-"));
+    const app = join(top, "RukenApp");
+    const priv = join(top, "RukenPrivate");
+    cpSync(join(ROOT, ".claude", "hooks"), join(app, ".claude", "hooks"), { recursive: true });
+    cpSync(join(ROOT, "CLAUDE.md"), join(app, "CLAUDE.md"));
+    mkdirSync(join(priv, ".claude", "hooks"), { recursive: true });
+    cpSync(join(ROOT, "CLAUDE.md"), join(priv, "CLAUDE.md"));
+    const appCfg = JSON.parse(readFileSync(join(ROOT, ".claude", "hooks", "rules.json"), "utf8")) as Record<
+      string,
+      unknown
+    >;
+    writeFileSync(join(priv, ".claude", "hooks", "rules.json"), JSON.stringify(PRIVATE_CFG(appCfg)));
+  });
+  afterAll(() => {
+    rmSync(top, { recursive: true, force: true });
+  });
+  // The cloud launcher: CLAUDE_PROJECT_DIR is the folder above both repos, and the first repo's hook runs.
+  function from(cwd: string, tool: string, input: object): string | null {
+    const r = spawnSync(
+      process.execPath,
+      [join(top, "RukenApp", ".claude", "hooks", "rules.mjs"), "--find-repo"],
+      {
+        input: JSON.stringify({
+          hook_event_name: "PreToolUse",
+          tool_name: `mcp__github__${tool}`,
+          tool_input: input,
+          cwd,
+        }),
+        encoding: "utf8",
+        cwd,
+        env: {
+          ...process.env,
+          CLAUDE_PROJECT_DIR: top,
+          PATH: `${join(scratch, "bin")}:${process.env.PATH ?? ""}`,
+          STUB_STATE: stateFile,
+          STUB_HEAD: HEAD,
+        },
+      },
+    );
+    const o = JSON.parse(r.stdout.trim().split("\n").at(-1) || "{}") as {
+      hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string };
+    };
+    return o.hookSpecificOutput?.permissionDecision === "deny"
+      ? (o.hookSpecificOutput.permissionDecisionReason ?? "")
+      : null;
+  }
+  const PRIV = { ...APP, repo: "RukenPrivate" };
+  const mergeFrom = (cwd: string, extra: object = {}) =>
+    from(cwd, "merge_pull_request", { ...PRIV, merge_method: "merge", expectedHeadSha: HEAD, ...extra });
+  for (const where of ["RukenPrivate", "the folder above both"]) {
+    test(`from ${where}`, () => {
+      const cwd = where === "RukenPrivate" ? join(top, "RukenPrivate") : top;
+      // RukenPrivate's own lane paths call a LICENSE change lane 1; the merge rule still needs a PASS.
+      setState({ body: "Lane 1", files: ["LICENSE"] });
+      expect(mergeFrom(cwd)).toContain(NO_REVIEW);
+      expect(from(cwd, "update_pull_request", { ...PRIV, draft: false })).toContain(NO_REVIEW);
+      expect(mergeFrom(cwd, { merge_method: "squash" })).toContain("merge_method squash");
+      setState({ body: "Lane 1", files: ["LICENSE"], comments: [`${SHORT} PASS`] });
+      expect(mergeFrom(cwd, { expectedHeadSha: SHORT })).toContain("expectedHeadSha");
+      expect(mergeFrom(cwd)).toBeNull();
+      setState({
+        body: "Lane 1",
+        files: ["LICENSE"],
+        comments: [`${SHORT} PASS`],
+        runs: [{ ...CHECK_OK, conclusion: "failure" }],
+      });
+      expect(mergeFrom(cwd)).toContain("check on abc1234 is failure");
+      setState({ body: "Lane 1", files: ["LICENSE"], comments: [`${SHORT} PASS`], runs: [] });
+      expect(mergeFrom(cwd)).toContain("check on abc1234 is missing");
+    });
+  }
+  test("RukenPrivate's own config can ask for the same floor and check, for a session where its own hook runs", () => {
+    const path = join(top, "RukenPrivate", ".claude", "hooks", "rules.json");
+    const cfg = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown> & { prFlow: object };
+    const own = {
+      ...cfg,
+      prFlow: { ...cfg.prFlow, minLane: 2 },
+      mergeGreen: { enabled: true, statuses: [], checkRuns: ["check"] },
+    };
+    // Run the hook as RukenPrivate's own: a copy of the script next to RukenPrivate's config, nothing above it.
+    const alone = mkdtempSync(join(tmpdir(), "rules-merge-alone-"));
+    try {
+      cpSync(join(ROOT, ".claude", "hooks"), join(alone, ".claude", "hooks"), { recursive: true });
+      cpSync(join(ROOT, "CLAUDE.md"), join(alone, "CLAUDE.md"));
+      writeFileSync(join(alone, ".claude", "hooks", "rules.json"), JSON.stringify(own));
+      const run = (s: Partial<State>) => {
+        setState(s);
+        const r = spawnSync(process.execPath, [join(alone, ".claude", "hooks", "rules.mjs")], {
+          input: JSON.stringify({
+            hook_event_name: "PreToolUse",
+            tool_name: "mcp__github__merge_pull_request",
+            tool_input: { ...PRIV, merge_method: "merge", expectedHeadSha: HEAD },
+            cwd: alone,
+          }),
+          encoding: "utf8",
+          cwd: alone,
+          env: {
+            ...process.env,
+            CLAUDE_PROJECT_DIR: alone,
+            PATH: `${join(scratch, "bin")}:${process.env.PATH ?? ""}`,
+            STUB_STATE: stateFile,
+            STUB_HEAD: HEAD,
+          },
+        });
+        return r.stdout.includes('"deny"') ? r.stdout : null;
+      };
+      expect(run({ body: "Lane 1", files: ["LICENSE"] })).toContain(NO_REVIEW);
+      expect(run({ body: "Lane 1", files: ["LICENSE"], comments: [`${SHORT} PASS`], runs: [] })).toContain(
+        "check on abc1234 is missing",
+      );
+      expect(run({ body: "Lane 1", files: ["LICENSE"], comments: [`${SHORT} PASS`] })).toBeNull();
+    } finally {
+      rmSync(alone, { recursive: true, force: true });
+    }
   });
 });
