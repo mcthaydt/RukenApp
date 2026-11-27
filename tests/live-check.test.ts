@@ -16,11 +16,23 @@ type Reply = { status: number; body?: string; location?: string } | "silent";
 type Answer = Reply | ((sinceStart: number) => Reply);
 let server: Server | undefined;
 afterEach(() => server?.close());
+const privateFeed: Reply = { status: 200, body: '{"ranker":"private","health":"defaults"}' };
 
-async function check(opts: { home: Answer; http: Answer; wranglerSays?: string; versionId?: string }) {
+async function check(opts: {
+  home: Answer;
+  http: Answer;
+  feed?: Answer;
+  wranglerSays?: string;
+  versionId?: string;
+}) {
   const startedAt = Date.now();
   const srv = createServer((req, res) => {
-    const answer = req.url === "/sign-in" ? opts.http : opts.home;
+    const answer =
+      req.url === "/sign-in"
+        ? opts.http
+        : req.url === "/healthz/feed"
+          ? (opts.feed ?? privateFeed)
+          : opts.home;
     const reply = typeof answer === "function" ? answer(Date.now() - startedAt) : answer;
     if (reply === "silent") return; // never answers
     res.writeHead(reply.status, reply.location ? { location: reply.location } : {});
@@ -114,6 +126,22 @@ describe("live-check.sh", () => {
     const r = await check({ home: good, http: { status: 308, location: "https://example.com/" } });
     expect(r.status).not.toBe(0);
     expect(r.text).toMatch(/::error::.*location.*example\.com/i);
+  });
+
+  it("fails when the open order answers the feed instead of the private one", async () => {
+    const r = await check({
+      home: good,
+      http: redirect,
+      feed: { status: 200, body: '{"ranker":"open","health":"defaults"}' },
+    });
+    expect(r.status).not.toBe(0);
+    expect(r.text).toMatch(/::error::.*healthz\/feed.*private.*"ranker":"open"/);
+  });
+
+  it("fails when /healthz/feed is not there", async () => {
+    const r = await check({ home: good, http: redirect, feed: { status: 404 } });
+    expect(r.status).not.toBe(0);
+    expect(r.text).toMatch(/::error::.*healthz\/feed.*200.*got 404/);
   });
 
   it("fails on a 500", async () => {

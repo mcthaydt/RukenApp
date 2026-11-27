@@ -49,6 +49,14 @@ home_is_up() {
   if ! grep -q '<title>Ruken' "$work/b"; then reason="the home page has no <title>Ruken"; return 1; fi
 }
 
+# The feed is ordered by the private Worker (spec: private feed ranking). The site falls back to the open order when
+# the binding is missing or the Worker fails, so a page alone cannot tell; /healthz/feed says which one answered.
+feed_is_private() {
+  fetch "$SITE_URL/healthz/feed"
+  if [ "$status" != "200" ]; then reason="/healthz/feed should answer 200, got $status"; return 1; fi
+  if ! grep -q '"ranker":"private"' "$work/b"; then reason="/healthz/feed should say the private ranker answers, got $(head -c 200 "$work/b")"; return 1; fi
+}
+
 http_redirects() {
   fetch "$HTTP_URL"
   if [ "$status" != "308" ]; then reason="http sign-in should answer 308, got $status"; return 1; fi
@@ -57,7 +65,7 @@ http_redirects() {
   if [ "$location" != "$EXPECTED_LOCATION" ]; then reason="http sign-in location should be $EXPECTED_LOCATION, got ${location:-nothing}"; return 1; fi
 }
 
-for step in version_is_live home_is_up http_redirects; do
+for step in version_is_live home_is_up feed_is_private http_redirects; do
   reason=""
   if until_ok "$step"; then
     echo "ok: $step"
