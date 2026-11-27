@@ -1,0 +1,20 @@
+import { test, expect } from "vitest";
+import { nextBox, type Box, type Way } from "../../src/lib/pad-moves.ts";
+const b = (l: number, t: number, r: number, bo: number): Box => ({ left: l, top: t, right: r, bottom: bo });
+// Check and send on computer (1280x720), measured at 584c085, run 3 of 3.
+const boxes: Record<string, Box> = {
+  ruken: b(40, 24, 116, 72), later: b(1117, 24, 1240, 72), send: b(40, 337, 225, 397), test: b(237, 337, 405, 397),
+  upright: b(568, 98, 717, 362), changeUpright: b(646, 380, 694, 424), wide: b(733, 98, 1202, 362),
+  changeWide: b(834, 380, 882, 424), name: b(911, 444, 959, 488), line: b(905, 508, 953, 552),
+  files: b(737, 572, 785, 616), who: b(850, 572, 898, 616), other: b(1093, 572, 1141, 616), away: b(40, 660, 244, 704),
+};
+test("every control on Check and send is reached by some move", () => {
+  const names = Object.keys(boxes);
+  const reached = new Set<string>();
+  for (const from of names) for (const way of ["up", "down", "left", "right"] as Way[]) {
+    const others = names.filter((n) => n !== from);
+    const i = nextBox(boxes[from]!, others.map((n) => boxes[n]!), way);
+    if (i !== -1) reached.add(others[i]!);
+  }
+  expect(names.filter((n) => !reached.has(n))).toEqual([]);
+});
