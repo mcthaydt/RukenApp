@@ -64,8 +64,10 @@
     if (sheet === undefined) return;
     stopSliding(sheet);
     sheet.showModal();
-    // The one main action takes the focus, not the cross that comes first.
-    copyButton?.focus();
+    // The one main action takes the focus, not the cross that comes first. Left on the friends, Copy link comes back
+    // only once Svelte has drawn it again (implementation audit 5, R1).
+    if (copyButton === undefined || !copyButton.isConnected) void tick().then(() => copyButton?.focus());
+    else copyButton.focus();
   }
 
   /** Copies the link and says so. `then` is said after "Link copied." when the link is to be pasted somewhere. */
@@ -103,6 +105,8 @@
   }}
   oncancel={slideAwayOnCancel}
   onclose={() => {
+    // The next Share starts on the link and the apps, never on the friends.
+    picking = false;
     opener?.focus();
   }}
 >

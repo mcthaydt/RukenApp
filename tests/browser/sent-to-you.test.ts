@@ -152,6 +152,15 @@ test("a friend sends a game; it lands on Your turn with a dot, is seen, opened, 
     await sheet.getByRole("button", { name: "Back", exact: true }).click();
     await expect(sheet.getByRole("button", { name: "Copy link" })).toBeVisible();
     await expect(sheet.getByRole("button", { name: "Your turn", exact: true })).toBeFocused();
+    // Left from the friends, the next Share opens on its main action, Copy link, every way out (audit 5, R1).
+    for (const leave of ["Close", "Escape"] as const) {
+      await pickFriendsIn(sheet);
+      if (leave === "Close") await sheet.getByRole("button", { name: "Close" }).click();
+      else await sender.page.keyboard.press("Escape");
+      await expect(sheet).toBeHidden();
+      await sender.page.getByRole("button", { name: "Share" }).click();
+      await expect(sheet.getByRole("button", { name: "Copy link" })).toBeFocused();
+    }
 
     // Read: the receiver's third tab carries the dot, and the list shows the game, who sent it and when.
     await page.goto("/followed");
