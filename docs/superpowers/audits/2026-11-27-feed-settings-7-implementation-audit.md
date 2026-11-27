@@ -31,7 +31,7 @@ Reviewer: Opus 5.5, medium, in a fresh session. Examined: `edcd5f67a450f65110f9e
 | `pnpm typecheck` | exit 0 |
 | `pnpm test` | 2294 of 2297 passed on the first run; the 3 failures were 5-second timeouts in `tests/pr-rules.test.ts` and `tests/rules-pr-routes.test.ts` while the browser run loaded the box. Neither file differs from main. Re-run alone: 62 of 62 passed. CI's `verify` passed on edcd5f6. |
 | `pnpm test:pg` | 55 files, 816 tests passed, including `purge.pg.test.ts` (chips and Good pick answers, follows, marks) and `taste.pg.test.ts` |
-| Feed journeys (feed-controls, feed-marks, feed-to-game-grow, feed-top, feed, fits-the-screen, follow-a-maker, glass, how-the-feed-works, look-layout, your-feed) on phone (WebKit, iPhone SE), tablet and computer, in `mcr.microsoft.com/playwright:v1.63.0-noble` | 340 passed, 5 skipped, 0 failed |
+| Feed journeys (feed-controls, feed-marks, feed-to-game-grow, feed-top, feed, fits-the-screen, follow-a-maker, glass, how-the-feed-works, look-layout, your-feed) on phone (WebKit, iPhone SE), tablet and computer, in `mcr.microsoft.com/playwright:v1.63.0-noble` | 346 passed, 5 skipped, 0 failed (the run's only 6 failures were the probe's first draft, which read the top bar as the bottom one) |
 | Reviewer's side-column probe (below), all three profiles at 320×568 and 375×667 | 6 of 6 passed; phone repeated 3 times, 6 of 6. One earlier phone 320 try failed on the Sound button's place (y −556, a screen up while the feed settled on a cold WebKit); Sound is not in the column, the probe's own timing, and three repeats passed |
 
 Side column measured at 320×568: Like, Save, Repost 48×70 each (count under the icon), Share and ••• 48×48, at x 260,
