@@ -76,7 +76,10 @@ test.describe("signed out", () => {
   });
 });
 
-test("Your account and Your games fit the window, and the bar covers nothing", async ({ page }, testInfo) => {
+test("Your account and Your games fit the window, and the bar covers nothing", async ({
+  page,
+  isMobile,
+}, testInfo) => {
   await signUp(page);
   for (const path of ["/me", "/make", "/me/password", "/me/computers", "/me/delete", "/settings/feed"]) {
     await opened(page, path);
@@ -101,10 +104,31 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
   await expectViewAboveTheBar(page, "/settings/feed at 375 by 667");
   await expect(page.getByRole("button", { name: "Start over" })).toBeInViewport();
 
-  // And with more chips than a line holds on both sides, the longest words first (audit round 3): each side stays one
-  // line, its chips sliding sideways, so the page still fits and Back and Start over stay above the bar.
+  // And with more chips than the screen holds on both sides, the longest words first (audits 3 and 4): the chips' box
+  // scrolls inside itself, so the page still fits and Back and Start over stay above the bar. Each chip added shows
+  // where it landed, fully in the box and clear of its fade.
+  // The button named, or the one with the focus.
+  const inTheBox = (name: string, focused = false) =>
+    page.evaluate(
+      ([label, onlyFocused]) => {
+        const thing = onlyFocused
+          ? (document.activeElement ?? undefined)
+          : [...document.querySelectorAll("main button, main a")].find(
+              (one) => (one.getAttribute("aria-label") ?? one.textContent.trim()) === label,
+            );
+        const box = document.querySelector("main .tastes")?.getBoundingClientRect();
+        if (thing === undefined) return `${label}: not found`;
+        const at = thing.getBoundingClientRect();
+        if (box === undefined) return "in";
+        // The fade is the last 0.75rem of the box.
+        return at.top >= box.top - 1 && at.bottom <= box.bottom - 12 + 1
+          ? "in"
+          : `${label}: ${String(at.top)}-${String(at.bottom)}`;
+      },
+      [name, focused] as const,
+    );
   const more = ["Racing and sports", "Building and life", "Puzzle", "Spooky", "Adventurous", "Heartfelt"];
-  const less = ["Party and board", "Role-playing", "Cosy", "Bold", "Strategy"];
+  const less = ["Party and board", "Role-playing", "Cosy", "Bold", "Strategy", "Weird", "Story"];
   for (const [side, words] of [
     ...more.map((words) => ["See more of", words] as const),
     ...less.map((words) => ["See less of", words] as const),
@@ -117,36 +141,37 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
     const sheet = page.getByRole("dialog", { name: side });
     await sheet.getByRole("button", { name: words, exact: true }).click();
     await expect(sheet).toBeHidden();
-    await expect(page.getByRole("button", { name: `Remove ${words}` })).toBeAttached();
+    await expect.poll(() => inTheBox(`Remove ${words}`), `${words} shows where it landed`).toBe("in");
   }
-  for (const region of ["What you want to see more of", "What you want to see less of"]) {
-    const side = page.getByRole("region", { name: region });
-    const chips = side.locator("li");
-    const first = await boxOf(chips.first());
-    const last = await boxOf(chips.last());
-    expect(Math.abs(last.y - first.y), `${region}: one line`).toBeLessThanOrEqual(2);
-    await expect(side.getByRole("button", { name: "Add", exact: true })).toBeInViewport();
+  const scrolled = () => page.evaluate(() => document.querySelector("main .tastes")?.scrollTop ?? 0);
+  const roomy = await page.evaluate(() => {
+    const box = document.querySelector("main .tastes");
+    return box !== null && box.scrollHeight > box.clientHeight;
+  });
+  expect(roomy, "the chips are more than the box shows, so it scrolls inside itself").toBe(true);
+  // A mouse's wheel scrolls the box (not on a phone, which has no wheel).
+  await page.evaluate(() => document.querySelector("main .tastes")?.scrollTo({ top: 0 }));
+  if (!isMobile) {
+    await page.getByRole("region", { name: "What you want to see more of" }).hover();
+    await page.mouse.wheel(0, 300);
+    await expect.poll(scrolled, "the wheel scrolls the chips").toBeGreaterThan(0);
+    await page.evaluate(() => document.querySelector("main .tastes")?.scrollTo({ top: 0 }));
   }
-  // A chip slid out of sight is still reached by moving focus, as a keyboard or a gamepad's pad does: each button in
-  // a line is reached in turn, and the line slides it fully into view.
+  // Moving focus, as a keyboard or a gamepad's pad does, reaches every button in turn, each fully in view.
   await page.getByRole("switch", { name: "Learn from what I do" }).focus();
   const reached: string[] = [];
-  for (let press = 0; press < 40; press++) {
+  for (let press = 0; press < 60; press++) {
     await page.keyboard.press("Tab");
-    const focused = await page.evaluate(() => {
+    const name = await page.evaluate(() => {
       const thing = document.activeElement;
-      if (!(thing instanceof HTMLElement)) return null;
-      const line = thing.closest(".chips");
-      const box = thing.getBoundingClientRect();
-      const lineBox = line?.getBoundingClientRect();
-      return {
-        name: thing.getAttribute("aria-label") ?? thing.textContent.trim(),
-        inLine: lineBox === undefined || (box.left >= lineBox.left - 1 && box.right <= lineBox.right + 1),
-      };
+      return thing instanceof HTMLElement
+        ? (thing.getAttribute("aria-label") ?? thing.textContent.trim())
+        : null;
     });
-    if (focused === null || focused.name === "Start over") break;
-    expect(focused.inLine, `${focused.name} slides into view when focused`).toBe(true);
-    reached.push(focused.name);
+    if (name === null || name === "Start over") break;
+    if (name === "Back to your account") continue;
+    await expect.poll(() => inTheBox(name, true), `${name} is in view when focused`).toBe("in");
+    reached.push(name);
   }
   for (const words of [...more, ...less]) expect(reached).toContain(`Remove ${words}`);
   await wordsHaveSettled(page);
@@ -154,6 +179,13 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
   await expectViewAboveTheBar(page, "/settings/feed with chips at 375 by 667");
   await expect(page.getByRole("button", { name: "Start over" })).toBeInViewport();
   await expect(page.getByRole("link", { name: "Back to your account" })).toBeInViewport();
+  // On a computer's window too, with the same chips.
+  if (!isMobile) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await wordsHaveSettled(page);
+    expect(await overflow(page), "/settings/feed with chips at 1280 by 720").toEqual({ page: 0, view: 0 });
+    await expect(page.getByRole("button", { name: "Start over" })).toBeInViewport();
+  }
 });
 
 test("a member's Your account fits too, down to an iPhone SE", async ({ page }) => {

@@ -5,6 +5,7 @@
   a parent says yes. Every press is a form, so it works with no script; with script it stays on the page.
 -->
 <script lang="ts">
+  import { tick } from "svelte";
   import { enhance, type SubmitFunction } from "$app/forms";
   import Icon from "../../lib/icon.svelte";
   import type { Choice, YourFeed } from "./taste.ts";
@@ -16,6 +17,16 @@
   let startOverSheet = $state<HTMLDialogElement>();
   // Which press is being sent: its button shows the spinner, and another press waits for it.
   let sending = $state<string | null>(null);
+  let tastes = $state<HTMLDivElement>();
+
+  // A chip just added is shown where it landed: the box slides to it, so closing Add always shows what changed.
+  function showNewChip(before: ReadonlySet<string>): void {
+    const added = [...feed.more, ...feed.less].find((chip) => !before.has(chip.id));
+    if (added === undefined) return;
+    tastes
+      ?.querySelector(`[data-chip="${added.id}"]`)
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
 
   function send(key: string): SubmitFunction {
     return ({ cancel }) => {
@@ -24,11 +35,14 @@
         return;
       }
       sending = key;
+      const before = new Set([...feed.more, ...feed.less].map((chip) => chip.id));
       return async ({ update }) => {
         await update({ reset: false });
         sending = null;
         addSheet?.close();
         startOverSheet?.close();
+        await tick();
+        showNewChip(before);
       };
     };
   }
@@ -64,42 +78,34 @@
 
 {#snippet chips(direction: "more" | "less")}
   {@const list = direction === "more" ? feed.more : feed.less}
-  <!-- One line per side, however many chips: the chips slide sideways inside it, and Add stays at its end in view,
-       so the page never grows past the screen (audit round 3). -->
-  <div class="side">
-    <!-- Moving focus (a keyboard's Tab, a gamepad's pad) slides the focused chip fully into the line, clear of the fade. -->
-    <ul
-      class="chips"
-      onfocusin={(event) => {
-        if (event.target instanceof HTMLElement)
-          event.target.closest("li")?.scrollIntoView({ block: "nearest", inline: "nearest" });
-      }}
-    >
-      {#each list as chip (chip.id)}
-        <li class="chip-on">
-          <span>{chip.words}</span>
-          <form method="POST" action="?/remove" use:enhance={send(`remove:${chip.id}`)}>
-            <input type="hidden" name="id" value={chip.id} />
-            <button class="remove" aria-busy={busy(`remove:${chip.id}`)} aria-label={`Remove ${chip.words}`}
-              ><Icon name="close" /></button
-            >
-          </form>
-        </li>
+  <ul class="chips">
+    {#each list as chip (chip.id)}
+      <li class="chip-on" data-chip={chip.id}>
+        <span>{chip.words}</span>
+        <form method="POST" action="?/remove" use:enhance={send(`remove:${chip.id}`)}>
+          <input type="hidden" name="id" value={chip.id} />
+          <button class="remove" aria-busy={busy(`remove:${chip.id}`)} aria-label={`Remove ${chip.words}`}
+            ><Icon name="close" /></button
+          >
+        </form>
+      </li>
+    {/each}
+    {#if direction === "more"}
+      {#each feed.suggestions as choice (`${choice.kind}:${choice.value}`)}
+        <li>{@render choiceForm(choice, "more", true)}</li>
       {/each}
-      {#if direction === "more"}
-        {#each feed.suggestions as choice (`${choice.kind}:${choice.value}`)}
-          <li>{@render choiceForm(choice, "more", true)}</li>
-        {/each}
-      {/if}
-    </ul>
-    <button
-      type="button"
-      class="outline add"
-      onclick={() => {
-        openAdd(direction);
-      }}>Add</button
-    >
-  </div>
+    {/if}
+    <!-- Add sits at the end of the chips, as the spec's sketch has it, so an empty side is one line, not two. -->
+    <li>
+      <button
+        type="button"
+        class="outline add"
+        onclick={() => {
+          openAdd(direction);
+        }}>Add</button
+      >
+    </li>
+  </ul>
 {/snippet}
 
 <main class="card yourfeed">
@@ -131,18 +137,22 @@
     {:else}
       <p class="sentence">{feed.sentence}</p>
 
-      <section aria-labelledby="more-title">
-        <h2 id="more-title">What you want to see more of</h2>
-        {@render chips("more")}
-      </section>
+      <!-- The chips' box: when they are more than the screen holds, it scrolls up and down by itself (by finger, wheel,
+           keys or a gamepad's pad moving focus), and Back and Start over stay where they are below it. -->
+      <div class="tastes" bind:this={tastes}>
+        <section aria-labelledby="more-title">
+          <h2 id="more-title">What you want to see more of</h2>
+          {@render chips("more")}
+        </section>
 
-      <section aria-labelledby="less-title">
-        <h2 id="less-title">What you want to see less of</h2>
-        {@render chips("less")}
-      </section>
+        <section aria-labelledby="less-title">
+          <h2 id="less-title">What you want to see less of</h2>
+          {@render chips("less")}
+        </section>
+      </div>
     {/if}
   {/if}
-  <!-- Back is an arrow, as on the maker's screens, beside Start over: one line, so the page fits an iPhone SE. -->
+  <!-- Back is an arrow, as on the maker's screens, beside Start over: one line, always in view below the chips. -->
   <div class="foot">
     <a class="button safe back" href="/me" aria-label="Back to your account"><Icon name="back" /></a>
     {#if feed.learning === "on"}
@@ -238,32 +248,42 @@
     padding: 0;
     list-style: none;
   }
-  /* A side is one line: its chips slide sideways under a soft fade at the right, and Add keeps its place after them. */
-  .side {
+  /* Your feed is as tall as the view at most: its chips' box gives way, never the page, so the foot stays in sight. */
+  :global(:root:has(main.yourfeed) body) {
     display: flex;
-    align-items: center;
+    flex-direction: column;
   }
-  /* The fade lies over the list's own right padding, so it only falls on a chip when there are more to slide to. */
-  .chips {
+  .yourfeed {
     display: flex;
     flex: 0 1 auto;
-    gap: 0.5rem;
-    min-width: 0;
-    margin: 0;
-    padding: 0 1rem 0 0;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scroll-padding-inline: 0 1rem;
-    list-style: none;
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1rem), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - 1rem), transparent);
+    flex-direction: column;
+    min-height: 0;
   }
-  .chips:empty {
-    padding: 0;
-  }
-  .chips li {
+  .yourfeed > :not(.tastes) {
     flex: none;
-    white-space: nowrap;
+  }
+  .tastes {
+    flex: 0 1 auto;
+    min-height: 0;
+    margin-inline: -0.25rem;
+    padding: 0.25rem 0.25rem 0.75rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: 0.25rem 0.75rem;
+  }
+  /* More below: the box's bottom edge fades out, so a cut-off line reads as "there is more". It sits on the box's
+     own padding, so with nothing more it falls on no chip. */
+  .tastes {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 0.75rem), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 0.75rem), transparent);
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
   /* A chip is not a line of a card's list: no space above it, so the row's gap is the only space. */
   .chips li,
@@ -325,10 +345,9 @@
     border-color: var(--chalk);
     color: var(--chalk);
   }
-  .side .add {
-    flex: none;
+  .chips .add {
     width: auto;
-    margin: 0 0 0 0.25rem;
+    margin: 0;
     padding-inline: 1rem;
   }
   .foot {
@@ -336,7 +355,7 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem;
-    margin-top: 1.25rem;
+    margin-top: 0.5rem;
   }
   .foot > * {
     margin: 0;
