@@ -273,6 +273,8 @@ test("a gamepad's shoulder buttons go between Fresh, Followed and Your turn", as
   await press(5, true);
   await expect(page).toHaveURL("/followed");
   await press(5, false);
+  // The same button again: the page must see it let go first, which it does on its next frame.
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
   await press(5, true);
   await expect(page).toHaveURL("/your-turn");
   await expect(topBar(page).yourTurn).toHaveAttribute("aria-current", "page");

@@ -105,7 +105,9 @@
           </a>
           <form method="POST" action="/your-turn/remove" onsubmit={(event) => void remove(event, row.id)}>
             <input type="hidden" name="id" value={row.id} />
-            <button class="quiet remove" aria-label={SEND_WORDS.remove(row.name)}><Icon name="remove" /></button>
+            <button class="quiet remove" aria-label={SEND_WORDS.remove(row.name)}
+              ><Icon name="remove" /></button
+            >
           </form>
           <button type="button" class="go stop" onclick={(event) => askStop(row, event.currentTarget)}>
             {SEND_WORDS.stop(from(row))}
@@ -146,9 +148,10 @@
     flex-direction: column;
     gap: 0.75rem;
     width: min(36rem, 100%);
-    height: 100dvh;
+    /* The view (the body) already ends above the bar at the bottom; the top leaves room for the feed's top bar. */
+    height: 100%;
     margin: 0 auto;
-    padding: 5rem 1rem 6rem;
+    padding: 5rem 1rem 1rem;
     box-sizing: border-box;
   }
   .empty {

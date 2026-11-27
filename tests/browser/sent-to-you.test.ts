@@ -14,17 +14,19 @@ import { forgetRateLimits } from "./support/rate-limits.ts";
 const SITE = "http://localhost:4173";
 const FROM_THE_SITE = { headers: { origin: SITE } };
 
-let games: { slug: string; name: string }[] = [];
+const games: { slug: string; name: string }[] = [];
 
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(240_000);
-  await forgetRateLimits();
-  const context = await browser.newContext({ ...consented, baseURL: SITE });
-  try {
-    const page = await context.newPage();
-    games = [await gameWhere(page, { state: "live" }), await gameWhere(page, { state: "live" })];
-  } finally {
-    await context.close();
+  // Each game has its own maker, in a browser of its own: a signed-in browser cannot sign up again.
+  for (let made = 0; made < 2; made += 1) {
+    await forgetRateLimits();
+    const context = await browser.newContext({ ...consented, baseURL: SITE });
+    try {
+      games.push(await gameWhere(await context.newPage(), { state: "live" }));
+    } finally {
+      await context.close();
+    }
   }
 });
 test.beforeEach(async ({ page }) => {
