@@ -225,8 +225,12 @@ test("closed while it is still sliding in, the panel still slides away", async (
       if (asked || !slidesIn.has(event.animationName)) return;
       asked = true;
       setTimeout(() => {
+        // It goes away from where it got to, never first jumping back to fully shown.
+        const before = Number(getComputedStyle(dialog).opacity);
         const ask = new Event("cancel", { cancelable: true });
         if (dialog.dispatchEvent(ask)) dialog.close();
+        const after = Number(getComputedStyle(dialog).opacity);
+        if (after > before + 0.05) said.push(`jumped from ${String(before)} to ${String(after)}`);
       }, 60);
     });
   });
@@ -238,7 +242,7 @@ test("closed while it is still sliding in, the panel still slides away", async (
   await expect(panel).toBeHidden();
 });
 
-test("a slide away that never starts still lets the panel go within a second or so", async ({ page }) => {
+test("a slide away that never starts still lets the panel go within two seconds or so", async ({ page }) => {
   const { opener, panel } = await onTheFeed(page);
   // The slide away is held back far past any wait, as a stuck page might.
   await page.addStyleTag({ content: "dialog.rises.closing { animation-delay: 20s !important; }" });
@@ -255,7 +259,7 @@ test("a slide away that never starts still lets the panel go within a second or 
     dialog.addEventListener("close", () => (times.closed = performance.now()));
   });
   await panel.getByRole("button", { name: "Cancel" }).click();
-  await expect(panel).toBeHidden({ timeout: 3000 });
+  await expect(panel).toBeHidden({ timeout: 4000 });
   await expect
     .poll(() =>
       page.evaluate(() => {
@@ -264,7 +268,7 @@ test("a slide away that never starts still lets the panel go within a second or 
         return closed === 0 ? Infinity : closed - pressed;
       }),
     )
-    .toBeLessThan(1500);
+    .toBeLessThan(2500);
   expect(
     await panel.evaluate((dialog: HTMLDialogElement) => [dialog.inert, dialog.classList.contains("closing")]),
   ).toEqual([false, false]);

@@ -5,9 +5,13 @@
 /**
  * How long a slide away may take before the sheet is closed anyway (look.css plays it in 260ms): from the press until
  * it starts, and again from its start. Counted from the start once it starts, since on a busy phone the first frame
- * can come late and a count from the press alone would cut the slide short.
+ * can come late and a count from the press alone would cut the slide short. Generous, since Safari on a busy phone can
+ * skip drawing for most of a second (seen 700 to 800ms in the journeys), and a slide cut short looks like no slide.
  */
-const LONGEST_WAIT_MS = 1000;
+const LONGEST_WAIT_MS = 2000;
+
+/** The slide in's names in look.css. A sheet closed while one plays slides away from where it got to. */
+const SLIDES_IN = new Set(["sheet-in", "sheet-up"]);
 
 /**
  * The slide away's names in look.css. Events are told apart by name, never by `pseudoElement`: Safari reports the dimmed
@@ -51,6 +55,8 @@ export function slideAway(sheet: HTMLDialogElement): void {
     sheet.removeEventListener("close", finish);
     finishers.delete(sheet);
     sheet.classList.remove("closing");
+    sheet.style.removeProperty("transform");
+    sheet.style.removeProperty("opacity");
     sheet.inert = false;
     if (sheet.open) sheet.close();
   }
@@ -60,6 +66,20 @@ export function slideAway(sheet: HTMLDialogElement): void {
   sheet.addEventListener("animationcancel", stopped);
   // Closed some other way while it slides: it is tidied up all the same.
   sheet.addEventListener("close", finish);
+  // Closed while still sliding in: the slide away starts from where the panel is, not from fully shown.
+  const slidingIn = sheet
+    .getAnimations()
+    .some(
+      (animation) =>
+        animation instanceof CSSAnimation &&
+        SLIDES_IN.has(animation.animationName) &&
+        animation.playState === "running",
+    );
+  if (slidingIn) {
+    const now = getComputedStyle(sheet);
+    sheet.style.transform = now.transform;
+    sheet.style.opacity = now.opacity;
+  }
   sheet.classList.add("closing");
   sheet.inert = true;
   // A sheet with no slide away to play closes at once.
