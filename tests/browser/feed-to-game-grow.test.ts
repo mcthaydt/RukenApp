@@ -519,16 +519,22 @@ test("a picture that comes late from an earlier Back does not end the wait of th
   await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
   await pageHasSettled(page);
 
-  // On a slow line, the first Back's clip gets its picture a few seconds late; every later one takes longer still.
-  let asked = 0;
-  let firstCame = false;
+  // On a slow line, the first Back's clip gets its picture late: only once the second Back is under way, whatever
+  // time the steps between take in this browser. The second Back's clip gets its picture only when the test ends.
+  let secondBack = false;
+  let letFirstIn = () => {};
+  let letSecondIn = () => {};
+  const firstMayCome = new Promise<void>((done) => (letFirstIn = done));
+  const secondMayCome = new Promise<void>((done) => (letSecondIn = done));
+  const firstWaiting: Promise<void>[] = [];
   const theClip = (url: URL) => url.pathname === address;
   await page.route(theClip, async (route) => {
-    asked += 1;
-    const first = asked === 1;
-    await new Promise((done) => setTimeout(done, first ? 4000 : 30_000));
-    await route.continue().catch(() => undefined);
-    if (first) firstCame = true;
+    const answered = (async () => {
+      await (secondBack ? secondMayCome : firstMayCome);
+      await route.continue().catch(() => undefined);
+    })();
+    if (!secondBack) firstWaiting.push(answered);
+    await answered;
   });
   await page.goBack();
   await expect(clip).toHaveAttribute("data-current", "true");
@@ -537,11 +543,14 @@ test("a picture that comes late from an earlier Back does not end the wait of th
   await clip.getByRole("link", { name: game.name }).click();
   await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
   await pageHasSettled(page);
+  expect(firstWaiting.length, "the first Back asked for its clip").toBeGreaterThan(0);
+  secondBack = true;
   await holdNextMove(page, 1 / 3);
   await page.goBack();
   await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
-  expect(firstCame, "the first Back's picture came before the second Back began").toBe(false);
-  await expect.poll(() => firstCame, { timeout: 10_000 }).toBe(true);
+  // Now the first Back's picture comes, in the middle of the second Back.
+  letFirstIn();
+  await Promise.all(firstWaiting);
   await page.waitForTimeout(500);
   expect(
     await clip.locator("video").evaluate((video) => (video as HTMLVideoElement).readyState),
@@ -554,6 +563,7 @@ test("a picture that comes late from an earlier Back does not end the wait of th
   });
   const gap = await pictureGap(page, shown, old);
   await letGo(page);
+  letSecondIn();
   await page.unroute(theClip);
   expect(gap, "the second Back's clip with no picture yet covers the game's picture").toBeLessThan(1);
 });
