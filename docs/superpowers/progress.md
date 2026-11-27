@@ -236,6 +236,7 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 
 ### Flaky tests
 
+- `tests/browser/trackpad-swipe.test.ts:92` "a two-finger swipe on a trackpad goes between Fresh and Followed, one tab a swipe" [phone], from #429: #424's full run 46051556495 at `19113f9` (browser shard 5 of 6): the first swipe to Followed never marked Followed (line 104, `aria-current` empty). It passed 4 of 4 locally on the phone profile right after, with #424 and #430 merged in (Playwright 1.63 WebKit image).
 - `tests/browser/feed-to-game-grow.test.ts:435` "the moving clip is cut to its box and rounds its corners as it goes, both ways" [computer], #430's full run 46048070164 at `e2e5409` (browser shard 3 of 6): "going out, the clip at 709.688 by 630.781 at 10.4006, 10.4006", expected < 0.5, received 1.878. #430 changes only `your-feed.test.ts` and these notes. Cause not looked at yet.
 - `tests/browser/gamepad.test.ts:363` "the pad reaches everything on a game's page" [phone], main CI at `4ce8b51` (#429's merge, run 46044836356, browser shard 1 of 6): failed once after 41.7 s with `page.evaluate: Target page, context or browser has been closed` in `pressPad`, passed on main's retry. Cause not looked at yet.
 - `tests/browser/cookie-consent.test.ts:189` "Take it back: create, read, update and delete the one thing a visitor makes here" [computer], main CI at `4ce8b51` (run 46044836356, browser shard 5 of 6): failed once with `expect(received).toEqual(expected)` (expected 1 line, received 5), passed on main's retry. Cause not looked at yet.
