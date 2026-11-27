@@ -1,0 +1,54 @@
+import { expect, test } from "@playwright/test";
+import { consented } from "./support/consent.ts";
+import { givePage } from "./support/database.ts";
+import { addGame } from "./support/game.ts";
+import { asInstalled } from "./support/installed.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+let slug: string;
+test.beforeAll(async ({ browser, request }) => {
+  test.setTimeout(240_000);
+  await forgetRateLimits();
+  const g = await addGame(browser, request);
+  await givePage(g.maker, { name: "Wren Maker With A Long Name", oneLine: "x" });
+  slug = g.slug;
+});
+
+for (const [label, size] of [["portrait375", { width: 375, height: 667 }], ["sideways", { width: 667, height: 375 }], ["portrait320", { width: 320, height: 568 }]] as const) {
+  test(`overlap ${label}`, async ({ browser }) => {
+    test.skip(test.info().project.name !== "computer");
+    const ctx = await browser.newContext({ ...consented, baseURL: "http://localhost:4173", viewport: size, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
+    const page = await ctx.newPage();
+    await forgetRateLimits();
+    await asInstalled(page);
+    await page.goto("/");
+    await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+    const clip = page.locator(`section[data-slug="${slug}"]`).first();
+    await clip.scrollIntoViewIfNeeded();
+    await expect(clip).toHaveAttribute("data-current", "true");
+    await page.waitForTimeout(800);
+    const boxes = await page.evaluate((s) => {
+      const r = (el: Element | null) => { if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height }; };
+      const sec = document.querySelector(`section[data-slug="${s}"][data-current="true"]`);
+      const out: Record<string, unknown> = {
+        tabs: r(document.querySelector(".top .tabs")), search: r(document.querySelector(".top .search")),
+        credit: r(sec?.querySelector(".credit") ?? null), maker: r(sec?.querySelector(".maker") ?? null),
+        name: r(sec?.querySelector(".makername") ?? null), follow: r(sec?.querySelector("form.follow") ?? null),
+        share: r(sec?.querySelector('button[aria-label="Share"], [aria-label="Share"]') ?? null),
+        bar: r(document.querySelector("nav.bar, .bar")),
+      };
+      const sound = [...document.querySelectorAll('button')].filter((b) => b.getAttribute("aria-label") === "Sound" || b.textContent?.trim() === "Sound").map((b) => r(b));
+      out.sound = sound.find((b) => b && b.y >= 0 && b.y < innerHeight) ?? null;
+      return out;
+    }, slug);
+    type B = { x: number; y: number; w: number; h: number } | null;
+    const hit = (a: B, b: B) => !!a && !!b && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    const b = boxes as Record<string, B>;
+    const pairs: string[] = [];
+    for (const t of ["tabs", "search", "sound"]) for (const c of ["credit", "maker", "name", "follow", "share"]) if (hit(b[t], b[c])) pairs.push(`${t}x${c}`);
+    console.log(label, JSON.stringify(boxes), "OVERLAPS:", pairs.join(",") || "none");
+    await page.screenshot({ path: `/tmp/claude-0/shots/${label}.png` });
+    await ctx.close();
+    expect(pairs).toEqual([]);
+  });
+}
