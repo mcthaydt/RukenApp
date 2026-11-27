@@ -215,18 +215,13 @@ test("a gamepad's shoulder buttons go between Fresh and Followed", async ({ page
   await page.goto("/");
   await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
   await page.bringToFront();
-  await expect(page.locator('[data-pad="ready"]')).toHaveCount(1);
 
   await press(5, true);
   await expect(page).toHaveURL("/followed");
-  await pageHasSettled(page);
-  // Followed's own bar has noted what is held before the next press is made.
-  await expect(
-    page
-      .locator('[data-pad="ready"]')
-      .filter({ has: page.locator('a[href="/followed"][aria-current="page"]') }),
-  ).toHaveCount(1);
   // Still held as Followed opens: that press is spent, so it never steps on past the tab it brought the person to.
+  await expect(topBar(page).followed).toHaveAttribute("aria-current", "page");
+  await expect(page).toHaveURL("/followed");
+  // Let go and press LB at once, with no wait: a press made after the move counts however soon it comes.
   await press(5, false);
   await press(4, true);
   await expect(page).toHaveURL("/");

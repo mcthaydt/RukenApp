@@ -9,6 +9,17 @@
   slides sideways as the bar's places do (src/lib/page-moves.ts). A finger swiped sideways anywhere on the screen, or a
   gamepad's shoulder buttons (LB, RB), step to the tab beside this one (tabs.ts).
 -->
+<script lang="ts" module>
+  import type { TabKey as Key } from "./tabs.ts";
+
+  // Kept across tabs, not per bar: the bar for the new tab starts a moment after the move (most on Safari's engine),
+  // and sampling the pad then would take a fresh press for the one that brought the person here. Only a button seen
+  // down before the move is waited on; nothing is held when the feed first opens.
+  let held: readonly number[] = [];
+  // The tab a move is on its way to, so a second press or swipe made before it arrives steps on from there.
+  let heading: Key | null = null;
+</script>
+
 <script lang="ts">
   import type { Snippet } from "svelte";
   import { goto } from "$app/navigation";
@@ -28,14 +39,16 @@
   /** Goes to the tab `step` places along, if there is one, unless a sheet is open over the feed. */
   function stepTab(step: 1 | -1): void {
     if (document.querySelector("dialog[open]") !== null) return;
-    const tab = tabFrom(on, step);
-    if (tab !== null) void goto(tab.href);
+    const tab = tabFrom(heading ?? on, step);
+    if (tab === null) return;
+    heading = tab.key;
+    void goto(tab.href).finally(() => {
+      if (heading === tab.key) heading = null;
+    });
   }
 
   // Where a one-finger touch started; a second finger, or a touch that starts on an open sheet, is not a swipe.
   let start: { x: number; y: number } | null = null;
-  /** Whether this bar has begun reading a gamepad (shown as `data-pad`, so a journey knows when it may press). */
-  let padReady = $state(false);
   function touchStarted(event: TouchEvent): void {
     const touch = event.touches[0];
     start =
@@ -55,8 +68,6 @@
   // played on their own page, so the feed's reading never takes a press meant for a game.
   $effect(() => {
     let frame = 0;
-    // A button already down when this tab opens (the press that brought the person here) waits to be let go first.
-    let held: readonly number[] | null = null;
     function pressed(): { pads: number; down: number[] } {
       const pads = navigator.getGamepads().filter((pad) => pad !== null);
       const down = [LB, RB].filter((button) => pads.some((pad) => pad.buttons[button]?.pressed === true));
@@ -64,7 +75,7 @@
     }
     function read(): void {
       const { pads, down } = pressed();
-      if (held !== null && document.hasFocus()) {
+      if (document.hasFocus()) {
         if (down.includes(LB) && !held.includes(LB)) stepTab(-1);
         else if (down.includes(RB) && !held.includes(RB)) stepTab(1);
       }
@@ -72,8 +83,6 @@
       frame = pads > 0 ? requestAnimationFrame(read) : 0;
     }
     function connected(): void {
-      held ??= pressed().down;
-      padReady = true;
       if (frame === 0) frame = requestAnimationFrame(read);
     }
     if (typeof navigator.getGamepads === "function") {
@@ -89,7 +98,7 @@
 
 <svelte:window ontouchstart={touchStarted} ontouchend={touchEnded} ontouchcancel={() => (start = null)} />
 
-<div class="top" data-pad={padReady ? "ready" : undefined}>
+<div class="top">
   <div class="left">
     {#if sound}{@render sound()}{/if}
   </div>
