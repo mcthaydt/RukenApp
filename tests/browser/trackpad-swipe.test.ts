@@ -26,11 +26,33 @@ const tab = (page: Page, name: "Fresh" | "Followed") =>
 /** The sizes of a trackpad swipe's wheel moves, as a browser reports them: the push, then the long coast to a stop. */
 const SWIPE = [12, 30, 45, 50, 40, 30, 22, 16, 12, 9, 7, 5, 4, 3, 2, 2, 1, 1, 1, 1, 1, 1, 1];
 
+/**
+ * Whether this browser can send a real wheel move. Playwright's phone (Safari's engine as on an iPhone) cannot ("Mouse
+ * wheel is not supported in mobile WebKit"), so there the journey hands the page the same wheel moves as events of its
+ * own, which reach the feed's listener exactly as a trackpad's do in Safari on a Mac, but scroll nothing.
+ */
+const realWheel = (page: Page) => page.context().browser()?.browserType().name() !== "webkit";
+
+/** One wheel move over the middle of the screen. */
+async function wheel(page: Page, dx: number, dy: number): Promise<void> {
+  if (realWheel(page)) {
+    await page.mouse.wheel(dx, dy);
+    return;
+  }
+  await page.evaluate(
+    ([deltaX, deltaY]) => {
+      const target = document.elementFromPoint(innerWidth / 2, innerHeight / 2) ?? document.body;
+      target.dispatchEvent(new WheelEvent("wheel", { deltaX, deltaY, bubbles: true, cancelable: true }));
+    },
+    [dx, dy] as [number, number],
+  );
+}
+
 /** A two-finger swipe on the trackpad, over the middle of the screen: the fingers go left (`"left"`) or right. */
 async function trackpadSwipe(page: Page, way: "left" | "right"): Promise<void> {
   // The fingers going left scroll the page to the right: the wheel moves are the other way from the fingers.
   const sign = way === "left" ? 1 : -1;
-  for (const size of SWIPE) await page.mouse.wheel(sign * size, 0);
+  for (const size of SWIPE) await wheel(page, sign * size, 0);
 }
 
 /** Every sideways wheel move the browser was left to act on, counted once the page has answered it. */
@@ -81,12 +103,13 @@ test("a two-finger swipe on a trackpad goes between Fresh and Followed, one tab 
   const onFresh = () => expect(tab(page, "Fresh")).toHaveAttribute("aria-current", "page");
   const onFollowed = () => expect(tab(page, "Followed")).toHaveAttribute("aria-current", "page");
 
-  // Up and down on the trackpad still scrolls the clips, and never changes the tab.
+  // Up and down on the trackpad still scrolls the clips (where the browser can send a real wheel move), and never
+  // changes the tab.
   const first = page.locator("main.feed section").first();
   await expect(first).toHaveAttribute("data-current", "true");
-  await page.mouse.wheel(0, height);
-  await expect(first).toHaveAttribute("data-current", "false");
-  await page.mouse.wheel(0, -height);
+  await wheel(page, 0, height);
+  if (realWheel(page)) await expect(first).toHaveAttribute("data-current", "false");
+  await wheel(page, 0, -height);
   await expect(first).toHaveAttribute("data-current", "true");
   await expect(page).toHaveURL("/");
   await onFresh();
