@@ -70,7 +70,13 @@ describe("FEED_PUBLIC", () => {
 
 describe("who the feed may learn from", () => {
   const ON: FeedPublic = { learned: true, teenPersonal: true, windowDays: 7 };
-  const adult: Person = { userId: "user-1", consented: true, adult: true, parentSaidYes: false };
+  const adult: Person = {
+    userId: "user-1",
+    consented: true,
+    adult: true,
+    parentSaidYes: false,
+    learnFromMe: true,
+  };
 
   it("a signed-in adult who said yes to cookies, while learned is on", () => {
     expect(askingFor(ON, adult)).toEqual({ kind: "full", id: "user-1" });
@@ -85,6 +91,11 @@ describe("who the feed may learn from", () => {
     expect(askingFor(ON, { ...adult, consented: false })).toEqual(CROWD);
     expect(askingFor(ON, { ...adult, userId: null })).toEqual(CROWD);
     expect(askingFor(ON, { ...adult, adult: false })).toEqual(CROWD);
+  });
+
+  it("nobody who turned Learn from what I do off, adult or teen with a yes", () => {
+    expect(askingFor(ON, { ...adult, learnFromMe: false })).toEqual(CROWD);
+    expect(askingFor(ON, { ...adult, adult: false, parentSaidYes: true, learnFromMe: false })).toEqual(CROWD);
   });
 
   it("an under-18 with a parent's yes only while teenPersonal is on", () => {

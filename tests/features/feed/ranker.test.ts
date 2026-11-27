@@ -101,8 +101,61 @@ describe("the open ranker gives the feed #329 shipped (old against new)", () => 
   }
 });
 
+describe("Good pick?", () => {
+  const FULL = { kind: "full", id: "viewer-1" } as const;
+  const ASKS = { ...PRIVATE_PAGE, ask: { index: 0, gameId: "id-a" } };
+
+  function asking(before: string[] = []) {
+    const notes: string[] = [];
+    const asked = new Set(before);
+    return {
+      notes,
+      asking: (userId: string, gameId: string) => {
+        notes.push(`${userId}:${gameId}`);
+        const fresh = !asked.has(gameId);
+        asked.add(gameId);
+        return Promise.resolve(fresh);
+      },
+    };
+  }
+
+  it("shows a full viewer the card on the clip the ranker names, about the game it names, and notes it once", async () => {
+    const { ranker } = stubRanker(() => Promise.resolve(ASKS));
+    const kept = asking();
+    const { service } = serviceWith({ privateRanker: () => ranker, asking: kept.asking });
+
+    expect((await service.page(null, FULL)).ask).toEqual({ key: "k1", slug: "a", name: "Game a" });
+    expect(kept.notes).toEqual(["viewer-1:id-a"]);
+    // Asked before: the card is left out.
+    expect((await service.page(null, FULL)).ask).toBeUndefined();
+  });
+
+  it("asks nobody in the crowd, and notes nothing", async () => {
+    const { ranker } = stubRanker(() => Promise.resolve(ASKS));
+    const kept = asking();
+    const { service } = serviceWith({ privateRanker: () => ranker, asking: kept.asking });
+
+    expect((await service.page(null)).ask).toBeUndefined();
+    expect(kept.notes).toEqual([]);
+  });
+
+  it("leaves the card out when its clip or its game is not shown", async () => {
+    const kept = asking();
+    for (const ask of [
+      { index: 1, gameId: "id-a" },
+      { index: 0, gameId: "id-gone" },
+      { index: 9, gameId: "id-a" },
+    ]) {
+      const { ranker } = stubRanker(() => Promise.resolve({ ...PRIVATE_PAGE, ask }));
+      const { service } = serviceWith({ privateRanker: () => ranker, asking: kept.asking });
+      expect((await service.page(null, FULL)).ask).toBeUndefined();
+    }
+    expect(kept.notes).toEqual([]);
+  });
+});
+
 describe("the feed through a ranker", () => {
-  it("turns the ranker's ids into clips, passes caughtUpAt and ask, and leaves out a game no longer live", async () => {
+  it("turns the ranker's ids into clips, passes caughtUpAt, and leaves out a game no longer live", async () => {
     const { ranker } = stubRanker(() => Promise.resolve(PRIVATE_PAGE));
     const { service, lines } = serviceWith({ privateRanker: () => ranker });
 
@@ -120,10 +173,12 @@ describe("the feed through a ranker", () => {
       upright: "https://media.test/clips/c-up.mp4",
       wide: "https://media.test/clips/c-wide.mp4",
       maker: { handle: "h-maker-c", name: "maker-c", photo: null, following: false, mine: false },
+      marks: { likes: 0, liked: false, saved: false, reposted: false },
     });
     expect(page.next).toBe("p.private-cursor");
     expect(page.caughtUpAt).toBe(NOW - 1000);
-    expect(page.ask).toEqual({ index: 1, gameId: "id-a" });
+    // The crowd is never asked Good pick: nothing about them is kept (learned feed spec D4).
+    expect(page.ask).toBeUndefined();
     expect(lines).toEqual([]);
   });
 

@@ -9,7 +9,7 @@
   import { goto } from "$app/navigation";
   import { setAgreed } from "./device-store.ts";
 
-  type Reason = "sign-in" | "sign-up" | "join" | "play" | "save" | "follow" | "account";
+  type Reason = "sign-in" | "sign-up" | "join" | "play" | "save" | "like" | "repost" | "follow" | "account";
 
   let {
     reason = null,
@@ -18,6 +18,7 @@
     card = false,
     aboveBar = false,
     onNotNow,
+    onAgreed,
   }: {
     /** What was pressed, when a button that needs the yes sent the person here. */
     reason?: Reason | null;
@@ -30,6 +31,8 @@
     /** The bar of Home and You is on this screen, so the card sits above it. */
     aboveBar?: boolean;
     onNotNow: () => void;
+    /** Runs once "I agree" has been kept, on the same screen (a press that waited for the yes). */
+    onAgreed?: () => void;
   } = $props();
 
   const WHY: Record<Reason, string> = {
@@ -38,11 +41,20 @@
     join: "To join, Ruken needs to keep a few small things in your browser.",
     play: "To play, Ruken needs to keep a few small things in your browser.",
     save: "To save this game, Ruken needs to keep a few small things in your browser.",
+    like: "To like this game, Ruken needs to keep a few small things in your browser.",
+    repost: "To repost this game, Ruken needs to keep a few small things in your browser.",
     follow: "To follow this maker, Ruken needs to keep a few small things in your browser.",
     account: "To go on, Ruken needs to keep a few small things in your browser.",
   };
 
   let sending = $state(false);
+  let agreeButton = $state<HTMLButtonElement>();
+
+  // A press that needs the yes opened the card: "I agree" takes the keyboard's focus, so the card is the next thing a
+  // person who pressed with the keyboard reaches (Tab never gets past a feed that never ends).
+  $effect(() => {
+    if (card && reason !== null) agreeButton?.focus();
+  });
 
   /** "Not now" on the notice's own screen leaves it: to the Ruken page the person came from, or the feed. Never back to another website. */
   function leave(event: MouseEvent): void {
@@ -64,18 +76,22 @@
         setAgreed(true);
         await update();
         sending = false;
+        onAgreed?.();
       };
     }}
   >
     <input type="hidden" name="next" value={next} />
     <input type="hidden" name="from" value={from} />
-    <button disabled={sending} aria-busy={sending}>I agree</button>
+    <button bind:this={agreeButton} disabled={sending} aria-busy={sending}>I agree</button>
   </form>
 {/snippet}
 
 {#if card}
   <aside class="consent" class:above-bar={aboveBar} aria-labelledby="consent-title">
     <h2 id="consent-title">Cookies?</h2>
+    {#if reason !== null}
+      <p class="why">{WHY[reason]}</p>
+    {/if}
     <p>
       We save a few small things in your browser. They keep you signed in, let you play and thank the maker
       who sent you. Nothing is saved until you say yes.

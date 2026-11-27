@@ -236,8 +236,9 @@ test("the plus works from the keyboard alone, with a ring you can see", async ({
   await page.keyboard.press("Space");
   await expect(badgeOf(clip)).toHaveAttribute("aria-pressed", "false");
   await expect.poll(() => followsOf(player.number)).toEqual([]);
+  // Next in the column: Like, Save and Repost, then Share (learned-feed spec 6.1).
   await page.keyboard.press("Tab");
-  await expect(clip.getByRole("button", { name: "Share" })).toBeFocused();
+  await expect(clip.getByRole("button", { name: "Like", exact: true })).toBeFocused();
 });
 
 test("when a follow fails, the plus stays as it was and says so", async ({ page }) => {

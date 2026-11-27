@@ -6,6 +6,11 @@
 const memory = new Map<string, string>();
 let agreed = false;
 
+/** Whether this browser has said yes to cookies, as the layout last said: a press that keeps something asks first. */
+export function hasAgreed(): boolean {
+  return agreed;
+}
+
 /** The layout says whether this browser agreed, on every load, and again when the person answers. */
 export function setAgreed(value: boolean): void {
   agreed = value;

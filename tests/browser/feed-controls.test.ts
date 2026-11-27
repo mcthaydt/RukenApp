@@ -1033,7 +1033,7 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   await openFeed(page);
   const names: string[] = [];
   const outlines: string[] = [];
-  for (let presses = 0; presses < 14; presses += 1) {
+  for (let presses = 0; presses < 17; presses += 1) {
     await page.keyboard.press("Tab");
     const focused = await page.evaluate(() => {
       const element = document.activeElement;
@@ -1053,11 +1053,11 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   const play = names.indexOf("Play");
   expect(play).toBeGreaterThan(6);
   const plus = names[play + 2] ?? "";
-  const share = plus.startsWith("Follow ") ? play + 3 : play + 1;
+  const marks = plus.startsWith("Follow ") ? play + 3 : play + 1;
   // The link's words include the first letter drawn when the maker has no photo, so the name is looked for inside them.
-  if (share === play + 3) expect(names[play + 1]).toContain(plus.slice("Follow ".length));
-  expect(names[share]).toBe("Share");
-  expect(names[share + 1]).toBe("Sound");
+  if (marks === play + 3) expect(names[play + 1]).toContain(plus.slice("Follow ".length));
+  // Like, Save and Repost stand above Share in the clip's right column (learned-feed spec 6.1), under the maker.
+  expect(names.slice(marks, marks + 5)).toEqual(["Like", "Save", "Repost", "Share", "Sound"]);
   for (const outline of outlines) expect(outline).not.toMatch(/^none/);
 });
 
