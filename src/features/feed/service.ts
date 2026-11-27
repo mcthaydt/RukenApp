@@ -1,6 +1,7 @@
 import { chicagoDayOf, type Clock } from "../../lib/clock.ts";
 import type { ListedGame } from "../games/games.ts";
 import { CROWD, type Asking } from "./feed-public.ts";
+import type { ClipMarks } from "./marks.ts";
 import { openRanker } from "./public-ranker.ts";
 import {
   isRankedPageOrBadCursor,
@@ -38,6 +39,11 @@ export interface FeedServiceDeps {
   ): Promise<Map<string, { handle: string; name: string; photoKey: string | null }>>;
   /** The whole address of a file in the bucket, from its key. */
   media(key: string): string;
+  /** What each game's clip shows of likes, saves and reposts for this viewer (null when signed out); left out, none. */
+  marksOf?(
+    viewerId: string | null,
+    games: readonly { id: string; makerUserId: string }[],
+  ): Promise<Map<string, ClipMarks>>;
   /** The private ranker, when this app has one bound; left out or null, the open ranker answers every page. */
   privateRanker?: () => Ranker | null;
   /** The open ranker; left out, the feed's own (public-ranker.ts). */
@@ -58,6 +64,8 @@ export interface FeedClip {
   upright: string;
   wide: string;
   maker: { handle: string; name: string; photo: string | null } | null;
+  /** The like count and what the viewer pressed. */
+  marks: ClipMarks;
 }
 
 /**
@@ -70,6 +78,9 @@ export interface FeedPage {
   caughtUpAt?: number;
   ask?: { index: number; gameId: string };
 }
+
+/** A clip's marks when none were read for it. */
+const NO_MARKS: ClipMarks = { likes: 0, liked: false, saved: false, reposted: false, own: false };
 
 /** Why the private ranker's answer was not used. Never the viewer or anything they did. */
 type Miss = "threw" | "slow" | "bad answer";
@@ -108,9 +119,13 @@ export function createFeedService(deps: FeedServiceDeps) {
    * is left out: the rules for who may see one are not built, and a clip that plays by itself in front of anyone must
    * not be one.
    */
-  async function page(after: null, asking?: Asking): Promise<FeedPage>;
-  async function page(after: string, asking?: Asking): Promise<FeedPage | null>;
-  async function page(after: string | null, asking: Asking = CROWD): Promise<FeedPage | null> {
+  async function page(after: null, asking?: Asking, viewerId?: string | null): Promise<FeedPage>;
+  async function page(after: string, asking?: Asking, viewerId?: string | null): Promise<FeedPage | null>;
+  async function page(
+    after: string | null,
+    asking: Asking = CROWD,
+    viewerId: string | null = null,
+  ): Promise<FeedPage | null> {
     let cursor: { made: "private" | "open"; rest: string } | null = null;
     if (after !== null) {
       if (after.startsWith(PRIVATE_PREFIX))
@@ -170,10 +185,13 @@ export function createFeedService(deps: FeedServiceDeps) {
       const game = byId.get(item.gameId);
       return game === undefined ? [] : [{ key: item.key, game }];
     });
-    const makers =
+    const shownGames = [...new Map(shown.map(({ game }) => [game.id, game])).values()];
+    const [makers, marks] = await Promise.all([
       shown.length === 0
         ? new Map<string, { handle: string; name: string; photoKey: string | null }>()
-        : await deps.makersOf([...new Set(shown.map(({ game }) => game.makerUserId))]);
+        : deps.makersOf([...new Set(shownGames.map((game) => game.makerUserId))]),
+      deps.marksOf?.(viewerId, shownGames) ?? new Map<string, ClipMarks>(),
+    ]);
     const result: FeedPage = {
       next: ranked.next === null ? null : `${prefix}${ranked.next}`,
       clips: shown.map(({ key, game }) => {
@@ -193,6 +211,7 @@ export function createFeedService(deps: FeedServiceDeps) {
                   name: maker.name,
                   photo: maker.photoKey === null ? null : deps.media(maker.photoKey),
                 },
+          marks: marks.get(game.id) ?? NO_MARKS,
         };
       }),
     };

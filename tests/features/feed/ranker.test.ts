@@ -120,6 +120,7 @@ describe("the feed through a ranker", () => {
       upright: "https://media.test/clips/c-up.mp4",
       wide: "https://media.test/clips/c-wide.mp4",
       maker: { handle: "h-maker-c", name: "maker-c", photo: null },
+      marks: { likes: 0, liked: false, saved: false, reposted: false, own: false },
     });
     expect(page.next).toBe("p.private-cursor");
     expect(page.caughtUpAt).toBe(NOW - 1000);

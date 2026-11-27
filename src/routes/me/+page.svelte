@@ -45,6 +45,8 @@
   <!-- Side links, one under another: each goes to a page of its own (the owner, 2026-11-23: secondary actions are the →
        links). -->
   <ul class="sidelinks apart">
+    <li><a class="go" href="/me/saved">Saved</a></li>
+    <li><a class="go" href="/me/reposts">Your reposts</a></li>
     <li><a class="go" href="/make">{data.makesGames ? "Your games" : "Add your games to Ruken"}</a></li>
     <li><a class="go" href="/me/password">Change password</a></li>
     <li><a class="go" href="/me/computers">Your computers</a></li>

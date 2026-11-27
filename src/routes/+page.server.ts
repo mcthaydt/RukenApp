@@ -1,4 +1,4 @@
-import { feedServices } from "../features/feed/feed.ts";
+import { feedServices, viewerOf } from "../features/feed/feed.ts";
 import { launchServices } from "../features/launch/launch.ts";
 import type { PageServerLoad } from "./$types";
 
@@ -7,7 +7,7 @@ import type { PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ locals, cookies }) => {
   const feed = feedServices();
   return {
-    first: await feed.service.page(null, feed.askingOf(locals.caller)),
+    first: await feed.service.page(null, feed.askingOf(locals.caller), viewerOf(locals.caller)),
     launch: await launchServices().screenFor(
       locals.caller.kind === "user" ? locals.caller.userId : null,
       cookies,

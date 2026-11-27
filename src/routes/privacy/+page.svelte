@@ -11,7 +11,7 @@
 <main class="card">
   <p><a class="quiet" href="/">Back to Ruken</a></p>
   <h1>Privacy</h1>
-  <p class="note">Last updated 24 November 2026</p>
+  <p class="note">Last updated 27 November 2026</p>
   <p>
     <strong>This is a draft.</strong> A lawyer has not checked it yet. It says what Ruken does today, and it will
     change before Ruken opens.
@@ -54,6 +54,11 @@
       <strong>Your computers.</strong> If you let a computer use your Ruken (<code>npx ruken sign-in</code>),
       we keep its name, a scrambled copy of its key, and when it was let in and last used. A key stops working
       after 90 days unused, or when you remove it. Changing or resetting your password removes every computer.
+    </li>
+    <li>
+      <strong>Games you like, save or repost.</strong> When you press Like, Save or Repost on a game, we keep which
+      game, which one you pressed, and when. Everyone sees how many people like a game, never who. It's gone when
+      you press it again, or when you delete your account.
     </li>
     <li>
       <strong>Games you report.</strong> If you report a game, we keep which game, what you said was wrong, any

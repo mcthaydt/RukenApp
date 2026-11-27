@@ -83,6 +83,7 @@ model User {
   wishlist     Wishlist[]
   wishlistMail WishlistMail?
   gameReports  GameReport[]
+  gameMarks    GameMark[]
 
   // The money feature's ledger lines name a maker; they are declared in money.prisma.
   journalLines JournalLine[]

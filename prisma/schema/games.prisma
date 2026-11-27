@@ -134,6 +134,9 @@ model Game {
   wishlist Wishlist[]
   reports  GameReport[]
 
+  // The feed feature's likes, saves and reposts point at a game; they are declared in feed.prisma.
+  marks GameMark[]
+
   // The money feature's journal entries can name a game; they are declared in money.prisma.
   journalEntries JournalEntry[]
   playDays       PlayDay[]

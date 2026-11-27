@@ -49,6 +49,7 @@ export const GATED: readonly string[] = [
   "/g/[game]/play",
   "/g/[game]/wishlist",
   "/api/auth",
+  "/api/feed/marks",
   "/me",
   "/make",
 ];
