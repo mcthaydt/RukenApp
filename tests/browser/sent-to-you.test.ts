@@ -15,6 +15,8 @@ const SITE = "http://localhost:4173";
 const FROM_THE_SITE = { headers: { origin: SITE } };
 
 const games: { slug: string; name: string }[] = [];
+/** A photo address of this run's own: a page's photo is its own, and the journeys share one database. */
+const PHOTO = crypto.randomUUID().replaceAll("-", "").slice(0, 16);
 
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(240_000);
@@ -60,7 +62,7 @@ async function person(browser: Browser, name: string, options: { photo?: boolean
   const { handle } = await givePage(account, {
     name,
     oneLine: "I play games.",
-    ...(options.photo === true ? { photoKey: "photos/0123456789abcdef.webp" } : {}),
+    ...(options.photo === true ? { photoKey: `photos/${PHOTO}.webp` } : {}),
   });
   return { page, number: account.number, handle, name, context };
 }
@@ -227,7 +229,7 @@ test("a friend with a photo shows it; nobody else sees the row, and a game stays
     sheet = await shareSheetFor(page, first.slug);
     await expect(sheet.getByRole("button", { name: "Send to Lee Lonely" }).locator("img")).toHaveAttribute(
       "src",
-      /0123456789abcdef\.webp/,
+      new RegExp(`${PHOTO}\\.webp`),
     );
     await send(sender.page, first.slug, "Pat Photo");
 
