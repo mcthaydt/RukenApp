@@ -101,11 +101,10 @@
     background: var(--glass-pay);
     box-shadow: var(--glass-edge);
   }
-  /* On Your games the big button is the place the person is on: a chalk ring, since its blue is its own. */
+  /* On Your games the big button is the place the person is on, and shows it as the others do: the brighter tile, with
+     no ring round it (the owner, 2026-11-27, of the white ring there: "a fully rectangle outline"). */
   .bar a.add[aria-current="page"] {
-    box-shadow:
-      inset 0 0 0 3px var(--chalk),
-      var(--glass-edge);
+    background: var(--glass-lift);
   }
   /* A phone held sideways is short, so the bar stands up along the right edge instead (clear of the notch side's safe
      area), and every screen keeps its whole height for what is on it. look.css keeps the screens clear of it. */
@@ -127,6 +126,18 @@
       width: 3.5rem;
       min-height: 3.5rem;
     }
+  }
+  /* A tap or a click shows no ring and no grey flash on the bar (the owner, 2026-11-27: a full rectangle showed on a
+     tap). The ring for the keyboard and the gamepad is a shadow, not an outline: a shadow takes the button's own
+     superellipse in every browser, where an outline can be drawn square. It sits in the bar's own padding. */
+  .bar a {
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+  }
+  .bar a:focus-visible {
+    box-shadow:
+      0 0 0 3px var(--paper),
+      var(--glass-edge);
   }
   .bar a:active {
     scale: var(--press-scale);
