@@ -1,0 +1,39 @@
+import { expect, test } from "@playwright/test";
+import { JOURNEY_PASSWORD, nationalOf, SITE_ANSWER_TIMEOUT, signUpInItsOwnContext } from "./support/account.ts";
+import { consented, NOT_CONSENTED } from "./support/consent.ts";
+import { gameWhere } from "./support/game.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+// Audit probe (not for merging): a link someone else sends, to the way back, before the cookie yes.
+let live: { slug: string; name: string };
+test.beforeAll(async ({ browser }) => {
+  test.setTimeout(180_000);
+  await forgetRateLimits();
+  const maker = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
+  live = await gameWhere(await maker.newPage(), { state: "live" });
+  await maker.close();
+});
+
+test.describe("probe", () => {
+  test.use({ storageState: NOT_CONSENTED });
+  test("a sent link to the way back, then I agree and sign in, reposts a game the person never pressed", async ({
+    page,
+    browser,
+  }) => {
+    test.setTimeout(90_000);
+    const { number } = await signUpInItsOwnContext(browser);
+    await page.goto(`/me/press?game=${live.slug}&kind=repost`);
+    await expect(page).toHaveURL(/\/cookies\?for=/);
+    const said = await page.locator("main").innerText();
+    console.log("NOTICE SAYS:", said.slice(0, 300).replace(/\n/g, " | "));
+    await page.getByRole("button", { name: "I agree" }).click();
+    await expect(page).toHaveURL(/\/sign-in\?next=%2Fme%2Fpress%3F/);
+    await page.getByLabel("Phone number").fill(nationalOf(number));
+    await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+    await expect(page).toHaveURL(`/?at=${live.slug}`);
+    await page.goto("/me/reposts");
+    // The finding: this link should repost nothing. If the game is listed, the forged press was made.
+    await expect(page.getByRole("link", { name: new RegExp(live.name) })).toHaveCount(0);
+  });
+});
