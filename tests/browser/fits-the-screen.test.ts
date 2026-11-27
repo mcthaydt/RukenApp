@@ -67,7 +67,7 @@ test.describe("signed out", () => {
 
   test("no screen scrolls the page, the bar covers nothing, and Cookies fits", async ({ page }) => {
     // Sign in, Join and Forgot password are forms taller than a small phone: they scroll inside their view.
-    for (const path of ["/sign-in", "/sign-up", "/forgot-password", "/cookies"]) {
+    for (const path of ["/sign-in", "/sign-up", "/forgot-password", "/cookies", "/your-turn"]) {
       await opened(page, path);
       expect((await overflow(page)).page, path).toBe(0);
       await expectViewAboveTheBar(page, path);
@@ -90,6 +90,8 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
     "/me/saved",
     "/me/reposts",
     "/settings/feed",
+    "/your-turn",
+    "/your-turn/stopped",
   ]) {
     await opened(page, path);
     expect(await overflow(page), path).toEqual({ page: 0, view: 0 });

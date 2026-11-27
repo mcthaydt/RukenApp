@@ -147,6 +147,7 @@ export const MORE: readonly Section[] = [
       "No game may have pornography, gambling or ads.",
       "See something wrong? Report the game, and we'll take a look.",
       "Like a maker? Press the plus on their picture to follow them.",
+      "Send a game to a friend, someone you follow who follows you back. It shows up on their Your turn.",
     ],
     links: [{ words: "Watch the feed", href: "/" }],
     picture: {

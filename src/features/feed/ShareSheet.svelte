@@ -1,18 +1,42 @@
 <!--
   Ruken's own share sheet (the owner, 2026-11-24: "our share uses native and not a custom share"): a glass panel over a
   dimmed screen, the same kind as the Report sheet. One main button copies the game's link; under it, round buttons
-  open a text, WhatsApp, an email or X with the link written in, or copy it and open Instagram to paste it, and "More" hands over to the phone's own
-  share sheet where the browser has one. The link stays on show as words, so it can always be copied by hand. One sheet
+  open a text, WhatsApp or X with the link written in, or copy it and open Instagram to paste it; "Your turn" (in
+  Email's old place, the owner, 2026-11-27 14:48 UTC) turns the sheet into a list of friends to pick and send the game
+  to; and "More" hands over to the phone's own share sheet where the browser has one. The link stays on show as words, so it can always be copied by hand. One sheet
   serves a whole screen: the screen calls `open` with the game and the button that was pressed.
 -->
 <script lang="ts">
+  import { tick } from "svelte";
   import Icon from "../../lib/icon.svelte";
   import { slideAway, slideAwayOnCancel, stopSliding } from "../../lib/sheet.ts";
+  import { SendPicker, SEND_WORDS, type Friend } from "../sends/sends.browser.ts";
   import { copyLink, shareByPhone, shareTargets, type ShareLink, type ShareTools } from "./share.ts";
+
+  // The person's friends, for Your turn; null when signed out.
+  let { friends = null }: { friends?: readonly Friend[] | null } = $props();
+
+  // Whether the sheet shows the friends to pick (Your turn) instead of the link and the apps.
+  let picking = $state(false);
+  let picker = $state<{ focusFirst: () => void }>();
+  let yourTurnButton = $state<HTMLButtonElement>();
+
+  async function pickFriends(): Promise<void> {
+    picking = true;
+    await tick();
+    picker?.focusFirst();
+  }
+
+  async function backToApps(): Promise<void> {
+    picking = false;
+    await tick();
+    yourTurnButton?.focus();
+  }
 
   let sheet = $state<HTMLDialogElement>();
   let copyButton = $state<HTMLButtonElement>();
   let link = $state<ShareLink | null>(null);
+  let slug = $state("");
   let opener: HTMLElement | null = null;
   // Whether this browser has a share sheet of its own, for "More". Asked at each open: a test or a browser may change it.
   let phoneSheet = $state(false);
@@ -32,14 +56,18 @@
   /** Opens the sheet for a game. Focus goes back to `from` when it closes. */
   export function open(game: { slug: string; name: string }, from: HTMLElement | null): void {
     link = { title: game.name, url: `${location.origin}/g/${game.slug}` };
+    slug = game.slug;
     opener = from;
     said = "";
+    picking = false;
     phoneSheet = typeof navigator.share === "function";
     if (sheet === undefined) return;
     stopSliding(sheet);
     sheet.showModal();
-    // The one main action takes the focus, not the cross that comes first.
-    copyButton?.focus();
+    // The one main action takes the focus, not the cross that comes first. Left on the friends, Copy link comes back
+    // only once Svelte has drawn it again (implementation audit 5, R1).
+    if (copyButton === undefined || !copyButton.isConnected) void tick().then(() => copyButton?.focus());
+    else copyButton.focus();
   }
 
   /** Copies the link and says so. `then` is said after "Link copied." when the link is to be pasted somewhere. */
@@ -65,8 +93,11 @@
 </script>
 
 <!-- A press on the dimmed screen around the panel closes it; the keyboard has Escape and the cross. -->
+<!-- Never a Tab stop of its own: WebKit otherwise stops on the sheet itself between its buttons, a stop the pad's
+     arrows cannot reach (implementation audit 1 of Your turn, R2). -->
 <dialog
   class="sharesheet rises"
+  tabindex="-1"
   bind:this={sheet}
   aria-labelledby="share-title"
   onclick={(event) => {
@@ -74,70 +105,88 @@
   }}
   oncancel={slideAwayOnCancel}
   onclose={() => {
+    // The next Share starts on the link and the apps, never on the friends.
+    picking = false;
     opener?.focus();
   }}
 >
   <div class="inside">
     <div class="top">
-      <h2 id="share-title">Share</h2>
+      <h2 id="share-title">{picking ? SEND_WORDS.pickTitle : "Share"}</h2>
       <button type="button" class="close" aria-label="Close" onclick={close}><Icon name="close" /></button>
     </div>
     {#if link !== null}
       <p class="which">{link.title}</p>
-      <p class="link">{link.url}</p>
     {/if}
-    <button type="button" class="main" bind:this={copyButton} onclick={() => void copy()}>Copy link</button>
-    <p class="said" role="status">{said}</p>
-    <ul class="apps">
-      {#each targets as target (target.key)}
-        <li>
-          <a
-            class="app"
-            href={target.href}
-            target={target.href.startsWith("https:") ? "_blank" : undefined}
-            rel="noopener noreferrer"
-            onclick={() => {
-              // The copy starts inside the press, as the clipboard asks; the app opens beside the sheet.
-              if (target.pasteFirst) void copy(`Paste it in ${target.words}.`);
-            }}
-          >
-            <span class="round" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="24" height="24" focusable="false">
-                {#if target.key === "text"}
-                  <path d="M4 5h16v11H10l-6 4V5z" />
-                {:else if target.key === "whatsapp"}
-                  <path d="M12 3.5a8.5 8.5 0 0 0-7.3 12.8L3.5 20.5l4.3-1.1A8.5 8.5 0 1 0 12 3.5z" />
-                  <path
-                    d="M9 8.5c0 3.5 3 6.5 6.5 6.5l.8-1.6-2-1-1 1c-1.3-.5-2.7-1.9-3.2-3.2l1-1-1-2L9 8.5z"
-                  />
-                {:else if target.key === "instagram"}
-                  <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
-                  <circle cx="12" cy="12" r="4" />
-                  <path class="dots" d="M17 7h.01" />
-                {:else if target.key === "email"}
-                  <path d="M3.5 6h17v12h-17zM3.5 6l8.5 7 8.5-7" />
-                {:else}
-                  <path d="M4.5 4h4L19.5 20h-4zM19 4l-6.2 7M5 20l6.2-7" />
-                {/if}
-              </svg>
-            </span>
-            <span>{target.words}</span>
-          </a>
-        </li>
-      {/each}
-      {#if phoneSheet}
-        <li>
-          <button type="button" class="app" onclick={() => void more()}>
-            <span class="round" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="24" height="24" focusable="false">
-                <path class="dots" d="M6 12h.01M12 12h.01M18 12h.01" />
-              </svg>
-            </span>
-            <span>More</span>
-          </button>
-        </li>
+    {#if picking}
+      <SendPicker bind:this={picker} game={slug} {friends} onback={() => void backToApps()} />
+    {:else}
+      {#if link !== null}
+        <p class="link">{link.url}</p>
       {/if}
-    </ul>
+      <button type="button" class="main" bind:this={copyButton} onclick={() => void copy()}>Copy link</button>
+      <p class="said" role="status">{said}</p>
+      <ul class="apps">
+        {#each targets as target (target.key)}
+          {#if target.key === "x"}
+            <li>
+              <button type="button" class="app" bind:this={yourTurnButton} onclick={() => void pickFriends()}>
+                <span class="round" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="24" height="24" focusable="false">
+                    <path d="M4 12l16-8-6 16-2.5-6.5L4 12zM11.5 13.5L20 4" />
+                  </svg>
+                </span>
+                <span>{SEND_WORDS.shareApp}</span>
+              </button>
+            </li>
+          {/if}
+          <li>
+            <a
+              class="app"
+              href={target.href}
+              target={target.href.startsWith("https:") ? "_blank" : undefined}
+              rel="noopener noreferrer"
+              onclick={() => {
+                // The copy starts inside the press, as the clipboard asks; the app opens beside the sheet.
+                if (target.pasteFirst) void copy(`Paste it in ${target.words}.`);
+              }}
+            >
+              <span class="round" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="24" height="24" focusable="false">
+                  {#if target.key === "text"}
+                    <path d="M4 5h16v11H10l-6 4V5z" />
+                  {:else if target.key === "whatsapp"}
+                    <path d="M12 3.5a8.5 8.5 0 0 0-7.3 12.8L3.5 20.5l4.3-1.1A8.5 8.5 0 1 0 12 3.5z" />
+                    <path
+                      d="M9 8.5c0 3.5 3 6.5 6.5 6.5l.8-1.6-2-1-1 1c-1.3-.5-2.7-1.9-3.2-3.2l1-1-1-2L9 8.5z"
+                    />
+                  {:else if target.key === "instagram"}
+                    <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+                    <circle cx="12" cy="12" r="4" />
+                    <path class="dots" d="M17 7h.01" />
+                  {:else}
+                    <path d="M4.5 4h4L19.5 20h-4zM19 4l-6.2 7M5 20l6.2-7" />
+                  {/if}
+                </svg>
+              </span>
+              <span>{target.words}</span>
+            </a>
+          </li>
+        {/each}
+        {#if phoneSheet}
+          <li>
+            <button type="button" class="app" onclick={() => void more()}>
+              <span class="round" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="24" height="24" focusable="false">
+                  <path class="dots" d="M6 12h.01M12 12h.01M18 12h.01" />
+                </svg>
+              </span>
+              <span>More</span>
+            </button>
+          </li>
+        {/if}
+      </ul>
+    {/if}
   </div>
 </dialog>
 

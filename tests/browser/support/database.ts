@@ -659,3 +659,38 @@ export async function followsOf(number: string): Promise<string[]> {
   });
   return rows.map((row) => row.maker.makerPage?.handle ?? "(no page)");
 }
+
+/** Makes two people friends (each follows the other), by the numbers they signed up with. */
+export async function makeFriends(a: { number: string }, b: { number: string }): Promise<void> {
+  const [one, two] = [await userIdOf(a.number), await userIdOf(b.number)];
+  const followedAt = new Date();
+  await db().makerFollow.createMany({
+    data: [
+      { followerId: one, makerId: two, followedAt },
+      { followerId: two, makerId: one, followedAt },
+    ],
+    skipDuplicates: true,
+  });
+}
+
+/** One person stops following another, by the numbers they signed up with. */
+export async function unfollow(follower: { number: string }, maker: { number: string }): Promise<void> {
+  const [followerId, makerId] = [await userIdOf(follower.number), await userIdOf(maker.number)];
+  await db().makerFollow.deleteMany({ where: { followerId, makerId } });
+}
+
+/** The games sent to a person (by their number), newest first: each game's address and whether they have seen it. */
+export async function sentTo(number: string): Promise<{ game: string; seen: boolean }[]> {
+  const toId = await userIdOf(number);
+  const rows = await db().gameSend.findMany({
+    where: { toId },
+    orderBy: { sentAt: "desc" },
+    select: { seenAt: true, game: { select: { slug: true } } },
+  });
+  return rows.map((row) => ({ game: row.game.slug, seen: row.seenAt !== null }));
+}
+
+/** How many people this person (by their number) has stopped sending them games. */
+export async function stopsOf(number: string): Promise<number> {
+  return db().sendStop.count({ where: { stopperId: await userIdOf(number) } });
+}

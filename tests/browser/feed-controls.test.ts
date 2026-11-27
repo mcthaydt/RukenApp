@@ -735,11 +735,14 @@ test.describe("Share", () => {
     const address = `${new URL(page.url()).origin}/g/${String(slug)}`;
     await current(page).getByRole("button", { name: "Share" }).click();
     const sheet = sheetOf(page);
-    for (const app of ["Text", "WhatsApp", "Email", "X"]) {
+    for (const app of ["Text", "WhatsApp", "X"]) {
       const href = (await sheet.getByRole("link", { name: app, exact: true }).getAttribute("href")) ?? "";
       expect(decodeURIComponent(href), app).toContain(address);
     }
     await expect(sheet.getByRole("link", { name: "Facebook" })).toHaveCount(0);
+    // Email made way for Ruken's own Your turn (the owner, 2026-11-27), a button in its place before X.
+    await expect(sheet.getByRole("link", { name: "Email" })).toHaveCount(0);
+    await expect(sheet.getByRole("button", { name: "Your turn", exact: true })).toBeVisible();
     // Instagram takes no words in its address: the press copies the link and opens Instagram's messages beside the
     // sheet, and the sheet says to paste it there.
     const instagram = sheet.getByRole("link", { name: "Instagram", exact: true });
@@ -1060,7 +1063,7 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   await openFeed(page);
   const names: string[] = [];
   const outlines: string[] = [];
-  for (let presses = 0; presses < 17; presses += 1) {
+  for (let presses = 0; presses < 18; presses += 1) {
     await page.keyboard.press("Tab");
     const focused = await page.evaluate(() => {
       const element = document.activeElement;
@@ -1081,9 +1084,18 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   // once for the whole feed), then the first clip's controls: the band (the game, Play), then the column on the right
   // from its top, which starts with the maker and their plus when the game's maker has a page, then the marks and Share,
   // then the next clip's, from its game and Play again.
-  expect(names.slice(0, 7)).toEqual(["Home", "Add a game", "You", "Sound", "Fresh", "Followed", "Search"]);
+  expect(names.slice(0, 8)).toEqual([
+    "Home",
+    "Add a game",
+    "You",
+    "Sound",
+    "Fresh",
+    "Followed",
+    "Your turn",
+    "Search",
+  ]);
   const play = names.indexOf("Play");
-  expect(play).toBeGreaterThan(6);
+  expect(play).toBeGreaterThan(7);
   const plus = names[play + 2] ?? "";
   const marks = plus.startsWith("Follow ") ? play + 3 : play + 1;
   // The link's words include the first letter drawn when the maker has no photo, so the name is looked for inside them.

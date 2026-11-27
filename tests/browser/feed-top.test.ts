@@ -40,6 +40,7 @@ const topBar = (page: Page) => ({
   tabs: page.getByRole("navigation", { name: "Feeds" }),
   fresh: page.getByRole("navigation", { name: "Feeds" }).getByRole("link", { name: "Fresh" }),
   followed: page.getByRole("navigation", { name: "Feeds" }).getByRole("link", { name: "Followed" }),
+  yourTurn: page.getByRole("navigation", { name: "Feeds" }).getByRole("link", { name: /^Your turn/ }),
   search: page.getByRole("link", { name: "Search", exact: true }),
 });
 
@@ -95,7 +96,13 @@ async function barLinesUp(page: Page): Promise<void> {
   expect(tabs.x + tabs.width).toBeLessThanOrEqual(search.x);
   expect(search.x + search.width).toBeLessThanOrEqual(window.width);
   expect(Math.abs(tabs.x + tabs.width / 2 - window.width / 2)).toBeLessThan(2);
-  for (const box of [sound, search, await boxOf(bar.fresh), await boxOf(bar.followed)]) {
+  for (const box of [
+    sound,
+    search,
+    await boxOf(bar.fresh),
+    await boxOf(bar.followed),
+    await boxOf(bar.yourTurn),
+  ]) {
     expect(box.width).toBeGreaterThanOrEqual(48);
     expect(box.height).toBeGreaterThanOrEqual(48);
   }
@@ -113,6 +120,33 @@ test("the speaker, the tabs and Search line up as one bar that stays put while t
   await page.keyboard.press("ArrowDown");
   await expect(page.locator("section[data-slug]").nth(1)).toHaveAttribute("data-current", "true");
   expect(await middlesOf(page)).toEqual(before);
+});
+
+// Your turn has no clip to hear, so no speaker: the tabs still sit in the middle, in line with Search, at 320 wide too.
+test("on Your turn the tabs and Search line up as the same bar", async ({ page }) => {
+  for (const width of [page.viewportSize()?.width ?? 0, 320]) {
+    if (width === 320) await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto("/your-turn");
+    await pageHasSettled(page);
+    const bar = topBar(page);
+    const tabs = await boxOf(bar.tabs);
+    const search = await boxOf(bar.search);
+    expect(
+      Math.abs(tabs.y + tabs.height / 2 - (search.y + search.height / 2)),
+      `at ${String(width)}`,
+    ).toBeLessThanOrEqual(1);
+    expect(tabs.x + tabs.width).toBeLessThanOrEqual(search.x);
+    expect(Math.abs(tabs.x + tabs.width / 2 - width / 2)).toBeLessThan(2);
+    for (const box of [
+      search,
+      await boxOf(bar.fresh),
+      await boxOf(bar.followed),
+      await boxOf(bar.yourTurn),
+    ]) {
+      expect(box.width).toBeGreaterThanOrEqual(48);
+      expect(box.height).toBeGreaterThanOrEqual(48);
+    }
+  }
 });
 
 // Android Chrome's common widths, as Chrome's own engine draws them, with touch, down to the narrowest phone the bar
@@ -163,7 +197,7 @@ async function swipe(page: Page, from: [number, number], to: [number, number]): 
 }
 
 // The owner, 2026-11-27: "Swiping left and right should go between fresh, followed, and your turn".
-test("swiping sideways goes between Fresh and Followed, and a swipe up and down never does", async ({
+test("swiping sideways goes between Fresh, Followed and Your turn, and a swipe up and down never does", async ({
   page,
 }) => {
   await page.goto("/");
@@ -177,18 +211,26 @@ test("swiping sideways goes between Fresh and Followed, and a swipe up and down 
   await expect(topBar(page).fresh).toHaveAttribute("aria-current", "page");
   await expect(page).toHaveURL("/");
 
-  // To the left brings the tab on the right, as turning a page does; past the last tab nothing happens.
+  // To the left brings the tab on the right, as turning a page does; past the last tab (Your turn) nothing happens.
   await swipe(page, [width * 0.8, middle], [width * 0.2, middle]);
   await expect(page).toHaveURL("/followed");
   await expect(topBar(page).followed).toHaveAttribute("aria-current", "page");
   await pageHasSettled(page);
   await swipe(page, [width * 0.8, middle], [width * 0.2, middle]);
+  await expect(page).toHaveURL("/your-turn");
+  await expect(topBar(page).yourTurn).toHaveAttribute("aria-current", "page");
+  await pageHasSettled(page);
+  await swipe(page, [width * 0.8, middle], [width * 0.2, middle]);
+  await expect(page).toHaveURL("/your-turn");
+  await swipe(page, [width * 0.2, middle], [width * 0.8, middle]);
+  await expect(page).toHaveURL("/followed");
+  await pageHasSettled(page);
   await swipe(page, [width * 0.2, middle], [width * 0.8, middle]);
   await expect(page).toHaveURL("/");
   await expect(topBar(page).fresh).toHaveAttribute("aria-current", "page");
 });
 
-test("a gamepad's shoulder buttons go between Fresh and Followed", async ({ page }) => {
+test("a gamepad's shoulder buttons go between Fresh, Followed and Your turn", async ({ page }) => {
   // One standard gamepad, its buttons set by the journey (no browser lets a test plug a real one in).
   await page.addInitScript(() => {
     const buttons = Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 }));
@@ -227,6 +269,16 @@ test("a gamepad's shoulder buttons go between Fresh and Followed", async ({ page
   await expect(page).toHaveURL("/");
   await expect(topBar(page).fresh).toHaveAttribute("aria-current", "page");
   await press(4, false);
+  // RB twice reaches the third tab, Your turn, which keeps the same top bar.
+  await press(5, true);
+  await expect(page).toHaveURL("/followed");
+  await press(5, false);
+  // The same button again: the page must see it let go first, which it does on its next frame.
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  await press(5, true);
+  await expect(page).toHaveURL("/your-turn");
+  await expect(topBar(page).yourTurn).toHaveAttribute("aria-current", "page");
+  await press(5, false);
 });
 
 test("Followed says to sign in, and signed in that the person follows nobody yet", async ({

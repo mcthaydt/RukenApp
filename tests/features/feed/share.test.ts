@@ -6,14 +6,8 @@ import { copyLink, shareByPhone, shareTargets } from "../../../src/features/feed
 const link = { title: "Floor & Fifty?", url: "https://ruken.io/g/floor-fifty" };
 
 describe("shareTargets", () => {
-  it("offers Text, WhatsApp, Instagram, Email and X, in that order", () => {
-    expect(shareTargets(link).map((target) => target.words)).toEqual([
-      "Text",
-      "WhatsApp",
-      "Instagram",
-      "Email",
-      "X",
-    ]);
+  it("offers Text, WhatsApp, Instagram and X, in that order (Email made way for Your turn, which the sheet adds)", () => {
+    expect(shareTargets(link).map((target) => target.words)).toEqual(["Text", "WhatsApp", "Instagram", "X"]);
   });
 
   it("opens Instagram's messages with the link to paste, since Instagram takes no words in its address", () => {

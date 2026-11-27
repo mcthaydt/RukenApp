@@ -1,8 +1,9 @@
 <!--
   The feed's top bar (the owner, 2026-11-22: "search icon on the right; For You | Following in the middle", then on
   2026-11-27 names of Ruken's own, not TikTok's, and easy to translate): one row fixed at the top that holds the speaker
-  on the left (given by the feed, Feed.svelte), two tabs in one frosted pill in the middle, Fresh (every game, the feed
-  at /) and Followed (games from makers the person follows, at /followed), and Search, a round glass button on the
+  on the left (given by the feed, Feed.svelte), the tabs in one frosted pill in the middle, Fresh (every game, the feed
+  at /), Followed (games from makers the person follows, at /followed) and Your turn (games friends sent, at
+  /your-turn, with a dot when new ones came), and Search, a round glass button on the
   right. The three share one centre line and never move with the clips under them (the owner, 2026-11-27: "they need
   to be grouped together as a unit"). The pill is no taller than the round buttons and its tabs are tight, so a third
   tab fits beside them on a 360px phone. The tabs are links, so they work without script, and moving between them
@@ -33,9 +34,12 @@
   let {
     on,
     sound,
+    news = false,
   }: {
     /** Which tab the person is on. */
     on: TabKey;
+    /** Whether friends sent games the person has not looked at yet: a dot on the Your turn tab. */
+    news?: boolean;
     /** The speaker, where the screen has clips to play; its place stays empty otherwise, so the pill stays centred. */
     sound?: Snippet | undefined;
   } = $props();
@@ -161,7 +165,12 @@
   </div>
   <nav class="tabs" aria-label="Feeds">
     {#each TABS as tab (tab.key)}
-      <a href={tab.href} aria-current={on === tab.key ? "page" : undefined}>{tab.name}</a>
+      <a
+        href={tab.href}
+        aria-current={on === tab.key ? "page" : undefined}
+        aria-label={tab.key === "your-turn" && news ? "Your turn, new games" : undefined}
+        >{tab.name}{#if tab.key === "your-turn" && news}<span class="news" aria-hidden="true"></span>{/if}</a
+      >
     {/each}
   </nav>
   <a class="search" href="/search" aria-label="Search" title="Search"><Icon name="search" /></a>
@@ -216,6 +225,22 @@
     text-decoration: none;
     text-shadow: var(--glass-ink);
     white-space: nowrap;
+  }
+  /* New games on Your turn: a small green dot at the tab's top right, inside the pill. It takes no width, so three tabs
+     still fit on the narrowest phone. */
+  .tabs a {
+    position: relative;
+  }
+  .news {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.25rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    --corner: round;
+    background: var(--sage);
+    box-shadow: 0 0 0 2px var(--felt-deep);
   }
   /* The tab the person is on: a brighter pill of the same glass, as in the bar at the bottom. */
   .tabs a[aria-current="page"] {

@@ -85,6 +85,12 @@ model User {
   follows   MakerFollow[] @relation("MakerFollowFollower")
   followers MakerFollow[] @relation("MakerFollowMaker")
 
+  // The sends feature's tables point at a person (games friends sent, and whom a person stopped); in sends.prisma.
+  gamesSent     GameSend[] @relation("GameSendFrom")
+  gamesReceived GameSend[] @relation("GameSendTo")
+  sendStops     SendStop[] @relation("SendStopStopper")
+  stoppedBy     SendStop[] @relation("SendStopStopped")
+
   // The launch feature's tables point at a person; they are declared in launch.prisma.
   wishlist     Wishlist[]
   wishlistMail WishlistMail?

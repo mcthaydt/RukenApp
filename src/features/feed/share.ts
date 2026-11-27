@@ -22,7 +22,7 @@ export interface ShareLink {
 /** An app the sheet can open with the link already written in, or, where the app has no way to be handed words, with
  *  the link copied first so it can be pasted there (`pasteFirst`). */
 export interface ShareTarget {
-  key: "text" | "whatsapp" | "instagram" | "email" | "x";
+  key: "text" | "whatsapp" | "instagram" | "x";
   words: string;
   href: string;
   pasteFirst?: true;
@@ -31,8 +31,9 @@ export interface ShareTarget {
 /** What the person is asked to do with the link, in words they would say. */
 export const messageFor = (link: ShareLink): string => `Play ${link.title} on Ruken`;
 
-/** The apps, in the order people reach for them: a text, WhatsApp, Instagram, an email, then X. Facebook made way for
- *  Instagram (the owner, 2026-11-24: "Replace Facebook with Whatsapp", after "Replace whatsapp with instagram"). */
+/** The apps, in the order people reach for them: a text, WhatsApp, Instagram, then X. Facebook made way for Instagram
+ *  (the owner, 2026-11-24: "Replace Facebook with Whatsapp", after "Replace whatsapp with instagram"); Email made way
+ *  for Ruken's own Your turn, which the sheet puts before X (the owner, 2026-11-27 14:48 UTC). */
 export function shareTargets(link: ShareLink): ShareTarget[] {
   const message = messageFor(link);
   const both = encodeURIComponent(`${message} ${link.url}`);
@@ -48,11 +49,6 @@ export function shareTargets(link: ShareLink): ShareTarget[] {
       words: "Instagram",
       href: "https://www.instagram.com/direct/inbox/",
       pasteFirst: true,
-    },
-    {
-      key: "email",
-      words: "Email",
-      href: `mailto:?subject=${encodeURIComponent(message)}&body=${encodeURIComponent(link.url)}`,
     },
     {
       key: "x",

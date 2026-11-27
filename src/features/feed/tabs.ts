@@ -5,6 +5,8 @@
 export const TABS = [
   { key: "fresh", name: "Fresh", href: "/" },
   { key: "followed", name: "Followed", href: "/followed" },
+  // The games friends sent the person (src/routes/your-turn/).
+  { key: "your-turn", name: "Your turn", href: "/your-turn" },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]["key"];

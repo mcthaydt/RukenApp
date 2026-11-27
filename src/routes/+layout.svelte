@@ -66,8 +66,9 @@
     !NO_BAR.includes(page.route.id ?? "") && !(page.route.id === "/make/page" && page.data.rooms === null),
   );
 
-  // The feed, its Followed tab and Search fill the window with their own top bar, so they have no wordmark above them.
-  const FULL_SCREENS: readonly string[] = ["/", "/followed", "/search"];
+  // The feed, its Followed and Your turn tabs and Search fill the window with their own top bar, so they have no
+  // wordmark above them.
+  const FULL_SCREENS: readonly string[] = ["/", "/followed", "/your-turn", "/search"];
 
   // A game's own page, its play screen and its maker's test play name the game in the tab; every other screen, a
   // missing page included, has the base title.

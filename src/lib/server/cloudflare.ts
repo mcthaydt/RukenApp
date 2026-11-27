@@ -37,6 +37,15 @@ function placeOf(request: Request): Place {
  */
 export const cloudflarePrivateFeed = () => env.PRIVATE?.feed ?? null;
 
+/**
+ * How to ask the private Worker for the send limits, or null when it is not bound or does not answer them. The call is
+ * made on the binding itself, so the method keeps its receiver.
+ */
+export const cloudflarePrivateSendLimits = (): (() => Promise<unknown>) | null => {
+  const bound = env.PRIVATE;
+  return bound?.sendLimits === undefined ? null : () => bound.sendLimits?.() ?? Promise.resolve(null);
+};
+
 /** Games and clips live in one R2 bucket, bound as GAME_FILES (wrangler.jsonc). */
 export const cloudflareFiles = (): FileStore => r2FileStore(env.GAME_FILES);
 

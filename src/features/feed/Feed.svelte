@@ -28,6 +28,7 @@
   import type { FeedClip, FeedPage } from "./service.ts";
   import type { ClipMarks, MarkKind } from "./marks.ts";
   import type { TabKey } from "./tabs.ts";
+  import type { Friend } from "../sends/sends.browser.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
 
   let {
@@ -35,10 +36,16 @@
     launch,
     tab = "fresh",
     tune = false,
+    news = false,
+    friends = null,
   }: {
     first: FeedPage;
     /** Which of the top bar's tabs this is: every game, or the makers the person follows (Followed.svelte). */
     tab?: TabKey;
+    /** Whether friends sent games the person has not looked at: the dot on the Your turn tab. */
+    news?: boolean;
+    /** The person's friends, for Your turn in the share sheet; null when signed out. */
+    friends?: readonly Friend[] | null;
     /** Whether this person's feed is learning from them, so each clip offers More and Less like this (•••). */
     tune?: boolean;
     /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
@@ -510,7 +517,7 @@
   </button>
 {/snippet}
 
-<FeedTop on={tab} sound={clips.length > 0 ? speaker : undefined} />
+<FeedTop on={tab} {news} sound={clips.length > 0 ? speaker : undefined} />
 
 {#if clips.length === 0}
   <main class="empty">
@@ -775,7 +782,7 @@
     {/if}
   </main>
 {/if}
-<ShareSheet bind:this={shareSheet} />
+<ShareSheet bind:this={shareSheet} {friends} />
 {#if tune}
   <TasteSheet bind:this={tasteSheet} onsaved={sayGotIt} />
 {/if}
