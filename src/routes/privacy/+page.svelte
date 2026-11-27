@@ -11,7 +11,7 @@
 <main class="card">
   <p><a class="quiet" href="/">Back to Ruken</a></p>
   <h1>Privacy</h1>
-  <p class="note">Last updated 24 November 2026</p>
+  <p class="note">Last updated 27 November 2026</p>
   <p>
     <strong>This is a draft.</strong> A lawyer has not checked it yet. It says what Ruken does today, and it will
     change before Ruken opens.
@@ -59,6 +59,10 @@
       <strong>Games you report.</strong> If you report a game, we keep which game, what you said was wrong, any
       words you wrote, and when. Only Ruken's staff read it. The game's maker never sees who reported it. It's gone
       when you take it back, or when you delete your account.
+    </li>
+    <li>
+      <strong>Makers you follow.</strong> If you follow a maker, we keep who you follow and when. Nobody else sees
+      it. It's gone when you unfollow, or when you or the maker delete your account.
     </li>
     <li>
       <strong>While a computer asks to sign in.</strong> We keep the city and country it asked from, to show you
@@ -167,6 +171,10 @@
     <li>
       <strong>rk_wish_pressed</strong> remembers which game you pressed Wishlist on while signed out, so it goes
       on your list after you sign up. 30 minutes.
+    </li>
+    <li>
+      <strong>rk_follow_pressed</strong> remembers which maker you pressed follow on while signed out, so you follow
+      them after you sign up. 30 minutes.
     </li>
     <li><strong>thrown-away</strong> tells a maker which game they just threw away. 1 minute.</li>
     <li><strong>page-saved</strong> says "Saved." once, after a maker saves their page. 1 minute.</li>

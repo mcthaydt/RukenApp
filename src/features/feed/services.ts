@@ -15,6 +15,8 @@ export interface FeedServices {
   service: FeedService;
   /** Who the ranker is told is asking, from who sent the request and FEED_PUBLIC. */
   askingOf(caller: Caller): Asking;
+  /** The signed-in person a page is for, so it can mark the makers they follow; null for anyone else. */
+  viewerOf(caller: Caller): string | null;
 }
 
 let shared: FeedServices | undefined;
@@ -35,9 +37,11 @@ export function feedServices(): FeedServices {
       liveGames: () => gamesServices().service.liveGames(),
       memberBeatsByGame: (since, now) => playServices().service.memberBeatsByGame(since, now),
       makersOf: (userIds) => pagesServices().service.makersOf(userIds),
+      followedAmong: (followerId, makerIds) => pagesServices().follows.followedAmong(followerId, makerIds),
       media: (key) => gamesServices().media(key),
       privateRanker: () => bound(),
     }),
+    viewerOf: (caller) => (caller.kind === "user" ? caller.userId : null),
     askingOf: (caller) => {
       settings ??= readFeedPublic(optionalEnv("FEED_PUBLIC"), (line) => {
         console.warn(line);

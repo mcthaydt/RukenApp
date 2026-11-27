@@ -61,7 +61,14 @@ describe("taking it back", () => {
 
   it("knows every cookie the code sets", () => {
     const session = cookiePolicy("https://ruken.test").sessionCookieName;
-    for (const name of [ARRIVAL_COOKIE, SIGN_UP_COOKIE, WELCOME_BACK_COOKIE, session, "rk_session_data"]) {
+    for (const name of [
+      ARRIVAL_COOKIE,
+      SIGN_UP_COOKIE,
+      WELCOME_BACK_COOKIE,
+      session,
+      "rk_session_data",
+      "rk_follow_pressed",
+    ]) {
       expect(RUKEN_COOKIE_NAMES).toContain(name);
     }
   });

@@ -9,7 +9,7 @@
   import { goto } from "$app/navigation";
   import { setAgreed } from "./device-store.ts";
 
-  type Reason = "sign-in" | "sign-up" | "join" | "play" | "save" | "account";
+  type Reason = "sign-in" | "sign-up" | "join" | "play" | "save" | "follow" | "account";
 
   let {
     reason = null,
@@ -38,6 +38,7 @@
     join: "To join, Ruken needs to keep a few small things in your browser.",
     play: "To play, Ruken needs to keep a few small things in your browser.",
     save: "To save this game, Ruken needs to keep a few small things in your browser.",
+    follow: "To follow this maker, Ruken needs to keep a few small things in your browser.",
     account: "To go on, Ruken needs to keep a few small things in your browser.",
   };
 
