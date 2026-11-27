@@ -4,8 +4,8 @@ import { feedServices, pressOfPath, takePress } from "../../../features/feed/fee
 import { gamesServices } from "../../../features/games/games.ts";
 import type { RequestHandler } from "./$types";
 
-// The way back for a press of Like, Save or Repost that waited for the cookie yes or for sign-in (pressed.ts). Under
-// /me, so a person with no yes meets the notice and one signed out signs in first, each coming back here. The press is
+// The way back for a press of Like, Save or Repost that waited for sign-in (pressed.ts). Under /me, so a person signed
+// out signs in first and comes back here. The press is
 // made only when the person made it (its note matches), then they go back to the feed at that game's clip.
 export const GET: RequestHandler = async ({ url, locals, cookies }) => {
   const press = pressOfPath(url.pathname + url.search);

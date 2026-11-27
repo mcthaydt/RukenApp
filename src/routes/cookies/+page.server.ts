@@ -1,7 +1,6 @@
 import { fail, isRedirect, redirect } from "@sveltejs/kit";
 import { authServices, signOut } from "../../features/accounts/accounts.ts";
 import { agree, consentDay, hasConsent, takeBack, type GatedAction } from "../../features/consent/consent.ts";
-import { pressOfPath, rememberPress } from "../../features/feed/feed.ts";
 import { gamesServices } from "../../features/games/games.ts";
 import { membershipServices } from "../../features/membership/membership.ts";
 import { isHandleShape, pagesServices } from "../../features/pages/pages.ts";
@@ -78,11 +77,7 @@ export const actions: Actions = {
     };
     agree(cookies, url.protocol === "https:", chicagoDayOf(systemClock.epochMs()));
     await rememberArrival(cookies, text("from"));
-    const next = safeNextPath(text("next"));
-    // A press of Like, Save or Repost opened the notice: the yes carries on to it (pressed.ts).
-    const press = pressOfPath(next);
-    if (press !== null) rememberPress(cookies, press);
-    redirect(303, next);
+    redirect(303, safeNextPath(text("next")));
   },
 
   // Signs this browser out here (the session row too, as Sign out does), then deletes every Ruken cookie. The account

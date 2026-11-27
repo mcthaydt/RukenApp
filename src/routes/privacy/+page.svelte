@@ -174,8 +174,8 @@
       on your list after you sign up. 30 minutes.
     </li>
     <li>
-      <strong>rk_mark_pressed</strong> remembers which game you pressed Like, Save or Repost on before you said
-      yes or signed in, so it is made once you have. 30 minutes.
+      <strong>rk_mark_pressed</strong> remembers which game you pressed Like, Save or Repost on while signed out,
+      so it is made once you sign in. 30 minutes.
     </li>
     <li><strong>thrown-away</strong> tells a maker which game they just threw away. 1 minute.</li>
     <li><strong>page-saved</strong> says "Saved." once, after a maker saves their page. 1 minute.</li>

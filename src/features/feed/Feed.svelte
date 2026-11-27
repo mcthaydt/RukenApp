@@ -8,7 +8,7 @@
   screen past the last clip until that page comes. When every game has been shown it goes round again in a new order.
 -->
 <script lang="ts">
-  import { deviceStore, hasAgreed } from "../consent/consent.browser.ts";
+  import { askForYes, deviceStore, hasAgreed } from "../consent/consent.browser.ts";
   import { goto } from "$app/navigation";
   import { loads } from "../../lib/loads.ts";
   import { onMount, tick } from "svelte";
@@ -82,16 +82,15 @@
   };
 
   // A press shows its answer at once and is sent behind it, so a like never waits; if the site says no, the button goes
-  // back and the clip says so. Without the cookie yes the person is asked first (the notice says what for), and signed
-  // out they sign in and come back to the feed.
+  // back and the clip says so. Without the cookie yes the person is asked first, in place (the card says what for), and
+  // signed out they sign in and the press is made on the way back (pressed.ts).
   async function press(clip: FeedClip, kind: MarkKind): Promise<void> {
     const busyKey = `${clip.slug} ${kind}`;
     if (sendingMarks.includes(busyKey)) return;
     forgetHints();
     if (!hasAgreed()) {
-      // "I agree" carries on to the press: the way back makes it, signing in first when need be (pressed.ts).
-      const back = `/me/press?game=${encodeURIComponent(clip.slug)}&kind=${kind}`;
-      await goto(`/cookies?for=${kind}&next=${encodeURIComponent(back)}`);
+      // The card asks in place and, on "I agree", this same press goes on (consent/ask.svelte.ts).
+      askForYes(kind, () => void press(clip, kind));
       return;
     }
     const before = marksOf(clip);

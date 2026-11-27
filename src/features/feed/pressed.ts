@@ -1,10 +1,11 @@
 import type { Cookies } from "@sveltejs/kit";
 import { isMarkKind, type MarkKind } from "./marks.ts";
 
-// A press of Like, Save or Repost that has to wait: for the cookie yes, for sign-in, or both (learned-feed spec, G5:
-// "'I agree' carries on to sign in or to the press"). The press is named in the way back, `/me/press?game=…&kind=…`,
-// and in a short cookie set only by a press itself: the feed's press while signed out, or "I agree" on the notice the
-// press opened. The way back makes the press only when the two agree, so a link to it from anywhere presses nothing.
+// A press of Like, Save or Repost made while signed out has to wait for sign-in (learned-feed spec, G5: "'I agree'
+// carries on to sign in or to the press"; the yes itself is asked in place, consent/ask.svelte.ts). The press is named
+// in the way back, `/me/press?game=…&kind=…`, and in a short cookie that only the press itself sets: the feed's JSON
+// call, which no page on another site can make. The way back makes the press only when the two agree, so a link to it
+// from anywhere presses nothing.
 
 const PRESSED_COOKIE = "rk_mark_pressed";
 const PRESSED_FOR_SECONDS = 30 * 60;

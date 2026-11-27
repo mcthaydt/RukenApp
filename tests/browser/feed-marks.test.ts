@@ -212,17 +212,22 @@ test.describe("without the cookie yes", () => {
     ["Save", "To save this game"],
     ["Repost", "To repost this game"],
   ] as const) {
-    test(`${name} opens the cookie notice, which says what it is for, and keeps nothing`, async ({
+    test(`${name} opens the cookie card in place, which says what it is for, and keeps nothing`, async ({
       page,
     }) => {
       const clip = await feedWithoutCard(page);
       await mark(clip, name).click();
-      await expect(page).toHaveURL(/\/cookies\?for=/);
+      await expect(page).toHaveURL("/");
       await expect(page.getByText(words, { exact: false })).toBeVisible();
+      await expect(page.getByRole("button", { name: "I agree" })).toBeFocused();
       const answer = await page.request.post("/api/feed/marks", {
         data: { game: live.slug, kind: name.toLowerCase(), on: true },
       });
       expect(answer.status()).toBe(403);
+      // "Not now" drops the press: nothing is pressed, and the card goes.
+      await page.getByRole("button", { name: "Not now" }).click();
+      await expect(page.getByText(words, { exact: false })).toHaveCount(0);
+      await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "false");
     });
   }
 
@@ -243,5 +248,19 @@ test.describe("without the cookie yes", () => {
     await expect(mark(clip, "Save")).toHaveAttribute("aria-pressed", "true");
     await page.goto("/me/saved");
     await expect(page.getByRole("link", { name: new RegExp(live.name) })).toBeVisible();
+  });
+
+  test("a link someone sends, through the notice and sign-in, presses nothing", async ({ page, browser }) => {
+    test.setTimeout(90_000);
+    const { number } = await signUpInItsOwnContext(browser);
+    const back = `/me/press?game=${live.slug}&kind=repost`;
+    await page.goto(`/cookies?for=repost&next=${encodeURIComponent(back)}`);
+    await page.getByRole("button", { name: "I agree" }).click();
+    await expect(page).toHaveURL(/\/sign-in\?next=%2Fme%2Fpress%3F/);
+    await signInHere(page, number);
+    await expect(page).toHaveURL(`/?at=${live.slug}`);
+    await page.goto("/me/reposts");
+    await expect(page.getByText("No reposts yet.", { exact: false })).toBeVisible();
+    await expect(page.getByRole("link", { name: new RegExp(live.name) })).toHaveCount(0);
   });
 });
