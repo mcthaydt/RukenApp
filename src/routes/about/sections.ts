@@ -75,12 +75,13 @@ export const AUDIENCES: readonly Section[] = [
     heading: "Find your next game in a swipe.",
     // The owner, 2026-11-22 18:02 UTC: play anywhere, no ads, a console-like experience, no slop because it's vetted.
     // 19:36 UTC: the console line names the comforts Ruken already has (a controller, the home-screen app), and "No slop."
+    // 2026-11-27: a controller works on every screen of Ruken too, not only in the games (src/lib/pad-focus.ts).
     lines: ["Watch a few seconds of a game first. Play the ones you like."],
     points: [
       "Play anywhere: your phone, tablet or computer. Nothing to install.",
       "Know what you want? Search for a game or a maker by name.",
       "No ads. Not before a game, not during one.",
-      "Pick up a controller. Games can use it, the way they do on a console.",
+      "Pick up a controller. It works all over Ruken and in the games, like a console.",
       "Put Ruken on your home screen. It opens full screen, like an app.",
       "Like a game, save it for later, or repost it. Saved games are under You.",
       "No slop. A person checks every game before it goes live.",

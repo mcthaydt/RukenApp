@@ -248,7 +248,15 @@ test("the keyboard reaches Play and a link, and shows where it is", async ({ pag
     await page.keyboard.press("Tab");
     const now = page.locator(":focus");
     stops.push((await now.innerText()).trim());
-    expect(await now.evaluate((el) => getComputedStyle(el).outlineStyle), stops.at(-1)).not.toBe("none");
+    // The bar's ring is a shadow in the button's own shape (the owner, 2026-11-27: no square ring there).
+    const ring = await now.evaluate((el) =>
+      el.closest("nav.bar") !== null
+        ? getComputedStyle(el).boxShadow.includes("0px 0px 0px 3px")
+          ? "shadow"
+          : "none"
+        : getComputedStyle(el).outlineStyle,
+    );
+    expect(ring, stops.at(-1)).not.toBe("none");
     if (stops.at(-1) === "My Discord") break;
   }
   expect(stops).toContain("Play");

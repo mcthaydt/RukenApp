@@ -186,6 +186,66 @@ test("a browser that skips the slide still shows the maker's next question", asy
   await expectNoNewPageLoad(page);
 });
 
+test("on a slow machine the new page waits until the browser has pictured the old one", async ({ page }) => {
+  // Safari on a busy CI phone pictured the old page more than a second late, and the page came in before it, so the
+  // clip had nothing to move from. Here each frame takes 250 ms and the picture comes on the fifth frame.
+  await page.addInitScript(() => {
+    const seen = window as unknown as { oldPageWhenPictured?: string };
+    (
+      document as unknown as { startViewTransition: (update: () => Promise<void>) => unknown }
+    ).startViewTransition = (update) => {
+      let frames = 0;
+      const done = new Promise<void>((resolve) => {
+        const frame = () => {
+          const until = performance.now() + 250;
+          while (performance.now() < until) {
+            // A busy machine: this frame takes a quarter of a second to draw.
+          }
+          frames += 1;
+          if (frames < 5) {
+            requestAnimationFrame(frame);
+            return;
+          }
+          seen.oldPageWhenPictured = document.querySelector("h1")?.textContent ?? "";
+          void update().then(resolve);
+        };
+        requestAnimationFrame(frame);
+      });
+      return { ready: done, finished: done, updateCallbackDone: done, skipTransition: () => {} };
+    };
+  });
+  await page.goto("/sign-in");
+  await markThePage(page);
+  await page.getByRole("link", { name: "Create an account" }).click();
+  await expect(page).toHaveURL(/\/sign-up/);
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { oldPageWhenPictured?: string }).oldPageWhenPictured),
+    )
+    .toBe("Sign in");
+  await expect(page.getByRole("heading", { level: 1 })).not.toHaveText("Sign in");
+  await expectNoNewPageLoad(page);
+});
+
+test("a browser whose slide hangs without a word still shows the new page", async ({ page }) => {
+  // The slide neither starts nor says it failed: the new page comes in once a few frames have gone by.
+  await page.addInitScript(() => {
+    const never = new Promise<never>(() => {});
+    (document as unknown as { startViewTransition: () => unknown }).startViewTransition = () => ({
+      ready: never,
+      finished: never,
+      updateCallbackDone: never,
+      skipTransition: () => {},
+    });
+  });
+  await page.goto("/sign-in");
+  await markThePage(page);
+  await page.getByRole("link", { name: "Create an account" }).click();
+  await expect(page).toHaveURL(/\/sign-up/);
+  await expect(page.getByRole("heading", { level: 1 })).not.toHaveText("Sign in", { timeout: 2000 });
+  await expectNoNewPageLoad(page);
+});
+
 test("Back pressed while a page is still sliding in comes back, and stays back", async ({ page }) => {
   // The slide holds the new page until the old one has been pictured, which on a busy phone takes a moment (Safari in
   // CI, Back from a game opened in the feed). Here the picture takes 600 ms, and Back is pressed in that time.

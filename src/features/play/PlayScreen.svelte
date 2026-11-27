@@ -11,6 +11,7 @@
   import MovingBehind from "../../lib/moving-behind.svelte";
   import { deviceStore } from "../consent/consent.browser.ts";
   import { gameTitle } from "../../lib/titles.ts";
+  import { PAD_MENU, padConnected } from "../../lib/pad-focus.ts";
   import { onMount } from "svelte";
   import {
     dragSpot,
@@ -199,6 +200,19 @@
     }
   }
 
+  // The gamepad's Home (or View held) opens the menu over the game, and closes it again (src/lib/pad-focus.ts).
+  function padMenu(): void {
+    if (menu === undefined) return;
+    if (menu.open) keepPlaying();
+    else menu.open = true;
+  }
+  $effect(() => {
+    addEventListener(PAD_MENU, padMenu);
+    return () => {
+      removeEventListener(PAD_MENU, padMenu);
+    };
+  });
+
   // The tab. A press that moves more than 8px is a drag; one that moves less is a press and opens the menu.
   let dragFrom: { x: number; y: number; grabX: number; grabY: number } | null = null;
   let dragged = false;
@@ -319,9 +333,13 @@
     allow={frameRules.allow}
     referrerpolicy="no-referrer"
     bind:this={frame}
+    data-pad-first
     onload={() => {
       started = true;
       slow = false;
+      // With a gamepad the game takes it once it has loaded, as Keep playing gives it; with nothing focused the
+      // pad's presses would move Ruken's focus instead, and never reach the game (src/lib/pad-focus.ts).
+      if (padConnected() && menu?.open !== true) frame?.focus();
     }}
   ></iframe>
 
@@ -354,14 +372,14 @@
       <span aria-hidden="true">RKN</span>
     </summary>
     <div class="menusheet">
-      <div class="menupanel" bind:this={panel}>
+      <div class="menupanel" bind:this={panel} data-pad-scope={open ? "" : undefined}>
         <h2>{name}</h2>
         {#if testPlay}
           <p class="note">Test play. Only you can see this.</p>
         {:else}
           <p class="note">{makerName === null ? "Made on Ruken" : `by ${makerName}`}</p>
         {/if}
-        <button type="button" onclick={keepPlaying}>Keep playing</button>
+        <button type="button" data-pad-back onclick={keepPlaying}>Keep playing</button>
         {#if canFullScreen}
           <button type="button" class="outline" onclick={toggleFullScreen}>
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"
