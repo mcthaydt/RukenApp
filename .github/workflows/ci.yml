@@ -472,12 +472,15 @@ jobs:
           printf '%s\n' "$answer" | cut -c 1-2000
           echo "look_changed=$answer" >> "$GITHUB_OUTPUT"
       # The JSON report beside the usual two records what this piece really ran, for the gate's check and main's times.
+      # Owner, 2026-11-27 07:18 UTC, on a card: "Yes, retry on main (recommended)". On a push to main a failed journey
+      # is tried up to 2 more times ("Retries on main" in CLAUDE.md Settings), so a flake does not hold the deploy; a
+      # pull request run tries once. The gate lists every test that passed only on a later try.
       - name: Run the journeys
         id: journeys
         if: steps.pick.outputs.run == 'true'
         env:
           LOOK_CHANGED: ${{ steps.decide.outputs.look_changed || steps.compare.outputs.look_changed }}
-        run: pnpm test:browser ${{ steps.pick.outputs.args }} --reporter=list,html,json
+        run: pnpm test:browser ${{ steps.pick.outputs.args }} --reporter=list,html,json --retries=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 2 || 0 }}
       # On main, this piece's times, saved from inside this image so the cache is packed as the pieces unpack it
       # (gzip, not the host's zstd; spec 3.4 item 1). `test-times` joins the six.
       - name: Sum this piece's times
@@ -660,3 +663,14 @@ jobs:
           if (listed.size === 0 || missing.length || twice.length || unknown.length) process.exit(1);
           console.log("Every listed test ran exactly once.");
           JS
+      # On main a failed journey is tried again, up to the number in CLAUDE.md Settings ("Retries on main"); one that
+      # passed only on a later try is listed in this run's summary, with a warning each. A flaky test never fails this
+      # step; a missing or unreadable piece report does, naming the piece, so a flaky pass never deploys unlisted.
+      # It downloads on its own, because the step above is skipped once an earlier step fails.
+      - name: List the tests that passed only on a retry
+        if: always() && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --pattern 'ran-*' --dir flaky-reports
+          node .github/scripts/flaky-tests.js flaky-reports 6 >> "$GITHUB_STEP_SUMMARY"
