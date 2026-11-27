@@ -70,6 +70,11 @@
       it. It's gone when you unfollow, or when you or the maker delete your account.
     </li>
     <li>
+      <strong>Games friends send you.</strong> When a friend sends you a game, we keep who sent which game to whom,
+      when, and when you first saw it. If you stop someone, we keep that you did and when; they are never told. A game
+      is gone when you remove it, and all of it goes when either of you deletes your account.
+    </li>
+    <li>
       <strong>While a computer asks to sign in.</strong> We keep the city and country it asked from, to show you
       before you say Yes. The code works for 10 minutes, and old codes are cleared out as new ones come in.
     </li>
