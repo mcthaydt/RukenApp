@@ -4,6 +4,7 @@ import { givePage } from "./support/database.ts";
 import { rgb, token } from "../support/look-tokens.ts";
 import { showTheOwner } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
+import { NOT_CONSENTED } from "./support/consent.ts";
 import { signInAs } from "./support/account.ts";
 
 // Glass only where what is behind it moves (the owner, 2026-11-27: "The glass button effect should not be for pages
@@ -86,4 +87,21 @@ test("the feed keeps its glass over the clips", async ({ page }) => {
       getComputedStyle(element).getPropertyValue("-webkit-backdrop-filter"),
   );
   expect(blur).toMatch(/blur\(/);
+});
+
+test.describe("before anyone has said yes to cookies", () => {
+  test.use({ storageState: NOT_CONSENTED });
+
+  test("the landing page's cookie notice stays glass over its wall of moving clips", async ({ page }) => {
+    await page.goto("/about");
+    await expect(page.locator(".wall video").first()).toBeAttached();
+    const notice = page.locator("aside.consent");
+    await expect(notice).toBeVisible();
+    const blur = await notice.evaluate(
+      (element) =>
+        getComputedStyle(element).backdropFilter ||
+        getComputedStyle(element).getPropertyValue("-webkit-backdrop-filter"),
+    );
+    expect(blur).toMatch(/blur\(/);
+  });
 });

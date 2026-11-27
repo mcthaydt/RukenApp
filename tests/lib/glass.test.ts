@@ -258,7 +258,7 @@ describe("frosted glass", () => {
       expect(block, line).toContain(line);
   });
 
-  it("is marked only on what moves: the feed's clips, a game's page, the play screen, a live game's video and a clip behind Join", () => {
+  it("is marked only on what moves: the feed's clips, a game's page, the play screen, a live game's video, a clip behind Join and the landing page's wall of clips", () => {
     const marked = sources
       .filter(([, text]) => /\sdata-glass(?=[\s>=])/.test(text))
       .map(([path]) => path)
@@ -266,6 +266,7 @@ describe("frosted glass", () => {
     expect(marked).toEqual([
       "src/features/feed/Feed.svelte",
       "src/features/play/PlayScreen.svelte",
+      "src/routes/about/+page.svelte",
       "src/routes/g/[game]/+page.svelte",
       "src/routes/join/+page.svelte",
       "src/routes/make/parts/GameBackdrop.svelte",

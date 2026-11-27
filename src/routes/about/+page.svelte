@@ -65,7 +65,7 @@
            playing. It only decorates (a reader skips it); each clip plays only while it is on screen, and the wall stands
            still for a person who asked for less motion. Until a clip plays, its still (the frame it opens on) shows in
            its place. -->
-      <div class="wall" aria-hidden="true">
+      <div class="wall" aria-hidden="true" data-glass>
         {#each data.wall as column, columnAt (columnAt)}
           <div class="column">
             {#each column as clip, rowAt (rowAt)}
