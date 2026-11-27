@@ -11,7 +11,7 @@
 <main class="card">
   <p><a class="quiet" href="/">Back to Ruken</a></p>
   <h1>Privacy</h1>
-  <p class="note">Last updated 24 November 2026</p>
+  <p class="note">Last updated 27 November 2026</p>
   <p>
     <strong>This is a draft.</strong> A lawyer has not checked it yet. It says what Ruken does today, and it will
     change before Ruken opens.
@@ -127,6 +127,21 @@
     </li>
   </ul>
   <p><a class="go" href="/help/how-the-feed-works">How the feed works</a></p>
+
+  <h2>Your feed</h2>
+  <ul class="bullets">
+    <li>
+      If you're 18 or older and signed in, you can tell your feed what you want more of and less of: from a
+      game in the feed, from Your feed in your account, or by answering "Good pick?". We keep what you chose,
+      and when.
+    </li>
+    <li>
+      You see all of it on Your feed, and you can take any of it off. Start over forgets all of it. Turning
+      off Learn from what I do keeps nothing new, and turning it back on starts fresh.
+    </li>
+    <li>If you're under 18, your feed doesn't learn from what you do until a parent says yes.</li>
+    <li>It's gone when you delete your account.</li>
+  </ul>
 
   <h2>Games you want</h2>
   <p>Before Ruken opens, you can add games to a list. We keep your list.</p>

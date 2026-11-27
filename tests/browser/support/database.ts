@@ -623,3 +623,28 @@ export async function adultOnOf(number: string): Promise<string | null> {
   });
   return row.adultOn === null ? null : row.adultOn.toISOString().slice(0, 10);
 }
+
+/** Makes the person under 18 from today, as a teen who joined with a parent would be: their feed may not learn. */
+export async function makeThemUnder18(number: string): Promise<void> {
+  await db().user.update({
+    where: { phoneNumber: number },
+    data: { adultOn: new Date(Date.now() + 365 * 86_400_000) },
+  });
+}
+
+/** Has the feed ask this person "Good pick?" about a game, as it does when the private order picks one. */
+export async function askGoodPick(number: string, slug: string): Promise<void> {
+  const user = await userIdOf(number);
+  const game = await db().game.findUniqueOrThrow({ where: { slug }, select: { id: true } });
+  await db().goodPickAsked.create({ data: { userId: user, gameId: game.id, askedAt: new Date() } });
+}
+
+/** How many Your feed rows (chips) the person has kept, and their Good pick answers. */
+export async function feedRowsOf(number: string): Promise<{ chips: number; answers: (string | null)[] }> {
+  const userId = await userIdOf(number);
+  const [chips, asked] = await Promise.all([
+    db().feedTaste.count({ where: { userId } }),
+    db().goodPickAsked.findMany({ where: { userId }, select: { answer: true } }),
+  ]);
+  return { chips, answers: asked.map((row) => row.answer) };
+}
