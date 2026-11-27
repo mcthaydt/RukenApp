@@ -177,6 +177,8 @@ async function purgeOne(deps: PurgeDeps, id: string, userId: string, now: Date):
     await tx.wishlist.deleteMany({ where: { userId } });
     // What the person told Ruken about games is theirs too.
     await tx.gameReport.deleteMany({ where: { userId } });
+    // What the person liked, saved and reposted is theirs, and every mark on their own games goes with the games.
+    await tx.gameMark.deleteMany({ where: { OR: [{ userId }, { game: { makerUserId: userId } }] } });
     // Whom the person follows, and who follows them: both sides of a follow name the account.
     await tx.makerFollow.deleteMany({ where: { OR: [{ followerId: userId }, { makerId: userId }] } });
     // The person's page, and its links with it, so the address is free for someone else. It stays up for the 14

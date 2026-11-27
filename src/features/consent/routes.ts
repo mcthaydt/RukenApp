@@ -54,6 +54,7 @@ export const GATED: readonly string[] = [
   // Following a maker keeps a row, and signed out a cookie for the way back from sign-up.
   "/[handle=handle]/follow",
   "/api/auth",
+  "/api/feed/marks",
   "/me",
   "/make",
 ];

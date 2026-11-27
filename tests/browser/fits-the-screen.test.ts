@@ -78,7 +78,15 @@ test.describe("signed out", () => {
 
 test("Your account and Your games fit the window, and the bar covers nothing", async ({ page }, testInfo) => {
   await signUp(page);
-  for (const path of ["/me", "/make", "/me/password", "/me/computers", "/me/delete"]) {
+  for (const path of [
+    "/me",
+    "/make",
+    "/me/password",
+    "/me/computers",
+    "/me/delete",
+    "/me/saved",
+    "/me/reposts",
+  ]) {
     await opened(page, path);
     expect(await overflow(page), path).toEqual({ page: 0, view: 0 });
     await expectViewAboveTheBar(page, path);

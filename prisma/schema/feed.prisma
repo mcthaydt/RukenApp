@@ -1,0 +1,26 @@
+// The feed feature's table: what a player pressed on a game's clip.
+
+/// Which press it was. The words people see are in src/features/feed/Feed.svelte.
+enum MarkKind {
+  like
+  save
+  repost
+}
+
+/// A person liked, saved or reposted a game: one row per person, game and kind. Pressing again deletes the row, and so
+/// does deleting the account (deletion.ts), which also takes off every mark on that person's games. A count on screen
+/// is a count of these rows and nothing else.
+model GameMark {
+  id     String   @id @default(cuid(2))
+  userId String
+  gameId String
+  kind   MarkKind
+  /// When the person pressed it, on the server's clock.
+  madeAt DateTime @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId, kind])
+  @@index([gameId, kind])
+}

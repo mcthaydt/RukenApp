@@ -10,7 +10,8 @@
   screen past the last clip until that page comes. When every game has been shown it goes round again in a new order.
 -->
 <script lang="ts">
-  import { deviceStore } from "../consent/consent.browser.ts";
+  import { askForYes, deviceStore, hasAgreed } from "../consent/consent.browser.ts";
+  import { goto } from "$app/navigation";
   import { loads } from "../../lib/loads.ts";
   import { onMount, tick } from "svelte";
   import { snapshot } from "$app/navigation";
@@ -22,6 +23,7 @@
   import ShareSheet from "./ShareSheet.svelte";
   import type { ShareSheetControl } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
+  import type { ClipMarks, MarkKind } from "./marks.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
 
   let {
@@ -71,6 +73,61 @@
   let shareSheet = $state<ShareSheetControl>();
   // A press on one clip's plus changes every clip by that maker, on this page and on pages still to come.
   let followed = $state<Record<string, boolean>>({});
+
+  // What a press changed, by game: a game can be on the feed twice, and both of its clips show the same marks.
+  let pressed = $state<Record<string, ClipMarks>>({});
+  // The marks being sent, as "slug kind", so a second press waits for the first to come back.
+  let sendingMarks = $state<string[]>([]);
+  // The game whose press failed, for the line under its buttons.
+  let markProblem = $state<string | null>(null);
+  const marksOf = (clip: FeedClip): ClipMarks => pressed[clip.slug] ?? clip.marks;
+  const FIELD: Record<MarkKind, "liked" | "saved" | "reposted"> = {
+    like: "liked",
+    save: "saved",
+    repost: "reposted",
+  };
+
+  // A press shows its answer at once and is sent behind it, so a like never waits; if the site says no, the button goes
+  // back and the clip says so. Without the cookie yes the person is asked first, in place (the card says what for), and
+  // signed out they sign in and the press is made on the way back (pressed.ts).
+  async function press(clip: FeedClip, kind: MarkKind): Promise<void> {
+    const busyKey = `${clip.slug} ${kind}`;
+    if (sendingMarks.includes(busyKey)) return;
+    forgetHints();
+    if (!hasAgreed()) {
+      // The card asks in place and, on "I agree", this same press goes on (consent/ask.svelte.ts).
+      askForYes(kind, () => void press(clip, kind));
+      return;
+    }
+    const before = marksOf(clip);
+    const on = !before[FIELD[kind]];
+    const likes = kind === "like" ? before.likes + (on ? 1 : -1) : before.likes;
+    pressed[clip.slug] = { ...before, [FIELD[kind]]: on, likes: Math.max(0, likes) };
+    sendingMarks = [...sendingMarks, busyKey];
+    markProblem = null;
+    try {
+      const answer = await fetch("/api/feed/marks", {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ game: clip.slug, kind, on }),
+      });
+      if (answer.status === 401) {
+        // Signed out: sign in, and the press is made on the way back.
+        pressed[clip.slug] = before;
+        const said = await answer.json<{ go?: string }>().catch(() => ({ go: undefined }));
+        await goto(said.go ?? `/sign-in?next=${encodeURIComponent("/")}`);
+        return;
+      }
+      if (!answer.ok) throw new Error(`the site answered ${String(answer.status)}`);
+      const said = await answer.json<{ on: boolean; likes: number }>();
+      pressed[clip.slug] = { ...marksOf(clip), [FIELD[kind]]: said.on, likes: said.likes };
+    } catch {
+      pressed[clip.slug] = { ...marksOf(clip), [FIELD[kind]]: before[FIELD[kind]], likes: before.likes };
+      markProblem = clip.slug;
+    } finally {
+      sendingMarks = sendingMarks.filter((one) => one !== busyKey);
+    }
+  }
 
   const initialOf = (name: string): string => Array.from(name.trim())[0]?.toUpperCase() ?? "";
   const clipAddress = (clip: FeedClip): string =>
@@ -132,6 +189,15 @@
     ready = true;
     mounted = true;
     if (returning !== undefined) returnTo(returning);
+    else {
+      // Back from a press that waited (the cookie yes, sign-in): the feed opens at that game's clip.
+      const at = new URL(location.href).searchParams.get("at");
+      const index = at === null ? -1 : clips.findIndex((clip) => clip.slug === at);
+      if (index > 0) {
+        current = index;
+        void tick().then(() => sections[index]?.scrollIntoView({ behavior: "instant", block: "start" }));
+      }
+    }
     void tick().then(() => {
       warm = true;
     });
@@ -510,6 +576,82 @@
                 {/if}
               </div>
             {/if}
+            {#if ready && !marksOf(clip).own}
+              {@const marks = marksOf(clip)}
+              {#if markProblem === clip.slug}
+                <p class="markproblem" role="alert">That didn't work. Try again.</p>
+              {/if}
+              <button
+                type="button"
+                class="mark"
+                aria-label="Like"
+                aria-pressed={marks.liked}
+                aria-disabled={sendingMarks.includes(`${clip.slug} like`) ? "true" : undefined}
+                onclick={() => {
+                  void press(clip, "like");
+                }}
+              >
+                <span class="disc">
+                  <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                    <path
+                      d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"
+                      fill={marks.liked ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span class="word" aria-hidden="true">{marks.likes > 0 ? marks.likes : "Like"}</span>
+              </button>
+              <button
+                type="button"
+                class="mark"
+                aria-label="Save"
+                aria-pressed={marks.saved}
+                aria-disabled={sendingMarks.includes(`${clip.slug} save`) ? "true" : undefined}
+                onclick={() => {
+                  void press(clip, "save");
+                }}
+              >
+                <span class="disc">
+                  <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                    <path
+                      d="M6 3.5h12v17l-6-4.5-6 4.5z"
+                      fill={marks.saved ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span class="word" aria-hidden="true">Save</span>
+              </button>
+              <button
+                type="button"
+                class="mark"
+                aria-label="Repost"
+                aria-pressed={marks.reposted}
+                aria-disabled={sendingMarks.includes(`${clip.slug} repost`) ? "true" : undefined}
+                onclick={() => {
+                  void press(clip, "repost");
+                }}
+              >
+                <span class="disc">
+                  <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                    <path
+                      d="M4 11V9a3 3 0 0 1 3-3h12m-3-3 3 3-3 3M20 13v2a3 3 0 0 1-3 3H5m3 3-3-3 3-3"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width={marks.reposted ? 3 : 2}
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span class="word" aria-hidden="true">Repost</span>
+              </button>
+            {/if}
             <button
               type="button"
               class="share"
@@ -631,7 +773,8 @@
     box-shadow: var(--glass-edge);
   }
   .sound svg,
-  .share svg {
+  .share svg,
+  .mark svg {
     filter: var(--glass-icon);
     /* Its own layer, so its shadow is drawn once, not again each frame the video under the glass moves. */
     will-change: transform;
@@ -639,6 +782,55 @@
   .sound:focus-visible,
   .share:focus-visible {
     outline-offset: -6px;
+  }
+  /* Like, Save and Repost: a round glass button each, with its word (or the like count) under it on the clip. Pressed,
+     the glass is the bar's brighter marked pill and the picture is filled in. */
+  .mark {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    min-width: var(--size-target);
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--chalk);
+  }
+  .disc {
+    display: grid;
+    place-items: center;
+    width: var(--size-target);
+    height: var(--size-target);
+    border-radius: 50%;
+    --corner: round;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+  }
+  .mark[aria-pressed="true"] .disc {
+    background: var(--glass-lift);
+  }
+  .word {
+    font: var(--text-small);
+    font-weight: 600;
+    text-shadow: var(--glass-ink);
+  }
+  .markproblem {
+    max-width: 7rem;
+    margin: 0;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-button);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+    font: var(--text-small);
+    text-align: center;
+    text-shadow: var(--glass-ink);
   }
   .hints {
     position: absolute;

@@ -1,4 +1,5 @@
 import { error, fail, redirect } from "@sveltejs/kit";
+import { feedServices } from "../../features/feed/feed.ts";
 import { gamesServices } from "../../features/games/games.ts";
 import { authServices, shownAs, signedInOnly } from "../../features/accounts/accounts.ts";
 import { membershipLine, membershipServices } from "../../features/membership/membership.ts";
@@ -25,7 +26,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const member = view.member;
   // Her door to the maker's area says what she can do there: open her games, or add the first.
   const makesGames = (await gamesServices().service.gamesOf(userId)).length > 0;
-  return { ...account, membership, member, makesGames };
+  // Saved and Your reposts are linked once they hold a live game.
+  const feed = feedServices();
+  const [saved, reposted] = await Promise.all([feed.listOf(userId, "save"), feed.listOf(userId, "repost")]);
+  return {
+    ...account,
+    membership,
+    member,
+    makesGames,
+    saved: saved.length > 0,
+    reposted: reposted.length > 0,
+  };
 };
 
 export const actions: Actions = {

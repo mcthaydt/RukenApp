@@ -1,6 +1,7 @@
 import { chicagoDayOf, type Clock } from "../../lib/clock.ts";
 import type { ListedGame } from "../games/games.ts";
 import { CROWD, type Asking } from "./feed-public.ts";
+import type { ClipMarks } from "./marks.ts";
 import { openRanker } from "./public-ranker.ts";
 import {
   isRankedPageOrBadCursor,
@@ -40,6 +41,11 @@ export interface FeedServiceDeps {
   followedAmong?(followerId: string, makerIds: readonly string[]): Promise<Set<string>>;
   /** The whole address of a file in the bucket, from its key. */
   media(key: string): string;
+  /** What each game's clip shows of likes, saves and reposts for this viewer (null when signed out); left out, none. */
+  marksOf?(
+    viewerId: string | null,
+    games: readonly { id: string; makerUserId: string }[],
+  ): Promise<Map<string, ClipMarks>>;
   /** The private ranker, when this app has one bound; left out or null, the open ranker answers every page. */
   privateRanker?: () => Ranker | null;
   /** The open ranker; left out, the feed's own (public-ranker.ts). */
@@ -64,6 +70,8 @@ export interface FeedClip {
    * game is their own (they cannot follow themselves). Both are false for someone signed out.
    */
   maker: { handle: string; name: string; photo: string | null; following: boolean; mine: boolean } | null;
+  /** The like count and what the viewer pressed. */
+  marks: ClipMarks;
 }
 
 /**
@@ -76,6 +84,9 @@ export interface FeedPage {
   caughtUpAt?: number;
   ask?: { index: number; gameId: string };
 }
+
+/** A clip's marks when none were read for it. */
+const NO_MARKS: ClipMarks = { likes: 0, liked: false, saved: false, reposted: false, own: false };
 
 /** Which ranker answers the feed, and what it says of its own settings. */
 export interface FeedHealth {
@@ -212,11 +223,14 @@ export function createFeedService(deps: FeedServiceDeps) {
       const game = byId.get(item.gameId);
       return game === undefined ? [] : [{ key: item.key, game }];
     });
-    const makerIds = [...new Set(shown.map(({ game }) => game.makerUserId))];
-    const makers =
+    const shownGames = [...new Map(shown.map(({ game }) => [game.id, game])).values()];
+    const makerIds = [...new Set(shownGames.map((game) => game.makerUserId))];
+    const [makers, marks] = await Promise.all([
       shown.length === 0
         ? new Map<string, { handle: string; name: string; photoKey: string | null }>()
-        : await deps.makersOf(makerIds);
+        : deps.makersOf(makerIds),
+      deps.marksOf?.(viewerId, shownGames) ?? new Map<string, ClipMarks>(),
+    ]);
     const followed =
       viewerId === null || deps.followedAmong === undefined || makers.size === 0
         ? new Set<string>()
@@ -242,6 +256,7 @@ export function createFeedService(deps: FeedServiceDeps) {
                   following: followed.has(game.makerUserId),
                   mine: game.makerUserId === viewerId,
                 },
+          marks: marks.get(game.id) ?? NO_MARKS,
         };
       }),
     };
