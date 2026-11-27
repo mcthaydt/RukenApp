@@ -84,12 +84,19 @@ async function shareSheetFor(page: Page, slug: string): Promise<Locator> {
   return sheet;
 }
 
-/** Sends this game to a friend from the share sheet, and waits for the face to say Sent. */
+/** The share sheet's Your turn, in Email's old place: it shows the friends to pick. */
+async function pickFriendsIn(sheet: Locator): Promise<void> {
+  await sheet.getByRole("button", { name: "Your turn", exact: true }).click();
+  await expect(sheet.getByRole("heading", { name: "Send to friends" })).toBeVisible();
+}
+
+/** Sends this game to a friend from the share sheet's Your turn: pick their face, press Send, and it says so. */
 async function send(page: Page, slug: string, to: string): Promise<void> {
   const sheet = await shareSheetFor(page, slug);
-  await expect(sheet.getByRole("heading", { name: "Send to a friend" })).toBeVisible();
-  await sheet.getByRole("button", { name: `Send to ${to}` }).click();
-  await expect(sheet.getByRole("button", { name: `Sent: ${to}` })).toBeVisible();
+  await pickFriendsIn(sheet);
+  await sheet.getByRole("button", { name: to, exact: true }).click();
+  await sheet.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(sheet.getByRole("status")).toHaveText(`Sent to ${to}.`);
 }
 
 /** A row of the Your turn list, found by its game's name. */
@@ -106,14 +113,29 @@ test("a friend sends a game; it lands on Your turn with a dot, is seen, opened, 
   try {
     await makeFriends(receiver, sender);
 
-    // Create: the sender's sheet has the receiver's face (no photo, so the first letter), and pressing it sends.
+    // Create: the sheet's Your turn shows the receiver's face (no photo, so the first letter). Send with nobody picked
+    // says to pick; pressing the face picks it (and again lets it go); Send sends to whoever is picked.
     const sheet = await shareSheetFor(sender.page, first.slug);
-    const face = sheet.getByRole("button", { name: "Send to Robin Reed" });
+    await expect(sheet.getByRole("link", { name: "Email" })).toHaveCount(0);
+    await pickFriendsIn(sheet);
+    const face = sheet.getByRole("button", { name: "Robin Reed", exact: true });
     await expect(face).toContainText("R");
-    await showTheOwner(sender.page, testInfo, "send-to-a-friend");
+    await expect(face).toHaveAttribute("aria-pressed", "false");
+    await sheet.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(sheet.getByRole("status")).toHaveText("Pick a friend first.");
     await face.click();
-    await expect(sheet.getByRole("button", { name: "Sent: Robin Reed" })).toBeVisible();
+    await face.click();
+    await expect(face).toHaveAttribute("aria-pressed", "false");
+    await face.click();
+    await expect(face).toHaveAttribute("aria-pressed", "true");
+    await showTheOwner(sender.page, testInfo, "send-to-friends");
+    await sheet.getByRole("button", { name: "Send", exact: true }).click();
+    await expect(sheet.getByRole("status")).toHaveText("Sent to Robin Reed.");
     expect(await sentTo(receiver.number)).toEqual([{ game: first.slug, seen: false }]);
+    // Back brings the link and the apps again.
+    await sheet.getByRole("button", { name: "Back", exact: true }).click();
+    await expect(sheet.getByRole("button", { name: "Copy link" })).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Your turn", exact: true })).toBeFocused();
 
     // Read: the receiver's third tab carries the dot, and the list shows the game, who sent it and when.
     await page.goto("/followed");
@@ -205,16 +227,20 @@ test("a friend with a photo shows it; nobody else sees the row, and a game stays
   const receiver = await me(page, "Pat Photo");
   const sender = await person(browser, "Lee Lonely", { photo: true });
   try {
-    // No friends yet: the sheet is as it always was.
+    // No friends yet: Your turn says what a friend is, and there is nothing to send.
     let sheet = await shareSheetFor(sender.page, first.slug);
-    await expect(sheet.getByRole("heading", { name: "Send to a friend" })).toHaveCount(0);
-    await expect(sheet.getByRole("button", { name: "Copy link" })).toBeVisible();
+    await pickFriendsIn(sheet);
+    await expect(
+      sheet.getByText("No friends here yet. A friend is someone you follow who follows you back."),
+    ).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
 
     // Following one way is not a friend.
     await makeFriends(receiver, sender);
     await unfollow(receiver, sender);
     sheet = await shareSheetFor(sender.page, first.slug);
-    await expect(sheet.getByRole("heading", { name: "Send to a friend" })).toHaveCount(0);
+    await pickFriendsIn(sheet);
+    await expect(sheet.getByRole("button", { name: "Pat Photo", exact: true })).toHaveCount(0);
     expect(
       (
         await sender.page.request.post("/your-turn/send", {
@@ -227,10 +253,10 @@ test("a friend with a photo shows it; nobody else sees the row, and a game stays
     // Friends: a friend with a photo shows it on the sheet (the receiver's sheet, where the sender is the friend).
     await makeFriends(receiver, sender);
     sheet = await shareSheetFor(page, first.slug);
-    await expect(sheet.getByRole("button", { name: "Send to Lee Lonely" }).locator("img")).toHaveAttribute(
-      "src",
-      new RegExp(`${PHOTO}\\.webp`),
-    );
+    await pickFriendsIn(sheet);
+    await expect(
+      sheet.getByRole("button", { name: "Lee Lonely", exact: true }).locator("img"),
+    ).toHaveAttribute("src", new RegExp(`${PHOTO}\\.webp`));
     await send(sender.page, first.slug, "Pat Photo");
 
     // The sender stops following: the game they sent stays.
@@ -241,10 +267,15 @@ test("a friend with a photo shows it; nobody else sees the row, and a game stays
     await sender.context.close();
   }
 
-  // Signed out, there is no row: the share sheet is the plain one.
+  // Signed out, Your turn says to sign in, and Sign in comes back to the game.
   await clearCookiesKeepingConsent(page.context());
   const sheet = await shareSheetFor(page, first.slug);
-  await expect(sheet.getByRole("heading", { name: "Send to a friend" })).toHaveCount(0);
+  await pickFriendsIn(sheet);
+  await expect(sheet.getByText("Sign in to send games to friends.")).toBeVisible();
+  await expect(sheet.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+    "href",
+    `/sign-in?next=${encodeURIComponent(`/g/${first.slug}`)}`,
+  );
 });
 
 test("signed out, Your turn keeps the top bar and says to sign in, which comes back to it", async ({
@@ -377,9 +408,16 @@ test("from the keyboard alone: Tab reaches a friend's face and Enter sends; Tab 
       await sender.page.keyboard.press("Enter");
       const sheet = sender.page.getByRole("dialog", { name: "Share" });
       await expect(sheet).toBeVisible();
-      await tabTo(sender.page, sheet.getByRole("button", { name: "Send to Kay Keys" }));
+      await tabTo(sender.page, sheet.getByRole("button", { name: "Your turn", exact: true }));
       await sender.page.keyboard.press("Enter");
-      await expect(sheet.getByRole("button", { name: "Sent: Kay Keys" })).toBeVisible();
+      // The first face takes the focus as the friends show.
+      const face = sheet.getByRole("button", { name: "Kay Keys", exact: true });
+      await expect(face).toBeFocused();
+      await sender.page.keyboard.press("Enter");
+      await expect(face).toHaveAttribute("aria-pressed", "true");
+      await tabTo(sender.page, sheet.getByRole("button", { name: "Send", exact: true }));
+      await sender.page.keyboard.press("Enter");
+      await expect(sheet.getByRole("status")).toHaveText("Sent to Kay Keys.");
     }
   } finally {
     await sender.context.close();

@@ -66,7 +66,7 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
       ? playServices().service.playersThisWeek(game.id, now).then(playersWords)
       : Promise.resolve(null),
     // The faces for "Send to a friend" in the share sheet: one statement, asked only for a signed-in person.
-    caller.kind === "user" ? sendsServices().friendsOf(caller.userId) : Promise.resolve([]),
+    caller.kind === "user" ? sendsServices().friendsOf(caller.userId) : Promise.resolve(null),
   ]);
 
   let cost: Cost = "join";

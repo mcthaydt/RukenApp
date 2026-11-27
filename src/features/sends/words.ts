@@ -3,8 +3,16 @@
 export const SEND_WORDS = {
   tab: "Your turn",
   tabNew: "Your turn, new games",
-  row: "Send to a friend",
-  sent: "Sent",
+  /** The share sheet's button in place of Email (the owner, 2026-11-27 14:48 UTC). */
+  shareApp: "Your turn",
+  pickTitle: "Send to friends",
+  send: "Send",
+  back: "Back",
+  sentTo: (names: readonly string[]) =>
+    names.length === 1 ? `Sent to ${names[0] ?? ""}.` : `Sent to ${String(names.length)} friends.`,
+  pickFirst: "Pick a friend first.",
+  noFriends: "No friends here yet. A friend is someone you follow who follows you back.",
+  signInToSend: "Sign in to send games to friends.",
   failed: "That didn't work. Try again.",
   limited: "You've sent a lot today. Try again later.",
   from: (name: string) => `From ${name}`,

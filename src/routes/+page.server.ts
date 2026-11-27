@@ -20,7 +20,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
     userId === null
       ? Promise.resolve(false)
       : sendsServices().hasNew(userId, () => isKnownAdultCaller(caller)),
-    userId === null ? Promise.resolve([]) : sendsServices().friendsOf(userId),
+    userId === null ? Promise.resolve(null) : sendsServices().friendsOf(userId),
   ]);
   return { first, launch, tune: learning === "on", news, friends };
 };

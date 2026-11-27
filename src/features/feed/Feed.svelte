@@ -37,15 +37,15 @@
     tab = "fresh",
     tune = false,
     news = false,
-    friends = [],
+    friends = null,
   }: {
     first: FeedPage;
     /** Which of the top bar's tabs this is: every game, or the makers the person follows (Followed.svelte). */
     tab?: TabKey;
     /** Whether friends sent games the person has not looked at: the dot on the Your turn tab. */
     news?: boolean;
-    /** The person's friends, for "Send to a friend" in the share sheet. */
-    friends?: readonly Friend[];
+    /** The person's friends, for Your turn in the share sheet; null when signed out. */
+    friends?: readonly Friend[] | null;
     /** Whether this person's feed is learning from them, so each clip offers More and Less like this (•••). */
     tune?: boolean;
     /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */

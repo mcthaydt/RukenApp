@@ -735,11 +735,14 @@ test.describe("Share", () => {
     const address = `${new URL(page.url()).origin}/g/${String(slug)}`;
     await current(page).getByRole("button", { name: "Share" }).click();
     const sheet = sheetOf(page);
-    for (const app of ["Text", "WhatsApp", "Email", "X"]) {
+    for (const app of ["Text", "WhatsApp", "X"]) {
       const href = (await sheet.getByRole("link", { name: app, exact: true }).getAttribute("href")) ?? "";
       expect(decodeURIComponent(href), app).toContain(address);
     }
     await expect(sheet.getByRole("link", { name: "Facebook" })).toHaveCount(0);
+    // Email made way for Ruken's own Your turn (the owner, 2026-11-27), a button in its place before X.
+    await expect(sheet.getByRole("link", { name: "Email" })).toHaveCount(0);
+    await expect(sheet.getByRole("button", { name: "Your turn", exact: true })).toBeVisible();
     // Instagram takes no words in its address: the press copies the link and opens Instagram's messages beside the
     // sheet, and the sheet says to paste it there.
     const instagram = sheet.getByRole("link", { name: "Instagram", exact: true });
