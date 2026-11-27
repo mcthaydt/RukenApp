@@ -1033,7 +1033,7 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   await openFeed(page);
   const names: string[] = [];
   const outlines: string[] = [];
-  for (let presses = 0; presses < 12; presses += 1) {
+  for (let presses = 0; presses < 14; presses += 1) {
     await page.keyboard.press("Tab");
     const focused = await page.evaluate(() => {
       const element = document.activeElement;
@@ -1047,12 +1047,17 @@ test("everything is reachable with Tab, in an order that follows the screen, and
     outlines.push(focused?.outline ?? "");
   }
   // The bar first (it is always there), then the feed's top bar (its tabs and Search, there once for the whole feed),
-  // then the first clip's controls from the top of the screen to the bottom, then the next clip's.
+  // then the first clip's controls: the band (the game, Play), then the column on the right from its top, which starts
+  // with the maker and their plus when the game's maker has a page, then Share, then the next clip's.
   expect(names.slice(0, 7)).toEqual(["Home", "Add a game", "You", "Fresh", "Followed", "Search", "Sound"]);
   const play = names.indexOf("Play");
   expect(play).toBeGreaterThan(6);
-  expect(names[play + 1]).toBe("Share");
-  expect(names[play + 2]).toBe("Sound");
+  const plus = names[play + 2] ?? "";
+  const share = plus.startsWith("Follow ") ? play + 3 : play + 1;
+  // The link's words include the first letter drawn when the maker has no photo, so the name is looked for inside them.
+  if (share === play + 3) expect(names[play + 1]).toContain(plus.slice("Follow ".length));
+  expect(names[share]).toBe("Share");
+  expect(names[share + 1]).toBe("Sound");
   for (const outline of outlines) expect(outline).not.toMatch(/^none/);
 });
 

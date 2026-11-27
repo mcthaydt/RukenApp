@@ -304,6 +304,159 @@ test("the bar is drawn four fifths of the way through Back, as strongly as on th
   );
 });
 
+/** Holds the next move part of the way through: every animation of it paused at that share of its length. */
+async function holdNextMove(page: Page, share: number): Promise<void> {
+  await page.evaluate((at) => {
+    const start = document.startViewTransition.bind(document);
+    document.startViewTransition = ((update: ViewTransitionUpdateCallback) => {
+      document.startViewTransition = start;
+      const move = start(update);
+      void move.ready.then(() => {
+        const timed = document.documentElement
+          .getAnimations({ subtree: true })
+          .filter((one) => Number.isFinite(Number(one.effect?.getComputedTiming().endTime)));
+        const end = Math.max(...timed.map((one) => Number(one.effect?.getComputedTiming().endTime)));
+        for (const one of timed) {
+          one.pause();
+          one.currentTime = end * at;
+        }
+        document.documentElement.dataset.held = "yes";
+      });
+      return move;
+    }) as typeof document.startViewTransition;
+  }, share);
+}
+
+/** Lets the held move finish. */
+async function letGo(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    for (const one of document.documentElement.getAnimations({ subtree: true }))
+      if (Number.isFinite(Number(one.effect?.getComputedTiming().endTime))) one.finish();
+    delete document.documentElement.dataset.held;
+  });
+}
+
+/**
+ * Where the held move's clip is, and how much of its pictures show outside it: the held frame against the same frame
+ * with the clip's pictures hidden, as the mean difference per colour (0 to 255) outside the clip's box, and in a
+ * 4 by 4 patch at each of its corners, which a rounded box leaves out; and inside it, to show the clip is drawn at all.
+ */
+async function clipSpill(
+  page: Page,
+): Promise<{ box: string; inside: number; outside: number; corners: number }> {
+  const box = await page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement, "::view-transition-group(clip)");
+    const at = new DOMMatrixReadOnly(style.transform === "none" ? undefined : style.transform);
+    return { x: at.e, y: at.f, width: parseFloat(style.width), height: parseFloat(style.height) };
+  });
+  const shown = await page.screenshot({ animations: "allow", scale: "css" });
+  const hiding = await page.addStyleTag({
+    content: "::view-transition-old(clip), ::view-transition-new(clip) { visibility: hidden; }",
+  });
+  const bare = await page.screenshot({ animations: "allow", scale: "css" });
+  await hiding.evaluate((tag) => {
+    (tag as Element).remove();
+  });
+  const spill = await page.evaluate(
+    async ({ first, second, box }) => {
+      const pixels = async (png: string) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${png}`;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const pen = canvas.getContext("2d");
+        if (pen === null) throw new Error("no 2d canvas");
+        pen.drawImage(image, 0, 0);
+        return { width: image.width, data: pen.getImageData(0, 0, image.width, image.height).data };
+      };
+      const a = await pixels(first);
+      const b = await pixels(second);
+      const gapAt = (x: number, y: number) => {
+        const at = (y * a.width + x) * 4;
+        let gap = 0;
+        for (let colour = 0; colour < 3; colour++)
+          gap += Math.abs((a.data[at + colour] ?? 0) - (b.data[at + colour] ?? 0));
+        return gap / 3;
+      };
+      const rows = a.data.length / 4 / a.width;
+      // Two pixels of give round the box, for the edge's smoothing.
+      const left = Math.floor(box.x) - 2;
+      const top = Math.floor(box.y) - 2;
+      const right = Math.ceil(box.x + box.width) + 2;
+      const bottom = Math.ceil(box.y + box.height) + 2;
+      let outside = 0;
+      let counted = 0;
+      let inside = 0;
+      let within = 0;
+      for (let y = 0; y < rows; y++)
+        for (let x = 0; x < a.width; x++) {
+          if (x >= left && x < right && y >= top && y < bottom) {
+            inside += gapAt(x, y);
+            within++;
+            continue;
+          }
+          outside += gapAt(x, y);
+          counted++;
+        }
+      let corners = 0;
+      const x0 = Math.ceil(box.x);
+      const y0 = Math.ceil(box.y);
+      const x1 = Math.floor(box.x + box.width) - 4;
+      const y1 = Math.floor(box.y + box.height) - 4;
+      for (const [cx, cy] of [
+        [x0, y0],
+        [x1, y0],
+        [x0, y1],
+        [x1, y1],
+      ] as const)
+        for (let y = cy; y < cy + 4; y++) for (let x = cx; x < cx + 4; x++) corners += gapAt(x, y);
+      return {
+        inside: inside / within,
+        outside: counted === 0 ? 0 : outside / counted,
+        corners: corners / 64,
+      };
+    },
+    { first: shown.toString("base64"), second: bare.toString("base64"), box },
+  );
+  return {
+    box: `${String(box.width)} by ${String(box.height)} at ${String(box.x)}, ${String(box.y)}`,
+    ...spill,
+  };
+}
+
+test("the moving clip is cut to its box and rounds its corners as it goes, both ways", async ({ page }) => {
+  test.skip(
+    !(await page.evaluate(() => "startViewTransition" in document)),
+    "this browser has no view transitions, so every move comes at once",
+  );
+  const clip = await openFeedAt(page);
+
+  // A third of the way out, and two thirds of the way back: the same place on the path.
+  await holdNextMove(page, 1 / 3);
+  await clip.getByRole("link", { name: game.name }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
+  const out = await clipSpill(page);
+  await letGo(page);
+  await expect(page.getByRole("heading", { level: 1, name: game.name })).toBeVisible();
+  await pageHasSettled(page);
+
+  await holdNextMove(page, 2 / 3);
+  await page.goBack();
+  await expect(page.locator("html")).toHaveAttribute("data-held", "yes");
+  const back = await clipSpill(page);
+  await letGo(page);
+  await expect(clip).toHaveAttribute("data-current", "true");
+
+  expect(out.inside, `going out, the clip at ${out.box}`).toBeGreaterThan(10);
+  expect(back.inside, `coming back, the clip at ${back.box}`).toBeGreaterThan(10);
+  expect(out.outside, `going out, the clip at ${out.box}`).toBeLessThan(0.5);
+  expect(back.outside, `coming back, the clip at ${back.box}`).toBeLessThan(0.5);
+  expect(out.corners, `going out, the clip at ${out.box}`).toBeLessThan(4);
+  expect(back.corners, `coming back, the clip at ${back.box}`).toBeLessThan(4);
+});
+
 test("the back arrow on a game's page opened another way goes to the feed with a slide", async ({ page }) => {
   test.skip(
     !(await page.evaluate(() => "startViewTransition" in document)),
