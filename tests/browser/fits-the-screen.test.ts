@@ -100,6 +100,29 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
   expect(await overflow(page), "/settings/feed at 375 by 667").toEqual({ page: 0, view: 0 });
   await expectViewAboveTheBar(page, "/settings/feed at 375 by 667");
   await expect(page.getByRole("button", { name: "Start over" })).toBeInViewport();
+
+  // And with the chips the spec's sketch of Your feed shows (6.2): three on the more side, one on the less side.
+  for (const [side, words] of [
+    ["See more of", "Cosy"],
+    ["See more of", "Puzzle"],
+    ["See more of", "Spooky"],
+    ["See less of", "Racing and sports"],
+  ] as const) {
+    const region = side === "See more of" ? "What you want to see more of" : "What you want to see less of";
+    await page
+      .getByRole("region", { name: region })
+      .getByRole("button", { name: "Add", exact: true })
+      .click();
+    const sheet = page.getByRole("dialog", { name: side });
+    await sheet.getByRole("button", { name: words, exact: true }).click();
+    await expect(sheet).toBeHidden();
+    await expect(page.getByRole("button", { name: `Remove ${words}` })).toBeVisible();
+  }
+  await wordsHaveSettled(page);
+  expect(await overflow(page), "/settings/feed with chips at 375 by 667").toEqual({ page: 0, view: 0 });
+  await expectViewAboveTheBar(page, "/settings/feed with chips at 375 by 667");
+  await expect(page.getByRole("button", { name: "Start over" })).toBeInViewport();
+  await expect(page.getByRole("link", { name: "Back to your account" })).toBeInViewport();
 });
 
 test("a member's Your account fits too, down to an iPhone SE", async ({ page }) => {

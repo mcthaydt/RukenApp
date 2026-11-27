@@ -77,7 +77,8 @@
       </li>
     {/each}
     {#if direction === "more"}
-      {#each feed.suggestions as choice (`${choice.kind}:${choice.value}`)}
+      <!-- Two suggestions, or one once three or more chips are kept, so the side stays two lines on a phone. -->
+      {#each feed.suggestions.slice(0, feed.more.length >= 3 ? 1 : 2) as choice (`${choice.kind}:${choice.value}`)}
         <li>{@render choiceForm(choice, "more", true)}</li>
       {/each}
     {/if}
@@ -134,12 +135,12 @@
       </section>
     {/if}
   {/if}
-  <!-- Side by side, so the whole page fits an iPhone SE with no scrolling, as Your account does. -->
+  <!-- Back is an arrow, as on the maker's screens, beside Start over: one line, so the page fits an iPhone SE. -->
   <div class="foot">
+    <a class="button safe back" href="/me" aria-label="Back to your account"><Icon name="back" /></a>
     {#if feed.learning === "on"}
       <button type="button" class="danger" onclick={() => startOverSheet?.showModal()}>Start over</button>
     {/if}
-    <a class="quiet" href="/me">Back to your account</a>
   </div>
 </main>
 
@@ -309,7 +310,11 @@
      with no scrolling. Every button keeps its whole 48px target. */
   @media (max-height: 820px) {
     .yourfeed {
+      margin-top: 0.5rem;
       padding: 0.75rem;
+    }
+    .learn {
+      margin-top: 0.75rem;
     }
     .sentence {
       margin-top: 0.5rem;
