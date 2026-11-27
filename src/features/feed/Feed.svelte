@@ -623,7 +623,7 @@
                 {/if}
               </div>
             {/if}
-            {#if ready && !marksOf(clip).own}
+            {#if ready}
               {@const marks = marksOf(clip)}
               {#if markProblem === clip.slug}
                 <p class="markproblem" role="alert">That didn't work. Try again.</p>

@@ -94,7 +94,7 @@ export interface FeedPage {
 }
 
 /** A clip's marks when none were read for it. */
-const NO_MARKS: ClipMarks = { likes: 0, liked: false, saved: false, reposted: false, own: false };
+const NO_MARKS: ClipMarks = { likes: 0, liked: false, saved: false, reposted: false };
 
 /** Which ranker answers the feed, and what it says of its own settings. */
 export interface FeedHealth {

@@ -150,6 +150,31 @@ export function heldMove(): Promise<void> | null {
  * whatever the browser does with the slide: a slide it skips (Safari skipped one leaving the play screen in CI) lets
  * the move go on, and so does a slide that never starts, after a second at most.
  */
+/**
+ * Back in the feed, the clip is a new video that may have no picture of its own yet (the owner, 2026-11-27: "The video
+ * also goes black when we transition to feed from game"). Until it has one, the move keeps showing the game's picture
+ * of the clip (look.css, `data-clip-waits`), so it never covers that with an empty box.
+ */
+function waitForPicture(video: HTMLVideoElement, naming: number): void {
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    endWait(naming);
+    return;
+  }
+  document.documentElement.dataset.clipWaits = String(naming);
+  // A clip from an earlier move that gets its picture late must not end this move's wait, so each wait ends only
+  // its own move's mark.
+  const shown = () => {
+    endWait(naming);
+  };
+  video.addEventListener("loadeddata", shown, { once: true });
+  video.addEventListener("error", shown, { once: true });
+}
+
+function endWait(naming: number): void {
+  const html = document.documentElement;
+  if (html.dataset.clipWaits === String(naming)) delete html.dataset.clipWaits;
+}
+
 export function slideWhile(arrived: Promise<unknown>, game: string | null = null): Promise<void> {
   // The clip that moves is named in the old page before the browser pictures it, and in the new page once it is in;
   // the old one loses its name first, since two elements with one name would make the browser drop the whole move.
@@ -165,12 +190,14 @@ export function slideWhile(arrived: Promise<unknown>, game: string | null = null
       unname(old, naming);
       fresh = game === null ? null : await arrivedClip(game);
       if (fresh !== null) name(fresh, naming);
+      if (fresh instanceof HTMLVideoElement) waitForPicture(fresh, naming);
     });
     void slide.finished
       .catch(() => undefined)
       .then(() => {
         unname(old, naming);
         unname(fresh, naming);
+        endWait(naming);
       });
     slide.ready.catch(() => {
       resolve();
