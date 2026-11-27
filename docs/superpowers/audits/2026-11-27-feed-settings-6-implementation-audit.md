@@ -48,4 +48,4 @@ Method: for each of the 15 files both sides changed since the merge base, every 
 ## Notes (not blocking)
 
 - N1. The pinned name's room is a fixed 2.25rem. If the name ever wraps (a larger text setting, or longer words), a focused chip could be scrolled to sit under it. The `inTheBox` check would catch it at the sizes it runs.
-- N2. Removing a chip by a click also moves the focus to the next chip. That is fine for keys and a gamepad, and shows a focus ring only for keyboard focus.
+- N2. Removing a chip by a click also moves the focus to the next chip. Not checked here whether a tap then shows a focus ring on the next chip.
