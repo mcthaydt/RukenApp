@@ -125,6 +125,9 @@ describe("in a config file, only the one allowed line may add retries (A3)", () 
     "--retries=''2",
     "--retries=0\\\n          2",
     `--retries=" 2"`,
+    // Playwright reads a leading + as part of the number.
+    "--retries +2",
+    "--retries=+2",
   ])("refuses %s in a workflow", (flag) => {
     expect(
       write(".github/workflows/ci.yml", `name: CI\n        run: pnpm exec playwright test ${flag}\n`),
