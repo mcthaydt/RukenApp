@@ -979,9 +979,9 @@ function laneOfFiles(config, cwd, repo, n, pr) {
 const PIN_RULE = 'A merge lands only on the head commit that was checked (release; the merge permission rule).';
 // pin: { sha } makes a merge name the head it was checked on (expectedHeadSha); it holds
 // even when review checks are switched off, and uses the same pull request read.
-function checkReviewed(config, cwd, repo, number, what, deny, pin = null) {
+function checkReviewed(config, cwd, repo, number, what, deny, pin = null, floor = 0) {
   const f = config.prFlow;
-  const reviewOn = !!f && f.enabled !== false && f.requireReview !== false;
+  const reviewOn = !!f && f.enabled !== false && (f.requireReview !== false || floor > 0);
   if (!repo || (!reviewOn && !pin)) return;
   let n = number;
   if (!n) { const b = currentBranch(cwd); const list = ghJson(`repos/${repo}/pulls?head=${repo.split('/')[0]}:${b}`, cwd); n = list?.[0]?.number; }
@@ -995,7 +995,7 @@ function checkReviewed(config, cwd, repo, number, what, deny, pin = null) {
   if (!reviewOn) return;
   let lane = laneOf(pr.body);
   if (!lane) { deny(refusal(FLOW_RULE, `${what}: the body of #${n} names no lane`, 'add the lane to the body (gh pr edit --body-file), then retry')); return; }
-  lane = Math.max(lane, laneOfFiles(config, cwd, repo, n, pr) ?? 0);
+  lane = Math.max(lane, laneOfFiles(config, cwd, repo, n, pr) ?? 0, floor);
   if (lane < 2) return;
   const sha = String(pr.head?.sha ?? '').slice(0, 7);
   const comments = ghPages(`repos/${repo}/issues/${n}/comments`, cwd) ?? [];
@@ -1198,10 +1198,15 @@ function checkMcp(name, input, config, root, deny, ctx) {
   else if (on(config, 'mergeMethod') && (isMerge || isAuto) && method && String(method).toLowerCase() !== 'merge') deny(refusal('Merge with a merge commit, never a squash or a rebase (CLAUDE.md, Identity).', `${name} with merge_method ${method}`, 'merge_method "merge"'));
   const number = input.pullNumber ?? input.pull_number ?? input.number;
   const readyCall = toolMatches(name, config.mcp?.updatePrTools ?? ['update_pull_request$']) && input.draft === false;
-  // The merge permission rule: this repo only, no base changes, a merge names its head.
+  // The merge permission rule: this repo and the owner's repos rules.json names in alsoMerges only, no base changes,
+  // a merge names its head. This repo's lane paths say nothing about another repo's files, so a pull request there
+  // always needs a passing review on its head, whatever lane its body names.
   const thisRepo = String(ctx.thisRepo ?? config.repo ?? '').toLowerCase();
+  const target = String(repo ?? '').toLowerCase();
+  const alsoMerges = (ctx.alsoMerges ?? []).map((x) => String(x).toLowerCase());
+  const elsewhere = !!thisRepo && target !== thisRepo;
   const guardedNow = isMerge || toolMatches(name, config.mcp?.disableAutoMergeTools ?? ['disable_pr_auto_merge$']) || readyCall;
-  if (guardedNow && thisRepo && String(repo ?? '').toLowerCase() !== thisRepo) {
+  if (guardedNow && elsewhere && !alsoMerges.includes(target)) {
     deny(refusal(`This permission covers ${ctx.thisRepo ?? config.repo} only; the owner merges pull requests elsewhere.`, `${name} on ${repo ?? '(unknown repo)'}`, 'ask the owner to do it'));
     return;
   }
@@ -1211,7 +1216,7 @@ function checkMcp(name, input, config, root, deny, ctx) {
   }
   const pin = isMerge ? { sha: input.expectedHeadSha } : null;
   if (isMerge || isAuto || readyCall) checkLiveState(config, root, repo, number, readyCall ? 'marking it ready' : name, deny);
-  if (isMerge || isAuto || readyCall) checkReviewed(config, root, repo, number, readyCall ? 'marking it ready' : name, deny, pin);
+  if (isMerge || isAuto || readyCall) checkReviewed(config, root, repo, number, readyCall ? 'marking it ready' : name, deny, pin, elsewhere ? 2 : 0);
   if (toolMatches(name, config.mcp?.createPrTools ?? ['create_pull_request$'])) checkPrCreate(config, root, repo, typeof input.body === 'string' ? input.body : '', input.draft === true, deny);
   if (isMerge) checkMergeGreen(config, root, repo, number, deny);
   // Pull request bodies.
@@ -1438,8 +1443,10 @@ function preToolUse(root, config, input, ctx) {
   } else if (name?.startsWith('mcp__') || toolMatches(name ?? '', (config.sessionTools?.tools ?? []).map((t) => t.tool))) {
     const slug = ti.owner && ti.repo ? `${ti.owner}/${ti.repo}` : null;
     const scope = config.detached && !slug ? { root, config: base } : scopeFor(root, config, root, slug);
-    const cfg = scope?.config ?? { ...config, identity: { enabled: false }, mergeMethod: { enabled: false }, prBody: { enabled: false }, liveState: { enabled: false }, mergeGreen: { enabled: false } };
-    checkMcp(name, ti, cfg, scope?.root ?? root, deny, { ...ctx, thisRepo: config.repo });
+    // A repo with no rules here gets no repo-specific checks; one this config lets sessions merge in keeps the merge method.
+    const mergesThere = !!slug && (config.alsoMerges ?? []).some((x) => String(x).toLowerCase() === slug.toLowerCase());
+    const cfg = scope?.config ?? { ...config, identity: { enabled: false }, mergeMethod: mergesThere ? config.mergeMethod : { enabled: false }, prBody: { enabled: false }, liveState: { enabled: false }, mergeGreen: { enabled: false } };
+    checkMcp(name, ti, cfg, scope?.root ?? root, deny, { ...ctx, thisRepo: config.repo, alsoMerges: config.alsoMerges });
   }
   if (!reasons.length) return null;
   return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reasons.join('\n\n') } };

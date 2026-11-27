@@ -99,12 +99,31 @@ const ready = (repo = "RukenApp") => call("update_pull_request", { ...APP, repo,
 const NO_REVIEW = "no passing review that names its head";
 const OTHER_REPO = "covers mcthaydt/RukenApp only";
 
-describe("only this repo (3.2) and no base changes (3.3)", () => {
-  test("merge, disable auto-merge and ready on another repo are denied before any read", () => {
+describe("only this repo and the ones rules.json names (3.2), and no base changes (3.3)", () => {
+  test("merge, disable auto-merge and ready on a repo rules.json does not name are denied before any read", () => {
     setState({});
-    expect(merge({}, "RukenPrivate").deny).toContain(OTHER_REPO);
-    expect(call("disable_pr_auto_merge", { ...APP, repo: "RukenPrivate" }).deny).toContain(OTHER_REPO);
-    expect(ready("RukenPrivate").deny).toContain(OTHER_REPO);
+    expect(merge({}, "SomeoneElse").deny).toContain(OTHER_REPO);
+    expect(call("disable_pr_auto_merge", { ...APP, repo: "SomeoneElse" }).deny).toContain(OTHER_REPO);
+    expect(ready("SomeoneElse").deny).toContain(OTHER_REPO);
+  });
+  // Owner, 2026-11-27: "I'm not going to keep doing the merging" (RukenPrivate). The same rules hold there, and
+  // since this repo's lane paths say nothing about its files, every one of its pull requests needs a PASS on its head.
+  test("RukenPrivate, named in alsoMerges, merges under the same rules, always with a PASS on its head", () => {
+    setState({ body: "Lane 1", files: ["worker/src/index.ts"] });
+    expect(merge({}, "RukenPrivate").deny).toContain(NO_REVIEW);
+    expect(ready("RukenPrivate").deny).toContain(NO_REVIEW);
+    expect(merge({ merge_method: "squash" }, "RukenPrivate").deny).toContain("merge_method squash");
+    setState({ body: "Lane 3", files: ["worker/src/index.ts"], comments: [`${SHORT} PASS`] });
+    expect(merge({ expectedHeadSha: SHORT }, "RukenPrivate").deny).toContain("expectedHeadSha");
+    expect(merge({}, "RukenPrivate").deny).toBeNull();
+    expect(ready("RukenPrivate").deny).toBeNull();
+    expect(call("disable_pr_auto_merge", { ...APP, repo: "RukenPrivate" }).deny).toBeNull();
+    setState({
+      body: "Lane 3",
+      files: ["worker/src/index.ts"],
+      comments: [`${SHORT} PASS`, `${SHORT} FAIL`],
+    });
+    expect(merge({}, "RukenPrivate").deny).toContain(NO_REVIEW);
   });
   test("other updates on another repo are not denied by it (j)", () => {
     setState({});

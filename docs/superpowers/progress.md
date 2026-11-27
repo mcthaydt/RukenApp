@@ -209,6 +209,7 @@ Moved here from the deleted `docs/superpowers/history.md` (owner, 2026-11-21 20:
 - 2026-11-21 19:16 UTC, the owner: "you do not need my go ahead to merge things"; confirmed in the owner's 19:58 UTC message: every pull request, lane 3 and Cloudflare included, merges once its audits pass and CI is green. It does not cover product choices, new access or money, or scope changes. The restart handoff's earlier exception for live Cloudflare and console switches no longer applies.
 - 2026-11-20, the owner: "Small reviewed fixes can merge on the quick checks alone." (restart handoff). **Not in force** (2026-11-21, apps-kit alignment, from the owner's 20:19 UTC instruction): CLAUDE.md, Risk, says a standing permission "never lowers the lane or removes required checks and reviews", and `release` requires the full run, not the quick one, for lane 2 and on a public repo. No permission lets a merge skip the full run. Kept as a record only.
 - First-time setup: the owner's request is the standing permission for the setup check (CLAUDE.md, Risk).
+- 2026-11-27 02:40 UTC, the owner, about RukenPrivate: "I'm not going to keep doing the merging". The 2026-11-21 merge permission now covers `mcthaydt/RukenPrivate` too, under the same rules (rules.json `alsoMerges`): green, a merge commit, the full head SHA, and always a passing review that names the head, whatever lane the body names.
 
 ### Flaky tests
 
