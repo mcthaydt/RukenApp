@@ -97,7 +97,16 @@ export function startPad(options: PadOptions): () => void {
   let viewSince: number | null = null;
   let frame = 0;
   // After the feed has slid to another clip, the focus goes to that clip's main control once the slide has settled.
-  let settle: { scroller: Element; top: number; still: number; until: number } | null = null;
+  // A slide can start a few frames after the key (a busy machine), so stillness only counts once it has moved, or once
+  // it has had time to start and did not (the last clip, or a slide that could not move).
+  let settle: {
+    scroller: Element;
+    top: number;
+    moved: boolean;
+    still: number;
+    startBy: number;
+    until: number;
+  } | null = null;
 
   function pads(): PadReading[] {
     return [...navigator.getGamepads()].filter((pad): pad is Gamepad => pad !== null && pad.connected);
@@ -108,7 +117,14 @@ export function startPad(options: PadOptions): () => void {
     const line = where === document ? document.querySelector("[data-pad='line']") : null;
     if (offerKey(ARROWS[way])) {
       if (line !== null && (way === "up" || way === "down"))
-        settle = { scroller: line, top: line.scrollTop, still: 0, until: performance.now() + 3000 };
+        settle = {
+          scroller: line,
+          top: line.scrollTop,
+          moved: false,
+          still: 0,
+          startBy: performance.now() + 600,
+          until: performance.now() + 3000,
+        };
       return;
     }
     const from = focusedControl(where);
@@ -228,8 +244,10 @@ export function startPad(options: PadOptions): () => void {
       return;
     }
     const top = settle.scroller.scrollTop;
+    if (top !== settle.top) settle.moved = true;
     settle.still = top === settle.top ? settle.still + 1 : 0;
     settle.top = top;
+    if (!settle.moved && now < settle.startBy) return;
     if (settle.still < 3) return;
     settle = null;
     const main = [...document.querySelectorAll<HTMLElement>(FIRST)].find((control) => {
