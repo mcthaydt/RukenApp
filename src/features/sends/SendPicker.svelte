@@ -67,7 +67,7 @@
   }
 </script>
 
-<section class="pick" aria-labelledby="pick-title">
+<section class="friendpick" aria-labelledby="pick-title">
   <h3 id="pick-title">{SEND_WORDS.pickTitle}</h3>
   {#if friends === null}
     <p>{SEND_WORDS.signInToSend}</p>
@@ -141,7 +141,7 @@
 {/snippet}
 
 <style>
-  .pick {
+  .friendpick {
     display: grid;
     gap: 0.75rem;
   }

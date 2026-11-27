@@ -88,6 +88,15 @@ async function shareSheetFor(page: Page, slug: string): Promise<Locator> {
 async function pickFriendsIn(sheet: Locator): Promise<void> {
   await sheet.getByRole("button", { name: "Your turn", exact: true }).click();
   await expect(sheet.getByRole("heading", { name: "Send to friends" })).toBeVisible();
+  // It sits on the sheet's own glass, in the sheet's own white words, never a card of another colour.
+  await expect(sheet.getByRole("region", { name: "Send to friends" })).toHaveCSS(
+    "background-color",
+    "rgba(0, 0, 0, 0)",
+  );
+  await expect(sheet.getByRole("heading", { name: "Send to friends" })).toHaveCSS(
+    "color",
+    "rgb(255, 255, 255)",
+  );
 }
 
 /** Sends this game to a friend from the share sheet's Your turn: pick their face, press Send, and it says so. */
