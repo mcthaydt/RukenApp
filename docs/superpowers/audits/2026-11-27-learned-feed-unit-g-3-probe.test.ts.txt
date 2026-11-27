@@ -1,0 +1,167 @@
+import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
+import {
+  JOURNEY_PASSWORD,
+  nationalOf,
+  pageHasSettled,
+  SITE_ANSWER_TIMEOUT,
+  signUp,
+  signUpInItsOwnContext,
+} from "./support/account.ts";
+import { consented, NOT_CONSENTED } from "./support/consent.ts";
+import { gameWhere } from "./support/game.ts";
+import { forgetRateLimits } from "./support/rate-limits.ts";
+
+// Audit 3 probe for PR #404 (b4e09e4): tries to make a press the person never made, from another site and through
+// links, and checks nothing is kept before "I agree".
+
+const SITE = "http://localhost:4173";
+const ELSEWHERE = "http://elsewhere.test";
+
+let live: { slug: string; name: string };
+let makerContext: BrowserContext;
+
+test.beforeAll(async ({ browser }) => {
+  test.setTimeout(180_000);
+  await forgetRateLimits();
+  makerContext = await browser.newContext({ ...consented, baseURL: SITE });
+  live = await gameWhere(await makerContext.newPage(), { state: "live" });
+});
+test.afterAll(async () => {
+  await makerContext.close();
+});
+test.beforeEach(forgetRateLimits);
+
+async function clipOnFeed(page: Page, open = true): Promise<Locator> {
+  if (open) await page.goto("/");
+  await pageHasSettled(page);
+  const clip = page.locator(`section[data-slug="${live.slug}"]`).first();
+  await clip.scrollIntoViewIfNeeded();
+  await expect(clip.getByRole("button", { name: "Share" })).toBeVisible();
+  return clip;
+}
+const mark = (clip: Locator, name: "Like" | "Save" | "Repost") =>
+  clip.getByRole("button", { name, exact: true });
+
+async function signInHere(page: Page, number: string): Promise<void> {
+  await page.getByLabel("Phone number").fill(nationalOf(number));
+  await page.getByLabel("Password").fill(JOURNEY_PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click({ timeout: SITE_ANSWER_TIMEOUT });
+}
+
+/** An attacker's page on another site that tries every way a page can send a press to Ruken. */
+async function attackFromElsewhere(page: Page, slug: string): Promise<void> {
+  const body = JSON.stringify({ game: slug, kind: "repost", on: true });
+  await page.route(`${ELSEWHERE}/**`, (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: `<!doctype html><body>
+<form id="plain" method="POST" action="${SITE}/api/feed/marks" enctype="text/plain" target="sink">
+  <input name='{"game":"${slug}","kind":"repost","on":true,"x":"' value='"}'></form>
+<form id="url" method="POST" action="${SITE}/api/feed/marks" target="sink2">
+  <input name="game" value="${slug}"><input name="kind" value="save"><input name="on" value="true"></form>
+<iframe name="sink"></iframe><iframe name="sink2"></iframe>
+<script>
+  window.done = (async () => {
+    const tries = [];
+    const go = (p) => p.then(() => tries.push("sent"), (e) => tries.push(String(e)));
+    await go(fetch("${SITE}/api/feed/marks", { method: "POST", mode: "no-cors", credentials: "include",
+      body: new Blob([${JSON.stringify(body)}], { type: "application/json" }) }));
+    await go(fetch("${SITE}/api/feed/marks", { method: "POST", mode: "no-cors", credentials: "include",
+      headers: { "content-type": "application/json" }, body: ${JSON.stringify(body)} }));
+    await go(fetch("${SITE}/api/feed/marks", { method: "POST", mode: "cors", credentials: "include",
+      headers: { "content-type": "application/json" }, body: ${JSON.stringify(body)} }));
+    navigator.sendBeacon("${SITE}/api/feed/marks", new Blob([${JSON.stringify(body)}], { type: "application/json" }));
+    document.getElementById("plain").submit();
+    document.getElementById("url").submit();
+    await new Promise((r) => setTimeout(r, 1500));
+    return tries;
+  })();
+</script></body>`,
+    }),
+  );
+  await page.goto(`${ELSEWHERE}/`);
+  await page.evaluate(() => (window as unknown as { done: Promise<unknown> }).done);
+}
+
+async function nothingMarked(page: Page): Promise<void> {
+  for (const list of ["/me/reposts", "/me/saved"]) {
+    await page.goto(list);
+    await expect(page.getByRole("link", { name: new RegExp(live.name) })).toHaveCount(0);
+  }
+  const clip = await clipOnFeed(page);
+  for (const name of ["Like", "Save", "Repost"] as const)
+    await expect(mark(clip, name)).toHaveAttribute("aria-pressed", "false");
+}
+
+test("signed in with the yes: another site's page presses nothing", async ({ page }) => {
+  test.setTimeout(90_000);
+  await signUp(page);
+  await attackFromElsewhere(page, live.slug);
+  await nothingMarked(page);
+});
+
+test("signed out with the yes: another site's page plants no note, and a sign-in link to the way back presses nothing", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(90_000);
+  const { number } = await signUpInItsOwnContext(browser);
+  await attackFromElsewhere(page, live.slug);
+  const names = (await page.context().cookies()).map((c) => c.name);
+  expect(names).not.toContain("rk_mark_pressed");
+  await page.goto(`/sign-in?next=${encodeURIComponent(`/me/press?game=${live.slug}&kind=repost`)}`);
+  await signInHere(page, number);
+  await expect(page).toHaveURL(`/?at=${live.slug}`);
+  await nothingMarked(page);
+});
+
+test.describe("without the cookie yes", () => {
+  test.use({ storageState: NOT_CONSENTED });
+
+  test("a press in place sends nothing and sets nothing before I agree; Not now then a sent link presses nothing", async ({
+    page,
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const { number } = await signUpInItsOwnContext(browser);
+    const sent: string[] = [];
+    page.on("request", (r) => {
+      if (r.url().includes("/api/feed/marks") || r.url().includes("/cookies")) sent.push(`${r.method()} ${r.url()}`);
+    });
+    const clip = await clipOnFeed(page);
+    await page.getByRole("button", { name: "Not now" }).click();
+    for (const name of ["Like", "Save", "Repost"] as const) {
+      await mark(clip, name).click();
+      await expect(page.getByText(`To ${name.toLowerCase()} this game`, { exact: false })).toBeVisible();
+      await page.getByRole("button", { name: "Not now" }).click();
+    }
+    expect(sent).toEqual([]);
+    expect(await page.context().cookies()).toEqual([]);
+    const stored = await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }));
+    expect(stored).toEqual({ local: {}, session: {} });
+    // A link someone sends straight to the way back, after the dropped press.
+    await page.goto(`/me/press?game=${live.slug}&kind=repost`);
+    await page.getByRole("button", { name: "I agree" }).click();
+    await expect(page).toHaveURL(/\/sign-in\?next=/);
+    await signInHere(page, number);
+    await nothingMarked(page);
+  });
+
+  test("I agree on the in-place card makes the one press that waited, and only that one", async ({ page, browser }) => {
+    test.setTimeout(120_000);
+    const { number } = await signUpInItsOwnContext(browser);
+    const clip = await clipOnFeed(page);
+    await page.getByRole("button", { name: "Not now" }).click();
+    await mark(clip, "Like").click();
+    await page.getByRole("button", { name: "Not now" }).click();
+    await mark(clip, "Repost").click();
+    await page.getByRole("button", { name: "I agree" }).click();
+    await expect(page).toHaveURL(/\/sign-in\?next=%2Fme%2Fpress%3F/);
+    expect(decodeURIComponent(page.url())).toContain("kind=repost");
+    await signInHere(page, number);
+    await expect(page).toHaveURL(`/?at=${live.slug}`);
+    const again = await clipOnFeed(page, false);
+    await expect(mark(again, "Repost")).toHaveAttribute("aria-pressed", "true");
+    await expect(mark(again, "Like")).toHaveAttribute("aria-pressed", "false");
+  });
+});
