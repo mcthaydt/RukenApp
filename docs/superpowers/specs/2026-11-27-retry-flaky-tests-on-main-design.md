@@ -26,7 +26,9 @@ joins when #411 merges, with no change here).
 
 Lane 3: the rule hooks (`.claude/hooks/`), `.github/workflows/ci.yml`, `CLAUDE.md` and the shared `build` and
 `release` skills, which decide what passes. Each lane 3 pull request below gets this plan audit, an implementation
-audit, green CI, and the owner's word to merge (the 07:18 UTC card approves the direction, not the merges).
+audit, green CI, and the owner's word. That word is the owner's 07:18 UTC pick on the card, "Yes, retry on main
+(recommended)", which approves this rule change; the merges then go ahead under the 2026-11-21 standing permission
+(every pull request, lane 3 included, merges once its audits pass and CI is green; `progress.md`, History).
 
 ## 4. Design
 
@@ -133,8 +135,8 @@ scripts, so the work is three pull requests, in order. Each starts from a `main`
 
 | PR | Files | Lane | Checks | Waits on |
 |---|---|---|---|---|
-| A. Hook and report script | this spec, `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.github/scripts/flaky-tests.js`, `tests/rules-bypass-flags.test.ts`, `tests/flaky-tests.test.ts` | 3 (hooks) | A1 to A5; implementation audit; owner's word | this plan audit |
-| B. The rule | `.github/workflows/ci.yml`, `CLAUDE.md`, `.claude/skills/build/SKILL.md`, `.claude/skills/release/SKILL.md`, `docs/superpowers/progress.md` | 3 (CI, rules) | B1 to B3; implementation audit; owner's word | A on `main` (its hook lets the `ci.yml` line through; its script is what the step runs) |
+| A. Hook and report script | this spec, `.claude/hooks/rules.mjs`, `.claude/hooks/rules.json`, `.github/scripts/flaky-tests.js`, `tests/rules-bypass-flags.test.ts`, `tests/flaky-tests.test.ts` | 3 (hooks) | A1 to A5; implementation audit; owner's word (the 07:18 UTC card) | this plan audit |
+| B. The rule | `.github/workflows/ci.yml`, `CLAUDE.md`, `.claude/skills/build/SKILL.md`, `.claude/skills/release/SKILL.md`, `docs/superpowers/progress.md` | 3 (CI, rules) | B1 to B3; implementation audit; owner's word (the 07:18 UTC card) | A on `main` (its hook lets the `ci.yml` line through; its script is what the step runs) |
 | C. The sync test | `tests/ci-retries.test.ts` | 1 (a test) | C1, C2 green; C3 after | B on `main` (the test reads B's files) |
 
 PR A is this pull request (#415); the spec rides with it. Between A and B, `main` has a hook that allows a line no
