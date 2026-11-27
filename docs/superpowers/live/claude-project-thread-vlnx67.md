@@ -1,5 +1,0 @@
-- Task: notes follow-up to #399 (Safari bar wording, flake record, merged row).
-- Last commit: c19d3635
-- Next step: open the draft PR, merge on green.
-- Open decisions: none.
-- Updated: 2026-11-27 00:51 UTC
