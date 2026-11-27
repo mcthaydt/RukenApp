@@ -161,12 +161,10 @@ test("Search works with the keyboard alone, and without script", async ({ page, 
   for (let step = 0; step < 8; step += 1) {
     await page.keyboard.press("Tab");
     reached.push(
-      await page.evaluate(
-        () =>
-          document.activeElement?.getAttribute("aria-label") ??
-          document.activeElement?.textContent?.trim() ??
-          "",
-      ),
+      await page.evaluate(() => {
+        const focused = document.activeElement;
+        return focused === null ? "" : (focused.getAttribute("aria-label") ?? focused.textContent.trim());
+      }),
     );
     if (reached.at(-1) === "Search") break;
   }
