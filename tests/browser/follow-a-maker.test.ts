@@ -156,12 +156,39 @@ test("going to the way back without pressing the plus follows nobody", async ({ 
   await page.goto(`/${handle}/follow?back=%2F`);
   await expect(page).toHaveURL("/");
   expect(await followsOf(player.number)).toEqual([]);
-  // A handle with no page is a missing page.
+  // A pressed mark naming another maker follows nobody, and the way back uses it up all the same.
+  const pressedCookie = async () =>
+    (await page.context().cookies(SITE)).find((cookie) => cookie.name === "rk_follow_pressed");
+  await page.context().addCookies([{ name: "rk_follow_pressed", value: "someone-else", url: SITE }]);
+  await page.goto(`/${handle}/follow?back=%2F`);
+  await expect(page).toHaveURL("/");
+  expect(await followsOf(player.number)).toEqual([]);
+  expect(await pressedCookie()).toBeUndefined();
+  // A handle with no page is a missing page, pressed or not, by post or by the way back.
   const missing = await page.request.post("/nobody-has-this-page/follow", {
     ...FROM_THE_SITE,
     form: { want: "on", back: "/" },
     maxRedirects: 0,
   });
+  expect(missing.status()).toBe(404);
+  const missingWayBack = await page.request.get("/nobody-has-this-page/follow?back=%2F", { maxRedirects: 0 });
+  expect(missingWayBack.status()).toBe(404);
+  await page.context().addCookies([{ name: "rk_follow_pressed", value: "nobody-has-this-page", url: SITE }]);
+  const missingPressed = await page.request.get("/nobody-has-this-page/follow?back=%2F", { maxRedirects: 0 });
+  expect(missingPressed.status()).toBe(404);
+  expect(await pressedCookie()).toBeUndefined();
+});
+
+test("signed out, the way back follows nobody and uses up the pressed mark", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.context().addCookies([{ name: "rk_follow_pressed", value: handle, url: SITE }]);
+  const answer = await page.request.get(`/${handle}/follow?back=%2F`, { maxRedirects: 0 });
+  expect(answer.status()).toBe(303);
+  expect(answer.headers()["location"]).toBe("/");
+  expect((await page.context().cookies(SITE)).some((cookie) => cookie.name === "rk_follow_pressed")).toBe(
+    false,
+  );
+  const missing = await page.request.get("/nobody-has-this-page/follow?back=%2F", { maxRedirects: 0 });
   expect(missing.status()).toBe(404);
 });
 

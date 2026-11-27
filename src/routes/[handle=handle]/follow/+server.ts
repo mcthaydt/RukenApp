@@ -50,15 +50,17 @@ export const POST: RequestHandler = async ({ params, request, locals, cookies })
 };
 
 // The way back from sign-up: the person pressed the plus while signed out, so the maker is followed. Anything else that
-// lands here (a link, a typed address) only goes on to the page: nobody pressed anything.
+// lands here (a link, a typed address) only goes on to the page: nobody pressed anything. The pressed mark is used up on
+// any way back, whoever comes and whichever maker it names, and an address with no page is a missing page.
 export const GET: RequestHandler = async ({ params, url, locals, cookies }) => {
   const back = backOf(url.searchParams.get("back"));
-  if (locals.caller.kind === "user" && cookies.get(PRESSED_COOKIE) === params.handle) {
-    cookies.delete(PRESSED_COOKIE, { path: "/" });
-    // follow() checks the rest: a page at this address, and not the person's own (a maker who pressed their own plus
-    // while signed out, then signed in, follows nobody).
-    const done = await pagesServices().follows.follow(locals.caller.userId, params.handle);
-    if (done === "no page") error(404);
+  const pressed = cookies.get(PRESSED_COOKIE);
+  if (pressed !== undefined) cookies.delete(PRESSED_COOKIE, { path: "/" });
+  if ((await pagesServices().service.pageByHandle(params.handle)) === null) error(404);
+  if (locals.caller.kind === "user" && pressed === params.handle) {
+    // follow() checks the rest: not the person's own page (a maker who pressed their own plus while signed out, then
+    // signed in, follows nobody).
+    await pagesServices().follows.follow(locals.caller.userId, params.handle);
   }
   redirect(303, back);
 };
