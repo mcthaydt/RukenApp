@@ -3,11 +3,18 @@
 // and only when that ends is the dialog closed. Every way out goes through `slideAway`, so they all look the same.
 
 /**
- * How long a slide away may run, counted from when it starts, before the sheet is closed anyway (look.css plays it in
- * 260ms). It is counted from the slide's start, never from the press: on a busy phone the first frame can come late,
- * and a count from the press would cut the slide short.
+ * How long a slide away may take before the sheet is closed anyway (look.css plays it in 260ms): from the press until
+ * it starts, and again from its start. Counted from the start once it starts, since on a busy phone the first frame
+ * can come late and a count from the press alone would cut the slide short.
  */
-const LONGEST_SLIDE_MS = 1000;
+const LONGEST_WAIT_MS = 1000;
+
+/**
+ * The slide away's names in look.css. Events are told apart by name, never by `pseudoElement`: Safari reports the dimmed
+ * screen's own animations (sheet-undim) on the dialog with an empty `pseudoElement`, and a slide in cut off by the close
+ * (sheet-in, sheet-up) is not the slide away ending.
+ */
+const SLIDES_AWAY = new Set(["sheet-out", "sheet-down"]);
 
 // The sheets sliding away right now, each with the step that closes it for real.
 const finishers = new WeakMap<HTMLDialogElement, () => void>();
@@ -22,36 +29,44 @@ export function slideAway(sheet: HTMLDialogElement): void {
     sheet.close();
     return;
   }
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const own = (event: AnimationEvent): boolean => event.target === sheet && event.pseudoElement === "";
+  const slideAwayOf = (event: AnimationEvent): boolean =>
+    event.target === sheet && SLIDES_AWAY.has(event.animationName);
+  // Started at the press, in case the slide never starts; started again when it does, in case it never ends.
+  let timer = setTimeout(finish, LONGEST_WAIT_MS);
   const started = (event: AnimationEvent): void => {
-    if (!own(event) || timer !== undefined) return;
-    // In case the slide never reports its end, it still closes.
-    timer = setTimeout(finish, LONGEST_SLIDE_MS);
+    if (!slideAwayOf(event)) return;
+    clearTimeout(timer);
+    timer = setTimeout(finish, LONGEST_WAIT_MS);
   };
-  // The panel's own slide (not the dimmed screen's) has played to its end, or was cut off.
+  // The slide away has played to its end, or was cut off.
   const stopped = (event: AnimationEvent): void => {
-    if (own(event)) finish();
+    if (slideAwayOf(event)) finish();
   };
-  const finish = (): void => {
+  function finish(): void {
     if (finishers.get(sheet) !== finish) return;
     clearTimeout(timer);
     sheet.removeEventListener("animationstart", started);
     sheet.removeEventListener("animationend", stopped);
     sheet.removeEventListener("animationcancel", stopped);
+    sheet.removeEventListener("close", finish);
     finishers.delete(sheet);
     sheet.classList.remove("closing");
     sheet.inert = false;
     if (sheet.open) sheet.close();
-  };
+  }
   finishers.set(sheet, finish);
   sheet.addEventListener("animationstart", started);
   sheet.addEventListener("animationend", stopped);
   sheet.addEventListener("animationcancel", stopped);
+  // Closed some other way while it slides: it is tidied up all the same.
+  sheet.addEventListener("close", finish);
   sheet.classList.add("closing");
   sheet.inert = true;
-  // A sheet with no slide to play (its look turned off) closes at once.
-  if (sheet.getAnimations().length === 0) finish();
+  // A sheet with no slide away to play closes at once.
+  const slides = sheet
+    .getAnimations()
+    .some((animation) => animation instanceof CSSAnimation && SLIDES_AWAY.has(animation.animationName));
+  if (!slides) finish();
 }
 
 /** Closes a sheet that is still sliding away at once, so it can open again straight after. */
