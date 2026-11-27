@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { devices, expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { addGame } from "./support/game.ts";
 import { pageHasSettled } from "./support/account.ts";
 import { foundAtSlideStart, oneMove, swipe, watchMoves } from "./support/moves.ts";
@@ -112,8 +112,8 @@ async function cornersShowThePage(page: Page, picture: Buffer, where: string): P
 }
 
 /**
- * Gives the page `window.ringsNow`: each button on the bar or the feed's tabs that shows a ring, an outline or a tap
- * flash the keyboard did not put there. It also runs as each slide starts (`beforeSlide`, tests/browser/support/moves.ts),
+ * Gives the page `window.ringsNow`: each button on the bar or the feed's tabs that shows a ring, an outline, a border or
+ * a tap flash the keyboard did not put there, on the button or on what is drawn before or after it. It also runs as each slide starts (`beforeSlide`, tests/browser/support/moves.ts),
  * before the browser takes its picture of the old page, so a ring left by the press that started the move is seen even
  * though focus has left the button by the time the slide is filmed.
  */
@@ -123,17 +123,37 @@ async function lookForRings(page: Page): Promise<void> {
       [...document.querySelectorAll('nav[aria-label="Ruken"] a, nav[aria-label="Feeds"] a')]
         .filter((one) => !one.matches(":focus-visible"))
         .flatMap((one) => {
-          const look = getComputedStyle(one);
           const name = one.getAttribute("aria-label") ?? one.textContent.trim();
           const found: string[] = [];
-          if (look.outlineStyle !== "none" && parseFloat(look.outlineWidth) > 0)
-            found.push(`${name}: outline`);
-          // A ring is a shadow drawn outside the button with no offset and no blur, only a spread.
-          const shadows = look.boxShadow.split(/,(?![^(]*\))/);
-          if (shadows.some((shadow) => !shadow.includes("inset") && /\b0px 0px 0px [1-9]/.test(shadow))) {
-            found.push(`${name}: ring ${look.boxShadow}`);
+          // The button itself and what is drawn before and after it: a ring can be drawn by any of the three.
+          for (const part of ["", "::before", "::after"]) {
+            const look = getComputedStyle(one, part === "" ? null : part);
+            const what = `${name}${part}`;
+            if (part !== "" && (look.content === "none" || look.content === "normal")) continue;
+            if (look.outlineStyle !== "none" && parseFloat(look.outlineWidth) > 0)
+              found.push(`${what}: outline`);
+            // A border that shows: any side with width, a style and a colour that is not see-through.
+            for (const side of ["Top", "Right", "Bottom", "Left"] as const) {
+              const width = parseFloat(look.getPropertyValue(`border-${side.toLowerCase()}-width`));
+              const style = look.getPropertyValue(`border-${side.toLowerCase()}-style`);
+              const colour = look.getPropertyValue(`border-${side.toLowerCase()}-color`);
+              if (
+                width > 0 &&
+                style !== "none" &&
+                style !== "hidden" &&
+                !/^rgba\(.*, 0\)$|^transparent$/.test(colour)
+              ) {
+                found.push(`${what}: border ${side.toLowerCase()} ${String(width)}px ${style} ${colour}`);
+                break;
+              }
+            }
+            // A ring is a shadow drawn outside the button with no offset and no blur, only a spread.
+            const shadows = look.boxShadow.split(/,(?![^(]*\))/);
+            if (shadows.some((shadow) => !shadow.includes("inset") && /\b0px 0px 0px [1-9]/.test(shadow))) {
+              found.push(`${what}: ring ${look.boxShadow}`);
+            }
           }
-          const flash = look.getPropertyValue("-webkit-tap-highlight-color");
+          const flash = getComputedStyle(one).getPropertyValue("-webkit-tap-highlight-color");
           if (flash !== "" && flash !== "rgba(0, 0, 0, 0)" && flash !== "transparent")
             found.push(`${name}: tap ${flash}`);
           return found;
@@ -168,10 +188,8 @@ async function throughOneMove(
   await noRingWithoutKeys(page, `${name}, after`);
 }
 
-test("the bar stays one piece, with no ring, through every move in and out of the feed", async ({
-  page,
-  hasTouch,
-}, testInfo) => {
+/** Walks every move in and out of the feed, filming each one and checking every frame and every start. */
+async function everyMove(page: Page, hasTouch: boolean, testInfo: TestInfo): Promise<void> {
   // Eight moves, each filmed in eight pictures, each picture checked.
   test.setTimeout(180_000);
   await lookForRings(page);
@@ -240,4 +258,31 @@ test("the bar stays one piece, with no ring, through every move in and out of th
     onFresh,
     1,
   );
+}
+
+test("the bar stays one piece, with no ring, through every move in and out of the feed", async ({
+  page,
+  hasTouch,
+}, testInfo) => {
+  await everyMove(page, hasTouch, testInfo);
+});
+
+// The owner's own phone is a Galaxy, whose Chrome drew the rectangle round the bar (2026-11-27), so the moves are also
+// walked on a Galaxy's screen in Chrome's engine. The tablet's run is the one in Chrome's engine, so it walks them.
+test.describe("on a Galaxy phone", () => {
+  // The screen, the touch and the browser's name of a Galaxy; the engine stays the project's own.
+  const galaxy: Partial<(typeof devices)[string]> = { ...devices["Galaxy S24"] };
+  delete galaxy.defaultBrowserType;
+  test.use(galaxy);
+  test("the bar stays one piece, with no ring, through every move on a Galaxy", async ({
+    page,
+    hasTouch,
+    browserName,
+  }, testInfo) => {
+    test.skip(
+      browserName !== "chromium" || testInfo.project.name !== "tablet",
+      "walked once, in the tablet's Chrome",
+    );
+    await everyMove(page, hasTouch, testInfo);
+  });
 });
