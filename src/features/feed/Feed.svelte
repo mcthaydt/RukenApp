@@ -1068,7 +1068,24 @@
   .friends {
     display: flex;
     align-items: center;
-    align-self: flex-start;
+    grid-row: 2;
+    grid-column: 1;
+  }
+  /* With friends' faces, they sit beside Play under the game's name, so the band grows no taller (the owner,
+     2026-11-27: a row of its own was too much on a 320px phone). */
+  .band:has(.friends) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 0.75rem;
+  }
+  .band:has(.friends) .gamelink {
+    grid-row: 1;
+    grid-column: 1 / -1;
+  }
+  .band:has(.friends) > :last-child {
+    grid-row: 2;
+    grid-column: 2;
   }
   .liked {
     flex: none;
@@ -1258,9 +1275,21 @@
       row-gap: 0.25rem;
       padding: 0.5rem 0.75rem;
     }
-    /* Friends' faces take a row of their own above the name and Play. */
+    /* Friends' faces take a row of their own above the name and Play, which share the row under them here. */
+    .band:has(.friends) {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
     .friends {
+      grid-row: 1;
       grid-column: 1 / -1;
+    }
+    .band:has(.friends) .gamelink {
+      grid-row: 2;
+      grid-column: 1;
+    }
+    .band:has(.friends) > :last-child {
+      grid-row: 2;
+      grid-column: 2;
     }
     .play {
       width: auto;
