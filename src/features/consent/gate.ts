@@ -12,7 +12,7 @@ import { routeKind, type RouteKind } from "./routes.ts";
 // 4. strips any cookie an answer to a browser with no yes tries to set (guard 1).
 
 /** What a gated screen says it needs the yes for, by route: the notice's first line. */
-export type GatedAction = "sign-in" | "sign-up" | "join" | "play" | "save" | "account";
+export type GatedAction = "sign-in" | "sign-up" | "join" | "play" | "save" | "follow" | "account";
 
 /** The notice's reason for a gated route, or "account" for the rest of them. */
 export function actionOfRoute(routeId: string | null): GatedAction {
@@ -21,6 +21,7 @@ export function actionOfRoute(routeId: string | null): GatedAction {
   if (id.startsWith("/sign-up")) return "sign-up";
   if (id.startsWith("/join")) return "join";
   if (id.startsWith("/g/")) return id.endsWith("wishlist") ? "save" : "play";
+  if (id === "/[handle=handle]/follow") return "follow";
   return "account";
 }
 

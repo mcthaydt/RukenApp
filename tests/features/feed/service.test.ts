@@ -39,6 +39,8 @@ function depsFor(
   options: {
     beats?: Record<string, number>;
     makers?: Record<string, { handle: string; name: string; photoKey: string | null }>;
+    /** Each person's followed makers' accounts. */
+    follows?: Record<string, string[]>;
   } = {},
   clock = new TestClock(START),
 ) {
@@ -57,6 +59,8 @@ function depsFor(
         new Map(Object.entries(options.makers ?? {}).filter(([id]) => ids.includes(id))),
       );
     },
+    followedAmong: (followerId, makerIds) =>
+      Promise.resolve(new Set((options.follows?.[followerId] ?? []).filter((id) => makerIds.includes(id)))),
     media: (key) => `https://media.test/${key}`,
   };
   return { service: createFeedService(deps), asked };
@@ -100,7 +104,13 @@ describe("feed", () => {
       oneLine: "About with.",
       upright: "https://media.test/clips/with-up.mp4",
       wide: "https://media.test/clips/with-wide.mp4",
-      maker: { handle: "night-owl", name: "Night Owl", photo: "https://media.test/photos/owl.png" },
+      maker: {
+        handle: "night-owl",
+        name: "Night Owl",
+        photo: "https://media.test/photos/owl.png",
+        following: false,
+        mine: false,
+      },
     });
     expect(clips[1]?.maker).toBeNull();
   });
@@ -110,7 +120,37 @@ describe("feed", () => {
       makers: { "maker-one": { handle: "h", name: "N", photoKey: null } },
     });
 
-    expect((await firstPage(service))[0]?.maker).toEqual({ handle: "h", name: "N", photo: null });
+    expect((await firstPage(service))[0]?.maker).toEqual({
+      handle: "h",
+      name: "N",
+      photo: null,
+      following: false,
+      mine: false,
+    });
+  });
+
+  it("marks the makers the person asking follows, and their own games, and nobody else's", async () => {
+    const makers = {
+      "maker-a": { handle: "a", name: "A", photoKey: null },
+      "maker-b": { handle: "b", name: "B", photoKey: null },
+      "maker-c": { handle: "c", name: "C", photoKey: null },
+    };
+    const { service } = depsFor([listed("a", 1), listed("b", 2), listed("c", 3)], {
+      makers,
+      follows: { one: ["maker-a"], two: ["maker-b"] },
+    });
+    const marks = async (viewer: string | null) =>
+      Object.fromEntries(
+        (await service.page(null, undefined, viewer)).clips.map((clip) => [
+          clip.slug,
+          [clip.maker?.following, clip.maker?.mine],
+        ]),
+      );
+
+    expect(await marks("one")).toEqual({ a: [true, false], b: [false, false], c: [false, false] });
+    expect(await marks("two")).toEqual({ a: [false, false], b: [true, false], c: [false, false] });
+    expect(await marks("maker-c")).toEqual({ a: [false, false], b: [false, false], c: [false, true] });
+    expect(await marks(null)).toEqual({ a: [false, false], b: [false, false], c: [false, false] });
   });
 
   it("leaves out games rated 18+", async () => {
