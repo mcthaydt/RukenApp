@@ -14,9 +14,8 @@
   type State = "ready" | "sending" | "sent" | "failed" | "limited";
   // Kept per game, so the sheet opened again for another game starts afresh.
   let states = $state<Record<string, State>>({});
-  $effect(() => {
-    void game;
-    states = {};
+  $effect.pre(() => {
+    if (game !== "") states = {};
   });
 
   const initialOf = (name: string): string => Array.from(name.trim())[0]?.toUpperCase() ?? "";
@@ -59,7 +58,9 @@
           >
             <span class="round" aria-hidden="true">
               {#if state === "sent"}
-                <svg viewBox="0 0 24 24" width="24" height="24" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                <svg viewBox="0 0 24 24" width="24" height="24" focusable="false"
+                  ><path d="M5 12.5l4.5 4.5L19 7.5" /></svg
+                >
               {:else if friend.photo !== null}
                 <img use:loads src={friend.photo} alt="" width="48" height="48" loading="lazy" />
               {:else}

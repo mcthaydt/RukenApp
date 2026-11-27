@@ -9,7 +9,6 @@
   let { people }: { people: readonly StoppedPerson[] } = $props();
 </script>
 
-
 <main class="card">
   <h1>{SEND_WORDS.stoppedTitle}</h1>
   {#if people.length === 0}

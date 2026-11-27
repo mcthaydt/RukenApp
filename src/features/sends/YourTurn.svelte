@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { onMount } from "svelte";
-  import { invalidateAll } from "$app/navigation";
+  import { refreshAll } from "$app/navigation";
   import Icon from "../../lib/icon.svelte";
   import { loads } from "../../lib/loads.ts";
   import { SEND_WORDS, whenWords } from "./words.ts";
@@ -84,7 +84,7 @@
         headers: { accept: "application/json" },
       });
       if (!answer.ok) throw new Error(`the site answered ${String(answer.status)}`);
-      await invalidateAll();
+      await refreshAll();
       stopCard?.close();
     } catch {
       stopFailed = true;
@@ -114,7 +114,7 @@
     <ul class="list">
       {#each shown as row (row.id)}
         <li>
-          <a class="game" href={`/g/${row.slug}`}>
+          <a class="sentgame" href={`/g/${row.slug}`}>
             {#if row.still !== null}
               <img use:loads src={row.still} alt="" width="64" height="64" loading="lazy" />
             {:else}
@@ -132,7 +132,13 @@
               ><Icon name="remove" /></button
             >
           </form>
-          <button type="button" class="go stop" onclick={(event) => askStop(row, event.currentTarget)}>
+          <button
+            type="button"
+            class="go stop"
+            onclick={(event) => {
+              askStop(row, event.currentTarget);
+            }}
+          >
             {SEND_WORDS.stop(from(row))}
           </button>
           {#if failed === row.id}
@@ -214,7 +220,7 @@
     align-items: center;
     column-gap: 0.75rem;
   }
-  .game {
+  .sentgame {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -223,7 +229,7 @@
     color: inherit;
     text-decoration: none;
   }
-  .game img,
+  .sentgame img,
   .still {
     flex: none;
     width: 64px;
