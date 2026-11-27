@@ -27,7 +27,8 @@
   // Which of the bar's places the person is on: the feed, Your games or You, like an app's tabs (the owner, 2026-11-22).
   const place = $derived.by(() => {
     if (page.status >= 400) return null;
-    if (page.route.id === "/") return "home";
+    // Followed is the feed's other tab, so it is Home too.
+    if (page.route.id === "/" || page.route.id === "/followed") return "home";
     if (page.route.id === "/make") return "make";
     if (page.route.id === "/me") return "you";
     return null;
@@ -56,6 +57,9 @@
   const barShown = $derived(
     !NO_BAR.includes(page.route.id ?? "") && !(page.route.id === "/make/page" && page.data.rooms === null),
   );
+
+  // The feed, its Followed tab and Search fill the window with their own top bar, so they have no wordmark above them.
+  const FULL_SCREENS: readonly string[] = ["/", "/followed", "/search"];
 
   // A game's own page, its play screen and its maker's test play name the game in the tab; every other screen, a
   // missing page included, has the base title.
@@ -177,7 +181,7 @@
 <!-- Says "Sending…" to a screen reader when a plain form is sent (src/lib/busy-forms.ts). -->
 <p class="hidden-words" id={SENDING_NEWS} aria-live="polite"></p>
 
-{#if page.url.pathname !== "/" && !page.url.pathname.startsWith("/make") && !page.url.pathname.startsWith("/g/") && !(page.route.id === "/[handle=handle]" && page.status < 400)}
+{#if !FULL_SCREENS.includes(page.url.pathname) && !page.url.pathname.startsWith("/make") && !page.url.pathname.startsWith("/g/") && !(page.route.id === "/[handle=handle]" && page.status < 400)}
   <header><a class="wordmark" href="/">Ruken</a></header>
 {/if}
 
