@@ -186,6 +186,10 @@ export function slideWhile(arrived: Promise<unknown>, game: string | null = null
   const naming = ++lastNaming;
   const old = game === null ? null : clipOf(game);
   if (old !== null) name(old, naming);
+  // The bar keeps no blur of its own while this move slides, so its picture holds none (look.css, "The bar while a page
+  // slides"); the mark goes when this move ends, unless a later move has taken it over.
+  const html = document.documentElement;
+  html.dataset.sliding = String(naming);
   const move = new Promise<void>((resolve) => {
     let fresh: HTMLElement | null = null;
     let started = false;
@@ -205,6 +209,7 @@ export function slideWhile(arrived: Promise<unknown>, game: string | null = null
         unname(old, naming);
         unname(fresh, naming);
         endWait(naming);
+        if (html.dataset.sliding === String(naming)) delete html.dataset.sliding;
       });
     slide.ready.catch(() => {
       resolve();
