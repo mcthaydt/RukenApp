@@ -4,6 +4,7 @@
   five soft circles in front of it. Live and Accepted share it.
 -->
 <script lang="ts">
+  import MovingBehind from "../../../lib/moving-behind.svelte";
   import { loads } from "../../../lib/loads.ts";
   import { stillPoster } from "../../../lib/still-poster.ts";
   import { onMount } from "svelte";
@@ -22,7 +23,8 @@
 </script>
 
 {#if src !== null}
-  <div class="backdrop" aria-hidden="true" data-glass data-drifting={drifting ? "" : undefined}>
+  <div class="backdrop" aria-hidden="true" data-drifting={drifting ? "" : undefined}>
+    <MovingBehind />
     {#key src}
       <video use:loads use:stillPoster {src} preload="metadata" muted playsinline use:quietVideo></video>
     {/key}

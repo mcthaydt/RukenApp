@@ -95,13 +95,18 @@ test("Ruken opens straight into the feed, with the right clip for the screen", a
   await expect(play).toHaveAttribute("href", `/g/${withPage.slug}/play`);
 
   // Play is the Blue of every main button, white words, 48px tall at least, button corners; it is the only thing with words
-  // to press that is not a link to a page (the Sound and Share marks are marks).
+  // to press that is not a link to a page (the Sound and Share marks are marks). Like, Save and Repost are marks too,
+  // each with its word (or the like count) under it, as the learned-feed spec's 6.1 draws them.
   await expect(play).toHaveCSS("background-color", await buttonColour(play, "--pay"));
   await expect(play).toHaveCSS("color", rgb(token("--chalk")));
   await expect(play).toHaveCSS("border-top-left-radius", token("--radius-button"));
   expect((await boxOf(play)).height).toBeGreaterThanOrEqual(48);
   for (const button of await clip.getByRole("button").all()) {
-    expect((await button.innerText()).trim()).toBe("");
+    const name = await button.getAttribute("aria-label");
+    const words = (await button.innerText()).trim();
+    if (name === "Like") expect(words).toMatch(/^(Like|\d+)$/);
+    else if (name === "Save" || name === "Repost") expect(words).toBe(name);
+    else expect(words).toBe("");
     expect((await boxOf(button)).height).toBeGreaterThanOrEqual(48);
   }
   await wordsHaveSettled(page);

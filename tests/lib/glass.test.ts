@@ -238,11 +238,11 @@ describe("frosted glass", () => {
   });
 
   // Glass only over moving content (the owner, 2026-11-27: "The glass button effect should not be for pages with a
-  // static color background"). What moves marks itself with `data-glass`; a page with nothing marked draws every glass
-  // token solid, in the same colours, with no edge, halo or blur.
+  // static color background"). What moves marks the page (src/lib/moving-behind.svelte), which puts `data-glass` on
+  // <html>; a page with no mark draws every glass token solid, in the same colours, with no edge, halo or blur.
   it("is solid on a page where nothing behind it moves", () => {
     const css = lookCss();
-    const at = css.indexOf(":root:not(:has([data-glass])) {");
+    const at = css.indexOf(":root:not([data-glass]) {");
     expect(at, "the plain-page block in look.css").toBeGreaterThanOrEqual(0);
     const block = css.slice(at, css.indexOf("}", at));
     for (const line of [
@@ -258,14 +258,36 @@ describe("frosted glass", () => {
       expect(block, line).toContain(line);
   });
 
-  it("is marked only on what moves: the feed's clips, a game's page, the play screen, a live game's video and a clip behind Join", () => {
+  // The mark is read from <html> alone. A rule that searched the page for it with `:has()` held Safari's engine back on
+  // the feed, and the phone's first frame of the feed came after a press's 5 seconds (run 45947646204,
+  // feed-to-game-grow.test.ts:102). A page from the server is marked before its first frame, by the line in app.html
+  // that reads the head's mark.
+  it("is read from <html> alone, and marked before the first frame", () => {
+    const css = lookCss();
+    expect(css).toContain(":root:not([data-glass]) {");
+    expect(css).not.toMatch(/:has\([^)]*(?:data-glass|name="glass")/u);
+    const mark = readFileSync(join(ROOT, "src/lib/moving-behind.svelte"), "utf8");
+    expect(mark).toMatch(/<svelte:head>\s*<meta name="glass" content="moving" \/>\s*<\/svelte:head>/u);
+    expect(mark).toContain('document.documentElement.setAttribute("data-glass", "")');
+    expect(mark).toContain('document.documentElement.removeAttribute("data-glass")');
+    const app = readFileSync(join(ROOT, "src/app.html"), "utf8");
+    const head = app.indexOf("%sveltekit.head%");
+    const marks = app.search(
+      /if \(document\.head\.querySelector\('meta\[name="glass"\]'\)\)\s*document\.documentElement\.setAttribute\("data-glass", ""\);/u,
+    );
+    expect(marks, "app.html marks <html> from the head's mark").toBeGreaterThan(head);
+    expect(marks).toBeLessThan(app.indexOf("</head>"));
+  });
+
+  it("is marked only on what moves: the feed's clips, a game's page, the play screen, a live game's video, a clip behind Join and the landing page's wall of clips", () => {
     const marked = sources
-      .filter(([, text]) => /\sdata-glass(?=[\s>=])/.test(text))
+      .filter(([, text]) => /<MovingBehind\s*\/>/u.test(text))
       .map(([path]) => path)
       .sort();
     expect(marked).toEqual([
       "src/features/feed/Feed.svelte",
       "src/features/play/PlayScreen.svelte",
+      "src/routes/about/+page.svelte",
       "src/routes/g/[game]/+page.svelte",
       "src/routes/join/+page.svelte",
       "src/routes/make/parts/GameBackdrop.svelte",

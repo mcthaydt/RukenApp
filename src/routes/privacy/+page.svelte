@@ -56,6 +56,11 @@
       after 90 days unused, or when you remove it. Changing or resetting your password removes every computer.
     </li>
     <li>
+      <strong>Games you like, save or repost.</strong> When you press Like, Save or Repost on a game, we keep which
+      game, which one you pressed, and when. Everyone sees how many people like a game, never who. It's gone when
+      you press it again, or when you delete your account.
+    </li>
+    <li>
       <strong>Games you report.</strong> If you report a game, we keep which game, what you said was wrong, any
       words you wrote, and when. Only Ruken's staff read it. The game's maker never sees who reported it. It's gone
       when you take it back, or when you delete your account.
@@ -132,6 +137,21 @@
   </ul>
   <p><a class="go" href="/help/how-the-feed-works">How the feed works</a></p>
 
+  <h2>Your feed</h2>
+  <ul class="bullets">
+    <li>
+      If you're 18 or older and signed in, you can tell your feed what you want more of and less of: from a
+      game in the feed, from Your feed in your account, or by answering "Good pick?". We keep what you chose,
+      and when.
+    </li>
+    <li>
+      You see all of it on Your feed, and you can take any of it off. Start over forgets all of it. Turning
+      off Learn from what I do keeps nothing new, and turning it back on starts fresh.
+    </li>
+    <li>If you're under 18, your feed doesn't learn from what you do until a parent says yes.</li>
+    <li>It's gone when you delete your account.</li>
+  </ul>
+
   <h2>Games you want</h2>
   <p>Before Ruken opens, you can add games to a list. We keep your list.</p>
 
@@ -171,6 +191,10 @@
     <li>
       <strong>rk_wish_pressed</strong> remembers which game you pressed Wishlist on while signed out, so it goes
       on your list after you sign up. 30 minutes.
+    </li>
+    <li>
+      <strong>rk_mark_pressed</strong> remembers which game you pressed Like, Save or Repost on while signed out,
+      so it is made once you sign in. 30 minutes.
     </li>
     <li>
       <strong>rk_follow_pressed</strong> remembers which maker you pressed follow on while signed out, so you follow
