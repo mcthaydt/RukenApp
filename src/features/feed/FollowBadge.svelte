@@ -107,6 +107,11 @@
     background: none;
     color: var(--chalk);
   }
+  /* The site's form rules put a step and a half above a form's button (after the hidden fields); here that would push the
+     plus down onto the name, so this one keeps none. */
+  .follow > button {
+    margin: 0;
+  }
   .dot {
     display: grid;
     place-items: center;

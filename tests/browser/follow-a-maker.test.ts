@@ -234,6 +234,12 @@ test("the credit fits the column on every screen, held either way", async ({ pag
     const badge = await boxOf(badgeOf(clip));
     expect(badge.width).toBeGreaterThanOrEqual(44);
     expect(badge.height).toBeGreaterThanOrEqual(44);
+    // The plus is drawn over the picture's bottom edge and ends above the name, never on it.
+    const dot = await boxOf(clip.locator(".credit .dot"));
+    const photo = await boxOf(clip.locator(".credit .maker").locator("img, .initial").first());
+    const nameBox = await boxOf(clip.locator(".credit .makername"));
+    expect(Math.abs(dot.y + dot.height / 2 - (photo.y + photo.height))).toBeLessThanOrEqual(2);
+    expect(dot.y + dot.height).toBeLessThanOrEqual(nameBox.y);
     const credit = await boxOf(clip.locator(".credit"));
     const share = await boxOf(clip.getByRole("button", { name: "Share" }));
     const where = `${String(size.width)}x${String(size.height)}`;
