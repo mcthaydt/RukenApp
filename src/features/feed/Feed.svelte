@@ -480,7 +480,7 @@
                 slug={clip.slug}
                 wished={launch.wished.includes(clip.slug)}
                 opens={launch.opens}
-                back="/"
+                back={tab === "followed" ? "/followed" : "/"}
                 buttonClass="button play"
               />
             {:else}
@@ -505,7 +505,7 @@
                     handle={maker.handle}
                     name={maker.name}
                     following={followed[maker.handle] ?? maker.following}
-                    back="/"
+                    back={tab === "followed" ? "/followed" : "/"}
                     onchange={(now: boolean) => {
                       followed[maker.handle] = now;
                     }}

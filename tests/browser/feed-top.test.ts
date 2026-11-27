@@ -238,6 +238,7 @@ test("Search fits the window: only the results scroll, clear of the bar", async 
 
 test("Followed plays the live games of the makers a person follows, and says when there are none", async ({
   page,
+  browser,
 }, testInfo) => {
   test.setTimeout(120_000);
   await signUp(page);
@@ -268,6 +269,15 @@ test("Followed plays the live games of the makers a person follows, and says whe
   await expect(page.getByRole("progressbar", { name: "Loading more games" })).toHaveCount(0);
   await showTheOwner(page, testInfo, "followed-with-games");
 
+  // A game opened from Followed comes back to Followed with the page's back arrow, on the clip that was left.
+  await onTab.locator("a.gamelink").click();
+  await expect(page).toHaveURL(`/g/${game.slug}`);
+  await pageHasSettled(page);
+  await page.getByRole("link", { name: "Back to the feed" }).click();
+  await expect(page).toHaveURL("/followed");
+  await expect(topBar(page).followed).toHaveAttribute("aria-current", "page");
+  await expect(page.locator(`section[data-slug="${game.slug}"]`)).toHaveAttribute("data-current", "true");
+
   // A maker with nothing a person may see here says so.
   await changeGame(game.slug, { ageRating: "age_18", contentMarks: ["gore"] });
   try {
@@ -279,7 +289,29 @@ test("Followed plays the live games of the makers a person follows, and says whe
     await changeGame(game.slug, { ageRating: "age_12", contentMarks: [] });
   }
 
-  // Unfollowing with the check on the tab's own clip empties it.
+  // Without script the check is a plain form, and it comes back to Followed, not to Fresh.
+  const plain = await browser.newContext({
+    storageState: await page.context().storageState(),
+    javaScriptEnabled: false,
+    baseURL: "http://localhost:4173",
+  });
+  try {
+    const noScript = await plain.newPage();
+    await noScript.goto("/followed");
+    await badge(noScript.locator("section[data-slug]").first()).click();
+    await expect(noScript).toHaveURL("/followed");
+    await expect(noScript.getByText("You don't follow anyone yet.")).toBeVisible();
+  } finally {
+    await plain.close();
+  }
+
+  // Following again, then unfollowing with the check on the tab's own clip, empties it too.
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await onFeed.scrollIntoViewIfNeeded();
+  await badge(onFeed).click();
+  await expect(badge(onFeed)).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/followed");
   await page.reload();
   await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
   await badge(page.locator("section[data-slug]").first()).click();
