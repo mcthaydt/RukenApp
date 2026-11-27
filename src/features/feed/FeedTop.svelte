@@ -45,7 +45,7 @@
     display: grid;
     grid-template-columns: var(--size-target) 1fr var(--size-target);
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.375rem;
     padding: 0 max(0.75rem, env(safe-area-inset-right)) 0 max(0.75rem, env(safe-area-inset-left));
     /* Only the controls take a press: a swipe or a press between them reaches the clip underneath. */
     pointer-events: none;
@@ -73,7 +73,7 @@
     align-items: center;
     min-height: var(--size-target);
     margin: 0;
-    padding: 0 0.625rem;
+    padding: 0 0.5rem;
     border-radius: var(--radius-button);
     color: var(--chalk);
     font-size: 0.9375rem;
