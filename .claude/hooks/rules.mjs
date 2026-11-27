@@ -654,8 +654,9 @@ function checkBypassFlags(cmd, config, deny) {
   }
   if (hasFlag(cmd.args, ['--passWithNoTests', '--pass-with-no-tests'])) deny(refusal(rule, `${cmd.prog} --passWithNoTests`, 'run the tests that exist; a run with no tests is a failure'));
   if (RUNNERS.test(cmd.prog)) {
-    const n = flagValues(cmd.args, ['--retries', '--retry']).map(Number).find((x) => x > 0);
-    if (n) deny(refusal(rule, `${cmd.prog} --retries ${n}`, 'run once; a test that passes only on retry is a flaky-test defect to record in progress.md'));
+    // Anything but a plain 0 is refused, so a value the shell fills in later ($N, ${R}) is refused too.
+    const n = flagValues(cmd.args, ['--retries', '--retry']).find((v) => !/^0+$/.test(v));
+    if (n !== undefined) deny(refusal(rule, `${cmd.prog} --retries ${n}`, 'run once; a test that passes only on retry is a flaky-test defect to record in progress.md'));
   }
 }
 
@@ -1169,6 +1170,24 @@ function resultingText(input) {
   }
   return { path, before, after };
 }
+// The first added line that loosens a check, or null. A retries value other than a plain 0 counts, an expression
+// included; the owner's one allowed line (rules.json bypassFlags.allowedLines: exact file, exact trimmed line) lifts
+// only the retries refusal (owner, 2026-11-27: retry flaky journeys on main).
+const NO_TESTS = /passWithNoTests\s*:\s*true|--pass-?[wW]ith-?[nN]o-?[tT]ests/;
+const RETRY_FLAG = /--retr(?:y|ies)(?:=|\s+)([^\s'"`,;)]+)/g;
+const RETRY_KEY = /\bretr(?:y|ies)\s*:\s*(?!0\s*,?\s*(\/\/.*)?$)\S.*/;
+function loosenedCheck(rel, added, allowedLines) {
+  for (const line of added) {
+    const noTests = NO_TESTS.exec(line);
+    if (noTests) return noTests[0];
+    if (allowedLines.some((a) => a?.file === rel && a?.line === line.trim())) continue;
+    const flag = [...line.matchAll(RETRY_FLAG)].find((x) => !/^0+$/.test(x[1]));
+    if (flag) return flag[0];
+    const key = RETRY_KEY.exec(line);
+    if (key) return key[0];
+  }
+  return null;
+}
 function checkFileWrite(input, config, root, deny) {
   const t = resultingText(input);
   if (!t) return;
@@ -1183,9 +1202,8 @@ function checkFileWrite(input, config, root, deny) {
     if (hit) deny(refusal(hostedRule, `${rel}: ${hit}`, hostedInstead(config)));
   }
   if (on(config, 'bypassFlags') && matchesAny(rel, config.bypassFlags?.configFiles ?? [])) {
-    const added = addedLines(t.before, t.after).join('\n');
-    const m = /passWithNoTests\s*:\s*true|--pass-?[wW]ith-?[nN]o-?[tT]ests|--retr(?:y|ies)(?:=|\s+)0*[1-9]|\bretr(?:y|ies)\s*:\s*(?!0\s*,?\s*(\/\/.*)?$)\S.*/m.exec(added);
-    if (m) deny(refusal('Never loosen a check: no passing with no tests, no retries until green (build skill).', `${rel} gains "${m[0]}"`, 'leave the setting at its strict value; fix the test instead'));
+    const m = loosenedCheck(rel, addedLines(t.before, t.after), config.bypassFlags?.allowedLines ?? []);
+    if (m) deny(refusal('Never loosen a check: no passing with no tests, no retries until green (build skill).', `${rel} gains "${m}"`, 'leave the setting at its strict value; fix the test instead'));
   }
 }
 
