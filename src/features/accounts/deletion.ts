@@ -183,6 +183,8 @@ async function purgeOne(deps: PurgeDeps, id: string, userId: string, now: Date):
       where: { OR: [{ userId }, { makerUserId: userId }, { game: { makerUserId: userId } }] },
     });
     await tx.goodPickAsked.deleteMany({ where: { userId } });
+    // Whom the person follows, and who follows them: both sides of a follow name the account.
+    await tx.makerFollow.deleteMany({ where: { OR: [{ followerId: userId }, { makerId: userId }] } });
     // The person's page, and its links with it, so the address is free for someone else. It stays up for the 14
     // days of the wait, and goes only here.
     await tx.makerPage.deleteMany({ where: { userId } });

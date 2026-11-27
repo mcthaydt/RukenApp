@@ -7,6 +7,7 @@ import { pagesServices } from "../pages/pages.ts";
 import { playServices } from "../play/play.ts";
 import { askingFor, readFeedPublic, type Asking, type FeedPublic } from "./feed-public.ts";
 import type { Ranker } from "./ranker.ts";
+import { createSearch, type Search } from "./search.ts";
 import { createFeedService, type FeedService } from "./service.ts";
 import { createTaste, type Taste } from "./taste.ts";
 
@@ -17,8 +18,12 @@ export interface FeedServices {
   service: FeedService;
   /** What a person tells the feed: Your feed's chips and switch, More or Less like this, Good pick. */
   taste: Taste;
+  /** Search from the feed's top bar: live games and their makers. */
+  search: Search;
   /** Who the ranker is told is asking, from who sent the request and FEED_PUBLIC. */
   askingOf(caller: Caller): Asking;
+  /** The signed-in person a page is for, so it can mark the makers they follow; null for anyone else. */
+  viewerOf(caller: Caller): string | null;
 }
 
 let shared: FeedServices | undefined;
@@ -45,10 +50,17 @@ function buildServices(taste: Taste): FeedServices {
       liveGames: () => gamesServices().service.liveGames(),
       memberBeatsByGame: (since, now) => playServices().service.memberBeatsByGame(since, now),
       makersOf: (userIds) => pagesServices().service.makersOf(userIds),
+      followedAmong: (followerId, makerIds) => pagesServices().follows.followedAmong(followerId, makerIds),
       media: (key) => gamesServices().media(key),
       privateRanker: () => bound(),
       asking: (userId, gameId) => taste.asking(userId, gameId),
     }),
+    search: createSearch({
+      liveGames: () => gamesServices().service.liveGames(),
+      makersOf: (userIds) => pagesServices().service.makersOf(userIds),
+      media: (key) => gamesServices().media(key),
+    }),
+    viewerOf: (caller) => (caller.kind === "user" ? caller.userId : null),
     askingOf: (caller) => {
       settings ??= readFeedPublic(optionalEnv("FEED_PUBLIC"), (line) => {
         console.warn(line);

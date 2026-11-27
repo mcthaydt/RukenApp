@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
   const feed = feedServices();
   const userId = locals.caller.kind === "user" ? locals.caller.userId : null;
   const [first, launch, learning] = await Promise.all([
-    feed.service.page(null, feed.askingOf(locals.caller)),
+    feed.service.page(null, feed.askingOf(locals.caller), feed.viewerOf(locals.caller)),
     launchServices().screenFor(userId, cookies),
     userId === null ? Promise.resolve(null) : feed.taste.learningOf(userId),
   ]);

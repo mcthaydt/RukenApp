@@ -648,3 +648,14 @@ export async function feedRowsOf(number: string): Promise<{ chips: number; answe
   ]);
   return { chips, answers: asked.map((row) => row.answer) };
 }
+
+/** The handles of the makers a person follows (by the number they signed up with), oldest follow first. */
+export async function followsOf(number: string): Promise<string[]> {
+  const followerId = await userIdOf(number);
+  const rows = await db().makerFollow.findMany({
+    where: { followerId },
+    orderBy: { followedAt: "asc" },
+    select: { maker: { select: { makerPage: { select: { handle: true } } } } },
+  });
+  return rows.map((row) => row.maker.makerPage?.handle ?? "(no page)");
+}

@@ -36,6 +36,8 @@ export interface FeedServiceDeps {
   makersOf(
     userIds: readonly string[],
   ): Promise<Map<string, { handle: string; name: string; photoKey: string | null }>>;
+  /** Which of these makers' accounts a person follows; left out, nobody follows anyone. */
+  followedAmong?(followerId: string, makerIds: readonly string[]): Promise<Set<string>>;
   /** The whole address of a file in the bucket, from its key. */
   media(key: string): string;
   /** The private ranker, when this app has one bound; left out or null, the open ranker answers every page. */
@@ -62,7 +64,11 @@ export interface FeedClip {
   oneLine: string;
   upright: string;
   wide: string;
-  maker: { handle: string; name: string; photo: string | null } | null;
+  /**
+   * `following` and `mine` are about the person the page was made for: whether they follow this maker, and whether the
+   * game is their own (they cannot follow themselves). Both are false for someone signed out.
+   */
+  maker: { handle: string; name: string; photo: string | null; following: boolean; mine: boolean } | null;
 }
 
 /**
@@ -112,11 +118,16 @@ export function createFeedService(deps: FeedServiceDeps) {
    * A page of the feed: with `after` null, the first; otherwise the page at that address, or null for an address the
    * feed did not make. An address made by a ranker that is not answering now gives a fresh first page. A game rated 18+
    * is left out: the rules for who may see one are not built, and a clip that plays by itself in front of anyone must
-   * not be one.
+   * not be one. `viewerId` is the signed-in person the page is for, whatever the ranker is told: it only marks which
+   * makers they follow.
    */
-  async function page(after: null, asking?: Asking): Promise<FeedPage>;
-  async function page(after: string, asking?: Asking): Promise<FeedPage | null>;
-  async function page(after: string | null, asking: Asking = CROWD): Promise<FeedPage | null> {
+  async function page(after: null, asking?: Asking, viewerId?: string | null): Promise<FeedPage>;
+  async function page(after: string, asking?: Asking, viewerId?: string | null): Promise<FeedPage | null>;
+  async function page(
+    after: string | null,
+    asking: Asking = CROWD,
+    viewerId: string | null = null,
+  ): Promise<FeedPage | null> {
     let cursor: { made: "private" | "open"; rest: string } | null = null;
     if (after !== null) {
       if (after.startsWith(PRIVATE_PREFIX))
@@ -176,10 +187,15 @@ export function createFeedService(deps: FeedServiceDeps) {
       const game = byId.get(item.gameId);
       return game === undefined ? [] : [{ key: item.key, game }];
     });
+    const makerIds = [...new Set(shown.map(({ game }) => game.makerUserId))];
     const makers =
       shown.length === 0
         ? new Map<string, { handle: string; name: string; photoKey: string | null }>()
-        : await deps.makersOf([...new Set(shown.map(({ game }) => game.makerUserId))]);
+        : await deps.makersOf(makerIds);
+    const followed =
+      viewerId === null || deps.followedAmong === undefined || makers.size === 0
+        ? new Set<string>()
+        : await deps.followedAmong(viewerId, [...makers.keys()]);
     const result: FeedPage = {
       next: ranked.next === null ? null : `${prefix}${ranked.next}`,
       clips: shown.map(({ key, game }) => {
@@ -198,6 +214,8 @@ export function createFeedService(deps: FeedServiceDeps) {
                   handle: maker.handle,
                   name: maker.name,
                   photo: maker.photoKey === null ? null : deps.media(maker.photoKey),
+                  following: followed.has(game.makerUserId),
+                  mine: game.makerUserId === viewerId,
                 },
         };
       }),

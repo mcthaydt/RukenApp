@@ -513,6 +513,39 @@ describe("purgeDueAccounts", () => {
     expect(await db().goodPickAsked.count({ where: { userId: staying.id } })).toBe(1);
   });
 
+  // Both sides of a follow name an account (maker-credit-and-follow spec): whom the person followed and who followed
+  // them both go with the account, after the 14 days, and nobody else's follows are touched.
+  it("removes the follows a person made and the follows of them after the 14 days", async () => {
+    const leaving = await seedPerson();
+    const fan = await seedPerson();
+    const maker = await seedPerson();
+    const at = new Date(START);
+    await db().makerFollow.createMany({
+      data: [
+        { followerId: leaving.id, makerId: maker.id, followedAt: at },
+        { followerId: fan.id, makerId: leaving.id, followedAt: at },
+        { followerId: fan.id, makerId: maker.id, followedAt: at },
+      ],
+    });
+    const clock = await askToBeDeleted(leaving.id);
+
+    clock.advance(13 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
+    expect(await db().makerFollow.count({ where: { followerId: { in: [leaving.id, fan.id] } } })).toBe(3);
+
+    clock.advance(2 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
+    expect(
+      await db().makerFollow.count({ where: { OR: [{ followerId: leaving.id }, { makerId: leaving.id }] } }),
+    ).toBe(0);
+    expect(
+      await db().makerFollow.findMany({
+        where: { followerId: { in: [leaving.id, fan.id] } },
+        select: { followerId: true, makerId: true },
+      }),
+    ).toEqual([{ followerId: fan.id, makerId: maker.id }]);
+  });
+
   // The owner's decision (2026-11-21): a maker's games come off Ruken with their account, once the 14 days are over.
   it("takes the person's games off after the 14 days, with their files and videos, and leaves everyone else's", async () => {
     const leaving = await seedPerson();
