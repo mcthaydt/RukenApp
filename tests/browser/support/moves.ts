@@ -53,6 +53,9 @@ export const foundAtSlideStart = async (page: Page): Promise<string[]> => (await
 /** When, in milliseconds from its start, each picture of a slide is taken: its start, its middle and its end. */
 const FRAMES = [0, 50, 100, 150, 200, 250, 300, 450];
 
+/** How long a picture of a held slide may take to be drawn. */
+const PICTURE_WAIT = 30_000;
+
 /**
  * Does one thing that moves the page, and checks it started at most one slide of the page's own and added at most one
  * history entry. Where the browser draws slides, the slide is filmed: held still, stepped to each time in FRAMES, and
@@ -84,7 +87,11 @@ export async function oneMove(
       await page.evaluate((time) => {
         for (const one of document.documentElement.getAnimations({ subtree: true })) one.currentTime = time;
       }, at);
-      const picture = await page.screenshot();
+      // Right after Back, the feed mounts all its clips again while its slide is held, and on a busy machine Safari's
+      // engine took longer than a picture's usual 5 seconds to draw that first frame (7 to 9 seconds under load, where
+      // the other frames took about 2), so the journey failed now and then. A picture of a slide gets the time to be
+      // drawn; what the journey checks does not change.
+      const picture = await page.screenshot({ timeout: PICTURE_WAIT });
       await testInfo.attach(`strip: ${name}, ${String(at).padStart(3, "0")}ms`, {
         body: picture,
         contentType: "image/png",
