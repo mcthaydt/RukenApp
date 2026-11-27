@@ -148,7 +148,7 @@ export function heldMove(): Promise<void> | null {
 /**
  * Plays one slide while the new page comes in, and answers once the new page may be put in. The new page must come
  * whatever the browser does with the slide: a slide it skips (Safari skipped one leaving the play screen in CI) lets
- * the move go on, and so does a slide that never starts, after a second at most.
+ * the move go on, and so does a slide that never starts, after START_FRAMES drawn frames (or START_BACKSTOP_MS).
  */
 /**
  * Back in the feed, the clip is a new video that may have no picture of its own yet (the owner, 2026-11-27: "The video
@@ -175,6 +175,11 @@ function endWait(naming: number): void {
   if (html.dataset.clipWaits === String(naming)) delete html.dataset.clipWaits;
 }
 
+// A slide normally starts within a frame or two; one that has not started after this many drawn frames never will.
+const START_FRAMES = 10;
+// For a page the browser draws no frames for at all.
+const START_BACKSTOP_MS = 4000;
+
 export function slideWhile(arrived: Promise<unknown>, game: string | null = null): Promise<void> {
   // The clip that moves is named in the old page before the browser pictures it, and in the new page once it is in;
   // the old one loses its name first, since two elements with one name would make the browser drop the whole move.
@@ -183,7 +188,9 @@ export function slideWhile(arrived: Promise<unknown>, game: string | null = null
   if (old !== null) name(old, naming);
   const move = new Promise<void>((resolve) => {
     let fresh: HTMLElement | null = null;
+    let started = false;
     const slide = document.startViewTransition(async () => {
+      started = true;
       resolve();
       // A move that a later one overtook never arrives; its slide just ends.
       await arrived.catch(() => undefined);
@@ -202,9 +209,20 @@ export function slideWhile(arrived: Promise<unknown>, game: string | null = null
     slide.ready.catch(() => {
       resolve();
     });
+    // A slide that never starts is counted in frames the browser draws, not in time: a busy machine draws slowly and
+    // pictures the old page late, and a clock would let the new page in before that picture, so the clip never moves.
+    let frames = 0;
+    const count = () => {
+      if (started) return;
+      frames += 1;
+      if (frames >= START_FRAMES) resolve();
+      else requestAnimationFrame(count);
+    };
+    requestAnimationFrame(count);
+    // A page the browser draws no frames for (a hidden tab) still comes in.
     setTimeout(() => {
       resolve();
-    }, 1000);
+    }, START_BACKSTOP_MS);
   });
   held = move;
   void move.then(() => {
