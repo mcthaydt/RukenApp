@@ -34,6 +34,8 @@
 
   // Where a one-finger touch started; a second finger, or a touch that starts on an open sheet, is not a swipe.
   let start: { x: number; y: number } | null = null;
+  /** Whether this bar has begun reading a gamepad (shown as `data-pad`, so a journey knows when it may press). */
+  let padReady = $state(false);
   function touchStarted(event: TouchEvent): void {
     const touch = event.touches[0];
     start =
@@ -71,6 +73,7 @@
     }
     function connected(): void {
       held ??= pressed().down;
+      padReady = true;
       if (frame === 0) frame = requestAnimationFrame(read);
     }
     if (typeof navigator.getGamepads === "function") {
@@ -86,7 +89,7 @@
 
 <svelte:window ontouchstart={touchStarted} ontouchend={touchEnded} ontouchcancel={() => (start = null)} />
 
-<div class="top">
+<div class="top" data-pad={padReady ? "ready" : undefined}>
   <div class="left">
     {#if sound}{@render sound()}{/if}
   </div>
