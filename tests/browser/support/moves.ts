@@ -4,7 +4,13 @@ import { pageHasSettled } from "./account.ts";
 // Helpers for the journeys that film a page's moves: tests/browser/feed-leave-and-return.test.ts and
 // tests/browser/bar-through-moves.test.ts.
 
-type Seen = { slides: number; pushes: number; filming: boolean; frozen: boolean };
+type Seen = { slides: number; pushes: number; filming: boolean; frozen: boolean; atStart: string[] };
+
+/**
+ * A journey may set `window.beforeSlide` (in an init script) to a check that runs as each slide starts, before the
+ * browser takes its picture of the old page; what it returns for the latest slide is kept in `atStart`.
+ */
+type BeforeSlide = { beforeSlide?: () => string[] };
 
 /**
  * Counts each slide the page starts and each history entry it adds. While a move is being filmed, its slide is held
@@ -12,12 +18,13 @@ type Seen = { slides: number; pushes: number; filming: boolean; frozen: boolean 
  */
 export async function watchMoves(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    const seen: Seen = { slides: 0, pushes: 0, filming: false, frozen: false };
+    const seen: Seen = { slides: 0, pushes: 0, filming: false, frozen: false, atStart: [] };
     (window as unknown as { seen: Seen }).seen = seen;
     if ("startViewTransition" in document) {
       const start = document.startViewTransition.bind(document);
       document.startViewTransition = ((update: ViewTransitionUpdateCallback) => {
         seen.slides += 1;
+        seen.atStart = (window as unknown as BeforeSlide).beforeSlide?.() ?? [];
         const move = start(update);
         move.ready.then(
           () => {
@@ -39,6 +46,9 @@ export async function watchMoves(page: Page): Promise<void> {
 }
 
 const seen = (page: Page) => page.evaluate(() => ({ ...(window as unknown as { seen: Seen }).seen }));
+
+/** What `window.beforeSlide` found as the latest slide started. */
+export const foundAtSlideStart = async (page: Page): Promise<string[]> => (await seen(page)).atStart;
 
 /** When, in milliseconds from its start, each picture of a slide is taken: its start, its middle and its end. */
 const FRAMES = [0, 50, 100, 150, 200, 250, 300, 450];

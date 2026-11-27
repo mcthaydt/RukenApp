@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 import { addGame } from "./support/game.ts";
 import { pageHasSettled } from "./support/account.ts";
-import { oneMove, swipe, watchMoves } from "./support/moves.ts";
+import { foundAtSlideStart, oneMove, swipe, watchMoves } from "./support/moves.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The bar stays one piece through every move (the owner, 2026-11-27, of a slide from Fresh to Followed: "That weird
@@ -111,27 +111,40 @@ async function cornersShowThePage(page: Page, picture: Buffer, where: string): P
   }
 }
 
+/**
+ * Gives the page `window.ringsNow`: each button on the bar or the feed's tabs that shows a ring, an outline or a tap
+ * flash the keyboard did not put there. It also runs as each slide starts (`beforeSlide`, tests/browser/support/moves.ts),
+ * before the browser takes its picture of the old page, so a ring left by the press that started the move is seen even
+ * though focus has left the button by the time the slide is filmed.
+ */
+async function lookForRings(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const ringsNow = () =>
+      [...document.querySelectorAll('nav[aria-label="Ruken"] a, nav[aria-label="Feeds"] a')]
+        .filter((one) => !one.matches(":focus-visible"))
+        .flatMap((one) => {
+          const look = getComputedStyle(one);
+          const name = one.getAttribute("aria-label") ?? one.textContent.trim();
+          const found: string[] = [];
+          if (look.outlineStyle !== "none" && parseFloat(look.outlineWidth) > 0)
+            found.push(`${name}: outline`);
+          // A ring is a shadow drawn outside the button with no offset and no blur, only a spread.
+          const shadows = look.boxShadow.split(/,(?![^(]*\))/);
+          if (shadows.some((shadow) => !shadow.includes("inset") && /\b0px 0px 0px [1-9]/.test(shadow))) {
+            found.push(`${name}: ring ${look.boxShadow}`);
+          }
+          const flash = look.getPropertyValue("-webkit-tap-highlight-color");
+          if (flash !== "" && flash !== "rgba(0, 0, 0, 0)" && flash !== "transparent")
+            found.push(`${name}: tap ${flash}`);
+          return found;
+        });
+    Object.assign(window, { ringsNow, beforeSlide: ringsNow });
+  });
+}
+
 /** No button on the bar or the feed's tabs shows a ring, an outline or a tap flash, unless the keyboard put it there. */
 async function noRingWithoutKeys(page: Page, where: string): Promise<void> {
-  const rings = await page.evaluate(() =>
-    [...document.querySelectorAll('nav[aria-label="Ruken"] a, nav[aria-label="Feeds"] a')]
-      .filter((one) => !one.matches(":focus-visible"))
-      .flatMap((one) => {
-        const look = getComputedStyle(one);
-        const name = one.getAttribute("aria-label") ?? one.textContent.trim();
-        const found: string[] = [];
-        if (look.outlineStyle !== "none" && parseFloat(look.outlineWidth) > 0) found.push(`${name}: outline`);
-        // A ring is a shadow drawn outside the button with no offset and no blur, only a spread.
-        const shadows = look.boxShadow.split(/,(?![^(]*\))/);
-        if (shadows.some((shadow) => !shadow.includes("inset") && /\b0px 0px 0px [1-9]/.test(shadow))) {
-          found.push(`${name}: ring ${look.boxShadow}`);
-        }
-        const flash = look.getPropertyValue("-webkit-tap-highlight-color");
-        if (flash !== "" && flash !== "rgba(0, 0, 0, 0)" && flash !== "transparent")
-          found.push(`${name}: tap ${flash}`);
-        return found;
-      }),
-  );
+  const rings = await page.evaluate(() => (window as unknown as { ringsNow: () => string[] }).ringsNow());
   expect(rings, `${where}: rings on the bar or the tabs`).toEqual([]);
 }
 
@@ -148,6 +161,10 @@ async function throughOneMove(
     await cornersShowThePage(page, picture, where);
     await noRingWithoutKeys(page, where);
   });
+  expect(
+    await foundAtSlideStart(page),
+    `${name}, as the slide started: rings on the bar or the tabs`,
+  ).toEqual([]);
   await noRingWithoutKeys(page, `${name}, after`);
 }
 
@@ -157,6 +174,7 @@ test("the bar stays one piece, with no ring, through every move in and out of th
 }, testInfo) => {
   // Eight moves, each filmed in eight pictures, each picture checked.
   test.setTimeout(180_000);
+  await lookForRings(page);
   await watchMoves(page);
   await page.goto("/");
   await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
