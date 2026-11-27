@@ -169,12 +169,14 @@
 }
 
 /* Glass only where what is behind it moves (the owner, 2026-11-27: "The glass button effect should not be for pages
-   with a static color background"). What moves marks itself with `data-glass`: the feed's clips, a game's page, the
-   play screen, a live game's video behind its screens, a clip behind Join and the landing page's wall of clips. On any other page, plain felt or a
-   maker's own colour, the bar and every button are solid in the same colours, with no edge, halo or blur. A dim still
-   dims. The edge is an empty shadow rather than `none`, so a rule that adds a ring before it (the bar's Your games
-   mark) stays a list the browser can draw. */
-:root:not(:has([data-glass])) {
+   with a static color background"). What moves marks itself with a `<meta name="glass">` in the page's head
+   (src/lib/moving-behind.svelte): the feed's clips, a game's page, the play screen, a live game's video behind its
+   screens, a clip behind Join and the landing page's wall of clips. On any other page, plain felt or a maker's own
+   colour, the bar and every button are solid in the same colours, with no edge, halo or blur. A dim still dims. The
+   rule looks only at the head's own children: one that searched the whole page made Safari's engine look again at every
+   change on the feed. The edge is an empty shadow rather than `none`, so a rule that adds a ring before it (the bar's
+   Your games mark) stays a list the browser can draw. */
+:root:not(:has(> head > meta[name="glass"])) {
   --glass-bg: var(--felt-deep);
   --glass-filter: none;
   --glass-edge: 0 0 transparent;

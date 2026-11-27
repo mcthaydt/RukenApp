@@ -9,6 +9,7 @@
   button to Stripe's page, in place of the price (paywall.ts).
 -->
 <script lang="ts">
+  import MovingBehind from "../../lib/moving-behind.svelte";
   import { loads } from "../../lib/loads.ts";
   import { stillPoster } from "../../lib/still-poster.ts";
   import { onMount } from "svelte";
@@ -49,7 +50,8 @@
 
 {#if data.backdrop !== null}
   <!-- The game they tapped, dimmed, behind the card. It takes no press and no focus, and a screen reader does not meet it. -->
-  <div class="behindcard" aria-hidden="true" data-glass>
+  <div class="behindcard" aria-hidden="true">
+    <MovingBehind />
     <!-- Remounted when the shape changes, so the new clip is started by quietVideo too. -->
     {#key wide}
       <video

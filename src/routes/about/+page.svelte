@@ -5,6 +5,7 @@
   and the links at the foot. Every word comes from sections.ts.
 -->
 <script lang="ts">
+  import MovingBehind from "../../lib/moving-behind.svelte";
   import { onMount } from "svelte";
   import { loads } from "../../lib/loads.ts";
   import { playOnScreen } from "../../lib/on-screen-video.ts";
@@ -65,7 +66,8 @@
            playing. It only decorates (a reader skips it); each clip plays only while it is on screen, and the wall stands
            still for a person who asked for less motion. Until a clip plays, its still (the frame it opens on) shows in
            its place. -->
-      <div class="wall" aria-hidden="true" data-glass>
+      <div class="wall" aria-hidden="true">
+        <MovingBehind />
         {#each data.wall as column, columnAt (columnAt)}
           <div class="column">
             {#each column as clip, rowAt (rowAt)}

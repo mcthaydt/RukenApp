@@ -238,11 +238,12 @@ describe("frosted glass", () => {
   });
 
   // Glass only over moving content (the owner, 2026-11-27: "The glass button effect should not be for pages with a
-  // static color background"). What moves marks itself with `data-glass`; a page with nothing marked draws every glass
-  // token solid, in the same colours, with no edge, halo or blur.
+  // static color background"). What moves marks itself with a `<meta name="glass">` in the page's head
+  // (src/lib/moving-behind.svelte); a page with no mark draws every glass token solid, in the same colours, with no edge,
+  // halo or blur.
   it("is solid on a page where nothing behind it moves", () => {
     const css = lookCss();
-    const at = css.indexOf(":root:not(:has([data-glass])) {");
+    const at = css.indexOf(':root:not(:has(> head > meta[name="glass"])) {');
     expect(at, "the plain-page block in look.css").toBeGreaterThanOrEqual(0);
     const block = css.slice(at, css.indexOf("}", at));
     for (const line of [
@@ -258,9 +259,21 @@ describe("frosted glass", () => {
       expect(block, line).toContain(line);
   });
 
+  // The rule looks only at the head's own children. One that searched the whole page for a mark made Safari's engine
+  // look again at every change on the feed and held the phone's first frame back past a press's 5 seconds
+  // (run 45947646204, feed-to-game-grow.test.ts:102), so no `:has()` in look.css may look for the mark anywhere else.
+  it("finds the mark in the head alone", () => {
+    const css = lookCss();
+    expect(css).toContain(':root:not(:has(> head > meta[name="glass"])) {');
+    expect(css).not.toMatch(/:has\((?!> head > meta\[name="glass"\]\))[^)]*(?:data-glass|name="glass")/u);
+    expect(readFileSync(join(ROOT, "src/lib/moving-behind.svelte"), "utf8")).toMatch(
+      /<svelte:head>\s*<meta name="glass" content="moving" \/>\s*<\/svelte:head>/u,
+    );
+  });
+
   it("is marked only on what moves: the feed's clips, a game's page, the play screen, a live game's video, a clip behind Join and the landing page's wall of clips", () => {
     const marked = sources
-      .filter(([, text]) => /\sdata-glass(?=[\s>=])/.test(text))
+      .filter(([, text]) => /<MovingBehind\s*\/>/u.test(text))
       .map(([path]) => path)
       .sort();
     expect(marked).toEqual([
