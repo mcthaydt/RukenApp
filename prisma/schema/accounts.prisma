@@ -42,6 +42,10 @@ model User {
   /// The date of the 18th birthday, worked out once at sign-up. The birth date itself is
   /// never stored. Null means the age is unknown, and every under-18 default applies.
   adultOn       DateTime?  @db.Date
+  /// Your feed's "Learn from what I do". Off, the feed treats the person like everyone else and keeps nothing new.
+  feedPersonal  Boolean    @default(true)
+  /// When the person last pressed Start over (or turned learning on again): nothing personal before it is read.
+  feedResetAt   DateTime?  @db.Timestamptz
   createdAt     DateTime   @default(now()) @db.Timestamptz
   updatedAt     DateTime   @updatedAt @db.Timestamptz
 
@@ -86,6 +90,11 @@ model User {
   wishlistMail WishlistMail?
   gameReports  GameReport[]
   gameMarks    GameMark[]
+
+  // The feed feature's tables point at a person; they are declared in feed.prisma.
+  feedTastes      FeedTaste[]     @relation("FeedTasteOwner")
+  feedTastesOfMe  FeedTaste[]     @relation("FeedTasteMaker")
+  goodPicksAsked  GoodPickAsked[]
 
   // The money feature's ledger lines name a maker; they are declared in money.prisma.
   journalLines JournalLine[]

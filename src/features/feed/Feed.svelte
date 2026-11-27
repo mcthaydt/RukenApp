@@ -18,9 +18,11 @@
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
   import { stillPoster } from "../../lib/still-poster.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
+  import GoodPick from "./GoodPick.svelte";
   import FeedTop from "./FeedTop.svelte";
   import FollowBadge from "./FollowBadge.svelte";
   import ShareSheet from "./ShareSheet.svelte";
+  import TasteSheet from "./TasteSheet.svelte";
   import type { ShareSheetControl } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
   import type { ClipMarks, MarkKind } from "./marks.ts";
@@ -29,8 +31,11 @@
   let {
     first,
     launch,
+    tune = false,
   }: {
     first: FeedPage;
+    /** Whether this person's feed is learning from them, so each clip offers More and Less like this (•••). */
+    tune?: boolean;
     /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
     launch: { before: false } | { before: true; opens: string; wished: string[] };
   } = $props();
@@ -71,6 +76,30 @@
   let moreScreen = $state<HTMLElement | null>();
   // One share sheet for the whole feed; each clip's Share opens it for that game.
   let shareSheet = $state<ShareSheetControl>();
+  // One ••• sheet too, and "Got it." for two seconds after a press on it.
+  // The ••• sheet opens the same way the Share sheet does.
+  let tasteSheet = $state<ShareSheetControl>();
+  let gotIt = $state(false);
+  let gotItTimer: ReturnType<typeof setTimeout> | undefined;
+  // The Good pick cards still to answer, by the key of the clip each sits on.
+  // svelte-ignore state_referenced_locally
+  let asks = $state<Partial<Record<string, { slug: string; name: string }>>>(
+    first.ask ? { [first.ask.key]: first.ask } : {},
+  );
+
+  function sayGotIt(): void {
+    gotIt = true;
+    clearTimeout(gotItTimer);
+    gotItTimer = setTimeout(() => {
+      gotIt = false;
+    }, 2000);
+  }
+
+  // An answered card goes, and the feed moves on to the next clip.
+  function answered(key: string, index: number): void {
+    asks = Object.fromEntries(Object.entries(asks).filter(([other]) => other !== key));
+    goTo(index + 1);
+  }
   // A press on one clip's plus changes every clip by that maker, on this page and on pages still to come.
   let followed = $state<Record<string, boolean>>({});
 
@@ -206,6 +235,7 @@
       window.removeEventListener("resize", keepPlace);
       watcher?.disconnect();
       clearTimeout(slideTimer);
+      clearTimeout(gotItTimer);
     };
   });
 
@@ -234,6 +264,7 @@
       // without a move they would stay on the spinner as it went down the page, and it would ask again and again.
       const waiting = current >= had;
       clips = [...clips, ...page.clips.filter((clip) => !have.has(clip.key))];
+      if (page.ask) asks = { ...asks, [page.ask.key]: page.ask };
       next = page.next;
       more = "idle";
       if (waiting) {
@@ -523,6 +554,14 @@
           </svg>
         </button>
 
+        <!-- The Good pick card, on the clip the feed asked it on, until it is answered. -->
+        <GoodPick
+          ask={asks[clip.key]}
+          onanswered={() => {
+            answered(clip.key, index);
+          }}
+        />
+
         {#if index === 0 && hint !== null}
           <div class="hints">
             <p>{hint === "touch" ? "Swipe up for the next game" : "Scroll down for the next game"}</p>
@@ -664,6 +703,25 @@
                 <path d="M3 11l18-8-8 18-2-8-8-2z" fill="currentColor" />
               </svg>
             </button>
+            {#if tune}
+              <button
+                type="button"
+                class="tunes"
+                aria-label="More or less like this"
+                onclick={(event) => {
+                  tasteSheet?.open({ slug: clip.slug, name: clip.name }, event.currentTarget);
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                  <path
+                    d="M5 12h.01M12 12h.01M19 12h.01"
+                    stroke="currentColor"
+                    stroke-width="3.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+            {/if}
           </div>
         </div>
       </section>
@@ -689,6 +747,10 @@
   </main>
 {/if}
 <ShareSheet bind:this={shareSheet} />
+{#if tune}
+  <TasteSheet bind:this={tasteSheet} onsaved={sayGotIt} />
+{/if}
+<p class="gotit" role="status">{gotIt ? "Got it." : ""}</p>
 
 <style>
   .feed {
@@ -774,13 +836,15 @@
   }
   .sound svg,
   .share svg,
+  .tunes svg,
   .mark svg {
     filter: var(--glass-icon);
     /* Its own layer, so its shadow is drawn once, not again each frame the video under the glass moves. */
     will-change: transform;
   }
   .sound:focus-visible,
-  .share:focus-visible {
+  .share:focus-visible,
+  .tunes:focus-visible {
     outline-offset: -6px;
   }
   /* Like, Save and Repost: a round glass button each, with its word (or the like count) under it on the clip. Pressed,
@@ -986,7 +1050,30 @@
     align-items: center;
     gap: 0.75rem;
   }
-  .share {
+  /* "Got it." after a press on the ••• sheet: one frosted line near the top, for two seconds. Empty, it is not drawn,
+     but stays in place so a screen reader hears it. */
+  .gotit {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    z-index: 5;
+    translate: -50% 0;
+    margin: 0;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-button);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+    color: var(--chalk);
+    text-shadow: var(--glass-ink);
+    pointer-events: none;
+  }
+  .gotit:empty {
+    display: none;
+  }
+  .share,
+  .tunes {
     display: grid;
     place-items: center;
     width: var(--size-target);

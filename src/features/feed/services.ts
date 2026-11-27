@@ -10,12 +10,15 @@ import { createMarks, type Marks } from "./marks.ts";
 import type { Ranker } from "./ranker.ts";
 import { createSearch, type Search } from "./search.ts";
 import { createFeedService, type FeedService } from "./service.ts";
+import { createTaste, type Taste } from "./taste.ts";
 
 // Everything the feed needs, built once per server process. Routes call feedServices(); tests build their own service
 // with createFeedService.
 
 export interface FeedServices {
   service: FeedService;
+  /** What a person tells the feed: Your feed's chips and switch, More or Less like this, Good pick. */
+  taste: Taste;
   /** Like, Save and Repost. */
   marks: Marks;
   /** The live games a person saved (or reposted), the latest first, as Saved and Your reposts list them. */
@@ -49,7 +52,9 @@ export function setPrivateRanker(get: () => Ranker | null): void {
 export function feedServices(): FeedServices {
   if (shared !== undefined) return shared;
   const marks = createMarks({ db: prisma(), clock: systemClock });
+  const taste = createTaste({ db: prisma(), clock: systemClock });
   shared = {
+    taste,
     marks,
     async listOf(userId, kind) {
       const [ids, live] = await Promise.all([
@@ -72,6 +77,7 @@ export function feedServices(): FeedServices {
       media: (key) => gamesServices().media(key),
       marksOf: (viewerId, games) => marks.ofClips(viewerId, games),
       privateRanker: () => bound(),
+      asking: (userId, gameId) => taste.asking(userId, gameId),
     }),
     search: createSearch({
       liveGames: () => gamesServices().service.liveGames(),
@@ -90,6 +96,7 @@ export function feedServices(): FeedServices {
         consented: false,
         adult: false,
         parentSaidYes: false,
+        learnFromMe: true,
       });
     },
   };
