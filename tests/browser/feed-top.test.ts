@@ -235,3 +235,112 @@ test("Search fits the window: only the results scroll, clear of the bar", async 
   const row = await boxOf(page.locator(".results a").first());
   expect(row.x + row.width).toBeLessThanOrEqual(rail.x);
 });
+
+test("Followed plays the live games of the makers a person follows, and says when there are none", async ({
+  page,
+  browser,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await signUp(page);
+  const badge = (clip: ReturnType<Page["locator"]>) =>
+    clip.getByRole("button", { name: `Follow Owl ${WORD}` });
+
+  // Follow the maker with the plus on their clip in the feed.
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const onFeed = page.locator(`section[data-slug="${game.slug}"]`).first();
+  await onFeed.scrollIntoViewIfNeeded();
+  await badge(onFeed).click();
+  await expect(badge(onFeed)).toHaveAttribute("aria-pressed", "true");
+
+  // Followed holds their game, played like the feed, with this tab marked, and nothing else.
+  await page.goto("/");
+  await pageHasSettled(page);
+  await topBar(page).followed.click();
+  await expect(page).toHaveURL("/followed");
+  await expect(topBar(page).followed).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  const clips = page.locator("section[data-slug]");
+  await expect(clips).toHaveCount(1);
+  const onTab = clips.first();
+  await expect(onTab).toHaveAttribute("data-slug", game.slug);
+  await expect(onTab.getByRole("link", { name: "Play" })).toBeVisible();
+  // It ends after the last game: nothing waits to load past it.
+  await expect(page.getByRole("progressbar", { name: "Loading more games" })).toHaveCount(0);
+  await showTheOwner(page, testInfo, "followed-with-games");
+
+  // A game opened from Followed comes back to Followed with the page's back arrow, on the clip that was left.
+  await onTab.locator("a.gamelink").click();
+  await expect(page).toHaveURL(`/g/${game.slug}`);
+  await pageHasSettled(page);
+  await page.getByRole("link", { name: "Back to the feed" }).click();
+  await expect(page).toHaveURL("/followed");
+  await expect(topBar(page).followed).toHaveAttribute("aria-current", "page");
+  await expect(page.locator(`section[data-slug="${game.slug}"]`)).toHaveAttribute("data-current", "true");
+
+  // Like, Save and Repost work on Followed's clips as on the feed's: made here, still there after a reload, and taken back.
+  const marks = ["Like", "Save", "Repost"] as const;
+  const markOf = (name: (typeof marks)[number]) =>
+    page.locator(`section[data-slug="${game.slug}"]`).getByRole("button", { name, exact: true });
+  const pressMark = async (name: (typeof marks)[number]) => {
+    const kept = page.waitForResponse((answer) => answer.url().endsWith("/api/feed/marks"));
+    await markOf(name).click();
+    expect((await kept).status()).toBe(200);
+  };
+  for (const name of marks) {
+    await expect(markOf(name)).toHaveAttribute("aria-pressed", "false");
+    await pressMark(name);
+    await expect(markOf(name)).toHaveAttribute("aria-pressed", "true");
+  }
+  await page.reload();
+  await pageHasSettled(page);
+  for (const name of marks) await expect(markOf(name)).toHaveAttribute("aria-pressed", "true");
+  for (const name of marks) {
+    await pressMark(name);
+    await expect(markOf(name)).toHaveAttribute("aria-pressed", "false");
+  }
+  await page.reload();
+  await pageHasSettled(page);
+  for (const name of marks) await expect(markOf(name)).toHaveAttribute("aria-pressed", "false");
+
+  // A maker with nothing a person may see here says so.
+  await changeGame(game.slug, { ageRating: "age_18", contentMarks: ["gore"] });
+  try {
+    await page.reload();
+    await expect(page.getByText("No games here yet.")).toBeVisible();
+    await expect(page.getByText("The makers you follow have nothing to play right now.")).toBeVisible();
+    await showTheOwner(page, testInfo, "followed-nothing-live");
+  } finally {
+    await changeGame(game.slug, { ageRating: "age_12", contentMarks: [] });
+  }
+
+  // Without script the check is a plain form, and it comes back to Followed, not to Fresh.
+  const plain = await browser.newContext({
+    storageState: await page.context().storageState(),
+    javaScriptEnabled: false,
+    baseURL: "http://localhost:4173",
+  });
+  try {
+    const noScript = await plain.newPage();
+    await noScript.goto("/followed");
+    await badge(noScript.locator("section[data-slug]").first()).click();
+    await expect(noScript).toHaveURL("/followed");
+    await expect(noScript.getByText("You don't follow anyone yet.")).toBeVisible();
+  } finally {
+    await plain.close();
+  }
+
+  // Following again, then unfollowing with the check on the tab's own clip, empties it too.
+  await page.goto("/");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await onFeed.scrollIntoViewIfNeeded();
+  await badge(onFeed).click();
+  await expect(badge(onFeed)).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/followed");
+  await page.reload();
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await badge(page.locator("section[data-slug]").first()).click();
+  await expect(badge(page.locator("section[data-slug]").first())).toHaveAttribute("aria-pressed", "false");
+  await page.reload();
+  await expect(page.getByText("You don't follow anyone yet.")).toBeVisible();
+});

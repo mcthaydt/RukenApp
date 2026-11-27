@@ -29,6 +29,5 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
   if (refusal !== null) error(403, refusal);
 
   const done = await feedServices().marks.set(locals.caller.userId, game, kind, on);
-  if (done === "own") error(403, "This is your game.");
   return Response.json(done, { headers: { "cache-control": "no-store" } });
 };

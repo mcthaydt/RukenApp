@@ -2,7 +2,7 @@ import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 
 // Like, Save and Repost on a game's clip (learned-feed spec, unit G). One row per person, game and kind; pressing again
-// takes it back. Nobody marks their own game. Built from what it needs (the database and the clock) so a test hands it
+// takes it back. A maker may mark their own game too (the owner, 2026-11-27). Built from what it needs (the database and the clock) so a test hands it
 // a database of its own.
 
 export const MARK_KINDS = ["like", "save", "repost"] as const;
@@ -18,8 +18,6 @@ export interface ClipMarks {
   liked: boolean;
   saved: boolean;
   reposted: boolean;
-  /** The viewer made this game, so its clip has no Like, Save or Repost. */
-  own: boolean;
 }
 
 export interface MarksDeps {
@@ -34,8 +32,7 @@ export function createMarks(deps: MarksDeps) {
 
   return {
     /**
-     * Turns one mark on or off for a person and game, and answers the game's like count after it. A person's own game
-     * answers "own" and changes nothing. Pressing twice at once makes one row and no error (`skipDuplicates` lets the
+     * Turns one mark on or off for a person and game, and answers the game's like count after it. Pressing twice at once makes one row and no error (`skipDuplicates` lets the
      * unique key settle it); taking off a mark that is not there is not an error.
      */
     async set(
@@ -43,8 +40,7 @@ export function createMarks(deps: MarksDeps) {
       game: { id: string; makerUserId: string },
       kind: MarkKind,
       on: boolean,
-    ): Promise<{ on: boolean; likes: number } | "own"> {
-      if (game.makerUserId === userId) return "own";
+    ): Promise<{ on: boolean; likes: number }> {
       if (on) {
         await db.gameMark.createMany({
           data: [{ userId, gameId: game.id, kind, madeAt: new Date(clock.epochMs()) }],
@@ -89,7 +85,6 @@ export function createMarks(deps: MarksDeps) {
             liked: has(game.id, "like"),
             saved: has(game.id, "save"),
             reposted: has(game.id, "repost"),
-            own: viewerId !== null && game.makerUserId === viewerId,
           },
         ]),
       );
