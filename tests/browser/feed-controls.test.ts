@@ -1054,7 +1054,8 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   expect(play).toBeGreaterThan(3);
   const plus = names[play + 2] ?? "";
   const share = plus.startsWith("Follow ") ? play + 3 : play + 1;
-  if (share === play + 3) expect(names[play + 1]).toBe(plus.slice("Follow ".length));
+  // The link's words include the first letter drawn when the maker has no photo, so the name is looked for inside them.
+  if (share === play + 3) expect(names[play + 1]).toContain(plus.slice("Follow ".length));
   expect(names[share]).toBe("Share");
   expect(names[share + 1]).toBe("Sound");
   for (const outline of outlines) expect(outline).not.toMatch(/^none/);
