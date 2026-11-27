@@ -10,7 +10,7 @@
   import "../lib/look.css";
   import { afterNavigate, beforeNavigate, onNavigate } from "$app/navigation";
   import { page } from "$app/state";
-  import { setAgreed } from "../features/consent/consent.browser.ts";
+  import { answerAsk, consentAsk, setAgreed } from "../features/consent/consent.browser.ts";
   import { Notice } from "../features/consent/consent.screens.ts";
   import { Bar } from "../features/feed/feed.browser.ts";
   import { clearSending, markSending, SENDING_NEWS } from "../lib/busy-forms.ts";
@@ -204,12 +204,20 @@
   <TurnUpright />
 {/if}
 
-{#if !data.consented && !notNow && page.route.id !== "/cookies"}
+<!-- A press that needs the yes opens the card again, even after "Not now", and says what for (consent/ask.svelte.ts). -->
+{#if !data.consented && (!notNow || consentAsk.reason !== null) && page.route.id !== "/cookies"}
   <Notice
     card
     aboveBar={barShown}
+    reason={consentAsk.reason}
     next={page.url.pathname + page.url.search}
     from={page.url.pathname + page.url.search}
-    onNotNow={() => (notNow = true)}
+    onNotNow={() => {
+      notNow = true;
+      answerAsk(false);
+    }}
+    onAgreed={() => {
+      answerAsk(true);
+    }}
   />
 {/if}

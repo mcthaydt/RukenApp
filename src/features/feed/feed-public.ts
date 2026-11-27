@@ -60,6 +60,8 @@ export interface Person {
   adult: boolean;
   /** Whether a parent said yes, for an under-18. */
   parentSaidYes: boolean;
+  /** Your feed's Learn from what I do: off, the feed treats the person as the crowd. */
+  learnFromMe: boolean;
 }
 
 /** Who the ranker is told is asking, without a seed. */
@@ -73,7 +75,7 @@ export const CROWD: Asking = { kind: "crowd" };
  * ranker is told nothing about them.
  */
 export function askingFor(settings: FeedPublic, person: Person): Asking {
-  if (!settings.learned || person.userId === null || !person.consented) return CROWD;
+  if (!settings.learned || person.userId === null || !person.consented || !person.learnFromMe) return CROWD;
   if (!person.adult && !(settings.teenPersonal && person.parentSaidYes)) return CROWD;
   return { kind: "full", id: person.userId };
 }

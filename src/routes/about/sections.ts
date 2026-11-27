@@ -83,6 +83,7 @@ export const AUDIENCES: readonly Section[] = [
       "No ads. Not before a game, not during one.",
       "Pick up a controller. It works all over Ruken and in the games, like a console.",
       "Put Ruken on your home screen. It opens full screen, like an app.",
+      "Like a game, save it for later, or repost it. Saved games are under You.",
       "No slop. A person checks every game before it goes live.",
     ],
     links: [
