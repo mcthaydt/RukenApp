@@ -2662,6 +2662,20 @@ html[data-move="grow"]::view-transition-new(clip) {
   mix-blend-mode: normal;
 }
 
+/* The owner (2026-11-27): "Refine the cropping on the grow feed to game page, it's not smooth". The clip's pictures are
+   cut to the moving box, so the feed's picture never spills past it over the page, and the box rounds its corners as
+   it goes, from the feed's square edge to the game page's card, on the move's own curve, so they never snap in at the
+   end. Back plays the same rounding backwards. */
+html[data-move="grow"]::view-transition-image-pair(clip) {
+  overflow: clip;
+  corner-shape: var(--corner-shape);
+  animation: clip-rounds 450ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+html[data-move="grow"][data-way="back"]::view-transition-image-pair(clip) {
+  animation-direction: reverse;
+}
+
 html[data-move="grow"]::view-transition-old(clip) {
   z-index: 1;
   animation: clip-hands-over 450ms linear both;
@@ -2712,6 +2726,16 @@ html[data-move="grow"][data-way="back"]::view-transition-new(tabs) {
   animation-delay: 200ms;
   animation-timing-function: cubic-bezier(0.75, 0, 0.75, 0.9);
   animation-fill-mode: both;
+}
+
+@keyframes clip-rounds {
+  from {
+    border-radius: 0;
+  }
+
+  to {
+    border-radius: var(--radius-card);
+  }
 }
 
 @keyframes page-shows {
