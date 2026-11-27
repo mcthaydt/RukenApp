@@ -119,7 +119,10 @@ test("the speaker, the tabs and Search line up as one bar that stays put while t
 // must hold (320 wide).
 for (const device of ["Galaxy S9+", "Galaxy S8", "Pixel 7"] as const) {
   test(`the top bar lines up on Android Chrome (${device})`, async ({ browser, browserName }) => {
-    test.skip(browserName !== "chromium", "Android's Chrome is Chrome's engine; the phone project's Safari is not");
+    test.skip(
+      browserName !== "chromium",
+      "Android's Chrome is Chrome's engine; the phone project's Safari is not",
+    );
     const context = await browser.newContext({
       ...devices[device],
       ...consented,
