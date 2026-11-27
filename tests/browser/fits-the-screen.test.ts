@@ -120,8 +120,10 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
         if (thing === undefined) return `${label}: not found`;
         const at = thing.getBoundingClientRect();
         if (box === undefined) return "in";
-        // The fade is the last 0.75rem of the box.
-        return at.top >= box.top - 1 && at.bottom <= box.bottom - 12 + 1
+        // The fade is the last 0.75rem of the box, and a side's name stays over the top of its chips.
+        const name = thing.closest("section")?.querySelector("h2")?.getBoundingClientRect();
+        const top = Math.max(box.top, name?.bottom ?? box.top);
+        return at.top >= top - 1 && at.bottom <= box.bottom - 12 + 1
           ? "in"
           : `${label}: ${String(at.top)}-${String(at.bottom)}`;
       },
@@ -152,9 +154,15 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
   // A mouse's wheel scrolls the box (not on a phone, which has no wheel).
   await page.evaluate(() => document.querySelector("main .tastes")?.scrollTo({ top: 0 }));
   if (!isMobile) {
-    await page.getByRole("region", { name: "What you want to see more of" }).hover();
+    await page.getByRole("heading", { name: "What you want to see more of" }).hover();
     await page.mouse.wheel(0, 300);
-    await expect.poll(scrolled, "the wheel scrolls the chips").toBeGreaterThan(0);
+    await expect.poll(scrolled, "the wheel over the more side scrolls the chips").toBeGreaterThan(0);
+    // And over the less side, from the bottom back up.
+    await page.evaluate(() => document.querySelector("main .tastes")?.scrollTo({ top: 100_000 }));
+    const bottom = await scrolled();
+    await page.getByRole("heading", { name: "What you want to see less of" }).hover();
+    await page.mouse.wheel(0, -300);
+    await expect.poll(scrolled, "the wheel over the less side scrolls the chips").toBeLessThan(bottom);
     await page.evaluate(() => document.querySelector("main .tastes")?.scrollTo({ top: 0 }));
   }
   // Moving focus, as a keyboard or a gamepad's pad does, reaches every button in turn, each fully in view.
@@ -174,6 +182,12 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
     reached.push(name);
   }
   for (const words of [...more, ...less]) expect(reached).toContain(`Remove ${words}`);
+  // Taking a chip off from the keys leaves the focus on the chip that took its place, not back at the top.
+  await page.getByRole("button", { name: "Remove Cosy" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "Remove Cosy" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Remove Bold" })).toBeFocused();
+  await expect.poll(() => inTheBox("Remove Bold", true), "the chip with the focus is in view").toBe("in");
   await wordsHaveSettled(page);
   expect(await overflow(page), "/settings/feed with chips at 375 by 667").toEqual({ page: 0, view: 0 });
   await expectViewAboveTheBar(page, "/settings/feed with chips at 375 by 667");

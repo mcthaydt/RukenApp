@@ -19,6 +19,35 @@
   let sending = $state<string | null>(null);
   let tastes = $state<HTMLDivElement>();
 
+  // After a chip is taken off, the focus goes to the chip that took its place (or the one before it, or that side's
+  // Add), so a keyboard or a gamepad carries on where it was instead of starting again from the top.
+  function nextAfter(id: string): { side: "more" | "less"; ids: string[] } | null {
+    for (const side of ["more", "less"] as const) {
+      const list = side === "more" ? feed.more : feed.less;
+      const at = list.findIndex((chip) => chip.id === id);
+      if (at === -1) continue;
+      const ids = [list[at + 1], list[at - 1]].flatMap((chip) => (chip === undefined ? [] : [chip.id]));
+      return { side, ids };
+    }
+    return null;
+  }
+
+  function keepFocusNear(near: { side: "more" | "less"; ids: string[] }): void {
+    if (
+      tastes === undefined ||
+      (document.activeElement !== document.body && tastes.contains(document.activeElement))
+    )
+      return;
+    for (const id of near.ids) {
+      const button = tastes.querySelector<HTMLButtonElement>(`[data-chip="${id}"] button`);
+      if (button !== null) {
+        button.focus();
+        return;
+      }
+    }
+    tastes.querySelector<HTMLButtonElement>(`section[data-side="${near.side}"] .add`)?.focus();
+  }
+
   // A chip just added is shown where it landed: the box slides to it, so closing Add always shows what changed.
   function showNewChip(before: ReadonlySet<string>): void {
     const added = [...feed.more, ...feed.less].find((chip) => !before.has(chip.id));
@@ -36,6 +65,8 @@
       }
       sending = key;
       const before = new Set([...feed.more, ...feed.less].map((chip) => chip.id));
+      const removing = key.startsWith("remove:") ? key.slice("remove:".length) : null;
+      const after = removing === null ? null : nextAfter(removing);
       return async ({ update }) => {
         await update({ reset: false });
         sending = null;
@@ -43,6 +74,7 @@
         startOverSheet?.close();
         await tick();
         showNewChip(before);
+        if (after !== null) keepFocusNear(after);
       };
     };
   }
@@ -140,12 +172,12 @@
       <!-- The chips' box: when they are more than the screen holds, it scrolls up and down by itself (by finger, wheel,
            keys or a gamepad's pad moving focus), and Back and Start over stay where they are below it. -->
       <div class="tastes" bind:this={tastes}>
-        <section aria-labelledby="more-title">
+        <section aria-labelledby="more-title" data-side="more">
           <h2 id="more-title">What you want to see more of</h2>
           {@render chips("more")}
         </section>
 
-        <section aria-labelledby="less-title">
+        <section aria-labelledby="less-title" data-side="less">
           <h2 id="less-title">What you want to see less of</h2>
           {@render chips("less")}
         </section>
@@ -269,7 +301,15 @@
     padding: 0.25rem 0.25rem 0.75rem;
     overflow-y: auto;
     overscroll-behavior: contain;
-    scroll-padding-block: 0.25rem 0.75rem;
+    /* Room for a side's name, which stays at the top of the box while its chips scroll under it. */
+    scroll-padding-block: 2.25rem 0.75rem;
+  }
+  .tastes h2 {
+    position: sticky;
+    top: -0.25rem;
+    z-index: 1;
+    padding-block: 0.25rem;
+    background: var(--paper);
   }
   /* More below: the box's bottom edge fades out, so a cut-off line reads as "there is more". It sits on the box's
      own padding, so with nothing more it falls on no chip. */
