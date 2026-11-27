@@ -1,7 +1,9 @@
 <!--
-  The feed (spec 5.1): one game to a screen, full-window clips that snap one at a time. Each clip leads with the person
-  who made it, then the game and Play. A press on the clip opens the game's page; the speaker in the corner flips sound
-  for every clip, and Share (Ruken's own share sheet) is the one mark on the right. It reads without script: every clip is a plain video, every name and Play a plain link, and swiping scrolls.
+  The feed (spec 5.1): one game to a screen, full-window clips that snap one at a time. Each clip shows the game and
+  Play at the bottom, and the person who made it at the top of the column on the right, with a plus to follow them, above
+  Share (Ruken's own share sheet). A press on the clip opens the game's page; the speaker in the corner flips sound for
+  every clip. The top bar (FeedTop.svelte) holds the Fresh and Followed tabs and Search. It reads without script: every
+  clip is a plain video, every name and Play a plain link, and swiping scrolls.
   With script it fetches only the clip on screen and the next, plays the one on screen where a video may move, shows
   the window's shape of clip, and moves a clip at a time on the arrow keys, Page Up, Page Down and Space.
   The feed never ends: a few clips before the end of what it has, it asks for the next page, and a spinner fills the
@@ -16,6 +18,8 @@
   import { loopByHand, mayMove } from "../../lib/quiet-video.ts";
   import { stillPoster } from "../../lib/still-poster.ts";
   import { clampClip, currentOf, stepFor } from "./current.ts";
+  import FeedTop from "./FeedTop.svelte";
+  import FollowBadge from "./FollowBadge.svelte";
   import ShareSheet from "./ShareSheet.svelte";
   import type { ShareSheetControl } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
@@ -67,6 +71,8 @@
   let moreScreen = $state<HTMLElement | null>();
   // One share sheet for the whole feed; each clip's Share opens it for that game.
   let shareSheet = $state<ShareSheetControl>();
+  // A press on one clip's plus changes every clip by that maker, on this page and on pages still to come.
+  let followed = $state<Record<string, boolean>>({});
 
   // What a press changed, by game: a game can be on the feed twice, and both of its clips show the same marks.
   let pressed = $state<Record<string, ClipMarks>>({});
@@ -425,6 +431,8 @@
 
 <svelte:window onkeydown={onKey} onpointerdown={forgetHints} />
 
+<FeedTop on="fresh" />
+
 {#if clips.length === 0}
   <main class="empty">
     <p class="statement">No games here yet.</p>
@@ -524,16 +532,6 @@
 
         <div class="lower">
           <div class="band">
-            {#if clip.maker !== null}
-              <a class="maker" data-sveltekit-preload-data="off" href={`/${clip.maker.handle}`}>
-                {#if clip.maker.photo !== null}
-                  <img use:loads src={clip.maker.photo} alt="" width="40" height="40" loading="lazy" />
-                {:else}
-                  <span class="initial" aria-hidden="true">{initialOf(clip.maker.name)}</span>
-                {/if}
-                <span class="makername">{clip.maker.name}</span>
-              </a>
-            {/if}
             <!-- A swipe can start on the name too, so it never loads the game's page (and who brought this person)
                  ahead of a press. -->
             <a class="gamelink" data-sveltekit-preload-data="off" href={`/g/${clip.slug}`}>
@@ -554,6 +552,30 @@
             {/if}
           </div>
           <div class="side">
+            {#if clip.maker !== null}
+              {@const maker = clip.maker}
+              <div class="credit">
+                <a class="maker" data-sveltekit-preload-data="off" href={`/${maker.handle}`}>
+                  {#if maker.photo !== null}
+                    <img use:loads src={maker.photo} alt="" width="48" height="48" loading="lazy" />
+                  {:else}
+                    <span class="initial" aria-hidden="true">{initialOf(maker.name)}</span>
+                  {/if}
+                  <span class="makername">{maker.name}</span>
+                </a>
+                {#if !maker.mine}
+                  <FollowBadge
+                    handle={maker.handle}
+                    name={maker.name}
+                    following={followed[maker.handle] ?? maker.following}
+                    back="/"
+                    onchange={(now: boolean) => {
+                      followed[maker.handle] = now;
+                    }}
+                  />
+                {/if}
+              </div>
+            {/if}
             {#if ready && !marksOf(clip).own}
               {@const marks = marksOf(clip)}
               {#if markProblem === clip.slug}
@@ -883,22 +905,36 @@
   .side button {
     pointer-events: auto;
   }
+  /* The maker at the top of the column: their picture, the plus over its bottom edge, and their name under it. */
+  .credit {
+    --photo: 48px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 5.5rem;
+  }
   .maker {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
+    gap: 1.5rem;
     min-height: var(--size-target);
     margin: 0;
+    color: var(--chalk);
+    text-shadow: var(--glass-ink);
     text-decoration: none;
+    pointer-events: auto;
   }
   .maker img,
   .initial {
     flex: none;
-    width: 40px;
-    height: 40px;
+    width: var(--photo);
+    height: var(--photo);
     border-radius: 50%;
     --corner: round;
     object-fit: cover;
+    box-shadow: var(--glass-edge);
   }
   .initial {
     display: grid;
@@ -906,11 +942,20 @@
     background: var(--paper);
     color: var(--ink);
     font-weight: 600;
+    text-shadow: none;
   }
+  /* Two lines at most, then cut with an ellipsis, so a long name never pushes Share down off the clip. */
   .makername {
-    min-width: 0;
-    overflow-wrap: anywhere;
+    display: -webkit-box;
+    max-width: 100%;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    font: var(--text-small);
     font-weight: 600;
+    text-align: center;
+    overflow-wrap: anywhere;
   }
   .gamelink {
     display: block;
@@ -973,9 +1018,6 @@
       row-gap: 0.25rem;
       padding: 0.5rem 0.75rem;
     }
-    .maker {
-      grid-column: 1 / -1;
-    }
     .play {
       width: auto;
       padding-inline: 1.75rem;
@@ -983,8 +1025,9 @@
     .gamelink h2 {
       font-size: 1.25rem;
     }
+    /* Under the top bar (its 48px tabs inside the pill's 0.125rem edge), where the band cannot cover them either. */
     .hints {
-      top: 0.75rem;
+      top: calc(0.75rem + var(--size-target) + 0.25rem + 0.5rem);
     }
     .sound {
       left: max(0.75rem, env(safe-area-inset-left));
@@ -993,6 +1036,13 @@
     .side {
       position: absolute;
       right: calc(max(0.75rem, env(safe-area-inset-right)) + 0.5rem);
+      bottom: 0;
+    }
+    /* The window is too short for the maker above them there, so the maker stands just left of the column, at the
+       bottom, clear of the bar. */
+    .credit {
+      position: absolute;
+      right: calc(100% + 0.75rem);
       bottom: 0;
     }
   }

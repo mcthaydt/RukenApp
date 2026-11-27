@@ -20,6 +20,7 @@ const FOR = [
   "save",
   "like",
   "repost",
+  "follow",
   "account",
 ] as const satisfies readonly GatedAction[];
 

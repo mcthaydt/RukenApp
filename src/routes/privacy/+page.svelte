@@ -66,6 +66,10 @@
       when you take it back, or when you delete your account.
     </li>
     <li>
+      <strong>Makers you follow.</strong> If you follow a maker, we keep who you follow and when. Nobody else sees
+      it. It's gone when you unfollow, or when you or the maker delete your account.
+    </li>
+    <li>
       <strong>While a computer asks to sign in.</strong> We keep the city and country it asked from, to show you
       before you say Yes. The code works for 10 minutes, and old codes are cleared out as new ones come in.
     </li>
@@ -176,6 +180,10 @@
     <li>
       <strong>rk_mark_pressed</strong> remembers which game you pressed Like, Save or Repost on while signed out,
       so it is made once you sign in. 30 minutes.
+    </li>
+    <li>
+      <strong>rk_follow_pressed</strong> remembers which maker you pressed follow on while signed out, so you follow
+      them after you sign up. 30 minutes.
     </li>
     <li><strong>thrown-away</strong> tells a maker which game they just threw away. 1 minute.</li>
     <li><strong>page-saved</strong> says "Saved." once, after a maker saves their page. 1 minute.</li>

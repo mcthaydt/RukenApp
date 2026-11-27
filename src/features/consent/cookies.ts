@@ -39,7 +39,7 @@ export function agree(cookies: Pick<Cookies, "set">, secure: boolean, day: strin
 
 /**
  * Every cookie Ruken sets, with the path it was set on (a cookie is only deleted on its own path). Session cookies are
- * named with and without `__Host-` (http on a developer's own machine has no prefix). The Wishlist button's cookie is here too.
+ * named with and without `__Host-` (http on a developer's own machine has no prefix). The Wishlist button's and the follow plus's cookies are here too.
  */
 const RUKEN_COOKIES: readonly { name: string; path: string }[] = [
   ...["", "__Host-"].flatMap((prefix) =>
@@ -53,6 +53,7 @@ const RUKEN_COOKIES: readonly { name: string; path: string }[] = [
   { name: "rk_welcome_back", path: "/" },
   { name: "rk_wish_pressed", path: "/" },
   { name: "rk_mark_pressed", path: "/" },
+  { name: "rk_follow_pressed", path: "/" },
   { name: "ruken_sign_up", path: "/sign-up" },
   { name: "thrown-away", path: "/make" },
   { name: "page-saved", path: "/make" },

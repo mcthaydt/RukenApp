@@ -78,6 +78,7 @@ export const AUDIENCES: readonly Section[] = [
     lines: ["Watch a few seconds of a game first. Play the ones you like."],
     points: [
       "Play anywhere: your phone, tablet or computer. Nothing to install.",
+      "Know what you want? Search for a game or a maker by name.",
       "No ads. Not before a game, not during one.",
       "Pick up a controller. Games can use it, the way they do on a console.",
       "Put Ruken on your home screen. It opens full screen, like an app.",
@@ -144,6 +145,7 @@ export const MORE: readonly Section[] = [
       "Ruken is for people 13 and up. Games marked 18+ are for adults only.",
       "No game may have pornography, gambling or ads.",
       "See something wrong? Report the game, and we'll take a look.",
+      "Like a maker? Press the plus on their picture to follow them.",
     ],
     links: [{ words: "Watch the feed", href: "/" }],
     picture: {
