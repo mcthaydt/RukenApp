@@ -90,16 +90,17 @@
   /* Shape. Ruken's own corner (the owner, 2026-11-24: "a long ease ... twice as far out, then melt into the
      edge"; "soft"): a superellipse whose curve starts twice as far from the corner as the old round one and eases
      into the straight edge, so it never shows where the curve begins. 1.4 is soft; 2 would be a boxy squircle and 1
-     a plain circle. Every rounded corner reads these tokens and nothing else; a small button's corners meet in the
-     middle, so it is nearly a pill. A true circle sets `--corner: round` (below).
+     a plain circle. Less rounded (the owner, 2026-11-27: "make them less rounded", "this is also too rounded"): half
+     the reach of 2026-11-24, so a button's corners stay well short of its middle and it never reads as a pill. Every
+     rounded corner reads these tokens and nothing else. A true circle sets `--corner: round` (below).
      No borders or hairline rules except on real form fields; no shadow at rest, but for the glass's lens edge and
      the shadow under words on it (below). */
   --corner-shape: superellipse(1.4);
-  --radius-card: 40px;
-  --radius-field: 28px;
-  --radius-button: 24px;
-  --radius-small: 16px;
-  --radius-tiny: 8px;
+  --radius-card: 20px;
+  --radius-field: 14px;
+  --radius-button: 12px;
+  --radius-small: 8px;
+  --radius-tiny: 4px;
   --size-target: 48px; /* the least height of a button or a field */
   --width-read: 40rem; /* the widest a column of reading goes */
 
@@ -167,15 +168,31 @@
   }
 }
 
+/* Glass only where what is behind it moves (the owner, 2026-11-27: "The glass button effect should not be for pages
+   with a static color background"). What moves marks itself with `data-glass`: the feed's clips, a game's page, the
+   play screen, a live game's video behind its screens and a clip behind Join. On any other page, plain felt or a
+   maker's own colour, the bar and every button are solid in the same colours, with no edge, halo or blur. A dim still
+   dims. */
+:root:not(:has([data-glass])) {
+  --glass-bg: var(--felt-deep);
+  --glass-filter: none;
+  --glass-edge: none;
+  --glass-ink: none;
+  --glass-icon: none;
+  --glass-pay: var(--pay);
+  --glass-safe: var(--felt-raised);
+  --glass-lift: var(--felt-raised);
+}
+
 /* A browser that cannot draw the shape draws plain round corners instead, at about four fifths of the reach, so they
    sit as deep as the shape's would and never turn into blobs. */
 @supports not (corner-shape: superellipse(1.4)) {
   :root {
-    --radius-card: 32px;
-    --radius-field: 22px;
-    --radius-button: 19px;
-    --radius-small: 13px;
-    --radius-tiny: 6px;
+    --radius-card: 16px;
+    --radius-field: 11px;
+    --radius-button: 10px;
+    --radius-small: 6px;
+    --radius-tiny: 3px;
   }
 }
 

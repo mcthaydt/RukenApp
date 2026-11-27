@@ -22,7 +22,7 @@
 </script>
 
 {#if src !== null}
-  <div class="backdrop" aria-hidden="true" data-drifting={drifting ? "" : undefined}>
+  <div class="backdrop" aria-hidden="true" data-glass data-drifting={drifting ? "" : undefined}>
     {#key src}
       <video use:loads use:stillPoster {src} preload="metadata" muted playsinline use:quietVideo></video>
     {/key}

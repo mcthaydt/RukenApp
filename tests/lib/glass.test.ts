@@ -236,4 +236,39 @@ describe("frosted glass", () => {
       expect(Number(match?.[2]), `${glass} is mostly its colour`).toBeGreaterThanOrEqual(0.75);
     }
   });
+
+  // Glass only over moving content (the owner, 2026-11-27: "The glass button effect should not be for pages with a
+  // static color background"). What moves marks itself with `data-glass`; a page with nothing marked draws every glass
+  // token solid, in the same colours, with no edge, halo or blur.
+  it("is solid on a page where nothing behind it moves", () => {
+    const css = lookCss();
+    const at = css.indexOf(":root:not(:has([data-glass])) {");
+    expect(at, "the plain-page block in look.css").toBeGreaterThanOrEqual(0);
+    const block = css.slice(at, css.indexOf("}", at));
+    for (const line of [
+      "--glass-bg: var(--felt-deep);",
+      "--glass-filter: none;",
+      "--glass-edge: none;",
+      "--glass-ink: none;",
+      "--glass-icon: none;",
+      "--glass-pay: var(--pay);",
+      "--glass-safe: var(--felt-raised);",
+      "--glass-lift: var(--felt-raised);",
+    ])
+      expect(block, line).toContain(line);
+  });
+
+  it("is marked only on what moves: the feed's clips, a game's page, the play screen, a live game's video and a clip behind Join", () => {
+    const marked = sources
+      .filter(([, text]) => /\sdata-glass(?=[\s>=])/.test(text))
+      .map(([path]) => path)
+      .sort();
+    expect(marked).toEqual([
+      "src/features/feed/Feed.svelte",
+      "src/features/play/PlayScreen.svelte",
+      "src/routes/g/[game]/+page.svelte",
+      "src/routes/join/+page.svelte",
+      "src/routes/make/parts/GameBackdrop.svelte",
+    ]);
+  });
 });

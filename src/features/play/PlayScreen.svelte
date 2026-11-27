@@ -305,7 +305,7 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<main class="playing" data-testing={testPlay ? "" : undefined} bind:this={stage}>
+<main class="playing" data-glass data-testing={testPlay ? "" : undefined} bind:this={stage}>
   {#if testPlay}
     <p class="teststrip">Test play. Only you can see this.</p>
   {/if}

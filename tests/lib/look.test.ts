@@ -35,14 +35,14 @@ describe("the tokens (design 5.8)", () => {
     ["--text-body", "400 1.125rem/1.55 var(--font-text)"], // 18px at 1.55
     ["--text-small", "400 0.875rem/1.45 var(--font-text)"], // 14px
     ["--text-button", "600 1.125rem/1.2 var(--font-text)"],
-    // Ruken's own corner (Owner, 2026-11-24): a soft superellipse reaching twice as far as the old round corners, so a small
-    // button is nearly a pill. This replaces "buttons are rounded squares, not pills" (Owner, 2026-11-14).
+    // Ruken's own corner (Owner, 2026-11-24): a soft superellipse. Less rounded (Owner, 2026-11-27: "make them less
+    // rounded"): half the 2026-11-24 reach, so a button is a rounded square again, not a pill.
     ["--corner-shape", "superellipse(1.4)"],
-    ["--radius-card", "40px"],
-    ["--radius-field", "28px"],
-    ["--radius-button", "24px"],
-    ["--radius-small", "16px"],
-    ["--radius-tiny", "8px"],
+    ["--radius-card", "20px"],
+    ["--radius-field", "14px"],
+    ["--radius-button", "12px"],
+    ["--radius-small", "8px"],
+    ["--radius-tiny", "4px"],
     ["--size-target", "48px"],
     ["--width-read", "40rem"],
     ["--press-scale", "0.97"],

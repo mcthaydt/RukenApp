@@ -75,7 +75,7 @@
   <title>{gameTitle(data.name)}</title>
 </svelte:head>
 
-<main class="gamepage">
+<main class="gamepage" data-glass>
   <div class="bento">
     <div class="cell hero">
       <div class="clipbox" data-shape={shape} data-grows={data.slug}>

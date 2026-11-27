@@ -374,6 +374,7 @@
 {:else}
   <main
     class="feed"
+    data-glass
     data-ready={ready ? "true" : "false"}
     bind:this={feed}
     onscroll={forgetHints}
