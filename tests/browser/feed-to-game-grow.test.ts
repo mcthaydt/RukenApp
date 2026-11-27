@@ -342,7 +342,9 @@ async function letGo(page: Page): Promise<void> {
 /**
  * Where the held move's clip is, and how much of its pictures show outside it: the held frame against the same frame
  * with the clip's pictures hidden, as the mean difference per colour (0 to 255) outside the clip's box, and in a
- * 4 by 4 patch at each of its corners, which a rounded box leaves out; and inside it, to show the clip is drawn at all.
+ * patch at each of its corners, which a rounded box leaves out; and inside it, to show the clip is drawn at all. The patch
+ * is 2 by 2: the card's corner reaches 20px (the owner, 2026-11-27: "less rounded"), about 13px a third of the way out,
+ * and a 4 by 4 patch reaches past the part that corner leaves out.
  */
 async function clipSpill(
   page: Page,
@@ -361,7 +363,7 @@ async function clipSpill(
     (tag as Element).remove();
   });
   const spill = await page.evaluate(
-    async ({ first, second, box }) => {
+    async ({ first, second, box, CORNER_PATCH }) => {
       const pixels = async (png: string) => {
         const image = new Image();
         image.src = `data:image/png;base64,${png}`;
@@ -406,22 +408,23 @@ async function clipSpill(
       let corners = 0;
       const x0 = Math.ceil(box.x);
       const y0 = Math.ceil(box.y);
-      const x1 = Math.floor(box.x + box.width) - 4;
-      const y1 = Math.floor(box.y + box.height) - 4;
+      const x1 = Math.floor(box.x + box.width) - CORNER_PATCH;
+      const y1 = Math.floor(box.y + box.height) - CORNER_PATCH;
       for (const [cx, cy] of [
         [x0, y0],
         [x1, y0],
         [x0, y1],
         [x1, y1],
       ] as const)
-        for (let y = cy; y < cy + 4; y++) for (let x = cx; x < cx + 4; x++) corners += gapAt(x, y);
+        for (let y = cy; y < cy + CORNER_PATCH; y++)
+          for (let x = cx; x < cx + CORNER_PATCH; x++) corners += gapAt(x, y);
       return {
         inside: inside / within,
         outside: counted === 0 ? 0 : outside / counted,
-        corners: corners / 64,
+        corners: corners / (4 * CORNER_PATCH * CORNER_PATCH),
       };
     },
-    { first: shown.toString("base64"), second: bare.toString("base64"), box },
+    { first: shown.toString("base64"), second: bare.toString("base64"), box, CORNER_PATCH: 2 },
   );
   return {
     box: `${String(box.width)} by ${String(box.height)} at ${String(box.x)}, ${String(box.y)}`,

@@ -8,6 +8,7 @@
   menu says so, Leave goes back to the maker's game, and no beats are sent (a test play is never counted).
 -->
 <script lang="ts">
+  import MovingBehind from "../../lib/moving-behind.svelte";
   import { deviceStore } from "../consent/consent.browser.ts";
   import { gameTitle } from "../../lib/titles.ts";
   import { onMount } from "svelte";
@@ -306,6 +307,7 @@
 <svelte:window onkeydown={onKeydown} />
 
 <main class="playing" data-testing={testPlay ? "" : undefined} bind:this={stage}>
+  <MovingBehind />
   {#if testPlay}
     <p class="teststrip">Test play. Only you can see this.</p>
   {/if}

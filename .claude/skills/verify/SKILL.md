@@ -62,7 +62,9 @@ NODE_PATH=/opt/node-tools/node_modules node - "$SHOTS" <<'JS'
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch();
-  const c = await b.newContext({ viewport: { width: 375, height: 667 }, deviceScaleFactor: 1 });
+  // Sign up and play wait for a yes to cookies (/cookies); the journeys start having said yes, with the one cookie it sets.
+  const storageState = { cookies: [{ name: 'rk_consent', value: 'v1.2026-11-22', domain: 'localhost', path: '/', expires: -1, httpOnly: true, secure: false, sameSite: 'Lax' }], origins: [] };
+  const c = await b.newContext({ storageState, viewport: { width: 375, height: 667 }, deviceScaleFactor: 1 });
   const p = await c.newPage();
   await p.goto('http://localhost:4173/');
   await p.getByRole('navigation', { name: 'Ruken' }).getByRole('link', { name: 'You' }).waitFor();

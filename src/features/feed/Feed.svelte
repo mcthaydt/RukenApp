@@ -10,6 +10,7 @@
   screen past the last clip until that page comes. When every game has been shown it goes round again in a new order.
 -->
 <script lang="ts">
+  import MovingBehind from "../../lib/moving-behind.svelte";
   import { askForYes, deviceStore, hasAgreed } from "../consent/consent.browser.ts";
   import { goto } from "$app/navigation";
   import { loads } from "../../lib/loads.ts";
@@ -26,6 +27,7 @@
   import type { ShareSheetControl } from "./share.ts";
   import type { FeedClip, FeedPage } from "./service.ts";
   import type { ClipMarks, MarkKind } from "./marks.ts";
+  import type { TabKey } from "./tabs.ts";
   import { WishlistButton } from "../launch/launch.browser.ts";
 
   let {
@@ -36,7 +38,7 @@
   }: {
     first: FeedPage;
     /** Which of the top bar's tabs this is: every game, or the makers the person follows (Followed.svelte). */
-    tab?: "fresh" | "followed";
+    tab?: TabKey;
     /** Whether this person's feed is learning from them, so each clip offers More and Less like this (•••). */
     tune?: boolean;
     /** Before launch: Wishlist where Play goes, the day it opens and the person's whole list (so later pages too). */
@@ -517,6 +519,7 @@
     ontouchstart={forgetAim}
     onpointerdown={forgetAim}
   >
+    <MovingBehind />
     {#each clips as clip, index (clip.key)}
       <section
         bind:this={sections[index]}

@@ -6,30 +6,106 @@
   right. The three share one centre line and never move with the clips under them (the owner, 2026-11-27: "they need
   to be grouped together as a unit"). The pill is no taller than the round buttons and its tabs are tight, so a third
   tab fits beside them on a 360px phone. The tabs are links, so they work without script, and moving between them
-  slides sideways as the bar's places do (src/lib/page-moves.ts).
+  slides sideways as the bar's places do (src/lib/page-moves.ts). A finger swiped sideways anywhere on the screen, or a
+  gamepad's shoulder buttons (LB, RB), step to the tab beside this one (tabs.ts).
 -->
+<script lang="ts" module>
+  import type { TabKey as Key } from "./tabs.ts";
+
+  // Kept across tabs, not per bar: the bar for the new tab starts a moment after the move (most on Safari's engine),
+  // and sampling the pad then would take a fresh press for the one that brought the person here. Only a button seen
+  // down before the move is waited on; nothing is held when the feed first opens.
+  let held: readonly number[] = [];
+  // The tab a move is on its way to, so a second press or swipe made before it arrives steps on from there.
+  let heading: Key | null = null;
+</script>
+
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import { goto } from "$app/navigation";
   import Icon from "../../lib/icon.svelte";
+  import { LB, RB, TABS, stepOfSwipe, tabFrom, type TabKey } from "./tabs.ts";
 
   let {
     on,
     sound,
   }: {
     /** Which tab the person is on. */
-    on: "fresh" | "followed";
+    on: TabKey;
     /** The speaker, where the screen has clips to play; its place stays empty otherwise, so the pill stays centred. */
     sound?: Snippet | undefined;
   } = $props();
+
+  /** Goes to the tab `step` places along, if there is one, unless a sheet is open over the feed. */
+  function stepTab(step: 1 | -1): void {
+    if (document.querySelector("dialog[open]") !== null) return;
+    const tab = tabFrom(heading ?? on, step);
+    if (tab === null) return;
+    heading = tab.key;
+    void goto(tab.href).finally(() => {
+      if (heading === tab.key) heading = null;
+    });
+  }
+
+  // Where a one-finger touch started; a second finger, or a touch that starts on an open sheet, is not a swipe.
+  let start: { x: number; y: number } | null = null;
+  function touchStarted(event: TouchEvent): void {
+    const touch = event.touches[0];
+    start =
+      event.touches.length === 1 && touch !== undefined && document.querySelector("dialog[open]") === null
+        ? { x: touch.clientX, y: touch.clientY }
+        : null;
+  }
+  function touchEnded(event: TouchEvent): void {
+    const touch = event.changedTouches[0];
+    if (start === null || touch === undefined || event.touches.length > 0) return;
+    const step = stepOfSwipe(touch.clientX - start.x, touch.clientY - start.y);
+    start = null;
+    if (step !== null) stepTab(step);
+  }
+
+  // A gamepad is read while one is plugged in, each frame, and a shoulder button counts once as it goes down. Games are
+  // played on their own page, so the feed's reading never takes a press meant for a game.
+  $effect(() => {
+    let frame = 0;
+    function pressed(): { pads: number; down: number[] } {
+      const pads = navigator.getGamepads().filter((pad) => pad !== null);
+      const down = [LB, RB].filter((button) => pads.some((pad) => pad.buttons[button]?.pressed === true));
+      return { pads: pads.length, down };
+    }
+    function read(): void {
+      const { pads, down } = pressed();
+      if (document.hasFocus()) {
+        if (down.includes(LB) && !held.includes(LB)) stepTab(-1);
+        else if (down.includes(RB) && !held.includes(RB)) stepTab(1);
+      }
+      held = down;
+      frame = pads > 0 ? requestAnimationFrame(read) : 0;
+    }
+    function connected(): void {
+      if (frame === 0) frame = requestAnimationFrame(read);
+    }
+    if (typeof navigator.getGamepads === "function") {
+      window.addEventListener("gamepadconnected", connected);
+      if (navigator.getGamepads().some((pad) => pad !== null)) connected();
+    }
+    return () => {
+      window.removeEventListener("gamepadconnected", connected);
+      cancelAnimationFrame(frame);
+    };
+  });
 </script>
+
+<svelte:window ontouchstart={touchStarted} ontouchend={touchEnded} ontouchcancel={() => (start = null)} />
 
 <div class="top">
   <div class="left">
     {#if sound}{@render sound()}{/if}
   </div>
   <nav class="tabs" aria-label="Feeds">
-    <a href="/" aria-current={on === "fresh" ? "page" : undefined}>Fresh</a>
-    <a href="/followed" aria-current={on === "followed" ? "page" : undefined}>Followed</a>
+    {#each TABS as tab (tab.key)}
+      <a href={tab.href} aria-current={on === tab.key ? "page" : undefined}>{tab.name}</a>
+    {/each}
   </nav>
   <a class="search" href="/search" aria-label="Search" title="Search"><Icon name="search" /></a>
 </div>
