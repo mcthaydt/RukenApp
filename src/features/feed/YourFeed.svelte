@@ -225,14 +225,26 @@
     padding: 0;
     list-style: none;
   }
+  /* A chip is not a line of a card's list: no space above it, so the row's gap is the only space. */
   .chips li,
   .picks li {
     display: flex;
+    margin: 0;
   }
   .chips form,
   .picks form {
     display: flex;
     margin: 0;
+  }
+  /* A chip's button is the chip: not the full-width, spaced-out button a card's form usually ends with. */
+  .chips form > button,
+  .picks form > button,
+  .learn > button {
+    margin-top: 0;
+  }
+  .chips form > button,
+  .picks form > button {
+    width: auto;
   }
   /* A chip the feed learned or the person added: filled, with × to take it off. Gently rounded, not a pill. */
   .chip-on {
@@ -255,18 +267,23 @@
     color: inherit;
     box-shadow: none;
   }
-  /* A suggestion, or a pick in Add: outlined, not filled, so it is not read as a chip already kept. */
+  /* A suggestion, or a pick in Add: outlined, not filled, so it is not read as a chip already kept. A suggestion is
+     on the paper card, in ink; a pick is on the glass sheet, in chalk. */
   .suggestion,
   .pick {
     min-height: var(--size-target);
     margin: 0;
     padding: 0 0.875rem;
-    border: 2px solid var(--chalk);
+    border: 2px solid var(--ink);
     border-radius: var(--radius-small);
     background: none;
-    color: var(--chalk);
+    color: var(--ink);
     font: var(--text-body);
     box-shadow: none;
+  }
+  .pick {
+    border-color: var(--chalk);
+    color: var(--chalk);
   }
   .add {
     margin: 0;

@@ -47,7 +47,11 @@ async function openYourFeed(page: Page): Promise<void> {
 }
 
 /** Presses ••• on the clip at the top of the feed and one of the sheet's two buttons; answers the game it was for. */
-async function tellTheFeed(page: Page, choice: "More like this" | "Less like this"): Promise<string> {
+async function tellTheFeed(
+  page: Page,
+  choice: "More like this" | "Less like this",
+  shoot?: () => Promise<void>,
+): Promise<string> {
   await page.goto("/");
   const clip = page.locator('section[data-current="true"]');
   await expect(clip).toBeAttached();
@@ -56,6 +60,7 @@ async function tellTheFeed(page: Page, choice: "More like this" | "Less like thi
   const sheet = page.locator("dialog.tastesheet");
   await expect(sheet).toBeVisible();
   const name = (await sheet.getByRole("heading").textContent()) ?? "";
+  await shoot?.();
   await sheet.getByRole("button", { name: choice }).click();
   await expect(sheet).toBeHidden();
   await expect(page.getByRole("status").filter({ hasText: "Got it." })).toBeVisible();
@@ -79,7 +84,9 @@ test.describe("with cookies said yes to", () => {
     await showTheOwner(page, testInfo, "Your feed, new");
 
     // Create from a clip: More like this keeps the game on the more side.
-    const game = await tellTheFeed(page, "More like this");
+    const game = await tellTheFeed(page, "More like this", () =>
+      showTheOwner(page, testInfo, "the ••• sheet"),
+    );
     await openYourFeed(page);
     await expect(more(page).getByText(game, { exact: true })).toBeVisible();
 
@@ -92,6 +99,18 @@ test.describe("with cookies said yes to", () => {
     // Create from a suggestion and from Add.
     const suggestion = more(page).getByRole("button", { name: /^Add / }).first();
     const suggested = ((await suggestion.getAttribute("aria-label")) ?? "").replace(/^Add /, "");
+    // A suggestion is a small outlined chip, one target tall, in ink on the paper card (white on white was unseen).
+    const look = await suggestion.evaluate((button) => {
+      const style = getComputedStyle(button);
+      return {
+        height: button.getBoundingClientRect().height,
+        color: style.color,
+        border: style.borderTopColor,
+      };
+    });
+    expect(look.height).toBeLessThanOrEqual(56);
+    expect(look.color).not.toBe("rgb(255, 255, 255)");
+    expect(look.border).not.toBe("rgb(255, 255, 255)");
     await suggestion.click();
     await expect(more(page).getByRole("button", { name: `Remove ${suggested}` })).toBeVisible();
     await expect(
@@ -105,6 +124,12 @@ test.describe("with cookies said yes to", () => {
     await addSheet.getByRole("button", { name: "Racing and sports", exact: true }).click();
     await expect(addSheet).toBeHidden();
     await expect(less(page).getByRole("button", { name: "Remove Racing and sports" })).toBeVisible();
+    // Every kept chip is one target tall, not stretched by the space a card's last button usually gets.
+    for (const height of await page
+      .locator("li.chip-on")
+      .evaluateAll((chips) => chips.map((chip) => chip.getBoundingClientRect().height))) {
+      expect(height).toBeLessThanOrEqual(56);
+    }
     await showTheOwner(page, testInfo, "Your feed, with chips");
     expect((await feedRowsOf(person.number)).chips).toBe(3);
 

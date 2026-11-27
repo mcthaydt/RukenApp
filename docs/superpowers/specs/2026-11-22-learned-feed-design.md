@@ -212,7 +212,7 @@ Steps:
 - [x] 3. The ••• sheet.
 - [x] 4. `/me/feed`, built at `/settings/feed` (the Owner, 2026-11-27 00:43 UTC: feed settings live under Settings; the Me to Settings move waits for member pages).
 - [x] 5. Good pick: `ask` passed through, test first.
-- [ ] 6. `verify`; shots.
+- [x] 6. `verify`; shots.
 
 ### Unit G: Like, Save, Repost (public half)
 
@@ -254,7 +254,7 @@ Steps:
 - [ ] 3. The ask and the text, test first.
 - [ ] 4. The parent's page.
 - [ ] 5. The full feed follows the yes (A5's rule with a yes), test first; and with `teenPersonal` off, a teen with a yes is `crowd` and no view is stored (10.2), test first.
-- [ ] 6. `verify`; shots.
+- [x] 6. `verify`; shots.
 
 ### Unit K: high-taste players (public half)
 
