@@ -139,23 +139,24 @@ for (const device of ["Galaxy S9+", "Galaxy S8", "Pixel 7"] as const) {
   });
 }
 
-/** A one-finger touch from one point to another, as a quick swipe; false where the browser has no touch at all. */
-async function swipe(page: Page, from: [number, number], to: [number, number]): Promise<boolean> {
-  return page.evaluate(
+/**
+ * A one-finger touch from one point to another, as a quick swipe. Safari's engine will not let a page make a Touch of
+ * its own ("Illegal constructor"), so the events are plain touch events that carry the finger's place, which is all
+ * the feed reads.
+ */
+async function swipe(page: Page, from: [number, number], to: [number, number]): Promise<void> {
+  await page.evaluate(
     ([x0, y0, x1, y1]) => {
-      if (typeof Touch === "undefined") return false;
       const target = document.elementFromPoint(x0, y0) ?? document.body;
-      const finger = (clientX: number, clientY: number) =>
-        new Touch({ identifier: 1, target, clientX, clientY });
-      const begun = finger(x0, y0);
-      target.dispatchEvent(
-        new TouchEvent("touchstart", { touches: [begun], changedTouches: [begun], bubbles: true }),
-      );
-      const ended = finger(x1, y1);
-      target.dispatchEvent(
-        new TouchEvent("touchend", { touches: [], changedTouches: [ended], bubbles: true }),
-      );
-      return true;
+      const touch = (type: string, touches: object[], changed: object) => {
+        const event = new Event(type, { bubbles: true });
+        Object.defineProperty(event, "touches", { value: touches });
+        Object.defineProperty(event, "changedTouches", { value: [changed] });
+        target.dispatchEvent(event);
+      };
+      const begun = { identifier: 1, clientX: x0, clientY: y0 };
+      touch("touchstart", [begun], begun);
+      touch("touchend", [], { identifier: 1, clientX: x1, clientY: y1 });
     },
     [...from, ...to] as [number, number, number, number],
   );
@@ -169,7 +170,6 @@ test("swiping sideways goes between Fresh and Followed, and a swipe up and down 
   await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
   const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
   const middle = height / 2;
-  test.skip(!(await swipe(page, [width / 2, middle], [width / 2, middle])), "this browser has no touch");
 
   // Mostly up and down, or too short: still Fresh.
   await swipe(page, [width / 2, middle + 150], [width / 2 - 70, middle - 150]);
