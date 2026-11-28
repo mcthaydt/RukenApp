@@ -71,6 +71,15 @@ test("the feed has the bar, with Home marked", async ({ page }, testInfo) => {
   await showTheOwner(page, testInfo, "the feed with the bar");
 });
 
+// Search opens from the feed's top bar, and Your turn is the feed's third tab, so both keep Home marked. With nothing
+// marked on Search, the always-blue Add a game looked like the place the person was on (the owner's iPad, 2026-11-28).
+test("Search and Your turn are the feed's, with Home marked", async ({ page }) => {
+  for (const path of ["/search", `/search?q=${encodeURIComponent(game.name)}`, "/your-turn"]) {
+    await page.goto(path);
+    await expectTheBar(page, { home: true });
+  }
+});
+
 test("a game's page has the bar, a way back to the feed, and nothing hidden under it", async ({
   page,
 }, testInfo) => {

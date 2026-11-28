@@ -5,4 +5,4 @@
   let { data, form }: PageProps = $props();
 </script>
 
-<YourFeed feed={data.feed} problem={form?.problem ?? null} />
+<YourFeed feed={data.feed} asked={data.asked} problem={form?.problem ?? null} />

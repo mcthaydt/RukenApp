@@ -2,13 +2,19 @@ import { systemClock } from "../../lib/clock.ts";
 import { prisma } from "../../lib/server/db.ts";
 import { optionalEnv } from "../../lib/server/env.ts";
 import type { Cookies } from "@sveltejs/kit";
-import type { Caller } from "../accounts/accounts.ts";
+import { authServices, type Caller } from "../accounts/accounts.ts";
 import { hasConsent } from "../consent/consent.ts";
 import { gamesServices } from "../games/games.ts";
 import { pagesServices } from "../pages/pages.ts";
 import { playServices } from "../play/play.ts";
 import { askingOf, readFeedPublic, type Asking, type FeedPublic } from "./feed-public.ts";
 import { createMarks, type Marks } from "./marks.ts";
+import {
+  createParentAsks,
+  readParentAskLimits,
+  type ParentAskLimits,
+  type ParentAsks,
+} from "./parent-asks.ts";
 import type { Ranker } from "./ranker.ts";
 import { createSearch, type Search } from "./search.ts";
 import { createFeedService, type FeedService } from "./service.ts";
@@ -23,6 +29,8 @@ export interface FeedServices {
   taste: Taste;
   /** Like, Save and Repost. */
   marks: Marks;
+  /** A teen's ask for a parent's yes, and the parent's answer. */
+  parentAsks: ParentAsks;
   /** The live games a person saved (or reposted), the latest first, as Saved and Your reposts list them. */
   listOf(userId: string, kind: "save" | "repost"): Promise<MarkedGame[]>;
   /** Search from the feed's top bar: live games and their makers. */
@@ -58,14 +66,36 @@ function publicSettings(): FeedPublic {
   return settings;
 }
 
+let askLimits: ParentAskLimits | undefined;
+
+/** PARENT_ASK_LIMITS, read once per process. */
+function parentAskLimits(): ParentAskLimits {
+  askLimits ??= readParentAskLimits(optionalEnv("PARENT_ASK_LIMITS"), (line) => {
+    console.warn(line);
+  });
+  return askLimits;
+}
+
 /** The process-wide feed services, created on first use. Each neighbour is asked for only when the feed is read. */
 export function feedServices(): FeedServices {
   if (shared !== undefined) return shared;
   const marks = createMarks({ db: prisma(), clock: systemClock });
-  const taste = createTaste({ db: prisma(), clock: systemClock });
+  const taste = createTaste({
+    db: prisma(),
+    clock: systemClock,
+    teenPersonal: () => publicSettings().teenPersonal,
+  });
   shared = {
     taste,
     marks,
+    parentAsks: createParentAsks({
+      db: prisma(),
+      clock: systemClock,
+      // Asked for only when a teen asks, so the feed never builds the sign-in services just to show a clip.
+      texting: () => authServices(),
+      teenPersonal: () => publicSettings().teenPersonal,
+      limits: parentAskLimits,
+    }),
     async listOf(userId, kind) {
       const [ids, live] = await Promise.all([
         marks.gameIdsOf(userId, kind),
@@ -103,7 +133,7 @@ export function feedServices(): FeedServices {
       askingOf(
         publicSettings(),
         { userId: caller.kind === "user" ? caller.userId : null, consented: hasConsent(cookies) },
-        (userId) => taste.learningOf(userId),
+        (userId) => taste.learnerOf(userId),
       ),
   };
   return shared;

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { consented } from "./support/consent.ts";
-import { changeGame, givePage, makeFriends } from "./support/database.ts";
+import { askedForParent, changeGame, givePage, makeFriends, makeThemUnder18 } from "./support/database.ts";
 import { addGame, gameWhere, startAtCheck } from "./support/game.ts";
 import { wordsHaveSettled } from "./support/look.ts";
 import { PAD, padReachesEverything, plugInPad, pressPad } from "./support/pad.ts";
@@ -376,6 +376,23 @@ test("the pad reaches everything on a game's page", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Watch the video full size" })).toBeVisible();
   await wordsHaveSettled(page);
   await padReachesEverything(page);
+});
+
+test("the pad reaches everything on a teen's Your feed and Ask a parent, and on a parent's page", async ({
+  page,
+}) => {
+  const teen = await signUp(page);
+  await makeThemUnder18(teen.number);
+  for (const path of [
+    "/settings/feed",
+    "/settings/feed/parent",
+    await askedForParent(teen.number),
+    "/settings/feed",
+  ]) {
+    await page.goto(path);
+    await wordsHaveSettled(page);
+    await padReachesEverything(page);
+  }
 });
 
 test("signed in, the pad reaches everything on You, Saved, Reposts, Your feed, Your games and a new game's first question, and B goes back", async ({

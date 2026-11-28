@@ -68,6 +68,8 @@ export const GATED: readonly string[] = [
   "/your-turn/send",
   "/your-turn/seen",
   "/your-turn/remove",
+  // A parent's answer to a teen's ask keeps a row, so the link shows the notice first (learned feed spec, I5).
+  "/parent",
 ];
 
 export type RouteKind = "open" | "machine" | "gated";

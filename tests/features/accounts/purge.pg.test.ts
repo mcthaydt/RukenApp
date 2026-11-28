@@ -513,6 +513,37 @@ describe("purgeDueAccounts", () => {
     expect(await db().goodPickAsked.count({ where: { userId: staying.id } })).toBe(1);
   });
 
+  // A parent's yes (learned feed spec, unit I): a teen's asks, answered or not, go with the teen.
+  it("removes a teen's asks for a parent's yes after the 14 days, and nobody else's", async () => {
+    const leaving = await seedPerson();
+    const staying = await seedPerson();
+    const at = new Date(START);
+    await db().parentAsk.createMany({
+      data: [
+        {
+          teenUserId: leaving.id,
+          phoneHash: "a",
+          tokenHash: `${leaving.id}-1`,
+          askedAt: at,
+          answer: "yes",
+          answeredAt: at,
+        },
+        { teenUserId: leaving.id, phoneHash: "a", tokenHash: `${leaving.id}-2`, askedAt: at },
+        { teenUserId: staying.id, phoneHash: "b", tokenHash: `${staying.id}-1`, askedAt: at },
+      ],
+    });
+    const clock = await askToBeDeleted(leaving.id);
+
+    clock.advance(13 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
+    expect(await db().parentAsk.count({ where: { teenUserId: leaving.id } })).toBe(2);
+
+    clock.advance(2 * DAY_MS);
+    expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
+    expect(await db().parentAsk.count({ where: { teenUserId: leaving.id } })).toBe(0);
+    expect(await db().parentAsk.count({ where: { teenUserId: staying.id } })).toBe(1);
+  });
+
   // Both sides of a follow name an account (maker-credit-and-follow spec): whom the person followed and who followed
   // them both go with the account, after the 14 days, and nobody else's follows are touched.
   it("removes the follows a person made and the follows of them after the 14 days", async () => {
