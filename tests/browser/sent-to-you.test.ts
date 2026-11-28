@@ -227,13 +227,13 @@ test("a friend sends a game; it lands on Your turn with a dot, is seen, opened, 
     await send(sender.page, first.slug, "Robin Reed");
     expect(await sentTo(receiver.number)).toEqual([]);
 
-    // Update: People you stopped lists them, and Undo lets them through again.
-    await page.getByRole("link", { name: "People you stopped" }).click();
+    // Update: Friends who can't send you games lists them, and Undo lets them through again.
+    await page.getByRole("link", { name: "Friends who can't send you games" }).click();
     await expect(page).toHaveURL("/your-turn/stopped");
     await expect(page.getByText("Sam Sender")).toBeVisible();
     await showTheOwner(page, testInfo, "people-you-stopped");
     await page.getByRole("button", { name: "Let games from Sam Sender through again" }).click();
-    await expect(page.getByText("You haven't stopped anyone.")).toBeVisible();
+    await expect(page.getByText("Every friend can send you games.")).toBeVisible();
     expect(await stopsOf(receiver.number)).toBe(0);
 
     await send(sender.page, first.slug, "Robin Reed");
