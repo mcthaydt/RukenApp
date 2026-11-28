@@ -65,7 +65,8 @@ async function rememberArrival(
     if (game !== null) arrival.remember(cookies, { makerUserId: game.makerUserId, path: `/g/${second}` });
   } else if (first !== undefined && second === undefined && rest.length === 0 && isHandleShape(first)) {
     const page = await pagesServices().service.pageByHandle(first);
-    if (page !== null) arrival.remember(cookies, { makerUserId: page.makerUserId, path: `/${first}` });
+    // An unlisted page's address is the missing page, so nobody arrives through it.
+    if (page?.listed === true) arrival.remember(cookies, { makerUserId: page.makerUserId, path: `/${first}` });
   }
 }
 

@@ -59,7 +59,7 @@ export function worlds(): World[] {
             new Map(
               ids
                 .filter((id) => id !== "maker-3")
-                .map((id) => [id, { handle: `h-${id}`, name: id, photoKey: null }]),
+                .map((id) => [id, { handle: `h-${id}`, name: id, photoKey: null, listed: true }]),
             ),
           ),
         media: (key) => `https://media.test/${key}`,

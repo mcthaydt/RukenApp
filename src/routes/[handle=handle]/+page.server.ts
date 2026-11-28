@@ -6,12 +6,13 @@ import { membershipServices } from "../../features/membership/membership.ts";
 import { pagesServices } from "../../features/pages/pages.ts";
 import type { PageServerLoad } from "./$types";
 
-// A maker's page (spec 5.4). An address nobody has is the missing page.
+// A maker's page (spec 5.4). An address nobody has is the missing page, and so is an unlisted page's (the page sign-up
+// made from a name, for everyone, its maker too), before a view is counted or an arrival remembered.
 
 export const load: PageServerLoad = async ({ params, locals, cookies, url }) => {
   const pages = pagesServices().service;
   const page = await pages.pageByHandle(params.handle);
-  if (page === null) error(404);
+  if (page === null || !page.listed) error(404);
 
   const viewer = locals.caller.kind === "user" ? locals.caller.userId : null;
   // The maker opening their own page is not a visitor: `countView` leaves them out.

@@ -38,7 +38,7 @@ function depsFor(
   games: ListedGame[],
   options: {
     beats?: Record<string, number>;
-    makers?: Record<string, { handle: string; name: string; photoKey: string | null }>;
+    makers?: Record<string, { handle: string; name: string; photoKey: string | null; listed: boolean }>;
     /** Each person's followed makers' accounts. */
     follows?: Record<string, string[]>;
   } = {},
@@ -93,7 +93,9 @@ describe("feed", () => {
 
   it("gives whole addresses for both clips and the maker's photo, and the maker or null", async () => {
     const { service } = depsFor([listed("with", 1), listed("without", 2)], {
-      makers: { "maker-with": { handle: "night-owl", name: "Night Owl", photoKey: "photos/owl.png" } },
+      makers: {
+        "maker-with": { handle: "night-owl", name: "Night Owl", photoKey: "photos/owl.png", listed: true },
+      },
     });
 
     const clips = await firstPage(service);
@@ -109,6 +111,7 @@ describe("feed", () => {
         handle: "night-owl",
         name: "Night Owl",
         photo: "https://media.test/photos/owl.png",
+        listed: true,
         following: false,
         mine: false,
       },
@@ -190,15 +193,16 @@ describe("feed", () => {
     expect(asked).toHaveLength(1);
   });
 
-  it("gives a maker with no photo a null photo", async () => {
+  it("gives a maker with no photo a null photo, and says an unlisted maker is unlisted", async () => {
     const { service } = depsFor([listed("one", 1)], {
-      makers: { "maker-one": { handle: "h", name: "N", photoKey: null } },
+      makers: { "maker-one": { handle: "h", name: "N", photoKey: null, listed: false } },
     });
 
     expect((await firstPage(service))[0]?.maker).toEqual({
       handle: "h",
       name: "N",
       photo: null,
+      listed: false,
       following: false,
       mine: false,
     });
@@ -206,9 +210,9 @@ describe("feed", () => {
 
   it("marks the makers the person asking follows, and their own games, and nobody else's", async () => {
     const makers = {
-      "maker-a": { handle: "a", name: "A", photoKey: null },
-      "maker-b": { handle: "b", name: "B", photoKey: null },
-      "maker-c": { handle: "c", name: "C", photoKey: null },
+      "maker-a": { handle: "a", name: "A", photoKey: null, listed: true },
+      "maker-b": { handle: "b", name: "B", photoKey: null, listed: true },
+      "maker-c": { handle: "c", name: "C", photoKey: null, listed: true },
     };
     const { service } = depsFor([listed("a", 1), listed("b", 2), listed("c", 3)], {
       makers,
@@ -426,8 +430,8 @@ describe("the feed never ends", () => {
 
 describe("the Followed tab", () => {
   const makers = {
-    "maker-a": { handle: "ada", name: "Ada", photoKey: null },
-    "maker-b": { handle: "bo", name: "Bo", photoKey: "photos/bo.png" },
+    "maker-a": { handle: "ada", name: "Ada", photoKey: null, listed: true },
+    "maker-b": { handle: "bo", name: "Bo", photoKey: "photos/bo.png", listed: true },
   };
 
   it("says how many makers the person follows, and shows nothing when it is none", async () => {
@@ -453,6 +457,7 @@ describe("the Followed tab", () => {
       handle: "bo",
       name: "Bo",
       photo: "https://media.test/photos/bo.png",
+      listed: true,
       following: true,
       mine: false,
     });

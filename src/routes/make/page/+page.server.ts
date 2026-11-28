@@ -4,13 +4,14 @@ import { savedThenRooms, savedWords, refused } from "./page-words.server.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
 // Your page (spec 5.5): the rooms, each a question of its own. A maker with no page yet meets the address question
-// first; saving it makes the page. Signed out, to sign-in and back.
+// first; saving it makes the page. The unlisted page sign-up made counts as no page yet: its first answer gives it the
+// address and lists it, keeping the name the person gave. Signed out, to sign-in and back.
 
 export const load: PageServerLoad = async ({ locals, url, cookies }) => {
   const { userId } = signedInOnly(locals.caller, url);
   const page = await pagesServices().service.pageOf(userId);
   const saved = savedWords(cookies);
-  if (page === null) return { rooms: null, saved, host: url.host };
+  if (page === null || !page.listed) return { rooms: null, saved, host: url.host };
   return {
     host: url.host,
     saved,
@@ -34,10 +35,12 @@ export const actions: Actions = {
     const raw = (await request.formData()).get("handle");
     const handle = typeof raw === "string" ? raw : "";
     const { service } = pagesServices();
-    // A page that exists already (a second tab, a reload) is not made again: the rooms are where this goes.
-    if ((await service.pageOf(userId)) !== null) savedThenRooms(cookies, "Saved.");
+    const page = await service.pageOf(userId);
+    // A page that is live already (a second tab, a reload) is not made again: the rooms are where this goes.
+    if (page?.listed === true) savedThenRooms(cookies, "Saved.");
     try {
-      await service.savePage(userId, { handle, name: cleanHandle(handle), oneLine: "" });
+      if (page === null) await service.savePage(userId, { handle, name: cleanHandle(handle), oneLine: "" });
+      else await service.listInEditor(userId, handle);
     } catch (problem) {
       return refused(problem, { handle });
     }

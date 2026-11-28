@@ -86,6 +86,7 @@ test("Your account and Your games fit the window, and the bar covers nothing", a
   for (const path of [
     "/me",
     "/make",
+    "/me/name",
     "/me/password",
     "/me/computers",
     "/me/delete",

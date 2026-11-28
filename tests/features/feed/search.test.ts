@@ -31,8 +31,10 @@ function game(slug: string, name: string, more: Partial<ListedGame> = {}): Liste
 }
 
 const MAKERS = new Map([
-  ["maker-a", { handle: "night-owl", name: "Night Owl", photoKey: "photos/owl.png" }],
-  ["maker-b", { handle: "sunny", name: "Sunny Days", photoKey: null }],
+  ["maker-a", { handle: "night-owl", name: "Night Owl", photoKey: "photos/owl.png", listed: true }],
+  ["maker-b", { handle: "sunny", name: "Sunny Days", photoKey: null, listed: true }],
+  // A maker whose page sign-up made: no maker row, and the address finds nothing.
+  ["maker-q", { handle: "quiet-quinn", name: "Quiet Quinn", photoKey: null, listed: false }],
 ]);
 
 function searchOver(games: ListedGame[]) {
@@ -107,6 +109,17 @@ describe("search", () => {
   it("finds a maker's games by the maker's name", async () => {
     const { search } = searchOver([game("a", "Alpha"), game("b", "Beta", { makerUserId: "maker-b" })]);
     expect((await search.find("sunny")).games.map((item) => item.slug)).toEqual(["b"]);
+  });
+
+  it("finds no maker row for an unlisted maker, by name or by address, and still finds their game by the name", async () => {
+    const { search } = searchOver([game("q", "Quest", { makerUserId: "maker-q" })]);
+    for (const query of ["quiet", "Quiet Quinn", "quiet-quinn", "@quiet-quinn"]) {
+      expect((await search.find(query)).makers, query).toEqual([]);
+    }
+    expect((await search.find("quiet quinn")).games).toEqual([
+      expect.objectContaining({ slug: "q", maker: "Quiet Quinn" }),
+    ]);
+    expect((await search.find("quiet-quinn")).games).toEqual([]);
   });
 
   it("never finds a game rated 18+, or a maker whose only game is", async () => {

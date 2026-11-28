@@ -281,6 +281,11 @@ export function createPagesService(deps: PagesServiceDeps) {
     if (removed.count === 0) throw new PageError("NOT_FOUND", "We can't find that link.");
   }
 
+  /** Whether the account has a page yet: one indexed lookup, asked on every move to a people screen. */
+  async function hasPage(userId: string): Promise<boolean> {
+    return (await db.makerPage.findUnique({ where: { userId }, select: { id: true } })) !== null;
+  }
+
   /** The maker's own view of their page, or null when they have none. */
   async function pageOf(userId: string): Promise<OwnPage | null> {
     return db.makerPage.findUnique({
@@ -463,6 +468,7 @@ export function createPagesService(deps: PagesServiceDeps) {
     setHidden,
     removeLink,
     pageOf,
+    hasPage,
     cardOf,
     pageByHandle,
     countView,

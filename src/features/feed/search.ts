@@ -14,7 +14,7 @@ export interface SearchDeps {
   liveGames(): Promise<ListedGame[]>;
   makersOf(
     userIds: readonly string[],
-  ): Promise<Map<string, { handle: string; name: string; photoKey: string | null }>>;
+  ): Promise<Map<string, { handle: string; name: string; photoKey: string | null; listed: boolean }>>;
   /** The whole address of a file in the bucket, from its key. */
   media(key: string): string;
 }
@@ -97,7 +97,7 @@ export function createSearch(deps: SearchDeps) {
     const games = (await deps.liveGames()).filter((game) => game.ageRating !== "age_18");
     const makers =
       games.length === 0
-        ? new Map<string, { handle: string; name: string; photoKey: string | null }>()
+        ? new Map<string, { handle: string; name: string; photoKey: string | null; listed: boolean }>()
         : await deps.makersOf([...new Set(games.map((game) => game.makerUserId))]);
 
     const foundGames = games.flatMap((game) => {
@@ -124,7 +124,10 @@ export function createSearch(deps: SearchDeps) {
       ];
     });
 
+    // An unlisted maker's address is the missing page, so they are no maker row and their address finds nothing; their
+    // games still show, found by the maker's name too.
     const foundMakers = [...makers.values()].flatMap((maker) => {
+      if (!maker.listed) return [];
       const rank = best([
         matchRank(plainWords(maker.name), wanted),
         matchRank(maker.handle, wanted.replace(/^@/, "")),

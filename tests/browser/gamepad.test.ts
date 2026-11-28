@@ -378,12 +378,12 @@ test("the pad reaches everything on a game's page", async ({ page }) => {
   await padReachesEverything(page);
 });
 
-test("signed in, the pad reaches everything on You, Saved, Reposts, Your feed, Your games and a new game's first question, and B goes back", async ({
+test("signed in, the pad reaches everything on You, Your name, Saved, Reposts, Your feed, Your games and a new game's first question, and B goes back", async ({
   page,
 }) => {
   test.setTimeout(240_000);
   await signUp(page);
-  for (const path of ["/me", "/me/saved", "/me/reposts", "/settings/feed", "/make", "/make/new"]) {
+  for (const path of ["/me", "/me/name", "/me/saved", "/me/reposts", "/settings/feed", "/make", "/make/new"]) {
     await page.goto(path);
     await wordsHaveSettled(page);
     await padReachesEverything(page);

@@ -98,6 +98,8 @@ export const load: PageServerLoad = async ({ params, locals, cookies, url, reque
             name: makerPage.name,
             oneLine: makerPage.oneLine,
             photo: makerPage.photoKey === null ? null : games.media(makerPage.photoKey),
+            // An unlisted maker's address is the missing page, so "Made by" names them in words, with no link.
+            listed: makerPage.listed,
           },
     more: (makerPage === null ? [] : more).map((one) => ({
       slug: one.slug,

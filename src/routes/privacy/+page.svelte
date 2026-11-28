@@ -11,7 +11,7 @@
 <main class="card">
   <p><a class="quiet" href="/">Back to Ruken</a></p>
   <h1>Privacy</h1>
-  <p class="note">Last updated 27 November 2026</p>
+  <p class="note">Last updated 28 November 2026</p>
   <p>
     <strong>This is a draft.</strong> A lawyer has not checked it yet. It says what Ruken does today, and it will
     change before Ruken opens.
@@ -34,6 +34,14 @@
       <strong>Your phone number.</strong> It's how you sign in. We text you codes and notes about your account.
     </li>
     <li><strong>Your password.</strong> We keep it scrambled, so nobody at Ruken can read it.</li>
+    <li>
+      <strong>Your name.</strong> The name you give when you join. People who follow you, your friends and anyone
+      who sees your games see it.
+    </li>
+    <li>
+      <strong>Your address.</strong> We make one from your name, so friends can find you and send you games.
+      Your page is not public yet.
+    </li>
     <li>
       <strong>Your age.</strong> We ask for your date of birth to check you're 13 or older. We keep only the day
       you turn 18, so we know if you're under 18. If you're under 13, we keep nothing you typed.
@@ -281,6 +289,7 @@
     <li>Ruken is for people 13 and up. If you're under 13, you can't make an account.</li>
     <li>If you're under 18, or we don't know your age, you don't see games made for adults.</li>
     <li>We keep the same details about you as about anyone else, and nothing more.</li>
+    <li>When you join, we ask you to use a nickname, not your full name.</li>
   </ul>
 
   <h2>Changes</h2>
