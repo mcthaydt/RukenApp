@@ -305,7 +305,8 @@ test("the cookie notice: What we keep is blue words with an arrow, and nothing i
   const visitor = await browser.newContext({ storageState: NOT_CONSENTED, baseURL: "http://localhost:4173" });
   try {
     const page = await visitor.newPage();
-    await page.goto("/privacy");
+    // Not What we keep itself, where the notice stays away (the owner, 2026-11-28).
+    await page.goto("/help");
     const keep = page.locator(".consent").getByRole("link", { name: "What we keep" });
     await expect(keep).toBeVisible();
     await expect(keep).toHaveCSS("text-decoration-line", "none");
