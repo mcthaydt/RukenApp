@@ -334,3 +334,28 @@ test("Wishlist before a yes shows the notice and sets nothing; after the yes it 
   await expect(page.getByText("Done. Ruken keeps nothing on this browser now.")).toBeVisible();
   expect((await context.cookies()).map((cookie) => cookie.name)).not.toContain("rk_wish_pressed");
 });
+
+test("the card shows only together with the dim behind it, never on its own before the screen has loaded", async ({
+  browser,
+  baseURL,
+}) => {
+  // As the screen is before its scripts run: the card is not drawn over its buttons with nothing dimmed.
+  const plain = await browser.newContext({
+    storageState: NOT_CONSENTED,
+    baseURL: baseURL ?? "",
+    javaScriptEnabled: false,
+  });
+  const before = await plain.newPage();
+  for (const path of ["/", "/help"]) {
+    await before.goto(path);
+    await expect(before.locator("dialog.consent"), path).toBeHidden();
+  }
+  await plain.close();
+
+  // Once they have, it asks in front of the dimmed screen.
+  const loaded = await browser.newContext({ storageState: NOT_CONSENTED, baseURL: baseURL ?? "" });
+  const page = await loaded.newPage();
+  await page.goto("/help");
+  await expect(page.locator("dialog.consent:modal")).toBeVisible();
+  await loaded.close();
+});

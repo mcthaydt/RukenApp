@@ -26,6 +26,7 @@ for (const start of ["/", "/help"]) {
   test(`from ${start}, the card's What we keep opens the page in full, and the question waits for the way back`, async ({
     page,
     context,
+    isMobile,
   }) => {
     await page.goto(start);
     await pageHasSettled(page);
@@ -42,7 +43,8 @@ for (const start of ["/", "/help"]) {
     await expect(page.getByRole("heading", { name: "Privacy", level: 1 })).toBeVisible();
     await expect(card(page)).toHaveCount(0);
     await expect(page.locator("dialog:modal")).toHaveCount(0);
-    // It scrolls by wheel to its end, where Read the terms is, once it has slid in (src/lib/page-moves).
+    // It scrolls to its end, where Read the terms is, once it has slid in (src/lib/page-moves): by wheel where there is
+    // a mouse, and on a phone as a finger moves it (mobile Safari has no wheel, and a page cannot make it a real swipe).
     // Aimed at the middle of its column, which is centred on a computer and the whole width on a phone.
     const middle = await page.waitForFunction(() => {
       const main = document.querySelector("main");
@@ -53,8 +55,14 @@ for (const start of ["/", "/help"]) {
       return document.elementFromPoint(x, y)?.closest("main") === main ? { x, y } : null;
     });
     const { x, y } = (await middle.jsonValue()) ?? { x: 0, y: 0 };
-    await page.mouse.move(x, y);
-    await page.mouse.wheel(0, 20_000);
+    if (isMobile) {
+      await page.evaluate(() => {
+        document.body.scrollBy(0, 20_000);
+      });
+    } else {
+      await page.mouse.move(x, y);
+      await page.mouse.wheel(0, 20_000);
+    }
     await expect(page.getByRole("link", { name: "Read the terms" })).toBeInViewport();
     // A tap presses its links: How the feed works opens, and the browser's Back comes back to What we keep.
     await page.getByRole("link", { name: "How the feed works" }).click();

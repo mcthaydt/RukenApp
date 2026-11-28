@@ -2,7 +2,7 @@
   The cookie notice (design 3.4), in two shapes: a card in front of every screen until the browser chooses, the
   screen dimmed behind it and taking no press until an answer (so the card never sits on one of its buttons), and, on
   /cookies, the whole screen's one card (sent there by a button that needs the yes).
-  "I agree" is a plain form that works before scripts load; with scripts it does not reload the screen.
+  "I agree" is a plain form; with scripts it does not reload the screen. The card opens once scripts have loaded.
   "Not now" sends nothing and stores nothing: on the card it hides the card until the next visit.
 -->
 <script lang="ts">
@@ -55,9 +55,9 @@
   });
 
   // The card is a dialog that holds the screen until an answer: everything behind it takes no press and no focus, so
-  // nothing of the page is ever under a button of the card, and the pad and Tab stay on its answers. It is drawn open
-  // from the server, so it asks before scripts load; once they have, it is opened again as the screen's one question.
-  // Escape is Not now.
+  // nothing of the page is ever under a button of the card, and the pad and Tab stay on its answers. It opens only
+  // once scripts have loaded, together with the dim behind it: drawn open from the server it would sit over the
+  // screen's buttons with nothing dimmed until then. Escape is Not now.
   let cardBox = $state<HTMLDialogElement>();
   $effect(() => {
     const box = cardBox;
@@ -110,7 +110,6 @@
     class="consent"
     aria-labelledby="consent-title"
     tabindex="-1"
-    open
     oncancel={escaped}
   >
     <h2 id="consent-title">Cookies?</h2>
