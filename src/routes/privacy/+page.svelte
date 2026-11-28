@@ -11,7 +11,7 @@
 <main class="card">
   <p><a class="quiet" href="/">Back to Ruken</a></p>
   <h1>Privacy</h1>
-  <p class="note">Last updated 27 November 2026</p>
+  <p class="note">Last updated 28 November 2026</p>
   <p>
     <strong>This is a draft.</strong> A lawyer has not checked it yet. It says what Ruken does today, and it will
     change before Ruken opens.
@@ -72,8 +72,9 @@
     </li>
     <li>
       <strong>Games friends send you.</strong> When a friend sends you a game, we keep who sent which game to whom,
-      when, and when you first saw it. If you stop someone, we keep that you did and when; they are never told.
-      A game is gone when you remove it, and all of it goes when either of you deletes your account.
+      when, and when you first saw it. If you stopped a friend sending games before 28 November 2026, we still keep
+      that you did and when until we clear it out; it no longer does anything. A game is gone when you remove it,
+      and all of it goes when either of you deletes your account.
     </li>
     <li>
       <strong>While a computer asks to sign in.</strong> We keep the city and country it asked from, to show you
