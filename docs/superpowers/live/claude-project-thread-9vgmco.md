@@ -1,4 +1,0 @@
-- Task: review 1 fixes for #451 (wider contrast journey, body footer, Search class names).
-- Last commit: 5a41573
-- Next step: push, fix the PR body, hand to review 2.
-- Open decisions: none. Updated 2026-11-28 08:27 UTC.
