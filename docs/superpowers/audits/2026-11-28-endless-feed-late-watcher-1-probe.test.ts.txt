@@ -1,0 +1,49 @@
+// PROBE (review of #448, not committed): appended to tests/browser/feed-controls.test.ts at 6df05c4.
+
+// A: the order CI's trace showed (run 46115550409, shard 6, tablet): the page asked for on open lands after
+// `before` is read but before the swipe to the spinner. Expected to fail at the same line as CI.
+test("probe A: page lands between the count and the swipe", async ({ page }) => {
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  // The count is read before the page lands, as on CI. (Locally the first page is long enough that the feed does not
+  // ask on open, so the last clip is brought up to make it ask, as CI's short first page did.)
+  const before = await clips.count();
+  const first = page.waitForResponse("**/api/feed?*");
+  await clips.nth(before - 1).scrollIntoViewIfNeeded();
+  await first;
+  await expect.poll(() => clips.count()).toBeGreaterThan(before);
+  await page.locator("section.more").scrollIntoViewIfNeeded();
+  await expect(clips.nth(before)).toHaveAttribute("data-current", "true");
+});
+
+// B: the bounded fix for the journey: hold the page until the spinner is on screen, as "the feed never ends" does.
+test("probe B: the journey with the page held until the spinner shows", async ({ page }) => {
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/feed?*", async (route) => {
+    await held;
+    await route.continue();
+  });
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  const before = await clips.count();
+  await page.locator("section.more").scrollIntoViewIfNeeded();
+  await expect(page.getByRole("progressbar", { name: "Loading more games" })).toBeVisible();
+  release();
+  await expect.poll(() => clips.count()).toBeGreaterThan(before);
+  await expect(clips.nth(before)).toHaveAttribute("data-current", "true");
+  const slug = (await clips.nth(before).getAttribute("data-slug")) ?? "?";
+  const box = await boxOf(clips.nth(before));
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.4);
+  await expect(page).toHaveURL(new RegExp(`/g/${slug}$`));
+  await page.goBack();
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  await expect(current(page)).toHaveAttribute("data-slug", slug);
+  expect(
+    await clips.evaluateAll((sections) =>
+      sections.findIndex((section) => section.getAttribute("data-current") === "true"),
+    ),
+  ).toBe(before);
+});
