@@ -175,6 +175,15 @@
   }
 
   const initialOf = (name: string): string => Array.from(name.trim())[0]?.toUpperCase() ?? "";
+
+  /** What the friends' faces on a clip say to a screen reader: who liked it, and how many more. */
+  function friendsWords(friends: FeedClip["friends"]): string {
+    const names = friends.faces.map((face) => face.name);
+    if (friends.more > 0) names.push(`${String(friends.more)} more`);
+    const last = names.pop() ?? "";
+    const list = names.length === 0 ? last : `${names.join(", ")} and ${last}`;
+    return `Liked by your ${friends.faces.length + friends.more === 1 ? "friend" : "friends"} ${list}`;
+  }
   const clipAddress = (clip: FeedClip): string =>
     `${ready && shape === "wide" ? clip.wide : clip.upright}#t=0.001`;
   // The clip on screen, the one before and the next are fetched; every other clip waits until a person is close.
@@ -608,6 +617,38 @@
 
         <div class="lower">
           <div class="band" data-pad-first>
+            {#if clip.friends.faces.length > 0}
+              <!-- Friends who liked it: up to three faces, newest like first, then +N, floating over the clip above the
+                   game's card and behind it (the owner, 2026-11-27: "floating in the air behind the floating UI, but in
+                   front of the video like instagram"). A picture to look at, not a control, so Tab and a gamepad pass
+                   over it and a press goes through to the clip. -->
+              <div class="friends" role="img" aria-label={friendsWords(clip.friends)}>
+                <svg class="liked" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path
+                    d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"
+                    fill="currentColor"
+                  />
+                </svg>
+                {#each clip.friends.faces as face, at (at)}
+                  {#if face.photo !== null}
+                    <img
+                      class="face"
+                      use:loads
+                      src={face.photo}
+                      alt=""
+                      width="28"
+                      height="28"
+                      loading="lazy"
+                    />
+                  {:else}
+                    <span class="face" aria-hidden="true">{initialOf(face.name)}</span>
+                  {/if}
+                {/each}
+                {#if clip.friends.more > 0}
+                  <span class="others" aria-hidden="true">+{clip.friends.more}</span>
+                {/if}
+              </div>
+            {/if}
             <!-- A swipe can start on the name too, so it never loads the game's page (and who brought this person)
                  ahead of a press. -->
             <a class="gamelink" data-sveltekit-preload-data="off" href={`/g/${clip.slug}`}>
@@ -970,11 +1011,12 @@
     text-align: center;
     text-shadow: var(--glass-ink);
   }
+  /* Over the game's card and the friends' faces floating above it, which stay behind every floating piece. */
   .hints {
     position: absolute;
     top: 38%;
     left: 50%;
-    z-index: 2;
+    z-index: 3;
     translate: -50% 0;
     width: max-content;
     max-width: calc(100% - 2rem);
@@ -1054,6 +1096,61 @@
     -webkit-backdrop-filter: var(--glass-filter);
     backdrop-filter: var(--glass-filter);
     box-shadow: var(--glass-edge);
+  }
+  /* Friends who liked the game: small round faces overlapping a little, like a stack of coins, with a heart before them
+     to say what they did, and +N after them. They float in the air over the clip, just above the game's card, under
+     every button: a picture, never in the way of a press. */
+  .friends {
+    position: absolute;
+    bottom: calc(100% + 0.5rem);
+    left: 0;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+  }
+  .liked {
+    flex: none;
+    margin-right: 0.375rem;
+    color: var(--chalk);
+    filter: var(--glass-icon);
+  }
+  .face,
+  .others {
+    flex: none;
+    box-sizing: border-box;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    --corner: round;
+    box-shadow: var(--glass-edge);
+  }
+  .face + .face,
+  .face + .others {
+    margin-left: -8px;
+  }
+  .face {
+    display: grid;
+    place-items: center;
+    object-fit: cover;
+    background: var(--paper);
+    color: var(--ink);
+    font: var(--text-small);
+    font-weight: 600;
+    text-shadow: none;
+  }
+  .others {
+    display: grid;
+    place-items: center;
+    width: auto;
+    min-width: 28px;
+    padding: 0 0.25rem;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+    box-shadow: var(--glass-edge);
+    color: var(--chalk);
+    font: var(--text-small);
+    font-weight: 600;
   }
   /* Play is coloured glass on the glass under the words. */
   .band .button {
@@ -1182,13 +1279,46 @@
     backdrop-filter: var(--glass-filter);
     box-shadow: var(--glass-edge);
   }
+  /* A phone held upright is too narrow to centre the first open's tips between the column of round buttons on either
+     side, so they start at the left, where the game's card does, and end short of the column (the review of #435: centred,
+     they covered Save and Like). They stand just under the top bar, so their lines never reach the game's card. */
+  @media (orientation: portrait) and (max-width: 499px) {
+    .hints {
+      top: calc(0.75rem + var(--size-target) + 0.75rem);
+      left: 0.75rem;
+      translate: none;
+      max-width: calc(100% - 0.75rem - 5.5rem - 1.5rem);
+    }
+  }
+  /* A short phone held upright (an iPhone SE, 568px): the maker, their name and five round buttons stand taller than
+     the room between the top bar and the bar, so the maker's picture went under Search and the tabs. Here the column
+     closes up and the maker's name is left for a screen reader, the picture still opening their page. */
+  @media (orientation: portrait) and (max-height: 600px) {
+    .side {
+      gap: 0.5rem;
+    }
+    /* Room for the plus, whose target hangs half its height below the picture, above Like. */
+    .credit {
+      padding-bottom: calc(var(--size-target) / 2);
+    }
+    .makername {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
   /* A phone held sideways: the window is short, so the words take one corner and the clip the rest. The bar stands
-     along the right edge (Bar.svelte), so the band sits at the bottom with Play beside the game's name, Share under
-     the bar, and the first open's hints at the top, where the band cannot cover them. */
+     along the right edge (Bar.svelte), so the band sits at the bottom with Play beside the game's name, the round
+     buttons in a column left of the bar, and the first open's hints at the top, where the band cannot cover them. */
   @media (orientation: landscape) and (max-height: 449px) {
     .lower {
+      --clear-of-bar: calc(3.5rem + 1.5rem + max(0.75rem, env(safe-area-inset-right)));
       inset: auto 0 0.75rem;
-      padding-right: calc(3.5rem + 1.5rem + max(0.75rem, env(safe-area-inset-right)));
+      /* Clear of the bar, the column of round buttons left of it, and the maker left of those. */
+      padding-right: calc(var(--clear-of-bar) + var(--size-target) + 0.75rem + 5.5rem + 0.75rem);
       padding-left: max(0.75rem, env(safe-area-inset-left));
     }
     .band {
@@ -1215,10 +1345,11 @@
     .caughtup + .hints {
       top: calc(0.75rem + var(--size-target) + 3.5rem);
     }
-    /* The round buttons stand in the bar's column, under it, centred on it. */
+    /* The round buttons stand in a column of their own just left of the bar, from the bottom up: the bar takes the
+       middle of the right edge, so under it there is no room for them (the owner, 2026-11-27: they sat on each other). */
     .side {
       position: absolute;
-      right: calc(max(0.75rem, env(safe-area-inset-right)) + 0.5rem);
+      right: var(--clear-of-bar);
       bottom: 0;
     }
     /* The window is too short for the maker above them there, so the maker stands just left of the column, at the

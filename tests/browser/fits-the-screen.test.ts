@@ -3,6 +3,8 @@ import { pageHasSettled, payAsNewMember, signUp } from "./support/account.ts";
 import { CONSENTED_STATE } from "./support/consent.ts";
 import { asInstalled } from "./support/installed.ts";
 import { boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
+import { addGame } from "./support/game.ts";
+import { atLaunch, beforeLaunch } from "./support/launch.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // Inside the app the page never scrolls; it works like an app's one window (the owner, 2026-11-24: "within the app ... it
@@ -296,6 +298,28 @@ test.describe("a long screen", () => {
     await page.goBack();
     await expect(page).toHaveURL("/privacy");
     await expect.poll(() => page.evaluate(() => document.body.scrollTop)).toBe(400);
+  });
+});
+
+test.describe("a game's page", () => {
+  test.use({ storageState: CONSENTED_STATE });
+
+  test("ends its view above the bar, so the bar covers none of it, before launch and after", async ({
+    page,
+    context,
+    browser,
+    request,
+  }) => {
+    test.setTimeout(180_000);
+    // The review of #435 found the bar on its Join and its Wishlist on a small phone's first screen.
+    const game = await addGame(browser, request);
+    for (const when of ["after launch", "before launch"] as const) {
+      if (when === "before launch") await beforeLaunch(context);
+      await opened(page, `/g/${game.slug}`);
+      expect((await overflow(page)).page, when).toBe(0);
+      await expectViewAboveTheBar(page, `/g/${game.slug}, ${when}`);
+    }
+    await atLaunch(context);
   });
 });
 
