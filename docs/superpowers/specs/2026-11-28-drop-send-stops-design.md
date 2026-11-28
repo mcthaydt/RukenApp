@@ -15,6 +15,10 @@ Expected duration: about 1 hour of building, plus the two audits.
 - The account purge (`src/features/accounts/deletion.ts`) no longer deletes stops: there are none.
 - Tests that made stops to show they do nothing, or that the purge removes them, lose those steps; a migration test checks the new SQL is that one drop and nothing else.
 
+## Gone for good
+
+Once the migration runs, the stops are gone for good. No copy of the table or its rows is kept anywhere, and reverting this pull request's code does not bring them back: a revert would bring back a schema that names a table the database no longer has. The owner's yes (14:52 UTC) is for exactly this.
+
 ## The deploy window
 
 The deploy runs `prisma migrate deploy`, then `wrangler deploy` (`package.json`, `deploy`). Between the two, for well under a minute, the site still runs the code before this change, whose purge deletes stops. A purge in that window fails its transaction on the missing table and deletes nothing; the next purge run, on the new code, does the work. No page, button or send reads the table since #463, so nothing a person sees changes. Rolling the code back after the drop leaves the purge failing in the same way until the code rolls forward again; the deploy's own rollback notes already say to look at the database first.
