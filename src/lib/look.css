@@ -5321,6 +5321,16 @@ header:has(+ main.about) {
   list-style: none;
 }
 
+/* Each link at the foot is a whole row as tall as a finger, one under the other, so no two rows' tap areas overlap
+   (a link in words takes its extra height back from its margins, which stacked them over each other here). */
+.about .sitefoot li + li {
+  margin-top: 0;
+}
+
+.about .sitefoot li > a {
+  margin-block: 0;
+}
+
 @media (min-width: 48rem) {
   .about .hero {
     padding: 3rem 2rem;
@@ -5591,9 +5601,9 @@ video[data-still][data-loading] {
   }
 }
 
-/* The closing cards sit on a still from Floor Fifty, blurred, dimmed and drifting very slowly, as Live sits on its own clip
-   (the owner, 2026-11-22: "a background image for these, dimmed, boked like how we do for Live", with "a very subtle
-   animation"). Both cards are dark then, so both take the dark card's words and buttons. */
+/* The closing cards sit on a photo of friends playing and making games together, dimmed and drifting very slowly (the
+   owner, 2026-11-22: "a background image for these, dimmed", with "a very subtle animation"; 2026-11-28: realistic photos
+   that show). The blur is light so the people read, and the dimming keeps the heading and button white on dark. Both cards are dark then, so both take the dark card's words and buttons. */
 .about .closing .card {
   position: relative;
   isolation: isolate;
@@ -5610,7 +5620,7 @@ video[data-still][data-loading] {
   width: calc(100% + 4rem);
   height: calc(100% + 4rem);
   object-fit: cover;
-  filter: blur(18px) brightness(0.55);
+  filter: blur(2px) brightness(0.55);
 }
 
 .about .closing .card .outline {
