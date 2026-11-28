@@ -1,0 +1,72 @@
+import { expect, test, type Page } from "@playwright/test";
+import { NOT_CONSENTED } from "./support/consent.ts";
+import { asInstalled } from "./support/installed.ts";
+import { beforeLaunch } from "./support/launch.ts";
+import { playtestScene } from "./support/playtest.ts";
+
+// AUDIT PROBE (not part of the PR): the feed's Playtest badge measured against every control and the bar, at the three
+// sizes, upright and sideways installed, with and without the cookie yes.
+const SIZES = [
+  { width: 320, height: 568 },
+  { width: 375, height: 667 },
+  { width: 667, height: 375 },
+];
+
+async function badgeHits(page: Page, slug: string): Promise<string[]> {
+  return page.evaluate((slug) => {
+    const badge = document.querySelector(`section[data-slug="${slug}"][data-current="true"] .playtestbadge`);
+    if (badge === null) return ["NO BADGE"];
+    const b = badge.getBoundingClientRect();
+    const out: string[] = [];
+    if (b.top < 0 || b.left < 0 || b.bottom > innerHeight || b.right > innerWidth) out.push("badge off screen");
+    const things = [
+      ...document.querySelectorAll("a, button, input, select, textarea, summary, [role='button'], nav, dialog[open], .friends"),
+    ].filter((t) => t.closest("[aria-hidden='true'], [inert]") === null && t.checkVisibility({ visibilityProperty: true, opacityProperty: true }));
+    for (const t of things) {
+      if (t.contains(badge)) continue;
+      const r = t.getBoundingClientRect();
+      const wide = Math.min(b.right, r.right) - Math.max(b.left, r.left);
+      const tall = Math.min(b.bottom, r.bottom) - Math.max(b.top, r.top);
+      if (wide > 1 && tall > 1) out.push(`${t.tagName}.${t.className} "${(t.textContent ?? "").trim().slice(0, 30)}"`);
+    }
+    return out;
+  }, slug);
+}
+
+test("AUDIT probe 2: the feed badge clear of every control", async ({ browser }) => {
+  test.setTimeout(400_000);
+  const scene = await playtestScene(browser);
+  const fresh = await browser.newContext({ storageState: NOT_CONSENTED });
+  await beforeLaunch(fresh);
+  const noYes = await fresh.newPage();
+  try {
+    const found: string[] = [];
+    for (const [who, page, installed] of [
+      ["asker", scene.asker.page, false],
+      ["signed out", scene.onlooker.page, false],
+      ["signed out, no cookie yes", noYes, false],
+      ["asker installed", scene.asker.page, true],
+    ] as const) {
+      if (installed) await asInstalled(page);
+      for (const size of SIZES) {
+        await page.setViewportSize(size);
+        await page.goto("/");
+        await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+        const clip = page.locator(`section[data-slug="${scene.slug}"]`).first();
+        await clip.scrollIntoViewIfNeeded();
+        await page.waitForFunction(
+          (slug) => document.querySelector(`section[data-slug="${slug}"]`)?.getAttribute("data-current") === "true",
+          scene.slug,
+        );
+        await page.waitForTimeout(800);
+        const hits = await badgeHits(page, scene.slug);
+        console.log(`PROBE ${who} ${size.width}x${size.height}: ${hits.length === 0 ? "clear" : hits.join(" | ")}`);
+        found.push(...hits.map((h) => `${who} ${size.width}x${size.height}: ${h}`));
+      }
+    }
+    expect(found).toEqual([]);
+  } finally {
+    await fresh.close();
+    await scene.close();
+  }
+});
