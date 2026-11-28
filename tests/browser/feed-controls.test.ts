@@ -1189,6 +1189,64 @@ test("the feed never ends: a spinner past the last clip, then more, then the sam
     .toEqual([]);
 });
 
+// On a busy phone the browser can be late to say what is on screen: the next page can come while the feed still thinks
+// the person is on the last clip, though the spinner fills the window (CI, phone: the journey above, progress.md "Flaky
+// tests"). The browser's word is held back here until the page has come, so that order happens every time.
+test("a page that comes before the browser says the spinner is on screen still puts the person on its first clip", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const Real = window.IntersectionObserver;
+    const held: (() => void)[] = [];
+    const state = window as unknown as { lateWatch: boolean; sayWhatIsOnScreen: () => void };
+    state.lateWatch = false;
+    state.sayWhatIsOnScreen = () => {
+      state.lateWatch = false;
+      for (const say of held.splice(0)) say();
+    };
+    window.IntersectionObserver = class extends Real {
+      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        super((entries, observer) => {
+          if (state.lateWatch)
+            held.push(() => {
+              callback(entries, observer);
+            });
+          else callback(entries, observer);
+        }, options);
+      }
+    };
+  });
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/feed?*", async (route) => {
+    await held;
+    await route.continue();
+  });
+  const asked = page.waitForRequest("**/api/feed?*");
+  await openFeed(page);
+  const clips = page.locator("section[data-slug]");
+  const before = await clips.count();
+
+  // On the last clip the feed asks for the next page; then the person swipes on to the spinner, and the browser is late.
+  await clips.nth(before - 1).scrollIntoViewIfNeeded();
+  await expect(clips.nth(before - 1)).toHaveAttribute("data-current", "true");
+  await asked;
+  await page.evaluate(() => {
+    (window as unknown as { lateWatch: boolean }).lateWatch = true;
+  });
+  await page.locator("section.more").scrollIntoViewIfNeeded();
+  await expect(page.locator("section.more")).toBeInViewport({ ratio: 0.9 });
+  release();
+  await expect.poll(() => clips.count()).toBeGreaterThan(before);
+  await page.evaluate(() => {
+    (window as unknown as { sayWhatIsOnScreen: () => void }).sayWhatIsOnScreen();
+  });
+  await expect(clips.nth(before)).toHaveAttribute("data-current", "true");
+  await expect(clips.nth(before)).toBeInViewport({ ratio: 0.9 });
+});
+
 test("when more games do not come, the feed says so and Try again brings them", async ({ page }) => {
   let refuse = true;
   await page.route("**/api/feed?*", async (route) => {
