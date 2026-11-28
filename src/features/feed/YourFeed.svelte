@@ -147,7 +147,9 @@
     <p class="problem" role="alert">{problem}</p>
   {/if}
 
-  {#if feed.learning === "locked" && asked === "waiting"}
+  {#if feed.learning === "locked" && asked === "yes"}
+    <p role="status">Your parent said yes. Your feed starts learning soon.</p>
+  {:else if feed.learning === "locked" && asked === "waiting"}
     <p role="status">We texted your parent. Your feed starts learning when they say yes.</p>
     <form method="POST" action="?/cancelAsk" use:enhance={send("cancelAsk")}>
       <button class="safe" aria-busy={busy("cancelAsk")}>Cancel the ask</button>

@@ -65,7 +65,11 @@ function publicSettings(): FeedPublic {
 export function feedServices(): FeedServices {
   if (shared !== undefined) return shared;
   const marks = createMarks({ db: prisma(), clock: systemClock });
-  const taste = createTaste({ db: prisma(), clock: systemClock });
+  const taste = createTaste({
+    db: prisma(),
+    clock: systemClock,
+    teenPersonal: () => publicSettings().teenPersonal,
+  });
   shared = {
     taste,
     marks,

@@ -43,7 +43,7 @@ beforeAll(async () => {
     texting: () => ({ texter, secret: "test-only-secret" }),
     teenPersonal: () => teenPersonal,
   });
-  taste = createTaste({ db: db(), clock });
+  taste = createTaste({ db: db(), clock, teenPersonal: () => teenPersonal });
 });
 
 afterAll(async () => {
@@ -211,6 +211,12 @@ describe("the parent's answer", () => {
     expect(await parents.answer(token, "yes")).toEqual({ kind: "yes", held: false });
     expect(await db().parentYes.count({ where: { teenUserId: id, answer: "yes" } })).toBe(1);
     expect(await asking(id)).toEqual({ kind: "crowd" });
+    // Nothing is kept about them either: Your feed stays locked, so no chip can be added.
+    expect(await taste.learningOf(id)).toBe("locked");
+    expect(await taste.add(id, "more", "genre", "puzzle")).toBe("not-learning");
+    expect(await parents.stateOf(id)).toBe("yes");
+    teenPersonal = true;
+    expect(await taste.learningOf(id)).toBe("on");
   });
 
   it("Learn from what I do off is the crowd for a teen with a yes", async () => {

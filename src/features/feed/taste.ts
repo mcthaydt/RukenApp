@@ -55,6 +55,8 @@ const SUGGESTIONS = 2;
 export interface TasteDeps {
   db: PrismaClient;
   clock: Clock;
+  /** FEED_PUBLIC's `teenPersonal`: off, a teen stays locked off even with a parent's yes. Left out, off. */
+  teenPersonal?: () => boolean;
 }
 
 export type Taste = ReturnType<typeof createTaste>;
@@ -65,7 +67,7 @@ export function createTaste(deps: TasteDeps) {
 
   /**
    * Whether the feed may learn from this person, and whether they are a known adult. An under-18, or anyone of unknown
-   * age, is locked off until a parent's yes holds; with one, they have the switch like anyone else.
+   * age, is locked off until a parent's yes holds while `teenPersonal` is on; then they have the switch like anyone else.
    */
   async function learnerOf(userId: string): Promise<Learner> {
     const user = await db.user.findUnique({
@@ -74,7 +76,8 @@ export function createTaste(deps: TasteDeps) {
     });
     if (user === null) return { learning: "locked", adult: false };
     const adult = isAdultOn(user.adultOn, clock);
-    if (!adult && !(await holdsYes(db, userId))) return { learning: "locked", adult };
+    if (!adult && !(deps.teenPersonal?.() === true && (await holdsYes(db, userId))))
+      return { learning: "locked", adult };
     return { learning: user.feedPersonal ? "on" : "off", adult };
   }
 

@@ -71,6 +71,15 @@ test("a teen asks a parent, the parent says yes and turns it off, and the teen a
     await parentPage.goto(link);
     const agree = parentPage.getByRole("button", { name: "I agree" });
     await expect(agree).toBeVisible();
+    // A Yes sent straight from that browser, without the notice's yes, is sent to the notice and keeps nothing.
+    const early = await parentContext.request.post(`${link}?/yes`, {
+      // As a browser's own form sends it, so the answer is a page's redirect, not a script's.
+      headers: { origin: SITE, accept: "text/html" },
+      form: {},
+      maxRedirects: 0,
+    });
+    expect(early.status()).toBe(303);
+    expect(early.headers().location).toContain("/cookies");
     expect((await parentAsksOf(teen.number)).map((ask) => ask.answer)).toEqual([null]);
     await pageHasSettled(parentPage);
     await agree.click();

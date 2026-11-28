@@ -19,10 +19,6 @@
   };
 </script>
 
-<svelte:head>
-  <title>Ruken - A parent's yes</title>
-</svelte:head>
-
 <main class="card">
   <h1>Your teen's feed</h1>
   {#if data.page.kind === "open"}

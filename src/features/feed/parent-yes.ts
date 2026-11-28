@@ -16,8 +16,11 @@ export const TEXTS_A_DAY = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NAME_LONGEST = 30;
 
-/** What Your feed shows a teen whose feed does not learn: nothing asked yet, or an ask waiting for the parent. */
-export type AskState = "none" | "waiting";
+/**
+ * What Your feed shows a teen whose feed does not learn: nothing asked yet, an ask waiting for the parent, or a yes
+ * that waits for `teenPersonal`.
+ */
+export type AskState = "none" | "waiting" | "yes";
 
 export type AskOutcome =
   "texted" | "bad-name" | "bad-number" | "waiting" | "has-yes" | "adult" | "too-many" | "not-sent";
@@ -88,6 +91,7 @@ export function createParentYes(deps: ParentYesDeps) {
 
   return {
     async stateOf(teenUserId: string): Promise<AskState> {
+      if (await holdsYes(db, teenUserId)) return "yes";
       return (await db.parentYes.count({ where: open(teenUserId) })) > 0 ? "waiting" : "none";
     },
 

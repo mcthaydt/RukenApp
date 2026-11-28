@@ -10,10 +10,7 @@ import type { Actions, PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ locals, url }) => {
   const { userId } = signedInOnly(locals.caller, url);
   const feed = feedServices();
-  if (
-    (await feed.taste.learningOf(userId)) !== "locked" ||
-    (await feed.parentYes.stateOf(userId)) === "waiting"
-  )
+  if ((await feed.taste.learningOf(userId)) !== "locked" || (await feed.parentYes.stateOf(userId)) !== "none")
     redirect(303, "/settings/feed");
   return { countries: OPEN_COUNTRIES };
 };

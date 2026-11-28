@@ -11,7 +11,7 @@
 <main class="card">
   <p><a class="quiet" href="/">Back to Ruken</a></p>
   <h1>Privacy</h1>
-  <p class="note">Last updated 27 November 2026</p>
+  <p class="note">Last updated 28 November 2026</p>
   <p>
     <strong>This is a draft.</strong> A lawyer has not checked it yet. It says what Ruken does today, and it will
     change before Ruken opens.
@@ -98,7 +98,9 @@
 
   <h2>Texts</h2>
   <ul class="bullets">
-    <li>Twilio sends our texts. We only text codes and notes about your account.</li>
+    <li>
+      Twilio sends our texts. We only text codes, notes about your account, and a teen's ask to their parent.
+    </li>
     <li>Reply STOP to stop texts, or HELP for help. Message and data rates may apply.</li>
     <li>We keep a note that a text went out and when. That note doesn't hold your number.</li>
     <li>Sign-up is open to phone numbers in the United States and Canada.</li>
@@ -146,15 +148,20 @@
   <h2>Your feed</h2>
   <ul class="bullets">
     <li>
-      If you're 18 or older and signed in, you can tell your feed what you want more of and less of: from a
-      game in the feed, from Your feed in your account, or by answering "Good pick?". We keep what you chose,
-      and when.
+      If you're 18 or older, or a parent said yes, and signed in, you can tell your feed what you want more of
+      and less of: from a game in the feed, from Your feed in your account, or by answering "Good pick?". We
+      keep what you chose, and when.
     </li>
     <li>
       You see all of it on Your feed, and you can take any of it off. Start over forgets all of it. Turning
       off Learn from what I do keeps nothing new, and turning it back on starts fresh.
     </li>
     <li>If you're under 18, your feed doesn't learn from what you do until a parent says yes.</li>
+    <li>
+      To ask, you type your first name and a parent's phone number, and we text your parent a link. We keep a
+      scrambled copy of their number, never the number itself, and we don't keep your name. We keep their
+      answer and when they gave it. A yes holds until your parent turns it off.
+    </li>
     <li>It's gone when you delete your account.</li>
   </ul>
 
@@ -280,7 +287,10 @@
   <ul class="bullets">
     <li>Ruken is for people 13 and up. If you're under 13, you can't make an account.</li>
     <li>If you're under 18, or we don't know your age, you don't see games made for adults.</li>
-    <li>We keep the same details about you as about anyone else, and nothing more.</li>
+    <li>
+      We keep the same details about you as about anyone else, and your asks for a parent's yes, and nothing
+      more.
+    </li>
   </ul>
 
   <h2>Changes</h2>
