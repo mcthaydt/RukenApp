@@ -492,7 +492,8 @@
       if (target?.closest("input, textarea, select, [contenteditable]") != null) return;
       if (event.key === "Enter" && target?.closest("a, button, summary") != null) return;
       event.preventDefault();
-      control.click();
+      // A key held down repeats; one hold is one press, or a held M flips the sound back and forth.
+      if (!event.repeat) control.click();
       return;
     }
     const step = stepFor(event.key, event.shiftKey);

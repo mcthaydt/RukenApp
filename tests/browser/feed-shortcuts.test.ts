@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { consented } from "./support/consent.ts";
 import { gameWhere } from "./support/game.ts";
+import { beforeLaunch } from "./support/launch.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
 
 // The feed's keys (the owner, 2026-11-22 22:05 UTC): Enter plays the clip on screen, I opens its game's page, M turns the
@@ -43,6 +44,19 @@ test("Enter plays the clip on screen", async ({ page }) => {
   await asked;
 });
 
+test("before launch, Enter presses Wishlist where Play goes", async ({ page, context }) => {
+  test.setTimeout(120_000);
+  await signUp(page);
+  await beforeLaunch(context);
+  await openFeed(page);
+  const wish = current(page).locator(".band .play");
+  await expect(wish).toContainText("Wishlist");
+  const sent = page.waitForResponse((answer) => answer.url().includes("/wishlist"));
+  await page.keyboard.press("Enter");
+  expect((await sent).status()).toBeLessThan(400);
+  await expect(wish).toContainText("On your wishlist");
+});
+
 test("I opens the game's page of the clip on screen", async ({ page }) => {
   const slug = await openFeed(page);
   await page.keyboard.press("i");
@@ -57,6 +71,14 @@ test("M turns the sound on and off", async ({ page }) => {
   await expect(sound).not.toHaveAttribute("aria-pressed", before ?? "");
   await page.keyboard.press("m");
   await expect(sound).toHaveAttribute("aria-pressed", before ?? "");
+  // Held down, M repeats; the hold is one press, so the sound flips once and stays.
+  await page.keyboard.down("m");
+  // Three repeats after the first: four flips without the fix, which would end where it started.
+  for (let repeat = 0; repeat < 3; repeat += 1) await page.keyboard.down("m");
+  await page.keyboard.up("m");
+  await expect(sound).not.toHaveAttribute("aria-pressed", before ?? "");
+  await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
+  expect(await sound.getAttribute("aria-pressed")).not.toBe(before);
 });
 
 test("R reposts the clip on screen, and R again takes it back", async ({ page }) => {
