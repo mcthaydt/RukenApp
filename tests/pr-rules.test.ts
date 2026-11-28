@@ -434,6 +434,180 @@ describe("the draft rule and verdicts (criterion 5)", () => {
   });
 });
 
+// ---------- notes-only commits and merges keep a review ----------
+// docs/superpowers/specs/2026-11-27-keep-reviews-through-clean-merges-design.md, criteria 1 to 8.
+const NOTES = "docs/superpowers/progress.md";
+type NotesFixture = { ci: string; reviewed: string; heads: Record<string, string> };
+let nx: NotesFixture;
+beforeAll(() => {
+  const dir = mkdtempSync(join(tmpdir(), "pr-rules-notes-"));
+  const origin = join(dir, "origin.git");
+  const seed = join(dir, "seed");
+  mkdirSync(seed);
+  const g = (...a: string[]) => git(seed, ...a);
+  const put = (file: string, text: string) => {
+    mkdirSync(join(seed, file, ".."), { recursive: true });
+    writeFileSync(join(seed, file), text);
+  };
+  const commit = (msg: string) => {
+    g("add", "-A");
+    g("commit", "-q", "--allow-empty", "-m", msg);
+    return g("rev-parse", "HEAD");
+  };
+  const from = (branch: string, at: string) => g("checkout", "-q", "-B", branch, at);
+  // merge <what>; when it stops on conflicts or for a hand edit, `fix` runs, then the merge is committed
+  const merge = (what: string, fix?: () => void) => {
+    try {
+      g("merge", "-q", "--no-ff", "--no-commit", what);
+    } catch {
+      /* conflicts: fix resolves them */
+    }
+    fix?.();
+    g("add", "-A");
+    g("commit", "-q", "--no-edit");
+    return g("rev-parse", "HEAD");
+  };
+  git(dir, "init", "-q", "--bare", "-b", "main", origin);
+  g("init", "-q", "-b", "main");
+  g("remote", "add", "origin", origin);
+  put("f.txt", "a\n");
+  put("code.ts", "export const c = 0;\n");
+  put(NOTES, "p0\n");
+  const base = commit("A");
+  from("pr", base);
+  put("r.txt", "r\n");
+  put(NOTES, "p0\npr\n");
+  const reviewed = commit("R");
+  // main: M0 (clean to merge), M1 (conflicts in progress.md), M2 (conflicts in r.txt)
+  from("main", base);
+  put("m0.txt", "m0\n");
+  const m0 = commit("M0");
+  put(NOTES, "p0\nmain\n");
+  put("m.txt", "m\n");
+  const m1 = commit("M1");
+  put("r.txt", "main's r\n");
+  commit("M2");
+  g("push", "-q", "origin", "main");
+  // a branch that is not main
+  from("side", base);
+  put("side.txt", "s\n");
+  const side = commit("S");
+  const heads: Record<string, string> = {};
+  const resolveNotes = () => {
+    put(NOTES, "p0\npr\nmain\n");
+  };
+  from("h", reviewed);
+  heads.clean = merge(m0);
+  from("h", reviewed);
+  heads.notesConflict = merge(m1, resolveNotes);
+  from("h", reviewed);
+  put(NOTES, "p0\npr\nnote\n");
+  heads.notesOnly = commit("note");
+  from("h", reviewed);
+  put(NOTES, "p0\npr\nnote\n");
+  commit("note");
+  merge(m0);
+  heads.mix = merge(m1, () => {
+    put(NOTES, "p0\npr\nnote\nmain\n");
+  });
+  from("h", reviewed);
+  heads.otherConflict = merge("main", () => {
+    resolveNotes();
+    put("r.txt", "r\n"); // resolved to the pull request's own side
+  });
+  from("h", reviewed);
+  heads.handEdit = merge(m0, () => {
+    put("code.ts", "export const c = 1;\n");
+  });
+  from("h", reviewed);
+  put(NOTES, "p0\npr\nnote\n");
+  put("code.ts", "export const c = 2;\n");
+  heads.notesAndCode = commit("note and code");
+  from("h", reviewed);
+  g("rm", "-q", NOTES);
+  commit("drop the notes"); // notes-only on its own
+  mkdirSync(join(seed, NOTES, ".."), { recursive: true });
+  g("mv", "code.ts", NOTES);
+  heads.renameOnto = commit("move code onto the notes");
+  from("h", reviewed);
+  heads.renameInMerge = merge(m0, () => {
+    g("rm", "-q", "-f", NOTES);
+    mkdirSync(join(seed, NOTES, ".."), { recursive: true });
+    g("mv", "code.ts", NOTES);
+  });
+  from("h", reviewed);
+  heads.sideMerge = merge(side);
+  g("checkout", "-q", "main");
+  let n = 20;
+  const refs = Object.entries(heads).map(([, at]) => `${at}:refs/pull/${String(n++)}/head`);
+  g("push", "-q", "origin", ...refs);
+  const ci = join(dir, "ci");
+  git(dir, "clone", "-q", "--no-local", "--branch", "main", origin, ci);
+  git(
+    ci,
+    "fetch",
+    "-q",
+    "origin",
+    ...Object.keys(heads).map(
+      (_, i) => `+refs/pull/${String(20 + i)}/head:refs/remotes/pr/${String(20 + i)}`,
+    ),
+  );
+  nx = { ci, reviewed, heads };
+});
+
+describe("notes-only commits and merges of main keep a review (keep-reviews criteria 1 to 8)", () => {
+  const LIB = join(HOOKS, "pr-rules-lib.mjs");
+  type Lib = {
+    onlyCleanMerges: (cwd: string, from: string, head: string, b?: string, notes?: string[]) => boolean;
+  };
+  const carries = async (head: string, notes: string[] = [NOTES]) =>
+    ((await import(LIB)) as Lib).onlyCleanMerges(nx.ci, nx.reviewed, nx.heads[head] ?? "", "main", notes);
+
+  test.each(["clean", "notesConflict", "notesOnly", "mix"])("a PASS carries to the %s head", async (head) => {
+    expect(await carries(head)).toBe(true);
+  });
+  test.each(["otherConflict", "handEdit", "notesAndCode", "renameOnto", "renameInMerge", "sideMerge"])(
+    "a PASS does not carry to the %s head",
+    async (head) => {
+      expect(await carries(head)).toBe(false);
+    },
+  );
+  test("with no notes list, only a clean merge carries, as before", async () => {
+    expect(await carries("clean", [])).toBe(true);
+    expect(await carries("notesConflict", [])).toBe(false);
+    expect(await carries("notesOnly", [])).toBe(false);
+  });
+  test("rules.json names progress.md as the only notes file", () => {
+    const cfg = JSON.parse(readFileSync(join(HOOKS, "rules.json"), "utf8")) as {
+      prFlow: { notesPaths?: string[] };
+    };
+    expect(cfg.prFlow.notesPaths).toEqual([NOTES]);
+  });
+  // The pr-rules check passes the list: a PASS on the reviewed commit holds on these heads.
+  const lane2 = "## Lane\nLane 2\n\n## Acceptance criteria\n- x";
+  const at = (head: string) => 20 + Object.keys(nx.heads).indexOf(head);
+  const judged = async (head: string) => {
+    const n = at(head);
+    add(n, ["src/lib/a.ts"], { body: lane2, head: { sha: nx.heads[head] ?? "", repo: own } });
+    world.comments[n] = [
+      {
+        body: `${nx.reviewed.slice(0, 7)} PASS`,
+        user: { login: "mcthaydt" },
+        created_at: "2026-11-27T11:00:00Z",
+      },
+    ];
+    return judge(n, "synchronize", { cwd: nx.ci });
+  };
+  test("the pr-rules check carries the PASS through a progress.md conflict and a notes-only commit", async () => {
+    passes(await judged("notesConflict"));
+    passes(await judged("notesOnly"));
+  });
+  test("the pr-rules check does not carry it through another conflict or a rename onto progress.md", async () => {
+    fails(await judged("otherConflict"), "no passing review");
+    fails(await judged("renameOnto"), "no passing review");
+  });
+});
+
 describe("reads that fail, events and the status (criteria 6a)", () => {
   test("a read that fails writes a failure status naming the head, never success", async () => {
     add(1, ["docs/a.md"]);

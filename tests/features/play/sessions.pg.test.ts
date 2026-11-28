@@ -10,6 +10,7 @@ import {
 } from "../../../src/features/play/sessions.ts";
 import { countedMs } from "../../../src/features/play/time.ts";
 import { medianMs } from "../../../src/features/games/games.ts";
+import { packPlays } from "../../../src/features/feed/service.ts";
 import { createRateLimiter } from "../../../src/lib/server/rate-limit.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import { createUser } from "../../support/create-user.ts";
@@ -725,5 +726,274 @@ describe("memberBeatsByGame", () => {
     await addPlay(game, { startedAt: hoursAgo(7 * 24 + 30), beats: [{ at: hoursAgo(7 * 24 - 1) }] });
 
     expect((await service.memberBeatsByGame(SINCE, NOW)).has(game.id)).toBe(false);
+  });
+});
+
+describe("playDays", () => {
+  // 18:00 UTC is noon in Chicago, so a few hours either side stays on one Chicago day unless a test means to cross.
+  const NOW = new Date("2026-11-14T18:00:00Z");
+  const SINCE = new Date(NOW.getTime() - 7 * 86_400_000);
+
+  async function addPlay(
+    game: LiveGame,
+    options: {
+      userId?: string | null;
+      basis?: "member" | "free_game" | "staff" | "own_game";
+      startedAt: Date;
+      beats: { at: Date; attentive?: boolean }[];
+    },
+  ): Promise<string | null> {
+    const userId = options.userId === undefined ? await adult() : options.userId;
+    const pass = await db().playPass.create({
+      data: {
+        id: crypto.randomUUID().replaceAll("-", "").slice(0, 22),
+        gameId: game.id,
+        pullId: game.livePullId,
+        userId: null,
+        madeAt: options.startedAt,
+        expiresAt: new Date(NOW.getTime() + 86_400_000),
+      },
+    });
+    const session = await db().playSession.create({
+      data: {
+        id: crypto.randomUUID(),
+        gameId: game.id,
+        pullId: game.livePullId,
+        passId: pass.id,
+        userId,
+        basis: options.basis ?? "member",
+        tokenHash: "0".repeat(64),
+        startedAt: options.startedAt,
+      },
+    });
+    for (const beat of options.beats) {
+      await db().playBeat.create({
+        data: { sessionId: session.id, receivedAt: beat.at, attentive: beat.attentive ?? true },
+      });
+    }
+    return userId;
+  }
+
+  /** A person known to be 18 or over, with Learn from what I do on: the only kind the read answers about. */
+  async function adult(data: { adultOn?: Date | null; feedPersonal?: boolean; feedResetAt?: Date } = {}) {
+    const id = await createUser(db());
+    await db().user.update({ where: { id }, data: { adultOn: new Date("2000-01-01T00:00:00Z"), ...data } });
+    return id;
+  }
+
+  const hoursAgo = (hours: number) => new Date(NOW.getTime() - hours * 3_600_000);
+  const rowsOf = async (gameId: string) =>
+    (await service.playDays(SINCE, NOW, [gameId])).sort(
+      (one, other) => one.day.localeCompare(other.day) || one.userId.localeCompare(other.userId),
+    );
+
+  it("answers each person's attentive beats per game and Chicago day, with how they played", async () => {
+    const game = await newGame();
+    const member = await addPlay(game, {
+      startedAt: hoursAgo(3),
+      beats: [{ at: hoursAgo(3) }, { at: hoursAgo(2) }, { at: hoursAgo(1), attentive: false }],
+    });
+    const free = await addPlay(game, {
+      basis: "free_game",
+      startedAt: hoursAgo(2),
+      beats: [{ at: hoursAgo(2) }],
+    });
+    // A second sitting the same day adds to the same row.
+    await addPlay(game, { userId: member, startedAt: hoursAgo(1), beats: [{ at: hoursAgo(1) }] });
+
+    expect(await rowsOf(game.id)).toEqual(
+      expect.arrayContaining([
+        { userId: member, gameId: game.id, day: "2026-11-14", beats: 3, basis: "member" },
+        { userId: free, gameId: game.id, day: "2026-11-14", beats: 1, basis: "free_game" },
+      ]),
+    );
+    expect(await rowsOf(game.id)).toHaveLength(2);
+  });
+
+  it("puts a sitting that crosses Chicago's midnight on both days", async () => {
+    const game = await newGame();
+    // 05:30 and 06:30 UTC on the 14th are 23:30 on the 13th and 00:30 on the 14th in Chicago.
+    const at = (iso: string) => new Date(iso);
+    const member = await addPlay(game, {
+      startedAt: at("2026-11-14T05:20:00Z"),
+      beats: [
+        { at: at("2026-11-14T05:30:00Z") },
+        { at: at("2026-11-14T05:50:00Z") },
+        { at: at("2026-11-14T06:30:00Z") },
+      ],
+    });
+
+    expect(await rowsOf(game.id)).toEqual([
+      { userId: member, gameId: game.id, day: "2026-11-13", beats: 2, basis: "member" },
+      { userId: member, gameId: game.id, day: "2026-11-14", beats: 1, basis: "member" },
+    ]);
+  });
+
+  it("leaves out staff, a maker's own play, play by nobody, and beats outside the window", async () => {
+    const game = await newGame();
+    for (const basis of ["staff", "own_game"] as const) {
+      await addPlay(game, { basis, startedAt: hoursAgo(2), beats: [{ at: hoursAgo(2) }] });
+    }
+    await addPlay(game, {
+      userId: null,
+      basis: "free_game",
+      startedAt: hoursAgo(2),
+      beats: [{ at: hoursAgo(2) }],
+    });
+    await addPlay(game, {
+      startedAt: hoursAgo(7 * 24 + 5),
+      beats: [{ at: hoursAgo(7 * 24 + 4) }, { at: new Date(NOW.getTime() + 60_000) }],
+    });
+
+    expect(await rowsOf(game.id)).toEqual([]);
+  });
+
+  it("leaves out anyone under 18 or of unknown age, anyone with learning off, and play before Start over", async () => {
+    const game = await newGame();
+    const play = async (userId: string) => {
+      await addPlay(game, {
+        userId,
+        startedAt: hoursAgo(3),
+        beats: [{ at: hoursAgo(3) }, { at: hoursAgo(1) }],
+      });
+    };
+    // 18 tomorrow in Chicago, so still 17 today.
+    await play(await adult({ adultOn: new Date("2026-11-15T00:00:00Z") }));
+    await play(await adult({ adultOn: null }));
+    await play(await adult({ feedPersonal: false }));
+    const restarted = await adult({ feedResetAt: hoursAgo(2) });
+    await play(restarted);
+    // 18 today counts.
+    const birthday = await adult({ adultOn: new Date("2026-11-14T00:00:00Z") });
+    await play(birthday);
+
+    expect(await rowsOf(game.id)).toEqual(
+      [
+        { userId: restarted, gameId: game.id, day: "2026-11-14", beats: 1, basis: "member" },
+        { userId: birthday, gameId: game.id, day: "2026-11-14", beats: 2, basis: "member" },
+      ].sort((one, other) => one.userId.localeCompare(other.userId)),
+    );
+  });
+
+  // A10: the read and what it sends, at launch scale (250 games, 1,000 players, 20,000 play days), measured and printed.
+  // The ranking itself is timed in the private Worker's own budget test. The feed keeps a read for five minutes
+  // (PLAYS_KEPT_MS), so only the first page in each five minutes waits for it.
+  it("reads 20,000 play days, measured and printed, and sends them small", async () => {
+    const maker = await createUser(db());
+    const users = Array.from({ length: 1_000 }, (_, n) => ({
+      id: `scale-user-${String(n)}`,
+      name: "Person",
+      email: `scale-${String(n)}@example.test`,
+      adultOn: new Date("2000-01-01T00:00:00Z"),
+    }));
+    await db().user.createMany({ data: users });
+    const games = Array.from({ length: 250 }, (_, n) => ({
+      id: `scale-game-${String(n)}`,
+      publicId: newPublicId(),
+      slug: `scale-game-${String(n)}`,
+      makerUserId: maker,
+      name: "A game",
+      oneLine: "A game about a thing.",
+      playsOn: "phone_and_computer" as const,
+      repoFullName: "acme/game",
+    }));
+    await db().game.createMany({ data: games });
+    await db().gamePull.createMany({
+      data: games.map((game) => ({
+        id: `${game.id}-pull`,
+        gameId: game.id,
+        commitSha: "a".repeat(40),
+        fileCount: 3,
+        totalBytes: 1000n,
+        connectHosts: [],
+        pulledAt: SINCE,
+      })),
+    });
+    const passOf = new Map(
+      games.map((game) => [game.id, crypto.randomUUID().replaceAll("-", "").slice(0, 22)]),
+    );
+    await db().playPass.createMany({
+      data: games.map((game) => ({
+        id: passOf.get(game.id) ?? "",
+        gameId: game.id,
+        pullId: `${game.id}-pull`,
+        userId: null,
+        madeAt: SINCE,
+        expiresAt: new Date(NOW.getTime() + 86_400_000),
+      })),
+    });
+    // 20,000 different person, game and day sittings over 29 days, each of 20 beats (five minutes).
+    const sittings = new Map<string, { userId: string; gameId: string; daysAgo: number }>();
+    let n = 0;
+    while (sittings.size < 20_000) {
+      n += 1;
+      const userId = `scale-user-${String((n * 7919) % 1_000)}`;
+      const gameId = `scale-game-${String((n * 104_729) % 250)}`;
+      const daysAgo = (n * 31) % 29;
+      sittings.set(`${userId}~${gameId}~${String(daysAgo)}`, { userId, gameId, daysAgo });
+    }
+    await db().playSession.createMany({
+      data: [...sittings.values()].map((sitting, index) => ({
+        id: `scale-session-${String(index)}`,
+        gameId: sitting.gameId,
+        pullId: `${sitting.gameId}-pull`,
+        passId: passOf.get(sitting.gameId) ?? "",
+        userId: sitting.userId,
+        basis: index % 5 === 0 ? ("free_game" as const) : ("member" as const),
+        tokenHash: "0".repeat(64),
+        startedAt: new Date(NOW.getTime() - sitting.daysAgo * 86_400_000 - 2 * 3_600_000),
+      })),
+    });
+    await db().$executeRaw`
+      INSERT INTO "PlayBeat" ("sessionId", "receivedAt", attentive)
+      SELECT s.id, s."startedAt" + k * interval '15 seconds', true
+      FROM "PlaySession" s, generate_series(1, 20) k
+      WHERE s.id LIKE 'scale-session-%'`;
+    await db().$executeRaw`ANALYZE`;
+
+    const since = new Date(NOW.getTime() - 30 * 86_400_000);
+    const gameIds = games.map((game) => game.id);
+    const times: number[] = [];
+    let sent = "";
+    let rows = 0;
+    for (let run = 0; run < 5; run += 1) {
+      const start = performance.now();
+      const read = await service.playDays(since, NOW, gameIds);
+      sent = JSON.stringify(packPlays(read, gameIds, "scale-user-7", since.getTime(), NOW.getTime()));
+      times.push(performance.now() - start);
+      rows = read.length;
+    }
+    const warm = times.slice(1).sort((one, other) => one - other);
+    const median = ((warm[1] ?? 0) + (warm[2] ?? 0)) / 2;
+    console.info(
+      `play read: ${String(rows)} rows, warm median ${median.toFixed(1)} ms (first ${(times[0] ?? 0).toFixed(1)} ms), sent ${String(Math.round(sent.length / 1024))} KB`,
+    );
+    expect(rows).toBe(20_000);
+    // The time is printed, not held to a number: it depends on how busy the machine is (155 ms alone here, about
+    // 340 ms beside the other test files), which is why the feed keeps a read for five minutes.
+    expect(sent.length).toBeLessThan(400_000);
+  }, 120_000);
+
+  it("reads only the games it is asked about, in one statement", async () => {
+    const wanted = await newGame();
+    const other = await newGame();
+    await addPlay(wanted, { startedAt: hoursAgo(2), beats: [{ at: hoursAgo(2) }] });
+    await addPlay(other, { startedAt: hoursAgo(2), beats: [{ at: hoursAgo(2) }] });
+
+    let gameIds: string[] = [];
+    const asked = await queriesAsked(database?.url ?? "", async (counted) => {
+      const rows = await createPlayService({
+        db: counted,
+        clock,
+        rateLimiter: createRateLimiter(counted, clock),
+        passSecret: SECRET,
+        address: (name) => `https://${name}.games.test`,
+      }).playDays(SINCE, NOW, [wanted.id]);
+      gameIds = rows.map((row) => row.gameId);
+    });
+
+    expect(gameIds).toEqual([wanted.id]);
+    expect(asked).toHaveLength(1);
+    expect(await service.playDays(SINCE, NOW, [])).toEqual([]);
   });
 });

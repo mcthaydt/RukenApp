@@ -144,7 +144,7 @@ Every unit waits on the private-move spec's P0, P2, P3 and P4. The units' order 
 Steps:
 - [ ] 1. Journey A11, failing.
 - [ ] 2. The viewer and `FEED_PUBLIC` (A5), test first.
-- [ ] 3. The play read and its Postgres test (A9).
+- [x] 3. The play read and its Postgres test (A9).
 - [ ] 4. `/healthz/feed` (A8).
 - [ ] 5. The caught-up line.
 - [ ] 6. The architecture test (A13); `verify` on the three devices; the journey green.

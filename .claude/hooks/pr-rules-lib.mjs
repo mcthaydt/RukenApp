@@ -95,18 +95,38 @@ const gitRun = (cwd, args) => {
 
 // Commits between a reviewed commit and the head that are only clean merges of the
 // default branch keep the review (release: "a clean merge of current main keeps the review").
-export function onlyCleanMerges(cwd, from, head, defaultBranch = 'main') {
+// `notes` (rules.json, prFlow.notesPaths) widens that: a merge of the default branch may
+// conflict in, or be hand-edited in, those files only, and a one-parent commit may touch
+// those files only. --no-renames lists both sides of a move, so a code file moved onto a
+// notes path still counts as a code change.
+export function onlyCleanMerges(cwd, from, head, defaultBranch = 'main', notes = []) {
   const base = `origin/${defaultBranch}`;
+  const allNotes = (names) => names.every((n) => matchesAny(n, notes));
+  const changed = (a, b) => {
+    const d = gitRun(cwd, ['diff', '--no-renames', '--name-only', a, b]);
+    return d.ok ? d.out.split('\n').filter(Boolean) : null;
+  };
   if (gitRun(cwd, ['merge-base', '--is-ancestor', from, head]).ok !== true) return false;
   const r = gitRun(cwd, ['rev-list', '--parents', `${from}..${head}`, '--not', base]);
   if (!r.ok) return false;
   for (const line of r.out.split('\n').filter(Boolean)) {
     const [c, p1, p2, ...more] = line.split(' ');
-    if (!p2 || more.length) return false;
-    const fromMain = gitRun(cwd, ['merge-base', '--is-ancestor', p2, base]).ok;
-    const merged = gitRun(cwd, ['merge-tree', '--write-tree', p1, p2]);
-    const tree = gitRun(cwd, ['rev-parse', `${c}^{tree}`]);
-    if (!fromMain || !merged.ok || !tree.ok || merged.out.split('\n')[0] !== tree.out) return false;
+    if (!p1 || more.length) return false;
+    if (!p2) {
+      if (!notes.length) return false;
+      const names = changed(p1, c);
+      if (!names || !allNotes(names)) return false;
+      continue;
+    }
+    if (!gitRun(cwd, ['merge-base', '--is-ancestor', p2, base]).ok) return false;
+    // Exit 1 is a merge with conflicts: its tree is still the first line, the conflicted files follow.
+    const m = spawnSync('git', ['merge-tree', '--write-tree', '--name-only', p1, p2], { cwd, encoding: 'utf8', timeout: 15000, maxBuffer: 16 * 1024 * 1024 });
+    if (m.error || (m.status !== 0 && m.status !== 1)) return false;
+    const [tree, ...rest] = (m.stdout ?? '').split('\n');
+    const conflicted = m.status === 1 ? rest.slice(0, Math.max(0, rest.indexOf(''))) : [];
+    if (!/^[0-9a-f]{40,64}$/.test(tree) || (conflicted.length && !allNotes(conflicted))) return false;
+    const names = changed(tree, c);
+    if (!names || !allNotes(names)) return false;
   }
   return true;
 }
