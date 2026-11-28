@@ -309,6 +309,9 @@ test("a maker followed or unfollowed on Fresh shows so on Followed, though the f
   await expect(badgeOf(clip)).toHaveAttribute("aria-pressed", "true");
   await followed.click();
   await expect(page).toHaveURL("/followed");
+  // The address changes before the new page is drawn: wait for Followed's own bar before looking.
+  await expect(followed).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("main.empty")).toHaveCount(0);
   await expect(clipOf(page, first.slug)).toBeAttached();
 
   ahead = askedAhead();
@@ -318,6 +321,7 @@ test("a maker followed or unfollowed on Fresh shows so on Followed, though the f
   await expect(badgeOf(clip)).toHaveAttribute("aria-pressed", "false");
   await followed.click();
   await expect(page).toHaveURL("/followed");
+  await expect(followed).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("You don't follow anyone yet.")).toBeVisible();
   await expect(clipOf(page, first.slug)).not.toBeAttached();
 });
