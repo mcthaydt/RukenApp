@@ -128,3 +128,77 @@ describe("marks", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("friends who liked a game", () => {
+  let pages = 0;
+  /** A person with a page under this name, who is friends with (follows and is followed by) `of` when asked. */
+  async function personWithPage(name: string, photoKey: string | null = null): Promise<string> {
+    pages += 1;
+    const userId = await createUser(db());
+    await db().makerPage.create({
+      data: { userId, handle: `friend-${String(pages)}`, name, photoKey },
+    });
+    return userId;
+  }
+  async function follow(followerId: string, makerId: string): Promise<void> {
+    await db().makerFollow.create({ data: { followerId, makerId, followedAt: new Date(clock.epochMs()) } });
+  }
+  async function friends(one: string, two: string): Promise<void> {
+    await follow(one, two);
+    await follow(two, one);
+  }
+
+  it("names at most three friends who liked each game, newest like first, and counts the rest", async () => {
+    const viewer = await createUser(db());
+    const game = await newGame();
+    const other = await newGame();
+    const likers: string[] = [];
+    for (const name of ["Ana", "Ben", "Cy", "Dee", "Eve"]) {
+      const friend = await personWithPage(name, name === "Ana" ? "photos/ana.webp" : null);
+      await friends(viewer, friend);
+      await marks.set(friend, game, "like", true);
+      clock.advance(1000);
+      likers.push(friend);
+    }
+    // Saves and reposts are not likes.
+    await marks.set(likers[0] ?? "", other, "save", true);
+    await marks.set(likers[1] ?? "", other, "repost", true);
+
+    const shown = await marks.friendsWhoLiked(viewer, [game.id, other.id]);
+    expect(shown.get(game.id)).toEqual({
+      faces: [
+        { name: "Eve", photoKey: null },
+        { name: "Dee", photoKey: null },
+        { name: "Cy", photoKey: null },
+      ],
+      more: 2,
+    });
+    expect(shown.has(other.id)).toBe(false);
+  });
+
+  it("leaves out one-way follows, the viewer, and anyone with no page; nobody signed out gets any", async () => {
+    const viewer = await personWithPage("Me");
+    const game = await newGame();
+    const followsMe = await personWithPage("Fan");
+    await follow(followsMe, viewer);
+    const iFollow = await personWithPage("Star");
+    await follow(viewer, iFollow);
+    const noPage = await createUser(db());
+    await friends(viewer, noPage);
+    const friend = await personWithPage("Pal", "photos/pal.webp");
+    await friends(viewer, friend);
+    for (const liker of [viewer, followsMe, iFollow, noPage, friend])
+      await marks.set(liker, game, "like", true);
+
+    expect((await marks.friendsWhoLiked(viewer, [game.id])).get(game.id)).toEqual({
+      faces: [{ name: "Pal", photoKey: "photos/pal.webp" }],
+      more: 0,
+    });
+    expect((await marks.friendsWhoLiked(null, [game.id])).size).toBe(0);
+    expect((await marks.friendsWhoLiked(viewer, [])).size).toBe(0);
+
+    // The friendship ending, from either side, takes the face off.
+    await db().makerFollow.deleteMany({ where: { followerId: friend, makerId: viewer } });
+    expect((await marks.friendsWhoLiked(viewer, [game.id])).size).toBe(0);
+  });
+});
