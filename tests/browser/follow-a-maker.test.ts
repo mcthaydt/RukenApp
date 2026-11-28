@@ -290,3 +290,33 @@ test("the credit fits the column on every screen, held either way", async ({ pag
     }
   }
 });
+
+test("a maker followed or unfollowed on Fresh shows so on Followed at once", async ({ page }) => {
+  // A page of Followed asked for ahead and kept would show the follows from before (#447 review 1): each follow here
+  // comes after the feed has been open longer than any ask ahead would take.
+  test.setTimeout(120_000);
+  await signUp(page);
+  const feeds = page.getByRole("navigation", { name: "Feeds" });
+  const followed = feeds.getByRole("link", { name: "Followed" });
+
+  let clip = await feedAt(page, first.slug);
+  await page.waitForTimeout(3000);
+  await badgeOf(clip).click();
+  await expect(badgeOf(clip)).toHaveAttribute("aria-pressed", "true");
+  await followed.click();
+  await expect(page).toHaveURL("/followed");
+  // The address changes before the new page is drawn: wait for Followed's own bar before looking.
+  await expect(followed).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("main.empty")).toHaveCount(0);
+  await expect(clipOf(page, first.slug)).toBeAttached();
+
+  clip = await feedAt(page, first.slug);
+  await page.waitForTimeout(3000);
+  await badgeOf(clip).click();
+  await expect(badgeOf(clip)).toHaveAttribute("aria-pressed", "false");
+  await followed.click();
+  await expect(page).toHaveURL("/followed");
+  await expect(followed).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("You don't follow anyone yet.")).toBeVisible();
+  await expect(clipOf(page, first.slug)).not.toBeAttached();
+});

@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { followsChanged } from "./kept.svelte.ts";
 
   interface Props {
     handle: string;
@@ -14,11 +15,9 @@
     following: boolean;
     /** The page to come back to: the one this badge is on. */
     back: string;
-    /** Told when a press changed it, so the feed's other clips by this maker change with it. */
-    onchange: (following: boolean) => void;
   }
 
-  let { handle, name, following, back, onchange }: Props = $props();
+  let { handle, name, following, back }: Props = $props();
 
   /** How long "That didn't work" stays under the name. */
   const PROBLEM_MS = 4000;
@@ -46,7 +45,8 @@
         await goto(said.go, { invalidateAll: true });
         return;
       }
-      onchange(said.following);
+      // Every clip by this maker changes with it, on this tab and on the others (kept.svelte.ts).
+      void followsChanged(handle, said.following);
     } catch {
       // The badge was never changed ahead of the answer, so it already shows how things are.
       problem = true;

@@ -128,26 +128,57 @@ test("a game waiting for review is test-played from Your games and from Waiting"
   await gameLoaded(page);
 });
 
-test("a live game's maker test-plays the new copy that waits, while players keep the live one", async ({
+test("a live game's maker test-plays it from Your games and Live: the live copy, then the new copy that waits", async ({
   page,
   browser,
   request,
-}) => {
+}, testInfo) => {
   const game = await addGame(browser, request);
   await signInAs(page, game.maker.number, game.maker.password);
+  const live = (await pullsOf(game.slug)).live;
 
-  // Nothing new waits: there is nothing to test, and the game's own Play is the way in.
+  // Nothing new waits: the maker plays the live copy. Before launch the game's own page shows Wishlist where Play goes,
+  // for its maker too, so this is their way in (the owner, 2026-11-28: "what happened to us being able to test the game").
   await page.goto("/make");
   await pageHasSettled(page);
-  await expect(page.getByRole("link", { name: `Test play ${game.name}` })).toHaveCount(0);
-  expect((await page.goto(`/make/${game.slug}/play`))?.status()).toBe(404);
+  const fromList = page.getByRole("link", { name: `Test play ${game.name}` });
+  await expect(fromList).toHaveAttribute("data-sveltekit-preload-data", "off");
+  await fromList.click();
+  await expect(page).toHaveURL(`/make/${game.slug}/play`);
+  await expect(page.locator(".teststrip")).toHaveText(STRIP);
+  await gameLoaded(page);
+  expect(await pullInFrame(page)).toBe(live);
 
+  await page.goto(`/make/${game.slug}`);
+  await pageHasSettled(page);
+  await expect(page.getByRole("heading", { name: "Live" })).toBeVisible();
+  await testPlayIsNotASecondBlueButton(page);
+  const fromLive = page.getByRole("link", { name: "Test play", exact: true });
+  await expect(fromLive).toBeVisible();
+  await expect(fromLive).toHaveAttribute("data-sveltekit-preload-data", "off");
+  await showTheOwner(page, testInfo, "a live game's Test play");
+  await fromLive.click();
+  await expect(page).toHaveURL(`/make/${game.slug}/play`);
+  await gameLoaded(page);
+  expect(await pullInFrame(page)).toBe(live);
+  await page.getByRole("group").getByLabel("Menu. Use the arrow keys to move it.").click();
+  await page.getByRole("link", { name: /Leave game/ }).click();
+  await expect(page).toHaveURL(`/make/${game.slug}`);
+
+  // A new copy waits: the maker tries it, from the list and from Live, while players keep the live one.
   await leaveNewCopyWaiting(game.slug);
   const pulls = await pullsOf(game.slug);
+  expect(pulls.pending).not.toBe(pulls.live);
   await page.goto("/make");
   await pageHasSettled(page);
+  // The waiting copy is a row with no files of its own, so only the copy the frame asks for is checked.
   await page.getByRole("link", { name: `Test play ${game.name}` }).click();
   await expect(page.locator(".teststrip")).toHaveText(STRIP);
-  expect(await pullInFrame(page)).toBe(pulls.pending);
-  expect(pulls.pending).not.toBe(pulls.live);
+  await expect.poll(() => pullInFrame(page)).toBe(pulls.pending);
+
+  await page.goto(`/make/${game.slug}`);
+  await pageHasSettled(page);
+  await page.getByRole("link", { name: "Test play", exact: true }).click();
+  await expect(page).toHaveURL(`/make/${game.slug}/play`);
+  await expect.poll(() => pullInFrame(page)).toBe(pulls.pending);
 });
