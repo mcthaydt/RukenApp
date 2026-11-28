@@ -10,7 +10,10 @@ import type { Actions, PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ locals, url }) => {
   const { userId } = signedInOnly(locals.caller, url);
   const feed = feedServices();
-  if ((await feed.taste.learningOf(userId)) !== "locked" || (await feed.parentYes.stateOf(userId)) !== "none")
+  if (
+    (await feed.taste.learningOf(userId)) !== "locked" ||
+    (await feed.parentAsks.stateOf(userId)) !== "none"
+  )
     redirect(303, "/settings/feed");
   return { countries: OPEN_COUNTRIES };
 };
@@ -32,7 +35,7 @@ export const actions: Actions = {
     const { userId } = signedInOnly(locals.caller, url);
     const form = await request.formData();
     const typed = { name: words(form, "name"), country: words(form, "country"), phone: words(form, "phone") };
-    const outcome = await feedServices().parentYes.ask(userId, typed, url.origin);
+    const outcome = await feedServices().parentAsks.ask(userId, typed, url.origin);
     // Texted, or nothing to ask for (already waiting, a yes holds, or 18 now): Your feed says which.
     if (outcome === "texted" || outcome === "waiting" || outcome === "has-yes" || outcome === "adult")
       redirect(303, "/settings/feed");

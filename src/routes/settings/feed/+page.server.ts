@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const { userId } = signedInOnly(locals.caller, url);
   const feed = await feedServices().taste.view(userId);
   // A teen whose feed does not learn sees Ask a parent, or the ask waiting with Cancel.
-  const asked = feed.learning === "locked" ? await feedServices().parentYes.stateOf(userId) : "none";
+  const asked = feed.learning === "locked" ? await feedServices().parentAsks.stateOf(userId) : "none";
   return { feed, asked };
 };
 
@@ -52,7 +52,7 @@ export const actions: Actions = {
 
   cancelAsk: async ({ locals, url }) => {
     const { userId } = signedInOnly(locals.caller, url);
-    await feedServices().parentYes.cancel(userId);
+    await feedServices().parentAsks.cancel(userId);
     return { done: "cancelled" as const };
   },
 

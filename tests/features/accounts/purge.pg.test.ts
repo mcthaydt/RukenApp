@@ -518,7 +518,7 @@ describe("purgeDueAccounts", () => {
     const leaving = await seedPerson();
     const staying = await seedPerson();
     const at = new Date(START);
-    await db().parentYes.createMany({
+    await db().parentAsk.createMany({
       data: [
         {
           teenUserId: leaving.id,
@@ -536,12 +536,12 @@ describe("purgeDueAccounts", () => {
 
     clock.advance(13 * DAY_MS);
     expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(0);
-    expect(await db().parentYes.count({ where: { teenUserId: leaving.id } })).toBe(2);
+    expect(await db().parentAsk.count({ where: { teenUserId: leaving.id } })).toBe(2);
 
     clock.advance(2 * DAY_MS);
     expect(await purgeDueAccounts({ prisma: db(), clock, files, secret: SECRET })).toBe(1);
-    expect(await db().parentYes.count({ where: { teenUserId: leaving.id } })).toBe(0);
-    expect(await db().parentYes.count({ where: { teenUserId: staying.id } })).toBe(1);
+    expect(await db().parentAsk.count({ where: { teenUserId: leaving.id } })).toBe(0);
+    expect(await db().parentAsk.count({ where: { teenUserId: staying.id } })).toBe(1);
   });
 
   // Both sides of a follow name an account (maker-credit-and-follow spec): whom the person followed and who followed

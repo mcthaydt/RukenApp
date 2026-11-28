@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { askingOf } from "../../../src/features/feed/feed-public.ts";
-import { createParentYes, nameOf, type ParentYes } from "../../../src/features/feed/parent-yes.ts";
+import { createParentAsks, nameOf, type ParentAsks } from "../../../src/features/feed/parent-asks.ts";
 import { createTaste, type Taste } from "../../../src/features/feed/taste.ts";
 import type { PrismaClient } from "../../../src/lib/server/db.ts";
 import type { TextMessage, Texter } from "../../../src/lib/server/text.ts";
@@ -27,7 +27,7 @@ const texter: Texter = {
   changedHands: () => Promise.resolve("cannot_say"),
 };
 let teenPersonal = true;
-let parents: ParentYes;
+let parents: ParentAsks;
 let taste: Taste;
 
 function db(): PrismaClient {
@@ -37,7 +37,7 @@ function db(): PrismaClient {
 
 beforeAll(async () => {
   database = await startTestDatabase();
-  parents = createParentYes({
+  parents = createParentAsks({
     db: db(),
     clock,
     texting: () => ({ texter, secret: "test-only-secret" }),
@@ -91,7 +91,7 @@ describe("a teen's ask", () => {
         body: `Your teen Sam asked for a Ruken feed that learns what they like. Say yes or no: ${ORIGIN}/parent/${token}`,
       },
     ]);
-    const [row] = await db().parentYes.findMany({ where: { teenUserId: id } });
+    const [row] = await db().parentAsk.findMany({ where: { teenUserId: id } });
     expect(row?.phoneHash).not.toContain("5550199");
     expect(row?.tokenHash).not.toBe(token);
     expect(await parents.stateOf(id)).toBe("waiting");
@@ -128,7 +128,7 @@ describe("a teen's ask", () => {
     expect(await parents.ask(id, { ...PARENT, name: "see https://x.test" }, ORIGIN)).toBe("bad-name");
     expect(await parents.ask(id, { ...PARENT, phone: "12" }, ORIGIN)).toBe("bad-number");
     expect(await parents.ask(id, { ...PARENT, country: "GB" }, ORIGIN)).toBe("bad-number");
-    expect(await db().parentYes.count({ where: { teenUserId: id } })).toBe(0);
+    expect(await db().parentAsk.count({ where: { teenUserId: id } })).toBe(0);
     expect(nameOf("  Mary   Jo ")).toBe("Mary Jo");
     expect(nameOf("Zoë-Ann O'Neil")).toBe("Zoë-Ann O'Neil");
     expect(nameOf("Sam 2")).toBeNull();
@@ -209,7 +209,7 @@ describe("the parent's answer", () => {
     const id = await teen();
     const token = await askAndToken(id);
     expect(await parents.answer(token, "yes")).toEqual({ kind: "yes", held: false });
-    expect(await db().parentYes.count({ where: { teenUserId: id, answer: "yes" } })).toBe(1);
+    expect(await db().parentAsk.count({ where: { teenUserId: id, answer: "yes" } })).toBe(1);
     expect(await asking(id)).toEqual({ kind: "crowd" });
     // Nothing is kept about them either: Your feed stays locked, so no chip can be added.
     expect(await taste.learningOf(id)).toBe("locked");

@@ -8,7 +8,7 @@
   import { tick } from "svelte";
   import { enhance, type SubmitFunction } from "$app/forms";
   import Icon from "../../lib/icon.svelte";
-  import type { AskState } from "./parent-yes.ts";
+  import type { AskState } from "./parent-asks.ts";
   import type { Choice, YourFeed } from "./taste.ts";
 
   let { feed, asked, problem }: { feed: YourFeed; asked: AskState; problem: string | null } = $props();

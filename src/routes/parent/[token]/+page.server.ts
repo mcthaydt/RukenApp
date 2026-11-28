@@ -6,11 +6,11 @@ import type { Actions, PageServerLoad } from "./$types";
 // notice first and nothing is kept until it agrees.
 
 export const load: PageServerLoad = async ({ params }) => ({
-  page: await feedServices().parentYes.pageOf(params.token),
+  page: await feedServices().parentAsks.pageOf(params.token),
 });
 
 export const actions: Actions = {
-  yes: async ({ params }) => ({ page: await feedServices().parentYes.answer(params.token, "yes") }),
-  no: async ({ params }) => ({ page: await feedServices().parentYes.answer(params.token, "no") }),
-  off: async ({ params }) => ({ page: await feedServices().parentYes.answer(params.token, "off") }),
+  yes: async ({ params }) => ({ page: await feedServices().parentAsks.answer(params.token, "yes") }),
+  no: async ({ params }) => ({ page: await feedServices().parentAsks.answer(params.token, "no") }),
+  off: async ({ params }) => ({ page: await feedServices().parentAsks.answer(params.token, "off") }),
 };

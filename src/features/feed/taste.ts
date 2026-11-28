@@ -1,7 +1,7 @@
 import type { Clock } from "../../lib/clock.ts";
 import type { PrismaClient } from "../../lib/server/db.ts";
 import { isAdultOn } from "../accounts/accounts.ts";
-import { holdsYes } from "./parent-yes.ts";
+import { holdsYes } from "./parent-asks.ts";
 import { GENRES, isGenre, isMood, MOODS, tasteSentence } from "./taste-words.ts";
 
 // What a person tells the feed about their taste (Your feed, the ••• sheet on a clip and the Good pick card): chips of

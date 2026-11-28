@@ -11,6 +11,7 @@ export const HANDLE_MAX = 30;
  * the folders in `src/routes/` and the names in `static/` and fails until a new word is listed here.
  */
 export const RESERVED_HANDLES: ReadonlySet<string> = new Set([
+  "parent",
   "admin",
   "make",
   "me",
