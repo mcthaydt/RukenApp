@@ -176,6 +176,7 @@ describe("the feed through a ranker", () => {
       wide: "https://media.test/clips/c-wide.mp4",
       maker: { handle: "h-maker-c", name: "maker-c", photo: null, following: false, mine: false },
       marks: { likes: 0, liked: false, saved: false, reposted: false },
+      friends: { faces: [], more: 0 },
     });
     expect(page.next).toBe("p.private-cursor");
     expect(page.caughtUpAt).toBe(NOW - 1000);

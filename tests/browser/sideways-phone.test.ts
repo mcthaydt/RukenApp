@@ -94,11 +94,14 @@ for (const phone of PHONES) {
       await expect(clip).toBeVisible();
       const { x } = await expectBarOnTheRight(page);
       await expectClearOfTheBar(page, "section[data-slug]:first-of-type .band", x);
-      // Share stands in the bar's column, under it and centred on it, the start of a column of round buttons.
+      // Share stands at the foot of a column of round buttons just left of the bar, clear of it: under the bar there is
+      // no room for them (the owner, 2026-11-27, of the bar sitting on Like and Share: "these are overlapping").
       const rail = await boxOf(bar(page));
       const share = await boxOf(clip.getByRole("button", { name: "Share" }));
-      expect(Math.abs(share.x + share.width / 2 - (rail.x + rail.width / 2))).toBeLessThanOrEqual(2);
-      expect(share.y).toBeGreaterThanOrEqual(rail.y + rail.height);
+      const like = await boxOf(clip.getByRole("button", { name: "Like" }));
+      expect(share.x + share.width).toBeLessThanOrEqual(rail.x);
+      expect(share.x + share.width).toBeGreaterThanOrEqual(rail.x - 24);
+      expect(Math.abs(like.x - share.x)).toBeLessThanOrEqual(2);
       expect(share.y + share.height).toBeLessThanOrEqual(phone.viewport.height);
       // The words sit at the foot and take at most half the window's height, so the clip shows above them.
       const band = await boxOf(clip.locator(".band"));
