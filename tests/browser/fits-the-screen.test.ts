@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { askedForParent, makeThemUnder18 } from "./support/database.ts";
 import { pageHasSettled, payAsNewMember, signUp } from "./support/account.ts";
 import { CONSENTED_STATE } from "./support/consent.ts";
 import { asInstalled } from "./support/installed.ts";
@@ -76,6 +77,24 @@ test.describe("signed out", () => {
     }
     expect((await overflow(page)).view).toBe(0);
   });
+});
+
+test("a teen's Your feed and Ask a parent, and a parent's page, fit the window, and the bar covers nothing", async ({
+  page,
+}) => {
+  const teen = await signUp(page);
+  await makeThemUnder18(teen.number);
+  const paths = ["/settings/feed", "/settings/feed/parent"];
+  for (const path of paths) {
+    await opened(page, path);
+    expect(await overflow(page), path).toEqual({ page: 0, view: 0 });
+    await expectViewAboveTheBar(page, path);
+  }
+  for (const path of ["/settings/feed", await askedForParent(teen.number)]) {
+    await opened(page, path);
+    expect(await overflow(page), `${path}, waiting`).toEqual({ page: 0, view: 0 });
+    await expectViewAboveTheBar(page, `${path}, waiting`);
+  }
 });
 
 test("Your account and Your games fit the window, and the bar covers nothing", async ({

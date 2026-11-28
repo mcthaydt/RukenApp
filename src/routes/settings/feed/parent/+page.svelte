@@ -12,9 +12,9 @@
   let sending = $state(false);
 </script>
 
-<main class="card">
+<main class="card ask">
   <h1>Ask a parent</h1>
-  <p>We'll text your parent a link. When they say yes, your feed learns what you like.</p>
+  <p>We'll text your parent a link to say yes.</p>
   <form
     method="POST"
     use:enhance={() => {
@@ -31,14 +31,14 @@
         <input type="text" name="name" autocomplete="given-name" maxlength="30" value={form?.name} />
       </label>
     </p>
-    <p class="note">Your parent's phone number:</p>
     <PhoneFields countries={data.countries} country={form?.country} phone={form?.phone} />
     {#if form?.problem}
       <p class="problem" role="alert">{form.problem}</p>
     {/if}
-    <button disabled={sending} aria-busy={sending}>Text my parent</button>
+    <p class="row">
+      <a class="button safe back" href="/settings/feed" aria-label="Back to your feed"><Icon name="back" /></a
+      >
+      <button disabled={sending} aria-busy={sending}>Text my parent</button>
+    </p>
   </form>
-  <p>
-    <a class="button safe back" href="/settings/feed" aria-label="Back to your feed"><Icon name="back" /></a>
-  </p>
 </main>

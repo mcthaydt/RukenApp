@@ -460,6 +460,8 @@ describe("screens wear the look and nothing of their own", () => {
     "bullets",
     // The turning spinner, the only sign of a wait (owner, 2026-11-22: "show ONLY the spinner").
     "spinner",
+    // Ask a parent, a teen's form that closes up a little on a short window so it fits above the bar.
+    "ask",
   ];
   const ROUTES = "src/routes";
 

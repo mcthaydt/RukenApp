@@ -1,7 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { CONSENTED_STATE } from "./support/consent.ts";
-import { followById, givePage, likeById, personWithPage, userIdOf } from "./support/database.ts";
+import {
+  askedForParent,
+  followById,
+  givePage,
+  likeById,
+  makeThemUnder18,
+  personWithPage,
+  userIdOf,
+} from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { asInstalled } from "./support/installed.ts";
 import { atLaunch, beforeLaunch } from "./support/launch.ts";
@@ -265,4 +273,16 @@ test("signed in, with a friend's face on a clip, no two buttons overlap, before 
   await beforeLaunch(context);
   await expectNothingOverlaps(page, paths, "before launch");
   await atLaunch(context);
+});
+
+test("a teen's Your feed and Ask a parent, and a parent's page, have no two buttons overlapping", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const teen = await signUp(page);
+  await makeThemUnder18(teen.number);
+  await expectNothingOverlaps(page, ["/settings/feed", "/settings/feed/parent"], "a teen with nothing asked");
+  const open = await askedForParent(teen.number);
+  await expectNothingOverlaps(page, ["/settings/feed", open], "a teen's ask waiting");
+  await expectNothingOverlaps(page, [await askedForParent(teen.number, "yes")], "after a parent's yes");
 });

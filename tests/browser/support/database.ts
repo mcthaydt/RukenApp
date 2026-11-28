@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { hashNumber } from "../../../src/features/accounts/phone.ts";
 import { sealState } from "../../../src/features/games/github-connect.ts";
@@ -640,6 +641,25 @@ export async function parentAsksOf(number: string): Promise<{ answer: string | n
     select: { answer: true, revokedAt: true },
   });
   return rows.map((row) => ({ answer: row.answer, revoked: row.revokedAt !== null }));
+}
+
+/**
+ * Keeps an ask for a parent's yes for this person, as Ask a parent does but with no text, and answers its link's path,
+ * for the journeys that look at the screens around it. With `answer`, the parent has already answered.
+ */
+export async function askedForParent(number: string, answer?: "yes" | "no"): Promise<string> {
+  const token = randomBytes(32).toString("base64url");
+  const now = new Date();
+  await db().parentAsk.create({
+    data: {
+      teenUserId: await userIdOf(number),
+      phoneHash: "journey",
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      askedAt: now,
+      ...(answer === undefined ? {} : { answer, answeredAt: now }),
+    },
+  });
+  return `/parent/${token}`;
 }
 
 /** Moves the person's asks for a parent's yes this many days into the past, as if nobody had answered for that long. */
