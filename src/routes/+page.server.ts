@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ locals, cookies, depends }) => {
   const userId = locals.caller.kind === "user" ? locals.caller.userId : null;
   const caller = locals.caller;
   const [first, launch, learning, news, friends] = await Promise.all([
-    feed.service.page(null, feed.askingOf(caller), feed.viewerOf(caller)),
+    feed.askingOf(caller, cookies).then((asking) => feed.service.page(null, asking, feed.viewerOf(caller))),
     launchServices().screenFor(userId, cookies),
     userId === null ? Promise.resolve(null) : feed.taste.learningOf(userId),
     // Your turn: the tab's dot, and the faces for "Send to a friend" in the share sheet.

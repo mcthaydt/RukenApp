@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   askingFor,
+  askingOf,
   CROWD,
   FEED_PUBLIC_DEFAULTS,
   readFeedPublic,
@@ -106,5 +107,44 @@ describe("who the feed may learn from", () => {
 
   it("nobody while learned is off", () => {
     expect(askingFor({ ...ON, learned: false }, adult)).toEqual(CROWD);
+  });
+});
+
+describe("who is asking, from the browser and the account", () => {
+  const ON: FeedPublic = { learned: true, teenPersonal: true, windowDays: 7 };
+  const reads: string[] = [];
+  const learning =
+    (answer: "on" | "off" | "locked") =>
+    (userId: string): Promise<"on" | "off" | "locked"> => {
+      reads.push(userId);
+      return Promise.resolve(answer);
+    };
+
+  it("an adult with Learn from what I do on, in a browser that said yes to cookies, is the full viewer", async () => {
+    expect(await askingOf(ON, { userId: "user-1", consented: true }, learning("on"))).toEqual({
+      kind: "full",
+      id: "user-1",
+    });
+  });
+
+  it("Learn from what I do off, or an account locked off (under 18, or of unknown age), is the crowd", async () => {
+    expect(await askingOf(ON, { userId: "user-1", consented: true }, learning("off"))).toEqual(CROWD);
+    // A parent's yes is not built yet, so a teen is locked off and is the crowd even while teenPersonal is on.
+    expect(await askingOf(ON, { userId: "user-1", consented: true }, learning("locked"))).toEqual(CROWD);
+  });
+
+  it("a browser without a yes to cookies is the crowd even signed in, and the account is never read", async () => {
+    reads.length = 0;
+    expect(await askingOf(ON, { userId: "user-1", consented: false }, learning("on"))).toEqual(CROWD);
+    expect(await askingOf(ON, { userId: null, consented: true }, learning("on"))).toEqual(CROWD);
+    expect(
+      await askingOf({ ...ON, learned: false }, { userId: "user-1", consented: true }, learning("on")),
+    ).toEqual(CROWD);
+    expect(reads).toEqual([]);
+  });
+
+  it("an account that cannot be read is the crowd", async () => {
+    const broken = (): Promise<"on"> => Promise.reject(new Error("no database"));
+    expect(await askingOf(ON, { userId: "user-1", consented: true }, broken)).toEqual(CROWD);
   });
 });
