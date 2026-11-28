@@ -2,7 +2,7 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { pageHasSettled, signUp } from "./support/account.ts";
 import { letInTerminal, terminal } from "./support/computers.ts";
 import { NOT_CONSENTED } from "./support/consent.ts";
-import { givePage, pageCounts, playOf, rateLimitRows } from "./support/database.ts";
+import { givePage, pageCounts, playOf, rateLimitRows, setListed } from "./support/database.ts";
 import { addGame } from "./support/game.ts";
 import { beforeLaunch } from "./support/launch.ts";
 import { forgetRateLimits, journeyClientHeaders } from "./support/rate-limits.ts";
@@ -190,6 +190,26 @@ test("saying yes from a game's page keeps the maker who brought the person", asy
   await agreeButton(page).click();
   await expect(page).toHaveURL(`/g/${game.slug}/play`);
   expect((await context.cookies()).map((cookie) => cookie.name)).toContain("rk_arrival");
+});
+
+test("saying yes from a maker's page keeps who brought the person, but never from an unlisted page's address", async ({
+  page,
+  context,
+}) => {
+  const fromAddress = async () => {
+    await context.clearCookies();
+    await page.goto(`/cookies?next=${encodeURIComponent(`/${maker.handle}`)}`);
+    await agreeButton(page).click();
+    await expect(page).toHaveURL(`/${maker.handle}`);
+    return (await context.cookies()).map((cookie) => cookie.name);
+  };
+  expect(await fromAddress()).toContain("rk_arrival");
+  await setListed(maker.handle, false);
+  try {
+    expect(await fromAddress()).toEqual(["rk_consent"]);
+  } finally {
+    await setListed(maker.handle, true);
+  }
 });
 
 test("Take it back: create, read, update and delete the one thing a visitor makes here", async ({

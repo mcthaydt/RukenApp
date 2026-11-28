@@ -89,6 +89,10 @@ const { chromium } = require('playwright');
   if (code === undefined) throw new Error('no code reached the stand-in Twilio');
   await p.getByLabel('The code we texted you').fill(code);
   await p.getByRole('button', { name: 'Join Ruken' }).click();
+  // Right after the code, sign-up asks for the name friends see; Save goes on to `next`.
+  await p.getByRole('heading', { name: 'What should friends call you?' }).waitFor();
+  await p.getByLabel('Your name').fill('Verify Person');
+  await p.getByRole('button', { name: 'Save', exact: true }).click();
   await p.waitForURL('**/me');
   await p.screenshot({ path: process.argv[2] + '/me.png' });
   await b.close();
@@ -103,7 +107,7 @@ The first screenshot is the main screen. The script also walks the sign-up journ
 One line each, from a person's side: where it starts, the steps, and what they see at the end.
 
 - Feed: open `/`. See a clip per live game (or "No games here yet."), the bar with Home, Add a game and You, and press an arrow key or Page Down to move one clip. "You" opens `/me` and "Add a game" opens Your games, `/make` (`feed.test.ts`, `feed-controls.test.ts`, `bar.test.ts`).
-- Sign up: open `/sign-up?next=/me`. Fill Phone number (a made-up number such as 312 555 1234; the country stays United States), Password (10 to 128 characters), and Month, Day and Year of birth (someone under 13 is told to come back). Press "Text me a code". The code screen says "We texted you a code": read the code the stand-in Twilio kept at `http://127.0.0.1:12114/codes?to=%2B13125551234` (the newest `pending` one), type it, press "Join Ruken". You land on `/me`, signed in. Sign in is the Phone number and Password; forgot password is the same number and a texted code. More journeys, each with its stand-in (mail, texts, payment), are the tests in `tests/browser/`; run the one that matches the change by reading its steps and doing them the same way.
+- Sign up: open `/sign-up?next=/me`. Fill Phone number (a made-up number such as 312 555 1234; the country stays United States), Password (10 to 128 characters), and Month, Day and Year of birth (someone under 13 is told to come back). Press "Text me a code". The code screen says "We texted you a code": read the code the stand-in Twilio kept at `http://127.0.0.1:12114/codes?to=%2B13125551234` (the newest `pending` one), type it, press "Join Ruken". The next screen asks "What should friends call you?": type a name in "Your name" and press Save. You land on `/me`, signed in, and the account has an unlisted page made from that name. Sign in is the Phone number and Password; forgot password is the same number and a texted code. More journeys, each with its stand-in (mail, texts, payment), are the tests in `tests/browser/`; run the one that matches the change by reading its steps and doing them the same way.
 - Sign in: open `/sign-in`, type the phone number and password, press "Sign in". A wrong password says so and offers the reset, which texts a code to the same number (`sign-in.test.ts`, `forgot-password.test.ts`).
 - Your account: open `/me` signed in. See your phone number and Sign out; change your password, and other devices are signed out (`me.test.ts`, `change-password.test.ts`). There is no email to change: nobody signs in with one.
 - Delete your account: open `/me/delete` and ask to be deleted. You are signed out and told the date; signing in again within 14 days undoes it (`delete-account.test.ts`).

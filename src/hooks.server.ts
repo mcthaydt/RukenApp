@@ -13,6 +13,7 @@ import { consentGate } from "./features/consent/consent.ts";
 import { setFileStore } from "./lib/server/files.ts";
 import { setFrameMaker } from "./lib/server/frames.ts";
 import { setPrivateRanker } from "./features/feed/feed.ts";
+import { nameGate, pagesServices } from "./features/pages/pages.ts";
 import { setSendLimits } from "./features/sends/sends.ts";
 import { membershipServices } from "./features/membership/membership.ts";
 import { moneyServices } from "./features/money/money.ts";
@@ -41,10 +42,12 @@ setMoneyCheck(
 // never kept over http. databasePerRequest is next, so every route and form reaches its own request's database
 // client. The consent gate is next: a browser that has not said yes to cookies may not write to the database, keeps no
 // cookie and is sent from a gated page to the notice. createHandle then says who sent the request; it builds the sign-in services on the first request that needs them, so
-// /healthz answers without them.
+// /healthz answers without them. The name gate is last: it needs to know who is signed in, and sends an account with
+// no page yet to the question before any people screen loads (features/pages/people-screens.ts).
 export const handle = sequence(
   httpsOnly(() => requireEnv("BETTER_AUTH_URL", process.env)),
   databasePerRequest(),
   consentGate(allowWrites),
   createHandle(() => authServices().handleDeps),
+  nameGate((userId) => pagesServices().service.hasPage(userId)),
 );

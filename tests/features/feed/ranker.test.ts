@@ -59,7 +59,9 @@ function serviceWith(extra: Partial<FeedServiceDeps>, games = GAMES) {
     liveGames: () => Promise.resolve(games),
     memberBeatsByGame: () => Promise.resolve(new Map([["id-b", 40]])),
     makersOf: (ids) =>
-      Promise.resolve(new Map(ids.map((id) => [id, { handle: `h-${id}`, name: id, photoKey: null }]))),
+      Promise.resolve(
+        new Map(ids.map((id) => [id, { handle: `h-${id}`, name: id, photoKey: null, listed: true }])),
+      ),
     media: (key) => `https://media.test/${key}`,
     log: (line) => lines.push(line),
     ...extra,
@@ -174,7 +176,14 @@ describe("the feed through a ranker", () => {
       oneLine: "About c.",
       upright: "https://media.test/clips/c-up.mp4",
       wide: "https://media.test/clips/c-wide.mp4",
-      maker: { handle: "h-maker-c", name: "maker-c", photo: null, following: false, mine: false },
+      maker: {
+        handle: "h-maker-c",
+        name: "maker-c",
+        photo: null,
+        listed: true,
+        following: false,
+        mine: false,
+      },
       marks: { likes: 0, liked: false, saved: false, reposted: false },
       friends: { faces: [], more: 0 },
     });

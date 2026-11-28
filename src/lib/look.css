@@ -595,6 +595,11 @@ form > * + * {
     grid-column: 1 / -1;
   }
 
+  /* Six links (Your name among them) sit two to a line from the first, so they still take three lines. */
+  .card:has(.side-by-side) .sidelinks:has(> li:nth-child(6)):not(:has(> li:nth-child(7))) li:first-child {
+    grid-column: auto;
+  }
+
   .card:has(.side-by-side) .sidelinks .go {
     line-height: 1.15;
   }
@@ -939,6 +944,19 @@ form > * + button:not(.quiet) {
   .card p > a.button:only-child {
     width: auto;
   }
+}
+
+/* A → link that has to be a form's button, because what it does takes a POST (Sign out on the name question): drawn as
+   the link, with none of a button's fill, padding or width. */
+button.go {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.card form > button.go {
+  width: auto;
+  margin-top: 0;
 }
 
 /* A screen that can't be undone has its two buttons the same distance apart wherever it is. Throw it away's form has a hidden

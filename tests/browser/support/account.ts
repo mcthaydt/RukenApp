@@ -133,6 +133,21 @@ export async function finishSignUpForm(
   await startSignUpForm(page, number, password);
   await page.getByLabel("The code we texted you").fill(await codeTo(number));
   await page.getByRole("button", { name: "Join Ruken" }).click();
+  await answerTheName(page, nameFor(number));
+}
+
+/** A name for a journey's new account, its own: the number's last six digits make it differ from every other. */
+export function nameFor(number: string): string {
+  return `Player ${number.slice(-6)}`;
+}
+
+/** Answers "What should friends call you?", the question right after the code, as a person would. */
+export async function answerTheName(page: Page, name: string): Promise<void> {
+  await expect(page.getByRole("heading", { name: "What should friends call you?" })).toBeVisible({
+    timeout: SITE_ANSWER_TIMEOUT,
+  });
+  await page.getByLabel("Your name").fill(name);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
 }
 
 /**

@@ -30,6 +30,9 @@ function question<T>(name: string, answer: T): () => Promise<T> {
   };
 }
 
+/** The maker's card the stand-in answers; a test makes it unlisted. */
+const CARD = { handle: "night", name: "Night Owl", oneLine: "Hard games.", photoKey: null, listed: true };
+
 const GAME = {
   id: "game_1",
   publicId: "pub_1",
@@ -69,12 +72,7 @@ vi.mock("../../../../src/features/pages/pages.ts", async (original) => ({
   ...(await original<object>()),
   pagesServices: () => ({
     service: {
-      cardOf: question("cardOf", {
-        handle: "night",
-        name: "Night Owl",
-        oneLine: "Hard games.",
-        photoKey: null,
-      }),
+      cardOf: async () => ({ ...(await question("cardOf", CARD)()) }),
     },
   }),
 }));
@@ -96,6 +94,21 @@ vi.mock("../../../../src/features/sends/sends.ts", async (original) => ({
 
 const { load } = await import("../../../../src/routes/g/[game]/+page.server.ts");
 
+/** The page's data, with every question asked afresh. */
+async function loadPage(): Promise<Record<string, unknown>> {
+  asked.length = 0;
+  gate = new Promise<void>((open) => {
+    allAsked = open;
+  });
+  return (await load({
+    params: { game: "tiny" },
+    locals: { caller: { kind: "user", userId: "player_1", staffRoles: [] } },
+    cookies: { get: () => undefined, set: () => {} },
+    url: new URL("http://localhost/g/tiny"),
+    request: new Request("http://localhost/g/tiny"),
+  } as never)) as Record<string, unknown>;
+}
+
 describe("a game's page", () => {
   it("asks every question about the game at once, and still answers the same", async () => {
     asked.length = 0;
@@ -111,9 +124,25 @@ describe("a game's page", () => {
     } as never)) as Record<string, unknown>;
     expect([...asked].sort()).toEqual([...EVERY_QUESTION].sort());
     expect(data.cost).toBe("member");
-    expect(data.maker).toEqual({ handle: "night", name: "Night Owl", oneLine: "Hard games.", photo: null });
+    expect(data.maker).toEqual({
+      handle: "night",
+      name: "Night Owl",
+      oneLine: "Hard games.",
+      photo: null,
+      listed: true,
+    });
     expect(data.more).toEqual([{ slug: "other", name: "Other", wideClip: "/media/o.mp4" }]);
     expect(data.launch).toEqual({ before: false });
     expect(data.friends).toEqual([{ handle: "pal", name: "Pal", photo: null }]);
+  }, 2_000);
+
+  // "Made by" names an unlisted maker in words: the page needs to know, and never leaves it undefined.
+  it("says when the maker's page is unlisted", async () => {
+    CARD.listed = false;
+    try {
+      expect((await loadPage()).maker).toMatchObject({ name: "Night Owl", listed: false });
+    } finally {
+      CARD.listed = true;
+    }
   }, 2_000);
 });

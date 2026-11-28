@@ -18,6 +18,18 @@ test("privacy opens for anyone, says it is a draft, and leads to the terms", asy
   await expect(page.getByRole("heading", { level: 1, name: "Terms" })).toBeVisible();
 });
 
+test("privacy lists the name you give, the address made from it, that your page is not public, and the nickname ask", async ({
+  page,
+}) => {
+  await page.goto("/privacy");
+  await expect(page.getByText("The name you give when you join.", { exact: false })).toBeVisible();
+  await expect(page.getByText("We make one from your name", { exact: false })).toBeVisible();
+  await expect(page.getByText("Your page is not public yet.", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText("When you join, we ask you to use a nickname, not your full name.", { exact: false }),
+  ).toBeVisible();
+});
+
 test("terms open for anyone, say they are a draft, and lead to the maker agreement and to privacy", async ({
   page,
 }) => {

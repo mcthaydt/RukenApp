@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { changeGame, givePage } from "./support/database.ts";
+import { nameFor } from "./support/account.ts";
+import { changeGame, givePage, makerNumberOf } from "./support/database.ts";
 import { addGame, gameWhere } from "./support/game.ts";
 import { buttonColour, boxOf, showTheOwner, wordsHaveSettled } from "./support/look.ts";
 import { forgetRateLimits } from "./support/rate-limits.ts";
@@ -151,10 +152,13 @@ test("turning the window while the next page is on its way keeps the same clip o
   await expect(last.locator("video")).toHaveAttribute("src", new RegExp(`/${other}-[0-9a-f]{16}\\.`));
 });
 
-test("a maker with no page has no maker line; the game has its own", async ({ page }) => {
+test("an unlisted maker's name is words, not a link; the game has its own links", async ({ page }) => {
+  const makerName = nameFor(await makerNumberOf(withoutPage.slug));
   await page.goto("/");
   const clip = clipOf(page, withoutPage.slug);
   await expect(clip).toBeAttached();
+  await expect(clip.locator(".credit")).toContainText(makerName);
+  await expect(clip.getByRole("button", { name: `Follow ${makerName}` })).toBeAttached();
   const links = clip.getByRole("link");
   await expect(links).toHaveCount(2);
   await expect(links.nth(0)).toHaveAttribute("href", `/g/${withoutPage.slug}`);

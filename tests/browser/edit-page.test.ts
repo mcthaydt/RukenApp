@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { pageHasSettled, signUp, signUpInItsOwnContext, signInAs } from "./support/account.ts";
-import { givePage, makeDeletionDue } from "./support/database.ts";
+import { nameFor, pageHasSettled, signUp, signUpInItsOwnContext, signInAs } from "./support/account.ts";
+import { givePage, makeDeletionDue, pageOfNumber } from "./support/database.ts";
 import { addDraft } from "./support/game.ts";
 import { showTheOwner } from "./support/look.ts";
 import { holdNextScreen } from "./support/hold.ts";
@@ -88,7 +88,10 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   page,
 }, testInfo) => {
   test.setTimeout(180_000);
-  await signUp(page);
+  const maker = await signUp(page);
+  // Sign-up made an unlisted page from the name: until it is listed here, its editor is the address question.
+  const unlisted = await pageOfNumber(maker.number);
+  expect(unlisted).toMatchObject({ name: nameFor(maker.number), listed: false });
   const address = `owl${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
   const moved = `${address}x`;
 
@@ -99,6 +102,7 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
 
   // ---- Create: the first question makes the page ----
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Pick your page's address");
+  await expect(page.getByRole("link", { name: "See your page" })).toHaveCount(0);
   await pageHasSettled(page);
   await showTheOwner(page, testInfo, "your page, the address question");
   // Refusals, in the service's own words, keep what was typed and put the keyboard in the box.
@@ -117,7 +121,13 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your page");
   await expect(page.getByRole("status")).toHaveText("Saved. Your page is live.");
   await expect(page.getByRole("link", { name: /^Address/ })).toContainText(`/${address}`);
-  await expect(page.getByRole("link", { name: /^Name/ })).toContainText(address);
+  // The name the account gave at sign-up is kept; listing the page only gave it this address.
+  await expect(page.getByRole("link", { name: /^Name/ })).toContainText(nameFor(maker.number));
+  expect(await pageOfNumber(maker.number)).toEqual({
+    handle: address,
+    name: nameFor(maker.number),
+    listed: true,
+  });
   await expect(page.getByRole("link", { name: /^Photo/ })).toContainText("Not yet");
   await expect(page.getByRole("link", { name: /^Links/ })).toContainText("No links yet");
   await expect(page.getByText("Opened 0 times.")).toBeVisible();
@@ -127,7 +137,7 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(page.getByRole("status")).toHaveCount(0);
   await page.getByRole("link", { name: "See your page" }).click();
   await expect(page).toHaveURL(`/${address}`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(address);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(nameFor(maker.number));
 
   // ---- Update: the name, with its refusal ----
   await openRoom(page, "Name");
@@ -325,6 +335,10 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(page.getByRole("status")).toHaveText("Your page is down.");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Pick your page's address");
   expect(await statusOf(page, `/${moved}`)).toBe(404);
+  // The page made again from her name is unlisted, at another address: the one taken down is free for anyone.
+  const remade = await pageOfNumber(maker.number);
+  expect(remade).toMatchObject({ name: "Night Owl", listed: false });
+  expect(remade?.handle).not.toBe(moved);
   // Nothing is left to take down, and the account is as it was; she can make a page again at the same address.
   expect((await page.goto("/make/page/name"))?.url()).toContain("/make/page");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Pick your page's address");
@@ -332,7 +346,46 @@ test("a maker makes her page, reads it, changes every part of it and takes the p
   await expect(page.getByRole("status")).toHaveText("Saved. Your page is live.");
   await expect(page.getByRole("link", { name: /^Links/ })).toContainText("No links yet");
   await page.goto(`/${moved}`);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(moved);
+  // The page made again keeps the name she had; only the links, the photo and the counts went.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Night Owl");
+});
+
+test("a page listed at the address made from the name, taken down, leaves that address free", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const maker = await signUp(page);
+  const made = await pageOfNumber(maker.number);
+  if (made === null) throw new Error("sign-up made no page");
+  // The usual case: she keeps the address sign-up made from her name.
+  await page.goto("/make/page");
+  await pageHasSettled(page);
+  await answerRoom(page, "Pick your page's address", made.handle);
+  await expect(page.getByRole("status")).toHaveText("Saved. Your page is live.");
+  await page.goto("/make/page/take-down");
+  await pageHasSettled(page);
+  await page.getByRole("button", { name: "Take my page down" }).click();
+  await expect(page.getByRole("status")).toHaveText("Your page is down.");
+  const remade = await pageOfNumber(maker.number);
+  expect(remade).toMatchObject({ name: made.name, listed: false });
+  expect(remade?.handle).not.toBe(made.handle);
+  // Someone else can take the address now.
+  const context = await page
+    .context()
+    .browser()
+    ?.newContext({ ...consented, baseURL: new URL(page.url()).origin });
+  if (context === undefined) throw new Error("the page has no browser");
+  try {
+    const other = await context.newPage();
+    const someone = await signUp(other);
+    await other.goto("/make/page");
+    await pageHasSettled(other);
+    await answerRoom(other, "Pick your page's address", made.handle);
+    await expect(other.getByRole("status")).toHaveText("Saved. Your page is live.");
+    expect((await pageOfNumber(someone.number))?.handle).toBe(made.handle);
+  } finally {
+    await context.close();
+  }
 });
 
 test("a page goes when its account is deleted, after the 14 days", async ({ page }) => {

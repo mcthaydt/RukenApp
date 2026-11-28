@@ -48,7 +48,7 @@ export interface FeedServiceDeps {
   windowDays?: () => number;
   makersOf(
     userIds: readonly string[],
-  ): Promise<Map<string, { handle: string; name: string; photoKey: string | null }>>;
+  ): Promise<Map<string, { handle: string; name: string; photoKey: string | null; listed: boolean }>>;
   /** Which of these makers' accounts a person follows; left out, nobody follows anyone. */
   followedAmong?(followerId: string, makerIds: readonly string[]): Promise<Set<string>>;
   /** Every maker account a person follows, newest follow first; left out, nobody follows anyone. */
@@ -90,7 +90,15 @@ export interface FeedClip {
    * `following` and `mine` are about the person the page was made for: whether they follow this maker, and whether the
    * game is their own (they cannot follow themselves). Both are false for someone signed out.
    */
-  maker: { handle: string; name: string; photo: string | null; following: boolean; mine: boolean } | null;
+  maker: {
+    handle: string;
+    name: string;
+    photo: string | null;
+    /** False for a page sign-up made: its address is the missing page, so the name is words, not a link. */
+    listed: boolean;
+    following: boolean;
+    mine: boolean;
+  } | null;
   /** The like count and what the viewer pressed. */
   marks: ClipMarks;
   /** The viewer's friends who liked the game: up to three faces, newest like first, and how many more. */
@@ -331,7 +339,7 @@ export function createFeedService(deps: FeedServiceDeps) {
     const makerIds = [...new Set(shownGames.map((game) => game.makerUserId))];
     const [makers, marks, friends] = await Promise.all([
       shown.length === 0
-        ? new Map<string, { handle: string; name: string; photoKey: string | null }>()
+        ? new Map<string, { handle: string; name: string; photoKey: string | null; listed: boolean }>()
         : deps.makersOf(makerIds),
       deps.marksOf?.(viewerId, shownGames) ?? new Map<string, ClipMarks>(),
       friendLikesOf(viewerId, shownGames),
@@ -395,7 +403,7 @@ export function createFeedService(deps: FeedServiceDeps) {
     const [makers, marks, friends] =
       games.length === 0
         ? [
-            new Map<string, { handle: string; name: string; photoKey: string | null }>(),
+            new Map<string, { handle: string; name: string; photoKey: string | null; listed: boolean }>(),
             new Map<string, ClipMarks>(),
             new Map<string, FriendLikes>(),
           ]
@@ -426,7 +434,7 @@ export function createFeedService(deps: FeedServiceDeps) {
   function clipOf(
     key: string,
     game: ListedGame,
-    maker: { handle: string; name: string; photoKey: string | null } | undefined,
+    maker: { handle: string; name: string; photoKey: string | null; listed: boolean } | undefined,
     following: boolean,
     viewerId: string | null,
     marks: ReadonlyMap<string, ClipMarks>,
@@ -447,6 +455,7 @@ export function createFeedService(deps: FeedServiceDeps) {
               handle: maker.handle,
               name: maker.name,
               photo: maker.photoKey === null ? null : deps.media(maker.photoKey),
+              listed: maker.listed,
               following,
               mine: game.makerUserId === viewerId,
             },

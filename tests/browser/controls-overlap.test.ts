@@ -54,6 +54,8 @@ const SIGNED_IN = [
   "/your-turn",
   "/search",
   "/me",
+  // Your name, for an account with a page, opened from Your account.
+  "/me/name",
   "/me/saved",
   "/me/reposts",
   "/settings/feed",
@@ -289,6 +291,33 @@ test("signed in, with a friend's face on a clip, no two buttons overlap, before 
   await beforeLaunch(context);
   await expectNothingOverlaps(page, paths, "before launch");
   await atLaunch(context);
+});
+
+// A maker who only signed up has an unlisted page: their name on the clip and on the game's page is words, not a link,
+// and still nothing overlaps (name and address at sign-up spec, unit D).
+test("a clip and a game page whose maker's page is unlisted have no two buttons overlapping", async ({
+  page,
+  browser,
+  request,
+}) => {
+  test.setTimeout(240_000);
+  const quiet = await addGame(browser, request);
+  await signUp(page);
+  for (const size of SIZES) {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await page.goto("/");
+    await pageHasSettled(page);
+    const clip = page.locator(`section[data-slug="${quiet.slug}"]`).first();
+    await clip.scrollIntoViewIfNeeded();
+    await expect(clip.locator(".credit")).toBeVisible();
+    await expect(clip.locator(".credit a")).toHaveCount(0);
+    await wordsHaveSettled(page);
+    expect.soft(await overlaps(page), `the unlisted maker's clip at ${size.name}`).toEqual([]);
+    await page.goto(`/g/${quiet.slug}`);
+    await pageHasSettled(page);
+    await wordsHaveSettled(page);
+    expect.soft(await overlaps(page), `the unlisted maker's game page at ${size.name}`).toEqual([]);
+  }
 });
 
 test("a teen's Your feed and Ask a parent, and a parent's page, have no two buttons overlapping", async ({

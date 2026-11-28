@@ -35,6 +35,14 @@
     </li>
     <li><strong>Your password.</strong> We keep it scrambled, so nobody at Ruken can read it.</li>
     <li>
+      <strong>Your name.</strong> The name you give when you join. People who follow you, your friends and anyone
+      who sees your games see it.
+    </li>
+    <li>
+      <strong>Your address.</strong> We make one from your name, so friends can find you and send you games. Your
+      page is not public yet.
+    </li>
+    <li>
       <strong>Your age.</strong> We ask for your date of birth to check you're 13 or older. We keep only the day
       you turn 18, so we know if you're under 18. If you're under 13, we keep nothing you typed.
     </li>
@@ -292,6 +300,7 @@
       We keep the same details about you as about anyone else, and your asks for a parent's yes, and nothing
       more.
     </li>
+    <li>When you join, we ask you to use a nickname, not your full name.</li>
   </ul>
 
   <h2>Changes</h2>

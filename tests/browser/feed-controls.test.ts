@@ -1165,8 +1165,8 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   }
   // The bar first (it is always there), then the feed's top bar from the left (the speaker, the tabs and Search, there
   // once for the whole feed), then the first clip's controls: the band (the game, Play), then the column on the right
-  // from its top, which starts with the maker and their plus when the game's maker has a page, then the marks and Share,
-  // then the next clip's, from its game and Play again.
+  // from its top, which starts with the maker (a link when their page is listed, words when it is not) and their plus,
+  // then the marks and Share, then the next clip's, from its game and Play again.
   expect(names.slice(0, 8)).toEqual([
     "Home",
     "Add a game",
@@ -1180,7 +1180,12 @@ test("everything is reachable with Tab, in an order that follows the screen, and
   const play = names.indexOf("Play");
   expect(play).toBeGreaterThan(7);
   const plus = names[play + 2] ?? "";
-  const marks = plus.startsWith("Follow ") ? play + 3 : play + 1;
+  // An unlisted maker's name is not a link, so their plus comes straight after Play.
+  const marks = plus.startsWith("Follow ")
+    ? play + 3
+    : (names[play + 1] ?? "").startsWith("Follow ")
+      ? play + 2
+      : play + 1;
   // The link's words include the first letter drawn when the maker has no photo, so the name is looked for inside them.
   if (marks === play + 3) expect(names[play + 1]).toContain(plus.slice("Follow ".length));
   // Like, Save and Repost stand above Share in the clip's right column (learned-feed spec 6.1), under the maker; then

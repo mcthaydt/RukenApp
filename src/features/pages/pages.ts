@@ -8,3 +8,4 @@ export { cleanHandle, isHandleShape } from "./handle.ts";
 export { LINK_TITLE_MAX } from "./links.ts";
 export { PHOTO_MAX_BYTES } from "./photo.ts";
 export { createFollows, type Follows } from "./follows.ts";
+export { nameGate, nameQuestionFor, OPEN_SCREENS, PEOPLE_SCREENS } from "./people-screens.ts";

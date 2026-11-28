@@ -1,5 +1,6 @@
 import type { FileStore } from "../../lib/files/store.ts";
 import type { PageLinkKind, PrismaClient } from "../../lib/server/db.ts";
+import { addressesFor, cleanName, randomDigits } from "./address.ts";
 import { cleanHandle, HANDLE_TAKEN, handleProblem } from "./handle.ts";
 import { cleanLinkUrl, linkProblem, MAX_LINKS, moveLink, siteNameOf } from "./links.ts";
 import { photoKeyFor, photoProblem, type PhotoContentType } from "./photo.ts";
@@ -28,6 +29,8 @@ export interface PagesServiceDeps {
   db: PrismaClient;
   /** Where a maker's photo is kept: the same bucket as the clips. */
   files: FileStore;
+  /** `count` random digits for an address whose name is taken; a test hands in fixed ones. */
+  digits?: (count: number) => string;
 }
 
 /** A maker's own view of their page: everything, with the counts and the links they hid. */
@@ -38,11 +41,13 @@ export interface OwnPage {
   themeId: number;
   photoKey: string | null;
   views: number;
+  /** False for a page sign-up made: its address is the missing page until slice 4. */
+  listed: boolean;
   links: { id: string; kind: PageLinkKind; title: string; url: string; hidden: boolean; taps: number }[];
 }
 
 /** What a game's page shows of its maker (`cardOf`). */
-export type MakerCard = Pick<OwnPage, "handle" | "name" | "oneLine" | "photoKey">;
+export type MakerCard = Pick<OwnPage, "handle" | "name" | "oneLine" | "photoKey" | "listed">;
 
 /** A visitor's view: no address of a link, no count, no hidden link. */
 export interface PublicPage {
@@ -53,6 +58,7 @@ export interface PublicPage {
   oneLine: string;
   theme: Theme;
   photoKey: string | null;
+  listed: boolean;
   links: { id: string; kind: PageLinkKind; title: string; site: string }[];
 }
 
@@ -77,6 +83,7 @@ function randomHex16(): string {
 
 export function createPagesService(deps: PagesServiceDeps) {
   const { db, files } = deps;
+  const digits = deps.digits ?? randomDigits;
 
   /** The page's id, for a person who has one; otherwise the refusal. */
   async function pageIdOf(userId: string): Promise<string> {
@@ -123,6 +130,76 @@ export function createPagesService(deps: PagesServiceDeps) {
       }
     }
     throw new PageError("INVALID", "We couldn't save that. Try again.");
+  }
+
+  /** The name a person gave, cleaned, or the refusal in their words. */
+  function checkedName(raw: string): string {
+    const name = cleanName(raw);
+    if (name === "") throw new PageError("INVALID", "Type a name.");
+    if (name.length > NAME_MAX)
+      throw new PageError("INVALID", `A name can be up to ${String(NAME_MAX)} characters.`);
+    return name;
+  }
+
+  /**
+   * Makes the unlisted page sign-up gives every account, from the name the person typed, with an address made from
+   * it. An account that already has a page keeps it, so a second Save (a double tap, a second tab) makes nothing new.
+   * A taken address is found from the database's own refusal, so two people saving the same name at once both get one.
+   */
+  async function makeUnlistedPage(
+    userId: string,
+    rawName: string,
+    // An address just taken down, which must be left free for anyone to take.
+    avoid: string | null = null,
+  ): Promise<{ handle: string }> {
+    const name = checkedName(rawName);
+    const own = await db.makerPage.findUnique({ where: { userId }, select: { handle: true } });
+    if (own !== null) return own;
+    const tries = addressesFor(name, digits);
+    const held = await db.makerPage.findMany({ where: { handle: { in: tries } }, select: { handle: true } });
+    const taken = new Set(held.map((page) => page.handle));
+    if (avoid !== null) taken.add(avoid);
+    for (const handle of tries.filter((one) => !taken.has(one))) {
+      try {
+        await db.makerPage.create({ data: { userId, handle, name, listed: false } });
+        return { handle };
+      } catch (error) {
+        if (brokeUniqueKey(error, "userId")) {
+          const made = await db.makerPage.findUnique({ where: { userId }, select: { handle: true } });
+          if (made !== null) return made;
+        }
+        if (!brokeUniqueKey(error, "handle")) throw error;
+      }
+    }
+    throw new PageError("TAKEN", "We couldn't save that. Try again.");
+  }
+
+  /** Changes the page's name only; its address stays, because friends' sends and follows already find it. */
+  async function renamePage(userId: string, rawName: string): Promise<void> {
+    const name = checkedName(rawName);
+    const changed = await db.makerPage.updateMany({ where: { userId }, data: { name } });
+    if (changed.count === 0) throw new PageError("NOT_FOUND", "You don't have a page yet.");
+  }
+
+  /**
+   * The page editor's first answer for a page sign-up made: the page gets the address the person picked and is listed,
+   * keeping the name they gave. Refused, in the editor's words, for an address that breaks the rules or is taken.
+   */
+  async function listInEditor(userId: string, rawHandle: string): Promise<{ handle: string }> {
+    const handle = cleanHandle(rawHandle);
+    const problem = handleProblem(handle);
+    if (problem !== null) throw new PageError(problem === HANDLE_TAKEN ? "TAKEN" : "INVALID", problem);
+    const holder = await db.makerPage.findUnique({ where: { handle }, select: { userId: true } });
+    if (holder !== null && holder.userId !== userId) throw new PageError("TAKEN", HANDLE_TAKEN);
+    let changed: { count: number };
+    try {
+      changed = await db.makerPage.updateMany({ where: { userId }, data: { handle, listed: true } });
+    } catch (error) {
+      if (brokeUniqueKey(error, "handle")) throw new PageError("TAKEN", HANDLE_TAKEN);
+      throw error;
+    }
+    if (changed.count === 0) throw new PageError("NOT_FOUND", "You don't have a page yet.");
+    return { handle };
   }
 
   /** Gives the page one of the offered colours, or Ruken's own (0). Anything else is refused and nothing changes. */
@@ -210,6 +287,11 @@ export function createPagesService(deps: PagesServiceDeps) {
     if (removed.count === 0) throw new PageError("NOT_FOUND", "We can't find that link.");
   }
 
+  /** Whether the account has a page yet: one indexed lookup, asked on every move to a people screen. */
+  async function hasPage(userId: string): Promise<boolean> {
+    return (await db.makerPage.findUnique({ where: { userId }, select: { id: true } })) !== null;
+  }
+
   /** The maker's own view of their page, or null when they have none. */
   async function pageOf(userId: string): Promise<OwnPage | null> {
     return db.makerPage.findUnique({
@@ -221,6 +303,7 @@ export function createPagesService(deps: PagesServiceDeps) {
         themeId: true,
         photoKey: true,
         views: true,
+        listed: true,
         links: {
           orderBy: [{ position: "asc" }, { createdAt: "asc" }],
           select: { id: true, kind: true, title: true, url: true, hidden: true, taps: true },
@@ -236,7 +319,7 @@ export function createPagesService(deps: PagesServiceDeps) {
   async function cardOf(userId: string): Promise<MakerCard | null> {
     return db.makerPage.findUnique({
       where: { userId },
-      select: { handle: true, name: true, oneLine: true, photoKey: true },
+      select: { handle: true, name: true, oneLine: true, photoKey: true, listed: true },
     });
   }
 
@@ -255,6 +338,7 @@ export function createPagesService(deps: PagesServiceDeps) {
         oneLine: true,
         themeId: true,
         photoKey: true,
+        listed: true,
         links: {
           where: { hidden: false },
           orderBy: [{ position: "asc" }, { createdAt: "asc" }],
@@ -271,6 +355,7 @@ export function createPagesService(deps: PagesServiceDeps) {
       oneLine: page.oneLine,
       theme: themeById(page.themeId),
       photoKey: page.photoKey,
+      listed: page.listed,
       links: page.links.map((link) => ({
         id: link.id,
         kind: link.kind,
@@ -323,10 +408,10 @@ export function createPagesService(deps: PagesServiceDeps) {
   /** The address, name and photo's key of each of these accounts that has a page. */
   async function makersOf(
     userIds: readonly string[],
-  ): Promise<Map<string, { handle: string; name: string; photoKey: string | null }>> {
+  ): Promise<Map<string, { handle: string; name: string; photoKey: string | null; listed: boolean }>> {
     const pages = await db.makerPage.findMany({
       where: { userId: { in: [...userIds] } },
-      select: { userId: true, handle: true, name: true, photoKey: true },
+      select: { userId: true, handle: true, name: true, photoKey: true, listed: true },
     });
     return new Map(pages.map(({ userId, ...maker }) => [userId, maker] as const));
   }
@@ -380,12 +465,16 @@ export function createPagesService(deps: PagesServiceDeps) {
     savePhoto,
     removePhoto,
     savePage,
+    makeUnlistedPage,
+    renamePage,
+    listInEditor,
     saveTheme,
     addLink,
     moveLinkOf,
     setHidden,
     removeLink,
     pageOf,
+    hasPage,
     cardOf,
     pageByHandle,
     countView,

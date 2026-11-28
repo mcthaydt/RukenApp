@@ -53,6 +53,11 @@ function sideways(from: Box, to: Box, way: Way): number {
   return 0;
 }
 
+/** How much of their height two boxes share. */
+function shared(from: Box, to: Box): number {
+  return Math.min(from.bottom, to.bottom) - Math.max(from.top, to.top);
+}
+
 /**
  * The index of the box the focus goes to from `from` going `way`, of those that lie that way. Left and right keep to
  * the row: a box in the same row comes first, the nearest of them, and only when none lies that way does the move go
@@ -68,7 +73,11 @@ export function nextBox(from: Box, boxes: readonly Box[], way: Way): number {
     const on = ahead(from, box, way);
     if (on === null) return;
     const off = sideways(from, box, way);
-    const rank: [number, number] = [keepToRow && off > 0 ? 1 : 0, on + SIDEWAYS_COST * off];
+    // Lines that only touch (one ends where the next starts) are not one row.
+    const rank: [number, number] = [
+      keepToRow && (off > 0 || shared(from, box) <= TOUCHING) ? 1 : 0,
+      on + SIDEWAYS_COST * off,
+    ];
     if (rank[0] < bestRank[0] || (rank[0] === bestRank[0] && rank[1] < bestRank[1])) {
       best = index;
       bestRank = rank;

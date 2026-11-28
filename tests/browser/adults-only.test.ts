@@ -1,8 +1,10 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import {
+  answerTheName,
   fillBirthDate,
   freshNumber,
   JOURNEY_PASSWORD,
+  nameFor,
   nationalOf,
   pageHasSettled,
   signInAs,
@@ -53,6 +55,7 @@ async function signUpAged(page: Page, years: number): Promise<{ number: string; 
   await pageHasSettled(page);
   await page.getByLabel("The code we texted you").fill(await codeTo(number));
   await page.getByRole("button", { name: "Join Ruken" }).click();
+  await answerTheName(page, nameFor(number));
   await expect(page).toHaveURL("/");
   await pageHasSettled(page);
   return { number, password: JOURNEY_PASSWORD };

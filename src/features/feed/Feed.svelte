@@ -742,14 +742,20 @@
             {#if clip.maker !== null}
               {@const maker = clip.maker}
               <div class="credit">
-                <a class="maker" data-sveltekit-preload-data="off" href={`/${maker.handle}`}>
+                <!-- An unlisted maker's address is the missing page, so their picture and name are not a link. -->
+                <svelte:element
+                  this={maker.listed ? "a" : "div"}
+                  class="maker"
+                  data-sveltekit-preload-data={maker.listed ? "off" : undefined}
+                  href={maker.listed ? `/${maker.handle}` : undefined}
+                >
                   {#if maker.photo !== null}
                     <img use:loads src={maker.photo} alt="" width="48" height="48" loading="lazy" />
                   {:else}
                     <span class="initial" aria-hidden="true">{initialOf(maker.name)}</span>
                   {/if}
                   <span class="makername">{maker.name}</span>
-                </a>
+                </svelte:element>
                 {#if !maker.mine}
                   <FollowBadge
                     handle={maker.handle}

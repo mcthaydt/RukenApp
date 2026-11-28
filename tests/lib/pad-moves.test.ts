@@ -170,3 +170,19 @@ describe("nextBox", () => {
     }
   });
 });
+
+// Your account on a small iPhone: side links run on in 48px lines that touch, so the link above ends exactly where the
+// next line starts. Right from the first link of a line goes along that line, not up to the wider link above it.
+describe("nextBox on lines that touch", () => {
+  const computers = box(28, 315, 163, 48);
+  const name = box(215, 315, 117, 48);
+  const password = box(160, 267, 181, 48);
+
+  it("goes right along the line, not to the link on the line above that it touches", () => {
+    expect(nextBox(computers, [password, name], "right")).toBe(1);
+  });
+
+  it("still goes aslant to the line above when its own line has nothing that way", () => {
+    expect(nextBox(computers, [password], "right")).toBe(0);
+  });
+});

@@ -493,24 +493,33 @@ export async function givePage(
 ): Promise<{ handle: string; linkIds: string[] }> {
   const userId = await userIdOf(account.number);
   const { links = [], handle = `m${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`, ...rest } = page;
-  const made = await db().makerPage.create({
-    data: {
-      userId,
-      handle,
-      ...rest,
-      links: {
-        create: links.map((link, position) => ({
-          position,
-          title: link.title,
-          url: link.url,
-          kind: link.kind ?? "link",
-          hidden: link.hidden ?? false,
-        })),
-      },
-    },
+  const create = links.map((link, position) => ({
+    position,
+    title: link.title,
+    url: link.url,
+    kind: link.kind ?? "link",
+    hidden: link.hidden ?? false,
+  }));
+  // Sign-up already made the account an unlisted page from its name: that one becomes the page given, listed, with
+  // only the links given. An account from before the name question has none, and gets one.
+  const fields = { handle, themeId: 0, photoKey: null, ...rest, listed: true };
+  const made = await db().makerPage.upsert({
+    where: { userId },
+    create: { userId, ...fields, links: { create } },
+    update: { ...fields, links: { deleteMany: {}, create } },
     select: { links: { orderBy: { position: "asc" }, select: { id: true } } },
   });
   return { handle, linkIds: made.links.map((link) => link.id) };
+}
+
+/** Takes an account's page away, as for an account made before the name question that has not answered it yet. */
+export async function removePage(account: { number: string }): Promise<void> {
+  await db().makerPage.deleteMany({ where: { userId: await userIdOf(account.number) } });
+}
+
+/** Lists a page or takes it off the list, as sign-up's own page is until the editor lists it. */
+export async function setListed(handle: string, listed: boolean): Promise<void> {
+  await db().makerPage.update({ where: { handle }, data: { listed } });
 }
 
 /** How many times a page was opened by a visitor, and how many times each of its links was tapped, in the page's order. */
@@ -808,4 +817,18 @@ export async function sendById(fromId: string, toId: string, slug: string): Prom
 /** One person (by id) stops following another. */
 export async function unfollowById(followerId: string, makerId: string): Promise<void> {
   await db().makerFollow.deleteMany({ where: { followerId, makerId } });
+}
+
+/** The page an account has (by its id), as kept: its address, name and whether it is listed; null when it has none. */
+export async function pageOfId(
+  userId: string,
+): Promise<{ handle: string; name: string; listed: boolean } | null> {
+  return db().makerPage.findUnique({ where: { userId }, select: { handle: true, name: true, listed: true } });
+}
+
+/** The page an account has, by the number it signed up with (see `pageOfId`). */
+export async function pageOfNumber(
+  number: string,
+): Promise<{ handle: string; name: string; listed: boolean } | null> {
+  return pageOfId(await userIdOf(number));
 }

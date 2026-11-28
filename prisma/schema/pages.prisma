@@ -25,6 +25,8 @@ model MakerPage {
   photoKey  String?  @unique
   /// How many times the page was opened by anyone but its maker.
   views     Int      @default(0)
+  /// False for a page sign-up made from the person's name: it answers the missing page at its address until slice 4.
+  listed    Boolean  @default(true)
   createdAt DateTime @default(now()) @db.Timestamptz
   updatedAt DateTime @updatedAt @db.Timestamptz
 

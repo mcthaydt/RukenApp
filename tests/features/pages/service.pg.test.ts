@@ -274,12 +274,21 @@ describe("what a visitor sees and counts", () => {
       "handle",
       "id",
       "links",
+      "listed",
       "makerUserId",
       "name",
       "oneLine",
       "photoKey",
       "theme",
     ]);
+  });
+
+  // The follow plus and /cookies find a page by its address, so an unlisted page is still found; only the address
+  // route answers the missing page for it.
+  it("finds an unlisted page by its address, saying it is unlisted", async () => {
+    const userId = await createUser(db());
+    const { handle } = await service.makeUnlistedPage(userId, "Hidden Hana");
+    expect(await service.pageByHandle(handle)).toMatchObject({ handle, name: "Hidden Hana", listed: false });
   });
 
   it("finds the addresses of the makers it is asked about", async () => {
@@ -298,6 +307,7 @@ describe("what a visitor sees and counts", () => {
   it("finds the address, name and photo of each maker it is asked about, and leaves out one with no page", async () => {
     const a = await makerWithPage();
     const b = await makerWithPage();
+    await db().makerPage.update({ where: { userId: b.userId }, data: { listed: false } });
     const c = await createUser(db());
     await service.savePhoto(a.userId, { contentType: "image/png", bytes: PNG });
     const pageA = await service.pageOf(a.userId);
@@ -305,8 +315,8 @@ describe("what a visitor sees and counts", () => {
 
     expect(await service.makersOf([a.userId, b.userId, c])).toEqual(
       new Map([
-        [a.userId, { handle: a.handle, name: pageA?.name, photoKey: pageA?.photoKey }],
-        [b.userId, { handle: b.handle, name: pageB?.name, photoKey: null }],
+        [a.userId, { handle: a.handle, name: pageA?.name, photoKey: pageA?.photoKey, listed: true }],
+        [b.userId, { handle: b.handle, name: pageB?.name, photoKey: null, listed: false }],
       ]),
     );
     expect(pageA?.photoKey).not.toBeNull();
@@ -492,8 +502,12 @@ describe("cardOf", () => {
       name: "Night Owl",
       oneLine: "Hard games.",
       photoKey: null,
+      listed: true,
     });
     expect(await service.cardOf(await createUser(db()))).toBeNull();
+    const unlisted = await createUser(db());
+    await service.makeUnlistedPage(unlisted, "Quiet Quinn");
+    expect(await service.cardOf(unlisted)).toMatchObject({ name: "Quiet Quinn", listed: false });
   });
 
   // A game's page waits on this, and each statement is a wait on the site: the page's links are not asked for.
@@ -507,5 +521,98 @@ describe("cardOf", () => {
 
     expect(card).not.toBeNull();
     expect(asked).toHaveLength(1);
+  });
+});
+
+describe("the page sign-up makes from a name", () => {
+  it("makes one unlisted page with the name, at an address made from it", async () => {
+    const userId = await createUser(db());
+    const { handle } = await service.makeUnlistedPage(userId, "  Sunny\u200B Day  ");
+    expect(handle).toBe("sunny-day");
+    expect(await service.pageOf(userId)).toMatchObject({ handle, name: "Sunny Day", listed: false });
+  });
+
+  it("refuses an empty name and one over 40 characters, and makes nothing", async () => {
+    const userId = await createUser(db());
+    await expect(service.makeUnlistedPage(userId, " \u200B ")).rejects.toThrow("Type a name.");
+    await expect(service.makeUnlistedPage(userId, "a".repeat(41))).rejects.toThrow(
+      "A name can be up to 40 characters.",
+    );
+    expect(await service.pageOf(userId)).toBeNull();
+  });
+
+  it("after a page is taken down, makes the new one at another address, so the old one is free", async () => {
+    const [maker, other] = await Promise.all([1, 2].map(() => createUser(db())));
+    const { handle } = await service.makeUnlistedPage(maker ?? "", "Taken Down");
+    expect(handle).toBe("taken-down");
+    await service.removePage(maker ?? "");
+    const again = await service.makeUnlistedPage(maker ?? "", "Taken Down", handle);
+    expect(again.handle).toMatch(/^taken-down-\d{4}$/);
+    expect((await service.makeUnlistedPage(other ?? "", "Taken Down")).handle).toBe(handle);
+  });
+
+  it("gives two accounts with one name two addresses, one after the other and at the same moment", async () => {
+    const [a, b, c, d] = await Promise.all([1, 2, 3, 4].map(() => createUser(db())));
+    const first = await service.makeUnlistedPage(a ?? "", "Twin Name");
+    const second = await service.makeUnlistedPage(b ?? "", "Twin Name");
+    expect(first.handle).toBe("twin-name");
+    expect(second.handle).toMatch(/^twin-name-\d{4}$/);
+
+    const atOnce = await Promise.all([
+      service.makeUnlistedPage(c ?? "", "Same Moment"),
+      service.makeUnlistedPage(d ?? "", "Same Moment"),
+    ]);
+    expect(new Set(atOnce.map((page) => page.handle)).size).toBe(2);
+  });
+
+  it("tries 6 digits after 5 taken 4-digit addresses, then says try again", async () => {
+    const fixed = createPagesService({ db: db(), files, digits: (count) => "9".repeat(count) });
+    await fixed.makeUnlistedPage(await createUser(db()), "Busy");
+    const fourDigits = await fixed.makeUnlistedPage(await createUser(db()), "Busy");
+    const sixDigits = await fixed.makeUnlistedPage(await createUser(db()), "Busy");
+    expect([fourDigits.handle, sixDigits.handle]).toEqual(["busy-9999", "busy-999999"]);
+    const late = await createUser(db());
+    await expect(fixed.makeUnlistedPage(late, "Busy")).rejects.toThrow("We couldn't save that. Try again.");
+    expect(await fixed.pageOf(late)).toBeNull();
+  });
+
+  it("keeps the page an account has when it saves twice, one after the other and at the same moment", async () => {
+    const userId = await createUser(db());
+    const first = await service.makeUnlistedPage(userId, "Once Only");
+    expect(await service.makeUnlistedPage(userId, "Second Try")).toEqual(first);
+
+    const other = await createUser(db());
+    const atOnce = await Promise.all([
+      service.makeUnlistedPage(other, "Double Tap"),
+      service.makeUnlistedPage(other, "Double Tap"),
+    ]);
+    expect(atOnce[0]).toEqual(atOnce[1]);
+    expect(await db().makerPage.count({ where: { userId: { in: [userId, other] } } })).toBe(2);
+  });
+
+  it("changes the name only, never the address", async () => {
+    const userId = await createUser(db());
+    const { handle } = await service.makeUnlistedPage(userId, "Old Name");
+    await service.renamePage(userId, "  New Name ");
+    expect(await service.pageOf(userId)).toMatchObject({ handle, name: "New Name", listed: false });
+    await expect(service.renamePage(userId, "")).rejects.toThrow("Type a name.");
+    await expect(service.renamePage(await createUser(db()), "Nobody")).rejects.toThrow(PageError);
+  });
+
+  it("lists the page at the editor's address, keeping the name", async () => {
+    const userId = await createUser(db());
+    await service.makeUnlistedPage(userId, "Editor Ed");
+    expect(await service.listInEditor(userId, " @Ed-Makes ")).toEqual({ handle: "ed-makes" });
+    expect(await service.pageOf(userId)).toMatchObject({
+      handle: "ed-makes",
+      name: "Editor Ed",
+      listed: true,
+    });
+
+    const other = await createUser(db());
+    await service.makeUnlistedPage(other, "Other One");
+    await expect(service.listInEditor(other, "ed-makes")).rejects.toThrow("That one is taken. Pick another.");
+    await expect(service.listInEditor(other, "admin")).rejects.toThrow("That one is taken. Pick another.");
+    expect(await service.pageOf(other)).toMatchObject({ listed: false });
   });
 });
