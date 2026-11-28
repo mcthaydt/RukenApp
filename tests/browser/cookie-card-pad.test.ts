@@ -35,19 +35,24 @@ function focusedName(page: Page): Promise<string | null> {
 
 /**
  * On the feed up and down are its clips and its controls are one row (src/lib/pad-focus.ts), so a person goes right
- * along it: this does, from the first press, and gives each answer it lands on. With `stopAt` it stops the moment a
- * press lands on that answer, with the focus left there.
+ * along it: this does, from the first press, and gives each answer it lands on. Where right goes no further (the top
+ * bar's end, or an empty feed with no clip's row) a person presses down, and so does this. With `stopAt` it stops the
+ * moment a press lands on that answer, with the focus left there.
  */
 async function rightAlongTheFeed(page: Page, stopAt: Answer | null = null): Promise<Set<Answer>> {
   await pageHasSettled(page);
   await page.mouse.move(0, 0);
   const found = new Set<Answer>();
+  let way: number = PAD.right;
+  let last: string | null = null;
   for (let step = 0; step < 40 && found.size < ANSWERS.length; step += 1) {
-    await pressPad(page, PAD.right);
+    await pressPad(page, way);
     expect(page.url(), "a move of the pad changed the page").toMatch(/\/$/);
     const name = await focusedName(page);
     if (isAnswer(name)) found.add(name);
     if (stopAt !== null && name === stopAt) break;
+    way = name !== null && name === last ? PAD.down : PAD.right;
+    last = name;
   }
   return found;
 }
