@@ -66,8 +66,9 @@ test.beforeAll(async ({ browser, request }) => {
   await forgetRateLimits();
   // A live game whose maker has a page, so its clip carries the maker's picture, name and plus at the top of the column.
   live = await addGame(browser, request);
-  makerHandle = (await givePage(live.maker, { name: "Night Owl Games Studio", oneLine: "I make small, hard games." }))
-    .handle;
+  makerHandle = (
+    await givePage(live.maker, { name: "Night Owl Games Studio", oneLine: "I make small, hard games." })
+  ).handle;
   // A second live game of the same maker's, made signed in as them in a browser of its own.
   await forgetRateLimits();
   const context = await browser.newContext({ ...consented, baseURL: "http://localhost:4173" });
