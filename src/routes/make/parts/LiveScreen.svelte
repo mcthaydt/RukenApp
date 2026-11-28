@@ -13,6 +13,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import type { FixCardData, LaidOutGame } from "../laid-out.ts";
+  import { PLAYTEST_WORDS } from "../../../features/playtest/playtest.browser.ts";
   import FixCard from "./FixCard.svelte";
   import GameBackdrop from "./GameBackdrop.svelte";
   import GameLaidOut from "./GameLaidOut.svelte";
@@ -25,6 +26,7 @@
     fixes,
     takeOffAddress,
     pageAddress,
+    playtestersAddress,
     backdrop,
     game,
     showsPlayerCount,
@@ -41,6 +43,8 @@
     takeOffAddress: string;
     /** The game's own page, where players find it. */
     pageAddress: string;
+    /** The game's Playtesters page, before launch; null from launch on. */
+    playtestersAddress: string | null;
     backdrop: { upright: string | null; wide: string | null };
     game: LaidOutGame;
     /** Whether the game's page says how many people played it this week. */
@@ -126,6 +130,9 @@
     {:else if send !== "none"}
       <!-- A send waiting on the maker is what to do next, so it is the blue button, as on Sent back. -->
       {@render sendForm(true)}
+    {/if}
+    {#if playtestersAddress !== null}
+      <a class="go playtesterslink" href={playtestersAddress}>{PLAYTEST_WORDS.link}</a>
     {/if}
     <a class="foot" href={pageAddress}>See it on Ruken</a>
     <a class="foot" href="/make">Back to your games</a>

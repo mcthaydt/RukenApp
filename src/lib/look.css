@@ -2115,6 +2115,13 @@ a.foot:active {
   width: fit-content;
 }
 
+/* Playtesters, above "See it on Ruken": a → link on its own line, before launch only (playtesting spec). */
+.live a.playtesterslink {
+  display: flex;
+  width: fit-content;
+  margin-top: 1rem;
+}
+
 .live a.foot[data-off] {
   margin-top: 1.5rem;
   color: var(--sage);

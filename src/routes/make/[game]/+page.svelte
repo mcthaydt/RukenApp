@@ -44,6 +44,7 @@
     fixes={data.fixes}
     takeOffAddress={data.takeOffAddress}
     pageAddress={data.pageAddress}
+    playtestersAddress={data.playtestersAddress}
     backdrop={data.backdrop}
     game={data.game}
     showsPlayerCount={data.showsPlayerCount}

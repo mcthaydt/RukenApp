@@ -145,10 +145,8 @@ export const load: PageServerLoad = async (event) => {
     const send = liveSendOf(game);
     // How many people want it, counted from stored rows each time (wishlist spec, "What a maker sees").
     const launch = launchServices();
-    const wished = wishlistCountWords(
-      await launch.wishlist.countFor(game.id, userId),
-      !isOpen(launch.now(event.cookies)),
-    );
+    const before = !isOpen(launch.now(event.cookies));
+    const wished = wishlistCountWords(await launch.wishlist.countFor(game.id, userId), before);
     return {
       ...base,
       view: "live" as const,
@@ -160,6 +158,8 @@ export const load: PageServerLoad = async (event) => {
       // Asked on a screen of its own, because it cannot be undone.
       takeOffAddress: `/make/${game.slug}/take-off`,
       pageAddress: `/g/${game.slug}`,
+      // Playtesting is before launch only (playtesting spec).
+      playtestersAddress: before ? `/make/${game.slug}/playtesters` : null,
       backdrop,
       game: liveLaidOut(game),
       showsPlayerCount: game.showsPlayerCount,
