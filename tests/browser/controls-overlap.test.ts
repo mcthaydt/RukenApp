@@ -277,8 +277,8 @@ test("signed in, with a friend's face on a clip, no two buttons overlap, before 
 });
 
 // Playtesting, before launch, at its fullest: the maker's Playtesters page with someone asking and someone playing, its
-// invite sheet, and a playtester's and an asker's feed and game page (the badge, Play with its tag, the free line, You
-// asked and Take back).
+// invite sheet, and a playtester's, an asker's and a signed-out person's feed and game page (the badge, Play with its
+// tag, the free line, You asked and Take back).
 test("playtesting's screens: no two buttons overlap, upright or sideways", async ({ browser }) => {
   test.setTimeout(240_000);
   const scene = await playtestScene(browser);
@@ -286,7 +286,16 @@ test("playtesting's screens: no two buttons overlap, upright or sideways", async
     const when = "before launch, playtesting";
     await expectNothingOverlaps(scene.maker.page, [scene.playtesters, `${scene.playtesters}?invite`], when);
     await expectNothingOverlaps(scene.tester.page, ["/", `/g/${scene.slug}`], when, scene.slug);
-    await expectNothingOverlaps(scene.asker.page, [`/g/${scene.slug}`], when);
+    // The badge is on the clip for someone who can still ask and for someone signed out; the check measures it.
+    for (const { page } of [scene.asker, scene.onlooker]) {
+      await page.goto("/");
+      await pageHasSettled(page);
+      await onTheMakersClip(page, "/", scene.slug);
+      await expect(
+        page.locator(`section[data-slug="${scene.slug}"][data-current="true"] .playtestbadge`),
+      ).toBeVisible();
+      await expectNothingOverlaps(page, ["/", `/g/${scene.slug}`], when, scene.slug);
+    }
   } finally {
     await scene.close();
   }

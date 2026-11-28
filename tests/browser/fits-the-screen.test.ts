@@ -350,6 +350,30 @@ test("playtesting's screens fit the window at every phone size, and the bar cove
         expect((await overflow(page)).page, `${path} ${at}`).toBe(0);
         if (size.upright) await expectViewAboveTheBar(page, `${path} ${at}`);
       }
+      // The badge on the feed's clip: the feed never scrolls the page, and the badge is whole and clear of the bar (below
+      // the clip upright, beside it sideways).
+      for (const { page } of [scene.asker, scene.onlooker]) {
+        await page.setViewportSize(size);
+        await opened(page, "/");
+        const clip = page.locator(`section[data-slug="${scene.slug}"]`).first();
+        await clip.scrollIntoViewIfNeeded();
+        await page.waitForFunction(
+          (slug) =>
+            document.querySelector(`section[data-slug="${slug}"]`)?.getAttribute("data-current") === "true",
+          scene.slug,
+        );
+        await wordsHaveSettled(page);
+        const badge = page.locator(`section[data-slug="${scene.slug}"][data-current="true"] .playtestbadge`);
+        await expect(badge).toBeInViewport({ ratio: 1 });
+        expect((await overflow(page)).page, `the feed with the badge ${at}`).toBe(0);
+        const [mark, under] = [await boxOf(badge), await boxOf(bar(page))];
+        const apart =
+          mark.x + mark.width <= under.x ||
+          under.x + under.width <= mark.x ||
+          mark.y + mark.height <= under.y ||
+          under.y + under.height <= mark.y;
+        expect(apart, `the badge clear of the bar ${at}`).toBe(true);
+      }
       const maker = scene.maker.page;
       await opened(maker, `${scene.playtesters}?invite`);
       const sheet = maker.getByRole("dialog", { name: "Invite playtesters" });

@@ -131,7 +131,10 @@ test("a tab shown from a page asked for ahead takes in what is new without movin
   test.setTimeout(120_000);
   const me = await signUp(page);
   await makeFriends(me, game.maker);
-  // Followed's page is asked for ahead while the person is on Fresh, with only the first maker's games in it.
+  // Followed's page is asked for ahead while the person is on Fresh, with only the first maker's games in it. The feed
+  // that sign-up lands on asks for it ahead too, so that page is left first: otherwise its answer, not this one, could
+  // be the one waited for, and the tab would open before its own page had come.
+  await page.goto("about:blank");
   const ahead = page.waitForResponse((answer) => answer.url().includes("/followed/__data.json"));
   await page.goto("/");
   await expect(page.locator("main.feed")).toHaveAttribute("data-ready", "true");
@@ -169,7 +172,9 @@ test("a game sent since Your turn's page was asked for is marked seen once it co
   test.setTimeout(120_000);
   const me = await signUp(page);
   await makeFriends(me, game.maker);
-  // Your turn's page is asked for ahead from Followed, with nothing sent yet; then a friend sends a game.
+  // Your turn's page is asked for ahead from Followed, with nothing sent yet; then a friend sends a game. The feed that
+  // sign-up lands on asks for it ahead too, so that page is left first, as above.
+  await page.goto("about:blank");
   const ahead = page.waitForResponse((answer) => answer.url().includes("/your-turn/__data.json"));
   await page.goto("/followed");
   await pageHasSettled(page);

@@ -142,8 +142,18 @@ export function createPlaytest(deps: PlaytestDeps) {
     async feedStateFor(viewerId: string | null, launchNowMs: number): Promise<FeedPlaytest> {
       if (!before(launchNowMs)) return { badge: [], play: [] };
       const [games, rows] = await Promise.all([
+        // Only a game with asking on can show the badge, and only one this person plays shows their Play.
         db.game.findMany({
-          where: { state: "live", livePullId: { not: null } },
+          where: {
+            state: "live",
+            livePullId: { not: null },
+            OR: [
+              { playtestAsking: true },
+              ...(viewerId === null
+                ? []
+                : [{ playtesters: { some: { userId: viewerId, state: "in" as const } } }]),
+            ],
+          },
           select: { id: true, slug: true, makerUserId: true, playtestAsking: true },
         }),
         viewerId === null

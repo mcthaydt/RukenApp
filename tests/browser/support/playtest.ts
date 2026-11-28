@@ -9,7 +9,8 @@ import { forgetRateLimits } from "./rate-limits.ts";
 import { PLAYTEST_WORDS as W } from "../../../src/features/playtest/words.ts";
 
 // Playtesting at its fullest, the day before launch, for the standing checks (overlap, fit, real buttons, the pad): a
-// maker with asking on, one person playing and one waiting, so every row and button the screens can show is there.
+// maker with asking on, one person playing, one waiting and one signed out, so every row, button and badge the screens
+// can show is there.
 
 const SITE = "http://localhost:4173";
 
@@ -26,6 +27,8 @@ export interface PlaytestScene {
   tester: PlaytestSide & { name: string };
   /** Still waiting: the game's page shows You asked and Take back. */
   asker: PlaytestSide & { name: string };
+  /** Signed out: the feed and the game's page show the badge. */
+  onlooker: PlaytestSide;
   playtesters: string;
   close: () => Promise<void>;
 }
@@ -49,6 +52,7 @@ export async function playtestScene(browser: Browser): Promise<PlaytestScene> {
   const maker = await side(browser);
   const tester = await side(browser);
   const asker = await side(browser);
+  const onlooker = await side(browser);
   await forgetRateLimits();
   const { slug } = await gameWhere(maker.page, { state: "live" });
   await givePage(
@@ -82,9 +86,10 @@ export async function playtestScene(browser: Browser): Promise<PlaytestScene> {
     maker,
     tester: testerNamed,
     asker: askerNamed,
+    onlooker,
     playtesters,
     close: async () => {
-      await Promise.all([maker.context.close(), tester.context.close(), asker.context.close()]);
+      await Promise.all([maker, tester, asker, onlooker].map(({ context }) => context.close()));
     },
   };
 }
